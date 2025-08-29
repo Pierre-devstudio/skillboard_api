@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Préparation Formation — Skillboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 24px; background:#fafafa; color:#222; }
+    h1 { margin: 0 0 16px; font-size: 22px; }
+    fieldset { border:1px solid #ddd; border-radius:8px; padding:16px; background:#fff; }
+    legend { padding:0 8px; color:#555; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+    .col { display:flex; flex-direction:column; min-width:180px; flex:1; }
+    label { font-size:12px; color:#555; margin-bottom:4px; }
+    input[type="text"], input[type="email"], select {
+      padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff;
+    }
+    .stagiaire {
+      border:1px dashed #cbd5e1; border-radius:8px; padding:12px; background:#fcfcff; margin-bottom:10px;
+    }
+    .actions { display:flex; gap:10px; margin-top:16px; }
+    button {
+      padding:10px 14px; border:0; border-radius:8px; cursor:pointer;
+    }
+    .btn { background:#0ea5e9; color:#fff; }
+    .btn.secondary { background:#e2e8f0; color:#111; }
+    .btn.danger { background:#ef4444; color:#fff; }
+    .muted { color:#666; font-size:12px; }
+    .success { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; padding:10px; border-radius:8px; margin-top:16px; }
+    .error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; padding:10px; border-radius:8px; margin-top:16px; }
+    .divider { height:1px; background:#eee; margin:16px 0; }
+  </style>
+</head>
+<body>
+  <h1>Fiche de préparation formation</h1>
+  <p class="muted">Merci de renseigner les informations ci-dessous puis cliquer sur <b>Valider</b>.</p>
+
+  <div id="alert"></div>
+
+  <!-- Bloc OPCO / Facturation -->
+  <fieldset>
+    <legend>Financement & Facturation</legend>
+
+    <div class="row">
+      <div class="col">
+        <label>Ferez-vous appel à un OPCO ?</label>
+        <div>
+          <label><input type="radio" name="opco_oui" value="yes"> Oui</label>
+          &nbsp;&nbsp;
+          <label><input type="radio" name="opco_oui" value="no" checked> Non</label>
+        </div>
+      </div>
+
+      <div class="col" id="opcoNameCol" style="display:none">
+        <label>Nom de l’OPCO (si oui)</label>
+        <input type="text" id="nom_opco" placeholder="Ex : OPCO Atlas" />
+      </div>
+
+      <div class="col">
+        <label>Facturation</label>
+        <div>
+          <label><input type="radio" name="facturation" value="client" checked> Client</label>
+          &nbsp;&nbsp;
+          <label><input type="radio" name="facturation" value="opco"> OPCO</label>
+        </div>
+        <div class="muted">Si vous choisissez "OPCO", nous adresserons la facture à l’OPCO indiqué.</div>
+      </div>
+    </div>
+  </fieldset>
+
+  <div class="divider"></div>
+
+  <!-- Bloc Stagiaires -->
+  <fieldset>
+    <legend>Stagiaires</legend>
+
+    <div id="stagiaires"></div>
+
+    <div class="actions">
+      <button class="btn secondary" id="addStag">+ Ajouter un stagiaire</button>
+      <button class="btn danger" id="clearStag">Effacer tout</button>
+    </div>
+  </fieldset>
+
+  <div class="actions">
+    <button class="btn" id="submitBtn">Valider</button>
+  </div>
+
+  <p class="muted">Astuce : vous pouvez partager ce lien avec vos collègues pour compléter les informations.</p>
+
+  <script>
+    // === CONFIG ===
+    // Mets l’URL de ton API ici si besoin (local par défaut)
+    const API_URL = "http://127.0.0.1:8000/preparation";
+
+    // === Helpers ===
+    function qs(sel){ return document.querySelector(sel); }
+    function qsa(sel){ return Array.from(document.querySelectorAll(sel)); }
+    function getQueryParam(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+    function alertBox(type, html){
+      qs("#alert").innerHTML = `<div class="${type}">${html}</div>`;
+    }
+
+    // === Gestion OPCO (affichage du champ nom_opco) ===
+    function refreshOPCO() {
+      const opcoYes = qs('input[name="opco_oui"][value="yes"]').checked;
+      qs("#opcoNameCol").style.display = opcoYes ? "block" : "none";
+    }
+    qsa('input[name="opco_oui"]').forEach(r => r.addEventListener('change', refreshOPCO));
+
+    // === Gestion Stagiaires ===
+    const cont = qs("#stagiaires");
+    const CIVILITES = ["", "M.", "Mme", "Autre"];
+
+    function stagiaireTemplate(idx){
+      return `
+      <div class="stagiaire" data-index="${idx}">
+        <div class="row">
+          <div class="col" style="max-width:120px">
+            <label>Civilité</label>
+            <select class="civilite">
+              ${CIVILITES.map(c => `<option value="${c}">${c}</option>`).join("")}
+            </select>
+          </div>
+          <div class="col">
+            <label>Nom *</label>
+            <input type="text" class="nom" placeholder="Nom" />
+          </div>
+          <div class="col">
+            <label>Prénom *</label>
+            <input type="text" class="prenom" placeholder="Prénom" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="col">
+            <label>Rôle / Fonction</label>
+            <input type="text" class="role" placeholder="Ex : Chef de projet" />
+          </div>
+          <div class="col">
+            <label>Email</label>
+            <input type="email" class="email" placeholder="nom.prenom@entreprise.fr" />
+          </div>
+          <div class="col" style="align-items:flex-end; justify-content:flex-end">
+            <button class="btn danger btnRemove">Supprimer</button>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    function addStagiaire() {
+      const idx = cont.children.length + 1;
+      cont.insertAdjacentHTML("beforeend", stagiaireTemplate(idx));
+      cont.lastElementChild.querySelector(".btnRemove").addEventListener("click", (e) => {
+        e.preventDefault();
+        e.currentTarget.closest(".stagiaire").remove();
+      });
+    }
+
+    function clearStagiaires() {
+      cont.innerHTML = "";
+    }
+
+    // === Soumission ===
+    async function submitForm(){
+      const token = getQueryParam("token");
+      if(!token){
+        alertBox("error", "Lien invalide : token manquant dans l’URL.");
+        return;
+      }
+
+      const opco_oui = qs('input[name="opco_oui"][value="yes"]').checked;
+      const nom_opco = opco_oui ? (qs("#nom_opco").value || null) : null;
+
+      // Si facturation = opco, on force opco_oui = true
+      const facturation_cible = qs('input[name="facturation"]:checked').value;
+      const final_opco_oui = (facturation_cible === "opco") ? true : opco_oui;
+
+      // Récup stagiaires
+      const stagiaires = Array.from(cont.querySelectorAll(".stagiaire")).map(div => ({
+        civilite: div.querySelector(".civilite").value || null,
+        nom: (div.querySelector(".nom").value || "").trim(),
+        prenom: (div.querySelector(".prenom").value || "").trim(),
+        role: (div.querySelector(".role").value || null),
+        email: (div.querySelector(".email").value || null)
+      })).filter(s => s.nom && s.prenom); // on garde seulement ceux avec nom/prénom
+
+      if(stagiaires.length === 0){
+        alertBox("error", "Veuillez ajouter au moins un stagiaire avec nom et prénom.");
+        return;
+      }
+
+      const payload = {
+        token: token,
+        opco_oui: final_opco_oui,
+        nom_opco: nom_opco,
+        facturation_cible: facturation_cible,
+        // id_offre: "OPTIONNEL_SI_TU_VEUX", // tu peux le passer si tu l’as
+        stagiaires: stagiaires
+      };
+
+      try{
+        qs("#submitBtn").disabled = true;
+
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if(!res.ok){
+          const txt = await res.text();
+          throw new Error(`Erreur serveur (${res.status}) : ${txt}`);
+        }
+        const json = await res.json();
+        alertBox("success", `Merci ! Vos informations ont été enregistrées.<br>Identifiant : <b>${json.id_preparation_formation || "OK"}</b>`);
+      } catch(err){
+        alertBox("error", "Impossible d’enregistrer : " + err.message);
+      } finally {
+        qs("#submitBtn").disabled = false;
+      }
+    }
+
+    // Init
+    qs("#addStag").addEventListener("click", e => { e.preventDefault(); addStagiaire(); });
+    qs("#clearStag").addEventListener("click", e => { e.preventDefault(); clearStagiaires(); });
+    qs("#submitBtn").addEventListener("click", e => { e.preventDefault(); submitForm(); });
+    refreshOPCO();
+    addStagiaire(); // on affiche 1 bloc par défaut
+  </script>
+</body>
+</html>
