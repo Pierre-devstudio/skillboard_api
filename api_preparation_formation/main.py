@@ -33,11 +33,10 @@ app = FastAPI(title="Skillboard - Préparation Formation API")
 
 # Autoriser les origines locales pour nos tests (on ajustera plus tard pour le domaine prod)
 ALLOWED_ORIGINS = [
+    "https://forms.jmbconsultant.fr",
     "http://127.0.0.1:5500",
     "http://localhost:5500",
-    "http://127.0.0.1:3000",
-    "http://localhost:3000",
-]
+    ]
 
 app.add_middleware(
     CORSMiddleware,
