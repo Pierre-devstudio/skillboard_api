@@ -93,8 +93,7 @@
     <button class="btn" id="submitBtn">Valider</button>
   </div>
 
-  <p class="muted">Astuce : vous pouvez partager ce lien avec vos collègues pour compléter les informations.</p>
-
+  
   <script>
     // === CONFIG ===
     // Mets l’URL de ton API ici si besoin (local par défaut)
@@ -274,8 +273,8 @@
       const nomComplet = [civ_ca, nom_ca].filter(Boolean).join(' ').trim();
       if (nomComplet && h1El) h1El.textContent = nomComplet + ',';
       if (introEl) {
-        introEl.textContent =
-          "Pour nous permettre de préparer au mieux votre formation, merci de renseigner les informations ci-dessous puis cliquer sur Valider";
+       introEl.innerHTML =
+          "Pour nous permettre de préparer au mieux votre formation, merci de renseigner les informations ci-dessous puis cliquer sur <b>Valider</b>";
       }
     }
   })();
