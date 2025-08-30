@@ -171,7 +171,7 @@
 
     // === Soumission ===
     async function submitForm(){
-      const token = getQueryParam("token");
+      const token = getQueryParam("t");
       if(!token){
         alertBox("error", "Lien invalide : token manquant dans l’URL.");
         return;
