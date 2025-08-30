@@ -35,10 +35,12 @@
 <body>
   <header style="margin-bottom:20px; text-align:center;">
     <img src="/logo.png" alt="Logo" style="max-height:80px;">
-    <div id="formationTitle" style="margin-top:8px; font-weight:600;"></div>
+    <div id="formationTitle" style="margin-top:8px; font-weight:600; font-size:22px;"></div>
   </header>
-  <h1>Fiche de préparation formation</h1>
-  <p class="muted">Merci de renseigner les informations ci-dessous puis cliquer sur <b>Valider</b>.</p>
+  <h1 id="greetingH1">Fiche de préparation formation</h1>
+  <p id="introText" class="muted">
+  Merci de renseigner les informations ci-dessous puis cliquer sur <b>Valider</b>.
+  </p>
 
   <div id="alert"></div>
 
@@ -273,6 +275,31 @@
         console.warn('[Form] Exception RPC:', e);
       }
     })();
+  })();
+</script>
+<script>
+  (async () => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("t");
+    if (!token) return;
+
+    const h1El   = document.getElementById("greetingH1");
+    const introEl= document.getElementById("introText");
+    if (!h1El || !introEl) return;
+
+    const { data, error } = await supabase.rpc('rpc_get_contact_prepa', { p_token: token });
+    if (error) {
+      console.warn('[Form] rpc_get_contact_prepa error:', error.message);
+      return;
+    }
+    if (Array.isArray(data) && data.length) {
+      const { civ_ca, nom_ca } = data[0] || {};
+      const nomComplet = [civ_ca, nom_ca].filter(Boolean).join(' ').trim();
+      if (nomComplet) h1El.textContent = nomComplet + ',';
+
+      introEl.textContent =
+        "Pour nous permettre de préparer au mieux votre formation, merci de renseigner les informations ci-dessous puis cliquer sur Valider";
+    }
   })();
 </script>
 
