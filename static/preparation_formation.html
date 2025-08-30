@@ -35,6 +35,7 @@
 <body>
   <header style="margin-bottom:20px; text-align:center;">
     <img src="/logo.png" alt="Logo" style="max-height:80px;">
+    <div id="formationTitle" style="margin-top:8px; font-weight:600;"></div>
   </header>
   <h1>Fiche de préparation formation</h1>
   <p class="muted">Merci de renseigner les informations ci-dessous puis cliquer sur <b>Valider</b>.</p>
@@ -234,5 +235,46 @@
     refreshOPCO();
     addStagiaire(); // on affiche 1 bloc par défaut
   </script>
+
+  <!-- Supabase JS v2 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  (function () {
+    // === Config ===
+    const SUPABASE_URL = "https://qxupwbbduzufiwvtthkf.supabase.co";          // ← remplace par ton URL
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4dXB3YmJkdXp1Zml3dnR0aGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3MzM2OTUsImV4cCI6MjA3MDMwOTY5NX0.sfK-1-HS3EzEjb6lg7a85hekrUDv8Ah3Qgx0j33nWg0";                    // ← remplace par ta anon key
+
+    // === Init client ===
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // === Récupération du token dans l’URL (?t=...) ===
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("t");
+
+    // === Cible d’injection ===
+    const titleEl = document.getElementById("formationTitle");
+
+    // Si pas de token → on ne fait rien
+    if (!token || !titleEl) return;
+
+    // Appel RPC et injection
+    (async () => {
+      try {
+        const { data, error } = await supabase.rpc('rpc_get_titre_formation', { p_token: token });
+        if (error) {
+          console.warn('[Form] RPC error:', error.message);
+          return;
+        }
+        // data est un tableau de lignes; on prend la 1ère si existe
+        if (Array.isArray(data) && data.length > 0 && data[0].formation_titre) {
+          titleEl.textContent = data[0].formation_titre;
+        }
+      } catch (e) {
+        console.warn('[Form] Exception RPC:', e);
+      }
+    })();
+  })();
+</script>
+
 </body>
 </html>
