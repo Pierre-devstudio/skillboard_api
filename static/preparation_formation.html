@@ -241,67 +241,46 @@
   <!-- Supabase JS v2 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  (function () {
-    // === Config ===
-    const SUPABASE_URL = "https://qxupwbbduzufiwvtthkf.supabase.co";          // ← remplace par ton URL
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4dXB3YmJkdXp1Zml3dnR0aGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3MzM2OTUsImV4cCI6MjA3MDMwOTY5NX0.sfK-1-HS3EzEjb6lg7a85hekrUDv8Ah3Qgx0j33nWg0";                    // ← remplace par ta anon key
+  // === Config ===
+  const SUPABASE_URL = "https://qxupwbbduzufiwvtthkf.supabase.co";      // ta Project URL
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4dXB3YmJkdXp1Zml3dnR0aGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3MzM2OTUsImV4cCI6MjA3MDMwOTY5NX0.sfK-1-HS3EzEjb6lg7a85hekrUDv8Ah3Qgx0j33nWg0";                    // ta anon key
 
-    // === Init client ===
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // Client global (accessible à tout le script)
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // === Récupération du token dans l’URL (?t=...) ===
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("t");
-
-    // === Cible d’injection ===
-    const titleEl = document.getElementById("formationTitle");
-
-    // Si pas de token → on ne fait rien
-    if (!token || !titleEl) return;
-
-    // Appel RPC et injection
-    (async () => {
-      try {
-        const { data, error } = await supabase.rpc('rpc_get_titre_formation', { p_token: token });
-        if (error) {
-          console.warn('[Form] RPC error:', error.message);
-          return;
-        }
-        // data est un tableau de lignes; on prend la 1ère si existe
-        if (Array.isArray(data) && data.length > 0 && data[0].formation_titre) {
-          titleEl.textContent = data[0].formation_titre;
-        }
-      } catch (e) {
-        console.warn('[Form] Exception RPC:', e);
-      }
-    })();
-  })();
-</script>
-<script>
   (async () => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const token = params.get("t");
     if (!token) return;
 
-    const h1El   = document.getElementById("greetingH1");
-    const introEl= document.getElementById("introText");
-    if (!h1El || !introEl) return;
-
-    const { data, error } = await supabase.rpc('rpc_get_contact_prepa', { p_token: token });
-    if (error) {
-      console.warn('[Form] rpc_get_contact_prepa error:', error.message);
-      return;
+    // --- 1) Titre formation ---
+    const titleEl = document.getElementById("formationTitle");
+    if (titleEl) {
+      const { data, error } = await supabase.rpc('rpc_get_titre_formation', { p_token: token });
+      if (!error && Array.isArray(data) && data.length && data[0].formation_titre) {
+        titleEl.textContent = data[0].formation_titre;
+      }
     }
-    if (Array.isArray(data) && data.length) {
-      const { civ_ca, nom_ca } = data[0] || {};
-      const nomComplet = [civ_ca, nom_ca].filter(Boolean).join(' ').trim();
-      if (nomComplet) h1El.textContent = nomComplet + ',';
 
-      introEl.textContent =
-        "Pour nous permettre de préparer au mieux votre formation, merci de renseigner les informations ci-dessous puis cliquer sur Valider";
+    // --- 2) Contact : civ_ca + nom_ca ---
+    const h1El    = document.getElementById("greetingH1");
+    const introEl = document.getElementById("introText");
+
+    const { data: cdata, error: cerror } =
+      await supabase.rpc('rpc_get_contact_prepa', { p_token: token });
+
+    if (!cerror && Array.isArray(cdata) && cdata.length) {
+      const { civ_ca, nom_ca } = cdata[0] || {};
+      const nomComplet = [civ_ca, nom_ca].filter(Boolean).join(' ').trim();
+      if (nomComplet && h1El) h1El.textContent = nomComplet + ',';
+      if (introEl) {
+        introEl.textContent =
+          "Pour nous permettre de préparer au mieux votre formation, merci de renseigner les informations ci-dessous puis cliquer sur Valider";
+      }
     }
   })();
 </script>
+
 
 </body>
 </html>
