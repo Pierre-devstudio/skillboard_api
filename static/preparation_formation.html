@@ -240,46 +240,62 @@
   <!-- Supabase JS v2 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+window.addEventListener('DOMContentLoaded', async () => {
   // === Config ===
   const SUPABASE_URL = "https://qxupwbbduzufiwvtthkf.supabase.co";      // ta Project URL
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4dXB3YmJkdXp1Zml3dnR0aGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3MzM2OTUsImV4cCI6MjA3MDMwOTY5NX0.sfK-1-HS3EzEjb6lg7a85hekrUDv8Ah3Qgx0j33nWg0";                    // ta anon key
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  // Client global (accessible à tout le script)
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // === Token depuis l'URL ===
+  const qs = new URLSearchParams(window.location.search);
+  const token = (qs.get('t') || qs.get('token') || qs.get('lt') || '').trim();
+  if (!token) { console.warn('Token manquant'); return; }
 
-  (async () => {
-    const params = new URLSearchParams(location.search);
-    const token = params.get("t");
-    if (!token) return;
+  // (optionnel) champ hidden si tu postes le token
+  const tf = document.getElementById('tokenField');
+  if (tf) tf.value = token;
 
-    // --- 1) Titre formation ---
-    const titleEl = document.getElementById("formationTitle");
-    if (titleEl) {
-      const { data, error } = await supabase.rpc('rpc_get_titre_formation', { p_token: token });
-      if (!error && Array.isArray(data) && data.length && data[0].formation_titre) {
-        titleEl.textContent = data[0].formation_titre;
-      }
+  // === Cibles DOM ===
+  const titleEl = document.getElementById('formationTitle');
+  const h1El    = document.getElementById('greetingH1');
+  const introEl = document.getElementById('introText');
+
+  try {
+    // Appels en parallèle
+    const [{ data: d1, error: e1 }, { data: d2, error: e2 }] = await Promise.all([
+      sb.rpc('rpc_get_titre_formation', { p_token: token }),
+      sb.rpc('rpc_get_contact_prepa',   { p_token: token })
+    ]);
+
+    if (e1) console.warn('rpc_get_titre_formation:', e1.message);
+    if (e2) console.warn('rpc_get_contact_prepa:',   e2.message);
+
+    // 1) Titre de la formation (au-dessus du logo)
+    if (d1 && d1[0] && d1[0].formation_titre && titleEl) {
+      titleEl.textContent = d1[0].formation_titre;
     }
 
-    // --- 2) Contact : civ_ca + nom_ca ---
-    const h1El    = document.getElementById("greetingH1");
-    const introEl = document.getElementById("introText");
-
-    const { data: cdata, error: cerror } =
-      await supabase.rpc('rpc_get_contact_prepa', { p_token: token });
-
-    if (!cerror && Array.isArray(cdata) && cdata.length) {
-      const { civ_ca, nom_ca } = cdata[0] || {};
-      const nomComplet = [civ_ca, nom_ca].filter(Boolean).join(' ').trim();
+    // 2) Contact + texte d'intro
+    if (d2 && d2[0]) {
+      const civ = d2[0].civ_ca || '';
+      const nom = d2[0].nom_ca || '';
+      const nomComplet = [civ, nom].filter(Boolean).join(' ').trim();
       if (nomComplet && h1El) h1El.textContent = nomComplet + ',';
       if (introEl) {
-       introEl.innerHTML =
-          "Pour nous permettre de préparer au mieux votre formation, merci de renseigner les informations ci-dessous puis cliquer sur <b>Valider</b>";
+        introEl.innerHTML =
+          "Pour nous permettre de préparer au mieux votre formation, merci de renseigner les informations ci-dessous puis cliquer sur <b>Valider</b>.";
       }
     }
-  })();
+  } catch (err) {
+    console.error('Init error:', err);
+  }
+});
 </script>
+
 
 
 </body>
 </html>
+
+
+  
