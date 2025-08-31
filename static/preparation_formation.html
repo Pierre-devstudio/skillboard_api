@@ -98,7 +98,7 @@
     // === CONFIG ===
     // Mets l’URL de ton API ici si besoin (local par défaut)
     const API_URL = "https://skillboard-preparation.onrender.com/preparation";
-
+    window.ID_OFFRE = null;
     // === Helpers ===
     function qs(sel){ return document.querySelector(sel); }
     function qsa(sel){ return Array.from(document.querySelectorAll(sel)); }
@@ -200,10 +200,10 @@
 
       const payload = {
         token: token,
+        id_offre: window.ID_OFFRE || null,
         opco_oui: final_opco_oui,
         nom_opco: nom_opco,
         facturation_cible: facturation_cible,
-        // id_offre: "OPTIONNEL_SI_TU_VEUX", // tu peux le passer si tu l’as
         stagiaires: stagiaires
       };
 
@@ -221,7 +221,11 @@
           throw new Error(`Erreur serveur (${res.status}) : ${txt}`);
         }
         const json = await res.json();
-        alertBox("success", `Merci ! Vos informations ont été enregistrées.<br>Identifiant : <b>${json.id_preparation_formation || "OK"}</b>`);
+        alertBox("success", "Merci ! Vos informations ont été enregistrées.");
+        // (si tu veux garder l’ID pour debug)
+      if (json && json.id_preparation_formation) {
+      console.log("id_preparation_formation:", json.id_preparation_formation);
+      }
       } catch(err){
         alertBox("error", "Impossible d’enregistrer : " + err.message);
       } finally {
@@ -254,6 +258,16 @@ window.addEventListener('DOMContentLoaded', async () => {
   // (optionnel) champ hidden si tu postes le token
   const tf = document.getElementById('tokenField');
   if (tf) tf.value = token;
+
+  try {
+  const { data: doff, error: eoff } = await sb.rpc('rpc_get_offre_from_token', { p_token: token });
+  if (!eoff && Array.isArray(doff) && doff.length) {
+    window.ID_OFFRE = doff[0].id_offre;   // <<< voilà l’id_offre résolu par le token
+    console.log('[Form] id_offre =', window.ID_OFFRE);
+  }
+} catch (e) {
+  console.warn('rpc_get_offre_from_token:', e);
+}
 
   // === Cibles DOM ===
   const titleEl = document.getElementById('formationTitle');
