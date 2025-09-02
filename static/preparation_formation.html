@@ -90,9 +90,10 @@
   </fieldset>
 
   <div class="actions">
-  <button class="btn" id="submitBtn" type="button">Valider</button>
+  <button class="btn" id="submitBtn" type="submit">Valider</button>
   <span id="submitMsg" role="status" aria-live="polite" style="margin-left:8px;font-size:.9em;color:#666;"></span>
   </div>
+
 
   
   <script>
@@ -308,31 +309,55 @@ window.addEventListener('DOMContentLoaded', async () => {
 </script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  var btn = document.getElementById('submitBtn');
-  var msg = document.getElementById('submitMsg');
-  if (!btn) return;
+(function () {
+  var alreadySubmitting = false;
 
-  btn.addEventListener('click', function () {
-    if (btn.disabled) return;
-
-    // trouver le formulaire (dans ou autour du bouton, sinon le 1er de la page)
-    var form = btn.form || btn.closest('form') || document.querySelector('form');
-
-    // désactiver + message
-    btn.disabled = true;
+  function showWaitMessage() {
+    var msg = document.getElementById('submitMsg');
     if (msg) {
-      msg.textContent = "Veuillez attendre la confirmation avant de fermer cette page ; un délai pouvant aller jusqu’à 30 secondes peut être nécessaire.";
+      msg.textContent =
+        "Veuillez attendre la confirmation avant de fermer cette page ; un délai pouvant aller jusqu’à 30 secondes peut être nécessaire.";
+    }
+  }
+
+  function disableSubmit(form) {
+    var btn = (form && form.querySelector('#submitBtn')) || (form && form.querySelector('button[type="submit"]')) || document.getElementById('submitBtn');
+    if (btn) {
+      btn.setAttribute('disabled', 'disabled');
+      btn.classList.add('is-disabled');
+    }
+  }
+
+  // 1) On capte le SUBMIT (capture = true) pour être sûr de passer avant tout
+  document.addEventListener('submit', function (e) {
+    if (alreadySubmitting) return;
+    alreadySubmitting = true;
+    disableSubmit(e.target);
+    showWaitMessage();
+  }, true);
+
+  // 2) On capte aussi le CLICK sur le bouton (si un autre script empêche 'submit')
+  document.addEventListener('click', function (e) {
+    var target = e.target;
+    if (!target) return;
+
+    var isSubmitBtn = target.id === 'submitBtn' || (target.closest && target.closest('button') && target.closest('button').type === 'submit');
+    if (!isSubmitBtn) return;
+
+    if (alreadySubmitting) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
     }
 
-    // laisser le navigateur peindre le message, puis soumettre
-    setTimeout(function () {
-      if (form) form.submit();
-    }, 50);
-  });
-});
+    alreadySubmitting = true;
+    var form = target.form || (target.closest ? target.closest('form') : null) || document.querySelector('form');
+    disableSubmit(form);
+    showWaitMessage();
+    // on laisse la soumission normale continuer (pas de preventDefault)
+  }, true);
+})();
 </script>
-
 
 </body>
 </html>
