@@ -91,6 +91,7 @@
 
   <div class="actions">
     <button class="btn" id="submitBtn">Valider</button>
+    <span id="submitMsg" role="status" aria-live="polite" style="margin-left:8px;font-size:.9em;color:#666;"></span>
   </div>
 
   
@@ -303,6 +304,25 @@ window.addEventListener('DOMContentLoaded', async () => {
   } catch (err) {
     console.error('Init error:', err);
   }
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var btn  = document.getElementById('submitBtn');
+  if (!btn) return;
+
+  var form = btn.closest('form');
+  if (!form) return;
+
+  var msg  = document.getElementById('submitMsg');
+
+  form.addEventListener('submit', function () {
+    btn.disabled = true;
+    if (msg) {
+      msg.textContent = "Veuillez attendre la confirmation avant de fermer cette page ; un délai pouvant aller jusqu’à 30 secondes peut être nécessaire.";
+    }
+  });
 });
 </script>
 
