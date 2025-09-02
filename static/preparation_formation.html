@@ -90,8 +90,8 @@
   </fieldset>
 
   <div class="actions">
-    <button class="btn" id="submitBtn">Valider</button>
-    <span id="submitMsg" role="status" aria-live="polite" style="margin-left:8px;font-size:.9em;color:#666;"></span>
+  <button class="btn" id="submitBtn" type="button">Valider</button>
+  <span id="submitMsg" role="status" aria-live="polite" style="margin-left:8px;font-size:.9em;color:#666;"></span>
   </div>
 
   
@@ -309,23 +309,29 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  var btn  = document.getElementById('submitBtn');
+  var btn = document.getElementById('submitBtn');
+  var msg = document.getElementById('submitMsg');
   if (!btn) return;
 
-  var form = btn.closest('form');
-  if (!form) return;
+  btn.addEventListener('click', function () {
+    if (btn.disabled) return;
 
-  var msg  = document.getElementById('submitMsg');
+    // trouver le formulaire (dans ou autour du bouton, sinon le 1er de la page)
+    var form = btn.form || btn.closest('form') || document.querySelector('form');
 
-  form.addEventListener('submit', function () {
+    // désactiver + message
     btn.disabled = true;
     if (msg) {
       msg.textContent = "Veuillez attendre la confirmation avant de fermer cette page ; un délai pouvant aller jusqu’à 30 secondes peut être nécessaire.";
     }
+
+    // laisser le navigateur peindre le message, puis soumettre
+    setTimeout(function () {
+      if (form) form.submit();
+    }, 50);
   });
 });
 </script>
-
 
 
 </body>
