@@ -35,6 +35,9 @@ app = FastAPI(title="Skillboard - Préparation Formation API")
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}
+@app.head("/healthz")
+async def healthz_head():
+    return {"status": "ok"}
 
 # Autoriser les origines locales pour nos tests (on ajustera plus tard pour le domaine prod)
 ALLOWED_ORIGINS = [
