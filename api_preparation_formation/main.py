@@ -31,6 +31,11 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 app = FastAPI(title="Skillboard - Préparation Formation API")
 
+# Endpoint léger pour UptimeRobot
+@app.get("/healthz")
+async def healthz():
+    return {"status": "ok"}
+
 # Autoriser les origines locales pour nos tests (on ajustera plus tard pour le domaine prod)
 ALLOWED_ORIGINS = [
     "https://forms.jmbconsultant.fr",
