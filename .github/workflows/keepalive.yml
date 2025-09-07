@@ -11,4 +11,4 @@ jobs:
     steps:
       - name: Ping /healthz (GET)
         run: |
-          curl -sS --max-time 30 https://skillboard-preparation.onrender.com/healthz -o /dev/null -w "%{http_code}\n"
+          curl -sS --max-time 60 https://skillboard-preparation.onrender.com/healthz -o /dev/null -w "%{http_code}\n"
