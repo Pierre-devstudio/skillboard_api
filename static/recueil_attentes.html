@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Recueil des Attentes — Skillboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 24px; background:#fafafa; color:#222; }
+    h1 { margin: 0 0 16px; font-size: 22px; }
+    fieldset { border:1px solid #ddd; border-radius:8px; padding:16px; background:#fff; }
+    legend { padding:0 8px; color:#555; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px; }
+    .col { display:flex; flex-direction:column; min-width:180px; flex:1; }
+    label { font-size:13px; color:#444; margin-bottom:4px; }
+    textarea {
+      width:100%; min-height:120px; resize:vertical;
+      padding:8px; border:1px solid #ccc; border-radius:6px; background:#fff;
+    }
+    .prerequis-item {
+      border-bottom:1px solid #eee; padding:8px 0;
+    }
+    .prerequis-item:last-child { border-bottom:0; }
+    .reponses { display:flex; gap:16px; margin-top:4px; flex-wrap:wrap; }
+    .actions { display:flex; gap:10px; margin-top:16px; }
+    button {
+      padding:10px 14px; border:0; border-radius:8px; cursor:pointer;
+    }
+    .btn { background:#0ea5e9; color:#fff; }
+    .btn.secondary { background:#e2e8f0; color:#111; }
+    .muted { color:#666; font-size:12px; }
+    .success { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; padding:10px; border-radius:8px; margin-top:16px; }
+    .error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; padding:10px; border-radius:8px; margin-top:16px; }
+  </style>
+</head>
+<body>
+  <header style="margin-bottom:20px; text-align:center;">
+    <img src="/logo.png" alt="Logo" style="max-height:80px;">
+    <div id="formationTitle" style="margin-top:8px; font-weight:600; font-size:22px;"></div>
+  </header>
+
+  <h1>Recueil des attentes et autoévaluation</h1>
+  <p class="muted" id="introText">
+    Vous êtes inscrit(e) à une formation organisée par JMB Consultant.  
+    Merci de décrire vos attentes vis-à-vis de cette formation et d’évaluer votre niveau sur les prérequis indiqués ci-dessous.
+  </p>
+
+  <div id="alert"></div>
+
+  <!-- Bloc attentes -->
+  <fieldset>
+    <legend>Vos attentes personnelles</legend>
+    <textarea id="attentes" placeholder="Décrivez ici ce que vous attendez de cette formation..."></textarea>
+  </fieldset>
+
+  <div style="height:1px; background:#eee; margin:16px 0;"></div>
+
+  <!-- Bloc autoévaluation -->
+  <fieldset>
+    <legend>Autoévaluation des prérequis</legend>
+    <div id="listePrerequis"></div>
+  </fieldset>
+
+  <div class="actions">
+    <button class="btn" id="submitBtn">Valider</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "https://qxupwbbduzufiwvtthkf.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4dXB3YmJkdXp1Zml3dnR0aGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3MzM2OTUsImV4cCI6MjA3MDMwOTY5NX0.sfK-1-HS3EzEjb6lg7a85hekrUDv8Ah3Qgx0j33nWg0";
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    function getQueryParam(name){
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+
+    function alertBox(type, html){
+      document.querySelector("#alert").innerHTML = `<div class="${type}">${html}</div>`;
+    }
+
+    async function chargerPrerequis(id_effectif) {
+      const { data, error } = await sb.rpc('rpc_get_prerequis_from_effectif', { p_id_effectif: id_effectif });
+      if (error) {
+        alertBox("error", "Erreur de chargement des prérequis : " + error.message);
+        return;
+      }
+      const cont = document.getElementById("listePrerequis");
+      cont.innerHTML = "";
+      data.forEach(pr => {
+        const opts = [pr.r1, pr.r2, pr.r3].filter(Boolean);
+        const radios = opts.map((r, idx) => `
+          <label><input type="radio" name="pr_${pr.id_prerequis}" value="${r}"> ${r}</label>
+        `).join(" ");
+        cont.insertAdjacentHTML("beforeend", `
+          <div class="prerequis-item">
+            <div><b>${pr.titre}</b></div>
+            <div class="reponses">${radios}</div>
+          </div>
+        `);
+      });
+    }
+
+    async function soumettreFormulaire(){
+      const id_effectif = getQueryParam("id");
+      if (!id_effectif){ alertBox("error","Lien invalide."); return; }
+
+      const attentes = document.getElementById("attentes").value.trim();
+      const reponses = [];
+      document.querySelectorAll("[name^='pr_']").forEach(inp => {
+        if (inp.checked){
+          const id = inp.name.replace("pr_","");
+          reponses.push({ id_prerequis:id, reponse:inp.value });
+        }
+      });
+
+      const payload = { id_action_formation_effectif:id_effectif, attentes:attentes, reponses:reponses };
+      try {
+        const { error } = await sb.from("tbl_recueil_attentes").insert(payload);
+        if (error) throw error;
+        alertBox("success","Merci ! Votre réponse a bien été enregistrée.");
+      } catch(e){
+        alertBox("error","Erreur : " + e.message);
+      }
+    }
+
+    document.getElementById("submitBtn").addEventListener("click", e=>{
+      e.preventDefault();
+      soumettreFormulaire();
+    });
+
+    window.addEventListener("DOMContentLoaded", async ()=>{
+      const id = getQueryParam("id");
+      if (!id){ alertBox("error","Identifiant manquant."); return; }
+      chargerPrerequis(id);
+    });
+  </script>
+</body>
+</html>
