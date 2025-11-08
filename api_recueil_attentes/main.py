@@ -43,14 +43,22 @@ app.add_middleware(
 # -----------------------------
 # Modèles d'entrée
 # -----------------------------
+from typing import List, Optional, Annotated
+from pydantic import BaseModel, Field
+
+IdPrerequisStr = Annotated[str, Field(min_length=5)]
+ReponseStr    = Annotated[str, Field(min_length=1)]
+IdEffectifStr = Annotated[str, Field(min_length=10)]
+
 class AutoEvalInput(BaseModel):
-    id_prerequis: constr(min_length=5)
-    reponse: constr(min_length=1)
+    id_prerequis: IdPrerequisStr
+    reponse: ReponseStr
 
 class RecueilInput(BaseModel):
-    id_action_formation_effectif: constr(min_length=10)
+    id_action_formation_effectif: IdEffectifStr
     attentes: Optional[str] = None
-    reponses: List[AutoEvalInput] = []
+    reponses: List[AutoEvalInput] = Field(default_factory=list)
+
 
 # -----------------------------
 # Connexion DB
