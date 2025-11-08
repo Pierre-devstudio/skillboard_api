@@ -1,16 +1,16 @@
-# skillboard_api/api_recueil_attentes/main.py
 from fastapi import FastAPI, HTTPException
 from datetime import datetime
-from pydantic import BaseModel, constr, Field
-from typing import List, Optional
+from typing import List, Optional, Annotated
+from pydantic import BaseModel, Field
 import os
 import json
 import uuid
+from pathlib import Path
+
 import psycopg
 from psycopg.rows import dict_row
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
-from pathlib import Path
 
 # -----------------------------
 # Chargement variables .env
@@ -41,11 +41,8 @@ app.add_middleware(
 )
 
 # -----------------------------
-# Modèles d'entrée
+# Modèles d'entrée (Pydantic v2)
 # -----------------------------
-from typing import List, Optional, Annotated
-from pydantic import BaseModel, Field
-
 IdPrerequisStr = Annotated[str, Field(min_length=5)]
 ReponseStr    = Annotated[str, Field(min_length=1)]
 IdEffectifStr = Annotated[str, Field(min_length=10)]
@@ -59,19 +56,17 @@ class RecueilInput(BaseModel):
     attentes: Optional[str] = None
     reponses: List[AutoEvalInput] = Field(default_factory=list)
 
-
 # -----------------------------
 # Connexion DB
 # -----------------------------
 def _missing_env():
-    missing = [k for k, v in {
+    return [k for k, v in {
         "DB_HOST": DB_HOST,
         "DB_PORT": DB_PORT,
         "DB_NAME": DB_NAME,
         "DB_USER": DB_USER,
         "DB_PASSWORD": DB_PASSWORD,
     }.items() if not v]
-    return missing
 
 def get_conn():
     missing = _missing_env()
@@ -98,37 +93,45 @@ def insert_recueil_attentes(cur, payload: RecueilInput) -> str:
     Retourne l'id_recueil_attentes (UUID TEXT).
     """
     id_recueil = str(uuid.uuid4())
-    json_reponses = json.dumps([r.dict() for r in payload.reponses], ensure_ascii=False)
+    # Pydantic v2
+    json_reponses = json.dumps([r.model_dump() for r in payload.reponses], ensure_ascii=False)
 
-    cur.execute("""
+    cur.execute(
+        """
         INSERT INTO public.tbl_action_formation_recueil_attentes
         (id_recueil_attentes, id_action_formation_effectif, attentes, json_reponses, date_creation, date_modif)
         VALUES (%s, %s, %s, %s, NOW(), NOW())
-    """, (
-        id_recueil,
-        payload.id_action_formation_effectif,
-        payload.attentes,
-        json_reponses
-    ))
+        """,
+        (
+            id_recueil,
+            payload.id_action_formation_effectif,
+            payload.attentes,
+            json_reponses
+        )
+    )
     return id_recueil
 
 # -----------------------------
 # Cache local (debug / audit)
 # -----------------------------
 CACHE_DIR = Path(__file__).parent / "cache"
-CACHE_DIR.mkdir(exist_ok=True)
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 def save_cache(payload: RecueilInput):
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     fname = CACHE_DIR / f"recueil_attentes_{payload.id_action_formation_effectif}_{ts}.json"
     with open(fname, "w", encoding="utf-8") as f:
-        json.dump(payload.dict(), f, ensure_ascii=False, indent=2)
+        json.dump(payload.model_dump(), f, ensure_ascii=False, indent=2)
 
 # -----------------------------
 # Endpoints
 # -----------------------------
 @app.get("/healthz")
 def healthz():
+    return {"status": "ok"}
+
+@app.head("/healthz")
+def healthz_head():
     return {"status": "ok"}
 
 @app.post("/recueil_attentes")
@@ -141,16 +144,9 @@ def submit_recueil(payload: RecueilInput):
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_recueil = insert_recueil_attentes(cur, payload)
-
-            # commit automatique avec psycopg3 (context manager)
         save_cache(payload)
         return {"ok": True, "id_recueil_attentes": id_recueil}
-
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur: {e}")
-
-# -----------------------------
-# Swagger: http://localhost:8000/docs
-# ---------
