@@ -28,7 +28,7 @@
     }
     .btn { background:#0ea5e9; color:#fff; }
     .btn.secondary { background:#e2e8f0; color:#111; }
-    .muted { color:#666; font-size:12px; }
+    .muted { color:#666; font-size:16px; }
     .success { background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; padding:10px; border-radius:8px; margin-top:16px; }
     .error { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; padding:10px; border-radius:8px; margin-top:16px; }
   </style>
@@ -119,7 +119,7 @@
 
       const payload = { id_action_formation_effectif:id_effectif, attentes:attentes, reponses:reponses };
       try {
-        const { error } = await sb.from("tbl_recueil_attentes").insert(payload);
+        const { error } = await sb.from("tbl_action_formation_recueil_attentes").insert(payload);
         if (error) throw error;
         alertBox("success","Merci ! Votre réponse a bien été enregistrée.");
       } catch(e){
