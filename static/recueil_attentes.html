@@ -119,9 +119,18 @@
 
       const payload = { id_action_formation_effectif:id_effectif, attentes:attentes, json_reponses:reponses };
       try {
-        const { error } = await sb.from("tbl_action_formation_recueil_attentes").insert(payload);
-        if (error) throw error;
-        alertBox("success","Merci ! Votre réponse a bien été enregistrée.");
+        const response = await fetch("https://skillboard-attentes-formation.onrender.com/recueil_attentes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+});
+
+if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText);
+}
+
+alertBox("success", "Merci ! Votre réponse a bien été enregistrée.");
       } catch(e){
         alertBox("error","Erreur : " + e.message);
       }
