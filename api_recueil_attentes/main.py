@@ -12,6 +12,9 @@ from psycopg.rows import dict_row
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 
+import psycopg2
+import psycopg2.errors
+
 # -----------------------------
 # Chargement variables .env
 # -----------------------------
@@ -154,9 +157,14 @@ def submit_recueil(payload: RecueilInput):
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_recueil = insert_recueil_attentes(cur, payload)
-        save_cache(payload)
-        return {"ok": True, "id_recueil_attentes": id_recueil}
-    except HTTPException:
-        raise
+                conn.commit()  # sécurité explicite
+                save_cache(payload)
+                return {"ok": True, "id_recueil_attentes": id_recueil}
+
+    except psycopg2.errors.UniqueViolation:
+        raise HTTPException(status_code=409, detail="Un recueil existe déjà pour ce participant.")
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur serveur: {e}")
+        if conn:
+            conn.rollback()
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {str(e)}")
