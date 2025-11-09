@@ -12,9 +12,6 @@ from psycopg.rows import dict_row
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 
-import psycopg2
-import psycopg2.errors
-
 # -----------------------------
 # Chargement variables .env
 # -----------------------------
@@ -161,7 +158,7 @@ def submit_recueil(payload: RecueilInput):
                 save_cache(payload)
                 return {"ok": True, "id_recueil_attentes": id_recueil}
 
-    except psycopg2.errors.UniqueViolation:
+    except psycopg.errors.UniqueViolation:
         raise HTTPException(status_code=409, detail="Un recueil existe déjà pour ce participant.")
 
     except Exception as e:
