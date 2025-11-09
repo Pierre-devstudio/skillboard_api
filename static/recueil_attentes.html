@@ -108,13 +108,11 @@
       const id_effectif = getQueryParam("id");
       if (!id_effectif){ alertBox("error","Lien invalide."); return; }
 
-      const attentes = document.getElementById("attentes").value.trim();
+      const attentes = document.getElementById("attentes").value.trim().replace(/\n/g, "<br>");
       const reponses = [];
-      document.querySelectorAll("[name^='pr_']").forEach(inp => {
-        if (inp.checked){
-          const id = inp.name.replace("pr_","");
-          reponses.push({ id_prerequis:id, reponse:inp.value });
-        }
+      document.querySelectorAll('input[type="radio"]:checked').forEach(inp => {
+      const id_prerequis = inp.name.replace("pr_", "");
+      reponses.push({ id_prerequis: id_prerequis, reponse: inp.value });
       });
 
       const payload = { id_action_formation_effectif:id_effectif, attentes:attentes, json_reponses:reponses };
