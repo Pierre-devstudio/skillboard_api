@@ -54,7 +54,7 @@ class AutoEvalInput(BaseModel):
 class RecueilInput(BaseModel):
     id_action_formation_effectif: IdEffectifStr
     attentes: Optional[str] = None
-    reponses: List[AutoEvalInput] = Field(default_factory=list)
+    json_reponses: List[AutoEvalInput] = Field(default_factory=list)
 
 # -----------------------------
 # Connexion DB
