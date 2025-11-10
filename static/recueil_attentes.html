@@ -83,26 +83,40 @@
     }
 
     async function chargerPrerequis(id_effectif) {
-      const { data, error } = await sb.rpc('rpc_get_prerequis_from_effectif', { p_id_effectif: id_effectif });
-      if (error) {
-        alertBox("error", "Erreur de chargement des prérequis : " + error.message);
-        return;
-      }
-      const cont = document.getElementById("listePrerequis");
-      cont.innerHTML = "";
-      data.forEach(pr => {
-        const opts = [pr.r1, pr.r2, pr.r3].filter(Boolean);
-        const radios = opts.map((r, idx) => `
-          <label><input type="radio" name="pr_${pr.id_prerequis}" value="${r}"> ${r}</label>
-        `).join(" ");
-        cont.insertAdjacentHTML("beforeend", `
-          <div class="prerequis-item">
-            <div><b>${pr.titre}</b></div>
-            <div class="reponses">${radios}</div>
-          </div>
-        `);
-      });
-    }
+  const { data, error } = await sb.rpc('rpc_get_prerequis_from_effectif', { p_id_effectif: id_effectif });
+  if (error) {
+    alertBox("error", "Erreur de chargement des prérequis : " + error.message);
+    return;
+  }
+
+  const cont = document.getElementById("listePrerequis");
+  cont.innerHTML = "";
+
+  data.forEach(pr => {
+    // r1, r2, r3 contiennent les labels des réponses
+    const opts = [pr.r1, pr.r2, pr.r3].filter(Boolean);
+
+    // ici on construit les 3 boutons radio
+    const radios = opts
+      .map((r, idx) => {
+        const valeur = "r" + (idx + 1); // génère "r1", "r2", "r3"
+        return `<label>
+          <input type="radio" name="${pr.id_prerequis}" value="${valeur}"> ${r}
+        </label>`;
+      })
+      .join(" ");
+
+    cont.insertAdjacentHTML(
+      "beforeend",
+      `
+      <div class="prerequis-item">
+        <div><b>${pr.titre}</b></div>
+        <div class="reponses">${radios}</div>
+      </div>
+      `
+    );
+  });
+}
 
     async function soumettreFormulaire(){
       const id_effectif = getQueryParam("id");
