@@ -96,11 +96,13 @@ def insert_recueil_attentes(cur, payload: RecueilInput) -> str:
 
      # Vérifier si le participant a déjà répondu
     cur.execute("""
-        SELECT COUNT(*) 
-        FROM public.tbl_action_formation_recueil_attentes
-        WHERE id_action_formation_effectif = %s
+    SELECT COUNT(*) 
+    FROM public.tbl_action_formation_recueil_attentes
+    WHERE id_action_formation_effectif = %s
     """, (payload.id_action_formation_effectif,))
-    if cur.fetchone()[0] > 0:
+
+    result = cur.fetchone()
+    if result and result[0] > 0:
         raise Exception("Un recueil d'attentes a déjà été enregistré pour ce participant.")
     
     # Pydantic v2
