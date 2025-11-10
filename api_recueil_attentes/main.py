@@ -106,7 +106,7 @@ def insert_recueil_attentes(cur, payload: RecueilInput) -> str:
         raise Exception("Un recueil d'attentes a déjà été enregistré pour ce participant.")
     
     # Pydantic v2
-    json_reponses = json.dumps([r.model_dump() for r in payload.reponses], ensure_ascii=False)
+    json_reponses = json.dumps(payload.json_reponses, ensure_ascii=False)
 
     cur.execute(
         """
