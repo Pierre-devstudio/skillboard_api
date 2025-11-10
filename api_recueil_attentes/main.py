@@ -27,17 +27,16 @@ app = FastAPI(title="Skillboard - Recueil Attentes API")
 # -----------------------------
 # CORS autorisé
 # -----------------------------
-ALLOWED_ORIGINS = [
-    "https://forms.jmbconsultant.fr",
-    "https://skillboard-attentes-formation.onrender.com",
-    "http://127.0.0.1:5500",
-    "http://localhost:5500",
-]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
+    allow_origins=[
+        "https://forms.jmbconsultant.fr",
+        "https://skillboard-attentes-formation.onrender.com",
+        "http://localhost",
+        "http://127.0.0.1:5500",
+    ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
