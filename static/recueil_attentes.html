@@ -87,7 +87,8 @@
 
     async function chargerParticipant(id_effectif) {
     try {
-        const response = await fetch(`${API_URL}/participant/${id_effectif}`);
+        const API_BASE = "https://skillboard-attentes-formation.onrender.com";
+        const response = await fetch(`${API_BASE}/participant/${id_effectif}`);
         if (!response.ok) throw new Error("Erreur de chargement du participant");
         const data = await response.json();
 
