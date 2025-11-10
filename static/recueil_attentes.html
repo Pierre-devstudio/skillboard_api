@@ -87,15 +87,16 @@
 
     async function chargerParticipant(id_effectif) {
     try {
-        const API_BASE = "https://skillboard-attentes-formation.onrender.com";
-        const response = await fetch(`${API_BASE}/participant/${id_effectif}`);
-        if (!response.ok) throw new Error("Erreur de chargement du participant");
-        const data = await response.json();
+        const { data, error } = await sb.rpc('rpc_get_participant_from_effectif', { p_id_effectif: id_effectif });
+        if (error) throw error;
 
-        const bloc = document.getElementById("participantInfo");
-        bloc.textContent = `${data.civilite} ${data.prenom} ${data.nom}`;
+        if (data && data.length > 0) {
+            const p = data[0];
+            const bloc = document.getElementById("participantInfo");
+            bloc.textContent = `${p.civilite} ${p.prenom} ${p.nom}`;
+        }
     } catch (error) {
-        console.error("Erreur chargement participant:", error);
+        alertBox("error", "Erreur de chargement du participant : " + error.message);
     }
     }
 
