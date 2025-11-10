@@ -146,32 +146,6 @@ def save_cache(payload: RecueilInput):
 def healthz():
     return {"status": "ok"}
 
-@app.get("/participant/{id_action_formation_effectif}")
-def get_participant_info(id_action_formation_effectif: str):
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT 
-                    e.nom_effectif,
-                    e.prenom_effectif,
-                    e.civilite_effectif
-                FROM public.tbl_action_formation_effectif afe
-                JOIN public.tbl_effectif_client e 
-                    ON e.id_effectif = afe.id_effectif
-                WHERE afe.id_action_formation_effectif = %s
-            """, (id_action_formation_effectif,))
-            row = cur.fetchone()
-            if not row:
-                raise HTTPException(status_code=404, detail="Participant introuvable")
-            
-            civilite = "M." if row[2] == "M" else "Mme"
-            return {
-                "civilite": civilite,
-                "prenom": row[1],
-                "nom": row[0]
-            }
-
-
 @app.head("/healthz")
 def healthz_head():
     return {"status": "ok"}
