@@ -110,9 +110,12 @@
 
       const attentes = document.getElementById("attentes").value.trim().replace(/\n/g, "<br>");
       const reponses = [];
-      document.querySelectorAll('input[type="radio"]:checked').forEach(inp => {
-      const id_prerequis = inp.name.replace("pr_", "");
-      reponses.push({ id_prerequis: id_prerequis, reponse: inp.value });
+
+      // On parcourt tous les boutons radio cochés
+      document.querySelectorAll("input[type='radio']:checked").forEach(inp => {
+      const id_prerequis = inp.name;   // ex: "baa78390-d1c6-443e-a48f-3d65097f73b7"
+      const reponse = inp.value;       // ex: "r1", "r2", "r3"
+      reponses.push({ id_prerequis, reponse });
       });
 
       const payload = { id_action_formation_effectif:id_effectif, attentes:attentes, json_reponses:reponses };
