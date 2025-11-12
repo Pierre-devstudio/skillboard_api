@@ -125,6 +125,18 @@ def insert_recueil_attentes(cur, payload: RecueilInput) -> str:
             json_reponses
         )
     )
+
+    # --- Mise à jour de la tbl_action_formation_effectif ---
+    cur.execute("""
+    UPDATE public.tbl_action_formation_effectif
+    SET date_retour_attentes = NOW(),
+        etat_attentes = 'Reçu'
+    WHERE id_action_formation_effectif = %s
+      AND archive = FALSE;
+    """, 
+    (payload.id_action_formation_effectif,)
+    )
+
     return id_recueil
 
 # -----------------------------
