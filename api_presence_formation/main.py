@@ -114,10 +114,10 @@ def find_participant(cur, nom: str, prenom: str, id_action_formation: Optional[s
            eff.id_ent,
            ent.nom_ent
     FROM public.tbl_action_formation_effectif efe
-    JOIN public.tbl_effectif eff ON eff.id_effectif = efe.id_effectif
+    JOIN public.tbl_effectif_client eff ON eff.id_effectif = efe.id_effectif
     JOIN public.tbl_entreprise ent ON ent.id_ent = eff.id_ent
-    WHERE eff.nom ILIKE %s
-      AND eff.prenom ILIKE %s
+    WHERE eff.nom_effectif ILIKE %s
+      AND eff.prenom_effectif ILIKE %s
       AND efe.archive = FALSE
     """
     params = [nom, prenom]
@@ -137,9 +137,9 @@ def find_participant_with_company(cur, nom: str, prenom: str, id_ent: str, id_af
     sql = """
     SELECT efe.id_action_formation_effectif
     FROM public.tbl_action_formation_effectif efe
-    JOIN public.tbl_effectif eff ON eff.id_effectif = efe.id_effectif
-    WHERE eff.nom ILIKE %s
-      AND eff.prenom ILIKE %s
+    JOIN public.tbl_effectif_client eff ON eff.id_effectif = efe.id_effectif
+    WHERE eff.nom_effectif ILIKE %s
+      AND eff.prenom_effectif ILIKE %s
       AND eff.id_ent = %s
       AND efe.archive = FALSE
     """
