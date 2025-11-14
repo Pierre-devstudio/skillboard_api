@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from datetime import datetime
-from typing import Optional, Annotated, List
+from typing import Optional, Annotated
 from pydantic import BaseModel, Field
 import os
 import json
@@ -41,25 +41,23 @@ app.add_middleware(
 )
 
 # -----------------------------
-# Modèles d'entrée
+# Modèles
 # -----------------------------
 NomStr = Annotated[str, Field(min_length=1)]
 PrenomStr = Annotated[str, Field(min_length=1)]
 IdEntStr = Optional[str]
-IdActionFormationStr = Optional[str]
+IdAFStr = Annotated[str, Field(min_length=5)]
 IdAFEstr = Annotated[str, Field(min_length=10)]
 
 class IdentificationInput(BaseModel):
     nom: NomStr
     prenom: PrenomStr
-    id_action_formation: IdActionFormationStr = None
-    id_ent: IdEntStr = None   # utilisé en cas d’ambiguïté
+    id_ent: IdEntStr = None
 
 class PresenceInput(BaseModel):
     id_action_formation_effectif: IdAFEstr
     nom_saisi: NomStr
     prenom_saisi: PrenomStr
-
 
 # -----------------------------
 # Connexion DB
@@ -102,61 +100,90 @@ def save_cache(name: str, payload: dict):
         json.dump(payload, f, ensure_ascii=False, indent=2)
 
 # -----------------------------
-# SQL HELPERS
+# Helpers SQL
 # -----------------------------
 
-def find_participant(cur, nom: str, prenom: str, id_action_formation: Optional[str]):
+def get_action_formation_info(cur, id_af: str):
     """
-    Recherche initiale: nom + prenom + (option action)
+    Récupère toutes les infos formation:
+    - code_action_formation
+    - titre
+    - modalite
+    - dates (début/fin via blocs)
+    - consultant
     """
     sql = """
-    SELECT efe.id_action_formation_effectif,
-           eff.id_ent,
-           ent.nom_ent
-    FROM public.tbl_action_formation_effectif efe
-    JOIN public.tbl_effectif_client eff ON eff.id_effectif = efe.id_effectif
-    JOIN public.tbl_entreprise ent ON ent.id_ent = eff.id_ent
-    WHERE eff.nom_effectif ILIKE %s
-      AND eff.prenom_effectif ILIKE %s
-      AND efe.archive = FALSE
+    SELECT
+        af.code_action_formation,
+        ff.titre,
+        af.modalite_valide,
+        c.prenom,
+        c.nom
+    FROM public.tbl_action_formation af
+    JOIN public.tbl_fiche_formation ff ON ff.id_form = af.id_form
+    LEFT JOIN public.tbl_consultant c ON c.id_consultant = af.id_consultant
+    WHERE af.id_action_formation = %s
     """
-    params = [nom, prenom]
+    cur.execute(sql, (id_af,))
+    base = cur.fetchone()
+    if not base:
+        raise HTTPException(status_code=404, detail="Action de formation introuvable.")
 
-    if id_action_formation:
-        sql += " AND efe.id_action_formation = %s"
-        params.append(id_action_formation)
+    # Dates via blocs
+    cur.execute("""
+        SELECT 
+            MIN(date_debut) AS date_debut,
+            MAX(date_fin) AS date_fin
+        FROM public.tbl_action_formation_blocs_peda
+        WHERE id_action_formation = %s
+    """, (id_af,))
+    d = cur.fetchone()
 
-    cur.execute(sql, params)
+    return {
+        "code_action": base["code_action_formation"],
+        "titre": base["titre"],
+        "modalite": base["modalite_valide"],
+        "consultant": f"{base['prenom']} {base['nom']}".strip(),
+        "date_debut": d["date_debut"],
+        "date_fin": d["date_fin"]
+    }
+
+
+def find_participants(cur, id_af, nom, prenom):
+    sql = """
+    SELECT 
+        afe.id_action_formation_effectif,
+        ent.id_ent,
+        ent.nom_ent
+    FROM public.tbl_action_formation_effectif afe
+    JOIN public.tbl_effectif_client eff ON eff.id_effectif = afe.id_effectif
+    JOIN public.tbl_entreprise ent ON ent.id_ent = eff.id_ent
+    WHERE afe.id_action_formation = %s
+      AND eff.nom_effectif ILIKE %s
+      AND eff.prenom_effectif ILIKE %s
+      AND afe.archive = FALSE
+    """
+    cur.execute(sql, (id_af, nom, prenom))
     return cur.fetchall()
 
 
-def find_participant_with_company(cur, nom: str, prenom: str, id_ent: str, id_af: Optional[str]):
-    """
-    Recherche finale quand plusieurs homonymes → filtre entreprise.
-    """
+def resolve_homonyme(cur, id_af, nom, prenom, id_ent):
     sql = """
-    SELECT efe.id_action_formation_effectif
-    FROM public.tbl_action_formation_effectif efe
-    JOIN public.tbl_effectif_client eff ON eff.id_effectif = efe.id_effectif
-    WHERE eff.nom_effectif ILIKE %s
+    SELECT 
+        afe.id_action_formation_effectif
+    FROM public.tbl_action_formation_effectif afe
+    JOIN public.tbl_effectif_client eff ON eff.id_effectif = afe.id_effectif
+    WHERE afe.id_action_formation = %s
+      AND eff.nom_effectif ILIKE %s
       AND eff.prenom_effectif ILIKE %s
       AND eff.id_ent = %s
-      AND efe.archive = FALSE
+      AND afe.archive = FALSE
     """
-    params = [nom, prenom, id_ent]
-
-    if id_af:
-        sql += " AND efe.id_action_formation = %s"
-        params.append(id_af)
-
-    cur.execute(sql, params)
+    cur.execute(sql, (id_af, nom, prenom, id_ent))
     return cur.fetchone()
 
 
-def check_duplicate(cur, id_afe: str, periode: str):
-    """
-    1 seule présence par période / par jour.
-    """
+def check_duplicate(cur, id_afe, periode):
     sql = """
     SELECT COUNT(*) AS count
     FROM public.tbl_action_formation_presence
@@ -170,12 +197,8 @@ def check_duplicate(cur, id_afe: str, periode: str):
     return r["count"] > 0
 
 
-def insert_presence(cur, p: PresenceInput, ip_client: str, user_agent: str, periode: str):
-    """
-    Insertion propre.
-    """
+def insert_presence(cur, payload, ip, ua, periode):
     id_presence = str(uuid.uuid4())
-
     cur.execute("""
         INSERT INTO public.tbl_action_formation_presence
         (id_action_formation_presence, id_action_formation_effectif,
@@ -183,18 +206,17 @@ def insert_presence(cur, p: PresenceInput, ip_client: str, user_agent: str, peri
          ip_client, user_agent, source_validation,
          nom_saisi, prenom_saisi)
         VALUES (%s, %s, CURRENT_DATE, %s, CURRENT_TIME,
-                NOW(), %s, %s, 'stagiaire', %s, %s)
-    """,
-    (
+                NOW(), %s, %s, 'stagiaire',
+                %s, %s)
+    """, (
         id_presence,
-        p.id_action_formation_effectif,
+        payload.id_action_formation_effectif,
         periode,
-        ip_client,
-        user_agent,
-        p.nom_saisi,
-        p.prenom_saisi
+        ip,
+        ua,
+        payload.nom_saisi,
+        payload.prenom_saisi
     ))
-
     return id_presence
 
 
@@ -206,39 +228,50 @@ def healthz():
     return {"status": "ok"}
 
 
+@app.get("/presence/init")
+def init_presence(id_action_formation: IdAFStr):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                info = get_action_formation_info(cur, id_action_formation)
+                return {"ok": True, "formation": info}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/presence/check")
-def check_participant(payload: IdentificationInput):
+def check_participant(
+    id_action_formation: IdAFStr,
+    payload: IdentificationInput
+):
     save_cache("check_in", payload.model_dump())
 
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
 
-                # Étape 1 : recherche initiale
-                results = find_participant(
+                results = find_participants(
                     cur,
+                    id_action_formation,
                     payload.nom,
-                    payload.prenom,
-                    payload.id_action_formation
+                    payload.prenom
                 )
 
                 if not results:
                     raise HTTPException(status_code=404, detail="Participant introuvable.")
 
-                # Un seul résultat → OK
+                # Un seul résultat -> OK
                 if len(results) == 1:
                     return {
                         "ok": True,
-                        "id_action_formation_effectif": results[0]["id_action_formation_effectif"]
+                        "id_action_formation_effectif": results[0]["id_action_formation_effectif"],
+                        "entreprise": results[0]["nom_ent"]
                     }
 
-                # Plusieurs résultats → demander entreprise
+                # Plusieurs résultats -> besoin de l'entreprise
                 if not payload.id_ent:
                     entreprises = [
-                        {
-                            "id_ent": r["id_ent"],
-                            "nom_ent": r["nom_ent"]
-                        }
+                        {"id_ent": r["id_ent"], "nom_ent": r["nom_ent"]}
                         for r in results
                     ]
                     return {
@@ -247,19 +280,22 @@ def check_participant(payload: IdentificationInput):
                         "entreprises": entreprises
                     }
 
-                # Étape 2 : résolution via id_ent
-                res = find_participant_with_company(
+                # Résolution finale via entreprise
+                resolved = resolve_homonyme(
                     cur,
+                    id_action_formation,
                     payload.nom,
                     payload.prenom,
-                    payload.id_ent,
-                    payload.id_action_formation
+                    payload.id_ent
                 )
 
-                if not res:
+                if not resolved:
                     raise HTTPException(status_code=404, detail="Aucun participant ne correspond à cette entreprise.")
 
-                return {"ok": True, "id_action_formation_effectif": res["id_action_formation_effectif"]}
+                return {
+                    "ok": True,
+                    "id_action_formation_effectif": resolved["id_action_formation_effectif"]
+                }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -272,29 +308,26 @@ def validate_presence(payload: PresenceInput, request: Request):
     ip_client = request.client.host
     user_agent = request.headers.get("User-Agent", "")
 
-    # Détermination automatique de la période
-    heure = datetime.now().hour
-    periode = "matin" if heure < 13 else "apres_midi"
+    # Période
+    periode = "matin" if datetime.now().hour < 13 else "apres_midi"
 
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
 
-                # Anti-doublon
                 if check_duplicate(cur, payload.id_action_formation_effectif, periode):
-                    raise HTTPException(status_code=409, detail="Présence déjà enregistrée pour cette période.")
+                    raise HTTPException(status_code=409, detail="Présence déjà validée pour cette période.")
 
-                # Insertion
-                id_presence = insert_presence(
+                id_p = insert_presence(
                     cur,
                     payload,
                     ip_client,
                     user_agent,
                     periode
                 )
-
                 conn.commit()
-                return {"ok": True, "id_presence": id_presence}
+
+                return {"ok": True, "id_presence": id_p}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
