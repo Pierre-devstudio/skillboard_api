@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Validation de présence</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+}
+.container {
+    max-width: 420px;
+    margin: auto;
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.08);
+}
+
+h2 {
+    margin-top: 0;
+    text-align: center;
+}
+
+.label {
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    background: #0A66C2;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    margin-top: 15px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+button:disabled {
+    background: #888;
+}
+
+#info {
+    background: #eef;
+    padding: 12px;
+    border-left: 4px solid #0A66C2;
+    margin-top: 15px;
+    border-radius: 6px;
+}
+
+#sliderContainer {
+    margin-top: 25px;
+    text-align: center;
+    display: none;
+}
+
+#validateSlider {
+    width: 100%;
+}
+
+#confirmation {
+    display: none;
+    background: #dff0d8;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 20px;
+    color: #3c763d;
+    font-weight: bold;
+}
+</style>
+
+</head>
+<body>
+
+<div class="container">
+
+<h2>Validation de présence</h2>
+
+<!-- ÉTAPE 1 – IDENTIFICATION -->
+<div id="step1">
+    <label class="label">Nom</label>
+    <input id="nom">
+
+    <label class="label">Prénom</label>
+    <input id="prenom">
+
+    <label class="label">ID Action Formation</label>
+    <input id="idaf">
+
+    <button onclick="checkParticipant()">Vérifier</button>
+</div>
+
+<!-- ÉTAPE 2 – CHOIX ENTREPRISE -->
+<div id="stepCompany" style="display:none;">
+    <p>Plusieurs correspondances trouvées. Sélectionnez votre entreprise :</p>
+
+    <select id="companySelect"></select>
+
+    <button onclick="resolveAmbiguity()">Valider l'entreprise</button>
+</div>
+
+<!-- ÉTAPE 3 – PRÉSENTATION DU STAGIAIRE -->
+<div id="step2" style="display:none;">
+    <div id="info"></div>
+
+    <div id="sliderContainer">
+        <p>Glissez pour valider votre présence :</p>
+        <input type="range" id="validateSlider" min="0" max="100" value="0">
+    </div>
+</div>
+
+<!-- CONFIRMATION -->
+<div id="confirmation">Votre présence a été enregistrée avec succès.</div>
+
+</div>
+
+<script>
+const API_BASE = "https://skillboard-presence-formation.onrender.com";
+
+let resolvedIdAFE = null;
+let nomSaisi = "";
+let prenomSaisi = "";
+let idAF = "";
+
+async function checkParticipant() {
+    nomSaisi = document.getElementById("nom").value.trim();
+    prenomSaisi = document.getElementById("prenom").value.trim();
+    idAF = document.getElementById("idaf").value.trim();
+
+    const payload = {
+        nom: nomSaisi,
+        prenom: prenomSaisi,
+        id_action_formation: idAF
+    };
+
+    const res = await fetch(`${API_BASE}/presence/check`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+    });
+
+    const txt = await res.text();
+    let data;
+    try { data = JSON.parse(txt); } catch { alert(txt); return; }
+
+    if (data.ambiguous) {
+        document.getElementById("step1").style.display = "none";
+        document.getElementById("stepCompany").style.display = "block";
+
+        const select = document.getElementById("companySelect");
+        select.innerHTML = "";
+
+        data.entreprises.forEach(ent => {
+            const opt = document.createElement("option");
+            opt.value = ent.id_ent;
+            opt.textContent = ent.nom_ent;
+            select.appendChild(opt);
+        });
+    }
+    else if (data.ok) {
+        resolvedIdAFE = data.id_action_formation_effectif;
+        startPresenceStep();
+    }
+    else {
+        alert("Aucun participant trouvé.");
+    }
+}
+
+async function resolveAmbiguity() {
+    const idEnt = document.getElementById("companySelect").value;
+
+    const payload = {
+        nom: nomSaisi,
+        prenom: prenomSaisi,
+        id_action_formation: idAF,
+        id_ent: idEnt
+    };
+
+    const res = await fetch(`${API_BASE}/presence/check`, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+        alert("Impossible de trouver l'entrée précise.");
+        return;
+    }
+
+    resolvedIdAFE = data.id_action_formation_effectif;
+    startPresenceStep();
+}
+
+function startPresenceStep() {
+    document.getElementById("step1").style.display = "none";
+    document.getElementById("stepCompany").style.display = "none";
+
+    const period = (new Date().getHours() < 13) ? "Matin" : "Après-midi";
+
+    document.getElementById("info").innerHTML = `
+        <strong>${prenomSaisi} ${nomSaisi}</strong><br>
+        ${new Date().toLocaleDateString("fr-FR")} – ${period}
+    `;
+
+    document.getElementById("step2").style.display = "block";
+    document.getElementById("sliderContainer").style.display = "block";
+
+    const slider = document.getElementById("validateSlider");
+    slider.value = 0;
+
+    slider.oninput = async function() {
+        if (this.value == 100) {
+            await validatePresence();
+        }
+    };
+}
+
+async function validatePresence() {
+    const payload = {
+        id_action_formation_effectif: resolvedIdAFE,
+        nom_saisi: nomSaisi,
+        prenom_saisi: prenomSaisi
+    };
+
+    const res = await fetch(`${API_BASE}/presence/validate`, {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify(payload)
+    });
+
+    if (res.status === 409) {
+        alert("Présence déjà enregistrée pour cette période.");
+        return;
+    }
+
+    const data = await res.json();
+
+    if (data.ok) {
+        document.getElementById("confirmation").style.display = "block";
+        document.getElementById("step2").style.display = "none";
+    }
+}
+</script>
+
+</body>
+</html>
