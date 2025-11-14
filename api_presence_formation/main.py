@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Request
 from datetime import datetime
-from typing import Optional, Annotated
+from typing import Optional, Annotated, List
 from pydantic import BaseModel, Field
 import os
 import json
@@ -44,18 +44,21 @@ app.add_middleware(
 # -----------------------------
 NomStr = Annotated[str, Field(min_length=1)]
 PrenomStr = Annotated[str, Field(min_length=1)]
-IdActionFormationEffectifStr = Annotated[str, Field(min_length=10)]
+IdEntStr = Optional[str]
+IdActionFormationStr = Optional[str]
+IdAFEstr = Annotated[str, Field(min_length=10)]
 
 class IdentificationInput(BaseModel):
     nom: NomStr
     prenom: PrenomStr
-    id_action_formation: Optional[str] = None  # fourni via QR code si besoin
+    id_action_formation: IdActionFormationStr = None
+    id_ent: IdEntStr = None   # utilisé en cas d’ambiguïté
 
 class PresenceInput(BaseModel):
-    id_action_formation_effectif: IdActionFormationEffectifStr
-    periode: str            # "matin" ou "apres_midi"
-    nom_saisi: str
-    prenom_saisi: str
+    id_action_formation_effectif: IdAFEstr
+    nom_saisi: NomStr
+    prenom_saisi: PrenomStr
+
 
 # -----------------------------
 # Connexion DB
@@ -98,18 +101,20 @@ def save_cache(name: str, payload: dict):
         json.dump(payload, f, ensure_ascii=False, indent=2)
 
 # -----------------------------
-# SQL HELPERS (VIDES ORIENTÉS)
+# SQL HELPERS
 # -----------------------------
 
 def find_participant(cur, nom: str, prenom: str, id_action_formation: Optional[str]):
     """
-    Recherche dans tbl_action_formation_effectif
-    si le stagiaire existe (nom + prenom + id_action_formation)
+    Recherche initiale: nom + prenom + (option action)
     """
     sql = """
-    SELECT id_action_formation_effectif
+    SELECT efe.id_action_formation_effectif,
+           eff.id_ent,
+           ent.nom_ent
     FROM public.tbl_action_formation_effectif efe
     JOIN public.tbl_effectif eff ON eff.id_effectif = efe.id_effectif
+    JOIN public.tbl_entreprise ent ON ent.id_ent = eff.id_ent
     WHERE eff.nom ILIKE %s
       AND eff.prenom ILIKE %s
       AND efe.archive = FALSE
@@ -121,12 +126,52 @@ def find_participant(cur, nom: str, prenom: str, id_action_formation: Optional[s
         params.append(id_action_formation)
 
     cur.execute(sql, params)
+    return cur.fetchall()
+
+
+def find_participant_with_company(cur, nom: str, prenom: str, id_ent: str, id_af: Optional[str]):
+    """
+    Recherche finale quand plusieurs homonymes → filtre entreprise.
+    """
+    sql = """
+    SELECT efe.id_action_formation_effectif
+    FROM public.tbl_action_formation_effectif efe
+    JOIN public.tbl_effectif eff ON eff.id_effectif = efe.id_effectif
+    WHERE eff.nom ILIKE %s
+      AND eff.prenom ILIKE %s
+      AND eff.id_ent = %s
+      AND efe.archive = FALSE
+    """
+    params = [nom, prenom, id_ent]
+
+    if id_af:
+        sql += " AND efe.id_action_formation = %s"
+        params.append(id_af)
+
+    cur.execute(sql, params)
     return cur.fetchone()
 
 
-def insert_presence(cur, p: PresenceInput, ip_client: str, user_agent: str):
+def check_duplicate(cur, id_afe: str, periode: str):
     """
-    Enregistre dans tbl_action_formation_presence
+    1 seule présence par période / par jour.
+    """
+    sql = """
+    SELECT COUNT(*) AS count
+    FROM public.tbl_action_formation_presence
+    WHERE id_action_formation_effectif = %s
+      AND date_presence = CURRENT_DATE
+      AND periode = %s
+      AND archive = FALSE
+    """
+    cur.execute(sql, (id_afe, periode))
+    r = cur.fetchone()
+    return r["count"] > 0
+
+
+def insert_presence(cur, p: PresenceInput, ip_client: str, user_agent: str, periode: str):
+    """
+    Insertion propre.
     """
     id_presence = str(uuid.uuid4())
 
@@ -142,7 +187,7 @@ def insert_presence(cur, p: PresenceInput, ip_client: str, user_agent: str):
     (
         id_presence,
         p.id_action_formation_effectif,
-        p.periode,
+        periode,
         ip_client,
         user_agent,
         p.nom_saisi,
@@ -151,13 +196,14 @@ def insert_presence(cur, p: PresenceInput, ip_client: str, user_agent: str):
 
     return id_presence
 
+
 # -----------------------------
 # Endpoints
 # -----------------------------
-
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
+
 
 @app.post("/presence/check")
 def check_participant(payload: IdentificationInput):
@@ -166,17 +212,53 @@ def check_participant(payload: IdentificationInput):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                result = find_participant(
+
+                # Étape 1 : recherche initiale
+                results = find_participant(
                     cur,
                     payload.nom,
                     payload.prenom,
                     payload.id_action_formation
                 )
 
-                if not result:
+                if not results:
                     raise HTTPException(status_code=404, detail="Participant introuvable.")
 
-                return {"ok": True, "id_action_formation_effectif": result["id_action_formation_effectif"]}
+                # Un seul résultat → OK
+                if len(results) == 1:
+                    return {
+                        "ok": True,
+                        "id_action_formation_effectif": results[0]["id_action_formation_effectif"]
+                    }
+
+                # Plusieurs résultats → demander entreprise
+                if not payload.id_ent:
+                    entreprises = [
+                        {
+                            "id_ent": r["id_ent"],
+                            "nom_ent": r["nom_ent"]
+                        }
+                        for r in results
+                    ]
+                    return {
+                        "ok": False,
+                        "ambiguous": True,
+                        "entreprises": entreprises
+                    }
+
+                # Étape 2 : résolution via id_ent
+                res = find_participant_with_company(
+                    cur,
+                    payload.nom,
+                    payload.prenom,
+                    payload.id_ent,
+                    payload.id_action_formation
+                )
+
+                if not res:
+                    raise HTTPException(status_code=404, detail="Aucun participant ne correspond à cette entreprise.")
+
+                return {"ok": True, "id_action_formation_effectif": res["id_action_formation_effectif"]}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -184,16 +266,32 @@ def check_participant(payload: IdentificationInput):
 
 @app.post("/presence/validate")
 def validate_presence(payload: PresenceInput, request: Request):
-    payload_dict = payload.model_dump()
-    save_cache("validate_in", payload_dict)
+    save_cache("validate_in", payload.model_dump())
 
     ip_client = request.client.host
     user_agent = request.headers.get("User-Agent", "")
 
+    # Détermination automatique de la période
+    heure = datetime.now().hour
+    periode = "matin" if heure < 13 else "apres_midi"
+
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                id_presence = insert_presence(cur, payload, ip_client, user_agent)
+
+                # Anti-doublon
+                if check_duplicate(cur, payload.id_action_formation_effectif, periode):
+                    raise HTTPException(status_code=409, detail="Présence déjà enregistrée pour cette période.")
+
+                # Insertion
+                id_presence = insert_presence(
+                    cur,
+                    payload,
+                    ip_client,
+                    user_agent,
+                    periode
+                )
+
                 conn.commit()
                 return {"ok": True, "id_presence": id_presence}
 
