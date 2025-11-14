@@ -13,7 +13,7 @@ body {
     padding: 20px;
 }
 .container {
-    max-width: 420px;
+    max-width: 480px;
     margin: auto;
     background: white;
     padding: 25px;
@@ -24,6 +24,18 @@ body {
 h2 {
     margin-top: 0;
     text-align: center;
+}
+
+/* HEADER FORMATION */
+#formationInfo {
+    background: #eef4ff;
+    border-left: 5px solid #3c6df0;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+#formationInfo b {
+    font-size: 16px;
 }
 
 .label {
@@ -55,17 +67,13 @@ button:disabled {
     background: #888;
 }
 
-#info {
-    background: #eef;
-    padding: 12px;
-    border-left: 4px solid #0A66C2;
-    margin-top: 15px;
-    border-radius: 6px;
-}
-
+/* SLIDER */
 #sliderContainer {
-    display: none;
     margin-top: 25px;
+    display: none;
+}
+#slider {
+    width: 100%;
 }
 
 #confirmation {
@@ -77,8 +85,8 @@ button:disabled {
     color: #3c763d;
     font-weight: bold;
 }
-</style>
 
+</style>
 </head>
 <body>
 
@@ -86,6 +94,9 @@ button:disabled {
 
 <h2>Validation de présence</h2>
 
+<div id="formationInfo">Chargement en cours…</div>
+
+<!-- ETAPE 1 : IDENTIFICATION -->
 <div id="step1">
     <label class="label">Nom</label>
     <input id="nom">
@@ -93,17 +104,22 @@ button:disabled {
     <label class="label">Prénom</label>
     <input id="prenom">
 
-    <label class="label">ID Action Formation</label>
-    <input id="idaf">
-
-    <button onclick="checkParticipant()">Vérifier</button>
+    <button onclick="checkParticipant()">Continuer</button>
 </div>
 
+<!-- ETAPE 1B : ENTREPRISE si homonyme -->
+<div id="step1b" style="display:none;">
+    <p>Sélectionnez votre entreprise :</p>
+    <select id="selectEntreprise"></select>
+    <button onclick="resolveEntreprise()">Valider</button>
+</div>
+
+<!-- ETAPE 2 : SLIDER VALIDATION -->
 <div id="step2" style="display:none;">
     <div id="info"></div>
 
     <div id="sliderContainer">
-        <p><b>Glisser pour valider votre présence</b></p>
+        <p><b>Glissez pour valider votre présence</b></p>
         <input type="range" id="slider" value="0" min="0" max="100">
         <button id="btnValider" onclick="validatePresence()" disabled>Valider</button>
     </div>
@@ -113,17 +129,123 @@ button:disabled {
 
 </div>
 
+
 <script>
-const API_BASE = "https://skillboard-presence-formation.onrender.com";
+
+// ---------------------------
+// CONFIG
+// ---------------------------
+const API = "https://skillboard-presence-formation.onrender.com";
+
+// ID action formation depuis URL
+const params = new URLSearchParams(window.location.search);
+const ID_AF = params.get("id");
+
+// ---------------------------
+// CHARGER HEADER FORMATION
+// ---------------------------
+async function loadFormation() {
+    if (!ID_AF) {
+        document.getElementById("formationInfo").innerHTML =
+            "<b>Erreur :</b> lien invalide (id manquant).";
+        return;
+    }
+
+    const res = await fetch(`${API}/presence/init?id_action_formation=${ID_AF}`);
+    const data = await res.json();
+
+    if (!data.ok) {
+        document.getElementById("formationInfo").innerHTML =
+            "<b>Erreur :</b> action de formation introuvable.";
+        return;
+    }
+
+    const f = data.formation;
+
+    document.getElementById("formationInfo").innerHTML = `
+        <b>${f.code_action}</b><br>
+        ${f.titre}<br>
+        Modalité : ${f.modalite}<br>
+        Dates : ${formatDate(f.date_debut)} → ${formatDate(f.date_fin)}<br>
+        Consultant : ${f.consultant}
+    `;
+}
+
+function formatDate(dt) {
+    if (!dt) return "";
+    const d = new Date(dt);
+    return d.toLocaleDateString("fr-FR");
+}
+
+loadFormation();
+
+
+// ---------------------------
+// IDENTIFICATION PARTICIPANT
+// ---------------------------
+let NOM = "";
+let PRENOM = "";
+let CURRENT_ID_ENT = null;
+let CURRENT_ID_AFE = null;
 
 async function checkParticipant() {
+
+    NOM = document.getElementById("nom").value.trim();
+    PRENOM = document.getElementById("prenom").value.trim();
+
+    const payload = { nom: NOM, prenom: PRENOM };
+
+    const res = await fetch(`${API}/presence/check?id_action_formation=${ID_AF}`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    // pas trouvé
+    if (res.status === 404) {
+        alert("Participant introuvable dans cette action.");
+        return;
+    }
+
+    // cas homonyme
+    if (data.ambiguous) {
+        document.getElementById("step1").style.display = "none";
+        document.getElementById("step1b").style.display = "block";
+
+        const sel = document.getElementById("selectEntreprise");
+        sel.innerHTML = "";
+
+        data.entreprises.forEach(e => {
+            const o = document.createElement("option");
+            o.value = e.id_ent;
+            o.textContent = e.nom_ent;
+            sel.appendChild(o);
+        });
+
+        return;
+    }
+
+    // OK direct
+    CURRENT_ID_AFE = data.id_action_formation_effectif;
+    showValidationScreen(data.entreprise);
+}
+
+
+// ---------------------------
+// RESOLUTION HOMONYME
+// ---------------------------
+async function resolveEntreprise() {
+    CURRENT_ID_ENT = document.getElementById("selectEntreprise").value;
+
     const payload = {
-        nom: document.getElementById("nom").value.trim(),
-        prenom: document.getElementById("prenom").value.trim(),
-        id_action_formation: document.getElementById("idaf").value.trim()
+        nom: NOM,
+        prenom: PRENOM,
+        id_ent: CURRENT_ID_ENT
     };
 
-    const res = await fetch(API_BASE + "/presence/check", {
+    const res = await fetch(`${API}/presence/check?id_action_formation=${ID_AF}`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(payload)
@@ -132,36 +254,51 @@ async function checkParticipant() {
     const data = await res.json();
 
     if (!data.ok) {
-        alert(data.detail || "Erreur");
+        alert("Impossible d'associer ce participant.");
         return;
     }
 
-    // on enregistre l'id pour la validation
-    window.ID_EFF = data.id_action_formation_effectif;
+    CURRENT_ID_AFE = data.id_action_formation_effectif;
+    showValidationScreen();
+}
+
+
+// ---------------------------
+// AFFICHER ÉTAPE VALIDATION
+// ---------------------------
+function showValidationScreen(entreprise = "") {
 
     document.getElementById("step1").style.display = "none";
+    document.getElementById("step1b").style.display = "none";
     document.getElementById("step2").style.display = "block";
 
     document.getElementById("info").innerHTML = `
-        <b>${data.nom} ${data.prenom}</b><br>
-        ${data.entreprise}<br>
-        ${data.date} - ${data.periode}
+        <b>${PRENOM} ${NOM}</b><br>
+        ${entreprise}
     `;
 
-    document.getElementById("sliderContainer").style.display = "block";
+    const slider = document.getElementById("slider");
 
-    document.getElementById("slider").addEventListener("input", (e) => {
+    slider.addEventListener("input", (e) => {
         if (e.target.value >= 100) {
             document.getElementById("btnValider").disabled = false;
         }
     });
 }
 
+
+// ---------------------------
+// VALIDATION FINALE
+// ---------------------------
 async function validatePresence() {
 
-    const payload = { id_action_formation_effectif: window.ID_EFF };
+    const payload = {
+        id_action_formation_effectif: CURRENT_ID_AFE,
+        nom_saisi: NOM,
+        prenom_saisi: PRENOM
+    };
 
-    const res = await fetch(API_BASE + "/presence/validate", {
+    const res = await fetch(`${API}/presence/validate`, {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(payload)
@@ -175,10 +312,10 @@ async function validatePresence() {
         c.style.display = "block";
         c.innerHTML = "✔ Votre présence a été enregistrée.";
     } else {
-        alert(data.detail || "Erreur");
+        alert(data.detail || "Erreur de validation.");
     }
 }
-</script>
 
+</script>
 </body>
 </html>
