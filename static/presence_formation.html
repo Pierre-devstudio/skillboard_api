@@ -64,13 +64,8 @@ button:disabled {
 }
 
 #sliderContainer {
-    margin-top: 25px;
-    text-align: center;
     display: none;
-}
-
-#validateSlider {
-    width: 100%;
+    margin-top: 25px;
 }
 
 #confirmation {
@@ -91,7 +86,6 @@ button:disabled {
 
 <h2>Validation de présence</h2>
 
-<!-- ÉTAPE 1 – IDENTIFICATION -->
 <div id="step1">
     <label class="label">Nom</label>
     <input id="nom">
@@ -105,156 +99,83 @@ button:disabled {
     <button onclick="checkParticipant()">Vérifier</button>
 </div>
 
-<!-- ÉTAPE 2 – CHOIX ENTREPRISE -->
-<div id="stepCompany" style="display:none;">
-    <p>Plusieurs correspondances trouvées. Sélectionnez votre entreprise :</p>
-
-    <select id="companySelect"></select>
-
-    <button onclick="resolveAmbiguity()">Valider l'entreprise</button>
-</div>
-
-<!-- ÉTAPE 3 – PRÉSENTATION DU STAGIAIRE -->
 <div id="step2" style="display:none;">
     <div id="info"></div>
 
     <div id="sliderContainer">
-        <p>Glissez pour valider votre présence :</p>
-        <input type="range" id="validateSlider" min="0" max="100" value="0">
+        <p><b>Glisser pour valider votre présence</b></p>
+        <input type="range" id="slider" value="0" min="0" max="100">
+        <button id="btnValider" onclick="validatePresence()" disabled>Valider</button>
     </div>
 </div>
 
-<!-- CONFIRMATION -->
-<div id="confirmation">Votre présence a été enregistrée avec succès.</div>
+<div id="confirmation"></div>
 
 </div>
 
 <script>
 const API_BASE = "https://skillboard-presence-formation.onrender.com";
 
-let resolvedIdAFE = null;
-let nomSaisi = "";
-let prenomSaisi = "";
-let idAF = "";
-
 async function checkParticipant() {
-    nomSaisi = document.getElementById("nom").value.trim();
-    prenomSaisi = document.getElementById("prenom").value.trim();
-    idAF = document.getElementById("idaf").value.trim();
-
     const payload = {
-        nom: nomSaisi,
-        prenom: prenomSaisi,
-        id_action_formation: idAF
+        nom: document.getElementById("nom").value.trim(),
+        prenom: document.getElementById("prenom").value.trim(),
+        id_action_formation: document.getElementById("idaf").value.trim()
     };
 
-    const res = await fetch(`${API_BASE}/presence/check`, {
+    const res = await fetch(API_BASE + "/presence/check", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload)
-    });
-
-    const txt = await res.text();
-    let data;
-    try { data = JSON.parse(txt); } catch { alert(txt); return; }
-
-    if (data.ambiguous) {
-        document.getElementById("step1").style.display = "none";
-        document.getElementById("stepCompany").style.display = "block";
-
-        const select = document.getElementById("companySelect");
-        select.innerHTML = "";
-
-        data.entreprises.forEach(ent => {
-            const opt = document.createElement("option");
-            opt.value = ent.id_ent;
-            opt.textContent = ent.nom_ent;
-            select.appendChild(opt);
-        });
-    }
-    else if (data.ok) {
-        resolvedIdAFE = data.id_action_formation_effectif;
-        startPresenceStep();
-    }
-    else {
-        alert("Aucun participant trouvé.");
-    }
-}
-
-async function resolveAmbiguity() {
-    const idEnt = document.getElementById("companySelect").value;
-
-    const payload = {
-        nom: nomSaisi,
-        prenom: prenomSaisi,
-        id_action_formation: idAF,
-        id_ent: idEnt
-    };
-
-    const res = await fetch(`${API_BASE}/presence/check`, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
         body: JSON.stringify(payload)
     });
 
     const data = await res.json();
 
     if (!data.ok) {
-        alert("Impossible de trouver l'entrée précise.");
+        alert(data.detail || "Erreur");
         return;
     }
 
-    resolvedIdAFE = data.id_action_formation_effectif;
-    startPresenceStep();
-}
+    // on enregistre l'id pour la validation
+    window.ID_EFF = data.id_action_formation_effectif;
 
-function startPresenceStep() {
     document.getElementById("step1").style.display = "none";
-    document.getElementById("stepCompany").style.display = "none";
-
-    const period = (new Date().getHours() < 13) ? "Matin" : "Après-midi";
+    document.getElementById("step2").style.display = "block";
 
     document.getElementById("info").innerHTML = `
-        <strong>${prenomSaisi} ${nomSaisi}</strong><br>
-        ${new Date().toLocaleDateString("fr-FR")} – ${period}
+        <b>${data.nom} ${data.prenom}</b><br>
+        ${data.entreprise}<br>
+        ${data.date} - ${data.periode}
     `;
 
-    document.getElementById("step2").style.display = "block";
     document.getElementById("sliderContainer").style.display = "block";
 
-    const slider = document.getElementById("validateSlider");
-    slider.value = 0;
-
-    slider.oninput = async function() {
-        if (this.value == 100) {
-            await validatePresence();
+    document.getElementById("slider").addEventListener("input", (e) => {
+        if (e.target.value >= 100) {
+            document.getElementById("btnValider").disabled = false;
         }
-    };
+    });
 }
 
 async function validatePresence() {
-    const payload = {
-        id_action_formation_effectif: resolvedIdAFE,
-        nom_saisi: nomSaisi,
-        prenom_saisi: prenomSaisi
-    };
 
-    const res = await fetch(`${API_BASE}/presence/validate`, {
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify(payload)
+    const payload = { id_action_formation_effectif: window.ID_EFF };
+
+    const res = await fetch(API_BASE + "/presence/validate", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
     });
-
-    if (res.status === 409) {
-        alert("Présence déjà enregistrée pour cette période.");
-        return;
-    }
 
     const data = await res.json();
 
     if (data.ok) {
-        document.getElementById("confirmation").style.display = "block";
         document.getElementById("step2").style.display = "none";
+        const c = document.getElementById("confirmation");
+        c.style.display = "block";
+        c.innerHTML = "✔ Votre présence a été enregistrée.";
+    } else {
+        alert(data.detail || "Erreur");
     }
 }
 </script>
