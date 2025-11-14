@@ -4,10 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Validation de présence</title>
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+
 
 <style>
+#logo {
+    display: block;
+    width: 140px;
+    margin: 0 auto 10px auto;
+}
+
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Quicksand', sans-serif;
     background: #f4f4f4;
     margin: 0;
     padding: 20px;
@@ -28,11 +37,8 @@ h2 {
 
 /* HEADER FORMATION */
 #formationInfo {
-    background: #eef4ff;
-    border-left: 5px solid #3c6df0;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
+    padding: 0;
+    margin-bottom: 25px;
 }
 #formationInfo b {
     font-size: 16px;
@@ -54,7 +60,7 @@ input, select {
 button {
     width: 100%;
     padding: 12px;
-    background: #0A66C2;
+    background: rgb(193,39,45);
     color: white;
     border: none;
     border-radius: 6px;
@@ -72,9 +78,39 @@ button:disabled {
     margin-top: 25px;
     display: none;
 }
+/* SLIDER */
 #slider {
     width: 100%;
+    margin-top: 10px;
+
+    /* Base slider */
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: #ddd;
+    border-radius: 3px;
 }
+
+/* Curseur pour Chrome / Edge / Safari */
+#slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 26px;
+    height: 26px;
+    background: rgb(193,39,45);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* Curseur pour Firefox */
+#slider::-moz-range-thumb {
+    width: 26px;
+    height: 26px;
+    background: rgb(193,39,45);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
 
 #confirmation {
     display: none;
@@ -86,11 +122,22 @@ button:disabled {
     font-weight: bold;
 }
 
+#signature {
+    margin-top: 8px;
+    font-family: 'Great Vibes', cursive;
+    font-size: 32px;
+    text-align: left;
+    color: #000;
+    padding-left: 4px;
+}
+
 </style>
 </head>
 <body>
 
 <div class="container">
+
+<img id="logo" src="logo.png" alt="logo">
 
 <h2>Validation de présence</h2>
 
@@ -117,6 +164,8 @@ button:disabled {
 <!-- ETAPE 2 : SLIDER VALIDATION -->
 <div id="step2" style="display:none;">
     <div id="info"></div>
+    <div id="signature"></div>
+
 
     <div id="sliderContainer">
         <p><b>Glissez pour valider votre présence</b></p>
@@ -276,6 +325,10 @@ function showValidationScreen(entreprise = "") {
         <b>${PRENOM} ${NOM}</b><br>
         ${entreprise}
     `;
+
+    document.getElementById("signature").innerHTML =
+    `${PRENOM} ${NOM}`;
+
     document.getElementById("sliderContainer").style.display = "block";
 
     const slider = document.getElementById("slider");
