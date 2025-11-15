@@ -227,8 +227,8 @@ async function validerConsultant() {
 
     const payload = {
         id_action_formation: ID_AF,
-        id_consultant: ID_CONSULTANT,
-        absents: LISTE_ABSENTS
+        nom_saisi: ID_CONSULTANT_NOM,
+        prenom_saisi: ID_CONSULTANT_PRENOM
     };
 
     const res = await fetch(`${API}/presence_consultant/validate`, {
