@@ -156,7 +156,7 @@ async function loadData() {
         return;
     }
 
-    const res = await fetch(${API}/presence_consultant/init?id_action_formation=${ID_AF});
+    const res = await fetch(`${API}/presence_consultant/init?id_action_formation=${ID_AF}`);
 
     if (!res.ok) {
         document.getElementById("formationInfo").innerHTML =
