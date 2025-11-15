@@ -1,19 +1,17 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional
-import os
+from pydantic import BaseModel, Field
 import psycopg
 from psycopg.rows import dict_row
-from dotenv import load_dotenv
+import os
 import uuid
-import smtplib
-from email.mime.text import MIMEText
+from pathlib import Path
+from dotenv import load_dotenv
 
-# ==========================================================
-# Chargement .env
-# ==========================================================
+# ---------------------------------------------------
+# Chargement .env (même logique que tes autres APIs)
+# ---------------------------------------------------
 load_dotenv()
 DB_HOST = os.getenv("DB_HOST")
 DB_PORT = os.getenv("DB_PORT", "5432")
@@ -21,16 +19,11 @@ DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
-EMAIL_HOST = os.getenv("EMAIL_HOST")
-EMAIL_PORT = os.getenv("EMAIL_PORT")
-EMAIL_USER = os.getenv("EMAIL_USER")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+app = FastAPI(title="Skillboard - Présence Consultant API")
 
-# ==========================================================
-# APP
-# ==========================================================
-app = FastAPI(title="Skillboard - API Présence Consultant")
-
+# ---------------------------------------------------
+# CORS
+# ---------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -44,21 +37,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ==========================================================
-# DB Helper
-# ==========================================================
+# ---------------------------------------------------
+# Connexion DB
+# ---------------------------------------------------
 def _missing_env():
     return [k for k, v in {
         "DB_HOST": DB_HOST,
+        "DB_PORT": DB_PORT,
         "DB_NAME": DB_NAME,
         "DB_USER": DB_USER,
-        "DB_PASSWORD": DB_PASSWORD
+        "DB_PASSWORD": DB_PASSWORD,
     }.items() if not v]
 
 def get_conn():
     missing = _missing_env()
     if missing:
-        raise HTTPException(500, detail=f"Variables manquantes: {missing}")
+        raise HTTPException(status_code=500, detail=f"Variables manquantes: {', '.join(missing)}")
 
     try:
         return psycopg.connect(
@@ -70,158 +64,169 @@ def get_conn():
             sslmode="require"
         )
     except Exception as e:
-        raise HTTPException(500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Erreur connexion DB: {e}")
 
-# ==========================================================
+
+# ---------------------------------------------------
 # MODELES
-# ==========================================================
-class ValidationConsultantInput(BaseModel):
+# ---------------------------------------------------
+class ConsultantValidationInput(BaseModel):
     id_action_formation: str = Field(min_length=5)
-    id_consultant: str = Field(min_length=5)
-    absents: list[str] = []
-    commentaire: Optional[str] = None
+    nom_saisi: str
+    prenom_saisi: str
 
 
-# ==========================================================
-# HEALTHCHECK
-# ==========================================================
+# ---------------------------------------------------
+# ENDPOINT : HEALTH
+# ---------------------------------------------------
 @app.get("/healthz")
-def healthz():
+def health():
     return {"status": "ok"}
 
 
-# ==========================================================
-# HELPERS MAIL
-# ==========================================================
-def envoyer_mail_absents(id_action_formation: str, liste_absents: list[str]):
-    if not EMAIL_HOST:
-        return  # SMTP non configuré
+# ---------------------------------------------------
+# ENDPOINT : INIT (charger infos + stagiaires + présence)
+# ---------------------------------------------------
+@app.get("/presence_consultant/init")
+def presence_consultant_init(id_action_formation: str):
 
-    corps = "Liste des absents :\n\n" + "\n".join(liste_absents)
-
-    msg = MIMEText(corps)
-    msg["Subject"] = f"Absences formation ACF : {id_action_formation}"
-    msg["From"] = EMAIL_USER
-    msg["To"] = "formation@jmbconsultant.fr"
+    periode = "matin" if datetime.now().hour < 13 else "apres_midi"
 
     try:
-        with smtplib.SMTP_SSL(EMAIL_HOST, EMAIL_PORT) as smtp:
-            smtp.login(EMAIL_USER, EMAIL_PASSWORD)
-            smtp.send_message(msg)
-    except Exception:
-        pass  # on ne bloque jamais la validation consultant pour un mail
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+
+                # ------- 1. Infos action -------
+                cur.execute("""
+                    SELECT 
+                        af.code_action_formation,
+                        ff.titre,
+                        af.modalite_valide,
+                        c.prenom AS prenom_consultant,
+                        c.nom AS nom_consultant
+                    FROM public.tbl_action_formation af
+                    JOIN public.tbl_fiche_formation ff ON ff.id_form = af.id_form
+                    LEFT JOIN public.tbl_consultant c ON c.id_consultant = af.id_consultant
+                    WHERE af.id_action_formation = %s
+                """, (id_action_formation,))
+                info = cur.fetchone()
+
+                if not info:
+                    raise HTTPException(status_code=404, detail="Action introuvable.")
+
+                # ------- 2. Liste stagiaires -------
+                cur.execute("""
+                    SELECT 
+                        afe.id_action_formation_effectif,
+                        eff.nom_effectif,
+                        eff.prenom_effectif,
+                        ent.nom_ent,
+                        (
+                            SELECT COUNT(*)
+                            FROM public.tbl_action_formation_presence p
+                            WHERE p.id_action_formation_effectif = afe.id_action_formation_effectif
+                            AND p.date_presence = CURRENT_DATE
+                            AND p.periode = %s
+                            AND p.archive = FALSE
+                        ) > 0 AS est_present
+                    FROM public.tbl_action_formation_effectif afe
+                    JOIN public.tbl_effectif_client eff ON eff.id_effectif = afe.id_effectif
+                    JOIN public.tbl_entreprise ent ON ent.id_ent = eff.id_ent
+                    WHERE afe.id_action_formation = %s
+                    AND afe.archive = FALSE
+                    ORDER BY eff.nom_effectif, eff.prenom_effectif
+                """, (periode, id_action_formation))
+                stagiaires = cur.fetchall()
+
+                # ------- 3. Consultant déjà signé ? -------
+                cur.execute("""
+                    SELECT COUNT(*) AS deja_signe
+                    FROM public.tbl_action_formation_presence
+                    WHERE id_action_formation = %s
+                    AND id_action_formation_effectif IS NULL
+                    AND source_validation = 'consultant'
+                    AND date_presence = CURRENT_DATE
+                    AND periode = %s
+                    AND archive = FALSE
+                """, (id_action_formation, periode))
+                deja_signe = cur.fetchone()["deja_signe"] > 0
+
+                return {
+                    "ok": True,
+                    "periode": periode,
+                    "action": info,
+                    "stagiaires": stagiaires,
+                    "consultant_deja_signe": deja_signe
+                }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-# ==========================================================
-# ENDPOINT : init → liste stagiaires + statut
-# ==========================================================
-@app.get("/presence_consultant/init")
-def init_consultant(id_action_formation: str):
-    with get_conn() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            # Infos ACF
-            cur.execute("""
-                SELECT 
-                    af.code_action_formation,
-                    ff.titre,
-                    c.prenom AS prenom_consultant,
-                    c.nom AS nom_consultant
-                FROM tbl_action_formation af
-                JOIN tbl_fiche_formation ff ON ff.id_form = af.id_form
-                LEFT JOIN tbl_consultant c ON c.id_consultant = af.id_consultant
-                WHERE af.id_action_formation = %s
-            """, (id_action_formation,))
-            info = cur.fetchone()
-
-            if not info:
-                raise HTTPException(404, "Action de formation introuvable")
-
-            # Stagiaires
-            cur.execute("""
-                SELECT 
-                    afe.id_action_formation_effectif,
-                    eff.nom_effectif,
-                    eff.prenom_effectif,
-                    ent.nom_ent
-                FROM tbl_action_formation_effectif afe
-                JOIN tbl_effectif_client eff ON eff.id_effectif = afe.id_effectif
-                JOIN tbl_entreprise ent ON ent.id_ent = eff.id_ent
-                WHERE afe.id_action_formation = %s
-                  AND afe.archive = FALSE
-            """, (id_action_formation,))
-            stagiaires = cur.fetchall()
-
-            # Présences des stagiaires (uniquement stagiaires)
-            cur.execute("""
-                SELECT id_action_formation_effectif
-                FROM tbl_action_formation_presence
-                WHERE id_action_formation = %s
-                  AND source_validation = 'stagiaire'
-                  AND archive = FALSE
-            """, (id_action_formation,))
-            presences = {row["id_action_formation_effectif"] for row in cur.fetchall()}
-
-            # Formatage
-            liste = []
-            for s in stagiaires:
-                liste.append({
-                    "id_afe": s["id_action_formation_effectif"],
-                    "nom": s["nom_effectif"],
-                    "prenom": s["prenom_effectif"],
-                    "entreprise": s["nom_ent"],
-                    "present": s["id_action_formation_effectif"] in presences
-                })
-
-            return {
-                "ok": True,
-                "formation": info,
-                "stagiaires": liste
-            }
-
-
-# ==========================================================
-# ENDPOINT : validation consultant
-# ==========================================================
+# ---------------------------------------------------
+# ENDPOINT : VALIDATION CONSULTANT
+# ---------------------------------------------------
 @app.post("/presence_consultant/validate")
-def validate_consultant(payload: ValidationConsultantInput, request: Request):
+def validate_consultant(payload: ConsultantValidationInput, request: Request):
+
+    periode = "matin" if datetime.now().hour < 13 else "apres_midi"
 
     ip_client = request.client.host
     user_agent = request.headers.get("User-Agent", "")
 
-    periode = "matin" if datetime.now().hour < 13 else "apres_midi"
-    id_presence = str(uuid.uuid4())
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
 
-    with get_conn() as conn:
-        with conn.cursor() as cur:
+                # Vérifier s'il a déjà signé
+                cur.execute("""
+                    SELECT COUNT(*) AS deja_signe
+                    FROM public.tbl_action_formation_presence
+                    WHERE id_action_formation = %s
+                    AND id_action_formation_effectif IS NULL
+                    AND source_validation = 'consultant'
+                    AND date_presence = CURRENT_DATE
+                    AND periode = %s
+                    AND archive = FALSE
+                """, (payload.id_action_formation, periode))
 
-            # Enregistrement de la présence consultant
-            cur.execute("""
-                INSERT INTO tbl_action_formation_presence
-                (id_action_formation_presence,
-                 id_action_formation,
-                 id_consultant,
-                 date_presence,
-                 periode,
-                 heure_presence,
-                 datetime_utc,
-                 ip_client,
-                 user_agent,
-                 source_validation)
-                VALUES (%s, %s, %s, CURRENT_DATE, %s, CURRENT_TIME, NOW(),
-                        %s, %s, 'consultant')
-            """, (
-                id_presence,
-                payload.id_action_formation,
-                payload.id_consultant,
-                periode,
-                ip_client,
-                user_agent
-            ))
+                if cur.fetchone()["deja_signe"] > 0:
+                    raise HTTPException(status_code=409, detail="Signature déjà enregistrée.")
 
-            conn.commit()
+                # Insertion
+                id_presence = str(uuid.uuid4())
 
-    # Mail absents si besoin
-    if payload.absents:
-        envoyer_mail_absents(payload.id_action_formation, payload.absents)
+                cur.execute("""
+                    INSERT INTO public.tbl_action_formation_presence
+                    (id_action_formation_presence,
+                     id_action_formation,
+                     id_action_formation_effectif,
+                     date_presence,
+                     periode,
+                     heure_presence,
+                     datetime_utc,
+                     ip_client,
+                     user_agent,
+                     source_validation,
+                     nom_saisi,
+                     prenom_saisi)
+                    VALUES (%s, %s, NULL,
+                            CURRENT_DATE, %s, CURRENT_TIME, NOW(),
+                            %s, %s, 'consultant',
+                            %s, %s)
+                """, (
+                    id_presence,
+                    payload.id_action_formation,
+                    periode,
+                    ip_client,
+                    user_agent,
+                    payload.nom_saisi,
+                    payload.prenom_saisi
+                ))
 
-    return {"ok": True, "id_presence": id_presence}
+                conn.commit()
+
+                return {"ok": True, "id_presence": id_presence}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
