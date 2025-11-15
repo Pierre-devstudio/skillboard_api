@@ -73,9 +73,9 @@ def get_conn():
 # MODELES
 # ---------------------------------------------------
 class ConsultantValidationInput(BaseModel):
-    id_action_formation: str = Field(min_length=5)
-    nom_saisi: str
-    prenom_saisi: str
+    id_action_formation: str
+    id_consultant: str | None = None
+    absents: list[str] = []
 
 
 # ---------------------------------------------------
@@ -199,6 +199,9 @@ def validate_consultant(payload: ConsultantValidationInput, request: Request):
                 # Insertion
                 id_presence = str(uuid.uuid4())
 
+                cur.execute("SELECT prenom, nom FROM public.tbl_consultant WHERE id_consultant = %s",(payload.id_consultant,))
+                info = cur.fetchone()
+
                 cur.execute("""
                     INSERT INTO public.tbl_action_formation_presence
                     (id_action_formation_presence,
@@ -223,8 +226,8 @@ def validate_consultant(payload: ConsultantValidationInput, request: Request):
                     periode,
                     ip_client,
                     user_agent,
-                    payload.nom_saisi,
-                    payload.prenom_saisi
+                    info["prenom_consultant"],
+                    info["nom_consultant"]
                 ))
 
                 conn.commit()
