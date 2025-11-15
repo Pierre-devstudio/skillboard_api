@@ -305,6 +305,8 @@ def check_participant(
                     "id_action_formation_effectif": resolved["id_action_formation_effectif"]
                 }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -337,5 +339,7 @@ def validate_presence(payload: PresenceInput, request: Request):
 
                 return {"ok": True, "id_presence": id_p}
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
