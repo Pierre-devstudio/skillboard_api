@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Présence consultant</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+body {
+    font-family: 'Quicksand', sans-serif;
+    background: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 520px;
+    margin: auto;
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.08);
+}
+
+#logo {
+    display: block;
+    width: 150px;
+    margin: 0 auto 15px auto;
+}
+
+h2 {
+    text-align: center;
+    margin-top: 0;
+}
+
+#formationInfo {
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.stagiaire {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.presence-ok {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #3aaa35;
+}
+
+.presence-ko {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #d32f2f;
+}
+
+#sliderContainer {
+    margin-top: 30px;
+    display: none;
+}
+
+#slider {
+    width: 100%;
+    margin-top: 10px;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: #ddd;
+    border-radius: 3px;
+}
+
+#slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 26px;
+    height: 26px;
+    background: rgb(193,39,45);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+#slider::-moz-range-thumb {
+    width: 26px;
+    height: 26px;
+    background: rgb(193,39,45);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    background: rgb(193,39,45);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    margin-top: 15px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+button:disabled {
+    background: #999;
+}
+
+#confirmation {
+    display: none;
+    background: #dff0d8;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 20px;
+    color: #3c763d;
+    font-weight: bold;
+    text-align: center;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <img id="logo" src="logo.png" alt="logo">
+
+    <h2>Validation de présence – Consultant</h2>
+
+    <div id="formationInfo">Chargement…</div>
+
+    <div id="listeStagiaires"></div>
+
+    <div id="sliderContainer">
+        <p><b>Glissez pour valider votre présence</b></p>
+        <input type="range" id="slider" value="0" min="0" max="100">
+        <button id="btnValider" onclick="validerConsultant()" disabled>Valider</button>
+    </div>
+
+    <div id="confirmation"></div>
+
+</div>
+
+<script>
+// ------------------------------------------------------------
+// CONFIG
+// ------------------------------------------------------------
+const API = "https://skillboard-presence-consultant.onrender.com";
+
+const params = new URLSearchParams(window.location.search);
+const ID_AF = params.get("id");
+let ID_CONSULTANT = null;
+let LISTE_ABSENTS = [];
+
+// ------------------------------------------------------------
+// CHARGEMENT DES INFOS FORMATION + STAGIAIRES
+// ------------------------------------------------------------
+async function loadData() {
+
+    if (!ID_AF) {
+        document.getElementById("formationInfo").innerHTML =
+            "<b>Erreur :</b> lien invalide (id manquant).";
+        return;
+    }
+
+    const res = await fetch(`${API}/presence_consultant/init?id_action_formation=${ID_AF}`);
+    const data = await res.json();
+
+    if (!data.ok) {
+        document.getElementById("formationInfo").innerHTML = "<b>Erreur de chargement.</b>";
+        return;
+    }
+
+    const f = data.formation;
+    ID_CONSULTANT = f.id_consultant;  // si jamais tu veux l’utiliser plus tard
+
+    document.getElementById("formationInfo").innerHTML = `
+        <div style="font-size:14px;color:#777;"><i>Référence : ${f.code_action_formation}</i></div>
+        <div style="margin-top:5px;">
+            <b>Bienvenue dans votre formation :</b><br>
+            <span style="font-size:18px;font-weight:600;">${f.titre}</span>
+        </div>
+        <div style="margin-top:5px;">Animée par : <b>${f.prenom_consultant} ${f.nom_consultant}</b></div>
+    `;
+
+    const zone = document.getElementById("listeStagiaires");
+    zone.innerHTML = "";
+
+    LISTE_ABSENTS = [];
+
+    data.stagiaires.forEach(s => {
+        const div = document.createElement("div");
+        div.className = "stagiaire";
+
+        const present = s.present;
+        if (!present) LISTE_ABSENTS.push(`${s.prenom} ${s.nom}`);
+
+        div.innerHTML = `
+            <div>
+                <b>${s.prenom} ${s.nom}</b><br>
+                <span style="font-size:13px;color:#777;">${s.entreprise}</span>
+            </div>
+            <div class="${present ? "presence-ok" : "presence-ko"}"></div>
+        `;
+
+        zone.appendChild(div);
+    });
+
+    document.getElementById("sliderContainer").style.display = "block";
+
+    document.getElementById("slider").addEventListener("input", e => {
+        if (e.target.value >= 100) {
+            document.getElementById("btnValider").disabled = false;
+        }
+    });
+}
+
+loadData();
+
+
+// ------------------------------------------------------------
+// VALIDATION CONSULTANT
+// ------------------------------------------------------------
+async function validerConsultant() {
+
+    const payload = {
+        id_action_formation: ID_AF,
+        id_consultant: ID_CONSULTANT,
+        absents: LISTE_ABSENTS
+    };
+
+    const res = await fetch(`${API}/presence_consultant/validate`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (data.ok) {
+        document.getElementById("sliderContainer").style.display = "none";
+        document.getElementById("listeStagiaires").style.display = "none";
+
+        const c = document.getElementById("confirmation");
+        c.style.display = "block";
+        c.innerHTML = "✔ Validation enregistrée.";
+    } else {
+        alert(data.detail || "Erreur lors de l’enregistrement.");
+    }
+}
+
+</script>
+
+</body>
+</html>
