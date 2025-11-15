@@ -150,9 +150,21 @@ let LISTE_ABSENTS = [];
 // ---------------------------------------------------
 async function loadData() {
 
-    const res = await fetch(`${API}/presence_consultant/init?id_action_formation=${ID_AF}`);
-    const data = await res.json();
+    if (!ID_AF) {
+        document.getElementById("formationInfo").innerHTML =
+            "<b>Erreur :</b> lien invalide.";
+        return;
+    }
 
+    const res = await fetch(`${API}/presence_consultant/init?id_action_formation=${ID_AF}`);
+
+    if (!res.ok) {
+        document.getElementById("formationInfo").innerHTML =
+            "<b>Erreur de chargement.</b>";
+        return;
+    }
+
+    const data = await res.json();
     const f = data.formation;
 
     ID_CONSULTANT = f.id_consultant;
