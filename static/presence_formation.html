@@ -250,13 +250,19 @@ async function checkParticipant() {
         body: JSON.stringify(payload)
     });
 
-    const data = await res.json();
+   // si erreur serveur (400, 500, etc.)
+    if (!res.ok) {
 
-    // pas trouvé
     if (res.status === 404) {
         alert("Participant introuvable dans cette action.");
-        return;
+    } else {
+        alert("Une erreur est survenue. Merci de réessayer.");
     }
+
+    return;
+    }
+
+    const data = await res.json();
 
     // cas homonyme
     if (data.ambiguous) {
