@@ -11,6 +11,7 @@ import psycopg
 from psycopg.rows import dict_row
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+from zoneinfo import ZoneInfo
 
 # -----------------------------
 # Chargement variables .env
@@ -322,7 +323,8 @@ def validate_presence(payload: PresenceInput, request: Request):
     user_agent = request.headers.get("User-Agent", "")
 
     # Période
-    periode = "matin" if datetime.now().hour < 13 else "apres_midi"
+    heure_locale = datetime.now(ZoneInfo("Europe/Paris")).hour
+    periode = "matin" if heure_locale < 13 else "apres_midi"
 
     try:
         with get_conn() as conn:
