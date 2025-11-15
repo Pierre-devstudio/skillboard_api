@@ -10,7 +10,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # ---------------------------------------------------
-# Chargement .env (même logique que tes autres APIs)
+# Chargement .env
 # ---------------------------------------------------
 load_dotenv()
 DB_HOST = os.getenv("DB_HOST")
@@ -19,6 +19,9 @@ DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
+# ---------------------------------------------------
+# Init FastAPI
+# ---------------------------------------------------
 app = FastAPI(title="Skillboard - Présence Consultant API")
 
 # ---------------------------------------------------
@@ -66,7 +69,6 @@ def get_conn():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur connexion DB: {e}")
 
-
 # ---------------------------------------------------
 # MODELES
 # ---------------------------------------------------
@@ -77,7 +79,7 @@ class ConsultantValidationInput(BaseModel):
 
 
 # ---------------------------------------------------
-# ENDPOINT : HEALTH
+# HEALTHCHECK
 # ---------------------------------------------------
 @app.get("/healthz")
 def health():
@@ -85,7 +87,7 @@ def health():
 
 
 # ---------------------------------------------------
-# ENDPOINT : INIT (charger infos + stagiaires + présence)
+# INIT : charger infos formation + stagiaires + présence
 # ---------------------------------------------------
 @app.get("/presence_consultant/init")
 def presence_consultant_init(id_action_formation: str):
@@ -103,7 +105,8 @@ def presence_consultant_init(id_action_formation: str):
                         ff.titre,
                         af.modalite_valide,
                         c.prenom AS prenom_consultant,
-                        c.nom AS nom_consultant
+                        c.nom AS nom_consultant,
+                        af.id_consultant
                     FROM public.tbl_action_formation af
                     JOIN public.tbl_fiche_formation ff ON ff.id_form = af.id_form
                     LEFT JOIN public.tbl_consultant c ON c.id_consultant = af.id_consultant
@@ -118,9 +121,9 @@ def presence_consultant_init(id_action_formation: str):
                 cur.execute("""
                     SELECT 
                         afe.id_action_formation_effectif,
-                        eff.nom_effectif,
-                        eff.prenom_effectif,
-                        ent.nom_ent,
+                        eff.nom_effectif AS nom,
+                        eff.prenom_effectif AS prenom,
+                        ent.nom_ent AS entreprise,
                         (
                             SELECT COUNT(*)
                             FROM public.tbl_action_formation_presence p
@@ -128,7 +131,7 @@ def presence_consultant_init(id_action_formation: str):
                             AND p.date_presence = CURRENT_DATE
                             AND p.periode = %s
                             AND p.archive = FALSE
-                        ) > 0 AS est_present
+                        ) > 0 AS present
                     FROM public.tbl_action_formation_effectif afe
                     JOIN public.tbl_effectif_client eff ON eff.id_effectif = afe.id_effectif
                     JOIN public.tbl_entreprise ent ON ent.id_ent = eff.id_ent
@@ -154,7 +157,7 @@ def presence_consultant_init(id_action_formation: str):
                 return {
                     "ok": True,
                     "periode": periode,
-                    "action": info,
+                    "formation": info,
                     "stagiaires": stagiaires,
                     "consultant_deja_signe": deja_signe
                 }
@@ -164,7 +167,7 @@ def presence_consultant_init(id_action_formation: str):
 
 
 # ---------------------------------------------------
-# ENDPOINT : VALIDATION CONSULTANT
+# VALIDATION CONSULTANT
 # ---------------------------------------------------
 @app.post("/presence_consultant/validate")
 def validate_consultant(payload: ConsultantValidationInput, request: Request):
@@ -178,7 +181,7 @@ def validate_consultant(payload: ConsultantValidationInput, request: Request):
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
 
-                # Vérifier s'il a déjà signé
+                # Déjà signé ?
                 cur.execute("""
                     SELECT COUNT(*) AS deja_signe
                     FROM public.tbl_action_formation_presence
