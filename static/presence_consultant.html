@@ -147,6 +147,10 @@ const ID_AF = params.get("id");
 let ID_CONSULTANT = null;
 let LISTE_ABSENTS = [];
 
+// Nom et prénom consultant (pour validation API)
+let NOM_CONSULTANT = "";
+let PRENOM_CONSULTANT = "";
+
 // ------------------------------------------------------------
 // CHARGEMENT DES INFOS FORMATION + STAGIAIRES
 // ------------------------------------------------------------
@@ -173,8 +177,14 @@ async function loadData() {
         return;
     }
 
-    const f = data.formation;
+    const f = data.action;
+
     ID_CONSULTANT = f.id_consultant;
+
+    // Récupérer nom et prénom consultant pour la validation
+    NOM_CONSULTANT = f.nom_consultant;
+    PRENOM_CONSULTANT = f.prenom_consultant;
+
 
     document.getElementById("formationInfo").innerHTML = `
         <div style="font-size:14px;color:#777;"><i>Référence : ${f.code_action_formation}</i></div>
@@ -226,9 +236,9 @@ loadData();
 async function validerConsultant() {
 
     const payload = {
-        id_action_formation: ID_AF,
-        nom_saisi: ID_CONSULTANT_NOM,
-        prenom_saisi: ID_CONSULTANT_PRENOM
+    id_action_formation: ID_AF,
+    nom_saisi: NOM_CONSULTANT,
+    prenom_saisi: PRENOM_CONSULTANT
     };
 
     const res = await fetch(`${API}/presence_consultant/validate`, {
