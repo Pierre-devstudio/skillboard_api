@@ -152,7 +152,7 @@ async function loadData() {
 
     if (!ID_AF) {
         document.getElementById("formationInfo").innerHTML =
-            "<b>Erreur :</b> lien invalide.";
+            "<b>Erreur :</b> lien invalide (id manquant).";
         return;
     }
 
@@ -160,25 +160,77 @@ async function loadData() {
 
     if (!res.ok) {
         document.getElementById("formationInfo").innerHTML =
-            "<b>Erreur de chargement.</b>";
+            "<b>Erreur de chargement (404).</b>";
         return;
     }
 
     const data = await res.json();
+
+    if (!data.ok) {
+        document.getElementById("formationInfo").innerHTML =
+            "<b>Erreur de chargement.</b>";
+        return;
+    }
+
     const f = data.formation;
 
+    // RÉCUP INFOS CONSULTANT
     ID_CONSULTANT = f.id_consultant;
     NOM_CONSULTANT = f.nom_consultant;
     PRENOM_CONSULTANT = f.prenom_consultant;
 
-    LISTE_ABSENTS = data.stagiaires
-        .filter(s => !s.present)
-        .map(s => `${s.prenom} ${s.nom}`);
+    // AFFICHAGE FORMATION
+    document.getElementById("formationInfo").innerHTML = `
+        <div style="font-size:14px;color:#777;">
+            <i>Référence : ${f.code_action_formation}</i>
+        </div>
+        <div style="margin-top:5px;">
+            <b>Bienvenue dans votre formation :</b><br>
+            <span style="font-size:18px;font-weight:600;">${f.titre}</span>
+        </div>
+        <div style="margin-top:5px;">
+            Animée par : <b>${f.prenom_consultant} ${f.nom_consultant}</b>
+        </div>
+    `;
 
+    // LISTE STAGIAIRES
+    const zone = document.getElementById("listeStagiaires");
+    zone.innerHTML = "";
+
+    LISTE_ABSENTS = [];
+
+    data.stagiaires.forEach(s => {
+
+        if (!s.present) {
+            LISTE_ABSENTS.push(`${s.prenom} ${s.nom}`);
+        }
+
+        const div = document.createElement("div");
+        div.className = "stagiaire";
+
+        div.innerHTML = `
+            <div>
+                <b>${s.prenom} ${s.nom}</b><br>
+                <span style="font-size:13px;color:#777;">${s.entreprise}</span>
+            </div>
+            <div class="${s.present ? "presence-ok" : "presence-ko"}"></div>
+        `;
+
+        zone.appendChild(div);
+    });
+
+    // AFFICHAGE SLIDER
     document.getElementById("sliderContainer").style.display = "block";
+
+    document.getElementById("slider").addEventListener("input", e => {
+        if (e.target.value >= 100) {
+            document.getElementById("btnValider").disabled = false;
+        }
+    });
 }
 
 loadData();
+
 
 // ---------------------------------------------------
 async function validerConsultant() {
