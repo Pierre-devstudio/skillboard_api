@@ -130,12 +130,12 @@ def presence_consultant_init(id_action_formation: str):
                     SELECT COUNT(*) AS deja_signe
                     FROM public.tbl_action_formation_presence
                     WHERE id_action_formation = %s
-                    AND id_consultant = info.id_consultant
+                    AND id_consultant = %s
                     AND source_validation = 'consultant'
                     AND date_presence = CURRENT_DATE
                     AND periode = %s
                     AND archive = FALSE
-                """, (id_action_formation, periode))
+                """, (id_action_formation, info["id_consultant"], periode))
                 deja_signe = cur.fetchone()["deja_signe"] > 0
 
                 return {
