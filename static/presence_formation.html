@@ -25,9 +25,18 @@ body {
     max-width: 480px;
     margin: auto;
     background: white;
-    padding: 0 60px;
+    padding: 60px;
     border-radius: 12px;
     box-shadow: 0 0 10px rgba(0,0,0,0.08);
+}
+
+.errorMsg {
+    margin-top: 12px;
+    min-height: 20px;
+    color: rgb(193,39,45);
+    font-weight: 600;
+    text-align: center;
+    font-size: 15px;
 }
 
 h2 {
@@ -152,6 +161,7 @@ button:disabled {
     <input id="prenom">
 
     <button onclick="checkParticipant()">Continuer</button>
+    <div id="errorMsg" class="errorMsg"></div>
 </div>
 
 <!-- ETAPE 1B : ENTREPRISE si homonyme -->
@@ -239,6 +249,9 @@ let CURRENT_ID_AFE = null;
 
 async function checkParticipant() {
 
+    // reset message
+    document.getElementById("errorMsg").textContent = "";
+
     NOM = document.getElementById("nom").value.trim();
     PRENOM = document.getElementById("prenom").value.trim();
 
@@ -254,9 +267,11 @@ async function checkParticipant() {
     if (!res.ok) {
 
     if (res.status === 404) {
-        alert("Participant introuvable dans cette action.");
+        document.getElementById("errorMsg").textContent =
+                "Participant introuvable dans cette action.";
     } else {
-        alert("Une erreur est survenue. Merci de réessayer.");
+        document.getElementById("errorMsg").textContent =
+                "Une erreur est survenue. Merci de réessayer.";
     }
 
     return;
