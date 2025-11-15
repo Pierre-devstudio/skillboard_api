@@ -6,6 +6,7 @@ import psycopg
 from psycopg.rows import dict_row
 import os
 import uuid
+import json
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -74,8 +75,11 @@ def get_conn():
 # ---------------------------------------------------
 class ConsultantValidationInput(BaseModel):
     id_action_formation: str
-    id_consultant: str | None = None
+    id_consultant: str
+    nom_saisi: str
+    prenom_saisi: str
     absents: list[str] = []
+
 
 
 # ---------------------------------------------------
@@ -181,31 +185,33 @@ def validate_consultant(payload: ConsultantValidationInput, request: Request):
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
 
-                # Déjà signé ?
+                # Vérifier s'il a déjà signé
                 cur.execute("""
                     SELECT COUNT(*) AS deja_signe
                     FROM public.tbl_action_formation_presence
                     WHERE id_action_formation = %s
-                    AND id_action_formation_effectif IS NULL
+                    AND id_consultant = %s
                     AND source_validation = 'consultant'
                     AND date_presence = CURRENT_DATE
                     AND periode = %s
                     AND archive = FALSE
-                """, (payload.id_action_formation, periode))
+                """, (
+                    payload.id_action_formation,
+                    payload.id_consultant,
+                    periode
+                ))
 
                 if cur.fetchone()["deja_signe"] > 0:
                     raise HTTPException(status_code=409, detail="Signature déjà enregistrée.")
 
-                # Insertion
+                # INSERT CLEAN
                 id_presence = str(uuid.uuid4())
-
-                cur.execute("SELECT prenom, nom FROM public.tbl_consultant WHERE id_consultant = %s",(payload.id_consultant,))
-                info = cur.fetchone()
 
                 cur.execute("""
                     INSERT INTO public.tbl_action_formation_presence
                     (id_action_formation_presence,
                      id_action_formation,
+                     id_consultant,
                      id_action_formation_effectif,
                      date_presence,
                      periode,
@@ -215,24 +221,27 @@ def validate_consultant(payload: ConsultantValidationInput, request: Request):
                      user_agent,
                      source_validation,
                      nom_saisi,
-                     prenom_saisi)
-                    VALUES (%s, %s, NULL,
+                     prenom_saisi,
+                     absents_json)
+                    VALUES (%s, %s, %s, NULL,
                             CURRENT_DATE, %s, CURRENT_TIME, NOW(),
                             %s, %s, 'consultant',
-                            %s, %s)
+                            %s, %s, %s)
                 """, (
                     id_presence,
                     payload.id_action_formation,
+                    payload.id_consultant,
                     periode,
                     ip_client,
                     user_agent,
-                    info["prenom_consultant"],
-                    info["nom_consultant"]
+                    payload.nom_saisi,
+                    payload.prenom_saisi,
+                    json.dumps(payload.absents)
                 ))
 
                 conn.commit()
-
                 return {"ok": True, "id_presence": id_presence}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
