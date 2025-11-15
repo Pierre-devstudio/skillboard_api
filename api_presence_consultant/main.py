@@ -1,17 +1,16 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 import psycopg
 from psycopg.rows import dict_row
 import os
 import uuid
 import json
-from pathlib import Path
 from dotenv import load_dotenv
 
 # ---------------------------------------------------
-# Chargement .env
+# ENV
 # ---------------------------------------------------
 load_dotenv()
 DB_HOST = os.getenv("DB_HOST")
@@ -21,13 +20,10 @@ DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 # ---------------------------------------------------
-# Init FastAPI
+# FASTAPI
 # ---------------------------------------------------
 app = FastAPI(title="Skillboard - Présence Consultant API")
 
-# ---------------------------------------------------
-# CORS
-# ---------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -42,22 +38,9 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------
-# Connexion DB
+# DB
 # ---------------------------------------------------
-def _missing_env():
-    return [k for k, v in {
-        "DB_HOST": DB_HOST,
-        "DB_PORT": DB_PORT,
-        "DB_NAME": DB_NAME,
-        "DB_USER": DB_USER,
-        "DB_PASSWORD": DB_PASSWORD,
-    }.items() if not v]
-
 def get_conn():
-    missing = _missing_env()
-    if missing:
-        raise HTTPException(status_code=500, detail=f"Variables manquantes: {', '.join(missing)}")
-
     try:
         return psycopg.connect(
             host=DB_HOST,
@@ -68,7 +51,7 @@ def get_conn():
             sslmode="require"
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur connexion DB: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ---------------------------------------------------
 # MODELES
@@ -80,18 +63,15 @@ class ConsultantValidationInput(BaseModel):
     prenom_saisi: str
     absents: list[str] = []
 
-
-
 # ---------------------------------------------------
-# HEALTHCHECK
+# HEALTH
 # ---------------------------------------------------
 @app.get("/healthz")
 def health():
     return {"status": "ok"}
 
-
 # ---------------------------------------------------
-# INIT : charger infos formation + stagiaires + présence
+# INIT
 # ---------------------------------------------------
 @app.get("/presence_consultant/init")
 def presence_consultant_init(id_action_formation: str):
@@ -102,7 +82,7 @@ def presence_consultant_init(id_action_formation: str):
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
 
-                # ------- 1. Infos action -------
+                # 1. Infos action
                 cur.execute("""
                     SELECT 
                         af.code_action_formation,
@@ -121,7 +101,7 @@ def presence_consultant_init(id_action_formation: str):
                 if not info:
                     raise HTTPException(status_code=404, detail="Action introuvable.")
 
-                # ------- 2. Liste stagiaires -------
+                # 2. Stagiaires
                 cur.execute("""
                     SELECT 
                         afe.id_action_formation_effectif,
@@ -145,12 +125,12 @@ def presence_consultant_init(id_action_formation: str):
                 """, (periode, id_action_formation))
                 stagiaires = cur.fetchall()
 
-                # ------- 3. Consultant déjà signé ? -------
+                # 3. Consultant déjà signé
                 cur.execute("""
                     SELECT COUNT(*) AS deja_signe
                     FROM public.tbl_action_formation_presence
                     WHERE id_action_formation = %s
-                    AND id_action_formation_effectif IS NULL
+                    AND id_consultant = info.id_consultant
                     AND source_validation = 'consultant'
                     AND date_presence = CURRENT_DATE
                     AND periode = %s
@@ -169,9 +149,8 @@ def presence_consultant_init(id_action_formation: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 # ---------------------------------------------------
-# VALIDATION CONSULTANT
+# VALIDATION
 # ---------------------------------------------------
 @app.post("/presence_consultant/validate")
 def validate_consultant(payload: ConsultantValidationInput, request: Request):
@@ -185,7 +164,7 @@ def validate_consultant(payload: ConsultantValidationInput, request: Request):
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
 
-                # Vérifier s'il a déjà signé
+                # Déjà signé ?
                 cur.execute("""
                     SELECT COUNT(*) AS deja_signe
                     FROM public.tbl_action_formation_presence
@@ -204,7 +183,7 @@ def validate_consultant(payload: ConsultantValidationInput, request: Request):
                 if cur.fetchone()["deja_signe"] > 0:
                     raise HTTPException(status_code=409, detail="Signature déjà enregistrée.")
 
-                # INSERT CLEAN
+                # Insertion
                 id_presence = str(uuid.uuid4())
 
                 cur.execute("""
@@ -244,4 +223,3 @@ def validate_consultant(payload: ConsultantValidationInput, request: Request):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
