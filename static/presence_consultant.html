@@ -85,14 +85,6 @@ h2 {
     cursor: pointer;
 }
 
-#slider::-moz-range-thumb {
-    width: 26px;
-    height: 26px;
-    background: rgb(193,39,45);
-    border-radius: 50%;
-    cursor: pointer;
-}
-
 button {
     width: 100%;
     padding: 12px;
@@ -166,7 +158,14 @@ async function loadData() {
         return;
     }
 
-    const res = await fetch(`${API}/presence_consultant/init/${ID_AF}`);
+    // ****** LA CORRECTION ICI ******
+    const res = await fetch(`${API}/presence_consultant/init?id_action_formation=${ID_AF}`);
+
+    if (!res.ok) {
+        document.getElementById("formationInfo").innerHTML = "<b>Erreur de chargement (404).</b>";
+        return;
+    }
+
     const data = await res.json();
 
     if (!data.ok) {
@@ -175,7 +174,7 @@ async function loadData() {
     }
 
     const f = data.formation;
-    ID_CONSULTANT = f.id_consultant;  // si jamais tu veux l’utiliser plus tard
+    ID_CONSULTANT = f.id_consultant;
 
     document.getElementById("formationInfo").innerHTML = `
         <div style="font-size:14px;color:#777;"><i>Référence : ${f.code_action_formation}</i></div>
