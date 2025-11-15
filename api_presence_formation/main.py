@@ -150,6 +150,13 @@ def get_action_formation_info(cur, id_af: str):
 
 
 def find_participants(cur, id_af, nom, prenom):
+
+    # sécurité : éviter valeurs nulles / espaces / caractères invisibles
+    if not nom or nom.strip() == "":
+        return []
+    if not prenom or prenom.strip() == "":
+        return []
+
     sql = """
     SELECT 
         afe.id_action_formation_effectif,
@@ -163,7 +170,8 @@ def find_participants(cur, id_af, nom, prenom):
       AND eff.prenom_effectif ILIKE %s
       AND afe.archive = FALSE
     """
-    cur.execute(sql, (id_af, nom, prenom))
+
+    cur.execute(sql, (id_af, f"%{nom}%", f"%{prenom}%"))
     return cur.fetchall()
 
 
