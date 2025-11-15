@@ -166,7 +166,7 @@ async function loadData() {
         return;
     }
 
-    const res = await fetch(`${API}/presence_consultant/init?id_action_formation=${ID_AF}`);
+    const res = await fetch(`${API}/presence_consultant/init/${ID_AF}`);
     const data = await res.json();
 
     if (!data.ok) {
