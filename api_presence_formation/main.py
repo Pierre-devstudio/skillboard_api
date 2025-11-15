@@ -213,7 +213,7 @@ def insert_presence(cur, payload, ip, ua, periode):
          date_presence, periode, heure_presence, datetime_utc,
          ip_client, user_agent, source_validation,
          nom_saisi, prenom_saisi)
-        VALUES (%s, %s, CURRENT_DATE, %s, CURRENT_TIME,
+        VALUES (%s, %s, CURRENT_DATE, %s, (NOW() AT TIME ZONE 'Europe/Paris')::time,
                 NOW(), %s, %s, 'stagiaire',
                 %s, %s)
     """, (
@@ -243,6 +243,9 @@ def init_presence(id_action_formation: IdAFStr):
             with conn.cursor(row_factory=dict_row) as cur:
                 info = get_action_formation_info(cur, id_action_formation)
                 return {"ok": True, "formation": info}
+    except HTTPException:
+        raise
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
