@@ -8,6 +8,9 @@ import os
 import uuid
 import json
 from dotenv import load_dotenv
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # ---------------------------------------------------
 # ENV
@@ -18,6 +21,44 @@ DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
+
+SMTP_HOST = os.getenv("SMTP_HOST")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+MAIL_ALERT_DEST = os.getenv("MAIL_ALERT_DEST")
+
+def send_absent_mail(absents: list[str], code_form: str, titre_form: str):
+    if not MAIL_ALERT_DEST:
+        print("MAIL_ALERT_DEST non défini")
+        return
+
+    sujet = f"Gestion des absences - Formation {code_form}"
+
+    texte = (
+        f"{code_form} - {titre_form}\n\n"
+        "Les stagiaires ci-dessous ont été déclarés absents par le consultant :\n"
+        + "\n".join(absents) +
+        "\n\nMerci de prendre contact avec les stagiaires et de démarrer la procédure de gestion des absences.\n"
+    )
+
+    msg = MIMEText(texte, "plain", "utf-8")
+    msg["From"] = SMTP_USER
+    msg["To"] = MAIL_ALERT_DEST
+    msg["Subject"] = sujet
+
+    try:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
+            smtp.starttls()
+            smtp.login(SMTP_USER, SMTP_PASSWORD)
+            smtp.send_message(msg)
+        print("Mail envoyé OK")
+
+    except Exception as e:
+        print("Erreur envoi mail :", str(e))
+
+
+
 
 # ---------------------------------------------------
 # FASTAPI
@@ -183,6 +224,20 @@ def validate_consultant(payload: ConsultantValidationInput, request: Request):
                 if cur.fetchone()["deja_signe"] > 0:
                     raise HTTPException(status_code=409, detail="Signature déjà enregistrée.")
 
+                # Récupérer infos formation (code + titre)
+                cur.execute("""
+                    SELECT 
+                        af.code_action_formation,
+                        ff.titre
+                    FROM public.tbl_action_formation af
+                    JOIN public.tbl_fiche_formation ff ON ff.id_form = af.id_form
+                    WHERE af.id_action_formation = %s
+                """, (payload.id_action_formation,))
+                formation_info = cur.fetchone()
+
+                code_form = formation_info["code_action_formation"]
+                titre_form = formation_info["titre"]
+
                 # Insertion
                 id_presence = str(uuid.uuid4())
 
@@ -218,8 +273,23 @@ def validate_consultant(payload: ConsultantValidationInput, request: Request):
                     json.dumps(payload.absents)
                 ))
 
-                conn.commit()
-                return {"ok": True, "id_presence": id_presence}
+    # ----------------------------------------------------
+    # Envoi du mail si absents
+    # ----------------------------------------------------
+        
+            if payload.absents and len(payload.absents) > 0:
+                try:
+                    send_absent_mail(
+                        absents=payload.absents,
+                        code_form=code_form,
+                        titre_form=titre_form
+                    )
+                except Exception as e:
+                    print("Erreur envoi mail absents:", str(e))
+
+
+            conn.commit()
+            return {"ok": True, "id_presence": id_presence}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
