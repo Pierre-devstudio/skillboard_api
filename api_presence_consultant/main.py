@@ -49,6 +49,7 @@ def send_absent_mail(absents: list[str], code_form: str, titre_form: str):
 
     try:
         with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as smtp:
+            smtp.set_debuglevel(1)
             smtp.login(SMTP_USER, SMTP_PASSWORD)
             smtp.send_message(msg)
         print("Mail envoyé OK")
