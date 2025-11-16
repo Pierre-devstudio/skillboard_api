@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-
+from fastapi import BackgroundTasks
 # ---------------------------------------------------
 # ENV
 # ---------------------------------------------------
@@ -48,8 +48,7 @@ def send_absent_mail(absents: list[str], code_form: str, titre_form: str):
     msg["Subject"] = sujet
 
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as smtp:
-            smtp.starttls()
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as smtp:
             smtp.login(SMTP_USER, SMTP_PASSWORD)
             smtp.send_message(msg)
         print("Mail envoyé OK")
@@ -194,7 +193,7 @@ def presence_consultant_init(id_action_formation: str):
 # VALIDATION
 # ---------------------------------------------------
 @app.post("/presence_consultant/validate")
-def validate_consultant(payload: ConsultantValidationInput, request: Request):
+def validate_consultant(payload: ConsultantValidationInput, request: Request, background_tasks: BackgroundTasks):
 
     periode = "matin" if datetime.now().hour < 13 else "apres_midi"
 
@@ -279,7 +278,8 @@ def validate_consultant(payload: ConsultantValidationInput, request: Request):
         
             if payload.absents and len(payload.absents) > 0:
                 try:
-                    send_absent_mail(
+                    background_tasks.add_task(
+                        send_absent_mail,
                         absents=payload.absents,
                         code_form=code_form,
                         titre_form=titre_form
