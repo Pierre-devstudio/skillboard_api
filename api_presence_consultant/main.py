@@ -12,6 +12,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from fastapi import BackgroundTasks
+from MailManager import send_absent_mail
 # ---------------------------------------------------
 # ENV
 # ---------------------------------------------------
@@ -21,12 +22,6 @@ DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
-
-SMTP_HOST = os.getenv("SMTP_HOST")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-MAIL_ALERT_DEST = os.getenv("MAIL_ALERT_DEST")
 
 
 # ---------------------------------------------------
@@ -245,7 +240,7 @@ def validate_consultant(payload: ConsultantValidationInput, request: Request, ba
     # ----------------------------------------------------
     # Envoi du mail si absents
     # ----------------------------------------------------
-            from MailManager import send_absent_mail
+            
             # Envoi du mail si absents
             if payload.absents and len(payload.absents) > 0:
                 send_absent_mail(code_form,titre_form, payload.absents)

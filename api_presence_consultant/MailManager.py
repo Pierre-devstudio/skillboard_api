@@ -11,7 +11,7 @@ MAILJET_URL = "https://api.mailjet.com/v3.1/send"
 
 def send_absent_mail(code_formation: str, titre: str, absents: list[str]):
     """
-    Envoie le mail via l'API Mailjet.
+    Envoie le mail via l'API Mailjetq.
     """
 
     if not MJ_APIKEY_PUBLIC or not MJ_APIKEY_PRIVATE:
