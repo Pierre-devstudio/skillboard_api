@@ -28,37 +28,6 @@ SMTP_USER = os.getenv("SMTP_USER")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 MAIL_ALERT_DEST = os.getenv("MAIL_ALERT_DEST")
 
-def send_absent_mail(absents: list[str], code_form: str, titre_form: str):
-    if not MAIL_ALERT_DEST:
-        print("MAIL_ALERT_DEST non défini")
-        return
-
-    sujet = f"Gestion des absences - Formation {code_form}"
-
-    texte = (
-        f"{code_form} - {titre_form}\n\n"
-        "Les stagiaires ci-dessous ont été déclarés absents par le consultant :\n"
-        + "\n".join(absents) +
-        "\n\nMerci de prendre contact avec les stagiaires et de démarrer la procédure de gestion des absences.\n"
-    )
-
-    msg = MIMEText(texte, "plain", "utf-8")
-    msg["From"] = SMTP_USER
-    msg["To"] = MAIL_ALERT_DEST
-    msg["Subject"] = sujet
-
-    try:
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as smtp:
-            smtp.set_debuglevel(1)
-            smtp.login(SMTP_USER, SMTP_PASSWORD)
-            smtp.send_message(msg)
-        print("Mail envoyé OK")
-
-    except Exception as e:
-        print("Erreur envoi mail :", str(e))
-
-
-
 
 # ---------------------------------------------------
 # FASTAPI
@@ -276,18 +245,11 @@ def validate_consultant(payload: ConsultantValidationInput, request: Request, ba
     # ----------------------------------------------------
     # Envoi du mail si absents
     # ----------------------------------------------------
-        
+            from MailManager import send_absent_mail
+            # Envoi du mail si absents
             if payload.absents and len(payload.absents) > 0:
-                try:
-                    background_tasks.add_task(
-                        send_absent_mail,
-                        absents=payload.absents,
-                        code_form=code_form,
-                        titre_form=titre_form
-                    )
-                except Exception as e:
-                    print("Erreur envoi mail absents:", str(e))
-
+                send_absent_mail(code_form,titre_form, payload.absents)
+            
 
             conn.commit()
             return {"ok": True, "id_presence": id_presence}
