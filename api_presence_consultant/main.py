@@ -71,8 +71,8 @@ class ConsultantValidationInput(BaseModel):
 # ---------------------------------------------------
 # HEALTH
 # ---------------------------------------------------
-@app.get("/healthz")
-def health():
+@app.api_route("/healthz", methods=["GET", "HEAD"])
+def healthz():
     return {"status": "ok"}
 
 # ---------------------------------------------------
