@@ -1,18 +1,18 @@
 from fastapi import FastAPI
-from app.routers import (
-    recueil_attentes,
-    preparation_formation,
-    presence_formation,
-    presence_consultant,
-)
+
+# Import corrects
+from unified_api.app.routers.recueil_attentes import router as recueil_attentes_router
+from unified_api.app.routers.preparation_formation import router as preparation_formation_router
+from unified_api.app.routers.presence_formation import router as presence_formation_router
+from unified_api.app.routers.presence_consultant import router as presence_consultant_router
 
 app = FastAPI()
 
-# Inclusion de chaque ancienne API comme module indépendant
-app.include_router(recueil_attentes.router, prefix="/recueil_attentes")
-app.include_router(preparation_formation.router, prefix="/preparation_formation")
-app.include_router(presence_formation.router, prefix="/presence")
-app.include_router(presence_consultant.router, prefix="/presence_consultant")
+# Inclusion des routes
+app.include_router(recueil_attentes_router, prefix="/recueil_attentes")
+app.include_router(preparation_formation_router, prefix="/preparation_formation")
+app.include_router(presence_formation_router, prefix="/presence")
+app.include_router(presence_consultant_router, prefix="/presence_consultant")
 
 @app.get("/")
 def root():
