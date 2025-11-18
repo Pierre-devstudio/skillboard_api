@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 from datetime import datetime
 from typing import Optional, Annotated
 from pydantic import BaseModel, Field
@@ -10,28 +10,12 @@ from pathlib import Path
 import psycopg
 from psycopg.rows import dict_row
 from dotenv import load_dotenv
-from fastapi.middleware.cors import CORSMiddleware
 from zoneinfo import ZoneInfo
 
 # ======================================================
-# APP LOCALE POUR LES ROUTES + CORS
+# Router (prefix /presence)
 # ======================================================
-router = APIRouter(prefix="/presence")
-app_local = FastAPI()
-
-app_local.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://forms.jmbconsultant.fr",
-        "https://skillboard-services.onrender.com",
-        "http://localhost",
-        "http://127.0.0.1:5500",
-        "null"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+router = APIRouter(prefix="/presence", tags=["presence"])
 
 # ======================================================
 # Charger ENV
@@ -52,15 +36,18 @@ IdEntStr = Optional[str]
 IdAFStr = Annotated[str, Field(min_length=5)]
 IdAFEstr = Annotated[str, Field(min_length=10)]
 
+
 class IdentificationInput(BaseModel):
     nom: NomStr
     prenom: PrenomStr
     id_ent: IdEntStr = None
 
+
 class PresenceInput(BaseModel):
     id_action_formation_effectif: IdAFEstr
     nom_saisi: NomStr
     prenom_saisi: PrenomStr
+
 
 # ======================================================
 # Connexion DB
@@ -73,6 +60,7 @@ def _missing_env():
         "DB_USER": DB_USER,
         "DB_PASSWORD": DB_PASSWORD,
     }.items() if not v]
+
 
 def get_conn():
     missing = _missing_env()
@@ -90,17 +78,20 @@ def get_conn():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur connexion DB: {e}")
 
+
 # ======================================================
 # Cache debug
 # ======================================================
 CACHE_DIR = Path(__file__).parent / "cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
+
 def save_cache(name: str, payload: dict):
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     fname = CACHE_DIR / f"{name}_{ts}.json"
     with open(fname, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
+
 
 # ======================================================
 # SQL HELPERS
@@ -135,8 +126,9 @@ def get_action_formation_info(cur, id_af: str):
         "modalite": base["modalite_valide"],
         "consultant": f"{base['prenom']} {base['nom']}".strip(),
         "date_debut": d["date_debut"],
-        "date_fin": d["date_fin"]
+        "date_fin": d["date_fin"],
     }
+
 
 def find_participants(cur, id_af, nom, prenom):
     cur.execute("""
@@ -154,6 +146,7 @@ def find_participants(cur, id_af, nom, prenom):
     """, (id_af, f"%{nom}%", f"%{prenom}%"))
     return cur.fetchall()
 
+
 def resolve_homonyme(cur, id_af, nom, prenom, id_ent):
     cur.execute("""
         SELECT 
@@ -168,6 +161,7 @@ def resolve_homonyme(cur, id_af, nom, prenom, id_ent):
     """, (id_af, nom, prenom, id_ent))
     return cur.fetchone()
 
+
 def check_duplicate(cur, id_afe, periode):
     cur.execute("""
         SELECT COUNT(*) AS count
@@ -178,6 +172,7 @@ def check_duplicate(cur, id_afe, periode):
           AND archive = FALSE
     """, (id_afe, periode))
     return cur.fetchone()["count"] > 0
+
 
 def insert_presence(cur, payload, ip, ua, periode):
     id_presence = str(uuid.uuid4())
@@ -198,31 +193,33 @@ def insert_presence(cur, payload, ip, ua, periode):
         ip,
         ua,
         payload.nom_saisi,
-        payload.prenom_saisi
+        payload.prenom_saisi,
     ))
     return id_presence
+
 
 # ======================================================
 # ROUTES
 # ======================================================
-@app_local.api_route("/healthz", methods=["GET", "HEAD"])
+@router.api_route("/healthz", methods=["GET", "HEAD"])
 def healthz():
     return {"status": "ok"}
 
-@app_local.get("/init")
+
+@router.get("/init")
 def init_presence(id_action_formation: IdAFStr):
     with get_conn() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             info = get_action_formation_info(cur, id_action_formation)
             return {"ok": True, "formation": info}
 
-@app_local.post("/check")
+
+@router.post("/check")
 def check_participant(id_action_formation: IdAFStr, payload: IdentificationInput):
     save_cache("check_in", payload.model_dump())
 
     with get_conn() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
-
             results = find_participants(cur, id_action_formation, payload.nom, payload.prenom)
 
             if not results:
@@ -232,7 +229,7 @@ def check_participant(id_action_formation: IdAFStr, payload: IdentificationInput
                 return {
                     "ok": True,
                     "id_action_formation_effectif": results[0]["id_action_formation_effectif"],
-                    "entreprise": results[0]["nom_ent"]
+                    "entreprise": results[0]["nom_ent"],
                 }
 
             if not payload.id_ent:
@@ -245,14 +242,18 @@ def check_participant(id_action_formation: IdAFStr, payload: IdentificationInput
             resolved = resolve_homonyme(cur, id_action_formation, payload.nom, payload.prenom, payload.id_ent)
 
             if not resolved:
-                raise HTTPException(status_code=404, detail="Aucun participant ne correspond à cette entreprise.")
+                raise HTTPException(
+                    status_code=404,
+                    detail="Aucun participant ne correspond à cette entreprise."
+                )
 
             return {
                 "ok": True,
-                "id_action_formation_effectif": resolved["id_action_formation_effectif"]
+                "id_action_formation_effectif": resolved["id_action_formation_effectif"],
             }
 
-@app_local.post("/validate")
+
+@router.post("/validate")
 def validate_presence(payload: PresenceInput, request: Request):
     save_cache("validate_in", payload.model_dump())
 
@@ -264,14 +265,13 @@ def validate_presence(payload: PresenceInput, request: Request):
 
     with get_conn() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
-
             if check_duplicate(cur, payload.id_action_formation_effectif, periode):
-                raise HTTPException(status_code=409, detail="Présence déjà validée pour cette période.")
+                raise HTTPException(
+                    status_code=409,
+                    detail="Présence déjà validée pour cette période."
+                )
 
             id_p = insert_presence(cur, payload, ip_client, user_agent, periode)
             conn.commit()
 
             return {"ok": True, "id_presence": id_p}
-
-# Export pour main.py
-router = app_local
