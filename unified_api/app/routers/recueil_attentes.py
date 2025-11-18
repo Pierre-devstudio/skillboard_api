@@ -127,7 +127,7 @@ def save_cache(payload: RecueilInput):
 def healthz():
     return {"status": "ok"}
 
-@router.post("/recueil_attentes")
+@router.post("")
 def submit_recueil(payload: RecueilInput):
     try:
         with get_conn() as conn:
