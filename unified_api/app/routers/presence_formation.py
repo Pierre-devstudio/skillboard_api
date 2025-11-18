@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 # ======================================================
 # APP LOCALE POUR LES ROUTES + CORS
 # ======================================================
-router = APIRouter()
+router = APIRouter(prefix="/presence")
 app_local = FastAPI()
 
 app_local.add_middleware(
