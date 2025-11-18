@@ -5,3 +5,4 @@ supabase
 httpx
 requests
 psycopg2-binary
+psycopg[binary]
