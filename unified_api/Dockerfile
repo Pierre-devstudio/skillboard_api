@@ -1,16 +1,17 @@
 FROM python:3.11-slim
 
+# Set workdir
 WORKDIR /app
 
-# Installer les dépendances système nécessaires pour psycopg2
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Copy sources
+COPY ./app ./app
+COPY ./requirements.txt ./requirements.txt
 
-COPY requirements.txt .
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+# Expose port
+EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "10000"]
+# Start API
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
