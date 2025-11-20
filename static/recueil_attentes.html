@@ -70,117 +70,158 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const API_URL = "https://skillboard-services.onrender.com/recueil_attentes";
-    
-    const SUPABASE_URL = "https://qxupwbbduzufiwvtthkf.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4dXB3YmJkdXp1Zml3dnR0aGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3MzM2OTUsImV4cCI6MjA3MDMwOTY5NX0.sfK-1-HS3EzEjb6lg7a85hekrUDv8Ah3Qgx0j33nWg0";
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // Backend unifié
+  const API_BASE = "https://skillboard-services.onrender.com";
 
-    function getQueryParam(name){
-      const url = new URL(window.location.href);
-      return url.searchParams.get(name);
-    }
+  // Supabase (inchangé)
+  const SUPABASE_URL = "https://qxupwbbduzufiwvtthkf.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF4dXB3YmJkdXp1Zml3dnR0aGtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3MzM2OTUsImV4cCI6MjA3MDMwOTY5NX0.sfK-1-HS3EzEjb6lg7a85hekrUDv8Ah3Qgx0j33nWg0";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    function alertBox(type, html){
-      document.querySelector("#alert").innerHTML = `<div class="${type}">${html}</div>`;
-    }
-
-    async function chargerParticipant(id_effectif) {
-    try {
-        const { data, error } = await sb.rpc('rpc_get_participant_from_effectif', { p_id_effectif: id_effectif });
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-            const p = data[0];
-            const bloc = document.getElementById("participantInfo");
-            bloc.textContent = `${p.civilite} ${p.prenom} ${p.nom}`;
-        }
-    } catch (error) {
-        alertBox("error", "Erreur de chargement du participant : " + error.message);
-    }
-    }
-
-
-    async function chargerPrerequis(id_effectif) {
-  const { data, error } = await sb.rpc('rpc_get_prerequis_from_effectif', { p_id_effectif: id_effectif });
-  if (error) {
-    alertBox("error", "Erreur de chargement des prérequis : " + error.message);
-    return;
+  function getQueryParam(name) {
+    const url = new URL(window.location.href);
+    return url.searchParams.get(name);
   }
 
-  const cont = document.getElementById("listePrerequis");
-  cont.innerHTML = "";
+  function alertBox(type, html) {
+    document.querySelector("#alert").innerHTML = `<div class="${type}">${html}</div>`;
+  }
 
-  data.forEach(pr => {
-    // r1, r2, r3 contiennent les labels des réponses
-    const opts = [pr.r1, pr.r2, pr.r3].filter(Boolean);
-
-    // ici on construit les 3 boutons radio
-    const radios = opts
-      .map((r, idx) => {
-        const valeur = "r" + (idx + 1); // génère "r1", "r2", "r3"
-        return `<label>
-          <input type="radio" name="${pr.id_prerequis}" value="${valeur}"> ${r}
-        </label>`;
-      })
-      .join(" ");
-
-    cont.insertAdjacentHTML(
-      "beforeend",
-      `
-      <div class="prerequis-item">
-        <div><b>${pr.titre}</b></div>
-        <div class="reponses">${radios}</div>
-      </div>
-      `
-    );
-  });
-}
-
-    async function soumettreFormulaire(){
-      const id_effectif = getQueryParam("id");
-      if (!id_effectif){ alertBox("error","Lien invalide."); return; }
-
-      const attentes = document.getElementById("attentes").value.trim().replace(/\n/g, "<br>");
-      const reponses = [];
-
-      // On parcourt tous les boutons radio cochés
-      document.querySelectorAll("input[type='radio']:checked").forEach(inp => {
-      const id_prerequis = inp.name;   // ex: "baa78390-d1c6-443e-a48f-3d65097f73b7"
-      const reponse = inp.value;       // ex: "r1", "r2", "r3"
-      reponses.push({ id_prerequis, reponse });
+  // -------------------- Chargement participant --------------------
+  async function chargerParticipant(id_effectif) {
+    try {
+      const { data, error } = await sb.rpc("rpc_get_participant_from_effectif", {
+        p_id_effectif: id_effectif,
       });
+      if (error) throw error;
 
-      const payload = { id_action_formation_effectif:id_effectif, attentes:attentes, json_reponses:reponses };
-      try {
-        const response = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-});
-
-if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText);
-}
-
-alertBox("success", "Merci ! Votre réponse a bien été enregistrée.");
-      } catch(e){
-        alertBox("error","Erreur : " + e.message);
+      if (data && data.length > 0) {
+        const p = data[0];
+        document.getElementById("participantInfo").textContent =
+          `${p.civilite} ${p.prenom} ${p.nom}`;
       }
+    } catch (error) {
+      alertBox("error", "Erreur de chargement du participant : " + error.message);
+    }
+  }
+
+  // -------------------- Chargement prérequis --------------------
+  async function chargerPrerequis(id_effectif) {
+    const { data, error } = await sb.rpc("rpc_get_prerequis_from_effectif", {
+      p_id_effectif: id_effectif,
+    });
+
+    if (error) {
+      alertBox("error", "Erreur de chargement des prérequis : " + error.message);
+      return;
     }
 
-    document.getElementById("submitBtn").addEventListener("click", e=>{
-      e.preventDefault();
-      soumettreFormulaire();
+    const cont = document.getElementById("listePrerequis");
+    cont.innerHTML = "";
+
+    data.forEach((pr) => {
+      const opts = [pr.r1, pr.r2, pr.r3].filter(Boolean);
+
+      const radios = opts
+        .map((r, idx) => {
+          const valeur = "r" + (idx + 1); // "r1" / "r2" / "r3"
+          return `<label>
+            <input type="radio" name="${pr.id_prerequis}" value="${valeur}"> ${r}
+          </label>`;
+        })
+        .join(" ");
+
+      cont.insertAdjacentHTML(
+        "beforeend",
+        `
+        <div class="prerequis-item">
+          <div><b>${pr.titre}</b></div>
+          <div class="reponses">${radios}</div>
+        </div>
+        `
+      );
+    });
+  }
+
+  // -------------------- Soumission formulaire --------------------
+  async function soumettreFormulaire() {
+    const id_effectif = getQueryParam("id");
+    if (!id_effectif) {
+      alertBox("error", "Lien invalide.");
+      return;
+    }
+
+    const attentes = document
+      .getElementById("attentes")
+      .value.trim()
+      .replace(/\n/g, "<br>");
+
+    const reponses = [];
+    document.querySelectorAll("input[type='radio']:checked").forEach((inp) => {
+      const id_prerequis = inp.name;
+      const reponse = inp.value; // "r1", "r2", "r3"
+      reponses.push({ id_prerequis, reponse });
     });
 
-    window.addEventListener("DOMContentLoaded", async ()=>{
-      const id = getQueryParam("id");
-      if (!id){ alertBox("error","Identifiant manquant."); return; }
-      chargerParticipant(id);
-      chargerPrerequis(id);
-    });
-  </script>
+    const payload = {
+      id_action_formation_effectif: id_effectif,
+      attentes: attentes,
+      json_reponses: reponses,
+    };
+
+    try {
+      const response = await fetch(`${API_BASE}/recueil_attentes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+      const body = contentType.includes("application/json")
+        ? await response.json()
+        : await response.text();
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          // cas géré côté API (doublon)
+          alertBox(
+            "error",
+            "Un recueil d'attentes a déjà été enregistré pour ce participant."
+          );
+          return;
+        }
+
+        const detail =
+          typeof body === "string"
+            ? body
+            : body.detail || JSON.stringify(body);
+        throw new Error(detail);
+      }
+
+      // OK
+      alertBox("success", "Merci ! Votre réponse a bien été enregistrée.");
+      document.getElementById("submitBtn").disabled = true;
+    } catch (e) {
+      alertBox("error", "Erreur : " + e.message);
+    }
+  }
+
+  // -------------------- Wiring évènements --------------------
+  document.getElementById("submitBtn").addEventListener("click", (e) => {
+    e.preventDefault();
+    soumettreFormulaire();
+  });
+
+  window.addEventListener("DOMContentLoaded", async () => {
+    const id = getQueryParam("id");
+    if (!id) {
+      alertBox("error", "Identifiant manquant.");
+      return;
+    }
+    chargerParticipant(id);
+    chargerPrerequis(id);
+  });
+</script>
+
 </body>
 </html>
