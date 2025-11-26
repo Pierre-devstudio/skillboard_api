@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Validation des acquis — Skillboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 24px; background:#fafafa; color:#222; }
+    h1 { margin: 0 0 16px; font-size: 22px; }
+
+    fieldset {
+      border:1px solid #ddd;
+      border-radius:8px;
+      padding:16px;
+      background:#fff;
+    }
+    legend { padding:0 8px; color:#555; }
+
+    .muted { color:#666; font-size:14px; }
+    .success {
+      background:#ecfdf5;
+      color:#065f46;
+      border:1px solid #a7f3d0;
+      padding:10px;
+      border-radius:8px;
+      margin-top:16px;
+    }
+    .error {
+      background:#fef2f2;
+      color:#991b1b;
+      border:1px solid #fecaca;
+      padding:10px;
+      border-radius:8px;
+      margin-top:16px;
+    }
+
+    button {
+      padding:10px 14px;
+      border:0;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:14px;
+    }
+    .btn { background:#0ea5e9; color:#fff; }
+    .btn.secondary { background:#e2e8f0; color:#111; }
+    .btn[disabled] { opacity:0.6; cursor:not-allowed; }
+
+    /* Liste des stagiaires */
+    .stagiaires-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:8px;
+    }
+    .stagiaires-header-title { font-weight:600; font-size:18px; }
+    .global-status { font-size:14px; color:#15803d; }
+
+    .stagiaires-grid {
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      margin:16px 0;
+    }
+    .stagiaire-card {
+      flex:1 1 220px;
+      min-width:220px;
+      min-height:90px;
+      padding:12px;
+      border-radius:10px;
+      background:#fff;
+      border:1px solid #e2e8f0;
+      cursor:pointer;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      transition:box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+    }
+    .stagiaire-card:hover {
+      box-shadow:0 4px 10px rgba(15,23,42,0.08);
+      transform:translateY(-1px);
+      border-color:#0ea5e9;
+    }
+    .stagiaire-card.done {
+      background:#ecfdf5;
+      border-color:#bbf7d0;
+    }
+    .stagiaire-card.absent {
+      background:#f8fafc;
+      border-color:#e5e7eb;
+      color:#94a3b8;
+      border-style:dashed;
+      cursor:default;
+    }
+    .stagiaire-card.absent:hover {
+      box-shadow:none;
+      transform:none;
+      border-color:#e5e7eb;
+    }
+    .stagiaire-name { font-weight:600; font-size:15px; }
+    .stagiaire-meta { font-size:12px; color:#64748b; margin-top:2px; }
+    .stagiaire-status {
+      margin-top:8px;
+      font-size:12px;
+      font-weight:500;
+    }
+    .stagiaire-status span.badge {
+      display:inline-flex;
+      align-items:center;
+      padding:2px 6px;
+      border-radius:999px;
+      font-size:11px;
+    }
+    .badge-evaluer { background:#fee2e2; color:#b91c1c; }
+    .badge-fait { background:#dcfce7; color:#166534; }
+    .badge-absent { background:#e5e7eb; color:#4b5563; }
+
+    /* Section validation */
+    .section {
+      margin-top:24px;
+    }
+    .hidden { display:none; }
+
+    .section-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    .section-title { font-size:18px; font-weight:600; }
+    .section-sub { font-size:13px; color:#6b7280; }
+
+    .stagiaire-detail {
+      font-size:14px;
+      margin-bottom:8px;
+    }
+
+    .comp-header {
+      margin-top:12px;
+      margin-bottom:10px;
+    }
+    .comp-header h2 {
+      margin:0 0 4px;
+      font-size:17px;
+    }
+    .comp-progress {
+      font-size:13px;
+      color:#6b7280;
+    }
+
+    .critere-block {
+      border-bottom:1px solid #f1f5f9;
+      padding:8px 0;
+    }
+    .critere-block:last-child { border-bottom:0; }
+    .critere-title {
+      font-weight:500;
+      font-size:14px;
+      margin-bottom:4px;
+    }
+    .critere-options {
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      font-size:13px;
+    }
+    .critere-options label {
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      cursor:pointer;
+    }
+
+    .slider-wrapper {
+      margin-top:14px;
+    }
+    .slider-label {
+      font-size:13px;
+      color:#444;
+      margin-bottom:4px;
+    }
+    .slider-wrapper input[type="range"] {
+      width:100%;
+    }
+
+    .actions {
+      display:flex;
+      gap:10px;
+      margin-top:16px;
+      flex-wrap:wrap;
+    }
+
+    textarea {
+      width:100%;
+      min-height:120px;
+      resize:vertical;
+      padding:8px;
+      border:1px solid #cbd5e1;
+      border-radius:6px;
+      background:#fff;
+      font-family:inherit;
+      font-size:14px;
+    }
+
+    .recap-block {
+      margin-top:8px;
+      padding:10px;
+      border-radius:8px;
+      background:#f9fafb;
+      border:1px solid #e5e7eb;
+    }
+    .recap-comp-title {
+      font-weight:600;
+      font-size:14px;
+      margin-bottom:4px;
+    }
+    .recap-crit-line {
+      font-size:13px;
+      margin-left:8px;
+      margin-bottom:2px;
+    }
+    .recap-level {
+      font-weight:500;
+    }
+
+    @media (max-width: 640px) {
+      body { margin: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <header style="margin-bottom:20px; text-align:center;">
+    <img src="/logo.png" alt="Logo" style="max-height:80px;">
+    <div id="formationTitle" style="margin-top:8px; font-weight:600; font-size:22px;"></div>
+    <div id="consultantInfo" style="margin-top:4px; font-size:13px; color:#6b7280;"></div>
+  </header>
+
+  <h1>Validation des acquis</h1>
+
+  <p class="muted" id="introText">
+    Cette interface permet au consultant de valider les compétences acquises par chaque stagiaire
+    au terme de la formation, lors des entretiens individuels.
+  </p>
+
+  <div id="alert"></div>
+
+  <!-- SECTION 1 : Liste des stagiaires -->
+  <section id="listeSection" class="section">
+    <div class="stagiaires-header">
+      <div class="stagiaires-header-title">Stagiaires de la session</div>
+      <div id="globalStatus" class="global-status"></div>
+    </div>
+    <div id="stagiairesContainer" class="stagiaires-grid"></div>
+  </section>
+
+  <!-- SECTION 2 : Validation d'un stagiaire -->
+  <section id="validationSection" class="section hidden">
+    <div class="section-header">
+      <div>
+        <div class="section-title">Validation des acquis du stagiaire</div>
+        <div class="section-sub" id="stagiaireHeaderSub"></div>
+      </div>
+      <div>
+        <button class="btn secondary" id="btnBackList">← Retour à la liste</button>
+      </div>
+    </div>
+
+    <div class="stagiaire-detail" id="stagiaireDetail"></div>
+
+    <fieldset id="competenceFieldset">
+      <legend id="competenceLegend">Compétences</legend>
+      <div id="competenceContainer"></div>
+    </fieldset>
+
+    <div id="validationActions" class="actions"></div>
+  </section>
+
+  <script>
+    // Backend unifié
+    const API_BASE = "https://skillboard-services.onrender.com";
+
+    // --- Helpers UI ---
+    function getQueryParam(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+
+    function alertBox(type, html) {
+      document.querySelector("#alert").innerHTML = html
+        ? `<div class="${type}">${html}</div>`
+        : "";
+    }
+
+    function formatDateFR(d) {
+      try {
+        return d.toLocaleDateString("fr-FR");
+      } catch {
+        return "";
+      }
+    }
+
+    // --- State ---
+    let currentActionId = null;
+    let currentContext = null;
+    let currentStagiaireData = null;
+    let currentCompetenceIndex = 0;
+    let answers = {}; // { id_comp: { code_critere: niveau } }
+
+    // --- Rendu liste stagiaires ---
+    function renderContext(ctx) {
+      currentContext = ctx;
+
+      document.getElementById("formationTitle").textContent = ctx.titre_formation || "";
+      if (ctx.consultant && (ctx.consultant.nom || ctx.consultant.prenom)) {
+        document.getElementById("consultantInfo").textContent =
+          `Consultant : ${ctx.consultant.prenom || ""} ${ctx.consultant.nom || ""}`.trim();
+      } else {
+        document.getElementById("consultantInfo").textContent = "";
+      }
+
+      const globalStatus = document.getElementById("globalStatus");
+      if (ctx.tous_stagiaires_evalues) {
+        globalStatus.textContent = "Vous avez validé les compétences de tous les stagiaires présents.";
+      } else {
+        globalStatus.textContent = "";
+      }
+
+      const cont = document.getElementById("stagiairesContainer");
+      cont.innerHTML = "";
+
+      if (!ctx.stagiaires || ctx.stagiaires.length === 0) {
+        cont.innerHTML = `<div class="muted">Aucun stagiaire trouvé pour cette action de formation.</div>`;
+        return;
+      }
+
+      ctx.stagiaires.forEach(s => {
+        const card = document.createElement("div");
+        card.className = "stagiaire-card";
+        if (!s.est_present) {
+          card.classList.add("absent");
+        } else if (s.est_evalue) {
+          card.classList.add("done");
+        }
+
+        const name = document.createElement("div");
+        name.className = "stagiaire-name";
+        name.textContent = `${s.prenom} ${s.nom}`;
+
+        const meta = document.createElement("div");
+        meta.className = "stagiaire-meta";
+        meta.textContent = s.entreprise ? s.entreprise : "";
+
+        const status = document.createElement("div");
+        status.className = "stagiaire-status";
+
+        const badge = document.createElement("span");
+        badge.classList.add("badge");
+
+        if (!s.est_present) {
+          badge.classList.add("badge-absent");
+          badge.textContent = "Absent";
+          status.appendChild(badge);
+        } else if (s.est_evalue) {
+          badge.classList.add("badge-fait");
+          badge.textContent = "Évalué";
+          status.appendChild(badge);
+        } else {
+          badge.classList.add("badge-evaluer");
+          badge.textContent = "À évaluer";
+          status.appendChild(badge);
+        }
+
+        card.appendChild(name);
+        card.appendChild(meta);
+        card.appendChild(status);
+
+        if (s.est_present) {
+          card.addEventListener("click", () => {
+            ouvrirStagiaire(s.id_action_formation_effectif);
+          });
+        }
+
+        cont.appendChild(card);
+      });
+    }
+
+    // --- Chargement contexte ---
+    async function chargerContexte(actionId) {
+      try {
+        alertBox("", "");
+        const resp = await fetch(`${API_BASE}/validation_acquis/context/${encodeURIComponent(actionId)}`);
+        const contentType = resp.headers.get("content-type") || "";
+        const body = contentType.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        renderContext(body);
+      } catch (err) {
+        alertBox("error", "Erreur de chargement du contexte : " + err.message);
+      }
+    }
+
+    // --- Ouverture d'un stagiaire ---
+    async function ouvrirStagiaire(id_afe) {
+      try {
+        alertBox("", "");
+        const resp = await fetch(`${API_BASE}/validation_acquis/stagiaire/${encodeURIComponent(id_afe)}`);
+        const contentType = resp.headers.get("content-type") || "";
+        const body = contentType.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        currentStagiaireData = body;
+        currentCompetenceIndex = 0;
+        answers = {};
+
+        // Pré-remplir answers si une évaluation existe déjà
+        if (body.competences && body.competences.length > 0) {
+          body.competences.forEach(comp => {
+            if (!comp.criteres) return;
+            comp.criteres.forEach(crit => {
+              if (crit.niveau_selectionne != null) {
+                if (!answers[comp.id_comp]) {
+                  answers[comp.id_comp] = {};
+                }
+                answers[comp.id_comp][crit.code_critere] = crit.niveau_selectionne;
+              }
+            });
+          });
+        }
+
+        // Affichage header stagiaire
+        const stagiaireHeaderSub = document.getElementById("stagiaireHeaderSub");
+        const todayStr = formatDateFR(new Date());
+        stagiaireHeaderSub.textContent = `Entretien de validation des acquis — ${todayStr}`;
+
+        const detail = document.getElementById("stagiaireDetail");
+        const nomComplet = `${body.civilite ? body.civilite + " " : ""}${body.prenom} ${body.nom}`;
+        detail.textContent = `${nomComplet} — ${body.entreprise ? body.entreprise + " — " : ""}${body.titre_formation}`;
+
+        // Bascule sections
+        document.getElementById("listeSection").classList.add("hidden");
+        document.getElementById("validationSection").classList.remove("hidden");
+
+        renderCompetenceStep();
+      } catch (err) {
+        alertBox("error", "Erreur de chargement du stagiaire : " + err.message);
+      }
+    }
+
+    // --- Rendu d'une étape de compétence ou du récap ---
+    function renderCompetenceStep() {
+      const cont = document.getElementById("competenceContainer");
+      const actionsDiv = document.getElementById("validationActions");
+      cont.innerHTML = "";
+      actionsDiv.innerHTML = "";
+
+      const data = currentStagiaireData;
+      if (!data || !data.competences || data.competences.length === 0) {
+        cont.innerHTML = `<div class="muted">Aucune compétence à évaluer pour ce stagiaire.</div>`;
+        return;
+      }
+
+      const total = data.competences.length;
+
+      if (currentCompetenceIndex >= total) {
+        renderRecap();
+        return;
+      }
+
+      const comp = data.competences[currentCompetenceIndex];
+
+      const headerDiv = document.createElement("div");
+      headerDiv.className = "comp-header";
+      const h2 = document.createElement("h2");
+      h2.textContent = `Compétence ${currentCompetenceIndex + 1} / ${total}`;
+      const p = document.createElement("div");
+      p.className = "comp-progress";
+      p.textContent = comp.titre_competence;
+      headerDiv.appendChild(h2);
+      headerDiv.appendChild(p);
+      cont.appendChild(headerDiv);
+
+      // Critères
+      if (!comp.criteres || comp.criteres.length === 0) {
+        cont.insertAdjacentHTML(
+          "beforeend",
+          `<div class="muted">Aucun critère défini pour cette compétence.</div>`
+        );
+      } else {
+        comp.criteres.forEach(crit => {
+          const critDiv = document.createElement("div");
+          critDiv.className = "critere-block";
+
+          const title = document.createElement("div");
+          title.className = "critere-title";
+          title.textContent = crit.nom_critere;
+          critDiv.appendChild(title);
+
+          const optsDiv = document.createElement("div");
+          optsDiv.className = "critere-options";
+
+          const baseName = `crit_${comp.id_comp}_${crit.code_critere}`;
+          const niveaux = crit.niveaux || [];
+          const savedNiveau =
+            answers[comp.id_comp] && answers[comp.id_comp][crit.code_critere]
+              ? answers[comp.id_comp][crit.code_critere]
+              : crit.niveau_selectionne || null;
+
+          niveaux.forEach((libelle, idx) => {
+            const niveauValue = idx + 1; // 1..4
+            const idRadio = `${baseName}_${niveauValue}`;
+
+            const label = document.createElement("label");
+            const radio = document.createElement("input");
+            radio.type = "radio";
+            radio.name = baseName;
+            radio.value = String(niveauValue);
+            radio.id = idRadio;
+
+            if (savedNiveau === niveauValue) {
+              radio.checked = true;
+            }
+
+            const span = document.createElement("span");
+            span.textContent = libelle || `Niveau ${niveauValue}`;
+
+            label.appendChild(radio);
+            label.appendChild(span);
+            optsDiv.appendChild(label);
+          });
+
+          critDiv.appendChild(optsDiv);
+          cont.appendChild(critDiv);
+        });
+      }
+
+      // Slider + bouton
+      const sliderWrap = document.createElement("div");
+      sliderWrap.className = "slider-wrapper";
+      sliderWrap.innerHTML = `
+        <div class="slider-label">
+          Faites glisser le curseur à droite pour valider cette compétence une fois tous les critères notés.
+        </div>
+        <input type="range" id="compSlider" min="0" max="100" value="0">
+      `;
+      cont.appendChild(sliderWrap);
+
+      const btnValider = document.createElement("button");
+      btnValider.className = "btn";
+      btnValider.id = "btnValiderCompetence";
+      btnValider.disabled = true;
+      btnValider.textContent =
+        currentCompetenceIndex === total - 1 ? "Passer au récapitulatif" : "Valider cette compétence";
+
+      actionsDiv.appendChild(btnValider);
+
+      // Events
+      function isCompetenceComplete() {
+        if (!comp.criteres || comp.criteres.length === 0) return false;
+        for (const crit of comp.criteres) {
+          const baseName = `crit_${comp.id_comp}_${crit.code_critere}`;
+          const checked = document.querySelector(`input[name="${baseName}"]:checked`);
+          if (!checked) return false;
+        }
+        const sliderVal = parseInt(document.getElementById("compSlider").value || "0", 10);
+        return sliderVal >= 100;
+      }
+
+      function refreshButtonState() {
+        btnValider.disabled = !isCompetenceComplete();
+      }
+
+      document.querySelectorAll(`#competenceContainer input[type="radio"]`).forEach(r => {
+        r.addEventListener("change", refreshButtonState);
+      });
+
+      document.getElementById("compSlider").addEventListener("input", refreshButtonState);
+
+      btnValider.addEventListener("click", () => {
+        // Sauvegarde des réponses pour cette compétence
+        if (!answers[comp.id_comp]) {
+          answers[comp.id_comp] = {};
+        }
+        comp.criteres.forEach(crit => {
+          const baseName = `crit_${comp.id_comp}_${crit.code_critere}`;
+          const checked = document.querySelector(`input[name="${baseName}"]:checked`);
+          if (checked) {
+            answers[comp.id_comp][crit.code_critere] = parseInt(checked.value, 10);
+          }
+        });
+
+        currentCompetenceIndex += 1;
+        renderCompetenceStep();
+      });
+    }
+
+    // --- Rendu récapitulatif + envoi ---
+    function renderRecap() {
+      const cont = document.getElementById("competenceContainer");
+      const actionsDiv = document.getElementById("validationActions");
+      cont.innerHTML = "";
+      actionsDiv.innerHTML = "";
+
+      const data = currentStagiaireData;
+      if (!data || !data.competences) return;
+
+      const titleDiv = document.createElement("div");
+      titleDiv.className = "comp-header";
+      const h2 = document.createElement("h2");
+      h2.textContent = "Récapitulatif des niveaux par compétence";
+      const p = document.createElement("div");
+      p.className = "comp-progress";
+      p.textContent = "Merci de vérifier les évaluations avant validation finale.";
+      titleDiv.appendChild(h2);
+      titleDiv.appendChild(p);
+      cont.appendChild(titleDiv);
+
+      data.competences.forEach(comp => {
+        const compBlock = document.createElement("div");
+        compBlock.className = "recap-block";
+
+        const compTitle = document.createElement("div");
+        compTitle.className = "recap-comp-title";
+        compTitle.textContent = comp.titre_competence;
+        compBlock.appendChild(compTitle);
+
+        if (comp.criteres && comp.criteres.length > 0) {
+          comp.criteres.forEach(crit => {
+            const line = document.createElement("div");
+            line.className = "recap-crit-line";
+
+            const niveauChoisi =
+              answers[comp.id_comp] && answers[comp.id_comp][crit.code_critere]
+                ? answers[comp.id_comp][crit.code_critere]
+                : null;
+
+            let libelle = "";
+            if (niveauChoisi != null && crit.niveaux && crit.niveaux.length >= niveauChoisi) {
+              libelle = crit.niveaux[niveauChoisi - 1] || "";
+            }
+
+            line.innerHTML = `
+              <span>${crit.nom_critere} :</span>
+              <span class="recap-level"> niveau ${niveauChoisi != null ? niveauChoisi : "–"}</span>
+              ${libelle ? " — " + libelle : ""}
+            `;
+            compBlock.appendChild(line);
+          });
+        }
+
+        cont.appendChild(compBlock);
+      });
+
+      // Commentaire consultant
+      const commentLabel = document.createElement("div");
+      commentLabel.style.marginTop = "16px";
+      commentLabel.style.marginBottom = "4px";
+      commentLabel.style.fontSize = "14px";
+      commentLabel.style.fontWeight = "500";
+      commentLabel.textContent = "Commentaire du consultant (facultatif)";
+
+      const commentArea = document.createElement("textarea");
+      commentArea.id = "commentaireConsultant";
+      if (currentStagiaireData.commentaire_consultant) {
+        // si stocké avec des <br>, on les remplace grossièrement par des retours à la ligne
+        commentArea.value = currentStagiaireData.commentaire_consultant.replace(/<br\s*\/?>/gi, "\n");
+      }
+
+      cont.appendChild(commentLabel);
+      cont.appendChild(commentArea);
+
+      // Slider final + bouton
+      const sliderWrap = document.createElement("div");
+      sliderWrap.className = "slider-wrapper";
+      sliderWrap.style.marginTop = "12px";
+      sliderWrap.innerHTML = `
+        <div class="slider-label">
+          Faites glisser le curseur à droite pour confirmer l'ensemble de l'évaluation de ce stagiaire.
+        </div>
+        <input type="range" id="finalSlider" min="0" max="100" value="0">
+      `;
+      cont.appendChild(sliderWrap);
+
+      const btnSubmit = document.createElement("button");
+      btnSubmit.className = "btn";
+      btnSubmit.id = "btnSubmitEvaluation";
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = "Valider et enregistrer cette évaluation";
+      actionsDiv.appendChild(btnSubmit);
+
+      function refreshSubmitState() {
+        const val = parseInt(document.getElementById("finalSlider").value || "0", 10);
+        btnSubmit.disabled = val < 100;
+      }
+
+      document.getElementById("finalSlider").addEventListener("input", refreshSubmitState);
+
+      btnSubmit.addEventListener("click", () => {
+        soumettreEvaluation();
+      });
+    }
+
+    // --- POST vers l'API ---
+    async function soumettreEvaluation() {
+      const data = currentStagiaireData;
+      if (!data) return;
+
+      // Construire payload
+      const payload = {
+        id_action_formation_effectif: data.id_action_formation_effectif,
+        commentaire_consultant: (document.getElementById("commentaireConsultant").value || "").trim(),
+        competences: []
+      };
+
+      (data.competences || []).forEach(comp => {
+        const critMap = answers[comp.id_comp] || {};
+        const criteresPayload = [];
+
+        (comp.criteres || []).forEach(crit => {
+          const niv = critMap[crit.code_critere];
+          if (niv != null) {
+            criteresPayload.push({
+              code_critere: crit.code_critere,
+              niveau: niv
+            });
+          }
+        });
+
+        if (criteresPayload.length > 0) {
+          payload.competences.push({
+            id_comp: comp.id_comp,
+            criteres: criteresPayload
+          });
+        }
+      });
+
+      if (!payload.competences.length) {
+        alertBox("error", "Aucun critère n'a été évalué. Impossible d'enregistrer.");
+        return;
+      }
+
+      try {
+        const resp = await fetch(`${API_BASE}/validation_acquis/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const contentType = resp.headers.get("content-type") || "";
+        const body = contentType.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        alertBox("success", "L'évaluation de ce stagiaire a bien été enregistrée.");
+        // Retour à la liste + rechargement du contexte pour mettre à jour les statuts
+        document.getElementById("validationSection").classList.add("hidden");
+        document.getElementById("listeSection").classList.remove("hidden");
+        currentStagiaireData = null;
+        if (currentActionId) {
+          chargerContexte(currentActionId);
+        }
+      } catch (err) {
+        alertBox("error", "Erreur lors de l'enregistrement : " + err.message);
+      }
+    }
+
+    // --- Wiring événements globaux ---
+    document.getElementById("btnBackList").addEventListener("click", () => {
+      document.getElementById("validationSection").classList.add("hidden");
+      document.getElementById("listeSection").classList.remove("hidden");
+      currentStagiaireData = null;
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const id = getQueryParam("id_action_formation");
+      if (!id) {
+        alertBox("error", "Identifiant d'action de formation manquant dans l'URL.");
+        return;
+      }
+      currentActionId = id;
+      chargerContexte(id);
+    });
+  </script>
+</body>
+</html>
