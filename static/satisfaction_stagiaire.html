@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Satisfaction stagiaire — Skillboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 24px; background:#fafafa; color:#111827; }
+    h1 { margin: 0 0 16px; font-size: 22px; }
+    h2 { margin: 0 0 8px; font-size: 18px; }
+
+    fieldset {
+      border:1px solid #e5e7eb;
+      border-radius:8px;
+      padding:16px;
+      background:#ffffff;
+    }
+    legend { padding:0 8px; color:#4b5563; font-size:13px; }
+
+    .muted { color:#6b7280; font-size:14px; }
+    .small { font-size:13px; color:#6b7280; }
+
+    .success {
+      background:#ecfdf5;
+      color:#065f46;
+      border:1px solid #a7f3d0;
+      padding:10px;
+      border-radius:8px;
+      margin-top:16px;
+    }
+    .error {
+      background:#fef2f2;
+      color:#991b1b;
+      border:1px solid #fecaca;
+      padding:10px;
+      border-radius:8px;
+      margin-top:16px;
+    }
+
+    button {
+      padding:10px 14px;
+      border:0;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:14px;
+    }
+    .btn { background:#0ea5e9; color:#fff; }
+    .btn.secondary { background:#e5e7f0; color:#111827; }
+    .btn[disabled] { opacity:0.6; cursor:not-allowed; }
+
+    .actions {
+      display:flex;
+      gap:10px;
+      margin-top:16px;
+      flex-wrap:wrap;
+    }
+
+    .hidden { display:none; }
+
+    .section {
+      margin-top:20px;
+    }
+
+    .question-block {
+      margin-bottom:16px;
+    }
+    .question-label {
+      font-size:14px;
+      font-weight:500;
+      margin-bottom:4px;
+      color:#111827;
+    }
+    .question-help {
+      font-size:12px;
+      color:#6b7280;
+      margin-bottom:4px;
+    }
+
+    .slider-row {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      max-width:420px;
+    }
+    .slider-row input[type="range"] {
+      width:100%;
+    }
+    .slider-value {
+      font-size:13px;
+      color:#475569;
+      min-width:56px;
+      text-align:right;
+    }
+
+    .textarea-block textarea {
+      width:100%;
+      min-height:100px;
+      resize:vertical;
+      padding:8px;
+      border-radius:6px;
+      border:1px solid #cbd5e1;
+      font-family:inherit;
+      font-size:14px;
+      background:#fff;
+    }
+
+    .radio-row {
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-top:4px;
+      font-size:14px;
+    }
+    .radio-row label {
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      cursor:pointer;
+    }
+
+    .recap-block {
+      margin-top:12px;
+      padding:12px;
+      border-radius:8px;
+      background:#f9fafb;
+      border:1px solid #e5e7eb;
+    }
+    .recap-block-title {
+      font-weight:600;
+      font-size:14px;
+      margin-bottom:6px;
+    }
+    .recap-line {
+      font-size:13px;
+      margin-bottom:4px;
+    }
+    .recap-line strong {
+      font-weight:600;
+    }
+    .recap-crit-name {
+      font-weight:500;
+      margin-bottom:2px;
+    }
+    .recap-crit-detail {
+      font-size:13px;
+      color:#4b5563;
+      margin-bottom:4px;
+    }
+
+    footer {
+      margin-top:28px;
+      padding-top:12px;
+      border-top:1px solid #e5e7eb;
+      font-size:12px;
+      color:#6b7280;
+      text-align:center;
+    }
+
+    @media (max-width: 640px) {
+      body { margin:16px; }
+      .slider-row { max-width:100%; }
+      .recap-crit-name { font-size:13px; }
+      .recap-crit-detail { font-size:12px; line-height:1.4; }
+    }
+  </style>
+</head>
+<body>
+  <header style="margin-bottom:20px; text-align:center;">
+    <img src="/logo.png" alt="Logo" style="max-height:80px;">
+    <div id="formationTitle" style="margin-top:8px; font-weight:600; font-size:20px;"></div>
+    <div id="stagiaireInfo" style="margin-top:4px; font-size:13px; color:#6b7280;"></div>
+  </header>
+
+  <div id="alert"></div>
+
+  <!-- STEP 0 : INTRO -->
+  <section id="stepIntro" class="section">
+    <h1>Questionnaire de satisfaction stagiaire</h1>
+    <p id="introText" class="muted">
+      Chargement des informations de la formation...
+    </p>
+    <div id="bannerDejaRepondu" class="small" style="margin-top:8px; color:#b45309;"></div>
+    <div class="actions" style="margin-top:20px;">
+      <button class="btn" id="btnStart" disabled>Commencer</button>
+    </div>
+  </section>
+
+  <!-- STEP 1 : PREPARATION -->
+  <section id="stepPreparation" class="section hidden">
+    <h1>Préparation de la formation</h1>
+    <p class="muted">Comment jugez-vous la préparation de votre formation ?</p>
+
+    <fieldset>
+      <legend>Préparation</legend>
+
+      <div class="question-block">
+        <div class="question-label">
+          Nous avons su écouter et comprendre vos attentes.
+        </div>
+        <div class="question-help">1 = pas du tout d'accord, 10 = tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="prep_q1" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="prep_q1">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          Vous avez reçu suffisamment d'informations sur la formation avant le début de celle-ci.
+        </div>
+        <div class="question-help">1 = pas du tout d'accord, 10 = tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="prep_q2" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="prep_q2">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          Vous connaissiez les objectifs de cette formation avant le début de celle-ci.
+        </div>
+        <div class="question-help">1 = pas du tout d'accord, 10 = tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="prep_q3" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="prep_q3">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block textarea-block">
+        <div class="question-label">Commentaires concernant la préparation (facultatif)</div>
+        <textarea id="prep_comment" placeholder="Vous pouvez détailler ici vos remarques sur la préparation de la formation."></textarea>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn" id="btnPrepNext">Continuer</button>
+    </div>
+  </section>
+
+  <!-- STEP 2 : ORGANISATION -->
+  <section id="stepOrganisation" class="section hidden">
+    <h1>Organisation de la formation</h1>
+    <p class="muted">Comment jugez-vous l'organisation générale de la formation ?</p>
+
+    <fieldset>
+      <legend>Organisation</legend>
+
+      <div class="question-block">
+        <div class="question-label">
+          Les conditions matérielles de la formation étaient adéquates.
+        </div>
+        <div class="question-help">1 = pas du tout d'accord, 10 = tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="org_q1" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="org_q1">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          L'accueil en formation était convivial et vous a permis de commencer la session dans de bonnes conditions.
+        </div>
+        <div class="question-help">1 = pas du tout d'accord, 10 = tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="org_q2" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="org_q2">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          Vous avez reçu suffisamment d'informations concernant le déroulement de la formation (horaires, règlement intérieur, ...).
+        </div>
+        <div class="question-help">1 = pas du tout d'accord, 10 = tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="org_q3" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="org_q3">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          La composition du groupe de formation était adaptée (taille du groupe, niveau des participants, ...).
+        </div>
+        <div class="question-help">1 = pas du tout d'accord, 10 = tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="org_q4" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="org_q4">– / 10</span>
+        </div>
+      </div>
+
+      <div classclass="question-block">
+        <div class="question-label">
+          La durée de la formation était adaptée.
+        </div>
+        <div class="question-help">1 = pas du tout d'accord, 10 = tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="org_q5" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="org_q5">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block textarea-block">
+        <div class="question-label">Commentaires concernant l'organisation (facultatif)</div>
+        <textarea id="org_comment" placeholder="Vous pouvez détailler ici vos remarques sur l'organisation de la formation."></textarea>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn" id="btnOrgNext">Continuer</button>
+    </div>
+  </section>
+
+  <!-- STEP 3 : CONTENU & ANIMATION -->
+  <section id="stepContenu" class="section hidden">
+    <h1>Contenu et animation</h1>
+    <p class="muted">Comment jugez-vous le contenu de la formation et les techniques pédagogiques employées ?</p>
+
+    <fieldset>
+      <legend>Contenu & animation</legend>
+
+      <div class="question-block">
+        <div class="question-label">
+          Le contenu de la formation était suffisant pour progresser.
+        </div>
+        <div class="question-help">1 = pas du tout d'accord, 10 = tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="cont_q1" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="cont_q1">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          Le formateur semblait techniquement compétent.
+        </div>
+        <div class="question-help">1 = pas du tout d'accord, 10 = tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="cont_q2" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="cont_q2">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          Le formateur s'est adapté à vos attentes.
+        </div>
+        <div class="question-help">1 = pas du tout d'accord, 10 = tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="cont_q3" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="cont_q3">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          Le formateur était dynamique et à l'écoute.
+        </div>
+        <div class="question-help">1 = pas du tout d'accord, 10 = tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="cont_q4" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="cont_q4">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block textarea-block">
+        <div class="question-label">Commentaires concernant le contenu de la formation (facultatif)</div>
+        <textarea id="cont_comment" placeholder="Vous pouvez détailler ici vos remarques sur le contenu et l'animation de la formation."></textarea>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn" id="btnContNext">Continuer</button>
+    </div>
+  </section>
+
+  <!-- STEP 4 : OBJECTIFS -->
+  <section id="stepObjectifs" class="section hidden">
+    <h1>Atteinte des objectifs</h1>
+    <p class="muted">
+      Comment jugez-vous le niveau d'atteinte des objectifs de la formation ?
+      Pour chaque compétence visée, indiquez votre niveau de satisfaction.
+    </p>
+
+    <fieldset>
+      <legend>Objectifs de la formation</legend>
+      <div id="objectifsContainer"></div>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn" id="btnObjNext">Continuer</button>
+    </div>
+  </section>
+
+  <!-- STEP 5 : COMMENTAIRES / RECLAMATIONS -->
+  <section id="stepCommentaires" class="section hidden">
+    <h1>Commentaires, suggestions, réclamations</h1>
+
+    <fieldset>
+      <legend>Commentaires & réclamations</legend>
+
+      <div class="question-block textarea-block">
+        <div class="question-label">
+          Quelles suggestions aimeriez-vous nous faire ? (facultatif)
+        </div>
+        <textarea id="comm_suggestion" placeholder="Vos idées pour améliorer nos formations, contenus, modalités, etc."></textarea>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          Recommanderiez-vous cette formation à des collègues ou confrères ?
+        </div>
+        <div class="radio-row">
+          <label><input type="radio" name="recommande" value="oui"> Oui</label>
+          <label><input type="radio" name="recommande" value="non"> Non</label>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          Avez-vous des réclamations à porter à cette formation ?
+        </div>
+        <div class="radio-row">
+          <label><input type="radio" name="reclamation" value="oui"> Oui</label>
+          <label><input type="radio" name="reclamation" value="non"> Non</label>
+        </div>
+      </div>
+
+      <div id="reclamationDetails" class="hidden">
+        <div class="question-block">
+          <div class="question-label">Cette réclamation concerne :</div>
+          <select id="reclamation_objet" style="padding:6px 8px; border-radius:6px; border:1px solid #cbd5e1; font-size:14px;">
+            <option value="">Veuillez sélectionner</option>
+            <option value="preparation">La préparation de la formation</option>
+            <option value="organisation">L'organisation de la formation</option>
+            <option value="contenu">Le contenu de la formation</option>
+            <option value="objectifs">Les objectifs visés</option>
+            <option value="organisme">L'organisme de formation</option>
+            <option value="formateur">Le formateur</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+
+        <div class="question-block textarea-block">
+          <div class="question-label">Merci de préciser votre réclamation</div>
+          <textarea id="reclamation_texte" placeholder="Décrivez précisément votre réclamation."></textarea>
+        </div>
+      </div>
+
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn" id="btnCommNext">Continuer</button>
+    </div>
+  </section>
+
+  <!-- STEP 6 : RECAP -->
+  <section id="stepRecap" class="section hidden">
+    <h1>Récapitulatif de vos réponses</h1>
+    <p class="muted">
+      Merci de vérifier vos réponses avant de les envoyer. Vous pouvez revenir en arrière avec votre navigateur si nécessaire.
+    </p>
+
+    <div id="recapContainer"></div>
+
+    <div style="margin-top:16px;">
+      <div class="small" style="margin-bottom:4px;">
+        Faites glisser le curseur à droite pour confirmer l'envoi définitif de vos réponses.
+      </div>
+      <div class="slider-row">
+        <input type="range" id="confirmSlider" min="0" max="100" step="10" value="0">
+        <span class="slider-value" data-for="confirmSlider">0 %</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="btnSend" disabled>Envoyer vos réponses</button>
+    </div>
+  </section>
+
+  <!-- STEP 7 : FINAL -->
+  <section id="stepFinal" class="section hidden">
+    <h1>Merci pour votre participation</h1>
+    <p class="muted">
+      Votre questionnaire de satisfaction a bien été enregistré.  
+      Merci d'avoir pris le temps de nous transmettre votre avis.
+    </p>
+    <p class="muted">
+      Pour en savoir plus sur nos accompagnements, vous pouvez visiter notre site :
+      <a href="https://www.jmbconsultant.fr" target="_blank" rel="noopener noreferrer">www.jmbconsultant.fr</a>.
+    </p>
+  </section>
+
+  <footer>
+    Outil de recueil de satisfaction développé avec Skillboard par JMB CONSULTANT.
+  </footer>
+
+  <script>
+    const API_BASE = "https://skillboard-services.onrender.com";
+
+    const answers = {
+      id_action_formation_effectif: null,
+      preparation: { q1: null, q2: null, q3: null, commentaire: "" },
+      organisation: { q1: null, q2: null, q3: null, q4: null, q5: null, commentaire: "" },
+      contenu: { q1: null, q2: null, q3: null, q4: null, commentaire: "" },
+      objectifs: { objectifs: [] },
+      commentaires: {
+        suggestion: "",
+        recommande: null,
+        reclamation: null,
+        reclamation_objet: null,
+        reclamation_texte: ""
+      },
+      context: null
+    };
+
+    function getQueryParam(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+
+    function alertBox(type, html) {
+      const container = document.getElementById("alert");
+      if (!html) {
+        container.innerHTML = "";
+        return;
+      }
+      container.innerHTML = `<div class="${type}">${html}</div>`;
+    }
+
+    function updateSliderLabel(slider) {
+      const id = slider.id;
+      const value = parseInt(slider.value || "0", 10);
+      const label = document.querySelector(`.slider-value[data-for="${id}"]`);
+      if (!label) return;
+      if (id === "confirmSlider") {
+        label.textContent = `${value} %`;
+        return;
+      }
+      if (value === 0) {
+        label.textContent = "– / 10";
+      } else {
+        label.textContent = `${value} / 10`;
+      }
+    }
+
+    function initSliders() {
+      document.querySelectorAll('input[type="range"]').forEach(slider => {
+        updateSliderLabel(slider);
+        slider.addEventListener("input", () => {
+          updateSliderLabel(slider);
+          if (slider.id === "confirmSlider") {
+            const btnSend = document.getElementById("btnSend");
+            const v = parseInt(slider.value || "0", 10);
+            btnSend.disabled = v < 100;
+          }
+        });
+      });
+    }
+
+    async function loadContext(id_afe) {
+      try {
+        alertBox("", "");
+        const resp = await fetch(`${API_BASE}/satisfaction_stagiaire/context/${encodeURIComponent(id_afe)}`);
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        answers.id_action_formation_effectif = body.id_action_formation_effectif;
+        answers.context = body;
+
+        const titre = (body.code_formation ? body.code_formation + " - " : "") + body.titre_formation;
+        document.getElementById("formationTitle").textContent = titre;
+
+        const nomComplet = `${body.civilite ? body.civilite + " " : ""}${body.prenom} ${body.nom}`;
+        const ent = body.entreprise ? " — " + body.entreprise : "";
+        document.getElementById("stagiaireInfo").textContent = nomComplet + ent;
+
+        const intro = document.getElementById("introText");
+        intro.innerHTML =
+          `${nomComplet}, vous avez récemment participé à la formation <strong>${titre}</strong>.<br>` +
+          `Nous vous remercions de prendre quelques instants (environ 5 minutes) pour répondre à ce questionnaire de satisfaction.`;
+
+        const banner = document.getElementById("bannerDejaRepondu");
+        if (body.deja_repondu) {
+          banner.textContent =
+            "Une réponse a déjà été enregistrée pour ce questionnaire. Une nouvelle validation mettra à jour vos réponses précédentes.";
+        } else {
+          banner.textContent = "";
+        }
+
+        // Générer la liste des objectifs (compétences)
+        const cont = document.getElementById("objectifsContainer");
+        cont.innerHTML = "";
+        if (body.objectifs && body.objectifs.length > 0) {
+          body.objectifs.forEach((o, index) => {
+            const qId = `obj_${index}`;
+            const div = document.createElement("div");
+            div.className = "question-block";
+
+            const label = document.createElement("div");
+            label.className = "question-label";
+            label.textContent = o.intitule || "Objectif de formation";
+            div.appendChild(label);
+
+            const help = document.createElement("div");
+            help.className = "question-help";
+            help.textContent = "1 = objectif non atteint, 10 = objectif totalement atteint";
+            div.appendChild(help);
+
+            const sliderRow = document.createElement("div");
+            sliderRow.className = "slider-row";
+
+            const slider = document.createElement("input");
+            slider.type = "range";
+            slider.id = qId;
+            slider.min = "0";
+            slider.max = "10";
+            slider.step = "1";
+            slider.value = "0";
+            slider.dataset.idComp = o.id_comp;
+            slider.dataset.intitule = o.intitule || "";
+
+            const valSpan = document.createElement("span");
+            valSpan.className = "slider-value";
+            valSpan.setAttribute("data-for", qId);
+            valSpan.textContent = "– / 10";
+
+            sliderRow.appendChild(slider);
+            sliderRow.appendChild(valSpan);
+            div.appendChild(sliderRow);
+
+            cont.appendChild(div);
+          });
+        } else {
+          cont.innerHTML = `<div class="muted">Aucun objectif spécifique n'a été renseigné pour cette formation.</div>`;
+        }
+
+        initSliders();
+        document.getElementById("btnStart").disabled = false;
+
+      } catch (err) {
+        alertBox("error", "Erreur de chargement des informations : " + err.message);
+      }
+    }
+
+    function showStep(stepId) {
+      [
+        "stepIntro",
+        "stepPreparation",
+        "stepOrganisation",
+        "stepContenu",
+        "stepObjectifs",
+        "stepCommentaires",
+        "stepRecap",
+        "stepFinal"
+      ].forEach(id => {
+        const s = document.getElementById(id);
+        if (!s) return;
+        if (id === stepId) s.classList.remove("hidden");
+        else s.classList.add("hidden");
+      });
+      alertBox("", "");
+    }
+
+    function validatePreparation() {
+      const q1 = parseInt(document.getElementById("prep_q1").value || "0", 10);
+      const q2 = parseInt(document.getElementById("prep_q2").value || "0", 10);
+      const q3 = parseInt(document.getElementById("prep_q3").value || "0", 10);
+
+      if (q1 < 1 || q2 < 1 || q3 < 1) {
+        alertBox("error", "Merci de renseigner toutes les notes de la section Préparation (de 1 à 10).");
+        return false;
+      }
+
+      answers.preparation.q1 = q1;
+      answers.preparation.q2 = q2;
+      answers.preparation.q3 = q3;
+      answers.preparation.commentaire = (document.getElementById("prep_comment").value || "").trim();
+      return true;
+    }
+
+    function validateOrganisation() {
+      const q1 = parseInt(document.getElementById("org_q1").value || "0", 10);
+      const q2 = parseInt(document.getElementById("org_q2").value || "0", 10);
+      const q3 = parseInt(document.getElementById("org_q3").value || "0", 10);
+      const q4 = parseInt(document.getElementById("org_q4").value || "0", 10);
+      const q5 = parseInt(document.getElementById("org_q5").value || "0", 10);
+
+      if (q1 < 1 || q2 < 1 || q3 < 1 || q4 < 1 || q5 < 1) {
+        alertBox("error", "Merci de renseigner toutes les notes de la section Organisation (de 1 à 10).");
+        return false;
+      }
+
+      answers.organisation.q1 = q1;
+      answers.organisation.q2 = q2;
+      answers.organisation.q3 = q3;
+      answers.organisation.q4 = q4;
+      answers.organisation.q5 = q5;
+      answers.organisation.commentaire = (document.getElementById("org_comment").value || "").trim();
+      return true;
+    }
+
+    function validateContenu() {
+      const q1 = parseInt(document.getElementById("cont_q1").value || "0", 10);
+      const q2 = parseInt(document.getElementById("cont_q2").value || "0", 10);
+      const q3 = parseInt(document.getElementById("cont_q3").value || "0", 10);
+      const q4 = parseInt(document.getElementById("cont_q4").value || "0", 10);
+
+      if (q1 < 1 || q2 < 1 || q3 < 1 || q4 < 1) {
+        alertBox("error", "Merci de renseigner toutes les notes de la section Contenu & animation (de 1 à 10).");
+        return false;
+      }
+
+      answers.contenu.q1 = q1;
+      answers.contenu.q2 = q2;
+      answers.contenu.q3 = q3;
+      answers.contenu.q4 = q4;
+      answers.contenu.commentaire = (document.getElementById("cont_comment").value || "").trim();
+      return true;
+    }
+
+    function validateObjectifs() {
+      const sliders = Array.from(document.querySelectorAll('#objectifsContainer input[type="range"]'));
+      const objectifs = [];
+
+      if (sliders.length === 0) {
+        // Pas d'objectifs définis => on laisse vide
+        answers.objectifs.objectifs = [];
+        return true;
+      }
+
+      for (const s of sliders) {
+        const note = parseInt(s.value || "0", 10);
+        if (note < 1) {
+          alertBox("error", "Merci de renseigner toutes les notes d'atteinte des objectifs (de 1 à 10).");
+          return false;
+        }
+        objectifs.push({
+          id_comp: s.dataset.idComp || "",
+          intitule: s.dataset.intitule || "",
+          note: note
+        });
+      }
+
+      answers.objectifs.objectifs = objectifs;
+      return true;
+    }
+
+    function validateCommentaires() {
+      const suggestion = (document.getElementById("comm_suggestion").value || "").trim();
+      const recommande = document.querySelector('input[name="recommande"]:checked');
+      const reclamation = document.querySelector('input[name="reclamation"]:checked');
+
+      if (!recommande) {
+        alertBox("error", "Merci d'indiquer si vous recommanderiez cette formation.");
+        return false;
+      }
+      if (!reclamation) {
+        alertBox("error", "Merci d'indiquer si vous avez une réclamation.");
+        return false;
+      }
+
+      const reclamationValue = reclamation.value;
+      let reclamation_objet = null;
+      let reclamation_texte = null;
+
+      if (reclamationValue === "oui") {
+        reclamation_objet = document.getElementById("reclamation_objet").value || "";
+        reclamation_texte = (document.getElementById("reclamation_texte").value || "").trim();
+
+        if (!reclamation_objet) {
+          alertBox("error", "Merci de préciser l'objet de votre réclamation.");
+          return false;
+        }
+        if (!reclamation_texte) {
+          alertBox("error", "Merci de décrire votre réclamation.");
+          return false;
+        }
+      }
+
+      answers.commentaires.suggestion = suggestion;
+      answers.commentaires.recommande = recommande.value;
+      answers.commentaires.reclamation = reclamationValue;
+      answers.commentaires.reclamation_objet = reclamation_objet;
+      answers.commentaires.reclamation_texte = reclamation_texte;
+      return true;
+    }
+
+    function buildRecap() {
+      const cont = document.getElementById("recapContainer");
+      cont.innerHTML = "";
+
+      // Préparation
+      const prep = document.createElement("div");
+      prep.className = "recap-block";
+      prep.innerHTML = `
+        <div class="recap-block-title">Préparation de la formation</div>
+        <div class="recap-line"><strong>Écoute et compréhension des attentes</strong> : ${answers.preparation.q1} / 10</div>
+        <div class="recap-line"><strong>Informations reçues avant la formation</strong> : ${answers.preparation.q2} / 10</div>
+        <div class="recap-line"><strong>Connaissance des objectifs avant le début</strong> : ${answers.preparation.q3} / 10</div>
+        ${answers.preparation.commentaire ? `<div class="recap-line"><strong>Commentaires :</strong> ${answers.preparation.commentaire}</div>` : ""}
+      `;
+      cont.appendChild(prep);
+
+      // Organisation
+      const org = document.createElement("div");
+      org.className = "recap-block";
+      org.innerHTML = `
+        <div class="recap-block-title">Organisation de la formation</div>
+        <div class="recap-line"><strong>Conditions matérielles</strong> : ${answers.organisation.q1} / 10</div>
+        <div class="recap-line"><strong>Accueil</strong> : ${answers.organisation.q2} / 10</div>
+        <div class="recap-line"><strong>Informations sur le déroulement</strong> : ${answers.organisation.q3} / 10</div>
+        <div class="recap-line"><strong>Composition du groupe</strong> : ${answers.organisation.q4} / 10</div>
+        <div class="recap-line"><strong>Durée adaptée</strong> : ${answers.organisation.q5} / 10</div>
+        ${answers.organisation.commentaire ? `<div class="recap-line"><strong>Commentaires :</strong> ${answers.organisation.commentaire}</div>` : ""}
+      `;
+      cont.appendChild(org);
+
+      // Contenu & animation
+      const contBlock = document.createElement("div");
+      contBlock.className = "recap-block";
+      contBlock.innerHTML = `
+        <div class="recap-block-title">Contenu et animation</div>
+        <div class="recap-line"><strong>Contenu suffisant pour progresser</strong> : ${answers.contenu.q1} / 10</div>
+        <div class="recap-line"><strong>Compétence technique du formateur</strong> : ${answers.contenu.q2} / 10</div>
+        <div class="recap-line"><strong>Adaptation du formateur à vos attentes</strong> : ${answers.contenu.q3} / 10</div>
+        <div class="recap-line"><strong>Dynamisme et écoute du formateur</strong> : ${answers.contenu.q4} / 10</div>
+        ${answers.contenu.commentaire ? `<div class="recap-line"><strong>Commentaires :</strong> ${answers.contenu.commentaire}</div>` : ""}
+      `;
+      cont.appendChild(contBlock);
+
+      // Objectifs
+      const objBlock = document.createElement("div");
+      objBlock.className = "recap-block";
+      objBlock.innerHTML = `<div class="recap-block-title">Atteinte des objectifs</div>`;
+      if (answers.objectifs.objectifs && answers.objectifs.objectifs.length > 0) {
+        answers.objectifs.objectifs.forEach(o => {
+          const lineName = document.createElement("div");
+          lineName.className = "recap-crit-name";
+          lineName.textContent = o.intitule || "Objectif de formation";
+
+          const lineDetail = document.createElement("div");
+          lineDetail.className = "recap-crit-detail";
+          lineDetail.textContent = `Niveau d'atteinte : ${o.note} / 10`;
+
+          objBlock.appendChild(lineName);
+          objBlock.appendChild(lineDetail);
+        });
+      } else {
+        const noObj = document.createElement("div");
+        noObj.className = "recap-line";
+        noObj.textContent = "Aucun objectif spécifique n'a été évalué.";
+        objBlock.appendChild(noObj);
+      }
+      cont.appendChild(objBlock);
+
+      // Commentaires & réclamations
+      const commBlock = document.createElement("div");
+      commBlock.className = "recap-block";
+      let html = `<div class="recap-block-title">Commentaires et réclamations</div>`;
+      if (answers.commentaires.suggestion) {
+        html += `<div class="recap-line"><strong>Suggestions :</strong> ${answers.commentaires.suggestion}</div>`;
+      }
+      html += `<div class="recap-line"><strong>Recommandation :</strong> ${
+        answers.commentaires.recommande === "oui" ? "Oui, je recommanderais cette formation." : "Non, je ne la recommanderais pas."
+      }</div>`;
+      html += `<div class="recap-line"><strong>Réclamation :</strong> ${
+        answers.commentaires.reclamation === "oui" ? "Oui" : "Non"
+      }</div>`;
+      if (answers.commentaires.reclamation === "oui") {
+        html += `<div class="recap-line"><strong>Objet de la réclamation :</strong> ${answers.commentaires.reclamation_objet || ""}</div>`;
+        html += `<div class="recap-line"><strong>Détail de la réclamation :</strong> ${answers.commentaires.reclamation_texte || ""}</div>`;
+      }
+      commBlock.innerHTML = html;
+      cont.appendChild(commBlock);
+    }
+
+    async function sendAnswers() {
+      try {
+        const payload = {
+          id_action_formation_effectif: answers.id_action_formation_effectif,
+          preparation: {
+            q1: answers.preparation.q1,
+            q2: answers.preparation.q2,
+            q3: answers.preparation.q3,
+            commentaire: answers.preparation.commentaire || null
+          },
+          organisation: {
+            q1: answers.organisation.q1,
+            q2: answers.organisation.q2,
+            q3: answers.organisation.q3,
+            q4: answers.organisation.q4,
+            q5: answers.organisation.q5,
+            commentaire: answers.organisation.commentaire || null
+          },
+          contenu: {
+            q1: answers.contenu.q1,
+            q2: answers.contenu.q2,
+            q3: answers.contenu.q3,
+            q4: answers.contenu.q4,
+            commentaire: answers.contenu.commentaire || null
+          },
+          objectifs: {
+            objectifs: answers.objectifs.objectifs || []
+          },
+          commentaires: {
+            suggestion: answers.commentaires.suggestion || null,
+            recommande: answers.commentaires.recommande,
+            reclamation: answers.commentaires.reclamation,
+            reclamation_objet: answers.commentaires.reclamation_objet,
+            reclamation_texte: answers.commentaires.reclamation_texte
+          }
+        };
+
+        const resp = await fetch(`${API_BASE}/satisfaction_stagiaire/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        showStep("stepFinal");
+      } catch (err) {
+        alertBox("error", "Erreur lors de l'enregistrement de vos réponses : " + err.message);
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const id = getQueryParam("id");
+      if (!id) {
+        alertBox("error", "Identifiant manquant dans l'URL. Le lien utilisé n'est pas valide.");
+        return;
+      }
+
+      initSliders();
+      loadContext(id);
+
+      // Events
+      document.getElementById("btnStart").addEventListener("click", () => {
+        showStep("stepPreparation");
+      });
+
+      document.getElementById("btnPrepNext").addEventListener("click", () => {
+        if (validatePreparation()) showStep("stepOrganisation");
+      });
+
+      document.getElementById("btnOrgNext").addEventListener("click", () => {
+        if (validateOrganisation()) showStep("stepContenu");
+      });
+
+      document.getElementById("btnContNext").addEventListener("click", () => {
+        if (validateContenu()) showStep("stepObjectifs");
+      });
+
+      document.getElementById("btnObjNext").addEventListener("click", () => {
+        if (validateObjectifs()) showStep("stepCommentaires");
+      });
+
+      document.getElementById("btnCommNext").addEventListener("click", () => {
+        if (validateCommentaires()) {
+          buildRecap();
+          const confirmSlider = document.getElementById("confirmSlider");
+          confirmSlider.value = 0;
+          updateSliderLabel(confirmSlider);
+          document.getElementById("btnSend").disabled = true;
+          showStep("stepRecap");
+        }
+      });
+
+      // Affichage / masquage zone réclamation
+      document.querySelectorAll('input[name="reclamation"]').forEach(r => {
+        r.addEventListener("change", () => {
+          const val = r.value;
+          const bloc = document.getElementById("reclamationDetails");
+          if (val === "oui") bloc.classList.remove("hidden");
+          else bloc.classList.add("hidden");
+        });
+      });
+
+      document.getElementById("btnSend").addEventListener("click", () => {
+        const slider = document.getElementById("confirmSlider");
+        const v = parseInt(slider.value || "0", 10);
+        if (v < 100) {
+          alertBox("error", "Merci de confirmer l'envoi de vos réponses en amenant le curseur de confirmation à 100 %.");
+          return;
+        }
+        sendAnswers();
+      });
+    });
+  </script>
+</body>
+</html>
