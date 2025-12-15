@@ -254,6 +254,7 @@ def get_satisfaction_context(id_action_formation_effectif: str):
                         afe.id_action_formation_effectif,
                         afe.id_action_formation,
                         af.id_form,
+                        af.code_action_formation,
                         ec.nom_effectif,
                         ec.prenom_effectif,
                         ec.civilite_effectif,
@@ -289,6 +290,7 @@ def get_satisfaction_context(id_action_formation_effectif: str):
                 civilite = row["civilite_effectif"]
                 titre_formation = row["titre_formation"]
                 code_formation = row.get("code_formation") if isinstance(row, dict) else None
+                code_action_formation = row["code_action_formation"]
 
                 # TODO : récupérer éventuellement le nom de l'entreprise via id_ent
                 entreprise = None
@@ -346,6 +348,7 @@ def get_satisfaction_context(id_action_formation_effectif: str):
                     id_action_formation_effectif=id_afe,
                     id_action_formation=id_acf,
                     id_form=id_form,
+                    code_action_formation=code_action_formation,
                     civilite=civilite,
                     nom=nom,
                     prenom=prenom,
@@ -380,6 +383,7 @@ def save_satisfaction(payload: SatisfactionInput):
                     SELECT
                         afe.id_action_formation,
                         af.id_form,
+                        af.code_action_formation,
                         ff.code AS code_formation,
                         ff.titre AS titre_formation,
                         ec.nom_effectif,
@@ -407,6 +411,7 @@ def save_satisfaction(payload: SatisfactionInput):
 
                 id_action_formation = row["id_action_formation"]
                 id_form = row["id_form"]
+                code_action_formation = row.get("code_action_formation")
                 code_formation = row["code_formation"]          # <--- AJOUTER ÇA
                 titre_formation = row["titre_formation"]        # si tu l’utilises dans le mail
                 nom_effectif = row["nom_effectif"]              # si tu l’utilises dans le mail
@@ -582,6 +587,7 @@ def save_satisfaction(payload: SatisfactionInput):
                     nom=nom_effectif,
                     id_action_formation_effectif=payload.id_action_formation_effectif,
                     mode=mode,
+                    code_action_formation=code_action_formation,
                 )
 
 

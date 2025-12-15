@@ -65,6 +65,7 @@ def send_satisfaction_stagiaire_mail(
     nom: str,
     id_action_formation_effectif: str,
     mode: str,
+    code_action_formation: str | None = None,    
 ):
     """
     Envoie un mail d'info pour une enquête de satisfaction stagiaire.
@@ -81,14 +82,15 @@ def send_satisfaction_stagiaire_mail(
 
     suffix = "nouvelle réponse" if mode == "insert" else "mise à jour"
     sujet = "Satisfaction stagiaire – "
-    if code_formation:
-        sujet += f"{code_formation} – "
+    if code_action_formation:
+        sujet += f"{code_action_formation} – "
     sujet += f"{prenom} {nom} ({suffix})"
 
     texte = (
         f"Une enquête de satisfaction stagiaire vient d'être {suffix}.\n\n"
         f"Stagiaire : {prenom} {nom}\n"
         f"Formation : {(code_formation + ' - ') if code_formation else ''}{titre_formation}\n"
+        f"Code action de formation : {code_action_formation or 'Non renseigné'}\n"
         f"id_action_formation_effectif : {id_action_formation_effectif}\n\n"
         "Vous pouvez consulter cette action de formation dans Skillboard pour analyser cette réponse."
     )
@@ -98,6 +100,7 @@ def send_satisfaction_stagiaire_mail(
     <p>
       <strong>Stagiaire :</strong> {prenom} {nom}<br>
       <strong>Formation :</strong> {(code_formation + " - ") if code_formation else ""}{titre_formation}<br>
+      <strong>Code action de formation :</strong> {code_action_formation or "Non renseigné"}<br>
       <strong>id_action_formation_effectif :</strong> {id_action_formation_effectif}
     </p>
     <p>
