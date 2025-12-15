@@ -154,8 +154,12 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 def save_cache(payload: AdaptationInput):
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     fname = CACHE_DIR / f"adaptation_formation_{payload.id_action_formation}_{ts}.json"
+
+    # IMPORTANT : convertir les datetime au format JSON
+    data = payload.model_dump(mode="json")  # Pydantic v2 => datetime → str ISO
+
     with open(fname, "w", encoding="utf-8") as f:
-        json.dump(payload.model_dump(), f, ensure_ascii=False, indent=2)
+        json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 # ======================================================
