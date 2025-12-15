@@ -165,11 +165,25 @@
       .recap-crit-name { font-size:13px; }
       .recap-crit-detail { font-size:12px; line-height:1.4; }
     }
+
+    .logo-header {
+    max-height: 80px;
+    height: auto;
+    max-width: 100%;
+    }
+
+    /* Adaptation spéciale mobile */
+    @media (max-width: 640px) {
+    .logo-header {
+        max-height: 56px;
+        }
+    }
+
   </style>
 </head>
 <body>
   <header style="margin-bottom:20px; text-align:center;">
-    <img src="/logo.png" alt="Logo" style="max-height:80px;">
+    <img src="/logo.png" alt="Logo" class="logo-header">
     <div id="formationTitle" style="margin-top:8px; font-weight:600; font-size:20px;"></div>
     <div id="stagiaireInfo" style="margin-top:4px; font-size:16px; font-weight:600; color:#111827;"></div>
   </header>
@@ -502,7 +516,7 @@
   </section>
 
   <footer>
-    Outil de recueil de satisfaction développé avec Skillboard par
+    Outil de recueil de satisfaction développé avec Skillboard par<br>
     <a href="https://www.jmbconsultant.fr" target="_blank" rel="noopener noreferrer">JMB CONSULTANT</a>.
   </footer>
 
