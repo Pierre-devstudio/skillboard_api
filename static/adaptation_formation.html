@@ -194,22 +194,26 @@
 
   <div id="alert"></div>
 
-  <section class="section">
+  <!-- ÉTAPE 1 : accueil + liste -->
+  <section class="section" id="sectionAccueil">
     <h1>Adaptations en cours de formation</h1>
     <p id="introText" class="muted">
       Chargement des informations de la formation...
     </p>
   </section>
 
-  <!-- Liste des adaptations existantes -->
   <section class="section" id="sectionListe">
     <h2>Adaptations déjà saisies</h2>
     <p class="small" id="noAdaptMessage">Aucune adaptation n’a encore été enregistrée pour cette action de formation.</p>
     <div id="adaptationsList"></div>
+
+    <div class="actions" style="margin-top:16px;">
+      <button class="btn" type="button" id="btnShowForm">+ Ajouter une adaptation</button>
+    </div>
   </section>
 
-  <!-- Formulaire d'ajout -->
-  <section class="section">
+  <!-- ÉTAPE 2 : formulaire (masqué au début) -->
+  <section class="section hidden" id="sectionForm">
     <h2>Nouvelle adaptation</h2>
     <p class="small">
       Utilisez ce formulaire pour tracer toute adaptation significative du déroulé de la formation
@@ -370,9 +374,8 @@
     }
 
     function fillHeaderAndIntro(ctx) {
-      const titre = ctx.code_formation
-        ? `${ctx.code_formation} — ${ctx.titre_formation}`
-        : ctx.titre_formation;
+      // plus de code_formation dans le titre, uniquement l'intitulé
+      const titre = ctx.titre_formation;
 
       document.getElementById("formationTitle").textContent = titre;
 
@@ -631,6 +634,7 @@
 
         alertBox("success", "L'adaptation a bien été enregistrée.");
         resetForm();
+        document.getElementById("sectionForm").classList.add("hidden");
         await loadContext(contextData.id_action_formation);
 
       } catch (err) {
@@ -688,6 +692,13 @@
 
       document.getElementById("btnSave").addEventListener("click", () => {
         submitAdaptation();
+      });
+
+      const btnShowForm = document.getElementById("btnShowForm");
+      btnShowForm.addEventListener("click", () => {
+        document.getElementById("sectionForm").classList.remove("hidden");
+        resetForm();
+        document.getElementById("sectionForm").scrollIntoView({ behavior: "smooth", block: "start" });
       });
     });
   </script>
