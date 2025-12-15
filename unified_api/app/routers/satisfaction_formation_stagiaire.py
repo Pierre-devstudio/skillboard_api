@@ -12,6 +12,7 @@ import psycopg
 from psycopg.rows import dict_row
 from dotenv import load_dotenv
 
+from app.routers.MailManager import send_satisfaction_stagiaire_mail
 # ======================================================
 # ENV
 # ======================================================
@@ -258,7 +259,7 @@ def get_satisfaction_context(id_action_formation_effectif: str):
                         ec.civilite_effectif,
                         ec.id_ent,
                         ff.titre AS titre_formation,
-                        ff.code_formation
+                        ff.code AS code_formation
                     FROM public.tbl_action_formation_effectif afe
                     JOIN public.tbl_action_formation af
                         ON af.id_action_formation = afe.id_action_formation
@@ -560,7 +561,16 @@ def save_satisfaction(payload: SatisfactionInput):
                 conn.commit()
                 save_cache(payload)
 
-                # TODO : ici, appel Mailjet pour notifier formation@jmbconsultant.fr
+                 # Envoi mail hors transaction
+                send_satisfaction_stagiaire_mail(
+                    code_formation=code_formation,
+                    titre_formation=titre_formation,
+                    prenom=prenom_effectif,
+                    nom=nom_effectif,
+                    id_action_formation_effectif=payload.id_action_formation_effectif,
+                    mode=mode,
+                )
+
 
                 return SatisfactionSaveResponse(
                     id_satisfaction_stagiaire=id_satis,
