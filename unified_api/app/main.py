@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import recueil_attentes, preparation_formation, presence_formation, presence_consultant, validation_acquis,satisfaction_formation_stagiaire, satisfaction_formation_responsable, satisfaction_formation_consultant, adaptation_formation 
+from app.routers import recueil_attentes, preparation_formation, presence_formation, presence_consultant, validation_acquis,satisfaction_formation_stagiaire, satisfaction_formation_responsable, satisfaction_formation_consultant, adaptation_formation, consultant_portal 
 
 app = FastAPI()
 
@@ -44,4 +44,7 @@ for route in satisfaction_formation_consultant.router.routes:
     app.router.routes.append(route)
 
 for route in adaptation_formation.router.routes:
+    app.router.routes.append(route)
+
+for route in consultant_portal.router.routes:
     app.router.routes.append(route)

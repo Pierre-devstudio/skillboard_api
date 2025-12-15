@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Portail consultant — Skillboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+    body {
+      margin: 0;
+      background:#f3f4f6;
+      color:#111827;
+      display:flex;
+      min-height:100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width:240px;
+      background:#0f172a;
+      color:#e5e7eb;
+      display:flex;
+      flex-direction:column;
+      padding:16px 12px;
+    }
+    .sidebar-header {
+      font-weight:600;
+      font-size:18px;
+      margin-bottom:16px;
+      text-align:center;
+    }
+    .sidebar-sub {
+      font-size:12px;
+      color:#9ca3af;
+      text-align:center;
+      margin-bottom:16px;
+    }
+    .menu {
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      margin-top:8px;
+    }
+    .menu-item {
+      padding:8px 10px;
+      border-radius:6px;
+      font-size:14px;
+      cursor:pointer;
+      color:#e5e7eb;
+    }
+    .menu-item.active {
+      background:#1d4ed8;
+      color:#ffffff;
+    }
+    .menu-item.disabled {
+      opacity:0.4;
+      cursor:default;
+    }
+
+    /* Main */
+    .main {
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+    }
+
+    .topbar {
+      background:#ffffff;
+      border-bottom:1px solid #e5e7eb;
+      padding:10px 18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+    .topbar-left {
+      font-size:14px;
+      color:#4b5563;
+    }
+    .topbar-right {
+      font-size:13px;
+      color:#6b7280;
+    }
+
+    .content {
+      padding:18px;
+      overflow:auto;
+    }
+
+    .card {
+      background:#ffffff;
+      border-radius:10px;
+      border:1px solid #e5e7eb;
+      padding:16px;
+      margin-bottom:16px;
+    }
+    .card-title {
+      font-size:16px;
+      font-weight:600;
+      margin-bottom:8px;
+    }
+    .card-sub {
+      font-size:13px;
+      color:#6b7280;
+      margin-bottom:10px;
+    }
+    .row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      margin-top:6px;
+    }
+    .info-item {
+      min-width:180px;
+      font-size:14px;
+    }
+    .label {
+      font-size:12px;
+      color:#6b7280;
+    }
+    .value {
+      font-size:14px;
+      font-weight:500;
+      color:#111827;
+    }
+
+    .alert {
+      padding:10px 12px;
+      border-radius:8px;
+      font-size:13px;
+      margin-bottom:12px;
+    }
+    .alert.error {
+      background:#fef2f2;
+      border:1px solid #fecaca;
+      color:#991b1b;
+    }
+
+    .logo-header {
+      max-height: 40px;
+      height: auto;
+      max-width: 100%;
+    }
+
+    @media (max-width: 768px) {
+      body { flex-direction:column; }
+      .sidebar {
+        width:100%;
+        flex-direction:row;
+        align-items:center;
+        justify-content:space-between;
+      }
+      .sidebar-header, .sidebar-sub {
+        text-align:left;
+      }
+      .menu {
+        flex-direction:row;
+        overflow-x:auto;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <aside class="sidebar">
+    <div>
+      <div class="sidebar-header">Espace consultant</div>
+      <div class="sidebar-sub">JMB CONSULTANT · Skillboard</div>
+    </div>
+    <nav class="menu">
+      <div class="menu-item active" data-view="vos-donnees">Vos données</div>
+      <div class="menu-item disabled" data-view="actions">Actions de formation</div>
+      <div class="menu-item disabled" data-view="adaptations">Fiches d’adaptation</div>
+      <div class="menu-item disabled" data-view="ressources">Ressources</div>
+      <div class="menu-item disabled" data-view="factures">Vos factures</div>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left" id="topbarName">Consultant</div>
+      <div class="topbar-right" id="topbarInfo">Chargement…</div>
+    </header>
+
+    <main class="content">
+      <div id="alertContainer"></div>
+
+      <section id="view-vos-donnees">
+        <div class="card">
+          <div class="card-title" id="welcomeTitle">Bienvenue</div>
+          <div class="card-sub">
+            Cet espace vous permet de retrouver vos informations et, plus tard, de gérer vos actions de formation,
+            adaptations, ressources et factures.
+          </div>
+
+          <div class="row">
+            <div class="info-item">
+              <div class="label">Nom complet</div>
+              <div class="value" id="infoNomComplet">–</div>
+            </div>
+            <div class="info-item">
+              <div class="label">Identifiant consultant</div>
+              <div class="value" id="infoIdConsultant">–</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- autres vues placeholder, pour plus tard -->
+      <section id="view-actions" style="display:none;">
+        <div class="card">
+          <div class="card-title">Actions de formation</div>
+          <div class="card-sub">
+            Cette section affichera vos actions de formation (à venir, en cours, passées).
+          </div>
+        </div>
+      </section>
+
+      <section id="view-adaptations" style="display:none;">
+        <div class="card">
+          <div class="card-title">Fiches d’adaptation</div>
+          <div class="card-sub">
+            Cette section affichera vos adaptations déclarées et permettra d’en créer de nouvelles.
+          </div>
+        </div>
+      </section>
+
+      <section id="view-ressources" style="display:none;">
+        <div class="card">
+          <div class="card-title">Ressources</div>
+          <div class="card-sub">
+            Cette section listera les documents mis à votre disposition (guides, modèles, supports).
+          </div>
+        </div>
+      </section>
+
+      <section id="view-factures" style="display:none;">
+        <div class="card">
+          <div class="card-title">Vos factures</div>
+          <div class="card-sub">
+            Cette section vous permettra de consulter vos factures et d’en déposer de nouvelles.
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = "https://skillboard-services.onrender.com";
+
+    function getQueryParam(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+
+    function showAlert(type, message) {
+      const container = document.getElementById("alertContainer");
+      if (!message) {
+        container.innerHTML = "";
+        return;
+      }
+      container.innerHTML = `<div class="alert ${type}">${message}</div>`;
+    }
+
+    function switchView(viewName) {
+      document.querySelectorAll("section[id^='view-']").forEach(sec => {
+        sec.style.display = sec.id === `view-${viewName}` ? "block" : "none";
+      });
+
+      document.querySelectorAll(".menu-item").forEach(item => {
+        const v = item.getAttribute("data-view");
+        item.classList.toggle("active", v === viewName);
+      });
+    }
+
+    async function loadConsultantContext(id_consultant) {
+      try {
+        showAlert("", "");
+        const resp = await fetch(`${API_BASE}/consultant/context/${encodeURIComponent(id_consultant)}`);
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        const civ = (body.civilite || "").trim();
+        let civLabel = "";
+        if (civ === "F") civLabel = "Mme";
+        else if (civ === "M") civLabel = "M";
+        else civLabel = civ;
+
+        const nomComplet = civLabel
+          ? `${civLabel} ${body.prenom} ${body.nom}`
+          : `${body.prenom} ${body.nom}`;
+
+        // Topbar
+        document.getElementById("topbarName").textContent = nomComplet;
+        document.getElementById("topbarInfo").textContent = "Portail consultant — JMB CONSULTANT";
+
+        // Carte "Vos données"
+        document.getElementById("welcomeTitle").textContent = `Bienvenue, ${body.prenom} ${body.nom}`;
+        document.getElementById("infoNomComplet").textContent = nomComplet;
+        document.getElementById("infoIdConsultant").textContent = body.id_consultant;
+
+      } catch (err) {
+        showAlert("error", "Erreur de chargement de vos données : " + err.message);
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const id = getQueryParam("id");
+      if (!id) {
+        showAlert("error", "Identifiant consultant manquant dans l’URL. Le lien utilisé n’est pas valide.");
+        return;
+      }
+
+      // Vue par défaut
+      switchView("vos-donnees");
+
+      // Navigation menu (les autres sont pour plus tard)
+      document.querySelectorAll(".menu-item").forEach(item => {
+        if (item.classList.contains("disabled")) {
+          return;
+        }
+        item.addEventListener("click", () => {
+          const view = item.getAttribute("data-view");
+          switchView(view);
+        });
+      });
+
+      // Charger les données consultant
+      loadConsultantContext(id);
+    });
+  </script>
+</body>
+</html>
