@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Adaptations en cours de formation — Skillboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 24px; background:#fafafa; color:#111827; }
+    h1 { margin: 0 0 12px; font-size: 22px; }
+    h2 { margin: 16px 0 8px; font-size: 18px; }
+    h3 { margin: 10px 0 6px; font-size: 16px; }
+
+    fieldset {
+      border:1px solid #e5e7eb;
+      border-radius:8px;
+      padding:16px;
+      background:#ffffff;
+    }
+    legend { padding:0 8px; color:#4b5563; font-size:13px; }
+
+    .muted { color:#6b7280; font-size:14px; }
+    .small { color:#6b7280; font-size:12px; }
+
+    .error {
+      background:#fef2f2;
+      color:#991b1b;
+      border:1px solid #fecaca;
+      padding:10px;
+      border-radius:8px;
+      margin-bottom:12px;
+    }
+    .success {
+      background:#ecfdf5;
+      color:#065f46;
+      border:1px solid #a7f3d0;
+      padding:10px;
+      border-radius:8px;
+      margin-bottom:12px;
+    }
+
+    label { font-size:14px; color:#111827; }
+
+    .form-row {
+      margin-bottom:12px;
+    }
+    .form-label {
+      font-size:14px;
+      font-weight:500;
+      margin-bottom:4px;
+    }
+    .form-help {
+      font-size:12px;
+      color:#6b7280;
+      margin-bottom:4px;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    select,
+    textarea {
+      width:100%;
+      padding:8px;
+      border-radius:6px;
+      border:1px solid #cbd5e1;
+      font-family:inherit;
+      font-size:14px;
+      box-sizing:border-box;
+      background:#ffffff;
+    }
+    textarea {
+      min-height:90px;
+      resize:vertical;
+    }
+
+    .radio-row {
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      font-size:14px;
+      margin-top:2px;
+    }
+    .radio-row label {
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      cursor:pointer;
+    }
+
+    .select-inline {
+      max-width:330px;
+    }
+
+    .section {
+      margin-top:20px;
+    }
+
+    .adaptation-card {
+      border-radius:8px;
+      border:1px solid #e5e7eb;
+      background:#ffffff;
+      padding:10px 12px;
+      margin-bottom:10px;
+    }
+    .adaptation-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      font-size:13px;
+      margin-bottom:4px;
+      color:#4b5563;
+    }
+    .tag {
+      padding:2px 6px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:500;
+      display:inline-block;
+    }
+    .tag.groupe { background:#eff6ff; color:#1d4ed8; }
+    .tag.individuel { background:#ecfeff; color:#0f766e; }
+
+    .adaptation-body {
+      font-size:13px;
+      color:#111827;
+    }
+    .adaptation-body div {
+      margin-bottom:3px;
+    }
+
+    .actions {
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+    button {
+      padding:10px 14px;
+      border-radius:8px;
+      border:0;
+      cursor:pointer;
+      font-size:14px;
+    }
+    .btn { background:#0ea5e9; color:#ffffff; }
+    .btn.secondary { background:#e5e7f0; color:#111827; }
+    .btn[disabled] { opacity:0.6; cursor:not-allowed; }
+
+    .slider-row {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      max-width:420px;
+    }
+    .slider-row input[type="range"] {
+      width:100%;
+    }
+    .slider-value {
+      font-size:13px;
+      color:#475569;
+      min-width:56px;
+      text-align:right;
+    }
+
+    .hidden { display:none; }
+
+    footer {
+      margin-top:28px;
+      padding-top:12px;
+      border-top:1px solid #e5e7eb;
+      font-size:12px;
+      color:#6b7280;
+      text-align:center;
+    }
+
+    .logo-header {
+      max-height: 80px;
+      height: auto;
+      max-width: 100%;
+    }
+
+    @media (max-width: 640px) {
+      body { margin:16px; }
+      .slider-row { max-width:100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <header style="margin-bottom:20px; text-align:center;">
+    <img src="/logo.png" alt="Logo" class="logo-header">
+    <div id="formationTitle" style="margin-top:8px; font-weight:600; font-size:20px;"></div>
+    <div id="consultantInfo" style="margin-top:4px; font-size:15px; font-weight:500; color:#111827;"></div>
+  </header>
+
+  <div id="alert"></div>
+
+  <section class="section">
+    <h1>Adaptations en cours de formation</h1>
+    <p id="introText" class="muted">
+      Chargement des informations de la formation...
+    </p>
+  </section>
+
+  <!-- Liste des adaptations existantes -->
+  <section class="section" id="sectionListe">
+    <h2>Adaptations déjà saisies</h2>
+    <p class="small" id="noAdaptMessage">Aucune adaptation n’a encore été enregistrée pour cette action de formation.</p>
+    <div id="adaptationsList"></div>
+  </section>
+
+  <!-- Formulaire d'ajout -->
+  <section class="section">
+    <h2>Nouvelle adaptation</h2>
+    <p class="small">
+      Utilisez ce formulaire pour tracer toute adaptation significative du déroulé de la formation
+      (contenu, durée, supports, objectifs, organisation, etc.).
+    </p>
+
+    <fieldset>
+      <legend>Adaptation</legend>
+
+      <div class="form-row">
+        <div class="form-label">Portée de l'adaptation *</div>
+        <div class="radio-row">
+          <label><input type="radio" name="portee_adaptation" value="GROUPE"> Pour le groupe</label>
+          <label><input type="radio" name="portee_adaptation" value="INDIVIDUEL"> Pour un stagiaire</label>
+        </div>
+      </div>
+
+      <div class="form-row hidden" id="rowStagiaire">
+        <div class="form-label">Stagiaire concerné *</div>
+        <select id="stagiaire_select" class="select-inline">
+          <option value="">Sélectionnez un stagiaire…</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-label">Date de l'adaptation *</div>
+        <input type="date" id="date_adaptation">
+      </div>
+
+      <div class="form-row">
+        <div class="form-label">Type d'adaptation *</div>
+        <select id="type_adaptation" class="select-inline">
+          <option value="">Sélectionnez un type…</option>
+          <option value="CONTENU">Contenu</option>
+          <option value="DUREE">Durée</option>
+          <option value="SUPPORTS">Supports pédagogiques</option>
+          <option value="OBJECTIFS">Objectifs de la formation</option>
+          <option value="ORGANISATION">Organisation / logistique</option>
+          <option value="PUBLIC">Public / composition du groupe</option>
+          <option value="AUTRE">Autre</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-label">Motif (résumé court)</div>
+        <div class="form-help">Exemples : “Niveau groupe hétérogène”, “Demande spécifique du client”, “Problème matériel”…</div>
+        <input type="text" id="motif_court" placeholder="Résumé en quelques mots (facultatif)">
+      </div>
+
+      <div class="form-row">
+        <div class="form-label">Situation prévue (avant adaptation)</div>
+        <div class="form-help">Décrivez brièvement ce qui était initialement prévu (facultatif).</div>
+        <textarea id="description_avant" placeholder="Exemple : activité d’étude de cas sur 2h, séquence prévue sur le chapitre X…"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-label">Adaptation réalisée *</div>
+        <div class="form-help">Décrivez concrètement ce que vous avez fait à la place (obligatoire).</div>
+        <textarea id="description_apres" placeholder="Exemple : activité remplacée par un quiz interactif, réduction du temps sur le chapitre X, ajout d’exemples terrain…"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-label">Impact sur les objectifs pédagogiques</div>
+        <select id="impact_objectifs" class="select-inline">
+          <option value="">Sélectionnez une option…</option>
+          <option value="AUCUN">Aucun impact</option>
+          <option value="PARTIEL">Impact partiel sur certains objectifs</option>
+          <option value="MAJEUR">Impact majeur sur les objectifs</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-label">Impact sur l'évaluation / la validation des acquis</div>
+        <div class="radio-row">
+          <label><input type="radio" name="impact_evaluation" value="oui"> Oui</label>
+          <label><input type="radio" name="impact_evaluation" value="non"> Non</label>
+        </div>
+      </div>
+
+      <div class="form-row hidden" id="rowImpactEvalComment">
+        <div class="form-label">Précisions en cas d'impact sur l'évaluation</div>
+        <textarea id="impact_eval_commentaire" placeholder="Précisez comment l’adaptation peut influencer l’évaluation ou la validation des acquis."></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-label">Commentaire complémentaire</div>
+        <textarea id="commentaire_libre" placeholder="Toute information complémentaire utile (facultatif)."></textarea>
+      </div>
+
+      <div class="form-row" style="margin-top:14px;">
+        <div class="small" style="margin-bottom:4px;">
+          Faites glisser le curseur à droite pour confirmer l'enregistrement de cette adaptation.
+        </div>
+        <div class="slider-row">
+          <input type="range" id="confirmSlider" min="0" max="100" step="10" value="0">
+          <span class="slider-value" data-for="confirmSlider">0 %</span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn secondary" type="button" id="btnReset">Réinitialiser le formulaire</button>
+        <button class="btn" type="button" id="btnSave" disabled>Enregistrer l'adaptation</button>
+      </div>
+
+    </fieldset>
+  </section>
+
+  <footer>
+    Outil de recueil des adaptations développé avec Skillboard par<br>
+    <a href="https://www.jmbconsultant.fr" target="_blank" rel="noopener noreferrer">JMB CONSULTANT</a>.
+  </footer>
+
+  <script>
+    const API_BASE = "https://skillboard-services.onrender.com";
+
+    let contextData = null;
+
+    function getQueryParam(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+
+    function alertBox(type, html) {
+      const container = document.getElementById("alert");
+      if (!html || !type) {
+        container.innerHTML = "";
+        return;
+      }
+      container.innerHTML = `<div class="${type}">${html}</div>`;
+    }
+
+    function formatDateISOToFr(isoString) {
+      if (!isoString) return "";
+      const d = new Date(isoString);
+      if (isNaN(d.getTime())) return isoString;
+      return d.toLocaleDateString("fr-FR");
+    }
+
+    function updateSliderLabel(slider) {
+      const id = slider.id;
+      const value = parseInt(slider.value || "0", 10);
+      const label = document.querySelector(`.slider-value[data-for="${id}"]`);
+      if (!label) return;
+
+      label.textContent = `${value} %`;
+
+      if (id === "confirmSlider") {
+        const btn = document.getElementById("btnSave");
+        btn.disabled = value < 100;
+      }
+    }
+
+    function initSlider() {
+      const slider = document.getElementById("confirmSlider");
+      if (!slider) return;
+      updateSliderLabel(slider);
+      slider.addEventListener("input", () => updateSliderLabel(slider));
+    }
+
+    function fillHeaderAndIntro(ctx) {
+      const titre = ctx.code_formation
+        ? `${ctx.code_formation} — ${ctx.titre_formation}`
+        : ctx.titre_formation;
+
+      document.getElementById("formationTitle").textContent = titre;
+
+      let civ = (ctx.civilite || "").trim();
+      let civLabel = "";
+      if (civ === "F") civLabel = "Mme";
+      else if (civ === "M") civLabel = "M";
+      else civLabel = civ;
+
+      const nomComplet = `${ctx.prenom_consultant} ${ctx.nom_consultant}`;
+      const ligneConsultant = civLabel
+        ? `${civLabel} ${nomComplet}, pour l'action de formation ${ctx.code_action_formation || ""}`.trim()
+        : `${nomComplet}, pour l'action de formation ${ctx.code_action_formation || ""}`.trim();
+
+      document.getElementById("consultantInfo").textContent = ligneConsultant;
+
+      const intro = document.getElementById("introText");
+      intro.innerHTML =
+        `${nomComplet}, ce formulaire vous permet de tracer les adaptations réalisées en cours de formation ` +
+        `pour l'action <strong>${titre}</strong> organisée par JMB CONSULTANT.<br><br>` +
+        `Merci de saisir chaque adaptation significative (contenu, durée, supports, organisation...) afin d'assurer la traçabilité ` +
+        `dans le cadre de notre démarche d'amélioration continue et des exigences de suivi pédagogique.`;
+    }
+
+    function fillStagiaires(ctx) {
+      const select = document.getElementById("stagiaire_select");
+      select.innerHTML = '<option value="">Sélectionnez un stagiaire…</option>';
+
+      (ctx.stagiaires || []).forEach(s => {
+        const opt = document.createElement("option");
+        let label = s.nom_complet;
+        if (s.entreprise) {
+          label += " — " + s.entreprise;
+        }
+        opt.value = s.id_action_formation_effectif;
+        opt.textContent = label;
+        select.appendChild(opt);
+      });
+    }
+
+    function fillAdaptationsList(ctx) {
+      const container = document.getElementById("adaptationsList");
+      const noMsg = document.getElementById("noAdaptMessage");
+      container.innerHTML = "";
+
+      const adList = ctx.adaptations || [];
+      if (adList.length === 0) {
+        noMsg.style.display = "block";
+        return;
+      }
+      noMsg.style.display = "none";
+
+      adList.forEach(a => {
+        const card = document.createElement("div");
+        card.className = "adaptation-card";
+
+        const header = document.createElement("div");
+        header.className = "adaptation-header";
+
+        const dateTxt = formatDateISOToFr(a.date_adaptation);
+        const left = document.createElement("div");
+        left.textContent = `Adaptation du ${dateTxt}`;
+
+        const tag = document.createElement("span");
+        tag.className = "tag " + (a.portee_adaptation === "INDIVIDUEL" ? "individuel" : "groupe");
+        tag.textContent = a.portee_adaptation === "INDIVIDUEL" ? "Stagiaire" : "Groupe";
+
+        header.appendChild(left);
+        header.appendChild(tag);
+
+        const body = document.createElement("div");
+        body.className = "adaptation-body";
+
+        const typeLine = document.createElement("div");
+        typeLine.innerHTML = `<strong>Type :</strong> ${a.type_adaptation}`;
+        body.appendChild(typeLine);
+
+        if (a.id_action_formation_effectif) {
+          const stag = (ctx.stagiaires || []).find(
+            s => s.id_action_formation_effectif === a.id_action_formation_effectif
+          );
+          const stagLine = document.createElement("div");
+          stagLine.innerHTML = `<strong>Stagiaire :</strong> ${
+            stag ? stag.nom_complet : "(stagiaire)"
+          }`;
+          body.appendChild(stagLine);
+        }
+
+        if (a.motif_court) {
+          const motifLine = document.createElement("div");
+          motifLine.innerHTML = `<strong>Motif :</strong> ${a.motif_court}`;
+          body.appendChild(motifLine);
+        }
+
+        const descLine = document.createElement("div");
+        descLine.innerHTML = `<strong>Adaptation réalisée :</strong> ${a.description_apres}`;
+        body.appendChild(descLine);
+
+        card.appendChild(header);
+        card.appendChild(body);
+        container.appendChild(card);
+      });
+    }
+
+    async function loadContext(id_action_formation) {
+      try {
+        alertBox("", "");
+        const resp = await fetch(`${API_BASE}/adaptation/context/${encodeURIComponent(id_action_formation)}`);
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        contextData = body;
+        fillHeaderAndIntro(body);
+        fillStagiaires(body);
+        fillAdaptationsList(body);
+
+      } catch (err) {
+        alertBox("error", "Erreur de chargement des informations : " + err.message);
+      }
+    }
+
+    function resetForm() {
+      document.querySelectorAll('input[name="portee_adaptation"]').forEach(r => r.checked = false);
+      document.getElementById("stagiaire_select").value = "";
+      document.getElementById("rowStagiaire").classList.add("hidden");
+
+      const dateInput = document.getElementById("date_adaptation");
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      dateInput.value = `${yyyy}-${mm}-${dd}`;
+
+      document.getElementById("type_adaptation").value = "";
+      document.getElementById("motif_court").value = "";
+      document.getElementById("description_avant").value = "";
+      document.getElementById("description_apres").value = "";
+      document.getElementById("impact_objectifs").value = "";
+      document.querySelectorAll('input[name="impact_evaluation"]').forEach(r => r.checked = false);
+      document.getElementById("impact_eval_commentaire").value = "";
+      document.getElementById("rowImpactEvalComment").classList.add("hidden");
+      document.getElementById("commentaire_libre").value = "";
+
+      const slider = document.getElementById("confirmSlider");
+      slider.value = 0;
+      updateSliderLabel(slider);
+      document.getElementById("btnSave").disabled = true;
+
+      alertBox("", "");
+    }
+
+    function collectPayload() {
+      if (!contextData) {
+        throw new Error("Contexte non chargé.");
+      }
+
+      const radiosPortee = document.querySelectorAll('input[name="portee_adaptation"]:checked');
+      if (radiosPortee.length === 0) {
+        throw new Error("Merci de préciser si l'adaptation concerne le groupe ou un stagiaire.");
+      }
+      const portee = radiosPortee[0].value;
+
+      let idEffectif = null;
+      if (portee === "INDIVIDUEL") {
+        const sel = document.getElementById("stagiaire_select");
+        idEffectif = sel.value || null;
+        if (!idEffectif) {
+          throw new Error("Merci de sélectionner le stagiaire concerné.");
+        }
+      }
+
+      const dateStr = document.getElementById("date_adaptation").value;
+      if (!dateStr) {
+        throw new Error("Merci de renseigner la date de l'adaptation.");
+      }
+      const dateIso = dateStr + "T00:00:00";
+
+      const typeAdapt = document.getElementById("type_adaptation").value;
+      if (!typeAdapt) {
+        throw new Error("Merci de sélectionner le type d'adaptation.");
+      }
+
+      const descApres = (document.getElementById("description_apres").value || "").trim();
+      if (!descApres) {
+        throw new Error("Merci de décrire l'adaptation réalisée.");
+      }
+
+      const motif = (document.getElementById("motif_court").value || "").trim() || null;
+      const descAvant = (document.getElementById("description_avant").value || "").trim() || null;
+      const impactObj = (document.getElementById("impact_objectifs").value || "").trim() || null;
+      const commentaireLibre = (document.getElementById("commentaire_libre").value || "").trim() || null;
+
+      let impactEval = null;
+      let impactEvalComment = (document.getElementById("impact_eval_commentaire").value || "").trim() || null;
+      const radiosImpact = document.querySelectorAll('input[name="impact_evaluation"]:checked');
+      if (radiosImpact.length > 0) {
+        const v = radiosImpact[0].value;
+        if (v === "oui") {
+          impactEval = true;
+          if (!impactEvalComment) {
+            throw new Error("Merci de préciser l'impact sur l'évaluation / validation des acquis.");
+          }
+        } else {
+          impactEval = false;
+          impactEvalComment = null;
+        }
+      }
+
+      const payload = {
+        id_adaptation: null,
+        id_action_formation: contextData.id_action_formation,
+        portee_adaptation: portee,
+        id_action_formation_effectif: idEffectif,
+        date_adaptation: dateIso,
+        type_adaptation: typeAdapt,
+        motif_court: motif,
+        description_avant: descAvant,
+        description_apres: descApres,
+        impact_objectifs: impactObj,
+        impact_evaluation: impactEval,
+        impact_evaluation_commentaire: impactEvalComment,
+        commentaire_libre: commentaireLibre,
+      };
+
+      return payload;
+    }
+
+    async function submitAdaptation() {
+      try {
+        const slider = document.getElementById("confirmSlider");
+        const vSlider = parseInt(slider.value || "0", 10);
+        if (vSlider < 100) {
+          throw new Error("Merci de confirmer l'enregistrement de l'adaptation en amenant le curseur à 100 %.");
+        }
+
+        const payload = collectPayload();
+
+        const resp = await fetch(`${API_BASE}/adaptation/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        alertBox("success", "L'adaptation a bien été enregistrée.");
+        resetForm();
+        await loadContext(contextData.id_action_formation);
+
+      } catch (err) {
+        alertBox("error", "Erreur lors de l'enregistrement : " + err.message);
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const id = getQueryParam("id");
+      if (!id) {
+        alertBox("error", "Identifiant de l'action de formation manquant dans l'URL. Le lien utilisé n'est pas valide.");
+        return;
+      }
+
+      initSlider();
+
+      const dateInput = document.getElementById("date_adaptation");
+      if (dateInput) {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+        dateInput.value = `${yyyy}-${mm}-${dd}`;
+      }
+
+      loadContext(id);
+
+      document.querySelectorAll('input[name="portee_adaptation"]').forEach(r => {
+        r.addEventListener("change", () => {
+          const rowStagiaire = document.getElementById("rowStagiaire");
+          if (r.value === "INDIVIDUEL" && r.checked) {
+            rowStagiaire.classList.remove("hidden");
+          } else if (r.value === "GROUPE" && r.checked) {
+            rowStagiaire.classList.add("hidden");
+            document.getElementById("stagiaire_select").value = "";
+          }
+        });
+      });
+
+      document.querySelectorAll('input[name="impact_evaluation"]').forEach(r => {
+        r.addEventListener("change", () => {
+          const bloc = document.getElementById("rowImpactEvalComment");
+          if (r.value === "oui" && r.checked) {
+            bloc.classList.remove("hidden");
+          } else if (r.value === "non" && r.checked) {
+            bloc.classList.add("hidden");
+            document.getElementById("impact_eval_commentaire").value = "";
+          }
+        });
+      });
+
+      document.getElementById("btnReset").addEventListener("click", () => {
+        resetForm();
+      });
+
+      document.getElementById("btnSave").addEventListener("click", () => {
+        submitAdaptation();
+      });
+    });
+  </script>
+</body>
+</html>
