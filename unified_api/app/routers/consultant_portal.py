@@ -117,7 +117,7 @@ def get_consultant_context(id_consultant: str):
                         c.nom AS nom_consultant
                     FROM public.tbl_consultant c
                     WHERE c.id_consultant = %s
-                      AND c.archive = FALSE
+                      AND c.actif = TRUE
                     """,
                     (id_consultant,),
                 )
