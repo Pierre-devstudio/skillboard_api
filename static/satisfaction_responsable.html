@@ -1,0 +1,1131 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Satisfaction responsable administratif — Skillboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+    body { margin: 24px; background:#fafafa; color:#111827; }
+    h1 { margin: 0 0 16px; font-size: 22px; }
+    h2 { margin: 0 0 8px; font-size: 18px; }
+
+    fieldset {
+      border:1px solid #e5e7eb;
+      border-radius:8px;
+      padding:16px;
+      background:#ffffff;
+    }
+    legend { padding:0 8px; color:#4b5563; font-size:13px; }
+
+    .muted { color:#6b7280; font-size:14px; }
+    .section-subtitle { font-size:15px; }
+
+    .small { font-size:13px; color:#6b7280; }
+
+    .success {
+      background:#ecfdf5;
+      color:#065f46;
+      border:1px solid #a7f3d0;
+      padding:10px;
+      border-radius:8px;
+      margin-top:16px;
+    }
+    .error {
+      background:#fef2f2;
+      color:#991b1b;
+      border:1px solid #fecaca;
+      padding:10px;
+      border-radius:8px;
+      margin-top:16px;
+    }
+
+    button {
+      padding:10px 14px;
+      border:0;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:14px;
+    }
+    .btn { background:#0ea5e9; color:#fff; }
+    .btn.secondary { background:#e5e7f0; color:#111827; }
+    .btn[disabled] { opacity:0.6; cursor:not-allowed; }
+
+    .actions {
+      display:flex;
+      gap:10px;
+      margin-top:16px;
+      flex-wrap:wrap;
+    }
+
+    .hidden { display:none; }
+
+    .section {
+      margin-top:20px;
+    }
+
+    .question-block {
+      margin-bottom:16px;
+    }
+    .question-label {
+      font-size:14px;
+      font-weight:500;
+      margin-bottom:4px;
+      color:#111827;
+    }
+    .question-help {
+      font-size:12px;
+      color:#6b7280;
+      margin-bottom:4px;
+    }
+
+    .slider-row {
+      display:flex;
+      align-items:center;
+      gap:12px;
+      max-width:420px;
+    }
+    .slider-row input[type="range"] {
+      width:100%;
+    }
+    .slider-value {
+      font-size:13px;
+      color:#475569;
+      min-width:56px;
+      text-align:right;
+    }
+
+    .textarea-block textarea {
+      width:100%;
+      min-height:100px;
+      resize:vertical;
+      padding:8px;
+      border-radius:6px;
+      border:1px solid #cbd5e1;
+      font-family:inherit;
+      font-size:14px;
+      background:#fff;
+    }
+
+    .radio-row {
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-top:4px;
+      font-size:14px;
+    }
+    .radio-row label {
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      cursor:pointer;
+    }
+
+    .select-control {
+      padding:6px 8px;
+      border-radius:6px;
+      border:1px solid #cbd5e1;
+      font-size:14px;
+      background:#fff;
+    }
+
+    .recap-block {
+      margin-top:12px;
+      padding:12px;
+      border-radius:8px;
+      background:#f9fafb;
+      border:1px solid #e5e7eb;
+    }
+    .recap-block-title {
+      font-weight:600;
+      font-size:14px;
+      margin-bottom:6px;
+    }
+    .recap-line {
+      font-size:13px;
+      margin-bottom:4px;
+    }
+
+    footer {
+      margin-top:28px;
+      padding-top:12px;
+      border-top:1px solid #e5e7eb;
+      font-size:12px;
+      color:#6b7280;
+      text-align:center;
+    }
+
+    .logo-header {
+      max-height: 80px;
+      height: auto;
+      max-width: 100%;
+    }
+
+    @media (max-width: 640px) {
+      body { margin:16px; }
+      .slider-row { max-width:100%; }
+    }
+  </style>
+</head>
+<body>
+  <header style="margin-bottom:20px; text-align:center;">
+    <img src="/logo.png" alt="Logo" class="logo-header">
+    <div id="formationTitle" style="margin-top:8px; font-weight:600; font-size:20px;"></div>
+    <div id="contactInfo" style="margin-top:4px; font-size:16px; font-weight:600; color:#111827;"></div>
+  </header>
+
+  <div id="alert"></div>
+
+  <!-- STEP 0 : INTRO -->
+  <section id="stepIntro" class="section">
+    <h1>Questionnaire de satisfaction</h1>
+    <p id="introText" class="muted">
+      Chargement des informations de la formation...
+    </p>
+    <div id="bannerDejaRepondu" class="small" style="margin-top:8px; color:#b45309;"></div>
+    <div class="actions" style="margin-top:20px;">
+      <button class="btn" id="btnStart" disabled>Commencer</button>
+    </div>
+  </section>
+
+  <!-- STEP 1 : Préparation -->
+  <section id="stepPreparation" class="section hidden">
+    <h1>Préparation de la formation</h1>
+    <p class="muted section-subtitle">Comment jugez-vous la préparation de la formation ?</p>
+
+    <fieldset>
+      <legend>Préparation</legend>
+
+      <div class="question-block">
+        <div class="question-label">
+          Nous avons su vous écouter et comprendre vos besoins de formation.
+        </div>
+        <div class="question-help">1 = Pas du tout d'accord, 10 = Tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="prep_q1" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="prep_q1">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          Nous avons pris en compte vos contraintes pour réaliser notre offre de formation.
+        </div>
+        <div class="question-help">1 = Pas du tout d'accord, 10 = Tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="prep_q2" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="prep_q2">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          L'offre de formation était claire et complète (convention de formation, devis, plan de formation, ...).
+        </div>
+        <div class="question-help">1 = Pas du tout d'accord, 10 = Tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="prep_q3" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="prep_q3">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          Vous avez reçu assez d'informations pour répondre aux questions de vos collaborateurs (planning, horaires, lieu, déroulement, ...).
+        </div>
+        <div class="question-help">1 = Pas du tout d'accord, 10 = Tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="prep_q4" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="prep_q4">– / 10</span>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn secondary" id="btnPrepBack">Revenir à l'écran précédent</button>
+      <button class="btn" id="btnPrepNext">Continuer</button>
+    </div>
+  </section>
+
+  <!-- STEP 2 : Échanges avec le formateur -->
+  <section id="stepEchangesFormateur" class="section hidden">
+    <h1>Déroulement de la formation</h1>
+    <p class="muted section-subtitle">Échanges avec le formateur</p>
+
+    <fieldset>
+      <legend>Échanges avec le formateur</legend>
+
+      <div class="question-block">
+        <div class="question-label">
+          Avez-vous pu (ou dû) échanger avec le formateur pendant la formation ?
+        </div>
+        <div class="radio-row">
+          <label><input type="radio" name="ech_formateur" value="oui"> Oui</label>
+          <label><input type="radio" name="ech_formateur" value="non"> Non</label>
+        </div>
+      </div>
+
+      <div id="blocEchangesFormateurDetails" class="hidden">
+        <div class="small" style="margin-bottom:8px;">
+          Si oui, merci de répondre aux questions suivantes.
+        </div>
+
+        <div class="question-block">
+          <div class="question-label">
+            Le formateur a su prendre en compte vos demandes et vos besoins pendant la formation.
+          </div>
+          <div class="question-help">1 = Pas du tout d'accord, 10 = Tout à fait d'accord</div>
+          <div class="slider-row">
+            <input type="range" id="form_q1" min="0" max="10" step="1" value="0">
+            <span class="slider-value" data-for="form_q1">– / 10</span>
+          </div>
+        </div>
+
+        <div class="question-block">
+          <div class="question-label">
+            Le formateur vous a semblé compétent et réactif.
+          </div>
+          <div class="question-help">1 = Pas du tout d'accord, 10 = Tout à fait d'accord</div>
+          <div class="slider-row">
+            <input type="range" id="form_q2" min="0" max="10" step="1" value="0">
+            <span class="slider-value" data-for="form_q2">– / 10</span>
+          </div>
+        </div>
+
+        <div class="question-block">
+          <div class="question-label">
+            Le formateur a su vous faire des retours pertinents sur le déroulement de la formation.
+          </div>
+          <div class="question-help">1 = Pas du tout d'accord, 10 = Tout à fait d'accord</div>
+          <div class="slider-row">
+            <input type="range" id="form_q3" min="0" max="10" step="1" value="0">
+            <span class="slider-value" data-for="form_q3">– / 10</span>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn secondary" id="btnFormBack">Revenir à l'écran précédent</button>
+      <button class="btn" id="btnFormNext">Continuer</button>
+    </div>
+  </section>
+
+  <!-- STEP 3 : Échanges avec l'organisme de formation -->
+  <section id="stepEchangesOF" class="section hidden">
+    <h1>Déroulement de la formation</h1>
+    <p class="muted section-subtitle">Échanges avec l'organisme de formation</p>
+
+    <fieldset>
+      <legend>Échanges avec l'organisme de formation</legend>
+
+      <div class="question-block">
+        <div class="question-label">
+          Avez-vous dû échanger avec l'organisme de formation pendant la formation ?
+        </div>
+        <div class="radio-row">
+          <label><input type="radio" name="ech_of" value="oui"> Oui</label>
+          <label><input type="radio" name="ech_of" value="non"> Non</label>
+        </div>
+      </div>
+
+      <div id="blocEchangesOFDetails" class="hidden">
+        <div class="small" style="margin-bottom:8px;">
+          Si oui, merci de répondre à la question suivante.
+        </div>
+
+        <div class="question-block">
+          <div class="question-label">
+            L'organisme de formation a été réactif et a su répondre à vos attentes.
+          </div>
+          <div class="question-help">1 = Pas du tout d'accord, 10 = Tout à fait d'accord</div>
+          <div class="slider-row">
+            <input type="range" id="of_q1" min="0" max="10" step="1" value="0">
+            <span class="slider-value" data-for="of_q1">– / 10</span>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn secondary" id="btnOFBack">Revenir à l'écran précédent</button>
+      <button class="btn" id="btnOFNext">Continuer</button>
+    </div>
+  </section>
+
+  <!-- STEP 4 : Bilan -->
+  <section id="stepBilan" class="section hidden">
+    <h1>Bilan de fin de formation</h1>
+
+    <fieldset>
+      <legend>Bilan</legend>
+
+      <div class="question-block">
+        <div class="question-label">
+          Les documents administratifs ont été restitués (feuilles d'émargement, attestation de fin de formation, ...).
+        </div>
+        <div class="question-help">1 = Pas du tout d'accord, 10 = Tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="bil_q1" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="bil_q1">– / 10</span>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          La pertinence de la formation était cohérente avec vos attentes.
+        </div>
+        <div class="question-help">1 = Pas du tout d'accord, 10 = Tout à fait d'accord</div>
+        <div class="slider-row">
+          <input type="range" id="bil_q2" min="0" max="10" step="1" value="0">
+          <span class="slider-value" data-for="bil_q2">– / 10</span>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn secondary" id="btnBilanBack">Revenir à l'écran précédent</button>
+      <button class="btn" id="btnBilanNext">Continuer</button>
+    </div>
+  </section>
+
+  <!-- STEP 5 : Retour interne -->
+  <section id="stepRetourInterne" class="section hidden">
+    <h1>Retour interne</h1>
+
+    <fieldset>
+      <legend>Échanges internes</legend>
+
+      <div class="question-block">
+        <div class="question-label">
+          Avez-vous eu l'occasion d'échanger avec les apprenants, ou leur manager, sur leur perception de la formation ?
+        </div>
+        <div class="radio-row">
+          <label><input type="radio" name="retour_interne" value="oui"> Oui</label>
+          <label><input type="radio" name="retour_interne" value="non"> Non</label>
+        </div>
+      </div>
+
+      <div id="blocRetourInterneDetails" class="hidden">
+        <div class="small" style="margin-bottom:8px;">
+          Si oui, merci de répondre aux questions suivantes.
+        </div>
+
+        <div class="question-block">
+          <div class="question-label">
+            Selon eux, la formation leur a semblé bien organisée.
+          </div>
+          <div class="question-help">1 = Pas du tout d'accord, 10 = Tout à fait d'accord</div>
+          <div class="slider-row">
+            <input type="range" id="ret_q1" min="0" max="10" step="1" value="0">
+            <span class="slider-value" data-for="ret_q1">– / 10</span>
+          </div>
+        </div>
+
+        <div class="question-block">
+          <div class="question-label">
+            Selon eux, la formation a répondu à leurs attentes.
+          </div>
+          <div class="question-help">1 = Pas du tout d'accord, 10 = Tout à fait d'accord</div>
+          <div class="slider-row">
+            <input type="range" id="ret_q2" min="0" max="10" step="1" value="0">
+            <span class="slider-value" data-for="ret_q2">– / 10</span>
+          </div>
+        </div>
+
+        <div class="question-block">
+          <div class="question-label">
+            Selon eux, ils ont atteint les objectifs définis en amont de la formation.
+          </div>
+          <div class="question-help">1 = Pas du tout d'accord, 10 = Tout à fait d'accord</div>
+          <div class="slider-row">
+            <input type="range" id="ret_q3" min="0" max="10" step="1" value="0">
+            <span class="slider-value" data-for="ret_q3">– / 10</span>
+          </div>
+        </div>
+      </div>
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn secondary" id="btnRetourBack">Revenir à l'écran précédent</button>
+      <button class="btn" id="btnRetourNext">Continuer</button>
+    </div>
+  </section>
+
+  <!-- STEP 6 : Commentaires / réclamations -->
+  <section id="stepCommentaires" class="section hidden">
+    <h1>Commentaires, réclamations, suggestions</h1>
+
+    <fieldset>
+      <legend>Commentaires & intentions</legend>
+
+      <div class="question-block textarea-block">
+        <div class="question-label">
+          Quelles suggestions aimeriez-vous nous faire ? (facultatif)
+        </div>
+        <textarea id="comm_suggestion" placeholder="Vos idées pour améliorer nos formations, notre communication, nos modalités, etc."></textarea>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          Recommanderiez-vous cette formation à des collègues (ou confrères) ?
+        </div>
+        <div class="radio-row">
+          <label><input type="radio" name="recommande" value="oui"> Oui</label>
+          <label><input type="radio" name="recommande" value="non"> Non</label>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          Avez-vous des réclamations à porter à cette formation ?
+        </div>
+        <div class="radio-row">
+          <label><input type="radio" name="reclamation" value="oui"> Oui</label>
+          <label><input type="radio" name="reclamation" value="non"> Non</label>
+        </div>
+      </div>
+
+      <div id="reclamationDetails" class="hidden">
+        <div class="question-block">
+          <div class="question-label">Cette réclamation concerne :</div>
+          <select id="reclamation_objet" class="select-control">
+            <option value="">Veuillez sélectionner</option>
+            <option value="preparation">La préparation de la formation</option>
+            <option value="organisation">L'organisation de la formation</option>
+            <option value="contenu">Le contenu de la formation</option>
+            <option value="objectifs">Les objectifs visés</option>
+            <option value="organisme">L'organisme de formation</option>
+            <option value="formateur">Le formateur</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+
+        <div class="question-block textarea-block">
+          <div class="question-label">Merci de préciser votre réclamation</div>
+          <textarea id="reclamation_texte" placeholder="Décrivez précisément votre réclamation."></textarea>
+        </div>
+      </div>
+
+      <div class="question-block">
+        <div class="question-label">
+          Pensez-vous, de nouveau, faire appel à nos services ?
+        </div>
+        <div class="radio-row">
+          <label><input type="radio" name="intention_reappel" value="OUI"> Oui</label>
+          <label><input type="radio" name="intention_reappel" value="PEUT_ETRE"> Peut-être</label>
+          <label><input type="radio" name="intention_reappel" value="NON"> Non</label>
+        </div>
+      </div>
+
+    </fieldset>
+
+    <div class="actions">
+      <button class="btn secondary" id="btnCommBack">Revenir à l'écran précédent</button>
+      <button class="btn" id="btnCommNext">Continuer</button>
+    </div>
+  </section>
+
+  <!-- STEP 7 : RECAP -->
+  <section id="stepRecap" class="section hidden">
+    <h1>Récapitulatif de vos réponses</h1>
+    <p class="muted">
+      Merci de vérifier vos réponses avant de les envoyer.  
+      Si vous souhaitez modifier une information, utilisez les boutons « Revenir à l'écran précédent ».
+    </p>
+
+    <div id="recapContainer"></div>
+
+    <div style="margin-top:16px;">
+      <div class="small" style="margin-bottom:4px;">
+        Faites glisser le curseur à droite pour confirmer l'envoi définitif de vos réponses.
+      </div>
+      <div class="slider-row">
+        <input type="range" id="confirmSlider" min="0" max="100" step="10" value="0">
+        <span class="slider-value" data-for="confirmSlider">0 %</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn secondary" id="btnRecapBack">Revenir à l'écran précédent</button>
+      <button class="btn" id="btnSend" disabled>Envoyer vos réponses</button>
+    </div>
+  </section>
+
+  <!-- STEP 8 : FINAL -->
+  <section id="stepFinal" class="section hidden">
+    <h1>Merci pour votre participation</h1>
+    <p class="muted">
+      Votre questionnaire de satisfaction a bien été enregistré.
+      Merci d'avoir pris le temps de nous transmettre votre avis.
+    </p>
+    <p class="muted">
+      Pour en savoir plus sur nos accompagnements, vous pouvez visiter notre site :
+      <a href="https://www.jmbconsultant.fr" target="_blank" rel="noopener noreferrer">www.jmbconsultant.fr</a>.
+    </p>
+  </section>
+
+  <footer>
+    Outil de recueil de satisfaction développé avec Skillboard par<br>
+    <a href="https://www.jmbconsultant.fr" target="_blank" rel="noopener noreferrer">JMB CONSULTANT</a>.
+  </footer>
+
+  <script>
+    const API_BASE = "https://skillboard-services.onrender.com";
+
+    const answers = {
+      id_action_formation_entreprise: null,
+      preparation: { q1: null, q2: null, q3: null, q4: null },
+      echanges_formateur: { a_eu_echange: null, q1: null, q2: null, q3: null },
+      echanges_of: { a_eu_echange: null, q1: null },
+      bilan: { q1: null, q2: null },
+      retour_interne: { a_eu_retour: null, q1: null, q2: null, q3: null },
+      commentaires: {
+        suggestion: "",
+        recommande: null,
+        reclamation: null,
+        reclamation_objet: null,
+        reclamation_texte: null,
+        intention_reappel: null
+      },
+      context: null
+    };
+
+    function getQueryParam(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+
+    function alertBox(type, html) {
+      const container = document.getElementById("alert");
+      if (!html || !type) {
+        container.innerHTML = "";
+        return;
+      }
+      container.innerHTML = `<div class="${type}">${html}</div>`;
+    }
+
+    function updateSliderLabel(slider) {
+      const id = slider.id;
+      const value = parseInt(slider.value || "0", 10);
+      const label = document.querySelector(`.slider-value[data-for="${id}"]`);
+      if (!label) return;
+
+      if (id === "confirmSlider") {
+        label.textContent = `${value} %`;
+        return;
+      }
+
+      if (value === 0) {
+        label.textContent = "– / 10";
+      } else {
+        label.textContent = `${value} / 10`;
+      }
+    }
+
+    function initSliders() {
+      document.querySelectorAll('input[type="range"]').forEach(slider => {
+        updateSliderLabel(slider);
+        slider.addEventListener("input", () => {
+          updateSliderLabel(slider);
+          if (slider.id === "confirmSlider") {
+            const btnSend = document.getElementById("btnSend");
+            const v = parseInt(slider.value || "0", 10);
+            btnSend.disabled = v < 100;
+          }
+        });
+      });
+    }
+
+    async function loadContext(id_ligne) {
+      try {
+        alertBox("", "");
+        const resp = await fetch(`${API_BASE}/satisfaction_responsable/context/${encodeURIComponent(id_ligne)}`);
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        answers.id_action_formation_entreprise = body.id_action_formation_entreprise;
+        answers.context = body;
+
+        const titre = body.titre_formation;
+        document.getElementById("formationTitle").textContent = titre;
+
+        let civiliteLabel = "";
+        if (body.civilite) {
+          const raw = (body.civilite || "").trim();
+          if (raw === "F") civiliteLabel = "Mme";
+          else if (raw === "M") civiliteLabel = "M";
+          else civiliteLabel = raw;
+        }
+
+        const nomAffiche = `${body.prenom} ${body.nom}`;
+        const introNom = civiliteLabel ? `${civiliteLabel} ${body.prenom} ${body.nom}` : nomAffiche;
+
+        document.getElementById("contactInfo").textContent = nomAffiche;
+
+        const intro = document.getElementById("introText");
+        intro.innerHTML =
+          `${introNom}, vous êtes le contact administratif pour la formation <strong>${titre}</strong> organisée par JMB CONSULTANT.<br><br>` +
+          `Nous vous remercions de prendre quelques instants (environ 5 minutes) pour répondre à ce questionnaire de satisfaction, ` +
+          `dans le cadre de notre démarche d'amélioration continue de nos formations.`;
+
+        const banner = document.getElementById("bannerDejaRepondu");
+        if (body.deja_repondu) {
+          banner.textContent =
+            "Une réponse a déjà été enregistrée pour ce questionnaire. Une nouvelle validation mettra à jour vos réponses précédentes.";
+        } else {
+          banner.textContent = "";
+        }
+
+        initSliders();
+        document.getElementById("btnStart").disabled = false;
+
+      } catch (err) {
+        alertBox("error", "Erreur de chargement des informations : " + err.message);
+      }
+    }
+
+    function showStep(stepId) {
+      [
+        "stepIntro",
+        "stepPreparation",
+        "stepEchangesFormateur",
+        "stepEchangesOF",
+        "stepBilan",
+        "stepRetourInterne",
+        "stepCommentaires",
+        "stepRecap",
+        "stepFinal"
+      ].forEach(id => {
+        const s = document.getElementById(id);
+        if (!s) return;
+        if (id === stepId) s.classList.remove("hidden");
+        else s.classList.add("hidden");
+      });
+      alertBox("", "");
+    }
+
+    function validatePreparation() {
+      const q1 = parseInt(document.getElementById("prep_q1").value || "0", 10);
+      const q2 = parseInt(document.getElementById("prep_q2").value || "0", 10);
+      const q3 = parseInt(document.getElementById("prep_q3").value || "0", 10);
+      const q4 = parseInt(document.getElementById("prep_q4").value || "0", 10);
+
+      if (q1 < 1 || q2 < 1 || q3 < 1 || q4 < 1) {
+        alertBox("error", "Merci de renseigner toutes les notes de la section Préparation (de 1 à 10).");
+        return false;
+      }
+
+      answers.preparation.q1 = q1;
+      answers.preparation.q2 = q2;
+      answers.preparation.q3 = q3;
+      answers.preparation.q4 = q4;
+      return true;
+    }
+
+    function validateEchangesFormateur() {
+      const radio = document.querySelector('input[name="ech_formateur"]:checked');
+      if (!radio) {
+        alertBox("error", "Merci d'indiquer si vous avez échangé avec le formateur.");
+        return false;
+      }
+      const value = radio.value;
+      answers.echanges_formateur.a_eu_echange = value;
+
+      if (value === "oui") {
+        const q1 = parseInt(document.getElementById("form_q1").value || "0", 10);
+        const q2 = parseInt(document.getElementById("form_q2").value || "0", 10);
+        const q3 = parseInt(document.getElementById("form_q3").value || "0", 10);
+
+        if (q1 < 1 || q2 < 1 || q3 < 1) {
+          alertBox("error", "Merci de renseigner toutes les notes concernant les échanges avec le formateur (1 à 10).");
+          return false;
+        }
+
+        answers.echanges_formateur.q1 = q1;
+        answers.echanges_formateur.q2 = q2;
+        answers.echanges_formateur.q3 = q3;
+      } else {
+        answers.echanges_formateur.q1 = null;
+        answers.echanges_formateur.q2 = null;
+        answers.echanges_formateur.q3 = null;
+      }
+      return true;
+    }
+
+    function validateEchangesOF() {
+      const radio = document.querySelector('input[name="ech_of"]:checked');
+      if (!radio) {
+        alertBox("error", "Merci d'indiquer si vous avez échangé avec l'organisme de formation.");
+        return false;
+      }
+      const value = radio.value;
+      answers.echanges_of.a_eu_echange = value;
+
+      if (value === "oui") {
+        const q1 = parseInt(document.getElementById("of_q1").value || "0", 10);
+        if (q1 < 1) {
+          alertBox("error", "Merci de renseigner la note concernant les échanges avec l'organisme de formation (1 à 10).");
+          return false;
+        }
+        answers.echanges_of.q1 = q1;
+      } else {
+        answers.echanges_of.q1 = null;
+      }
+      return true;
+    }
+
+    function validateBilan() {
+      const q1 = parseInt(document.getElementById("bil_q1").value || "0", 10);
+      const q2 = parseInt(document.getElementById("bil_q2").value || "0", 10);
+
+      if (q1 < 1 || q2 < 1) {
+        alertBox("error", "Merci de renseigner toutes les notes de la section Bilan (1 à 10).");
+        return false;
+      }
+
+      answers.bilan.q1 = q1;
+      answers.bilan.q2 = q2;
+      return true;
+    }
+
+    function validateRetourInterne() {
+      const radio = document.querySelector('input[name="retour_interne"]:checked');
+      if (!radio) {
+        alertBox("error", "Merci d'indiquer si vous avez eu des retours internes.");
+        return false;
+      }
+      const value = radio.value;
+      answers.retour_interne.a_eu_retour = value;
+
+      if (value === "oui") {
+        const q1 = parseInt(document.getElementById("ret_q1").value || "0", 10);
+        const q2 = parseInt(document.getElementById("ret_q2").value || "0", 10);
+        const q3 = parseInt(document.getElementById("ret_q3").value || "0", 10);
+
+        if (q1 < 1 || q2 < 1 || q3 < 1) {
+          alertBox("error", "Merci de renseigner toutes les notes de la section Retour interne (1 à 10).");
+          return false;
+        }
+
+        answers.retour_interne.q1 = q1;
+        answers.retour_interne.q2 = q2;
+        answers.retour_interne.q3 = q3;
+      } else {
+        answers.retour_interne.q1 = null;
+        answers.retour_interne.q2 = null;
+        answers.retour_interne.q3 = null;
+      }
+      return true;
+    }
+
+    function validateCommentaires() {
+      const suggestion = (document.getElementById("comm_suggestion").value || "").trim();
+      const recommande = document.querySelector('input[name="recommande"]:checked');
+      const reclamation = document.querySelector('input[name="reclamation"]:checked');
+      const intention = document.querySelector('input[name="intention_reappel"]:checked');
+
+      if (!recommande) {
+        alertBox("error", "Merci d'indiquer si vous recommanderiez cette formation.");
+        return false;
+      }
+      if (!reclamation) {
+        alertBox("error", "Merci d'indiquer si vous avez une réclamation.");
+        return false;
+      }
+      if (!intention) {
+        alertBox("error", "Merci d'indiquer si vous pensez faire de nouveau appel à nos services.");
+        return false;
+      }
+
+      const reclamationValue = reclamation.value;
+      let reclamation_objet = null;
+      let reclamation_texte = null;
+
+      if (reclamationValue === "oui") {
+        reclamation_objet = document.getElementById("reclamation_objet").value || "";
+        reclamation_texte = (document.getElementById("reclamation_texte").value || "").trim();
+
+        if (!reclamation_objet) {
+          alertBox("error", "Merci de préciser l'objet de votre réclamation.");
+          return false;
+        }
+        if (!reclamation_texte) {
+          alertBox("error", "Merci de décrire votre réclamation.");
+          return false;
+        }
+      }
+
+      answers.commentaires.suggestion = suggestion;
+      answers.commentaires.recommande = recommande.value;
+      answers.commentaires.reclamation = reclamationValue;
+      answers.commentaires.reclamation_objet = reclamation_objet;
+      answers.commentaires.reclamation_texte = reclamation_texte;
+      answers.commentaires.intention_reappel = intention.value;
+      return true;
+    }
+
+    function buildRecap() {
+      const cont = document.getElementById("recapContainer");
+      cont.innerHTML = "";
+
+      const prep = document.createElement("div");
+      prep.className = "recap-block";
+      prep.innerHTML = `
+        <div class="recap-block-title">Préparation de la formation</div>
+        <div class="recap-line"><strong>Écoute et compréhension de vos besoins</strong> : ${answers.preparation.q1} / 10</div>
+        <div class="recap-line"><strong>Prise en compte de vos contraintes</strong> : ${answers.preparation.q2} / 10</div>
+        <div class="recap-line"><strong>Clarté et complétude de l'offre</strong> : ${answers.preparation.q3} / 10</div>
+        <div class="recap-line"><strong>Informations pour répondre aux collaborateurs</strong> : ${answers.preparation.q4} / 10</div>
+      `;
+      cont.appendChild(prep);
+
+      const formBlock = document.createElement("div");
+      formBlock.className = "recap-block";
+      let formHtml = `<div class="recap-block-title">Échanges avec le formateur</div>`;
+      formHtml += `<div class="recap-line"><strong>Avez-vous échangé avec le formateur ?</strong> ${
+        answers.echanges_formateur.a_eu_echange === "oui" ? "Oui" : "Non"
+      }</div>`;
+      if (answers.echanges_formateur.a_eu_echange === "oui") {
+        formHtml += `<div class="recap-line"><strong>Prise en compte de vos demandes</strong> : ${answers.echanges_formateur.q1} / 10</div>`;
+        formHtml += `<div class="recap-line"><strong>Compétence et réactivité</strong> : ${answers.echanges_formateur.q2} / 10</div>`;
+        formHtml += `<div class="recap-line"><strong>Retours sur le déroulement</strong> : ${answers.echanges_formateur.q3} / 10</div>`;
+      }
+      formBlock.innerHTML = formHtml;
+      cont.appendChild(formBlock);
+
+      const ofBlock = document.createElement("div");
+      ofBlock.className = "recap-block";
+      let ofHtml = `<div class="recap-block-title">Échanges avec l'organisme de formation</div>`;
+      ofHtml += `<div class="recap-line"><strong>Avez-vous échangé avec l'organisme ?</strong> ${
+        answers.echanges_of.a_eu_echange === "oui" ? "Oui" : "Non"
+      }</div>`;
+      if (answers.echanges_of.a_eu_echange === "oui") {
+        ofHtml += `<div class="recap-line"><strong>Réactivité et réponse à vos attentes</strong> : ${answers.echanges_of.q1} / 10</div>`;
+      }
+      ofBlock.innerHTML = ofHtml;
+      cont.appendChild(ofBlock);
+
+      const bilanBlock = document.createElement("div");
+      bilanBlock.className = "recap-block";
+      bilanBlock.innerHTML = `
+        <div class="recap-block-title">Bilan de fin de formation</div>
+        <div class="recap-line"><strong>Restitution des documents administratifs</strong> : ${answers.bilan.q1} / 10</div>
+        <div class="recap-line"><strong>Pertinence par rapport à vos attentes</strong> : ${answers.bilan.q2} / 10</div>
+      `;
+      cont.appendChild(bilanBlock);
+
+      const retourBlock = document.createElement("div");
+      retourBlock.className = "recap-block";
+      let retHtml = `<div class="recap-block-title">Retour interne</div>`;
+      retHtml += `<div class="recap-line"><strong>Avez-vous eu des retours des apprenants ou managers ?</strong> ${
+        answers.retour_interne.a_eu_retour === "oui" ? "Oui" : "Non"
+      }</div>`;
+      if (answers.retour_interne.a_eu_retour === "oui") {
+        retHtml += `<div class="recap-line"><strong>Selon eux, formation bien organisée</strong> : ${answers.retour_interne.q1} / 10</div>`;
+        retHtml += `<div class="recap-line"><strong>Selon eux, formation répond à leurs attentes</strong> : ${answers.retour_interne.q2} / 10</div>`;
+        retHtml += `<div class="recap-line"><strong>Selon eux, objectifs atteints</strong> : ${answers.retour_interne.q3} / 10</div>`;
+      }
+      retourBlock.innerHTML = retHtml;
+      cont.appendChild(retourBlock);
+
+      const commBlock = document.createElement("div");
+      commBlock.className = "recap-block";
+      let cHtml = `<div class="recap-block-title">Commentaires et intentions</div>`;
+      if (answers.commentaires.suggestion) {
+        cHtml += `<div class="recap-line"><strong>Suggestions :</strong> ${answers.commentaires.suggestion}</div>`;
+      }
+      cHtml += `<div class="recap-line"><strong>Recommanderiez-vous cette formation ?</strong> ${
+        answers.commentaires.recommande === "oui" ? "Oui" : "Non"
+      }</div>`;
+      cHtml += `<div class="recap-line"><strong>Réclamation :</strong> ${
+        answers.commentaires.reclamation === "oui" ? "Oui" : "Non"
+      }</div>`;
+      if (answers.commentaires.reclamation === "oui") {
+        cHtml += `<div class="recap-line"><strong>Objet de la réclamation :</strong> ${answers.commentaires.reclamation_objet || ""}</div>`;
+        cHtml += `<div class="recap-line"><strong>Détail de la réclamation :</strong> ${answers.commentaires.reclamation_texte || ""}</div>`;
+      }
+      let intentionTxt = "";
+      if (answers.commentaires.intention_reappel === "OUI") intentionTxt = "Oui, je souhaite de nouveau faire appel à vos services.";
+      else if (answers.commentaires.intention_reappel === "PEUT_ETRE") intentionTxt = "Peut-être, selon les besoins à venir.";
+      else if (answers.commentaires.intention_reappel === "NON") intentionTxt = "Non, je ne prévois pas de faire appel à vos services.";
+      if (intentionTxt) {
+        cHtml += `<div class="recap-line"><strong>Intention de refaire appel à nos services :</strong> ${intentionTxt}</div>`;
+      }
+      commBlock.innerHTML = cHtml;
+      cont.appendChild(commBlock);
+    }
+
+    async function sendAnswers() {
+      try {
+        const payload = {
+          id_action_formation_entreprise: answers.id_action_formation_entreprise,
+          preparation: {
+            q1: answers.preparation.q1,
+            q2: answers.preparation.q2,
+            q3: answers.preparation.q3,
+            q4: answers.preparation.q4,
+          },
+          echanges_formateur: {
+            a_eu_echange: answers.echanges_formateur.a_eu_echange,
+            q1: answers.echanges_formateur.q1,
+            q2: answers.echanges_formateur.q2,
+            q3: answers.echanges_formateur.q3,
+          },
+          echanges_of: {
+            a_eu_echange: answers.echanges_of.a_eu_echange,
+            q1: answers.echanges_of.q1,
+          },
+          bilan: {
+            q1: answers.bilan.q1,
+            q2: answers.bilan.q2,
+          },
+          retour_interne: {
+            a_eu_retour: answers.retour_interne.a_eu_retour,
+            q1: answers.retour_interne.q1,
+            q2: answers.retour_interne.q2,
+            q3: answers.retour_interne.q3,
+          },
+          commentaires: {
+            suggestion: answers.commentaires.suggestion || null,
+            recommande: answers.commentaires.recommande,
+            reclamation: answers.commentaires.reclamation,
+            reclamation_objet: answers.commentaires.reclamation_objet,
+            reclamation_texte: answers.commentaires.reclamation_texte,
+            intention_reappel: answers.commentaires.intention_reappel,
+          },
+        };
+
+        const resp = await fetch(`${API_BASE}/satisfaction_responsable/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        showStep("stepFinal");
+      } catch (err) {
+        alertBox("error", "Erreur lors de l'enregistrement de vos réponses : " + err.message);
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const id = getQueryParam("id");
+      if (!id) {
+        alertBox("error", "Identifiant manquant dans l'URL. Le lien utilisé n'est pas valide.");
+        return;
+      }
+
+      initSliders();
+      loadContext(id);
+
+      document.getElementById("btnStart").addEventListener("click", () => {
+        showStep("stepPreparation");
+      });
+
+      document.getElementById("btnPrepNext").addEventListener("click", () => {
+        if (validatePreparation()) showStep("stepEchangesFormateur");
+      });
+      document.getElementById("btnPrepBack").addEventListener("click", () => {
+        showStep("stepIntro");
+      });
+
+      document.getElementById("btnFormNext").addEventListener("click", () => {
+        if (validateEchangesFormateur()) showStep("stepEchangesOF");
+      });
+      document.getElementById("btnFormBack").addEventListener("click", () => {
+        showStep("stepPreparation");
+      });
+
+      document.getElementById("btnOFNext").addEventListener("click", () => {
+        if (validateEchangesOF()) showStep("stepBilan");
+      });
+      document.getElementById("btnOFBack").addEventListener("click", () => {
+        showStep("stepEchangesFormateur");
+      });
+
+      document.getElementById("btnBilanNext").addEventListener("click", () => {
+        if (validateBilan()) showStep("stepRetourInterne");
+      });
+      document.getElementById("btnBilanBack").addEventListener("click", () => {
+        showStep("stepEchangesOF");
+      });
+
+      document.getElementById("btnRetourNext").addEventListener("click", () => {
+        if (validateRetourInterne()) showStep("stepCommentaires");
+      });
+      document.getElementById("btnRetourBack").addEventListener("click", () => {
+        showStep("stepBilan");
+      });
+
+      document.getElementById("btnCommNext").addEventListener("click", () => {
+        if (validateCommentaires()) {
+          buildRecap();
+          const confirmSlider = document.getElementById("confirmSlider");
+          confirmSlider.value = 0;
+          updateSliderLabel(confirmSlider);
+          document.getElementById("btnSend").disabled = true;
+          showStep("stepRecap");
+        }
+      });
+      document.getElementById("btnCommBack").addEventListener("click", () => {
+        showStep("stepRetourInterne");
+      });
+
+      document.querySelectorAll('input[name="ech_formateur"]').forEach(r => {
+        r.addEventListener("change", () => {
+          const bloc = document.getElementById("blocEchangesFormateurDetails");
+          bloc.classList.toggle("hidden", r.value !== "oui");
+        });
+      });
+
+      document.querySelectorAll('input[name="ech_of"]').forEach(r => {
+        r.addEventListener("change", () => {
+          const bloc = document.getElementById("blocEchangesOFDetails");
+          bloc.classList.toggle("hidden", r.value !== "oui");
+        });
+      });
+
+      document.querySelectorAll('input[name="retour_interne"]').forEach(r => {
+        r.addEventListener("change", () => {
+          const bloc = document.getElementById("blocRetourInterneDetails");
+          bloc.classList.toggle("hidden", r.value !== "oui");
+        });
+      });
+
+      document.querySelectorAll('input[name="reclamation"]').forEach(r => {
+        r.addEventListener("change", () => {
+          const bloc = document.getElementById("reclamationDetails");
+          bloc.classList.toggle("hidden", r.value !== "oui");
+        });
+      });
+
+      document.getElementById("btnRecapBack").addEventListener("click", () => {
+        showStep("stepCommentaires");
+      });
+
+      document.getElementById("btnSend").addEventListener("click", () => {
+        const slider = document.getElementById("confirmSlider");
+        const v = parseInt(slider.value || "0", 10);
+        if (v < 100) {
+          alertBox("error", "Merci de confirmer l'envoi de vos réponses en amenant le curseur de confirmation à 100 %.");
+          return;
+        }
+        sendAnswers();
+      });
+    });
+  </script>
+</body>
+</html>
