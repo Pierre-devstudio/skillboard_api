@@ -182,8 +182,7 @@ def fetch_consultant_with_entreprise(cur, id_consultant: str):
             """
             SELECT nom_ent
             FROM public.tbl_entreprise
-            WHERE id_ent = %s
-              AND archive = FALSE
+            WHERE id_ent = %s              
             """,
             (row["id_ent"],),
         )
@@ -197,8 +196,7 @@ def fetch_consultant_with_entreprise(cur, id_consultant: str):
             """
             SELECT nom
             FROM public.tbl_fournisseur
-            WHERE id_fourn = %s
-              AND archive = FALSE
+            WHERE id_fourn = %s              
             """,
             (row["id_fourn"],),
         )
