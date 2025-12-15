@@ -12,7 +12,7 @@ import psycopg
 from psycopg.rows import dict_row
 from dotenv import load_dotenv
 
-from MailManager import send_satisfaction_consultant_mail
+from app.routers.MailManager import send_satisfaction_consultant_mail
 # ======================================================
 # ENV
 # ======================================================
