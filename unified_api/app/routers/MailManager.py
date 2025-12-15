@@ -212,3 +212,83 @@ def send_satisfaction_responsable_mail(
 
     except Exception as e:
         print("Erreur appel Mailjet (satisfaction responsable):", e)
+
+def send_satisfaction_consultant_mail(
+    code_formation: str | None,
+    titre_formation: str,
+    prenom: str,
+    nom: str,
+    id_action_formation: str,
+    mode: str,
+    code_action_formation: str | None = None,
+):
+    """
+    Envoie un mail d'info pour une enquête de satisfaction consultant.
+    mode = 'insert' ou 'update'
+    """
+
+    if not MJ_APIKEY_PUBLIC or not MJ_APIKEY_PRIVATE:
+        print("Mailjet non configuré. Envoi satisfaction consultant annulé.")
+        return
+
+    if not MAIL_ALERT_DEST:
+        print("MAIL_ALERT_DEST non défini pour la satisfaction consultant")
+        return
+
+    suffix = "nouvelle réponse" if mode == "insert" else "mise à jour"
+
+    sujet = "Satisfaction consultant – "
+    if code_formation:
+        sujet += f"{code_formation} – "
+    if code_action_formation:
+        sujet += f"{code_action_formation} – "
+    sujet += f"{prenom} {nom} ({suffix})"
+
+    texte = (
+        f"Une enquête de satisfaction consultant vient d'être {suffix}.\n\n"
+        f"Consultant : {prenom} {nom}\n"
+        f"Formation : {(code_formation + ' - ') if code_formation else ''}{titre_formation}\n"
+        f"Code action de formation : {code_action_formation or 'Non renseigné'}\n"
+        f"id_action_formation : {id_action_formation}\n\n"
+        "Vous pouvez consulter cette action de formation dans Skillboard pour analyser cette réponse."
+    )
+
+    html = f"""
+    <h3>Enquête de satisfaction consultant ({suffix})</h3>
+    <p>
+      <strong>Consultant :</strong> {prenom} {nom}<br>
+      <strong>Formation :</strong> {(code_formation + " - ") if code_formation else ""}{titre_formation}<br>
+      <strong>Code action de formation :</strong> {code_action_formation or "Non renseigné"}<br>
+      <strong>id_action_formation :</strong> {id_action_formation}
+    </p>
+    <p>
+      Vous pouvez consulter cette action de formation dans Skillboard pour analyser cette réponse.
+    </p>
+    """
+
+    payload = {
+        "Messages": [
+            {
+                "From": {"Email": MAIL_FROM, "Name": "Skillboard"},
+                "To": [{"Email": MAIL_ALERT_DEST}],
+                "Subject": sujet,
+                "TextPart": texte,
+                "HTMLPart": html,
+            }
+        ]
+    }
+
+    try:
+        r = requests.post(
+            MAILJET_URL,
+            auth=(MJ_APIKEY_PUBLIC, MJ_APIKEY_PRIVATE),
+            json=payload
+        )
+
+        if 200 <= r.status_code < 300:
+            print("Mail satisfaction consultant envoyé via Mailjet OK")
+        else:
+            print("Erreur Mailjet (satisfaction consultant):", r.status_code, r.text)
+
+    except Exception as e:
+        print("Erreur appel Mailjet (satisfaction consultant):", e)
