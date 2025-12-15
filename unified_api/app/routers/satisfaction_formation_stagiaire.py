@@ -379,13 +379,22 @@ def save_satisfaction(payload: SatisfactionInput):
                     """
                     SELECT
                         afe.id_action_formation,
-                        af.id_form
+                        af.id_form,
+                        ff.code AS code_formation,
+                        ff.titre AS titre_formation,
+                        ec.nom_effectif,
+                        ec.prenom_effectif
                     FROM public.tbl_action_formation_effectif afe
                     JOIN public.tbl_action_formation af
                         ON af.id_action_formation = afe.id_action_formation
+                    JOIN public.tbl_fiche_formation ff
+                        ON ff.id_form = af.id_form
+                    JOIN public.tbl_effectif_client ec
+                        ON ec.id_effectif = afe.id_effectif
                     WHERE afe.id_action_formation_effectif = %s
                       AND afe.archive = FALSE
                       AND af.archive = FALSE
+                      AND ff.masque = FALSE
                     """,
                     (payload.id_action_formation_effectif,),
                 )
@@ -402,7 +411,7 @@ def save_satisfaction(payload: SatisfactionInput):
                 titre_formation = row["titre_formation"]        # si tu l’utilises dans le mail
                 nom_effectif = row["nom_effectif"]              # si tu l’utilises dans le mail
                 prenom_effectif = row["prenom_effectif"] 
-                
+
                 # 2) Calcul des notes
                 note_objectifs_moy = _calcul_note_objectifs_moyenne(payload.objectifs.objectifs)
                 note_globale = _calcul_note_globale(payload, note_objectifs_moy)
