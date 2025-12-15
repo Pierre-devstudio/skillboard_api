@@ -60,7 +60,7 @@
       cursor:default;
     }
 
-    /* Backdrop pour mobile */
+    /* Backdrop mobile */
     .backdrop {
       position:fixed;
       inset:0;
@@ -149,6 +149,7 @@
     .label {
       font-size:12px;
       color:#6b7280;
+      margin-bottom:2px;
     }
     .value {
       font-size:14px;
@@ -167,17 +168,36 @@
       border:1px solid #fecaca;
       color:#991b1b;
     }
-
-    .logo-header {
-      max-height: 40px;
-      height: auto;
-      max-width: 100%;
+    .alert.success {
+      background:#ecfdf5;
+      border:1px solid #bbf7d0;
+      color:#166534;
     }
 
     .sb-logo {
       max-height: 70px;
       height: auto;
       max-width: 100%;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    select {
+      width:100%;
+      box-sizing:border-box;
+      padding:6px 8px;
+      border-radius:6px;
+      border:1px solid #d1d5db;
+      font-size:14px;
+      background:#ffffff;
+    }
+
+    input:focus,
+    select:focus {
+      outline:none;
+      border-color:#1d4ed8;
+      box-shadow:0 0 0 1px rgba(37,99,235,0.2);
     }
 
     @media (max-width: 768px) {
@@ -256,14 +276,14 @@
       <!-- DASHBOARD -->
       <section id="view-dashboard">
         <div style="text-align:center; margin-bottom:16px;">
-          <img src="/Logo_Skillboard.png" alt="Skillboard" class="sb-logo">
+          <img src="/static/Logo_Skillboard.png" alt="Skillboard" class="sb-logo">
         </div>
 
         <div class="card">
           <div class="card-title" id="welcomeTitle">Bienvenue</div>
           <div class="card-sub" id="welcomeIntro">
-            Cet espace vous permet de retrouver vos informations et, plus tard, de gérer vos actions de formation,
-            adaptations, ressources et factures.
+            Cet espace vous permet de suivre vos interventions, formaliser vos adaptations et accéder, à terme,
+            à l’ensemble des informations liées à vos missions avec JMB CONSULTANT.
           </div>
         </div>
       </section>
@@ -273,9 +293,99 @@
         <div class="card">
           <div class="card-title">Vos données</div>
           <div class="card-sub">
-            Informations de base associées à votre profil consultant.
+            Consultez et mettez à jour vos informations de contact. Les informations administratives
+            (type de consultant, entreprise, coûts) sont affichées à titre indicatif.
           </div>
 
+          <form id="profileForm">
+            <div class="row" style="flex-direction:column; gap:16px;">
+
+              <!-- Bloc identité -->
+              <div class="row">
+                <div class="info-item" style="min-width:160px;">
+                  <div class="label">Civilité</div>
+                  <select id="civilite" name="civilite">
+                    <option value="">(Non précisé)</option>
+                    <option value="M">M.</option>
+                    <option value="Mme">Mme</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+                <div class="info-item">
+                  <div class="label">Prénom *</div>
+                  <input type="text" id="prenom" name="prenom" required />
+                </div>
+                <div class="info-item">
+                  <div class="label">Nom *</div>
+                  <input type="text" id="nom" name="nom" required />
+                </div>
+              </div>
+
+              <!-- Coordonnées -->
+              <div class="row">
+                <div class="info-item" style="flex:1;">
+                  <div class="label">Adresse (ligne 1)</div>
+                  <input type="text" id="adresse_1" name="adresse_1" />
+                </div>
+                <div class="info-item" style="flex:1;">
+                  <div class="label">Adresse (complément)</div>
+                  <input type="text" id="adresse_2" name="adresse_2" />
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="info-item" style="min-width:120px;">
+                  <div class="label">Code postal</div>
+                  <input
+                    type="text"
+                    id="code_postal"
+                    name="code_postal"
+                    maxlength="5"
+                    pattern="[0-9]{5}"
+                    inputmode="numeric"
+                  />
+                </div>
+                <div class="info-item" style="flex:1;">
+                  <div class="label">Ville</div>
+                  <input type="text" id="ville" name="ville" list="villeOptions" />
+                  <datalist id="villeOptions"></datalist>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="info-item">
+                  <div class="label">Téléphone</div>
+                  <input type="tel" id="telephone" name="telephone" />
+                </div>
+                <div class="info-item">
+                  <div class="label">Mobile</div>
+                  <input type="tel" id="telephone_mobile" name="telephone_mobile" />
+                </div>
+                <div class="info-item">
+                  <div class="label">Email</div>
+                  <input type="email" id="email" name="email" />
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top:16px;">
+              <button type="submit" style="
+                padding:8px 16px;
+                border-radius:8px;
+                border:0;
+                background:#1d4ed8;
+                color:#fff;
+                font-size:14px;
+                cursor:pointer;
+              ">
+                Enregistrer vos informations
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Informations administratives</div>
           <div class="row">
             <div class="info-item">
               <div class="label">Nom complet</div>
@@ -286,14 +396,34 @@
               <div class="value" id="infoIdConsultant">–</div>
             </div>
           </div>
-
-          <div class="card-sub" style="margin-top:12px;">
-            D’autres informations (coordonnées, RIB, etc.) pourront être ajoutées ici par la suite.
+          <div class="row" style="margin-top:8px;">
+            <div class="info-item">
+              <div class="label">Type de consultant</div>
+              <div class="value" id="infoTypeConsultant">–</div>
+            </div>
+            <div class="info-item">
+              <div class="label">Entreprise</div>
+              <div class="value" id="infoEntreprise">–</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:8px;">
+            <div class="info-item">
+              <div class="label">Coût horaire</div>
+              <div class="value" id="infoCoutHoraire">–</div>
+            </div>
+            <div class="info-item">
+              <div class="label">Supplément déplacement</div>
+              <div class="value" id="infoCoutDeplacement">–</div>
+            </div>
+            <div class="info-item">
+              <div class="label">Autre supplément</div>
+              <div class="value" id="infoCoutSupp">–</div>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- autres vues placeholder, pour plus tard -->
+      <!-- Placeholders pour la suite -->
       <section id="view-actions" style="display:none;">
         <div class="card">
           <div class="card-title">Actions de formation</div>
@@ -360,14 +490,66 @@
         item.classList.toggle("active", v === viewName);
       });
 
-      // Sur mobile : refermer le menu après clic
       closeSidebarMobile();
     }
 
-    async function loadConsultantContext(id_consultant) {
+    function setValueOrEmpty(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = value ?? "";
+    }
+
+    function setTextOrDash(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = value != null && value !== "" ? value : "–";
+    }
+
+    async function loadCitiesForCP(codePostal) {
+      const cp = (codePostal || "").trim();
+      const dl = document.getElementById("villeOptions");
+      if (!dl) return;
+
+      dl.innerHTML = "";
+      if (cp.length !== 5) {
+        return;
+      }
+
+      try {
+        const resp = await fetch(`${API_BASE}/consultant/villes_par_cp/${encodeURIComponent(cp)}`);
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          console.warn("Erreur chargement villes:", body);
+          return;
+        }
+
+        if (!Array.isArray(body)) {
+          return;
+        }
+
+        body.forEach(v => {
+          if (!v.ville) return;
+          const opt = document.createElement("option");
+          opt.value = v.ville;
+          opt.label = v.ville;
+          dl.appendChild(opt);
+        });
+
+        const villeInput = document.getElementById("ville");
+        if (villeInput && !villeInput.value && body.length > 0 && body[0].ville) {
+          villeInput.value = body[0].ville;
+        }
+      } catch (e) {
+        console.warn("Erreur fetch villes:", e);
+      }
+    }
+
+    async function loadConsultantProfile(id_consultant) {
       try {
         showAlert("", "");
-        const resp = await fetch(`${API_BASE}/consultant/context/${encodeURIComponent(id_consultant)}`);
+        const resp = await fetch(`${API_BASE}/consultant/profile/${encodeURIComponent(id_consultant)}`);
         const ct = resp.headers.get("content-type") || "";
         const body = ct.includes("application/json") ? await resp.json() : await resp.text();
 
@@ -386,22 +568,100 @@
           ? `${civLabel} ${body.prenom} ${body.nom}`
           : `${body.prenom} ${body.nom}`;
 
-        // Topbar
+        // Topbar + dashboard
         document.getElementById("topbarName").textContent = nomComplet;
         document.getElementById("topbarInfo").textContent = "Portail consultant — JMB CONSULTANT";
-
-        // Dashboard
         document.getElementById("welcomeTitle").textContent = `Bienvenue, ${body.prenom} ${body.nom}`;
-        document.getElementById("welcomeIntro").innerHTML =
-          `Cet espace vous permet de suivre vos interventions, formaliser vos adaptations et accéder, à terme, ` +
-          `à l’ensemble des informations liées à vos missions avec JMB CONSULTANT.`;
 
-        // Vos données
-        document.getElementById("infoNomComplet").textContent = nomComplet;
-        document.getElementById("infoIdConsultant").textContent = body.id_consultant;
+        // Form Vos données (modifiables)
+        const civiliteSelect = document.getElementById("civilite");
+        if (civiliteSelect) {
+          if (body.civilite === "M") civiliteSelect.value = "M";
+          else if (body.civilite === "F") civiliteSelect.value = "Mme";
+          else if (body.civilite) civiliteSelect.value = body.civilite;
+          else civiliteSelect.value = "";
+        }
+
+        setValueOrEmpty("prenom", body.prenom);
+        setValueOrEmpty("nom", body.nom);
+        setValueOrEmpty("email", body.email);
+        setValueOrEmpty("telephone", body.telephone);
+        setValueOrEmpty("telephone_mobile", body.telephone_mobile);
+        setValueOrEmpty("adresse_1", body.adresse_1);
+        setValueOrEmpty("adresse_2", body.adresse_2);
+        setValueOrEmpty("code_postal", body.code_postal);
+        setValueOrEmpty("ville", body.ville);
+
+        if (body.code_postal) {
+          loadCitiesForCP(body.code_postal);
+        }
+
+        // Infos administratives
+        setTextOrDash("infoNomComplet", nomComplet);
+        setTextOrDash("infoIdConsultant", body.id_consultant);
+        setTextOrDash("infoTypeConsultant", body.type_consultant);
+        setTextOrDash("infoEntreprise", body.entreprise_nom);
+
+        const fmt = (v) => v != null ? `${v.toFixed(2)} €` : "–";
+        setTextOrDash("infoCoutHoraire", body.cout_horaire != null ? fmt(body.cout_horaire) : "–");
+        setTextOrDash("infoCoutDeplacement", body.cout_supp_deplacement != null ? fmt(body.cout_supp_deplacement) : "–");
+        setTextOrDash("infoCoutSupp", body.cout_supp != null ? fmt(body.cout_supp) : "–");
 
       } catch (err) {
         showAlert("error", "Erreur de chargement de vos données : " + err.message);
+      }
+    }
+
+    async function saveConsultantProfile(id_consultant) {
+      const civilite = document.getElementById("civilite")?.value || "";
+      const prenom = document.getElementById("prenom")?.value || "";
+      const nom = document.getElementById("nom")?.value || "";
+      const email = document.getElementById("email")?.value || "";
+      const telephone = document.getElementById("telephone")?.value || "";
+      const telephone_mobile = document.getElementById("telephone_mobile")?.value || "";
+      const adresse_1 = document.getElementById("adresse_1")?.value || "";
+      const adresse_2 = document.getElementById("adresse_2")?.value || "";
+      const code_postal = document.getElementById("code_postal")?.value || "";
+      const ville = document.getElementById("ville")?.value || "";
+
+      if (!prenom.trim() || !nom.trim()) {
+        showAlert("error", "Merci de renseigner au minimum votre prénom et votre nom.");
+        return;
+      }
+
+      const payload = {
+        civilite: civilite || null,
+        prenom: prenom.trim(),
+        nom: nom.trim(),
+        email: email || null,
+        telephone: telephone || null,
+        telephone_mobile: telephone_mobile || null,
+        adresse_1: adresse_1 || null,
+        adresse_2: adresse_2 || null,
+        code_postal: code_postal || null,
+        ville: ville || null,
+      };
+
+      try {
+        showAlert("", "");
+        const resp = await fetch(`${API_BASE}/consultant/profile/${encodeURIComponent(id_consultant)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        showAlert("success", "Vos informations ont été enregistrées.");
+        loadConsultantProfile(id_consultant);
+      } catch (err) {
+        showAlert("error", "Erreur lors de l’enregistrement : " + err.message);
       }
     }
 
@@ -429,7 +689,7 @@
       // Vue par défaut : dashboard
       switchView("dashboard");
 
-      // Navigation menu
+      // Menu
       document.querySelectorAll(".menu-item").forEach(item => {
         if (item.classList.contains("disabled")) {
           return;
@@ -440,7 +700,7 @@
         });
       });
 
-      // Bouton hamburger
+      // Hamburger + backdrop
       const btnMenu = document.getElementById("btnMenuToggle");
       const backdrop = document.getElementById("backdrop");
 
@@ -457,8 +717,28 @@
         closeSidebarMobile();
       });
 
-      // Charger les données consultant
-      loadConsultantContext(id);
+      // CP -> villes
+      const cpInput = document.getElementById("code_postal");
+      if (cpInput) {
+        cpInput.addEventListener("blur", () => {
+          const val = cpInput.value || "";
+          if (val.trim().length === 5) {
+            loadCitiesForCP(val);
+          }
+        });
+      }
+
+      // Submit profil
+      const profileForm = document.getElementById("profileForm");
+      if (profileForm) {
+        profileForm.addEventListener("submit", (e) => {
+          e.preventDefault();
+          saveConsultantProfile(id);
+        });
+      }
+
+      // Charge profil complet
+      loadConsultantProfile(id);
     });
   </script>
 </body>
