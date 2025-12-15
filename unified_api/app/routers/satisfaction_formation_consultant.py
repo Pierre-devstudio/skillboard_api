@@ -574,96 +574,99 @@ def save_satisfaction_consultant(payload: SatisfactionConsultInput):
                 else:
                     id_satis = str(uuid.uuid4())
                     cur.execute(
-                        """
-                        INSERT INTO public.tbl_action_formation_satisfaction_consultant (
-                            id_satisfaction_consultant,
-                            id_action_formation,
-                            id_form,
-                            id_consultant,
-                            date_reponse,
-                            date_modif,
-                            note_prepa_q1,
-                            note_prepa_q2,
-                            note_prepa_q3,
-                            commentaire_prepa,
-                            note_orga_q1,
-                            note_orga_q2,
-                            note_orga_q3,
-                            commentaire_orga,
-                            note_deroul_q1,
-                            commentaire_deroul_appreciation,
-                            adaptation_deroule,
-                            fiches_adaptation_renseignees,
-                            commentaire_deroul_general,
-                            note_bilan_q1,
-                            note_bilan_q2,
-                            note_bilan_q3,
-                            supports_laisses,
-                            supports_description,
-                            difficulte_rencontree,
-                            difficulte_texte,
-                            points_positifs,
-                            points_negatifs,
-                            appreciation_generale,
-                            suggestions,
-                            reclamation,
-                            reclamation_objet,
-                            reclamation_texte,
-                            note_globale,
-                            reponses_json,
-                            archive
-                        ) VALUES (
-                            %s, %s, %s, %s,
-                            NOW(), NOW(),
-                            %s, %s, %s, %s,
-                            %s, %s, %s, %s,
-                            %s, %s, %s, %s,
-                            %s, %s, %s, %s,
-                            %s, %s,
-                            %s, %s,
-                            %s, %s,
-                            %s, %s,
-                            %s, %s,
-                            %s, %s,
-                            FALSE
-                        )
-                        """,
-                        (
-                            id_satis,
-                            id_action_formation,
-                            id_form,
-                            id_consultant,
-                            payload.preparation.q1,
-                            payload.preparation.q2,
-                            payload.preparation.q3,
-                            commentaire_prepa,
-                            payload.organisation.q1,
-                            payload.organisation.q2,
-                            payload.organisation.q3,
-                            commentaire_orga,
-                            payload.deroulement.q1,
-                            commentaire_appreciation,
-                            adaptation_bool,
-                            fiches_bool,
-                            commentaire_deroul_general,
-                            payload.bilan.q1,
-                            payload.bilan.q2,
-                            payload.bilan.q3,
-                            supports_bool,
-                            supports_description,
-                            difficulte_bool,
-                            difficulte_texte,
-                            points_positifs,
-                            points_negatifs,
-                            payload.commentaires.appreciation_generale,
-                            suggestions,
-                            reclamation_bool,
-                            reclamation_objet,
-                            reclamation_texte,
-                            note_globale,
-                            reponses_json_str,
-                        ),
+                    """
+                    INSERT INTO public.tbl_action_formation_satisfaction_consultant (
+                        id_satisfaction_consultant,
+                        id_action_formation,
+                        id_form,
+                        id_consultant,
+                        date_reponse,
+                        date_modif,
+                        note_prepa_q1,
+                        note_prepa_q2,
+                        note_prepa_q3,
+                        commentaire_prepa,
+                        note_orga_q1,
+                        note_orga_q2,
+                        note_orga_q3,
+                        commentaire_orga,
+                        note_deroul_q1,
+                        commentaire_deroul_appreciation,
+                        adaptation_deroule,
+                        fiches_adaptation_renseignees,
+                        commentaire_deroul_general,
+                        note_bilan_q1,
+                        note_bilan_q2,
+                        note_bilan_q3,
+                        supports_laisses,
+                        supports_description,
+                        difficulte_rencontree,
+                        difficulte_texte,
+                        points_positifs,
+                        points_negatifs,
+                        appreciation_generale,
+                        suggestions,
+                        reclamation,
+                        reclamation_objet,
+                        reclamation_texte,
+                        note_globale,
+                        reponses_json,
+                        archive
+                    ) VALUES (
+                        %s, %s, %s, %s,              -- id_satis, id_action_formation, id_form, id_consultant
+                        NOW(), NOW(),               -- date_reponse, date_modif
+                        %s, %s, %s, %s,             -- prépa q1, q2, q3, commentaire
+                        %s, %s, %s, %s,             -- orga q1, q2, q3, commentaire
+                        %s, %s, %s, %s, %s,         -- déroulement q1, comm_appréc, adaptation, fiches, comm_général
+                        %s, %s, %s,                 -- bilan q1, q2, q3
+                        %s, %s,                     -- supports_laisses, supports_description
+                        %s, %s,                     -- difficulte_rencontree, difficulte_texte
+                        %s, %s,                     -- points_positifs, points_negatifs
+                        %s,                         -- appreciation_generale
+                        %s,                         -- suggestions
+                        %s, %s, %s,                 -- reclamation, reclamation_objet, reclamation_texte
+                        %s,                         -- note_globale
+                        %s,                         -- reponses_json
+                        FALSE
                     )
+                    """,
+                    (
+                        id_satis,
+                        id_action_formation,
+                        id_form,
+                        id_consultant,
+                        payload.preparation.q1,
+                        payload.preparation.q2,
+                        payload.preparation.q3,
+                        commentaire_prepa,
+                        payload.organisation.q1,
+                        payload.organisation.q2,
+                        payload.organisation.q3,
+                        commentaire_orga,
+                        payload.deroulement.q1,
+                        commentaire_appreciation,
+                        adaptation_bool,
+                        fiches_bool,
+                        commentaire_deroul_general,
+                        payload.bilan.q1,
+                        payload.bilan.q2,
+                        payload.bilan.q3,
+                        supports_bool,
+                        supports_description,
+                        difficulte_bool,
+                        difficulte_texte,
+                        points_positifs,
+                        points_negatifs,
+                        payload.commentaires.appreciation_generale,
+                        suggestions,
+                        reclamation_bool,
+                        reclamation_objet,
+                        reclamation_texte,
+                        note_globale,
+                        reponses_json_str,
+                    ),
+                )
+
                     mode = "insert"
 
                 conn.commit()
