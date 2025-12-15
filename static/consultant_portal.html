@@ -22,6 +22,9 @@
       display:flex;
       flex-direction:column;
       padding:16px 12px;
+      flex-shrink:0;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      z-index:50;
     }
     .sidebar-header {
       font-weight:600;
@@ -57,6 +60,18 @@
       cursor:default;
     }
 
+    /* Backdrop pour mobile */
+    .backdrop {
+      position:fixed;
+      inset:0;
+      background:rgba(15,23,42,0.35);
+      z-index:40;
+      display:none;
+    }
+    .backdrop.show {
+      display:block;
+    }
+
     /* Main */
     .main {
       flex:1;
@@ -72,14 +87,31 @@
       display:flex;
       justify-content:space-between;
       align-items:center;
+      gap:12px;
     }
     .topbar-left {
       font-size:14px;
       color:#4b5563;
+      display:flex;
+      align-items:center;
+      gap:10px;
     }
     .topbar-right {
       font-size:13px;
       color:#6b7280;
+      text-align:right;
+      flex-shrink:0;
+    }
+
+    .menu-toggle {
+      display:none;
+      border:none;
+      background:transparent;
+      font-size:20px;
+      cursor:pointer;
+      color:#111827;
+      padding:4px 8px;
+      border-radius:6px;
     }
 
     .content {
@@ -143,26 +175,51 @@
     }
 
     @media (max-width: 768px) {
-      body { flex-direction:column; }
-      .sidebar {
-        width:100%;
-        flex-direction:row;
-        align-items:center;
-        justify-content:space-between;
+      body {
+        flex-direction:column;
       }
-      .sidebar-header, .sidebar-sub {
+
+      /* Sidebar devient panneau coulissant */
+      .sidebar {
+        position:fixed;
+        top:0;
+        left:0;
+        height:100vh;
+        transform:translateX(-100%);
+        box-shadow:0 0 0 rgba(0,0,0,0);
+      }
+      .sidebar.open {
+        transform:translateX(0);
+        box-shadow:0 10px 25px rgba(15,23,42,0.6);
+      }
+
+      .sidebar-header,
+      .sidebar-sub {
         text-align:left;
       }
-      .menu {
-        flex-direction:row;
-        overflow-x:auto;
+
+      .main {
+        flex:1;
+      }
+
+      .topbar {
+        padding:10px 12px;
+      }
+
+      .menu-toggle {
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
       }
     }
   </style>
 </head>
 <body>
 
-  <aside class="sidebar">
+  <!-- Fond sombre pour mobile -->
+  <div class="backdrop" id="backdrop"></div>
+
+  <aside class="sidebar" id="sidebar">
     <div>
       <div class="sidebar-header">Espace consultant</div>
       <div class="sidebar-sub">JMB CONSULTANT · Skillboard</div>
@@ -178,7 +235,12 @@
 
   <div class="main">
     <header class="topbar">
-      <div class="topbar-left" id="topbarName">Consultant</div>
+      <div class="topbar-left">
+        <button class="menu-toggle" id="btnMenuToggle" aria-label="Ouvrir le menu">
+          &#9776;
+        </button>
+        <span id="topbarName">Consultant</span>
+      </div>
       <div class="topbar-right" id="topbarInfo">Chargement…</div>
     </header>
 
@@ -272,6 +334,9 @@
         const v = item.getAttribute("data-view");
         item.classList.toggle("active", v === viewName);
       });
+
+      // Sur mobile : refermer le menu après clic
+      closeSidebarMobile();
     }
 
     async function loadConsultantContext(id_consultant) {
@@ -310,6 +375,20 @@
       }
     }
 
+    function openSidebarMobile() {
+      const sidebar = document.getElementById("sidebar");
+      const backdrop = document.getElementById("backdrop");
+      sidebar.classList.add("open");
+      backdrop.classList.add("show");
+    }
+
+    function closeSidebarMobile() {
+      const sidebar = document.getElementById("sidebar");
+      const backdrop = document.getElementById("backdrop");
+      sidebar.classList.remove("open");
+      backdrop.classList.remove("show");
+    }
+
     window.addEventListener("DOMContentLoaded", () => {
       const id = getQueryParam("id");
       if (!id) {
@@ -329,6 +408,23 @@
           const view = item.getAttribute("data-view");
           switchView(view);
         });
+      });
+
+      // Bouton hamburger
+      const btnMenu = document.getElementById("btnMenuToggle");
+      const backdrop = document.getElementById("backdrop");
+
+      btnMenu.addEventListener("click", () => {
+        const sidebar = document.getElementById("sidebar");
+        if (sidebar.classList.contains("open")) {
+          closeSidebarMobile();
+        } else {
+          openSidebarMobile();
+        }
+      });
+
+      backdrop.addEventListener("click", () => {
+        closeSidebarMobile();
       });
 
       // Charger les données consultant
