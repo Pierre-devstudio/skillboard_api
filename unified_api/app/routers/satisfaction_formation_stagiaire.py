@@ -398,7 +398,11 @@ def save_satisfaction(payload: SatisfactionInput):
 
                 id_action_formation = row["id_action_formation"]
                 id_form = row["id_form"]
-
+                code_formation = row["code_formation"]          # <--- AJOUTER ÇA
+                titre_formation = row["titre_formation"]        # si tu l’utilises dans le mail
+                nom_effectif = row["nom_effectif"]              # si tu l’utilises dans le mail
+                prenom_effectif = row["prenom_effectif"] 
+                
                 # 2) Calcul des notes
                 note_objectifs_moy = _calcul_note_objectifs_moyenne(payload.objectifs.objectifs)
                 note_globale = _calcul_note_globale(payload, note_objectifs_moy)

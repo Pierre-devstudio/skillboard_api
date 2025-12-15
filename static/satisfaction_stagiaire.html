@@ -19,6 +19,8 @@
     legend { padding:0 8px; color:#4b5563; font-size:13px; }
 
     .muted { color:#6b7280; font-size:14px; }
+    .section-subtitle { font-size:15px; }
+
     .small { font-size:13px; color:#6b7280; }
 
     .success {
@@ -169,14 +171,14 @@
   <header style="margin-bottom:20px; text-align:center;">
     <img src="/logo.png" alt="Logo" style="max-height:80px;">
     <div id="formationTitle" style="margin-top:8px; font-weight:600; font-size:20px;"></div>
-    <div id="stagiaireInfo" style="margin-top:4px; font-size:13px; color:#6b7280;"></div>
+    <div id="stagiaireInfo" style="margin-top:4px; font-size:16px; font-weight:600; color:#111827;"></div>
   </header>
 
   <div id="alert"></div>
 
   <!-- STEP 0 : INTRO -->
   <section id="stepIntro" class="section">
-    <h1>Questionnaire de satisfaction stagiaire</h1>
+    <h1>Questionnaire de satisfaction</h1>
     <p id="introText" class="muted">
       Chargement des informations de la formation...
     </p>
@@ -189,7 +191,7 @@
   <!-- STEP 1 : PREPARATION -->
   <section id="stepPreparation" class="section hidden">
     <h1>Préparation de la formation</h1>
-    <p class="muted">Comment jugez-vous la préparation de votre formation ?</p>
+    <p class="muted section-subtitle">Comment jugez-vous la préparation de votre formation ?</p>
 
     <fieldset>
       <legend>Préparation</legend>
@@ -234,6 +236,7 @@
     </fieldset>
 
     <div class="actions">
+      <button class="btn secondary" id="btnPrepBack">Revenir à l'écran précédent</button>
       <button class="btn" id="btnPrepNext">Continuer</button>
     </div>
   </section>
@@ -241,7 +244,7 @@
   <!-- STEP 2 : ORGANISATION -->
   <section id="stepOrganisation" class="section hidden">
     <h1>Organisation de la formation</h1>
-    <p class="muted">Comment jugez-vous l'organisation générale de la formation ?</p>
+    <p class="muted section-subtitle">Comment jugez-vous l'organisation générale de la formation ?</p>
 
     <fieldset>
       <legend>Organisation</legend>
@@ -290,7 +293,7 @@
         </div>
       </div>
 
-      <div classclass="question-block">
+      <div class="question-block">
         <div class="question-label">
           La durée de la formation était adaptée.
         </div>
@@ -308,6 +311,7 @@
     </fieldset>
 
     <div class="actions">
+      <button class="btn secondary" id="btnOrgBack">Revenir à l'écran précédent</button>
       <button class="btn" id="btnOrgNext">Continuer</button>
     </div>
   </section>
@@ -315,7 +319,7 @@
   <!-- STEP 3 : CONTENU & ANIMATION -->
   <section id="stepContenu" class="section hidden">
     <h1>Contenu et animation</h1>
-    <p class="muted">Comment jugez-vous le contenu de la formation et les techniques pédagogiques employées ?</p>
+    <p class="muted section-subtitle">Comment jugez-vous le contenu de la formation et les techniques pédagogiques employées ?</p>
 
     <fieldset>
       <legend>Contenu & animation</legend>
@@ -371,6 +375,7 @@
     </fieldset>
 
     <div class="actions">
+      <button class="btn secondary" id="btnContBack">Revenir à l'écran précédent</button>
       <button class="btn" id="btnContNext">Continuer</button>
     </div>
   </section>
@@ -378,7 +383,7 @@
   <!-- STEP 4 : OBJECTIFS -->
   <section id="stepObjectifs" class="section hidden">
     <h1>Atteinte des objectifs</h1>
-    <p class="muted">
+    <p class="muted section-subtitle">
       Comment jugez-vous le niveau d'atteinte des objectifs de la formation ?
       Pour chaque compétence visée, indiquez votre niveau de satisfaction.
     </p>
@@ -389,6 +394,7 @@
     </fieldset>
 
     <div class="actions">
+      <button class="btn secondary" id="btnObjBack">Revenir à l'écran précédent</button>
       <button class="btn" id="btnObjNext">Continuer</button>
     </div>
   </section>
@@ -451,6 +457,7 @@
     </fieldset>
 
     <div class="actions">
+      <button class="btn secondary" id="btnCommBack">Revenir à l'écran précédent</button>
       <button class="btn" id="btnCommNext">Continuer</button>
     </div>
   </section>
@@ -459,7 +466,8 @@
   <section id="stepRecap" class="section hidden">
     <h1>Récapitulatif de vos réponses</h1>
     <p class="muted">
-      Merci de vérifier vos réponses avant de les envoyer. Vous pouvez revenir en arrière avec votre navigateur si nécessaire.
+      Merci de vérifier vos réponses avant de les envoyer.  
+      Si vous souhaitez modifier une information, utilisez les boutons « Revenir à l'écran précédent ».
     </p>
 
     <div id="recapContainer"></div>
@@ -475,6 +483,7 @@
     </div>
 
     <div class="actions">
+      <button class="btn secondary" id="btnRecapBack">Revenir à l'écran précédent</button>
       <button class="btn" id="btnSend" disabled>Envoyer vos réponses</button>
     </div>
   </section>
@@ -493,7 +502,8 @@
   </section>
 
   <footer>
-    Outil de recueil de satisfaction développé avec Skillboard par JMB CONSULTANT.
+    Outil de recueil de satisfaction développé avec Skillboard par
+    <a href="https://www.jmbconsultant.fr" target="_blank" rel="noopener noreferrer">JMB CONSULTANT</a>.
   </footer>
 
   <script>
@@ -574,17 +584,27 @@
         answers.id_action_formation_effectif = body.id_action_formation_effectif;
         answers.context = body;
 
-        const titre = (body.code_formation ? body.code_formation + " - " : "") + body.titre_formation;
+        // Titre : uniquement intitulé, sans code formation
+        const titre = body.titre_formation;
         document.getElementById("formationTitle").textContent = titre;
 
-        const nomComplet = `${body.civilite ? body.civilite + " " : ""}${body.prenom} ${body.nom}`;
+        // Nom affiché : prénom + nom, sans civilité
+        const nomAffiche = `${body.prenom} ${body.nom}`;
         const ent = body.entreprise ? " — " + body.entreprise : "";
-        document.getElementById("stagiaireInfo").textContent = nomComplet + ent;
+        document.getElementById("stagiaireInfo").textContent = nomAffiche + ent;
+
+        // Civilité pour la phrase d'intro : F -> Mme, M -> M
+        let civiliteLabel = "";
+        if (body.civilite === "F") civiliteLabel = "Mme";
+        else if (body.civilite === "M") civiliteLabel = "M";
+
+        const nomIntro = civiliteLabel ? `${civiliteLabel} ${body.prenom} ${body.nom}` : nomAffiche;
 
         const intro = document.getElementById("introText");
         intro.innerHTML =
-          `${nomComplet}, vous avez récemment participé à la formation <strong>${titre}</strong>.<br>` +
-          `Nous vous remercions de prendre quelques instants (environ 5 minutes) pour répondre à ce questionnaire de satisfaction.`;
+          `${nomIntro}, vous avez récemment participé à la formation <strong>${titre}</strong>.<br><br>` +
+          `Nous vous remercions de prendre quelques instants (environ 5 minutes) pour répondre à ce questionnaire de satisfaction, ` +
+          `dans le cadre de notre démarche d'amélioration continue de nos formations.`;
 
         const banner = document.getElementById("bannerDejaRepondu");
         if (body.deja_repondu) {
@@ -730,7 +750,6 @@
       const objectifs = [];
 
       if (sliders.length === 0) {
-        // Pas d'objectifs définis => on laisse vide
         answers.objectifs.objectifs = [];
         return true;
       }
@@ -796,7 +815,6 @@
       const cont = document.getElementById("recapContainer");
       cont.innerHTML = "";
 
-      // Préparation
       const prep = document.createElement("div");
       prep.className = "recap-block";
       prep.innerHTML = `
@@ -808,7 +826,6 @@
       `;
       cont.appendChild(prep);
 
-      // Organisation
       const org = document.createElement("div");
       org.className = "recap-block";
       org.innerHTML = `
@@ -822,7 +839,6 @@
       `;
       cont.appendChild(org);
 
-      // Contenu & animation
       const contBlock = document.createElement("div");
       contBlock.className = "recap-block";
       contBlock.innerHTML = `
@@ -835,7 +851,6 @@
       `;
       cont.appendChild(contBlock);
 
-      // Objectifs
       const objBlock = document.createElement("div");
       objBlock.className = "recap-block";
       objBlock.innerHTML = `<div class="recap-block-title">Atteinte des objectifs</div>`;
@@ -860,7 +875,6 @@
       }
       cont.appendChild(objBlock);
 
-      // Commentaires & réclamations
       const commBlock = document.createElement("div");
       commBlock.className = "recap-block";
       let html = `<div class="recap-block-title">Commentaires et réclamations</div>`;
@@ -948,7 +962,6 @@
       initSliders();
       loadContext(id);
 
-      // Events
       document.getElementById("btnStart").addEventListener("click", () => {
         showStep("stepPreparation");
       });
@@ -956,17 +969,29 @@
       document.getElementById("btnPrepNext").addEventListener("click", () => {
         if (validatePreparation()) showStep("stepOrganisation");
       });
+      document.getElementById("btnPrepBack").addEventListener("click", () => {
+        showStep("stepIntro");
+      });
 
       document.getElementById("btnOrgNext").addEventListener("click", () => {
         if (validateOrganisation()) showStep("stepContenu");
+      });
+      document.getElementById("btnOrgBack").addEventListener("click", () => {
+        showStep("stepPreparation");
       });
 
       document.getElementById("btnContNext").addEventListener("click", () => {
         if (validateContenu()) showStep("stepObjectifs");
       });
+      document.getElementById("btnContBack").addEventListener("click", () => {
+        showStep("stepOrganisation");
+      });
 
       document.getElementById("btnObjNext").addEventListener("click", () => {
         if (validateObjectifs()) showStep("stepCommentaires");
+      });
+      document.getElementById("btnObjBack").addEventListener("click", () => {
+        showStep("stepContenu");
       });
 
       document.getElementById("btnCommNext").addEventListener("click", () => {
@@ -979,8 +1004,10 @@
           showStep("stepRecap");
         }
       });
+      document.getElementById("btnCommBack").addEventListener("click", () => {
+        showStep("stepObjectifs");
+      });
 
-      // Affichage / masquage zone réclamation
       document.querySelectorAll('input[name="reclamation"]').forEach(r => {
         r.addEventListener("change", () => {
           const val = r.value;
@@ -988,6 +1015,10 @@
           if (val === "oui") bloc.classList.remove("hidden");
           else bloc.classList.add("hidden");
         });
+      });
+
+      document.getElementById("btnRecapBack").addEventListener("click", () => {
+        showStep("stepCommentaires");
       });
 
       document.getElementById("btnSend").addEventListener("click", () => {
