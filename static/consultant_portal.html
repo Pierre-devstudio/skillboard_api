@@ -174,12 +174,17 @@
       max-width: 100%;
     }
 
+    .sb-logo {
+      max-height: 70px;
+      height: auto;
+      max-width: 100%;
+    }
+
     @media (max-width: 768px) {
       body {
         flex-direction:column;
       }
 
-      /* Sidebar devient panneau coulissant */
       .sidebar {
         position:fixed;
         top:0;
@@ -225,7 +230,8 @@
       <div class="sidebar-sub">JMB CONSULTANT · Skillboard</div>
     </div>
     <nav class="menu">
-      <div class="menu-item active" data-view="vos-donnees">Vos données</div>
+      <div class="menu-item active" data-view="dashboard">Dashboard</div>
+      <div class="menu-item" data-view="vos-donnees">Vos données</div>
       <div class="menu-item disabled" data-view="actions">Actions de formation</div>
       <div class="menu-item disabled" data-view="adaptations">Fiches d’adaptation</div>
       <div class="menu-item disabled" data-view="ressources">Ressources</div>
@@ -247,12 +253,27 @@
     <main class="content">
       <div id="alertContainer"></div>
 
-      <section id="view-vos-donnees">
+      <!-- DASHBOARD -->
+      <section id="view-dashboard">
+        <div style="text-align:center; margin-bottom:16px;">
+          <img src="/static/Logo_Skillboard.png" alt="Skillboard" class="sb-logo">
+        </div>
+
         <div class="card">
           <div class="card-title" id="welcomeTitle">Bienvenue</div>
-          <div class="card-sub">
+          <div class="card-sub" id="welcomeIntro">
             Cet espace vous permet de retrouver vos informations et, plus tard, de gérer vos actions de formation,
             adaptations, ressources et factures.
+          </div>
+        </div>
+      </section>
+
+      <!-- VOS DONNÉES -->
+      <section id="view-vos-donnees" style="display:none;">
+        <div class="card">
+          <div class="card-title">Vos données</div>
+          <div class="card-sub">
+            Informations de base associées à votre profil consultant.
           </div>
 
           <div class="row">
@@ -264,6 +285,10 @@
               <div class="label">Identifiant consultant</div>
               <div class="value" id="infoIdConsultant">–</div>
             </div>
+          </div>
+
+          <div class="card-sub" style="margin-top:12px;">
+            D’autres informations (coordonnées, RIB, etc.) pourront être ajoutées ici par la suite.
           </div>
         </div>
       </section>
@@ -365,8 +390,13 @@
         document.getElementById("topbarName").textContent = nomComplet;
         document.getElementById("topbarInfo").textContent = "Portail consultant — JMB CONSULTANT";
 
-        // Carte "Vos données"
+        // Dashboard
         document.getElementById("welcomeTitle").textContent = `Bienvenue, ${body.prenom} ${body.nom}`;
+        document.getElementById("welcomeIntro").innerHTML =
+          `Cet espace vous permet de suivre vos interventions, formaliser vos adaptations et accéder, à terme, ` +
+          `à l’ensemble des informations liées à vos missions avec JMB CONSULTANT.`;
+
+        // Vos données
         document.getElementById("infoNomComplet").textContent = nomComplet;
         document.getElementById("infoIdConsultant").textContent = body.id_consultant;
 
@@ -396,10 +426,10 @@
         return;
       }
 
-      // Vue par défaut
-      switchView("vos-donnees");
+      // Vue par défaut : dashboard
+      switchView("dashboard");
 
-      // Navigation menu (les autres sont pour plus tard)
+      // Navigation menu
       document.querySelectorAll(".menu-item").forEach(item => {
         if (item.classList.contains("disabled")) {
           return;
