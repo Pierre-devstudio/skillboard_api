@@ -112,9 +112,9 @@ def get_consultant_context(id_consultant: str):
                     """
                     SELECT
                         c.id_consultant,
-                        c.civilite_consultant,
-                        c.prenom_consultant,
-                        c.nom_consultant
+                        c.civilite AS civilite_consultant,
+                        c.prenom AS prenom_consultant,
+                        c.nom AS nom_consultant
                     FROM public.tbl_consultant c
                     WHERE c.id_consultant = %s
                       AND c.archive = FALSE
