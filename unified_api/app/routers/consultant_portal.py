@@ -149,7 +149,7 @@ def _ensure_sharepoint_env():
             "SP_TENANT_ID": SP_TENANT_ID,
             "SP_CLIENT_ID": SP_CLIENT_ID,
             "SP_CLIENT_SECRET": SP_CLIENT_SECRET,
-            "SP_SITE_ID": SP_SITE_ID,            
+            "SP_SITE_ID": SP_SITE_ID,
         }.items()
         if not v
     ]
@@ -186,16 +186,40 @@ def get_sp_token() -> str:
         raise HTTPException(status_code=500, detail=f"Erreur token SharePoint : {e}")
 
 
-def build_consultant_root_path(prenom: str, nom: str, id_consultant: str) -> str:
+def build_consultant_root_path(
+    nom: str,
+    prenom: str,
+    code_consultant: Optional[str],
+    id_consultant: str,
+) -> str:
     """
     Construit le chemin racine SharePoint pour un consultant :
-    Documents_SKILLBOARD/Dossiers Qualité/04-Documents Consultants/{Prenom Nom}
+
+    Documents_SKILLBOARD/Dossiers Qualité/04-Documents Consultants/Nom_Prenom_CodeConsultant
+
+    Si code_consultant est vide, fallback sur id_consultant.
     """
-    safe_name = f"{prenom.strip()} {nom.strip()}".strip() or id_consultant
-    safe_name = safe_name.replace("/", "-").replace("\\", "-")
+    safe_nom = (nom or "").strip().replace("/", "-").replace("\\", "-").replace(" ", "_")
+    safe_prenom = (prenom or "").strip().replace("/", "-").replace("\\", "-").replace(" ", "_")
+    safe_code = (code_consultant or "").strip().replace("/", "-").replace("\\", "-").replace(" ", "_")
+
+    parts = []
+    if safe_nom:
+        parts.append(safe_nom)
+    if safe_prenom:
+        parts.append(safe_prenom)
+
+    if safe_code:
+        parts.append(safe_code)
+    else:
+        # fallback pour compatibilité si le code n'est pas encore renseigné
+        parts.append(id_consultant)
+
+    folder_name = "_".join(parts) if parts else id_consultant
+
     return (
         "Documents_SKILLBOARD/Dossiers Qualité/04-Documents Consultants/"
-        f"{safe_name}"
+        f"{folder_name}"
     )
 
 
@@ -204,6 +228,7 @@ def upload_consultant_document_to_sharepoint(
     id_consultant: str,
     nom: str,
     prenom: str,
+    code_consultant: Optional[str],
     logical_name: str,
     filename: Optional[str],
     content_type: Optional[str],
@@ -218,8 +243,8 @@ def upload_consultant_document_to_sharepoint(
     """
     _ensure_sharepoint_env()
 
-    # Racine du consultant
-    root = build_consultant_root_path(prenom, nom, id_consultant)
+    # Racine du consultant (Nom_Prenom_CodeConsultant)
+    root = build_consultant_root_path(nom, prenom, code_consultant, id_consultant)
 
     # Extension du fichier (ou défaut)
     ext = pathlib.Path(filename or "").suffix
@@ -231,7 +256,6 @@ def upload_consultant_document_to_sharepoint(
     token = get_sp_token()
     base = "https://graph.microsoft.com/v1.0"
     upload_url = f"{base}/sites/{SP_SITE_ID}/drive/root:/{remote_path}:/content"
-    
 
     headers = {
         "Authorization": f"Bearer {token}",
@@ -285,7 +309,8 @@ def fetch_consultant_with_entreprise(cur, id_consultant: str):
             c.cout_supp,
             c.photo_url,
             c.id_ent,
-            c.id_fourn
+            c.id_fourn,
+            c.code_consultant
         FROM public.tbl_consultant c
         WHERE c.id_consultant = %s
           AND c.actif = TRUE
@@ -528,13 +553,14 @@ async def upload_consultant_photo(
     if not file:
         raise HTTPException(status_code=400, detail="Fichier manquant")
 
-    # On vérifie le consultant et on récupère nom / prénom
+    # On vérifie le consultant et on récupère nom / prénom / code_consultant
     with get_conn() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             row, _ = fetch_consultant_with_entreprise(cur, id_consultant)
 
     nom = row["nom"] or ""
     prenom = row["prenom"] or ""
+    code_consultant = row.get("code_consultant")
 
     data = await file.read()
     if not data:
@@ -549,6 +575,7 @@ async def upload_consultant_photo(
         id_consultant=id_consultant,
         nom=nom,
         prenom=prenom,
+        code_consultant=code_consultant,
         logical_name=logical_name,
         filename=file.filename,
         content_type=file.content_type,
