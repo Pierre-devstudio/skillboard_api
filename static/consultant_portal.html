@@ -214,7 +214,7 @@
       color:#4b5563;
       overflow:hidden;
       flex-shrink:0;
-      cursor:pointer;
+      cursor:default;        /* plus de main par défaut */
     }
     .profile-avatar span {
       pointer-events:none;
@@ -224,6 +224,14 @@
       background-position:center;
       background-repeat:no-repeat;
       color:transparent;
+    }
+    .profile-avatar.clickable {
+      cursor:pointer;        /* main uniquement en mode édition */
+    }
+
+    /* Plus d’espace entre le formulaire et le bloc admin */
+    #view-vos-donnees .card:first-of-type {
+      margin-bottom:28px;    /* au lieu de 16px globalement */
     }
 
     /* Boutons profil */
@@ -585,6 +593,15 @@
       if (btnEdit) btnEdit.style.display = isEdit ? "none" : "inline-block";
       if (btnSave) btnSave.style.display = isEdit ? "inline-block" : "none";
       if (btnCancel) btnCancel.style.display = isEdit ? "inline-block" : "none";
+
+      const avatar = document.getElementById("profileAvatar");
+        if (avatar) {
+          if (isEdit) {
+            avatar.classList.add("clickable");
+          } else {
+            avatar.classList.remove("clickable");
+          }
+        }
     }
 
 
@@ -784,6 +801,39 @@
       }
     }
 
+    async function uploadConsultantPhoto(id_consultant, file) {
+      if (!id_consultant || !file) return;
+
+      const fd = new FormData();
+      fd.append("file", file);
+
+      try {
+        showAlert("", "");
+        const resp = await fetch(
+          `${API_BASE}/consultant/photo/${encodeURIComponent(id_consultant)}`,
+          {
+            method: "POST",
+            body: fd,
+          }
+        );
+
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok || (typeof body === "object" && body.ok !== true)) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        // On recharge le profil pour rafraîchir avatar + données
+        await loadConsultantProfile(id_consultant);
+        showAlert("success", "Votre photo a été mise à jour.");
+      } catch (err) {
+        showAlert("error", "Erreur lors de l’envoi de la photo : " + err.message);
+      }
+    }
+
+
     function openSidebarMobile() {
       const sidebar = document.getElementById("sidebar");
       const backdrop = document.getElementById("backdrop");
@@ -886,6 +936,26 @@
 
       // Démarrage en lecture seule
       setProfileEditMode(false);
+
+            // Avatar + upload photo
+      const avatar = document.getElementById("profileAvatar");
+      const photoInput = document.getElementById("photoInput");
+
+      if (avatar && photoInput) {
+        avatar.addEventListener("click", () => {
+          // uniquement si on est en mode édition (classe clickable)
+          if (!avatar.classList.contains("clickable")) return;
+          photoInput.click();
+        });
+
+        photoInput.addEventListener("change", (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          uploadConsultantPhoto(id, file);
+          // reset input pour pouvoir re-sélectionner la même image si besoin
+          e.target.value = "";
+        });
+      }
 
       // Charge profil complet
       loadConsultantProfile(id);
