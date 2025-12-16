@@ -214,7 +214,7 @@
       color:#4b5563;
       overflow:hidden;
       flex-shrink:0;
-      cursor:default;        /* plus de main par défaut */
+      cursor:default;
     }
     .profile-avatar span {
       pointer-events:none;
@@ -226,12 +226,12 @@
       color:transparent;
     }
     .profile-avatar.clickable {
-      cursor:pointer;        /* main uniquement en mode édition */
+      cursor:pointer;
     }
 
     /* Plus d’espace entre le formulaire et le bloc admin */
     #view-vos-donnees .card:first-of-type {
-      margin-bottom:32px !important;    /* au lieu de 16px globalement */
+      margin-bottom:32px !important;
     }
 
     /* Boutons profil */
@@ -256,9 +256,7 @@
     }
 
     @media (max-width: 768px) {
-      body {
-        flex-direction:column;
-      }
+      body { flex-direction:column; }
 
       .sidebar {
         position:fixed;
@@ -278,19 +276,128 @@
         text-align:left;
       }
 
-      .main {
-        flex:1;
-      }
+      .main { flex:1; }
 
-      .topbar {
-        padding:10px 12px;
-      }
+      .topbar { padding:10px 12px; }
 
       .menu-toggle {
         display:inline-flex;
         align-items:center;
         justify-content:center;
       }
+    }
+
+    /* =========================
+       EXPERTISES - TABLE
+       ========================= */
+    .table-wrap { overflow-x:auto; }
+
+    .sb-table {
+      width:100%;
+      border-collapse:collapse;
+    }
+    .sb-table th {
+      text-align:left;
+      font-size:12px;
+      color:#6b7280;
+      font-weight:600;
+      padding:8px 10px;
+      border-bottom:1px solid #e5e7eb;
+      white-space:nowrap;
+    }
+    .sb-table td {
+      padding:8px 10px;
+      border-bottom:1px solid #f3f4f6;
+      font-size:14px;
+      vertical-align:middle;
+    }
+    .sb-table tr:hover td { background:#f9fafb; }
+
+    .sb-table .col-level {
+      text-align:center;
+      width:70px;
+    }
+    .sb-table .col-date { white-space:nowrap; }
+
+    .level-dot {
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      background:#e5e7eb;
+    }
+    .level-dot.active { background:#1d4ed8; }
+
+    /* =========================
+       MODAL AJOUT COMPÉTENCE
+       ========================= */
+    .modal {
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:rgba(15,23,42,0.45);
+      z-index:80;
+      padding:16px;
+    }
+    .modal.show { display:flex; }
+
+    .modal-card {
+      width:min(720px, 100%);
+      background:#fff;
+      border-radius:10px;
+      border:1px solid #e5e7eb;
+      overflow:hidden;
+    }
+    .modal-header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:12px 14px;
+      border-bottom:1px solid #e5e7eb;
+    }
+    .modal-body { padding:14px; }
+    .modal-footer {
+      padding:12px 14px;
+      border-top:1px solid #e5e7eb;
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+    }
+    .modal-footer .btn-secondary { margin-left:0; }
+
+    .modal-x {
+      border:0;
+      background:transparent;
+      font-size:20px;
+      cursor:pointer;
+      padding:0 8px;
+      color:#6b7280;
+    }
+
+    .results {
+      border:1px solid #e5e7eb;
+      border-radius:8px;
+      max-height:240px;
+      overflow:auto;
+    }
+    .result-item {
+      padding:8px 10px;
+      cursor:pointer;
+      border-bottom:1px solid #f3f4f6;
+      font-size:14px;
+    }
+    .result-item:last-child { border-bottom:0; }
+    .result-item:hover { background:#f9fafb; }
+
+    .result-code {
+      font-weight:600;
+      color:#111827;
+    }
+    .result-title {
+      color:#6b7280;
+      font-size:13px;
     }
   </style>
 </head>
@@ -307,7 +414,7 @@
     <nav class="menu">
       <div class="menu-item active" data-view="dashboard">Dashboard</div>
       <div class="menu-item" data-view="vos-donnees">Vos données</div>
-      <div class="menu-item disabled" data-view="vos-expertises">Vos expertises</div>
+      <div class="menu-item" data-view="vos-expertises">Vos expertises</div>
       <div class="menu-item disabled" data-view="actions">Actions de formation</div>
       <div class="menu-item disabled" data-view="adaptations">Fiches d’adaptation</div>
       <div class="menu-item disabled" data-view="ressources">Ressources</div>
@@ -434,18 +541,19 @@
                 </div>
               </div>
 
-            <div style="margin-top:16px;" id="profileButtons">
-              <button type="button" class="btn-primary" id="btnEditProfile">
-                Modifier vos données
-              </button>
-              <button type="submit" class="btn-primary" id="btnSaveProfile" style="display:none;">
-                Enregistrer vos données
-              </button>
-              <button type="button" class="btn-secondary" id="btnCancelEdit" style="display:none;">
-                Annuler
-              </button>
+              <div style="margin-top:16px;" id="profileButtons">
+                <button type="button" class="btn-primary" id="btnEditProfile">
+                  Modifier vos données
+                </button>
+                <button type="submit" class="btn-primary" id="btnSaveProfile" style="display:none;">
+                  Enregistrer vos données
+                </button>
+                <button type="button" class="btn-secondary" id="btnCancelEdit" style="display:none;">
+                  Annuler
+                </button>
+              </div>
+
             </div>
-          </div>
           </form>
         </div>
 
@@ -488,16 +596,90 @@
         </div>
       </section>
 
-      <!-- VOS EXPERTISES (placeholder) -->
+      <!-- VOS EXPERTISES -->
       <section id="view-vos-expertises" style="display:none;">
         <div class="card">
           <div class="card-title">Vos expertises</div>
           <div class="card-sub">
-            Cette section vous permettra de déclarer vos compétences, vos certifications et les documents associés
-            (CV, attestations). Elle sera reliée au référentiel de compétences Skillboard.
+            Déclarez vos compétences (puis certifications et diplômes). Les compétences ajoutées ici seront ensuite auditables dans Skillboard (version bureau).
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <div>
+              <div class="card-title" style="margin-bottom:2px;">Compétences</div>
+              <div class="card-sub" style="margin:0;">
+                Niveau affiché selon votre déclaration. La date d’audit apparaît si une évaluation a déjà été réalisée.
+              </div>
+            </div>
+            <button type="button" class="btn-primary" id="btnAddCompetence">+ Ajouter</button>
+          </div>
+
+          <div class="table-wrap" style="margin-top:12px;">
+            <table class="sb-table" id="tblCompetences">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Intitulé</th>
+                  <th class="col-level">Initial</th>
+                  <th class="col-level">Avancé</th>
+                  <th class="col-level">Expert</th>
+                  <th class="col-date">Dernier audit</th>
+                </tr>
+              </thead>
+              <tbody id="tblCompetencesBody"></tbody>
+            </table>
+          </div>
+
+          <div class="card-sub" id="competencesEmpty" style="display:none; margin-top:10px;">
+            Aucune compétence enregistrée pour le moment.
           </div>
         </div>
       </section>
+
+      <!-- Modal: Ajouter une compétence -->
+      <div class="modal" id="modalAddCompetence" aria-hidden="true">
+        <div class="modal-card">
+          <div class="modal-header">
+            <div style="font-weight:600;">Ajouter une compétence</div>
+            <button type="button" class="modal-x" id="btnCloseAddCompetence" aria-label="Fermer">×</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="row" style="flex-direction:column; gap:10px;">
+              <div class="info-item" style="min-width:0;">
+                <div class="label">Rechercher une compétence</div>
+                <input type="text" id="competenceSearch" placeholder="Code ou intitulé..." />
+              </div>
+
+              <div class="info-item" style="min-width:0;">
+                <div class="label">Résultats</div>
+                <div id="competenceResults" class="results"></div>
+              </div>
+
+              <div class="info-item" style="min-width:0;">
+                <div class="label">Compétence sélectionnée</div>
+                <div class="value" id="competenceSelected">–</div>
+              </div>
+
+              <div class="info-item" style="min-width:0;">
+                <div class="label">Niveau actuel</div>
+                <select id="competenceLevel">
+                  <option value="Initial">Initial</option>
+                  <option value="Avancé">Avancé</option>
+                  <option value="Expert">Expert</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" id="btnCancelAddCompetence">Annuler</button>
+            <button type="button" class="btn-primary" id="btnConfirmAddCompetence">Ajouter</button>
+          </div>
+        </div>
+      </div>
 
       <!-- Placeholders pour la suite -->
       <section id="view-actions" style="display:none;">
@@ -541,6 +723,7 @@
 
   <script>
     const API_BASE = "https://skillboard-services.onrender.com";
+    let CONSULTANT_ID = null;
 
     function getQueryParam(name) {
       const url = new URL(window.location.href);
@@ -565,6 +748,10 @@
         const v = item.getAttribute("data-view");
         item.classList.toggle("active", v === viewName);
       });
+
+      if (viewName === "vos-expertises" && CONSULTANT_ID) {
+        loadConsultantCompetences(CONSULTANT_ID);
+      }
 
       closeSidebarMobile();
     }
@@ -596,15 +783,11 @@
       if (btnCancel) btnCancel.style.display = isEdit ? "inline-block" : "none";
 
       const avatar = document.getElementById("profileAvatar");
-        if (avatar) {
-          if (isEdit) {
-            avatar.classList.add("clickable");
-          } else {
-            avatar.classList.remove("clickable");
-          }
-        }
+      if (avatar) {
+        if (isEdit) avatar.classList.add("clickable");
+        else avatar.classList.remove("clickable");
+      }
     }
-
 
     function formatPhoneInput(input) {
       if (!input) return;
@@ -642,9 +825,7 @@
       if (!dl) return;
 
       dl.innerHTML = "";
-      if (cp.length !== 5) {
-        return;
-      }
+      if (cp.length !== 5) return;
 
       try {
         const resp = await fetch(`${API_BASE}/consultant/villes_par_cp/${encodeURIComponent(cp)}`);
@@ -655,10 +836,7 @@
           console.warn("Erreur chargement villes:", body);
           return;
         }
-
-        if (!Array.isArray(body)) {
-          return;
-        }
+        if (!Array.isArray(body)) return;
 
         body.forEach(v => {
           if (!v.ville) return;
@@ -699,15 +877,12 @@
           ? `${civLabel} ${body.prenom} ${body.nom}`
           : `${body.prenom} ${body.nom}`;
 
-        // Topbar + dashboard
         document.getElementById("topbarName").textContent = nomComplet;
         document.getElementById("topbarInfo").textContent = "Portail consultant — JMB CONSULTANT";
         document.getElementById("welcomeTitle").textContent = `Bienvenue, ${body.prenom} ${body.nom}`;
 
-        // Avatar
         updateAvatar(nomComplet, body.photo_url);
 
-        // Form Vos données (modifiables)
         const civiliteSelect = document.getElementById("civilite");
         if (civiliteSelect) {
           if (body.civilite === "M") civiliteSelect.value = "M";
@@ -726,11 +901,8 @@
         setValueOrEmpty("code_postal", body.code_postal);
         setValueOrEmpty("ville", body.ville);
 
-        if (body.code_postal) {
-          loadCitiesForCP(body.code_postal);
-        }
+        if (body.code_postal) loadCitiesForCP(body.code_postal);
 
-        // Infos administratives
         setTextOrDash("infoNomComplet", nomComplet);
         setTextOrDash("infoIdConsultant", body.id_consultant);
         setTextOrDash("infoTypeConsultant", body.type_consultant);
@@ -741,7 +913,6 @@
         setTextOrDash("infoCoutDeplacement", body.cout_supp_deplacement != null ? fmt(body.cout_supp_deplacement) : "–");
         setTextOrDash("infoCoutSupp", body.cout_supp != null ? fmt(body.cout_supp) : "–");
 
-        // On revient en mode lecture seule après un chargement
         setProfileEditMode(false);
 
       } catch (err) {
@@ -812,10 +983,7 @@
         showAlert("", "");
         const resp = await fetch(
           `${API_BASE}/consultant/photo/${encodeURIComponent(id_consultant)}`,
-          {
-            method: "POST",
-            body: fd,
-          }
+          { method:"POST", body: fd }
         );
 
         const ct = resp.headers.get("content-type") || "";
@@ -826,14 +994,12 @@
           throw new Error(detail);
         }
 
-        // On recharge le profil pour rafraîchir avatar + données
         await loadConsultantProfile(id_consultant);
         showAlert("success", "Votre photo a été mise à jour.");
       } catch (err) {
         showAlert("error", "Erreur lors de l’envoi de la photo : " + err.message);
       }
     }
-
 
     function openSidebarMobile() {
       const sidebar = document.getElementById("sidebar");
@@ -849,12 +1015,208 @@
       backdrop.classList.remove("show");
     }
 
+    /* ======================================================
+       EXPERTISES - COMPÉTENCES
+       ====================================================== */
+    function formatDateFR(iso) {
+      if (!iso) return "–";
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return "–";
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    }
+
+    function renderCompetencesTable(items) {
+      const body = document.getElementById("tblCompetencesBody");
+      const empty = document.getElementById("competencesEmpty");
+      if (!body || !empty) return;
+
+      body.innerHTML = "";
+
+      if (!items || items.length === 0) {
+        empty.style.display = "block";
+        return;
+      }
+      empty.style.display = "none";
+
+      items.forEach(it => {
+        const tr = document.createElement("tr");
+
+        const tdCode = document.createElement("td");
+        tdCode.textContent = it.code || "";
+        tr.appendChild(tdCode);
+
+        const tdInt = document.createElement("td");
+        tdInt.textContent = it.intitule || "";
+        tr.appendChild(tdInt);
+
+        const mkLevelCell = (label) => {
+          const td = document.createElement("td");
+          td.className = "col-level";
+          const dot = document.createElement("span");
+          dot.className = "level-dot" + ((it.niveau_actuel === label) ? " active" : "");
+          td.appendChild(dot);
+          return td;
+        };
+
+        tr.appendChild(mkLevelCell("Initial"));
+        tr.appendChild(mkLevelCell("Avancé"));
+        tr.appendChild(mkLevelCell("Expert"));
+
+        const tdDate = document.createElement("td");
+        tdDate.className = "col-date";
+        tdDate.textContent = it.date_dernier_audit ? formatDateFR(it.date_dernier_audit) : "–";
+        tr.appendChild(tdDate);
+
+        body.appendChild(tr);
+      });
+    }
+
+    async function loadConsultantCompetences(id_consultant) {
+      try {
+        showAlert("", "");
+        const resp = await fetch(`${API_BASE}/consultant/expertises/competences/${encodeURIComponent(id_consultant)}`);
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        renderCompetencesTable(body);
+      } catch (e) {
+        showAlert("error", "Erreur de chargement des compétences : " + e.message);
+      }
+    }
+
+    let _selectedCompetence = null;
+    let _searchTimer = null;
+
+    function openAddCompetenceModal() {
+      const modal = document.getElementById("modalAddCompetence");
+      const search = document.getElementById("competenceSearch");
+      const results = document.getElementById("competenceResults");
+      const selected = document.getElementById("competenceSelected");
+      const level = document.getElementById("competenceLevel");
+
+      _selectedCompetence = null;
+      if (selected) selected.textContent = "–";
+      if (level) level.value = "Initial";
+      if (results) results.innerHTML = "";
+
+      if (modal) {
+        modal.classList.add("show");
+        modal.setAttribute("aria-hidden", "false");
+      }
+      if (search) {
+        search.value = "";
+        search.focus();
+      }
+
+      searchCompetencesCatalogue("");
+    }
+
+    function closeAddCompetenceModal() {
+      const modal = document.getElementById("modalAddCompetence");
+      if (modal) {
+        modal.classList.remove("show");
+        modal.setAttribute("aria-hidden", "true");
+      }
+    }
+
+    function renderCompetenceResults(list) {
+      const results = document.getElementById("competenceResults");
+      if (!results) return;
+
+      results.innerHTML = "";
+
+      if (!list || list.length === 0) {
+        results.innerHTML = `<div class="result-item" style="cursor:default; color:#6b7280;">Aucun résultat</div>`;
+        return;
+      }
+
+      list.forEach(it => {
+        const div = document.createElement("div");
+        div.className = "result-item";
+
+        div.innerHTML = `
+          <div class="result-code">${it.code || ""}</div>
+          <div class="result-title">${it.intitule || ""}</div>
+        `;
+
+        div.addEventListener("click", () => {
+          _selectedCompetence = it;
+          const selected = document.getElementById("competenceSelected");
+          if (selected) selected.textContent = `${it.code} — ${it.intitule}`;
+        });
+
+        results.appendChild(div);
+      });
+    }
+
+    async function searchCompetencesCatalogue(q) {
+      try {
+        const resp = await fetch(`${API_BASE}/consultant/expertises/competences_catalogue?q=${encodeURIComponent(q || "")}&limit=30`);
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) return;
+        renderCompetenceResults(body);
+      } catch (e) {
+        console.warn("Erreur recherche compétences:", e);
+      }
+    }
+
+    async function addCompetenceForConsultant() {
+      if (!CONSULTANT_ID) return;
+
+      if (!_selectedCompetence || !_selectedCompetence.id_competence) {
+        showAlert("error", "Merci de sélectionner une compétence dans la liste.");
+        return;
+      }
+
+      const level = document.getElementById("competenceLevel")?.value || "Initial";
+
+      try {
+        showAlert("", "");
+        const resp = await fetch(`${API_BASE}/consultant/expertises/competences/${encodeURIComponent(CONSULTANT_ID)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id_competence: _selectedCompetence.id_competence,
+            niveau_actuel: level
+          }),
+        });
+
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        closeAddCompetenceModal();
+        showAlert("success", "Compétence ajoutée (ou mise à jour).");
+        loadConsultantCompetences(CONSULTANT_ID);
+
+      } catch (e) {
+        showAlert("error", "Erreur lors de l’ajout : " + e.message);
+      }
+    }
+
     window.addEventListener("DOMContentLoaded", () => {
       const id = getQueryParam("id");
       if (!id) {
         showAlert("error", "Identifiant consultant manquant dans l’URL. Le lien utilisé n’est pas valide.");
         return;
       }
+
+      CONSULTANT_ID = id;
+
       const tel = document.getElementById("telephone");
       const mob = document.getElementById("telephone_mobile");
 
@@ -873,9 +1235,7 @@
 
       // Menu
       document.querySelectorAll(".menu-item").forEach(item => {
-        if (item.classList.contains("disabled")) {
-          return;
-        }
+        if (item.classList.contains("disabled")) return;
         item.addEventListener("click", () => {
           const view = item.getAttribute("data-view");
           switchView(view);
@@ -888,11 +1248,8 @@
 
       btnMenu.addEventListener("click", () => {
         const sidebar = document.getElementById("sidebar");
-        if (sidebar.classList.contains("open")) {
-          closeSidebarMobile();
-        } else {
-          openSidebarMobile();
-        }
+        if (sidebar.classList.contains("open")) closeSidebarMobile();
+        else openSidebarMobile();
       });
 
       backdrop.addEventListener("click", () => {
@@ -904,9 +1261,7 @@
       if (cpInput) {
         cpInput.addEventListener("blur", () => {
           const val = cpInput.value || "";
-          if (val.trim().length === 5) {
-            loadCitiesForCP(val);
-          }
+          if (val.trim().length === 5) loadCitiesForCP(val);
         });
       }
 
@@ -930,21 +1285,18 @@
 
       if (btnCancel) {
         btnCancel.addEventListener("click", () => {
-          // on recharge les données et on repasse lecture seule
           loadConsultantProfile(id);
         });
       }
 
-      // Démarrage en lecture seule
       setProfileEditMode(false);
 
-            // Avatar + upload photo
+      // Avatar + upload photo
       const avatar = document.getElementById("profileAvatar");
       const photoInput = document.getElementById("photoInput");
 
       if (avatar && photoInput) {
         avatar.addEventListener("click", () => {
-          // uniquement si on est en mode édition (classe clickable)
           if (!avatar.classList.contains("clickable")) return;
           photoInput.click();
         });
@@ -953,8 +1305,35 @@
           const file = e.target.files && e.target.files[0];
           if (!file) return;
           uploadConsultantPhoto(id, file);
-          // reset input pour pouvoir re-sélectionner la même image si besoin
           e.target.value = "";
+        });
+      }
+
+      // Expertises - modal listeners
+      const btnAdd = document.getElementById("btnAddCompetence");
+      const btnClose = document.getElementById("btnCloseAddCompetence");
+      const btnCancelAdd = document.getElementById("btnCancelAddCompetence");
+      const btnConfirm = document.getElementById("btnConfirmAddCompetence");
+      const modalAdd = document.getElementById("modalAddCompetence");
+      const search = document.getElementById("competenceSearch");
+
+      if (btnAdd) btnAdd.addEventListener("click", () => openAddCompetenceModal());
+      if (btnClose) btnClose.addEventListener("click", () => closeAddCompetenceModal());
+      if (btnCancelAdd) btnCancelAdd.addEventListener("click", () => closeAddCompetenceModal());
+      if (btnConfirm) btnConfirm.addEventListener("click", () => addCompetenceForConsultant());
+
+      if (modalAdd) {
+        modalAdd.addEventListener("click", (e) => {
+          if (e.target === modalAdd) closeAddCompetenceModal();
+        });
+      }
+
+      if (search) {
+        search.addEventListener("input", () => {
+          clearTimeout(_searchTimer);
+          _searchTimer = setTimeout(() => {
+            searchCompetencesCatalogue(search.value || "");
+          }, 250);
         });
       }
 

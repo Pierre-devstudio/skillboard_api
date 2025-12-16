@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import consultant_portal_dashboard, consultant_portal_donnees
+from app.routers import consultant_portal_dashboard, consultant_portal_donnees, consultant_portal_expertises
 
 # ======================================================
 # APP LOCALE (hub)
@@ -38,6 +38,9 @@ for route in consultant_portal_dashboard.router.routes:
     app_local.router.routes.append(route)
 
 for route in consultant_portal_donnees.router.routes:
+    app_local.router.routes.append(route)
+
+for route in consultant_portal_expertises.router.routes:
     app_local.router.routes.append(route)
 
 # ======================================================
