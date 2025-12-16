@@ -399,6 +399,53 @@
       color:#6b7280;
       font-size:13px;
     }
+
+    /* =========================
+   EXPERTISES - MOBILE FIX
+   (Lisible sur téléphone)
+   ========================= */
+.mobile-meta {
+  display:none;
+  margin-top:4px;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+.badge {
+  display:inline-block;
+  padding:2px 8px;
+  border:1px solid #d1d5db;
+  border-radius:999px;
+  font-size:12px;
+  color:#374151;
+  background:#ffffff;
+}
+
+.muted {
+  color:#6b7280;
+  font-size:12px;
+}
+
+@media (max-width: 640px) {
+  /* On masque les colonnes "Initial / Avancé / Expert / Dernier audit" */
+  .sb-table th:nth-child(3),
+  .sb-table th:nth-child(4),
+  .sb-table th:nth-child(5),
+  .sb-table th:nth-child(6),
+  .sb-table td:nth-child(3),
+  .sb-table td:nth-child(4),
+  .sb-table td:nth-child(5),
+  .sb-table td:nth-child(6) {
+    display:none;
+  }
+
+  /* On affiche le niveau + audit sous l'intitulé */
+  .mobile-meta {
+    display:flex;
+  }
+}
+
   </style>
 </head>
 <body>
@@ -1049,8 +1096,30 @@
         tr.appendChild(tdCode);
 
         const tdInt = document.createElement("td");
-        tdInt.textContent = it.intitule || "";
+
+        /* Titre */
+        const titleDiv = document.createElement("div");
+        titleDiv.textContent = it.intitule || "";
+        tdInt.appendChild(titleDiv);
+
+        /* Meta mobile (niveau + audit) */
+        const meta = document.createElement("div");
+        meta.className = "mobile-meta";
+
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = it.niveau_actuel || "–";
+
+        const audit = document.createElement("span");
+        audit.className = "muted";
+        audit.textContent = it.date_dernier_audit ? `Audit : ${formatDateFR(it.date_dernier_audit)}` : "Audit : –";
+
+        meta.appendChild(badge);
+        meta.appendChild(audit);
+        tdInt.appendChild(meta);
+
         tr.appendChild(tdInt);
+
 
         const mkLevelCell = (label) => {
           const td = document.createElement("td");
