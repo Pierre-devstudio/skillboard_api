@@ -200,6 +200,52 @@
       box-shadow:0 0 0 1px rgba(37,99,235,0.2);
     }
 
+    /* Avatar consultant */
+    .profile-avatar {
+      width:72px;
+      height:72px;
+      border-radius:999px;
+      background:#e5e7eb;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:600;
+      font-size:22px;
+      color:#4b5563;
+      overflow:hidden;
+      flex-shrink:0;
+    }
+    .profile-avatar span {
+      pointer-events:none;
+    }
+    .profile-avatar.has-photo {
+      background-size:cover;
+      background-position:center;
+      background-repeat:no-repeat;
+      color:transparent;
+    }
+
+    /* Boutons profil */
+    .btn-primary {
+      padding:8px 16px;
+      border-radius:8px;
+      border:0;
+      background:#1d4ed8;
+      color:#fff;
+      font-size:14px;
+      cursor:pointer;
+    }
+    .btn-secondary {
+      padding:8px 16px;
+      border-radius:8px;
+      border:1px solid #d1d5db;
+      background:#ffffff;
+      color:#374151;
+      font-size:14px;
+      cursor:pointer;
+      margin-left:8px;
+    }
+
     @media (max-width: 768px) {
       body {
         flex-direction:column;
@@ -252,6 +298,7 @@
     <nav class="menu">
       <div class="menu-item active" data-view="dashboard">Dashboard</div>
       <div class="menu-item" data-view="vos-donnees">Vos données</div>
+      <div class="menu-item disabled" data-view="vos-expertises">Vos expertises</div>
       <div class="menu-item disabled" data-view="actions">Actions de formation</div>
       <div class="menu-item disabled" data-view="adaptations">Fiches d’adaptation</div>
       <div class="menu-item disabled" data-view="ressources">Ressources</div>
@@ -276,14 +323,14 @@
       <!-- DASHBOARD -->
       <section id="view-dashboard">
         <div style="text-align:center; margin-bottom:16px;">
-          <img src="/Logo_Skillboard.png" alt="Skillboard" class="sb-logo">
+          <img src="/static/Logo_Skillboard.png" alt="Skillboard" class="sb-logo">
         </div>
 
         <div class="card">
           <div class="card-title" id="welcomeTitle">Bienvenue</div>
           <div class="card-sub" id="welcomeIntro">
-            Cet espace vous permet de suivre vos interventions, formaliser vos adaptations et accéder, à terme,
-            à l’ensemble des informations liées à vos missions avec JMB CONSULTANT.
+            Cet espace vous permet de suivre vos interventions, formaliser vos adaptations
+            et accéder, à terme, à l’ensemble des informations liées à vos missions avec JMB CONSULTANT.
           </div>
         </div>
       </section>
@@ -297,6 +344,19 @@
             (type de consultant, entreprise, coûts) sont affichées à titre indicatif.
           </div>
 
+          <!-- Avatar + info -->
+          <div class="row" style="align-items:center; margin-bottom:10px;">
+            <div class="profile-avatar" id="profileAvatar">
+              <span id="profileAvatarInitials">SB</span>
+            </div>
+            <div class="info-item">
+              <div class="label">
+                Votre photo est utilisée sur certains documents et espaces en ligne.
+                Elle est gérée et stockée par JMB CONSULTANT dans SharePoint.
+              </div>
+            </div>
+          </div>
+
           <form id="profileForm">
             <div class="row" style="flex-direction:column; gap:16px;">
 
@@ -304,7 +364,7 @@
               <div class="row">
                 <div class="info-item" style="min-width:160px;">
                   <div class="label">Civilité</div>
-                  <select id="civilite" name="civilite">
+                  <select id="civilite" name="civilite" data-editable="1">
                     <option value="">(Non précisé)</option>
                     <option value="M">M.</option>
                     <option value="Mme">Mme</option>
@@ -313,11 +373,11 @@
                 </div>
                 <div class="info-item">
                   <div class="label">Prénom *</div>
-                  <input type="text" id="prenom" name="prenom" required />
+                  <input type="text" id="prenom" name="prenom" required data-editable="1" />
                 </div>
                 <div class="info-item">
                   <div class="label">Nom *</div>
-                  <input type="text" id="nom" name="nom" required />
+                  <input type="text" id="nom" name="nom" required data-editable="1" />
                 </div>
               </div>
 
@@ -325,11 +385,11 @@
               <div class="row">
                 <div class="info-item" style="flex:1;">
                   <div class="label">Adresse (ligne 1)</div>
-                  <input type="text" id="adresse_1" name="adresse_1" />
+                  <input type="text" id="adresse_1" name="adresse_1" data-editable="1" />
                 </div>
                 <div class="info-item" style="flex:1;">
                   <div class="label">Adresse (complément)</div>
-                  <input type="text" id="adresse_2" name="adresse_2" />
+                  <input type="text" id="adresse_2" name="adresse_2" data-editable="1" />
                 </div>
               </div>
 
@@ -343,11 +403,12 @@
                     maxlength="5"
                     pattern="[0-9]{5}"
                     inputmode="numeric"
+                    data-editable="1"
                   />
                 </div>
                 <div class="info-item" style="flex:1;">
                   <div class="label">Ville</div>
-                  <input type="text" id="ville" name="ville" list="villeOptions" />
+                  <input type="text" id="ville" name="ville" list="villeOptions" data-editable="1" />
                   <datalist id="villeOptions"></datalist>
                 </div>
               </div>
@@ -355,30 +416,28 @@
               <div class="row">
                 <div class="info-item">
                   <div class="label">Téléphone</div>
-                  <input type="tel" id="telephone" name="telephone" />
+                  <input type="tel" id="telephone" name="telephone" data-editable="1" />
                 </div>
                 <div class="info-item">
                   <div class="label">Mobile</div>
-                  <input type="tel" id="telephone_mobile" name="telephone_mobile" />
+                  <input type="tel" id="telephone_mobile" name="telephone_mobile" data-editable="1" />
                 </div>
                 <div class="info-item">
                   <div class="label">Email</div>
-                  <input type="email" id="email" name="email" />
+                  <input type="email" id="email" name="email" data-editable="1" />
                 </div>
               </div>
             </div>
 
-            <div style="margin-top:16px;">
-              <button type="submit" style="
-                padding:8px 16px;
-                border-radius:8px;
-                border:0;
-                background:#1d4ed8;
-                color:#fff;
-                font-size:14px;
-                cursor:pointer;
-              ">
-                Enregistrer vos informations
+            <div style="margin-top:16px;" id="profileButtons">
+              <button type="button" class="btn-primary" id="btnEditProfile">
+                Modifier vos données
+              </button>
+              <button type="submit" class="btn-primary" id="btnSaveProfile" style="display:none;">
+                Enregistrer vos données
+              </button>
+              <button type="button" class="btn-secondary" id="btnCancelEdit" style="display:none;">
+                Annuler
               </button>
             </div>
           </form>
@@ -419,6 +478,17 @@
               <div class="label">Autre supplément</div>
               <div class="value" id="infoCoutSupp">–</div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VOS EXPERTISES (placeholder) -->
+      <section id="view-vos-expertises" style="display:none;">
+        <div class="card">
+          <div class="card-title">Vos expertises</div>
+          <div class="card-sub">
+            Cette section vous permettra de déclarer vos compétences, vos certifications et les documents associés
+            (CV, attestations). Elle sera reliée au référentiel de compétences Skillboard.
           </div>
         </div>
       </section>
@@ -505,6 +575,41 @@
       el.textContent = value != null && value !== "" ? value : "–";
     }
 
+    function setProfileEditMode(isEdit) {
+      const fields = document.querySelectorAll("#profileForm [data-editable='1']");
+      fields.forEach(el => {
+        el.disabled = !isEdit;
+      });
+
+      const btnEdit = document.getElementById("btnEditProfile");
+      const btnSave = document.getElementById("btnSaveProfile");
+      const btnCancel = document.getElementById("btnCancelEdit");
+
+      if (btnEdit) btnEdit.style.display = isEdit ? "none" : "inline-block";
+      if (btnSave) btnSave.style.display = isEdit ? "inline-block" : "none";
+      if (btnCancel) btnCancel.style.display = isEdit ? "inline-block" : "none";
+    }
+
+    function updateAvatar(nomComplet, photoUrl) {
+      const avatar = document.getElementById("profileAvatar");
+      const span = document.getElementById("profileAvatarInitials");
+      if (!avatar || !span) return;
+
+      const parts = (nomComplet || "")
+        .split(" ")
+        .filter(p => p.length > 0);
+      const initials = parts.slice(0, 2).map(p => p[0].toUpperCase()).join("");
+
+      span.textContent = initials || "SB";
+      avatar.style.backgroundImage = "";
+      avatar.classList.remove("has-photo");
+
+      if (photoUrl) {
+        avatar.style.backgroundImage = `url('${photoUrl}')`;
+        avatar.classList.add("has-photo");
+      }
+    }
+
     async function loadCitiesForCP(codePostal) {
       const cp = (codePostal || "").trim();
       const dl = document.getElementById("villeOptions");
@@ -573,6 +678,9 @@
         document.getElementById("topbarInfo").textContent = "Portail consultant — JMB CONSULTANT";
         document.getElementById("welcomeTitle").textContent = `Bienvenue, ${body.prenom} ${body.nom}`;
 
+        // Avatar
+        updateAvatar(nomComplet, body.photo_url);
+
         // Form Vos données (modifiables)
         const civiliteSelect = document.getElementById("civilite");
         if (civiliteSelect) {
@@ -606,6 +714,9 @@
         setTextOrDash("infoCoutHoraire", body.cout_horaire != null ? fmt(body.cout_horaire) : "–");
         setTextOrDash("infoCoutDeplacement", body.cout_supp_deplacement != null ? fmt(body.cout_supp_deplacement) : "–");
         setTextOrDash("infoCoutSupp", body.cout_supp != null ? fmt(body.cout_supp) : "–");
+
+        // On revient en mode lecture seule après un chargement
+        setProfileEditMode(false);
 
       } catch (err) {
         showAlert("error", "Erreur de chargement de vos données : " + err.message);
@@ -658,8 +769,8 @@
           throw new Error(detail);
         }
 
-        showAlert("success", "Vos informations ont été enregistrées.");
-        loadConsultantProfile(id_consultant);
+        showAlert("success", "Vos données ont été enregistrées.");
+        await loadConsultantProfile(id_consultant);
       } catch (err) {
         showAlert("error", "Erreur lors de l’enregistrement : " + err.message);
       }
@@ -728,7 +839,7 @@
         });
       }
 
-      // Submit profil
+      // Boutons profil
       const profileForm = document.getElementById("profileForm");
       if (profileForm) {
         profileForm.addEventListener("submit", (e) => {
@@ -736,6 +847,25 @@
           saveConsultantProfile(id);
         });
       }
+
+      const btnEdit = document.getElementById("btnEditProfile");
+      const btnCancel = document.getElementById("btnCancelEdit");
+
+      if (btnEdit) {
+        btnEdit.addEventListener("click", () => {
+          setProfileEditMode(true);
+        });
+      }
+
+      if (btnCancel) {
+        btnCancel.addEventListener("click", () => {
+          // on recharge les données et on repasse lecture seule
+          loadConsultantProfile(id);
+        });
+      }
+
+      // Démarrage en lecture seule
+      setProfileEditMode(false);
 
       // Charge profil complet
       loadConsultantProfile(id);
