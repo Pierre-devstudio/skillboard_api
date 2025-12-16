@@ -489,6 +489,88 @@
   border-bottom: 0;
 }
 
+/* =========================
+   EXPERTISES - DOMAINES FORMATION
+   ========================= */
+.domaines-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.domaines-list {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.domaines-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  align-items: flex-start;
+}
+
+.domaines-item:last-child {
+  border-bottom: 0;
+}
+
+.domaines-item:hover {
+  background: #f9fafb;
+}
+
+.domaines-check {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.domaines-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.domaines-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.domaines-desc {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.domaines-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.domaines-actions .btn-secondary {
+  margin-left: 0; /* ton btn-secondary a un margin-left global */
+}
+
+.domaines-hint {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+@media (max-width: 640px) {
+  .domaines-actions {
+    justify-content: stretch;
+  }
+  .domaines-actions button {
+    width: 100%;
+  }
+}
+
   </style>
 </head>
 <body>
@@ -695,6 +777,34 @@
           </div>
         </div>
 
+        <div class="card" id="cardDomainesFormation">
+          <div class="card-title" style="margin-bottom:2px;">Domaines de formation de prédilection</div>
+          <div class="card-sub" style="margin:0;">
+            Sélectionnez les domaines sur lesquels vous intervenez le plus. Cela sert au pilotage (missions, matching, catalogue).
+          </div>
+
+          <div class="domaines-wrap">
+            <div class="domaines-actions">
+              <button type="button" class="btn-secondary" id="btnClearDomainesFormation">Tout décocher</button>
+              <button type="button" class="btn-primary" id="btnSaveDomainesFormation">Enregistrer</button>
+            </div>
+
+            <div class="domaines-list" id="domainesFormationList">
+              <div class="domaines-item" style="cursor:default;">
+                <div class="domaines-text">
+                  <div class="domaines-title">Chargement…</div>
+                  <div class="domaines-desc">Récupération du référentiel des domaines.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="domaines-hint" id="domainesFormationHint" style="display:none;">
+              Aucun domaine disponible (ou tous masqués).
+            </div>
+          </div>
+        </div>
+
+
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
             <div>
@@ -814,6 +924,10 @@
   <script>
     const API_BASE = "https://skillboard-services.onrender.com";
     let CONSULTANT_ID = null;
+    let DOMAINES_FORMATION_CATALOGUE = null;   // cache
+    let DOMAINES_FORMATION_SELECTED = new Set();
+    let _domainesHandlersBound = false;
+
 
     function getQueryParam(name) {
       const url = new URL(window.location.href);
@@ -840,6 +954,7 @@
       });
 
       if (viewName === "vos-expertises" && CONSULTANT_ID) {
+        initDomainesFormationUI(CONSULTANT_ID);
         loadConsultantCompetences(CONSULTANT_ID);
       }
 
@@ -944,6 +1059,182 @@
         console.warn("Erreur fetch villes:", e);
       }
     }
+
+    function escapeHtml(s) {
+  return (s ?? "").toString()
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+async function loadDomainesFormationCatalogue() {
+  const resp = await fetch(`${API_BASE}/consultant/expertises/domaines_formation_catalogue`);
+  const ct = resp.headers.get("content-type") || "";
+  const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+  if (!resp.ok) {
+    const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+    throw new Error(detail);
+  }
+  return Array.isArray(body) ? body : [];
+}
+
+async function loadConsultantDomainesFormation(id_consultant) {
+  const resp = await fetch(`${API_BASE}/consultant/expertises/domaines_formation/${encodeURIComponent(id_consultant)}`);
+  const ct = resp.headers.get("content-type") || "";
+  const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+  if (!resp.ok) {
+    const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+    throw new Error(detail);
+  }
+  return Array.isArray(body) ? body : [];
+}
+
+function renderDomainesFormation(catalogue, selectedSet) {
+  const list = document.getElementById("domainesFormationList");
+  const hint = document.getElementById("domainesFormationHint");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  if (!catalogue || catalogue.length === 0) {
+    if (hint) hint.style.display = "block";
+    return;
+  }
+  if (hint) hint.style.display = "none";
+
+  // Tri: ordre_affichage puis titre
+  const sorted = [...catalogue].sort((a, b) => {
+    const oa = (a.ordre_affichage ?? 999999);
+    const ob = (b.ordre_affichage ?? 999999);
+    if (oa !== ob) return oa - ob;
+    return (a.titre || "").localeCompare((b.titre || ""), "fr", { sensitivity: "base" });
+  });
+
+  sorted.forEach(d => {
+    const id = d.id_domaine_formation;
+    if (!id) return;
+
+    const item = document.createElement("div");
+    item.className = "domaines-item";
+
+    const checked = selectedSet.has(id);
+
+    item.innerHTML = `
+      <input class="domaines-check" type="checkbox" data-id="${escapeHtml(id)}" ${checked ? "checked" : ""} />
+      <div class="domaines-text">
+        <div class="domaines-title">${escapeHtml(d.titre || "Sans titre")}</div>
+        <div class="domaines-desc">${escapeHtml(d.description || "")}</div>
+      </div>
+    `;
+
+    // clic sur la ligne = toggle checkbox (sauf si clic direct input)
+    item.addEventListener("click", (e) => {
+      if (e.target && e.target.matches("input[type='checkbox']")) return;
+      const cb = item.querySelector("input[type='checkbox']");
+      if (!cb) return;
+      cb.checked = !cb.checked;
+    });
+
+    list.appendChild(item);
+  });
+}
+
+function getSelectedDomainesFromUI() {
+  const list = document.getElementById("domainesFormationList");
+  if (!list) return [];
+  const ids = [];
+  list.querySelectorAll("input[type='checkbox'][data-id]").forEach(cb => {
+    if (cb.checked) ids.push(cb.getAttribute("data-id"));
+  });
+  // dédoublonnage
+  return Array.from(new Set(ids));
+}
+
+async function saveConsultantDomainesFormation(id_consultant) {
+  const ids = getSelectedDomainesFromUI();
+
+  const resp = await fetch(`${API_BASE}/consultant/expertises/domaines_formation/${encodeURIComponent(id_consultant)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids_domaines: ids }),
+  });
+
+  const ct = resp.headers.get("content-type") || "";
+  const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+  if (!resp.ok) {
+    const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+    throw new Error(detail);
+  }
+
+  // Met à jour le set local
+  DOMAINES_FORMATION_SELECTED = new Set(ids);
+}
+
+async function initDomainesFormationUI(id_consultant) {
+  if (!id_consultant) return;
+
+  // Bind handlers 1 seule fois
+  if (!_domainesHandlersBound) {
+    _domainesHandlersBound = true;
+
+    const btnSave = document.getElementById("btnSaveDomainesFormation");
+    const btnClear = document.getElementById("btnClearDomainesFormation");
+
+    if (btnSave) {
+      btnSave.addEventListener("click", async () => {
+        try {
+          showAlert("", "");
+          await saveConsultantDomainesFormation(id_consultant);
+          showAlert("success", "Domaines de formation enregistrés.");
+        } catch (e) {
+          showAlert("error", "Erreur enregistrement domaines : " + e.message);
+        }
+      });
+    }
+
+    if (btnClear) {
+      btnClear.addEventListener("click", () => {
+        const list = document.getElementById("domainesFormationList");
+        if (!list) return;
+        list.querySelectorAll("input[type='checkbox']").forEach(cb => cb.checked = false);
+      });
+    }
+  }
+
+  try {
+    // Catalogue en cache
+    if (!DOMAINES_FORMATION_CATALOGUE) {
+      DOMAINES_FORMATION_CATALOGUE = await loadDomainesFormationCatalogue();
+    }
+
+    // Sélection du consultant
+    const selectedItems = await loadConsultantDomainesFormation(id_consultant);
+    DOMAINES_FORMATION_SELECTED = new Set(
+      (selectedItems || [])
+        .map(x => x.id_domaine_formation)
+        .filter(Boolean)
+    );
+
+    renderDomainesFormation(DOMAINES_FORMATION_CATALOGUE, DOMAINES_FORMATION_SELECTED);
+
+  } catch (e) {
+    // On affiche un bloc d’erreur dans la liste sans casser la page
+    const list = document.getElementById("domainesFormationList");
+    if (list) {
+      list.innerHTML = `
+        <div class="domaines-item" style="cursor:default;">
+          <div class="domaines-text">
+            <div class="domaines-title">Erreur</div>
+            <div class="domaines-desc">${escapeHtml(e.message)}</div>
+          </div>
+        </div>
+      `;
+    }
+  }
+}
 
     async function loadConsultantProfile(id_consultant) {
       try {
@@ -1367,6 +1658,7 @@
 
     window.addEventListener("DOMContentLoaded", () => {
       const id = getQueryParam("id");
+      
       if (!id) {
         showAlert("error", "Identifiant consultant manquant dans l’URL. Le lien utilisé n’est pas valide.");
         return;

@@ -46,6 +46,16 @@ class AddConsultantCompetencePayload(BaseModel):
     id_competence: str
     niveau_actuel: str  # "Initial" | "Avancé" | "Expert"
 
+class DomaineFormationItem(BaseModel):
+    id_domaine_formation: str
+    titre: Optional[str] = None
+    description: Optional[str] = None
+    ordre_affichage: Optional[int] = None
+
+
+class ConsultantDomainesFormationPayload(BaseModel):
+    ids_domaines: List[str] = []
+
 
 # ======================================================
 # Constantes / validation
@@ -223,6 +233,95 @@ def search_competences_catalogue(q: Optional[str] = None, limit: int = 30):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
+@router.get(
+    "/consultant/expertises/domaines_formation_catalogue",
+    response_model=List[DomaineFormationItem],
+)
+def get_domaines_formation_catalogue():
+    """
+    Liste des domaines de formation (référentiel),
+    triés par ordre_affichage puis titre.
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        id_domaine_formation,
+                        titre,
+                        description,
+                        ordre_affichage
+                    FROM public.tbl_domaine_formation
+                    WHERE (masque IS NULL OR masque = FALSE)
+                    ORDER BY COALESCE(ordre_affichage, 999999), COALESCE(titre, '')
+                    """
+                )
+                rows = cur.fetchall() or []
+
+        return [
+            DomaineFormationItem(
+                id_domaine_formation=r.get("id_domaine_formation") or "",
+                titre=r.get("titre"),
+                description=r.get("description"),
+                ordre_affichage=r.get("ordre_affichage"),
+            )
+            for r in rows
+            if r.get("id_domaine_formation")
+        ]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/consultant/expertises/domaines_formation/{id_consultant}",
+    response_model=List[DomaineFormationItem],
+)
+def get_consultant_domaines_formation(id_consultant: str):
+    """
+    Retourne les domaines de formation sélectionnés (actif=TRUE) pour un consultant.
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                fetch_consultant_with_entreprise(cur, id_consultant)
+
+                cur.execute(
+                    """
+                    SELECT
+                        d.id_domaine_formation,
+                        d.titre,
+                        d.description,
+                        d.ordre_affichage
+                    FROM public.tbl_consultant_domaine_formation cd
+                    JOIN public.tbl_domaine_formation d
+                      ON d.id_domaine_formation = cd.id_domaine_formation
+                    WHERE cd.id_consultant = %s
+                      AND cd.actif = TRUE
+                      AND (d.masque IS NULL OR d.masque = FALSE)
+                    ORDER BY COALESCE(d.ordre_affichage, 999999), COALESCE(d.titre, '')
+                    """,
+                    (id_consultant,),
+                )
+                rows = cur.fetchall() or []
+
+        return [
+            DomaineFormationItem(
+                id_domaine_formation=r.get("id_domaine_formation") or "",
+                titre=r.get("titre"),
+                description=r.get("description"),
+                ordre_affichage=r.get("ordre_affichage"),
+            )
+            for r in rows
+            if r.get("id_domaine_formation")
+        ]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
 
 @router.post("/consultant/expertises/competences/{id_consultant}")
@@ -319,6 +418,118 @@ def add_or_update_consultant_competence(
                 conn.commit()
 
         return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+@router.post("/consultant/expertises/domaines_formation/{id_consultant}")
+def save_consultant_domaines_formation(
+    id_consultant: str,
+    payload: ConsultantDomainesFormationPayload,
+):
+    """
+    Enregistre la liste complète des domaines de formation sélectionnés.
+    - active/insère ceux présents
+    - désactive ceux absents
+    """
+    try:
+        ids = [s.strip() for s in (payload.ids_domaines or []) if (s or "").strip()]
+        ids = list(dict.fromkeys(ids))  # dédoublonnage (ordre conservé)
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                fetch_consultant_with_entreprise(cur, id_consultant)
+
+                # Valider les ids (existants + non masqués)
+                if ids:
+                    cur.execute(
+                        """
+                        SELECT id_domaine_formation
+                        FROM public.tbl_domaine_formation
+                        WHERE id_domaine_formation = ANY(%s::text[])
+                          AND (masque IS NULL OR masque = FALSE)
+                        """,
+                        (ids,),
+                    )
+                    ok_ids = {r.get("id_domaine_formation") for r in (cur.fetchall() or [])}
+                    ids = [i for i in ids if i in ok_ids]
+
+                # Désactiver tout ce qui n'est pas dans la sélection
+                if ids:
+                    cur.execute(
+                        """
+                        UPDATE public.tbl_consultant_domaine_formation
+                        SET actif = FALSE,
+                            date_modification = now()
+                        WHERE id_consultant = %s
+                          AND actif = TRUE
+                          AND id_domaine_formation <> ALL(%s::text[])
+                        """,
+                        (id_consultant, ids),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        UPDATE public.tbl_consultant_domaine_formation
+                        SET actif = FALSE,
+                            date_modification = now()
+                        WHERE id_consultant = %s
+                          AND actif = TRUE
+                        """,
+                        (id_consultant,),
+                    )
+
+                # Activer / insérer la sélection
+                for id_dom in ids:
+                    cur.execute(
+                        """
+                        SELECT id_association_consultant_domaine_formation, actif
+                        FROM public.tbl_consultant_domaine_formation
+                        WHERE id_consultant = %s
+                          AND id_domaine_formation = %s
+                        ORDER BY actif DESC
+                        LIMIT 1
+                        """,
+                        (id_consultant, id_dom),
+                    )
+                    existing = cur.fetchone()
+
+                    if existing:
+                        cur.execute(
+                            """
+                            UPDATE public.tbl_consultant_domaine_formation
+                            SET actif = TRUE,
+                                date_modification = now()
+                            WHERE id_association_consultant_domaine_formation = %s
+                            """,
+                            (existing.get("id_association_consultant_domaine_formation"),),
+                        )
+                    else:
+                        cur.execute(
+                            """
+                            INSERT INTO public.tbl_consultant_domaine_formation
+                            (
+                              id_association_consultant_domaine_formation,
+                              id_consultant,
+                              id_domaine_formation,
+                              actif,
+                              date_creation,
+                              date_modification
+                            )
+                            VALUES
+                            (
+                              %s, %s, %s,
+                              TRUE,
+                              now(), now()
+                            )
+                            """,
+                            (str(uuid.uuid4()), id_consultant, id_dom),
+                        )
+
+                conn.commit()
+
+        return {"ok": True, "count": len(ids)}
 
     except HTTPException:
         raise
