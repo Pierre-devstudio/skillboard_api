@@ -7,3 +7,4 @@ httpx
 requests
 psycopg2-binary
 psycopg[binary]
+python-multipart
