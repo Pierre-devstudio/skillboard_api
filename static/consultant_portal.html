@@ -214,6 +214,7 @@
       color:#4b5563;
       overflow:hidden;
       flex-shrink:0;
+      cursor:pointer;
     }
     .profile-avatar span {
       pointer-events:none;
@@ -342,19 +343,16 @@
           <div class="card-sub">
             Consultez et mettez à jour vos informations de contact. Les informations administratives
             (type de consultant, entreprise, coûts) sont affichées à titre indicatif.
+            Pour tout changement, veuillez contacter
+            <a href="mailto:pierre@jmbconsultant.fr">l’administrateur</a>.
           </div>
 
           <!-- Avatar + info -->
           <div class="row" style="align-items:center; margin-bottom:10px;">
-            <div class="profile-avatar" id="profileAvatar">
+            <div class="profile-avatar" id="profileAvatar" title="Cliquer pour choisir une photo">
               <span id="profileAvatarInitials">SB</span>
             </div>
-            <div class="info-item">
-              <div class="label">
-                Votre photo est utilisée sur certains documents et espaces en ligne.
-                Elle est gérée et stockée par JMB CONSULTANT dans SharePoint.
-              </div>
-            </div>
+            <input type="file" id="photoInput" accept="image/*" style="display:none;" />
           </div>
 
           <form id="profileForm">
@@ -414,20 +412,19 @@
               </div>
 
               <div class="row">
-                <div class="info-item">
+                <div class="info-item" style="min-width:150px;">
                   <div class="label">Téléphone</div>
                   <input type="tel" id="telephone" name="telephone" data-editable="1" />
                 </div>
-                <div class="info-item">
+                <div class="info-item" style="min-width:150px;">
                   <div class="label">Mobile</div>
                   <input type="tel" id="telephone_mobile" name="telephone_mobile" data-editable="1" />
                 </div>
-                <div class="info-item">
+                <div class="info-item" style="flex:2; min-width:260px;">
                   <div class="label">Email</div>
                   <input type="email" id="email" name="email" data-editable="1" />
                 </div>
               </div>
-            </div>
 
             <div style="margin-top:16px;" id="profileButtons">
               <button type="button" class="btn-primary" id="btnEditProfile">
@@ -588,6 +585,17 @@
       if (btnEdit) btnEdit.style.display = isEdit ? "none" : "inline-block";
       if (btnSave) btnSave.style.display = isEdit ? "inline-block" : "none";
       if (btnCancel) btnCancel.style.display = isEdit ? "inline-block" : "none";
+    }
+
+
+    function formatPhoneInput(input) {
+      if (!input) return;
+      let digits = (input.value || "").replace(/\D/g, "").slice(0, 10);
+      const parts = [];
+      for (let i = 0; i < digits.length; i += 2) {
+        parts.push(digits.slice(i, i + 2));
+      }
+      input.value = parts.join(" ");
     }
 
     function updateAvatar(nomComplet, photoUrl) {
@@ -795,6 +803,18 @@
       if (!id) {
         showAlert("error", "Identifiant consultant manquant dans l’URL. Le lien utilisé n’est pas valide.");
         return;
+      }
+      const tel = document.getElementById("telephone");
+      const mob = document.getElementById("telephone_mobile");
+
+      if (tel) {
+        tel.addEventListener("input", () => formatPhoneInput(tel));
+        tel.addEventListener("blur", () => formatPhoneInput(tel));
+      }
+
+      if (mob) {
+        mob.addEventListener("input", () => formatPhoneInput(mob));
+        mob.addEventListener("blur", () => formatPhoneInput(mob));
       }
 
       // Vue par défaut : dashboard
