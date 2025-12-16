@@ -39,6 +39,7 @@ class CompetenceCatalogueItem(BaseModel):
     code: str
     intitule: str
     domaine: Optional[str] = None
+    domaine_titre: Optional[str] = None
 
 
 class AddConsultantCompetencePayload(BaseModel):
@@ -149,8 +150,9 @@ def search_competences_catalogue(q: Optional[str] = None, limit: int = 30):
     """
     Recherche dans public.tbl_competence pour le bouton "+ Ajouter".
 
-    - filtre masque = FALSE, etat = 'valide'
+    - filtre masque = FALSE, etat = 'valide' (ici: active / à valider selon ton existant)
     - recherche sur code / intitulé
+    - renvoie aussi domaine_titre (JOIN tbl_domaine_competence)
     """
     try:
         q = (q or "").strip()
@@ -164,15 +166,22 @@ def search_competences_catalogue(q: Optional[str] = None, limit: int = 30):
                 if q:
                     cur.execute(
                         """
-                        SELECT id_comp, code, intitule, domaine
-                        FROM public.tbl_competence
-                        WHERE masque = FALSE
-                          AND (etat IS NULL OR etat = 'active' OR etat = 'à valider')
+                        SELECT
+                            c.id_comp,
+                            c.code,
+                            c.intitule,
+                            c.domaine,
+                            d.titre AS domaine_titre
+                        FROM public.tbl_competence c
+                        LEFT JOIN public.tbl_domaine_competence d
+                          ON d.id_domaine_competence = c.domaine
+                        WHERE c.masque = FALSE
+                          AND (c.etat IS NULL OR c.etat = 'active' OR c.etat = 'à valider')
                           AND (
-                            code ILIKE %s
-                            OR intitule ILIKE %s
+                            c.code ILIKE %s
+                            OR c.intitule ILIKE %s
                           )
-                        ORDER BY code
+                        ORDER BY COALESCE(d.titre, ''), c.code
                         LIMIT %s
                         """,
                         (f"%{q}%", f"%{q}%", limit),
@@ -180,11 +189,18 @@ def search_competences_catalogue(q: Optional[str] = None, limit: int = 30):
                 else:
                     cur.execute(
                         """
-                        SELECT id_comp, code, intitule, domaine
-                        FROM public.tbl_competence
-                        WHERE masque = FALSE
-                          AND (etat IS NULL OR etat = 'active' OR etat = 'à valider')
-                        ORDER BY code
+                        SELECT
+                            c.id_comp,
+                            c.code,
+                            c.intitule,
+                            c.domaine,
+                            d.titre AS domaine_titre
+                        FROM public.tbl_competence c
+                        LEFT JOIN public.tbl_domaine_competence d
+                          ON d.id_domaine_competence = c.domaine
+                        WHERE c.masque = FALSE
+                          AND (c.etat IS NULL OR c.etat = 'active' OR c.etat = 'à valider')
+                        ORDER BY COALESCE(d.titre, ''), c.code
                         LIMIT %s
                         """,
                         (limit,),
@@ -197,6 +213,7 @@ def search_competences_catalogue(q: Optional[str] = None, limit: int = 30):
                 code=r.get("code") or "",
                 intitule=r.get("intitule") or "",
                 domaine=r.get("domaine"),
+                domaine_titre=r.get("domaine_titre"),
             )
             for r in rows
         ]
@@ -205,6 +222,7 @@ def search_competences_catalogue(q: Optional[str] = None, limit: int = 30):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
 
 
 @router.post("/consultant/expertises/competences/{id_consultant}")

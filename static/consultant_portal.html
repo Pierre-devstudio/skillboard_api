@@ -446,6 +446,49 @@
   }
 }
 
+/* =========================
+   MODAL - GROUPES PAR DOMAINE
+   ========================= */
+.domain-group {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.domain-group summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 12px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #111827;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.domain-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.domain-count {
+  font-weight: 600;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.domain-items .result-item {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.domain-items .result-item:last-child {
+  border-bottom: 0;
+}
+
   </style>
 </head>
 <body>
@@ -1207,24 +1250,69 @@
         return;
       }
 
+      // Groupement par domaine_titre (fallback "Autres")
+      const groups = new Map();
       list.forEach(it => {
-        const div = document.createElement("div");
-        div.className = "result-item";
+        const key = (it.domaine_titre || "").trim() || "Autres";
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(it);
+      });
 
-        div.innerHTML = `
-          <div class="result-code">${it.code || ""}</div>
-          <div class="result-title">${it.intitule || ""}</div>
-        `;
+      // Tri des domaines (Autres en dernier)
+      const domainNames = Array.from(groups.keys()).sort((a, b) => {
+        if (a === "Autres") return 1;
+        if (b === "Autres") return -1;
+        return a.localeCompare(b, "fr", { sensitivity: "base" });
+      });
 
-        div.addEventListener("click", () => {
-          _selectedCompetence = it;
-          const selected = document.getElementById("competenceSelected");
-          if (selected) selected.textContent = `${it.code} — ${it.intitule}`;
+      const currentQuery = (document.getElementById("competenceSearch")?.value || "").trim();
+      const expandAll = currentQuery.length > 0; // si recherche active -> on ouvre les groupes
+
+      domainNames.forEach(domainTitle => {
+        const items = groups.get(domainTitle) || [];
+
+        const details = document.createElement("details");
+        details.className = "domain-group";
+        details.open = expandAll || domainNames.length <= 3; // petit confort: ouvre si peu de domaines
+
+        const summary = document.createElement("summary");
+
+        const left = document.createElement("span");
+        left.textContent = domainTitle;
+
+        const right = document.createElement("span");
+        right.className = "domain-count";
+        right.textContent = `${items.length}`;
+
+        summary.appendChild(left);
+        summary.appendChild(right);
+
+        const wrap = document.createElement("div");
+        wrap.className = "domain-items";
+
+        items.forEach(it => {
+          const div = document.createElement("div");
+          div.className = "result-item";
+          div.innerHTML = `
+            <div class="result-code">${it.code || ""}</div>
+            <div class="result-title">${it.intitule || ""}</div>
+          `;
+
+          div.addEventListener("click", () => {
+            _selectedCompetence = it;
+            const selected = document.getElementById("competenceSelected");
+            if (selected) selected.textContent = `${it.code} — ${it.intitule}`;
+          });
+
+          wrap.appendChild(div);
         });
 
-        results.appendChild(div);
+        details.appendChild(summary);
+        details.appendChild(wrap);
+        results.appendChild(details);
       });
     }
+
 
     async function searchCompetencesCatalogue(q) {
       try {
