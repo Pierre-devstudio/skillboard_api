@@ -12,6 +12,27 @@
     el.value = value ?? "";
   }
 
+  function formatPhoneInput(input) {
+  if (!input) return;
+
+  // Garde uniquement les chiffres (max 10)
+  let digits = (input.value || "").replace(/\D/g, "");
+
+  // Petit confort si quelqu’un colle un +33...
+  if (digits.startsWith("33") && digits.length >= 11) {
+    digits = "0" + digits.slice(2);
+  }
+
+  digits = digits.slice(0, 10);
+
+  // Regroupe par 2: XX XX XX XX XX
+  const parts = [];
+  for (let i = 0; i < digits.length; i += 2) {
+    parts.push(digits.slice(i, i + 2));
+  }
+  input.value = parts.join(" ");
+  }
+
   function setTextOrDash(id, value, isError) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -120,6 +141,8 @@
     setValueOrEmpty("ent_pays_ent", ent.pays_ent);
 
     setValueOrEmpty("ent_telephone_ent", ent.telephone_ent);
+    formatPhoneInput(document.getElementById("ent_telephone_ent"));
+
     setValueOrEmpty("ent_email_ent", ent.email_ent);
     setValueOrEmpty("ent_site_web", ent.site_web);
 
@@ -138,7 +161,9 @@
     setValueOrEmpty("ct_nom_ca", ct.nom_ca);
     setValueOrEmpty("ct_role_ca", ct.role_ca);
     setValueOrEmpty("ct_tel_ca", ct.tel_ca);
+    formatPhoneInput(document.getElementById("ct_tel_ca"));
     setValueOrEmpty("ct_tel2_ca", ct.tel2_ca);
+    formatPhoneInput(document.getElementById("ct_tel2_ca"));
     setValueOrEmpty("ct_mail_ca", ct.mail_ca);
 
     const obs = document.getElementById("ct_obs_ca");
@@ -329,6 +354,14 @@
 
     setEntrepriseEditMode(false);
     setContactEditMode(false);
+
+    ["ent_telephone_ent", "ct_tel_ca", "ct_tel2_ca"].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener("input", () => formatPhoneInput(el));
+      el.addEventListener("blur", () => formatPhoneInput(el));
+    });
+
   }
 
   window.SkillsInformations = {
