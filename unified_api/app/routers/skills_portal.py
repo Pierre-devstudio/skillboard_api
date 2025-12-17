@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 
-from app.routers import skills_portal_dashboard 
+from app.routers import skills_portal_dashboard, skills_portal_informations
 
 # ======================================================
 # APP LOCALE (hub)
@@ -37,6 +37,9 @@ def healthz():
 # (ajouté au fur et à mesure, même principe que consultant_portal.py)
 # ======================================================
 for route in skills_portal_dashboard.router.routes:
+     app_local.router.routes.append(route)
+
+for route in skills_portal_informations.router.routes:
      app_local.router.routes.append(route)
 
 # ======================================================
