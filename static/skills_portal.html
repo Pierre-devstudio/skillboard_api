@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Portail Skills — Skillboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+
+    body {
+      margin: 0;
+      background:#f3f4f6;
+      color:#111827;
+      display:flex;
+      min-height:100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width:240px;
+      background:#333333; /* CHANGÉ */
+      color:#e5e7eb;
+      display:flex;
+      flex-direction:column;
+      padding:16px 12px;
+      flex-shrink:0;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      z-index:50;
+    }
+    .sidebar-header {
+      font-weight:600;
+      font-size:18px;
+      margin-bottom:16px;
+      text-align:center;
+    }
+    .sidebar-sub {
+      font-size:12px;
+      color:#cbd5e1;
+      text-align:center;
+      margin-bottom:16px;
+    }
+    .menu {
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      margin-top:8px;
+    }
+    .menu-item {
+      padding:8px 10px;
+      border-radius:6px;
+      font-size:14px;
+      cursor:pointer;
+      color:#e5e7eb;
+      user-select:none;
+    }
+    .menu-item.active {
+      background:#c1272d; /* CHANGÉ */
+      color:#ffffff;
+    }
+    .menu-item.disabled {
+      opacity:0.4;
+      cursor:default;
+    }
+    .menu-separator {
+      margin:10px 6px;
+      border-top:1px solid rgba(229,231,235,0.25);
+    }
+
+    /* Backdrop mobile */
+    .backdrop {
+      position:fixed;
+      inset:0;
+      background:rgba(15,23,42,0.35);
+      z-index:40;
+      display:none;
+    }
+    .backdrop.show {
+      display:block;
+    }
+
+    /* Main */
+    .main {
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+    }
+
+    .topbar {
+      background:#ffffff;
+      border-bottom:1px solid #e5e7eb;
+      padding:10px 18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+    }
+    .topbar-left {
+      font-size:14px;
+      color:#4b5563;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .topbar-right {
+      font-size:13px;
+      color:#6b7280;
+      text-align:right;
+      flex-shrink:0;
+    }
+
+    .menu-toggle {
+      display:none;
+      border:none;
+      background:transparent;
+      font-size:20px;
+      cursor:pointer;
+      color:#111827;
+      padding:4px 8px;
+      border-radius:6px;
+    }
+
+    .content {
+      padding:18px;
+      overflow:auto;
+    }
+
+    .card {
+      background:#ffffff;
+      border-radius:10px;
+      border:1px solid #e5e7eb;
+      padding:16px;
+      margin-bottom:16px;
+    }
+    .card-title {
+      font-size:16px;
+      font-weight:600;
+      margin-bottom:8px;
+    }
+    .card-sub {
+      font-size:13px;
+      color:#6b7280;
+      margin-bottom:10px;
+    }
+
+    .alert {
+      padding:10px 12px;
+      border-radius:8px;
+      font-size:13px;
+      margin-bottom:12px;
+    }
+    .alert.error {
+      background:#fef2f2;
+      border:1px solid #fecaca;
+      color:#991b1b;
+    }
+    .alert.success {
+      background:#ecfdf5;
+      border:1px solid #bbf7d0;
+      color:#166534;
+    }
+
+    .sb-logo {
+      max-height: 70px;
+      height: auto;
+      max-width: 100%;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    select {
+      width:100%;
+      box-sizing:border-box;
+      padding:6px 8px;
+      border-radius:6px;
+      border:1px solid #d1d5db;
+      font-size:14px;
+      background:#ffffff;
+    }
+
+    input:focus,
+    select:focus {
+      outline:none;
+      border-color:#c1272d; /* CHANGÉ */
+      box-shadow:0 0 0 1px rgba(193,39,45,0.20); /* CHANGÉ */
+    }
+
+    .btn-primary {
+      padding:8px 16px;
+      border-radius:8px;
+      border:0;
+      background:#c1272d; /* CHANGÉ */
+      color:#fff;
+      font-size:14px;
+      cursor:pointer;
+    }
+    .btn-secondary {
+      padding:8px 16px;
+      border-radius:8px;
+      border:1px solid #d1d5db;
+      background:#ffffff;
+      color:#374151;
+      font-size:14px;
+      cursor:pointer;
+      margin-left:8px;
+    }
+
+    @media (max-width: 768px) {
+      body { flex-direction:column; }
+
+      .sidebar {
+        position:fixed;
+        top:0;
+        left:0;
+        height:100vh;
+        transform:translateX(-100%);
+        box-shadow:0 0 0 rgba(0,0,0,0);
+      }
+      .sidebar.open {
+        transform:translateX(0);
+        box-shadow:0 10px 25px rgba(15,23,42,0.6);
+      }
+
+      .sidebar-header,
+      .sidebar-sub {
+        text-align:left;
+      }
+
+      .main { flex:1; }
+
+      .topbar { padding:10px 12px; }
+
+      .menu-toggle {
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+      }
+    }
+
+    /* (Tu gardes tes styles "table/modals" du portail consultant si tu veux les réutiliser plus tard)
+       Pour l’instant, ce portail skills est minimal, donc pas besoin d’en rajouter.
+    */
+  </style>
+</head>
+
+<body>
+  <!-- Fond sombre pour mobile -->
+  <div class="backdrop" id="backdrop"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div>
+      <div class="sidebar-header">Espace Skills</div>
+      <div class="sidebar-sub">JMB CONSULTANT · Skillboard</div>
+    </div>
+
+    <nav class="menu">
+      <div class="menu-item active" data-view="dashboard">Dashboard</div>
+      <div class="menu-item" data-view="vos-informations">Vos informations</div>
+      <div class="menu-item" data-view="votre-organisation">Votre organisation</div>
+
+      <div class="menu-separator"></div>
+
+      <div class="menu-item" data-view="vos-collaborateurs">Vos collaborateurs</div>
+      <div class="menu-item" data-view="referentiel-competences">Référentiel de compétences</div>
+      <div class="menu-item" data-view="cartographie-competences">Cartographie des compétences</div>
+      <div class="menu-item" data-view="analyse-risques">Analyse des risques</div>
+
+      <div class="menu-separator"></div>
+
+      <div class="menu-item" data-view="actions-programmer">Actions à programmer</div>
+      <div class="menu-item" data-view="actions-en-cours">Actions en cours</div>
+      <div class="menu-item" data-view="actions-passees">Actions passées</div>
+
+      <div class="menu-separator"></div>
+
+      <div class="menu-item" data-view="vos-documents">Vos documents</div>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" id="btnMenuToggle" aria-label="Ouvrir le menu">
+          &#9776;
+        </button>
+        <span id="topbarName">Entreprise</span>
+      </div>
+      <div class="topbar-right" id="topbarInfo">Chargement…</div>
+    </header>
+
+    <main class="content">
+      <div id="alertContainer"></div>
+
+      <!-- DASHBOARD -->
+      <section id="view-dashboard">
+        <div style="text-align:center; margin-bottom:16px;">
+          <img src="/Logo_Skillboard.png" alt="Skillboard" class="sb-logo">
+        </div>
+
+        <div class="card">
+          <div class="card-title" id="welcomeTitle">Bienvenue</div>
+          <div class="card-sub" id="welcomeIntro">
+            Cet espace vous permet de piloter votre démarche Skills: organisation, référentiel, cartographie, risques, actions et documents.
+          </div>
+        </div>
+      </section>
+
+      <!-- VOS INFORMATIONS -->
+      <section id="view-vos-informations" style="display:none;">
+        <div class="card">
+          <div class="card-title">Vos informations</div>
+          <div class="card-sub">Page à venir: coordonnées et informations de l’entreprise.</div>
+        </div>
+      </section>
+
+      <!-- VOTRE ORGANISATION -->
+      <section id="view-votre-organisation" style="display:none;">
+        <div class="card">
+          <div class="card-title">Votre organisation</div>
+          <div class="card-sub">Page à venir: organigramme des services.</div>
+        </div>
+      </section>
+
+      <!-- VOS COLLABORATEURS -->
+      <section id="view-vos-collaborateurs" style="display:none;">
+        <div class="card">
+          <div class="card-title">Vos collaborateurs</div>
+          <div class="card-sub">Page à venir: liste effectifs + détail.</div>
+        </div>
+      </section>
+
+      <!-- RÉFÉRENTIEL COMPÉTENCES -->
+      <section id="view-referentiel-competences" style="display:none;">
+        <div class="card">
+          <div class="card-title">Référentiel de compétences</div>
+          <div class="card-sub">Page à venir: compétences nécessaires à l’entreprise.</div>
+        </div>
+      </section>
+
+      <!-- CARTOGRAPHIE COMPÉTENCES -->
+      <section id="view-cartographie-competences" style="display:none;">
+        <div class="card">
+          <div class="card-title">Cartographie des compétences</div>
+          <div class="card-sub">Page à venir: compétences disponibles, détaillées.</div>
+        </div>
+      </section>
+
+      <!-- ANALYSE RISQUES -->
+      <section id="view-analyse-risques" style="display:none;">
+        <div class="card">
+          <div class="card-title">Analyse des risques</div>
+          <div class="card-sub">Page à venir: analyse des risques de pertes de savoir.</div>
+        </div>
+      </section>
+
+      <!-- ACTIONS À PROGRAMMER -->
+      <section id="view-actions-programmer" style="display:none;">
+        <div class="card">
+          <div class="card-title">Actions à programmer</div>
+          <div class="card-sub">Page à venir: actions de formation à prévoir.</div>
+        </div>
+      </section>
+
+      <!-- ACTIONS EN COURS -->
+      <section id="view-actions-en-cours" style="display:none;">
+        <div class="card">
+          <div class="card-title">Actions en cours</div>
+          <div class="card-sub">Page à venir: formations programmées et en cours.</div>
+        </div>
+      </section>
+
+      <!-- ACTIONS PASSÉES -->
+      <section id="view-actions-passees" style="display:none;">
+        <div class="card">
+          <div class="card-title">Actions passées</div>
+          <div class="card-sub">Page à venir: actions de formation terminées.</div>
+        </div>
+      </section>
+
+      <!-- VOS DOCUMENTS -->
+      <section id="view-vos-documents" style="display:none;">
+        <div class="card">
+          <div class="card-title">Vos documents</div>
+          <div class="card-sub">Page à venir: factures, documents formation, feuilles de présence, etc.</div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = "https://skillboard-services.onrender.com";
+    let CONTACT_ID = null;
+
+    function getQueryParam(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+
+    function showAlert(type, message) {
+      const container = document.getElementById("alertContainer");
+      if (!message) {
+        container.innerHTML = "";
+        return;
+      }
+      container.innerHTML = `<div class="alert ${type}">${message}</div>`;
+    }
+
+    function openSidebarMobile() {
+      const sidebar = document.getElementById("sidebar");
+      const backdrop = document.getElementById("backdrop");
+      sidebar.classList.add("open");
+      backdrop.classList.add("show");
+    }
+
+    function closeSidebarMobile() {
+      const sidebar = document.getElementById("sidebar");
+      const backdrop = document.getElementById("backdrop");
+      sidebar.classList.remove("open");
+      backdrop.classList.remove("show");
+    }
+
+    function switchView(viewName) {
+      document.querySelectorAll("section[id^='view-']").forEach(sec => {
+        sec.style.display = sec.id === `view-${viewName}` ? "block" : "none";
+      });
+
+      document.querySelectorAll(".menu-item").forEach(item => {
+        const v = item.getAttribute("data-view");
+        item.classList.toggle("active", v === viewName);
+      });
+
+      closeSidebarMobile();
+    }
+
+    async function loadSkillsContext(id_contact) {
+      try {
+        showAlert("", "");
+
+        const resp = await fetch(`${API_BASE}/skills/context/${encodeURIComponent(id_contact)}`);
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        const civ = (body.civilite || "").trim();
+        const prenom = (body.prenom || "").trim();
+        const nom = (body.nom || "").trim();
+
+        const display = [civ, prenom, nom].filter(x => x && x.length > 0).join(" ").trim();
+
+        document.getElementById("topbarName").textContent = display || "Contact";
+        document.getElementById("topbarInfo").textContent = "Portail Skills — JMB CONSULTANT";
+        document.getElementById("welcomeTitle").textContent = display
+          ? `Bienvenue, ${display}`
+          : "Bienvenue";
+
+      } catch (e) {
+        showAlert("error", "Erreur de chargement du contexte : " + e.message);
+        document.getElementById("topbarInfo").textContent = "Portail Skills — JMB CONSULTANT";
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const id = getQueryParam("id");
+
+      if (!id) {
+        showAlert("error", "Identifiant contact manquant dans l’URL. Le lien utilisé n’est pas valide.");
+        return;
+      }
+
+      CONTACT_ID = id;
+
+      // Vue par défaut
+      switchView("dashboard");
+
+      // Menu
+      document.querySelectorAll(".menu-item").forEach(item => {
+        if (item.classList.contains("disabled")) return;
+        item.addEventListener("click", () => {
+          const view = item.getAttribute("data-view");
+          switchView(view);
+        });
+      });
+
+      // Hamburger + backdrop
+      const btnMenu = document.getElementById("btnMenuToggle");
+      const backdrop = document.getElementById("backdrop");
+
+      btnMenu.addEventListener("click", () => {
+        const sidebar = document.getElementById("sidebar");
+        if (sidebar.classList.contains("open")) closeSidebarMobile();
+        else openSidebarMobile();
+      });
+
+      backdrop.addEventListener("click", () => {
+        closeSidebarMobile();
+      });
+
+      // Contexte (welcome)
+      loadSkillsContext(id);
+    });
+  </script>
+</body>
+</html>
