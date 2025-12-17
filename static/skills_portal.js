@@ -21,10 +21,11 @@
 
   // Votre organisation (HTML + JS)
   portal.registerMenu({
-  view: "votre-organisation",
-  htmlUrl: "/menus/skills_organisation.html",
-  onShow: (p) => window.SkillsOrganisation.onShow(p),
-});
+    view: "votre-organisation",
+    htmlUrl: "/menus/skills_organisation.html",
+    jsUrl: "/menus/skills_organisation.js",
+    onShow: (p) => window.SkillsOrganisation.onShow(p),
+  });
 
   // Placeholders (pour éviter les clics “vides”)
   portal.registerMenu({ view: "vos-collaborateurs", placeholderTitle: "Vos collaborateurs", placeholderSub: "Page à venir: effectifs + détail." });
