@@ -3,6 +3,7 @@
    - Gestion menu / vues (HTML par menu)
    - Chargement automatique du JS du menu si présent
    - API helper + alert + topbar + sidebar mobile
+   - Compat PortalCommon (pour skills_portal.js existant)
    ====================================================== */
 
 (function () {
@@ -232,13 +233,10 @@
       setActiveMenuItem(viewName);
 
       // 3) Charger le JS du menu (si dispo)
-      // Important: on ne casse pas tout si le fichier n’existe pas,
-      // mais si onShow dépend d’un global, tu verras l’erreur clairement.
       if (menu.jsUrl) {
         try {
           await loadScriptOnce(menu.jsUrl);
         } catch (e) {
-          // Soft warning (utile en dev si un menu n’a pas de JS)
           console.warn(e.message);
         }
       }
@@ -292,7 +290,6 @@
 
       item.addEventListener("click", () => {
         const view = item.getAttribute("data-view");
-        // pas de await ici: on fire-and-forget, mais avec gestion d’erreur interne
         portal.switchView(view);
       });
     });
@@ -319,11 +316,25 @@
   portal.setTopbar = setTopbar;
   portal.apiJson = apiJson;
 
+  // ======================================================
+  // COMPAT "PortalCommon" (ancien contrat)
+  // - ton skills_portal.js attend PortalCommon.createPortal(...)
+  // - et/ou PortalCommon.registerMenu(...)
+  // ======================================================
+  portal.createPortal = portal.createPortal || function createPortal(cfg) {
+    // cfg peut contenir { apiBase: "..." } (on accepte, on n'impose rien)
+    try {
+      if (cfg && cfg.apiBase) portal.apiBase = cfg.apiBase;
+    } catch (_) { /* no-op */ }
+    return portal;
+  };
+
   window.portal = portal;
+  window.PortalCommon = portal;
 
   // Auto-init (si DOM prêt)
   window.addEventListener("DOMContentLoaded", () => {
-    // Si tu veux désactiver l’auto-init un jour: window.PORTAL_NO_AUTOINIT = true
+    // Si tu veux désactiver l’auto-init: window.PORTAL_NO_AUTOINIT = true
     if (window.PORTAL_NO_AUTOINIT) return;
     portal.init();
   });
