@@ -19,8 +19,14 @@
     onShow: (p) => window.SkillsInformations.onShow(p),
   });
 
+  // Votre organisation (HTML + JS)
+  portal.registerMenu({
+  view: "votre-organisation",
+  htmlUrl: "/menus/skills_organisation.html",
+  onShow: (p) => window.SkillsOrganisation.onShow(p),
+});
+
   // Placeholders (pour éviter les clics “vides”)
-  portal.registerMenu({ view: "votre-organisation", placeholderTitle: "Votre organisation", placeholderSub: "Page à venir: organigramme des services." });
   portal.registerMenu({ view: "vos-collaborateurs", placeholderTitle: "Vos collaborateurs", placeholderSub: "Page à venir: effectifs + détail." });
   portal.registerMenu({ view: "referentiel-competences", placeholderTitle: "Référentiel de compétences", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "cartographie-competences", placeholderTitle: "Cartographie des compétences", placeholderSub: "Page à venir." });

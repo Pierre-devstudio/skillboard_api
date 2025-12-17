@@ -1,0 +1,52 @@
+<section id="view-votre-organisation" style="display:none;">
+  <div class="card">
+    <div class="card-title">Votre organisation</div>
+    <div class="card-sub">
+      Sélectionnez un service pour afficher la cartographie des postes et la fiche de poste associée.
+    </div>
+  </div>
+
+  <div class="sb-split">
+    <!-- Arbre services -->
+    <div class="sb-col">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:6px;">Services</div>
+        <div class="card-sub" style="margin:0;">Cliquez sur un service.</div>
+
+        <div class="sb-tree" id="orgTree">
+          <div class="card-sub" style="margin-top:10px;">Chargement…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Détails + postes -->
+    <div class="sb-col">
+      <div class="card">
+        <div class="card-title" id="orgServiceTitle">Service non sélectionné</div>
+        <div class="card-sub" id="orgServiceMeta" style="margin:0;">—</div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+          <div>
+            <div class="card-title" style="margin-bottom:4px;">Postes</div>
+            <div class="card-sub" style="margin:0;">Fiches de poste rattachées au service sélectionné.</div>
+          </div>
+
+          <div style="min-width:220px; flex:1;">
+            <div class="label">Rechercher un poste</div>
+            <input type="text" id="posteSearch" placeholder="Code ou intitulé…" />
+          </div>
+        </div>
+
+        <div id="postesContainer" style="margin-top:12px;">
+          <div class="card-sub">Sélectionnez un service pour afficher les postes.</div>
+        </div>
+
+        <div class="card-sub" id="postesEmpty" style="display:none; margin-top:10px;">
+          Aucun poste pour ce service.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

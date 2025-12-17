@@ -272,3 +272,88 @@ textarea:focus {
     justify-content: center;
   }
 }
+
+/* =========================
+   ORG - SPLIT / TREE / ACCORDION
+   ========================= */
+.sb-split {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.sb-col { flex: 1; min-width: 0; }
+.sb-col:first-child { flex: 0 0 360px; }
+
+@media (max-width: 900px) {
+  .sb-split { flex-direction: column; }
+  .sb-col:first-child { flex: 1; width: 100%; }
+}
+
+.sb-tree {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.sb-tree-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  cursor: pointer;
+  user-select: none;
+}
+.sb-tree-item:last-child { border-bottom: 0; }
+.sb-tree-item:hover { background: #f9fafb; }
+.sb-tree-item.active { background: rgba(0,0,0,0.04); }
+
+.sb-tree-name { font-weight: 600; font-size: 13px; color: var(--text); }
+.sb-tree-meta { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+.sb-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #374151;
+  background: #ffffff;
+  white-space: nowrap;
+}
+.sb-badge-accent {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sb-accordion {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  margin-bottom: 10px;
+}
+
+.sb-accordion summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: #f9fafb;
+}
+.sb-accordion summary::-webkit-details-marker { display: none; }
+
+.sb-acc-left { min-width: 0; }
+.sb-acc-title { font-weight: 600; font-size: 13px; color: var(--text); }
+.sb-acc-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.sb-acc-right { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.sb-acc-body { padding: 12px; }
+
+.sb-field { margin-bottom: 10px; }
+.sb-field:last-child { margin-bottom: 0; }
