@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Les menus seront importés ici au fur et à mesure
-# from app.routers import skills_portal_dashboard, skills_portal_donnees, ...
+
+from app.routers import skills_portal_dashboard 
 
 # ======================================================
 # APP LOCALE (hub)
@@ -36,8 +36,8 @@ def healthz():
 # Injection manuelle des routes des menus
 # (ajouté au fur et à mesure, même principe que consultant_portal.py)
 # ======================================================
-# for route in skills_portal_dashboard.router.routes:
-#     app_local.router.routes.append(route)
+for route in skills_portal_dashboard.router.routes:
+     app_local.router.routes.append(route)
 
 # ======================================================
 # Export pour l'app unifiée
