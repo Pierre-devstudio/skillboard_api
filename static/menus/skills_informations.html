@@ -1,0 +1,163 @@
+<section id="view-vos-informations" style="display:none;">
+  <div class="card">
+    <div class="card-title">Vos informations</div>
+    <div class="card-sub">Mettez à jour vos informations entreprise et vos informations de contact.</div>
+  </div>
+
+  <!-- ENTREPRISE -->
+  <div class="card" id="cardEntreprise">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:2px;">Informations entreprise</div>
+        <div class="card-sub" style="margin:0;">Le nom de l’entreprise n’est pas modifiable.</div>
+      </div>
+      <div>
+        <button type="button" class="btn-primary" id="btnEditEntreprise">Modifier les informations</button>
+        <button type="button" class="btn-primary" id="btnSaveEntreprise" style="display:none;">Enregistrer les informations</button>
+        <button type="button" class="btn-secondary" id="btnCancelEntreprise" style="display:none;">Annuler</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:14px;">
+      <div class="info-item" style="min-width:260px;">
+        <div class="label">Nom entreprise</div>
+        <input type="text" id="ent_nom_ent" disabled />
+      </div>
+      <div class="info-item" style="min-width:220px;">
+        <div class="label">SIRET</div>
+        <input type="text" id="ent_siret_ent" data-editable-ent="1" />
+      </div>
+      <div class="info-item" style="min-width:220px;">
+        <div class="label">N° TVA</div>
+        <input type="text" id="ent_num_tva_ent" data-editable-ent="1" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="info-item" style="flex:2; min-width:260px;">
+        <div class="label">Adresse (ligne 1)</div>
+        <input type="text" id="ent_adresse_ent" data-editable-ent="1" />
+      </div>
+      <div class="info-item" style="flex:2; min-width:260px;">
+        <div class="label">Adresse (complément)</div>
+        <input type="text" id="ent_adresse_cplt_ent" data-editable-ent="1" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="info-item" style="min-width:120px;">
+        <div class="label">Code postal</div>
+        <input type="text" id="ent_cp_ent" maxlength="5" inputmode="numeric" data-editable-ent="1" />
+      </div>
+      <div class="info-item" style="min-width:220px;">
+        <div class="label">Ville</div>
+        <input type="text" id="ent_ville_ent" data-editable-ent="1" />
+      </div>
+      <div class="info-item" style="min-width:220px;">
+        <div class="label">Pays</div>
+        <input type="text" id="ent_pays_ent" data-editable-ent="1" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="info-item" style="min-width:220px;">
+        <div class="label">Téléphone</div>
+        <input type="tel" id="ent_telephone_ent" data-editable-ent="1" />
+      </div>
+      <div class="info-item" style="flex:2; min-width:260px;">
+        <div class="label">Email</div>
+        <input type="email" id="ent_email_ent" data-editable-ent="1" />
+      </div>
+      <div class="info-item" style="flex:2; min-width:260px;">
+        <div class="label">Site web</div>
+        <input type="text" id="ent_site_web" data-editable-ent="1" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="info-item" style="min-width:220px;">
+        <div class="label">Code APE (NN.NN)</div>
+        <input type="text" id="ent_code_ape_ent" maxlength="5" inputmode="numeric" data-editable-ent="1" />
+        <div class="hint" id="apeHint">—</div>
+      </div>
+
+      <div class="info-item" style="min-width:220px;">
+        <div class="label">IDCC</div>
+        <input type="text" id="ent_idcc" inputmode="numeric" data-editable-ent="1" />
+        <div class="hint" id="idccHint">—</div>
+      </div>
+
+      <div class="info-item" style="min-width:260px;">
+        <div class="label">OPCO</div>
+        <select id="ent_id_opco" data-editable-ent="1">
+          <option value="">(Non renseigné)</option>
+        </select>
+        <div class="hint" id="opcoHint">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTACT -->
+  <div class="card" id="cardContact">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:2px;">Informations du contact</div>
+        <div class="card-sub" style="margin:0;">Contact actuellement connecté.</div>
+      </div>
+      <div>
+        <button type="button" class="btn-primary" id="btnEditContact">Modifier les informations</button>
+        <button type="button" class="btn-primary" id="btnSaveContact" style="display:none;">Enregistrer les informations</button>
+        <button type="button" class="btn-secondary" id="btnCancelContact" style="display:none;">Annuler</button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:14px;">
+      <div class="info-item" style="min-width:160px;">
+        <div class="label">Civilité</div>
+        <select id="ct_civ_ca" data-editable-ct="1">
+          <option value="">(Non précisé)</option>
+          <option value="M">M.</option>
+          <option value="Mme">Mme</option>
+          <option value="Autre">Autre</option>
+        </select>
+      </div>
+      <div class="info-item">
+        <div class="label">Prénom</div>
+        <input type="text" id="ct_prenom_ca" data-editable-ct="1" />
+      </div>
+      <div class="info-item">
+        <div class="label">Nom *</div>
+        <input type="text" id="ct_nom_ca" data-editable-ct="1" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="info-item">
+        <div class="label">Rôle</div>
+        <input type="text" id="ct_role_ca" data-editable-ct="1" />
+      </div>
+      <div class="info-item">
+        <div class="label">Téléphone</div>
+        <input type="tel" id="ct_tel_ca" data-editable-ct="1" />
+      </div>
+      <div class="info-item">
+        <div class="label">Téléphone (2)</div>
+        <input type="tel" id="ct_tel2_ca" data-editable-ct="1" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="info-item" style="flex:2; min-width:260px;">
+        <div class="label">Email</div>
+        <input type="email" id="ct_mail_ca" data-editable-ct="1" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="info-item" style="flex:2; min-width:260px;">
+        <div class="label">Observations</div>
+        <textarea id="ct_obs_ca" data-editable-ct="1"></textarea>
+      </div>
+    </div>
+  </div>
+</section>
