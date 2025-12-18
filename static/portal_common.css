@@ -357,3 +357,12 @@ textarea:focus {
 
 .sb-field { margin-bottom: 10px; }
 .sb-field:last-child { margin-bottom: 0; }
+
+/* Texte long (responsabilités, missions, etc.) */
+.text-block {
+  white-space: pre-wrap;      
+  line-height: 1.6;           
+  font-size: 14px;            
+  max-width: 900px;           
+  overflow-wrap: anywhere;    
+}
