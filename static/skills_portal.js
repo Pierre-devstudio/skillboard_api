@@ -27,8 +27,13 @@
     onShow: (p) => window.SkillsOrganisation.onShow(p),
   });
 
-  // Placeholders (pour éviter les clics “vides”)
-  portal.registerMenu({ view: "vos-collaborateurs", placeholderTitle: "Vos collaborateurs", placeholderSub: "Page à venir: effectifs + détail." });
+  portal.registerMenu({
+  view: "vos-collaborateurs",
+  htmlUrl: "/menus/skills_collaborateurs.html",
+  onShow: (p) => window.skillsCollaborateurs?.onShow?.(p)
+});
+
+  // Placeholders (pour éviter les clics “vides”)  
   portal.registerMenu({ view: "referentiel-competences", placeholderTitle: "Référentiel de compétences", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "cartographie-competences", placeholderTitle: "Cartographie des compétences", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "analyse-risques", placeholderTitle: "Analyse des risques", placeholderSub: "Page à venir." });

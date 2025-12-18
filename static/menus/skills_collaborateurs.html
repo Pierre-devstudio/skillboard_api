@@ -1,0 +1,168 @@
+<section id="view-vos-collaborateurs" style="display:none;">
+  <div class="card">
+    <div class="card-title">Vos collaborateurs</div>
+    <div class="card-sub">
+      Pilotez vos effectifs, filtrez par service, et accédez au détail d’un collaborateur.
+    </div>
+  </div>
+
+  <div class="sb-split">
+    <!-- Colonne filtres -->
+    <div class="sb-col">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:6px;">Filtres</div>
+        <div class="card-sub" style="margin:0;">Le filtre service impacte la liste et les KPI.</div>
+
+        <div class="row" style="flex-direction:column; gap:12px; margin-top:12px;">
+          <div class="info-item" style="min-width:0;">
+            <div class="label">Service</div>
+            <select id="collabServiceSelect">
+              <option value="">Tous les services</option>
+            </select>
+          </div>
+
+          <div class="info-item" style="min-width:0;">
+            <div class="label">Recherche</div>
+            <input type="text" id="collabSearch" placeholder="Nom, prénom, mail, matricule…" />
+          </div>
+
+          <div class="info-item" style="min-width:0;">
+            <div class="label">Statut</div>
+            <div class="row" style="gap:10px; margin-top:6px;">
+              <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#374151;">
+                <input type="checkbox" id="collabOnlyActifs" checked />
+                Actifs uniquement
+              </label>
+
+              <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#374151;">
+                <input type="checkbox" id="collabIncludeArchived" />
+                Inclure archivés
+              </label>
+            </div>
+          </div>
+
+          <div class="info-item" style="min-width:0;">
+            <div class="label">Rôles</div>
+            <div class="row" style="gap:10px; margin-top:6px;">
+              <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#374151;">
+                <input type="checkbox" id="collabOnlyManagers" />
+                Managers
+              </label>
+
+              <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#374151;">
+                <input type="checkbox" id="collabOnlyFormateurs" />
+                Formateurs
+              </label>
+
+              <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#374151;">
+                <input type="checkbox" id="collabOnlyTemp" />
+                Temporaires
+              </label>
+            </div>
+          </div>
+
+          <div class="info-item" style="min-width:0;">
+            <button type="button" class="btn-secondary" id="btnCollabReset" style="margin-left:0; width:100%;">
+              Réinitialiser les filtres
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colonne contenu -->
+    <div class="sb-col">
+      <!-- KPI -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+          <div>
+            <div class="card-title" style="margin-bottom:4px;">Indicateurs</div>
+            <div class="card-sub" style="margin:0;">Calculés selon le service sélectionné.</div>
+          </div>
+          <div class="card-sub" id="collabKpiScope" style="margin:0;">Périmètre : entreprise</div>
+        </div>
+
+        <div class="row" style="margin-top:12px;">
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+            <div class="label">Total</div>
+            <div class="value" id="kpiTotal">–</div>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+            <div class="label">Actifs</div>
+            <div class="value" id="kpiActifs">–</div>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+            <div class="label">Sorties prévues</div>
+            <div class="value" id="kpiSorties">–</div>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+            <div class="label">Managers</div>
+            <div class="value" id="kpiManagers">–</div>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+            <div class="label">Formateurs</div>
+            <div class="value" id="kpiFormateurs">–</div>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+            <div class="label">Non liés (service)</div>
+            <div class="value" id="kpiNonLies">–</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Liste -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+          <div>
+            <div class="card-title" style="margin-bottom:4px;">Liste</div>
+            <div class="card-sub" style="margin:0;">Cliquez sur une ligne pour voir le détail.</div>
+          </div>
+          <div class="card-sub" id="collabCount" style="margin:0;">—</div>
+        </div>
+
+        <div class="table-wrap" style="margin-top:12px;">
+          <table class="sb-table" id="tblCollaborateurs">
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Service</th>
+                <th>Poste</th>
+                <th>Statut</th>
+                <th>Entrée</th>
+                <th>Sortie prévue</th>
+                <th>Contact</th>
+              </tr>
+            </thead>
+            <tbody id="tblCollaborateursBody"></tbody>
+          </table>
+        </div>
+
+        <div class="card-sub" id="collabEmpty" style="display:none; margin-top:10px;">
+          Aucun collaborateur pour les filtres sélectionnés.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal détail collaborateur (squelette pour la suite) -->
+  <div class="modal" id="modalCollaborateur" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="font-weight:600;" id="collabModalTitle">Collaborateur</div>
+        <button type="button" class="modal-x" id="btnCloseCollabModal" aria-label="Fermer">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="card-sub" id="collabModalSub" style="margin-top:0;">Détail collaborateur (lecture/édition à venir).</div>
+        <div id="collabModalBody" style="margin-top:12px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnCollabModalClose">Fermer</button>
+      </div>
+    </div>
+  </div>
+</section>
