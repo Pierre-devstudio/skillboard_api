@@ -366,3 +366,62 @@ textarea:focus {
   max-width: 900px;           
   overflow-wrap: anywhere;    
 }
+
+/* =========================
+   MODAL (commun)
+   ========================= */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15,23,42,0.45);
+  z-index: 80;
+  padding: 16px;
+}
+
+.modal.show {
+  display: flex;
+}
+
+.modal-card {
+  width: min(720px, 100%);
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-body {
+  padding: 14px;
+}
+
+.modal-footer {
+  padding: 12px 14px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.modal-footer .btn-secondary {
+  margin-left: 0; /* ton btn-secondary a un margin-left global */
+}
+
+.modal-x {
+  border: 0;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 8px;
+  color: #6b7280;
+}

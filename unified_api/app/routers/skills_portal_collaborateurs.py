@@ -209,8 +209,9 @@ def get_collaborateurs_kpis(
                         COUNT(*)::int AS total,
                         COUNT(*) FILTER (WHERE ec.statut_actif = TRUE)::int AS actifs,
                         COUNT(*) FILTER (
-                            WHERE COALESCE(ec.havedatefin, FALSE) = TRUE
-                               OR ec.date_sortie_prevue IS NOT NULL
+                            WHERE ec.date_sortie_prevue IS NOT NULL
+                            AND ec.date_sortie_prevue >= CURRENT_DATE
+                            AND ec.date_sortie_prevue < (CURRENT_DATE + INTERVAL '3 years')
                         )::int AS sorties_prevues,
                         COUNT(*) FILTER (WHERE COALESCE(ec.ismanager, FALSE) = TRUE)::int AS managers,
                         COUNT(*) FILTER (WHERE COALESCE(ec.isformateur, FALSE) = TRUE)::int AS formateurs,

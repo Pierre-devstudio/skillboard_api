@@ -2,3 +2,22 @@
   --accent:#c1272d;
   --sidebar-bg:#333333;
 }
+
+/* Collaborateurs: table plus lisible */
+#view-vos-collaborateurs .sb-table th,
+#view-vos-collaborateurs .sb-table td {
+  padding: 10px 12px;
+}
+
+#view-vos-collaborateurs .sb-table td {
+  vertical-align: top;
+}
+
+#view-vos-collaborateurs .sb-table td:nth-child(5),
+#view-vos-collaborateurs .sb-table td:nth-child(6) {
+  white-space: nowrap;
+}
+
+#view-vos-collaborateurs .sb-table td:nth-child(1) {
+  font-weight: 600;
+}

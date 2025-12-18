@@ -172,7 +172,7 @@
       const tr = document.createElement("tr");
       tr.style.cursor = "pointer";
 
-      const fullName = `${it.nom_effectif || ""} ${it.prenom_effectif || ""}`.trim();
+      const fullName = `${it.prenom_effectif || ""} ${(it.nom_effectif || "").toUpperCase()}`.trim();
 
       const statutParts = [];
       if (it.archive) statutParts.push("Archivé");
