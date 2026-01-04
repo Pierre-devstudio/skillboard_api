@@ -147,7 +147,7 @@ class CertificationDetailResponse(BaseModel):
 def _fetch_contact_and_ent(cur, id_contact: str) -> Dict[str, Any]:
     cur.execute(
         """
-        SELECT c.id_contact, c.code_ent, c.nom, c.prenom, c.civilite
+        SELECT c.id_contact, c.code_ent, c.nom_ca  AS nom, c.prenom_ca AS prenom, c.civ_ca AS civilite
         FROM public.tbl_contact c
         WHERE c.id_contact = %s
         """,
