@@ -1,0 +1,165 @@
+<section id="view-referentiel-competences" style="display:none;">
+  <div class="card">
+    <div class="card-title">Référentiel de compétences</div>
+    <div class="card-sub">
+      Consultez les compétences et certifications <b>requises</b> par les postes, filtrées par service.
+    </div>
+  </div>
+
+  <div class="sb-split">
+    <!-- Colonne filtres -->
+    <div class="sb-col">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:6px;">Filtres</div>
+        <div class="card-sub" style="margin:0;">Le service est obligatoire (et deviendra restreint selon les droits).</div>
+
+        <div class="row" style="flex-direction:column; gap:12px; margin-top:12px;">
+          <div class="info-item" style="min-width:0;">
+            <div class="label">Service</div>
+            <select id="refServiceSelect"></select>
+          </div>
+
+          <div class="info-item" style="min-width:0;">
+            <div class="label">Domaine de compétences</div>
+            <select id="refDomaineSelect">
+              <option value="">Tous les domaines</option>
+            </select>
+          </div>
+
+          <div class="info-item" style="min-width:0;">
+            <div class="label">Recherche</div>
+            <input type="text" id="refSearch" placeholder="Code, intitulé, mots-clés…" />
+          </div>
+
+          <div class="info-item" style="min-width:0;">
+            <div class="label">État</div>
+            <select id="refEtatSelect">
+              <option value="valide" selected>Validée</option>
+              <option value="">Tous</option>
+              <option value="brouillon">Brouillon</option>
+              <option value="archive">Archivée</option>
+            </select>
+          </div>
+
+          <div class="info-item" style="min-width:0;">
+            <button type="button" class="btn-secondary" id="btnRefReset" style="margin-left:0; width:100%;">
+              Réinitialiser
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI -->
+      <div class="card">
+        <div class="card-title" style="margin-bottom:6px;">Indicateurs</div>
+        <div class="card-sub" style="margin:0;">Lecture rapide du périmètre.</div>
+
+        <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+            <div class="label">Postes concernés</div>
+            <div class="value" id="kpiRefPostes">–</div>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+            <div class="label">Compétences requises</div>
+            <div class="value" id="kpiRefCompetences">–</div>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+            <div class="label">Certifications requises</div>
+            <div class="value" id="kpiRefCertifs">–</div>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+            <div class="label">Niveaux A/B/C complets</div>
+            <div class="value" id="kpiRefNiveaux">–</div>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+            <div class="label">Grille d’évaluation</div>
+            <div class="value" id="kpiRefGrille">–</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colonne contenu -->
+    <div class="sb-col">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+          <div>
+            <div class="card-title" style="margin-bottom:6px;">Référentiel du service</div>
+            <div class="card-sub" id="refScopeLabel" style="margin:0;">Sélectionnez un service.</div>
+          </div>
+
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button type="button" class="btn-secondary" id="tabRefCompetences">Compétences</button>
+            <button type="button" class="btn-secondary" id="tabRefCertifs">Certifications</button>
+          </div>
+        </div>
+
+        <div class="card-sub" id="refCount" style="margin-top:10px;">—</div>
+
+        <!-- Table compétences -->
+        <div id="wrapRefCompetences" style="margin-top:12px;">
+          <div class="table-wrap">
+            <table class="sb-table" id="tblRefCompetences">
+              <thead>
+                <tr>
+                  <th>Domaine</th>
+                  <th>Code</th>
+                  <th>Compétence</th>
+                  <th>Niveau requis</th>
+                  <th>Postes</th>
+                  <th>Qualité</th>
+                </tr>
+              </thead>
+              <tbody id="tblRefCompetencesBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Table certifications -->
+        <div id="wrapRefCertifs" style="margin-top:12px; display:none;">
+          <div class="table-wrap">
+            <table class="sb-table" id="tblRefCertifs">
+              <thead>
+                <tr>
+                  <th>Certification</th>
+                  <th>Catégorie</th>
+                  <th>Validité</th>
+                  <th>Exigence</th>
+                  <th>Postes</th>
+                </tr>
+              </thead>
+              <tbody id="tblRefCertifsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card-sub" id="refEmpty" style="display:none; margin-top:10px;">
+          Aucun élément pour les filtres sélectionnés.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal détail (compétence / certification) -->
+  <div class="modal" id="modalRefDetail" aria-hidden="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="font-weight:600;" id="refModalTitle">Détail</div>
+        <button type="button" class="modal-x" id="btnCloseRefModal" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="card-sub" id="refModalSub" style="margin-top:0;"></div>
+        <div id="refModalBody" style="margin-top:12px;"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnRefModalClose">Fermer</button>
+      </div>
+    </div>
+  </div>
+</section>
