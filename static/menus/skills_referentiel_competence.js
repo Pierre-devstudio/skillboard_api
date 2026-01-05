@@ -7,6 +7,12 @@
   let _activeTab = "competences"; // competences | certifs
   let _searchTimer = null;
 
+    // Pareto (top 20%) sur les compétences, basé sur nb_postes_concernes
+  let _paretoOnly = false;      // toggle filtre ON/OFF
+  let _lastCompList = [];       // dernière liste compétences (non filtrée pareto)
+  let _paretoTopIds = new Set(); // ids compétences dans le top 20%
+  let _paretoTopCount = 0;      // combien de compétences dans le top 20%
+
   // cache basique par service (évite de recharger si l’utilisateur clique 10 fois)
   const _cacheComp = new Map();   // key: service|domaine|q|etat
   const _cacheCert = new Map();   // key: service|q
@@ -43,6 +49,32 @@
 
     // sinon on laisse passer ("red", "var(--x)", etc.)
     return s;
+  }
+
+    function computeParetoTop(list) {
+    const items = Array.isArray(list) ? [...list] : [];
+    const n = items.length;
+    if (n === 0) return { topCount: 0, ids: new Set() };
+
+    items.sort((a, b) => (b?.nb_postes_concernes ?? 0) - (a?.nb_postes_concernes ?? 0));
+
+    const topN = Math.max(1, Math.ceil(n * 0.2));
+    const ids = new Set(items.slice(0, topN).map(x => x.id_comp));
+    return { topCount: topN, ids };
+  }
+
+  function updateParetoKpi(total, topCount) {
+    setText("kpiRefPareto", (total > 0) ? `${topCount}` : "–");
+
+    const lbl = byId("kpiRefParetoLabel");
+    if (lbl) lbl.textContent = _paretoOnly ? "Pareto (Top 20%) · filtré" : "Pareto (Top 20%)";
+
+    const card = byId("kpiRefParetoCard");
+    if (card) {
+      // indicateur visuel soft
+      card.style.outline = _paretoOnly ? "2px solid rgba(148,163,184,0.9)" : "";
+      card.style.background = _paretoOnly ? "rgba(148,163,184,0.08)" : "";
+    }
   }
 
   function setText(id, v) {
@@ -368,15 +400,26 @@
 
         setText("kpiRefPostes", data?.kpis?.nb_postes ?? "–");
         setText("kpiRefCompetences", data?.kpis?.nb_items ?? "–");
-        setText("kpiRefNiveaux", (data?.kpis?.pct_niveaux_complets ?? null) === null ? "–" : `${data.kpis.pct_niveaux_complets}%`);
-        setText("kpiRefGrille", (data?.kpis?.pct_grille_eval ?? null) === null ? "–" : `${data.kpis.pct_grille_eval}%`);
+
+        const listAll = Array.isArray(data?.competences) ? data.competences : [];
+        _lastCompList = listAll;
+
+        const p = computeParetoTop(listAll);
+        _paretoTopIds = p.ids;
+        _paretoTopCount = p.topCount;
+
+        updateParetoKpi(listAll.length, _paretoTopCount);
 
         if (_activeTab === "competences") {
-          const list = Array.isArray(data?.competences) ? data.competences : [];
-          renderCompetences(list);
-          setCountsForTab(list.length, "competences");
-          showEmptyIfNeeded(list.length);
+          const listToRender = _paretoOnly
+            ? listAll.filter(x => _paretoTopIds.has(x.id_comp))
+            : listAll;
+
+          renderCompetences(listToRender);
+          setCountsForTab(listToRender.length, "competences");
+          showEmptyIfNeeded(listToRender.length);
         }
+
       }
 
       // Certifications
@@ -603,6 +646,7 @@
     const txtSearch = byId("refSearch");
     const selEtat = byId("refEtatSelect");
     const btnReset = byId("btnRefReset");
+    const kpiParetoCard = byId("kpiRefParetoCard");
 
     const tabComp = byId("tabRefCompetences");
     const tabCert = byId("tabRefCertifs");
@@ -618,6 +662,7 @@
       selService.addEventListener("change", () => {
         _cacheComp.clear();
         _cacheCert.clear();
+        _paretoOnly = false;
         // reset domaine au changement de service (sinon filtre vide et utilisateur croit que "ça bug")
         if (selDom) selDom.value = "";
         refreshAll(portal);
@@ -641,7 +686,27 @@
         if (selDom) selDom.value = "";
         if (txtSearch) txtSearch.value = "";
         if (selEtat) selEtat.value = "active";
+        _paretoOnly = false;
+        updateParetoKpi(_lastCompList.length, _paretoTopCount);
         refreshAll(portal);
+      });
+    }
+
+    if (kpiParetoCard) {
+      kpiParetoCard.addEventListener("click", () => {
+        // Pareto ne s'applique qu'aux compétences
+        if (_activeTab !== "competences") return;
+
+        _paretoOnly = !_paretoOnly;
+        updateParetoKpi(_lastCompList.length, _paretoTopCount);
+
+        const listToRender = _paretoOnly
+          ? _lastCompList.filter(x => _paretoTopIds.has(x.id_comp))
+          : _lastCompList;
+
+        renderCompetences(listToRender);
+        setCountsForTab(listToRender.length, "competences");
+        showEmptyIfNeeded(listToRender.length);
       });
     }
 
