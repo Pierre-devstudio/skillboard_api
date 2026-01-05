@@ -223,37 +223,79 @@
   }
 
   function buildMatrix(data) {
-    // On accepte plusieurs formats (robuste)
-    const domaines = Array.isArray(data?.domaines) ? data.domaines : (Array.isArray(data?.domains) ? data.domains : []);
-    const postes = Array.isArray(data?.postes) ? data.postes : (Array.isArray(data?.rows) ? data.rows : []);
+  // On accepte plusieurs formats (robuste)
+  const rawDomaines = Array.isArray(data?.domaines) ? data.domaines : (Array.isArray(data?.domains) ? data.domains : []);
+  const postes = Array.isArray(data?.postes) ? data.postes : (Array.isArray(data?.rows) ? data.rows : []);
 
-    // matrixMap[id_poste][id_domaine] = count
-    const matrixMap = new Map();
+  // Normalisation domaines (id parfois pas nommé pareil côté API)
+  const domaines = (rawDomaines || []).map(d => {
+    if (!d) return d;
+    const id =
+      d.id_domaine_competence ||
+      d.id_domaine ||
+      d.domaine ||
+      d.id ||
+      null;
 
-    function setCell(id_poste, id_dom, count) {
-      if (!id_poste || !id_dom) return;
-      if (!matrixMap.has(id_poste)) matrixMap.set(id_poste, new Map());
-      matrixMap.get(id_poste).set(id_dom, Number(count || 0));
-    }
+    return {
+      ...d,
+      id_domaine_competence: id
+    };
+  }).filter(d => d && d.id_domaine_competence);
 
-    // Format 1: cells = [{id_poste,id_domaine_competence,nb_competences}]
-    const cells = Array.isArray(data?.cells) ? data.cells : [];
-    if (cells.length) {
-      cells.forEach(c => setCell(c.id_poste, c.id_domaine_competence, c.nb_competences));
-    }
+  // matrixMap[id_poste][id_domaine] = count
+  const matrixMap = new Map();
 
-    // Format 2: matrix = { "<id_poste>": { "<id_dom>": n } }
-    const rawMatrix = data?.matrix;
-    if (!cells.length && rawMatrix && typeof rawMatrix === "object" && !Array.isArray(rawMatrix)) {
-      Object.keys(rawMatrix).forEach(pid => {
-        const row = rawMatrix[pid];
-        if (!row || typeof row !== "object") return;
-        Object.keys(row).forEach(did => setCell(pid, did, row[did]));
-      });
-    }
-
-    return { domaines, postes, matrixMap };
+  function setCell(id_poste, id_dom, count) {
+    if (!id_poste || !id_dom) return;
+    if (!matrixMap.has(id_poste)) matrixMap.set(id_poste, new Map());
+    matrixMap.get(id_poste).set(id_dom, Number(count || 0));
   }
+
+  // Support: cells ou matrix liste (ton cas), ou matrix objet
+  const cells = Array.isArray(data?.cells)
+    ? data.cells
+    : (Array.isArray(data?.matrix) ? data.matrix : []);
+
+  if (cells.length) {
+    cells.forEach(c => {
+      const id_poste =
+        c?.id_poste ||
+        c?.idPoste ||
+        c?.poste_id ||
+        null;
+
+      const id_dom =
+        c?.id_domaine_competence ||
+        c?.id_domaine ||
+        c?.domaine ||
+        c?.idDomaineCompetence ||
+        null;
+
+      const count =
+        c?.nb_competences ??
+        c?.nb_comp ??
+        c?.nb ??
+        c?.count ??
+        c?.total ??
+        0;
+
+      setCell(id_poste, id_dom, count);
+    });
+  }
+
+  const rawMatrix = data?.matrix;
+  if (!cells.length && rawMatrix && typeof rawMatrix === "object" && !Array.isArray(rawMatrix)) {
+    Object.keys(rawMatrix).forEach(pid => {
+      const row = rawMatrix[pid];
+      if (!row || typeof row !== "object") return;
+      Object.keys(row).forEach(did => setCell(pid, did, row[did]));
+    });
+  }
+
+  return { domaines, postes, matrixMap };
+}
+
 
   function renderHeatmap(portal, data, filters) {
     const grid = byId("heatmapGrid");
