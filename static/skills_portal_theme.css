@@ -113,3 +113,44 @@
   overflow: auto;
   flex: 1 1 auto;
 }
+
+/* ============================
+   Référentiel: boutons (soft)
+   ============================ */
+
+#view-referentiel-competences #btnRefReset {
+  border-color: color-mix(in srgb, var(--accent) 35%, #d1d5db);
+  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
+  color: #1f2937;
+  font-weight: 600;
+}
+
+#view-referentiel-competences #btnRefReset:hover {
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+}
+
+#view-referentiel-competences #btnRefReset:active {
+  transform: translateY(1px);
+}
+
+/* Bouton "Fermer" (footer modal détail) */
+#modalRefDetail #btnRefModalClose {
+  border-color: color-mix(in srgb, var(--accent) 35%, #d1d5db);
+  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
+  color: #1f2937;
+  font-weight: 600;
+}
+
+#modalRefDetail #btnRefModalClose:hover {
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+}
+
+/* Croix (header modal) */
+#modalRefDetail .modal-x {
+  color: var(--accent);
+}
+
+#modalRefDetail .modal-x:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-radius: 8px;
+}
