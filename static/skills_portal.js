@@ -39,8 +39,14 @@
   onShow: (p) => window.SkillsReferentielCompetence.onShow(p),
   });
 
-  // Placeholders (pour éviter les clics “vides”)    
-  portal.registerMenu({ view: "cartographie-competences", placeholderTitle: "Cartographie des compétences", placeholderSub: "Page à venir." });
+  portal.registerMenu({
+  view: "cartographie-competences",
+  htmlUrl: "/menus/skills_cartographie_competences.html",
+  jsUrl: "/menus/skills_cartographie_competences.js", // optionnel (auto-guess), mais on le met pour être clair
+  onShow: (p) => window.SkillsCartographieCompetences?.onShow?.(p),
+  });
+
+  // Placeholders (pour éviter les clics “vides”)      
   portal.registerMenu({ view: "analyse-risques", placeholderTitle: "Analyse des risques", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "actions-programmer", placeholderTitle: "Actions à programmer", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "actions-en-cours", placeholderTitle: "Actions en cours", placeholderSub: "Page à venir." });

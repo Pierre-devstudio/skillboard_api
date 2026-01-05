@@ -244,3 +244,73 @@
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   border-radius: 8px;
 }
+
+/* ============================
+   Cartographie: heatmap (V1)
+   ============================ */
+
+#view-cartographie-competences .sb-heatmap {
+  width: 100%;
+  min-height: 120px;
+}
+
+/* Sur mobile / petits écrans, éviter que tout écrase */
+@media (max-width: 900px) {
+  #view-cartographie-competences .sb-heatmap {
+    min-width: 720px;
+  }
+}
+
+/* Bouton reset (soft comme référentiel) */
+#view-cartographie-competences #btnMapReset {
+  border-color: color-mix(in srgb, var(--accent) 35%, #d1d5db);
+  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
+  color: #1f2937;
+  font-weight: 600;
+}
+
+#view-cartographie-competences #btnMapReset:hover {
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+}
+
+#view-cartographie-competences #btnMapReset:active {
+  transform: translateY(1px);
+}
+
+/* Modal cartographie: scroll + cohérence */
+#modalMapDetail.modal.show {
+  align-items: flex-start;
+}
+
+#modalMapDetail .modal-card {
+  margin-top: 24px;
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+}
+
+#modalMapDetail .modal-body {
+  overflow: auto;
+  flex: 1 1 auto;
+}
+
+/* Bouton fermer (footer) + croix */
+#modalMapDetail #btnMapModalClose {
+  border-color: color-mix(in srgb, var(--accent) 35%, #087016);
+  background: color-mix(in srgb, var(--accent) 8%, #d2ffac);
+  color: #1f2937;
+  font-weight: 600;
+}
+
+#modalMapDetail #btnMapModalClose:hover {
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+}
+
+#modalMapDetail .modal-x {
+  color: var(--accent);
+}
+
+#modalMapDetail .modal-x:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-radius: 8px;
+}
