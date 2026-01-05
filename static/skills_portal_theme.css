@@ -77,3 +77,39 @@
   font-size: 12px;
   margin-left: 0;
 }
+
+/* Domaine en détail (modal) : dot + libellé */
+#view-referentiel-competences .domain-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  font-size: 12px;
+  color: #374151;
+  background: #fff;
+}
+
+#view-referentiel-competences .domain-pill .domain-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+/* Modal référentiel: éviter le titre hors écran + permettre le scroll */
+#modalRefDetail.modal.show {
+  align-items: flex-start;
+}
+
+#modalRefDetail .modal-card {
+  margin-top: 24px;
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+}
+
+#modalRefDetail .modal-body {
+  overflow: auto;
+  flex: 1 1 auto;
+}

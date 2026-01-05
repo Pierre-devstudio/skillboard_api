@@ -666,7 +666,14 @@ def get_referentiel_certifications_service(
                         SELECT
                             fpc.id_certification,
                             COUNT(DISTINCT fpc.id_poste) AS nb_postes_concernes,
-                            MAX(fpc.niveau_exigence) AS niveau_exigence_max
+                            MAX(fpc.niveau_exigence) AS niveau_exigence_max,
+                            MIN(
+                                CASE
+                                    WHEN LOWER(COALESCE(fpc.niveau_exigence,'')) = 'requis' THEN 0
+                                    WHEN LOWER(COALESCE(fpc.niveau_exigence,'')) IN ('souhaite','souhaité') THEN 1
+                                    ELSE 2
+                                END
+                            ) AS exigence_rank
                         FROM public.tbl_fiche_poste_certification fpc
                         JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
                         GROUP BY fpc.id_certification
@@ -678,11 +685,16 @@ def get_referentiel_certifications_service(
                         c.duree_validite,
                         c.masque,
                         a.nb_postes_concernes,
-                        a.niveau_exigence_max
+                        CASE
+                            WHEN a.exigence_rank = 0 THEN 'requis'
+                            WHEN a.exigence_rank = 1 THEN 'souhaite'
+                            ELSE a.niveau_exigence_max
+                        END AS niveau_exigence_max,
+                        a.exigence_rank
                     FROM agg_cert a
                     JOIN public.tbl_certification c ON c.id_certification = a.id_certification
                     {where_sql}
-                    ORDER BY COALESCE(c.categorie, ''), c.nom_certification
+                    ORDER BY a.exigence_rank, COALESCE(c.categorie, ''), c.nom_certification
                 """
 
                 cur.execute(sql, tuple(params_cte + tuple(params_where)))

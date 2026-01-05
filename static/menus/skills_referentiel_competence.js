@@ -22,6 +22,28 @@
       .replaceAll('"', "&quot;");
   }
 
+  function normalizeColor(raw) {
+    if (raw === null || raw === undefined) return "";
+    const s = raw.toString().trim();
+    if (!s) return "";
+
+    // déjà du CSS
+    if (s.startsWith("#") || s.startsWith("rgb") || s.startsWith("hsl")) return s;
+
+    // certains domaines viennent de WinForms: int ARGB signé (ex: -256)
+    if (/^-?\d+$/.test(s)) {
+      const n = parseInt(s, 10);
+      const u = (n >>> 0);
+      const r = (u >> 16) & 255;
+      const g = (u >> 8) & 255;
+      const b = u & 255;
+      return "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+    }
+
+    // sinon on laisse passer ("red", "var(--x)", etc.)
+    return s;
+  }
+
   function setText(id, v) {
     const el = byId(id);
     if (el) el.textContent = v ?? "–";
@@ -121,7 +143,7 @@
 
   function domaineCell(item) {
     const label = (item.domaine_titre_court || item.domaine_titre || item.id_domaine_competence || "Domaine").toString();
-    const c = (item.domaine_couleur || "").trim();
+    const c = normalizeColor(item.domaine_couleur);
     const color = c ? c : "#e5e7eb";
     const safeLabel = escapeHtml(label);
     return `<span class="domain-dot" title="${safeLabel}" style="background:${escapeHtml(color)};"></span>`;
@@ -162,7 +184,24 @@
     if (!body) return;
 
     body.innerHTML = "";
-    (list || []).forEach(it => {
+    const rank = (v) => {
+      const s = (v || "").toString().toLowerCase();
+      if (s === "requis") return 0;
+      if (s === "souhaite" || s === "souhaité") return 1;
+      return 2;
+    };
+
+    const items = Array.isArray(list) ? [...list] : [];
+    items.sort((a, b) => {
+      const ra = rank(a?.niveau_exigence_max);
+      const rb = rank(b?.niveau_exigence_max);
+      if (ra !== rb) return ra - rb;
+      const ca = (a?.categorie || "").toString().localeCompare((b?.categorie || "").toString(), "fr");
+      if (ca !== 0) return ca;
+      return (a?.nom_certification || "").toString().localeCompare((b?.nom_certification || "").toString(), "fr");
+    });
+
+    items.forEach(it => {
       const tr = document.createElement("tr");
       tr.setAttribute("data-id_certification", it.id_certification);
 
@@ -203,6 +242,10 @@
 
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
+
+    // on remet le scroll en haut (sinon l'utilisateur arrive en plein milieu)
+    const body = modal.querySelector(".modal-body");
+    if (body) body.scrollTop = 0;
   }
 
   function closeModal() {
@@ -368,10 +411,20 @@
       <div class="card-sub" style="margin:0;">Critères et niveaux d’évaluation.</div>
       <div style="margin-top:10px;">`;
 
+    // On n'affiche que les critères réellement renseignés (sinon ça fait "Critere4" avec un tiret, très glamour).
+    let nbCriteres = 0;
+
     keys.forEach(k => {
       const c = grid[k] || {};
-      const nom = escapeHtml(c.Nom || c.nom || k);
-      const evals = Array.isArray(c.Eval || c.eval) ? (c.Eval || c.eval) : [];
+
+      const nomRaw = (c.Nom ?? c.nom ?? "").toString().trim();
+      const evalsRaw = Array.isArray(c.Eval || c.eval) ? (c.Eval || c.eval) : [];
+      const evals = (evalsRaw || []).map(x => (x ?? "").toString().trim()).filter(x => x.length);
+
+      if (!evals.length) return; // critère vide => ignoré
+
+      const nom = escapeHtml(nomRaw || k);
+      nbCriteres += 1;
 
       html += `
         <details class="sb-accordion">
@@ -381,12 +434,14 @@
           </summary>
           <div class="sb-acc-body">
             <ul style="margin:0; padding-left:18px;">
-              ${(evals || []).filter(Boolean).map(x => `<li>${escapeHtml(x)}</li>`).join("") || "<li>—</li>"}
+              ${evals.map(x => `<li>${escapeHtml(x)}</li>`).join("")}
             </ul>
           </div>
         </details>
       `;
     });
+
+    if (nbCriteres === 0) return "";
 
     html += `</div></div>`;
     return html;
@@ -399,12 +454,17 @@
       ? ["Poste", "Service", "Exigence", "Validité override"]
       : ["Poste", "Service", "Niveau", "Criticité"];
 
+    const ths = cols.map((c, idx) => {
+      const center = (!isCertif && (idx === 2 || idx === 3)) || (isCertif && (idx === 2 || idx === 3));
+      return `<th${center ? ` class="col-center"` : ""}>${escapeHtml(c)}</th>`;
+    }).join("");
+
     let html = `<div class="card" style="padding:12px; margin:0;">
       <div class="card-title" style="margin-bottom:6px;">${escapeHtml(title)}</div>
       <div class="card-sub" style="margin:0;">${list.length} poste(s) impacté(s).</div>
       <div class="table-wrap" style="margin-top:10px;">
         <table class="sb-table">
-          <thead><tr>${cols.map(c => `<th>${escapeHtml(c)}</th>`).join("")}</tr></thead>
+          <thead><tr>${ths}</tr></thead>
           <tbody>`;
 
     if (!list.length) {
@@ -419,8 +479,8 @@
           html += `<tr>
             <td>${poste}</td>
             <td>${service}</td>
-            <td style="white-space:nowrap;">${ex}</td>
-            <td style="white-space:nowrap;">${escapeHtml(ov)}</td>
+            <td class="col-center" style="white-space:nowrap;">${ex}</td>
+            <td class="col-center" style="white-space:nowrap;">${escapeHtml(ov)}</td>
           </tr>`;
         } else {
           const niv = escapeHtml(p.niveau_requis || "—");
@@ -428,8 +488,8 @@
           html += `<tr>
             <td>${poste}</td>
             <td>${service}</td>
-            <td style="white-space:nowrap;">${niv}</td>
-            <td style="white-space:nowrap;">${escapeHtml(crit)}</td>
+            <td class="col-center" style="white-space:nowrap;">${niv}</td>
+            <td class="col-center" style="white-space:nowrap;">${escapeHtml(crit)}</td>
           </tr>`;
         }
       });
@@ -451,7 +511,12 @@
     const dom = c?.domaine || null;
 
     const title = `${c.code || ""} — ${c.intitule || "Compétence"}`.trim();
-    const sub = dom ? `<span class="sb-badge">${escapeHtml(dom.titre_court || dom.titre || dom.id_domaine_competence)}</span>` : "";
+    let sub = "";
+    if (dom) {
+      const label = (dom.titre_court || dom.titre || dom.id_domaine_competence || "Domaine").toString();
+      const col = normalizeColor(dom.couleur) || "#e5e7eb";
+      sub = `<span class="domain-pill" title="${escapeHtml(label)}"><span class="domain-dot" style="background:${escapeHtml(col)};"></span><span>${escapeHtml(label)}</span></span>`;
+    }
 
     const desc = c.description ? `<div class="card-sub" style="margin-top:0;">${escapeHtml(c.description)}</div>` : `<div class="card-sub" style="margin-top:0;">—</div>`;
 
