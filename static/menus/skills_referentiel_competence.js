@@ -120,10 +120,11 @@
   }
 
   function domaineCell(item) {
-    const txt = escapeHtml(item.domaine_titre_court || "—");
+    const label = (item.domaine_titre_court || item.domaine_titre || item.id_domaine_competence || "Domaine").toString();
     const c = (item.domaine_couleur || "").trim();
-    const dot = c ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${escapeHtml(c)};margin-right:8px;"></span>` : `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#e5e7eb;margin-right:8px;"></span>`;
-    return `<div style="display:flex; align-items:center;">${dot}<span>${txt}</span></div>`;
+    const color = c ? c : "#e5e7eb";
+    const safeLabel = escapeHtml(label);
+    return `<span class="domain-dot" title="${safeLabel}" style="background:${escapeHtml(color)};"></span>`;
   }
 
   function niveauRequisCell(item) {
@@ -144,12 +145,12 @@
       tr.setAttribute("data-id_comp", it.id_comp);
 
       tr.innerHTML = `
-        <td>${domaineCell(it)}</td>
-        <td style="white-space:nowrap; font-weight:600;">${escapeHtml(it.code)}</td>
-        <td>${escapeHtml(it.intitule)}</td>
-        <td style="white-space:nowrap;">${niveauRequisCell(it)}</td>
-        <td style="white-space:nowrap;">${it.nb_postes_concernes ?? 0}</td>
-        <td>${qualityCell(it)}</td>
+        <td class="col-dom">${domaineCell(it)}</td>
+        <td class="col-code">${escapeHtml(it.code)}</td>
+        <td class="col-title">${escapeHtml(it.intitule)}</td>
+        <td class="col-center col-level">${niveauRequisCell(it)}</td>
+        <td class="col-center col-postes">${it.nb_postes_concernes ?? 0}</td>
+        <td class="col-center col-detail"><button type="button" class="btn-secondary btn-xs" data-action="detail">Détail</button></td>
       `;
 
       body.appendChild(tr);
@@ -170,11 +171,12 @@
         : `${it.duree_validite} mois`;
 
       tr.innerHTML = `
-        <td style="font-weight:600;">${escapeHtml(it.nom_certification)}</td>
+        <td class="col-title" style="font-weight:600;">${escapeHtml(it.nom_certification)}</td>
         <td>${escapeHtml(it.categorie || "—")}</td>
         <td style="white-space:nowrap;">${escapeHtml(validite)}</td>
-        <td style="white-space:nowrap;">${escapeHtml(it.niveau_exigence_max || "—")}</td>
-        <td style="white-space:nowrap;">${it.nb_postes_concernes ?? 0}</td>
+        <td class="col-center" style="white-space:nowrap;">${escapeHtml(it.niveau_exigence_max || "—")}</td>
+        <td class="col-center col-postes">${it.nb_postes_concernes ?? 0}</td>
+        <td class="col-center col-detail"><button type="button" class="btn-secondary btn-xs" data-action="detail">Détail</button></td>
       `;
 
       body.appendChild(tr);

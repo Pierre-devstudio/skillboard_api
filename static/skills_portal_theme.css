@@ -21,3 +21,59 @@
 #view-vos-collaborateurs .sb-table td:nth-child(1) {
   font-weight: 600;
 }
+
+/* Référentiel compétences: tables plus aérées et lisibles */
+#view-referentiel-competences .sb-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+#view-referentiel-competences .sb-table thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  color: #111827;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+#view-referentiel-competences .sb-table tbody td {
+  padding: 12px 16px;
+  vertical-align: middle;
+  border-bottom: 1px solid #f3f4f6;
+  line-height: 1.35;
+}
+
+#view-referentiel-competences .sb-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+#view-referentiel-competences .sb-table tbody tr:hover {
+  background: #f3f4f6;
+}
+
+#view-referentiel-competences .col-center {
+  text-align: center !important;
+}
+
+#view-referentiel-competences .col-dom { width: 60px; }
+#view-referentiel-competences .col-code { width: 90px; font-weight: 700; white-space: nowrap; }
+#view-referentiel-competences .col-level { width: 110px; white-space: nowrap; }
+#view-referentiel-competences .col-postes { width: 80px; white-space: nowrap; }
+#view-referentiel-competences .col-detail { width: 90px; white-space: nowrap; }
+
+#view-referentiel-competences .domain-dot {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+}
+
+#view-referentiel-competences .btn-secondary.btn-xs {
+  padding: 6px 10px;
+  font-size: 12px;
+  margin-left: 0;
+}
