@@ -383,146 +383,131 @@ function _rgba({ r, g, b }, a) {
   return `rgba(${r},${g},${b},${a})`;
 }
 
-function renderHeatmapWow(container, domaines, postes, matrixMap) {
-  if (!container) return;
-  _injectHeatmapWowStylesOnce();
+function renderHeatmapWow(containerEl, domaines, postes, matrixMap) {
+  const esc = (s) => (s ?? "").toString()
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+
+  const el = containerEl;
+  if (!el) return;
 
   const doms = Array.isArray(domaines) ? domaines : [];
   const rows = Array.isArray(postes) ? postes : [];
+  const map = matrixMap instanceof Map ? matrixMap : new Map();
 
-  // Totaux
-  const rowTotals = new Map(); // id_poste -> total
-  const colTotals = new Map(); // id_dom -> total
-  let grandTotal = 0;
-  let maxCell = 0;
+  // Totaux + max pour l’échelle
+  const rowTotal = new Map();
+  const colTotal = new Map();
+  let maxVal = 0;
 
   rows.forEach(p => {
-    let rt = 0;
-    const rowMap = matrixMap?.get(p.id_poste);
+    const r = map.get(p.id_poste);
+    let sum = 0;
     doms.forEach(d => {
-      const v = rowMap?.get(d.id_domaine_competence) || 0;
-      rt += v;
-      grandTotal += v;
-      colTotals.set(d.id_domaine_competence, (colTotals.get(d.id_domaine_competence) || 0) + v);
-      if (v > maxCell) maxCell = v;
+      const v = (r && r.get(d.id_domaine_competence)) ? Number(r.get(d.id_domaine_competence)) : 0;
+      sum += v;
+      colTotal.set(d.id_domaine_competence, (colTotal.get(d.id_domaine_competence) || 0) + v);
+      if (v > maxVal) maxVal = v;
     });
-    rowTotals.set(p.id_poste, rt);
+    rowTotal.set(p.id_poste, sum);
   });
 
-  // Legend (5 niveaux)
-  const accent = _getAccentRgb();
-  const legendHtml = `
+  const grandTotal = Array.from(rowTotal.values()).reduce((a, b) => a + b, 0);
+
+  const lvl = (v) => {
+    v = Number(v || 0);
+    if (v <= 0 || maxVal <= 0) return 0;
+    const t = v / maxVal;
+    if (t <= 0.2) return 1;
+    if (t <= 0.4) return 2;
+    if (t <= 0.6) return 3;
+    if (t <= 0.8) return 4;
+    return 5;
+  };
+
+  const showLabels = doms.length <= 8; // au-delà, on évite de pourrir la lisibilité
+
+  // Légende
+  const legend = `
     <div class="hm-legend">
-      <span>Faible</span>
-      <span class="box" style="background:${_rgba(accent, 0.10)}"></span>
-      <span class="box" style="background:${_rgba(accent, 0.22)}"></span>
-      <span class="box" style="background:${_rgba(accent, 0.34)}"></span>
-      <span class="box" style="background:${_rgba(accent, 0.46)}"></span>
-      <span class="box" style="background:${_rgba(accent, 0.58)}"></span>
-      <span>Fort</span>
+      <span class="hm-legend-lab">Faible</span>
+      <span class="hm-swatch hm-lvl-1"></span>
+      <span class="hm-swatch hm-lvl-2"></span>
+      <span class="hm-swatch hm-lvl-3"></span>
+      <span class="hm-swatch hm-lvl-4"></span>
+      <span class="hm-swatch hm-lvl-5"></span>
+      <span class="hm-legend-lab">Fort</span>
     </div>
   `;
 
-  // On injecte la légende juste avant le container (sans toucher au HTML)
-  const prev = container.previousElementSibling;
-  if (!prev || !prev.classList?.contains("hm-legend")) {
-    const wrapLegend = document.createElement("div");
-    wrapLegend.innerHTML = legendHtml;
-    container.parentElement?.insertBefore(wrapLegend.firstElementChild, container);
-  }
-
-  // Construction table
-  const table = document.createElement("table");
-  table.className = "sb-table hm-table";
-
-  const thead = document.createElement("thead");
-  const trh = document.createElement("tr");
-  trh.innerHTML = `<th>Poste</th>` + doms.map(d => {
+  // Header
+  let ths = `<th class="hm-sticky hm-rowhead">Poste</th>`;
+  doms.forEach(d => {
     const label = (d.titre_court || d.titre || d.id_domaine_competence || "").toString();
-    const col = (d.couleur ? d.couleur.toString() : "").trim();
-    const dot = col ? `<span class="domain-dot" title="${label}" style="background:${col};"></span>` : `<span class="domain-dot" title="${label}"></span>`;
-    return `<th style="text-align:center;">${dot}</th>`;
-  }).join("") + `<th class="hm-total">Total</th>`;
-  thead.appendChild(trh);
-  table.appendChild(thead);
+    const col = (d.couleur ?? "").toString();
+    ths += `
+      <th class="hm-colhead" title="${esc(label)}">
+        <span class="hm-dom-dot" style="${col ? `background:${esc(col)};` : ""}"></span>
+        ${showLabels ? `<span class="hm-dom-txt">${esc(label)}</span>` : ``}
+      </th>`;
+  });
+  ths += `<th class="hm-colhead hm-totalhead">Total</th>`;
 
-  const tbody = document.createElement("tbody");
-
-  // Hover crosshair
-  function clearHover() {
-    container.querySelectorAll(".hm-hover").forEach(el => el.classList.remove("hm-hover"));
-  }
-  function applyHover(rowId, colId) {
-    clearHover();
-    container.querySelectorAll(`[data-row="${rowId}"]`).forEach(el => el.classList.add("hm-hover"));
-    container.querySelectorAll(`[data-col="${colId}"]`).forEach(el => el.classList.add("hm-hover"));
-  }
-
-  // lignes postes
+  // Body
+  let trs = "";
   rows.forEach(p => {
-    const tr = document.createElement("tr");
-    const left = document.createElement("td");
-    left.innerHTML = `<div style="font-weight:700;">${(p.label || p.nom_poste || p.intitule_poste || p.codif_poste || p.id_poste || "Poste")}</div>
-                      <div style="color:#6b7280; font-size:12px;">${(p.nom_service || "")}</div>`;
-    tr.appendChild(left);
+    const r = map.get(p.id_poste);
+    const cod = (p.codif_poste || "").toString().trim();
+    const intit = (p.intitule_poste || "").toString().trim();
+    const svc = (p.nom_service || "").toString().trim();
 
-    const rowMap = matrixMap?.get(p.id_poste);
-
+    let tds = "";
     doms.forEach(d => {
-      const v = rowMap?.get(d.id_domaine_competence) || 0;
-      const td = document.createElement("td");
-      td.className = "hm-cell";
-      td.textContent = v ? String(v) : "";
-      td.dataset.row = p.id_poste;
-      td.dataset.col = d.id_domaine_competence;
-
-      // intensité
-      if (v > 0 && maxCell > 0) {
-        const ratio = v / maxCell; // 0..1
-        const a = 0.10 + (0.50 * ratio); // 0.10..0.60
-        td.style.background = _rgba(accent, a);
-        td.style.color = a > 0.42 ? "#fff" : "#111827";
-      } else {
-        td.style.background = "#fff";
-        td.style.color = "#111827";
-      }
-
-      // tooltip pilotage
-      const domLabel = (d.titre_court || d.titre || d.id_domaine_competence || "Domaine").toString();
-      const posteTotal = rowTotals.get(p.id_poste) || 0;
-      const pct = posteTotal ? Math.round((v / posteTotal) * 100) : 0;
-      td.title = `${domLabel} • ${v} compétence(s) (${pct}% du poste)`;
-
-      td.addEventListener("mouseenter", () => applyHover(p.id_poste, d.id_domaine_competence));
-      td.addEventListener("mouseleave", () => clearHover());
-
-      tr.appendChild(td);
+      const v = (r && r.get(d.id_domaine_competence)) ? Number(r.get(d.id_domaine_competence)) : 0;
+      const c = lvl(v);
+      tds += `
+        <td class="hm-cell hm-lvl-${c}" data-poste="${esc(p.id_poste)}" data-dom="${esc(d.id_domaine_competence)}" title="${esc(intit)} • ${esc(d.titre_court || d.titre || "")} : ${v}">
+          ${v ? v : ""}
+        </td>`;
     });
 
-    const tdTot = document.createElement("td");
-    tdTot.className = "hm-total";
-    tdTot.textContent = String(rowTotals.get(p.id_poste) || 0);
-    tr.appendChild(tdTot);
+    const tot = rowTotal.get(p.id_poste) || 0;
 
-    tbody.appendChild(tr);
+    trs += `
+      <tr>
+        <td class="hm-sticky hm-rowhead">
+          <div class="hm-poste-title">${esc(cod ? `${cod} — ${intit}` : intit)}</div>
+          <div class="hm-poste-sub">${esc(svc)}</div>
+        </td>
+        ${tds}
+        <td class="hm-cell hm-totalcell">${tot ? tot : ""}</td>
+      </tr>
+    `;
   });
 
-  // ligne total colonnes
-  const trTot = document.createElement("tr");
-  trTot.innerHTML = `<td class="hm-total">Total</td>` + doms.map(d => {
-    const v = colTotals.get(d.id_domaine_competence) || 0;
-    return `<td class="hm-total">${v}</td>`;
-  }).join("") + `<td class="hm-total">${grandTotal}</td>`;
-  tbody.appendChild(trTot);
+  // Total row
+  let totalRow = `<td class="hm-sticky hm-rowhead hm-totalrowlab">Total</td>`;
+  doms.forEach(d => {
+    const v = colTotal.get(d.id_domaine_competence) || 0;
+    totalRow += `<td class="hm-cell hm-totalcell">${v ? v : ""}</td>`;
+  });
+  totalRow += `<td class="hm-cell hm-grandtotal">${grandTotal ? grandTotal : ""}</td>`;
 
-  table.appendChild(tbody);
-
-  container.innerHTML = "";
-  container.appendChild(table);
-
-  return { grandTotal };
+  el.innerHTML = `
+    ${legend}
+    <div class="hm-wrap">
+      <table class="hm-table">
+        <thead><tr>${ths}</tr></thead>
+        <tbody>
+          ${trs || `<tr><td class="hm-rowhead">—</td><td class="hm-cell">—</td></tr>`}
+          <tr class="hm-totalrow">${totalRow}</tr>
+        </tbody>
+      </table>
+    </div>
+  `;
 }
-
 
   function renderHeatmap(portal, data, filters) {
     const grid = byId("heatmapGrid");
