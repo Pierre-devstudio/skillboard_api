@@ -111,6 +111,7 @@ class CertificationListItem(BaseModel):
     masque: Optional[bool] = None
     nb_postes_concernes: int = 0
     niveau_exigence_max: Optional[str] = None
+    validite_mixed: bool = False
 
 
 class ReferentielCertificationsResponse(BaseModel):
@@ -697,7 +698,12 @@ def get_referentiel_certifications_service(
                                     WHEN LOWER(COALESCE(fpc.niveau_exigence,'')) IN ('souhaite','souhaité') THEN 1
                                     ELSE 2
                                 END
-                            ) AS exigence_rank
+                            ) AS exigence_rank,
+
+                            COUNT(fpc.validite_override) FILTER (WHERE fpc.validite_override IS NOT NULL) AS nb_override,
+                            COUNT(DISTINCT fpc.validite_override) FILTER (WHERE fpc.validite_override IS NOT NULL) AS nb_override_distinct,
+                            MIN(fpc.validite_override) FILTER (WHERE fpc.validite_override IS NOT NULL) AS min_override,
+                            MAX(fpc.validite_override) FILTER (WHERE fpc.validite_override IS NOT NULL) AS max_override
                         FROM public.tbl_fiche_poste_certification fpc
                         JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
                         GROUP BY fpc.id_certification
@@ -706,7 +712,12 @@ def get_referentiel_certifications_service(
                         c.id_certification,
                         c.nom_certification,
                         c.categorie,
-                        c.duree_validite,
+                        CASE
+                            WHEN a.nb_override = 0 THEN c.duree_validite
+                            WHEN a.nb_override_distinct = 1 THEN a.max_override
+                            ELSE NULL
+                        END AS duree_validite,
+                        (a.nb_override_distinct > 1) AS validite_mixed,
                         c.masque,
                         a.nb_postes_concernes,
                         CASE
@@ -721,6 +732,7 @@ def get_referentiel_certifications_service(
                     ORDER BY a.exigence_rank, COALESCE(c.categorie, ''), c.nom_certification
                 """
 
+
                 cur.execute(sql, tuple(params_cte + tuple(params_where)))
                 rows = cur.fetchall() or []
 
@@ -733,6 +745,7 @@ def get_referentiel_certifications_service(
                         masque=r.get("masque"),
                         nb_postes_concernes=int(r.get("nb_postes_concernes") or 0),
                         niveau_exigence_max=r.get("niveau_exigence_max"),
+                        validite_mixed=bool(r.get("validite_mixed") or False),
                     )
                     for r in rows
                 ]

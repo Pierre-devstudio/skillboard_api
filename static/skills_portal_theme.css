@@ -135,7 +135,7 @@
 
 /* Bouton "Fermer" (footer modal détail) */
 #modalRefDetail #btnRefModalClose {
-  border-color: color-mix(in srgb, var(--accent) 35%, #d1d5db);
+  border-color: color-mix(in srgb, var(--accent) 35%, #087016);
   background: color-mix(in srgb, var(--accent) 8%, #a5ff5c);
   color: #1f2937;
   font-weight: 600;

@@ -247,9 +247,12 @@
       const tr = document.createElement("tr");
       tr.setAttribute("data-id_certification", it.id_certification);
 
-      const validite = (it.duree_validite === null || it.duree_validite === undefined)
-        ? "—"
-        : (Number(it.duree_validite) === 0 ? "Permanent" : `${it.duree_validite} mois`);
+      const validite = (it.validite_mixed === true)
+        ? "Variable"
+        : (it.duree_validite === null || it.duree_validite === undefined)
+          ? "—"
+          : (Number(it.duree_validite) === 0 ? "Permanent" : `${it.duree_validite} mois`);
+
 
 
       tr.innerHTML = `
@@ -501,12 +504,13 @@
     return html;
   }
 
-  function renderPostesTable(postes, isCertif) {
+  function renderPostesTable(postes, isCertif, baseValidite) {
     const list = Array.isArray(postes) ? postes : [];
     const title = isCertif ? "Postes concernés" : "Postes concernés (niveau requis)";
     const cols = isCertif
-      ? ["Poste", "Service", "Exigence", "Validité override"]
+      ? ["Poste", "Service", "Exigence", "Validité"]
       : ["Poste", "Service", "Niveau", "Criticité"];
+
 
     const ths = cols.map((c, idx) => {
       const center = (!isCertif && (idx === 2 || idx === 3)) || (isCertif && (idx === 2 || idx === 3));
@@ -529,15 +533,18 @@
         const service = escapeHtml(p.nom_service || "—");
         if (isCertif) {
         const ex = escapeHtml(p.niveau_exigence || "—");
-                    const ov = (p.validite_override === null || p.validite_override === undefined)
-            ? "—"
-            : (Number(p.validite_override) === 0 ? "Permanent" : `${p.validite_override} mois`);
+        const base = (baseValidite === null || baseValidite === undefined) ? null : Number(baseValidite);
+        const ovRaw = (p.validite_override === null || p.validite_override === undefined) ? null : Number(p.validite_override);
+        const eff = (ovRaw !== null) ? ovRaw : base;
+
+        let vlabel = "—";
+        if (eff !== null) vlabel = (eff === 0 ? "Permanent" : `${eff} mois`);
 
           html += `<tr>
             <td>${poste}</td>
             <td>${service}</td>
             <td class="col-center" style="white-space:nowrap;">${ex}</td>
-            <td class="col-center" style="white-space:nowrap;">${escapeHtml(ov)}</td>
+            <td class="col-center" style="white-space:nowrap;">${escapeHtml(vlabel)}</td>
           </tr>`;
         } else {
           const niv = escapeHtml(p.niveau_requis || "—");
@@ -589,7 +596,8 @@
     `;
 
     const grid = renderGridEvaluation(c.grille_evaluation);
-    const postes = renderPostesTable(data?.postes_concernes || [], false);
+    const postes = renderPostesTable(data?.postes_concernes || [], false, null);
+
 
     const body = `
       <div class="row" style="flex-direction:column; gap:12px;">
@@ -619,17 +627,51 @@
 
     const badges = [];
     if (c.categorie) badges.push(`<span class="sb-badge">${escapeHtml(c.categorie)}</span>`);
-        if (c.duree_validite !== null && c.duree_validite !== undefined) {
-      const v = Number(c.duree_validite);
-      const label = (v === 0) ? "Permanent" : `${c.duree_validite} mois`;
-      badges.push(`<span class="sb-badge sb-badge-accent">${escapeHtml(label)}</span>`);
+            // Validité EFFECTIVE (override si présent) + couleur (vert si identique, rouge si différente)
+    const base = (c.duree_validite === null || c.duree_validite === undefined) ? null : Number(c.duree_validite);
+    const postesList = Array.isArray(data?.postes_concernes) ? data.postes_concernes : [];
+
+    const overrides = postesList
+      .map(p => (p.validite_override === null || p.validite_override === undefined) ? null : Number(p.validite_override))
+      .filter(v => v !== null);
+
+    const distinct = Array.from(new Set(overrides));
+
+
+    let effective = base;         // par défaut
+    let differs = false;          // vert si false, rouge si true
+    let mixed = false;
+
+    if (distinct.length === 0) {
+      effective = base;
+      differs = false;
+    } else if (distinct.length === 1) {
+      effective = distinct[0];
+      differs = (base !== null && effective !== base);
+    } else {
+      mixed = true;
+      differs = true;
+      effective = null;
     }
+
+    let label = "—";
+    if (mixed) label = "Variable";
+    else if (effective !== null) label = (effective === 0 ? "Permanent" : `${effective} mois`);
+
+    // badge "soft" vert/rouge
+    const styleOk = "border:1px solid rgba(34,197,94,.35); background:rgba(34,197,94,.12); color:#166534;";
+    const styleBad = "border:1px solid rgba(239,68,68,.35); background:rgba(239,68,68,.10); color:#991b1b;";
+    const badgeStyle = differs ? styleBad : styleOk;
+
+    if (label !== "—") badges.push(`<span class="sb-badge" style="${badgeStyle}">${escapeHtml(label)}</span>`);
+
 
     const sub = badges.join(" ");
 
     const desc = c.description ? `<div class="card-sub" style="margin-top:0;">${escapeHtml(c.description)}</div>` : `<div class="card-sub" style="margin-top:0;">—</div>`;
 
-    const postes = renderPostesTable(data?.postes_concernes || [], true);
+    const postes = renderPostesTable(data?.postes_concernes || [], true, c.duree_validite);
+
 
     const body = `
       <div class="row" style="flex-direction:column; gap:12px;">
