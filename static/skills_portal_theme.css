@@ -163,6 +163,48 @@
 }
 
 /* ============================
+   Collaborateurs: boutons (soft)
+   ============================ */
+
+#view-vos-collaborateurs #btnCollabReset {
+  border-color: color-mix(in srgb, var(--accent) 35%, #d1d5db);
+  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
+  color: #1f2937;
+  font-weight: 600;
+}
+
+#view-vos-collaborateurs #btnCollabReset:hover {
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+}
+
+#view-vos-collaborateurs #btnCollabReset:active {
+  transform: translateY(1px);
+}
+
+/* Bouton "Fermer" (footer modal collaborateur) */
+#modalCollaborateur #btnCollabModalClose {
+  border-color: color-mix(in srgb, var(--accent) 35%, #087016);
+  background: color-mix(in srgb, var(--accent) 8%, #d2ffac);
+  color: #1f2937;
+  font-weight: 600;
+}
+
+#modalCollaborateur #btnCollabModalClose:hover {
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+}
+
+/* Croix (header modal collaborateur) */
+#modalCollaborateur .modal-x {
+  color: var(--accent);
+}
+
+#modalCollaborateur .modal-x:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-radius: 8px;
+}
+
+
+/* ============================
    Référentiel: boutons (soft)
    ============================ */
 
