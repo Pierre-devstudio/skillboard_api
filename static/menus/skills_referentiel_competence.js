@@ -249,7 +249,8 @@
 
       const validite = (it.duree_validite === null || it.duree_validite === undefined)
         ? "—"
-        : `${it.duree_validite} mois`;
+        : (Number(it.duree_validite) === 0 ? "Permanent" : `${it.duree_validite} mois`);
+
 
       tr.innerHTML = `
         <td class="col-title" style="font-weight:600;">${escapeHtml(it.nom_certification)}</td>
@@ -527,8 +528,11 @@
         const poste = escapeHtml((p.codif_poste ? `${p.codif_poste} — ` : "") + (p.intitule_poste || ""));
         const service = escapeHtml(p.nom_service || "—");
         if (isCertif) {
-          const ex = escapeHtml(p.niveau_exigence || "—");
-          const ov = (p.validite_override === null || p.validite_override === undefined) ? "—" : `${p.validite_override} mois`;
+        const ex = escapeHtml(p.niveau_exigence || "—");
+                    const ov = (p.validite_override === null || p.validite_override === undefined)
+            ? "—"
+            : (Number(p.validite_override) === 0 ? "Permanent" : `${p.validite_override} mois`);
+
           html += `<tr>
             <td>${poste}</td>
             <td>${service}</td>
@@ -615,7 +619,12 @@
 
     const badges = [];
     if (c.categorie) badges.push(`<span class="sb-badge">${escapeHtml(c.categorie)}</span>`);
-    if (c.duree_validite !== null && c.duree_validite !== undefined) badges.push(`<span class="sb-badge sb-badge-accent">${escapeHtml(c.duree_validite)} mois</span>`);
+        if (c.duree_validite !== null && c.duree_validite !== undefined) {
+      const v = Number(c.duree_validite);
+      const label = (v === 0) ? "Permanent" : `${c.duree_validite} mois`;
+      badges.push(`<span class="sb-badge sb-badge-accent">${escapeHtml(label)}</span>`);
+    }
+
     const sub = badges.join(" ");
 
     const desc = c.description ? `<div class="card-sub" style="margin-top:0;">${escapeHtml(c.description)}</div>` : `<div class="card-sub" style="margin-top:0;">—</div>`;
