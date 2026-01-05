@@ -412,6 +412,24 @@ function renderHeatmapWow(containerEl, domaines, postes, matrixMap) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 
+  // Self-contained: accepte #RRGGBB, rgb(), ou int ARGB signé WinForms (-256, etc.)
+  const normColor = (raw) => {
+    if (raw === null || raw === undefined) return "";
+    const s = raw.toString().trim();
+    if (!s) return "";
+    if (s.startsWith("#") || s.startsWith("rgb") || s.startsWith("hsl")) return s;
+
+    if (/^-?\d+$/.test(s)) {
+      const n = parseInt(s, 10);
+      const u = (n >>> 0);
+      const r = (u >> 16) & 255;
+      const g = (u >> 8) & 255;
+      const b = u & 255;
+      return "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+    }
+    return s;
+  };
+
   const el = containerEl;
   if (!el) return;
 
@@ -451,7 +469,6 @@ function renderHeatmapWow(containerEl, domaines, postes, matrixMap) {
 
   const showLabels = true;
 
-
   // Légende
   const legend = `
     <div class="hm-legend">
@@ -468,14 +485,28 @@ function renderHeatmapWow(containerEl, domaines, postes, matrixMap) {
   // Header
   let ths = `<th class="hm-sticky hm-rowhead">Poste</th>`;
   doms.forEach(d => {
-    const label = (d.titre_court || d.titre || d.id_domaine_competence || "").toString();
-    const col = normalizeColor(d.couleur ?? d.domaine_couleur);
-    ths += `
-    <th class="hm-colhead" title="${esc(label)}">
-        <span class="hm-dom-dot" style="${col ? `background:${esc(col)}; border-color:${esc(col)};` : ""}"></span>
+    const fullLabel = (d.titre || d.titre_court || d.id_domaine_competence || "").toString().trim();
+    const shortLabel = (d.titre_court || d.titre || d.id_domaine_competence || "").toString().trim();
 
-        ${showLabels ? `<span class="hm-dom-txt">${esc(label)}</span>` : ``}
-      </th>`;
+    const col = normColor(d.couleur ?? d.domaine_couleur) || "#e5e7eb";
+
+    // IMPORTANT: on force un affichage lisible avec ellipsis (sinon 10 domaines = bouillie)
+    ths += `
+      <th class="hm-colhead" title="${esc(fullLabel)}">
+        <div style="display:flex; align-items:center; gap:8px; justify-content:flex-start; white-space:nowrap;">
+          <span class="hm-dom-dot"
+                title="${esc(fullLabel)}"
+                style="background:${esc(col)}; border-color:${esc(col)};"></span>
+          ${showLabels ? `
+            <span class="hm-dom-txt"
+                  title="${esc(fullLabel)}"
+                  style="display:inline-block; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              ${esc(shortLabel || "—")}
+            </span>
+          ` : ``}
+        </div>
+      </th>
+    `;
   });
   ths += `<th class="hm-colhead hm-totalhead">Total</th>`;
 
@@ -492,7 +523,10 @@ function renderHeatmapWow(containerEl, domaines, postes, matrixMap) {
       const v = (r && r.get(d.id_domaine_competence)) ? Number(r.get(d.id_domaine_competence)) : 0;
       const c = lvl(v);
       tds += `
-        <td class="hm-cell hm-lvl-${c}" data-poste="${esc(p.id_poste)}" data-dom="${esc(d.id_domaine_competence)}" title="${esc(intit)} • ${esc(d.titre_court || d.titre || "")} : ${v}">
+        <td class="hm-cell hm-lvl-${c}"
+            data-poste="${esc(p.id_poste)}"
+            data-dom="${esc(d.id_domaine_competence)}"
+            title="${esc(intit)} • ${esc(d.titre_court || d.titre || "")} : ${v}">
           ${v ? v : ""}
         </td>`;
     });
@@ -532,6 +566,7 @@ function renderHeatmapWow(containerEl, domaines, postes, matrixMap) {
     </div>
   `;
 }
+
 
   function renderHeatmap(portal, data, filters) {
     const grid = byId("heatmapGrid");
