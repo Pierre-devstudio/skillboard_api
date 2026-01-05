@@ -1,5 +1,6 @@
 (function () {
   const NON_LIE_ID = "__NON_LIE__";
+  const ALL_SERVICES_ID = "__ALL__";
 
   let _bound = false;
   let _servicesLoaded = false;
@@ -90,30 +91,39 @@
   }
 
   function fillServiceSelect(flat) {
-    const sel = byId("refServiceSelect");
-    if (!sel) return;
+  const sel = byId("refServiceSelect");
+  if (!sel) return;
 
-    const current = sel.value || localStorage.getItem("sb_ref_service") || "";
+  const current = sel.value || localStorage.getItem("sb_ref_service") || "";
 
-    sel.innerHTML = `<option value="" disabled>Sélectionnez un service…</option>`;
+  sel.innerHTML = `<option value="" disabled>Sélectionnez un service…</option>`;
 
-    (flat || []).forEach(s => {
-      const opt = document.createElement("option");
-      opt.value = s.id_service;
-      const prefix = s.depth ? "— ".repeat(Math.min(6, s.depth)) : "";
-      opt.textContent = prefix + (s.nom_service || s.id_service);
-      sel.appendChild(opt);
-    });
+  // Option "Tous les services"
+  const optAll = document.createElement("option");
+  optAll.value = ALL_SERVICES_ID;
+  optAll.textContent = "Tous les services";
+  sel.appendChild(optAll);
 
-    // restore if possible
-    if (current && Array.from(sel.options).some(o => o.value === current)) {
-      sel.value = current;
-    } else if (flat && flat.length) {
-      sel.value = flat[0].id_service;
-    } else {
-      sel.value = "";
-    }
+  (flat || []).forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = s.id_service;
+    const prefix = s.depth ? "— ".repeat(Math.min(6, s.depth)) : "";
+    opt.textContent = prefix + (s.nom_service || s.id_service);
+    sel.appendChild(opt);
+  });
+
+  // restore if possible
+  if (current && Array.from(sel.options).some(o => o.value === current)) {
+    sel.value = current;
+  } else if (flat && flat.length) {
+    // garde ton comportement actuel: par défaut premier service
+    sel.value = flat[0].id_service;
+  } else {
+    // si aucun service, au moins on peut afficher quelque chose
+    sel.value = ALL_SERVICES_ID;
   }
+  }
+
 
   function fillDomaineSelect(domaines) {
     const sel = byId("refDomaineSelect");

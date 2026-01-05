@@ -9,6 +9,7 @@ from app.routers.skills_portal_common import get_conn
 router = APIRouter()
 
 NON_LIE_ID = "__NON_LIE__"
+ALL_SERVICES_ID = "__ALL__"
 
 # Valeurs d'état connues côté tbl_competence
 ETAT_ACTIVE = "active"
@@ -200,6 +201,9 @@ def _fetch_contact_and_ent(cur, id_contact: str) -> Dict[str, Any]:
 
 
 def _fetch_service_label(cur, id_ent: str, id_service: str) -> ServiceScope:
+    if id_service == ALL_SERVICES_ID:
+        return ServiceScope(id_service=ALL_SERVICES_ID, nom_service="Tous les services")
+
     if id_service == NON_LIE_ID:
         return ServiceScope(id_service=NON_LIE_ID, nom_service="Non lié (sans service)")
 
@@ -219,13 +223,28 @@ def _fetch_service_label(cur, id_ent: str, id_service: str) -> ServiceScope:
     return ServiceScope(id_service=row["id_service"], nom_service=row.get("nom_service") or "Service")
 
 
+
 def _build_postes_scope_cte(id_service: str) -> str:
     """
     CTE 'postes_scope' = postes actifs de l'entreprise selon scope service.
+
+    ALL_SERVICES_ID :
+      - tous les postes actifs de l'entreprise (peu importe le service)
+
     NON_LIE_ID :
       - id_service NULL
       - OU id_service qui n'existe pas (ou archivé) dans l'organigramme actif
     """
+    if id_service == ALL_SERVICES_ID:
+        return """
+            postes_scope AS (
+                SELECT fp.id_poste, fp.id_service
+                FROM public.tbl_fiche_poste fp
+                WHERE fp.id_ent = %s
+                  AND COALESCE(fp.actif, TRUE) = TRUE
+            )
+        """
+
     if id_service == NON_LIE_ID:
         return """
             postes_scope AS (
@@ -244,6 +263,7 @@ def _build_postes_scope_cte(id_service: str) -> str:
                       )
             )
         """
+
     return """
         postes_scope AS (
             SELECT fp.id_poste, fp.id_service
@@ -255,10 +275,14 @@ def _build_postes_scope_cte(id_service: str) -> str:
     """
 
 
+
 def _postes_scope_params(id_ent: str, id_service: str) -> Tuple[Any, ...]:
+    if id_service == ALL_SERVICES_ID:
+        return (id_ent,)
     if id_service == NON_LIE_ID:
         return (id_ent, id_ent)
     return (id_ent, id_service)
+
 
 
 def _compute_comp_qual_flags(row: Dict[str, Any]) -> Dict[str, Any]:
