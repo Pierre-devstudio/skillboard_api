@@ -563,7 +563,7 @@
       btnReset.addEventListener("click", () => {
         if (selDom) selDom.value = "";
         if (txtSearch) txtSearch.value = "";
-        if (selEtat) selEtat.value = "valide";
+        if (selEtat) selEtat.value = "active";
         refreshAll(portal);
       });
     }
