@@ -296,6 +296,233 @@
   return { domaines, postes, matrixMap };
 }
 
+// ==============================
+// WAOOOUUU #1 : Heatmap + Totaux + Hover + Légende
+// ==============================
+let _hmStylesInjected = false;
+
+function _injectHeatmapWowStylesOnce() {
+  if (_hmStylesInjected) return;
+  _hmStylesInjected = true;
+
+  const style = document.createElement("style");
+  style.textContent = `
+    #view-cartographie-competences .hm-table th,
+    #view-cartographie-competences .hm-table td { white-space: nowrap; }
+
+    #view-cartographie-competences .hm-cell {
+      text-align: center;
+      font-weight: 700;
+      border-left: 1px solid #f3f4f6;
+      border-bottom: 1px solid #f3f4f6;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      transition: transform .06s ease, filter .12s ease;
+    }
+    #view-cartographie-competences .hm-cell:hover { filter: brightness(0.98); transform: translateY(-1px); }
+
+    #view-cartographie-competences .hm-hover {
+      outline: 2px solid rgba(17,24,39,.10);
+      outline-offset: -2px;
+    }
+
+    #view-cartographie-competences .hm-total {
+      background: #f9fafb;
+      font-weight: 800;
+      text-align: center;
+      border-left: 1px solid #e5e7eb;
+    }
+
+    #view-cartographie-competences .hm-legend {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      color: #6b7280;
+      font-size: 12px;
+    }
+    #view-cartographie-competences .hm-legend .box {
+      width: 22px;
+      height: 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(0,0,0,.06);
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function _parseColorToRgb(color) {
+  if (!color) return null;
+  const c = color.toString().trim();
+
+  // #RRGGBB
+  if (c.startsWith("#") && c.length === 7) {
+    const r = parseInt(c.slice(1, 3), 16);
+    const g = parseInt(c.slice(3, 5), 16);
+    const b = parseInt(c.slice(5, 7), 16);
+    return { r, g, b };
+  }
+  // rgb(r,g,b)
+  if (c.startsWith("rgb")) {
+    const m = c.match(/(\d+)[^\d]+(\d+)[^\d]+(\d+)/);
+    if (m) return { r: +m[1], g: +m[2], b: +m[3] };
+  }
+  return null;
+}
+
+function _getAccentRgb() {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+  const rgb = _parseColorToRgb(raw);
+  if (rgb) return rgb;
+  // fallback si jamais --accent n'est pas en hex/rgb (oui ça arrive, parce que la vie est cruelle)
+  return { r: 193, g: 39, b: 45 };
+}
+
+function _rgba({ r, g, b }, a) {
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function renderHeatmapWow(container, domaines, postes, matrixMap) {
+  if (!container) return;
+  _injectHeatmapWowStylesOnce();
+
+  const doms = Array.isArray(domaines) ? domaines : [];
+  const rows = Array.isArray(postes) ? postes : [];
+
+  // Totaux
+  const rowTotals = new Map(); // id_poste -> total
+  const colTotals = new Map(); // id_dom -> total
+  let grandTotal = 0;
+  let maxCell = 0;
+
+  rows.forEach(p => {
+    let rt = 0;
+    const rowMap = matrixMap?.get(p.id_poste);
+    doms.forEach(d => {
+      const v = rowMap?.get(d.id_domaine_competence) || 0;
+      rt += v;
+      grandTotal += v;
+      colTotals.set(d.id_domaine_competence, (colTotals.get(d.id_domaine_competence) || 0) + v);
+      if (v > maxCell) maxCell = v;
+    });
+    rowTotals.set(p.id_poste, rt);
+  });
+
+  // Legend (5 niveaux)
+  const accent = _getAccentRgb();
+  const legendHtml = `
+    <div class="hm-legend">
+      <span>Faible</span>
+      <span class="box" style="background:${_rgba(accent, 0.10)}"></span>
+      <span class="box" style="background:${_rgba(accent, 0.22)}"></span>
+      <span class="box" style="background:${_rgba(accent, 0.34)}"></span>
+      <span class="box" style="background:${_rgba(accent, 0.46)}"></span>
+      <span class="box" style="background:${_rgba(accent, 0.58)}"></span>
+      <span>Fort</span>
+    </div>
+  `;
+
+  // On injecte la légende juste avant le container (sans toucher au HTML)
+  const prev = container.previousElementSibling;
+  if (!prev || !prev.classList?.contains("hm-legend")) {
+    const wrapLegend = document.createElement("div");
+    wrapLegend.innerHTML = legendHtml;
+    container.parentElement?.insertBefore(wrapLegend.firstElementChild, container);
+  }
+
+  // Construction table
+  const table = document.createElement("table");
+  table.className = "sb-table hm-table";
+
+  const thead = document.createElement("thead");
+  const trh = document.createElement("tr");
+  trh.innerHTML = `<th>Poste</th>` + doms.map(d => {
+    const label = (d.titre_court || d.titre || d.id_domaine_competence || "").toString();
+    const col = (d.couleur ? d.couleur.toString() : "").trim();
+    const dot = col ? `<span class="domain-dot" title="${label}" style="background:${col};"></span>` : `<span class="domain-dot" title="${label}"></span>`;
+    return `<th style="text-align:center;">${dot}</th>`;
+  }).join("") + `<th class="hm-total">Total</th>`;
+  thead.appendChild(trh);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+
+  // Hover crosshair
+  function clearHover() {
+    container.querySelectorAll(".hm-hover").forEach(el => el.classList.remove("hm-hover"));
+  }
+  function applyHover(rowId, colId) {
+    clearHover();
+    container.querySelectorAll(`[data-row="${rowId}"]`).forEach(el => el.classList.add("hm-hover"));
+    container.querySelectorAll(`[data-col="${colId}"]`).forEach(el => el.classList.add("hm-hover"));
+  }
+
+  // lignes postes
+  rows.forEach(p => {
+    const tr = document.createElement("tr");
+    const left = document.createElement("td");
+    left.innerHTML = `<div style="font-weight:700;">${(p.label || p.nom_poste || p.intitule_poste || p.codif_poste || p.id_poste || "Poste")}</div>
+                      <div style="color:#6b7280; font-size:12px;">${(p.nom_service || "")}</div>`;
+    tr.appendChild(left);
+
+    const rowMap = matrixMap?.get(p.id_poste);
+
+    doms.forEach(d => {
+      const v = rowMap?.get(d.id_domaine_competence) || 0;
+      const td = document.createElement("td");
+      td.className = "hm-cell";
+      td.textContent = v ? String(v) : "";
+      td.dataset.row = p.id_poste;
+      td.dataset.col = d.id_domaine_competence;
+
+      // intensité
+      if (v > 0 && maxCell > 0) {
+        const ratio = v / maxCell; // 0..1
+        const a = 0.10 + (0.50 * ratio); // 0.10..0.60
+        td.style.background = _rgba(accent, a);
+        td.style.color = a > 0.42 ? "#fff" : "#111827";
+      } else {
+        td.style.background = "#fff";
+        td.style.color = "#111827";
+      }
+
+      // tooltip pilotage
+      const domLabel = (d.titre_court || d.titre || d.id_domaine_competence || "Domaine").toString();
+      const posteTotal = rowTotals.get(p.id_poste) || 0;
+      const pct = posteTotal ? Math.round((v / posteTotal) * 100) : 0;
+      td.title = `${domLabel} • ${v} compétence(s) (${pct}% du poste)`;
+
+      td.addEventListener("mouseenter", () => applyHover(p.id_poste, d.id_domaine_competence));
+      td.addEventListener("mouseleave", () => clearHover());
+
+      tr.appendChild(td);
+    });
+
+    const tdTot = document.createElement("td");
+    tdTot.className = "hm-total";
+    tdTot.textContent = String(rowTotals.get(p.id_poste) || 0);
+    tr.appendChild(tdTot);
+
+    tbody.appendChild(tr);
+  });
+
+  // ligne total colonnes
+  const trTot = document.createElement("tr");
+  trTot.innerHTML = `<td class="hm-total">Total</td>` + doms.map(d => {
+    const v = colTotals.get(d.id_domaine_competence) || 0;
+    return `<td class="hm-total">${v}</td>`;
+  }).join("") + `<td class="hm-total">${grandTotal}</td>`;
+  tbody.appendChild(trTot);
+
+  table.appendChild(tbody);
+
+  container.innerHTML = "";
+  container.appendChild(table);
+
+  return { grandTotal };
+}
+
 
   function renderHeatmap(portal, data, filters) {
     const grid = byId("heatmapGrid");
@@ -507,7 +734,34 @@
       const domaines = Array.isArray(data?.domaines) ? data.domaines : (Array.isArray(data?.domains) ? data.domains : []);
       fillDomaineSelect(domaines);
 
-      renderHeatmap(portal, data, f);
+        // ==============================
+        // RENDER (Heatmap WOW + KPI)
+        // ==============================
+        const model = buildMatrix(data);
+
+        // matrice WOW
+        renderHeatmapWow(byId("heatmapGrid"), model.domaines, model.postes, model.matrixMap);
+
+        // KPI
+        let totalCompetences = 0;
+        (model.postes || []).forEach(p => {
+        const row = model.matrixMap.get(p.id_poste);
+        if (!row) return;
+        (model.domaines || []).forEach(d => {
+            totalCompetences += (row.get(d.id_domaine_competence) || 0);
+        });
+        });
+
+        setText("kpiMapPostes", (model.postes || []).length);
+        setText("kpiMapDomaines", (model.domaines || []).length);
+        setText("kpiMapCompetences", totalCompetences);
+
+        // périmètre
+        const selSvc = byId("mapServiceSelect");
+        const scopeLabel = selSvc?.selectedOptions?.[0]?.textContent || "—";
+        const kpiScope = byId("kpiMapScope");
+        if (kpiScope) kpiScope.textContent = scopeLabel;
+
 
     } catch (e) {
       portal.showAlert("error", "Erreur cartographie : " + e.message);
