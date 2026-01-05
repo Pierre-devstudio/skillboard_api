@@ -25,6 +25,28 @@
       .replaceAll('"', "&quot;");
   }
 
+  function normalizeColor(raw) {
+  if (raw === null || raw === undefined) return "";
+  const s = raw.toString().trim();
+  if (!s) return "";
+
+  // Déjà du CSS
+  if (s.startsWith("#") || s.startsWith("rgb") || s.startsWith("hsl")) return s;
+
+  // Int ARGB signé WinForms (ex: -256)
+  if (/^-?\d+$/.test(s)) {
+    const n = parseInt(s, 10);
+    const u = (n >>> 0);
+    const r = (u >> 16) & 255;
+    const g = (u >> 8) & 255;
+    const b = u & 255;
+    return "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+  }
+
+  // Sinon (red, var(--x), etc.)
+  return s;
+}
+
   function setText(id, v, fallback = "–") {
     const el = byId(id);
     if (el) el.textContent = (v === null || v === undefined || v === "") ? fallback : String(v);
@@ -427,7 +449,8 @@ function renderHeatmapWow(containerEl, domaines, postes, matrixMap) {
     return 5;
   };
 
-  const showLabels = doms.length <= 8; // au-delà, on évite de pourrir la lisibilité
+  const showLabels = true;
+
 
   // Légende
   const legend = `
@@ -446,10 +469,11 @@ function renderHeatmapWow(containerEl, domaines, postes, matrixMap) {
   let ths = `<th class="hm-sticky hm-rowhead">Poste</th>`;
   doms.forEach(d => {
     const label = (d.titre_court || d.titre || d.id_domaine_competence || "").toString();
-    const col = (d.couleur ?? "").toString();
+    const col = normalizeColor(d.couleur ?? d.domaine_couleur);
     ths += `
-      <th class="hm-colhead" title="${esc(label)}">
-        <span class="hm-dom-dot" style="${col ? `background:${esc(col)};` : ""}"></span>
+    <th class="hm-colhead" title="${esc(label)}">
+        <span class="hm-dom-dot" style="${col ? `background:${esc(col)}; border-color:${esc(col)};` : ""}"></span>
+
         ${showLabels ? `<span class="hm-dom-txt">${esc(label)}</span>` : ``}
       </th>`;
   });
