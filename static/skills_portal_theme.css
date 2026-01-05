@@ -3,24 +3,72 @@
   --sidebar-bg:#333333;
 }
 
-/* Collaborateurs: table plus lisible */
-#view-vos-collaborateurs .sb-table th,
-#view-vos-collaborateurs .sb-table td {
-  padding: 10px 12px;
+/* Collaborateurs: tables plus aérées et lisibles (aligné référentiel) */
+#view-vos-collaborateurs .sb-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
-#view-vos-collaborateurs .sb-table td {
-  vertical-align: top;
-}
-
-#view-vos-collaborateurs .sb-table td:nth-child(5),
-#view-vos-collaborateurs .sb-table td:nth-child(6) {
+#view-vos-collaborateurs .sb-table thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  color: #111827;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
   white-space: nowrap;
 }
 
-#view-vos-collaborateurs .sb-table td:nth-child(1) {
-  font-weight: 600;
+#view-vos-collaborateurs .sb-table tbody td {
+  padding: 12px 16px;
+  vertical-align: middle;
+  border-bottom: 1px solid #f3f4f6;
+  line-height: 1.35;
 }
+
+#view-vos-collaborateurs .sb-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+#view-vos-collaborateurs .sb-table tbody tr:hover {
+  background: #f3f4f6;
+}
+
+/* Nom plus lisible */
+#view-vos-collaborateurs .sb-table tbody td:nth-child(1) {
+  font-weight: 700;
+}
+
+/* Alignements (statut + dates centrés) */
+#view-vos-collaborateurs .sb-table tbody td:nth-child(4),
+#view-vos-collaborateurs .sb-table tbody td:nth-child(5),
+#view-vos-collaborateurs .sb-table tbody td:nth-child(6),
+#view-vos-collaborateurs .sb-table thead th:nth-child(4),
+#view-vos-collaborateurs .sb-table thead th:nth-child(5),
+#view-vos-collaborateurs .sb-table thead th:nth-child(6) {
+  text-align: center;
+}
+
+/* Dates sur une ligne */
+#view-vos-collaborateurs .sb-table tbody td:nth-child(5),
+#view-vos-collaborateurs .sb-table tbody td:nth-child(6) {
+  white-space: nowrap;
+}
+
+/* Tailles de colonnes (équilibre visuel) */
+#view-vos-collaborateurs .sb-table thead th:nth-child(1) { width: 180px; } /* Nom */
+#view-vos-collaborateurs .sb-table thead th:nth-child(2) { width: 150px; } /* Service */
+#view-vos-collaborateurs .sb-table thead th:nth-child(4) { width: 120px; } /* Statut */
+#view-vos-collaborateurs .sb-table thead th:nth-child(5) { width: 110px; } /* Entrée */
+#view-vos-collaborateurs .sb-table thead th:nth-child(6) { width: 130px; } /* Sortie prévue */
+#view-vos-collaborateurs .sb-table thead th:nth-child(7) { width: 220px; } /* Contact */
+
+/* Contact: autoriser retour à la ligne si besoin */
+#view-vos-collaborateurs .sb-table tbody td:nth-child(7) {
+  white-space: normal;
+}
+
 
 /* Référentiel compétences: tables plus aérées et lisibles */
 #view-referentiel-competences .sb-table {
@@ -136,7 +184,7 @@
 /* Bouton "Fermer" (footer modal détail) */
 #modalRefDetail #btnRefModalClose {
   border-color: color-mix(in srgb, var(--accent) 35%, #087016);
-  background: color-mix(in srgb, var(--accent) 8%, #a5ff5c);
+  background: color-mix(in srgb, var(--accent) 8%, #d2ffac);
   color: #1f2937;
   font-weight: 600;
 }
