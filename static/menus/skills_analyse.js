@@ -510,73 +510,98 @@
     `;
   }
 
-  async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKey) {
-    const mySeq = ++_posteDetailReqSeq;
+async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKey) {
+  const mySeq = ++_posteDetailReqSeq;
 
-    const focus = (focusKey || "").trim(); // "critiques-sans-porteur" | "porteur-unique" | "total-fragiles" | ""
-    const modal = byId("modalAnalysePoste");
-    if (modal) modal.setAttribute("data-focus", focus);
+  const focus = (focusKey || "").trim(); // "critiques-sans-porteur" | "porteur-unique" | "total-fragiles" | ""
+  const modal = byId("modalAnalysePoste");
+  if (modal) modal.setAttribute("data-focus", focus);
 
-    function focusLabel(k) {
-      if (k === "critiques-sans-porteur") return "Critiques sans porteur";
-      if (k === "porteur-unique") return "Porteur unique";
-      if (k === "total-fragiles") return "Fragilités (0 ou 1 porteur)";
-      return "";
+  function focusLabel(k) {
+    if (k === "critiques-sans-porteur") return "Critiques sans porteur";
+    if (k === "porteur-unique") return "Porteur unique";
+    if (k === "total-fragiles") return "Fragilités (0 ou 1 porteur)";
+    return "";
+  }
+
+  openAnalysePosteModal(
+    "Détail poste",
+    `<div class="card-sub" style="margin:0;">Chargement…</div>`
+  );
+
+  // Par défaut, si clic sur "Total fragiles" => on ouvre l’onglet Couverture
+  setAnalysePosteTab(focus === "total-fragiles" ? "couverture" : "competences");
+
+  const tabA = byId("analysePosteTabCompetences");
+  const tabB = byId("analysePosteTabCouverture");
+  if (tabA) tabA.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
+  if (tabB) tabB.innerHTML = "";
+
+  try {
+    const data = await fetchAnalysePosteDetail(portal, id_poste, id_service);
+    if (mySeq !== _posteDetailReqSeq) return;
+
+    const poste = data?.poste || {};
+    const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
+
+    const scope = (data?.scope?.nom_service || "").trim() || "Tous les services";
+
+    const focusLab = focusLabel(focus);
+    const focusHtml = focusLab
+      ? `<span class="sb-badge">Focus : ${escapeHtml(focusLab)}</span>`
+      : ``;
+
+    const sub = `
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
+        <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(String(data?.criticite_min ?? CRITICITE_MIN))}</span>
+        ${focusHtml}
+      </div>
+    `;
+
+    openAnalysePosteModal(posteLabel || "Détail poste", sub);
+
+    // ----- Filtrage côté UI selon le focus (sinon tu verras toujours la même table)
+    const comps = Array.isArray(data?.competences) ? data.competences : [];
+
+    function getNbPorteurs(c) {
+      const p = Array.isArray(c?.porteurs) ? c.porteurs : [];
+      const nb = (c?.nb_porteurs === null || c?.nb_porteurs === undefined) ? p.length : Number(c.nb_porteurs || 0);
+      return nb;
     }
+
+    let compsFiltered = comps;
+
+    if (focus === "critiques-sans-porteur") {
+      compsFiltered = comps.filter(c => getNbPorteurs(c) === 0);
+    } else if (focus === "porteur-unique") {
+      compsFiltered = comps.filter(c => getNbPorteurs(c) === 1);
+    } else if (focus === "total-fragiles") {
+      compsFiltered = comps.filter(c => getNbPorteurs(c) <= 1);
+    }
+
+    const dataForCompetences = { ...data, competences: compsFiltered };
+
+    renderAnalysePosteCompetencesTab(dataForCompetences);
+
+    // Couverture = calculée sur le dataset complet (pas filtré)
+    renderAnalysePosteCouvertureTab(data);
+
+  } catch (e) {
+    if (mySeq !== _posteDetailReqSeq) return;
 
     openAnalysePosteModal(
       "Détail poste",
-      `<div class="card-sub" style="margin:0;">Chargement…</div>`
+      `<div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>`
     );
 
-    setAnalysePosteTab("competences");
-
     const tabA = byId("analysePosteTabCompetences");
-    const tabB = byId("analysePosteTabCouverture");
-    if (tabA) tabA.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
-    if (tabB) tabB.innerHTML = "";
-
-    try {
-      const data = await fetchAnalysePosteDetail(portal, id_poste, id_service);
-      if (mySeq !== _posteDetailReqSeq) return;
-
-      const poste = data?.poste || {};
-      const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
-
-      const scope = (data?.scope?.nom_service || "").trim() || "Tous les services";
-
-      const focusLab = focusLabel(focus);
-      const focusHtml = focusLab
-        ? `<span class="sb-badge">Focus : ${escapeHtml(focusLab)}</span>`
-        : ``;
-
-      const sub = `
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
-          <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(String(data?.criticite_min ?? CRITICITE_MIN))}</span>
-          ${focusHtml}
-        </div>
-      `;
-
-      openAnalysePosteModal(posteLabel || "Détail poste", sub);
-
-      renderAnalysePosteCompetencesTab(data);
-      renderAnalysePosteCouvertureTab(data);
-
-    } catch (e) {
-      if (mySeq !== _posteDetailReqSeq) return;
-
-      openAnalysePosteModal(
-        "Détail poste",
-        `<div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>`
-      );
-
-      const tabA = byId("analysePosteTabCompetences");
-      if (tabA) {
-        tabA.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Impossible de charger le détail.</div></div>`;
-      }
+    if (tabA) {
+      tabA.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Impossible de charger le détail.</div></div>`;
     }
   }
+}
+
 
 
   function renderDetail(mode) {
@@ -1040,39 +1065,35 @@
         if (tabA) tabA.addEventListener("click", () => setAnalysePosteTab("competences"));
         if (tabB) tabB.addEventListener("click", () => setAnalysePosteTab("couverture"));
 
-            // ==============================
-            // Click délégué: lignes "Poste fragile" (survit aux rerender)
-            // - clic colonne "Critiques sans porteur" => focus
-            // - clic colonne "Porteur unique" => focus
-            // - clic colonne "Total fragiles" => focus
-            // ==============================
-            const analyseBody = byId("analyseDetailBody");
-            if (analyseBody) {
-              analyseBody.addEventListener("click", async (ev) => {
-                const tr = ev.target.closest("tr.risk-poste-row[data-id_poste]");
-                if (!tr) return;
+      // ==============================
+      // Click délégué: lignes "Poste fragile" (survit aux rerender)
+      // - utilise data-focus posé sur les <td>
+      // ==============================
+      const analyseBody = byId("analyseDetailBody");
+      if (analyseBody) {
+        analyseBody.addEventListener("click", async (ev) => {
+          const tr = ev.target.closest("tr.risk-poste-row[data-id_poste]");
+          if (!tr) return;
 
-                const id_poste = (tr.getAttribute("data-id_poste") || "").trim();
-                if (!id_poste) return;
+          const id_poste = (tr.getAttribute("data-id_poste") || "").trim();
+          if (!id_poste) return;
 
-                const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+          const id_service = (byId("analyseServiceSelect")?.value || "").trim();
 
-                // Détecter la colonne cliquée
-                let focusKey = "";
-                const td = ev.target.closest("td");
-                if (td && td.parentElement === tr) {
-                  const tds = Array.from(tr.children).filter(n => n && n.tagName === "TD");
-                  const idx = tds.indexOf(td);
+          // Colonne cliquée => data-focus (beaucoup plus fiable que l'index)
+          const td = ev.target.closest("td[data-focus]");
+          const rawFocus = (td?.getAttribute("data-focus") || "").trim();
 
-                  // 0: Poste | 1: Service | 2: Critiques sans porteur | 3: Porteur unique | 4: Total fragiles
-                  if (idx === 2) focusKey = "critiques-sans-porteur";
-                  else if (idx === 3) focusKey = "porteur-unique";
-                  else if (idx === 4) focusKey = "total-fragiles";
-                }
+          // On ne garde que les focus utiles
+          const focusKey =
+            (rawFocus === "critiques-sans-porteur" || rawFocus === "porteur-unique" || rawFocus === "total-fragiles")
+              ? rawFocus
+              : "";
 
-                await showAnalysePosteDetailModal(portal, id_poste, id_service, focusKey);
-              });
-            }
+          await showAnalysePosteDetailModal(portal, id_poste, id_service, focusKey);
+        });
+      }
+
 
   }
 
