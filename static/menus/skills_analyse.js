@@ -9,6 +9,7 @@
 (function () {
   let _bound = false;
   let _servicesLoaded = false;
+  let _portalRef = null;
 
   const NON_LIE_ID = "__NON_LIE__";
   const STORE_SERVICE = "sb_analyse_service";
@@ -171,6 +172,41 @@
     });
   }
 
+  const CRITICITE_MIN = 3;
+  const _riskDetailCache = new Map();
+  let _riskDetailReqSeq = 0;
+
+  function buildQueryString(params) {
+    const usp = new URLSearchParams();
+    Object.keys(params || {}).forEach(k => {
+      const v = params[k];
+      if (v === null || v === undefined || v === "") return;
+      usp.set(k, String(v));
+    });
+    const qs = usp.toString();
+    return qs ? `?${qs}` : "";
+  }
+
+  async function fetchRisquesDetail(portal, kpiKey, id_service, limit = 50) {
+    const svc = (id_service || "").trim();
+    const key = `${svc}|${kpiKey}|${CRITICITE_MIN}|${limit}`;
+    if (_riskDetailCache.has(key)) return _riskDetailCache.get(key);
+
+    const qs = buildQueryString({
+      kpi: kpiKey,
+      id_service: svc || null,
+      criticite_min: CRITICITE_MIN,
+      limit: limit
+    });
+
+    const url = `${portal.apiBase}/skills/analyse/risques/detail/${encodeURIComponent(portal.contactId)}${qs}`;
+    const data = await portal.apiJson(url);
+
+    _riskDetailCache.set(key, data);
+    return data;
+  }
+
+
 
   function renderDetail(mode) {
     const scope = getScopeLabel();
@@ -181,7 +217,6 @@
     const body = byId("analyseDetailBody");
 
     if (meta) meta.textContent = `Service : ${scope}`;
-
     if (!body) return;
 
     // -----------------------
@@ -231,7 +266,7 @@
     }
 
     // -----------------------
-    // RISQUES (avec filtre KPI)
+    // RISQUES (API + filtre KPI)
     // -----------------------
     const rf = getRiskFilter(); // "", "postes-fragiles", "critiques-sans-porteur", "porteur-unique"
     setActiveRiskKpi(rf);
@@ -243,39 +278,151 @@
 
     if (rf === "postes-fragiles") {
       filterLabel = "Postes fragiles";
-      filterSub = "Liste des postes à sécuriser en priorité (fragilité élevée).";
+      filterSub = "Postes à sécuriser en priorité (critiques avec couverture faible).";
     } else if (rf === "critiques-sans-porteur") {
       filterLabel = "Critiques sans porteur";
       filterSub = "Compétences critiques requises mais non portées (dans le périmètre).";
     } else if (rf === "porteur-unique") {
       filterLabel = "Porteur unique";
-      filterSub = "Compétences critiques portées par une seule personne (risque de dépendance).";
+      filterSub = "Compétences critiques portées par une seule personne (dépendance).";
     }
 
     if (sub) sub.textContent = filterSub;
 
-    // bouton reset filtre (uniquement si un filtre est actif)
+    const selSvc = byId("analyseServiceSelect") || byId("anaServiceSelect") || byId("mapServiceSelect");
+    const id_service = (selSvc?.value || "").trim();
+
+    function badge(txt, accent) {
+      const cls = accent ? "sb-badge sb-badge-accent" : "sb-badge";
+      return `<span class="${cls}">${escapeHtml(txt || "—")}</span>`;
+    }
+
+    function renderDomainPill(item) {
+      const lab = (item?.domaine_titre_court || item?.domaine_titre || item?.id_domaine_competence || "—").toString();
+      const col = normalizeColor(item?.domaine_couleur) || "#e5e7eb";
+      return `
+        <span style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; color:#374151; background:#fff;">
+          <span style="display:inline-block; width:10px; height:10px; border-radius:999px; border:1px solid #d1d5db; background:${escapeHtml(col)};"></span>
+          <span title="${escapeHtml(lab)}">${escapeHtml(lab)}</span>
+        </span>
+      `;
+    }
+
+    function renderTablePostes(rows) {
+      const list = Array.isArray(rows) ? rows : [];
+      if (!list.length) {
+        return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
+      }
+
+      return `
+        <div class="table-wrap" style="margin-top:10px;">
+          <table class="sb-table">
+            <thead>
+              <tr>
+                <th>Poste</th>
+                <th style="width:200px;">Service</th>
+                <th class="col-center" style="width:160px;">Critiques sans porteur</th>
+                <th class="col-center" style="width:140px;">Porteur unique</th>
+                <th class="col-center" style="width:140px;">Total fragiles</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(r => {
+                const poste = `${(r.codif_poste || "").trim()}${r.codif_poste ? " — " : ""}${(r.intitule_poste || "").trim()}`.trim() || "—";
+                const svc = (r.nom_service || "").trim() || "—";
+
+                const a = Number(r.nb_critiques_sans_porteur || 0);
+                const b = Number(r.nb_critiques_porteur_unique || 0);
+                const c = Number(r.nb_critiques_fragiles || 0);
+
+                return `
+                  <tr>
+                    <td style="font-weight:700;">${escapeHtml(poste)}</td>
+                    <td>${escapeHtml(svc)}</td>
+                    <td class="col-center">${a ? badge(String(a), true) : badge("0", false)}</td>
+                    <td class="col-center">${b ? badge(String(b), true) : badge("0", false)}</td>
+                    <td class="col-center">${c ? badge(String(c), true) : badge("0", false)}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function renderTableCompetences(rows) {
+      const list = Array.isArray(rows) ? rows : [];
+      if (!list.length) {
+        return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
+      }
+
+      return `
+        <div class="table-wrap" style="margin-top:10px;">
+          <table class="sb-table">
+            <thead>
+              <tr>
+                <th style="width:240px;">Domaine</th>
+                <th style="width:90px;">Code</th>
+                <th>Compétence</th>
+                <th class="col-center" style="width:130px;">Postes impactés</th>
+                <th class="col-center" style="width:120px;">Criticité</th>
+                <th class="col-center" style="width:110px;">Porteurs</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(r => {
+                const code = (r.code || "—").toString();
+                const intit = (r.intitule || "—").toString();
+
+                const nbPostes = Number(r.nb_postes_impactes || 0);
+                const nbPorteurs = Number(r.nb_porteurs || 0);
+                const crit = Number(r.max_criticite || 0);
+
+                return `
+                  <tr>
+                    <td>${renderDomainPill(r)}</td>
+                    <td style="font-weight:700; white-space:nowrap;">${escapeHtml(code)}</td>
+                    <td>${escapeHtml(intit)}</td>
+                    <td class="col-center">${nbPostes ? badge(String(nbPostes), true) : badge("0", false)}</td>
+                    <td class="col-center">${crit ? badge(String(crit), true) : badge("—", false)}</td>
+                    <td class="col-center">${nbPorteurs ? badge(String(nbPorteurs), true) : badge("0", false)}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    // UI immédiate (évite l'impression "ça fait rien")
     const resetHtml = rf
       ? `
-        <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            ${badge(filterLabel, true)}
+            ${badge(`Criticité min: ${CRITICITE_MIN}`, false)}
+          </div>
           <button type="button" class="btn-secondary" id="btnRiskFilterReset" style="margin-left:0;">
             Tout afficher
           </button>
         </div>
       `
-      : "";
+      : `
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+          ${badge("Vue globale", true)}
+          ${badge(`Criticité min: ${CRITICITE_MIN}`, false)}
+        </div>
+      `;
 
     body.innerHTML = `
       ${resetHtml}
       <div class="card" style="padding:12px; margin:0;">
-        <div class="card-title" style="margin-bottom:6px;">${escapeHtml(filterLabel)}</div>
-        <div class="card-sub" style="margin:0;">
-          Résultats (à venir). Le clic KPI applique un filtre sur cette zone.
-        </div>
+        <div class="card-sub" style="margin:0;">Chargement…</div>
       </div>
     `;
 
-    // bind reset (sur contenu injecté)
     const btnReset = byId("btnRiskFilterReset");
     if (btnReset) {
       btnReset.addEventListener("click", () => {
@@ -283,7 +430,93 @@
         renderDetail("risques");
       });
     }
+
+    if (!_portalRef) {
+      body.innerHTML = `
+        ${resetHtml}
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="card-sub" style="margin:0;">Contexte portail indisponible.</div>
+        </div>
+      `;
+      return;
+    }
+
+    const mySeq = ++_riskDetailReqSeq;
+
+    (async () => {
+      try {
+        if (rf) {
+          const data = await fetchRisquesDetail(_portalRef, rf, id_service, 120);
+          if (mySeq !== _riskDetailReqSeq) return;
+
+          const items = Array.isArray(data?.items) ? data.items : [];
+
+          let content = `
+            <div class="card" style="padding:12px; margin:0;">
+              <div class="card-title" style="margin-bottom:6px;">${escapeHtml(filterLabel)}</div>
+              <div class="card-sub" style="margin:0;">${escapeHtml(filterSub)}</div>
+              ${rf === "postes-fragiles" ? renderTablePostes(items) : renderTableCompetences(items)}
+            </div>
+          `;
+
+          body.innerHTML = `${resetHtml}${content}`;
+          const btnReset2 = byId("btnRiskFilterReset");
+          if (btnReset2) {
+            btnReset2.addEventListener("click", () => {
+              setRiskFilter("");
+              renderDetail("risques");
+            });
+          }
+          return;
+        }
+
+        // Vue globale = 3 listes
+        const [a, b, c] = await Promise.all([
+          fetchRisquesDetail(_portalRef, "postes-fragiles", id_service, 20),
+          fetchRisquesDetail(_portalRef, "critiques-sans-porteur", id_service, 20),
+          fetchRisquesDetail(_portalRef, "porteur-unique", id_service, 20),
+        ]);
+
+        if (mySeq !== _riskDetailReqSeq) return;
+
+        const itemsA = Array.isArray(a?.items) ? a.items : [];
+        const itemsB = Array.isArray(b?.items) ? b.items : [];
+        const itemsC = Array.isArray(c?.items) ? c.items : [];
+
+        body.innerHTML = `
+          ${resetHtml}
+
+          <div class="card" style="padding:12px; margin:0;">
+            <div class="card-title" style="margin-bottom:6px;">Postes fragiles</div>
+            <div class="card-sub" style="margin:0;">Top postes à sécuriser (critiques avec couverture faible).</div>
+            ${renderTablePostes(itemsA)}
+          </div>
+
+          <div class="card" style="padding:12px; margin-top:12px;">
+            <div class="card-title" style="margin-bottom:6px;">Critiques sans porteur</div>
+            <div class="card-sub" style="margin:0;">Compétences critiques requises mais non portées.</div>
+            ${renderTableCompetences(itemsB)}
+          </div>
+
+          <div class="card" style="padding:12px; margin-top:12px;">
+            <div class="card-title" style="margin-bottom:6px;">Porteur unique</div>
+            <div class="card-sub" style="margin:0;">Compétences critiques portées par une seule personne.</div>
+            ${renderTableCompetences(itemsC)}
+          </div>
+        `;
+      } catch (e) {
+        if (mySeq !== _riskDetailReqSeq) return;
+
+        body.innerHTML = `
+          ${resetHtml}
+          <div class="card" style="padding:12px; margin:0;">
+            <div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>
+          </div>
+        `;
+      }
+    })();
   }
+
 
 
   async function refreshSummary(portal) {
@@ -413,8 +646,11 @@
   window.SkillsAnalyse = {
     onShow: async (portal) => {
       try {
+        _portalRef = portal;
+
         bindOnce(portal);
         await ensureContext(portal);
+
 
         if (!_servicesLoaded) {
           await loadServices(portal);
