@@ -27,6 +27,25 @@
       .replaceAll('"', "&quot;");
   }
 
+  function normalizeColor(raw) {
+    if (raw === null || raw === undefined) return "";
+    const s = raw.toString().trim();
+    if (!s) return "";
+    if (s.startsWith("#") || s.startsWith("rgb") || s.startsWith("hsl")) return s;
+
+    // int ARGB signé WinForms (ex: -256)
+    if (/^-?\d+$/.test(s)) {
+      const n = parseInt(s, 10);
+      const u = (n >>> 0);
+      const r = (u >> 16) & 255;
+      const g = (u >> 8) & 255;
+      const b = u & 255;
+      return "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+    }
+    return s;
+  }
+
+
   function setText(id, v, fallback = "—") {
     const el = byId(id);
     if (!el) return;
