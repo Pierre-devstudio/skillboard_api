@@ -246,6 +246,48 @@ textarea:focus {
 }
 .hint.error { color: #991b1b; }
 
+/* =========================
+   TABLES (commun)
+   ========================= */
+
+.table-wrap{
+  width: 100%;
+  overflow: auto;
+}
+
+.sb-table{
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.sb-table thead th{
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  color: #111827;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.sb-table tbody td{
+  padding: 12px 16px;
+  vertical-align: middle;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.sb-table tbody tr:nth-child(even){
+  background: #fafafa;
+}
+
+.sb-table tbody tr:hover{
+  background: #f3f4f6;
+}
+
+.col-center{ text-align: center !important; }
+.col-right{ text-align: right !important; }
+
 @media (max-width: 768px) {
   body { flex-direction: column; }
 
