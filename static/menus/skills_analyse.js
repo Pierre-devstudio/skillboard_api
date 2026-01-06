@@ -225,6 +225,309 @@
     return data;
   }
 
+  const _posteDetailCache = new Map();
+  let _posteDetailReqSeq = 0;
+
+  async function fetchAnalysePosteDetail(portal, id_poste, id_service) {
+    const svc = (id_service || "").trim();
+    const key = `${id_poste}|${svc}|${CRITICITE_MIN}`;
+    if (_posteDetailCache.has(key)) return _posteDetailCache.get(key);
+
+    const qs = buildQueryString({
+      id_poste: id_poste,
+      id_service: svc || null,
+      criticite_min: CRITICITE_MIN
+    });
+
+    const url = `${portal.apiBase}/skills/analyse/risques/poste/${encodeURIComponent(portal.contactId)}${qs}`;
+    const data = await portal.apiJson(url);
+
+    _posteDetailCache.set(key, data);
+    return data;
+  }
+
+  function openAnalysePosteModal(title, subHtml) {
+    const modal = byId("modalAnalysePoste");
+    if (!modal) return;
+
+    const t = byId("analysePosteModalTitle");
+    const s = byId("analysePosteModalSub");
+
+    if (t) t.textContent = title || "Détail poste";
+    if (s) s.innerHTML = subHtml || "";
+
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+
+    const mb = modal.querySelector(".modal-body");
+    if (mb) mb.scrollTop = 0;
+  }
+
+  function closeAnalysePosteModal() {
+    const modal = byId("modalAnalysePoste");
+    if (!modal) return;
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function setAnalysePosteTab(tabName) {
+    const btnA = byId("tabAnalysePosteCompetences");
+    const btnB = byId("tabAnalysePosteCouverture");
+    const a = byId("analysePosteTabCompetences");
+    const b = byId("analysePosteTabCouverture");
+
+    const isA = tabName === "competences";
+
+    if (a) a.style.display = isA ? "" : "none";
+    if (b) b.style.display = isA ? "none" : "";
+
+    // Visuel simple sans ajouter de CSS
+    if (btnA) {
+      btnA.style.borderColor = isA ? "var(--accent)" : "#d1d5db";
+      btnA.style.background = isA ? "color-mix(in srgb, var(--accent) 10%, #ffffff)" : "#ffffff";
+      btnA.style.fontWeight = isA ? "700" : "600";
+    }
+    if (btnB) {
+      btnB.style.borderColor = !isA ? "var(--accent)" : "#d1d5db";
+      btnB.style.background = !isA ? "color-mix(in srgb, var(--accent) 10%, #ffffff)" : "#ffffff";
+      btnB.style.fontWeight = !isA ? "700" : "600";
+    }
+  }
+
+  function renderPostePorteurs(porteurs) {
+    const list = Array.isArray(porteurs) ? porteurs : [];
+    if (!list.length) {
+      return `<div class="card-sub" style="margin-top:6px; color:#6b7280;">Aucun porteur</div>`;
+    }
+
+    const max = 8;
+    const shown = list.slice(0, max);
+
+    const rows = shown.map(p => {
+      const prenom = (p.prenom_effectif || "").trim();
+      const nom = (p.nom_effectif || "").trim();
+      const full = `${prenom} ${nom}`.trim() || "—";
+
+      const niv = (p.niveau_actuel || "").trim() || "—";
+      const poste = (p.intitule_poste || "").trim();
+      const svc = (p.nom_service || "").trim();
+      const right = poste || svc || "—";
+
+      return `
+        <div style="display:flex; justify-content:space-between; gap:10px;">
+          <span style="font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${escapeHtml(full)}
+            <span style="font-weight:600; color:#6b7280; font-size:12px;"> (${escapeHtml(niv)})</span>
+          </span>
+          <span style="color:#6b7280; font-size:12px; white-space:nowrap;">
+            ${escapeHtml(right)}
+          </span>
+        </div>
+      `;
+    }).join("");
+
+    const more = list.length > max
+      ? `<div class="card-sub" style="margin-top:4px; color:#6b7280;">+ ${list.length - max} autre(s)</div>`
+      : "";
+
+    return `<div style="margin-top:6px; display:flex; flex-direction:column; gap:4px;">${rows}${more}</div>`;
+  }
+
+  function renderAnalysePosteCompetencesTab(data) {
+    const host = byId("analysePosteTabCompetences");
+    if (!host) return;
+
+    const list = Array.isArray(data?.competences) ? data.competences : [];
+
+    if (!list.length) {
+      host.innerHTML = `
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="card-sub" style="margin:0;">Aucune compétence trouvée pour ce poste.</div>
+        </div>
+      `;
+      return;
+    }
+
+    host.innerHTML = `
+      <div class="card" style="padding:12px; margin:0;">
+        <div class="card-title" style="margin-bottom:6px;">Compétences requises</div>
+
+        <div class="table-wrap" style="margin-top:10px;">
+          <table class="sb-table">
+            <thead>
+              <tr>
+                <th style="width:90px;">Code</th>
+                <th>Compétence</th>
+                <th class="col-center" style="width:120px;">Niveau requis</th>
+                <th class="col-center" style="width:90px;">Criticité</th>
+                <th class="col-center" style="width:120px;">Couverture</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(c => {
+                const code = escapeHtml(c.code || "—");
+                const intit = escapeHtml(c.intitule || "—");
+                const nivReq = escapeHtml(c.niveau_requis || "—");
+                const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "—" : escapeHtml(String(c.poids_criticite));
+
+                const porteurs = Array.isArray(c.porteurs) ? c.porteurs : [];
+                const nb = (c.nb_porteurs === null || c.nb_porteurs === undefined) ? porteurs.length : Number(c.nb_porteurs || 0);
+
+                const badge = nb > 0
+                  ? `<span class="sb-badge sb-badge-accent">${nb}</span>`
+                  : `<span class="sb-badge">0</span>`;
+
+                const porteursHtml = renderPostePorteurs(porteurs);
+
+                return `
+                  <tr>
+                    <td style="font-weight:700; white-space:nowrap;">${code}</td>
+                    <td>
+                      ${intit}
+                      ${porteursHtml}
+                    </td>
+                    <td class="col-center" style="white-space:nowrap;">${nivReq}</td>
+                    <td class="col-center" style="white-space:nowrap;">${crit}</td>
+                    <td class="col-center" style="white-space:nowrap;">${badge}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card-sub" style="margin-top:10px; color:#6b7280;">
+          Couverture = nombre de collaborateurs porteurs de la compétence (dans le périmètre filtré).
+          Le niveau affiché entre parenthèses correspond à <b>niveau_actuel</b>.
+        </div>
+      </div>
+    `;
+  }
+
+  function renderAnalysePosteCouvertureTab(data) {
+    const host = byId("analysePosteTabCouverture");
+    if (!host) return;
+
+    const cov = data?.coverage || {};
+    const total = Number(cov.total_competences || 0);
+
+    function pct(part) {
+      const p = Number(part || 0);
+      if (!total) return 0;
+      return Math.round((p / total) * 100);
+    }
+
+    function bar(label, part, sub) {
+      const p = pct(part);
+      return `
+        <div class="card" style="padding:12px; margin:0 0 10px 0;">
+          <div style="display:flex; justify-content:space-between; gap:10px; align-items:baseline;">
+            <div style="font-weight:700;">${escapeHtml(label)}</div>
+            <div class="sb-badge sb-badge-accent">${p}%</div>
+          </div>
+          <div style="margin-top:8px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
+            <div style="height:10px; width:${p}%; background:var(--accent); border-radius:999px;"></div>
+          </div>
+          ${sub ? `<div class="card-sub" style="margin-top:6px;">${sub}</div>` : ``}
+        </div>
+      `;
+    }
+
+    const c1 = Number(cov.couvert_1plus || 0);
+    const c2 = Number(cov.couvert_2plus || 0);
+    const nc = Number(cov.non_couvert || 0);
+    const u1 = Number(cov.porteur_unique || 0);
+
+    const critTot = Number(cov.total_critiques || 0);
+    const critNc = Number(cov.critiques_non_couvert || 0);
+    const critU1 = Number(cov.critiques_porteur_unique || 0);
+
+    host.innerHTML = `
+      <div class="card" style="padding:12px; margin:0;">
+        <div class="card-title" style="margin-bottom:6px;">Couverture du poste</div>
+        <div class="card-sub" style="margin:0;">
+          Mesure simple basée sur le nombre de porteurs par compétence. Criticité min: <b>${escapeHtml(String(data?.criticite_min ?? CRITICITE_MIN))}</b>
+        </div>
+
+        <div style="margin-top:12px;">
+          ${bar("Compétences couvertes (≥ 1 porteur)", c1, `${c1}/${total} compétences`)}
+          ${bar("Compétences sécurisées (≥ 2 porteurs)", c2, `${c2}/${total} compétences`)}
+          ${bar("Compétences non couvertes (0 porteur)", nc, `${nc}/${total} compétences`)}
+          ${bar("Compétences à dépendance (1 porteur)", u1, `${u1}/${total} compétences`)}
+        </div>
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <div class="card-title" style="margin-bottom:6px;">Focus compétences critiques</div>
+          <div class="card-sub" style="margin:0;">Critiques = criticité ≥ ${escapeHtml(String(data?.criticite_min ?? CRITICITE_MIN))}</div>
+
+          <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
+            <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+              <div class="label">Critiques (total)</div>
+              <div class="value">${critTot}</div>
+            </div>
+            <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+              <div class="label">Critiques non couvertes</div>
+              <div class="value">${critNc}</div>
+            </div>
+            <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+              <div class="label">Critiques porteur unique</div>
+              <div class="value">${critU1}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  async function showAnalysePosteDetailModal(portal, id_poste, id_service) {
+    const mySeq = ++_posteDetailReqSeq;
+
+    openAnalysePosteModal(
+      "Détail poste",
+      `<div class="card-sub" style="margin:0;">Chargement…</div>`
+    );
+
+    setAnalysePosteTab("competences");
+
+    const tabA = byId("analysePosteTabCompetences");
+    const tabB = byId("analysePosteTabCouverture");
+    if (tabA) tabA.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
+    if (tabB) tabB.innerHTML = "";
+
+    try {
+      const data = await fetchAnalysePosteDetail(portal, id_poste, id_service);
+      if (mySeq !== _posteDetailReqSeq) return;
+
+      const poste = data?.poste || {};
+      const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
+
+      const scope = (data?.scope?.nom_service || "").trim() || "Tous les services";
+      const sub = `
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
+          <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(String(data?.criticite_min ?? CRITICITE_MIN))}</span>
+        </div>
+      `;
+
+      openAnalysePosteModal(posteLabel || "Détail poste", sub);
+
+      renderAnalysePosteCompetencesTab(data);
+      renderAnalysePosteCouvertureTab(data);
+
+    } catch (e) {
+      if (mySeq !== _posteDetailReqSeq) return;
+
+      openAnalysePosteModal(
+        "Détail poste",
+        `<div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>`
+      );
+
+      const tabA = byId("analysePosteTabCompetences");
+      if (tabA) {
+        tabA.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Impossible de charger le détail.</div></div>`;
+      }
+    }
+  }
 
 
   function renderDetail(mode) {
@@ -335,7 +638,7 @@
 
       return `
         <div class="table-wrap" style="margin-top:10px;">
-          <table class="sb-table">
+          <table class="sb-table" id="tblRiskPostesFragiles">
             <thead>
               <tr>
                 <th>Poste</th>
@@ -355,7 +658,7 @@
                 const c = Number(r.nb_critiques_fragiles || 0);
 
                 return `
-                  <tr>
+                  <tr class="risk-poste-row" data-id_poste="${escapeHtml(r.id_poste || "")}" style="cursor:pointer;">
                     <td style="font-weight:700;">${escapeHtml(poste)}</td>
                     <td>${escapeHtml(svc)}</td>
                     <td class="col-center">${a ? badge(String(a), true) : badge("0", false)}</td>
@@ -660,6 +963,46 @@
         renderDetail(localStorage.getItem(STORE_MODE) || "risques");
       });
     }
+
+    // ==============================
+    // Modal Poste (Risques) - wiring
+    // ==============================
+    const modalPoste = byId("modalAnalysePoste");
+    const btnXPoste = byId("btnCloseAnalysePosteModal");
+    const btnClosePoste = byId("btnAnalysePosteModalClose");
+    const tabA = byId("tabAnalysePosteCompetences");
+    const tabB = byId("tabAnalysePosteCouverture");
+
+    if (btnXPoste) btnXPoste.addEventListener("click", () => closeAnalysePosteModal());
+    if (btnClosePoste) btnClosePoste.addEventListener("click", () => closeAnalysePosteModal());
+
+    if (modalPoste) {
+      modalPoste.addEventListener("click", (e) => {
+        if (e.target === modalPoste) closeAnalysePosteModal();
+      });
+    }
+
+    if (tabA) tabA.addEventListener("click", () => setAnalysePosteTab("competences"));
+    if (tabB) tabB.addEventListener("click", () => setAnalysePosteTab("couverture"));
+
+    // ==============================
+    // Click délégué: lignes "Poste fragile" (survit aux rerender)
+    // ==============================
+    const analyseBody = byId("analyseDetailBody");
+    if (analyseBody) {
+      analyseBody.addEventListener("click", async (ev) => {
+        const tr = ev.target.closest("tr.risk-poste-row[data-id_poste]");
+        if (!tr) return;
+
+        const id_poste = (tr.getAttribute("data-id_poste") || "").trim();
+        if (!id_poste) return;
+
+        const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+
+        await showAnalysePosteDetailModal(portal, id_poste, id_service);
+      });
+    }
+
   }
 
   window.SkillsAnalyse = {

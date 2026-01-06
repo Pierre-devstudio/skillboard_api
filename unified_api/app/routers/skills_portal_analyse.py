@@ -589,3 +589,281 @@ def get_analyse_risques_detail(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+# ======================================================
+# Models: Drilldown Poste (Risques)
+# ======================================================
+class AnalysePorteurItem(BaseModel):
+    id_effectif: str
+    prenom_effectif: Optional[str] = None
+    nom_effectif: Optional[str] = None
+    nom_service: Optional[str] = None
+    id_poste_actuel: Optional[str] = None
+    intitule_poste: Optional[str] = None
+    niveau_actuel: Optional[str] = None  # Initial / Avancé / Expert
+
+
+class AnalysePosteCompetenceItem(BaseModel):
+    id_comp: str
+    code: Optional[str] = None
+    intitule: Optional[str] = None
+    description: Optional[str] = None
+
+    id_domaine_competence: Optional[str] = None
+    domaine_titre: Optional[str] = None
+    domaine_titre_court: Optional[str] = None
+    domaine_couleur: Optional[str] = None
+
+    niveau_requis: Optional[str] = None
+    poids_criticite: Optional[int] = None
+
+    nb_porteurs: int = 0
+    porteurs: List[AnalysePorteurItem] = []
+
+
+class AnalysePosteCoverage(BaseModel):
+    total_competences: int = 0
+    couvert_1plus: int = 0
+    couvert_2plus: int = 0
+    non_couvert: int = 0
+    porteur_unique: int = 0
+
+    total_critiques: int = 0
+    critiques_couvert_1plus: int = 0
+    critiques_couvert_2plus: int = 0
+    critiques_non_couvert: int = 0
+    critiques_porteur_unique: int = 0
+
+
+class AnalysePosteDetailResponse(BaseModel):
+    scope: ServiceScope
+    criticite_min: int
+    updated_at: str
+    poste: Dict[str, Any]
+    coverage: AnalysePosteCoverage
+    competences: List[AnalysePosteCompetenceItem]
+
+
+# ======================================================
+# Endpoint: Drilldown Poste (Risques)
+# ======================================================
+@router.get(
+    "/skills/analyse/risques/poste/{id_contact}",
+    response_model=AnalysePosteDetailResponse,
+)
+def get_analyse_risques_poste_detail(
+    id_contact: str,
+    id_poste: str = Query(...),
+    id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=3),
+):
+    """
+    Drilldown "poste fragile":
+    - toutes les compétences requises du poste (niveau_requis, criticité)
+    - porteurs par compétence avec niveau_actuel (Initial/Avancé/Expert)
+    - stats de couverture (global + critiques)
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                contact = _fetch_contact_and_ent(cur, id_contact)
+                id_ent = contact["code_ent"]
+
+                scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
+
+                cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
+
+                # 1) Vérifier que le poste est dans le scope
+                cur.execute(
+                    f"""
+                    WITH {cte_sql}
+                    SELECT
+                        fp.id_poste,
+                        fp.codif_poste,
+                        fp.intitule_poste,
+                        fp.id_service,
+                        COALESCE(o.nom_service, '') AS nom_service
+                    FROM postes_scope ps
+                    JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = fp.id_service
+                     AND o.archive = FALSE
+                    WHERE fp.id_poste = %s
+                    LIMIT 1
+                    """,
+                    tuple(cte_params + [id_ent, id_poste]),
+                )
+                poste = cur.fetchone()
+                if not poste:
+                    raise HTTPException(status_code=404, detail="Poste introuvable (ou hors périmètre service).")
+
+                # 2) Compétences requises du poste
+                cur.execute(
+                    f"""
+                    WITH {cte_sql}
+                    SELECT
+                        c.id_comp,
+                        c.code,
+                        c.intitule,
+                        c.description,
+                        c.domaine AS id_domaine_competence,
+                        COALESCE(fpc.niveau_requis, '') AS niveau_requis,
+                        COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite,
+                        d.titre,
+                        d.titre_court,
+                        d.couleur
+                    FROM public.tbl_fiche_poste_competence fpc
+                    JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
+                    JOIN public.tbl_competence c
+                      ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                    LEFT JOIN public.tbl_domaine_competence d
+                      ON d.id_domaine_competence = c.domaine
+                    WHERE
+                        fpc.id_poste = %s
+                        AND c.etat = 'active'
+                        AND COALESCE(c.masque, FALSE) = FALSE
+                    ORDER BY
+                        COALESCE(d.ordre_affichage, 999999),
+                        COALESCE(d.titre_court, d.titre, ''),
+                        c.code
+                    """,
+                    tuple(cte_params + [id_poste]),
+                )
+                comp_rows = cur.fetchall() or []
+
+                competences: List[AnalysePosteCompetenceItem] = []
+                comp_map: Dict[str, AnalysePosteCompetenceItem] = {}
+
+                for r in comp_rows:
+                    cid = r.get("id_comp")
+                    if not cid:
+                        continue
+                    item = AnalysePosteCompetenceItem(
+                        id_comp=cid,
+                        code=r.get("code"),
+                        intitule=r.get("intitule"),
+                        description=r.get("description"),
+                        id_domaine_competence=r.get("id_domaine_competence"),
+                        domaine_titre=r.get("titre"),
+                        domaine_titre_court=r.get("titre_court"),
+                        domaine_couleur=r.get("couleur"),
+                        niveau_requis=(r.get("niveau_requis") or None),
+                        poids_criticite=int(r.get("poids_criticite") or 0),
+                        nb_porteurs=0,
+                        porteurs=[],
+                    )
+                    competences.append(item)
+                    comp_map[cid] = item
+
+                # 3) Porteurs + niveau actuel (dans le scope)
+                ids_comp = [c.id_comp for c in competences if c.id_comp]
+                if ids_comp:
+                    cur.execute(
+                        f"""
+                        WITH
+                        {cte_sql},
+                        comp_scope AS (
+                            SELECT UNNEST(%s::text[]) AS id_comp
+                        )
+                        SELECT
+                            cs.id_comp,
+                            e.id_effectif,
+                            e.prenom_effectif,
+                            e.nom_effectif,
+                            COALESCE(o.nom_service, '') AS nom_service,
+                            e.id_poste_actuel,
+                            COALESCE(p.intitule_poste, '') AS intitule_poste,
+                            ec.niveau_actuel
+                        FROM comp_scope cs
+                        JOIN public.tbl_effectif_client_competence ec
+                          ON ec.id_comp = cs.id_comp
+                        JOIN effectifs_scope es
+                          ON es.id_effectif = ec.id_effectif_client
+                        JOIN public.tbl_effectif_client e
+                          ON e.id_effectif = es.id_effectif
+                        LEFT JOIN public.tbl_entreprise_organigramme o
+                          ON o.id_ent = e.id_ent
+                         AND o.id_service = e.id_service
+                         AND o.archive = FALSE
+                        LEFT JOIN public.tbl_fiche_poste p
+                          ON p.id_poste = e.id_poste_actuel
+                        WHERE
+                            e.id_ent = %s
+                            AND COALESCE(e.archive, FALSE) = FALSE
+                        ORDER BY
+                            cs.id_comp,
+                            e.nom_effectif,
+                            e.prenom_effectif
+                        """,
+                        tuple(cte_params + [ids_comp, id_ent]),
+                    )
+                    port_rows = cur.fetchall() or []
+
+                    for r in port_rows:
+                        cid = r.get("id_comp")
+                        if not cid or cid not in comp_map:
+                            continue
+                        comp_map[cid].porteurs.append(
+                            AnalysePorteurItem(
+                                id_effectif=r.get("id_effectif"),
+                                prenom_effectif=r.get("prenom_effectif"),
+                                nom_effectif=r.get("nom_effectif"),
+                                nom_service=r.get("nom_service"),
+                                id_poste_actuel=r.get("id_poste_actuel"),
+                                intitule_poste=r.get("intitule_poste"),
+                                niveau_actuel=r.get("niveau_actuel"),
+                            )
+                        )
+
+                    for c in competences:
+                        c.nb_porteurs = len(c.porteurs or [])
+
+                # 4) Stats couverture
+                cov = AnalysePosteCoverage()
+                cov.total_competences = len(competences)
+
+                for c in competences:
+                    nb = int(c.nb_porteurs or 0)
+
+                    if nb >= 1:
+                        cov.couvert_1plus += 1
+                    else:
+                        cov.non_couvert += 1
+
+                    if nb >= 2:
+                        cov.couvert_2plus += 1
+                    if nb == 1:
+                        cov.porteur_unique += 1
+
+                    crit = int(c.poids_criticite or 0)
+                    if crit >= int(criticite_min):
+                        cov.total_critiques += 1
+                        if nb >= 1:
+                            cov.critiques_couvert_1plus += 1
+                        else:
+                            cov.critiques_non_couvert += 1
+                        if nb >= 2:
+                            cov.critiques_couvert_2plus += 1
+                        if nb == 1:
+                            cov.critiques_porteur_unique += 1
+
+                return AnalysePosteDetailResponse(
+                    scope=scope,
+                    criticite_min=int(criticite_min),
+                    updated_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    poste={
+                        "id_poste": poste.get("id_poste"),
+                        "codif_poste": poste.get("codif_poste"),
+                        "intitule_poste": poste.get("intitule_poste"),
+                        "id_service": poste.get("id_service"),
+                        "nom_service": poste.get("nom_service"),
+                    },
+                    coverage=cov,
+                    competences=competences,
+                )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
