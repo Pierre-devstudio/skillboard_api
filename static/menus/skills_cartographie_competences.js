@@ -665,15 +665,15 @@
     if (grid) {
       grid.addEventListener("click", async (ev) => {
         // Support: rendu WOW (table td.hm-cell) + ancien rendu (div dataset)
-        const td = ev.target.closest("td.hm-cell[data-poste][data-dom]");
+        const td = ev.target.closest("td.hm-cell[data-id_poste][data-id_domaine], td.hm-cell[data-poste][data-dom]");
         const dv = ev.target.closest("div[data-id_poste][data-id_domaine]");
 
         let id_poste = "";
         let id_dom = "";
 
         if (td) {
-          id_poste = (td.getAttribute("data-poste") || "").trim();
-          id_dom = (td.getAttribute("data-dom") || "").trim();
+          id_poste = (td.getAttribute("data-id_poste") || td.getAttribute("data-poste") || "").trim();
+          id_dom   = (td.getAttribute("data-id_domaine") || td.getAttribute("data-dom") || "").trim();
         } else if (dv) {
           id_poste = (dv.dataset.id_poste || "").trim();
           id_dom = (dv.dataset.id_domaine || "").trim();
@@ -682,6 +682,7 @@
         }
 
         if (!id_poste || !id_dom) return;
+
 
         const f = getFilters();
         const selS = byId("mapServiceSelect");
