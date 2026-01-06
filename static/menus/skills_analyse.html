@@ -103,19 +103,21 @@
           <div class="tile-sub">Identifier les fragilités: criticité, couverture, dépendance, concentration.</div>
 
           <div class="mini-kpis">
-            <div class="mini-kpi">
-              <div class="label">Postes fragiles</div>
-              <div class="value" id="kpiRiskPostes">—</div>
+            <div class="mini-kpi" data-risk-kpi="postes-fragiles" role="button" tabindex="0" aria-label="Afficher les postes fragiles">
+                <div class="label">Postes fragiles</div>
+                <div class="value" id="kpiRiskPostes">—</div>
             </div>
-            <div class="mini-kpi">
-              <div class="label">Critiques sans porteur</div>
-              <div class="value" id="kpiRiskNoOwner">—</div>
+
+            <div class="mini-kpi" data-risk-kpi="critiques-sans-porteur" role="button" tabindex="0" aria-label="Afficher les compétences critiques sans porteur">
+                <div class="label">Critiques sans porteur</div>
+                <div class="value" id="kpiRiskNoOwner">—</div>
             </div>
-            <div class="mini-kpi">
-              <div class="label">Bus factor = 1</div>
-              <div class="value" id="kpiRiskBus1">—</div>
+
+            <div class="mini-kpi" data-risk-kpi="porteur-unique" role="button" tabindex="0" aria-label="Afficher les compétences à porteur unique">
+                <div class="label">Porteur unique</div>
+                <div class="value" id="kpiRiskBus1">—</div>
             </div>
-          </div>
+        </div>
 
           <div class="tile-hint">Décision: prioriser transfert de savoir, formation ciblée, sécurisation.</div>
         </div>

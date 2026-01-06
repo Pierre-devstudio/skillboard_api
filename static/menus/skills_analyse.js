@@ -13,6 +13,8 @@
   const NON_LIE_ID = "__NON_LIE__";
   const STORE_SERVICE = "sb_analyse_service";
   const STORE_MODE = "sb_analyse_mode";
+  const STORE_RISK_FILTER = "sb_analyse_risk_filter";
+
 
   function byId(id) { return document.getElementById(id); }
 
@@ -139,6 +141,37 @@
     if (tile) tile.classList.add("active");
   }
 
+  function getRiskFilter() {
+    return (localStorage.getItem(STORE_RISK_FILTER) || "").trim();
+  }
+
+  function setRiskFilter(filter) {
+    const f = (filter || "").trim();
+    if (f) localStorage.setItem(STORE_RISK_FILTER, f);
+    else localStorage.removeItem(STORE_RISK_FILTER);
+    setActiveRiskKpi(f);
+  }
+
+  function setActiveRiskKpi(filter) {
+    const tile = byId("tileRisques");
+    if (!tile) return;
+
+    const items = tile.querySelectorAll(".mini-kpi[data-risk-kpi]");
+    items.forEach((el) => {
+      const k = (el.getAttribute("data-risk-kpi") || "").trim();
+      const isActive = !!filter && k === filter;
+
+      el.style.borderColor = isActive
+        ? "color-mix(in srgb, var(--accent) 55%, #d1d5db)"
+        : "#e5e7eb";
+
+      el.style.background = isActive
+        ? "color-mix(in srgb, var(--accent) 6%, #ffffff)"
+        : "#ffffff";
+    });
+  }
+
+
   function renderDetail(mode) {
     const scope = getScopeLabel();
 
@@ -151,6 +184,9 @@
 
     if (!body) return;
 
+    // -----------------------
+    // MATCHING
+    // -----------------------
     if (mode === "matching") {
       if (title) title.textContent = "Matching poste-porteur";
       if (sub) sub.textContent = "Lecture rapide des options internes. Le détail arrivera avec l’API dédiée.";
@@ -171,6 +207,9 @@
       return;
     }
 
+    // -----------------------
+    // PREVISIONS
+    // -----------------------
     if (mode === "previsions") {
       if (title) title.textContent = "Prévisions";
       if (sub) sub.textContent = "Projection à horizon: impacts départs, tensions, scénarios. V1 en cours de pose.";
@@ -191,24 +230,61 @@
       return;
     }
 
-    // défaut: risques
+    // -----------------------
+    // RISQUES (avec filtre KPI)
+    // -----------------------
+    const rf = getRiskFilter(); // "", "postes-fragiles", "critiques-sans-porteur", "porteur-unique"
+    setActiveRiskKpi(rf);
+
     if (title) title.textContent = "Risques";
-    if (sub) sub.textContent = "Priorisation des fragilités par criticité et couverture. Le détail arrivera avec l’API dédiée.";
+
+    let filterLabel = "Vue globale";
+    let filterSub = "Priorisation des fragilités par criticité et couverture.";
+
+    if (rf === "postes-fragiles") {
+      filterLabel = "Postes fragiles";
+      filterSub = "Liste des postes à sécuriser en priorité (fragilité élevée).";
+    } else if (rf === "critiques-sans-porteur") {
+      filterLabel = "Critiques sans porteur";
+      filterSub = "Compétences critiques requises mais non portées (dans le périmètre).";
+    } else if (rf === "porteur-unique") {
+      filterLabel = "Porteur unique";
+      filterSub = "Compétences critiques portées par une seule personne (risque de dépendance).";
+    }
+
+    if (sub) sub.textContent = filterSub;
+
+    // bouton reset filtre (uniquement si un filtre est actif)
+    const resetHtml = rf
+      ? `
+        <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+          <button type="button" class="btn-secondary" id="btnRiskFilterReset" style="margin-left:0;">
+            Tout afficher
+          </button>
+        </div>
+      `
+      : "";
+
     body.innerHTML = `
+      ${resetHtml}
       <div class="card" style="padding:12px; margin:0;">
-        <div class="card-title" style="margin-bottom:6px;">Ce que vous allez obtenir</div>
+        <div class="card-title" style="margin-bottom:6px;">${escapeHtml(filterLabel)}</div>
         <div class="card-sub" style="margin:0;">
-          - Top risques (poste / compétence / criticité / couverture)<br/>
-          - Compétences critiques sans porteur et bus factor<br/>
-          - Décision: sécuriser, transférer, former, recruter
+          Résultats (à venir). Le clic KPI applique un filtre sur cette zone.
         </div>
       </div>
-      <div class="card" style="padding:12px; margin-top:12px;">
-        <div class="card-title" style="margin-bottom:6px;">Résultats (à venir)</div>
-        <div class="card-sub" style="margin:0;">Aucune donnée chargée.</div>
-      </div>
     `;
+
+    // bind reset (sur contenu injecté)
+    const btnReset = byId("btnRiskFilterReset");
+    if (btnReset) {
+      btnReset.addEventListener("click", () => {
+        setRiskFilter("");
+        renderDetail("risques");
+      });
+    }
   }
+
 
   async function refreshSummary(portal) {
     clearKpis();
@@ -288,6 +364,35 @@
       });
     });
 
+    // KPI Risques cliquables => filtre du panneau détail (sans changer de page)
+    const tileRisques = byId("tileRisques");
+    if (tileRisques) {
+      const riskKpis = tileRisques.querySelectorAll(".mini-kpi[data-risk-kpi]");
+
+      function openRiskKpi(el) {
+        const key = (el?.getAttribute("data-risk-kpi") || "").trim();
+        if (!key) return;
+
+        // On force le mode risques (si l’utilisateur était ailleurs)
+        setMode("risques");
+
+        // Filtre + rendu
+        setRiskFilter(key);
+        renderDetail("risques");
+      }
+
+      riskKpis.forEach((el) => {
+        el.addEventListener("click", () => openRiskKpi(el));
+        el.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            openRiskKpi(el);
+          }
+        });
+      });
+    }
+
+
     if (selService) {
       selService.addEventListener("change", () => {
         refreshSummary(portal);
@@ -326,7 +431,16 @@
         const storedMode = (localStorage.getItem(STORE_MODE) || "risques").trim();
         setMode(storedMode);
 
+        // Restaurer le filtre risques si on arrive (ou revient) sur Risques
+        if (storedMode === "risques") {
+          const rf = getRiskFilter();
+          setActiveRiskKpi(rf);
+          renderDetail("risques");
+        }
+
         await refreshSummary(portal);
+
+
       } catch (e) {
         portal.showAlert("error", "Erreur analyse : " + (e.message || "inconnue"));
         console.error(e);
