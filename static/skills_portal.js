@@ -46,8 +46,14 @@
   onShow: (p) => window.SkillsCartographieCompetences?.onShow?.(p),
   });
 
+  portal.registerMenu({
+  view: "analyse-competences",
+  htmlUrl: "/menus/skills_analyse.html",
+  jsUrl: "/menus/skills_analyse.js",
+  onShow: (p) => window.SkillsAnalyse?.onShow?.(p),
+});
+
   // Placeholders (pour éviter les clics “vides”)      
-  portal.registerMenu({ view: "analyse-risques", placeholderTitle: "Analyse des risques", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "actions-programmer", placeholderTitle: "Actions à programmer", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "actions-en-cours", placeholderTitle: "Actions en cours", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "actions-passees", placeholderTitle: "Actions passées", placeholderSub: "Page à venir." });

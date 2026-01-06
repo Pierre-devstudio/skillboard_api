@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 
-from app.routers import skills_portal_dashboard, skills_portal_informations, skills_portal_organisation, skills_portal_collaborateurs, skills_portal_referentiel_competence, skills_portal_cartographie_competences
+from app.routers import skills_portal_dashboard, skills_portal_informations, skills_portal_organisation, skills_portal_collaborateurs, skills_portal_referentiel_competence, skills_portal_cartographie_competences, skills_portal_analyse
 
 # ======================================================
 # APP LOCALE (hub)
@@ -52,6 +52,9 @@ for route in skills_portal_referentiel_competence.router.routes:
      app_local.router.routes.append(route)
 
 for route in skills_portal_cartographie_competences.router.routes:
+     app_local.router.routes.append(route)
+
+for route in skills_portal_analyse.router.routes:
      app_local.router.routes.append(route)
 
 # ======================================================
