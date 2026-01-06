@@ -510,8 +510,19 @@
     `;
   }
 
-  async function showAnalysePosteDetailModal(portal, id_poste, id_service) {
+  async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKey) {
     const mySeq = ++_posteDetailReqSeq;
+
+    const focus = (focusKey || "").trim(); // "critiques-sans-porteur" | "porteur-unique" | "total-fragiles" | ""
+    const modal = byId("modalAnalysePoste");
+    if (modal) modal.setAttribute("data-focus", focus);
+
+    function focusLabel(k) {
+      if (k === "critiques-sans-porteur") return "Critiques sans porteur";
+      if (k === "porteur-unique") return "Porteur unique";
+      if (k === "total-fragiles") return "Fragilités (0 ou 1 porteur)";
+      return "";
+    }
 
     openAnalysePosteModal(
       "Détail poste",
@@ -533,10 +544,17 @@
       const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
 
       const scope = (data?.scope?.nom_service || "").trim() || "Tous les services";
+
+      const focusLab = focusLabel(focus);
+      const focusHtml = focusLab
+        ? `<span class="sb-badge">Focus : ${escapeHtml(focusLab)}</span>`
+        : ``;
+
       const sub = `
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
           <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
           <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(String(data?.criticite_min ?? CRITICITE_MIN))}</span>
+          ${focusHtml}
         </div>
       `;
 
@@ -667,6 +685,26 @@
         return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
       }
 
+      function focusBadge(value, focusKey) {
+        const v = Number(value || 0);
+        const isActive = v > 0;
+
+        if (!isActive) {
+          return badge("0", false);
+        }
+
+        // badge cliquable (sans ajouter de CSS)
+        return `
+          <span
+            class="sb-badge sb-badge-accent risk-focus"
+            data-focus="${escapeHtml(focusKey)}"
+            title="Afficher le détail: ${escapeHtml(focusKey)}"
+            style="cursor:pointer; user-select:none;">
+            ${escapeHtml(String(v))}
+          </span>
+        `;
+      }
+
       return `
         <div class="table-wrap" style="margin-top:10px;">
           <table class="sb-table" id="tblRiskPostesFragiles">
@@ -692,9 +730,9 @@
                   <tr class="risk-poste-row" data-id_poste="${escapeHtml(r.id_poste || "")}" style="cursor:pointer;">
                     <td style="font-weight:700;">${escapeHtml(poste)}</td>
                     <td>${escapeHtml(svc)}</td>
-                    <td class="col-center">${a ? badge(String(a), true) : badge("0", false)}</td>
-                    <td class="col-center">${b ? badge(String(b), true) : badge("0", false)}</td>
-                    <td class="col-center">${c ? badge(String(c), true) : badge("0", false)}</td>
+                    <td class="col-center">${focusBadge(a, "critiques-sans-porteur")}</td>
+                    <td class="col-center">${focusBadge(b, "porteur-unique")}</td>
+                    <td class="col-center">${focusBadge(c, "total-fragiles")}</td>
                   </tr>
                 `;
               }).join("")}
@@ -703,6 +741,8 @@
         </div>
       `;
     }
+
+
 
     function renderTableCompetences(rows) {
       const list = Array.isArray(rows) ? rows : [];
@@ -1013,26 +1053,44 @@
       });
     }
 
-    if (tabA) tabA.addEventListener("click", () => setAnalysePosteTab("competences"));
-    if (tabB) tabB.addEventListener("click", () => setAnalysePosteTab("couverture"));
+        if (tabA) tabA.addEventListener("click", () => setAnalysePosteTab("competences"));
+        if (tabB) tabB.addEventListener("click", () => setAnalysePosteTab("couverture"));
 
-    // ==============================
-    // Click délégué: lignes "Poste fragile" (survit aux rerender)
-    // ==============================
-    const analyseBody = byId("analyseDetailBody");
-    if (analyseBody) {
-      analyseBody.addEventListener("click", async (ev) => {
-        const tr = ev.target.closest("tr.risk-poste-row[data-id_poste]");
-        if (!tr) return;
+            // ==============================
+            // Click délégué: lignes "Poste fragile" (survit aux rerender)
+            // - clic colonne "Critiques sans porteur" => focus
+            // - clic colonne "Porteur unique" => focus
+            // - clic colonne "Total fragiles" => focus
+            // ==============================
+            const analyseBody = byId("analyseDetailBody");
+            if (analyseBody) {
+              analyseBody.addEventListener("click", async (ev) => {
+                const tr = ev.target.closest("tr.risk-poste-row[data-id_poste]");
+                if (!tr) return;
 
-        const id_poste = (tr.getAttribute("data-id_poste") || "").trim();
-        if (!id_poste) return;
+                const id_poste = (tr.getAttribute("data-id_poste") || "").trim();
+                if (!id_poste) return;
 
-        const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+                const id_service = (byId("analyseServiceSelect")?.value || "").trim();
 
-        await showAnalysePosteDetailModal(portal, id_poste, id_service);
-      });
-    }
+                // Détecter la colonne cliquée
+                let focusKey = "";
+                const td = ev.target.closest("td");
+                if (td && td.parentElement === tr) {
+                  const tds = Array.from(tr.children).filter(n => n && n.tagName === "TD");
+                  const idx = tds.indexOf(td);
+
+                  // 0: Poste | 1: Service | 2: Critiques sans porteur | 3: Porteur unique | 4: Total fragiles
+                  if (idx === 2) focusKey = "critiques-sans-porteur";
+                  else if (idx === 3) focusKey = "porteur-unique";
+                  else if (idx === 4) focusKey = "total-fragiles";
+                }
+
+                await showAnalysePosteDetailModal(portal, id_poste, id_service, focusKey);
+              });
+            }
+
+
 
   }
 
