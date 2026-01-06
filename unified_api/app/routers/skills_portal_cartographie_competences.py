@@ -620,7 +620,7 @@ def get_cartographie_cell_detail(
                         e.id_poste_actuel,
                         COALESCE(p.intitule_poste, '') AS intitule_poste
                     FROM comp_scope cs
-                    JOIN public.tbl_effectif_client_comp ec
+                    JOIN public.tbl_effectif_client_competence ec
                       ON ec.id_comp = cs.id_comp
                     JOIN public.tbl_effectif_client e
                       ON e.id_effectif = ec.id_effectif
