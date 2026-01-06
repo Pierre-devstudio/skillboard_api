@@ -685,26 +685,6 @@
         return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
       }
 
-      function focusBadge(value, focusKey) {
-        const v = Number(value || 0);
-        const isActive = v > 0;
-
-        if (!isActive) {
-          return badge("0", false);
-        }
-
-        // badge cliquable (sans ajouter de CSS)
-        return `
-          <span
-            class="sb-badge sb-badge-accent risk-focus"
-            data-focus="${escapeHtml(focusKey)}"
-            title="Afficher le détail: ${escapeHtml(focusKey)}"
-            style="cursor:pointer; user-select:none;">
-            ${escapeHtml(String(v))}
-          </span>
-        `;
-      }
-
       return `
         <div class="table-wrap" style="margin-top:10px;">
           <table class="sb-table" id="tblRiskPostesFragiles">
@@ -728,11 +708,17 @@
 
                 return `
                   <tr class="risk-poste-row" data-id_poste="${escapeHtml(r.id_poste || "")}" style="cursor:pointer;">
-                    <td style="font-weight:700;">${escapeHtml(poste)}</td>
-                    <td>${escapeHtml(svc)}</td>
-                    <td class="col-center">${focusBadge(a, "critiques-sans-porteur")}</td>
-                    <td class="col-center">${focusBadge(b, "porteur-unique")}</td>
-                    <td class="col-center">${focusBadge(c, "total-fragiles")}</td>
+                    <td data-focus="poste" style="font-weight:700;">${escapeHtml(poste)}</td>
+                    <td data-focus="poste">${escapeHtml(svc)}</td>
+                    <td class="col-center" data-focus="critiques-sans-porteur" title="Voir les compétences critiques sans porteur">
+                      ${a ? badge(String(a), true) : badge("0", false)}
+                    </td>
+                    <td class="col-center" data-focus="porteur-unique" title="Voir les compétences critiques à porteur unique">
+                      ${b ? badge(String(b), true) : badge("0", false)}
+                    </td>
+                    <td class="col-center" data-focus="total-fragiles" title="Voir la synthèse de couverture du poste">
+                      ${c ? badge(String(c), true) : badge("0", false)}
+                    </td>
                   </tr>
                 `;
               }).join("")}
@@ -741,8 +727,6 @@
         </div>
       `;
     }
-
-
 
     function renderTableCompetences(rows) {
       const list = Array.isArray(rows) ? rows : [];
@@ -1089,8 +1073,6 @@
                 await showAnalysePosteDetailModal(portal, id_poste, id_service, focusKey);
               });
             }
-
-
 
   }
 
