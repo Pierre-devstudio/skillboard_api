@@ -294,10 +294,22 @@
     }
   }
 
-  function renderPostePorteurs(porteurs) {
+  function renderPostePorteurs(porteurs, idPosteAnalyse) {
     const list = Array.isArray(porteurs) ? porteurs : [];
     if (!list.length) {
       return `<div class="card-sub" style="margin-top:6px; color:#6b7280;">Aucun porteur</div>`;
+    }
+
+    function mapNiveauActuel(raw) {
+      const s = (raw ?? "").toString().trim().toLowerCase();
+      if (!s) return "—";
+
+      if (s === "initial") return "Initial - A";
+      if (s === "avancé" || s === "avance" || s === "avancee" || s === "avancée" || s === "avancee ") return "Avancé - B";
+      if (s === "expert") return "Expert - C";
+
+      // fallback si jamais tu as d'autres valeurs
+      return (raw ?? "").toString().trim() || "—";
     }
 
     const max = 8;
@@ -308,18 +320,36 @@
       const nom = (p.nom_effectif || "").trim();
       const full = `${prenom} ${nom}`.trim() || "—";
 
-      const niv = (p.niveau_actuel || "").trim() || "—";
-      const poste = (p.intitule_poste || "").trim();
+      const niv = mapNiveauActuel(p.niveau_actuel);
+
+      // On n'affiche plus le poste, uniquement le service (si tu veux rien du tout, mets right = "")
       const svc = (p.nom_service || "").trim();
-      const right = poste || svc || "—";
+      const right = svc || "—";
+
+      const posteActuel = (p.id_poste_actuel || "").trim();
+      const posteRef = (idPosteAnalyse || "").trim();
+
+      const isSamePoste = !!posteRef && !!posteActuel && posteActuel === posteRef;
+      const sqColor = isSamePoste ? "#16a34a" : "#f59e0b"; // vert / orange
+      const sqTitle = isSamePoste ? "Poste identique" : "Poste différent / non renseigné";
 
       return `
         <div style="display:flex; justify-content:space-between; gap:10px;">
-          <span style="font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-            ${escapeHtml(full)}
-            <span style="font-weight:600; color:#6b7280; font-size:12px;"> (${escapeHtml(niv)})</span>
+          <span style="display:flex; align-items:center; gap:8px; padding-left:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            <span title="${escapeHtml(sqTitle)}"
+                  style="width:10px; height:10px; border-radius:2px; background:${sqColor}; border:1px solid rgba(0,0,0,.12); flex:0 0 auto;">
+            </span>
+
+            <span style="font-weight:600; color:#111827; font-size:12px; overflow:hidden; text-overflow:ellipsis;">
+              ${escapeHtml(full)}
+            </span>
+
+            <span style="font-weight:600; color:#6b7280; font-size:11px; flex:0 0 auto;">
+              (${escapeHtml(niv)})
+            </span>
           </span>
-          <span style="color:#6b7280; font-size:12px; white-space:nowrap;">
+
+          <span style="color:#6b7280; font-size:11px; white-space:nowrap;">
             ${escapeHtml(right)}
           </span>
         </div>
@@ -332,6 +362,7 @@
 
     return `<div style="margin-top:6px; display:flex; flex-direction:column; gap:4px;">${rows}${more}</div>`;
   }
+
 
   function renderAnalysePosteCompetencesTab(data) {
     const host = byId("analysePosteTabCompetences");
@@ -377,7 +408,7 @@
                   ? `<span class="sb-badge sb-badge-accent">${nb}</span>`
                   : `<span class="sb-badge">0</span>`;
 
-                const porteursHtml = renderPostePorteurs(porteurs);
+                const porteursHtml = renderPostePorteurs(porteurs, data?.poste?.id_poste);
 
                 return `
                   <tr>
