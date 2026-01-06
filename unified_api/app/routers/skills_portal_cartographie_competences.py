@@ -415,3 +415,194 @@ def get_cartographie_matrice(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get("/skills/cartographie/cell/{id_contact}")
+def get_cartographie_cell_detail(
+    id_contact: str,
+    id_poste: str = Query(...),
+    id_domaine: Optional[str] = Query(default=None),
+    id_service: Optional[str] = Query(default=None),  # pour rester cohérent avec le filtre en cours
+    etat: Optional[str] = Query(default="active"),
+    include_masque: bool = Query(default=False),
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+
+                # --- id_ent depuis le contact
+                cur.execute(
+                    """
+                    SELECT code_ent
+                    FROM public.tbl_contact
+                    WHERE id_contact = %s
+                    LIMIT 1
+                    """,
+                    (id_contact,)
+                )
+                c = cur.fetchone()
+                if not c or not c.get("code_ent"):
+                    raise HTTPException(status_code=404, detail="Contact introuvable")
+                id_ent = c["code_ent"]
+
+                # --- scope postes (cohérent avec ton filtre service)
+                svc_where = "TRUE"
+                svc_params: List[Any] = []
+
+                if id_service:
+                    if id_service == "__NON_LIE__":
+                        svc_where = "(p.id_service IS NULL OR p.id_service = '')"
+                    else:
+                        svc_where = "p.id_service = %s"
+                        svc_params.append(id_service)
+
+                postes_cte = f"""
+                postes_scope AS (
+                    SELECT
+                        p.id_poste,
+                        p.codif_poste,
+                        p.intitule_poste,
+                        p.id_service,
+                        COALESCE(o.nom_service, '') AS nom_service
+                    FROM public.tbl_fiche_poste p
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                        ON o.id_ent = p.id_ent
+                       AND o.id_service = p.id_service
+                    WHERE
+                        p.id_ent = %s
+                        AND COALESCE(p.actif, TRUE) = TRUE
+                        AND {svc_where}
+                )
+                """
+
+                # --- check poste dans le scope
+                cur.execute(
+                    f"""
+                    WITH {postes_cte}
+                    SELECT *
+                    FROM postes_scope
+                    WHERE id_poste = %s
+                    LIMIT 1
+                    """,
+                    tuple([id_ent] + svc_params + [id_poste])
+                )
+                poste = cur.fetchone()
+                if not poste:
+                    raise HTTPException(status_code=404, detail="Poste hors périmètre (service) ou introuvable")
+
+                # --- filtres compétence
+                where_parts: List[str] = ["fpc.id_poste = %s"]
+                params: List[Any] = [id_poste]
+
+                if id_domaine:
+                    where_parts.append("c.domaine = %s")
+                    params.append(id_domaine)
+
+                etat_norm = (etat or "").strip().lower()
+                if etat_norm:
+                    where_parts.append("c.etat = %s")
+                    params.append(etat_norm)
+
+                if not include_masque:
+                    where_parts.append("COALESCE(c.masque, FALSE) = FALSE")
+
+                where_sql = " AND ".join(where_parts)
+
+                # --- liste des compétences (drilldown)
+                sql = f"""
+                WITH {postes_cte}
+                SELECT
+                    c.id_comp,
+                    c.code,
+                    c.intitule,
+                    c.description,
+                    c.domaine AS id_domaine_competence,
+                    c.etat,
+                    c.masque,
+
+                    fpc.niveau_requis,
+                    fpc.poids_criticite,
+                    fpc.freq_usage,
+                    fpc.impact_resultat,
+                    fpc.dependance,
+                    fpc.date_valorisation,
+
+                    d.titre,
+                    d.titre_court,
+                    d.couleur
+                FROM public.tbl_fiche_poste_competence fpc
+                JOIN postes_scope ps
+                  ON ps.id_poste = fpc.id_poste
+                JOIN public.tbl_competence c
+                  ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                LEFT JOIN public.tbl_domaine_competence d
+                  ON d.id_domaine_competence = c.domaine
+                WHERE {where_sql}
+                ORDER BY
+                    COALESCE(d.titre_court, d.titre, ''),
+                    c.code
+                """
+
+                cur.execute(
+                    sql,
+                    tuple([id_ent] + svc_params + params)
+                )
+                rows = cur.fetchall() or []
+
+                # Domaine (si demandé)
+                domaine_obj = None
+                if id_domaine:
+                    # si pas de compétence trouvée, on renvoie quand même un domaine minimal
+                    # (le front affichera "Domaine" sinon)
+                    for r in rows:
+                        if r.get("id_domaine_competence") == id_domaine:
+                            domaine_obj = {
+                                "id_domaine_competence": r.get("id_domaine_competence"),
+                                "titre": r.get("titre"),
+                                "titre_court": r.get("titre_court"),
+                                "couleur": r.get("couleur"),
+                            }
+                            break
+                    if domaine_obj is None:
+                        domaine_obj = {"id_domaine_competence": id_domaine}
+
+                # réponse clean
+                return {
+                    "poste": {
+                        "id_poste": poste.get("id_poste"),
+                        "codif_poste": poste.get("codif_poste"),
+                        "intitule_poste": poste.get("intitule_poste"),
+                        "id_service": poste.get("id_service"),
+                        "nom_service": poste.get("nom_service"),
+                    },
+                    "domaine": domaine_obj,
+                    "nb_competences": len(rows),
+                    "competences": [
+                        {
+                            "id_comp": r.get("id_comp"),
+                            "code": r.get("code"),
+                            "intitule": r.get("intitule"),
+                            "description": r.get("description"),
+                            "id_domaine_competence": r.get("id_domaine_competence"),
+                            "etat": r.get("etat"),
+                            "masque": r.get("masque"),
+                            "niveau_requis": r.get("niveau_requis"),
+                            "poids_criticite": r.get("poids_criticite"),
+                            "freq_usage": r.get("freq_usage"),
+                            "impact_resultat": r.get("impact_resultat"),
+                            "dependance": r.get("dependance"),
+                            "date_valorisation": r.get("date_valorisation"),
+                            "domaine": {
+                                "id_domaine_competence": r.get("id_domaine_competence"),
+                                "titre": r.get("titre"),
+                                "titre_court": r.get("titre_court"),
+                                "couleur": r.get("couleur"),
+                            }
+                        }
+                        for r in rows
+                    ]
+                }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur détail cellule cartographie: {str(e)}")

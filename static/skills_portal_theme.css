@@ -354,8 +354,8 @@
 #view-cartographie-competences .hm-table thead th{
   position:sticky;
   top:0;
-  background:#fff;
-  z-index:2;
+  background:#fafafa;
+  z-index:4;
   font-weight:600;
   font-size:13px;
   color:#111827;
@@ -380,7 +380,7 @@
   position:sticky;
   left:0;
   background:#fff;
-  z-index:1;
+  z-index:3;
   border-right:1px solid #eef2f7;
 }
 
@@ -410,6 +410,7 @@
   vertical-align:middle;
   margin-right:8px;
   background:#e5e7eb;
+  flex:0 0 auto;
 }
 
 #view-cartographie-competences .hm-dom-txt{
@@ -427,11 +428,15 @@
   height:46px;
   font-weight:700;
   border-left:1px solid #f3f4f6;
-  transition: transform .08s ease;
+  border-radius:10px;
+  cursor:pointer;
+  user-select:none;
+  transition: filter .12s ease, transform .06s ease;
 }
 
 #view-cartographie-competences .hm-cell:hover{
-  transform: scale(1.02);
+  filter: brightness(0.98);
+  transform: translateY(-1px);
 }
 
 #view-cartographie-competences .hm-totalhead,
@@ -451,8 +456,9 @@
 
 /* Niveaux de charge (palette sobre) */
 #view-cartographie-competences .hm-lvl-0{ background:#ffffff; }
-#view-cartographie-competences .hm-lvl-1{ background:#fff5f5; }
-#view-cartographie-competences .hm-lvl-2{ background:#ffe4e6; }
-#view-cartographie-competences .hm-lvl-3{ background:#fecdd3; }
-#view-cartographie-competences .hm-lvl-4{ background:#fda4af; }
-#view-cartographie-competences .hm-lvl-5{ background:#fb7185; }
+#view-cartographie-competences .hm-lvl-1{ background:color-mix(in srgb, var(--accent) 10%, #fff); }
+#view-cartographie-competences .hm-lvl-2{ background:color-mix(in srgb, var(--accent) 18%, #fff); }
+#view-cartographie-competences .hm-lvl-3{ background:color-mix(in srgb, var(--accent) 26%, #fff); }
+#view-cartographie-competences .hm-lvl-4{ background:color-mix(in srgb, var(--accent) 34%, #fff); }
+#view-cartographie-competences .hm-lvl-5{ background:color-mix(in srgb, var(--accent) 42%, #fff); }
+

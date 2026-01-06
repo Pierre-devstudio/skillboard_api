@@ -207,6 +207,19 @@
     return data;
   }
 
+  async function fetchCellDetail(portal, id_poste, id_domaine, filters) {
+  const params = new URLSearchParams();
+  params.set("id_poste", id_poste);
+
+  if (id_domaine) params.set("id_domaine", id_domaine);
+
+  // pour rester cohérent avec le filtre Service en cours
+  if (filters?.id_service) params.set("id_service", filters.id_service);
+
+  const url = `${portal.apiBase}/skills/cartographie/cell/${encodeURIComponent(portal.contactId)}?${params.toString()}`;
+  return await portal.apiJson(url);
+  }
+
   function buildMatrix(data) {
     const rawDomaines = Array.isArray(data?.domaines) ? data.domaines : (Array.isArray(data?.domains) ? data.domains : []);
     const postes = Array.isArray(data?.postes) ? data.postes : (Array.isArray(data?.rows) ? data.rows : []);
@@ -648,48 +661,134 @@
     }
 
     // Click cellule => modal résumé (V1)
+    // Click cellule => modal drilldown (liste compétences)
     if (grid) {
-      grid.addEventListener("click", (ev) => {
-        const cell = ev.target.closest("[data-id_poste][data-id_domaine]");
-        if (!cell) return;
+      grid.addEventListener("click", async (ev) => {
+        // Support: rendu WOW (table td.hm-cell) + ancien rendu (div dataset)
+        const td = ev.target.closest("td.hm-cell[data-poste][data-dom]");
+        const dv = ev.target.closest("div[data-id_poste][data-id_domaine]");
 
-        const id_poste = cell.getAttribute("data-id_poste");
-        const id_dom = cell.getAttribute("data-id_domaine");
-        const val = Number(cell.getAttribute("data-value") || 0);
+        let id_poste = "";
+        let id_dom = "";
 
+        if (td) {
+          id_poste = (td.getAttribute("data-poste") || "").trim();
+          id_dom = (td.getAttribute("data-dom") || "").trim();
+        } else if (dv) {
+          id_poste = (dv.dataset.id_poste || "").trim();
+          id_dom = (dv.dataset.id_domaine || "").trim();
+        } else {
+          return; // pas une cellule
+        }
+
+        if (!id_poste || !id_dom) return;
+
+        const f = getFilters();
         const selS = byId("mapServiceSelect");
         const scope = selS ? (selS.options[selS.selectedIndex]?.textContent || "Tous les services") : "Tous les services";
 
-        const selD = byId("mapDomaineSelect");
-        let domLabel = "Domaine";
-        if (selD) {
-          const opt = Array.from(selD.options).find(o => o.value === id_dom);
-          domLabel = opt ? opt.textContent : domLabel;
+        // modal "loading" instant (sinon l’utilisateur croit que ça ne fait rien)
+        openModal(
+          "Détail cellule",
+          `<span class="sb-badge">Service : ${escapeHtml(scope)}</span>`,
+          `<div class="card" style="padding:12px; margin:0;">
+            <div class="card-sub" style="margin:0;">Chargement…</div>
+          </div>`
+        );
+
+        try {
+          const data = await fetchCellDetail(portal, id_poste, id_dom, f);
+
+          const poste = data?.poste || {};
+          const dom = data?.domaine || {};
+          const list = Array.isArray(data?.competences) ? data.competences : [];
+
+          const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
+
+          const domLabel = (dom.titre_court || dom.titre || dom.id_domaine_competence || "Domaine").toString();
+          const domColor = normalizeColor(dom.couleur) || "#e5e7eb";
+
+          const sub = `
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
+              <span style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; color:#374151; background:#fff;">
+                <span style="display:inline-block; width:10px; height:10px; border-radius:999px; border:1px solid #d1d5db; background:${escapeHtml(domColor)};"></span>
+                <span>${escapeHtml(domLabel)}</span>
+              </span>
+              <span class="sb-badge sb-badge-accent">${list.length} compétence(s)</span>
+            </div>
+          `;
+
+          let body = `
+            <div class="row" style="flex-direction:column; gap:12px;">
+              <div class="card" style="padding:12px; margin:0;">
+                <div class="card-title" style="margin-bottom:6px;">Synthèse</div>
+                <div class="card-sub" style="margin:0;">
+                  Poste : <b>${escapeHtml(posteLabel)}</b><br/>
+                  Domaine : <b>${escapeHtml(domLabel)}</b>
+                </div>
+              </div>
+          `;
+
+          if (!list.length) {
+            body += `
+              <div class="card" style="padding:12px; margin:0;">
+                <div class="card-sub" style="margin:0;">Aucune compétence trouvée pour cette cellule.</div>
+              </div>
+            `;
+          } else {
+            body += `
+              <div class="card" style="padding:12px; margin:0;">
+                <div class="card-title" style="margin-bottom:6px;">Compétences requises</div>
+                <div class="table-wrap" style="margin-top:10px;">
+                  <table class="sb-table">
+                    <thead>
+                      <tr>
+                        <th style="width:90px;">Code</th>
+                        <th>Compétence</th>
+                        <th class="col-center" style="width:110px;">Niveau</th>
+                        <th class="col-center" style="width:90px;">Criticité</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${list.map(c => {
+                        const code = escapeHtml(c.code || "—");
+                        const intit = escapeHtml(c.intitule || "—");
+                        const niv = escapeHtml(c.niveau_requis || "—");
+                        const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "—" : escapeHtml(String(c.poids_criticite));
+
+                        return `
+                          <tr>
+                            <td style="font-weight:700; white-space:nowrap;">${code}</td>
+                            <td>${intit}</td>
+                            <td class="col-center" style="white-space:nowrap;">${niv}</td>
+                            <td class="col-center" style="white-space:nowrap;">${crit}</td>
+                          </tr>
+                        `;
+                      }).join("")}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            `;
+          }
+
+          body += `</div>`;
+
+          openModal(posteLabel || "Détail cellule", sub, body);
+
+        } catch (e) {
+          openModal(
+            "Détail cellule",
+            `<span class="sb-badge">Service : ${escapeHtml(scope)}</span>`,
+            `<div class="card" style="padding:12px; margin:0;">
+              <div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>
+            </div>`
+          );
         }
-
-        const title = `Cellule ${escapeHtml(domLabel)}`;
-        const sub = `<span class="sb-badge">Service : ${escapeHtml(scope)}</span>`;
-        const body = `
-          <div class="row" style="flex-direction:column; gap:12px;">
-            <div class="card" style="padding:12px; margin:0;">
-              <div class="card-title" style="margin-bottom:6px;">Résumé</div>
-              <div class="card-sub" style="margin:0;">
-                Cette cellule contient <b>${val}</b> compétence(s) requise(s) pour ce poste dans ce domaine.
-              </div>
-            </div>
-
-            <div class="card" style="padding:12px; margin:0;">
-              <div class="card-title" style="margin-bottom:6px;">Drilldown</div>
-              <div class="card-sub" style="margin:0;">
-                Prochaine étape: afficher la <b>liste des compétences</b> derrière cette cellule (poste + domaine).
-              </div>
-            </div>
-          </div>
-        `;
-
-        openModal(title, sub, body);
       });
     }
+
 
     const close = () => closeModal();
     if (btnX) btnX.addEventListener("click", close);
