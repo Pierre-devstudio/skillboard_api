@@ -551,8 +551,6 @@ def get_cartographie_cell_detail(
                 # Domaine (si demandé)
                 domaine_obj = None
                 if id_domaine:
-                    # si pas de compétence trouvée, on renvoie quand même un domaine minimal
-                    # (le front affichera "Domaine" sinon)
                     for r in rows:
                         if r.get("id_domaine_competence") == id_domaine:
                             domaine_obj = {
@@ -565,6 +563,106 @@ def get_cartographie_cell_detail(
                     if domaine_obj is None:
                         domaine_obj = {"id_domaine_competence": id_domaine}
 
+                # --- construction competences (modifiable / enrichissable)
+                competences = []
+                for r in rows:
+                    competences.append({
+                        "id_comp": r.get("id_comp"),
+                        "code": r.get("code"),
+                        "intitule": r.get("intitule"),
+                        "description": r.get("description"),
+                        "id_domaine_competence": r.get("id_domaine_competence"),
+                        "etat": r.get("etat"),
+                        "masque": r.get("masque"),
+                        "niveau_requis": r.get("niveau_requis"),
+                        "poids_criticite": r.get("poids_criticite"),
+                        "freq_usage": r.get("freq_usage"),
+                        "impact_resultat": r.get("impact_resultat"),
+                        "dependance": r.get("dependance"),
+                        "date_valorisation": r.get("date_valorisation"),
+                        "domaine": {
+                            "id_domaine_competence": r.get("id_domaine_competence"),
+                            "titre": r.get("titre"),
+                            "titre_court": r.get("titre_court"),
+                            "couleur": r.get("couleur"),
+                        },
+                        # champs ajoutés (couverture)
+                        "nb_porteurs": 0,
+                        "porteurs": []
+                    })
+
+                # ============================
+                # Couverture collaborateurs (porteurs) pour ces compétences
+                # ============================
+                ids_comp = [c.get("id_comp") for c in competences if c.get("id_comp")]
+                if ids_comp:
+                    eff_where = "TRUE"
+                    eff_params: List[Any] = []
+
+                    if id_service:
+                        if id_service == "__NON_LIE__":
+                            eff_where = "(e.id_service IS NULL OR e.id_service = '')"
+                        else:
+                            eff_where = "e.id_service = %s"
+                            eff_params.append(id_service)
+
+                    sql_porteurs = f"""
+                    WITH comp_scope AS (
+                        SELECT UNNEST(%s::text[]) AS id_comp
+                    )
+                    SELECT
+                        cs.id_comp,
+                        e.id_effectif,
+                        e.prenom_effectif,
+                        e.nom_effectif,
+                        e.id_service,
+                        COALESCE(o.nom_service, '') AS nom_service,
+                        e.id_poste_actuel,
+                        COALESCE(p.intitule_poste, '') AS intitule_poste
+                    FROM comp_scope cs
+                    JOIN public.tbl_effectif_client_comp ec
+                      ON ec.id_comp = cs.id_comp
+                    JOIN public.tbl_effectif_client e
+                      ON e.id_effectif = ec.id_effectif
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = e.id_ent
+                     AND o.id_service = e.id_service
+                    LEFT JOIN public.tbl_fiche_poste p
+                      ON p.id_poste = e.id_poste_actuel
+                    WHERE
+                        e.id_ent = %s
+                        AND COALESCE(e.archive, FALSE) = FALSE
+                        AND {eff_where}
+                    ORDER BY cs.id_comp, e.nom_effectif, e.prenom_effectif
+                    """
+
+                    cur.execute(
+                        sql_porteurs,
+                        tuple([ids_comp, id_ent] + eff_params)
+                    )
+                    rows_p = cur.fetchall() or []
+
+                    porteurs_by_comp = {}
+                    for rp in rows_p:
+                        cid = rp.get("id_comp")
+                        if not cid:
+                            continue
+                        porteurs_by_comp.setdefault(cid, []).append({
+                            "id_effectif": rp.get("id_effectif"),
+                            "prenom_effectif": rp.get("prenom_effectif"),
+                            "nom_effectif": rp.get("nom_effectif"),
+                            "id_service": rp.get("id_service"),
+                            "nom_service": rp.get("nom_service"),
+                            "id_poste_actuel": rp.get("id_poste_actuel"),
+                            "intitule_poste": rp.get("intitule_poste"),
+                        })
+
+                    for comp in competences:
+                        cid = comp.get("id_comp")
+                        plist = porteurs_by_comp.get(cid, [])
+                        comp["porteurs"] = plist
+                        comp["nb_porteurs"] = len(plist)
+
                 # réponse clean
                 return {
                     "poste": {
@@ -576,30 +674,7 @@ def get_cartographie_cell_detail(
                     },
                     "domaine": domaine_obj,
                     "nb_competences": len(rows),
-                    "competences": [
-                        {
-                            "id_comp": r.get("id_comp"),
-                            "code": r.get("code"),
-                            "intitule": r.get("intitule"),
-                            "description": r.get("description"),
-                            "id_domaine_competence": r.get("id_domaine_competence"),
-                            "etat": r.get("etat"),
-                            "masque": r.get("masque"),
-                            "niveau_requis": r.get("niveau_requis"),
-                            "poids_criticite": r.get("poids_criticite"),
-                            "freq_usage": r.get("freq_usage"),
-                            "impact_resultat": r.get("impact_resultat"),
-                            "dependance": r.get("dependance"),
-                            "date_valorisation": r.get("date_valorisation"),
-                            "domaine": {
-                                "id_domaine_competence": r.get("id_domaine_competence"),
-                                "titre": r.get("titre"),
-                                "titre_court": r.get("titre_court"),
-                                "couleur": r.get("couleur"),
-                            }
-                        }
-                        for r in rows
-                    ]
+                    "competences": competences
                 }
 
     except HTTPException:

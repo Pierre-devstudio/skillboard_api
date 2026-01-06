@@ -220,6 +220,56 @@
   return await portal.apiJson(url);
   }
 
+    function formatPorteurLabel(p) {
+    if (!p) return "—";
+    const prenom = (p.prenom_effectif || "").trim();
+    const nom = (p.nom_effectif || "").trim();
+    const full = `${prenom} ${nom}`.trim() || "—";
+
+    const poste = (p.intitule_poste || "").trim();
+    const svc = (p.nom_service || "").trim();
+
+    // on préfère le poste, sinon service, sinon rien
+    const right = poste || svc || "";
+
+    return right ? `${full}|||${right}` : `${full}|||`;
+  }
+
+  function renderPorteursMini(porteurs) {
+    const list = Array.isArray(porteurs) ? porteurs : [];
+    if (!list.length) {
+      return `<div class="card-sub" style="margin-top:6px; color:#6b7280;">Aucun porteur</div>`;
+    }
+
+    const max = 6;
+    const shown = list.slice(0, max);
+
+    const rows = shown.map(p => {
+      const packed = formatPorteurLabel(p);
+      const parts = packed.split("|||");
+      const left = parts[0] || "—";
+      const right = parts[1] || "";
+
+      return `
+        <div style="display:flex; justify-content:space-between; gap:10px;">
+          <span style="font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${escapeHtml(left)}
+          </span>
+          <span style="color:#6b7280; font-size:12px; white-space:nowrap;">
+            ${escapeHtml(right || "—")}
+          </span>
+        </div>
+      `;
+    }).join("");
+
+    const more = list.length > max
+      ? `<div class="card-sub" style="margin-top:4px; color:#6b7280;">+ ${list.length - max} autre(s)</div>`
+      : "";
+
+    return `<div style="margin-top:6px; display:flex; flex-direction:column; gap:4px;">${rows}${more}</div>`;
+  }
+
+
   function buildMatrix(data) {
     const rawDomaines = Array.isArray(data?.domaines) ? data.domaines : (Array.isArray(data?.domains) ? data.domains : []);
     const postes = Array.isArray(data?.postes) ? data.postes : (Array.isArray(data?.rows) ? data.rows : []);
@@ -741,6 +791,7 @@
             body += `
               <div class="card" style="padding:12px; margin:0;">
                 <div class="card-title" style="margin-bottom:6px;">Compétences requises</div>
+
                 <div class="table-wrap" style="margin-top:10px;">
                   <table class="sb-table">
                     <thead>
@@ -749,6 +800,7 @@
                         <th>Compétence</th>
                         <th class="col-center" style="width:110px;">Niveau</th>
                         <th class="col-center" style="width:90px;">Criticité</th>
+                        <th class="col-center" style="width:110px;">Couverture</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -758,21 +810,42 @@
                         const niv = escapeHtml(c.niveau_requis || "—");
                         const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "—" : escapeHtml(String(c.poids_criticite));
 
+                        const porteurs = Array.isArray(c.porteurs) ? c.porteurs : [];
+                        const nb = (c.nb_porteurs === null || c.nb_porteurs === undefined)
+                          ? porteurs.length
+                          : Number(c.nb_porteurs || 0);
+
+                        const badge = nb > 0
+                          ? `<span class="sb-badge sb-badge-accent">${nb}</span>`
+                          : `<span class="sb-badge">0</span>`;
+
+                        // Liste des porteurs sous l’intitulé
+                        const porteursHtml = renderPorteursMini(porteurs);
+
                         return `
                           <tr>
                             <td style="font-weight:700; white-space:nowrap;">${code}</td>
-                            <td>${intit}</td>
+                            <td>
+                              ${intit}
+                              ${porteursHtml}
+                            </td>
                             <td class="col-center" style="white-space:nowrap;">${niv}</td>
                             <td class="col-center" style="white-space:nowrap;">${crit}</td>
+                            <td class="col-center" style="white-space:nowrap;">${badge}</td>
                           </tr>
                         `;
                       }).join("")}
                     </tbody>
                   </table>
                 </div>
+
+                <div class="card-sub" style="margin-top:10px; color:#6b7280;">
+                  Couverture = nombre de collaborateurs porteurs de la compétence (selon le périmètre filtré).
+                </div>
               </div>
             `;
           }
+
 
           body += `</div>`;
 
