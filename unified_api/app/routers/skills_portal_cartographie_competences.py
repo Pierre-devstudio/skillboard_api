@@ -623,7 +623,7 @@ def get_cartographie_cell_detail(
                     JOIN public.tbl_effectif_client_competence ec
                       ON ec.id_comp = cs.id_comp
                     JOIN public.tbl_effectif_client e
-                      ON e.id_effectif = ec.id_effectif
+                      ON e.id_effectif = ec.id_effectif_client
                     LEFT JOIN public.tbl_entreprise_organigramme o
                       ON o.id_ent = e.id_ent
                      AND o.id_service = e.id_service
