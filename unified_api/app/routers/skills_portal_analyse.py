@@ -963,7 +963,7 @@ def get_analyse_matching_poste(
                 # 1) Poste (sécurisation: doit être dans postes_scope)
                 cur.execute(
                     f"""
-                    {cte_sql}
+                    WITH {cte_sql}
                     SELECT
                         fp.id_poste, fp.codif_poste, fp.intitule_poste, fp.id_service,
                         COALESCE(o.nom_service, '') AS nom_service
@@ -985,7 +985,7 @@ def get_analyse_matching_poste(
                 # 2) Compétences requises + poids
                 cur.execute(
                     f"""
-                    {cte_sql}
+                    WITH {cte_sql}
                     SELECT
                         fpc.id_competence AS id_comp,
                         fpc.niveau_requis,
@@ -1027,7 +1027,7 @@ def get_analyse_matching_poste(
                 # 3) Effectifs scope + identité
                 cur.execute(
                     f"""
-                    {cte_sql}
+                    WITH {cte_sql}
                     SELECT
                         e.id_effectif,
                         e.prenom_effectif,
@@ -1051,7 +1051,7 @@ def get_analyse_matching_poste(
                 # 4) Derniers scores (/24) sur les compétences requises
                 cur.execute(
                     f"""
-                    {cte_sql}
+                    WITH {cte_sql}
                     SELECT
                         ec.id_effectif_client AS id_effectif,
                         ec.id_comp,
