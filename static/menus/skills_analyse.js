@@ -259,6 +259,272 @@
   }
 
     // ==============================
+  // MATCHING (MVP)
+  // - basé sur /risques/poste (compétences requises + porteurs)
+  // - liste postes = "postes fragiles" (source risques)
+  // ==============================
+  const _matchPostesCache = new Map(); // key: id_service -> items[]
+  let _matchReqSeq = 0;
+  let _matchSelectedPoste = "";
+
+  function nivReqToNum(raw) {
+    const s = (raw ?? "").toString().trim().toUpperCase();
+    if (s === "A") return 1;
+    if (s === "B") return 2;
+    if (s === "C") return 3;
+    return 0;
+  }
+
+  function nivActToNum(raw) {
+    const s = (raw ?? "").toString().trim().toLowerCase();
+    if (s === "initial") return 1;
+    if (s === "avancé" || s === "avance" || s === "avancee" || s === "avancée") return 2;
+    if (s === "expert") return 3;
+    return 0;
+  }
+
+  function scoreComp(lvlAct, lvlReq) {
+    if (!lvlAct) return 0;                 // absent
+    if (lvlAct >= lvlReq) return 1;        // OK
+    if (lvlAct === (lvlReq - 1)) return 0.6; // juste en dessous
+    return 0.2;                            // trop bas
+  }
+
+  async function fetchMatchingPostes(portal, id_service) {
+    const svc = (id_service || "").trim();
+    const key = svc || "__ALL__";
+    if (_matchPostesCache.has(key)) return _matchPostesCache.get(key);
+
+    // On réutilise l’API "postes-fragiles" comme liste de postes prioritaire
+    const data = await fetchRisquesDetail(portal, "postes-fragiles", svc, 500);
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    _matchPostesCache.set(key, items);
+    return items;
+  }
+
+  function renderMatchingShell() {
+    return `
+      <div style="display:flex; gap:12px; align-items:stretch; min-height:360px;">
+        <div class="card" style="padding:12px; margin:0; width:360px; flex:0 0 auto;">
+          <div class="card-title" style="margin-bottom:6px;">Postes (priorité: fragiles)</div>
+          <div class="card-sub" style="margin:0;">Clique un poste pour obtenir les candidats internes.</div>
+          <div id="matchPosteList" style="margin-top:10px; display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
+
+        <div class="card" style="padding:12px; margin:0; flex:1;">
+          <div class="card-title" style="margin-bottom:6px;">Candidats</div>
+          <div class="card-sub" style="margin:0;">Score pondéré (niveau + criticité). Écarts critiques visibles.</div>
+          <div id="matchResult" style="margin-top:10px;">
+            <div class="card-sub" style="margin:0; color:#6b7280;">Sélectionne un poste.</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderMatchingPosteList(items, selectedId) {
+    const host = byId("matchPosteList");
+    if (!host) return;
+
+    const list = Array.isArray(items) ? items : [];
+    if (!list.length) {
+      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun poste trouvé.</div>`;
+      return;
+    }
+
+    host.innerHTML = list.map(r => {
+      const idp = (r.id_poste || "").toString().trim();
+      const poste = `${(r.codif_poste || "").trim()}${r.codif_poste ? " — " : ""}${(r.intitule_poste || "").trim()}`.trim() || "—";
+      const svc = (r.nom_service || "").trim() || "—";
+
+      const isActive = selectedId && idp === selectedId;
+      const style = isActive
+        ? `border-color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, #fff);`
+        : `border-color:#e5e7eb; background:#fff;`;
+
+      return `
+        <button type="button"
+                class="btn-secondary"
+                data-match-id_poste="${escapeHtml(idp)}"
+                style="text-align:left; margin:0; ${style}">
+          <div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${escapeHtml(poste)}
+          </div>
+          <div style="font-size:11px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${escapeHtml(svc)}
+          </div>
+        </button>
+      `;
+    }).join("");
+  }
+
+  function computeCandidatesFromPosteDetail(data) {
+    const comps = Array.isArray(data?.competences) ? data.competences : [];
+    if (!comps.length) return [];
+
+    // Liste des compétences requises + poids
+    const compReq = comps.map(c => {
+      const code = (c.code || c.id_competence || "").toString().trim(); // on privilégie code
+      const lvlReq = nivReqToNum(c.niveau_requis);
+      const w = Number(c.poids_criticite || 1);
+      const isCrit = w >= CRITICITE_MIN;
+      return { code, lvlReq, w, isCrit, raw: c };
+    }).filter(x => x.code);
+
+    const totalWeight = compReq.reduce((s, x) => s + (x.w || 0), 0) || 1;
+
+    // candLevels[candId][compCode] = lvlAct
+    const cand = new Map();        // id -> identity
+    const candLevels = new Map();  // id -> Map(compCode -> lvlAct)
+
+    compReq.forEach(cr => {
+      const porteurs = Array.isArray(cr.raw?.porteurs) ? cr.raw.porteurs : [];
+      porteurs.forEach(p => {
+        const idEff = (p.id_effectif || p.id_effectif_client || p.id_eff || p.id || "").toString().trim();
+        if (!idEff) return;
+
+        if (!cand.has(idEff)) {
+          const prenom = (p.prenom_effectif || "").trim();
+          const nom = (p.nom_effectif || "").trim();
+          cand.set(idEff, {
+            id_effectif: idEff,
+            prenom,
+            nom,
+            full: `${prenom} ${nom}`.trim() || "—",
+            nom_service: (p.nom_service || "").trim() || "—",
+            id_poste_actuel: (p.id_poste_actuel || "").toString().trim()
+          });
+        }
+
+        if (!candLevels.has(idEff)) candLevels.set(idEff, new Map());
+        candLevels.get(idEff).set(cr.code, nivActToNum(p.niveau_actuel));
+      });
+    });
+
+    // Calcul score par candidat
+    const out = [];
+    cand.forEach((info, idEff) => {
+      const levels = candLevels.get(idEff) || new Map();
+
+      let sum = 0;
+      let nbMissing = 0;
+      let nbUnder = 0;
+      let critMissing = 0;
+      let critUnder = 0;
+
+      compReq.forEach(cr => {
+        const lvlAct = levels.get(cr.code) || 0;
+
+        if (!lvlAct) nbMissing++;
+        else if (lvlAct < cr.lvlReq) nbUnder++;
+
+        if (cr.isCrit) {
+          if (!lvlAct) critMissing++;
+          else if (lvlAct < cr.lvlReq) critUnder++;
+        }
+
+        sum += scoreComp(lvlAct, cr.lvlReq) * cr.w;
+      });
+
+      const pct = Math.round((sum / totalWeight) * 100);
+
+      out.push({
+        ...info,
+        score_pct: pct,
+        nb_missing: nbMissing,
+        nb_under: nbUnder,
+        crit_missing: critMissing,
+        crit_under: critUnder,
+        nb_comp: compReq.length
+      });
+    });
+
+    // Tri: score desc, puis moins de critiques manquantes, puis moins de critiques sous niveau
+    out.sort((a, b) =>
+      (b.score_pct - a.score_pct) ||
+      (a.crit_missing - b.crit_missing) ||
+      (a.crit_under - b.crit_under) ||
+      (a.nb_missing - b.nb_missing)
+    );
+
+    return out;
+  }
+
+  function renderMatchingCandidates(posteLabel, candidates) {
+    const host = byId("matchResult");
+    if (!host) return;
+
+    const list = Array.isArray(candidates) ? candidates : [];
+    if (!list.length) {
+      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun candidat détecté (aucun porteur sur les compétences du poste).</div>`;
+      return;
+    }
+
+    const top = list.slice(0, 30);
+
+    function badge(txt, accent) {
+      const cls = accent ? "sb-badge sb-badge-accent" : "sb-badge";
+      return `<span class="${cls}">${escapeHtml(txt)}</span>`;
+    }
+
+    host.innerHTML = `
+      <div class="card-sub" style="margin:0 0 8px 0;">
+        Poste : <b>${escapeHtml(posteLabel || "—")}</b>
+      </div>
+
+      <div class="table-wrap" style="margin-top:10px;">
+        <table class="sb-table">
+          <thead>
+            <tr>
+              <th>Candidat</th>
+              <th style="width:180px;">Service</th>
+              <th class="col-center" style="width:110px;">Score</th>
+              <th class="col-center" style="width:140px;">Critiques</th>
+              <th class="col-center" style="width:140px;">Manquantes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${top.map(c => {
+              const crit = `${c.crit_missing} abs / ${c.crit_under} sous`;
+              const miss = `${c.nb_missing} abs / ${c.nb_under} sous`;
+              const scoreBadge = c.score_pct >= 80 ? badge(c.score_pct + "%", true) : badge(c.score_pct + "%", false);
+
+              return `
+                <tr>
+                  <td style="font-weight:700;">${escapeHtml(c.full)}</td>
+                  <td>${escapeHtml(c.nom_service)}</td>
+                  <td class="col-center">${scoreBadge}</td>
+                  <td class="col-center">${escapeHtml(crit)}</td>
+                  <td class="col-center">${escapeHtml(miss)}</td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card-sub" style="margin-top:10px; color:#6b7280;">
+        Critiques = poids_criticite ≥ ${CRITICITE_MIN}. Score = moyenne pondérée des compétences requises.
+      </div>
+    `;
+  }
+
+  async function showMatchingForPoste(portal, id_poste, id_service, seqGuard) {
+    const host = byId("matchResult");
+    if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+
+    const data = await fetchAnalysePosteDetail(portal, id_poste, id_service);
+    if (seqGuard && seqGuard !== _matchReqSeq) return;
+
+    const poste = data?.poste || {};
+    const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
+
+    const cands = computeCandidatesFromPosteDetail(data);
+    renderMatchingCandidates(posteLabel, cands);
+  }
+
+    // ==============================
   // Détail COMPETENCE (Risques)
   // ==============================
   const _compDetailCache = new Map();
@@ -890,28 +1156,54 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
     if (meta) meta.textContent = `Service : ${scope}`;
     if (!body) return;
 
-    // -----------------------
-    // MATCHING
-    // -----------------------
-    if (mode === "matching") {
-      if (title) title.textContent = "Matching poste-porteur";
-      if (sub) sub.textContent = "Lecture rapide des options internes. Le détail arrivera avec l’API dédiée.";
-      body.innerHTML = `
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">Ce que vous allez obtenir</div>
-          <div class="card-sub" style="margin:0;">
-            - Shortlists par poste (prêt maintenant / prêt à horizon court)<br/>
-            - Écarts ciblés sur les compétences critiques<br/>
-            - Décision: mobilité, staffing, succession, plan de montée en compétences
-          </div>
-        </div>
-        <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">Résultats (à venir)</div>
-          <div class="card-sub" style="margin:0;">Aucune donnée chargée.</div>
-        </div>
-      `;
-      return;
-    }
+        // -----------------------
+        // MATCHING (MVP)
+        // -----------------------
+        if (mode === "matching") {
+          if (title) title.textContent = "Matching poste-porteur";
+          if (sub) sub.textContent = "Top candidats internes par poste (score pondéré niveau + criticité).";
+
+          const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+
+          body.innerHTML = renderMatchingShell();
+
+          if (!_portalRef) {
+            const host = byId("matchResult");
+            if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Contexte portail indisponible.</div>`;
+            return;
+          }
+
+          const mySeq = ++_matchReqSeq;
+
+          (async () => {
+            try {
+              const postes = await fetchMatchingPostes(_portalRef, id_service);
+              if (mySeq !== _matchReqSeq) return;
+
+              // si le poste sélectionné n’existe plus dans la liste, on reset
+              if (_matchSelectedPoste && !postes.some(p => (p.id_poste || "").toString().trim() === _matchSelectedPoste)) {
+                _matchSelectedPoste = "";
+              }
+
+              if (!_matchSelectedPoste && postes.length) {
+                _matchSelectedPoste = (postes[0].id_poste || "").toString().trim();
+              }
+
+              renderMatchingPosteList(postes, _matchSelectedPoste);
+
+              if (_matchSelectedPoste) {
+                await showMatchingForPoste(_portalRef, _matchSelectedPoste, id_service, mySeq);
+              }
+
+            } catch (e) {
+              const host = byId("matchResult");
+              if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>`;
+            }
+          })();
+
+          return;
+        }
+
 
     // -----------------------
     // PREVISIONS
@@ -1394,6 +1686,22 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
                   await showAnalyseCompetenceDetailModal(portal, compKey, id_service);
                   return;
                 }
+
+                                // ------------------------------
+                // 3) Matching: sélection poste
+                // ------------------------------
+                const btnMatch = ev.target.closest("[data-match-id_poste]");
+                if (btnMatch) {
+                  const id_poste = (btnMatch.getAttribute("data-match-id_poste") || "").trim();
+                  if (!id_poste) return;
+
+                  _matchSelectedPoste = id_poste;
+
+                  // Re-render matching (met à jour surbrillance + résultats)
+                  renderDetail("matching");
+                  return;
+                }
+
 
               });
             }
