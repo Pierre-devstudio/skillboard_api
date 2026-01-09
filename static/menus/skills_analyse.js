@@ -15,6 +15,7 @@
   const STORE_SERVICE = "sb_analyse_service";
   const STORE_MODE = "sb_analyse_mode";
   const STORE_RISK_FILTER = "sb_analyse_risk_filter";
+  const STORE_MATCH_VIEW = "sb_analyse_match_view"; // "titulaire" | "candidats"
 
 
   function byId(id) { return document.getElementById(id); }
@@ -212,61 +213,6 @@
     setText("kpiPrevPostesRed", "—");
   }
 
-  // ==============================
-  // Matching KPIs (tuile)
-  // - 2 KPI au lieu de 3 : "Adéquation au poste" + "Top candidat"
-  // - le 3e (legacy) est masqué côté UI
-  // ==============================
-  function setupMatchingKpiTileUi() {
-    // Renomme les labels en s'adaptant à la structure HTML (mini-kpi / label / value)
-    function setLabel(valueId, labelText) {
-      const v = byId(valueId);
-      if (!v) return;
-
-      const box = v.closest(".mini-kpi") || v.closest(".kpi") || v.parentElement;
-      const lab = box ? box.querySelector(".label") : null;
-
-      if (lab) lab.textContent = labelText;
-    }
-
-    function hideBox(valueId) {
-      const v = byId(valueId);
-      if (!v) return;
-
-      const box = v.closest(".mini-kpi") || v.closest(".kpi") || v.parentElement;
-      if (box) box.style.display = "none";
-    }
-
-    setLabel("kpiMatchNoCandidate", "Adéquation au poste");
-    setLabel("kpiMatchReadyNow", "Top candidat");
-    hideBox("kpiMatchReady6");
-  }
-
-  function setMatchingKpisFromLists(titulaires, candidats) {
-    // KPI 1: Adéquation au poste = moyenne des titulaires (si plusieurs)
-    const tit = Array.isArray(titulaires) ? titulaires : [];
-    const cand = Array.isArray(candidats) ? candidats : [];
-
-    const adeqPct = tit.length
-      ? Math.round(tit.reduce((s, x) => s + Number(x.score_pct || 0), 0) / tit.length)
-      : null;
-
-    // KPI 2: Top candidat = meilleur score hors titulaires
-    const best = cand.length
-      ? cand.reduce((b, x) => (Number(x.score_pct || 0) > Number(b.score_pct || 0) ? x : b), cand[0])
-      : null;
-
-    setText("kpiMatchNoCandidate", adeqPct === null ? "—" : (adeqPct + "%"));
-    setText("kpiMatchReadyNow", best ? (String(best.score_pct || 0) + "%") : "—");
-
-    // petits tooltips utiles, sans alourdir l'écran
-    const elA = byId("kpiMatchNoCandidate");
-    const elB = byId("kpiMatchReadyNow");
-
-    if (elA) elA.title = tit.length ? ("Titulaire(s) : " + tit.map(x => (x.full || "").trim()).filter(Boolean).join(", ")) : "Aucun titulaire";
-    if (elB) elB.title = best ? ("Top : " + ((best.full || "").trim() || "—")) : "Aucun candidat";
-  }
-
   function setActiveTile(mode) {
     const tiles = [
       byId("tileRisques"),
@@ -305,6 +251,37 @@
     items.forEach((el) => {
       const k = (el.getAttribute("data-risk-kpi") || "").trim();
       const isActive = !!filter && k === filter;
+
+      el.style.borderColor = isActive
+        ? "color-mix(in srgb, var(--accent) 55%, #d1d5db)"
+        : "#e5e7eb";
+
+      el.style.background = isActive
+        ? "color-mix(in srgb, var(--accent) 6%, #ffffff)"
+        : "#ffffff";
+    });
+  }
+
+  function getMatchView() {
+    const v = (localStorage.getItem(STORE_MATCH_VIEW) || "").trim().toLowerCase();
+    return (v === "titulaire" || v === "candidats") ? v : "candidats";
+  }
+
+  function setMatchView(view) {
+    const v = (view || "").trim().toLowerCase();
+    if (v === "titulaire" || v === "candidats") localStorage.setItem(STORE_MATCH_VIEW, v);
+    else localStorage.removeItem(STORE_MATCH_VIEW);
+    setActiveMatchKpi(getMatchView());
+  }
+
+  function setActiveMatchKpi(view) {
+    const tile = byId("tileMatching");
+    if (!tile) return;
+
+    const items = tile.querySelectorAll(".mini-kpi[data-match-view]");
+    items.forEach((el) => {
+      const k = (el.getAttribute("data-match-view") || "").trim().toLowerCase();
+      const isActive = !!view && k === view;
 
       el.style.borderColor = isActive
         ? "color-mix(in srgb, var(--accent) 55%, #d1d5db)"
@@ -564,7 +541,7 @@
     return out;
   }
 
-  function renderMatchingCandidates(posteLabel, candidates) {
+  function renderMatchingCandidates(id_poste_selected, posteLabel, candidates, view) {
     const host = byId("matchResult");
     if (!host) return;
 
@@ -574,7 +551,27 @@
       return;
     }
 
-    const top = list.slice(0, 30);
+    const posteCible = (id_poste_selected || "").toString().trim();
+    const v = (view || getMatchView() || "candidats").toString().trim().toLowerCase();
+
+    // --- Titulaires vs Candidats : on s’appuie sur un flag si l’API le donne, sinon sur id_poste_actuel
+    function isTitulaire(c) {
+      if (!c) return false;
+
+      // cas idéal: backend fournit un flag
+      if (c.is_titulaire === true || c.est_titulaire === true || c.titulaire === true || c.is_on_poste === true) return true;
+      if (String(c.is_titulaire || "").toLowerCase() === "true") return true;
+
+      // fallback: comparaison poste actuel / poste sélectionné
+      const posteActuel = String(c.id_poste_actuel || "").trim();
+      return !!posteCible && !!posteActuel && posteActuel === posteCible;
+    }
+
+    const titulairesAll = list.filter(isTitulaire);
+    const candidatsAll = list.filter(c => !isTitulaire(c));
+
+    const rows = (v === "titulaire") ? titulairesAll : candidatsAll;
+    const top = rows.slice(0, 30);
 
     function badge(txt, accent) {
       const cls = accent ? "sb-badge sb-badge-accent" : "sb-badge";
@@ -623,32 +620,10 @@
       </div>
     `;
 
-    // --- Titulaires vs Candidats : on s’appuie sur un flag si l’API le donne, sinon sur l’id_poste_actuel
-    function isTitulaire(c) {
-      if (!c) return false;
+    const headerTitle = (v === "titulaire") ? "Adéquation au poste (titulaire" + (titulairesAll.length > 1 ? "s" : "") + ")" : "Top candidats (hors titulaires)";
+    const emptyText = (v === "titulaire") ? "Aucun titulaire détecté sur ce poste" : "Aucun candidat (hors titulaires)";
 
-      // cas idéal: backend fournit un flag
-      if (c.is_titulaire === true || c.est_titulaire === true || c.titulaire === true || c.is_on_poste === true) return true;
-      if (String(c.is_titulaire || "").toLowerCase() === "true") return true;
-
-      // fallback: comparaison poste actuel / poste analysé (si dispo)
-      const posteCible =
-        (typeof id_poste !== "undefined" && id_poste) ? String(id_poste).trim() :
-        (typeof id_poste_cible !== "undefined" && id_poste_cible) ? String(id_poste_cible).trim() :
-        "";
-
-      const posteActuel = String(c.id_poste_actuel || "").trim();
-      return !!posteCible && !!posteActuel && posteActuel === posteCible;
-    }
-
-    const titulaires = top.filter(isTitulaire);
-    const candidats = top.filter(c => !isTitulaire(c));
-
-    
-
-    // Met à jour la tuile KPI Matching en fonction du poste sélectionné
-    setMatchingKpisFromLists(titulaires, candidats);
-function renderRow(c) {
+    function renderRow(c) {
       const critHtml = gapBadges(c.crit_missing, c.crit_under);
       const missHtml = gapBadges(c.nb_missing, c.nb_under);
 
@@ -666,20 +641,14 @@ function renderRow(c) {
       `;
     }
 
-    function renderSection(title, rows, emptyText) {
-      const header = `
+    function renderHeaderRow(title) {
+      return `
         <tr>
           <td colspan="5" style="padding:10px 8px; font-weight:800; color:#111827; border-top:1px solid #e5e7eb;">
             ${escapeHtml(title)}
           </td>
         </tr>
       `;
-
-      const content = rows.length
-        ? rows.map(renderRow).join("")
-        : `<tr><td colspan="5" class="col-center" style="color:#6b7280;">${escapeHtml(emptyText)}</td></tr>`;
-
-      return header + content;
     }
 
     host.innerHTML = `
@@ -699,16 +668,8 @@ function renderRow(c) {
             </tr>
           </thead>
           <tbody>
-            ${renderSection(
-              "Adéquation au poste (titulaire" + (titulaires.length > 1 ? "s" : "") + ")",
-              titulaires,
-              "Aucun titulaire détecté sur ce poste"
-            )}
-            ${renderSection(
-              "Top candidats (hors titulaires)",
-              candidats,
-              "Aucun candidat (hors titulaires)"
-            )}
+            ${renderHeaderRow(headerTitle)}
+            ${top.length ? top.map(renderRow).join("") : `<tr><td colspan="5" class="col-center" style="color:#6b7280;">${escapeHtml(emptyText)}</td></tr>`}
           </tbody>
         </table>
       </div>
@@ -734,7 +695,7 @@ function renderRow(c) {
     const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
 
     const cands = computeCandidatesFromPosteDetail(data);
-    renderMatchingCandidates(posteLabel, cands);
+    renderMatchingCandidates(id_poste, posteLabel, cands, getMatchView());
   }
 
     // ==============================
@@ -1376,12 +1337,13 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
           if (title) title.textContent = "Matching poste-porteur";
           if (sub) sub.textContent = "Top candidats internes par poste (score pondéré niveau + criticité).";
 
+          // Vue Matching : "titulaire" ou "candidats" (pilotée par la tuile)
+          setActiveMatchKpi(getMatchView());
+
           const id_service = (byId("analyseServiceSelect")?.value || "").trim();
 
           body.innerHTML = renderMatchingShell();
 
-      setText("kpiMatchNoCandidate", "—");
-      setText("kpiMatchReadyNow", "—");
           if (!_portalRef) {
             const host = byId("matchResult");
             if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Contexte portail indisponible.</div>`;
@@ -1735,12 +1697,11 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
       setText("kpiRiskPostes", r.postes_fragiles);
       setText("kpiRiskNoOwner", r.comp_critiques_sans_porteur);
       setText("kpiRiskBus1", r.comp_bus_factor_1);
-      // Matching : KPI pilotés par la vue "Matching" (sélection d'un poste).
-      // Ici on évite d'écraser l'affichage avec un éventuel summary legacy.
-      setText("kpiMatchNoCandidate", "—");
-      setText("kpiMatchReadyNow", "—");
-      setText("kpiMatchReady6", "—");
-const p = t.previsions || {};
+
+      // Matching : on laisse volontairement les KPI en "—".
+      // Les KPI de tuile servent ici de boutons de vue (titulaire vs candidats), pas de compteur.
+
+      const p = t.previsions || {};
       setText("kpiPrevSorties12", p.sorties_12m);
       setText("kpiPrevCompImpact", p.comp_critiques_impactees);
       setText("kpiPrevPostesRed", p.postes_rouges_12m);
@@ -1819,9 +1780,44 @@ const p = t.previsions || {};
       });
     }
 
+    // KPI Matching cliquables => bascule de vue (titulaire / candidats)
+    const tileMatching = byId("tileMatching");
+    if (tileMatching) {
+      const matchKpis = tileMatching.querySelectorAll(".mini-kpi[data-match-view]");
 
-    // Matching: on adapte la tuile (2 KPI + labels)
-    setupMatchingKpiTileUi();
+      function openMatchView(el, ev) {
+        const v = (el?.getAttribute("data-match-view") || "").trim();
+        if (v !== "titulaire" && v !== "candidats") return;
+
+        // Empêche le click de remonter sur la tuile (sinon il faut recliquer...)
+        if (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
+
+        // 1) on fixe la vue
+        setMatchView(v);
+
+        // 2) si on n'est pas déjà en matching, on bascule (ce qui rend automatiquement)
+        const curMode = (localStorage.getItem(STORE_MODE) || "").trim();
+        if (curMode !== "matching") {
+          setMode("matching");
+          return;
+        }
+
+        // 3) sinon on re-rend uniquement la vue matching
+        renderDetail("matching");
+      }
+
+      matchKpis.forEach((el) => {
+        el.addEventListener("click", (ev) => openMatchView(el, ev));
+        el.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter" || ev.key === " ") {
+            openMatchView(el, ev);
+          }
+        });
+      });
+    }
 
 
     if (selService) {
