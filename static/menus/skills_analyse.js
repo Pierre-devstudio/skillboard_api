@@ -857,6 +857,7 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
 
 
 
+
   function renderDetail(mode) {
     const scope = getScopeLabel();
 
@@ -1014,7 +1015,7 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
 
       return `
         <div class="table-wrap" style="margin-top:10px;">
-          <table class="sb-table">
+          <table class="sb-table" id="tblRiskCompetences">
             <thead>
               <tr>
                 <th style="width:240px;">Domaine</th>
@@ -1027,17 +1028,27 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
             </thead>
             <tbody>
               ${list.map(r => {
-                const code = (r.code || "—").toString();
+                const code = (r.code || "—").toString().trim();
                 const intit = (r.intitule || "—").toString();
+
+                const idComp =
+                  (r.id_competence || r.id_comp || r.id_competence_skillboard || r.id_competence_pk || "").toString().trim();
+
+                const compKey = (idComp || code || "").trim();
 
                 const nbPostes = Number(r.nb_postes_impactes || 0);
                 const nbPorteurs = Number(r.nb_porteurs || 0);
                 const crit = Number(r.max_criticite || 0);
 
                 return `
-                  <tr>
+                  <tr class="risk-comp-row"
+                      data-comp-key="${escapeHtml(compKey)}"
+                      data-code="${escapeHtml(code)}"
+                      data-id_comp="${escapeHtml(idComp)}"
+                      style="cursor:pointer;"
+                      title="Ouvrir le détail de la compétence">
                     <td>${renderDomainPill(r)}</td>
-                    <td style="font-weight:700; white-space:nowrap;">${escapeHtml(code)}</td>
+                    <td style="font-weight:700; white-space:nowrap;">${escapeHtml(code || "—")}</td>
                     <td>${escapeHtml(intit)}</td>
                     <td class="col-center">${nbPostes ? badge(String(nbPostes), true) : badge("0", false)}</td>
                     <td class="col-center">${crit ? badge(String(crit), true) : badge("—", false)}</td>
@@ -1050,6 +1061,7 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
         </div>
       `;
     }
+
 
     // UI immédiate (évite l'impression "ça fait rien")
     const resetHtml = rf
@@ -1352,13 +1364,13 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
                 // ------------------------------
                 // 2) Click sur une ligne COMPETENCE
                 // ------------------------------
-                const trComp = ev.target.closest("tr.risk-comp-row[data-comp-code]");
+                const trComp = ev.target.closest("tr.risk-comp-row[data-comp-key]");
                 if (trComp) {
-                  const code = (trComp.getAttribute("data-comp-code") || "").trim();
-                  if (!code || code === "—") return;
+                  const compKey = (trComp.getAttribute("data-comp-key") || "").trim();
+                  if (!compKey || compKey === "—") return;
 
                   const id_service = (byId("analyseServiceSelect")?.value || "").trim();
-                  await showAnalyseCompetenceDetailModal(portal, code, id_service);
+                  await showAnalyseCompetenceDetailModal(portal, compKey, id_service);
                   return;
                 }
 
