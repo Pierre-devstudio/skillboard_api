@@ -533,6 +533,7 @@ def get_analyse_risques_detail(
                         c.id_comp,
                         c.code,
                         c.intitule,
+                        c.grille_evaluation,
                         c.domaine AS id_domaine_competence,
                         d.titre,
                         d.titre_court,
@@ -588,6 +589,7 @@ def get_analyse_risques_detail(
                         c.id_comp,
                         c.code,
                         c.intitule,
+                        c.grille_evaluation,
                         c.domaine AS id_domaine_competence,
                         d.titre,
                         d.titre_court,
@@ -1331,6 +1333,7 @@ def get_analyse_matching_effectif_detail(
                         COALESCE(fpc.poids_criticite, 1)::int AS poids_criticite,
                         c.code,
                         c.intitule,
+                        c.grille_evaluation,
                         c.domaine AS id_domaine_competence,
                         COALESCE(d.titre_court, d.titre, '') AS domaine_titre_court,
                         COALESCE(d.couleur, '') AS domaine_couleur
