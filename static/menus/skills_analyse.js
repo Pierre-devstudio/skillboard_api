@@ -27,6 +27,18 @@
       .replaceAll('"', "&quot;");
   }
 
+    function errMsg(e) {
+    if (!e) return "inconnue";
+    if (typeof e === "string") return e;
+    if (e.message) return e.message;
+    if (e.detail) {
+      if (typeof e.detail === "string") return e.detail;
+      try { return JSON.stringify(e.detail); } catch { }
+    }
+    try { return JSON.stringify(e); } catch { }
+    return String(e);
+  }
+
   function normalizeColor(raw) {
     if (raw === null || raw === undefined) return "";
     const s = raw.toString().trim();
@@ -257,12 +269,21 @@
     const key = `${codeOrId}|${svc}|${CRITICITE_MIN}`;
     if (_compDetailCache.has(key)) return _compDetailCache.get(key);
 
+    const raw = (codeOrId || "").trim();
+
+    // Heuristique simple: un code ressemble à CO00020 / ABC123 etc.
+    const isCode = /^[A-Z]{1,6}\d{2,}$/i.test(raw);
+
     const qs = buildQueryString({
-      code: (codeOrId || "").trim() || null,       // cas standard: code
-      id_competence: (codeOrId || "").trim() || null, // fallback si backend préfère un id
+      code: isCode ? raw : null,
+      id_comp: !isCode ? raw : null,          // nom courant côté backend
+      id_competence: !isCode ? raw : null,    // alias au cas où
       id_service: svc || null,
-      criticite_min: CRITICITE_MIN
+      criticite_min: CRITICITE_MIN,
+      limit_postes: 500,
+      limit_porteurs: 500
     });
+
 
     const url = `${portal.apiBase}/skills/analyse/risques/competence/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
@@ -513,7 +534,7 @@
 
       openAnalyseCompetenceModal(
         "Détail compétence",
-        `<div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>`
+        `<div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(errMsg(e))}</div>`
       );
       const host = byId("analyseCompModalBody");
       if (host) {
