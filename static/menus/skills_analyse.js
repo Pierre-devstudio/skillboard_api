@@ -526,9 +526,17 @@
       const a = Array.isArray(arr) ? arr : [];
       if (!a.length) return "";
       const lis = a.map(x => {
-        const c = (x.code_critere || "").toString().trim() || "Critère";
-        const n = (x.niveau === null || x.niveau === undefined) ? "—" : String(x.niveau);
-        return `<li><b>${escapeHtml(c)}</b> : ${escapeHtml(n)}</li>`;
+        const nom = (x.nom || "").toString().trim();
+        const code = (x.code_critere || "").toString().trim();
+        const title = (nom || code || "Critère").trim();
+
+        const n = (x.niveau === null || x.niveau === undefined) ? null : Number(x.niveau);
+        const pts = (n && !Number.isNaN(n)) ? `${n}/4` : "—";
+
+        const lib = (x.libelle || "").toString().trim();
+        const extra = lib ? ` <span style="color:#6b7280;">${escapeHtml(lib)}</span>` : "";
+
+        return `<li><b>${escapeHtml(title)}</b> : <span style="font-weight:800;">${escapeHtml(pts)}</span>${extra}</li>`;
       }).join("");
       return `
         <details style="margin-top:6px;">

@@ -431,6 +431,7 @@ def get_analyse_risques_detail(
                         c.id_comp,
                         c.code,
                         c.intitule,
+                        c.grille_evaluation,
                         c.domaine AS id_domaine_competence,
                         COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite
                     FROM public.tbl_fiche_poste_competence fpc
@@ -711,6 +712,8 @@ class AnalyseMatchingPosteResponse(BaseModel):
 class AnalyseMatchingCritere(BaseModel):
     code_critere: Optional[str] = None
     niveau: Optional[int] = None
+    nom: Optional[str] = None
+    libelle: Optional[str] = None
 
 
 class AnalyseMatchingCompetenceDetail(BaseModel):
@@ -1444,7 +1447,24 @@ def get_analyse_matching_effectif_detail(
 
                     sum_ratio += (w * ratio)
 
-                    # critères (jsonb) -> liste safe
+                    # grille d'évaluation (jsonb) -> mapping CritereX => {nom, eval[]}
+                    grid_map: Dict[str, Dict[str, Any]] = {}
+                    grid = r.get("grille_evaluation")
+                    try:
+                        if isinstance(grid, str):
+                            grid = json.loads(grid)
+                        if isinstance(grid, dict):
+                            for k, v in grid.items():
+                                if not isinstance(v, dict):
+                                    continue
+                                nm = (v.get("Nom") or "").strip()
+                                ev = v.get("Eval")
+                                ev_list = ev if isinstance(ev, list) else []
+                                grid_map[str(k)] = {"nom": nm, "eval": ev_list}
+                    except Exception:
+                        grid_map = {}
+
+                    # critères (audit detail_eval) -> liste enrichie (nom + libellé du niveau)
                     crit_list: List[AnalyseMatchingCritere] = []
                     det = srow.get("detail")
                     try:
@@ -1456,10 +1476,27 @@ def get_analyse_matching_effectif_detail(
                                 for it in arr:
                                     if not isinstance(it, dict):
                                         continue
+
+                                    ccode = (it.get("code_critere") or None)
+                                    niv = int(it.get("niveau")) if it.get("niveau") is not None else None
+
+                                    c_nom = None
+                                    c_lib = None
+                                    if ccode and ccode in grid_map:
+                                        c_nom = (grid_map[ccode].get("nom") or "").strip() or None
+                                        evl = grid_map[ccode].get("eval") or []
+                                        if niv is not None and isinstance(evl, list) and 1 <= int(niv) <= len(evl):
+                                            try:
+                                                c_lib = (evl[int(niv) - 1] or "").strip() or None
+                                            except Exception:
+                                                c_lib = None
+
                                     crit_list.append(
                                         AnalyseMatchingCritere(
-                                            code_critere=(it.get("code_critere") or None),
-                                            niveau=int(it.get("niveau")) if it.get("niveau") is not None else None,
+                                            code_critere=ccode,
+                                            niveau=niv,
+                                            nom=c_nom,
+                                            libelle=c_lib,
                                         )
                                     )
                     except Exception:
