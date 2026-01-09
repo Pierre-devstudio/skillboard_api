@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
+import json
 
 from psycopg.rows import dict_row
 
@@ -707,6 +708,58 @@ class AnalyseMatchingPosteResponse(BaseModel):
     items: List[AnalyseMatchingItem]
 
 
+class AnalyseMatchingCritere(BaseModel):
+    code_critere: Optional[str] = None
+    niveau: Optional[int] = None
+
+
+class AnalyseMatchingCompetenceDetail(BaseModel):
+    id_comp: str
+    code: Optional[str] = None
+    intitule: Optional[str] = None
+    id_domaine_competence: Optional[str] = None
+    domaine_titre_court: Optional[str] = None
+    domaine_couleur: Optional[str] = None
+
+    poids_criticite: int = 1
+    niveau_requis: Optional[str] = None
+    seuil: float = 0.0
+
+    score: Optional[float] = None
+    niveau_atteint: Optional[str] = None
+
+    etat: str = "missing"  # ok / under / missing
+    is_critique: bool = False
+
+    criteres: List[AnalyseMatchingCritere] = []
+
+
+class AnalyseMatchingPerson(BaseModel):
+    id_effectif: str
+    full: str
+    nom_service: str
+    id_poste_actuel: Optional[str] = None
+    is_titulaire: bool = False
+
+
+class AnalyseMatchingStats(BaseModel):
+    score_pct: int = 0
+    crit_missing: int = 0
+    crit_under: int = 0
+    nb_missing: int = 0
+    nb_under: int = 0
+
+
+class AnalyseMatchingEffectifResponse(BaseModel):
+    poste: Dict[str, Any]
+    person: AnalyseMatchingPerson
+    scope: ServiceScope
+    criticite_min: int
+    updated_at: str
+    stats: AnalyseMatchingStats
+    items: List[AnalyseMatchingCompetenceDetail]
+
+
 
 # ======================================================
 # Endpoint: Drilldown Poste (Risques)
@@ -1180,6 +1233,297 @@ def get_analyse_matching_poste(
                     criticite_min=int(criticite_min),
                     updated_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
                     items=items,
+                )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+
+# ======================================================
+# Endpoint: Détail Matching (poste x effectif)
+# - Drilldown depuis le tableau "Titulaires" / "Top candidats"
+# - Renvoie le détail par compétence (score /24 + critères du dernier audit)
+# ======================================================
+@router.get(
+    "/skills/analyse/matching/effectif/{id_contact}",
+    response_model=AnalyseMatchingEffectifResponse,
+)
+def get_analyse_matching_effectif_detail(
+    id_contact: str,
+    id_poste: str = Query(...),
+    id_effectif: str = Query(...),
+    id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=3, ge=0),
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+
+                # --- id_ent depuis contact
+                contact = _fetch_contact_and_ent(cur, id_contact)
+                id_ent = contact["code_ent"]
+
+                scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
+                cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
+
+                # --- Poste (doit être dans le scope)
+                cur.execute(
+                    f"""
+                    WITH {cte_sql}
+                    SELECT fp.id_poste, fp.codif_poste, fp.intitule_poste
+                    FROM public.tbl_fiche_poste fp
+                    JOIN postes_scope ps ON ps.id_poste = fp.id_poste
+                    WHERE fp.id_poste = %s
+                    LIMIT 1
+                    """,
+                    tuple(cte_params + [id_poste]),
+                )
+                poste = cur.fetchone()
+                if not poste:
+                    raise HTTPException(status_code=404, detail="Poste introuvable (ou hors périmètre service).")
+
+                # --- Effectif (doit être dans le scope)
+                cur.execute(
+                    f"""
+                    WITH {cte_sql}
+                    SELECT
+                        e.id_effectif,
+                        e.prenom_effectif,
+                        e.nom_effectif,
+                        e.id_poste_actuel,
+                        COALESCE(o.nom_service, '') AS nom_service
+                    FROM public.tbl_effectif_client e
+                    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = e.id_service
+                     AND o.archive = FALSE
+                    WHERE e.id_ent = %s
+                      AND e.id_effectif = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                    LIMIT 1
+                    """,
+                    tuple(cte_params + [id_ent, id_ent, id_effectif]),
+                )
+                e = cur.fetchone()
+                if not e:
+                    raise HTTPException(status_code=404, detail="Effectif introuvable (ou hors périmètre service).")
+
+                prenom = (e.get("prenom_effectif") or "").strip()
+                nom = (e.get("nom_effectif") or "").strip()
+                full = (prenom + " " + nom).strip() or "—"
+                poste_actuel = (e.get("id_poste_actuel") or "").strip() or None
+                is_tit = bool(poste_actuel and poste_actuel == id_poste)
+
+                # --- Compétences requises + méta compétence
+                cur.execute(
+                    f"""
+                    WITH {cte_sql}
+                    SELECT
+                        fpc.id_competence AS id_comp,
+                        fpc.niveau_requis,
+                        COALESCE(fpc.poids_criticite, 1)::int AS poids_criticite,
+                        c.code,
+                        c.intitule,
+                        c.domaine AS id_domaine_competence,
+                        COALESCE(d.titre_court, d.titre, '') AS domaine_titre_court,
+                        COALESCE(d.couleur, '') AS domaine_couleur
+                    FROM public.tbl_fiche_poste_competence fpc
+                    JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
+                    JOIN public.tbl_competence c ON c.id_comp = fpc.id_competence
+                    LEFT JOIN public.tbl_domaine_competence d
+                      ON d.id_domaine_competence = c.domaine
+                     AND COALESCE(d.masque, FALSE) = FALSE
+                    WHERE fpc.id_poste = %s
+                    """,
+                    tuple(cte_params + [id_poste]),
+                )
+                req_rows = cur.fetchall() or []
+                if not req_rows:
+                    return AnalyseMatchingEffectifResponse(
+                        poste={
+                            "id_poste": poste.get("id_poste"),
+                            "codif_poste": poste.get("codif_poste"),
+                            "intitule_poste": poste.get("intitule_poste"),
+                        },
+                        person=AnalyseMatchingPerson(
+                            id_effectif=id_effectif,
+                            full=full,
+                            nom_service=(e.get("nom_service") or "").strip() or "—",
+                            id_poste_actuel=poste_actuel,
+                            is_titulaire=is_tit,
+                        ),
+                        scope=scope,
+                        criticite_min=int(criticite_min),
+                        updated_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                        stats=AnalyseMatchingStats(),
+                        items=[],
+                    )
+
+                comp_ids = [str(r.get("id_comp") or "").strip() for r in req_rows if (r.get("id_comp") or "").strip()]
+                comp_ids = [x for x in comp_ids if x]
+
+                # --- Dernier audit (score + détails) pour ces compétences
+                cur.execute(
+                    f"""
+                    WITH {cte_sql}
+                    SELECT
+                        ec.id_comp,
+                        ac.resultat_eval,
+                        ac.detail_eval
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
+                    LEFT JOIN public.tbl_effectif_client_audit_competence ac
+                      ON ac.id_audit_competence = ec.id_dernier_audit
+                    WHERE ec.id_effectif_client = %s
+                      AND ec.actif = TRUE
+                      AND ec.archive = FALSE
+                      AND ec.id_comp = ANY(%s)
+                    """,
+                    tuple(cte_params + [id_effectif, comp_ids]),
+                )
+                score_rows = cur.fetchall() or []
+
+                scores: Dict[str, Dict[str, Any]] = {}
+                for r in score_rows:
+                    cid = (r.get("id_comp") or "").strip()
+                    if not cid:
+                        continue
+                    scores[cid] = {
+                        "score": _safe_float(r.get("resultat_eval")),
+                        "detail": r.get("detail_eval"),
+                    }
+
+                # --- Stats + items
+                poids_total = 0
+                crit_min = int(criticite_min)
+
+                sum_ratio = 0.0
+                nb_missing = 0
+                nb_under = 0
+                crit_missing = 0
+                crit_under = 0
+
+                out_items: List[AnalyseMatchingCompetenceDetail] = []
+
+                for r in req_rows:
+                    cid = (r.get("id_comp") or "").strip()
+                    if not cid:
+                        continue
+
+                    lvl_req = (r.get("niveau_requis") or "").strip().upper()
+                    w = int(r.get("poids_criticite") or 1)
+                    if w <= 0:
+                        w = 1
+                    poids_total += w
+
+                    seuil = _score_seuil_for_niveau(lvl_req)
+                    srow = scores.get(cid) or {}
+                    score = srow.get("score", None)
+
+                    is_crit = bool(w >= crit_min)
+                    etat = "ok"
+                    if score is None:
+                        etat = "missing"
+                        nb_missing += 1
+                        if is_crit:
+                            crit_missing += 1
+                        ratio = 0.0
+                    else:
+                        if seuil > 0 and score < seuil:
+                            etat = "under"
+                            nb_under += 1
+                            if is_crit:
+                                crit_under += 1
+                        ratio = 0.0
+                        if seuil > 0:
+                            ratio = min(max(float(score) / float(seuil), 0.0), 1.0)
+
+                    sum_ratio += (w * ratio)
+
+                    # critères (jsonb) -> liste safe
+                    crit_list: List[AnalyseMatchingCritere] = []
+                    det = srow.get("detail")
+                    try:
+                        if isinstance(det, str):
+                            det = json.loads(det)
+                        if isinstance(det, dict):
+                            arr = det.get("criteres", [])
+                            if isinstance(arr, list):
+                                for it in arr:
+                                    if not isinstance(it, dict):
+                                        continue
+                                    crit_list.append(
+                                        AnalyseMatchingCritere(
+                                            code_critere=(it.get("code_critere") or None),
+                                            niveau=int(it.get("niveau")) if it.get("niveau") is not None else None,
+                                        )
+                                    )
+                    except Exception:
+                        crit_list = []
+
+                    out_items.append(
+                        AnalyseMatchingCompetenceDetail(
+                            id_comp=cid,
+                            code=(r.get("code") or "").strip() or None,
+                            intitule=(r.get("intitule") or "").strip() or None,
+                            id_domaine_competence=(r.get("id_domaine_competence") or "").strip() or None,
+                            domaine_titre_court=(r.get("domaine_titre_court") or "").strip() or None,
+                            domaine_couleur=(r.get("domaine_couleur") or "").strip() or None,
+                            poids_criticite=w,
+                            niveau_requis=lvl_req or None,
+                            seuil=float(seuil or 0.0),
+                            score=score,
+                            niveau_atteint=_niveau_from_score(score),
+                            etat=etat,
+                            is_critique=is_crit,
+                            criteres=crit_list,
+                        )
+                    )
+
+                if poids_total <= 0:
+                    poids_total = 1
+                score_pct = int(round((sum_ratio / float(poids_total)) * 100.0))
+                if score_pct < 0:
+                    score_pct = 0
+                if score_pct > 100:
+                    score_pct = 100
+
+                # Tri par criticité desc puis code
+                out_items.sort(
+                    key=lambda x: (
+                        -int(x.poids_criticite or 0),
+                        (x.code or x.id_comp or "").lower(),
+                    )
+                )
+
+                return AnalyseMatchingEffectifResponse(
+                    poste={
+                        "id_poste": poste.get("id_poste"),
+                        "codif_poste": poste.get("codif_poste"),
+                        "intitule_poste": poste.get("intitule_poste"),
+                    },
+                    person=AnalyseMatchingPerson(
+                        id_effectif=id_effectif,
+                        full=full,
+                        nom_service=(e.get("nom_service") or "").strip() or "—",
+                        id_poste_actuel=poste_actuel,
+                        is_titulaire=is_tit,
+                    ),
+                    scope=scope,
+                    criticite_min=int(criticite_min),
+                    updated_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    stats=AnalyseMatchingStats(
+                        score_pct=score_pct,
+                        crit_missing=crit_missing,
+                        crit_under=crit_under,
+                        nb_missing=nb_missing,
+                        nb_under=nb_under,
+                    ),
+                    items=out_items,
                 )
 
     except HTTPException:

@@ -377,6 +377,267 @@
   }
 
 
+
+
+  // Détail effectif (drilldown)
+  const _matchEffDetailCache = new Map(); // key: id_poste|id_effectif|id_service|crit
+  async function fetchMatchingEffectifDetail(portal, id_poste, id_effectif, id_service) {
+    const svc = (id_service || "").trim();
+    const key = `${id_poste}|${id_effectif}|${svc}|${CRITICITE_MIN}`;
+    if (_matchEffDetailCache.has(key)) return _matchEffDetailCache.get(key);
+
+    const qs = buildQueryString({
+      id_poste: id_poste,
+      id_effectif: id_effectif,
+      id_service: svc || null,
+      criticite_min: CRITICITE_MIN
+    });
+
+    const url = `${portal.apiBase}/skills/analyse/matching/effectif/${encodeURIComponent(portal.contactId)}${qs}`;
+    const data = await portal.apiJson(url);
+
+    _matchEffDetailCache.set(key, data);
+    return data;
+  }
+
+  function ensureMatchPersonModal() {
+    let modal = byId("modalMatchPerson");
+    if (modal) return modal;
+
+    const html = `
+      <div class="modal" id="modalMatchPerson" aria-hidden="true">
+        <div class="modal-card" style="max-width:1020px;">
+          <div class="modal-header">
+            <div style="font-weight:600;" id="matchPersonModalTitle">Détail</div>
+            <button type="button" class="modal-x" id="btnCloseMatchPersonModal" aria-label="Fermer">×</button>
+          </div>
+
+          <div class="modal-body" id="matchPersonModalBody">
+            <div class="card" style="padding:12px; margin:0;">
+              <div class="card-sub" style="margin:0;">Chargement…</div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" id="btnMatchPersonModalClose">Fermer</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", html);
+    modal = byId("modalMatchPerson");
+
+    if (modal && modal.getAttribute("data-bound") !== "1") {
+      modal.setAttribute("data-bound", "1");
+
+      const btnX = byId("btnCloseMatchPersonModal");
+      const btnClose = byId("btnMatchPersonModalClose");
+
+      if (btnX) btnX.addEventListener("click", () => closeMatchPersonModal());
+      if (btnClose) btnClose.addEventListener("click", () => closeMatchPersonModal());
+
+      // fermeture clic fond
+      modal.addEventListener("click", (ev) => {
+        if (ev.target === modal) closeMatchPersonModal();
+      });
+
+      // ESC
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape") closeMatchPersonModal();
+      });
+    }
+
+    return modal;
+  }
+
+  function openMatchPersonModal(title) {
+    const modal = ensureMatchPersonModal();
+    const t = byId("matchPersonModalTitle");
+    const b = byId("matchPersonModalBody");
+    if (t) t.textContent = title || "Détail";
+    if (b) b.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
+
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+
+    const mb = modal.querySelector(".modal-body");
+    if (mb) mb.scrollTop = 0;
+  }
+
+  function closeMatchPersonModal() {
+    const modal = byId("modalMatchPerson");
+    if (!modal) return;
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function renderMatchPersonDetail(data) {
+    const host = byId("matchPersonModalBody");
+    if (!host) return;
+
+    const poste = data?.poste || {};
+    const person = data?.person || {};
+    const stats = data?.stats || {};
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
+    const personLabel = person.full || "—";
+    const svc = person.nom_service || "—";
+    const isTit = !!person.is_titulaire;
+
+    function box(n, bg, title) {
+      const nn = Number(n || 0);
+      const isZero = !nn;
+      const style = isZero
+        ? "background:#e5e7eb; color:#6b7280; border:1px solid #d1d5db;"
+        : `background:${bg}; color:#ffffff; border:1px solid rgba(0,0,0,.12);`;
+      return `
+        <span title="${escapeHtml(title)}"
+              style="display:inline-flex; align-items:center; justify-content:center;
+                    width:26px; height:20px; border-radius:5px;
+                    font-size:12px; font-weight:900; line-height:1;
+                    ${style}">
+          ${nn || 0}
+        </span>
+      `;
+    }
+
+    function statusBadge(etat) {
+      const s = String(etat || "").toLowerCase();
+      if (s === "ok") return `<span style="font-weight:800; color:#065f46;">OK</span>`;
+      if (s === "under") return `<span style="font-weight:800; color:#92400e;">À renforcer</span>`;
+      return `<span style="font-weight:800; color:#991b1b;">Manquante</span>`;
+    }
+
+    function critMark(isCrit) {
+      if (!isCrit) return "";
+      return `<span class="sb-badge" title="Compétence critique" style="margin-left:6px; border-color:#ef4444; color:#991b1b;">CRIT</span>`;
+    }
+
+    function fmtScore(v) {
+      if (v === null || v === undefined || v === "") return "—";
+      const n = Number(v);
+      if (Number.isNaN(n)) return "—";
+      return (Math.round(n * 10) / 10).toString();
+    }
+
+    function renderCritDetails(arr) {
+      const a = Array.isArray(arr) ? arr : [];
+      if (!a.length) return "";
+      const lis = a.map(x => {
+        const c = (x.code_critere || "").toString().trim() || "Critère";
+        const n = (x.niveau === null || x.niveau === undefined) ? "—" : String(x.niveau);
+        return `<li><b>${escapeHtml(c)}</b> : ${escapeHtml(n)}</li>`;
+      }).join("");
+      return `
+        <details style="margin-top:6px;">
+          <summary style="cursor:pointer; color:#6b7280; font-size:12px;">Voir critères</summary>
+          <ul style="margin:8px 0 0 18px; color:#374151; font-size:12px;">
+            ${lis}
+          </ul>
+        </details>
+      `;
+    }
+
+    const rows = items.map(it => {
+      const code = it.code || it.id_comp || "—";
+      const intitule = it.intitule || "";
+      const poids = Number(it.poids_criticite || 1);
+      const niv = it.niveau_requis || "—";
+      const seuil = fmtScore(it.seuil);
+      const score = fmtScore(it.score);
+      const nivAt = it.niveau_atteint || "—";
+      const domain = (it.domaine_titre_court || "").trim();
+      const domainBadge = domain ? `<span class="sb-badge">${escapeHtml(domain)}</span>` : "";
+
+      return `
+        <tr>
+          <td style="font-weight:800;">
+            ${escapeHtml(code)} ${critMark(it.is_critique)}
+            <div style="font-weight:600; color:#111827; margin-top:2px;">${escapeHtml(intitule)}</div>
+            <div style="margin-top:4px;">${domainBadge}</div>
+            ${renderCritDetails(it.criteres)}
+          </td>
+          <td class="col-center">${escapeHtml(String(poids))}</td>
+          <td class="col-center">${escapeHtml(String(niv))}</td>
+          <td class="col-center">${escapeHtml(String(seuil))}</td>
+          <td class="col-center">${escapeHtml(String(score))}</td>
+          <td class="col-center">${escapeHtml(String(nivAt))}</td>
+          <td class="col-center">${statusBadge(it.etat)}</td>
+        </tr>
+      `;
+    }).join("");
+
+    host.innerHTML = `
+      <div class="card" style="padding:12px; margin:0;">
+        <div class="card-sub" style="margin:0;">
+          Poste : <b>${escapeHtml(posteLabel)}</b>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px; margin-top:10px;">
+          <div>
+            <div style="font-weight:900; font-size:16px;">${escapeHtml(personLabel)} ${isTit ? '<span class="sb-badge sb-badge-accent">Titulaire</span>' : '<span class="sb-badge">Candidat</span>'}</div>
+            <div class="card-sub" style="margin:4px 0 0 0;">Service : ${escapeHtml(svc)}</div>
+          </div>
+
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span class="sb-badge sb-badge-accent" style="font-weight:900;">${escapeHtml(String(stats.score_pct || 0))}%</span>
+            <span style="display:inline-flex; gap:6px; align-items:center;">
+              ${box(stats.crit_missing, "#ef4444", "Critiques manquantes")}
+              ${box(stats.crit_under, "#f59e0b", "Critiques à renforcer")}
+              ${box(stats.nb_missing, "#ef4444", "Manquantes")}
+              ${box(stats.nb_under, "#f59e0b", "À renforcer")}
+            </span>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="margin-top:12px;">
+          <table class="sb-table">
+            <thead>
+              <tr>
+                <th>Compétence</th>
+                <th class="col-center" style="width:70px;">Poids</th>
+                <th class="col-center" style="width:70px;">Requis</th>
+                <th class="col-center" style="width:80px;">Seuil</th>
+                <th class="col-center" style="width:80px;">Score</th>
+                <th class="col-center" style="width:70px;">Niv.</th>
+                <th class="col-center" style="width:110px;">Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows || `<tr><td colspan="7" class="col-center" style="color:#6b7280;">Aucune compétence requise.</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card-sub" style="margin-top:10px; color:#6b7280;">
+          Critiques = poids_criticite ≥ ${CRITICITE_MIN}. Seuil (A/B/C) = 6 / 10 / 19. Niveau = déduit du score /24.
+        </div>
+      </div>
+    `;
+  }
+
+  async function showMatchPersonDetailModal(portal, id_poste, id_effectif, id_service) {
+    openMatchPersonModal("Détail matching");
+
+    try {
+      const data = await fetchMatchingEffectifDetail(portal, id_poste, id_effectif, id_service);
+
+      const poste = data?.poste || {};
+      const person = data?.person || {};
+      const title = `${person.full || "Personne"} — ${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
+
+      const t = byId("matchPersonModalTitle");
+      if (t) t.textContent = title;
+
+      renderMatchPersonDetail(data);
+    } catch (e) {
+      const host = byId("matchPersonModalBody");
+      if (host) host.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0; color:#991b1b;">Erreur : ${escapeHtml(e.message || "inconnue")}</div></div>`;
+    }
+  }
+
   function nivReqToNum(raw) {
     const s = (raw ?? "").toString().trim().toUpperCase();
     if (s === "A") return 1;
@@ -650,9 +911,13 @@
       const score = Number(c.score_pct || 0);
       const scoreBadge = score >= 80 ? badge(score + "%", true) : badge(score + "%", false);
 
+      const ide = String(c.id_effectif || "").trim();
+
       return `
-        <tr>
-          <td style="font-weight:700;">${escapeHtml(c.full || "—")}</td>
+        <tr class="match-person-row" data-match-id_effectif="${escapeHtml(ide)}" style="cursor:pointer;">
+          <td style="font-weight:700;">
+            ${escapeHtml(c.full || "—")}
+          </td>
           <td>${escapeHtml(c.nom_service || "—")}</td>
           <td class="col-center">${scoreBadge}</td>
           <td class="col-center">${critHtml}</td>
@@ -1935,6 +2200,23 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
                   renderDetail("matching");
                   return;
                 }
+
+
+                // ------------------------------
+                // 4) Matching: clic personne (titulaire / candidat)
+                // ------------------------------
+                const trMatchPerson = ev.target.closest("tr.match-person-row[data-match-id_effectif]");
+                if (trMatchPerson) {
+                  const id_eff = (trMatchPerson.getAttribute("data-match-id_effectif") || "").trim();
+                  if (!id_eff) return;
+
+                  if (!_matchSelectedPoste) return;
+
+                  const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+                  await showMatchPersonDetailModal(portal, _matchSelectedPoste, id_eff, id_service);
+                  return;
+                }
+
 
 
               });
