@@ -57,6 +57,64 @@
     return s;
   }
 
+    // ==============================
+  // Matching/Risques - Badges "écarts"
+  // - Rouge = non acquises (abs)
+  // - Orange = à renforcer (sous)
+  // ==============================
+  function parseAbsSous(raw) {
+    // Supporte:
+    // - objet { abs: x, sous: y }
+    // - string "x abs / y sous"
+    if (raw && typeof raw === "object") {
+      return { abs: Number(raw.abs || 0), sous: Number(raw.sous || 0) };
+    }
+
+    const s = (raw ?? "").toString();
+    const m = /(\d+)\s*abs.*?(\d+)\s*sous/i.exec(s);
+    return { abs: m ? Number(m[1]) : 0, sous: m ? Number(m[2]) : 0 };
+  }
+
+  function gapBadges(abs, sous) {
+    const a = Number(abs || 0);
+    const b = Number(sous || 0);
+
+    function badge(n, bg, title) {
+      return `
+        <span title="${escapeHtml(title)}"
+              style="display:inline-flex; align-items:center; justify-content:center;
+                     width:22px; height:22px; border-radius:6px;
+                     font-size:12px; font-weight:800; color:#fff;
+                     background:${bg}; border:1px solid rgba(0,0,0,.12);">
+          ${n}
+        </span>
+      `;
+    }
+
+    return `
+      <span style="display:inline-flex; gap:6px; align-items:center; justify-content:center;">
+        ${badge(a, "#ef4444", "Non acquises")}
+        ${badge(b, "#f59e0b", "À renforcer")}
+      </span>
+    `;
+  }
+
+  function gapsLegendHtml() {
+    return `
+      <div class="card-sub"
+           style="margin-top:10px; color:#6b7280; display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+        <span style="display:inline-flex; gap:6px; align-items:center;">
+          <span style="width:12px; height:12px; border-radius:3px; background:#ef4444; display:inline-block;"></span>
+          Non acquises
+        </span>
+        <span style="display:inline-flex; gap:6px; align-items:center;">
+          <span style="width:12px; height:12px; border-radius:3px; background:#f59e0b; display:inline-block;"></span>
+          À renforcer
+        </span>
+      </div>
+    `;
+  }
+
 
   function setText(id, v, fallback = "—") {
     const el = byId(id);
@@ -152,6 +210,61 @@
     setText("kpiPrevSorties12", "—");
     setText("kpiPrevCompImpact", "—");
     setText("kpiPrevPostesRed", "—");
+  }
+
+  // ==============================
+  // Matching KPIs (tuile)
+  // - 2 KPI au lieu de 3 : "Adéquation au poste" + "Top candidat"
+  // - le 3e (legacy) est masqué côté UI
+  // ==============================
+  function setupMatchingKpiTileUi() {
+    // Renomme les labels en s'adaptant à la structure HTML (mini-kpi / label / value)
+    function setLabel(valueId, labelText) {
+      const v = byId(valueId);
+      if (!v) return;
+
+      const box = v.closest(".mini-kpi") || v.closest(".kpi") || v.parentElement;
+      const lab = box ? box.querySelector(".label") : null;
+
+      if (lab) lab.textContent = labelText;
+    }
+
+    function hideBox(valueId) {
+      const v = byId(valueId);
+      if (!v) return;
+
+      const box = v.closest(".mini-kpi") || v.closest(".kpi") || v.parentElement;
+      if (box) box.style.display = "none";
+    }
+
+    setLabel("kpiMatchNoCandidate", "Adéquation au poste");
+    setLabel("kpiMatchReadyNow", "Top candidat");
+    hideBox("kpiMatchReady6");
+  }
+
+  function setMatchingKpisFromLists(titulaires, candidats) {
+    // KPI 1: Adéquation au poste = moyenne des titulaires (si plusieurs)
+    const tit = Array.isArray(titulaires) ? titulaires : [];
+    const cand = Array.isArray(candidats) ? candidats : [];
+
+    const adeqPct = tit.length
+      ? Math.round(tit.reduce((s, x) => s + Number(x.score_pct || 0), 0) / tit.length)
+      : null;
+
+    // KPI 2: Top candidat = meilleur score hors titulaires
+    const best = cand.length
+      ? cand.reduce((b, x) => (Number(x.score_pct || 0) > Number(b.score_pct || 0) ? x : b), cand[0])
+      : null;
+
+    setText("kpiMatchNoCandidate", adeqPct === null ? "—" : (adeqPct + "%"));
+    setText("kpiMatchReadyNow", best ? (String(best.score_pct || 0) + "%") : "—");
+
+    // petits tooltips utiles, sans alourdir l'écran
+    const elA = byId("kpiMatchNoCandidate");
+    const elB = byId("kpiMatchReadyNow");
+
+    if (elA) elA.title = tit.length ? ("Titulaire(s) : " + tit.map(x => (x.full || "").trim()).filter(Boolean).join(", ")) : "Aucun titulaire";
+    if (elB) elB.title = best ? ("Top : " + ((best.full || "").trim() || "—")) : "Aucun candidat";
   }
 
   function setActiveTile(mode) {
@@ -468,6 +581,107 @@
       return `<span class="${cls}">${escapeHtml(txt)}</span>`;
     }
 
+    function gapBadges(absCount, underCount) {
+      const a = Number(absCount || 0);
+      const u = Number(underCount || 0);
+
+      function box(n, bg, title) {
+        const isZero = !n;
+        const style = isZero
+          ? "background:#e5e7eb; color:#6b7280; border:1px solid #d1d5db;"
+          : `background:${bg}; color:#ffffff; border:1px solid rgba(0,0,0,.12);`;
+
+        return `
+          <span title="${escapeHtml(title)}"
+                style="display:inline-flex; align-items:center; justify-content:center;
+                      width:22px; height:18px; border-radius:4px;
+                      font-size:12px; font-weight:800; line-height:1;
+                      ${style}">
+            ${n || 0}
+          </span>
+        `;
+      }
+
+      return `
+        <span style="display:inline-flex; gap:6px; align-items:center; justify-content:center;">
+          ${box(a, "#ef4444", "Manquantes")}
+          ${box(u, "#f59e0b", "À renforcer")}
+        </span>
+      `;
+    }
+
+    const MATCH_LEGEND_HTML = `
+      <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="width:12px; height:12px; border-radius:3px; background:#ef4444; border:1px solid rgba(0,0,0,.12);"></span>
+          <span style="font-size:12px; color:#6b7280;">Manquantes</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="width:12px; height:12px; border-radius:3px; background:#f59e0b; border:1px solid rgba(0,0,0,.12);"></span>
+          <span style="font-size:12px; color:#6b7280;">À renforcer</span>
+        </div>
+      </div>
+    `;
+
+    // --- Titulaires vs Candidats : on s’appuie sur un flag si l’API le donne, sinon sur l’id_poste_actuel
+    function isTitulaire(c) {
+      if (!c) return false;
+
+      // cas idéal: backend fournit un flag
+      if (c.is_titulaire === true || c.est_titulaire === true || c.titulaire === true || c.is_on_poste === true) return true;
+      if (String(c.is_titulaire || "").toLowerCase() === "true") return true;
+
+      // fallback: comparaison poste actuel / poste analysé (si dispo)
+      const posteCible =
+        (typeof id_poste !== "undefined" && id_poste) ? String(id_poste).trim() :
+        (typeof id_poste_cible !== "undefined" && id_poste_cible) ? String(id_poste_cible).trim() :
+        "";
+
+      const posteActuel = String(c.id_poste_actuel || "").trim();
+      return !!posteCible && !!posteActuel && posteActuel === posteCible;
+    }
+
+    const titulaires = top.filter(isTitulaire);
+    const candidats = top.filter(c => !isTitulaire(c));
+
+    
+
+    // Met à jour la tuile KPI Matching en fonction du poste sélectionné
+    setMatchingKpisFromLists(titulaires, candidats);
+function renderRow(c) {
+      const critHtml = gapBadges(c.crit_missing, c.crit_under);
+      const missHtml = gapBadges(c.nb_missing, c.nb_under);
+
+      const score = Number(c.score_pct || 0);
+      const scoreBadge = score >= 80 ? badge(score + "%", true) : badge(score + "%", false);
+
+      return `
+        <tr>
+          <td style="font-weight:700;">${escapeHtml(c.full || "—")}</td>
+          <td>${escapeHtml(c.nom_service || "—")}</td>
+          <td class="col-center">${scoreBadge}</td>
+          <td class="col-center">${critHtml}</td>
+          <td class="col-center">${missHtml}</td>
+        </tr>
+      `;
+    }
+
+    function renderSection(title, rows, emptyText) {
+      const header = `
+        <tr>
+          <td colspan="5" style="padding:10px 8px; font-weight:800; color:#111827; border-top:1px solid #e5e7eb;">
+            ${escapeHtml(title)}
+          </td>
+        </tr>
+      `;
+
+      const content = rows.length
+        ? rows.map(renderRow).join("")
+        : `<tr><td colspan="5" class="col-center" style="color:#6b7280;">${escapeHtml(emptyText)}</td></tr>`;
+
+      return header + content;
+    }
+
     host.innerHTML = `
       <div class="card-sub" style="margin:0 0 8px 0;">
         Poste : <b>${escapeHtml(posteLabel || "—")}</b>
@@ -477,37 +691,36 @@
         <table class="sb-table">
           <thead>
             <tr>
-              <th>Candidat</th>
+              <th>Personne</th>
               <th style="width:180px;">Service</th>
               <th class="col-center" style="width:110px;">Score</th>
               <th class="col-center" style="width:140px;">Critiques</th>
-              <th class="col-center" style="width:140px;">Manquantes</th>
+              <th class="col-center" style="width:140px;">Écarts</th>
             </tr>
           </thead>
           <tbody>
-            ${top.map(c => {
-              const crit = `${c.crit_missing} abs / ${c.crit_under} sous`;
-              const miss = `${c.nb_missing} abs / ${c.nb_under} sous`;
-              const scoreBadge = c.score_pct >= 80 ? badge(c.score_pct + "%", true) : badge(c.score_pct + "%", false);
-
-              return `
-                <tr>
-                  <td style="font-weight:700;">${escapeHtml(c.full)}</td>
-                  <td>${escapeHtml(c.nom_service)}</td>
-                  <td class="col-center">${scoreBadge}</td>
-                  <td class="col-center">${escapeHtml(crit)}</td>
-                  <td class="col-center">${escapeHtml(miss)}</td>
-                </tr>
-              `;
-            }).join("")}
+            ${renderSection(
+              "Adéquation au poste (titulaire" + (titulaires.length > 1 ? "s" : "") + ")",
+              titulaires,
+              "Aucun titulaire détecté sur ce poste"
+            )}
+            ${renderSection(
+              "Top candidats (hors titulaires)",
+              candidats,
+              "Aucun candidat (hors titulaires)"
+            )}
           </tbody>
         </table>
       </div>
+
+      ${MATCH_LEGEND_HTML}
 
       <div class="card-sub" style="margin-top:10px; color:#6b7280;">
         Critiques = poids_criticite ≥ ${CRITICITE_MIN}. Score = moyenne pondérée des compétences requises.
       </div>
     `;
+
+
   }
 
   async function showMatchingForPoste(portal, id_poste, id_service, seqGuard) {
@@ -1167,6 +1380,8 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
 
           body.innerHTML = renderMatchingShell();
 
+      setText("kpiMatchNoCandidate", "—");
+      setText("kpiMatchReadyNow", "—");
           if (!_portalRef) {
             const host = byId("matchResult");
             if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Contexte portail indisponible.</div>`;
@@ -1520,13 +1735,12 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
       setText("kpiRiskPostes", r.postes_fragiles);
       setText("kpiRiskNoOwner", r.comp_critiques_sans_porteur);
       setText("kpiRiskBus1", r.comp_bus_factor_1);
-
-      const m = t.matching || {};
-      setText("kpiMatchNoCandidate", m.postes_sans_candidat);
-      setText("kpiMatchReadyNow", m.candidats_prets);
-      setText("kpiMatchReady6", m.candidats_prets_6m);
-
-      const p = t.previsions || {};
+      // Matching : KPI pilotés par la vue "Matching" (sélection d'un poste).
+      // Ici on évite d'écraser l'affichage avec un éventuel summary legacy.
+      setText("kpiMatchNoCandidate", "—");
+      setText("kpiMatchReadyNow", "—");
+      setText("kpiMatchReady6", "—");
+const p = t.previsions || {};
       setText("kpiPrevSorties12", p.sorties_12m);
       setText("kpiPrevCompImpact", p.comp_critiques_impactees);
       setText("kpiPrevPostesRed", p.postes_rouges_12m);
@@ -1604,6 +1818,10 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
         });
       });
     }
+
+
+    // Matching: on adapte la tuile (2 KPI + labels)
+    setupMatchingKpiTileUi();
 
 
     if (selService) {
@@ -1749,3 +1967,4 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
     }
   };
 })();
+
