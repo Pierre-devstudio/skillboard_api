@@ -406,13 +406,13 @@
 
     const html = `
       <div class="modal" id="modalMatchPerson" aria-hidden="true">
-        <div class="modal-card" style="max-width:1020px;">
+        <div class="modal-card" style="max-width:1120px; width:min(1120px, 96vw); max-height:92vh; display:flex; flex-direction:column;">
           <div class="modal-header">
             <div style="font-weight:600;" id="matchPersonModalTitle">Détail</div>
             <button type="button" class="modal-x" id="btnCloseMatchPersonModal" aria-label="Fermer">×</button>
           </div>
 
-          <div class="modal-body" id="matchPersonModalBody">
+          <div class="modal-body" id="matchPersonModalBody" style="overflow:auto; flex:1; padding:14px 16px;">
             <div class="card" style="padding:12px; margin:0;">
               <div class="card-sub" style="margin:0;">Chargement…</div>
             </div>
