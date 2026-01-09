@@ -349,13 +349,33 @@
   }
 
     // ==============================
-  // MATCHING (MVP)
-  // - basé sur /risques/poste (compétences requises + porteurs)
-  // - liste postes = "postes fragiles" (source risques)
+  // MATCHING
+  // - endpoint dédié /skills/analyse/matching/poste (titulaire + candidats, scoring /24)
+  // - liste postes = "postes fragiles" (source risques) en V1
   // ==============================
   const _matchPostesCache = new Map(); // key: id_service -> items[]
   let _matchReqSeq = 0;
   let _matchSelectedPoste = "";
+  const _matchDetailCache = new Map(); // key: id_poste|id_service|criticite -> payload
+
+  async function fetchMatchingPosteDetail(portal, id_poste, id_service) {
+    const svc = (id_service || "").trim();
+    const key = `${id_poste}|${svc}|${CRITICITE_MIN}`;
+    if (_matchDetailCache.has(key)) return _matchDetailCache.get(key);
+
+    const qs = buildQueryString({
+      id_poste: id_poste,
+      id_service: svc || null,
+      criticite_min: CRITICITE_MIN
+    });
+
+    const url = `${portal.apiBase}/skills/analyse/matching/poste/${encodeURIComponent(portal.contactId)}${qs}`;
+    const data = await portal.apiJson(url);
+
+    _matchDetailCache.set(key, data);
+    return data;
+  }
+
 
   function nivReqToNum(raw) {
     const s = (raw ?? "").toString().trim().toUpperCase();
@@ -547,7 +567,7 @@
 
     const list = Array.isArray(candidates) ? candidates : [];
     if (!list.length) {
-      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun candidat détecté (aucun porteur sur les compétences du poste).</div>`;
+      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun résultat (aucun titulaire et aucun profil évalué sur les compétences du poste).</div>`;
       return;
     }
 
@@ -677,7 +697,7 @@
       ${MATCH_LEGEND_HTML}
 
       <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-        Critiques = poids_criticite ≥ ${CRITICITE_MIN}. Score = moyenne pondérée des compétences requises.
+        Critiques = poids_criticite ≥ ${CRITICITE_MIN}. Score = moyenne pondérée (résultat / seuil du niveau requis).
       </div>
     `;
 
@@ -688,14 +708,14 @@
     const host = byId("matchResult");
     if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
 
-    const data = await fetchAnalysePosteDetail(portal, id_poste, id_service);
+    const data = await fetchMatchingPosteDetail(portal, id_poste, id_service);
     if (seqGuard && seqGuard !== _matchReqSeq) return;
 
     const poste = data?.poste || {};
     const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
 
-    const cands = computeCandidatesFromPosteDetail(data);
-    renderMatchingCandidates(id_poste, posteLabel, cands, getMatchView());
+    const items = Array.isArray(data?.items) ? data.items : [];
+    renderMatchingCandidates(id_poste, posteLabel, items, getMatchView());
   }
 
     // ==============================
@@ -1963,4 +1983,3 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
     }
   };
 })();
-

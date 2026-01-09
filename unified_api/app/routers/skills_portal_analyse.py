@@ -191,6 +191,48 @@ def _build_scope_cte(id_ent: str, id_service: Optional[str]) -> Tuple[str, List[
     """
     return cte, [id_ent, id_service, id_ent, id_ent, id_ent]
 
+# ======================================================
+# Matching helpers (/24 -> A/B/C + scoring)
+# ======================================================
+def _safe_float(v: Any) -> Optional[float]:
+    try:
+        if v is None:
+            return None
+        return float(v)
+    except Exception:
+        return None
+
+
+def _score_seuil_for_niveau(niveau: Optional[str]) -> float:
+    s = (niveau or "").strip().upper()
+    if s == "A":
+        return 6.0
+    if s == "B":
+        return 10.0
+    if s == "C":
+        return 19.0
+    return 0.0
+
+
+def _niveau_from_score(score: Optional[float]) -> Optional[str]:
+    if score is None:
+        return None
+    try:
+        x = float(score)
+    except Exception:
+        return None
+
+    # Mapping Skillboard: /24 => A/B/C
+    if 6.0 <= x <= 9.0:
+        return "A"
+    if 10.0 <= x <= 18.0:
+        return "B"
+    if 19.0 <= x <= 24.0:
+        return "C"
+    # en-dessous de A (ou hors plage) => pas de niveau exploitable
+    return None
+
+
 
 # ======================================================
 # Endpoint: Summary (tuiles)
@@ -644,6 +686,28 @@ class AnalysePosteDetailResponse(BaseModel):
     competences: List[AnalysePosteCompetenceItem]
 
 
+class AnalyseMatchingItem(BaseModel):
+    id_effectif: str
+    full: str
+    nom_service: str
+    id_poste_actuel: Optional[str] = None
+    score_pct: int = 0
+    crit_missing: int = 0
+    crit_under: int = 0
+    nb_missing: int = 0
+    nb_under: int = 0
+    is_titulaire: bool = False
+
+
+class AnalyseMatchingPosteResponse(BaseModel):
+    poste: Dict[str, Any]
+    scope: ServiceScope
+    criticite_min: int
+    updated_at: str
+    items: List[AnalyseMatchingItem]
+
+
+
 # ======================================================
 # Endpoint: Drilldown Poste (Risques)
 # ======================================================
@@ -861,6 +925,261 @@ def get_analyse_risques_poste_detail(
                     },
                     coverage=cov,
                     competences=competences,
+                )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+# ======================================================
+# Endpoint: Matching poste-porteur
+# - Renvoie titulaire(s) + top candidats internes (un seul payload)
+# ======================================================
+@router.get(
+    "/skills/analyse/matching/poste/{id_contact}",
+    response_model=AnalyseMatchingPosteResponse,
+)
+def get_analyse_matching_poste(
+    id_contact: str,
+    id_poste: str = Query(...),
+    id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=3, ge=0),
+    limit: int = Query(default=300, ge=1, le=2000),
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+
+                # --- id_ent depuis contact
+                contact = _fetch_contact_and_ent(cur, id_contact)
+                id_ent = contact["code_ent"]
+
+                scope = _fetch_service_label(cur, id_ent, id_service)
+
+                cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
+
+                # 1) Poste (sécurisation: doit être dans postes_scope)
+                cur.execute(
+                    f"""
+                    {cte_sql}
+                    SELECT
+                        fp.id_poste, fp.codif_poste, fp.intitule_poste, fp.id_service,
+                        COALESCE(o.nom_service, '') AS nom_service
+                    FROM public.tbl_fiche_poste fp
+                    JOIN postes_scope ps ON ps.id_poste = fp.id_poste
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = fp.id_service
+                     AND o.archive = FALSE
+                    WHERE fp.id_poste = %s
+                    LIMIT 1
+                    """,
+                    tuple(cte_params + [id_ent, id_poste]),
+                )
+                poste = cur.fetchone()
+                if not poste:
+                    raise HTTPException(status_code=404, detail="Poste introuvable (ou hors périmètre service).")
+
+                # 2) Compétences requises + poids
+                cur.execute(
+                    f"""
+                    {cte_sql}
+                    SELECT
+                        fpc.id_competence AS id_comp,
+                        fpc.niveau_requis,
+                        COALESCE(fpc.poids_criticite, 1)::int AS poids_criticite
+                    FROM public.tbl_fiche_poste_competence fpc
+                    JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
+                    WHERE fpc.id_poste = %s
+                    """,
+                    tuple(cte_params + [id_poste]),
+                )
+                req_rows = cur.fetchall() or []
+                reqs: List[Dict[str, Any]] = []
+                for r in req_rows:
+                    cid = (r.get("id_comp") or "").strip()
+                    if not cid:
+                        continue
+                    lvl = (r.get("niveau_requis") or "").strip().upper()
+                    w = int(r.get("poids_criticite") or 1)
+                    if w <= 0:
+                        w = 1
+                    reqs.append({"id_comp": cid, "niveau_requis": lvl, "poids": w})
+
+                # Poste sans compétences => matching vide, mais on répond proprement
+                if not reqs:
+                    return AnalyseMatchingPosteResponse(
+                        poste={
+                            "id_poste": poste.get("id_poste"),
+                            "codif_poste": poste.get("codif_poste"),
+                            "intitule_poste": poste.get("intitule_poste"),
+                        },
+                        scope=scope,
+                        criticite_min=int(criticite_min),
+                        updated_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                        items=[],
+                    )
+
+                comp_ids = [x["id_comp"] for x in reqs]
+
+                # 3) Effectifs scope + identité
+                cur.execute(
+                    f"""
+                    {cte_sql}
+                    SELECT
+                        e.id_effectif,
+                        e.prenom_effectif,
+                        e.nom_effectif,
+                        e.id_poste_actuel,
+                        COALESCE(o.nom_service, '') AS nom_service
+                    FROM public.tbl_effectif_client e
+                    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = e.id_service
+                     AND o.archive = FALSE
+                    WHERE e.id_ent = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                    ORDER BY e.nom_effectif, e.prenom_effectif
+                    """,
+                    tuple(cte_params + [id_ent, id_ent]),
+                )
+                eff_rows = cur.fetchall() or []
+
+                # 4) Derniers scores (/24) sur les compétences requises
+                cur.execute(
+                    f"""
+                    {cte_sql}
+                    SELECT
+                        ec.id_effectif_client AS id_effectif,
+                        ec.id_comp,
+                        ac.resultat_eval
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
+                    LEFT JOIN public.tbl_effectif_client_audit_competence ac
+                      ON ac.id_audit_competence = ec.id_dernier_audit
+                    WHERE ec.actif = TRUE
+                      AND ec.archive = FALSE
+                      AND ec.id_comp = ANY(%s)
+                    """,
+                    tuple(cte_params + [comp_ids]),
+                )
+                score_rows = cur.fetchall() or []
+
+                # scores_map[id_effectif][id_comp] = Optional[float]
+                scores_map: Dict[str, Dict[str, Optional[float]]] = {}
+                for r in score_rows:
+                    ide = (r.get("id_effectif") or "").strip()
+                    cid = (r.get("id_comp") or "").strip()
+                    if not ide or not cid:
+                        continue
+                    scores_map.setdefault(ide, {})[cid] = _safe_float(r.get("resultat_eval"))
+
+                # Pré-calcul poids total
+                poids_total = sum(int(x.get("poids") or 1) for x in reqs) or 1
+                crit_min = int(criticite_min)
+
+                items: List[AnalyseMatchingItem] = []
+                for e in eff_rows:
+                    ide = (e.get("id_effectif") or "").strip()
+                    if not ide:
+                        continue
+
+                    prenom = (e.get("prenom_effectif") or "").strip()
+                    nom = (e.get("nom_effectif") or "").strip()
+                    full = (prenom + " " + nom).strip() or "—"
+
+                    poste_actuel = (e.get("id_poste_actuel") or "").strip() or None
+                    is_tit = bool(poste_actuel and poste_actuel == id_poste)
+
+                    eff_scores = scores_map.get(ide, {})
+
+                    # Filtre anti-bruit: on garde toujours le(s) titulaire(s),
+                    # et sinon uniquement les profils ayant au moins une trace sur les compétences du poste
+                    if not is_tit and not eff_scores:
+                        continue
+
+                    sum_ratio = 0.0
+                    nb_missing = 0
+                    nb_under = 0
+                    crit_missing = 0
+                    crit_under = 0
+
+                    for req in reqs:
+                        cid = req["id_comp"]
+                        lvl_req = req.get("niveau_requis") or ""
+                        w = int(req.get("poids") or 1)
+                        if w <= 0:
+                            w = 1
+
+                        seuil = _score_seuil_for_niveau(lvl_req)
+                        score = eff_scores.get(cid) if eff_scores is not None else None
+
+                        if score is None:
+                            nb_missing += 1
+                            if w >= crit_min:
+                                crit_missing += 1
+                            ratio = 0.0
+                        else:
+                            if seuil > 0 and score < seuil:
+                                nb_under += 1
+                                if w >= crit_min:
+                                    crit_under += 1
+
+                            ratio = 0.0
+                            if seuil > 0:
+                                ratio = min(max(score / seuil, 0.0), 1.0)
+
+                        sum_ratio += (w * ratio)
+
+                    score_pct = int(round((sum_ratio / float(poids_total)) * 100.0))
+                    if score_pct < 0:
+                        score_pct = 0
+                    if score_pct > 100:
+                        score_pct = 100
+
+                    items.append(
+                        AnalyseMatchingItem(
+                            id_effectif=ide,
+                            full=full,
+                            nom_service=(e.get("nom_service") or "").strip() or "—",
+                            id_poste_actuel=poste_actuel,
+                            score_pct=score_pct,
+                            crit_missing=crit_missing,
+                            crit_under=crit_under,
+                            nb_missing=nb_missing,
+                            nb_under=nb_under,
+                            is_titulaire=is_tit,
+                        )
+                    )
+
+                # Tri: score desc puis moins d'écarts critiques, puis moins d'écarts global
+                items.sort(
+                    key=lambda x: (
+                        -int(x.score_pct or 0),
+                        int(x.crit_missing or 0),
+                        int(x.crit_under or 0),
+                        int(x.nb_missing or 0),
+                        int(x.nb_under or 0),
+                        (x.full or "").lower(),
+                    )
+                )
+
+                if limit and len(items) > int(limit):
+                    items = items[: int(limit)]
+
+                return AnalyseMatchingPosteResponse(
+                    poste={
+                        "id_poste": poste.get("id_poste"),
+                        "codif_poste": poste.get("codif_poste"),
+                        "intitule_poste": poste.get("intitule_poste"),
+                    },
+                    scope=scope,
+                    criticite_min=int(criticite_min),
+                    updated_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    items=items,
                 )
 
     except HTTPException:
