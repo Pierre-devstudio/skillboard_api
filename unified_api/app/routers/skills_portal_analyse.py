@@ -867,3 +867,293 @@ def get_analyse_risques_poste_detail(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+# ======================================================
+# Endpoint: Détail compétence (Risques)
+# - Drilldown depuis "Critiques sans porteur" / "Porteur unique"
+# - Renvoie: infos compétence + postes impactés + porteurs (niveau_actuel)
+# ======================================================
+@router.get("/skills/analyse/risques/competence/{id_contact}")
+def get_risque_competence_detail(
+    id_contact: str,
+    id_comp: str = Query(..., description="id_comp OU code compétence"),
+    id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=3, ge=0),
+    limit_postes: int = Query(default=200, ge=1, le=2000),
+    limit_porteurs: int = Query(default=300, ge=1, le=2000),
+):
+    try:
+        NON_LIE_ID_LOCAL = "__NON_LIE__"
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+
+                # --- id_ent depuis contact
+                cur.execute(
+                    """
+                    SELECT code_ent
+                    FROM public.tbl_contact
+                    WHERE id_contact = %s
+                      AND COALESCE(masque, FALSE) = FALSE
+                    LIMIT 1
+                    """,
+                    (id_contact,)
+                )
+                c = cur.fetchone()
+                if not c or not c.get("code_ent"):
+                    raise HTTPException(status_code=404, detail="Contact introuvable.")
+                id_ent = c["code_ent"]
+
+                # --- scope label
+                scope = {"id_service": None, "nom_service": "Tous les services"}
+                svc = (id_service or "").strip()
+                if svc:
+                    if svc == NON_LIE_ID_LOCAL:
+                        scope = {"id_service": NON_LIE_ID_LOCAL, "nom_service": "Non liés (sans service)"}
+                    else:
+                        cur.execute(
+                            """
+                            SELECT id_service, COALESCE(nom_service, 'Service') AS nom_service
+                            FROM public.tbl_entreprise_organigramme
+                            WHERE id_ent = %s
+                              AND id_service = %s
+                              AND archive = FALSE
+                            LIMIT 1
+                            """,
+                            (id_ent, svc)
+                        )
+                        srow = cur.fetchone()
+                        if not srow:
+                            raise HTTPException(status_code=404, detail="Service introuvable (ou archivé).")
+                        scope = {"id_service": srow["id_service"], "nom_service": srow["nom_service"]}
+
+                # --- compétence (on accepte id_comp OU code)
+                cur.execute(
+                    """
+                    SELECT
+                        c.id_comp,
+                        c.code,
+                        c.intitule,
+                        c.description,
+                        c.domaine AS id_domaine_competence,
+                        c.etat,
+                        c.masque,
+                        d.titre,
+                        d.titre_court,
+                        d.couleur
+                    FROM public.tbl_competence c
+                    LEFT JOIN public.tbl_domaine_competence d
+                      ON d.id_domaine_competence = c.domaine
+                    WHERE (c.id_comp = %s OR c.code = %s)
+                    LIMIT 1
+                    """,
+                    (id_comp, id_comp)
+                )
+                comp = cur.fetchone()
+                if not comp:
+                    raise HTTPException(status_code=404, detail="Compétence introuvable.")
+
+                comp_id = comp["id_comp"]
+
+                # --- CTE service (descendants) si service ciblé
+                services_cte_sql = ""
+                services_cte_params: List[Any] = []
+                svc_filter_poste = "TRUE"
+                svc_filter_eff = "TRUE"
+                extra_poste_params: List[Any] = []
+                extra_eff_params: List[Any] = []
+
+                if scope["id_service"]:
+                    if scope["id_service"] == NON_LIE_ID_LOCAL:
+                        # Non liés = NULL/'' ou service hors organigramme actif
+                        svc_filter_poste = """
+                            (
+                                p.id_service IS NULL OR p.id_service = ''
+                                OR p.id_service NOT IN (
+                                    SELECT o.id_service
+                                    FROM public.tbl_entreprise_organigramme o
+                                    WHERE o.id_ent = %s
+                                      AND o.archive = FALSE
+                                )
+                            )
+                        """
+                        svc_filter_eff = """
+                            (
+                                e.id_service IS NULL OR e.id_service = ''
+                                OR e.id_service NOT IN (
+                                    SELECT o.id_service
+                                    FROM public.tbl_entreprise_organigramme o
+                                    WHERE o.id_ent = %s
+                                      AND o.archive = FALSE
+                                )
+                            )
+                        """
+                        extra_poste_params.append(id_ent)
+                        extra_eff_params.append(id_ent)
+                    else:
+                        services_cte_sql = """
+                        services_scope AS (
+                            WITH RECURSIVE s AS (
+                                SELECT o.id_service
+                                FROM public.tbl_entreprise_organigramme o
+                                WHERE o.id_ent = %s
+                                  AND o.archive = FALSE
+                                  AND o.id_service = %s
+                                UNION ALL
+                                SELECT o2.id_service
+                                FROM public.tbl_entreprise_organigramme o2
+                                JOIN s ON s.id_service = o2.id_service_parent
+                                WHERE o2.id_ent = %s
+                                  AND o2.archive = FALSE
+                            )
+                            SELECT id_service FROM s
+                        )
+                        """
+                        services_cte_params = [id_ent, scope["id_service"], id_ent]
+                        svc_filter_poste = "p.id_service IN (SELECT id_service FROM services_scope)"
+                        svc_filter_eff = "e.id_service IN (SELECT id_service FROM services_scope)"
+
+                with_clause = f"WITH {services_cte_sql}" if services_cte_sql else ""
+
+                # --- Postes impactés (requièrent la compétence) + nb porteurs (sur poste actuel)
+                sql_postes = f"""
+                {with_clause}
+                SELECT
+                    p.id_poste,
+                    p.codif_poste,
+                    p.intitule_poste,
+                    p.id_service,
+                    COALESCE(o.nom_service,'') AS nom_service,
+
+                    fpc.niveau_requis,
+                    fpc.poids_criticite,
+
+                    COALESCE(pc.nb_porteurs,0)::int AS nb_porteurs
+                FROM public.tbl_fiche_poste_competence fpc
+                JOIN public.tbl_fiche_poste p
+                  ON p.id_poste = fpc.id_poste
+                LEFT JOIN public.tbl_entreprise_organigramme o
+                  ON o.id_ent = p.id_ent
+                 AND o.id_service = p.id_service
+                 AND o.archive = FALSE
+                JOIN public.tbl_competence c
+                  ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                LEFT JOIN (
+                    SELECT
+                        e.id_poste_actuel AS id_poste,
+                        COUNT(DISTINCT e.id_effectif)::int AS nb_porteurs
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN public.tbl_effectif_client e
+                      ON e.id_effectif = ec.id_effectif_client
+                    WHERE e.id_ent = %s
+                      AND COALESCE(e.archive,FALSE) = FALSE
+                      AND ec.id_comp = %s
+                      AND {svc_filter_eff}
+                    GROUP BY e.id_poste_actuel
+                ) pc
+                  ON pc.id_poste = p.id_poste
+                WHERE
+                    p.id_ent = %s
+                    AND COALESCE(p.actif, TRUE) = TRUE
+                    AND {svc_filter_poste}
+                    AND c.id_comp = %s
+                    AND COALESCE(fpc.poids_criticite, 0) >= %s
+                ORDER BY
+                    COALESCE(pc.nb_porteurs,0) ASC,
+                    COALESCE(fpc.poids_criticite,0) DESC,
+                    p.codif_poste,
+                    p.intitule_poste
+                LIMIT %s
+                """
+
+                params_postes: List[Any] = []
+                params_postes.extend(services_cte_params)
+                params_postes.extend([id_ent, comp_id])
+                params_postes.extend(extra_eff_params)
+                params_postes.extend([id_ent])
+                params_postes.extend(extra_poste_params)
+                params_postes.extend([comp_id, criticite_min, limit_postes])
+
+                cur.execute(sql_postes, tuple(params_postes))
+                postes = cur.fetchall() or []
+
+                # --- Porteurs (tous porteurs dans le périmètre)
+                sql_porteurs = f"""
+                {with_clause}
+                SELECT
+                    e.id_effectif,
+                    e.prenom_effectif,
+                    e.nom_effectif,
+                    ec.niveau_actuel,
+
+                    e.id_service,
+                    COALESCE(o.nom_service,'') AS nom_service,
+
+                    e.id_poste_actuel,
+                    COALESCE(p.codif_poste,'') AS codif_poste,
+                    COALESCE(p.intitule_poste,'') AS intitule_poste
+                FROM public.tbl_effectif_client_competence ec
+                JOIN public.tbl_effectif_client e
+                  ON e.id_effectif = ec.id_effectif_client
+                LEFT JOIN public.tbl_entreprise_organigramme o
+                  ON o.id_ent = e.id_ent
+                 AND o.id_service = e.id_service
+                 AND o.archive = FALSE
+                LEFT JOIN public.tbl_fiche_poste p
+                  ON p.id_poste = e.id_poste_actuel
+                WHERE
+                    e.id_ent = %s
+                    AND COALESCE(e.archive,FALSE) = FALSE
+                    AND ec.id_comp = %s
+                    AND {svc_filter_eff}
+                ORDER BY e.nom_effectif, e.prenom_effectif
+                LIMIT %s
+                """
+
+                params_porteurs: List[Any] = []
+                params_porteurs.extend(services_cte_params)
+                params_porteurs.extend([id_ent, comp_id])
+                params_porteurs.extend(extra_eff_params)
+                params_porteurs.append(limit_porteurs)
+
+                cur.execute(sql_porteurs, tuple(params_porteurs))
+                porteurs = cur.fetchall() or []
+
+                # --- Stats rapides (sur postes)
+                nb_postes = len(postes)
+                nb_porteurs = len(porteurs)
+                nb_postes_sans_porteur = sum(1 for p in postes if int(p.get("nb_porteurs") or 0) == 0)
+                nb_postes_porteur_unique = sum(1 for p in postes if int(p.get("nb_porteurs") or 0) == 1)
+
+                return {
+                    "scope": scope,
+                    "criticite_min": criticite_min,
+                    "competence": {
+                        "id_comp": comp.get("id_comp"),
+                        "code": comp.get("code"),
+                        "intitule": comp.get("intitule"),
+                        "description": comp.get("description"),
+                        "id_domaine_competence": comp.get("id_domaine_competence"),
+                        "etat": comp.get("etat"),
+                        "masque": comp.get("masque"),
+                        "domaine": {
+                            "id_domaine_competence": comp.get("id_domaine_competence"),
+                            "titre": comp.get("titre"),
+                            "titre_court": comp.get("titre_court"),
+                            "couleur": comp.get("couleur"),
+                        }
+                    },
+                    "stats": {
+                        "nb_postes_impactes": nb_postes,
+                        "nb_porteurs": nb_porteurs,
+                        "nb_postes_sans_porteur": nb_postes_sans_porteur,
+                        "nb_postes_porteur_unique": nb_postes_porteur_unique,
+                    },
+                    "postes": postes,
+                    "porteurs": porteurs,
+                }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur détail compétence (risques): {str(e)}")

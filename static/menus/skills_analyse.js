@@ -246,6 +246,31 @@
     return data;
   }
 
+    // ==============================
+  // Détail COMPETENCE (Risques)
+  // ==============================
+  const _compDetailCache = new Map();
+  let _compDetailReqSeq = 0;
+
+  async function fetchAnalyseCompetenceDetail(portal, codeOrId, id_service) {
+    const svc = (id_service || "").trim();
+    const key = `${codeOrId}|${svc}|${CRITICITE_MIN}`;
+    if (_compDetailCache.has(key)) return _compDetailCache.get(key);
+
+    const qs = buildQueryString({
+      code: (codeOrId || "").trim() || null,       // cas standard: code
+      id_competence: (codeOrId || "").trim() || null, // fallback si backend préfère un id
+      id_service: svc || null,
+      criticite_min: CRITICITE_MIN
+    });
+
+    const url = `${portal.apiBase}/skills/analyse/risques/competence/${encodeURIComponent(portal.contactId)}${qs}`;
+    const data = await portal.apiJson(url);
+
+    _compDetailCache.set(key, data);
+    return data;
+  }
+ 
   function openAnalysePosteModal(title, subHtml) {
     const modal = byId("modalAnalysePoste");
     if (!modal) return;
@@ -269,6 +294,234 @@
     modal.classList.remove("show");
     modal.setAttribute("aria-hidden", "true");
   }
+
+  // ==============================
+  // Modal COMPETENCE (Risques)
+  // ==============================
+  function ensureAnalyseCompetenceModal() {
+    let modal = byId("modalAnalyseCompetence");
+    if (modal) return modal;
+
+    const html = `
+      <div class="modal" id="modalAnalyseCompetence" aria-hidden="true">
+        <div class="modal-content" style="max-width:980px;">
+          <div class="modal-header">
+            <div style="min-width:0;">
+              <div class="modal-title" id="analyseCompModalTitle">Détail compétence</div>
+              <div class="modal-sub" id="analyseCompModalSub"></div>
+            </div>
+            <button type="button" class="modal-close" id="btnCloseAnalyseCompModal" aria-label="Fermer">×</button>
+          </div>
+
+          <div class="modal-body" id="analyseCompModalBody">
+            <div class="card" style="padding:12px; margin:0;">
+              <div class="card-sub" style="margin:0;">Chargement…</div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" id="btnAnalyseCompModalClose">Fermer</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", html);
+    modal = byId("modalAnalyseCompetence");
+
+    // Wiring 1 seule fois
+    if (modal && modal.getAttribute("data-bound") !== "1") {
+      modal.setAttribute("data-bound", "1");
+
+      const btnX = byId("btnCloseAnalyseCompModal");
+      const btnClose = byId("btnAnalyseCompModalClose");
+
+      if (btnX) btnX.addEventListener("click", () => closeAnalyseCompetenceModal());
+      if (btnClose) btnClose.addEventListener("click", () => closeAnalyseCompetenceModal());
+
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeAnalyseCompetenceModal();
+      });
+    }
+
+    return modal;
+  }
+
+  function openAnalyseCompetenceModal(title, subHtml) {
+    const modal = ensureAnalyseCompetenceModal();
+    if (!modal) return;
+
+    const t = byId("analyseCompModalTitle");
+    const s = byId("analyseCompModalSub");
+    const b = byId("analyseCompModalBody");
+
+    if (t) t.textContent = title || "Détail compétence";
+    if (s) s.innerHTML = subHtml || "";
+    if (b) b.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
+
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+
+    const mb = modal.querySelector(".modal-body");
+    if (mb) mb.scrollTop = 0;
+  }
+
+  function closeAnalyseCompetenceModal() {
+    const modal = byId("modalAnalyseCompetence");
+    if (!modal) return;
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function mapNiveauActuelForDisplay(raw) {
+    const s = (raw ?? "").toString().trim().toLowerCase();
+    if (!s) return "—";
+    if (s === "initial") return "Initial - A";
+    if (s === "avancé" || s === "avance" || s === "avancee" || s === "avancée") return "Avancé - B";
+    if (s === "expert") return "Expert - C";
+    return (raw ?? "").toString().trim() || "—";
+  }
+
+  function renderAnalyseCompetenceDetail(data) {
+    const host = byId("analyseCompModalBody");
+    if (!host) return;
+
+    const comp = data?.competence || {};
+    const postes = Array.isArray(data?.postes) ? data.postes : [];
+    const porteurs = Array.isArray(data?.porteurs) ? data.porteurs : [];
+
+    const scope = (data?.scope?.nom_service || "").trim() || "Tous les services";
+    const critMin = String(data?.criticite_min ?? CRITICITE_MIN);
+
+    const postesHtml = postes.length ? `
+      <div class="table-wrap" style="margin-top:10px;">
+        <table class="sb-table">
+          <thead>
+            <tr>
+              <th>Poste</th>
+              <th style="width:220px;">Service</th>
+              <th class="col-center" style="width:120px;">Niveau requis</th>
+              <th class="col-center" style="width:90px;">Criticité</th>
+              <th class="col-center" style="width:110px;">Porteurs</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${postes.map(p => {
+              const poste = `${(p.codif_poste || "").trim()}${p.codif_poste ? " — " : ""}${(p.intitule_poste || "").trim()}`.trim() || "—";
+              const svc = (p.nom_service || "").trim() || "—";
+              const niv = (p.niveau_requis || "").toString().trim() || "—";
+              const crit = (p.poids_criticite === null || p.poids_criticite === undefined) ? "—" : String(p.poids_criticite);
+              const nb = Number(p.nb_porteurs || 0);
+              const badge = nb > 0 ? `<span class="sb-badge sb-badge-accent">${nb}</span>` : `<span class="sb-badge">0</span>`;
+
+              return `
+                <tr>
+                  <td style="font-weight:700;">${escapeHtml(poste)}</td>
+                  <td>${escapeHtml(svc)}</td>
+                  <td class="col-center" style="white-space:nowrap;">${escapeHtml(niv)}</td>
+                  <td class="col-center" style="white-space:nowrap;">${escapeHtml(crit)}</td>
+                  <td class="col-center">${badge}</td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    ` : `<div class="card-sub" style="margin:0;">Aucun poste impacté.</div>`;
+
+    const porteursHtml = porteurs.length ? `
+      <div class="table-wrap" style="margin-top:10px;">
+        <table class="sb-table">
+          <thead>
+            <tr>
+              <th>Porteur</th>
+              <th style="width:220px;">Service</th>
+              <th class="col-center" style="width:160px;">Niveau actuel</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${porteurs.map(p => {
+              const prenom = (p.prenom_effectif || "").trim();
+              const nom = (p.nom_effectif || "").trim();
+              const full = `${prenom} ${nom}`.trim() || "—";
+              const svc = (p.nom_service || "").trim() || "—";
+              const niv = mapNiveauActuelForDisplay(p.niveau_actuel);
+
+              return `
+                <tr>
+                  <td style="font-weight:700;">${escapeHtml(full)}</td>
+                  <td>${escapeHtml(svc)}</td>
+                  <td class="col-center" style="white-space:nowrap;">${escapeHtml(niv)}</td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    ` : `<div class="card-sub" style="margin:0;">Aucun porteur.</div>`;
+
+    host.innerHTML = `
+      <div class="card" style="padding:12px; margin:0;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
+          <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(critMin)}</span>
+        </div>
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <div class="card-title" style="margin-bottom:6px;">Postes impactés</div>
+          ${postesHtml}
+        </div>
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <div class="card-title" style="margin-bottom:6px;">Porteurs</div>
+          ${porteursHtml}
+        </div>
+      </div>
+    `;
+  }
+
+  async function showAnalyseCompetenceDetailModal(portal, id_comp_or_code, id_service) {
+    const mySeq = ++_compDetailReqSeq;
+
+    openAnalyseCompetenceModal(
+      "Détail compétence",
+      `<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+         <span class="sb-badge sb-badge-accent">Chargement</span>
+       </div>`
+    );
+
+    try {
+      const data = await fetchAnalyseCompetenceDetail(portal, id_comp_or_code, id_service);
+      if (mySeq !== _compDetailReqSeq) return;
+
+      const comp = data?.competence || {};
+      const title = `${(comp.code ? comp.code + " — " : "")}${comp.intitule || "Compétence"}`.trim();
+
+      const scope = (data?.scope?.nom_service || "").trim() || "Tous les services";
+      const sub = `
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
+          <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(String(data?.criticite_min ?? CRITICITE_MIN))}</span>
+        </div>
+      `;
+
+      openAnalyseCompetenceModal(title || "Détail compétence", sub);
+      renderAnalyseCompetenceDetail(data);
+
+    } catch (e) {
+      if (mySeq !== _compDetailReqSeq) return;
+
+      openAnalyseCompetenceModal(
+        "Détail compétence",
+        `<div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>`
+      );
+      const host = byId("analyseCompModalBody");
+      if (host) {
+        host.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Impossible de charger le détail.</div></div>`;
+      }
+    }
+  }
+
 
   function setAnalysePosteTab(tabName) {
     const btnA = byId("tabAnalysePosteCompetences");
@@ -1069,31 +1322,48 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
       // Click délégué: lignes "Poste fragile" (survit aux rerender)
       // - utilise data-focus posé sur les <td>
       // ==============================
-      const analyseBody = byId("analyseDetailBody");
-      if (analyseBody) {
-        analyseBody.addEventListener("click", async (ev) => {
-          const tr = ev.target.closest("tr.risk-poste-row[data-id_poste]");
-          if (!tr) return;
+            const analyseBody = byId("analyseDetailBody");
+            if (analyseBody) {
+              analyseBody.addEventListener("click", async (ev) => {
 
-          const id_poste = (tr.getAttribute("data-id_poste") || "").trim();
-          if (!id_poste) return;
+                // ------------------------------
+                // 1) Click sur une ligne POSTE
+                // ------------------------------
+                const trPoste = ev.target.closest("tr.risk-poste-row[data-id_poste]");
+                if (trPoste) {
+                  const id_poste = (trPoste.getAttribute("data-id_poste") || "").trim();
+                  if (!id_poste) return;
 
-          const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+                  const id_service = (byId("analyseServiceSelect")?.value || "").trim();
 
-          // Colonne cliquée => data-focus (beaucoup plus fiable que l'index)
-          const td = ev.target.closest("td[data-focus]");
-          const rawFocus = (td?.getAttribute("data-focus") || "").trim();
+                  let focusKey = "";
+                  const td = ev.target.closest("td[data-focus]");
+                  const focus = (td?.getAttribute("data-focus") || "").trim();
 
-          // On ne garde que les focus utiles
-          const focusKey =
-            (rawFocus === "critiques-sans-porteur" || rawFocus === "porteur-unique" || rawFocus === "total-fragiles")
-              ? rawFocus
-              : "";
+                  if (focus === "critiques-sans-porteur") focusKey = "critiques-sans-porteur";
+                  else if (focus === "porteur-unique") focusKey = "porteur-unique";
+                  else if (focus === "total-fragiles") focusKey = "total-fragiles";
+                  else focusKey = "";
 
-          await showAnalysePosteDetailModal(portal, id_poste, id_service, focusKey);
-        });
-      }
+                  await showAnalysePosteDetailModal(portal, id_poste, id_service, focusKey);
+                  return;
+                }
 
+                // ------------------------------
+                // 2) Click sur une ligne COMPETENCE
+                // ------------------------------
+                const trComp = ev.target.closest("tr.risk-comp-row[data-comp-code]");
+                if (trComp) {
+                  const code = (trComp.getAttribute("data-comp-code") || "").trim();
+                  if (!code || code === "—") return;
+
+                  const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+                  await showAnalyseCompetenceDetailModal(portal, code, id_service);
+                  return;
+                }
+
+              });
+            }
 
   }
 
