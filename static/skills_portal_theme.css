@@ -9,7 +9,7 @@
      Palette (6 couleurs)
      ========================= */
   --c-brand: #c1272d;   /* rouge JMB */
-  --c-teal:  #0d9488;   /* lecture / data */
+  --c-teal:  #27bbaf;   /* lecture / data */
   --c-slate: #111827;   /* texte */
   --c-gray:  #e5e7eb;   /* bordures */
   --c-amber: #f59e0b;   /* warning */
@@ -256,17 +256,6 @@ button.btn-secondary[id$="Reset"]:active,
    ============================ */
 
 /* Bouton "Fermer" (footer modal collaborateur) */
-#modalCollaborateur #btnCollabModalClose {
-  border-color: color-mix(in srgb, var(--accent) 35%, #087016);
-  background: color-mix(in srgb, var(--accent) 8%, #d2ffac);
-  color: #1f2937;
-  font-weight: 600;
-}
-
-#modalCollaborateur #btnCollabModalClose:hover {
-  background: color-mix(in srgb, var(--accent) 12%, var(--card-bg)fff);
-}
-
 /* Croix (header modal collaborateur) */
 #modalCollaborateur .modal-x {
   color: var(--accent);
@@ -283,17 +272,6 @@ button.btn-secondary[id$="Reset"]:active,
    ============================ */
 
 /* Bouton "Fermer" (footer modal détail) */
-#modalRefDetail #btnRefModalClose {
-  border-color: color-mix(in srgb, var(--accent) 35%, #087016);
-  background: color-mix(in srgb, var(--accent) 8%, #d2ffac);
-  color: #1f2937;
-  font-weight: 600;
-}
-
-#modalRefDetail #btnRefModalClose:hover {
-  background: color-mix(in srgb, var(--accent) 12%, var(--card-bg)fff);
-}
-
 /* Croix (header modal) */
 #modalRefDetail .modal-x {
   color: var(--accent);
@@ -339,17 +317,6 @@ button.btn-secondary[id$="Reset"]:active,
 }
 
 /* Bouton fermer (footer) + croix */
-#modalMapDetail #btnMapModalClose {
-  border-color: color-mix(in srgb, var(--accent) 35%, #087016);
-  background: color-mix(in srgb, var(--accent) 8%, #d2ffac);
-  color: #1f2937;
-  font-weight: 600;
-}
-
-#modalMapDetail #btnMapModalClose:hover {
-  background: color-mix(in srgb, var(--accent) 12%, var(--card-bg)fff);
-}
-
 #modalMapDetail .modal-x {
   color: var(--accent);
 }
@@ -506,20 +473,6 @@ button.btn-secondary[id$="Reset"]:active,
 #view-cartographie-competences .hm-lvl-4{ background:color-mix(in srgb, var(--reading-accent) 34%, var(--card-bg)); }
 #view-cartographie-competences .hm-lvl-5{ background:color-mix(in srgb, var(--reading-accent) 42%, var(--card-bg)); }
 
-/* =========================================================
-   MODALS - Boutons "Fermer" uniformisés (toutes les modals)
-   Objectif: arrêter les variantes blanc/vert selon les pages
-   ========================================================= */
-
-:root{
-  /* Tu peux changer ici si tu veux une autre couleur de "Fermer" */
-  --btn-close-bg: var(--card-bg);
-  --btn-close-border: var(--border-strong);
-  --btn-close-text: var(--text-soft);
-  --btn-close-hover-bg: color-mix(in srgb, var(--reading-accent) 6%, var(--card-bg));
-  --btn-close-hover-border: color-mix(in srgb, var(--reading-accent) 22%, var(--border-strong));
-}
-
 /* Tous les boutons de fermeture suivent la même règle:
    - priorité: id qui finit par ModalClose (convention Skillboard)
    - fallback: boutons secondaires du footer (souvent "Fermer/Annuler") */
@@ -541,3 +494,35 @@ button.btn-secondary[id$="Reset"]:active,
 .modal .modal-footer .btn-secondary:not([id$="Reset"]):active{
   transform: translateY(1px);
 }
+
+
+/* =========================================================
+   MODALS - Boutons "Fermer" (uniforme)
+   - Objectif: un seul style, partout
+   - Règle: tout bouton d'action "Fermer" doit finir par ...ModalClose
+   ========================================================= */
+
+/* Base (même rendu que .btn-secondary, même si la classe a été oubliée) */
+.modal .modal-footer button[id$="ModalClose"]{
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--card-bg);
+  color: var(--text-soft);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* Hover/Focus cohérents */
+.modal .modal-footer button[id$="ModalClose"]:hover{
+  background: color-mix(in srgb, var(--reading-accent) 6%, var(--card-bg));
+  border-color: color-mix(in srgb, var(--reading-accent) 22%, var(--border-strong));
+}
+.modal .modal-footer button[id$="ModalClose"]:focus{
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.modal .modal-footer button[id$="ModalClose"]:active{
+  transform: translateY(1px);
+}
+
