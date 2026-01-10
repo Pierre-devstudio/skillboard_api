@@ -468,6 +468,13 @@
   function closeMatchPersonModal() {
     const modal = byId("modalMatchPerson");
     if (!modal) return;
+
+    // Nettoyage éventuel radar (ResizeObserver)
+    if (modal.__matchRadarObs) {
+      try { modal.__matchRadarObs.disconnect(); } catch (e) { }
+      modal.__matchRadarObs = null;
+    }
+
     modal.classList.remove("show");
     modal.setAttribute("aria-hidden", "true");
   }
@@ -577,6 +584,95 @@
       `;
     }).join("");
 
+
+    // ------------------------------------------------------
+    // Radar (vue synthèse)
+    // - Axes = top compétences par poids_criticite
+    // - Valeur = min(score / seuil, 1)
+    // ------------------------------------------------------
+    const RADAR_MAX_AXES = 12;
+
+    const radarAxesAll = items.map((it) => {
+      const w = Number(it.poids || it.poids_criticite || 1);
+      const scoreN = Number(it.score_24 ?? it.score ?? it.resultat_eval ?? 0);
+      const seuilN = Number(it.seuil_24 ?? it.seuil ?? 0);
+
+      const et = String(it.etat || "").toLowerCase();
+      const statusRank = (et === "missing") ? 2 : (et === "under" ? 1 : 0);
+
+      const ratio = (seuilN > 0 && isFinite(scoreN))
+        ? Math.max(0, Math.min(scoreN / seuilN, 1))
+        : 0;
+
+      return {
+        code: (it.code || it.id_comp || ""),
+        intitule: (it.intitule || it.titre || ""),
+        poids: (isFinite(w) && w > 0) ? w : 1,
+        seuil: (isFinite(seuilN) && seuilN > 0) ? seuilN : 0,
+        score: isFinite(scoreN) ? scoreN : 0,
+        ratio: ratio,
+        etat: et,
+        statusRank: statusRank,
+      };
+    }).filter(a => (a.code || a.intitule));
+
+    radarAxesAll.sort((a, b) => {
+      const dw = (b.poids - a.poids);
+      if (dw) return dw;
+      const ds = (b.statusRank - a.statusRank);
+      if (ds) return ds;
+      return String(a.code || a.intitule).localeCompare(String(b.code || b.intitule));
+    });
+
+    const radarTop = radarAxesAll.slice(0, RADAR_MAX_AXES);
+    const radarEmpty = radarTop.length < 3;
+
+    const radarRows = radarTop.map((a) => {
+      const label = (a.code || a.intitule || "—").trim();
+      const pct = Math.round((a.ratio || 0) * 100);
+      const scoreTxt = a.score ? String(a.score) : "—";
+      const seuilTxt = a.seuil ? String(a.seuil) : "—";
+      const st = (a.etat === "ok") ? "OK" : (a.etat === "under" ? "À renforcer" : "Manquante");
+      const stColor = (a.etat === "ok") ? "#065f46" : (a.etat === "under" ? "#92400e" : "#991b1b");
+
+      return `
+        <tr>
+          <td>
+            <div style="font-weight:900; color:#111827;">${escapeHtml(label)}</div>
+            ${a.intitule ? `<div class="card-sub" style="margin:2px 0 0 0;">${escapeHtml(a.intitule)}</div>` : ""}
+          </td>
+          <td class="col-center">${escapeHtml(String(a.poids))}</td>
+          <td class="col-center">${escapeHtml(scoreTxt)} / ${escapeHtml(seuilTxt)}</td>
+          <td class="col-center">${escapeHtml(String(pct))}%</td>
+          <td class="col-center" style="font-weight:900; color:${stColor};">${escapeHtml(st)}</td>
+        </tr>
+      `;
+    }).join("");
+
+    const radarHtml = radarEmpty
+      ? `<div class="card-sub" style="color:#6b7280;">Radar indisponible (moins de 3 compétences).</div>`
+      : `
+        <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#ffffff;">
+          <canvas id="matchPersonRadarCanvas" style="width:100%; height:520px; display:block;"></canvas>
+        </div>
+
+        <div class="table-wrap" style="margin-top:10px;">
+          <table class="sb-table">
+            <thead>
+              <tr>
+                <th>Compétence</th>
+                <th class="col-center" style="width:70px;">Poids</th>
+                <th class="col-center" style="width:120px;">Score</th>
+                <th class="col-center" style="width:90px;">Couverture</th>
+                <th class="col-center" style="width:110px;">Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${radarRows || `<tr><td colspan="5" class="col-center" style="color:#6b7280;">Aucune donnée.</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      `;
     host.innerHTML = `
       <div class="card" style="padding:12px; margin:0;">
         <div class="card-sub" style="margin:0;">
@@ -600,6 +696,21 @@
           </div>
         </div>
 
+
+        <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+          <button type="button" id="btnMatchTabTable"
+                  style="padding:6px 10px; border-radius:8px; border:1px solid #d1d5db;
+                         background:#111827; color:#ffffff; font-weight:900; cursor:pointer;">
+            Détail
+          </button>
+          <button type="button" id="btnMatchTabRadar"
+                  style="padding:6px 10px; border-radius:8px; border:1px solid #d1d5db;
+                         background:#ffffff; color:#111827; font-weight:900; cursor:pointer;">
+            Radar
+          </button>
+        </div>
+
+        <div id="matchPersonTabTable" style="margin-top:12px;">
         <div class="table-wrap" style="margin-top:12px;">
           <table class="sb-table">
             <thead>
@@ -622,9 +733,186 @@
         <div class="card-sub" style="margin-top:10px; color:#6b7280;">
           Critiques = poids_criticite ≥ ${CRITICITE_MIN}. Seuil (A/B/C) = 6 / 10 / 19. Niveau = déduit du score /24.
         </div>
+        </div>
+
+        <div id="matchPersonTabRadar" style="display:none; margin-top:12px;">
+          <div class="card-sub" style="margin:0 0 10px 0; color:#6b7280;">
+            Axes = top ${radarTop.length} compétences (triées par poids). Valeur = min(score / seuil, 1).
+          </div>
+          ${radarHtml}
+        </div>
       </div>
     `;
-  }
+ 
+    // ------------------------------------------------------
+    // Onglets (Détail / Radar) + rendu radar
+    // ------------------------------------------------------
+    const btnTabTable = byId("btnMatchTabTable");
+    const btnTabRadar = byId("btnMatchTabRadar");
+    const tabTable = byId("matchPersonTabTable");
+    const tabRadar = byId("matchPersonTabRadar");
+
+    function setActiveTab(which) {
+      const isRadar = (which === "radar");
+      if (tabTable) tabTable.style.display = isRadar ? "none" : "";
+      if (tabRadar) tabRadar.style.display = isRadar ? "" : "none";
+
+      if (btnTabTable) {
+        btnTabTable.style.background = isRadar ? "#ffffff" : "#111827";
+        btnTabTable.style.color = isRadar ? "#111827" : "#ffffff";
+      }
+      if (btnTabRadar) {
+        btnTabRadar.style.background = isRadar ? "#111827" : "#ffffff";
+        btnTabRadar.style.color = isRadar ? "#ffffff" : "#111827";
+      }
+    }
+
+    function prepareCanvas2d(canvas) {
+      const ctx = canvas.getContext("2d");
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const w = Math.max(320, Math.floor(rect.width));
+      const h = Math.max(320, Math.floor(rect.height));
+      const pw = Math.floor(w * dpr);
+      const ph = Math.floor(h * dpr);
+
+      if (canvas.width !== pw || canvas.height !== ph) {
+        canvas.width = pw;
+        canvas.height = ph;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      return { ctx, w, h };
+    }
+
+    function drawRadarChart(canvas, axes) {
+      if (!canvas || !axes || !axes.length) return;
+      const { ctx, w, h } = prepareCanvas2d(canvas);
+
+      const cx = w / 2;
+      const cy = h / 2;
+      const pad = 64;
+      const r = Math.max(80, Math.min(w, h) / 2 - pad);
+
+      const n = axes.length;
+      const step = (Math.PI * 2) / n;
+      const start = -Math.PI / 2;
+
+      // Grille (5 niveaux)
+      ctx.strokeStyle = "#e5e7eb";
+      ctx.lineWidth = 1;
+      for (let k = 1; k <= 5; k++) {
+        const rr = (r * k) / 5;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) {
+          const ang = start + i * step;
+          const x = cx + rr * Math.cos(ang);
+          const y = cy + rr * Math.sin(ang);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+
+      // Axes
+      ctx.strokeStyle = "#d1d5db";
+      for (let i = 0; i < n; i++) {
+        const ang = start + i * step;
+        const x = cx + r * Math.cos(ang);
+        const y = cy + r * Math.sin(ang);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
+
+      // Courbe données
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#2563eb";
+      ctx.fillStyle = "rgba(37,99,235,0.16)";
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const ang = start + i * step;
+        const v = Math.max(0, Math.min(Number(axes[i].ratio || 0), 1));
+        const rr = r * v;
+        const x = cx + rr * Math.cos(ang);
+        const y = cy + rr * Math.sin(ang);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Points
+      ctx.fillStyle = "#2563eb";
+      for (let i = 0; i < n; i++) {
+        const ang = start + i * step;
+        const v = Math.max(0, Math.min(Number(axes[i].ratio || 0), 1));
+        const rr = r * v;
+        const x = cx + rr * Math.cos(ang);
+        const y = cy + rr * Math.sin(ang);
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Labels (codes)
+      ctx.fillStyle = "#111827";
+      ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+      for (let i = 0; i < n; i++) {
+        const ang = start + i * step;
+        const x = cx + (r + 14) * Math.cos(ang);
+        const y = cy + (r + 14) * Math.sin(ang);
+
+        const cos = Math.cos(ang);
+        const sin = Math.sin(ang);
+        ctx.textAlign = (cos >= 0.2) ? "left" : (cos <= -0.2 ? "right" : "center");
+        ctx.textBaseline = (sin >= 0.2) ? "top" : (sin <= -0.2 ? "bottom" : "middle");
+
+        const lbl = String(axes[i].code || "").trim() || String(i + 1);
+        ctx.fillText(lbl, x, y);
+      }
+    }
+
+    function renderRadarNow() {
+      if (radarEmpty) return;
+      const canvas = byId("matchPersonRadarCanvas");
+      if (!canvas) return;
+      drawRadarChart(canvas, radarTop);
+    }
+
+    // Bind tabs
+    if (btnTabTable) btnTabTable.addEventListener("click", () => setActiveTab("table"));
+    if (btnTabRadar) btnTabRadar.addEventListener("click", () => {
+      setActiveTab("radar");
+      // rendu après affichage
+      setTimeout(renderRadarNow, 0);
+    });
+
+    // Défaut: onglet tableau
+    setActiveTab("table");
+
+    // ResizeObserver (redraw radar si visible)
+    const modal = byId("modalMatchPerson");
+    if (modal) {
+      if (modal.__matchRadarObs) {
+        try { modal.__matchRadarObs.disconnect(); } catch (e) { }
+        modal.__matchRadarObs = null;
+      }
+
+      if (!radarEmpty && typeof ResizeObserver !== "undefined") {
+        const canvas = byId("matchPersonRadarCanvas");
+        const parent = canvas ? canvas.parentElement : null;
+        if (parent) {
+          const obs = new ResizeObserver(() => {
+            if (tabRadar && tabRadar.style.display !== "none") renderRadarNow();
+          });
+          obs.observe(parent);
+          modal.__matchRadarObs = obs;
+        }
+      }
+    }
+ }
 
   async function showMatchPersonDetailModal(portal, id_poste, id_effectif, id_service) {
     openMatchPersonModal("Détail matching");
