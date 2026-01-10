@@ -1,8 +1,38 @@
 :root{
   --accent:#c1272d;
   --sidebar-bg:#333333;
+
+  /* Couleur secondaire (lecture): teal */
+  --teal:#0d9488;
+  --teal-hover:#0f766e;
+  --teal-press:#115e59;
+  --teal-ring: rgba(13,148,136,0.30);
 }
 
+
+
+/* Boutons "Réinitialiser" (filtres) : teal, uniquement dans le portail Skills */
+button.btn-secondary[id$="Reset"]{
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #ffffff;
+}
+button.btn-secondary[id$="Reset"]:hover{
+  background: var(--teal-hover);
+  border-color: var(--teal-hover);
+}
+button.btn-secondary[id$="Reset"]:active{
+  background: var(--teal-press);
+  border-color: var(--teal-press);
+}
+button.btn-secondary[id$="Reset"]:focus{
+  outline: none;
+  box-shadow: 0 0 0 3px var(--teal-ring);
+}
+button.btn-secondary[id$="Reset"][disabled]{
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 /* Collaborateurs: tables plus aérées et lisibles (aligné référentiel) */
 #view-vos-collaborateurs .sb-table {
   width: 100%;
