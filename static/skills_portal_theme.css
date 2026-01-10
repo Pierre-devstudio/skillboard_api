@@ -597,7 +597,7 @@ button[id$="ModalClose"]:active{
 
 #view-analyse-competences .sb-choice.is-selected{
   border-color: var(--ui-accent);
-  background: color-mix(in srgb, var(--ui-accent) 8%, #ffffff);
+  background: color-mix(in srgb, var(--reading-accent) 8%, #ffffff);
 }
 
 #view-analyse-competences .sb-choice-title{
