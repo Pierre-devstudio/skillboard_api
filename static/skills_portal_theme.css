@@ -729,3 +729,15 @@ button[id$="ModalClose"]:active{
 
 .sb-gap-swatch--missing{ background: var(--gap-missing); }
 .sb-gap-swatch--under{ background: var(--gap-under); }
+
+/* Matching (liste Postes) : focus + sélection = couleur lecture (teal) */
+#view-analyse-competences button.btn-secondary.sb-choice.is-selected{
+  border: 1px solid var(--reading-accent);
+  background: color-mix(in srgb, var(--reading-accent) 8%, #ffffff);
+}
+
+#view-analyse-competences button.btn-secondary.sb-choice:focus,
+#view-analyse-competences button.btn-secondary.sb-choice:focus-visible{
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--reading-accent) 30%, transparent);
+}
