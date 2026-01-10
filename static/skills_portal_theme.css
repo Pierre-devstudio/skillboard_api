@@ -505,3 +505,39 @@ button.btn-secondary[id$="Reset"]:active,
 #view-cartographie-competences .hm-lvl-3{ background:color-mix(in srgb, var(--reading-accent) 26%, var(--card-bg)); }
 #view-cartographie-competences .hm-lvl-4{ background:color-mix(in srgb, var(--reading-accent) 34%, var(--card-bg)); }
 #view-cartographie-competences .hm-lvl-5{ background:color-mix(in srgb, var(--reading-accent) 42%, var(--card-bg)); }
+
+/* =========================================================
+   MODALS - Boutons "Fermer" uniformisés (toutes les modals)
+   Objectif: arrêter les variantes blanc/vert selon les pages
+   ========================================================= */
+
+:root{
+  /* Tu peux changer ici si tu veux une autre couleur de "Fermer" */
+  --btn-close-bg: var(--card-bg);
+  --btn-close-border: var(--border-strong);
+  --btn-close-text: var(--text-soft);
+  --btn-close-hover-bg: color-mix(in srgb, var(--reading-accent) 6%, var(--card-bg));
+  --btn-close-hover-border: color-mix(in srgb, var(--reading-accent) 22%, var(--border-strong));
+}
+
+/* Tous les boutons de fermeture suivent la même règle:
+   - priorité: id qui finit par ModalClose (convention Skillboard)
+   - fallback: boutons secondaires du footer (souvent "Fermer/Annuler") */
+.modal .modal-footer button[id$="ModalClose"],
+.modal .modal-footer .btn-secondary:not([id$="Reset"]){
+  background: var(--btn-close-bg);
+  border-color: var(--btn-close-border);
+  color: var(--btn-close-text);
+  font-weight: 700;
+}
+
+.modal .modal-footer button[id$="ModalClose"]:hover,
+.modal .modal-footer .btn-secondary:not([id$="Reset"]):hover{
+  background: var(--btn-close-hover-bg);
+  border-color: var(--btn-close-hover-border);
+}
+
+.modal .modal-footer button[id$="ModalClose"]:active,
+.modal .modal-footer .btn-secondary:not([id$="Reset"]):active{
+  transform: translateY(1px);
+}
