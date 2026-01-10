@@ -1,38 +1,8 @@
 :root{
   --accent:#c1272d;
   --sidebar-bg:#333333;
-
-  /* Couleur secondaire (lecture): teal */
-  --teal:#0d9488;
-  --teal-hover:#0f766e;
-  --teal-press:#115e59;
-  --teal-ring: rgba(13,148,136,0.30);
 }
 
-
-
-/* Boutons "Réinitialiser" (filtres) : teal, uniquement dans le portail Skills */
-button.btn-secondary[id$="Reset"]{
-  background: var(--teal);
-  border-color: var(--teal);
-  color: #ffffff;
-}
-button.btn-secondary[id$="Reset"]:hover{
-  background: var(--teal-hover);
-  border-color: var(--teal-hover);
-}
-button.btn-secondary[id$="Reset"]:active{
-  background: var(--teal-press);
-  border-color: var(--teal-press);
-}
-button.btn-secondary[id$="Reset"]:focus{
-  outline: none;
-  box-shadow: 0 0 0 3px var(--teal-ring);
-}
-button.btn-secondary[id$="Reset"][disabled]{
-  opacity: 0.6;
-  cursor: not-allowed;
-}
 /* Collaborateurs: tables plus aérées et lisibles (aligné référentiel) */
 #view-vos-collaborateurs .sb-table {
   width: 100%;
@@ -492,3 +462,63 @@ button.btn-secondary[id$="Reset"][disabled]{
 #view-cartographie-competences .hm-lvl-4{ background:color-mix(in srgb, var(--accent) 34%, #fff); }
 #view-cartographie-competences .hm-lvl-5{ background:color-mix(in srgb, var(--accent) 42%, #fff); }
 
+/* ============================
+   Skills: Boutons "Réinitialiser" (teal)
+   Objectif: même rendu sur toutes les vues Skills
+   NOTE: placé en FIN de fichier pour override les styles view-specific existants
+   ============================ */
+
+:root{
+  --skills-teal: #0d9488;
+  --skills-teal-hover: #0f766e;
+  --skills-teal-press: #115e59;
+  --skills-teal-ring: rgba(13,148,136,0.30);
+}
+
+/* Cible explicite des resets déjà stylés dans ce thème + fallback générique */
+#view-vos-collaborateurs #btnCollabReset,
+#view-referentiel-competences #btnRefReset,
+#view-cartographie-competences #btnMapReset,
+#view-analyse-competences #btnAnalyseReset,
+button.btn-secondary[id$="Reset"]{
+  background: var(--skills-teal);
+  border-color: var(--skills-teal);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+#view-vos-collaborateurs #btnCollabReset:hover,
+#view-referentiel-competences #btnRefReset:hover,
+#view-cartographie-competences #btnMapReset:hover,
+#view-analyse-competences #btnAnalyseReset:hover,
+button.btn-secondary[id$="Reset"]:hover{
+  background: var(--skills-teal-hover);
+  border-color: var(--skills-teal-hover);
+}
+
+#view-vos-collaborateurs #btnCollabReset:active,
+#view-referentiel-competences #btnRefReset:active,
+#view-cartographie-competences #btnMapReset:active,
+#view-analyse-competences #btnAnalyseReset:active,
+button.btn-secondary[id$="Reset"]:active{
+  background: var(--skills-teal-press);
+  border-color: var(--skills-teal-press);
+}
+
+#view-vos-collaborateurs #btnCollabReset:focus,
+#view-referentiel-competences #btnRefReset:focus,
+#view-cartographie-competences #btnMapReset:focus,
+#view-analyse-competences #btnAnalyseReset:focus,
+button.btn-secondary[id$="Reset"]:focus{
+  outline: none;
+  box-shadow: 0 0 0 3px var(--skills-teal-ring);
+}
+
+#view-vos-collaborateurs #btnCollabReset[disabled],
+#view-referentiel-competences #btnRefReset[disabled],
+#view-cartographie-competences #btnMapReset[disabled],
+#view-analyse-competences #btnAnalyseReset[disabled],
+button.btn-secondary[id$="Reset"][disabled]{
+  opacity: 0.6;
+  cursor: not-allowed;
+}
