@@ -284,11 +284,11 @@
       const isActive = !!view && k === view;
 
       el.style.borderColor = isActive
-        ? "color-mix(in srgb, var(--accent) 55%, #d1d5db)"
+        ? "color-mix(in srgb, var(--reading-accent) 55%, #d1d5db)"
         : "#e5e7eb";
 
       el.style.background = isActive
-        ? "color-mix(in srgb, var(--accent) 6%, #ffffff)"
+        ? "color-mix(in srgb, var(--reading-accent) 6%, #ffffff)"
         : "#ffffff";
     });
   }
@@ -633,7 +633,7 @@
       const scoreTxt = a.score ? String(a.score) : "—";
       const seuilTxt = a.seuil ? String(a.seuil) : "—";
       const st = (a.etat === "ok") ? "OK" : (a.etat === "under" ? "À renforcer" : "Manquante");
-      const stColor = (a.etat === "ok") ? "#065f46" : (a.etat === "under" ? "#92400e" : "#991b1b");
+      const stColor = (a.etat === "ok") ? "#199672" : (a.etat === "under" ? "#b65519" : "#991b1b");
 
       return `
         <tr>
