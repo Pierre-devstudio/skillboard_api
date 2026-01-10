@@ -247,10 +247,11 @@
     const tile = byId("tileRisques");
     if (!tile) return;
 
+    const f = (filter || "").trim();
     const items = tile.querySelectorAll(".mini-kpi[data-risk-kpi]");
     items.forEach((el) => {
       const k = (el.getAttribute("data-risk-kpi") || "").trim();
-      const isActive = !!filter && k === filter;
+      const isActive = !!f && k === f;
       el.classList.toggle("is-active", isActive);
     });
   }
@@ -271,10 +272,11 @@
     const tile = byId("tileMatching");
     if (!tile) return;
 
+    const v = (view || "").trim().toLowerCase();
     const items = tile.querySelectorAll(".mini-kpi[data-match-view]");
     items.forEach((el) => {
       const k = (el.getAttribute("data-match-view") || "").trim().toLowerCase();
-      const isActive = !!view && k === view;
+      const isActive = !!v && k === v;
       el.classList.toggle("is-active", isActive);
     });
   }
@@ -335,754 +337,13 @@
   }
 
     // ==============================
-  // MATCHING
-  // - endpoint dédié /skills/analyse/matching/poste (titulaire + candidats, scoring /24)
-  // - liste postes = "postes fragiles" (source risques) en V1
+  // MATCHING (MVP)
+  // - basé sur /risques/poste (compétences requises + porteurs)
+  // - liste postes = "postes fragiles" (source risques)
   // ==============================
   const _matchPostesCache = new Map(); // key: id_service -> items[]
   let _matchReqSeq = 0;
   let _matchSelectedPoste = "";
-  const _matchDetailCache = new Map(); // key: id_poste|id_service|criticite -> payload
-
-  async function fetchMatchingPosteDetail(portal, id_poste, id_service) {
-    const svc = (id_service || "").trim();
-    const key = `${id_poste}|${svc}|${CRITICITE_MIN}`;
-    if (_matchDetailCache.has(key)) return _matchDetailCache.get(key);
-
-    const qs = buildQueryString({
-      id_poste: id_poste,
-      id_service: svc || null,
-      criticite_min: CRITICITE_MIN
-    });
-
-    const url = `${portal.apiBase}/skills/analyse/matching/poste/${encodeURIComponent(portal.contactId)}${qs}`;
-    const data = await portal.apiJson(url);
-
-    _matchDetailCache.set(key, data);
-    return data;
-  }
-
-
-
-
-  // Détail effectif (drilldown)
-  const _matchEffDetailCache = new Map(); // key: id_poste|id_effectif|id_service|crit
-  async function fetchMatchingEffectifDetail(portal, id_poste, id_effectif, id_service) {
-    const svc = (id_service || "").trim();
-    const key = `${id_poste}|${id_effectif}|${svc}|${CRITICITE_MIN}`;
-    if (_matchEffDetailCache.has(key)) return _matchEffDetailCache.get(key);
-
-    const qs = buildQueryString({
-      id_poste: id_poste,
-      id_effectif: id_effectif,
-      id_service: svc || null,
-      criticite_min: CRITICITE_MIN
-    });
-
-    const url = `${portal.apiBase}/skills/analyse/matching/effectif/${encodeURIComponent(portal.contactId)}${qs}`;
-    const data = await portal.apiJson(url);
-
-    _matchEffDetailCache.set(key, data);
-    return data;
-  }
-
-  function ensureMatchPersonModal() {
-    let modal = byId("modalMatchPerson");
-    if (modal) return modal;
-
-    const html = `
-      <div class="modal" id="modalMatchPerson" aria-hidden="true">
-        <div class="modal-card" style="max-width:1120px; width:min(1120px, 96vw); max-height:92vh; display:flex; flex-direction:column;">
-          <div class="modal-header">
-            <div style="font-weight:600;" id="matchPersonModalTitle">Détail</div>
-            <button type="button" class="modal-x" id="btnCloseMatchPersonModal" aria-label="Fermer">×</button>
-          </div>
-
-          <div class="modal-body" id="matchPersonModalBody" style="overflow:auto; flex:1; padding:14px 16px;">
-            <div class="card" style="padding:12px; margin:0;">
-              <div class="card-sub" style="margin:0;">Chargement…</div>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn-secondary" id="btnMatchPersonModalClose">Fermer</button>
-          </div>
-        </div>
-      </div>
-    `;
-
-    document.body.insertAdjacentHTML("beforeend", html);
-    modal = byId("modalMatchPerson");
-
-    if (modal && modal.getAttribute("data-bound") !== "1") {
-      modal.setAttribute("data-bound", "1");
-
-      const btnX = byId("btnCloseMatchPersonModal");
-      const btnClose = byId("btnMatchPersonModalClose");
-
-      if (btnX) btnX.addEventListener("click", () => closeMatchPersonModal());
-      if (btnClose) btnClose.addEventListener("click", () => closeMatchPersonModal());
-
-      // fermeture clic fond
-      modal.addEventListener("click", (ev) => {
-        if (ev.target === modal) closeMatchPersonModal();
-      });
-
-      // ESC
-      document.addEventListener("keydown", (ev) => {
-        if (ev.key === "Escape") closeMatchPersonModal();
-      });
-    }
-
-    return modal;
-  }
-
-  function openMatchPersonModal(title) {
-    const modal = ensureMatchPersonModal();
-    const t = byId("matchPersonModalTitle");
-    const b = byId("matchPersonModalBody");
-    if (t) t.textContent = title || "Détail";
-    if (b) b.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
-
-    modal.classList.add("show");
-    modal.setAttribute("aria-hidden", "false");
-
-    const mb = modal.querySelector(".modal-body");
-    if (mb) mb.scrollTop = 0;
-  }
-
-  function closeMatchPersonModal() {
-    const modal = byId("modalMatchPerson");
-    if (!modal) return;
-
-    // Nettoyage éventuel radar (ResizeObserver)
-    if (modal.__matchRadarObs) {
-      try { modal.__matchRadarObs.disconnect(); } catch (e) { }
-      modal.__matchRadarObs = null;
-    }
-
-    modal.classList.remove("show");
-    modal.setAttribute("aria-hidden", "true");
-  }
-
-  function renderMatchPersonDetail(data) {
-    const host = byId("matchPersonModalBody");
-    if (!host) return;
-
-    const poste = data?.poste || {};
-    const person = data?.person || {};
-    const stats = data?.stats || {};
-    const items = Array.isArray(data?.items) ? data.items : [];
-
-    const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
-    const personLabel = person.full || "—";
-    const svc = person.nom_service || "—";
-    const isTit = !!person.is_titulaire;
-
-    function box(n, variant, title) {
-      const nn = Number(n || 0);
-      const isZero = !nn;
-
-      const cls = [
-        "sb-pill",
-        isZero ? "is-zero" : "",
-        !isZero ? `is-${variant}` : ""
-      ].filter(Boolean).join(" ");
-
-      const val = isZero ? "0" : String(nn);
-
-      return `
-        <span class="${cls}" title="${escapeHtml(title)}">${escapeHtml(val)}</span>
-      `;
-    }
-
-    function statusBadge(etat) {
-      const s = String(etat || "").toLowerCase();
-      if (s === "ok") return `<span style="font-weight:800; color:#065f46;">OK</span>`;
-      if (s === "under") return `<span style="font-weight:800; color:#92400e;">À renforcer</span>`;
-      return `<span style="font-weight:800; color:#991b1b;">Manquante</span>`;
-    }
-
-    function critMark(isCrit) {
-      if (!isCrit) return "";
-      return `<span class="sb-badge" title="Compétence critique" style="margin-left:6px; border-color:#ef4444; color:#991b1b;">CRIT</span>`;
-    }
-
-    function fmtScore(v) {
-      if (v === null || v === undefined || v === "") return "—";
-      const n = Number(v);
-      if (Number.isNaN(n)) return "—";
-      return (Math.round(n * 10) / 10).toString();
-    }
-
-    function renderCritDetails(arr) {
-      const a = Array.isArray(arr) ? arr : [];
-      if (!a.length) return "";
-      const lis = a.map(x => {
-        const nom = (x.nom || "").toString().trim();
-        const code = (x.code_critere || "").toString().trim();
-        const title = (nom || code || "Critère").trim();
-
-        const n = (x.niveau === null || x.niveau === undefined) ? null : Number(x.niveau);
-        const pts = (n && !Number.isNaN(n)) ? `${n}/4` : "—";
-
-        const lib = (x.libelle || "").toString().trim();
-        const extra = lib ? ` <span style="color:#6b7280;">${escapeHtml(lib)}</span>` : "";
-
-        return `<li><b>${escapeHtml(title)}</b> : <span style="font-weight:800;">${escapeHtml(pts)}</span>${extra}</li>`;
-      }).join("");
-      return `
-        <details style="margin-top:6px;">
-          <summary style="cursor:pointer; color:#6b7280; font-size:12px;">Voir critères</summary>
-          <ul style="margin:8px 0 0 18px; color:#374151; font-size:12px;">
-            ${lis}
-          </ul>
-        </details>
-      `;
-    }
-
-    const rows = items.map(it => {
-      const code = it.code || it.id_comp || "—";
-      const intitule = it.intitule || "";
-      const poids = Number(it.poids_criticite || 1);
-      const niv = it.niveau_requis || "—";
-      const seuil = fmtScore(it.seuil);
-      const score = fmtScore(it.score);
-      const nivAt = it.niveau_atteint || "—";
-      const domain = (it.domaine_titre_court || "").trim();
-      const domainBadge = domain ? `<span class="sb-badge">${escapeHtml(domain)}</span>` : "";
-
-      return `
-        <tr>
-          <td style="font-weight:800;">
-            ${escapeHtml(code)} ${critMark(it.is_critique)}
-            <div style="font-weight:600; color:#111827; margin-top:2px;">${escapeHtml(intitule)}</div>
-            <div style="margin-top:4px;">${domainBadge}</div>
-            ${renderCritDetails(it.criteres)}
-          </td>
-          <td class="col-center">${escapeHtml(String(poids))}</td>
-          <td class="col-center">${escapeHtml(String(niv))}</td>
-          <td class="col-center">${escapeHtml(String(seuil))}</td>
-          <td class="col-center">${escapeHtml(String(score))}</td>
-          <td class="col-center">${escapeHtml(String(nivAt))}</td>
-          <td class="col-center">${statusBadge(it.etat)}</td>
-        </tr>
-      `;
-    }).join("");
-
-
-    // ------------------------------------------------------
-    // Radar (vue synthèse)
-    // - Axes = top compétences par poids_criticite
-    // - Valeur = min(score / seuil, 1)
-    // ------------------------------------------------------
-    const RADAR_MAX_AXES = 12;
-
-    const radarAxesAll = items.map((it) => {
-      const w = Number(it.poids || it.poids_criticite || 1);
-      const scoreN = Number(it.score_24 ?? it.score ?? it.resultat_eval ?? 0);
-      const seuilN = Number(it.seuil_24 ?? it.seuil ?? 0);
-
-      const et = String(it.etat || "").toLowerCase();
-      const statusRank = (et === "missing") ? 2 : (et === "under" ? 1 : 0);
-
-      const ratio = (seuilN > 0 && isFinite(scoreN))
-        ? Math.max(0, Math.min(scoreN / seuilN, 1))
-        : 0;
-
-      return {
-        code: (it.code || it.id_comp || ""),
-        intitule: (it.intitule || it.titre || ""),
-        poids: (isFinite(w) && w > 0) ? w : 1,
-        seuil: (isFinite(seuilN) && seuilN > 0) ? seuilN : 0,
-        score: isFinite(scoreN) ? scoreN : 0,
-        ratio: ratio,
-        etat: et,
-        statusRank: statusRank,
-      };
-    }).filter(a => (a.code || a.intitule));
-
-    radarAxesAll.sort((a, b) => {
-      const dw = (b.poids - a.poids);
-      if (dw) return dw;
-      const ds = (b.statusRank - a.statusRank);
-      if (ds) return ds;
-      return String(a.code || a.intitule).localeCompare(String(b.code || b.intitule));
-    });
-
-    const radarTop = radarAxesAll.slice(0, RADAR_MAX_AXES);
-    const radarEmpty = radarTop.length < 3;
-
-    const radarRows = radarTop.map((a) => {
-      const label = (a.code || a.intitule || "—").trim();
-      const pct = Math.round((a.ratio || 0) * 100);
-      const scoreTxt = a.score ? String(a.score) : "—";
-      const seuilTxt = a.seuil ? String(a.seuil) : "—";
-      const st = (a.etat === "ok") ? "OK" : (a.etat === "under" ? "À renforcer" : "Manquante");
-      const stColor = (a.etat === "ok") ? "#199672" : (a.etat === "under" ? "#b65519" : "#991b1b");
-
-      return `
-        <tr>
-          <td>
-            <div style="font-weight:900; color:#111827;">${escapeHtml(label)}</div>
-            ${a.intitule ? `<div class="card-sub" style="margin:2px 0 0 0;">${escapeHtml(a.intitule)}</div>` : ""}
-          </td>
-          <td class="col-center">${escapeHtml(String(a.poids))}</td>
-          <td class="col-center">${escapeHtml(scoreTxt)} / ${escapeHtml(seuilTxt)}</td>
-          <td class="col-center">${escapeHtml(String(pct))}%</td>
-          <td class="col-center" style="font-weight:900; color:${stColor};">${escapeHtml(st)}</td>
-        </tr>
-      `;
-    }).join("");
-
-    
-// ------------------------
-// Vue Radar - 2 sous-vues
-// ------------------------
-
-// Vue par compétence (graphique actuel + tableau)
-const radarHtmlComp = radarEmpty
-  ? `<div class="card-sub" style="color:#6b7280;">Radar indisponible (moins de 3 compétences).</div>`
-  : `
-    <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#ffffff;">
-      <canvas id="matchPersonRadarCanvas" style="width:100%; height:520px; display:block;"></canvas>
-    </div>
-
-    <div class="table-wrap" style="margin-top:10px;">
-      <table class="sb-table">
-        <thead>
-          <tr>
-            <th>Compétence</th>
-            <th class="col-center" style="width:70px;">Poids</th>
-            <th class="col-center" style="width:120px;">Score</th>
-            <th class="col-center" style="width:90px;">Couverture</th>
-            <th class="col-center" style="width:110px;">Statut</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${radarRows || `<tr><td colspan="5" class="col-center" style="color:#6b7280;">Aucune donnée.</td></tr>`}
-        </tbody>
-      </table>
-    </div>
-  `;
-
-// Vue par domaine (agrégation)
-function normDomain(s) {
-  const v = (s ?? "").toString().trim();
-  return v ? v.toLowerCase() : "";
-}
-
-function shortLabel(s, maxLen) {
-  const v = (s ?? "").toString().trim();
-  if (!v) return "—";
-  if (v.length <= maxLen) return v;
-  return v.slice(0, Math.max(4, maxLen - 1)) + "…";
-}
-
-const domMap = new Map();
-items.forEach((it) => {
-  const raw = ((it.domaine_titre_court || it.domaine || "") ?? "").toString().trim();
-  const key = normDomain(raw) || "__non_classe__";
-  const label = raw || "Non classé";
-
-  const seuilN = Number(it.seuil);
-  const scoreN = Number(it.score);
-  const poidsN = Number(it.poids_criticite || 1);
-
-  let g = domMap.get(key);
-  if (!g) {
-    g = { key: key, label: label, attendu: 0, atteint: 0, poids: 0, nb: 0 };
-    domMap.set(key, g);
-  }
-
-  g.attendu += (Number.isFinite(seuilN) ? seuilN : 0);
-  g.atteint += (Number.isFinite(scoreN) ? scoreN : 0);
-  g.poids += (Number.isFinite(poidsN) ? poidsN : 0);
-  g.nb += 1;
-});
-
-const domainAxesAll = Array.from(domMap.values())
-  .map((g) => {
-    const attendu = Number(g.attendu || 0);
-    const atteint = Number(g.atteint || 0);
-    const pct = attendu > 0 ? (atteint / attendu) * 100 : 0;
-
-    const etat = (pct >= 100)
-      ? "ok"
-      : (atteint > 0 ? "under" : "missing");
-
-    return {
-      key: g.key,
-      label: g.label,
-      code: shortLabel(g.label, 14),
-      nb: g.nb || 0,
-      poids: Math.round(Number(g.poids || 0)),
-      attendu: attendu,
-      atteint: atteint,
-      pct: pct,
-      ratio: Math.max(0, Math.min(pct / 100, 1)), // visuel cappé à 100%
-      etat: etat
-    };
-  })
-  .sort((a, b) => {
-    const d1 = (b.attendu - a.attendu);
-    if (d1) return d1;
-    const d2 = (b.poids - a.poids);
-    if (d2) return d2;
-    return (a.label || "").localeCompare(b.label || "");
-  });
-
-const domainAxesRadar = domainAxesAll.slice(0, RADAR_MAX_AXES); // même plafond que la vue compétence
-const domainEmpty = domainAxesRadar.length < 3;
-
-const domainRows = domainAxesAll.map((d) => {
-  const pctInt = Math.round(Number(d.pct || 0));
-  const pts = `${fmtScore(d.atteint)} / ${fmtScore(d.attendu)} pts`;
-  return `
-    <tr>
-      <td>
-        <div style="font-weight:900; color:#111827;">${escapeHtml(d.label)}</div>
-        <div class="card-sub" style="margin:2px 0 0 0;">${escapeHtml(String(d.nb || 0))} compétence(s)</div>
-      </td>
-      <td class="col-center">${escapeHtml(String(d.nb || 0))}</td>
-      <td class="col-center">
-        <div style="font-weight:900;">${escapeHtml(String(pctInt))}%</div>
-        <div class="card-sub" style="margin:2px 0 0 0; color:#6b7280;">${escapeHtml(pts)}</div>
-      </td>
-      <td class="col-center">${statusBadge(d.etat)}</td>
-    </tr>
-  `;
-}).join("");
-
-const radarHtmlDomain = domainEmpty
-  ? `<div class="card-sub" style="color:#6b7280;">Radar indisponible (moins de 3 domaines).</div>`
-  : `
-    <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#ffffff;">
-      <canvas id="matchDomainRadarCanvas" style="width:100%; height:520px; display:block;"></canvas>
-    </div>
-
-    <div class="table-wrap" style="margin-top:10px;">
-      <table class="sb-table">
-        <thead>
-          <tr>
-            <th>Domaine</th>
-            <th class="col-center" style="width:90px;">Nb comp.</th>
-            <th class="col-center" style="width:140px;">Atteinte</th>
-            <th class="col-center" style="width:110px;">Statut</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${domainRows || `<tr><td colspan="4" class="col-center" style="color:#6b7280;">Aucune donnée.</td></tr>`}
-        </tbody>
-      </table>
-    </div>
-  `;
-host.innerHTML = `
-      <div class="card" style="padding:12px; margin:0;">
-        <div class="card-sub" style="margin:0;">
-          Poste : <b>${escapeHtml(posteLabel)}</b>
-        </div>
-
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px; margin-top:10px;">
-          <div>
-            <div style="font-weight:900; font-size:16px;">${escapeHtml(personLabel)} ${isTit ? '<span class="sb-badge sb-badge-accent">Titulaire</span>' : '<span class="sb-badge">Candidat</span>'}</div>
-            <div class="card-sub" style="margin:4px 0 0 0;">Service : ${escapeHtml(svc)}</div>
-          </div>
-
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <span class="sb-badge sb-badge-accent" style="font-weight:900;">${escapeHtml(String(stats.score_pct || 0))}%</span>
-            <span style="display:inline-flex; gap:6px; align-items:center;">
-              ${box(stats.crit_missing, "danger", "Critiques manquantes")}
-              ${box(stats.crit_under, "warning", "Critiques à renforcer")}
-              ${box(stats.nb_missing, "danger", "Manquantes")}
-              ${box(stats.nb_under, "warning", "À renforcer")}
-            </span>
-          </div>
-        </div>
-
-
-        <div class="sb-tabs">
-          <button type="button" id="btnMatchTabTable" class="sb-tab-btn is-active">Détail</button>
-          <button type="button" id="btnMatchTabRadar" class="sb-tab-btn">Radar</button>
-        </div>
-
-        <div id="matchPersonTabTable" style="margin-top:12px;">
-        <div class="table-wrap" style="margin-top:12px;">
-          <table class="sb-table">
-            <thead>
-              <tr>
-                <th>Compétence</th>
-                <th class="col-center" style="width:70px;">Poids</th>
-                <th class="col-center" style="width:70px;">Requis</th>
-                <th class="col-center" style="width:80px;">Seuil</th>
-                <th class="col-center" style="width:80px;">Score</th>
-                <th class="col-center" style="width:70px;">Niv.</th>
-                <th class="col-center" style="width:110px;">Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows || `<tr><td colspan="7" class="col-center" style="color:#6b7280;">Aucune compétence requise.</td></tr>`}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-          Critiques = poids_criticite ≥ ${CRITICITE_MIN}. Seuil (A/B/C) = 6 / 10 / 19. Niveau = déduit du score /24.
-        </div>
-        </div>
-
-        <div id="matchPersonTabRadar" style="display:none; margin-top:12px;">
-          <div class="sb-subtabs">
-            <button type="button" id="btnMatchRadarViewComp" class="sb-subtab-btn is-active">Vue par compétence</button>
-            <button type="button" id="btnMatchRadarViewDomain" class="sb-subtab-btn">Vue par domaine</button>
-          </div>
-
-          <div id="matchRadarViewComp">
-            <div class="card-sub" style="margin:0 0 10px 0; color:#6b7280;">
-              Axes = top ${radarTop.length} compétences (triées par poids). Valeur = min(score / seuil, 1).
-            </div>
-            ${radarHtmlComp}
-          </div>
-
-          <div id="matchRadarViewDomain" style="display:none;">
-            <div class="card-sub" style="margin:0 0 10px 0; color:#6b7280;">
-              Axes = domaines. Valeur = % d’atteinte (somme scores / somme seuils). Le radar est cappé à 100% (le tableau peut dépasser).
-            </div>
-            ${radarHtmlDomain}
-          </div>
-        </div>
-      </div>
-    `;
- 
-    // ------------------------------------------------------
-    // Onglets (Détail / Radar) + rendu radar
-    // ------------------------------------------------------
-    const btnTabTable = byId("btnMatchTabTable");
-    const btnTabRadar = byId("btnMatchTabRadar");
-    const tabTable = byId("matchPersonTabTable");
-    const tabRadar = byId("matchPersonTabRadar");
-
-
-// Sous-onglets Radar (Compétence / Domaine)
-const btnRadarComp = byId("btnMatchRadarViewComp");
-const btnRadarDomain = byId("btnMatchRadarViewDomain");
-const radarViewComp = byId("matchRadarViewComp");
-const radarViewDomain = byId("matchRadarViewDomain");
-
-function setRadarView(which) {
-  const isDom = (which === "domain");
-  _matchRadarView = isDom ? "domain" : "comp";
-
-  if (radarViewComp) radarViewComp.style.display = isDom ? "none" : "";
-  if (radarViewDomain) radarViewDomain.style.display = isDom ? "" : "none";
-
-  if (btnRadarComp) btnRadarComp.classList.toggle("is-active", !isDom);
-  if (btnRadarDomain) btnRadarDomain.classList.toggle("is-active", isDom);
-}
-    function setActiveTab(which) {
-      const isRadar = (which === "radar");
-      if (tabTable) tabTable.style.display = isRadar ? "none" : "";
-      if (tabRadar) tabRadar.style.display = isRadar ? "" : "none";
-
-      if (btnTabTable) btnTabTable.classList.toggle("is-active", !isRadar);
-      if (btnTabRadar) btnTabRadar.classList.toggle("is-active", isRadar);
-    }
-      if (btnTabRadar) {
-        btnTabRadar.style.background = isRadar ? "#111827" : "#ffffff";
-        btnTabRadar.style.color = isRadar ? "#ffffff" : "#111827";
-      }
-    }
-
-    function prepareCanvas2d(canvas) {
-      const ctx = canvas.getContext("2d");
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const w = Math.max(320, Math.floor(rect.width));
-      const h = Math.max(320, Math.floor(rect.height));
-      const pw = Math.floor(w * dpr);
-      const ph = Math.floor(h * dpr);
-
-      if (canvas.width !== pw || canvas.height !== ph) {
-        canvas.width = pw;
-        canvas.height = ph;
-      }
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, w, h);
-      return { ctx, w, h };
-    }
-
-    function drawRadarChart(canvas, axes) {
-      if (!canvas || !axes || !axes.length) return;
-      const { ctx, w, h } = prepareCanvas2d(canvas);
-
-      const rootStyle = getComputedStyle(document.documentElement);
-      const grid = (rootStyle.getPropertyValue("--chart-grid") || "").trim() || "#e5e7eb";
-      const gridStrong = (rootStyle.getPropertyValue("--chart-grid-strong") || "").trim() || "#d1d5db";
-      const primary = (rootStyle.getPropertyValue("--chart-primary") || "").trim() || "#2563eb";
-      const labelColor = (rootStyle.getPropertyValue("--chart-label") || "").trim() || "#111827";
-      const fillAlpha = Number((rootStyle.getPropertyValue("--chart-fill-alpha") || "").trim()) || 0.16;
-
-      const cx = w / 2;
-      const cy = h / 2;
-      const pad = 64;
-      const r = Math.max(80, Math.min(w, h) / 2 - pad);
-
-      const n = axes.length;
-      const step = (Math.PI * 2) / n;
-      const start = -Math.PI / 2;
-
-      // Grille (5 niveaux)
-      ctx.strokeStyle = grid;
-      ctx.lineWidth = 1;
-      for (let k = 1; k <= 5; k++) {
-        const rr = (r * k) / 5;
-        ctx.beginPath();
-        for (let i = 0; i < n; i++) {
-          const ang = start + i * step;
-          const x = cx + rr * Math.cos(ang);
-          const y = cy + rr * Math.sin(ang);
-          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.stroke();
-      }
-
-      // Axes
-      ctx.strokeStyle = gridStrong;
-      for (let i = 0; i < n; i++) {
-        const ang = start + i * step;
-        const x = cx + r * Math.cos(ang);
-        const y = cy + r * Math.sin(ang);
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-      }
-
-      // Courbe données
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = primary;
-      ctx.fillStyle = primary;
-      ctx.beginPath();
-      for (let i = 0; i < n; i++) {
-        const ang = start + i * step;
-        const v = Math.max(0, Math.min(Number(axes[i].ratio || 0), 1));
-        const rr = r * v;
-        const x = cx + rr * Math.cos(ang);
-        const y = cy + rr * Math.sin(ang);
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.save();
-      ctx.globalAlpha = fillAlpha;
-      ctx.fill();
-      ctx.restore();
-      ctx.stroke();
-
-      // Points
-      ctx.fillStyle = primary;
-      for (let i = 0; i < n; i++) {
-        const ang = start + i * step;
-        const v = Math.max(0, Math.min(Number(axes[i].ratio || 0), 1));
-        const rr = r * v;
-        const x = cx + rr * Math.cos(ang);
-        const y = cy + rr * Math.sin(ang);
-        ctx.beginPath();
-        ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Labels (codes)
-      ctx.fillStyle = labelColor;
-      ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-      for (let i = 0; i < n; i++) {
-        const ang = start + i * step;
-        const x = cx + (r + 14) * Math.cos(ang);
-        const y = cy + (r + 14) * Math.sin(ang);
-
-        const cos = Math.cos(ang);
-        const sin = Math.sin(ang);
-        ctx.textAlign = (cos >= 0.2) ? "left" : (cos <= -0.2 ? "right" : "center");
-        ctx.textBaseline = (sin >= 0.2) ? "top" : (sin <= -0.2 ? "bottom" : "middle");
-
-        const lbl = String(axes[i].code || "").trim() || String(i + 1);
-        ctx.fillText(lbl, x, y);
-      }
-    }
-
-    let _matchRadarView = "comp"; // "comp" | "domain"
-
-function renderRadarNow() {
-  // Tab radar doit être visible
-  if (tabRadar && tabRadar.style.display === "none") return;
-
-  if (_matchRadarView === "domain") {
-    if (domainEmpty) return;
-    const canvas = byId("matchDomainRadarCanvas");
-    if (!canvas) return;
-    drawRadarChart(canvas, domainAxesRadar);
-    return;
-  }
-
-  if (radarEmpty) return;
-  const canvas = byId("matchPersonRadarCanvas");
-  if (!canvas) return;
-  drawRadarChart(canvas, radarTop);
-}
-
-    
-// Init radar view (compétence)
-setRadarView("comp");
-if (btnRadarComp) btnRadarComp.addEventListener("click", () => { setRadarView("comp"); setTimeout(renderRadarNow, 0); });
-if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarView("domain"); setTimeout(renderRadarNow, 0); });
-
-// Bind tabs
-    if (btnTabTable) btnTabTable.addEventListener("click", () => setActiveTab("table"));
-    if (btnTabRadar) btnTabRadar.addEventListener("click", () => {
-      setActiveTab("radar");
-      // rendu après affichage
-      setTimeout(renderRadarNow, 0);
-    });
-
-    // Défaut: onglet tableau
-    setActiveTab("table");
-
-    // ResizeObserver (redraw radar si visible)
-    const modal = byId("modalMatchPerson");
-    if (modal) {
-      if (modal.__matchRadarObs) {
-        try { modal.__matchRadarObs.disconnect(); } catch (e) { }
-        modal.__matchRadarObs = null;
-      }
-
-      if ((!radarEmpty || !domainEmpty) && typeof ResizeObserver !== "undefined") {
-  const obs = new ResizeObserver(() => {
-    if (tabRadar && tabRadar.style.display !== "none") renderRadarNow();
-  });
-  if (tabRadar) obs.observe(tabRadar);
-  modal.__matchRadarObs = obs;
-}
-    }
-
-  async function showMatchPersonDetailModal(portal, id_poste, id_effectif, id_service) {
-    openMatchPersonModal("Détail matching");
-
-    try {
-      const data = await fetchMatchingEffectifDetail(portal, id_poste, id_effectif, id_service);
-
-      const poste = data?.poste || {};
-      const person = data?.person || {};
-      const title = `${person.full || "Personne"} — ${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
-
-      const t = byId("matchPersonModalTitle");
-      if (t) t.textContent = title;
-
-      renderMatchPersonDetail(data);
-    } catch (e) {
-      const host = byId("matchPersonModalBody");
-      if (host) host.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0; color:#991b1b;">Erreur : ${escapeHtml(e.message || "inconnue")}</div></div>`;
-    }
-  }
 
   function nivReqToNum(raw) {
     const s = (raw ?? "").toString().trim().toUpperCase();
@@ -1146,7 +407,7 @@ if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarVie
 
     const list = Array.isArray(items) ? items : [];
     if (!list.length) {
-      host.innerHTML = `<div class="card-sub">Aucun poste trouvé.</div>`;
+      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun poste trouvé.</div>`;
       return;
     }
 
@@ -1156,14 +417,19 @@ if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarVie
       const svc = (r.nom_service || "").trim() || "—";
 
       const isActive = selectedId && idp === selectedId;
-      const cls = `btn-secondary sb-choice${isActive ? " is-active" : ""}`;
+      const cls = `btn-secondary sb-choice${isActive ? " is-selected" : ""}`;
 
       return `
         <button type="button"
                 class="${cls}"
-                data-match-id_poste="${escapeHtml(idp)}">
-          <div class="sb-choice-title">${escapeHtml(poste)}</div>
-          <div class="sb-choice-sub">${escapeHtml(svc)}</div>
+                data-match-id_poste="${escapeHtml(idp)}"
+                style="text-align:left; margin:0; width:100%;">
+          <div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${escapeHtml(poste)}
+          </div>
+          <div style="font-size:11px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${escapeHtml(svc)}
+          </div>
         </button>
       `;
     }).join("");
@@ -1267,7 +533,7 @@ if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarVie
 
     const list = Array.isArray(candidates) ? candidates : [];
     if (!list.length) {
-      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun résultat (aucun titulaire et aucun profil évalué sur les compétences du poste).</div>`;
+      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun candidat détecté (aucun porteur sur les compétences du poste).</div>`;
       return;
     }
 
@@ -1350,13 +616,9 @@ if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarVie
       const score = Number(c.score_pct || 0);
       const scoreBadge = score >= 80 ? badge(score + "%", true) : badge(score + "%", false);
 
-      const ide = String(c.id_effectif || "").trim();
-
       return `
-        <tr class="match-person-row" data-match-id_effectif="${escapeHtml(ide)}" style="cursor:pointer;">
-          <td style="font-weight:700;">
-            ${escapeHtml(c.full || "—")}
-          </td>
+        <tr>
+          <td style="font-weight:700;">${escapeHtml(c.full || "—")}</td>
           <td>${escapeHtml(c.nom_service || "—")}</td>
           <td class="col-center">${scoreBadge}</td>
           <td class="col-center">${critHtml}</td>
@@ -1401,7 +663,7 @@ if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarVie
       ${MATCH_LEGEND_HTML}
 
       <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-        Critiques = poids_criticite ≥ ${CRITICITE_MIN}. Score = moyenne pondérée (résultat / seuil du niveau requis).
+        Critiques = poids_criticite ≥ ${CRITICITE_MIN}. Score = moyenne pondérée des compétences requises.
       </div>
     `;
 
@@ -1412,14 +674,14 @@ if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarVie
     const host = byId("matchResult");
     if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
 
-    const data = await fetchMatchingPosteDetail(portal, id_poste, id_service);
+    const data = await fetchAnalysePosteDetail(portal, id_poste, id_service);
     if (seqGuard && seqGuard !== _matchReqSeq) return;
 
     const poste = data?.poste || {};
     const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
 
-    const items = Array.isArray(data?.items) ? data.items : [];
-    renderMatchingCandidates(id_poste, posteLabel, items, getMatchView());
+    const cands = computeCandidatesFromPosteDetail(data);
+    renderMatchingCandidates(id_poste, posteLabel, cands, getMatchView());
   }
 
     // ==============================
@@ -1719,17 +981,8 @@ if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarVie
     if (a) a.style.display = isA ? "" : "none";
     if (b) b.style.display = isA ? "none" : "";
 
-    // Visuel simple sans ajouter de CSS
-    if (btnA) {
-      btnA.style.borderColor = isA ? "var(--accent)" : "#d1d5db";
-      btnA.style.background = isA ? "color-mix(in srgb, var(--accent) 10%, #ffffff)" : "#ffffff";
-      btnA.style.fontWeight = isA ? "700" : "600";
-    }
-    if (btnB) {
-      btnB.style.borderColor = !isA ? "var(--accent)" : "#d1d5db";
-      btnB.style.background = !isA ? "color-mix(in srgb, var(--accent) 10%, #ffffff)" : "#ffffff";
-      btnB.style.fontWeight = !isA ? "700" : "600";
-    }
+    if (btnA) btnA.classList.toggle("is-active", isA);
+    if (btnB) btnB.classList.toggle("is-active", !isA);
   }
 
   function renderPostePorteurs(porteurs, idPosteAnalyse) {
@@ -2641,23 +1894,6 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
                 }
 
 
-                // ------------------------------
-                // 4) Matching: clic personne (titulaire / candidat)
-                // ------------------------------
-                const trMatchPerson = ev.target.closest("tr.match-person-row[data-match-id_effectif]");
-                if (trMatchPerson) {
-                  const id_eff = (trMatchPerson.getAttribute("data-match-id_effectif") || "").trim();
-                  if (!id_eff) return;
-
-                  if (!_matchSelectedPoste) return;
-
-                  const id_service = (byId("analyseServiceSelect")?.value || "").trim();
-                  await showMatchPersonDetailModal(portal, _matchSelectedPoste, id_eff, id_service);
-                  return;
-                }
-
-
-
               });
             }
 
@@ -2704,3 +1940,4 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
     }
   };
 })();
+

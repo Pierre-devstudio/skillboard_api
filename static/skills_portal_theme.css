@@ -1,174 +1,41 @@
-/* ======================================================
-   skills_portal_theme.css
-   - Thème du portail Skills (palette pilotée par variables)
-   - Objectif: uniformité (cards/tables/typo) + overrides ponctuels par vue
-   ====================================================== */
-
 :root{
-  /* =========================
-     Palette (6 couleurs)
-     ========================= */
-  --c-brand: #c1272d;   /* rouge JMB */
-  --c-teal:  #27bbaf;   /* lecture / data */
-  --c-slate: #111827;   /* texte */
-  --c-gray:  #e5e7eb;   /* bordures */
-  --c-amber: #f59e0b;   /* warning */
-  --c-green: #16a34a;   /* success */
-
-  /* =========================
-     Rôles (utilisés par le CSS)
-     ========================= */
-  --accent: var(--c-brand);        /* branding / navigation */
-  --reading-accent: var(--c-teal); /* pages de lecture / data */
-
-  --danger:  var(--c-brand);
-  --warning: var(--c-amber);
-  --success: var(--c-green);
-  --info:    var(--c-teal);
-
-  /* =========================
-     Surfaces & neutres
-     (modifiables si tu veux éclaircir/assombrir l’app)
-     ========================= */
-  --bg:       #f3f4f6;
-  --card-bg:  #ffffff;
-
-  --text:      var(--c-slate);
-  --text-soft: #374151;
-
-  --border:        var(--c-gray);
-  --border-strong: #d1d5db;
-
-  --surface-2: #f3f4f6; /* hover / fonds doux */
-  --surface-3: #fafafa; /* zebra */
-  --surface-4: #eef2f7; /* accents très doux */
-
-  --muted:   #6b7280;
-  --muted-2: #4b5563;
-
-  /* =========================
-     Tokens composants
-     ========================= */
-  --table-row-border: var(--surface-2);
-  --table-zebra:      var(--surface-3);
-  --table-hover:      var(--surface-2);
-
-  --btn-reset-bg:    var(--reading-accent);
-  --btn-reset-hover: #0f766e;
-  --btn-reset-press: #115e59;
-  --focus-ring:      rgba(13,148,136,0.30);
-
-  /* Heatmap (cartographie) */
-  --hm-ok-bg:    #d2ffac;
-  --hm-ok-border:#087016;
-
-  /* Analyse / Matching (centralisation) */
-  --kpi-active-border: color-mix(in srgb, var(--reading-accent) 55%, var(--border-strong));
-  --kpi-active-bg:     color-mix(in srgb, var(--reading-accent) 6%, var(--card-bg));
-
-  --choice-active-border: var(--accent);
-  --choice-active-bg:     color-mix(in srgb, var(--accent) 8%, var(--card-bg));
-
-  --chart-primary:       #2563eb;
-  --chart-grid:          #e5e7eb;
-  --chart-grid-strong:   #d1d5db;
-  --chart-label:         #111827;
-  --chart-fill-alpha:    0.16;
-
+  --accent:#c1272d;
+  --sidebar-bg:#333333;
+  --reading-accent:#0d9488;
 }
-
-/* ======================================================
-   Uniformisation "Skills" (au-dessus des styles par vue)
-   ====================================================== */
-
-/* TABLES: on override le commun (qui a des couleurs en dur) */
-.sb-table thead th{
-  color: var(--text);
-  border-bottom: 1px solid var(--border);
-}
-.sb-table tbody td{
-  border-bottom: 1px solid var(--table-row-border);
-  line-height: 1.35;
-}
-.sb-table tbody tr:nth-child(even){
-  background: var(--table-zebra);
-}
-.sb-table tbody tr:hover{
-  background: var(--table-hover);
-}
-
-/* Boutons secondaires (cohérence) */
-.btn-secondary{
-  border-color: var(--border-strong);
-  background: var(--card-bg);
-  color: var(--text-soft);
-}
-.btn-secondary:hover{
-  background: color-mix(in srgb, var(--reading-accent) 6%, var(--card-bg));
-  border-color: color-mix(in srgb, var(--reading-accent) 22%, var(--border-strong));
-}
-.btn-secondary:focus{
-  outline: none;
-  box-shadow: 0 0 0 3px var(--focus-ring);
-}
-
-/* Boutons Reset (TEAL, uniformisé sur tout Skills) */
-button.btn-secondary[id$="Reset"],
-#btnCollabReset,
-#btnRefReset,
-#btnMapReset{
-  background: var(--btn-reset-bg);
-  border-color: var(--btn-reset-bg);
-  color: #ffffff;
-  font-weight: 700;
-}
-button.btn-secondary[id$="Reset"]:hover,
-#btnCollabReset:hover,
-#btnRefReset:hover,
-#btnMapReset:hover{
-  background: var(--btn-reset-hover);
-  border-color: var(--btn-reset-hover);
-}
-button.btn-secondary[id$="Reset"]:active,
-#btnCollabReset:active,
-#btnRefReset:active,
-#btnMapReset:active{
-  background: var(--btn-reset-press);
-  border-color: var(--btn-reset-press);
-  transform: translateY(1px);
-}
-
-/* Taille XS (utile dans les tables) */
-.btn-secondary.btn-xs{
-  padding: 6px 10px;
-  font-size: 12px;
-  margin-left: 0;
-}
-
-/* MODALS: éviter le dépassement d’écran, scroll interne */
-.modal-card{
-  border-color: var(--border);
-  background: var(--card-bg);
-  max-height: 92vh;
-  display: flex;
-  flex-direction: column;
-}
-.modal-body{
-  overflow: auto;
-  flex: 1 1 auto;
-}
-.modal-footer{
-  border-top-color: var(--border);
-}
-.modal-x{
-  color: var(--reading-accent);
-}
-.modal-x:hover{
-  color: var(--btn-reset-hover);
-}
-
 
 /* Collaborateurs: tables plus aérées et lisibles (aligné référentiel) */
+#view-vos-collaborateurs .sb-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+#view-vos-collaborateurs .sb-table thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  color: #111827;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+#view-vos-collaborateurs .sb-table tbody td {
+  padding: 12px 16px;
+  vertical-align: middle;
+  border-bottom: 1px solid #f3f4f6;
+  line-height: 1.35;
+}
+
+#view-vos-collaborateurs .sb-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+#view-vos-collaborateurs .sb-table tbody tr:hover {
+  background: #f3f4f6;
+}
+
 /* Nom plus lisible */
 #view-vos-collaborateurs .sb-table tbody td:nth-child(1) {
   font-weight: 700;
@@ -205,6 +72,37 @@ button.btn-secondary[id$="Reset"]:active,
 
 
 /* Référentiel compétences: tables plus aérées et lisibles */
+#view-referentiel-competences .sb-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+#view-referentiel-competences .sb-table thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  color: #111827;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+#view-referentiel-competences .sb-table tbody td {
+  padding: 12px 16px;
+  vertical-align: middle;
+  border-bottom: 1px solid #f3f4f6;
+  line-height: 1.35;
+}
+
+#view-referentiel-competences .sb-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+#view-referentiel-competences .sb-table tbody tr:hover {
+  background: #f3f4f6;
+}
+
 #view-referentiel-competences .col-center {
   text-align: center !important;
 }
@@ -220,7 +118,7 @@ button.btn-secondary[id$="Reset"]:active,
   width: 14px;
   height: 14px;
   border-radius: 6px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid #d1d5db;
 }
 
 #view-referentiel-competences .btn-secondary.btn-xs {
@@ -235,11 +133,11 @@ button.btn-secondary[id$="Reset"]:active,
   align-items: center;
   gap: 8px;
   padding: 4px 10px;
-  border: 1px solid var(--border-strong);
+  border: 1px solid #d1d5db;
   border-radius: 999px;
   font-size: 12px;
-  color: var(--text-soft);
-  background: var(--card-bg);
+  color: #374151;
+  background: #fff;
 }
 
 #view-referentiel-competences .domain-pill .domain-dot {
@@ -269,7 +167,33 @@ button.btn-secondary[id$="Reset"]:active,
    Collaborateurs: boutons (soft)
    ============================ */
 
+#view-vos-collaborateurs #btnCollabReset {
+  border-color: color-mix(in srgb, var(--accent) 35%, #d1d5db);
+  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
+  color: #1f2937;
+  font-weight: 600;
+}
+
+#view-vos-collaborateurs #btnCollabReset:hover {
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+}
+
+#view-vos-collaborateurs #btnCollabReset:active {
+  transform: translateY(1px);
+}
+
 /* Bouton "Fermer" (footer modal collaborateur) */
+#modalCollaborateur #btnCollabModalClose {
+  border-color: color-mix(in srgb, var(--accent) 35%, #087016);
+  background: color-mix(in srgb, var(--accent) 8%, #d2ffac);
+  color: #1f2937;
+  font-weight: 600;
+}
+
+#modalCollaborateur #btnCollabModalClose:hover {
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+}
+
 /* Croix (header modal collaborateur) */
 #modalCollaborateur .modal-x {
   color: var(--accent);
@@ -285,7 +209,33 @@ button.btn-secondary[id$="Reset"]:active,
    Référentiel: boutons (soft)
    ============================ */
 
+#view-referentiel-competences #btnRefReset {
+  border-color: color-mix(in srgb, var(--accent) 35%, #d1d5db);
+  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
+  color: #1f2937;
+  font-weight: 600;
+}
+
+#view-referentiel-competences #btnRefReset:hover {
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+}
+
+#view-referentiel-competences #btnRefReset:active {
+  transform: translateY(1px);
+}
+
 /* Bouton "Fermer" (footer modal détail) */
+#modalRefDetail #btnRefModalClose {
+  border-color: color-mix(in srgb, var(--accent) 35%, #087016);
+  background: color-mix(in srgb, var(--accent) 8%, #d2ffac);
+  color: #1f2937;
+  font-weight: 600;
+}
+
+#modalRefDetail #btnRefModalClose:hover {
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+}
+
 /* Croix (header modal) */
 #modalRefDetail .modal-x {
   color: var(--accent);
@@ -313,6 +263,21 @@ button.btn-secondary[id$="Reset"]:active,
 }
 
 /* Bouton reset (soft comme référentiel) */
+#view-cartographie-competences #btnMapReset {
+  border-color: color-mix(in srgb, var(--accent) 35%, #d1d5db);
+  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
+  color: #1f2937;
+  font-weight: 600;
+}
+
+#view-cartographie-competences #btnMapReset:hover {
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+}
+
+#view-cartographie-competences #btnMapReset:active {
+  transform: translateY(1px);
+}
+
 /* Modal cartographie: scroll + cohérence */
 #modalMapDetail.modal.show {
   align-items: flex-start;
@@ -331,6 +296,17 @@ button.btn-secondary[id$="Reset"]:active,
 }
 
 /* Bouton fermer (footer) + croix */
+#modalMapDetail #btnMapModalClose {
+  border-color: color-mix(in srgb, var(--accent) 35%, #087016);
+  background: color-mix(in srgb, var(--accent) 8%, #d2ffac);
+  color: #1f2937;
+  font-weight: 600;
+}
+
+#modalMapDetail #btnMapModalClose:hover {
+  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+}
+
 #modalMapDetail .modal-x {
   color: var(--accent);
 }
@@ -348,7 +324,7 @@ button.btn-secondary[id$="Reset"]:active,
   align-items:center;
   gap:8px;
   margin: 10px 0 10px 0;
-  color:var(--muted);
+  color:#6b7280;
   font-size:12px;
 }
 
@@ -358,13 +334,13 @@ button.btn-secondary[id$="Reset"]:active,
   width:22px;
   height:10px;
   border-radius:6px;
-  border:1px solid var(--border);
+  border:1px solid #e5e7eb;
   display:inline-block;
 }
 
 #view-cartographie-competences .hm-wrap{
   overflow:auto;
-  border:1px solid var(--surface-4);
+  border:1px solid #eef2f7;
   border-radius:12px;
 }
 
@@ -379,13 +355,13 @@ button.btn-secondary[id$="Reset"]:active,
 #view-cartographie-competences .hm-table thead th{
   position:sticky;
   top:0;
-  background:var(--surface-3);
+  background:#fafafa;
   z-index:4;
   font-weight:600;
   font-size:13px;
-  color:var(--text);
+  color:#111827;
   padding:12px 14px;
-  border-bottom:1px solid var(--border);
+  border-bottom:1px solid #e5e7eb;
   text-align:left;
   white-space:nowrap;
 }
@@ -397,27 +373,27 @@ button.btn-secondary[id$="Reset"]:active,
 
 #view-cartographie-competences .hm-table tbody td{
   padding:10px 12px;
-  border-bottom:1px solid var(--surface-2);
+  border-bottom:1px solid #f3f4f6;
   vertical-align:middle;
 }
 
 #view-cartographie-competences .hm-sticky.hm-rowhead{
   position:sticky;
   left:0;
-  background:var(--card-bg);
+  background:#fff;
   z-index:3;
-  border-right:1px solid var(--surface-4);
+  border-right:1px solid #eef2f7;
 }
 
 #view-cartographie-competences .hm-poste-title{
   font-weight:600;
-  color:var(--text);
+  color:#111827;
   line-height:1.2;
 }
 
 #view-cartographie-competences .hm-poste-sub{
   font-size:12px;
-  color:var(--muted);
+  color:#6b7280;
   margin-top:2px;
 }
 
@@ -431,10 +407,10 @@ button.btn-secondary[id$="Reset"]:active,
   width:12px;
   height:12px;
   border-radius:3px;            /* carré arrondi léger (pas rond) */
-  border:1px solid var(--border-strong);
+  border:1px solid #d1d5db;
   vertical-align:middle;
   margin-right:8px;
-  background:var(--border);
+  background:#e5e7eb;
   flex:0 0 auto;
 }
 
@@ -452,7 +428,7 @@ button.btn-secondary[id$="Reset"]:active,
   min-width:64px;
   height:46px;
   font-weight:700;
-  border-left:1px solid var(--surface-2);
+  border-left:1px solid #f3f4f6;
   border-radius:10px;
   cursor:pointer;
   user-select:none;
@@ -466,7 +442,7 @@ button.btn-secondary[id$="Reset"]:active,
 
 #view-cartographie-competences .hm-totalhead,
 #view-cartographie-competences .hm-totalcell{
-  background:var(--surface-3);
+  background:#fafafa;
   font-weight:700;
 }
 
@@ -475,215 +451,50 @@ button.btn-secondary[id$="Reset"]:active,
 }
 
 #view-cartographie-competences .hm-grandtotal{
-  background:var(--surface-2);
+  background:#f3f4f6;
   font-weight:800;
 }
 
 /* Niveaux de charge (palette sobre) */
-#view-cartographie-competences .hm-lvl-0{ background:var(--card-bg)fff; }
-#view-cartographie-competences .hm-lvl-1{ background:color-mix(in srgb, var(--reading-accent) 10%, var(--card-bg)); }
-#view-cartographie-competences .hm-lvl-2{ background:color-mix(in srgb, var(--reading-accent) 18%, var(--card-bg)); }
-#view-cartographie-competences .hm-lvl-3{ background:color-mix(in srgb, var(--reading-accent) 26%, var(--card-bg)); }
-#view-cartographie-competences .hm-lvl-4{ background:color-mix(in srgb, var(--reading-accent) 34%, var(--card-bg)); }
-#view-cartographie-competences .hm-lvl-5{ background:color-mix(in srgb, var(--reading-accent) 42%, var(--card-bg)); }
-
-/* Tous les boutons de fermeture suivent la même règle:
-   - priorité: id qui finit par ModalClose (convention Skillboard)
-   - fallback: boutons secondaires du footer (souvent "Fermer/Annuler") */
-.modal .modal-footer button[id$="ModalClose"],
-.modal .modal-footer .btn-secondary:not([id$="Reset"]){
-  background: var(--btn-close-bg);
-  border-color: var(--btn-close-border);
-  color: var(--btn-close-text);
-  font-weight: 700;
-}
-
-.modal .modal-footer button[id$="ModalClose"]:hover,
-.modal .modal-footer .btn-secondary:not([id$="Reset"]):hover{
-  background: var(--btn-close-hover-bg);
-  border-color: var(--btn-close-hover-border);
-}
-
-.modal .modal-footer button[id$="ModalClose"]:active,
-.modal .modal-footer .btn-secondary:not([id$="Reset"]):active{
-  transform: translateY(1px);
-}
-
-
-/* =========================================================
-   MODALS - Boutons "Fermer" (uniforme)
-   - Objectif: un seul style, partout
-   - Règle: tout bouton d'action "Fermer" doit finir par ...ModalClose
-   ========================================================= */
-
-/* Base (même rendu que .btn-secondary, même si la classe a été oubliée) */
-.modal .modal-footer button[id$="ModalClose"]{
-  padding: 8px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--border-strong);
-  background: var(--card-bg);
-  color: var(--text-soft);
-  font-size: 14px;
-  cursor: pointer;
-}
-
-/* Hover/Focus cohérents */
-.modal .modal-footer button[id$="ModalClose"]:hover{
-  background: color-mix(in srgb, var(--reading-accent) 6%, var(--card-bg));
-  border-color: color-mix(in srgb, var(--reading-accent) 22%, var(--border-strong));
-}
-.modal .modal-footer button[id$="ModalClose"]:focus{
-  outline: none;
-  box-shadow: 0 0 0 3px var(--focus-ring);
-}
-.modal .modal-footer button[id$="ModalClose"]:active{
-  transform: translateY(1px);
-}
-
-
-
+#view-cartographie-competences .hm-lvl-0{ background:#ffffff; }
+#view-cartographie-competences .hm-lvl-1{ background:color-mix(in srgb, var(--accent) 10%, #fff); }
+#view-cartographie-competences .hm-lvl-2{ background:color-mix(in srgb, var(--accent) 18%, #fff); }
+#view-cartographie-competences .hm-lvl-3{ background:color-mix(in srgb, var(--accent) 26%, #fff); }
+#view-cartographie-competences .hm-lvl-4{ background:color-mix(in srgb, var(--accent) 34%, #fff); }
+#view-cartographie-competences .hm-lvl-5{ background:color-mix(in srgb, var(--accent) 42%, #fff); }
 
 /* ======================================================
-   View: Analyse des compétences (skills_analyse)
-   Objectif: Zéro couleur en JS/HTML, tout piloté ici.
+   Analyse des compétences — couleurs centralisées (JS = classes)
    ====================================================== */
 
-#view-analyse-competences .analyse-tiles{
-  display:grid;
-  grid-template-columns: repeat(3, minmax(220px, 1fr));
-  gap: 12px;
-}
-@media (max-width: 900px){
-  #view-analyse-competences .analyse-tiles{
-    grid-template-columns: 1fr;
-  }
-}
-
-#view-analyse-competences .analyse-tile{
-  cursor:pointer;
-  transition: transform .06s ease, filter .12s ease, box-shadow .12s ease;
-}
-#view-analyse-competences .analyse-tile:hover{
-  filter: brightness(0.99);
-  transform: translateY(-1px);
-}
-#view-analyse-competences .analyse-tile.active{
-  outline: 2px solid color-mix(in srgb, var(--reading-accent) 65%, var(--card-bg));
-  box-shadow: 0 8px 18px rgba(17,24,39,0.08);
+#view-analyse-competences{
+  --analyse-accent: var(--reading-accent);
+  --analyse-kpi-active-border: color-mix(in srgb, var(--analyse-accent) 55%, #d1d5db);
+  --analyse-kpi-active-bg: color-mix(in srgb, var(--analyse-accent) 6%, #ffffff);
+  --analyse-choice-active-border: var(--analyse-accent);
+  --analyse-choice-active-bg: color-mix(in srgb, var(--analyse-accent) 8%, #ffffff);
+  --analyse-tab-active-border: var(--analyse-accent);
+  --analyse-tab-active-bg: color-mix(in srgb, var(--analyse-accent) 10%, #ffffff);
 }
 
-#view-analyse-competences .mini-kpis{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  margin-top:12px;
-}
-#view-analyse-competences .mini-kpi{
-  border:1px solid var(--border);
-  border-radius:10px;
-  padding:10px 12px;
-  flex:1;
-  min-width: 160px;
-  background: var(--card-bg);
-}
 #view-analyse-competences .mini-kpi.is-active{
-  border-color: var(--kpi-active-border);
-  background: var(--kpi-active-bg);
+  border-color: var(--analyse-kpi-active-border) !important;
+  background: var(--analyse-kpi-active-bg) !important;
 }
 
-#view-analyse-competences .tile-sub{
-  color: var(--muted);
-  font-size: 13px;
-  margin-top: 6px;
-  line-height: 1.35;
-}
-#view-analyse-competences .tile-hint{
-  margin-top: 10px;
-  font-size: 12px;
-  color: var(--muted);
+#view-analyse-competences .btn-secondary.sb-choice.is-selected{
+  border-color: var(--analyse-choice-active-border) !important;
+  background: var(--analyse-choice-active-bg) !important;
 }
 
-/* Liste des postes (matching) */
-#view-analyse-competences .sb-choice{
-  width:100%;
-  text-align:left;
-  margin:0;
-}
-#view-analyse-competences .sb-choice.is-active{
-  border-color: var(--choice-active-border);
-  background: var(--choice-active-bg);
-}
-#view-analyse-competences .sb-choice-title{
-  font-weight:700;
-  font-size:13px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-#view-analyse-competences .sb-choice-sub{
-  font-size:11px;
-  color:var(--muted);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+#view-analyse-competences #tabAnalysePosteCompetences,
+#view-analyse-competences #tabAnalysePosteCouverture{
+  font-weight: 600;
 }
 
-/* Onglets (Détail / Radar + sous-onglets radar) */
-#view-analyse-competences .sb-tabs,
-#view-analyse-competences .sb-subtabs{
-  display:flex;
-  gap:8px;
-  align-items:center;
-  flex-wrap:wrap;
-}
-#view-analyse-competences .sb-tabs{ margin-top:12px; }
-#view-analyse-competences .sb-subtabs{ margin:0 0 10px 0; }
-
-#view-analyse-competences .sb-tab-btn,
-#view-analyse-competences .sb-subtab-btn{
-  padding:6px 10px;
-  border-radius:8px;
-  border:1px solid var(--border-strong);
-  background: var(--card-bg);
-  color: var(--text);
-  font-weight:900;
-  cursor:pointer;
-}
-#view-analyse-competences .sb-tab-btn.is-active,
-#view-analyse-competences .sb-subtab-btn.is-active{
-  background: var(--text);
-  color: var(--card-bg);
-}
-
-/* Petits compteurs (badges) */
-#view-analyse-competences .sb-pill{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:26px;
-  height:22px;
-  border-radius:8px;
-  font-weight:900;
-  font-size:12px;
-  border:1px solid rgba(0,0,0,.12);
-  color:#ffffff;
-}
-#view-analyse-competences .sb-pill.is-zero{
-  background: var(--border);
-  color: var(--muted);
-  border-color: var(--border-strong);
-}
-#view-analyse-competences .sb-pill.is-danger{ background: var(--danger); }
-#view-analyse-competences .sb-pill.is-warning{ background: var(--warning); }
-#view-analyse-competences .sb-pill.is-success{ background: var(--success); }
-
-
-/* Boutons "Fermer" uniformisés (modals) */
-.modal .modal-footer .btn-close{
-  background: var(--btn-secondary-bg);
-  color: var(--btn-secondary-text);
-  border-color: var(--btn-secondary-border);
-}
-.modal .modal-footer .btn-close:hover{
-  background: var(--btn-secondary-hover);
+#view-analyse-competences #tabAnalysePosteCompetences.is-active,
+#view-analyse-competences #tabAnalysePosteCouverture.is-active{
+  border-color: var(--analyse-tab-active-border) !important;
+  background: var(--analyse-tab-active-bg) !important;
+  font-weight: 700;
 }
