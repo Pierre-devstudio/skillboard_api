@@ -1,7 +1,6 @@
 :root{
   --accent:#c1272d;
   --sidebar-bg:#333333;
-  --reading-accent:#0d9488;
 }
 
 /* Collaborateurs: tables plus aérées et lisibles (aligné référentiel) */
@@ -463,38 +462,91 @@
 #view-cartographie-competences .hm-lvl-4{ background:color-mix(in srgb, var(--accent) 34%, #fff); }
 #view-cartographie-competences .hm-lvl-5{ background:color-mix(in srgb, var(--accent) 42%, #fff); }
 
+
 /* ======================================================
-   Analyse des compétences — couleurs centralisées (JS = classes)
+   Skills — OVERRIDES STABLES (RESTORE)
+   Objectif:
+   - Reset en teal partout (skills_*)
+   - Modals: hauteur max + scroll interne
+   - Boutons "Fermer" uniformes sur tous les modals
+   NB: section volontairement en fin de fichier (priorité CSS)
    ====================================================== */
 
-#view-analyse-competences{
-  --analyse-accent: var(--reading-accent);
-  --analyse-kpi-active-border: color-mix(in srgb, var(--analyse-accent) 55%, #d1d5db);
-  --analyse-kpi-active-bg: color-mix(in srgb, var(--analyse-accent) 6%, #ffffff);
-  --analyse-choice-active-border: var(--analyse-accent);
-  --analyse-choice-active-bg: color-mix(in srgb, var(--analyse-accent) 8%, #ffffff);
-  --analyse-tab-active-border: var(--analyse-accent);
-  --analyse-tab-active-bg: color-mix(in srgb, var(--analyse-accent) 10%, #ffffff);
+:root{
+  /* Accent de lecture (calme) */
+  --reading-accent: #0d9488;
+  --reading-accent-hover: #0f766e;
+  --reading-accent-press: #115e59;
+  --reading-accent-ring: rgba(13,148,136,0.30);
+
+  /* Bouton Fermer (uniforme) */
+  --modal-close-bg: #ffffff;
+  --modal-close-border: #cbd5e1;
+  --modal-close-text: #0f172a;
+  --modal-close-hover-bg: #f8fafc;
 }
 
-#view-analyse-competences .mini-kpi.is-active{
-  border-color: var(--analyse-kpi-active-border) !important;
-  background: var(--analyse-kpi-active-bg) !important;
+/* ---------- Boutons RESET (teal) ---------- */
+/* Priorité haute pour écraser les styles par vue existants */
+button.btn-secondary[id$="Reset"],
+#view-cartographie-competences #btnMapReset,
+#view-vos-collaborateurs #btnCollabReset,
+#view-referentiel-competences #btnRefReset,
+#view-analyse-competences #btnAnalyseReset{
+  background: var(--reading-accent) !important;
+  border-color: var(--reading-accent) !important;
+  color: #ffffff !important;
 }
 
-#view-analyse-competences .btn-secondary.sb-choice.is-selected{
-  border-color: var(--analyse-choice-active-border) !important;
-  background: var(--analyse-choice-active-bg) !important;
+button.btn-secondary[id$="Reset"]:hover,
+#view-cartographie-competences #btnMapReset:hover,
+#view-vos-collaborateurs #btnCollabReset:hover,
+#view-referentiel-competences #btnRefReset:hover,
+#view-analyse-competences #btnAnalyseReset:hover{
+  background: var(--reading-accent-hover) !important;
+  border-color: var(--reading-accent-hover) !important;
 }
 
-#view-analyse-competences #tabAnalysePosteCompetences,
-#view-analyse-competences #tabAnalysePosteCouverture{
-  font-weight: 600;
+button.btn-secondary[id$="Reset"]:active,
+#view-cartographie-competences #btnMapReset:active,
+#view-vos-collaborateurs #btnCollabReset:active,
+#view-referentiel-competences #btnRefReset:active,
+#view-analyse-competences #btnAnalyseReset:active{
+  background: var(--reading-accent-press) !important;
+  border-color: var(--reading-accent-press) !important;
 }
 
-#view-analyse-competences #tabAnalysePosteCompetences.is-active,
-#view-analyse-competences #tabAnalysePosteCouverture.is-active{
-  border-color: var(--analyse-tab-active-border) !important;
-  background: var(--analyse-tab-active-bg) !important;
-  font-weight: 700;
+button.btn-secondary[id$="Reset"]:focus{
+  outline: none;
+  box-shadow: 0 0 0 3px var(--reading-accent-ring);
+}
+
+/* ---------- MODALS: hauteur max + scroll interne ---------- */
+.modal.show{
+  align-items: flex-start; /* évite "centre" + overflow invisible */
+}
+
+.modal-card{
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-body{
+  overflow: auto;
+}
+
+/* ---------- Boutons "Fermer" uniformes ---------- */
+button[id$="ModalClose"]{
+  background: var(--modal-close-bg) !important;
+  border: 1px solid var(--modal-close-border) !important;
+  color: var(--modal-close-text) !important;
+}
+
+button[id$="ModalClose"]:hover{
+  background: var(--modal-close-hover-bg) !important;
+}
+
+button[id$="ModalClose"]:active{
+  transform: translateY(1px);
 }
