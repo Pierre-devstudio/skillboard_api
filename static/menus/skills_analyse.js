@@ -649,31 +649,149 @@
       `;
     }).join("");
 
-    const radarHtml = radarEmpty
-      ? `<div class="card-sub" style="color:#6b7280;">Radar indisponible (moins de 3 compétences).</div>`
-      : `
-        <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#ffffff;">
-          <canvas id="matchPersonRadarCanvas" style="width:100%; height:520px; display:block;"></canvas>
-        </div>
+    
+// ------------------------
+// Vue Radar - 2 sous-vues
+// ------------------------
 
-        <div class="table-wrap" style="margin-top:10px;">
-          <table class="sb-table">
-            <thead>
-              <tr>
-                <th>Compétence</th>
-                <th class="col-center" style="width:70px;">Poids</th>
-                <th class="col-center" style="width:120px;">Score</th>
-                <th class="col-center" style="width:90px;">Couverture</th>
-                <th class="col-center" style="width:110px;">Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${radarRows || `<tr><td colspan="5" class="col-center" style="color:#6b7280;">Aucune donnée.</td></tr>`}
-            </tbody>
-          </table>
-        </div>
-      `;
-    host.innerHTML = `
+// Vue par compétence (graphique actuel + tableau)
+const radarHtmlComp = radarEmpty
+  ? `<div class="card-sub" style="color:#6b7280;">Radar indisponible (moins de 3 compétences).</div>`
+  : `
+    <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#ffffff;">
+      <canvas id="matchPersonRadarCanvas" style="width:100%; height:520px; display:block;"></canvas>
+    </div>
+
+    <div class="table-wrap" style="margin-top:10px;">
+      <table class="sb-table">
+        <thead>
+          <tr>
+            <th>Compétence</th>
+            <th class="col-center" style="width:70px;">Poids</th>
+            <th class="col-center" style="width:120px;">Score</th>
+            <th class="col-center" style="width:90px;">Couverture</th>
+            <th class="col-center" style="width:110px;">Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${radarRows || `<tr><td colspan="5" class="col-center" style="color:#6b7280;">Aucune donnée.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+// Vue par domaine (agrégation)
+function normDomain(s) {
+  const v = (s ?? "").toString().trim();
+  return v ? v.toLowerCase() : "";
+}
+
+function shortLabel(s, maxLen) {
+  const v = (s ?? "").toString().trim();
+  if (!v) return "—";
+  if (v.length <= maxLen) return v;
+  return v.slice(0, Math.max(4, maxLen - 1)) + "…";
+}
+
+const domMap = new Map();
+items.forEach((it) => {
+  const raw = ((it.domaine_titre_court || it.domaine || "") ?? "").toString().trim();
+  const key = normDomain(raw) || "__non_classe__";
+  const label = raw || "Non classé";
+
+  const seuilN = Number(it.seuil);
+  const scoreN = Number(it.score);
+  const poidsN = Number(it.poids_criticite || 1);
+
+  let g = domMap.get(key);
+  if (!g) {
+    g = { key: key, label: label, attendu: 0, atteint: 0, poids: 0, nb: 0 };
+    domMap.set(key, g);
+  }
+
+  g.attendu += (Number.isFinite(seuilN) ? seuilN : 0);
+  g.atteint += (Number.isFinite(scoreN) ? scoreN : 0);
+  g.poids += (Number.isFinite(poidsN) ? poidsN : 0);
+  g.nb += 1;
+});
+
+const domainAxesAll = Array.from(domMap.values())
+  .map((g) => {
+    const attendu = Number(g.attendu || 0);
+    const atteint = Number(g.atteint || 0);
+    const pct = attendu > 0 ? (atteint / attendu) * 100 : 0;
+
+    const etat = (pct >= 100)
+      ? "ok"
+      : (atteint > 0 ? "under" : "missing");
+
+    return {
+      key: g.key,
+      label: g.label,
+      code: shortLabel(g.label, 14),
+      nb: g.nb || 0,
+      poids: Math.round(Number(g.poids || 0)),
+      attendu: attendu,
+      atteint: atteint,
+      pct: pct,
+      ratio: Math.max(0, Math.min(pct / 100, 1)), // visuel cappé à 100%
+      etat: etat
+    };
+  })
+  .sort((a, b) => {
+    const d1 = (b.attendu - a.attendu);
+    if (d1) return d1;
+    const d2 = (b.poids - a.poids);
+    if (d2) return d2;
+    return (a.label || "").localeCompare(b.label || "");
+  });
+
+const domainAxesRadar = domainAxesAll.slice(0, RADAR_MAX_AXES); // même plafond que la vue compétence
+const domainEmpty = domainAxesRadar.length < 3;
+
+const domainRows = domainAxesAll.map((d) => {
+  const pctInt = Math.round(Number(d.pct || 0));
+  const pts = `${fmtScore(d.atteint)} / ${fmtScore(d.attendu)} pts`;
+  return `
+    <tr>
+      <td>
+        <div style="font-weight:900; color:#111827;">${escapeHtml(d.label)}</div>
+        <div class="card-sub" style="margin:2px 0 0 0;">${escapeHtml(String(d.nb || 0))} compétence(s)</div>
+      </td>
+      <td class="col-center">${escapeHtml(String(d.nb || 0))}</td>
+      <td class="col-center">
+        <div style="font-weight:900;">${escapeHtml(String(pctInt))}%</div>
+        <div class="card-sub" style="margin:2px 0 0 0; color:#6b7280;">${escapeHtml(pts)}</div>
+      </td>
+      <td class="col-center">${statusBadge(d.etat)}</td>
+    </tr>
+  `;
+}).join("");
+
+const radarHtmlDomain = domainEmpty
+  ? `<div class="card-sub" style="color:#6b7280;">Radar indisponible (moins de 3 domaines).</div>`
+  : `
+    <div style="border:1px solid #e5e7eb; border-radius:10px; padding:10px; background:#ffffff;">
+      <canvas id="matchDomainRadarCanvas" style="width:100%; height:520px; display:block;"></canvas>
+    </div>
+
+    <div class="table-wrap" style="margin-top:10px;">
+      <table class="sb-table">
+        <thead>
+          <tr>
+            <th>Domaine</th>
+            <th class="col-center" style="width:90px;">Nb comp.</th>
+            <th class="col-center" style="width:140px;">Atteinte</th>
+            <th class="col-center" style="width:110px;">Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${domainRows || `<tr><td colspan="4" class="col-center" style="color:#6b7280;">Aucune donnée.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+host.innerHTML = `
       <div class="card" style="padding:12px; margin:0;">
         <div class="card-sub" style="margin:0;">
           Poste : <b>${escapeHtml(posteLabel)}</b>
@@ -736,10 +854,32 @@
         </div>
 
         <div id="matchPersonTabRadar" style="display:none; margin-top:12px;">
-          <div class="card-sub" style="margin:0 0 10px 0; color:#6b7280;">
-            Axes = top ${radarTop.length} compétences (triées par poids). Valeur = min(score / seuil, 1).
+          <div style="margin:0 0 10px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button type="button" id="btnMatchRadarViewComp"
+                    style="padding:6px 10px; border-radius:8px; border:1px solid #d1d5db;
+                           background:#111827; color:#ffffff; font-weight:900; cursor:pointer;">
+              Vue par compétence
+            </button>
+            <button type="button" id="btnMatchRadarViewDomain"
+                    style="padding:6px 10px; border-radius:8px; border:1px solid #d1d5db;
+                           background:#ffffff; color:#111827; font-weight:900; cursor:pointer;">
+              Vue par domaine
+            </button>
           </div>
-          ${radarHtml}
+
+          <div id="matchRadarViewComp">
+            <div class="card-sub" style="margin:0 0 10px 0; color:#6b7280;">
+              Axes = top ${radarTop.length} compétences (triées par poids). Valeur = min(score / seuil, 1).
+            </div>
+            ${radarHtmlComp}
+          </div>
+
+          <div id="matchRadarViewDomain" style="display:none;">
+            <div class="card-sub" style="margin:0 0 10px 0; color:#6b7280;">
+              Axes = domaines. Valeur = % d’atteinte (somme scores / somme seuils). Le radar est cappé à 100% (le tableau peut dépasser).
+            </div>
+            ${radarHtmlDomain}
+          </div>
         </div>
       </div>
     `;
@@ -752,6 +892,29 @@
     const tabTable = byId("matchPersonTabTable");
     const tabRadar = byId("matchPersonTabRadar");
 
+
+// Sous-onglets Radar (Compétence / Domaine)
+const btnRadarComp = byId("btnMatchRadarViewComp");
+const btnRadarDomain = byId("btnMatchRadarViewDomain");
+const radarViewComp = byId("matchRadarViewComp");
+const radarViewDomain = byId("matchRadarViewDomain");
+
+function setRadarView(which) {
+  const isDom = (which === "domain");
+  _matchRadarView = isDom ? "domain" : "comp";
+
+  if (radarViewComp) radarViewComp.style.display = isDom ? "none" : "";
+  if (radarViewDomain) radarViewDomain.style.display = isDom ? "" : "none";
+
+  if (btnRadarComp) {
+    btnRadarComp.style.background = isDom ? "#ffffff" : "#111827";
+    btnRadarComp.style.color = isDom ? "#111827" : "#ffffff";
+  }
+  if (btnRadarDomain) {
+    btnRadarDomain.style.background = isDom ? "#111827" : "#ffffff";
+    btnRadarDomain.style.color = isDom ? "#ffffff" : "#111827";
+  }
+}
     function setActiveTab(which) {
       const isRadar = (which === "radar");
       if (tabTable) tabTable.style.display = isRadar ? "none" : "";
@@ -874,14 +1037,33 @@
       }
     }
 
-    function renderRadarNow() {
-      if (radarEmpty) return;
-      const canvas = byId("matchPersonRadarCanvas");
-      if (!canvas) return;
-      drawRadarChart(canvas, radarTop);
-    }
+    let _matchRadarView = "comp"; // "comp" | "domain"
 
-    // Bind tabs
+function renderRadarNow() {
+  // Tab radar doit être visible
+  if (tabRadar && tabRadar.style.display === "none") return;
+
+  if (_matchRadarView === "domain") {
+    if (domainEmpty) return;
+    const canvas = byId("matchDomainRadarCanvas");
+    if (!canvas) return;
+    drawRadarChart(canvas, domainAxesRadar);
+    return;
+  }
+
+  if (radarEmpty) return;
+  const canvas = byId("matchPersonRadarCanvas");
+  if (!canvas) return;
+  drawRadarChart(canvas, radarTop);
+}
+
+    
+// Init radar view (compétence)
+setRadarView("comp");
+if (btnRadarComp) btnRadarComp.addEventListener("click", () => { setRadarView("comp"); setTimeout(renderRadarNow, 0); });
+if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarView("domain"); setTimeout(renderRadarNow, 0); });
+
+// Bind tabs
     if (btnTabTable) btnTabTable.addEventListener("click", () => setActiveTab("table"));
     if (btnTabRadar) btnTabRadar.addEventListener("click", () => {
       setActiveTab("radar");
@@ -900,17 +1082,13 @@
         modal.__matchRadarObs = null;
       }
 
-      if (!radarEmpty && typeof ResizeObserver !== "undefined") {
-        const canvas = byId("matchPersonRadarCanvas");
-        const parent = canvas ? canvas.parentElement : null;
-        if (parent) {
-          const obs = new ResizeObserver(() => {
-            if (tabRadar && tabRadar.style.display !== "none") renderRadarNow();
-          });
-          obs.observe(parent);
-          modal.__matchRadarObs = obs;
-        }
-      }
+      if ((!radarEmpty || !domainEmpty) && typeof ResizeObserver !== "undefined") {
+  const obs = new ResizeObserver(() => {
+    if (tabRadar && tabRadar.style.display !== "none") renderRadarNow();
+  });
+  if (tabRadar) obs.observe(tabRadar);
+  modal.__matchRadarObs = obs;
+}
     }
  }
 
