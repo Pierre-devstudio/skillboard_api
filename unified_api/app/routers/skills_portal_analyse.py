@@ -33,10 +33,22 @@ class AnalyseMatchingTile(BaseModel):
     candidats_prets_6m: int = 0
 
 
+class AnalysePrevisionsHorizonItem(BaseModel):
+    horizon_years: int
+    sorties: int = 0
+    comp_critiques_impactees: int = 0
+    postes_rouges: int = 0
+
+
 class AnalysePrevisionsTile(BaseModel):
     sorties_12m: int = 0
     comp_critiques_impactees: int = 0
     postes_rouges_12m: int = 0
+
+    # Détail par horizon (1 à 5 ans) pour un slider côté UI.
+    horizons: Optional[List[AnalysePrevisionsHorizonItem]] = None
+
+
 
 
 class AnalyseSummaryTiles(BaseModel):
@@ -314,6 +326,392 @@ def get_analyse_summary(
                 comp_critiques_sans_porteur = int(rk.get("comp_critiques_sans_porteur") or 0)
                 comp_porteur_unique = int(rk.get("comp_porteur_unique") or 0)
 
+                # ---------------------------
+
+                # Prévisions (horizons 1..5 ans)
+
+                # Règles:
+
+                # - Référence sortie = date_sortie_prevue si havedatefin=TRUE et date_sortie_prevue non NULL, sinon retraite_estimee
+
+                #   (année) + jour/mois de date_entree_entreprise_effectif.
+
+                # - Exclusions: sortis, temporaires, archivés.
+
+                # - Critique = poids_criticite >= CRITICITE_MIN
+
+                # - Poste rouge = couverture pondérée < 45% (on compte uniquement ceux qui passent en rouge).
+
+                # ---------------------------
+
+                COVERAGE_RED = 45
+
+                HORIZON_MAX = 5
+
+
+                sql_prev = f"""
+
+                WITH
+
+                {cte_sql},
+
+                horizons AS (
+
+                    SELECT generate_series(1, %s)::int AS y
+
+                ),
+
+                effectifs_valid AS (
+
+                    SELECT
+
+                        e.id_effectif,
+
+                        e.date_sortie_prevue,
+
+                        COALESCE(e.havedatefin, FALSE) AS havedatefin,
+
+                        e.retraite_estimee::int AS retraite_annee,
+
+                        COALESCE(EXTRACT(MONTH FROM e.date_entree_entreprise_effectif)::int, 6) AS m_entree,
+
+                        COALESCE(EXTRACT(DAY FROM e.date_entree_entreprise_effectif)::int, 15) AS d_entree
+
+                    FROM public.tbl_effectif_client e
+
+                    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+
+                    WHERE COALESCE(e.archive, FALSE) = FALSE
+
+                      AND COALESCE(e.is_temp, FALSE) = FALSE
+
+                      AND COALESCE(e.statut_actif, TRUE) = TRUE
+
+                ),
+
+                effectifs_exit AS (
+
+                    SELECT
+
+                        ev.id_effectif,
+
+                        CASE
+
+                            WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+
+                            WHEN ev.retraite_annee IS NOT NULL THEN
+
+                                (
+
+                                    make_date(ev.retraite_annee, ev.m_entree, 1)
+
+                                    + (
+
+                                        (
+
+                                            LEAST(
+
+                                                ev.d_entree,
+
+                                                EXTRACT(
+
+                                                    DAY
+
+                                                    FROM (date_trunc('month', make_date(ev.retraite_annee, ev.m_entree, 1)) + interval '1 month - 1 day')
+
+                                                )::int
+
+                                            ) - 1
+
+                                        )::text || ' days'
+
+                                    )::interval
+
+                                )::date
+
+                            ELSE NULL
+
+                        END AS exit_date
+
+                    FROM effectifs_valid ev
+
+                ),
+
+                leaving AS (
+
+                    SELECT h.y, ee.id_effectif
+
+                    FROM horizons h
+
+                    JOIN effectifs_exit ee ON ee.exit_date IS NOT NULL
+
+                    WHERE ee.exit_date >= CURRENT_DATE
+
+                      AND ee.exit_date < (CURRENT_DATE + (h.y || ' years')::interval)
+
+                ),
+
+                sorties AS (
+
+                    SELECT y, COUNT(DISTINCT id_effectif)::int AS sorties
+
+                    FROM leaving
+
+                    GROUP BY y
+
+                ),
+
+                req_all AS (
+
+                    SELECT DISTINCT
+
+                        fpc.id_poste,
+
+                        c.id_comp,
+
+                        COALESCE(fpc.poids_criticite, 0)::int AS poids_crit,
+
+                        GREATEST(COALESCE(fpc.poids_criticite, 0)::int, 1) AS poids_calc
+
+                    FROM public.tbl_fiche_poste_competence fpc
+
+                    JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
+
+                    JOIN public.tbl_competence c
+
+                      ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+
+                    WHERE c.etat = 'active'
+
+                      AND COALESCE(c.masque, FALSE) = FALSE
+
+                ),
+
+                req_crit AS (
+
+                    SELECT DISTINCT id_poste, id_comp
+
+                    FROM req_all
+
+                    WHERE poids_crit >= %s
+
+                ),
+
+                comps_all AS (
+
+                    SELECT DISTINCT id_comp FROM req_all
+
+                ),
+
+                comps_crit AS (
+
+                    SELECT DISTINCT id_comp FROM req_crit
+
+                ),
+
+                porteurs_now AS (
+
+                    SELECT ec.id_comp, COUNT(DISTINCT ec.id_effectif_client)::int AS nb_now
+
+                    FROM public.tbl_effectif_client_competence ec
+
+                    JOIN effectifs_valid ev ON ev.id_effectif = ec.id_effectif_client
+
+                    WHERE COALESCE(ec.actif, TRUE) = TRUE
+
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+
+                    GROUP BY ec.id_comp
+
+                ),
+
+                leave_comp AS (
+
+                    SELECT l.y, ec.id_comp, COUNT(DISTINCT ec.id_effectif_client)::int AS nb_leave
+
+                    FROM leaving l
+
+                    JOIN public.tbl_effectif_client_competence ec
+
+                      ON ec.id_effectif_client = l.id_effectif
+
+                    WHERE COALESCE(ec.actif, TRUE) = TRUE
+
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+
+                    GROUP BY l.y, ec.id_comp
+
+                ),
+
+                comp_future_all AS (
+
+                    SELECT h.y, ca.id_comp,
+
+                           COALESCE(pn.nb_now, 0) AS nb_now,
+
+                           GREATEST(COALESCE(pn.nb_now, 0) - COALESCE(lc.nb_leave, 0), 0) AS nb_future
+
+                    FROM horizons h
+
+                    CROSS JOIN comps_all ca
+
+                    LEFT JOIN porteurs_now pn ON pn.id_comp = ca.id_comp
+
+                    LEFT JOIN leave_comp lc ON lc.y = h.y AND lc.id_comp = ca.id_comp
+
+                ),
+
+                comp_future_crit AS (
+
+                    SELECT h.y, cc.id_comp,
+
+                           COALESCE(pn.nb_now, 0) AS nb_now,
+
+                           GREATEST(COALESCE(pn.nb_now, 0) - COALESCE(lc.nb_leave, 0), 0) AS nb_future
+
+                    FROM horizons h
+
+                    CROSS JOIN comps_crit cc
+
+                    LEFT JOIN porteurs_now pn ON pn.id_comp = cc.id_comp
+
+                    LEFT JOIN leave_comp lc ON lc.y = h.y AND lc.id_comp = cc.id_comp
+
+                ),
+
+                comp_impact AS (
+
+                    SELECT y, COUNT(*)::int AS comp_impact
+
+                    FROM (
+
+                        SELECT y, id_comp
+
+                        FROM comp_future_crit
+
+                        WHERE nb_now > 0 AND nb_future = 0
+
+                        GROUP BY y, id_comp
+
+                    ) t
+
+                    GROUP BY y
+
+                ),
+
+                poste_cov AS (
+
+                    SELECT h.y, r.id_poste,
+
+                           SUM(r.poids_calc)::numeric AS poids_total,
+
+                           SUM(CASE WHEN cf.nb_now > 0 THEN r.poids_calc ELSE 0 END)::numeric AS poids_couverts_now,
+
+                           SUM(CASE WHEN cf.nb_future > 0 THEN r.poids_calc ELSE 0 END)::numeric AS poids_couverts_future
+
+                    FROM horizons h
+
+                    JOIN req_all r ON TRUE
+
+                    JOIN comp_future_all cf ON cf.y = h.y AND cf.id_comp = r.id_comp
+
+                    GROUP BY h.y, r.id_poste
+
+                ),
+
+                poste_red AS (
+
+                    SELECT y, COUNT(*)::int AS postes_rouges
+
+                    FROM (
+
+                        SELECT
+
+                            y,
+
+                            id_poste,
+
+                            CASE WHEN poids_total > 0 THEN (100.0 * poids_couverts_now / poids_total) ELSE 0 END AS cov_now,
+
+                            CASE WHEN poids_total > 0 THEN (100.0 * poids_couverts_future / poids_total) ELSE 0 END AS cov_future
+
+                        FROM poste_cov
+
+                    ) x
+
+                    WHERE x.cov_now >= %s
+
+                      AND x.cov_future < %s
+
+                    GROUP BY y
+
+                )
+
+                SELECT
+
+                    h.y AS horizon_years,
+
+                    COALESCE(s.sorties, 0) AS sorties,
+
+                    COALESCE(ci.comp_impact, 0) AS comp_critiques_impactees,
+
+                    COALESCE(pr.postes_rouges, 0) AS postes_rouges
+
+                FROM horizons h
+
+                LEFT JOIN sorties s ON s.y = h.y
+
+                LEFT JOIN comp_impact ci ON ci.y = h.y
+
+                LEFT JOIN poste_red pr ON pr.y = h.y
+
+                ORDER BY h.y
+
+                """
+
+
+                cur.execute(sql_prev, tuple(cte_params + [HORIZON_MAX, CRITICITE_MIN, COVERAGE_RED, COVERAGE_RED]))
+
+                prev_rows = cur.fetchall() or []
+
+
+                horizons = []
+
+                for row in prev_rows:
+
+                    horizons.append(
+
+                        AnalysePrevisionsHorizonItem(
+
+                            horizon_years=int(row.get("horizon_years") or 0),
+
+                            sorties=int(row.get("sorties") or 0),
+
+                            comp_critiques_impactees=int(row.get("comp_critiques_impactees") or 0),
+
+                            postes_rouges=int(row.get("postes_rouges") or 0),
+
+                        )
+
+                    )
+
+
+                h1 = next((h for h in horizons if h.horizon_years == 1), None)
+
+
+                previsions_tile = AnalysePrevisionsTile(
+
+                    sorties_12m=(h1.sorties if h1 else 0),
+
+                    comp_critiques_impactees=(h1.comp_critiques_impactees if h1 else 0),
+
+                    postes_rouges_12m=(h1.postes_rouges if h1 else 0),
+
+                    horizons=horizons,
+
+                )
+
+
                 tiles = AnalyseSummaryTiles(
                     risques=AnalyseRisquesTile(
                         postes_fragiles=postes_fragiles,
@@ -325,11 +723,7 @@ def get_analyse_summary(
                         candidats_prets=0,
                         candidats_prets_6m=0,
                     ),
-                    previsions=AnalysePrevisionsTile(
-                        sorties_12m=0,
-                        comp_critiques_impactees=0,
-                        postes_rouges_12m=0,
-                    ),
+                    previsions=previsions_tile,
                 )
 
 

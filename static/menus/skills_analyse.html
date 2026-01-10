@@ -85,7 +85,13 @@
         </div>
       </div>
 
-      
+      <div class="card">
+        <div class="card-title" style="margin-bottom:6px;">Lecture</div>
+        <div class="card-sub" style="margin:0;">
+          Cette page ne refait pas la cartographie poste × domaine. Elle transforme les données en décisions.
+        </div>
+        <div class="card-sub" id="analyseStatus" style="margin-top:10px;">—</div>
+      </div>
     </div>
 
     <!-- Colonne droite: tuiles + détail -->
@@ -144,8 +150,10 @@
 
           <div class="mini-kpis">
             <div class="mini-kpi">
-              <div class="label">Sorties &lt; 12 mois</div>
+              <div class="label">Sorties &lt; <span id="prevHorizonLabel">1 an</span></div>
               <div class="value" id="kpiPrevSorties12">—</div>
+              <input type="range" id="prevHorizonSlider" min="1" max="5" step="1" value="1" aria-label="Horizon prévision (années)"
+                     style="width:100%; margin-top:8px;">
             </div>
             <div class="mini-kpi">
               <div class="label">Critiques impactées</div>
@@ -161,12 +169,7 @@
         </div>
       </div>
 
-          </div>
-  </div>
-
-    
-
-  <!-- Détail (plein largeur) -->
+      <!-- Détail -->
       <div class="card" style="margin-top:12px;">
         <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
           <div>
@@ -184,8 +187,10 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
 
-<!-- Modal détail Poste (Risques) -->
+    <!-- Modal détail Poste (Risques) -->
   <div class="modal" id="modalAnalysePoste" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-header">
