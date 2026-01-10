@@ -1,40 +1,160 @@
+/* ======================================================
+   skills_portal_theme.css
+   - Thème du portail Skills (palette pilotée par variables)
+   - Objectif: uniformité (cards/tables/typo) + overrides ponctuels par vue
+   ====================================================== */
+
 :root{
-  --accent:#c1272d;
-  --sidebar-bg:#333333;
+  /* =========================
+     Palette (6 couleurs)
+     ========================= */
+  --c-brand: #c1272d;   /* rouge JMB */
+  --c-teal:  #0d9488;   /* lecture / data */
+  --c-slate: #111827;   /* texte */
+  --c-gray:  #e5e7eb;   /* bordures */
+  --c-amber: #f59e0b;   /* warning */
+  --c-green: #16a34a;   /* success */
+
+  /* =========================
+     Rôles (utilisés par le CSS)
+     ========================= */
+  --accent: var(--c-brand);        /* branding / navigation */
+  --reading-accent: var(--c-teal); /* pages de lecture / data */
+
+  --danger:  var(--c-brand);
+  --warning: var(--c-amber);
+  --success: var(--c-green);
+  --info:    var(--c-teal);
+
+  /* =========================
+     Surfaces & neutres
+     (modifiables si tu veux éclaircir/assombrir l’app)
+     ========================= */
+  --bg:       #f3f4f6;
+  --card-bg:  #ffffff;
+
+  --text:      var(--c-slate);
+  --text-soft: #374151;
+
+  --border:        var(--c-gray);
+  --border-strong: #d1d5db;
+
+  --surface-2: #f3f4f6; /* hover / fonds doux */
+  --surface-3: #fafafa; /* zebra */
+  --surface-4: #eef2f7; /* accents très doux */
+
+  --muted:   #6b7280;
+  --muted-2: #4b5563;
+
+  /* =========================
+     Tokens composants
+     ========================= */
+  --table-row-border: var(--surface-2);
+  --table-zebra:      var(--surface-3);
+  --table-hover:      var(--surface-2);
+
+  --btn-reset-bg:    var(--reading-accent);
+  --btn-reset-hover: #0f766e;
+  --btn-reset-press: #115e59;
+  --focus-ring:      rgba(13,148,136,0.30);
+
+  /* Heatmap (cartographie) */
+  --hm-ok-bg:    #d2ffac;
+  --hm-ok-border:#087016;
 }
 
-/* Collaborateurs: tables plus aérées et lisibles (aligné référentiel) */
-#view-vos-collaborateurs .sb-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-}
+/* ======================================================
+   Uniformisation "Skills" (au-dessus des styles par vue)
+   ====================================================== */
 
-#view-vos-collaborateurs .sb-table thead th {
-  text-align: left;
-  font-weight: 600;
-  font-size: 13px;
-  color: #111827;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  white-space: nowrap;
+/* TABLES: on override le commun (qui a des couleurs en dur) */
+.sb-table thead th{
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
 }
-
-#view-vos-collaborateurs .sb-table tbody td {
-  padding: 12px 16px;
-  vertical-align: middle;
-  border-bottom: 1px solid #f3f4f6;
+.sb-table tbody td{
+  border-bottom: 1px solid var(--table-row-border);
   line-height: 1.35;
 }
-
-#view-vos-collaborateurs .sb-table tbody tr:nth-child(even) {
-  background: #fafafa;
+.sb-table tbody tr:nth-child(even){
+  background: var(--table-zebra);
+}
+.sb-table tbody tr:hover{
+  background: var(--table-hover);
 }
 
-#view-vos-collaborateurs .sb-table tbody tr:hover {
-  background: #f3f4f6;
+/* Boutons secondaires (cohérence) */
+.btn-secondary{
+  border-color: var(--border-strong);
+  background: var(--card-bg);
+  color: var(--text-soft);
+}
+.btn-secondary:hover{
+  background: color-mix(in srgb, var(--reading-accent) 6%, var(--card-bg));
+  border-color: color-mix(in srgb, var(--reading-accent) 22%, var(--border-strong));
+}
+.btn-secondary:focus{
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
+/* Boutons Reset (TEAL, uniformisé sur tout Skills) */
+button.btn-secondary[id$="Reset"],
+#btnCollabReset,
+#btnRefReset,
+#btnMapReset{
+  background: var(--btn-reset-bg);
+  border-color: var(--btn-reset-bg);
+  color: #ffffff;
+  font-weight: 700;
+}
+button.btn-secondary[id$="Reset"]:hover,
+#btnCollabReset:hover,
+#btnRefReset:hover,
+#btnMapReset:hover{
+  background: var(--btn-reset-hover);
+  border-color: var(--btn-reset-hover);
+}
+button.btn-secondary[id$="Reset"]:active,
+#btnCollabReset:active,
+#btnRefReset:active,
+#btnMapReset:active{
+  background: var(--btn-reset-press);
+  border-color: var(--btn-reset-press);
+  transform: translateY(1px);
+}
+
+/* Taille XS (utile dans les tables) */
+.btn-secondary.btn-xs{
+  padding: 6px 10px;
+  font-size: 12px;
+  margin-left: 0;
+}
+
+/* MODALS: éviter le dépassement d’écran, scroll interne */
+.modal-card{
+  border-color: var(--border);
+  background: var(--card-bg);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+.modal-body{
+  overflow: auto;
+  flex: 1 1 auto;
+}
+.modal-footer{
+  border-top-color: var(--border);
+}
+.modal-x{
+  color: var(--reading-accent);
+}
+.modal-x:hover{
+  color: var(--btn-reset-hover);
+}
+
+
+/* Collaborateurs: tables plus aérées et lisibles (aligné référentiel) */
 /* Nom plus lisible */
 #view-vos-collaborateurs .sb-table tbody td:nth-child(1) {
   font-weight: 700;
@@ -71,37 +191,6 @@
 
 
 /* Référentiel compétences: tables plus aérées et lisibles */
-#view-referentiel-competences .sb-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-}
-
-#view-referentiel-competences .sb-table thead th {
-  text-align: left;
-  font-weight: 600;
-  font-size: 13px;
-  color: #111827;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  white-space: nowrap;
-}
-
-#view-referentiel-competences .sb-table tbody td {
-  padding: 12px 16px;
-  vertical-align: middle;
-  border-bottom: 1px solid #f3f4f6;
-  line-height: 1.35;
-}
-
-#view-referentiel-competences .sb-table tbody tr:nth-child(even) {
-  background: #fafafa;
-}
-
-#view-referentiel-competences .sb-table tbody tr:hover {
-  background: #f3f4f6;
-}
-
 #view-referentiel-competences .col-center {
   text-align: center !important;
 }
@@ -117,7 +206,7 @@
   width: 14px;
   height: 14px;
   border-radius: 6px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
 }
 
 #view-referentiel-competences .btn-secondary.btn-xs {
@@ -132,11 +221,11 @@
   align-items: center;
   gap: 8px;
   padding: 4px 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   border-radius: 999px;
   font-size: 12px;
-  color: #374151;
-  background: #fff;
+  color: var(--text-soft);
+  background: var(--card-bg);
 }
 
 #view-referentiel-competences .domain-pill .domain-dot {
@@ -166,21 +255,6 @@
    Collaborateurs: boutons (soft)
    ============================ */
 
-#view-vos-collaborateurs #btnCollabReset {
-  border-color: color-mix(in srgb, var(--accent) 35%, #d1d5db);
-  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
-  color: #1f2937;
-  font-weight: 600;
-}
-
-#view-vos-collaborateurs #btnCollabReset:hover {
-  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
-}
-
-#view-vos-collaborateurs #btnCollabReset:active {
-  transform: translateY(1px);
-}
-
 /* Bouton "Fermer" (footer modal collaborateur) */
 #modalCollaborateur #btnCollabModalClose {
   border-color: color-mix(in srgb, var(--accent) 35%, #087016);
@@ -190,7 +264,7 @@
 }
 
 #modalCollaborateur #btnCollabModalClose:hover {
-  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+  background: color-mix(in srgb, var(--accent) 12%, var(--card-bg)fff);
 }
 
 /* Croix (header modal collaborateur) */
@@ -208,21 +282,6 @@
    Référentiel: boutons (soft)
    ============================ */
 
-#view-referentiel-competences #btnRefReset {
-  border-color: color-mix(in srgb, var(--accent) 35%, #d1d5db);
-  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
-  color: #1f2937;
-  font-weight: 600;
-}
-
-#view-referentiel-competences #btnRefReset:hover {
-  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
-}
-
-#view-referentiel-competences #btnRefReset:active {
-  transform: translateY(1px);
-}
-
 /* Bouton "Fermer" (footer modal détail) */
 #modalRefDetail #btnRefModalClose {
   border-color: color-mix(in srgb, var(--accent) 35%, #087016);
@@ -232,7 +291,7 @@
 }
 
 #modalRefDetail #btnRefModalClose:hover {
-  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+  background: color-mix(in srgb, var(--accent) 12%, var(--card-bg)fff);
 }
 
 /* Croix (header modal) */
@@ -262,21 +321,6 @@
 }
 
 /* Bouton reset (soft comme référentiel) */
-#view-cartographie-competences #btnMapReset {
-  border-color: color-mix(in srgb, var(--accent) 35%, #d1d5db);
-  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
-  color: #1f2937;
-  font-weight: 600;
-}
-
-#view-cartographie-competences #btnMapReset:hover {
-  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
-}
-
-#view-cartographie-competences #btnMapReset:active {
-  transform: translateY(1px);
-}
-
 /* Modal cartographie: scroll + cohérence */
 #modalMapDetail.modal.show {
   align-items: flex-start;
@@ -303,7 +347,7 @@
 }
 
 #modalMapDetail #btnMapModalClose:hover {
-  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
+  background: color-mix(in srgb, var(--accent) 12%, var(--card-bg)fff);
 }
 
 #modalMapDetail .modal-x {
@@ -323,7 +367,7 @@
   align-items:center;
   gap:8px;
   margin: 10px 0 10px 0;
-  color:#6b7280;
+  color:var(--muted);
   font-size:12px;
 }
 
@@ -333,13 +377,13 @@
   width:22px;
   height:10px;
   border-radius:6px;
-  border:1px solid #e5e7eb;
+  border:1px solid var(--border);
   display:inline-block;
 }
 
 #view-cartographie-competences .hm-wrap{
   overflow:auto;
-  border:1px solid #eef2f7;
+  border:1px solid var(--surface-4);
   border-radius:12px;
 }
 
@@ -354,13 +398,13 @@
 #view-cartographie-competences .hm-table thead th{
   position:sticky;
   top:0;
-  background:#fafafa;
+  background:var(--surface-3);
   z-index:4;
   font-weight:600;
   font-size:13px;
-  color:#111827;
+  color:var(--text);
   padding:12px 14px;
-  border-bottom:1px solid #e5e7eb;
+  border-bottom:1px solid var(--border);
   text-align:left;
   white-space:nowrap;
 }
@@ -372,27 +416,27 @@
 
 #view-cartographie-competences .hm-table tbody td{
   padding:10px 12px;
-  border-bottom:1px solid #f3f4f6;
+  border-bottom:1px solid var(--surface-2);
   vertical-align:middle;
 }
 
 #view-cartographie-competences .hm-sticky.hm-rowhead{
   position:sticky;
   left:0;
-  background:#fff;
+  background:var(--card-bg);
   z-index:3;
-  border-right:1px solid #eef2f7;
+  border-right:1px solid var(--surface-4);
 }
 
 #view-cartographie-competences .hm-poste-title{
   font-weight:600;
-  color:#111827;
+  color:var(--text);
   line-height:1.2;
 }
 
 #view-cartographie-competences .hm-poste-sub{
   font-size:12px;
-  color:#6b7280;
+  color:var(--muted);
   margin-top:2px;
 }
 
@@ -406,10 +450,10 @@
   width:12px;
   height:12px;
   border-radius:3px;            /* carré arrondi léger (pas rond) */
-  border:1px solid #d1d5db;
+  border:1px solid var(--border-strong);
   vertical-align:middle;
   margin-right:8px;
-  background:#e5e7eb;
+  background:var(--border);
   flex:0 0 auto;
 }
 
@@ -427,7 +471,7 @@
   min-width:64px;
   height:46px;
   font-weight:700;
-  border-left:1px solid #f3f4f6;
+  border-left:1px solid var(--surface-2);
   border-radius:10px;
   cursor:pointer;
   user-select:none;
@@ -441,7 +485,7 @@
 
 #view-cartographie-competences .hm-totalhead,
 #view-cartographie-competences .hm-totalcell{
-  background:#fafafa;
+  background:var(--surface-3);
   font-weight:700;
 }
 
@@ -450,75 +494,14 @@
 }
 
 #view-cartographie-competences .hm-grandtotal{
-  background:#f3f4f6;
+  background:var(--surface-2);
   font-weight:800;
 }
 
 /* Niveaux de charge (palette sobre) */
-#view-cartographie-competences .hm-lvl-0{ background:#ffffff; }
-#view-cartographie-competences .hm-lvl-1{ background:color-mix(in srgb, var(--accent) 10%, #fff); }
-#view-cartographie-competences .hm-lvl-2{ background:color-mix(in srgb, var(--accent) 18%, #fff); }
-#view-cartographie-competences .hm-lvl-3{ background:color-mix(in srgb, var(--accent) 26%, #fff); }
-#view-cartographie-competences .hm-lvl-4{ background:color-mix(in srgb, var(--accent) 34%, #fff); }
-#view-cartographie-competences .hm-lvl-5{ background:color-mix(in srgb, var(--accent) 42%, #fff); }
-
-/* ============================
-   Skills: Boutons "Réinitialiser" (teal)
-   Objectif: même rendu sur toutes les vues Skills
-   NOTE: placé en FIN de fichier pour override les styles view-specific existants
-   ============================ */
-
-:root{
-  --skills-teal: #0d9488;
-  --skills-teal-hover: #0f766e;
-  --skills-teal-press: #115e59;
-  --skills-teal-ring: rgba(13,148,136,0.30);
-}
-
-/* Cible explicite des resets déjà stylés dans ce thème + fallback générique */
-#view-vos-collaborateurs #btnCollabReset,
-#view-referentiel-competences #btnRefReset,
-#view-cartographie-competences #btnMapReset,
-#view-analyse-competences #btnAnalyseReset,
-button.btn-secondary[id$="Reset"]{
-  background: var(--skills-teal);
-  border-color: var(--skills-teal);
-  color: #ffffff;
-  font-weight: 600;
-}
-
-#view-vos-collaborateurs #btnCollabReset:hover,
-#view-referentiel-competences #btnRefReset:hover,
-#view-cartographie-competences #btnMapReset:hover,
-#view-analyse-competences #btnAnalyseReset:hover,
-button.btn-secondary[id$="Reset"]:hover{
-  background: var(--skills-teal-hover);
-  border-color: var(--skills-teal-hover);
-}
-
-#view-vos-collaborateurs #btnCollabReset:active,
-#view-referentiel-competences #btnRefReset:active,
-#view-cartographie-competences #btnMapReset:active,
-#view-analyse-competences #btnAnalyseReset:active,
-button.btn-secondary[id$="Reset"]:active{
-  background: var(--skills-teal-press);
-  border-color: var(--skills-teal-press);
-}
-
-#view-vos-collaborateurs #btnCollabReset:focus,
-#view-referentiel-competences #btnRefReset:focus,
-#view-cartographie-competences #btnMapReset:focus,
-#view-analyse-competences #btnAnalyseReset:focus,
-button.btn-secondary[id$="Reset"]:focus{
-  outline: none;
-  box-shadow: 0 0 0 3px var(--skills-teal-ring);
-}
-
-#view-vos-collaborateurs #btnCollabReset[disabled],
-#view-referentiel-competences #btnRefReset[disabled],
-#view-cartographie-competences #btnMapReset[disabled],
-#view-analyse-competences #btnAnalyseReset[disabled],
-button.btn-secondary[id$="Reset"][disabled]{
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+#view-cartographie-competences .hm-lvl-0{ background:var(--card-bg)fff; }
+#view-cartographie-competences .hm-lvl-1{ background:color-mix(in srgb, var(--reading-accent) 10%, var(--card-bg)); }
+#view-cartographie-competences .hm-lvl-2{ background:color-mix(in srgb, var(--reading-accent) 18%, var(--card-bg)); }
+#view-cartographie-competences .hm-lvl-3{ background:color-mix(in srgb, var(--reading-accent) 26%, var(--card-bg)); }
+#view-cartographie-competences .hm-lvl-4{ background:color-mix(in srgb, var(--reading-accent) 34%, var(--card-bg)); }
+#view-cartographie-competences .hm-lvl-5{ background:color-mix(in srgb, var(--reading-accent) 42%, var(--card-bg)); }
