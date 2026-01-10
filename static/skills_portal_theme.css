@@ -572,13 +572,13 @@ button[id$="ModalClose"]:active{
 
 /* Tuile sélectionnée (Analyse compétences) */
 #view-analyse-competences .analyse-tile.active{
-  outline: 2px solid color-mix(in srgb, var(--ui-accent) 65%, #ffffff) !important;
+  outline: 2px solid color-mix(in srgb, var(--reading-accent) 65%, #ffffff) !important;
 }
 
 /* KPI sélectionné (tuiles) */
 #view-analyse-competences .mini-kpi.is-active{
-  border-color: color-mix(in srgb, var(--ui-accent) 55%, #d1d5db);
-  background: color-mix(in srgb, var(--ui-accent) 6%, #ffffff);
+  border-color: color-mix(in srgb, var(--reading-accent) 55%, #d1d5db);
+  background: color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
 }
 
 /* Choix de poste (matching) */
