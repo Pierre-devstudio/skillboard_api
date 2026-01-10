@@ -20,7 +20,7 @@
       transform: translateY(-1px);
     }
     #view-analyse-competences .analyse-tile.active{
-      outline: 2px solid color-mix(in srgb, var(--reading-accent) 65%, #ffffff);
+      outline: 2px solid color-mix(in srgb, var(--accent) 65%, #ffffff);
       box-shadow: 0 8px 18px rgba(17,24,39,0.08);
     }
     #view-analyse-competences .mini-kpis{
@@ -85,13 +85,7 @@
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-title" style="margin-bottom:6px;">Lecture</div>
-        <div class="card-sub" style="margin:0;">
-          Cette page ne refait pas la cartographie poste × domaine. Elle transforme les données en décisions.
-        </div>
-        <div class="card-sub" id="analyseStatus" style="margin-top:10px;">—</div>
-      </div>
+      
     </div>
 
     <!-- Colonne droite: tuiles + détail -->
@@ -167,7 +161,12 @@
         </div>
       </div>
 
-      <!-- Détail -->
+          </div>
+  </div>
+
+    
+
+  <!-- Détail (plein largeur) -->
       <div class="card" style="margin-top:12px;">
         <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
           <div>
@@ -185,10 +184,8 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
 
-    <!-- Modal détail Poste (Risques) -->
+<!-- Modal détail Poste (Risques) -->
   <div class="modal" id="modalAnalysePoste" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-header">
