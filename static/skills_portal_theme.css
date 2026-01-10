@@ -61,6 +61,20 @@
   /* Heatmap (cartographie) */
   --hm-ok-bg:    #d2ffac;
   --hm-ok-border:#087016;
+
+  /* Analyse / Matching (centralisation) */
+  --kpi-active-border: color-mix(in srgb, var(--reading-accent) 55%, var(--border-strong));
+  --kpi-active-bg:     color-mix(in srgb, var(--reading-accent) 6%, var(--card-bg));
+
+  --choice-active-border: var(--accent);
+  --choice-active-bg:     color-mix(in srgb, var(--accent) 8%, var(--card-bg));
+
+  --chart-primary:       #2563eb;
+  --chart-grid:          #e5e7eb;
+  --chart-grid-strong:   #d1d5db;
+  --chart-label:         #111827;
+  --chart-fill-alpha:    0.16;
+
 }
 
 /* ======================================================
@@ -526,3 +540,150 @@ button.btn-secondary[id$="Reset"]:active,
   transform: translateY(1px);
 }
 
+
+
+
+/* ======================================================
+   View: Analyse des compétences (skills_analyse)
+   Objectif: Zéro couleur en JS/HTML, tout piloté ici.
+   ====================================================== */
+
+#view-analyse-competences .analyse-tiles{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 12px;
+}
+@media (max-width: 900px){
+  #view-analyse-competences .analyse-tiles{
+    grid-template-columns: 1fr;
+  }
+}
+
+#view-analyse-competences .analyse-tile{
+  cursor:pointer;
+  transition: transform .06s ease, filter .12s ease, box-shadow .12s ease;
+}
+#view-analyse-competences .analyse-tile:hover{
+  filter: brightness(0.99);
+  transform: translateY(-1px);
+}
+#view-analyse-competences .analyse-tile.active{
+  outline: 2px solid color-mix(in srgb, var(--reading-accent) 65%, var(--card-bg));
+  box-shadow: 0 8px 18px rgba(17,24,39,0.08);
+}
+
+#view-analyse-competences .mini-kpis{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:12px;
+}
+#view-analyse-competences .mini-kpi{
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:10px 12px;
+  flex:1;
+  min-width: 160px;
+  background: var(--card-bg);
+}
+#view-analyse-competences .mini-kpi.is-active{
+  border-color: var(--kpi-active-border);
+  background: var(--kpi-active-bg);
+}
+
+#view-analyse-competences .tile-sub{
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 6px;
+  line-height: 1.35;
+}
+#view-analyse-competences .tile-hint{
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Liste des postes (matching) */
+#view-analyse-competences .sb-choice{
+  width:100%;
+  text-align:left;
+  margin:0;
+}
+#view-analyse-competences .sb-choice.is-active{
+  border-color: var(--choice-active-border);
+  background: var(--choice-active-bg);
+}
+#view-analyse-competences .sb-choice-title{
+  font-weight:700;
+  font-size:13px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+#view-analyse-competences .sb-choice-sub{
+  font-size:11px;
+  color:var(--muted);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* Onglets (Détail / Radar + sous-onglets radar) */
+#view-analyse-competences .sb-tabs,
+#view-analyse-competences .sb-subtabs{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+#view-analyse-competences .sb-tabs{ margin-top:12px; }
+#view-analyse-competences .sb-subtabs{ margin:0 0 10px 0; }
+
+#view-analyse-competences .sb-tab-btn,
+#view-analyse-competences .sb-subtab-btn{
+  padding:6px 10px;
+  border-radius:8px;
+  border:1px solid var(--border-strong);
+  background: var(--card-bg);
+  color: var(--text);
+  font-weight:900;
+  cursor:pointer;
+}
+#view-analyse-competences .sb-tab-btn.is-active,
+#view-analyse-competences .sb-subtab-btn.is-active{
+  background: var(--text);
+  color: var(--card-bg);
+}
+
+/* Petits compteurs (badges) */
+#view-analyse-competences .sb-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:26px;
+  height:22px;
+  border-radius:8px;
+  font-weight:900;
+  font-size:12px;
+  border:1px solid rgba(0,0,0,.12);
+  color:#ffffff;
+}
+#view-analyse-competences .sb-pill.is-zero{
+  background: var(--border);
+  color: var(--muted);
+  border-color: var(--border-strong);
+}
+#view-analyse-competences .sb-pill.is-danger{ background: var(--danger); }
+#view-analyse-competences .sb-pill.is-warning{ background: var(--warning); }
+#view-analyse-competences .sb-pill.is-success{ background: var(--success); }
+
+
+/* Boutons "Fermer" uniformisés (modals) */
+.modal .modal-footer .btn-close{
+  background: var(--btn-secondary-bg);
+  color: var(--btn-secondary-text);
+  border-color: var(--btn-secondary-border);
+}
+.modal .modal-footer .btn-close:hover{
+  background: var(--btn-secondary-hover);
+}

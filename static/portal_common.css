@@ -366,8 +366,8 @@ textarea:focus {
   white-space: nowrap;
 }
 .sb-badge-accent {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--reading-accent);
+  color: var(--reading-accent);
 }
 
 .sb-accordion {

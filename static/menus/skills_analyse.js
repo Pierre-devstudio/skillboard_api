@@ -251,14 +251,7 @@
     items.forEach((el) => {
       const k = (el.getAttribute("data-risk-kpi") || "").trim();
       const isActive = !!filter && k === filter;
-
-      el.style.borderColor = isActive
-        ? "color-mix(in srgb, var(--reading-accent) 55%, #d1d5db)"
-        : "#e5e7eb";
-
-      el.style.background = isActive
-        ? "color-mix(in srgb, var(--reading-accent) 6%, #ffffff)"
-        : "#ffffff";
+      el.classList.toggle("is-active", isActive);
     });
   }
 
@@ -282,14 +275,7 @@
     items.forEach((el) => {
       const k = (el.getAttribute("data-match-view") || "").trim().toLowerCase();
       const isActive = !!view && k === view;
-
-      el.style.borderColor = isActive
-        ? "color-mix(in srgb, var(--reading-accent) 55%, #d1d5db)"
-        : "#e5e7eb";
-
-      el.style.background = isActive
-        ? "color-mix(in srgb, var(--reading-accent) 6%, #ffffff)"
-        : "#ffffff";
+      el.classList.toggle("is-active", isActive);
     });
   }
 
@@ -493,20 +479,20 @@
     const svc = person.nom_service || "—";
     const isTit = !!person.is_titulaire;
 
-    function box(n, bg, title) {
+    function box(n, variant, title) {
       const nn = Number(n || 0);
       const isZero = !nn;
-      const style = isZero
-        ? "background:#e5e7eb; color:#6b7280; border:1px solid #d1d5db;"
-        : `background:${bg}; color:#ffffff; border:1px solid rgba(0,0,0,.12);`;
+
+      const cls = [
+        "sb-pill",
+        isZero ? "is-zero" : "",
+        !isZero ? `is-${variant}` : ""
+      ].filter(Boolean).join(" ");
+
+      const val = isZero ? "0" : String(nn);
+
       return `
-        <span title="${escapeHtml(title)}"
-              style="display:inline-flex; align-items:center; justify-content:center;
-                    width:26px; height:20px; border-radius:5px;
-                    font-size:12px; font-weight:900; line-height:1;
-                    ${style}">
-          ${nn || 0}
-        </span>
+        <span class="${cls}" title="${escapeHtml(title)}">${escapeHtml(val)}</span>
       `;
     }
 
@@ -806,26 +792,18 @@ host.innerHTML = `
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
             <span class="sb-badge sb-badge-accent" style="font-weight:900;">${escapeHtml(String(stats.score_pct || 0))}%</span>
             <span style="display:inline-flex; gap:6px; align-items:center;">
-              ${box(stats.crit_missing, "#ef4444", "Critiques manquantes")}
-              ${box(stats.crit_under, "#f59e0b", "Critiques à renforcer")}
-              ${box(stats.nb_missing, "#ef4444", "Manquantes")}
-              ${box(stats.nb_under, "#f59e0b", "À renforcer")}
+              ${box(stats.crit_missing, "danger", "Critiques manquantes")}
+              ${box(stats.crit_under, "warning", "Critiques à renforcer")}
+              ${box(stats.nb_missing, "danger", "Manquantes")}
+              ${box(stats.nb_under, "warning", "À renforcer")}
             </span>
           </div>
         </div>
 
 
-        <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
-          <button type="button" id="btnMatchTabTable"
-                  style="padding:6px 10px; border-radius:8px; border:1px solid #d1d5db;
-                         background:#111827; color:#ffffff; font-weight:900; cursor:pointer;">
-            Détail
-          </button>
-          <button type="button" id="btnMatchTabRadar"
-                  style="padding:6px 10px; border-radius:8px; border:1px solid #d1d5db;
-                         background:#ffffff; color:#111827; font-weight:900; cursor:pointer;">
-            Radar
-          </button>
+        <div class="sb-tabs">
+          <button type="button" id="btnMatchTabTable" class="sb-tab-btn is-active">Détail</button>
+          <button type="button" id="btnMatchTabRadar" class="sb-tab-btn">Radar</button>
         </div>
 
         <div id="matchPersonTabTable" style="margin-top:12px;">
@@ -854,17 +832,9 @@ host.innerHTML = `
         </div>
 
         <div id="matchPersonTabRadar" style="display:none; margin-top:12px;">
-          <div style="margin:0 0 10px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <button type="button" id="btnMatchRadarViewComp"
-                    style="padding:6px 10px; border-radius:8px; border:1px solid #d1d5db;
-                           background:#111827; color:#ffffff; font-weight:900; cursor:pointer;">
-              Vue par compétence
-            </button>
-            <button type="button" id="btnMatchRadarViewDomain"
-                    style="padding:6px 10px; border-radius:8px; border:1px solid #d1d5db;
-                           background:#ffffff; color:#111827; font-weight:900; cursor:pointer;">
-              Vue par domaine
-            </button>
+          <div class="sb-subtabs">
+            <button type="button" id="btnMatchRadarViewComp" class="sb-subtab-btn is-active">Vue par compétence</button>
+            <button type="button" id="btnMatchRadarViewDomain" class="sb-subtab-btn">Vue par domaine</button>
           </div>
 
           <div id="matchRadarViewComp">
@@ -906,24 +876,17 @@ function setRadarView(which) {
   if (radarViewComp) radarViewComp.style.display = isDom ? "none" : "";
   if (radarViewDomain) radarViewDomain.style.display = isDom ? "" : "none";
 
-  if (btnRadarComp) {
-    btnRadarComp.style.background = isDom ? "#ffffff" : "#111827";
-    btnRadarComp.style.color = isDom ? "#111827" : "#ffffff";
-  }
-  if (btnRadarDomain) {
-    btnRadarDomain.style.background = isDom ? "#111827" : "#ffffff";
-    btnRadarDomain.style.color = isDom ? "#ffffff" : "#111827";
-  }
+  if (btnRadarComp) btnRadarComp.classList.toggle("is-active", !isDom);
+  if (btnRadarDomain) btnRadarDomain.classList.toggle("is-active", isDom);
 }
     function setActiveTab(which) {
       const isRadar = (which === "radar");
       if (tabTable) tabTable.style.display = isRadar ? "none" : "";
       if (tabRadar) tabRadar.style.display = isRadar ? "" : "none";
 
-      if (btnTabTable) {
-        btnTabTable.style.background = isRadar ? "#ffffff" : "#111827";
-        btnTabTable.style.color = isRadar ? "#111827" : "#ffffff";
-      }
+      if (btnTabTable) btnTabTable.classList.toggle("is-active", !isRadar);
+      if (btnTabRadar) btnTabRadar.classList.toggle("is-active", isRadar);
+    }
       if (btnTabRadar) {
         btnTabRadar.style.background = isRadar ? "#111827" : "#ffffff";
         btnTabRadar.style.color = isRadar ? "#ffffff" : "#111827";
@@ -952,6 +915,13 @@ function setRadarView(which) {
       if (!canvas || !axes || !axes.length) return;
       const { ctx, w, h } = prepareCanvas2d(canvas);
 
+      const rootStyle = getComputedStyle(document.documentElement);
+      const grid = (rootStyle.getPropertyValue("--chart-grid") || "").trim() || "#e5e7eb";
+      const gridStrong = (rootStyle.getPropertyValue("--chart-grid-strong") || "").trim() || "#d1d5db";
+      const primary = (rootStyle.getPropertyValue("--chart-primary") || "").trim() || "#2563eb";
+      const labelColor = (rootStyle.getPropertyValue("--chart-label") || "").trim() || "#111827";
+      const fillAlpha = Number((rootStyle.getPropertyValue("--chart-fill-alpha") || "").trim()) || 0.16;
+
       const cx = w / 2;
       const cy = h / 2;
       const pad = 64;
@@ -962,7 +932,7 @@ function setRadarView(which) {
       const start = -Math.PI / 2;
 
       // Grille (5 niveaux)
-      ctx.strokeStyle = "#e5e7eb";
+      ctx.strokeStyle = grid;
       ctx.lineWidth = 1;
       for (let k = 1; k <= 5; k++) {
         const rr = (r * k) / 5;
@@ -978,7 +948,7 @@ function setRadarView(which) {
       }
 
       // Axes
-      ctx.strokeStyle = "#d1d5db";
+      ctx.strokeStyle = gridStrong;
       for (let i = 0; i < n; i++) {
         const ang = start + i * step;
         const x = cx + r * Math.cos(ang);
@@ -991,8 +961,8 @@ function setRadarView(which) {
 
       // Courbe données
       ctx.lineWidth = 2;
-      ctx.strokeStyle = "#2563eb";
-      ctx.fillStyle = "rgba(37,99,235,0.16)";
+      ctx.strokeStyle = primary;
+      ctx.fillStyle = primary;
       ctx.beginPath();
       for (let i = 0; i < n; i++) {
         const ang = start + i * step;
@@ -1003,11 +973,14 @@ function setRadarView(which) {
         if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       }
       ctx.closePath();
+      ctx.save();
+      ctx.globalAlpha = fillAlpha;
       ctx.fill();
+      ctx.restore();
       ctx.stroke();
 
       // Points
-      ctx.fillStyle = "#2563eb";
+      ctx.fillStyle = primary;
       for (let i = 0; i < n; i++) {
         const ang = start + i * step;
         const v = Math.max(0, Math.min(Number(axes[i].ratio || 0), 1));
@@ -1020,7 +993,7 @@ function setRadarView(which) {
       }
 
       // Labels (codes)
-      ctx.fillStyle = "#111827";
+      ctx.fillStyle = labelColor;
       ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
       for (let i = 0; i < n; i++) {
         const ang = start + i * step;
@@ -1090,7 +1063,6 @@ if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarVie
   modal.__matchRadarObs = obs;
 }
     }
- }
 
   async function showMatchPersonDetailModal(portal, id_poste, id_effectif, id_service) {
     openMatchPersonModal("Détail matching");
@@ -1174,7 +1146,7 @@ if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarVie
 
     const list = Array.isArray(items) ? items : [];
     if (!list.length) {
-      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun poste trouvé.</div>`;
+      host.innerHTML = `<div class="card-sub">Aucun poste trouvé.</div>`;
       return;
     }
 
@@ -1184,21 +1156,14 @@ if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarVie
       const svc = (r.nom_service || "").trim() || "—";
 
       const isActive = selectedId && idp === selectedId;
-      const style = isActive
-        ? `border-color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, #fff);`
-        : `border-color:#e5e7eb; background:#fff;`;
+      const cls = `btn-secondary sb-choice${isActive ? " is-active" : ""}`;
 
       return `
         <button type="button"
-                class="btn-secondary"
-                data-match-id_poste="${escapeHtml(idp)}"
-                style="text-align:left; margin:0; ${style}">
-          <div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-            ${escapeHtml(poste)}
-          </div>
-          <div style="font-size:11px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-            ${escapeHtml(svc)}
-          </div>
+                class="${cls}"
+                data-match-id_poste="${escapeHtml(idp)}">
+          <div class="sb-choice-title">${escapeHtml(poste)}</div>
+          <div class="sb-choice-sub">${escapeHtml(svc)}</div>
         </button>
       `;
     }).join("");
