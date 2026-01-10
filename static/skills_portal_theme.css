@@ -550,3 +550,182 @@ button[id$="ModalClose"]:hover{
 button[id$="ModalClose"]:active{
   transform: translateY(1px);
 }
+
+
+
+/* ======================================================
+   Analyse compétences: couleurs centralisées (v1)
+   Objectif: ne plus mettre de couleurs en inline JS.
+   ====================================================== */
+
+:root{
+  /* Accent UI (par défaut = couleur marque). Tu peux le surcharger par vue. */
+  --ui-accent: var(--accent);
+
+  /* Badges d'écarts (matching) */
+  --gap-missing: #ef4444;
+  --gap-under: #f59e0b;
+  --gap-zero-bg: #e5e7eb;
+  --gap-zero-fg: #6b7280;
+  --gap-zero-border: #d1d5db;
+}
+
+/* Tuile sélectionnée (Analyse compétences) */
+#view-analyse-competences .analyse-tile.active{
+  outline: 2px solid color-mix(in srgb, var(--ui-accent) 65%, #ffffff) !important;
+}
+
+/* KPI sélectionné (tuiles) */
+#view-analyse-competences .mini-kpi.is-active{
+  border-color: color-mix(in srgb, var(--ui-accent) 55%, #d1d5db);
+  background: color-mix(in srgb, var(--ui-accent) 6%, #ffffff);
+}
+
+/* Choix de poste (matching) */
+#view-analyse-competences .sb-choice{
+  display:block;
+  width:100%;
+  text-align:left;
+  margin:0 !important;
+  margin-left:0 !important;
+  padding:10px 12px;
+  border-radius:10px;
+  border:1px solid #e5e7eb;
+  background:#ffffff;
+  cursor:pointer;
+}
+
+#view-analyse-competences .sb-choice.is-selected{
+  border-color: var(--ui-accent);
+  background: color-mix(in srgb, var(--ui-accent) 8%, #ffffff);
+}
+
+#view-analyse-competences .sb-choice-title{
+  font-weight:700;
+  color:#111827;
+  line-height:1.2;
+}
+
+#view-analyse-competences .sb-choice-sub{
+  margin-top:2px;
+  font-size:12px;
+  color:#6b7280;
+}
+
+/* Segmented tabs (modals) */
+.sb-seg{
+  padding:6px 10px;
+  border-radius:8px;
+  border:1px solid #d1d5db;
+  background:#ffffff;
+  color:#111827;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.sb-segbar{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+#modalMatchPerson .sb-seg.sb-seg--dark.is-active{
+  background:#111827;
+  color:#ffffff;
+}
+
+#modalMatchPerson .sb-seg.sb-seg--dark:not(.is-active){
+  background:#ffffff;
+  color:#111827;
+}
+
+/* Tabs "Compétences / Couverture" (modal Analyse poste) */
+#modalAnalysePoste .sb-seg.sb-seg--soft{
+  font-weight:600;
+}
+
+#modalAnalysePoste .sb-seg.sb-seg--soft.is-active{
+  border-color: var(--ui-accent);
+  background: color-mix(in srgb, var(--ui-accent) 10%, #ffffff);
+  font-weight:700;
+}
+
+#modalAnalysePoste .sb-seg.sb-seg--soft:not(.is-active){
+  border-color:#d1d5db;
+  background:#ffffff;
+}
+
+/* Badges écarts (composant générique) */
+.sb-gap-badges{
+  display:inline-flex;
+  gap:6px;
+  align-items:center;
+  justify-content:center;
+}
+
+.sb-gap-badges--sm .sb-gap-badge{
+  height:18px;
+  border-radius:4px;
+  font-weight:800;
+}
+
+.sb-gap-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:22px;
+  height:22px;
+  border-radius:6px;
+  font-size:12px;
+  font-weight:900;
+  line-height:1;
+  border:1px solid rgba(0,0,0,.12);
+  color:#ffffff;
+  background:#9ca3af;
+}
+
+.sb-gap-badge--sm{
+  height:18px;
+  border-radius:4px;
+  font-weight:800;
+}
+
+.sb-gap-badge--missing{ background: var(--gap-missing); }
+.sb-gap-badge--under{ background: var(--gap-under); }
+
+.sb-gap-badge.is-zero{
+  background: var(--gap-zero-bg);
+  color: var(--gap-zero-fg);
+  border:1px solid var(--gap-zero-border);
+}
+
+/* Légende (écarts) */
+.sb-gap-legend{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+  align-items:center;
+  font-size:12px;
+  color:#6b7280;
+}
+
+.sb-gap-legend--mt{ margin-top:10px; }
+
+.sb-gap-legend-item{
+  display:inline-flex;
+  gap:6px;
+  align-items:center;
+}
+
+.sb-gap-swatch{
+  width:12px;
+  height:12px;
+  border-radius:3px;
+  border:1px solid rgba(0,0,0,.12);
+  display:inline-block;
+  background:#e5e7eb;
+}
+
+.sb-gap-swatch--missing{ background: var(--gap-missing); }
+.sb-gap-swatch--under{ background: var(--gap-under); }

@@ -80,36 +80,34 @@
     const a = Number(abs || 0);
     const b = Number(sous || 0);
 
-    function badge(n, bg, title) {
-      return `
-        <span title="${escapeHtml(title)}"
-              style="display:inline-flex; align-items:center; justify-content:center;
-                     width:22px; height:22px; border-radius:6px;
-                     font-size:12px; font-weight:800; color:#fff;
-                     background:${bg}; border:1px solid rgba(0,0,0,.12);">
-          ${n}
-        </span>
-      `;
+    function badge(n, kind, title) {
+      const zero = !n;
+      const cls = [
+        "sb-gap-badge",
+        `sb-gap-badge--${kind}`,
+        zero ? "is-zero" : ""
+      ].filter(Boolean).join(" ");
+
+      return `<span class="${cls}" title="${escapeHtml(title)}">${n || 0}</span>`;
     }
 
     return `
-      <span style="display:inline-flex; gap:6px; align-items:center; justify-content:center;">
-        ${badge(a, "#ef4444", "Non acquises")}
-        ${badge(b, "#f59e0b", "À renforcer")}
+      <span class="sb-gap-badges">
+        ${badge(a, "missing", "Non acquises")}
+        ${badge(b, "under", "À renforcer")}
       </span>
     `;
   }
 
   function gapsLegendHtml() {
     return `
-      <div class="card-sub"
-           style="margin-top:10px; color:#6b7280; display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
-        <span style="display:inline-flex; gap:6px; align-items:center;">
-          <span style="width:12px; height:12px; border-radius:3px; background:#ef4444; display:inline-block;"></span>
+      <div class="sb-gap-legend">
+        <span class="sb-gap-legend-item">
+          <span class="sb-gap-swatch sb-gap-swatch--missing"></span>
           Non acquises
         </span>
-        <span style="display:inline-flex; gap:6px; align-items:center;">
-          <span style="width:12px; height:12px; border-radius:3px; background:#f59e0b; display:inline-block;"></span>
+        <span class="sb-gap-legend-item">
+          <span class="sb-gap-swatch sb-gap-swatch--under"></span>
           À renforcer
         </span>
       </div>
@@ -251,14 +249,7 @@
     items.forEach((el) => {
       const k = (el.getAttribute("data-risk-kpi") || "").trim();
       const isActive = !!filter && k === filter;
-
-      el.style.borderColor = isActive
-        ? "color-mix(in srgb, var(--accent) 55%, #d1d5db)"
-        : "#e5e7eb";
-
-      el.style.background = isActive
-        ? "color-mix(in srgb, var(--accent) 6%, #ffffff)"
-        : "#ffffff";
+      el.classList.toggle("is-active", isActive);
     });
   }
 
@@ -282,14 +273,7 @@
     items.forEach((el) => {
       const k = (el.getAttribute("data-match-view") || "").trim().toLowerCase();
       const isActive = !!view && k === view;
-
-      el.style.borderColor = isActive
-        ? "color-mix(in srgb, var(--accent) 55%, #d1d5db)"
-        : "#e5e7eb";
-
-      el.style.background = isActive
-        ? "color-mix(in srgb, var(--accent) 6%, #ffffff)"
-        : "#ffffff";
+      el.classList.toggle("is-active", isActive);
     });
   }
 
@@ -816,16 +800,8 @@ host.innerHTML = `
 
 
         <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
-          <button type="button" id="btnMatchTabTable"
-                  style="padding:6px 10px; border-radius:8px; border:1px solid #d1d5db;
-                         background:#111827; color:#ffffff; font-weight:900; cursor:pointer;">
-            Détail
-          </button>
-          <button type="button" id="btnMatchTabRadar"
-                  style="padding:6px 10px; border-radius:8px; border:1px solid #d1d5db;
-                         background:#ffffff; color:#111827; font-weight:900; cursor:pointer;">
-            Radar
-          </button>
+          <button type="button" id="btnMatchTabTable" class="sb-seg sb-seg--dark is-active">Détail</button>
+          <button type="button" id="btnMatchTabRadar" class="sb-seg sb-seg--dark">Radar</button>
         </div>
 
         <div id="matchPersonTabTable" style="margin-top:12px;">
@@ -855,16 +831,8 @@ host.innerHTML = `
 
         <div id="matchPersonTabRadar" style="display:none; margin-top:12px;">
           <div style="margin:0 0 10px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <button type="button" id="btnMatchRadarViewComp"
-                    style="padding:6px 10px; border-radius:8px; border:1px solid #d1d5db;
-                           background:#111827; color:#ffffff; font-weight:900; cursor:pointer;">
-              Vue par compétence
-            </button>
-            <button type="button" id="btnMatchRadarViewDomain"
-                    style="padding:6px 10px; border-radius:8px; border:1px solid #d1d5db;
-                           background:#ffffff; color:#111827; font-weight:900; cursor:pointer;">
-              Vue par domaine
-            </button>
+            <button type="button" id="btnMatchRadarViewComp" class="sb-seg sb-seg--dark is-active">Vue par compétence</button>
+            <button type="button" id="btnMatchRadarViewDomain" class="sb-seg sb-seg--dark">Vue par domaine</button>
           </div>
 
           <div id="matchRadarViewComp">
@@ -907,154 +875,28 @@ function setRadarView(which) {
   if (radarViewDomain) radarViewDomain.style.display = isDom ? "" : "none";
 
   if (btnRadarComp) {
-    btnRadarComp.style.background = isDom ? "#ffffff" : "#111827";
-    btnRadarComp.style.color = isDom ? "#111827" : "#ffffff";
+    btnRadarComp.classList.add("sb-seg", "sb-seg--dark");
+    btnRadarComp.classList.toggle("is-active", !isDom);
   }
   if (btnRadarDomain) {
-    btnRadarDomain.style.background = isDom ? "#111827" : "#ffffff";
-    btnRadarDomain.style.color = isDom ? "#ffffff" : "#111827";
+    btnRadarDomain.classList.add("sb-seg", "sb-seg--dark");
+    btnRadarDomain.classList.toggle("is-active", isDom);
   }
 }
-    function setActiveTab(which) {
-      const isRadar = (which === "radar");
-      if (tabTable) tabTable.style.display = isRadar ? "none" : "";
-      if (tabRadar) tabRadar.style.display = isRadar ? "" : "none";
 
-      if (btnTabTable) {
-        btnTabTable.style.background = isRadar ? "#ffffff" : "#111827";
-        btnTabTable.style.color = isRadar ? "#111827" : "#ffffff";
-      }
-      if (btnTabRadar) {
-        btnTabRadar.style.background = isRadar ? "#111827" : "#ffffff";
-        btnTabRadar.style.color = isRadar ? "#ffffff" : "#111827";
-      }
-    }
+function setActiveTab(which) {
+  const isRadar = (which === "radar");
+  if (tabTable) tabTable.style.display = isRadar ? "none" : "";
+  if (tabRadar) tabRadar.style.display = isRadar ? "" : "none";
 
-    function prepareCanvas2d(canvas) {
-      const ctx = canvas.getContext("2d");
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      const w = Math.max(320, Math.floor(rect.width));
-      const h = Math.max(320, Math.floor(rect.height));
-      const pw = Math.floor(w * dpr);
-      const ph = Math.floor(h * dpr);
-
-      if (canvas.width !== pw || canvas.height !== ph) {
-        canvas.width = pw;
-        canvas.height = ph;
-      }
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, w, h);
-      return { ctx, w, h };
-    }
-
-    function drawRadarChart(canvas, axes) {
-      if (!canvas || !axes || !axes.length) return;
-      const { ctx, w, h } = prepareCanvas2d(canvas);
-
-      const cx = w / 2;
-      const cy = h / 2;
-      const pad = 64;
-      const r = Math.max(80, Math.min(w, h) / 2 - pad);
-
-      const n = axes.length;
-      const step = (Math.PI * 2) / n;
-      const start = -Math.PI / 2;
-
-      // Grille (5 niveaux)
-      ctx.strokeStyle = "#e5e7eb";
-      ctx.lineWidth = 1;
-      for (let k = 1; k <= 5; k++) {
-        const rr = (r * k) / 5;
-        ctx.beginPath();
-        for (let i = 0; i < n; i++) {
-          const ang = start + i * step;
-          const x = cx + rr * Math.cos(ang);
-          const y = cy + rr * Math.sin(ang);
-          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.stroke();
-      }
-
-      // Axes
-      ctx.strokeStyle = "#d1d5db";
-      for (let i = 0; i < n; i++) {
-        const ang = start + i * step;
-        const x = cx + r * Math.cos(ang);
-        const y = cy + r * Math.sin(ang);
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-      }
-
-      // Courbe données
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = "#2563eb";
-      ctx.fillStyle = "rgba(37,99,235,0.16)";
-      ctx.beginPath();
-      for (let i = 0; i < n; i++) {
-        const ang = start + i * step;
-        const v = Math.max(0, Math.min(Number(axes[i].ratio || 0), 1));
-        const rr = r * v;
-        const x = cx + rr * Math.cos(ang);
-        const y = cy + rr * Math.sin(ang);
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-
-      // Points
-      ctx.fillStyle = "#2563eb";
-      for (let i = 0; i < n; i++) {
-        const ang = start + i * step;
-        const v = Math.max(0, Math.min(Number(axes[i].ratio || 0), 1));
-        const rr = r * v;
-        const x = cx + rr * Math.cos(ang);
-        const y = cy + rr * Math.sin(ang);
-        ctx.beginPath();
-        ctx.arc(x, y, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Labels (codes)
-      ctx.fillStyle = "#111827";
-      ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-      for (let i = 0; i < n; i++) {
-        const ang = start + i * step;
-        const x = cx + (r + 14) * Math.cos(ang);
-        const y = cy + (r + 14) * Math.sin(ang);
-
-        const cos = Math.cos(ang);
-        const sin = Math.sin(ang);
-        ctx.textAlign = (cos >= 0.2) ? "left" : (cos <= -0.2 ? "right" : "center");
-        ctx.textBaseline = (sin >= 0.2) ? "top" : (sin <= -0.2 ? "bottom" : "middle");
-
-        const lbl = String(axes[i].code || "").trim() || String(i + 1);
-        ctx.fillText(lbl, x, y);
-      }
-    }
-
-    let _matchRadarView = "comp"; // "comp" | "domain"
-
-function renderRadarNow() {
-  // Tab radar doit être visible
-  if (tabRadar && tabRadar.style.display === "none") return;
-
-  if (_matchRadarView === "domain") {
-    if (domainEmpty) return;
-    const canvas = byId("matchDomainRadarCanvas");
-    if (!canvas) return;
-    drawRadarChart(canvas, domainAxesRadar);
-    return;
+  if (btnTabTable) {
+    btnTabTable.classList.add("sb-seg", "sb-seg--dark");
+    btnTabTable.classList.toggle("is-active", !isRadar);
   }
-
-  if (radarEmpty) return;
-  const canvas = byId("matchPersonRadarCanvas");
-  if (!canvas) return;
-  drawRadarChart(canvas, radarTop);
+  if (btnTabRadar) {
+    btnTabRadar.classList.add("sb-seg", "sb-seg--dark");
+    btnTabRadar.classList.toggle("is-active", isRadar);
+  }
 }
 
     
@@ -1184,19 +1026,16 @@ if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarVie
       const svc = (r.nom_service || "").trim() || "—";
 
       const isActive = selectedId && idp === selectedId;
-      const style = isActive
-        ? `border-color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, #fff);`
-        : `border-color:#e5e7eb; background:#fff;`;
+      const cls = `btn-secondary sb-choice${isActive ? " is-selected" : ""}`;
 
       return `
         <button type="button"
-                class="btn-secondary"
-                data-match-id_poste="${escapeHtml(idp)}"
-                style="text-align:left; margin:0; ${style}">
-          <div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                class="${cls}"
+                data-match-id_poste="${escapeHtml(idp)}">
+          <div class="sb-choice-title">
             ${escapeHtml(poste)}
           </div>
-          <div style="font-size:11px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          <div class="sb-choice-sub">
             ${escapeHtml(svc)}
           </div>
         </button>
@@ -1337,41 +1176,36 @@ if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarVie
       const a = Number(absCount || 0);
       const u = Number(underCount || 0);
 
-      function box(n, bg, title) {
-        const isZero = !n;
-        const style = isZero
-          ? "background:#e5e7eb; color:#6b7280; border:1px solid #d1d5db;"
-          : `background:${bg}; color:#ffffff; border:1px solid rgba(0,0,0,.12);`;
+      function box(n, kind, title) {
+        const zero = !n;
+        const cls = [
+          "sb-gap-badge",
+          `sb-gap-badge--${kind}`,
+          "sb-gap-badge--sm",
+          zero ? "is-zero" : ""
+        ].filter(Boolean).join(" ");
 
-        return `
-          <span title="${escapeHtml(title)}"
-                style="display:inline-flex; align-items:center; justify-content:center;
-                      width:22px; height:18px; border-radius:4px;
-                      font-size:12px; font-weight:800; line-height:1;
-                      ${style}">
-            ${n || 0}
-          </span>
-        `;
+        return `<span class="${cls}" title="${escapeHtml(title)}">${n || 0}</span>`;
       }
 
       return `
-        <span style="display:inline-flex; gap:6px; align-items:center; justify-content:center;">
-          ${box(a, "#ef4444", "Manquantes")}
-          ${box(u, "#f59e0b", "À renforcer")}
+        <span class="sb-gap-badges sb-gap-badges--sm">
+          ${box(a, "missing", "Manquantes")}
+          ${box(u, "under", "À renforcer")}
         </span>
       `;
     }
 
     const MATCH_LEGEND_HTML = `
-      <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-top:10px;">
-        <div style="display:flex; align-items:center; gap:6px;">
-          <span style="width:12px; height:12px; border-radius:3px; background:#ef4444; border:1px solid rgba(0,0,0,.12);"></span>
-          <span style="font-size:12px; color:#6b7280;">Manquantes</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:6px;">
-          <span style="width:12px; height:12px; border-radius:3px; background:#f59e0b; border:1px solid rgba(0,0,0,.12);"></span>
-          <span style="font-size:12px; color:#6b7280;">À renforcer</span>
-        </div>
+      <div class="sb-gap-legend sb-gap-legend--mt">
+        <span class="sb-gap-legend-item">
+          <span class="sb-gap-swatch sb-gap-swatch--missing"></span>
+          Manquantes
+        </span>
+        <span class="sb-gap-legend-item">
+          <span class="sb-gap-swatch sb-gap-swatch--under"></span>
+          À renforcer
+        </span>
       </div>
     `;
 
@@ -1754,17 +1588,12 @@ if (btnRadarDomain) btnRadarDomain.addEventListener("click", () => { setRadarVie
     if (a) a.style.display = isA ? "" : "none";
     if (b) b.style.display = isA ? "none" : "";
 
-    // Visuel simple sans ajouter de CSS
-    if (btnA) {
-      btnA.style.borderColor = isA ? "var(--accent)" : "#d1d5db";
-      btnA.style.background = isA ? "color-mix(in srgb, var(--accent) 10%, #ffffff)" : "#ffffff";
-      btnA.style.fontWeight = isA ? "700" : "600";
-    }
-    if (btnB) {
-      btnB.style.borderColor = !isA ? "var(--accent)" : "#d1d5db";
-      btnB.style.background = !isA ? "color-mix(in srgb, var(--accent) 10%, #ffffff)" : "#ffffff";
-      btnB.style.fontWeight = !isA ? "700" : "600";
-    }
+    // Visuel via CSS (couleurs centralisées)
+    if (btnA) btnA.classList.add("sb-seg", "sb-seg--soft");
+    if (btnB) btnB.classList.add("sb-seg", "sb-seg--soft");
+
+    if (btnA) btnA.classList.toggle("is-active", isA);
+    if (btnB) btnB.classList.toggle("is-active", !isA);
   }
 
   function renderPostePorteurs(porteurs, idPosteAnalyse) {
