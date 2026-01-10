@@ -852,7 +852,188 @@ host.innerHTML = `
       </div>
     `;
  
+    
+
     // ------------------------------------------------------
+    // Radar - rendu canvas (JS pur)
+    // ------------------------------------------------------
+    function _parsePx(v) {
+      const m = /(-?\d+(\.\d+)?)px/.exec(String(v || "").trim());
+      return m ? Number(m[1]) : 0;
+    }
+
+    function _getCssVar(name, fallback) {
+      try {
+        const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+        const s = (v || "").trim();
+        return s || fallback;
+      } catch (e) {
+        return fallback;
+      }
+    }
+
+    function _hexToRgba(hex, a) {
+      const h = String(hex || "").trim();
+      if (!h.startsWith("#")) return null;
+      let r = 0, g = 0, b = 0;
+      if (h.length === 4) {
+        r = parseInt(h[1] + h[1], 16);
+        g = parseInt(h[2] + h[2], 16);
+        b = parseInt(h[3] + h[3], 16);
+      } else if (h.length === 7) {
+        r = parseInt(h.slice(1, 3), 16);
+        g = parseInt(h.slice(3, 5), 16);
+        b = parseInt(h.slice(5, 7), 16);
+      } else {
+        return null;
+      }
+      const aa = (a === null || a === undefined) ? 1 : Number(a);
+      return `rgba(${r},${g},${b},${isFinite(aa) ? aa : 1})`;
+    }
+
+    function prepareCanvas2d(canvas) {
+      if (!canvas) return null;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+
+      const cs = getComputedStyle(canvas);
+      const w = Math.floor(canvas.clientWidth || _parsePx(cs.width) || 0);
+      const h = Math.floor(canvas.clientHeight || _parsePx(cs.height) || 0);
+      if (!w || !h) return null;
+
+      const dpr = window.devicePixelRatio || 1;
+      const pw = Math.floor(w * dpr);
+      const ph = Math.floor(h * dpr);
+
+      if (canvas.width !== pw || canvas.height !== ph) {
+        canvas.width = pw;
+        canvas.height = ph;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      return { ctx, w, h };
+    }
+
+    function drawRadarChart(canvas, axes) {
+      if (!canvas || !axes || !axes.length) return;
+
+      const prepared = prepareCanvas2d(canvas);
+      if (!prepared) return;
+      const { ctx, w, h } = prepared;
+
+      const cx = w / 2;
+      const cy = h / 2;
+      const pad = 64;
+      const r = Math.max(80, Math.min(w, h) / 2 - pad);
+
+      const n = axes.length;
+      const step = (Math.PI * 2) / n;
+      const start = -Math.PI / 2;
+
+      const grid = _getCssVar("--radar-grid", "#e5e7eb");
+      const axis = _getCssVar("--radar-axis", "#d1d5db");
+      const stroke = _getCssVar("--radar-stroke", _getCssVar("--ui-accent", "#2563eb"));
+      const fill = _getCssVar("--radar-fill", _hexToRgba(stroke, 0.16) || "rgba(37,99,235,0.16)");
+      const point = _getCssVar("--radar-point", stroke);
+      const label = _getCssVar("--radar-label", "#111827");
+
+      // Grille (5 niveaux)
+      ctx.strokeStyle = grid;
+      ctx.lineWidth = 1;
+      for (let k = 1; k <= 5; k++) {
+        const rr = (r * k) / 5;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) {
+          const ang = start + i * step;
+          const x = cx + rr * Math.cos(ang);
+          const y = cy + rr * Math.sin(ang);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
+
+      // Axes
+      ctx.strokeStyle = axis;
+      for (let i = 0; i < n; i++) {
+        const ang = start + i * step;
+        const x = cx + r * Math.cos(ang);
+        const y = cy + r * Math.sin(ang);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
+
+      // Courbe données
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = stroke;
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      for (let i = 0; i < n; i++) {
+        const ang = start + i * step;
+        const v = Math.max(0, Math.min(Number(axes[i].ratio || 0), 1));
+        const rr = r * v;
+        const x = cx + rr * Math.cos(ang);
+        const y = cy + rr * Math.sin(ang);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Points
+      ctx.fillStyle = point;
+      for (let i = 0; i < n; i++) {
+        const ang = start + i * step;
+        const v = Math.max(0, Math.min(Number(axes[i].ratio || 0), 1));
+        const rr = r * v;
+        const x = cx + rr * Math.cos(ang);
+        const y = cy + rr * Math.sin(ang);
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Labels (codes)
+      ctx.fillStyle = label;
+      ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+      for (let i = 0; i < n; i++) {
+        const ang = start + i * step;
+        const x = cx + (r + 14) * Math.cos(ang);
+        const y = cy + (r + 14) * Math.sin(ang);
+
+        const cos = Math.cos(ang);
+        const sin = Math.sin(ang);
+        ctx.textAlign = (cos >= 0.2) ? "left" : (cos <= -0.2 ? "right" : "center");
+        ctx.textBaseline = (sin >= 0.2) ? "top" : (sin <= -0.2 ? "bottom" : "middle");
+
+        const lbl = String(axes[i].code || "").trim() || String(i + 1);
+        ctx.fillText(lbl, x, y);
+      }
+    }
+
+    let _matchRadarView = "comp"; // "comp" | "domain"
+
+    function renderRadarNow() {
+      // Tab radar doit être visible
+      if (tabRadar && tabRadar.style.display === "none") return;
+
+      if (_matchRadarView === "domain") {
+        if (domainEmpty) return;
+        const canvas = byId("matchDomainRadarCanvas");
+        if (!canvas) return;
+        drawRadarChart(canvas, domainAxesRadar);
+        return;
+      }
+
+      if (radarEmpty) return;
+      const canvas = byId("matchPersonRadarCanvas");
+      if (!canvas) return;
+      drawRadarChart(canvas, radarTop);
+    }
+
+// ------------------------------------------------------
     // Onglets (Détail / Radar) + rendu radar
     // ------------------------------------------------------
     const btnTabTable = byId("btnMatchTabTable");
