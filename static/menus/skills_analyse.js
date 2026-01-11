@@ -310,11 +310,11 @@
       const isActive = !!filter && k === filter;
 
       el.style.borderColor = isActive
-        ? "color-mix(in srgb, var(--accent) 55%, #d1d5db)"
+        ? "color-mix(in srgb, var(--reading-accent) 55%, #d1d5db)"
         : "#e5e7eb";
 
       el.style.background = isActive
-        ? "color-mix(in srgb, var(--accent) 6%, #ffffff)"
+        ? "color-mix(in srgb, var(--reading-accent) 6%, #ffffff)"
         : "#ffffff";
     });
   }
@@ -341,11 +341,11 @@
       const isActive = !!view && k === view;
 
       el.style.borderColor = isActive
-        ? "color-mix(in srgb, var(--accent) 55%, #d1d5db)"
+        ? "color-mix(in srgb, var(--reading-accent) 55%, #d1d5db)"
         : "#e5e7eb";
 
       el.style.background = isActive
-        ? "color-mix(in srgb, var(--accent) 6%, #ffffff)"
+        ? "color-mix(in srgb, var(--reading-accent) 6%, #ffffff)"
         : "#ffffff";
     });
   }
