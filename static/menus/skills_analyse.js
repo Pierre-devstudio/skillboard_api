@@ -530,6 +530,48 @@
     return data;
   }
 
+  async function fetchPrevisionsSortiesDetail(portal, horizonYears, id_service) {
+    const id_contact = String(
+      portal?.id_contact ||
+      portal?.idContact ||
+      portal?.contact_id ||
+      portal?.contactId ||
+      portal?.contact?.id_contact ||
+      portal?.contact?.idContact ||
+      ""
+    ).trim();
+
+    const apiBaseRaw = String(
+      portal?.api_base ||
+      portal?.apiBase ||
+      portal?.api ||
+      portal?.base_url ||
+      portal?.baseUrl ||
+      window.API_BASE ||
+      window.SKILLS_API_BASE ||
+      ""
+    ).trim();
+
+    const apiBase = apiBaseRaw.replace(/\/$/, "");
+
+    if (!id_contact) throw new Error("id_contact introuvable (portalRef).");
+    if (!apiBase) throw new Error("base API introuvable (portalRef).");
+
+    const qs = new URLSearchParams();
+    qs.set("horizon_years", String(horizonYears));
+    if (id_service) qs.set("id_service", id_service);
+
+    const url = `${apiBase}/skills/analyse/previsions/sorties/detail/${encodeURIComponent(id_contact)}?${qs.toString()}`;
+
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
+    }
+
+    return await res.json();
+  }
+
   function ensureMatchPersonModal() {
     let modal = byId("modalMatchPerson");
     if (modal) return modal;
@@ -2213,518 +2255,453 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
 
 
 
-  function renderDetail(mode) {
-    const scope = getScopeLabel();
-
-    const title = byId("analyseDetailTitle");
-    const sub = byId("analyseDetailSub");
-    const meta = byId("analyseDetailMeta");
-    const body = byId("analyseDetailBody");
-
-    if (meta) meta.textContent = `Service : ${scope}`;
-    if (!body) return;
-
-        // -----------------------
-        // MATCHING (MVP)
-        // -----------------------
-        if (mode === "matching") {
-          if (title) title.textContent = "Matching poste-porteur";
-          if (sub) sub.textContent = "Top candidats internes par poste (score pondéré niveau + criticité).";
-
-          // Vue Matching : "titulaire" ou "candidats" (pilotée par la tuile)
-          setActiveMatchKpi(getMatchView());
-
-          const id_service = (byId("analyseServiceSelect")?.value || "").trim();
-
-          body.innerHTML = renderMatchingShell();
-
-          if (!_portalRef) {
-            const host = byId("matchResult");
-            if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Contexte portail indisponible.</div>`;
-            return;
-          }
-
-          const mySeq = ++_matchReqSeq;
-
-          (async () => {
-            try {
-              const postes = await fetchMatchingPostes(_portalRef, id_service);
-              if (mySeq !== _matchReqSeq) return;
-
-              // si le poste sélectionné n’existe plus dans la liste, on reset
-              if (_matchSelectedPoste && !postes.some(p => (p.id_poste || "").toString().trim() === _matchSelectedPoste)) {
-                _matchSelectedPoste = "";
-              }
-
-              if (!_matchSelectedPoste && postes.length) {
-                _matchSelectedPoste = (postes[0].id_poste || "").toString().trim();
-              }
-
-              renderMatchingPosteList(postes, _matchSelectedPoste);
-
-              if (_matchSelectedPoste) {
-                await showMatchingForPoste(_portalRef, _matchSelectedPoste, id_service, mySeq);
-              }
-
-            } catch (e) {
-              const host = byId("matchResult");
-              if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>`;
-            }
-          })();
-
-          return;
-        }
-
-
-        // -----------------------
-        // PREVISIONS
-        // -----------------------
-        if (mode === "previsions") {
-          if (title) title.textContent = "Prévisions";
-
-          const horizon = getPrevHorizon();
-          const item = _prevData ? pickPrevHorizonItem(_prevData, horizon) : null;
-
-          const sorties = item
-            ? item.sorties
-            : (_prevData ? _prevData.sorties_12m : "—");
-
-          const selectedKpi = (localStorage.getItem("sb_analyse_prev_kpi") || "").trim();
-
-          if (selectedKpi === "sorties") {
-            const horizonLabel = (horizon === 1 ? "1 an" : (horizon + " ans"));
-
-            if (sub) sub.textContent = `Sorties prévues à moins de ${horizonLabel} (périmètre filtré).`;
-
-            body.innerHTML = `
-              <div class="card" style="padding:12px; margin:0;">
-                <div class="card-title" style="margin-bottom:6px;">
-                  Sorties &lt; ${escapeHtml(horizonLabel)}
-                </div>
-
-                <div class="row" style="gap:12px; margin-top:10px; flex-wrap:wrap;">
-                  <div class="card" style="padding:12px; margin:0; flex:1; min-width:200px;">
-                    <div class="label">Nombre de sorties</div>
-                    <div class="value">${escapeHtml(String(sorties ?? "—"))}</div>
-                  </div>
-                </div>
-
-                <div class="card" style="padding:12px; margin-top:12px;">
-                  <div class="card-title" style="margin-bottom:6px;">Détail</div>
-                  <div id="prevSortiesDetailBox" class="card-sub" style="margin:0;">Chargement…</div>
-                </div>
-              </div>
-            `;
-
-            // Chargement asynchrone du détail (personnes qui sortent < horizon)
-            window.__sbPrevSortiesReqId = (window.__sbPrevSortiesReqId || 0) + 1;
-            const reqId = window.__sbPrevSortiesReqId;
-
-            setTimeout(async () => {
-              const box = byId("prevSortiesDetailBox");
-              if (!box) return;
-
-              try {
-                const selService = byId("analyseServiceSelect");
-                const id_service = (selService?.value || "").trim();
-
-            // récup id_contact + base api (tolérant: data-id_contact OU data-id-contact)
-            const portalCtx = _portalRef || null;
-
-            const portalEl =
-              document.querySelector("[data-id_contact],[data-id-contact]") ||
-              byId("skillsPortalAnalyse") ||
-              byId("skillsPortal") ||
-              document.body;
-
-            const id_contact = String(
-              portalCtx?.id_contact ||
-              portalCtx?.idContact ||
-              portalEl?.getAttribute("data-id_contact") ||
-              portalEl?.getAttribute("data-id-contact") ||
-              portalEl?.dataset?.id_contact ||
-              portalEl?.dataset?.idContact ||
-              ""
-            ).trim();
-
-            const apiBaseRaw = String(
-              portalCtx?.api_base ||
-              portalCtx?.apiBase ||
-              portalEl?.getAttribute("data-api-base") ||
-              portalEl?.dataset?.apiBase ||
-              window.API_BASE ||
-              window.SKILLS_API_BASE ||
-              ""
-            ).trim();
-
-            const apiBase = apiBaseRaw.replace(/\/$/, "");
-
-
-
-                if (!id_contact) {
-                  box.textContent = "Impossible de charger: id_contact introuvable côté UI.";
-                  return;
-                }
-
-                const qs = new URLSearchParams();
-                qs.set("horizon_years", String(horizon));
-                if (id_service) qs.set("id_service", id_service);
-
-                const url = `${apiBase}/skills/analyse/previsions/sorties/detail/${encodeURIComponent(id_contact)}?${qs.toString()}`;
-
-                box.textContent = "Chargement…";
-
-                const res = await fetch(url, { headers: { "Accept": "application/json" } });
-                if (!res.ok) {
-                  const txt = await res.text().catch(() => "");
-                  throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
-                }
-
-                const data = await res.json();
-
-                // si une autre requête est partie entre temps (slider), on ignore
-                if ((window.__sbPrevSortiesReqId || 0) !== reqId) return;
-
-                const items =
-                  (data && Array.isArray(data.items) ? data.items : null) ||
-                  (data && Array.isArray(data.effectifs) ? data.effectifs : null) ||
-                  [];
-
-                if (!items.length) {
-                  box.textContent = "Aucune sortie détectée dans l’horizon sélectionné.";
-                  return;
-                }
-
-                const rowsHtml = items.map((it) => {
-                  const prenom = (it.prenom_effectif || it.prenom || "").trim();
-                  const nom = (it.nom_effectif || it.nom || "").trim();
-                  const full = (it.full || `${prenom} ${nom}`.trim() || "—");
-
-                  const exitDate = (it.exit_date || it.date_sortie || it.date_sortie_prevue || it.sortie_prevue || "").toString();
-                  const exitTxt = exitDate ? escapeHtml(exitDate) : "—";
-
-                  const service = (it.nom_service || it.service || "").toString().trim() || "—";
-                  const poste = (it.intitule_poste || it.poste || "").toString().trim() || "—";
-
-                  const src = (it.source || it.source_sortie || "").toString().trim();
-                  const srcTxt = src ? escapeHtml(src) : "";
-
-                  return `
-                    <tr>
-                      <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(full)}</td>
-                      <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${exitTxt}</td>
-                      <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(poste)}</td>
-                      <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(service)}</td>
-                      <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${srcTxt}</td>
-                    </tr>
-                  `;
-                }).join("");
-
-                box.innerHTML = `
-                  <div style="overflow:auto;">
-                    <table style="width:100%; border-collapse:collapse; font-size:12px;">
-                      <thead>
-                        <tr>
-                          <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Personne</th>
-                          <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Date sortie</th>
-                          <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Poste</th>
-                          <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Service</th>
-                          <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Source</th>
-                        </tr>
-                      </thead>
-                      <tbody>${rowsHtml}</tbody>
-                    </table>
-                  </div>
-                `;
-              } catch (e) {
-                if ((window.__sbPrevSortiesReqId || 0) !== reqId) return;
-                box.textContent = `Erreur chargement détail sorties: ${e?.message || e}`;
-              }
-            }, 0);
-
-            return;
-          }
-
-          // Fallback si aucun KPI prévision n’a été cliqué
-          if (sub) sub.textContent = "Cliquez sur un KPI dans la tuile Prévisions pour afficher le détail.";
-          body.innerHTML = `
-            <div class="card" style="padding:12px; margin:0;">
-              <div class="card-title" style="margin-bottom:6px;">Résultats</div>
-              <div class="card-sub" style="margin:0;">Aucune vue sélectionnée.</div>
-            </div>
-          `;
-          return;
-        }
-
-
-    // -----------------------
-    // RISQUES (API + filtre KPI)
-    // -----------------------
-    const rf = getRiskFilter(); // "", "postes-fragiles", "critiques-sans-porteur", "porteur-unique"
-    setActiveRiskKpi(rf);
-
-    if (title) title.textContent = "Risques";
-
-    let filterLabel = "Vue globale";
-    let filterSub = "Priorisation des fragilités par criticité et couverture.";
-
-    if (rf === "postes-fragiles") {
-      filterLabel = "Postes fragiles";
-      filterSub = "Postes à sécuriser en priorité (critiques avec couverture faible).";
-    } else if (rf === "critiques-sans-porteur") {
-      filterLabel = "Critiques sans porteur";
-      filterSub = "Compétences critiques requises mais non portées (dans le périmètre).";
-    } else if (rf === "porteur-unique") {
-      filterLabel = "Porteur unique";
-      filterSub = "Compétences critiques portées par une seule personne (dépendance).";
-    }
-
-    if (sub) sub.textContent = filterSub;
-
-    const selSvc = byId("analyseServiceSelect") || byId("anaServiceSelect") || byId("mapServiceSelect");
-    const id_service = (selSvc?.value || "").trim();
-
-    function badge(txt, accent) {
-      const cls = accent ? "sb-badge sb-badge-accent" : "sb-badge";
-      return `<span class="${cls}">${escapeHtml(txt || "—")}</span>`;
-    }
-
-    function renderDomainPill(item) {
-      const lab = (item?.domaine_titre_court || item?.domaine_titre || item?.id_domaine_competence || "—").toString();
-      const col = normalizeColor(item?.domaine_couleur) || "#e5e7eb";
-      return `
-        <span style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; color:#374151; background:#fff;">
-          <span style="display:inline-block; width:10px; height:10px; border-radius:999px; border:1px solid #d1d5db; background:${escapeHtml(col)};"></span>
-          <span title="${escapeHtml(lab)}">${escapeHtml(lab)}</span>
-        </span>
-      `;
-    }
-
-    function renderTablePostes(rows) {
-      const list = Array.isArray(rows) ? rows : [];
-      if (!list.length) {
-        return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
-      }
-
-      return `
-        <div class="table-wrap" style="margin-top:10px;">
-          <table class="sb-table" id="tblRiskPostesFragiles">
-            <thead>
-              <tr>
-                <th>Poste</th>
-                <th style="width:200px;">Service</th>
-                <th class="col-center" style="width:160px;">Critiques sans porteur</th>
-                <th class="col-center" style="width:140px;">Porteur unique</th>
-                <th class="col-center" style="width:140px;">Total fragiles</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${list.map(r => {
-                const poste = `${(r.codif_poste || "").trim()}${r.codif_poste ? " — " : ""}${(r.intitule_poste || "").trim()}`.trim() || "—";
-                const svc = (r.nom_service || "").trim() || "—";
-
-                const a = Number(r.nb_critiques_sans_porteur || 0);
-                const b = Number(r.nb_critiques_porteur_unique || 0);
-                const c = Number(r.nb_critiques_fragiles || 0);
-
-                return `
-                  <tr class="risk-poste-row" data-id_poste="${escapeHtml(r.id_poste || "")}" style="cursor:pointer;">
-                    <td data-focus="poste" style="font-weight:700;">${escapeHtml(poste)}</td>
-                    <td data-focus="poste">${escapeHtml(svc)}</td>
-                    <td class="col-center" data-focus="critiques-sans-porteur" title="Voir les compétences critiques sans porteur">
-                      ${a ? badge(String(a), true) : badge("0", false)}
-                    </td>
-                    <td class="col-center" data-focus="porteur-unique" title="Voir les compétences critiques à porteur unique">
-                      ${b ? badge(String(b), true) : badge("0", false)}
-                    </td>
-                    <td class="col-center" data-focus="total-fragiles" title="Voir la synthèse de couverture du poste">
-                      ${c ? badge(String(c), true) : badge("0", false)}
-                    </td>
-                  </tr>
-                `;
-              }).join("")}
-            </tbody>
-          </table>
-        </div>
-      `;
-    }
-
-    function renderTableCompetences(rows) {
-      const list = Array.isArray(rows) ? rows : [];
-      if (!list.length) {
-        return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
-      }
-
-      return `
-        <div class="table-wrap" style="margin-top:10px;">
-          <table class="sb-table" id="tblRiskCompetences">
-            <thead>
-              <tr>
-                <th style="width:240px;">Domaine</th>
-                <th style="width:90px;">Code</th>
-                <th>Compétence</th>
-                <th class="col-center" style="width:130px;">Postes impactés</th>
-                <th class="col-center" style="width:120px;">Criticité</th>
-                <th class="col-center" style="width:110px;">Porteurs</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${list.map(r => {
-                const code = (r.code || "—").toString().trim();
-                const intit = (r.intitule || "—").toString();
-
-                const idComp =
-                  (r.id_competence || r.id_comp || r.id_competence_skillboard || r.id_competence_pk || "").toString().trim();
-
-                const compKey = (idComp || code || "").trim();
-
-                const nbPostes = Number(r.nb_postes_impactes || 0);
-                const nbPorteurs = Number(r.nb_porteurs || 0);
-                const crit = Number(r.max_criticite || 0);
-
-                return `
-                  <tr class="risk-comp-row"
-                      data-comp-key="${escapeHtml(compKey)}"
-                      data-code="${escapeHtml(code)}"
-                      data-id_comp="${escapeHtml(idComp)}"
-                      style="cursor:pointer;"
-                      title="Ouvrir le détail de la compétence">
-                    <td>${renderDomainPill(r)}</td>
-                    <td style="font-weight:700; white-space:nowrap;">${escapeHtml(code || "—")}</td>
-                    <td>${escapeHtml(intit)}</td>
-                    <td class="col-center">${nbPostes ? badge(String(nbPostes), true) : badge("0", false)}</td>
-                    <td class="col-center">${crit ? badge(String(crit), true) : badge("—", false)}</td>
-                    <td class="col-center">${nbPorteurs ? badge(String(nbPorteurs), true) : badge("0", false)}</td>
-                  </tr>
-                `;
-              }).join("")}
-            </tbody>
-          </table>
-        </div>
-      `;
-    }
-
-
-    // UI immédiate (évite l'impression "ça fait rien")
-    const resetHtml = rf
-      ? `
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
-          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-            ${badge(filterLabel, true)}
-            ${badge(`Criticité min: ${CRITICITE_MIN}`, false)}
-          </div>
-          <button type="button" class="btn-secondary" id="btnRiskFilterReset" style="margin-left:0;">
-            Tout afficher
-          </button>
-        </div>
-      `
-      : `
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
-          ${badge("Vue globale", true)}
-          ${badge(`Criticité min: ${CRITICITE_MIN}`, false)}
-        </div>
-      `;
-
-    body.innerHTML = `
-      ${resetHtml}
-      <div class="card" style="padding:12px; margin:0;">
-        <div class="card-sub" style="margin:0;">Chargement…</div>
-      </div>
-    `;
-
-    const btnReset = byId("btnRiskFilterReset");
-    if (btnReset) {
-      btnReset.addEventListener("click", () => {
-        setRiskFilter("");
-        renderDetail("risques");
-      });
-    }
+function renderDetail(mode) {
+  const scope = getScopeLabel();
+
+  const title = byId("analyseDetailTitle");
+  const sub = byId("analyseDetailSub");
+  const meta = byId("analyseDetailMeta");
+  const body = byId("analyseDetailBody");
+
+  if (meta) meta.textContent = `Service : ${scope}`;
+  if (!body) return;
+
+  // -----------------------
+  // MATCHING (MVP)
+  // -----------------------
+  if (mode === "matching") {
+    if (title) title.textContent = "Matching poste-porteur";
+    if (sub) sub.textContent = "Top candidats internes par poste (score pondéré niveau + criticité).";
+
+    if (typeof setActiveMatchKpi === "function") setActiveMatchKpi(getMatchView());
+
+    const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+    body.innerHTML = renderMatchingShell();
 
     if (!_portalRef) {
-      body.innerHTML = `
-        ${resetHtml}
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="card-sub" style="margin:0;">Contexte portail indisponible.</div>
-        </div>
-      `;
+      const host = byId("matchResult");
+      if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Contexte portail indisponible.</div>`;
       return;
     }
 
-    const mySeq = ++_riskDetailReqSeq;
+    const mySeq = ++_matchReqSeq;
 
     (async () => {
       try {
-        if (rf) {
-          const data = await fetchRisquesDetail(_portalRef, rf, id_service, 120);
-          if (mySeq !== _riskDetailReqSeq) return;
+        const postes = await fetchMatchingPostes(_portalRef, id_service);
+        if (mySeq !== _matchReqSeq) return;
 
-          const items = Array.isArray(data?.items) ? data.items : [];
-
-          let content = `
-            <div class="card" style="padding:12px; margin:0;">
-              <div class="card-title" style="margin-bottom:6px;">${escapeHtml(filterLabel)}</div>
-              <div class="card-sub" style="margin:0;">${escapeHtml(filterSub)}</div>
-              ${rf === "postes-fragiles" ? renderTablePostes(items) : renderTableCompetences(items)}
-            </div>
-          `;
-
-          body.innerHTML = `${resetHtml}${content}`;
-          const btnReset2 = byId("btnRiskFilterReset");
-          if (btnReset2) {
-            btnReset2.addEventListener("click", () => {
-              setRiskFilter("");
-              renderDetail("risques");
-            });
-          }
-          return;
+        if (_matchSelectedPoste && !postes.some(p => (p.id_poste || "").toString().trim() === _matchSelectedPoste)) {
+          _matchSelectedPoste = "";
         }
 
-        // Vue globale = 3 listes
-        const [a, b, c] = await Promise.all([
-          fetchRisquesDetail(_portalRef, "postes-fragiles", id_service, 20),
-          fetchRisquesDetail(_portalRef, "critiques-sans-porteur", id_service, 20),
-          fetchRisquesDetail(_portalRef, "porteur-unique", id_service, 20),
-        ]);
+        if (!_matchSelectedPoste && postes.length) {
+          _matchSelectedPoste = (postes[0].id_poste || "").toString().trim();
+        }
 
-        if (mySeq !== _riskDetailReqSeq) return;
+        renderMatchingPosteList(postes, _matchSelectedPoste);
 
-        const itemsA = Array.isArray(a?.items) ? a.items : [];
-        const itemsB = Array.isArray(b?.items) ? b.items : [];
-        const itemsC = Array.isArray(c?.items) ? c.items : [];
-
-        body.innerHTML = `
-          ${resetHtml}
-
-          <div class="card" style="padding:12px; margin:0;">
-            <div class="card-title" style="margin-bottom:6px;">Postes fragiles</div>
-            <div class="card-sub" style="margin:0;">Top postes à sécuriser (critiques avec couverture faible).</div>
-            ${renderTablePostes(itemsA)}
-          </div>
-
-          <div class="card" style="padding:12px; margin-top:12px;">
-            <div class="card-title" style="margin-bottom:6px;">Critiques sans porteur</div>
-            <div class="card-sub" style="margin:0;">Compétences critiques requises mais non portées.</div>
-            ${renderTableCompetences(itemsB)}
-          </div>
-
-          <div class="card" style="padding:12px; margin-top:12px;">
-            <div class="card-title" style="margin-bottom:6px;">Porteur unique</div>
-            <div class="card-sub" style="margin:0;">Compétences critiques portées par une seule personne.</div>
-            ${renderTableCompetences(itemsC)}
-          </div>
-        `;
+        if (_matchSelectedPoste) {
+          await showMatchingForPoste(_portalRef, _matchSelectedPoste, id_service, mySeq);
+        }
       } catch (e) {
-        if (mySeq !== _riskDetailReqSeq) return;
-
-        body.innerHTML = `
-          ${resetHtml}
-          <div class="card" style="padding:12px; margin:0;">
-            <div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>
-          </div>
-        `;
+        const host = byId("matchResult");
+        if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>`;
       }
     })();
+
+    return;
   }
+
+  // -----------------------
+  // PREVISIONS
+  // -----------------------
+  if (mode === "previsions") {
+    if (title) title.textContent = "Prévisions";
+
+    const horizon = getPrevHorizon();
+    const item = _prevData ? pickPrevHorizonItem(_prevData, horizon) : null;
+
+    const sorties = item ? item.sorties : (_prevData ? _prevData.sorties_12m : "—");
+    const selectedKpi = (localStorage.getItem("sb_analyse_prev_kpi") || "").trim();
+
+    if (typeof setActivePrevKpi === "function") setActivePrevKpi(selectedKpi || "");
+
+    if (selectedKpi === "sorties") {
+      const horizonLabel = (horizon === 1 ? "1 an" : (horizon + " ans"));
+      if (sub) sub.textContent = `Sorties prévues à moins de ${horizonLabel} (périmètre filtré).`;
+
+      body.innerHTML = `
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="card-title" style="margin-bottom:6px;">
+            Sorties &lt; ${escapeHtml(horizonLabel)}
+          </div>
+
+          <div class="row" style="gap:12px; margin-top:10px; flex-wrap:wrap;">
+            <div class="card" style="padding:12px; margin:0; flex:1; min-width:200px;">
+              <div class="label">Nombre de sorties</div>
+              <div class="value">${escapeHtml(String(sorties ?? "—"))}</div>
+            </div>
+          </div>
+
+          <div class="card" style="padding:12px; margin-top:12px;">
+            <div class="card-title" style="margin-bottom:6px;">Détail</div>
+            <div id="prevSortiesDetailBox" class="card-sub" style="margin:0;">Chargement…</div>
+          </div>
+        </div>
+      `;
+
+      window.__sbPrevSortiesReqId = (window.__sbPrevSortiesReqId || 0) + 1;
+      const reqId = window.__sbPrevSortiesReqId;
+
+      setTimeout(async () => {
+        const box = byId("prevSortiesDetailBox");
+        if (!box) return;
+
+        try {
+          const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+
+          if (!_portalRef) {
+            box.textContent = "Contexte portail indisponible (_portalRef manquant).";
+            return;
+          }
+
+          box.textContent = "Chargement…";
+          const data = await fetchPrevisionsSortiesDetail(_portalRef, horizon, id_service);
+
+          if ((window.__sbPrevSortiesReqId || 0) !== reqId) return;
+
+          const items =
+            (data && Array.isArray(data.items) ? data.items : null) ||
+            (data && Array.isArray(data.effectifs) ? data.effectifs : null) ||
+            [];
+
+          if (!items.length) {
+            box.textContent = "Aucune sortie détectée dans l’horizon sélectionné.";
+            return;
+          }
+
+          const rowsHtml = items.map((it) => {
+            const prenom = (it.prenom_effectif || it.prenom || "").trim();
+            const nom = (it.nom_effectif || it.nom || "").trim();
+            const full = (it.full || `${prenom} ${nom}`.trim() || "—");
+
+            const exitDate = (it.exit_date || it.date_sortie || it.date_sortie_prevue || it.sortie_prevue || "").toString();
+            const exitTxt = exitDate ? escapeHtml(exitDate) : "—";
+
+            const service = (it.nom_service || it.service || "").toString().trim() || "—";
+            const poste = (it.intitule_poste || it.poste || "").toString().trim() || "—";
+
+            const src = (it.source || it.source_sortie || "").toString().trim();
+            const srcTxt = src ? escapeHtml(src) : "";
+
+            return `
+              <tr>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(full)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${exitTxt}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(poste)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(service)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${srcTxt}</td>
+              </tr>
+            `;
+          }).join("");
+
+          box.innerHTML = `
+            <div style="overflow:auto;">
+              <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead>
+                  <tr>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Personne</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Date sortie</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Poste</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Service</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Source</th>
+                  </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+              </table>
+            </div>
+          `;
+        } catch (e) {
+          if ((window.__sbPrevSortiesReqId || 0) !== reqId) return;
+          box.textContent = `Erreur chargement détail sorties: ${e?.message || e}`;
+        }
+      }, 0);
+
+      return;
+    }
+
+    if (sub) sub.textContent = "Cliquez sur un KPI dans la tuile Prévisions pour afficher le détail.";
+    body.innerHTML = `
+      <div class="card" style="padding:12px; margin:0;">
+        <div class="card-title" style="margin-bottom:6px;">Résultats</div>
+        <div class="card-sub" style="margin:0;">Aucune vue sélectionnée.</div>
+      </div>
+    `;
+    return;
+  }
+
+  // -----------------------
+  // RISQUES (API + filtre KPI)
+  // -----------------------
+  const rf = getRiskFilter(); // "", "postes-fragiles", "critiques-sans-porteur", "porteur-unique"
+  if (typeof setActiveRiskKpi === "function") setActiveRiskKpi(rf);
+
+  if (title) title.textContent = "Risques";
+
+  let filterLabel = "Vue globale";
+  let filterSub = "Priorisation des fragilités par criticité et couverture.";
+
+  if (rf === "postes-fragiles") {
+    filterLabel = "Postes fragiles";
+    filterSub = "Postes à sécuriser en priorité (critiques avec couverture faible).";
+  } else if (rf === "critiques-sans-porteur") {
+    filterLabel = "Critiques sans porteur";
+    filterSub = "Compétences critiques requises mais non portées (dans le périmètre).";
+  } else if (rf === "porteur-unique") {
+    filterLabel = "Porteur unique";
+    filterSub = "Compétences critiques portées par une seule personne (dépendance).";
+  }
+
+  if (sub) sub.textContent = filterSub;
+
+  const selSvc = byId("analyseServiceSelect") || byId("anaServiceSelect") || byId("mapServiceSelect");
+  const id_service = (selSvc?.value || "").trim();
+
+  function badge(txt, accent) {
+    const cls = accent ? "sb-badge sb-badge-accent" : "sb-badge";
+    return `<span class="${cls}">${escapeHtml(txt || "—")}</span>`;
+  }
+
+  function renderDomainPill(item) {
+    const lab = (item?.domaine_titre_court || item?.domaine_titre || item?.id_domaine_competence || "—").toString();
+    const col = normalizeColor(item?.domaine_couleur) || "#e5e7eb";
+    return `
+      <span style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; color:#374151; background:#fff;">
+        <span style="display:inline-block; width:10px; height:10px; border-radius:999px; border:1px solid #d1d5db; background:${escapeHtml(col)};"></span>
+        <span title="${escapeHtml(lab)}">${escapeHtml(lab)}</span>
+      </span>
+    `;
+  }
+
+  function renderTablePostes(rows) {
+    const list = Array.isArray(rows) ? rows : [];
+    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
+
+    return `
+      <div class="table-wrap" style="margin-top:10px;">
+        <table class="sb-table" id="tblRiskPostesFragiles">
+          <thead>
+            <tr>
+              <th>Poste</th>
+              <th style="width:200px;">Service</th>
+              <th class="col-center" style="width:160px;">Critiques sans porteur</th>
+              <th class="col-center" style="width:140px;">Porteur unique</th>
+              <th class="col-center" style="width:140px;">Total fragiles</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(r => {
+              const poste = `${(r.codif_poste || "").trim()}${r.codif_poste ? " — " : ""}${(r.intitule_poste || "").trim()}`.trim() || "—";
+              const svc = (r.nom_service || "").trim() || "—";
+
+              const a = Number(r.nb_critiques_sans_porteur || 0);
+              const b = Number(r.nb_critiques_porteur_unique || 0);
+              const c = Number(r.nb_critiques_fragiles || 0);
+
+              return `
+                <tr class="risk-poste-row" data-id_poste="${escapeHtml(r.id_poste || "")}" style="cursor:pointer;">
+                  <td data-focus="poste" style="font-weight:700;">${escapeHtml(poste)}</td>
+                  <td data-focus="poste">${escapeHtml(svc)}</td>
+                  <td class="col-center" data-focus="critiques-sans-porteur" title="Voir les compétences critiques sans porteur">
+                    ${a ? badge(String(a), true) : badge("0", false)}
+                  </td>
+                  <td class="col-center" data-focus="porteur-unique" title="Voir les compétences critiques à porteur unique">
+                    ${b ? badge(String(b), true) : badge("0", false)}
+                  </td>
+                  <td class="col-center" data-focus="total-fragiles" title="Voir la synthèse de couverture du poste">
+                    ${c ? badge(String(c), true) : badge("0", false)}
+                  </td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderTableCompetences(rows) {
+    const list = Array.isArray(rows) ? rows : [];
+    if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
+
+    return `
+      <div class="table-wrap" style="margin-top:10px;">
+        <table class="sb-table" id="tblRiskCompetences">
+          <thead>
+            <tr>
+              <th style="width:240px;">Domaine</th>
+              <th style="width:90px;">Code</th>
+              <th>Compétence</th>
+              <th class="col-center" style="width:130px;">Postes impactés</th>
+              <th class="col-center" style="width:120px;">Criticité</th>
+              <th class="col-center" style="width:110px;">Porteurs</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(r => {
+              const code = (r.code || "—").toString().trim();
+              const intit = (r.intitule || "—").toString();
+
+              const idComp = (r.id_competence || r.id_comp || r.id_competence_skillboard || r.id_competence_pk || "").toString().trim();
+              const compKey = (idComp || code || "").trim();
+
+              const nbPostes = Number(r.nb_postes_impactes || 0);
+              const nbPorteurs = Number(r.nb_porteurs || 0);
+              const crit = Number(r.max_criticite || 0);
+
+              return `
+                <tr class="risk-comp-row"
+                    data-comp-key="${escapeHtml(compKey)}"
+                    data-code="${escapeHtml(code)}"
+                    data-id_comp="${escapeHtml(idComp)}"
+                    style="cursor:pointer;"
+                    title="Ouvrir le détail de la compétence">
+                  <td>${renderDomainPill(r)}</td>
+                  <td style="font-weight:700; white-space:nowrap;">${escapeHtml(code || "—")}</td>
+                  <td>${escapeHtml(intit)}</td>
+                  <td class="col-center">${nbPostes ? badge(String(nbPostes), true) : badge("0", false)}</td>
+                  <td class="col-center">${crit ? badge(String(crit), true) : badge("—", false)}</td>
+                  <td class="col-center">${nbPorteurs ? badge(String(nbPorteurs), true) : badge("0", false)}</td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  const resetHtml = rf
+    ? `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          ${badge(filterLabel, true)}
+          ${badge("Criticité min: " + CRITICITE_MIN, false)}
+        </div>
+        <button type="button" class="btn-secondary" id="btnRiskFilterReset" style="margin-left:0;">
+          Tout afficher
+        </button>
+      </div>
+    `
+    : `
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+        ${badge("Vue globale", true)}
+        ${badge("Criticité min: " + CRITICITE_MIN, false)}
+      </div>
+    `;
+
+  body.innerHTML = `
+    ${resetHtml}
+    <div class="card" style="padding:12px; margin:0;">
+      <div class="card-sub" style="margin:0;">Chargement…</div>
+    </div>
+  `;
+
+  const btnReset = byId("btnRiskFilterReset");
+  if (btnReset) {
+    btnReset.addEventListener("click", () => {
+      setRiskFilter("");
+      renderDetail("risques");
+    });
+  }
+
+  if (!_portalRef) {
+    body.innerHTML = `
+      ${resetHtml}
+      <div class="card" style="padding:12px; margin:0;">
+        <div class="card-sub" style="margin:0;">Contexte portail indisponible.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const mySeq = ++_riskDetailReqSeq;
+
+  (async () => {
+    try {
+      if (rf) {
+        const data = await fetchRisquesDetail(_portalRef, rf, id_service, 120);
+        if (mySeq !== _riskDetailReqSeq) return;
+
+        const items = Array.isArray(data?.items) ? data.items : [];
+
+        const content = `
+          <div class="card" style="padding:12px; margin:0;">
+            <div class="card-title" style="margin-bottom:6px;">${escapeHtml(filterLabel)}</div>
+            <div class="card-sub" style="margin:0;">${escapeHtml(filterSub)}</div>
+            ${rf === "postes-fragiles" ? renderTablePostes(items) : renderTableCompetences(items)}
+          </div>
+        `;
+
+        body.innerHTML = `${resetHtml}${content}`;
+
+        const btnReset2 = byId("btnRiskFilterReset");
+        if (btnReset2) {
+          btnReset2.addEventListener("click", () => {
+            setRiskFilter("");
+            renderDetail("risques");
+          });
+        }
+        return;
+      }
+
+      const [a, b, c] = await Promise.all([
+        fetchRisquesDetail(_portalRef, "postes-fragiles", id_service, 20),
+        fetchRisquesDetail(_portalRef, "critiques-sans-porteur", id_service, 20),
+        fetchRisquesDetail(_portalRef, "porteur-unique", id_service, 20),
+      ]);
+
+      if (mySeq !== _riskDetailReqSeq) return;
+
+      const itemsA = Array.isArray(a?.items) ? a.items : [];
+      const itemsB = Array.isArray(b?.items) ? b.items : [];
+      const itemsC = Array.isArray(c?.items) ? c.items : [];
+
+      body.innerHTML = `
+        ${resetHtml}
+
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="card-title" style="margin-bottom:6px;">Postes fragiles</div>
+          <div class="card-sub" style="margin:0;">Top postes à sécuriser (critiques avec couverture faible).</div>
+          ${renderTablePostes(itemsA)}
+        </div>
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <div class="card-title" style="margin-bottom:6px;">Critiques sans porteur</div>
+          <div class="card-sub" style="margin:0;">Compétences critiques requises mais non portées.</div>
+          ${renderTableCompetences(itemsB)}
+        </div>
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <div class="card-title" style="margin-bottom:6px;">Porteur unique</div>
+          <div class="card-sub" style="margin:0;">Compétences critiques portées par une seule personne.</div>
+          ${renderTableCompetences(itemsC)}
+        </div>
+      `;
+    } catch (e) {
+      if (mySeq !== _riskDetailReqSeq) return;
+
+      body.innerHTML = `
+        ${resetHtml}
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>
+        </div>
+      `;
+    }
+  })();
+}
+
 
 
 
