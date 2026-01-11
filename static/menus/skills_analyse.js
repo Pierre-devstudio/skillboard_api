@@ -2328,28 +2328,32 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
                 const selService = byId("analyseServiceSelect");
                 const id_service = (selService?.value || "").trim();
 
-                // récup id_contact + base api avec fallback (comme d’hab)
-                const portalEl =
-                  document.querySelector("[data-id_contact]") ||
-                  byId("skillsPortalAnalyse") ||
-                  byId("skillsPortal") ||
-                  document.body;
+            // récup id_contact + base api (tolérant: data-id_contact OU data-id-contact)
+            const portalEl =
+              _portalRef ||
+              document.querySelector("[data-id_contact],[data-id-contact]") ||
+              byId("skillsPortalAnalyse") ||
+              byId("skillsPortal") ||
+              document.body;
 
-                const id_contact = (
-                  portalEl?.getAttribute("data-id_contact") ||
-                  portalEl?.dataset?.id_contact ||
-                  portalEl?.dataset?.idContact ||
-                  ""
-                ).trim();
+            const id_contact = (
+              portalEl?.getAttribute("data-id_contact") ||
+              portalEl?.getAttribute("data-id-contact") ||
+              portalEl?.dataset?.id_contact ||
+              portalEl?.dataset?.idContact ||
+              ""
+            ).trim();
 
-                const apiBaseRaw = (
-                  portalEl?.getAttribute("data-api-base") ||
-                  window.API_BASE ||
-                  window.SKILLS_API_BASE ||
-                  ""
-                ).trim();
+            const apiBaseRaw = (
+              portalEl?.getAttribute("data-api-base") ||
+              portalEl?.dataset?.apiBase ||
+              window.API_BASE ||
+              window.SKILLS_API_BASE ||
+              ""
+            ).trim();
 
-                const apiBase = apiBaseRaw.replace(/\/$/, "");
+            const apiBase = apiBaseRaw.replace(/\/$/, "");
+
 
                 if (!id_contact) {
                   box.textContent = "Impossible de charger: id_contact introuvable côté UI.";
