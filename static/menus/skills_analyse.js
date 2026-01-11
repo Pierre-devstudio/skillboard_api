@@ -277,7 +277,17 @@
       byId("tilePrevisions")
     ].filter(Boolean);
 
+    // reset état active des tuiles
     tiles.forEach(t => t.classList.remove("active"));
+
+    // reset visuel de tous les mini-KPI
+    tiles.forEach(t => {
+      const kpis = t.querySelectorAll(".mini-kpi");
+      kpis.forEach(kpi => {
+        kpi.style.borderColor = "#e5e7eb";
+        kpi.style.background = "#ffffff";
+      });
+    });
 
     const map = {
       risques: byId("tileRisques"),
@@ -288,6 +298,7 @@
     const tile = map[mode] || map.risques;
     if (tile) tile.classList.add("active");
   }
+
 
   function getRiskFilter() {
     return (localStorage.getItem(STORE_RISK_FILTER) || "").trim();
