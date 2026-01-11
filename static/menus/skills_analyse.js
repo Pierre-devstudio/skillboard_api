@@ -2228,28 +2228,55 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
         }
 
 
-    // -----------------------
-    // PREVISIONS
-    // -----------------------
-    if (mode === "previsions") {
-      if (title) title.textContent = "Prévisions";
-      if (sub) sub.textContent = "Projection à horizon: impacts départs, tensions, scénarios. V1 en cours de pose.";
-      body.innerHTML = `
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">Ce que vous allez obtenir</div>
-          <div class="card-sub" style="margin:0;">
-            - Liste “à échéance” (postes/compétences qui basculent)<br/>
-            - Comparaison de scénarios (former / recruter / mobilité)<br/>
-            - Décision: plan d’action et pilotage par horizon
-          </div>
-        </div>
-        <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">Résultats (à venir)</div>
-          <div class="card-sub" style="margin:0;">Aucune donnée chargée.</div>
-        </div>
-      `;
-      return;
-    }
+        // -----------------------
+        // PREVISIONS
+        // -----------------------
+        if (mode === "previsions") {
+          if (title) title.textContent = "Prévisions";
+
+          const horizon = getPrevHorizon();
+          const item = _prevData ? pickPrevHorizonItem(_prevData, horizon) : null;
+
+          const sorties = item
+            ? item.sorties
+            : (_prevData ? _prevData.sorties_12m : "—");
+
+          const selectedKpi = (localStorage.getItem("sb_analyse_prev_kpi") || "").trim();
+
+          if (selectedKpi === "sorties") {
+            if (sub) sub.textContent = `Sorties prévues à moins de ${horizon === 1 ? "1 an" : (horizon + " ans")} (périmètre filtré).`;
+
+            body.innerHTML = `
+              <div class="card" style="padding:12px; margin:0;">
+                <div class="card-title" style="margin-bottom:6px;">
+                  Sorties &lt; ${horizon === 1 ? "1 an" : escapeHtml(String(horizon)) + " ans"}
+                </div>
+                <div class="row" style="gap:12px; margin-top:10px; flex-wrap:wrap;">
+                  <div class="card" style="padding:12px; margin:0; flex:1; min-width:200px;">
+                    <div class="label">Nombre de sorties</div>
+                    <div class="value">${escapeHtml(String(sorties ?? "—"))}</div>
+                  </div>
+                </div>
+
+                <div class="card" style="padding:12px; margin-top:12px;">
+                  <div class="card-title" style="margin-bottom:6px;">Détail (à venir)</div>
+                  <div class="card-sub" style="margin:0;">Liste des personnes concernées non branchée.</div>
+                </div>
+              </div>
+            `;
+            return;
+          }
+
+          // Fallback si aucun KPI prévision n’a été cliqué
+          if (sub) sub.textContent = "Cliquez sur un KPI dans la tuile Prévisions pour afficher le détail.";
+          body.innerHTML = `
+            <div class="card" style="padding:12px; margin:0;">
+              <div class="card-title" style="margin-bottom:6px;">Résultats</div>
+              <div class="card-sub" style="margin:0;">Aucune vue sélectionnée.</div>
+            </div>
+          `;
+          return;
+        }
 
     // -----------------------
     // RISQUES (API + filtre KPI)
@@ -2686,6 +2713,36 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
         });
       });
     }
+
+    // KPI Prévisions cliquable => ouvre la vue "sorties"
+    const tilePrevisions = byId("tilePrevisions");
+    if (tilePrevisions) {
+      const prevKpis = tilePrevisions.querySelectorAll(".mini-kpi[data-prev-kpi]");
+
+      function openPrevKpi(el, ev) {
+        const key = (el?.getAttribute("data-prev-kpi") || "").trim();
+        if (!key) return;
+
+        if (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+        }
+
+        // Pour l'instant: on bascule juste en mode Prévisions
+        // (on branchera l'affichage du bas juste après)
+        setMode("previsions");
+      }
+
+      prevKpis.forEach((el) => {
+        el.addEventListener("click", (ev) => openPrevKpi(el, ev));
+        el.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter" || ev.key === " ") {
+            openPrevKpi(el, ev);
+          }
+        });
+      });
+    }
+
 
 
     if (selService) {
