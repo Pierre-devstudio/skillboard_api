@@ -295,9 +295,30 @@
       previsions: byId("tilePrevisions")
     };
 
-    const tile = map[mode] || map.risques;
+    const finalMode = (mode || "risques").toString().trim().toLowerCase();
+    const tile = map[finalMode] || map.risques;
     if (tile) tile.classList.add("active");
+
+    // Ré-appliquer les KPI actifs uniquement pour la tuile active
+    if (finalMode === "risques") {
+      setActiveRiskKpi(getRiskFilter());
+      setActiveMatchKpi(""); // reset
+      setActivePrevKpi("");  // reset
+    } else if (finalMode === "matching") {
+      setActiveRiskKpi(""); // reset
+      setActiveMatchKpi(getMatchView());
+      setActivePrevKpi(""); // reset
+    } else if (finalMode === "previsions") {
+      setActiveRiskKpi(""); // reset
+      setActiveMatchKpi(""); // reset
+      setActivePrevKpi((localStorage.getItem("sb_analyse_prev_kpi") || "").trim());
+    } else {
+      setActiveRiskKpi("");
+      setActiveMatchKpi("");
+      setActivePrevKpi("");
+    }
   }
+
 
 
   function getRiskFilter() {
@@ -346,10 +367,13 @@
     const tile = byId("tileMatching");
     if (!tile) return;
 
+    // si la tuile n'est pas active => aucun KPI ne doit paraître actif
+    const tileIsActive = tile.classList.contains("active");
+
     const items = tile.querySelectorAll(".mini-kpi[data-match-view]");
     items.forEach((el) => {
       const k = (el.getAttribute("data-match-view") || "").trim().toLowerCase();
-      const isActive = !!view && k === view;
+      const isActive = tileIsActive && !!view && k === view;
 
       el.style.borderColor = isActive
         ? "color-mix(in srgb, var(--reading-accent) 55%, #d1d5db)"
@@ -360,6 +384,30 @@
         : "#ffffff";
     });
   }
+
+  function setActivePrevKpi(key) {
+    const tile = byId("tilePrevisions");
+    if (!tile) return;
+
+    // si la tuile n'est pas active => aucun KPI ne doit paraître actif
+    const tileIsActive = tile.classList.contains("active");
+
+    const items = tile.querySelectorAll(".mini-kpi[data-prev-kpi]");
+    items.forEach((el) => {
+      const k = (el.getAttribute("data-prev-kpi") || "").trim().toLowerCase();
+      const isActive = tileIsActive && !!key && k === String(key).trim().toLowerCase();
+
+      el.style.borderColor = isActive
+        ? "color-mix(in srgb, var(--reading-accent) 55%, #d1d5db)"
+        : "#e5e7eb";
+
+      el.style.background = isActive
+        ? "color-mix(in srgb, var(--reading-accent) 6%, #ffffff)"
+        : "#ffffff";
+    });
+  }
+
+
 
   const CRITICITE_MIN = 3;
   const _riskDetailCache = new Map();
@@ -2714,7 +2762,7 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
       });
     }
 
-    // KPI Prévisions cliquable => ouvre la vue "sorties"
+    // KPI Prévisions cliquables => sélection + bascule mode Prévisions
     const tilePrevisions = byId("tilePrevisions");
     if (tilePrevisions) {
       const prevKpis = tilePrevisions.querySelectorAll(".mini-kpi[data-prev-kpi]");
@@ -2728,8 +2776,13 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
           ev.stopPropagation();
         }
 
-        // Pour l'instant: on bascule juste en mode Prévisions
-        // (on branchera l'affichage du bas juste après)
+        // 1) mémorise la sélection
+        localStorage.setItem("sb_analyse_prev_kpi", key);
+
+        // 2) met à jour le visuel (utile même si tu es déjà en prévisions)
+        setActivePrevKpi(key);
+
+        // 3) bascule en mode Prévisions (et rend le bas)
         setMode("previsions");
       }
 
@@ -2742,6 +2795,7 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
         });
       });
     }
+
 
 
 
