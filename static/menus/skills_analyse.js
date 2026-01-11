@@ -2670,6 +2670,10 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
         if (_prevData) {
           applyPrevisionsKpis(_prevData);
         }
+        const curMode = (localStorage.getItem(STORE_MODE) || "").trim();
+        if (curMode === "previsions") {
+          renderDetail("previsions");
+        }
       });
     }
 
