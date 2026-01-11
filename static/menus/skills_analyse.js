@@ -2292,13 +2292,16 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
           const selectedKpi = (localStorage.getItem("sb_analyse_prev_kpi") || "").trim();
 
           if (selectedKpi === "sorties") {
-            if (sub) sub.textContent = `Sorties prévues à moins de ${horizon === 1 ? "1 an" : (horizon + " ans")} (périmètre filtré).`;
+            const horizonLabel = (horizon === 1 ? "1 an" : (horizon + " ans"));
+
+            if (sub) sub.textContent = `Sorties prévues à moins de ${horizonLabel} (périmètre filtré).`;
 
             body.innerHTML = `
               <div class="card" style="padding:12px; margin:0;">
                 <div class="card-title" style="margin-bottom:6px;">
-                  Sorties &lt; ${horizon === 1 ? "1 an" : escapeHtml(String(horizon)) + " ans"}
+                  Sorties &lt; ${escapeHtml(horizonLabel)}
                 </div>
+
                 <div class="row" style="gap:12px; margin-top:10px; flex-wrap:wrap;">
                   <div class="card" style="padding:12px; margin:0; flex:1; min-width:200px;">
                     <div class="label">Nombre de sorties</div>
@@ -2307,11 +2310,128 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
                 </div>
 
                 <div class="card" style="padding:12px; margin-top:12px;">
-                  <div class="card-title" style="margin-bottom:6px;">Détail (à venir)</div>
-                  <div class="card-sub" style="margin:0;">Liste des personnes concernées non branchée.</div>
+                  <div class="card-title" style="margin-bottom:6px;">Détail</div>
+                  <div id="prevSortiesDetailBox" class="card-sub" style="margin:0;">Chargement…</div>
                 </div>
               </div>
             `;
+
+            // Chargement asynchrone du détail (personnes qui sortent < horizon)
+            window.__sbPrevSortiesReqId = (window.__sbPrevSortiesReqId || 0) + 1;
+            const reqId = window.__sbPrevSortiesReqId;
+
+            setTimeout(async () => {
+              const box = byId("prevSortiesDetailBox");
+              if (!box) return;
+
+              try {
+                const selService = byId("analyseServiceSelect");
+                const id_service = (selService?.value || "").trim();
+
+                // récup id_contact + base api avec fallback (comme d’hab)
+                const portalEl =
+                  document.querySelector("[data-id_contact]") ||
+                  byId("skillsPortalAnalyse") ||
+                  byId("skillsPortal") ||
+                  document.body;
+
+                const id_contact = (
+                  portalEl?.getAttribute("data-id_contact") ||
+                  portalEl?.dataset?.id_contact ||
+                  portalEl?.dataset?.idContact ||
+                  ""
+                ).trim();
+
+                const apiBaseRaw = (
+                  portalEl?.getAttribute("data-api-base") ||
+                  window.API_BASE ||
+                  window.SKILLS_API_BASE ||
+                  ""
+                ).trim();
+
+                const apiBase = apiBaseRaw.replace(/\/$/, "");
+
+                if (!id_contact) {
+                  box.textContent = "Impossible de charger: id_contact introuvable côté UI.";
+                  return;
+                }
+
+                const qs = new URLSearchParams();
+                qs.set("horizon_years", String(horizon));
+                if (id_service) qs.set("id_service", id_service);
+
+                const url = `${apiBase}/skills/analyse/previsions/sorties/detail/${encodeURIComponent(id_contact)}?${qs.toString()}`;
+
+                box.textContent = "Chargement…";
+
+                const res = await fetch(url, { headers: { "Accept": "application/json" } });
+                if (!res.ok) {
+                  const txt = await res.text().catch(() => "");
+                  throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
+                }
+
+                const data = await res.json();
+
+                // si une autre requête est partie entre temps (slider), on ignore
+                if ((window.__sbPrevSortiesReqId || 0) !== reqId) return;
+
+                const items =
+                  (data && Array.isArray(data.items) ? data.items : null) ||
+                  (data && Array.isArray(data.effectifs) ? data.effectifs : null) ||
+                  [];
+
+                if (!items.length) {
+                  box.textContent = "Aucune sortie détectée dans l’horizon sélectionné.";
+                  return;
+                }
+
+                const rowsHtml = items.map((it) => {
+                  const prenom = (it.prenom_effectif || it.prenom || "").trim();
+                  const nom = (it.nom_effectif || it.nom || "").trim();
+                  const full = (it.full || `${prenom} ${nom}`.trim() || "—");
+
+                  const exitDate = (it.exit_date || it.date_sortie || it.date_sortie_prevue || it.sortie_prevue || "").toString();
+                  const exitTxt = exitDate ? escapeHtml(exitDate) : "—";
+
+                  const service = (it.nom_service || it.service || "").toString().trim() || "—";
+                  const poste = (it.intitule_poste || it.poste || "").toString().trim() || "—";
+
+                  const src = (it.source || it.source_sortie || "").toString().trim();
+                  const srcTxt = src ? escapeHtml(src) : "";
+
+                  return `
+                    <tr>
+                      <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(full)}</td>
+                      <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${exitTxt}</td>
+                      <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(poste)}</td>
+                      <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(service)}</td>
+                      <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${srcTxt}</td>
+                    </tr>
+                  `;
+                }).join("");
+
+                box.innerHTML = `
+                  <div style="overflow:auto;">
+                    <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                      <thead>
+                        <tr>
+                          <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Personne</th>
+                          <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Date sortie</th>
+                          <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Poste</th>
+                          <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Service</th>
+                          <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Source</th>
+                        </tr>
+                      </thead>
+                      <tbody>${rowsHtml}</tbody>
+                    </table>
+                  </div>
+                `;
+              } catch (e) {
+                if ((window.__sbPrevSortiesReqId || 0) !== reqId) return;
+                box.textContent = `Erreur chargement détail sorties: ${e?.message || e}`;
+              }
+            }, 0);
+
             return;
           }
 
@@ -2325,6 +2445,7 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
           `;
           return;
         }
+
 
     // -----------------------
     // RISQUES (API + filtre KPI)
