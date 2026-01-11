@@ -2329,14 +2329,17 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
                 const id_service = (selService?.value || "").trim();
 
             // récup id_contact + base api (tolérant: data-id_contact OU data-id-contact)
+            const portalCtx = _portalRef || null;
+
             const portalEl =
-              _portalRef ||
               document.querySelector("[data-id_contact],[data-id-contact]") ||
               byId("skillsPortalAnalyse") ||
               byId("skillsPortal") ||
               document.body;
 
-            const id_contact = (
+            const id_contact = String(
+              portalCtx?.id_contact ||
+              portalCtx?.idContact ||
               portalEl?.getAttribute("data-id_contact") ||
               portalEl?.getAttribute("data-id-contact") ||
               portalEl?.dataset?.id_contact ||
@@ -2344,7 +2347,9 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
               ""
             ).trim();
 
-            const apiBaseRaw = (
+            const apiBaseRaw = String(
+              portalCtx?.api_base ||
+              portalCtx?.apiBase ||
               portalEl?.getAttribute("data-api-base") ||
               portalEl?.dataset?.apiBase ||
               window.API_BASE ||
@@ -2353,6 +2358,7 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
             ).trim();
 
             const apiBase = apiBaseRaw.replace(/\/$/, "");
+
 
 
                 if (!id_contact) {
