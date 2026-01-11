@@ -1259,7 +1259,7 @@
 
       const isActive = selectedId && idp === selectedId;
       const style = isActive
-        ? `border-color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, #fff);`
+        ? `border-color:var(--reading-accent); background:color-mix(in srgb, var(--reading-accent) 8%, #fff);`
         : `border-color:#e5e7eb; background:#fff;`;
 
       return `
