@@ -768,6 +768,7 @@ class AnalysePrevisionsSortiesDetailResponse(BaseModel):
 # ======================================================
 # Endpoint: Détail Prévisions - Sorties (liste nominative)
 # ======================================================
+
 @router.get(
     "/skills/analyse/previsions/sorties/detail/{id_contact}",
     response_model=AnalysePrevisionsSortiesDetailResponse,
@@ -800,6 +801,7 @@ def get_analyse_previsions_sorties_detail(
 
                         e.date_sortie_prevue,
                         COALESCE(e.havedatefin, FALSE) AS havedatefin,
+                        e.motif_sortie,
 
                         e.retraite_estimee::int AS retraite_annee,
                         COALESCE(EXTRACT(MONTH FROM e.date_entree_entreprise_effectif)::int, 6) AS m_entree,
@@ -832,10 +834,13 @@ def get_analyse_previsions_sorties_detail(
                                 )::date
                             ELSE NULL
                         END AS exit_date,
+
+                        -- Règle UI:
+                        -- - havedatefin = FALSE => "Retraite estimée"
+                        -- - havedatefin = TRUE  => motif_sortie
                         CASE
-                            WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN 'date_sortie_prevue'
-                            WHEN ev.retraite_annee IS NOT NULL THEN 'retraite_estimee'
-                            ELSE NULL
+                            WHEN COALESCE(ev.havedatefin, FALSE) = FALSE THEN 'Retraite estimée'
+                            ELSE NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), '')
                         END AS exit_source
                     FROM effectifs_valid ev
                 )
@@ -888,7 +893,7 @@ def get_analyse_previsions_sorties_detail(
                             id_poste_actuel=r.get("id_poste_actuel"),
                             intitule_poste=(r.get("intitule_poste") or "").strip() or None,
                             exit_date=exit_date,
-                            exit_source=r.get("exit_source"),
+                            exit_source=(r.get("exit_source") or None),
                             days_left=int(r.get("days_left") or 0) if r.get("days_left") is not None else None,
                         )
                     )
@@ -904,6 +909,7 @@ def get_analyse_previsions_sorties_detail(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
 
 
 # ======================================================

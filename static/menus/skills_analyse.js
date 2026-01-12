@@ -2392,8 +2392,8 @@ function renderDetail(mode) {
             const service = (it.nom_service || it.service || "").toString().trim() || "—";
             const poste = (it.intitule_poste || it.poste || "").toString().trim() || "—";
 
-            const src = (it.source || it.source_sortie || "").toString().trim();
-            const srcTxt = src ? escapeHtml(src) : "";
+            const src = (it.exit_source || "").toString().trim();
+            const srcTxt = src ? escapeHtml(src) : "—";
 
             return `
               <tr>
@@ -2415,7 +2415,7 @@ function renderDetail(mode) {
                     <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Date sortie</th>
                     <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Poste</th>
                     <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Service</th>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Source</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Raison de la sortie</th>
                   </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
