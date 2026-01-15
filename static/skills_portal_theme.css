@@ -770,9 +770,9 @@ button[id$="ModalClose"]:active{
   background: var(--accent);
   color:#fff;
 
-  font-weight:900;
-  font-size:12px;
-  letter-spacing:.2px;
+  font-weight:700;
+  font-size:14px;
+  letter-spacing:.4px;
   text-transform:none; /* "Insights" > "INSIGHTS" */
 
   box-shadow:
