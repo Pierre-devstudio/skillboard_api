@@ -741,3 +741,41 @@ button[id$="ModalClose"]:active{
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--reading-accent) 30%, transparent);
 }
+
+/* ============================
+   Sidebar header: badge produit
+   ============================ */
+
+.sidebar-header{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  line-height:1;
+}
+
+.sidebar-header .brand{
+  font-weight:800;
+  letter-spacing:.6px;
+  text-transform:uppercase;
+  color:#ffffff;
+}
+
+.sidebar-header .product-badge{
+  display:inline-flex;
+  align-items:center;
+  height:20px;
+  padding:0 10px;
+  border-radius:999px;
+  font-weight:900;
+  font-size:11px;
+  letter-spacing:.8px;
+  text-transform:uppercase;
+
+  background: var(--accent);
+  color:#ffffff;
+  box-shadow: 0 1px 0 rgba(255,255,255,.08) inset;
+}
+
+.sidebar-header .product-badge:hover{
+  filter: brightness(1.05);
+}
