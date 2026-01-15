@@ -54,6 +54,8 @@
 });
 
   // Placeholders (pour éviter les clics “vides”)      
+  portal.registerMenu({ view: "entretien-performance", placeholderTitle: "Entretien de performance", placeholderSub: "Page à venir." });
+  portal.registerMenu({ view: "catalogue-formation", placeholderTitle: "Votre catalogue de formation", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "actions-programmer", placeholderTitle: "Actions à programmer", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "actions-en-cours", placeholderTitle: "Actions en cours", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "actions-passees", placeholderTitle: "Actions passées", placeholderSub: "Page à venir." });
