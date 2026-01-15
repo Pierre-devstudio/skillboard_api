@@ -754,22 +754,22 @@ button[id$="ModalClose"]:active{
 }
 
 .sidebar-header .brand{
-  font-weight:800;
+  font-weight:700;
   letter-spacing:.6px;
-  text-transform:uppercase;
+  text-transform:none;
   color:#ffffff;
 }
 
 .sidebar-header .product-badge{
   display:inline-flex;
   align-items:center;
-  height:20px;
-  padding:0 10px;
+  height:22px;
+  padding:0 12px;
   border-radius:999px;
-  font-weight:900;
+  font-weight:800;
   font-size:11px;
   letter-spacing:.8px;
-  text-transform:uppercase;
+  text-transform:none;
 
   background: var(--accent);
   color:#ffffff;
