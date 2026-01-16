@@ -915,6 +915,242 @@ def get_analyse_previsions_sorties_detail(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
+# ======================================================
+# Models: Prevision- critiques impactees
+# ======================================================
+class AnalysePrevisionCritiqueImpacteeItem(BaseModel):
+    id_comp: str
+    code: Optional[str] = None
+    intitule: Optional[str] = None
+
+    id_domaine_competence: Optional[str] = None
+    domaine_titre_court: Optional[str] = None
+    domaine_couleur: Optional[str] = None
+
+    nb_postes_impactes: int = 0
+    max_criticite: int = 0
+
+    nb_porteurs_now: int = 0
+    nb_porteurs_sortants: int = 0
+    last_exit_date: Optional[str] = None  # date du "dernier porteur" (max exit_date)
+
+
+class AnalysePrevisionsCritiquesImpacteesDetailResponse(BaseModel):
+    scope: ServiceScope
+    horizon_years: int
+    criticite_min: int
+    updated_at: str
+    items: List[AnalysePrevisionCritiqueImpacteeItem]
+
+# ======================================================
+# Endpoint : Prevision- critiques impactees
+# ======================================================
+@router.get(
+    "/skills/analyse/previsions/critiques/detail/{id_contact}",
+    response_model=AnalysePrevisionsCritiquesImpacteesDetailResponse,
+)
+def get_analyse_previsions_critiques_impactees_detail(
+    id_contact: str,
+    horizon_years: int = Query(default=1, ge=1, le=5),
+    id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=3, ge=0),
+    limit: int = Query(default=200, ge=1, le=2000),
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                contact = _fetch_contact_and_ent(cur, id_contact)
+                id_ent = contact["code_ent"]
+
+                scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
+                cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
+
+                sql = f"""
+                WITH
+                {cte_sql},
+
+                effectifs_valid AS (
+                    SELECT
+                        e.id_effectif,
+                        e.date_sortie_prevue,
+                        COALESCE(e.havedatefin, FALSE) AS havedatefin,
+                        e.retraite_estimee::int AS retraite_annee,
+                        COALESCE(EXTRACT(MONTH FROM e.date_entree_entreprise_effectif)::int, 6) AS m_entree,
+                        COALESCE(EXTRACT(DAY FROM e.date_entree_entreprise_effectif)::int, 15) AS d_entree
+                    FROM public.tbl_effectif_client e
+                    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                    WHERE COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.is_temp, FALSE) = FALSE
+                      AND COALESCE(e.statut_actif, TRUE) = TRUE
+                ),
+
+                effectifs_exit AS (
+                    SELECT
+                        ev.id_effectif,
+                        CASE
+                            WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                            WHEN ev.retraite_annee IS NOT NULL THEN
+                                (
+                                    make_date(ev.retraite_annee, ev.m_entree, 1)
+                                    + (
+                                        (
+                                            LEAST(
+                                                ev.d_entree,
+                                                EXTRACT(
+                                                    DAY
+                                                    FROM (date_trunc('month', make_date(ev.retraite_annee, ev.m_entree, 1)) + interval '1 month - 1 day')
+                                                )::int
+                                            ) - 1
+                                        )::text || ' days'
+                                    )::interval
+                                )::date
+                            ELSE NULL
+                        END AS exit_date
+                    FROM effectifs_valid ev
+                ),
+
+                leaving AS (
+                    SELECT ee.id_effectif, ee.exit_date
+                    FROM effectifs_exit ee
+                    WHERE ee.exit_date IS NOT NULL
+                      AND ee.exit_date >= CURRENT_DATE
+                      AND ee.exit_date < (CURRENT_DATE + (%s || ' years')::interval)
+                ),
+
+                req_all AS (
+                    SELECT DISTINCT
+                        fpc.id_poste,
+                        c.id_comp,
+                        COALESCE(fpc.poids_criticite, 0)::int AS poids_crit
+                    FROM public.tbl_fiche_poste_competence fpc
+                    JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
+                    JOIN public.tbl_competence c
+                      ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                    WHERE c.etat = 'active'
+                      AND COALESCE(c.masque, FALSE) = FALSE
+                ),
+
+                req_crit AS (
+                    SELECT DISTINCT id_poste, id_comp
+                    FROM req_all
+                    WHERE poids_crit >= %s
+                ),
+
+                comps_crit AS (
+                    SELECT DISTINCT id_comp FROM req_crit
+                ),
+
+                postes_par_comp AS (
+                    SELECT
+                        ra.id_comp,
+                        COUNT(DISTINCT ra.id_poste)::int AS nb_postes_impactes,
+                        MAX(ra.poids_crit)::int AS max_criticite
+                    FROM req_all ra
+                    WHERE ra.poids_crit >= %s
+                    GROUP BY ra.id_comp
+                ),
+
+                porteurs_now AS (
+                    SELECT
+                        ec.id_comp,
+                        COUNT(DISTINCT ec.id_effectif_client)::int AS nb_now
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN effectifs_valid ev ON ev.id_effectif = ec.id_effectif_client
+                    WHERE COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND ec.id_comp IN (SELECT id_comp FROM comps_crit)
+                    GROUP BY ec.id_comp
+                ),
+
+                leave_comp AS (
+                    SELECT
+                        ec.id_comp,
+                        COUNT(DISTINCT ec.id_effectif_client)::int AS nb_leave,
+                        MAX(l.exit_date) AS last_exit_date
+                    FROM leaving l
+                    JOIN public.tbl_effectif_client_competence ec
+                      ON ec.id_effectif_client = l.id_effectif
+                    WHERE COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND ec.id_comp IN (SELECT id_comp FROM comps_crit)
+                    GROUP BY ec.id_comp
+                ),
+
+                impacted AS (
+                    SELECT
+                        cc.id_comp,
+                        COALESCE(pn.nb_now, 0)::int AS nb_now,
+                        COALESCE(lc.nb_leave, 0)::int AS nb_leave,
+                        lc.last_exit_date
+                    FROM comps_crit cc
+                    LEFT JOIN porteurs_now pn ON pn.id_comp = cc.id_comp
+                    LEFT JOIN leave_comp lc ON lc.id_comp = cc.id_comp
+                    WHERE COALESCE(pn.nb_now, 0) > 0
+                      AND (COALESCE(pn.nb_now, 0) - COALESCE(lc.nb_leave, 0)) <= 0
+                )
+
+                SELECT
+                    i.id_comp,
+                    c.code,
+                    c.intitule,
+                    c.domaine AS id_domaine_competence,
+                    COALESCE(d.titre_court, d.titre, '') AS domaine_titre_court,
+                    COALESCE(d.couleur, '') AS domaine_couleur,
+                    COALESCE(pp.nb_postes_impactes, 0)::int AS nb_postes_impactes,
+                    COALESCE(pp.max_criticite, 0)::int AS max_criticite,
+                    i.nb_now::int AS nb_porteurs_now,
+                    i.nb_leave::int AS nb_porteurs_sortants,
+                    i.last_exit_date
+                FROM impacted i
+                JOIN public.tbl_competence c ON c.id_comp = i.id_comp
+                LEFT JOIN public.tbl_domaine_competence d
+                  ON d.id_domaine_competence = c.domaine
+                 AND COALESCE(d.masque, FALSE) = FALSE
+                LEFT JOIN postes_par_comp pp ON pp.id_comp = i.id_comp
+                ORDER BY
+                    COALESCE(pp.nb_postes_impactes, 0) DESC,
+                    COALESCE(pp.max_criticite, 0) DESC,
+                    c.code
+                LIMIT %s
+                """
+
+                cur.execute(sql, tuple(cte_params + [horizon_years, criticite_min, criticite_min, limit]))
+                rows = cur.fetchall() or []
+
+                items: List[AnalysePrevisionCritiqueImpacteeItem] = []
+                for r in rows:
+                    last_exit_date = r.get("last_exit_date")
+                    if hasattr(last_exit_date, "isoformat"):
+                        last_exit_date = last_exit_date.isoformat()
+
+                    items.append(
+                        AnalysePrevisionCritiqueImpacteeItem(
+                            id_comp=r.get("id_comp"),
+                            code=(r.get("code") or None),
+                            intitule=(r.get("intitule") or None),
+                            id_domaine_competence=r.get("id_domaine_competence"),
+                            domaine_titre_court=(r.get("domaine_titre_court") or None),
+                            domaine_couleur=(r.get("domaine_couleur") or None),
+                            nb_postes_impactes=int(r.get("nb_postes_impactes") or 0),
+                            max_criticite=int(r.get("max_criticite") or 0),
+                            nb_porteurs_now=int(r.get("nb_porteurs_now") or 0),
+                            nb_porteurs_sortants=int(r.get("nb_porteurs_sortants") or 0),
+                            last_exit_date=last_exit_date,
+                        )
+                    )
+
+                return AnalysePrevisionsCritiquesImpacteesDetailResponse(
+                    scope=scope,
+                    horizon_years=int(horizon_years),
+                    criticite_min=int(criticite_min),
+                    updated_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    items=items,
+                )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
 
 # ======================================================

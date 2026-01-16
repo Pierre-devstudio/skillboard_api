@@ -2461,6 +2461,129 @@ function renderDetail(mode) {
       return;
     }
 
+        if (selectedKpi === "critiques") {
+      const horizonLabel = (horizon === 1 ? "1 an" : (horizon + " ans"));
+      if (sub) sub.textContent = `Compétences critiques impactées à moins de ${horizonLabel} (périmètre filtré).`;
+
+      body.innerHTML = `
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="card-title" style="margin-bottom:6px;">
+            Critiques impactées &lt; ${escapeHtml(horizonLabel)}
+          </div>
+
+          <div class="card" style="padding:12px; margin-top:12px;">
+            <div class="card-title" style="margin-bottom:6px;">Détail</div>
+            <div id="prevCritDetailBox" class="card-sub" style="margin:0;">Chargement…</div>
+          </div>
+        </div>
+      `;
+
+      window.__sbPrevCritReqId = (window.__sbPrevCritReqId || 0) + 1;
+      const reqId = window.__sbPrevCritReqId;
+
+      setTimeout(async () => {
+        const box = byId("prevCritDetailBox");
+        if (!box) return;
+
+        try {
+          const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+
+          if (!_portalRef) {
+            box.textContent = "Contexte portail indisponible (_portalRef manquant).";
+            return;
+          }
+
+          function fmtDateFR(v) {
+            const s = (v || "").toString().trim();
+            if (!s) return "—";
+            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (!m) return escapeHtml(s);
+            return `${m[3]}-${m[2]}-${m[1]}`;
+          }
+
+          function renderDomainPill(it) {
+            const lab = (it?.domaine_titre_court || it?.domaine_titre || it?.id_domaine_competence || "—").toString();
+            const col = normalizeColor(it?.domaine_couleur) || "#e5e7eb";
+            return `
+              <span style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; color:#374151; background:#fff;">
+                <span style="display:inline-block; width:10px; height:10px; border-radius:999px; border:1px solid #d1d5db; background:${escapeHtml(col)};"></span>
+                <span title="${escapeHtml(lab)}">${escapeHtml(lab)}</span>
+              </span>
+            `;
+          }
+
+          box.textContent = "Chargement…";
+
+          // Fonction fetch à créer sur le même modèle que fetchPrevisionsSortiesDetail
+          const data = await fetchPrevisionsCritiquesDetail(_portalRef, horizon, id_service);
+
+          if ((window.__sbPrevCritReqId || 0) !== reqId) return;
+
+          const items = (data && Array.isArray(data.items) ? data.items : []) || [];
+
+          if (!items.length) {
+            box.textContent = "Aucune compétence critique impactée dans l’horizon sélectionné.";
+            return;
+          }
+
+          const rowsHtml = items.map((it) => {
+            const idComp = (it.id_comp || it.id_competence || "").toString().trim();
+            const code = (it.code || "—").toString().trim();
+            const intit = (it.intitule || "—").toString();
+
+            const nbPostes = Number(it.nb_postes_impactes || 0);
+            const crit = Number(it.max_criticite || 0);
+            const now = Number(it.nb_porteurs_now || 0);
+            const sortants = Number(it.nb_porteurs_sortants || 0);
+
+            const lastExit = (it.last_exit_date || it.exit_date || "").toString();
+            const lastExitTxt = fmtDateFR(lastExit);
+
+            return `
+              <tr class="prev-crit-row"
+                  data-comp-key="${escapeHtml(idComp || code)}"
+                  style="cursor:pointer;">
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${renderDomainPill(it)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; font-weight:700; white-space:nowrap;">${escapeHtml(code)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(intit)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(nbPostes))}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(crit || "—"))}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(now))}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(sortants))}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${lastExitTxt}</td>
+              </tr>
+            `;
+          }).join("");
+
+          box.innerHTML = `
+            <div style="overflow:auto;">
+              <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead>
+                  <tr>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:220px;">Domaine</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:90px;">Code</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Compétence</th>
+                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:110px;">Postes</th>
+                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:90px;">Crit.</th>
+                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:120px;">Porteurs</th>
+                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:120px;">Sortants</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:120px;">Dernière sortie</th>
+                  </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+              </table>
+            </div>
+          `;
+        } catch (e) {
+          if ((window.__sbPrevCritReqId || 0) !== reqId) return;
+          box.textContent = `Erreur chargement détail critiques: ${e?.message || e}`;
+        }
+      }, 0);
+
+      return;
+    }
+
+
     if (sub) sub.textContent = "Cliquez sur un KPI dans la tuile Prévisions pour afficher le détail.";
     body.innerHTML = `
       <div class="card" style="padding:12px; margin:0;">
