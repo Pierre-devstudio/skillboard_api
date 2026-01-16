@@ -2461,7 +2461,7 @@ function renderDetail(mode) {
       return;
     }
 
-        if (selectedKpi === "critiques") {
+    if (selectedKpi === "critiques") {
       const horizonLabel = (horizon === 1 ? "1 an" : (horizon + " ans"));
       if (sub) sub.textContent = `Compétences critiques impactées à moins de ${horizonLabel} (périmètre filtré).`;
 
@@ -2493,6 +2493,11 @@ function renderDetail(mode) {
             return;
           }
 
+          if (typeof fetchPrevisionsCritiquesDetail !== "function") {
+            box.textContent = "Détail critiques non branché (fetchPrevisionsCritiquesDetail manquante).";
+            return;
+          }
+
           function fmtDateFR(v) {
             const s = (v || "").toString().trim();
             if (!s) return "—";
@@ -2503,7 +2508,7 @@ function renderDetail(mode) {
 
           function renderDomainPill(it) {
             const lab = (it?.domaine_titre_court || it?.domaine_titre || it?.id_domaine_competence || "—").toString();
-            const col = normalizeColor(it?.domaine_couleur) || "#e5e7eb";
+            const col = (typeof normalizeColor === "function" ? normalizeColor(it?.domaine_couleur) : null) || "#e5e7eb";
             return `
               <span style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; color:#374151; background:#fff;">
                 <span style="display:inline-block; width:10px; height:10px; border-radius:999px; border:1px solid #d1d5db; background:${escapeHtml(col)};"></span>
@@ -2513,41 +2518,37 @@ function renderDetail(mode) {
           }
 
           box.textContent = "Chargement…";
-
-          // Fonction fetch à créer sur le même modèle que fetchPrevisionsSortiesDetail
           const data = await fetchPrevisionsCritiquesDetail(_portalRef, horizon, id_service);
 
           if ((window.__sbPrevCritReqId || 0) !== reqId) return;
 
-          const items = (data && Array.isArray(data.items) ? data.items : []) || [];
-
+          const items = Array.isArray(data?.items) ? data.items : [];
           if (!items.length) {
             box.textContent = "Aucune compétence critique impactée dans l’horizon sélectionné.";
             return;
           }
 
           const rowsHtml = items.map((it) => {
-            const idComp = (it.id_comp || it.id_competence || "").toString().trim();
             const code = (it.code || "—").toString().trim();
-            const intit = (it.intitule || "—").toString();
+            const intit = (it.intitule || it.intitule_competence || "—").toString();
 
-            const nbPostes = Number(it.nb_postes_impactes || 0);
-            const crit = Number(it.max_criticite || 0);
-            const now = Number(it.nb_porteurs_now || 0);
-            const sortants = Number(it.nb_porteurs_sortants || 0);
+            const compKey = (it.id_competence || it.id_comp || it.id_competence_skillboard || it.id_competence_pk || code || "").toString().trim();
 
-            const lastExit = (it.last_exit_date || it.exit_date || "").toString();
+            const nbPostes = Number(it.nb_postes_impactes ?? it.nb_postes ?? 0);
+            const crit = Number(it.max_criticite ?? it.criticite ?? 0);
+            const now = Number(it.nb_porteurs_now ?? it.nb_porteurs ?? 0);
+            const sortants = Number(it.nb_porteurs_sortants ?? it.nb_sortants ?? 0);
+
+            const lastExit = (it.last_exit_date || it.derniere_sortie || it.exit_date || "").toString();
             const lastExitTxt = fmtDateFR(lastExit);
 
             return `
-              <tr class="prev-crit-row"
-                  data-comp-key="${escapeHtml(idComp || code)}"
-                  style="cursor:pointer;">
+              <tr class="prev-crit-row" data-comp-key="${escapeHtml(compKey)}" style="cursor:pointer;">
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${renderDomainPill(it)}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb; font-weight:700; white-space:nowrap;">${escapeHtml(code)}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(intit)}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(nbPostes))}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(crit || "—"))}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${crit ? escapeHtml(String(crit)) : "—"}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(now))}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(sortants))}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${lastExitTxt}</td>
@@ -2567,7 +2568,7 @@ function renderDetail(mode) {
                     <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:90px;">Crit.</th>
                     <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:120px;">Porteurs</th>
                     <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:120px;">Sortants</th>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:120px;">Dernière sortie</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:130px;">Dernière sortie</th>
                   </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
@@ -2582,6 +2583,7 @@ function renderDetail(mode) {
 
       return;
     }
+
 
 
     if (sub) sub.textContent = "Cliquez sur un KPI dans la tuile Prévisions pour afficher le détail.";
