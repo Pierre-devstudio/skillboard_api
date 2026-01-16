@@ -665,7 +665,7 @@
     // si tu veux forcer ta criticité min côté UI:
     // qs.set("criticite_min", "3");
 
-    const url = `${apiBase}/skills/analyse/previsions/postes-rouges/detail/${encodeURIComponent(id_contact)}?${qs.toString()}`;
+    const url = `${portalCtx.apiBase}/skills/analyse/previsions/postes-rouges/detail/${encodeURIComponent(portalCtx.id_contact)}?${qs.toString()}`;
 
     const res = await fetch(url, { headers: { "Accept": "application/json" } });
     if (!res.ok) {
