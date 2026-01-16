@@ -1314,7 +1314,7 @@ def get_analyse_previsions_critiques_modal(
                       AND COALESCE(fp.actif, TRUE) = TRUE
                       AND (%s IS NULL OR fp.id_service = %s)
                       AND cp.id_competence = %s
-                      AND COALESCE(cp.criticite,0) >= %s
+                      AND COALESCE(cp.poids_criticite,0) >= %s
                 )
                 SELECT
                   (SELECT COUNT(DISTINCT id_effectif) FROM split) AS nb_now,
