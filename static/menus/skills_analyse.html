@@ -50,138 +50,141 @@
     }
   </style>
 
-  <div class="card">
-    <div class="card-title">Analyse des compétences</div>
-    <div class="card-sub">
-      Exploitez la cartographie: risques, matching interne, prévisions. Objectif: décider (former, bouger, recruter), pas contempler.
-    </div>
+<div class="card">
+  <div class="card-title">Analyse des compétences</div>
+  <div class="card-sub">
+    Exploitez la cartographie: risques, matching interne, prévisions. Objectif: décider (former, bouger, recruter), pas contempler.
   </div>
+</div>
 
-  <div class="sb-split">
-    <!-- Colonne gauche: filtres -->
-    <div class="sb-col">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:6px;">Périmètre</div>
-        <div class="card-sub" style="margin:0;">Le filtre s’applique aux indicateurs et aux listes.</div>
+<div class="sb-split">
+  <!-- Colonne gauche: filtres -->
+  <div class="sb-col">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:6px;">Périmètre</div>
+      <div class="card-sub" style="margin:0;">Le filtre s’applique aux indicateurs et aux listes.</div>
 
-        <div class="row" style="flex-direction:column; gap:12px; margin-top:12px;">
-          <div class="info-item" style="min-width:0;">
-            <div class="label">Service</div>
-            <select id="analyseServiceSelect">
-              <option value="">Tous les services</option>
-            </select>
-          </div>
-
-          <div class="info-item" style="min-width:0;">
-            <button type="button" class="btn-secondary" id="btnAnalyseReset" style="margin-left:0; width:100%;">
-              Réinitialiser
-            </button>
-          </div>
-
-          <div class="info-item" style="min-width:0;">
-            <div class="label">Mode actif</div>
-            <div class="value" id="analyseModeLabel">Risques</div>
-          </div>
-        </div>
-      </div>
-      
-    </div>
-
-    <!-- Colonne droite: tuiles + détail -->
-    <div class="sb-col">
-      <div class="analyse-tiles">
-        <!-- Tuile Risques -->
-        <div class="card analyse-tile active" id="tileRisques" data-mode="risques" role="button" tabindex="0" aria-label="Ouvrir Risques">
-          <div class="card-title" style="margin-bottom:2px;">Risques</div>
-          <div class="tile-sub">Identifier les fragilités: criticité, couverture, dépendance, concentration.</div>
-
-          <div class="mini-kpis">
-            <div class="mini-kpi" data-risk-kpi="postes-fragiles" role="button" tabindex="0" aria-label="Afficher les postes fragiles">
-                <div class="label">Postes fragiles</div>
-                <div class="value" id="kpiRiskPostes">—</div>
-            </div>
-
-            <div class="mini-kpi" data-risk-kpi="critiques-sans-porteur" role="button" tabindex="0" aria-label="Afficher les compétences critiques sans porteur">
-                <div class="label">Critiques sans porteur</div>
-                <div class="value" id="kpiRiskNoOwner">—</div>
-            </div>
-
-            <div class="mini-kpi" data-risk-kpi="porteur-unique" role="button" tabindex="0" aria-label="Afficher les compétences à porteur unique">
-                <div class="label">Porteur unique</div>
-                <div class="value" id="kpiRiskBus1">—</div>
-            </div>
+      <div class="row" style="flex-direction:column; gap:12px; margin-top:12px;">
+        <div class="info-item" style="min-width:0;">
+          <div class="label">Service</div>
+          <select id="analyseServiceSelect">
+            <option value="">Tous les services</option>
+          </select>
         </div>
 
-          <div class="tile-hint">Décision: prioriser transfert de savoir, formation ciblée, sécurisation.</div>
+        <div class="info-item" style="min-width:0;">
+          <button type="button" class="btn-secondary" id="btnAnalyseReset" style="margin-left:0; width:100%;">
+            Réinitialiser
+          </button>
         </div>
 
-        <!-- Tuile Matching -->
-        <div class="card analyse-tile" id="tileMatching" data-mode="matching" role="button" tabindex="0" aria-label="Ouvrir Matching Poste-porteur">
-          <div class="card-title" style="margin-bottom:2px;">Matching poste-porteur</div>
-          <div class="tile-sub">Trouver les meilleurs porteurs internes, maintenant ou à horizon court, avec écarts.</div>
-
-          <div class="mini-kpis">
-            <div class="mini-kpi" data-match-view="titulaire" role="button" tabindex="0" aria-label="Afficher l’adéquation au poste (titulaires)">
-              <div class="label">Adéquation au poste</div>
-              <div class="value">—</div>
-            </div>
-
-            <div class="mini-kpi" data-match-view="candidats" role="button" tabindex="0" aria-label="Afficher les top candidats (hors titulaires)">
-              <div class="label">Top candidat</div>
-              <div class="value">—</div>
-            </div>
-          </div>
-
-
-          <div class="tile-hint">Décision: mobilité, staffing, succession, plan de montée en compétences.</div>
-        </div>
-
-        <!-- Tuile Prévisions -->
-        <div class="card analyse-tile" id="tilePrevisions" data-mode="previsions" role="button" tabindex="0" aria-label="Ouvrir Prévisions">
-          <div class="card-title" style="margin-bottom:2px;">Prévisions</div>
-          <div class="tile-sub">Projeter la couverture: sorties, scénarios, postes qui passent en rouge.</div>
-
-          <div class="mini-kpis">
-            <div class="mini-kpi" data-prev-kpi="sorties" role="button" tabindex="0" aria-label="Afficher sorties">
-              <div class="label">Sorties &lt; <span id="prevHorizonLabel">1 an</span></div>
-              <div class="value" id="kpiPrevSorties12">—</div>
-              <input type="range" id="prevHorizonSlider" min="1" max="5" step="1" value="1" aria-label="Horizon prévision (années)"
-                    style="width:100%; margin-top:8px;">
-            </div>
-            <div class="mini-kpi" data-prev-kpi="critiques" role="button" tabindex="0" aria-label="Afficher critiques impactées">
-              <div class="label">Critiques impactées</div>
-              <div class="value" id="kpiPrevCompImpact">—</div>
-            </div>
-
-            <div class="mini-kpi" data-prev-kpi="postes-rouges" role="button" tabindex="0" aria-label="Afficher postes rouges">
-              <div class="label">Postes rouges</div>
-              <div class="value" id="kpiPrevPostesRed">—</div>
-            </div>
-            
-          <div class="tile-hint">Décision: plan formation/recrutement/mobilité avec horizons.</div>
+        <div class="info-item" style="min-width:0;">
+          <div class="label">Mode actif</div>
+          <div class="value" id="analyseModeLabel">Risques</div>
         </div>
       </div>
     </div>
   </div>
 
-        <!-- Détail -->
-  <div class="card" style="margin-top:12px;">
-    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
-      <div>
-        <div class="card-title" id="analyseDetailTitle" style="margin-bottom:6px;">Risques</div>
-        <div class="card-sub" id="analyseDetailSub" style="margin:0;">Liste priorisée à venir.</div>
-      </div>
-      <div class="card-sub" id="analyseDetailMeta" style="margin:0;">—</div>
-    </div>
+  <!-- Colonne droite: tuiles -->
+  <div class="sb-col">
+    <div class="analyse-tiles">
 
-    <div id="analyseDetailBody" style="margin-top:12px;">
-      <div class="card" style="padding:12px; margin:0;">
-        <div class="card-sub" style="margin:0;">
-          Sélectionnez une tuile pour afficher le contenu. Les listes détaillées arriveront avec l’API dédiée.
+      <!-- Tuile Risques -->
+      <div class="card analyse-tile active" id="tileRisques" data-mode="risques" role="button" tabindex="0" aria-label="Ouvrir Risques">
+        <div class="card-title" style="margin-bottom:2px;">Risques</div>
+        <div class="tile-sub">Identifier les fragilités: criticité, couverture, dépendance, concentration.</div>
+
+        <div class="mini-kpis">
+          <div class="mini-kpi" data-risk-kpi="postes-fragiles" role="button" tabindex="0" aria-label="Afficher les postes fragiles">
+            <div class="label">Postes fragiles</div>
+            <div class="value" id="kpiRiskPostes">—</div>
+          </div>
+
+          <div class="mini-kpi" data-risk-kpi="critiques-sans-porteur" role="button" tabindex="0" aria-label="Afficher les compétences critiques sans porteur">
+            <div class="label">Critiques sans porteur</div>
+            <div class="value" id="kpiRiskNoOwner">—</div>
+          </div>
+
+          <div class="mini-kpi" data-risk-kpi="porteur-unique" role="button" tabindex="0" aria-label="Afficher les compétences à porteur unique">
+            <div class="label">Porteur unique</div>
+            <div class="value" id="kpiRiskBus1">—</div>
+          </div>
         </div>
+
+        <div class="tile-hint">Décision: prioriser transfert de savoir, formation ciblée, sécurisation.</div>
+      </div>
+
+      <!-- Tuile Matching -->
+      <div class="card analyse-tile" id="tileMatching" data-mode="matching" role="button" tabindex="0" aria-label="Ouvrir Matching Poste-porteur">
+        <div class="card-title" style="margin-bottom:2px;">Matching poste-porteur</div>
+        <div class="tile-sub">Trouver les meilleurs porteurs internes, maintenant ou à horizon court, avec écarts.</div>
+
+        <div class="mini-kpis">
+          <div class="mini-kpi" data-match-view="titulaire" role="button" tabindex="0" aria-label="Afficher l’adéquation au poste (titulaires)">
+            <div class="label">Adéquation au poste</div>
+            <div class="value">—</div>
+          </div>
+
+          <div class="mini-kpi" data-match-view="candidats" role="button" tabindex="0" aria-label="Afficher les top candidats (hors titulaires)">
+            <div class="label">Top candidat</div>
+            <div class="value">—</div>
+          </div>
+        </div>
+
+        <div class="tile-hint">Décision: mobilité, staffing, succession, plan de montée en compétences.</div>
+      </div>
+
+      <!-- Tuile Prévisions -->
+      <div class="card analyse-tile" id="tilePrevisions" data-mode="previsions" role="button" tabindex="0" aria-label="Ouvrir Prévisions">
+        <div class="card-title" style="margin-bottom:2px;">Prévisions</div>
+        <div class="tile-sub">Projeter la couverture: sorties, scénarios, postes qui passent en rouge.</div>
+
+        <div class="mini-kpis">
+          <div class="mini-kpi" data-prev-kpi="sorties" role="button" tabindex="0" aria-label="Afficher sorties">
+            <div class="label">Sorties &lt; <span id="prevHorizonLabel">1 an</span></div>
+            <div class="value" id="kpiPrevSorties12">—</div>
+            <input type="range" id="prevHorizonSlider" min="1" max="5" step="1" value="1"
+                   aria-label="Horizon prévision (années)" style="width:100%; margin-top:8px;">
+          </div>
+
+          <div class="mini-kpi" data-prev-kpi="critiques" role="button" tabindex="0" aria-label="Afficher critiques impactées">
+            <div class="label">Critiques impactées</div>
+            <div class="value" id="kpiPrevCompImpact">—</div>
+          </div>
+
+          <div class="mini-kpi" data-prev-kpi="postes-rouges" role="button" tabindex="0" aria-label="Afficher postes rouges">
+            <div class="label">Postes rouges</div>
+            <div class="value" id="kpiPrevPostesRed">—</div>
+          </div>
+        </div>
+
+        <div class="tile-hint">Décision: plan formation/recrutement/mobilité avec horizons.</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Détail (pleine largeur) -->
+<div class="card" style="margin-top:12px;">
+  <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+    <div>
+      <div class="card-title" id="analyseDetailTitle" style="margin-bottom:6px;">Risques</div>
+      <div class="card-sub" id="analyseDetailSub" style="margin:0;">Liste priorisée à venir.</div>
+    </div>
+    <div class="card-sub" id="analyseDetailMeta" style="margin:0;">—</div>
+  </div>
+
+  <div id="analyseDetailBody" style="margin-top:12px;">
+    <div class="card" style="padding:12px; margin:0;">
+      <div class="card-sub" style="margin:0;">
+        Sélectionnez une tuile pour afficher le contenu. Les listes détaillées arriveront avec l’API dédiée.
       </div>
     </div>
   </div>
+</div>
+
 
     <!-- Modal détail Poste (Risques) -->
   <div class="modal" id="modalAnalysePoste" aria-hidden="true">

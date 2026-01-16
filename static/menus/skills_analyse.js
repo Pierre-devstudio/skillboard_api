@@ -580,6 +580,34 @@
     return await res.json();
   }
 
+  // Cache simple (optionnel mais propre)
+  const _prevCritDetailCache = new Map();
+
+  async function fetchPrevisionsCritiquesDetail(portal, horizonYears, id_service) {
+    if (!portal) throw new Error("portal manquant");
+    if (!portal.apiBase || !portal.contactId) throw new Error("portal.apiBase / portal.contactId manquant");
+
+    const h = Math.max(1, Math.min(5, Number(horizonYears) || 1));
+    const svc = (id_service || "").trim();
+
+    const cacheKey = `${portal.contactId}|${h}|${svc}`;
+    if (_prevCritDetailCache.has(cacheKey)) return _prevCritDetailCache.get(cacheKey);
+
+    const qs = new URLSearchParams();
+    qs.set("horizon_years", String(h));
+    if (svc) qs.set("id_service", svc);
+    qs.set("limit", "2000");
+
+    const url =
+      `${portal.apiBase}/skills/analyse/previsions/critiques/detail/` +
+      `${encodeURIComponent(portal.contactId)}?${qs.toString()}`;
+
+    const data = await portal.apiJson(url);
+    _prevCritDetailCache.set(cacheKey, data);
+    return data;
+  }
+
+
   function ensureMatchPersonModal() {
     let modal = byId("modalMatchPerson");
     if (modal) return modal;
