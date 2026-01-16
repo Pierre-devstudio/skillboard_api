@@ -655,30 +655,10 @@
   }
 
   async function fetchPrevisionsPostesRougesDetail(portal, horizonYears, id_service) {
-    const portalCtx = portal || _portalref;
-    const id_contact = String(
-      portalCtx?.id_contact ||
-      portalCtx?.idContact ||
-      portalCtx?.getAttribute?.("data-id_contact") ||
-      portalCtx?.getAttribute?.("data-id-contact") ||
-      portalCtx?.dataset?.id_contact ||
-      portalCtx?.dataset?.idContact ||
-      ""
-    ).trim();
-
-    const apiBaseRaw = String(
-      portalCtx?.api_base ||
-      portalCtx?.apiBase ||
-      window.API_BASE ||
-      window.SKILLS_API_BASE ||
-      ""
-    ).trim();
-
-    const apiBase = apiBaseRaw.replace(/\/$/, "");
-
-    if (!apiBase) throw new Error("API base introuvable.");
-    if (!id_contact) throw new Error("id_contact introuvable.");
-
+    const portalCtx = getPortalContext(portal);
+    if (!portalCtx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!portalCtx.apiBase) throw new Error("apiBase introuvable côté UI.");
+    
     const qs = new URLSearchParams();
     qs.set("horizon_years", String(horizonYears));
     if (id_service) qs.set("id_service", String(id_service));
