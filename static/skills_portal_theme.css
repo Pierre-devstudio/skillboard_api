@@ -784,3 +784,84 @@ button[id$="ModalClose"]:active{
 .sidebar-header .product-badge:hover{
   filter: brightness(1.05);
 }
+
+/* ======================================================
+   Analyse compétences — Modal "Critiques impactées" (UI)
+   - Tables lisibles + lignes cliquables
+   - Cartes KPI compactes dans le modal
+   ====================================================== */
+
+#view-analyse-competences .sb-modal-kpis{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  margin-top:10px;
+}
+
+#view-analyse-competences .sb-metric{
+  flex:1 1 220px;
+  min-width:220px;
+  padding:12px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  background:#ffffff;
+}
+
+#view-analyse-competences .sb-metric .label{
+  font-size:12px;
+  color:#6b7280;
+  font-weight:600;
+}
+
+#view-analyse-competences .sb-metric .value{
+  margin-top:4px;
+  font-size:18px;
+  font-weight:800;
+  color:#111827;
+}
+
+/* Tables (analyse) : même niveau de lisibilité que les autres vues */
+#view-analyse-competences .sb-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+}
+
+#view-analyse-competences .sb-table thead th{
+  text-align:left;
+  font-weight:700;
+  font-size:13px;
+  color:#111827;
+  padding:12px 14px;
+  border-bottom:1px solid #e5e7eb;
+  white-space:nowrap;
+  background:#fafafa;
+}
+
+#view-analyse-competences .sb-table tbody td{
+  padding:12px 14px;
+  vertical-align:middle;
+  border-bottom:1px solid #f3f4f6;
+  line-height:1.35;
+}
+
+#view-analyse-competences .sb-table tbody tr:nth-child(even){
+  background:#fafafa;
+}
+
+#view-analyse-competences .sb-table tbody tr:hover{
+  background:#f3f4f6;
+}
+
+#view-analyse-competences .sb-table .col-center{
+  text-align:center !important;
+}
+
+/* Lignes cliquables (modal critiques) */
+#view-analyse-competences .sb-row-click{
+  cursor:pointer;
+}
+
+#view-analyse-competences .sb-row-click:hover{
+  background: color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
+}

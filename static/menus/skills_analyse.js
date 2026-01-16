@@ -2934,309 +2934,692 @@ function renderDetail(mode) {
     renderDetail(finalMode);
   }
 
-  function bindOnce(portal) {
-    if (_bound) return;
-    _bound = true;
+  // =====================================================
+  // MODAL - Prévisions / Critiques impactées (détail)
+  // HTML IDs attendus : modalAnalysePrevCrit, btnCloseAnalysePrevCritModal, btnAnalysePrevCritModalClose, etc.
+  // =====================================================
 
-    const selService = byId("analyseServiceSelect");
-    const btnReset = byId("btnAnalyseReset");
+  function openAnalysePrevCritModal() {
+    const m = byId("modalAnalysePrevCrit");
+    if (!m) return;
+    m.classList.add("show");
+    m.setAttribute("aria-hidden", "false");
+  }
 
-    // Slider Prévisions (1..5 ans) - met à jour les KPI de la tuile en direct
-    const prevSlider = byId("prevHorizonSlider");
-    if (prevSlider) {
-      const initH = getPrevHorizon();
-      prevSlider.value = String(initH);
-      setPrevHorizonLabel(initH);
+  function closeAnalysePrevCritModal() {
+    const m = byId("modalAnalysePrevCrit");
+    if (!m) return;
+    m.classList.remove("show");
+    m.setAttribute("aria-hidden", "true");
+  }
 
-      // Empêche de déclencher le click sur la tuile quand on manipule le slider
-      const stop = (ev) => { ev.stopPropagation(); };
-      ["pointerdown", "mousedown", "click", "keydown"].forEach(evt => prevSlider.addEventListener(evt, stop));
+  function setAnalysePrevCritTab(tabKey) {
+    const btnSynth = byId("tabPrevCritSynthese");
+    const btnRest = byId("tabPrevCritRestants");
+    const btnOut = byId("tabPrevCritSortants");
+    const btnPostes = byId("tabPrevCritPostes");
 
-      prevSlider.addEventListener("input", (ev) => {
-        ev.stopPropagation();
-        const n = setPrevHorizon(prevSlider.value);
-        prevSlider.value = String(n);
-        setPrevHorizonLabel(n);
+    const paneSynth = byId("analysePrevCritTabSynthese");
+    const paneRest = byId("analysePrevCritTabRestants");
+    const paneOut = byId("analysePrevCritTabSortants");
+    const panePostes = byId("analysePrevCritTabPostes");
 
-        if (_prevData) {
-          applyPrevisionsKpis(_prevData);
+    const map = {
+      synthese: { btn: btnSynth, pane: paneSynth },
+      restants: { btn: btnRest, pane: paneRest },
+      sortants: { btn: btnOut, pane: paneOut },
+      postes: { btn: btnPostes, pane: panePostes },
+    };
+
+    // reset
+    Object.values(map).forEach(x => {
+      if (x.btn) x.btn.classList.remove("is-active");
+      if (x.pane) x.pane.style.display = "none";
+    });
+
+    const cur = map[tabKey] || map.synthese;
+    if (cur.btn) cur.btn.classList.add("is-active");
+    if (cur.pane) cur.pane.style.display = "";
+  }
+
+  function fmtDateFR(v) {
+    const s = (v || "").toString().trim();
+    if (!s) return "—";
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return escapeHtml(s);
+    return `${m[3]}-${m[2]}-${m[1]}`;
+  }
+
+  function renderLevelBar(a, b, c) {
+    const A = Number(a || 0);
+    const B = Number(b || 0);
+    const C = Number(c || 0);
+    const tot = Math.max(0, A + B + C);
+
+    const pct = (x) => (tot ? Math.round((x / tot) * 100) : 0);
+
+    const elA = byId("prevCritLevelBarA");
+    const elB = byId("prevCritLevelBarB");
+    const elC = byId("prevCritLevelBarC");
+    const legend = byId("prevCritLevelBarLegend");
+
+    if (elA) elA.style.width = pct(A) + "%";
+    if (elB) elB.style.width = pct(B) + "%";
+    if (elC) elC.style.width = pct(C) + "%";
+    if (legend) legend.textContent = `A: ${A} • B: ${B} • C: ${C}`;
+  }
+
+  function safeDomainPill(it) {
+    const lab = (it?.domaine_titre_court || it?.domaine_titre || it?.id_domaine_competence || "—").toString();
+    const col = normalizeColor(it?.domaine_couleur) || "#e5e7eb";
+    return `
+      <span style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; color:#374151; background:#fff;">
+        <span style="display:inline-block; width:10px; height:10px; border-radius:999px; border:1px solid #d1d5db; background:${escapeHtml(col)};"></span>
+        <span title="${escapeHtml(lab)}">${escapeHtml(lab)}</span>
+      </span>
+    `;
+  }
+
+  // Endpoint attendu (tu le coderas côté API ensuite) :
+  // GET /skills/analyse/previsions/critiques/modal/{id_contact}?comp_key=...&horizon_years=...&id_service=...
+  async function fetchPrevisionsCritiquesModal(portal, compKey, horizonYears, id_service) {
+    const portalEl =
+      portal ||
+      document.querySelector("[data-id_contact],[data-id-contact]") ||
+      byId("skillsPortalAnalyse") ||
+      byId("skillsPortal") ||
+      document.body;
+
+    const id_contact = String(
+      portal?.id_contact ||
+      portal?.idContact ||
+      portalEl?.getAttribute("data-id_contact") ||
+      portalEl?.getAttribute("data-id-contact") ||
+      portalEl?.dataset?.id_contact ||
+      portalEl?.dataset?.idContact ||
+      ""
+    ).trim();
+
+    const apiBaseRaw = String(
+      portal?.api_base ||
+      portal?.apiBase ||
+      portalEl?.getAttribute("data-api-base") ||
+      portalEl?.dataset?.apiBase ||
+      window.API_BASE ||
+      window.SKILLS_API_BASE ||
+      ""
+    ).trim();
+
+    const apiBase = apiBaseRaw.replace(/\/$/, "");
+    if (!id_contact) throw new Error("id_contact introuvable (UI)");
+    if (!apiBase) throw new Error("apiBase introuvable (UI)");
+
+    const qs = new URLSearchParams();
+    qs.set("comp_key", String(compKey || ""));
+    qs.set("horizon_years", String(horizonYears || 1));
+    if (id_service) qs.set("id_service", String(id_service));
+    qs.set("limit", "500");
+
+    const url = `${apiBase}/skills/analyse/previsions/critiques/modal/${encodeURIComponent(id_contact)}?${qs.toString()}`;
+
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
+    }
+    return await res.json();
+  }
+
+  async function showAnalysePrevCritModal(portal, compKey, id_service) {
+    // ouverture + placeholders
+    openAnalysePrevCritModal();
+    setAnalysePrevCritTab("synthese");
+
+    const horizon = getPrevHorizon();
+    const scope = getScopeLabel();
+
+    const title = byId("analysePrevCritModalTitle");
+    const sub = byId("analysePrevCritModalSub");
+
+    const bSvc = byId("analysePrevCritBadgeService");
+    const bHor = byId("analysePrevCritBadgeHorizon");
+    const bCrit = byId("analysePrevCritBadgeCriticite");
+
+    if (title) title.textContent = "Détail compétence";
+    if (sub) sub.textContent = "Chargement…";
+
+    if (bSvc) bSvc.textContent = `Service : ${scope || "—"}`;
+    if (bHor) bHor.textContent = `Horizon : ${horizon} an${horizon > 1 ? "s" : ""}`;
+    if (bCrit) bCrit.textContent = `Criticité : —`;
+
+    const kNow = byId("prevCritKpiNow");
+    const kOut = byId("prevCritKpiOut");
+    const kRemain = byId("prevCritKpiRemain");
+    const kPostes = byId("prevCritKpiPostes");
+    const kNext = byId("prevCritKpiNextExit");
+
+    if (kNow) kNow.textContent = "—";
+    if (kOut) kOut.textContent = "—";
+    if (kRemain) kRemain.textContent = "—";
+    if (kPostes) kPostes.textContent = "—";
+    if (kNext) kNext.textContent = "—";
+    renderLevelBar(0, 0, 0);
+
+    const paneSynth = byId("analysePrevCritTabSynthese");
+    const paneRest = byId("analysePrevCritTabRestants");
+    const paneOut = byId("analysePrevCritTabSortants");
+    const panePostes = byId("analysePrevCritTabPostes");
+
+    if (paneSynth) paneSynth.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+    if (paneRest) paneRest.innerHTML = "";
+    if (paneOut) paneOut.innerHTML = "";
+    if (panePostes) panePostes.innerHTML = "";
+
+    // anti “réponses qui se croisent”
+    window.__sbPrevCritModalReqId = (window.__sbPrevCritModalReqId || 0) + 1;
+    const reqId = window.__sbPrevCritModalReqId;
+
+    try {
+      const data = await fetchPrevisionsCritiquesModal(portal, compKey, horizon, id_service);
+      if ((window.__sbPrevCritModalReqId || 0) !== reqId) return;
+
+      const comp = data?.competence || data?.comp || data || {};
+      const code = (comp.code || comp.code_competence || "").toString().trim();
+      const intit = (comp.intitule || comp.intitule_competence || comp.libelle || "").toString().trim();
+      const domPill = safeDomainPill(comp);
+
+      const criticite = Number(data?.criticite_max ?? data?.max_criticite ?? comp?.max_criticite ?? 0) || 0;
+      if (bCrit) bCrit.textContent = `Criticité : ${criticite || "—"}`;
+
+      if (title) title.textContent = `${code ? code + " — " : ""}${intit || "Compétence"}`;
+      if (sub) sub.textContent = `Impact prévisionnel (horizon ${horizon} an${horizon > 1 ? "s" : ""})`;
+
+      // KPIs (tolérants sur les noms)
+      const now = Number(data?.kpi?.porteurs_now ?? data?.nb_porteurs_now ?? data?.porteurs_now ?? 0);
+      const out = Number(data?.kpi?.porteurs_sortants ?? data?.nb_porteurs_sortants ?? data?.sortants ?? 0);
+      const remain = Number(data?.kpi?.porteurs_restants ?? data?.nb_porteurs_restants ?? (now - out));
+      const postesImpact = Number(data?.kpi?.nb_postes_impactes ?? data?.nb_postes_impactes ?? 0);
+
+      const nextExit = data?.kpi?.next_exit_date || data?.next_exit_date || "";
+
+      if (kNow) kNow.textContent = String(now || 0);
+      if (kOut) kOut.textContent = String(out || 0);
+      if (kRemain) kRemain.textContent = String(remain || 0);
+      if (kPostes) kPostes.textContent = String(postesImpact || 0);
+      if (kNext) kNext.textContent = nextExit ? fmtDateFR(nextExit) : "—";
+
+      // niveaux A/B/C (restants)
+      const lev = data?.levels || data?.niveaux || {};
+      renderLevelBar(lev.A ?? lev.a, lev.B ?? lev.b, lev.C ?? lev.c);
+
+      // tableaux
+      const restants = Array.isArray(data?.restants) ? data.restants : (Array.isArray(data?.porteurs_restants) ? data.porteurs_restants : []);
+      const sortants = Array.isArray(data?.sortants) ? data.sortants : (Array.isArray(data?.porteurs_sortants) ? data.porteurs_sortants : []);
+      const postes = Array.isArray(data?.postes) ? data.postes : (Array.isArray(data?.postes_impactes) ? data.postes_impactes : []);
+
+      // Synthèse
+      if (paneSynth) {
+        paneSynth.innerHTML = `
+          <div class="card" style="padding:12px; margin:0;">
+            <div class="card-title" style="margin-bottom:6px;">Contexte</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              ${domPill}
+              <span class="sb-badge">Criticité : ${escapeHtml(String(criticite || "—"))}</span>
+              <span class="sb-badge">Postes impactés : ${escapeHtml(String(postesImpact || 0))}</span>
+            </div>
+
+            <div class="card-sub" style="margin-top:10px;">
+              <b>Lecture RH:</b> pertes prévues de porteurs sur une compétence critique, à horizon ${escapeHtml(String(horizon))} an${horizon > 1 ? "s" : ""}.
+              L’objectif est de décider: transfert de savoir, formation ciblée, mobilité, recrutement.
+            </div>
+          </div>
+        `;
+      }
+
+      // Restants
+      if (paneRest) {
+        if (!restants.length) {
+          paneRest.innerHTML = `<div class="card-sub" style="margin:0;">Aucun porteur restant.</div>`;
+        } else {
+          const rows = restants.map(r => {
+            const full = (r.full || `${(r.prenom || r.prenom_effectif || "").trim()} ${(r.nom || r.nom_effectif || "").trim()}`.trim() || "—");
+            const niv = (r.niveau || r.level || r.niv || "—").toString().trim();
+            const poste = (r.intitule_poste || r.poste || "—").toString().trim();
+            const svc = (r.nom_service || r.service || "—").toString().trim();
+            return `
+              <tr>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;"><span style="font-weight:700;">${escapeHtml(full)}</span></td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center; font-weight:800;">${escapeHtml(niv)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(poste)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(svc)}</td>
+              </tr>
+            `;
+          }).join("");
+
+          paneRest.innerHTML = `
+            <div style="overflow:auto;">
+              <table class="sb-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead>
+                  <tr>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Personne</th>
+                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:80px;">Niveau</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Poste</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:200px;">Service</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          `;
         }
-        const curMode = (localStorage.getItem(STORE_MODE) || "").trim();
-        if (curMode === "previsions") {
-          renderDetail("previsions");
+      }
+
+      // Sortants
+      if (paneOut) {
+        if (!sortants.length) {
+          paneOut.innerHTML = `<div class="card-sub" style="margin:0;">Aucun sortant dans l’horizon.</div>`;
+        } else {
+          const rows = sortants.map(r => {
+            const full = (r.full || `${(r.prenom || r.prenom_effectif || "").trim()} ${(r.nom || r.nom_effectif || "").trim()}`.trim() || "—");
+            const exitDate = r.exit_date || r.date_sortie || r.date_sortie_prevue || "";
+            const reason = (r.reason || r.raison || r.exit_source || r.motif_sortie || "").toString().trim() || "—";
+            const poste = (r.intitule_poste || r.poste || "—").toString().trim();
+            const svc = (r.nom_service || r.service || "—").toString().trim();
+
+            return `
+              <tr>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;"><span style="font-weight:700;">${escapeHtml(full)}</span></td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${fmtDateFR(exitDate)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(poste)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(svc)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(reason)}</td>
+              </tr>
+            `;
+          }).join("");
+
+          paneOut.innerHTML = `
+            <div style="overflow:auto;">
+              <table class="sb-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead>
+                  <tr>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Personne</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:120px;">Date sortie</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Poste</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:200px;">Service</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:220px;">Raison</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          `;
         }
-      });
+      }
+
+      // Postes impactés
+      if (panePostes) {
+        if (!postes.length) {
+          panePostes.innerHTML = `<div class="card-sub" style="margin:0;">Aucun poste impacté (données indisponibles).</div>`;
+        } else {
+          const rows = postes.map(r => {
+            const poste = (r.intitule_poste || r.poste || "—").toString().trim();
+            const svc = (r.nom_service || r.service || "—").toString().trim();
+            const niv = (r.niveau_attendu || r.level_expected || r.niveau || "—").toString().trim();
+            const crit = Number(r.criticite || r.max_criticite || 0) || "—";
+            return `
+              <tr>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;"><span style="font-weight:700;">${escapeHtml(poste)}</span></td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(svc)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center; font-weight:800;">${escapeHtml(niv)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(crit))}</td>
+              </tr>
+            `;
+          }).join("");
+
+          panePostes.innerHTML = `
+            <div style="overflow:auto;">
+              <table class="sb-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead>
+                  <tr>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Poste</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:220px;">Service</th>
+                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:120px;">Niv. attendu</th>
+                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:90px;">Crit.</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          `;
+        }
+      }
+
+    } catch (e) {
+      if ((window.__sbPrevCritModalReqId || 0) !== reqId) return;
+      if (sub) sub.textContent = `Erreur: ${e?.message || e}`;
+      if (paneSynth) paneSynth.innerHTML = `<div class="card-sub" style="margin:0;">Impossible de charger le détail.</div>`;
+    }
+  }
+
+
+function bindOnce(portal) {
+  if (_bound) return;
+  _bound = true;
+
+  // garde une ref globale (ton code s’appuie dessus partout)
+  _portalRef = portal || _portalRef;
+
+  const selService = byId("analyseServiceSelect");
+  const btnReset = byId("btnAnalyseReset");
+
+  // Slider Prévisions (1..5 ans) - met à jour les KPI de la tuile en direct
+  const prevSlider = byId("prevHorizonSlider");
+  if (prevSlider) {
+    const initH = getPrevHorizon();
+    prevSlider.value = String(initH);
+    setPrevHorizonLabel(initH);
+
+    // Empêche de déclencher le click sur la tuile quand on manipule le slider
+    const stop = (ev) => { ev.stopPropagation(); };
+    ["pointerdown", "mousedown", "click", "keydown"].forEach(evt => prevSlider.addEventListener(evt, stop));
+
+    prevSlider.addEventListener("input", (ev) => {
+      ev.stopPropagation();
+      const n = setPrevHorizon(prevSlider.value);
+      prevSlider.value = String(n);
+      setPrevHorizonLabel(n);
+
+      if (_prevData) applyPrevisionsKpis(_prevData);
+
+      const curMode = (localStorage.getItem(STORE_MODE) || "").trim();
+      if (curMode === "previsions") renderDetail("previsions");
+    });
+  }
+
+  // --- tuiles
+  const tiles = [
+    byId("tileRisques"),
+    byId("tileMatching"),
+    byId("tilePrevisions"),
+  ].filter(Boolean);
+
+  function onTile(mode) {
+    setMode(mode);
+    refreshSummary(portal);
+  }
+
+  tiles.forEach(t => {
+    t.addEventListener("click", () => onTile((t.getAttribute("data-mode") || "risques").trim()));
+    t.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") {
+        ev.preventDefault();
+        onTile((t.getAttribute("data-mode") || "risques").trim());
+      }
+    });
+  });
+
+  // KPI Risques cliquables => filtre du panneau détail (sans changer de page)
+  const tileRisques = byId("tileRisques");
+  if (tileRisques) {
+    const riskKpis = tileRisques.querySelectorAll(".mini-kpi[data-risk-kpi]");
+
+    function openRiskKpi(el) {
+      const key = (el?.getAttribute("data-risk-kpi") || "").trim();
+      if (!key) return;
+      setMode("risques");
+      setRiskFilter(key);
+      renderDetail("risques");
     }
 
-
-    const tiles = [
-      byId("tileRisques"),
-      byId("tileMatching"),
-      byId("tilePrevisions"),
-    ].filter(Boolean);
-
-    function onTile(mode) {
-      setMode(mode);
-      refreshSummary(portal);
-    }
-
-    tiles.forEach(t => {
-      t.addEventListener("click", () => onTile((t.getAttribute("data-mode") || "risques").trim()));
-      t.addEventListener("keydown", (ev) => {
+    riskKpis.forEach((el) => {
+      el.addEventListener("click", () => openRiskKpi(el));
+      el.addEventListener("keydown", (ev) => {
         if (ev.key === "Enter" || ev.key === " ") {
           ev.preventDefault();
-          onTile((t.getAttribute("data-mode") || "risques").trim());
+          openRiskKpi(el);
         }
       });
     });
-
-    // KPI Risques cliquables => filtre du panneau détail (sans changer de page)
-    const tileRisques = byId("tileRisques");
-    if (tileRisques) {
-      const riskKpis = tileRisques.querySelectorAll(".mini-kpi[data-risk-kpi]");
-
-      function openRiskKpi(el) {
-        const key = (el?.getAttribute("data-risk-kpi") || "").trim();
-        if (!key) return;
-
-        // On force le mode risques (si l’utilisateur était ailleurs)
-        setMode("risques");
-
-        // Filtre + rendu
-        setRiskFilter(key);
-        renderDetail("risques");
-      }
-
-      riskKpis.forEach((el) => {
-        el.addEventListener("click", () => openRiskKpi(el));
-        el.addEventListener("keydown", (ev) => {
-          if (ev.key === "Enter" || ev.key === " ") {
-            ev.preventDefault();
-            openRiskKpi(el);
-          }
-        });
-      });
-    }
-
-    // KPI Matching cliquables => bascule de vue (titulaire / candidats)
-    const tileMatching = byId("tileMatching");
-    if (tileMatching) {
-      const matchKpis = tileMatching.querySelectorAll(".mini-kpi[data-match-view]");
-
-      function openMatchView(el, ev) {
-        const v = (el?.getAttribute("data-match-view") || "").trim();
-        if (v !== "titulaire" && v !== "candidats") return;
-
-        // Empêche le click de remonter sur la tuile (sinon il faut recliquer...)
-        if (ev) {
-          ev.preventDefault();
-          ev.stopPropagation();
-        }
-
-        // 1) on fixe la vue
-        setMatchView(v);
-
-        // 2) si on n'est pas déjà en matching, on bascule (ce qui rend automatiquement)
-        const curMode = (localStorage.getItem(STORE_MODE) || "").trim();
-        if (curMode !== "matching") {
-          setMode("matching");
-          return;
-        }
-
-        // 3) sinon on re-rend uniquement la vue matching
-        renderDetail("matching");
-      }
-
-      matchKpis.forEach((el) => {
-        el.addEventListener("click", (ev) => openMatchView(el, ev));
-        el.addEventListener("keydown", (ev) => {
-          if (ev.key === "Enter" || ev.key === " ") {
-            openMatchView(el, ev);
-          }
-        });
-      });
-    }
-
-    // KPI Prévisions cliquables => sélection + bascule mode Prévisions
-    const tilePrevisions = byId("tilePrevisions");
-    if (tilePrevisions) {
-      const prevKpis = tilePrevisions.querySelectorAll(".mini-kpi[data-prev-kpi]");
-
-      function openPrevKpi(el, ev) {
-        const key = (el?.getAttribute("data-prev-kpi") || "").trim();
-        if (!key) return;
-
-        if (ev) {
-          ev.preventDefault();
-          ev.stopPropagation();
-        }
-
-        // 1) mémorise la sélection
-        localStorage.setItem("sb_analyse_prev_kpi", key);
-
-        // 2) met à jour le visuel (utile même si tu es déjà en prévisions)
-        setActivePrevKpi(key);
-
-        // 3) bascule en mode Prévisions (et rend le bas)
-        setMode("previsions");
-      }
-
-      prevKpis.forEach((el) => {
-        el.addEventListener("click", (ev) => openPrevKpi(el, ev));
-        el.addEventListener("keydown", (ev) => {
-          if (ev.key === "Enter" || ev.key === " ") {
-            openPrevKpi(el, ev);
-          }
-        });
-      });
-    }
-
-
-
-
-    if (selService) {
-      selService.addEventListener("change", () => {
-        refreshSummary(portal);
-        renderDetail(localStorage.getItem(STORE_MODE) || "risques");
-      });
-    }
-
-    if (btnReset) {
-      btnReset.addEventListener("click", () => {
-        if (selService) selService.value = "";
-        localStorage.setItem(STORE_SERVICE, "");
-        refreshSummary(portal);
-        renderDetail(localStorage.getItem(STORE_MODE) || "risques");
-      });
-    }
-
-    // ==============================
-    // Modal Poste (Risques) - wiring
-    // ==============================
-    const modalPoste = byId("modalAnalysePoste");
-    const btnXPoste = byId("btnCloseAnalysePosteModal");
-    const btnClosePoste = byId("btnAnalysePosteModalClose");
-    const tabA = byId("tabAnalysePosteCompetences");
-    const tabB = byId("tabAnalysePosteCouverture");
-
-    if (btnXPoste) btnXPoste.addEventListener("click", () => closeAnalysePosteModal());
-    if (btnClosePoste) btnClosePoste.addEventListener("click", () => closeAnalysePosteModal());
-
-    if (modalPoste) {
-      modalPoste.addEventListener("click", (e) => {
-        if (e.target === modalPoste) closeAnalysePosteModal();
-      });
-    }
-
-        if (tabA) tabA.addEventListener("click", () => setAnalysePosteTab("competences"));
-        if (tabB) tabB.addEventListener("click", () => setAnalysePosteTab("couverture"));
-
-      // ==============================
-      // Click délégué: lignes "Poste fragile" (survit aux rerender)
-      // - utilise data-focus posé sur les <td>
-      // ==============================
-            const analyseBody = byId("analyseDetailBody");
-            if (analyseBody) {
-              analyseBody.addEventListener("click", async (ev) => {
-
-                // ------------------------------
-                // 1) Click sur une ligne POSTE
-                // ------------------------------
-                const trPoste = ev.target.closest("tr.risk-poste-row[data-id_poste]");
-                if (trPoste) {
-                  const id_poste = (trPoste.getAttribute("data-id_poste") || "").trim();
-                  if (!id_poste) return;
-
-                  const id_service = (byId("analyseServiceSelect")?.value || "").trim();
-
-                  let focusKey = "";
-                  const td = ev.target.closest("td[data-focus]");
-                  const focus = (td?.getAttribute("data-focus") || "").trim();
-
-                  if (focus === "critiques-sans-porteur") focusKey = "critiques-sans-porteur";
-                  else if (focus === "porteur-unique") focusKey = "porteur-unique";
-                  else if (focus === "total-fragiles") focusKey = "total-fragiles";
-                  else focusKey = "";
-
-                  await showAnalysePosteDetailModal(portal, id_poste, id_service, focusKey);
-                  return;
-                }
-
-                // ------------------------------
-                // 2) Click sur une ligne COMPETENCE
-                // ------------------------------
-                const trComp = ev.target.closest("tr.risk-comp-row[data-comp-key]");
-                if (trComp) {
-                  const compKey = (trComp.getAttribute("data-comp-key") || "").trim();
-                  if (!compKey || compKey === "—") return;
-
-                  const id_service = (byId("analyseServiceSelect")?.value || "").trim();
-                  await showAnalyseCompetenceDetailModal(portal, compKey, id_service);
-                  return;
-                }
-
-                // ------------------------------
-                // 3) Matching: sélection poste
-                // ------------------------------
-                const btnMatch = ev.target.closest("[data-match-id_poste]");
-                if (btnMatch) {
-                  const id_poste = (btnMatch.getAttribute("data-match-id_poste") || "").trim();
-                  if (!id_poste) return;
-
-                  _matchSelectedPoste = id_poste;
-
-                  // Re-render matching (met à jour surbrillance + résultats)
-                  renderDetail("matching");
-                  return;
-                }
-
-                // ------------------------------
-                // 4) Matching: clic personne (titulaire / candidat)
-                // ------------------------------
-                const trMatchPerson = ev.target.closest("tr.match-person-row[data-match-id_effectif]");
-                if (trMatchPerson) {
-                  const id_eff = (trMatchPerson.getAttribute("data-match-id_effectif") || "").trim();
-                  if (!id_eff) return;
-
-                  if (!_matchSelectedPoste) return;
-
-                  const id_service = (byId("analyseServiceSelect")?.value || "").trim();
-                  await showMatchPersonDetailModal(portal, _matchSelectedPoste, id_eff, id_service);
-                  return;
-                }
-
-                // ------------------------------
-                // 5) Previsions: clic ligne "sorties" -> modal
-                // ------------------------------
-                const trPrev = ev.target.closest("tr.prev-sortie-row[data-id_effectif]");
-                if (trPrev) {
-                  const id_effectif = (trPrev.getAttribute("data-id_effectif") || "").trim();
-                  const id_poste_actuel = (trPrev.getAttribute("data-id_poste_actuel") || "").trim();
-
-                  // On récupère ce qui est affiché (pas besoin de dataset pour le texte)
-                  const tds = trPrev.querySelectorAll("td");
-                  const full = (tds[0]?.innerText || "").trim() || "—";
-                  const date_sortie = (tds[1]?.innerText || "").trim() || "—";
-                  const poste = (tds[2]?.innerText || "").trim() || "—";
-                  const service = (tds[3]?.innerText || "").trim() || "—";
-                  const raison = (tds[4]?.innerText || "").trim() || "—";
-
-                  showPrevSortieModal(portal, {
-                    id_effectif,
-                    id_poste_actuel,
-                    full,
-                    date_sortie,
-                    poste,
-                    service,
-                    raison
-                  });
-
-                  return;
-                }
-              });
-            }
-
   }
+
+  // KPI Matching cliquables => bascule de vue (titulaire / candidats)
+  const tileMatching = byId("tileMatching");
+  if (tileMatching) {
+    const matchKpis = tileMatching.querySelectorAll(".mini-kpi[data-match-view]");
+
+    function openMatchView(el, ev) {
+      const v = (el?.getAttribute("data-match-view") || "").trim();
+      if (v !== "titulaire" && v !== "candidats") return;
+
+      // empêche click sur tuile
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+
+      setMatchView(v);
+
+      const curMode = (localStorage.getItem(STORE_MODE) || "").trim();
+      if (curMode !== "matching") {
+        setMode("matching");
+        return;
+      }
+      renderDetail("matching");
+    }
+
+    matchKpis.forEach((el) => {
+      el.addEventListener("click", (ev) => openMatchView(el, ev));
+      el.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") openMatchView(el, ev);
+      });
+    });
+  }
+
+  // KPI Prévisions cliquables => sélection + bascule mode Prévisions
+  const tilePrevisions = byId("tilePrevisions");
+  if (tilePrevisions) {
+    const prevKpis = tilePrevisions.querySelectorAll(".mini-kpi[data-prev-kpi]");
+
+    function openPrevKpi(el, ev) {
+      const key = (el?.getAttribute("data-prev-kpi") || "").trim();
+      if (!key) return;
+
+      if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+
+      localStorage.setItem("sb_analyse_prev_kpi", key);
+      setActivePrevKpi(key);
+      setMode("previsions");
+    }
+
+    prevKpis.forEach((el) => {
+      el.addEventListener("click", (ev) => openPrevKpi(el, ev));
+      el.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") openPrevKpi(el, ev);
+      });
+    });
+  }
+
+  // Filtres service / reset
+  if (selService) {
+    selService.addEventListener("change", () => {
+      refreshSummary(portal);
+      renderDetail(localStorage.getItem(STORE_MODE) || "risques");
+    });
+  }
+
+  if (btnReset) {
+    btnReset.addEventListener("click", () => {
+      if (selService) selService.value = "";
+      localStorage.setItem(STORE_SERVICE, "");
+      refreshSummary(portal);
+      renderDetail(localStorage.getItem(STORE_MODE) || "risques");
+    });
+  }
+
+  // ==============================
+  // Modal Poste (Risques) - wiring
+  // ==============================
+  const modalPoste = byId("modalAnalysePoste");
+  const btnXPoste = byId("btnCloseAnalysePosteModal");
+  const btnClosePoste = byId("btnAnalysePosteModalClose");
+  const tabA = byId("tabAnalysePosteCompetences");
+  const tabB = byId("tabAnalysePosteCouverture");
+
+  if (btnXPoste) btnXPoste.addEventListener("click", closeAnalysePosteModal);
+  if (btnClosePoste) btnClosePoste.addEventListener("click", closeAnalysePosteModal);
+
+  if (modalPoste) {
+    modalPoste.addEventListener("click", (e) => {
+      if (e.target === modalPoste) closeAnalysePosteModal();
+    });
+  }
+
+  if (tabA) tabA.addEventListener("click", () => setAnalysePosteTab("competences"));
+  if (tabB) tabB.addEventListener("click", () => setAnalysePosteTab("couverture"));
+
+  // ==============================
+  // Modal Prévisions Critiques - wiring
+  // ==============================
+  const modalPrevCrit = byId("modalAnalysePrevCrit");
+  const btnXPrevCrit = byId("btnCloseAnalysePrevCritModal");
+  const btnClosePrevCrit = byId("btnAnalysePrevCritModalClose");
+
+  if (btnXPrevCrit) btnXPrevCrit.addEventListener("click", closeAnalysePrevCritModal);
+  if (btnClosePrevCrit) btnClosePrevCrit.addEventListener("click", closeAnalysePrevCritModal);
+
+  if (modalPrevCrit) {
+    modalPrevCrit.addEventListener("click", (e) => {
+      if (e.target === modalPrevCrit) closeAnalysePrevCritModal();
+    });
+  }
+
+  // Onglets modal PrevCrit
+  const btnSynth = byId("tabPrevCritSynthese");
+  const btnRest = byId("tabPrevCritRestants");
+  const btnOut = byId("tabPrevCritSortants");
+  const btnPostes = byId("tabPrevCritPostes");
+
+  if (btnSynth) btnSynth.addEventListener("click", () => setAnalysePrevCritTab("synthese"));
+  if (btnRest) btnRest.addEventListener("click", () => setAnalysePrevCritTab("restants"));
+  if (btnOut) btnOut.addEventListener("click", () => setAnalysePrevCritTab("sortants"));
+  if (btnPostes) btnPostes.addEventListener("click", () => setAnalysePrevCritTab("postes"));
+
+  // ESC ferme le PrevCrit modal (sans flinguer le reste)
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    const m = byId("modalAnalysePrevCrit");
+    if (m && m.classList.contains("show")) closeAnalysePrevCritModal();
+  });
+
+  // ==============================
+  // Click délégué global (survit aux rerender)
+  // ==============================
+  const analyseBody = byId("analyseDetailBody");
+  if (!analyseBody) return;
+
+  analyseBody.addEventListener("click", async (ev) => {
+    // 0) pas de portail => pas de drilldown
+    const p = portal || _portalRef;
+    if (!p) return;
+
+    const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+
+    // ------------------------------
+    // 1) Click sur POSTE FRAGILE (table risques)
+    // ------------------------------
+    const trPoste = ev.target.closest("tr.risk-poste-row[data-id_poste]");
+    if (trPoste) {
+      const id_poste = (trPoste.getAttribute("data-id_poste") || "").trim();
+      if (!id_poste) return;
+
+      // focus selon la cellule cliquée
+      const td = ev.target.closest("td[data-focus]");
+      let focusKey = (td?.getAttribute("data-focus") || "").trim();
+      if (focusKey === "poste") focusKey = ""; // clic sur libellé poste/service => focus normal
+
+      try {
+        await showAnalysePosteDetailModal(p, id_poste, id_service, focusKey);
+      } catch (e) {
+        // on laisse tes modals gérer leurs erreurs, pas de drama ici
+      }
+      return;
+    }
+
+    // ------------------------------
+    // 2) Click sur COMPETENCE (table risques)
+    // ------------------------------
+    const trComp = ev.target.closest("tr.risk-comp-row[data-comp-key]");
+    if (trComp) {
+      const compKey = (trComp.getAttribute("data-comp-key") || "").trim();
+      if (!compKey) return;
+      showAnalyseCompetenceDetailModal(p, compKey, id_service);
+      return;
+    }
+
+    // ------------------------------
+    // 3) Click sur POSTE (liste matching gauche)
+    // ------------------------------
+    const btnPosteMatch = ev.target.closest("button[data-match-id_poste]");
+    if (btnPosteMatch) {
+      const id_poste = (btnPosteMatch.getAttribute("data-match-id_poste") || "").trim();
+      if (!id_poste) return;
+
+      _matchSelectedPoste = id_poste;
+
+      // met à jour le style actif sans rerender complet
+      document.querySelectorAll("#matchPosteList button[data-match-id_poste]").forEach(b => {
+        const bid = (b.getAttribute("data-match-id_poste") || "").trim();
+        const isActive = bid === _matchSelectedPoste;
+        b.style.borderColor = isActive ? "var(--reading-accent)" : "#e5e7eb";
+        b.style.background = isActive
+          ? "color-mix(in srgb, var(--reading-accent) 8%, #fff)"
+          : "#fff";
+      });
+
+      const mySeq = ++_matchReqSeq;
+      try {
+        await showMatchingForPoste(p, _matchSelectedPoste, id_service, mySeq);
+      } catch (e) {
+        const host = byId("matchResult");
+        if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e?.message || "inconnue")}</div>`;
+      }
+      return;
+    }
+
+    // ------------------------------
+    // 4) Click sur PERSONNE (table matching droite)
+    // ------------------------------
+    const trPerson = ev.target.closest("tr.match-person-row[data-match-id_effectif]");
+    if (trPerson) {
+      const id_effectif = (trPerson.getAttribute("data-match-id_effectif") || "").trim();
+      if (!id_effectif) return;
+      if (!_matchSelectedPoste) return; // pas de poste sélectionné => pas de drilldown cohérent
+      showMatchPersonDetailModal(p, _matchSelectedPoste, id_effectif, id_service);
+      return;
+    }
+
+    // ------------------------------
+    // 5) Click sur SORTIE (prévisions sorties)
+    // ------------------------------
+    const trSortie = ev.target.closest("tr.prev-sortie-row[data-id_effectif]");
+    if (trSortie) {
+      const id_effectif = (trSortie.getAttribute("data-id_effectif") || "").trim();
+      const id_poste_actuel = (trSortie.getAttribute("data-id_poste_actuel") || "").trim();
+      if (!id_effectif || !id_poste_actuel) return;
+      showMatchPersonDetailModal(p, id_poste_actuel, id_effectif, id_service);
+      return;
+    }
+
+    // ------------------------------
+    // 6) Click sur CRITIQUE IMPACTEE (prévisions critiques)
+    // ------------------------------
+    const trPrevCrit = ev.target.closest("tr.prev-crit-row[data-comp-key]");
+    if (trPrevCrit) {
+      const compKey = (trPrevCrit.getAttribute("data-comp-key") || "").trim();
+      if (!compKey) return;
+      showAnalysePrevCritModal(p, compKey, id_service);
+      return;
+    }
+  });
+}
+
 
   let _prevSortieModalEl = null;
 
@@ -3344,6 +3727,303 @@ function renderDetail(mode) {
 
     document.addEventListener("keydown", onKey);
   }
+
+  // ======================================================
+  // Modal Prévisions — "Critiques impactées" (détail)
+  // ======================================================
+  let _prevCritBound = false;
+  let _prevCritReqId = 0;
+
+  function _firstEl(...ids) {
+    for (const id of ids) {
+      const el = byId(id);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  function _openModal(modal) {
+    if (!modal) return;
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function _closeModal(modal) {
+    if (!modal) return;
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function _fmtDateFR(v) {
+    const s = (v || "").toString().trim();
+    if (!s) return "—";
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return escapeHtml(s);
+    return `${m[3]}-${m[2]}-${m[1]}`;
+  }
+
+  function _num(v) {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function _bindPrevCritModalOnce() {
+    if (_prevCritBound) return;
+    _prevCritBound = true;
+
+    const modal = _firstEl("modalPrevCrit", "modalPrevCritDetail", "modalPrevisionsCritiques");
+    if (!modal) return;
+
+    const btnX = _firstEl("btnClosePrevCritModal", "btnClosePrevCritDetailModal");
+    const btnClose = _firstEl("btnPrevCritModalClose", "btnPrevCritDetailModalClose");
+
+    if (btnX) btnX.addEventListener("click", () => _closeModal(modal));
+    if (btnClose) btnClose.addEventListener("click", () => _closeModal(modal));
+
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) _closeModal(modal);
+    });
+
+    const tabs = [
+      { key: "synthese", btn: _firstEl("tabPrevCritSynthese"), pane: _firstEl("prevCritTabSynthese") },
+      { key: "porteurs", btn: _firstEl("tabPrevCritPorteurs"), pane: _firstEl("prevCritTabPorteurs") },
+      { key: "postes", btn: _firstEl("tabPrevCritPostes"), pane: _firstEl("prevCritTabPostes") },
+      { key: "actions", btn: _firstEl("tabPrevCritActions"), pane: _firstEl("prevCritTabActions") },
+    ].filter(x => x.btn && x.pane);
+
+    function setTab(k) {
+      tabs.forEach(t => {
+        t.btn.classList.toggle("is-active", t.key === k);
+        t.pane.style.display = (t.key === k) ? "" : "none";
+      });
+      localStorage.setItem("sb_prev_crit_tab", k);
+    }
+
+    tabs.forEach(t => {
+      t.btn.addEventListener("click", () => setTab(t.key));
+    });
+
+    // tab par défaut
+    const last = (localStorage.getItem("sb_prev_crit_tab") || "synthese").trim();
+    setTab(tabs.some(t => t.key === last) ? last : "synthese");
+  }
+
+  async function _fetchPrevCritDetail(portal, compKey, horizon, id_service) {
+    // contexte API (même logique tolérante que le reste)
+    const portalCtx = portal || _portalRef || null;
+
+    const id_contact = String(
+      portalCtx?.id_contact ||
+      portalCtx?.idContact ||
+      portalCtx?.getAttribute?.("data-id_contact") ||
+      portalCtx?.getAttribute?.("data-id-contact") ||
+      portalCtx?.dataset?.id_contact ||
+      portalCtx?.dataset?.idContact ||
+      ""
+    ).trim();
+
+    const apiBaseRaw = String(
+      portalCtx?.api_base ||
+      portalCtx?.apiBase ||
+      portalCtx?.getAttribute?.("data-api-base") ||
+      portalCtx?.dataset?.apiBase ||
+      window.API_BASE ||
+      window.SKILLS_API_BASE ||
+      ""
+    ).trim();
+
+    const apiBase = apiBaseRaw.replace(/\/$/, "");
+
+    if (!id_contact) throw new Error("id_contact introuvable");
+    if (!apiBase) throw new Error("apiBase introuvable");
+
+    const qs = new URLSearchParams();
+    qs.set("horizon_years", String(horizon));
+    if (id_service) qs.set("id_service", id_service);
+
+    // Endpoint à brancher côté API (prochaine étape backend)
+    const url = `${apiBase}/skills/analyse/previsions/critiques/detail/${encodeURIComponent(id_contact)}/${encodeURIComponent(compKey)}?${qs.toString()}`;
+
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
+    }
+    return await res.json();
+  }
+
+  async function showPrevCritDetailModal(portal, tr, compKey, horizon, id_service) {
+    _bindPrevCritModalOnce();
+
+    const modal = _firstEl("modalPrevCrit", "modalPrevCritDetail", "modalPrevisionsCritiques");
+    const titleEl = _firstEl("prevCritModalTitle", "prevCritDetailModalTitle");
+    const subEl = _firstEl("prevCritModalSub", "prevCritDetailModalSub");
+
+    const paneSynth = _firstEl("prevCritTabSynthese");
+    const panePorteurs = _firstEl("prevCritTabPorteurs");
+    const panePostes = _firstEl("prevCritTabPostes");
+    const paneActions = _firstEl("prevCritTabActions");
+
+    if (!modal || !paneSynth || !panePorteurs || !panePostes || !paneActions) {
+      portal?.showAlert?.("error", "Modal Critiques: IDs HTML non trouvés (vérifie les id=...)");
+      return;
+    }
+
+    // Infos depuis la ligne (pas besoin d’attendre l’API pour afficher un truc propre)
+    const tds = Array.from(tr.querySelectorAll("td"));
+    const code = (tds[1]?.textContent || "").trim() || "—";
+    const lib = (tds[2]?.textContent || "").trim() || "—";
+    const nbPostes = _num((tds[3]?.textContent || "").trim());
+    const criticite = _num((tds[4]?.textContent || "").trim());
+    const porteursNow = _num((tds[5]?.textContent || "").trim());
+    const sortants = _num((tds[6]?.textContent || "").trim());
+    const lastExit = (tds[7]?.textContent || "").trim() || "—";
+
+    const horizonLabel = (horizon === 1 ? "1 an" : `${horizon} ans`);
+    if (titleEl) titleEl.textContent = `Critiques impactées — ${code}`;
+    if (subEl) subEl.textContent = `${lib} • Horizon < ${horizonLabel}${id_service ? " • périmètre filtré" : ""}`;
+
+    // Synthèse (immédiat)
+    const restants = Math.max(0, porteursNow - sortants);
+
+    paneSynth.innerHTML = `
+      <div class="sb-modal-kpis">
+        <div class="sb-metric"><div class="label">Postes impactés</div><div class="value">${escapeHtml(String(nbPostes))}</div></div>
+        <div class="sb-metric"><div class="label">Criticité (max)</div><div class="value">${escapeHtml(String(criticite || "—"))}</div></div>
+        <div class="sb-metric"><div class="label">Porteurs actuels</div><div class="value">${escapeHtml(String(porteursNow))}</div></div>
+        <div class="sb-metric"><div class="label">Porteurs sortants</div><div class="value">${escapeHtml(String(sortants))}</div></div>
+        <div class="sb-metric"><div class="label">Porteurs restants</div><div class="value">${escapeHtml(String(restants))}</div></div>
+      </div>
+
+      <div class="card" style="padding:12px; margin-top:12px;">
+        <div class="card-title" style="margin-bottom:6px;">Signal</div>
+        <div class="card-sub" style="margin:0;">
+          Dernière sortie détectée: <b>${escapeHtml(lastExit)}</b><br/>
+          Lecture: si <b>restants = 0</b> → rupture, si <b>restants = 1</b> → dépendance, sinon → tension à prioriser.
+        </div>
+      </div>
+    `;
+
+    // Les 3 autres tabs = chargement (API)
+    panePorteurs.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+    panePostes.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+    paneActions.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+
+    _openModal(modal);
+
+    // Requête unique (et annulable si reclique vite)
+    _prevCritReqId = (_prevCritReqId || 0) + 1;
+    const reqId = _prevCritReqId;
+
+    try {
+      const data = await _fetchPrevCritDetail(portal, compKey, horizon, id_service);
+      if (_prevCritReqId !== reqId) return;
+
+      // Attendu côté API (prochaine étape):
+      // data.porteurs[], data.postes[], data.actions[]
+      const porteurs = Array.isArray(data?.porteurs) ? data.porteurs : [];
+      const postes = Array.isArray(data?.postes) ? data.postes : [];
+      const actions = Array.isArray(data?.actions) ? data.actions : [];
+
+      // Porteurs
+      if (!porteurs.length) {
+        panePorteurs.innerHTML = `<div class="card-sub" style="margin:0;">Aucun porteur retourné.</div>`;
+      } else {
+        const rows = porteurs.map(p => {
+          const nom = (p.full || `${p.prenom || ""} ${p.nom || ""}`).trim() || "—";
+          const lvl = (p.niveau || p.level || "—").toString();
+          const posteP = (p.intitule_poste || p.poste || "—").toString();
+          const svc = (p.nom_service || p.service || "—").toString();
+          const exit = _fmtDateFR(p.exit_date || p.date_sortie || "");
+          const reason = (p.reason || p.motif_sortie || p.exit_source || "—").toString();
+          return `
+            <tr>
+              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;"><b>${escapeHtml(nom)}</b></td>
+              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;">${escapeHtml(lvl)}</td>
+              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;">${escapeHtml(posteP)}</td>
+              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;">${escapeHtml(svc)}</td>
+              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;">${exit}</td>
+              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;">${escapeHtml(reason)}</td>
+            </tr>
+          `;
+        }).join("");
+
+        panePorteurs.innerHTML = `
+          <div style="overflow:auto;">
+            <table class="sb-table">
+              <thead>
+                <tr>
+                  <th>Personne</th><th class="col-center">Niveau</th><th>Poste</th><th>Service</th><th>Date sortie</th><th>Raison</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      // Postes impactés
+      if (!postes.length) {
+        panePostes.innerHTML = `<div class="card-sub" style="margin:0;">Aucun poste impacté retourné.</div>`;
+      } else {
+        const rows = postes.map(p => {
+          const poste = (p.intitule_poste || p.poste || "—").toString();
+          const svc = (p.nom_service || p.service || "—").toString();
+          const attendu = (p.niveau_attendu || p.level_expected || "—").toString();
+          const crit = (p.criticite || p.max_criticite || "—").toString();
+          return `
+            <tr>
+              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;"><b>${escapeHtml(poste)}</b></td>
+              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;">${escapeHtml(svc)}</td>
+              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;" class="col-center">${escapeHtml(attendu)}</td>
+              <td style="padding:10px 14px; border-bottom:1px solid #f3f4f6;" class="col-center">${escapeHtml(crit)}</td>
+            </tr>
+          `;
+        }).join("");
+
+        panePostes.innerHTML = `
+          <div style="overflow:auto;">
+            <table class="sb-table">
+              <thead>
+                <tr><th>Poste</th><th>Service</th><th class="col-center">Niveau attendu</th><th class="col-center">Criticité</th></tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      // Plan d’action
+      if (!actions.length) {
+        paneActions.innerHTML = `
+          <div class="card" style="padding:12px; margin:0;">
+            <div class="card-title" style="margin-bottom:6px;">Plan d’action</div>
+            <div class="card-sub" style="margin:0;">
+              Aucun plan renvoyé par l’API (à brancher).<br/>
+              Conseil: transfert (shadowing), formation ciblée, mobilité/succession, recrutement si restants insuffisants.
+            </div>
+          </div>
+        `;
+      } else {
+        paneActions.innerHTML = `
+          <div class="card" style="padding:12px; margin:0;">
+            <div class="card-title" style="margin-bottom:6px;">Plan d’action</div>
+            <div class="card-sub" style="margin:0;">
+              ${actions.map(a => `• ${escapeHtml(String(a))}`).join("<br/>")}
+            </div>
+          </div>
+        `;
+      }
+
+    } catch (e) {
+      if (_prevCritReqId !== reqId) return;
+      const msg = `Erreur chargement détail critique: ${e?.message || e}`;
+      panePorteurs.innerHTML = `<div class="card-sub" style="margin:0;">${escapeHtml(msg)}</div>`;
+      panePostes.innerHTML = `<div class="card-sub" style="margin:0;">${escapeHtml(msg)}</div>`;
+      paneActions.innerHTML = `<div class="card-sub" style="margin:0;">${escapeHtml(msg)}</div>`;
+    }
+  }
+
 
 
   window.SkillsAnalyse = {

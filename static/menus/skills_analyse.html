@@ -218,4 +218,83 @@
     </div>
   </div>
 
+  <!-- Modal détail Compétence (Prévisions > Critiques impactées) -->
+<div class="modal" id="modalAnalysePrevCrit" aria-hidden="true">
+  <div class="modal-card" style="max-width:980px;">
+    <div class="modal-header">
+      <div style="display:flex; flex-direction:column; gap:2px;">
+        <div style="font-weight:600;" id="analysePrevCritModalTitle">Détail compétence</div>
+        <div class="card-sub" id="analysePrevCritModalSub" style="margin:0;"></div>
+      </div>
+      <button type="button" class="modal-x" id="btnCloseAnalysePrevCritModal" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Bandeau contexte (service + horizon + criticité) -->
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:0;">
+        <span class="sb-badge sb-badge-accent" id="analysePrevCritBadgeService">Service : —</span>
+        <span class="sb-badge" id="analysePrevCritBadgeHorizon">Horizon : —</span>
+        <span class="sb-badge" id="analysePrevCritBadgeCriticite">Criticité : —</span>
+      </div>
+
+      <!-- Synthèse (fixe) -->
+      <div class="card" style="padding:12px; margin-top:12px;">
+        <div class="card-title" style="margin-bottom:6px;">Synthèse</div>
+        <div class="row" style="gap:12px; flex-wrap:wrap;">
+          <div class="card" style="padding:10px; margin:0; min-width:180px; flex:1;">
+            <div class="label">Porteurs actuels</div>
+            <div class="value" id="prevCritKpiNow">—</div>
+          </div>
+          <div class="card" style="padding:10px; margin:0; min-width:180px; flex:1;">
+            <div class="label">Sortants (horizon)</div>
+            <div class="value" id="prevCritKpiOut">—</div>
+          </div>
+          <div class="card" style="padding:10px; margin:0; min-width:180px; flex:1;">
+            <div class="label">Restants</div>
+            <div class="value" id="prevCritKpiRemain">—</div>
+          </div>
+          <div class="card" style="padding:10px; margin:0; min-width:180px; flex:1;">
+            <div class="label">Postes impactés</div>
+            <div class="value" id="prevCritKpiPostes">—</div>
+          </div>
+          <div class="card" style="padding:10px; margin:0; min-width:260px; flex:2;">
+            <div class="label">Prochaine sortie</div>
+            <div class="value" id="prevCritKpiNextExit">—</div>
+          </div>
+        </div>
+
+        <!-- Mini “graphique” (barre niveaux A/B/C) -->
+        <div style="margin-top:12px;">
+          <div class="label" style="margin-bottom:6px;">Répartition des niveaux (restants)</div>
+          <div id="prevCritLevelBar" style="display:flex; height:12px; border:1px solid #e5e7eb; border-radius:999px; overflow:hidden;">
+            <div id="prevCritLevelBarA" style="width:0%; background:#f3f4f6;"></div>
+            <div id="prevCritLevelBarB" style="width:0%; background:#e5e7eb;"></div>
+            <div id="prevCritLevelBarC" style="width:0%; background:#d1d5db;"></div>
+          </div>
+          <div class="card-sub" id="prevCritLevelBarLegend" style="margin:6px 0 0 0;">A: — • B: — • C: —</div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
+        <button type="button" class="btn-secondary" id="tabPrevCritSynthese" style="margin-left:0;">Synthèse</button>
+        <button type="button" class="btn-secondary" id="tabPrevCritRestants" style="margin-left:0;">Porteurs restants</button>
+        <button type="button" class="btn-secondary" id="tabPrevCritSortants" style="margin-left:0;">Porteurs sortants</button>
+        <button type="button" class="btn-secondary" id="tabPrevCritPostes" style="margin-left:0;">Postes impactés</button>
+      </div>
+
+      <!-- Tab contents -->
+      <div id="analysePrevCritTabSynthese" style="margin-top:12px;"></div>
+      <div id="analysePrevCritTabRestants" style="margin-top:12px; display:none;"></div>
+      <div id="analysePrevCritTabSortants" style="margin-top:12px; display:none;"></div>
+      <div id="analysePrevCritTabPostes" style="margin-top:12px; display:none;"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-secondary" id="btnAnalysePrevCritModalClose">Fermer</button>
+    </div>
+  </div>
+</div>
+
+
 </section>
