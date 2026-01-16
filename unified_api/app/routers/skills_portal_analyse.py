@@ -1199,7 +1199,7 @@ def get_analyse_previsions_critiques_modal(
 
                 # Domaine
                 domaine = None
-                if comp.get("id_domaine_competence"):
+                if comp.get("domaine"):
                     cur.execute(
                         """
                         SELECT titre, titre_court, couleur
@@ -1312,7 +1312,7 @@ def get_analyse_previsions_critiques_modal(
                      AND o.archive = FALSE
                     WHERE fp.id_ent = %s
                       AND COALESCE(fp.actif, TRUE) = TRUE
-                      AND (%s IS NULL OR fp.id_service = %s)
+                      AND (%s::text IS NULL OR fp.id_service = %s)
                       AND cp.id_competence = %s
                       AND COALESCE(cp.poids_criticite,0) >= %s
                 )
@@ -1483,7 +1483,7 @@ def get_analyse_previsions_critiques_modal(
                      AND o.archive = FALSE
                     WHERE fp.id_ent = %s
                       AND COALESCE(fp.actif, TRUE) = TRUE
-                      AND (%s IS NULL OR fp.id_service = %s)
+                      AND (%s::text IS NULL OR fp.id_service = %s)
                       AND cp.id_competence = %s
                       AND COALESCE(cp.poids_criticite,0) >= %s
                     ORDER BY cp.poids_criticite DESC, fp.intitule_poste ASC
