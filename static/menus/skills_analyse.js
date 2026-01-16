@@ -2385,9 +2385,20 @@ function renderDetail(mode) {
             const prenom = (it.prenom_effectif || it.prenom || "").trim();
             const nom = (it.nom_effectif || it.nom || "").trim();
             const full = (it.full || `${prenom} ${nom}`.trim() || "—");
+            const fullHtml = `<span style="font-weight:700; font-size:13px;">${escapeHtml(full)}</span>`;
+
+            function fmtDateFR(v) {
+              const s = (v || "").toString().trim();
+              if (!s) return "—";
+              // attend "YYYY-MM-DD" ou "YYYY-MM-DDTHH:MM:SS"
+              const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+              if (!m) return escapeHtml(s); // fallback si format inattendu
+              return `${m[3]}-${m[2]}-${m[1]}`;
+            }
 
             const exitDate = (it.exit_date || it.date_sortie || it.date_sortie_prevue || it.sortie_prevue || "").toString();
-            const exitTxt = exitDate ? escapeHtml(exitDate) : "—";
+            const exitTxt = fmtDateFR(exitDate);
+
 
             const service = (it.nom_service || it.service || "").toString().trim() || "—";
             const poste = (it.intitule_poste || it.poste || "").toString().trim() || "—";
@@ -2397,7 +2408,7 @@ function renderDetail(mode) {
 
             return `
               <tr>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(full)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${fullHtml}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${exitTxt}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(poste)}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(service)}</td>
