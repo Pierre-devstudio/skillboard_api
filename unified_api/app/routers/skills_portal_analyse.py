@@ -1625,7 +1625,7 @@ def get_analyse_previsions_postes_rouges_detail(
                     JOIN public.tbl_fiche_poste_competence cp ON cp.id_poste = fp.id_poste
                     WHERE fp.id_ent = %s
                       AND COALESCE(fp.actif, TRUE) = TRUE
-                      AND (%s IS NULL OR fp.id_service = %s)
+                      AND (%s::text IS NULL OR fp.id_service = %s::text)
                       AND COALESCE(cp.poids_criticite,0) >= %s
                 ),
 
