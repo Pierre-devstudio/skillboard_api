@@ -30,7 +30,15 @@
       .replaceAll('"', "&quot;");
   }
 
-    function errMsg(e) {
+  function formatDateFr(iso) {
+  const s = (iso || "").toString().trim();
+  // attend du "YYYY-MM-DD" (ce que ton API renvoie)
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (!m) return s || "—";
+  return `${m[3]}-${m[2]}-${m[1]}`;
+  }
+
+  function errMsg(e) {
     if (!e) return "inconnue";
     if (typeof e === "string") return e;
     if (e.message) return e.message;
@@ -2399,20 +2407,31 @@ function renderDetail(mode) {
             const exitDate = (it.exit_date || it.date_sortie || it.date_sortie_prevue || it.sortie_prevue || "").toString();
             const exitTxt = fmtDateFR(exitDate);
 
-
             const service = (it.nom_service || it.service || "").toString().trim() || "—";
             const poste = (it.intitule_poste || it.poste || "").toString().trim() || "—";
 
-            const src = (it.exit_source || "").toString().trim();
-            const srcTxt = src ? escapeHtml(src) : "—";
+            const hdf = (it.havedatefin === true || it.havedatefin === "true" || it.havedatefin === 1);
+            const motif = (it.motif_sortie || "").toString().trim();
+
+            // Raison de la sortie (tes règles)
+            const reason = hdf ? motif : "Retraite estimée";
+            const reasonTxt = reason ? escapeHtml(reason) : "—";
+
+            const idEff = (it.id_effectif || "").toString().trim();
+            const idPoste = (it.id_poste_actuel || "").toString().trim();
 
             return `
-              <tr>
+              <tr class="prev-sortie-row"
+                  data-id_effectif="${escapeHtml(idEff)}"
+                  data-id_poste_actuel="${escapeHtml(idPoste)}"
+                  data-exit_date="${escapeHtml(exitDate)}"
+                  data-reason="${escapeHtml(reason)}"
+                  style="cursor:pointer;">
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${fullHtml}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${exitTxt}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(poste)}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(service)}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${srcTxt}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${reasonTxt}</td>
               </tr>
             `;
           }).join("");
@@ -3003,7 +3022,7 @@ function renderDetail(mode) {
                   return;
                 }
 
-                                // ------------------------------
+                // ------------------------------
                 // 3) Matching: sélection poste
                 // ------------------------------
                 const btnMatch = ev.target.closest("[data-match-id_poste]");
@@ -3018,27 +3037,164 @@ function renderDetail(mode) {
                   return;
                 }
 
+                // ------------------------------
+                // 4) Matching: clic personne (titulaire / candidat)
+                // ------------------------------
+                const trMatchPerson = ev.target.closest("tr.match-person-row[data-match-id_effectif]");
+                if (trMatchPerson) {
+                  const id_eff = (trMatchPerson.getAttribute("data-match-id_effectif") || "").trim();
+                  if (!id_eff) return;
 
+                  if (!_matchSelectedPoste) return;
 
-// ------------------------------
-// 4) Matching: clic personne (titulaire / candidat)
-// ------------------------------
-const trMatchPerson = ev.target.closest("tr.match-person-row[data-match-id_effectif]");
-if (trMatchPerson) {
-  const id_eff = (trMatchPerson.getAttribute("data-match-id_effectif") || "").trim();
-  if (!id_eff) return;
+                  const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+                  await showMatchPersonDetailModal(portal, _matchSelectedPoste, id_eff, id_service);
+                  return;
+                }
 
-  if (!_matchSelectedPoste) return;
+                // ------------------------------
+                // 5) Previsions: clic ligne "sorties" -> modal
+                // ------------------------------
+                const trPrev = ev.target.closest("tr.prev-sortie-row[data-id_effectif]");
+                if (trPrev) {
+                  const id_effectif = (trPrev.getAttribute("data-id_effectif") || "").trim();
+                  const id_poste_actuel = (trPrev.getAttribute("data-id_poste_actuel") || "").trim();
 
-  const id_service = (byId("analyseServiceSelect")?.value || "").trim();
-  await showMatchPersonDetailModal(portal, _matchSelectedPoste, id_eff, id_service);
-  return;
-}
+                  // On récupère ce qui est affiché (pas besoin de dataset pour le texte)
+                  const tds = trPrev.querySelectorAll("td");
+                  const full = (tds[0]?.innerText || "").trim() || "—";
+                  const date_sortie = (tds[1]?.innerText || "").trim() || "—";
+                  const poste = (tds[2]?.innerText || "").trim() || "—";
+                  const service = (tds[3]?.innerText || "").trim() || "—";
+                  const raison = (tds[4]?.innerText || "").trim() || "—";
 
+                  showPrevSortieModal(portal, {
+                    id_effectif,
+                    id_poste_actuel,
+                    full,
+                    date_sortie,
+                    poste,
+                    service,
+                    raison
+                  });
+
+                  return;
+                }
               });
             }
 
   }
+
+  let _prevSortieModalEl = null;
+
+  function showPrevSortieModal(portal, d) {
+    // Nettoyage si déjà ouvert
+    if (_prevSortieModalEl && _prevSortieModalEl.parentNode) {
+      _prevSortieModalEl.parentNode.removeChild(_prevSortieModalEl);
+    }
+
+    const wrap = document.createElement("div");
+    _prevSortieModalEl = wrap;
+
+    wrap.innerHTML = `
+      <div class="sb-modal-backdrop" style="
+        position:fixed; inset:0; background:rgba(0,0,0,.35);
+        display:flex; align-items:center; justify-content:center;
+        z-index:9999; padding:18px;">
+        <div class="card" style="
+          width:min(900px, 96vw);
+          max-height:88vh; overflow:auto;
+          padding:14px; margin:0;">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+            <div>
+              <div class="card-title" style="margin:0;">Sortie prévue</div>
+              <div class="card-sub" style="margin:2px 0 0 0;">Détail de la personne et actions rapides.</div>
+            </div>
+            <button type="button" class="btn-secondary" id="btnPrevCloseTop" style="margin-left:0;">Fermer</button>
+          </div>
+
+          <div class="card" style="padding:12px; margin-top:12px;">
+            <div style="font-weight:800; font-size:14px; margin-bottom:6px;">${escapeHtml(d.full || "—")}</div>
+
+            <div style="display:grid; grid-template-columns: 180px 1fr; gap:8px 12px; font-size:12px;">
+              <div style="color:#6b7280;">Date de sortie</div><div>${escapeHtml(d.date_sortie || "—")}</div>
+              <div style="color:#6b7280;">Poste</div><div>${escapeHtml(d.poste || "—")}</div>
+              <div style="color:#6b7280;">Service</div><div>${escapeHtml(d.service || "—")}</div>
+              <div style="color:#6b7280;">Raison</div><div>${escapeHtml(d.raison || "—")}</div>
+              <div style="color:#6b7280;">ID effectif</div><div>${escapeHtml(d.id_effectif || "—")}</div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top:12px;">
+            <button type="button" class="btn-secondary" id="btnPrevGoRisques" ${d.id_poste_actuel ? "" : "disabled"}>
+              Voir risques du poste
+            </button>
+            <button type="button" class="btn-secondary" id="btnPrevGoMatching" ${d.id_poste_actuel ? "" : "disabled"}>
+              Voir matching du poste
+            </button>
+            <button type="button" class="btn-secondary" id="btnPrevCloseBot">Fermer</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(wrap);
+
+    const backdrop = wrap.querySelector(".sb-modal-backdrop");
+    const btnCloseTop = wrap.querySelector("#btnPrevCloseTop");
+    const btnCloseBot = wrap.querySelector("#btnPrevCloseBot");
+    const btnGoRisques = wrap.querySelector("#btnPrevGoRisques");
+    const btnGoMatching = wrap.querySelector("#btnPrevGoMatching");
+
+    function close() {
+      if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+      if (_prevSortieModalEl === wrap) _prevSortieModalEl = null;
+      document.removeEventListener("keydown", onKey);
+    }
+
+    function onKey(e) {
+      if (e.key === "Escape") close();
+    }
+
+    // clic backdrop (mais pas sur la carte)
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) close();
+    });
+
+    btnCloseTop?.addEventListener("click", close);
+    btnCloseBot?.addEventListener("click", close);
+
+    btnGoRisques?.addEventListener("click", async () => {
+      const id_poste = (d.id_poste_actuel || "").trim();
+      if (!id_poste) return;
+
+      const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+
+      close();
+      // Ouvre ton modal existant "poste detail"
+      if (typeof showAnalysePosteDetailModal === "function") {
+        await showAnalysePosteDetailModal(portal, id_poste, id_service, "");
+      }
+    });
+
+    btnGoMatching?.addEventListener("click", () => {
+      const id_poste = (d.id_poste_actuel || "").trim();
+      if (!id_poste) return;
+
+      close();
+
+      _matchSelectedPoste = id_poste;
+
+      // bascule mode matching (si setMode existe c'est le plus propre)
+      if (typeof setMode === "function") setMode("matching");
+      else localStorage.setItem(STORE_MODE, "matching");
+
+      renderDetail("matching");
+    });
+
+    document.addEventListener("keydown", onKey);
+  }
+
 
   window.SkillsAnalyse = {
     onShow: async (portal) => {

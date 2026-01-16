@@ -792,82 +792,85 @@ def get_analyse_previsions_sorties_detail(
                 WITH
                 {cte_sql},
                 effectifs_valid AS (
+                        SELECT
+                            e.id_effectif,
+                            e.prenom_effectif,
+                            e.nom_effectif,
+                            e.id_service,
+                            e.id_poste_actuel,
+
+                            e.date_sortie_prevue,
+                            COALESCE(e.havedatefin, FALSE) AS havedatefin,
+                            e.motif_sortie,
+
+                            e.retraite_estimee::int AS retraite_annee,
+                            COALESCE(EXTRACT(MONTH FROM e.date_entree_entreprise_effectif)::int, 6) AS m_entree,
+                            COALESCE(EXTRACT(DAY FROM e.date_entree_entreprise_effectif)::int, 15) AS d_entree
+                        FROM public.tbl_effectif_client e
+                        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                        WHERE COALESCE(e.archive, FALSE) = FALSE
+                        AND COALESCE(e.is_temp, FALSE) = FALSE
+                        AND COALESCE(e.statut_actif, TRUE) = TRUE
+                    ),
+                    effectifs_exit AS (
+                        SELECT
+                            ev.*,
+                            CASE
+                                WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                                WHEN ev.retraite_annee IS NOT NULL THEN
+                                    (
+                                        make_date(ev.retraite_annee, ev.m_entree, 1)
+                                        + (
+                                            (
+                                                LEAST(
+                                                    ev.d_entree,
+                                                    EXTRACT(
+                                                        DAY
+                                                        FROM (
+                                                            date_trunc('month', make_date(ev.retraite_annee, ev.m_entree, 1))
+                                                            + interval '1 month - 1 day'
+                                                        )
+                                                    )::int
+                                                ) - 1
+                                            )::text || ' days'
+                                        )::interval
+                                    )::date
+                                ELSE NULL
+                            END AS exit_date,
+
+                            -- "Raison de la sortie" (UI)
+                            CASE
+                                WHEN COALESCE(ev.havedatefin, FALSE) = FALSE THEN 'Retraite estimée'
+                                ELSE COALESCE(NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), ''), '—')
+                            END AS raison_sortie
+                        FROM effectifs_valid ev
+                    )
                     SELECT
-                        e.id_effectif,
-                        e.prenom_effectif,
-                        e.nom_effectif,
-                        e.id_service,
-                        e.id_poste_actuel,
-
-                        e.date_sortie_prevue,
-                        COALESCE(e.havedatefin, FALSE) AS havedatefin,
-                        e.motif_sortie,
-
-                        e.retraite_estimee::int AS retraite_annee,
-                        COALESCE(EXTRACT(MONTH FROM e.date_entree_entreprise_effectif)::int, 6) AS m_entree,
-                        COALESCE(EXTRACT(DAY FROM e.date_entree_entreprise_effectif)::int, 15) AS d_entree
-                    FROM public.tbl_effectif_client e
-                    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-                    WHERE COALESCE(e.archive, FALSE) = FALSE
-                      AND COALESCE(e.is_temp, FALSE) = FALSE
-                      AND COALESCE(e.statut_actif, TRUE) = TRUE
-                ),
-                effectifs_exit AS (
-                    SELECT
-                        ev.*,
-                        CASE
-                            WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
-                            WHEN ev.retraite_annee IS NOT NULL THEN
-                                (
-                                    make_date(ev.retraite_annee, ev.m_entree, 1)
-                                    + (
-                                        (
-                                            LEAST(
-                                                ev.d_entree,
-                                                EXTRACT(
-                                                    DAY
-                                                    FROM (date_trunc('month', make_date(ev.retraite_annee, ev.m_entree, 1)) + interval '1 month - 1 day')
-                                                )::int
-                                            ) - 1
-                                        )::text || ' days'
-                                    )::interval
-                                )::date
-                            ELSE NULL
-                        END AS exit_date,
-
-                        -- Règle UI:
-                        -- - havedatefin = FALSE => "Retraite estimée"
-                        -- - havedatefin = TRUE  => motif_sortie
-                        CASE
-                            WHEN COALESCE(ev.havedatefin, FALSE) = FALSE THEN 'Retraite estimée'
-                            ELSE NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), '')
-                        END AS exit_source
-                    FROM effectifs_valid ev
-                )
-                SELECT
-                    ee.id_effectif,
-                    ee.prenom_effectif,
-                    ee.nom_effectif,
-                    ee.id_service,
-                    COALESCE(o.nom_service, '') AS nom_service,
-                    ee.id_poste_actuel,
-                    COALESCE(p.intitule_poste, '') AS intitule_poste,
-                    ee.exit_date,
-                    ee.exit_source,
-                    (ee.exit_date - CURRENT_DATE)::int AS days_left
-                FROM effectifs_exit ee
-                LEFT JOIN public.tbl_entreprise_organigramme o
-                  ON o.id_ent = %s
-                 AND o.id_service = ee.id_service
-                 AND o.archive = FALSE
-                LEFT JOIN public.tbl_fiche_poste p
-                  ON p.id_poste = ee.id_poste_actuel
-                WHERE ee.exit_date IS NOT NULL
-                  AND ee.exit_date >= CURRENT_DATE
-                  AND ee.exit_date < (CURRENT_DATE + (%s || ' years')::interval)
-                ORDER BY ee.exit_date ASC, ee.nom_effectif ASC, ee.prenom_effectif ASC
-                LIMIT %s
-                """
+                        ee.id_effectif,
+                        ee.prenom_effectif,
+                        ee.nom_effectif,
+                        ee.id_service,
+                        COALESCE(o.nom_service, '') AS nom_service,
+                        ee.id_poste_actuel,
+                        COALESCE(p.intitule_poste, '') AS intitule_poste,
+                        ee.exit_date,
+                        ee.havedatefin,
+                        ee.motif_sortie,
+                        ee.raison_sortie,
+                        (ee.exit_date - CURRENT_DATE)::int AS days_left
+                    FROM effectifs_exit ee
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                    ON o.id_ent = %s
+                    AND o.id_service = ee.id_service
+                    AND o.archive = FALSE
+                    LEFT JOIN public.tbl_fiche_poste p
+                    ON p.id_poste = ee.id_poste_actuel
+                    WHERE ee.exit_date IS NOT NULL
+                    AND ee.exit_date >= CURRENT_DATE
+                    AND ee.exit_date < (CURRENT_DATE + (%s || ' years')::interval)
+                    ORDER BY ee.exit_date ASC, ee.nom_effectif ASC, ee.prenom_effectif ASC
+                    LIMIT %s
+                    """
 
                 cur.execute(sql, tuple(cte_params + [id_ent, horizon_years, limit]))
                 rows = cur.fetchall() or []
@@ -892,9 +895,11 @@ def get_analyse_previsions_sorties_detail(
                             nom_service=(r.get("nom_service") or "").strip() or "—",
                             id_poste_actuel=r.get("id_poste_actuel"),
                             intitule_poste=(r.get("intitule_poste") or "").strip() or None,
-                            exit_date=exit_date,
-                            exit_source=(r.get("exit_source") or None),
+                            exit_date=exit_date,                            
                             days_left=int(r.get("days_left") or 0) if r.get("days_left") is not None else None,
+                            havedatefin=bool(r.get("havedatefin")),
+                            motif_sortie=(r.get("motif_sortie") or None),
+                            raison_sortie=(r.get("raison_sortie") or None),
                         )
                     )
 
