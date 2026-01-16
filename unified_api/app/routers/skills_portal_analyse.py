@@ -1530,6 +1530,235 @@ def get_analyse_previsions_critiques_modal(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
     
+@router.get("/skills/analyse/previsions/postes-rouges/detail/{id_contact}")
+def get_analyse_previsions_postes_rouges_detail(
+    id_contact: str,
+    horizon_years: int = Query(default=1, ge=1, le=5),
+    id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=3, ge=1, le=4),
+    limit: int = Query(default=200, ge=10, le=2000),
+):
+    """
+    Détail KPI "Postes rouges" (prévisions):
+    - postes qui BASCULENT en rouge à l'horizon (future_fragiles > 0 ET now_fragiles = 0)
+    - fragile = compétence critique avec nb_porteurs <= 1
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                contact = _fetch_contact_and_ent(cur, id_contact)
+                id_ent = contact["code_ent"]
+
+                scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
+                cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
+
+                sql = f"""
+                WITH
+                {cte_sql},
+
+                effectifs_valid AS (
+                    SELECT
+                        e.id_effectif,
+                        e.id_service,
+                        e.id_poste_actuel,
+                        e.date_sortie_prevue,
+                        COALESCE(e.havedatefin, FALSE) AS havedatefin,
+                        e.motif_sortie,
+                        e.retraite_estimee::int AS retraite_annee,
+                        COALESCE(EXTRACT(MONTH FROM e.date_entree_entreprise_effectif)::int, 6) AS m_entree,
+                        COALESCE(EXTRACT(DAY FROM e.date_entree_entreprise_effectif)::int, 15) AS d_entree
+                    FROM public.tbl_effectif_client e
+                    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                    WHERE COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.is_temp, FALSE) = FALSE
+                      AND COALESCE(e.statut_actif, TRUE) = TRUE
+                ),
+
+                effectifs_exit AS (
+                    SELECT
+                        ev.*,
+                        CASE
+                            WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                            WHEN ev.retraite_annee IS NOT NULL THEN
+                                (
+                                    make_date(ev.retraite_annee, ev.m_entree, 1)
+                                    + (
+                                        (
+                                            LEAST(
+                                                ev.d_entree,
+                                                EXTRACT(
+                                                    DAY FROM (
+                                                        date_trunc('month', make_date(ev.retraite_annee, ev.m_entree, 1))
+                                                        + interval '1 month - 1 day'
+                                                    )
+                                                )::int
+                                            ) - 1
+                                        )::text || ' days'
+                                    )::interval
+                                )::date
+                            ELSE NULL
+                        END AS exit_date
+                    FROM effectifs_valid ev
+                ),
+
+                effectifs_h AS (
+                    SELECT
+                        ee.*,
+                        CASE
+                          WHEN ee.exit_date IS NOT NULL
+                           AND ee.exit_date >= CURRENT_DATE
+                           AND ee.exit_date < (CURRENT_DATE + (%s || ' years')::interval)
+                          THEN TRUE ELSE FALSE
+                        END AS is_sortant
+                    FROM effectifs_exit ee
+                ),
+
+                req AS (
+                    SELECT
+                        fp.id_poste,
+                        fp.intitule_poste,
+                        fp.id_service,
+                        cp.id_competence AS id_comp,
+                        cp.poids_criticite::int AS criticite,
+                        COALESCE(cp.niveau_requis,'')::text AS niveau_requis
+                    FROM public.tbl_fiche_poste fp
+                    JOIN public.tbl_fiche_poste_competence cp ON cp.id_poste = fp.id_poste
+                    WHERE fp.id_ent = %s
+                      AND COALESCE(fp.actif, TRUE) = TRUE
+                      AND (%s IS NULL OR fp.id_service = %s)
+                      AND COALESCE(cp.poids_criticite,0) >= %s
+                ),
+
+                cov AS (
+                    SELECT
+                        r.id_poste,
+                        r.intitule_poste,
+                        r.id_service,
+                        r.id_comp,
+                        r.criticite,
+
+                        COUNT(DISTINCT eh.id_effectif) FILTER (
+                            WHERE
+                                ec.id_effectif_client IS NOT NULL
+                                AND COALESCE(ec.niveau_actuel,'') <> ''
+                                AND (
+                                    (r.niveau_requis = '' )
+                                    OR (r.niveau_requis = 'A' AND ec.niveau_actuel IN ('A','B','C'))
+                                    OR (r.niveau_requis = 'B' AND ec.niveau_actuel IN ('B','C'))
+                                    OR (r.niveau_requis = 'C' AND ec.niveau_actuel IN ('C'))
+                                )
+                        ) AS nb_now,
+
+                        COUNT(DISTINCT eh.id_effectif) FILTER (
+                            WHERE
+                                ec.id_effectif_client IS NOT NULL
+                                AND COALESCE(ec.niveau_actuel,'') <> ''
+                                AND (
+                                    (r.niveau_requis = '' )
+                                    OR (r.niveau_requis = 'A' AND ec.niveau_actuel IN ('A','B','C'))
+                                    OR (r.niveau_requis = 'B' AND ec.niveau_actuel IN ('B','C'))
+                                    OR (r.niveau_requis = 'C' AND ec.niveau_actuel IN ('C'))
+                                )
+                                AND COALESCE(eh.is_sortant, FALSE) = FALSE
+                        ) AS nb_remain,
+
+                        MIN(eh.exit_date) FILTER (WHERE COALESCE(eh.is_sortant, FALSE) = TRUE) AS next_exit_comp
+
+                    FROM req r
+                    LEFT JOIN public.tbl_effectif_client_competence ec
+                      ON ec.id_comp = r.id_comp
+                    LEFT JOIN effectifs_h eh
+                      ON eh.id_effectif = ec.id_effectif_client
+                    GROUP BY r.id_poste, r.intitule_poste, r.id_service, r.id_comp, r.criticite
+                ),
+
+                agg AS (
+                    SELECT
+                        c.id_poste,
+                        c.intitule_poste,
+                        c.id_service,
+
+                        SUM(CASE WHEN c.nb_now <= 1 THEN 1 ELSE 0 END)::int AS now_fragiles,
+                        SUM(CASE WHEN c.nb_now = 0 THEN 1 ELSE 0 END)::int AS now_sans_porteur,
+                        SUM(CASE WHEN c.nb_now = 1 THEN 1 ELSE 0 END)::int AS now_porteur_unique,
+
+                        SUM(CASE WHEN c.nb_remain <= 1 THEN 1 ELSE 0 END)::int AS future_fragiles,
+                        SUM(CASE WHEN c.nb_remain = 0 THEN 1 ELSE 0 END)::int AS future_sans_porteur,
+                        SUM(CASE WHEN c.nb_remain = 1 THEN 1 ELSE 0 END)::int AS future_porteur_unique,
+
+                        MIN(c.next_exit_comp) AS next_exit_date
+                    FROM cov c
+                    GROUP BY c.id_poste, c.intitule_poste, c.id_service
+                )
+
+                SELECT
+                    a.id_poste,
+                    a.intitule_poste,
+                    a.id_service,
+                    COALESCE(o.nom_service,'') AS nom_service,
+
+                    a.now_fragiles,
+                    a.future_fragiles,
+                    a.future_sans_porteur,
+                    a.future_porteur_unique,
+
+                    a.next_exit_date
+                FROM agg a
+                LEFT JOIN public.tbl_entreprise_organigramme o
+                  ON o.id_ent = %s
+                 AND o.id_service = a.id_service
+                 AND o.archive = FALSE
+                WHERE a.future_fragiles > 0
+                  AND a.now_fragiles = 0
+                ORDER BY a.future_fragiles DESC, a.next_exit_date NULLS LAST, a.intitule_poste ASC
+                LIMIT %s
+                """
+
+                params = tuple(
+                    cte_params
+                    + [
+                        horizon_years,                 # effectifs_h
+                        id_ent,                        # req fp.id_ent
+                        scope.id_service, scope.id_service,  # service filter
+                        criticite_min,                 # criticite min
+                        id_ent,                        # join organigramme
+                        limit,
+                    ]
+                )
+
+                cur.execute(sql, params)
+                rows = cur.fetchall() or []
+
+                def _fmt(d):
+                    return d.isoformat() if hasattr(d, "isoformat") else d
+
+                items = []
+                for r in rows:
+                    items.append({
+                        "id_poste": (r.get("id_poste") or "").strip(),
+                        "intitule_poste": (r.get("intitule_poste") or "").strip() or "—",
+                        "nom_service": (r.get("nom_service") or "").strip() or "—",
+                        "now_fragiles": int(r.get("now_fragiles") or 0),
+                        "future_fragiles": int(r.get("future_fragiles") or 0),
+                        "future_sans_porteur": int(r.get("future_sans_porteur") or 0),
+                        "future_porteur_unique": int(r.get("future_porteur_unique") or 0),
+                        "next_exit_date": _fmt(r.get("next_exit_date")),
+                    })
+
+                return {
+                    "scope": scope.model_dump() if hasattr(scope, "model_dump") else scope,
+                    "horizon_years": int(horizon_years),
+                    "criticite_min": int(criticite_min),
+                    "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    "items": items,
+                }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+   
+    
 # ======================================================
 # Models: Détail Risques
 # ======================================================

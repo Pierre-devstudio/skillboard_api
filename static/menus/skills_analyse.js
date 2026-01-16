@@ -654,6 +654,38 @@
     return await res.json();
   }
 
+  async function fetchPrevisionsPostesRougesDetail(portal, horizonYears, id_service) {
+    const portalCtx = portal || _portalRef;
+    const id_contact = String(portalCtx?.id_contact || portalCtx?.idContact || "").trim();
+
+    const apiBaseRaw = String(
+      portalCtx?.api_base ||
+      portalCtx?.apiBase ||
+      window.API_BASE ||
+      window.SKILLS_API_BASE ||
+      ""
+    ).trim();
+
+    const apiBase = apiBaseRaw.replace(/\/$/, "");
+
+    if (!apiBase) throw new Error("API base introuvable.");
+    if (!id_contact) throw new Error("id_contact introuvable.");
+
+    const qs = new URLSearchParams();
+    qs.set("horizon_years", String(horizonYears));
+    if (id_service) qs.set("id_service", String(id_service));
+    // si tu veux forcer ta criticité min côté UI:
+    // qs.set("criticite_min", "3");
+
+    const url = `${apiBase}/skills/analyse/previsions/postes-rouges/detail/${encodeURIComponent(id_contact)}?${qs.toString()}`;
+
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
+    }
+    return await res.json();
+  }
 
 
   function ensureMatchPersonModal() {
@@ -2660,6 +2692,111 @@ function renderDetail(mode) {
       return;
     }
 
+    if (selectedKpi === "postes-rouges") {
+      const horizonLabel = (horizon === 1 ? "1 an" : (horizon + " ans"));
+      if (sub) sub.textContent = `Postes qui basculent en rouge à moins de ${horizonLabel} (périmètre filtré).`;
+
+      body.innerHTML = `
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="card-title" style="margin-bottom:6px;">
+            Postes rouges &lt; ${escapeHtml(horizonLabel)}
+          </div>
+
+          <div class="card" style="padding:12px; margin-top:12px;">
+            <div class="card-title" style="margin-bottom:6px;">Détail</div>
+            <div id="prevPostesRedDetailBox" class="card-sub" style="margin:0;">Chargement…</div>
+          </div>
+        </div>
+      `;
+
+      window.__sbPrevPostesRedReqId = (window.__sbPrevPostesRedReqId || 0) + 1;
+      const reqId = window.__sbPrevPostesRedReqId;
+
+      setTimeout(async () => {
+        const box = byId("prevPostesRedDetailBox");
+        if (!box) return;
+
+        try {
+          const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+          if (!_portalRef) {
+            box.textContent = "Contexte portail indisponible (_portalRef manquant).";
+            return;
+          }
+
+          function fmtDateFR(v) {
+            const s = (v || "").toString().trim();
+            if (!s) return "—";
+            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (!m) return escapeHtml(s);
+            return `${m[3]}-${m[2]}-${m[1]}`;
+          }
+
+          box.textContent = "Chargement…";
+          const data = await fetchPrevisionsPostesRougesDetail(_portalRef, horizon, id_service);
+
+          if ((window.__sbPrevPostesRedReqId || 0) !== reqId) return;
+
+          const items = Array.isArray(data?.items) ? data.items : [];
+          if (!items.length) {
+            box.textContent = "Aucun poste ne bascule en rouge dans l’horizon sélectionné.";
+            return;
+          }
+
+          const rows = items.map(r => {
+            const idPoste = (r.id_poste || "").toString().trim();
+            const poste = (r.intitule_poste || "—").toString().trim();
+            const svc = (r.nom_service || "—").toString().trim();
+
+            const f = Number(r.future_fragiles || r.nb_fragiles_future || 0);
+            const sp = Number(r.future_sans_porteur || r.nb_sans_porteur_future || 0);
+            const pu = Number(r.future_porteur_unique || r.nb_porteur_unique_future || 0);
+
+            const nextExit = r.next_exit_date || "";
+
+            return `
+              <tr class="prev-red-poste-row"
+                  data-id_poste="${escapeHtml(idPoste)}"
+                  style="cursor:pointer;">
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">
+                  <span style="font-weight:800;">${escapeHtml(poste)}</span>
+                </td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(svc)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center; font-weight:900;">${escapeHtml(String(f))}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(sp))}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(pu))}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${nextExit ? fmtDateFR(nextExit) : "—"}</td>
+              </tr>
+            `;
+          }).join("");
+
+          box.innerHTML = `
+            <div style="overflow:auto;">
+              <table class="sb-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead>
+                  <tr>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Poste</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:220px;">Service</th>
+                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:130px;">Fragiles (horizon)</th>
+                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:140px;">Sans porteur</th>
+                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:140px;">Porteur unique</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:140px;">Prochaine sortie</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+              <div class="card-sub" style="margin-top:8px;">
+                Astuce lecture: “Fragiles” = nb de compétences critiques qui tombent à 0 ou 1 porteur à l’horizon.
+              </div>
+            </div>
+          `;
+        } catch (e) {
+          if ((window.__sbPrevPostesRedReqId || 0) !== reqId) return;
+          box.textContent = `Erreur chargement détail postes rouges: ${e?.message || e}`;
+        }
+      }, 0);
+
+      return;
+    }
 
 
     if (sub) sub.textContent = "Cliquez sur un KPI dans la tuile Prévisions pour afficher le détail.";
@@ -3567,6 +3704,22 @@ function bindOnce(portal) {
       }
       return;
     }
+
+    // ------------------------------
+    // PREVISIONS: clic sur un poste "rouge"
+    // ------------------------------
+    const trPrevRed = ev.target.closest("tr.prev-red-poste-row[data-id_poste]");
+    if (trPrevRed) {
+      const id_poste = (trPrevRed.getAttribute("data-id_poste") || "").trim();
+      if (!id_poste) return;
+
+      const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+
+      // Réutilise ton modal poste existant (au moins tu as quelque chose d’actionnable)
+      await showAnalysePosteDetailModal(portal, id_poste, id_service, "total-fragiles");
+      return;
+    }
+
 
     // ------------------------------
     // 2) Click sur COMPETENCE (table risques)
