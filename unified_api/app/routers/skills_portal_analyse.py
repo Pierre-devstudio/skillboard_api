@@ -1152,7 +1152,382 @@ def get_analyse_previsions_critiques_impactees_detail(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
+@router.get("/skills/analyse/previsions/critiques/modal/{id_contact}")
+def get_analyse_previsions_critiques_modal(
+    id_contact: str,
+    comp_key: str = Query(..., min_length=1),
+    horizon_years: int = Query(default=1, ge=1, le=5),
+    id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=3, ge=1, le=4),
+    limit: int = Query(default=500, ge=50, le=2000),
+):
+    """
+    Modal: 3 listes + synthèse:
+    - Porteurs restants
+    - Porteurs sortants (dans l'horizon)
+    - Postes impactés (niveau attendu + criticité)
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                contact = _fetch_contact_and_ent(cur, id_contact)
+                id_ent = contact["code_ent"]
 
+                scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
+                cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
+
+                # Resolve comp_key => id_competence
+                cur.execute(
+                    """
+                    SELECT id_competence, code, intitule, id_domaine_competence
+                    FROM public.tbl_competence
+                    WHERE id_competence = %s OR code = %s
+                    LIMIT 1
+                    """,
+                    (comp_key, comp_key),
+                )
+                comp = cur.fetchone()
+                if not comp:
+                    return {
+                        "scope": scope.model_dump() if hasattr(scope, "model_dump") else scope,
+                        "horizon_years": int(horizon_years),
+                        "comp_key": comp_key,
+                        "error": "Compétence introuvable (comp_key).",
+                    }
+
+                id_comp = comp["id_competence"]
+
+                # Domaine
+                domaine = None
+                if comp.get("id_domaine_competence"):
+                    cur.execute(
+                        """
+                        SELECT titre, titre_court, couleur
+                        FROM public.tbl_domaine_competence
+                        WHERE id_domaine_competence = %s
+                        LIMIT 1
+                        """,
+                        (comp["id_domaine_competence"],),
+                    )
+                    domaine = cur.fetchone()
+
+                sql = f"""
+                WITH
+                {cte_sql},
+                effectifs_valid AS (
+                    SELECT
+                        e.id_effectif,
+                        e.prenom_effectif,
+                        e.nom_effectif,
+                        e.id_service,
+                        e.id_poste_actuel,
+                        e.date_sortie_prevue,
+                        COALESCE(e.havedatefin, FALSE) AS havedatefin,
+                        e.motif_sortie,
+                        e.retraite_estimee::int AS retraite_annee,
+                        COALESCE(EXTRACT(MONTH FROM e.date_entree_entreprise_effectif)::int, 6) AS m_entree,
+                        COALESCE(EXTRACT(DAY FROM e.date_entree_entreprise_effectif)::int, 15) AS d_entree
+                    FROM public.tbl_effectif_client e
+                    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                    WHERE COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.is_temp, FALSE) = FALSE
+                      AND COALESCE(e.statut_actif, TRUE) = TRUE
+                ),
+                effectifs_exit AS (
+                    SELECT
+                        ev.*,
+                        CASE
+                            WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                            WHEN ev.retraite_annee IS NOT NULL THEN
+                                (
+                                    make_date(ev.retraite_annee, ev.m_entree, 1)
+                                    + (
+                                        (
+                                            LEAST(
+                                                ev.d_entree,
+                                                EXTRACT(
+                                                    DAY FROM (
+                                                        date_trunc('month', make_date(ev.retraite_annee, ev.m_entree, 1))
+                                                        + interval '1 month - 1 day'
+                                                    )
+                                                )::int
+                                            ) - 1
+                                        )::text || ' days'
+                                    )::interval
+                                )::date
+                            ELSE NULL
+                        END AS exit_date,
+                        CASE
+                            WHEN COALESCE(ev.havedatefin, FALSE) = FALSE THEN 'Retraite estimée'
+                            ELSE NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), '')
+                        END AS raison_sortie
+                    FROM effectifs_valid ev
+                ),
+                porteurs AS (
+                    SELECT
+                        ec.id_competence,
+                        ee.id_effectif,
+                        ee.prenom_effectif,
+                        ee.nom_effectif,
+                        ee.id_service,
+                        COALESCE(o.nom_service,'') AS nom_service,
+                        ee.id_poste_actuel,
+                        COALESCE(p.intitule_poste,'') AS intitule_poste,
+                        ee.exit_date,
+                        ee.raison_sortie,
+                        COALESCE(ec.niveau, ec.niveau_acquis, ec.niveau_competence)::text AS niveau
+                    FROM public.tbl_effectif_competence ec
+                    JOIN effectifs_exit ee ON ee.id_effectif = ec.id_effectif
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = ee.id_service
+                     AND o.archive = FALSE
+                    LEFT JOIN public.tbl_fiche_poste p
+                      ON p.id_poste = ee.id_poste_actuel
+                    WHERE ec.id_competence = %s
+                ),
+                split AS (
+                    SELECT
+                        pr.*,
+                        CASE
+                          WHEN pr.exit_date IS NOT NULL
+                           AND pr.exit_date >= CURRENT_DATE
+                           AND pr.exit_date < (CURRENT_DATE + (%s || ' years')::interval)
+                          THEN TRUE ELSE FALSE
+                        END AS is_sortant
+                    FROM porteurs pr
+                ),
+                postes AS (
+                    SELECT
+                        fp.id_poste,
+                        fp.intitule_poste,
+                        COALESCE(o.nom_service,'') AS nom_service,
+                        cp.criticite::int AS criticite,
+                        cp.niveau_attendu::text AS niveau_attendu
+                    FROM public.tbl_competence_poste cp
+                    JOIN public.tbl_fiche_poste fp ON fp.id_poste = cp.id_poste
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = fp.id_service
+                     AND o.archive = FALSE
+                    WHERE fp.id_ent = %s
+                      AND COALESCE(fp.actif, TRUE) = TRUE
+                      AND (%s IS NULL OR fp.id_service = %s)
+                      AND cp.id_competence = %s
+                      AND COALESCE(cp.criticite,0) >= %s
+                )
+                SELECT
+                  (SELECT COUNT(DISTINCT id_effectif) FROM split) AS nb_now,
+                  (SELECT COUNT(DISTINCT id_effectif) FROM split WHERE is_sortant = TRUE) AS nb_out,
+                  (SELECT COUNT(DISTINCT id_effectif) FROM split WHERE is_sortant = FALSE) AS nb_remain,
+                  (SELECT COUNT(*) FROM postes) AS nb_postes,
+                  (SELECT MIN(exit_date) FROM split WHERE is_sortant = TRUE) AS next_exit,
+                  (SELECT COUNT(*) FROM split WHERE is_sortant = FALSE AND niveau = 'A') AS remain_a,
+                  (SELECT COUNT(*) FROM split WHERE is_sortant = FALSE AND niveau = 'B') AS remain_b,
+                  (SELECT COUNT(*) FROM split WHERE is_sortant = FALSE AND niveau = 'C') AS remain_c
+                """
+
+                params = tuple(
+                    cte_params
+                    + [id_ent, id_comp, horizon_years, id_ent, id_ent, scope.id_service, scope.id_service, id_comp, criticite_min]
+                )
+                cur.execute(sql, params)
+                k = cur.fetchone() or {}
+
+                # Porteurs (restants + sortants) + postes impactés
+                cur.execute(
+                    f"""
+                    WITH
+                    {cte_sql},
+                    effectifs_valid AS (
+                        SELECT
+                            e.id_effectif,
+                            e.prenom_effectif,
+                            e.nom_effectif,
+                            e.id_service,
+                            e.id_poste_actuel,
+                            e.date_sortie_prevue,
+                            COALESCE(e.havedatefin, FALSE) AS havedatefin,
+                            e.motif_sortie,
+                            e.retraite_estimee::int AS retraite_annee,
+                            COALESCE(EXTRACT(MONTH FROM e.date_entree_entreprise_effectif)::int, 6) AS m_entree,
+                            COALESCE(EXTRACT(DAY FROM e.date_entree_entreprise_effectif)::int, 15) AS d_entree
+                        FROM public.tbl_effectif_client e
+                        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                        WHERE COALESCE(e.archive, FALSE) = FALSE
+                          AND COALESCE(e.is_temp, FALSE) = FALSE
+                          AND COALESCE(e.statut_actif, TRUE) = TRUE
+                    ),
+                    effectifs_exit AS (
+                        SELECT
+                            ev.*,
+                            CASE
+                                WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                                WHEN ev.retraite_annee IS NOT NULL THEN
+                                    (
+                                        make_date(ev.retraite_annee, ev.m_entree, 1)
+                                        + (
+                                            (
+                                                LEAST(
+                                                    ev.d_entree,
+                                                    EXTRACT(
+                                                        DAY FROM (
+                                                            date_trunc('month', make_date(ev.retraite_annee, ev.m_entree, 1))
+                                                            + interval '1 month - 1 day'
+                                                        )
+                                                    )::int
+                                                ) - 1
+                                            )::text || ' days'
+                                        )::interval
+                                    )::date
+                                ELSE NULL
+                            END AS exit_date,
+                            CASE
+                                WHEN COALESCE(ev.havedatefin, FALSE) = FALSE THEN 'Retraite estimée'
+                                ELSE NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), '')
+                            END AS raison_sortie
+                        FROM effectifs_valid ev
+                    ),
+                    porteurs AS (
+                        SELECT
+                            ec.id_effectif,
+                            ee.prenom_effectif,
+                            ee.nom_effectif,
+                            ee.id_service,
+                            COALESCE(o.nom_service,'') AS nom_service,
+                            ee.id_poste_actuel,
+                            COALESCE(p.intitule_poste,'') AS intitule_poste,
+                            ee.exit_date,
+                            ee.raison_sortie,
+                            COALESCE(ec.niveau, ec.niveau_acquis, ec.niveau_competence)::text AS niveau
+                        FROM public.tbl_effectif_competence ec
+                        JOIN effectifs_exit ee ON ee.id_effectif = ec.id_effectif
+                        LEFT JOIN public.tbl_entreprise_organigramme o
+                          ON o.id_ent = %s
+                         AND o.id_service = ee.id_service
+                         AND o.archive = FALSE
+                        LEFT JOIN public.tbl_fiche_poste p
+                          ON p.id_poste = ee.id_poste_actuel
+                        WHERE ec.id_competence = %s
+                    )
+                    SELECT *
+                    FROM porteurs
+                    ORDER BY exit_date NULLS LAST, nom_effectif ASC, prenom_effectif ASC
+                    LIMIT %s
+                    """,
+                    tuple(cte_params + [id_ent, id_comp, limit]),
+                )
+                porteurs_rows = cur.fetchall() or []
+
+                def _fmt_date(d):
+                    if hasattr(d, "isoformat"):
+                        return d.isoformat()
+                    return d
+
+                restants = []
+                sortants = []
+                for r in porteurs_rows:
+                    prenom = (r.get("prenom_effectif") or "").strip()
+                    nom = (r.get("nom_effectif") or "").strip()
+                    full = (prenom + " " + nom).strip() or "—"
+                    exit_date = _fmt_date(r.get("exit_date"))
+                    is_sortant = False
+                    if exit_date:
+                        # ISO string or date => compare in SQL already too, but keep simple
+                        # We'll classify client-side in JS if needed; here: classify with SQL rule again is overkill.
+                        pass
+
+                    item = {
+                        "full": full,
+                        "niveau": (r.get("niveau") or "").strip() or None,
+                        "nom_service": (r.get("nom_service") or "").strip() or "—",
+                        "intitule_poste": (r.get("intitule_poste") or "").strip() or "—",
+                        "exit_date": exit_date,
+                        "raison_sortie": (r.get("raison_sortie") or "").strip() or None,
+                    }
+
+                    # classement sortant / restant (même règle que SQL)
+                    if r.get("exit_date") is not None:
+                        # on a la date en objet date -> compare en python
+                        from datetime import date, timedelta
+                        try:
+                            d0 = r.get("exit_date")
+                            if isinstance(d0, date):
+                                horizon_end = date.today().replace(year=date.today().year + int(horizon_years))
+                                if d0 >= date.today() and d0 < horizon_end:
+                                    sortants.append(item)
+                                else:
+                                    restants.append(item)
+                            else:
+                                # fallback: si pas comparable, on laisse en restants
+                                restants.append(item)
+                        except Exception:
+                            restants.append(item)
+                    else:
+                        restants.append(item)
+
+                # Postes impactés
+                cur.execute(
+                    """
+                    SELECT
+                        fp.id_poste,
+                        fp.intitule_poste,
+                        COALESCE(o.nom_service,'') AS nom_service,
+                        cp.criticite::int AS criticite,
+                        cp.niveau_attendu::text AS niveau_attendu
+                    FROM public.tbl_competence_poste cp
+                    JOIN public.tbl_fiche_poste fp ON fp.id_poste = cp.id_poste
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = fp.id_service
+                     AND o.archive = FALSE
+                    WHERE fp.id_ent = %s
+                      AND COALESCE(fp.actif, TRUE) = TRUE
+                      AND (%s IS NULL OR fp.id_service = %s)
+                      AND cp.id_competence = %s
+                      AND COALESCE(cp.criticite,0) >= %s
+                    ORDER BY cp.criticite DESC, fp.intitule_poste ASC
+                    """,
+                    (id_ent, id_ent, scope.id_service, scope.id_service, id_comp, criticite_min),
+                )
+                postes_rows = cur.fetchall() or []
+
+                next_exit = k.get("next_exit")
+                if hasattr(next_exit, "isoformat"):
+                    next_exit = next_exit.isoformat()
+
+                return {
+                    "scope": scope.model_dump() if hasattr(scope, "model_dump") else scope,
+                    "horizon_years": int(horizon_years),
+                    "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    "competence": {
+                        "id_competence": id_comp,
+                        "code": (comp.get("code") or "").strip() or "—",
+                        "intitule": (comp.get("intitule") or "").strip() or "—",
+                        "domaine_titre": (domaine.get("titre") if domaine else "") or "—",
+                        "domaine_titre_court": (domaine.get("titre_court") if domaine else "") or "—",
+                        "domaine_couleur": (domaine.get("couleur") if domaine else None),
+                    },
+                    "kpis": {
+                        "nb_now": int(k.get("nb_now") or 0),
+                        "nb_out": int(k.get("nb_out") or 0),
+                        "nb_remain": int(k.get("nb_remain") or 0),
+                        "nb_postes": int(k.get("nb_postes") or 0),
+                        "next_exit_date": next_exit,
+                        "remain_a": int(k.get("remain_a") or 0),
+                        "remain_b": int(k.get("remain_b") or 0),
+                        "remain_c": int(k.get("remain_c") or 0),
+                    },
+                    "restants": restants,
+                    "sortants": sortants,
+                    "postes": postes_rows,
+                }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+    
 # ======================================================
 # Models: Détail Risques
 # ======================================================
