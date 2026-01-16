@@ -1179,9 +1179,9 @@ def get_analyse_previsions_critiques_modal(
                 # Resolve comp_key => id_competence
                 cur.execute(
                     """
-                    SELECT id_competence, code, intitule, id_domaine_competence
+                    SELECT id_comp, code, intitule, domaine
                     FROM public.tbl_competence
-                    WHERE id_competence = %s OR code = %s
+                    WHERE id_comp = %s OR code = %s
                     LIMIT 1
                     """,
                     (comp_key, comp_key),
@@ -1195,7 +1195,7 @@ def get_analyse_previsions_critiques_modal(
                         "error": "Compétence introuvable (comp_key).",
                     }
 
-                id_comp = comp["id_competence"]
+                id_comp = comp["id_comp"]
 
                 # Domaine
                 domaine = None
@@ -1265,7 +1265,7 @@ def get_analyse_previsions_critiques_modal(
                 ),
                 porteurs AS (
                     SELECT
-                        ec.id_competence,
+                        ec.id_comp,
                         ee.id_effectif,
                         ee.prenom_effectif,
                         ee.nom_effectif,
@@ -1275,16 +1275,16 @@ def get_analyse_previsions_critiques_modal(
                         COALESCE(p.intitule_poste,'') AS intitule_poste,
                         ee.exit_date,
                         ee.raison_sortie,
-                        COALESCE(ec.niveau, ec.niveau_acquis, ec.niveau_competence)::text AS niveau
-                    FROM public.tbl_effectif_competence ec
-                    JOIN effectifs_exit ee ON ee.id_effectif = ec.id_effectif
+                        COALESCE(ec.niveau_actuel, ec.niveau_acquis, ec.niveau_competence)::text AS niveau
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN effectifs_exit ee ON ee.id_effectif = ec.id_effectif_client
                     LEFT JOIN public.tbl_entreprise_organigramme o
                       ON o.id_ent = %s
                      AND o.id_service = ee.id_service
                      AND o.archive = FALSE
                     LEFT JOIN public.tbl_fiche_poste p
                       ON p.id_poste = ee.id_poste_actuel
-                    WHERE ec.id_competence = %s
+                    WHERE ec.id_comp = %s
                 ),
                 split AS (
                     SELECT
@@ -1302,9 +1302,9 @@ def get_analyse_previsions_critiques_modal(
                         fp.id_poste,
                         fp.intitule_poste,
                         COALESCE(o.nom_service,'') AS nom_service,
-                        cp.criticite::int AS criticite,
-                        cp.niveau_attendu::text AS niveau_attendu
-                    FROM public.tbl_competence_poste cp
+                        cp.poids_criticite::int AS criticite,
+                        cp.niveau_requis::text AS niveau_attendu
+                    FROM public.tbl_fiche_poste_competence cp
                     JOIN public.tbl_fiche_poste fp ON fp.id_poste = cp.id_poste
                     LEFT JOIN public.tbl_entreprise_organigramme o
                       ON o.id_ent = %s
@@ -1390,7 +1390,7 @@ def get_analyse_previsions_critiques_modal(
                     ),
                     porteurs AS (
                         SELECT
-                            ec.id_effectif,
+                            ec.id_effectif_client,
                             ee.prenom_effectif,
                             ee.nom_effectif,
                             ee.id_service,
@@ -1399,16 +1399,16 @@ def get_analyse_previsions_critiques_modal(
                             COALESCE(p.intitule_poste,'') AS intitule_poste,
                             ee.exit_date,
                             ee.raison_sortie,
-                            COALESCE(ec.niveau, ec.niveau_acquis, ec.niveau_competence)::text AS niveau
-                        FROM public.tbl_effectif_competence ec
-                        JOIN effectifs_exit ee ON ee.id_effectif = ec.id_effectif
+                            COALESCE(ec.niveau_actuel, ec.niveau_acquis, ec.niveau_competence)::text AS niveau
+                        FROM public.tbl_effectif_client_competence ec
+                        JOIN effectifs_exit ee ON ee.id_effectif = ec.id_effectif_client
                         LEFT JOIN public.tbl_entreprise_organigramme o
                           ON o.id_ent = %s
                          AND o.id_service = ee.id_service
                          AND o.archive = FALSE
                         LEFT JOIN public.tbl_fiche_poste p
                           ON p.id_poste = ee.id_poste_actuel
-                        WHERE ec.id_competence = %s
+                        WHERE ec.id_comp = %s
                     )
                     SELECT *
                     FROM porteurs
@@ -1473,9 +1473,9 @@ def get_analyse_previsions_critiques_modal(
                         fp.id_poste,
                         fp.intitule_poste,
                         COALESCE(o.nom_service,'') AS nom_service,
-                        cp.criticite::int AS criticite,
-                        cp.niveau_attendu::text AS niveau_attendu
-                    FROM public.tbl_competence_poste cp
+                        cp.poids_criticite::int AS criticite,
+                        cp.niveau_requis::text AS niveau_attendu
+                    FROM public.tbl_fiche_poste_competence cp
                     JOIN public.tbl_fiche_poste fp ON fp.id_poste = cp.id_poste
                     LEFT JOIN public.tbl_entreprise_organigramme o
                       ON o.id_ent = %s
@@ -1485,8 +1485,8 @@ def get_analyse_previsions_critiques_modal(
                       AND COALESCE(fp.actif, TRUE) = TRUE
                       AND (%s IS NULL OR fp.id_service = %s)
                       AND cp.id_competence = %s
-                      AND COALESCE(cp.criticite,0) >= %s
-                    ORDER BY cp.criticite DESC, fp.intitule_poste ASC
+                      AND COALESCE(cp.poids_criticite,0) >= %s
+                    ORDER BY cp.poids_criticite DESC, fp.intitule_poste ASC
                     """,
                     (id_ent, id_ent, scope.id_service, scope.id_service, id_comp, criticite_min),
                 )
