@@ -1199,7 +1199,9 @@ def get_analyse_previsions_critiques_modal(
 
                 # Domaine
                 domaine = None
-                if comp.get("domaine"):
+                id_dom = (comp.get("domaine") or "").strip()
+
+                if id_dom:
                     cur.execute(
                         """
                         SELECT titre, titre_court, couleur
@@ -1207,7 +1209,7 @@ def get_analyse_previsions_critiques_modal(
                         WHERE id_domaine_competence = %s
                         LIMIT 1
                         """,
-                        (comp["id_domaine_competence"],),
+                        (id_dom,),
                     )
                     domaine = cur.fetchone()
 
