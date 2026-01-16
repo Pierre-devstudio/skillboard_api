@@ -1625,7 +1625,7 @@ def get_analyse_previsions_postes_rouges_detail(
                     JOIN public.tbl_fiche_poste_competence cp ON cp.id_poste = fp.id_poste
                     WHERE fp.id_ent = %s
                       AND COALESCE(fp.actif, TRUE) = TRUE
-                      AND (%s::text IS NULL OR fp.id_service = %s::text)
+                      AND (NULLIF(%s::text,'') IS NULL OR fp.id_service = NULLIF(%s::text,''))
                       AND COALESCE(cp.poids_criticite,0) >= %s
                 ),
 
@@ -1709,7 +1709,6 @@ def get_analyse_previsions_postes_rouges_detail(
                  AND o.id_service = a.id_service
                  AND o.archive = FALSE
                 WHERE a.future_fragiles > 0
-                  AND a.now_fragiles = 0
                 ORDER BY a.future_fragiles DESC, a.next_exit_date NULLS LAST, a.intitule_poste ASC
                 LIMIT %s
                 """
