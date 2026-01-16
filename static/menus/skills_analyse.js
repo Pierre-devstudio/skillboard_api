@@ -655,7 +655,7 @@
   }
 
   async function fetchPrevisionsPostesRougesDetail(portal, horizonYears, id_service) {
-    const portalCtx = portal || _portalRef;
+    const portalCtx = portal || _portalref;
     const id_contact = String(portalCtx?.id_contact || portalCtx?.idContact || "").trim();
 
     const apiBaseRaw = String(
@@ -2718,8 +2718,8 @@ function renderDetail(mode) {
 
         try {
           const id_service = (byId("analyseServiceSelect")?.value || "").trim();
-          if (!_portalRef) {
-            box.textContent = "Contexte portail indisponible (_portalRef manquant).";
+          if (!_portalref) {
+            box.textContent = "Contexte portail indisponible (_portalref manquant).";
             return;
           }
 
@@ -2732,7 +2732,7 @@ function renderDetail(mode) {
           }
 
           box.textContent = "Chargement…";
-          const data = await fetchPrevisionsPostesRougesDetail(_portalRef, horizon, id_service);
+          const data = await fetchPrevisionsPostesRougesDetail(_portalref, horizon, id_service);
 
           if ((window.__sbPrevPostesRedReqId || 0) !== reqId) return;
 
