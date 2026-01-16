@@ -3120,8 +3120,7 @@ function renderDetail(mode) {
               <div style="color:#6b7280;">Date de sortie</div><div>${escapeHtml(d.date_sortie || "—")}</div>
               <div style="color:#6b7280;">Poste</div><div>${escapeHtml(d.poste || "—")}</div>
               <div style="color:#6b7280;">Service</div><div>${escapeHtml(d.service || "—")}</div>
-              <div style="color:#6b7280;">Raison</div><div>${escapeHtml(d.raison || "—")}</div>
-              <div style="color:#6b7280;">ID effectif</div><div>${escapeHtml(d.id_effectif || "—")}</div>
+              <div style="color:#6b7280;">Raison</div><div>${escapeHtml(d.raison || "—")}</div>              
             </div>
           </div>
 
@@ -3132,7 +3131,6 @@ function renderDetail(mode) {
             <button type="button" class="btn-secondary" id="btnPrevGoMatching" ${d.id_poste_actuel ? "" : "disabled"}>
               Voir matching du poste
             </button>
-            <button type="button" class="btn-secondary" id="btnPrevCloseBot">Fermer</button>
           </div>
         </div>
       </div>
@@ -3141,8 +3139,7 @@ function renderDetail(mode) {
     document.body.appendChild(wrap);
 
     const backdrop = wrap.querySelector(".sb-modal-backdrop");
-    const btnCloseTop = wrap.querySelector("#btnPrevCloseTop");
-    const btnCloseBot = wrap.querySelector("#btnPrevCloseBot");
+    const btnCloseTop = wrap.querySelector("#btnPrevCloseTop");    
     const btnGoRisques = wrap.querySelector("#btnPrevGoRisques");
     const btnGoMatching = wrap.querySelector("#btnPrevGoMatching");
 
@@ -3162,7 +3159,7 @@ function renderDetail(mode) {
     });
 
     btnCloseTop?.addEventListener("click", close);
-    btnCloseBot?.addEventListener("click", close);
+    
 
     btnGoRisques?.addEventListener("click", async () => {
       const id_poste = (d.id_poste_actuel || "").trim();
