@@ -1275,7 +1275,7 @@ def get_analyse_previsions_critiques_modal(
                         COALESCE(p.intitule_poste,'') AS intitule_poste,
                         ee.exit_date,
                         ee.raison_sortie,
-                        COALESCE(ec.niveau_actuel, ec.niveau_acquis, ec.niveau_competence)::text AS niveau
+                        COALESCE(ec.niveau_actuel,'')::text AS niveau
                     FROM public.tbl_effectif_client_competence ec
                     JOIN effectifs_exit ee ON ee.id_effectif = ec.id_effectif_client
                     LEFT JOIN public.tbl_entreprise_organigramme o
@@ -1399,7 +1399,7 @@ def get_analyse_previsions_critiques_modal(
                             COALESCE(p.intitule_poste,'') AS intitule_poste,
                             ee.exit_date,
                             ee.raison_sortie,
-                            COALESCE(ec.niveau_actuel, ec.niveau_acquis, ec.niveau_competence)::text AS niveau
+                            COALESCE(ec.niveau_actuel, '')::text AS niveau
                         FROM public.tbl_effectif_client_competence ec
                         JOIN effectifs_exit ee ON ee.id_effectif = ec.id_effectif_client
                         LEFT JOIN public.tbl_entreprise_organigramme o
