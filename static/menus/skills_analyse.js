@@ -9,7 +9,7 @@
 (function () {
   let _bound = false;
   let _servicesLoaded = false;
-  let _portalRef = null;
+  let _portalref = null;
   let _prevData = null;
 
   const NON_LIE_ID = "__NON_LIE__";
@@ -580,32 +580,80 @@
     return await res.json();
   }
 
-  // Cache simple (optionnel mais propre)
-  const _prevCritDetailCache = new Map();
+  // ======================================================
+  // Helpers contexte portail (id_contact + apiBase)
+  // ======================================================
+  function _sbReadAttr(el, name) {
+    if (!el) return "";
+    if (typeof el.getAttribute === "function") return (el.getAttribute(name) || "").trim();
+    return "";
+  }
 
+  function getPortalContext(portal) {
+    const el =
+      document.querySelector("[data-id_contact],[data-id-contact],[data-contact-id],[data-api-base]") ||
+      byId("skillsPortalAnalyse") ||
+      byId("skillsPortal") ||
+      null;
+
+    const id_contact = String(
+      portal?.id_contact ||
+      portal?.idContact ||
+      portal?.contact_id ||
+      portal?.contactId ||
+      _sbReadAttr(el, "data-id_contact") ||
+      _sbReadAttr(el, "data-id-contact") ||
+      _sbReadAttr(el, "data-contact-id") ||
+      el?.dataset?.id_contact ||
+      el?.dataset?.idContact ||
+      el?.dataset?.contactId ||
+      el?.dataset?.contact_id ||
+      ""
+    ).trim();
+
+    const apiBaseRaw = String(
+      portal?.api_base ||
+      portal?.apiBase ||
+      portal?.api ||
+      portal?.base_url ||
+      portal?.baseUrl ||
+      _sbReadAttr(el, "data-api-base") ||
+      el?.dataset?.apiBase ||
+      window.API_BASE ||
+      window.SKILLS_API_BASE ||
+      ""
+    ).trim();
+
+    return {
+      id_contact,
+      apiBase: apiBaseRaw.replace(/\/$/, ""),
+    };
+  }
+
+
+  // ======================================================
+  // API: détail "Critiques impactées" (prévisions)
+  // ======================================================
   async function fetchPrevisionsCritiquesDetail(portal, horizonYears, id_service) {
-    if (!portal) throw new Error("portal manquant");
-    if (!portal.apiBase || !portal.contactId) throw new Error("portal.apiBase / portal.contactId manquant");
-
-    const h = Math.max(1, Math.min(5, Number(horizonYears) || 1));
-    const svc = (id_service || "").trim();
-
-    const cacheKey = `${portal.contactId}|${h}|${svc}`;
-    if (_prevCritDetailCache.has(cacheKey)) return _prevCritDetailCache.get(cacheKey);
+    const ctx = getPortalContext(portal);
+    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
 
     const qs = new URLSearchParams();
-    qs.set("horizon_years", String(h));
-    if (svc) qs.set("id_service", svc);
-    qs.set("limit", "2000");
+    qs.set("horizon_years", String(horizonYears || 1));
+    if (id_service) qs.set("id_service", String(id_service).trim());
 
-    const url =
-      `${portal.apiBase}/skills/analyse/previsions/critiques/detail/` +
-      `${encodeURIComponent(portal.contactId)}?${qs.toString()}`;
+    // IMPORTANT: endpoint à créer côté API (FastAPI) si pas encore fait
+    const url = `${ctx.apiBase}/skills/analyse/previsions/critiques/detail/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
 
-    const data = await portal.apiJson(url);
-    _prevCritDetailCache.set(cacheKey, data);
-    return data;
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
+    }
+    return await res.json();
   }
+
 
 
   function ensureMatchPersonModal() {
@@ -2314,7 +2362,7 @@ function renderDetail(mode) {
     const id_service = (byId("analyseServiceSelect")?.value || "").trim();
     body.innerHTML = renderMatchingShell();
 
-    if (!_portalRef) {
+    if (!_portalref) {
       const host = byId("matchResult");
       if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Contexte portail indisponible.</div>`;
       return;
@@ -2324,7 +2372,7 @@ function renderDetail(mode) {
 
     (async () => {
       try {
-        const postes = await fetchMatchingPostes(_portalRef, id_service);
+        const postes = await fetchMatchingPostes(_portalref, id_service);
         if (mySeq !== _matchReqSeq) return;
 
         if (_matchSelectedPoste && !postes.some(p => (p.id_poste || "").toString().trim() === _matchSelectedPoste)) {
@@ -2338,7 +2386,7 @@ function renderDetail(mode) {
         renderMatchingPosteList(postes, _matchSelectedPoste);
 
         if (_matchSelectedPoste) {
-          await showMatchingForPoste(_portalRef, _matchSelectedPoste, id_service, mySeq);
+          await showMatchingForPoste(_portalref, _matchSelectedPoste, id_service, mySeq);
         }
       } catch (e) {
         const host = byId("matchResult");
@@ -2397,13 +2445,13 @@ function renderDetail(mode) {
         try {
           const id_service = (byId("analyseServiceSelect")?.value || "").trim();
 
-          if (!_portalRef) {
-            box.textContent = "Contexte portail indisponible (_portalRef manquant).";
+          if (!_portalref) {
+            box.textContent = "Contexte portail indisponible (_portalref manquant).";
             return;
           }
 
           box.textContent = "Chargement…";
-          const data = await fetchPrevisionsSortiesDetail(_portalRef, horizon, id_service);
+          const data = await fetchPrevisionsSortiesDetail(_portalref, horizon, id_service);
 
           if ((window.__sbPrevSortiesReqId || 0) !== reqId) return;
 
@@ -2516,8 +2564,8 @@ function renderDetail(mode) {
         try {
           const id_service = (byId("analyseServiceSelect")?.value || "").trim();
 
-          if (!_portalRef) {
-            box.textContent = "Contexte portail indisponible (_portalRef manquant).";
+          if (!_portalref) {
+            box.textContent = "Contexte portail indisponible (_portalref manquant).";
             return;
           }
 
@@ -2546,7 +2594,7 @@ function renderDetail(mode) {
           }
 
           box.textContent = "Chargement…";
-          const data = await fetchPrevisionsCritiquesDetail(_portalRef, horizon, id_service);
+          const data = await fetchPrevisionsCritiquesDetail(_portalref, horizon, id_service);
 
           if ((window.__sbPrevCritReqId || 0) !== reqId) return;
 
@@ -2799,7 +2847,7 @@ function renderDetail(mode) {
     });
   }
 
-  if (!_portalRef) {
+  if (!_portalref) {
     body.innerHTML = `
       ${resetHtml}
       <div class="card" style="padding:12px; margin:0;">
@@ -2814,7 +2862,7 @@ function renderDetail(mode) {
   (async () => {
     try {
       if (rf) {
-        const data = await fetchRisquesDetail(_portalRef, rf, id_service, 120);
+        const data = await fetchRisquesDetail(_portalref, rf, id_service, 120);
         if (mySeq !== _riskDetailReqSeq) return;
 
         const items = Array.isArray(data?.items) ? data.items : [];
@@ -2840,9 +2888,9 @@ function renderDetail(mode) {
       }
 
       const [a, b, c] = await Promise.all([
-        fetchRisquesDetail(_portalRef, "postes-fragiles", id_service, 20),
-        fetchRisquesDetail(_portalRef, "critiques-sans-porteur", id_service, 20),
-        fetchRisquesDetail(_portalRef, "porteur-unique", id_service, 20),
+        fetchRisquesDetail(_portalref, "postes-fragiles", id_service, 20),
+        fetchRisquesDetail(_portalref, "critiques-sans-porteur", id_service, 20),
+        fetchRisquesDetail(_portalref, "porteur-unique", id_service, 20),
       ]);
 
       if (mySeq !== _riskDetailReqSeq) return;
@@ -3023,36 +3071,9 @@ function renderDetail(mode) {
   // Endpoint attendu (tu le coderas côté API ensuite) :
   // GET /skills/analyse/previsions/critiques/modal/{id_contact}?comp_key=...&horizon_years=...&id_service=...
   async function fetchPrevisionsCritiquesModal(portal, compKey, horizonYears, id_service) {
-    const portalEl =
-      portal ||
-      document.querySelector("[data-id_contact],[data-id-contact]") ||
-      byId("skillsPortalAnalyse") ||
-      byId("skillsPortal") ||
-      document.body;
-
-    const id_contact = String(
-      portal?.id_contact ||
-      portal?.idContact ||
-      portalEl?.getAttribute("data-id_contact") ||
-      portalEl?.getAttribute("data-id-contact") ||
-      portalEl?.dataset?.id_contact ||
-      portalEl?.dataset?.idContact ||
-      ""
-    ).trim();
-
-    const apiBaseRaw = String(
-      portal?.api_base ||
-      portal?.apiBase ||
-      portalEl?.getAttribute("data-api-base") ||
-      portalEl?.dataset?.apiBase ||
-      window.API_BASE ||
-      window.SKILLS_API_BASE ||
-      ""
-    ).trim();
-
-    const apiBase = apiBaseRaw.replace(/\/$/, "");
-    if (!id_contact) throw new Error("id_contact introuvable (UI)");
-    if (!apiBase) throw new Error("apiBase introuvable (UI)");
+    const ctx = getPortalContext(portal);
+    if (!ctx.id_contact) throw new Error("id_contact introuvable (UI)");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable (UI)");
 
     const qs = new URLSearchParams();
     qs.set("comp_key", String(compKey || ""));
@@ -3060,7 +3081,7 @@ function renderDetail(mode) {
     if (id_service) qs.set("id_service", String(id_service));
     qs.set("limit", "500");
 
-    const url = `${apiBase}/skills/analyse/previsions/critiques/modal/${encodeURIComponent(id_contact)}?${qs.toString()}`;
+    const url = `${ctx.apiBase}/skills/analyse/previsions/critiques/modal/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
 
     const res = await fetch(url, { headers: { "Accept": "application/json" } });
     if (!res.ok) {
@@ -3069,6 +3090,7 @@ function renderDetail(mode) {
     }
     return await res.json();
   }
+
 
   async function showAnalysePrevCritModal(portal, compKey, id_service) {
     // ouverture + placeholders
@@ -3307,7 +3329,7 @@ function bindOnce(portal) {
   _bound = true;
 
   // garde une ref globale (ton code s’appuie dessus partout)
-  _portalRef = portal || _portalRef;
+  _portalref = portal || _portalref;
 
   const selService = byId("analyseServiceSelect");
   const btnReset = byId("btnAnalyseReset");
@@ -3516,7 +3538,7 @@ function bindOnce(portal) {
 
   analyseBody.addEventListener("click", async (ev) => {
     // 0) pas de portail => pas de drilldown
-    const p = portal || _portalRef;
+    const p = portal || _portalref;
     if (!p) return;
 
     const id_service = (byId("analyseServiceSelect")?.value || "").trim();
@@ -3810,7 +3832,7 @@ function bindOnce(portal) {
 
   async function _fetchPrevCritDetail(portal, compKey, horizon, id_service) {
     // contexte API (même logique tolérante que le reste)
-    const portalCtx = portal || _portalRef || null;
+    const portalCtx = portal || _portalref || null;
 
     const id_contact = String(
       portalCtx?.id_contact ||
@@ -4029,7 +4051,7 @@ function bindOnce(portal) {
   window.SkillsAnalyse = {
     onShow: async (portal) => {
       try {
-        _portalRef = portal;
+        _portalref = portal;
 
         bindOnce(portal);
         await ensureContext(portal);
