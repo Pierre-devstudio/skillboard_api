@@ -656,7 +656,15 @@
 
   async function fetchPrevisionsPostesRougesDetail(portal, horizonYears, id_service) {
     const portalCtx = portal || _portalref;
-    const id_contact = String(portalCtx?.id_contact || portalCtx?.idContact || "").trim();
+    const id_contact = String(
+      portalCtx?.id_contact ||
+      portalCtx?.idContact ||
+      portalCtx?.getAttribute?.("data-id_contact") ||
+      portalCtx?.getAttribute?.("data-id-contact") ||
+      portalCtx?.dataset?.id_contact ||
+      portalCtx?.dataset?.idContact ||
+      ""
+    ).trim();
 
     const apiBaseRaw = String(
       portalCtx?.api_base ||
