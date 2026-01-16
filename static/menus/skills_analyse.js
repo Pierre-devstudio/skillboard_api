@@ -3156,23 +3156,27 @@ function renderDetail(mode) {
       if (title) title.textContent = `${code ? code + " — " : ""}${intit || "Compétence"}`;
       if (sub) sub.textContent = `Impact prévisionnel (horizon ${horizon} an${horizon > 1 ? "s" : ""})`;
 
-      // KPIs (tolérants sur les noms)
-      const now = Number(data?.kpi?.porteurs_now ?? data?.nb_porteurs_now ?? data?.porteurs_now ?? 0);
-      const out = Number(data?.kpi?.porteurs_sortants ?? data?.nb_porteurs_sortants ?? data?.sortants ?? 0);
-      const remain = Number(data?.kpi?.porteurs_restants ?? data?.nb_porteurs_restants ?? (now - out));
-      const postesImpact = Number(data?.kpi?.nb_postes_impactes ?? data?.nb_postes_impactes ?? 0);
+      
+      // KPIs (API: data.kpis.*)
+      const kpis = data?.kpis || {};
 
-      const nextExit = data?.kpi?.next_exit_date || data?.next_exit_date || "";
+      const now = Number(kpis.nb_now ?? 0);
+      const out = Number(kpis.nb_out ?? 0);
+      const remain = Number(kpis.nb_remain ?? (now - out));
+      const postesImpact = Number(kpis.nb_postes ?? 0);
+      const nextExit = (kpis.next_exit_date || "").toString().trim();
 
-      if (kNow) kNow.textContent = String(now || 0);
-      if (kOut) kOut.textContent = String(out || 0);
-      if (kRemain) kRemain.textContent = String(remain || 0);
-      if (kPostes) kPostes.textContent = String(postesImpact || 0);
+      if (kNow) kNow.textContent = String(now);
+      if (kOut) kOut.textContent = String(out);
+      if (kRemain) kRemain.textContent = String(remain);
+      if (kPostes) kPostes.textContent = String(postesImpact);
       if (kNext) kNext.textContent = nextExit ? fmtDateFR(nextExit) : "—";
 
-      // niveaux A/B/C (restants)
-      const lev = data?.levels || data?.niveaux || {};
-      renderLevelBar(lev.A ?? lev.a, lev.B ?? lev.b, lev.C ?? lev.c);
+      // niveaux A/B/C (restants) -> fournis par l'API dans kpis.remain_a/b/c
+      const a = Number(kpis.remain_a ?? 0);
+      const b = Number(kpis.remain_b ?? 0);
+      const c = Number(kpis.remain_c ?? 0);
+      renderLevelBar(a, b, c);
 
       // tableaux
       const restants = Array.isArray(data?.restants) ? data.restants : (Array.isArray(data?.porteurs_restants) ? data.porteurs_restants : []);
@@ -3244,7 +3248,7 @@ function renderDetail(mode) {
           const rows = sortants.map(r => {
             const full = (r.full || `${(r.prenom || r.prenom_effectif || "").trim()} ${(r.nom || r.nom_effectif || "").trim()}`.trim() || "—");
             const exitDate = r.exit_date || r.date_sortie || r.date_sortie_prevue || "";
-            const reason = (r.reason || r.raison || r.exit_source || r.motif_sortie || "").toString().trim() || "—";
+            const reason = (r.raison_sortie || r.reason || r.raison || r.exit_source || r.motif_sortie || "").toString().trim() || "—";
             const poste = (r.intitule_poste || r.poste || "—").toString().trim();
             const svc = (r.nom_service || r.service || "—").toString().trim();
 
