@@ -11,6 +11,7 @@
   let _servicesLoaded = false;
   let _portalref = null;
   let _prevData = null;
+  let apiBase = "";
 
   const NON_LIE_ID = "__NON_LIE__";
   const STORE_SERVICE = "sb_analyse_service";
@@ -3460,6 +3461,13 @@ function bindOnce(portal) {
   // garde une ref globale (ton code s’appuie dessus partout)
   _portalref = portal || _portalref;
 
+  try {
+    const ctx0 = getPortalContext(_portalref);
+    apiBase = (ctx0?.apiBase || "").toString().replace(/\/$/, "");
+  } catch (e) {
+    apiBase = "";
+  }
+  
   const selService = byId("analyseServiceSelect");
   const btnReset = byId("btnAnalyseReset");
 
