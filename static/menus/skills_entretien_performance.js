@@ -21,9 +21,11 @@
     population: "team", // encore présent dans ton HTML, ignoré côté API pour l’instant
     focusMode: false,
     selectedCollaborateurId: null,
+    selectedCollaborateurServiceId: "",
     selectedCompetenceId: null,
     scoring: null,
   };
+
 
   function $(id) {
     return document.getElementById(id);
@@ -361,6 +363,9 @@
 
           // ---- Contexte (service réel + matricule) ----
           if (eff) {
+            // service réel du collaborateur (sert pour charger le détail référentiel)
+            state.selectedCollaborateurServiceId = (eff.id_service || "").toString().trim();
+
             const prenom = (eff.prenom_effectif || "").toString().trim();
             const nom = (eff.nom_effectif || "").toString().trim();
             setText("ep_ctxCollaborateur", `${prenom} ${nom}`.trim() || "—");
@@ -371,12 +376,15 @@
             const svc = (eff.nom_service || eff.id_service || "").toString().trim();
             setText("ep_ctxService", svc || "—");
           } else {
+            state.selectedCollaborateurServiceId = "";
+
             // fallback si jamais l’API ne renvoie pas le contexte
             setText("ep_ctxCollaborateur", name || "—");
             setText("ep_ctxMatricule", "—");
             setText("ep_ctxPoste", "—");
             setText("ep_ctxService", "—");
           }
+
 
           // ---- Checklist table (compact) ----
           const tbody = $("ep_tblCompetences")?.querySelector("tbody");
@@ -453,8 +461,119 @@
 
             tr.appendChild(tdComp);
 
+            // ---- CLIC COMPETENCE ----
+            tr.addEventListener("click", async () => {
+              // sélection visuelle
+              const tb = $("ep_tblCompetences")?.querySelector("tbody");
+              if (tb) tb.querySelectorAll("tr.active").forEach(r => r.classList.remove("active"));
+              tr.classList.add("active");
+
+              state.selectedCompetenceId = x.id_comp || null;
+              state.selectedEffectifCompetenceId = x.id_effectif_competence || null;
+
+              // En-tête évaluation (avec niveau + dernière éval)
+              setText("ep_evalHint", "Évaluation en cours.");
+              setText("ep_compTitle", `${(x.code || "").toString().trim()} — ${(x.intitule || "").toString().trim()}`.trim() || "—");
+              const domEl = $("ep_compDomain");
+              if (domEl) domEl.textContent = (x.domaine || "").toString().trim();
+
+              setText("ep_compCurrent", (x.niveau_actuel || "—").toString().trim() || "—");
+
+              const last = (x.date_derniere_eval || "").toString().trim();
+              const lastEl = $("ep_compLastEval");
+              if (lastEl) lastEl.textContent = last ? `Dernière éval : ${last}` : "Jamais évaluée";
+
+              // reset champs saisie
+              for (let i = 1; i <= 4; i++) {
+                setText(`ep_critLabel${i}`, "—");
+                const sel = $(`ep_critNote${i}`);
+                if (sel) sel.value = "";
+                const com = $(`ep_critCom${i}`);
+                if (com) com.value = "";
+                setDisabled(`ep_critNote${i}`, true);
+                setDisabled(`ep_critCom${i}`, true);
+              }
+              const obs = $("ep_txtObservation");
+              if (obs) obs.value = "";
+              setDisabled("ep_txtObservation", true);
+
+              // charge le détail compétence via l’API existante du référentiel (on ne réinvente rien)
+              try {
+                if (!_portal) return;
+
+                // cache léger
+                state._compDetailCache = state._compDetailCache || {};
+                let detail = state._compDetailCache[x.id_comp];
+
+                if (!detail) {
+                  // service réel du collaborateur si dispo, sinon fallback sur service filtre
+                  const id_service = (state.selectedCollaborateurServiceId || state.serviceId || "").toString().trim();
+                  if (!id_service) throw new Error("Service introuvable pour charger le détail de compétence.");
+
+                  const url = `${_portal.apiBase}/skills/referentiel/competence/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(id_service)}/${encodeURIComponent(x.id_comp)}`;
+                  detail = await _portal.apiJson(url);
+                  state._compDetailCache[x.id_comp] = detail;
+                }
+
+                const comp = detail?.competence || {};
+                const grid = comp?.grille_evaluation || null;
+
+                // Domaine (si le référentiel renvoie un objet domaine)
+                const dom = comp?.domaine || null;
+                if (domEl) {
+                  const label = dom ? (dom.titre_court || dom.titre || dom.id_domaine_competence || "") : (x.domaine || "");
+                  domEl.textContent = (label || "").toString().trim();
+                }
+
+                // Critères: on prend jusqu’à 4 critères renseignés
+                const keys = (grid && typeof grid === "object") ? Object.keys(grid) : [];
+                const sortKey = (k) => {
+                  const m = String(k).match(/(\d+)/);
+                  return m ? parseInt(m[1], 10) : 999;
+                };
+                const ordered = keys.slice().sort((a, b) => sortKey(a) - sortKey(b));
+
+                let nbEnabled = 0;
+
+                for (let i = 1; i <= 4; i++) {
+                  const key = ordered[i - 1];
+                  const c = key ? (grid[key] || {}) : null;
+
+                  const nom = c ? (c.Nom ?? c.nom ?? "").toString().trim() : "";
+                  const evalsRaw = c ? (Array.isArray(c.Eval || c.eval) ? (c.Eval || c.eval) : []) : [];
+                  const evals = (evalsRaw || []).map(v => (v ?? "").toString().trim()).filter(v => v.length);
+
+                  const enabled = !!key && (evals.length > 0 || nom.length > 0);
+
+                  setText(`ep_critLabel${i}`, enabled ? (nom || key) : "—");
+                  setDisabled(`ep_critNote${i}`, !enabled);
+                  setDisabled(`ep_critCom${i}`, !enabled);
+
+                  if (enabled) nbEnabled += 1;
+                }
+
+                // Coef + affichage score (placeholder, calcul plus tard sur saisie)
+                const coef = (nbEnabled === 1) ? 6 : (nbEnabled === 2) ? 3 : (nbEnabled === 3) ? 2 : (nbEnabled === 4) ? 1.5 : "—";
+                setText("ep_scoreCoef", String(coef));
+                setText("ep_scoreRaw", "—");
+                setText("ep_score24", "—");
+                setText("ep_levelABC", "—");
+
+                // Déverrouillage global
+                setDisabled("ep_txtObservation", false);
+
+                setDisabled("ep_btnSave", false);
+                setDisabled("ep_btnSaveNext", false);
+                setDisabled("ep_btnMarkReview", false);
+
+              } catch (e) {
+                _portal && _portal.showAlert("error", "Détail compétence", String(e?.message || e));
+              }
+            });
+
             if (tbody) tbody.appendChild(tr);
           });
+
 
 
           // Filtre compétences activé
