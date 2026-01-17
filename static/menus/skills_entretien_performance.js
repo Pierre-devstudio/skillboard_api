@@ -58,6 +58,147 @@
     m.setAttribute("aria-hidden", "true");
   }
 
+  /* ======================================================
+     Guide de notation (popover par critère)
+     - Créé en JS (pas besoin de toucher au CSS)
+     - Se ferme au clic dehors / scroll / resize
+     ====================================================== */
+
+  function ensureGuidePopover() {
+    let pop = document.getElementById("ep_popGuide");
+    if (pop) return pop;
+
+    pop = document.createElement("div");
+    pop.id = "ep_popGuide";
+    pop.className = "card";
+    pop.style.position = "fixed";
+    pop.style.zIndex = "9999";
+    pop.style.display = "none";
+    pop.style.maxWidth = "460px";
+    pop.style.padding = "12px";
+    pop.style.boxShadow = "0 12px 28px rgba(0,0,0,.18)";
+    pop.style.border = "1px solid #e5e7eb";
+    pop.style.borderRadius = "12px";
+
+    pop.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <div style="font-weight:600;">Guide de notation</div>
+        <button type="button" class="modal-x" id="ep_popGuideClose" aria-label="Fermer">×</button>
+      </div>
+      <div class="card-sub" id="ep_popGuideTitle" style="margin-top:6px;"></div>
+      <div id="ep_popGuideBody" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
+    `;
+
+    document.body.appendChild(pop);
+
+    const close = () => closeGuidePopover();
+
+    const btnClose = document.getElementById("ep_popGuideClose");
+    if (btnClose) btnClose.addEventListener("click", close);
+
+    // Clic dehors -> ferme (sauf clic sur un bouton d'aide .ep-crit-help)
+    document.addEventListener("click", (ev) => {
+      const p = document.getElementById("ep_popGuide");
+      if (!p || p.style.display === "none") return;
+
+      const t = ev.target;
+      if (p.contains(t)) return;
+      if (t && t.closest && t.closest(".ep-crit-help")) return;
+
+      close();
+    });
+
+    // Scroll/resize -> ferme (sinon ça se balade n'importe où)
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+
+    return pop;
+  }
+
+  function closeGuidePopover() {
+    const pop = document.getElementById("ep_popGuide");
+    if (!pop) return;
+    pop.style.display = "none";
+  }
+
+  function openGuidePopover(anchorEl, critIndex, critLabel, evals, selectedNote) {
+    const pop = ensureGuidePopover();
+    if (!pop || !anchorEl) return;
+
+    const title = document.getElementById("ep_popGuideTitle");
+    if (title) {
+      const lbl = (critLabel || "").toString().trim();
+      title.textContent = lbl ? `Critère ${critIndex} : ${lbl}` : `Critère ${critIndex}`;
+    }
+
+    const body = document.getElementById("ep_popGuideBody");
+    if (body) body.innerHTML = "";
+
+    const arr = Array.isArray(evals) ? evals : [];
+
+    for (let i = 1; i <= 4; i++) {
+      const txt = (arr[i - 1] || "").toString().trim();
+
+      const line = document.createElement("div");
+      line.style.display = "flex";
+      line.style.gap = "10px";
+      line.style.alignItems = "flex-start";
+      line.style.padding = "8px 10px";
+      line.style.border = "1px solid #e5e7eb";
+      line.style.borderRadius = "10px";
+
+      // surlignage de la note sélectionnée
+      if (String(selectedNote || "") === String(i)) {
+        line.style.background = "color-mix(in srgb, var(--reading-accent) 10%, #ffffff)";
+        line.style.borderColor = "color-mix(in srgb, var(--reading-accent) 35%, #e5e7eb)";
+      } else {
+        line.style.background = "#fff";
+      }
+
+      const badge = document.createElement("span");
+      badge.className = "sb-badge";
+      badge.textContent = String(i);
+      badge.style.minWidth = "28px";
+      badge.style.textAlign = "center";
+
+      const text = document.createElement("div");
+      text.style.flex = "1";
+      text.style.minWidth = "0";
+      text.textContent = txt || "—";
+
+      line.appendChild(badge);
+      line.appendChild(text);
+
+      if (body) body.appendChild(line);
+    }
+
+    // Affiche + positionne
+    pop.style.display = "block";
+    pop.style.left = "0px";
+    pop.style.top = "0px";
+
+    const r = anchorEl.getBoundingClientRect();
+    const pw = pop.offsetWidth || 360;
+    const ph = pop.offsetHeight || 220;
+
+    const pad = 10;
+    let left = r.left;
+    let top = r.bottom + 8;
+
+    if (left + pw > window.innerWidth - pad) left = window.innerWidth - pw - pad;
+    if (left < pad) left = pad;
+
+    // si pas de place en bas -> au-dessus
+    if (top + ph > window.innerHeight - pad) {
+      top = r.top - ph - 8;
+      if (top < pad) top = pad;
+    }
+
+    pop.style.left = `${Math.round(left)}px`;
+    pop.style.top = `${Math.round(top)}px`;
+  }
+
+
   function flattenServices(nodes) {
     const out = [];
     function rec(list, depth) {
@@ -633,16 +774,56 @@
 
                   const nom = c ? (c.Nom ?? c.nom ?? "").toString().trim() : "";
                   const evalsRaw = c ? (Array.isArray(c.Eval || c.eval) ? (c.Eval || c.eval) : []) : [];
-                  const evals = (evalsRaw || []).map(v => (v ?? "").toString().trim()).filter(v => v.length);
+                  const evals = (evalsRaw || []).map(v => (v ?? "").toString().trim());
 
                   const enabled = !!key && (evals.length > 0 || nom.length > 0);
 
-                  setText(`ep_critLabel${i}`, enabled ? (nom || key) : "—");
+                  // Label
+                  const labelText = enabled ? (nom || key) : "—";
+                  setText(`ep_critLabel${i}`, labelText);
+
+                  // Ajout bouton aide ⓘ (dans la cellule label, sans toucher au HTML)
+                  const labelEl = $(`ep_critLabel${i}`);
+                  if (labelEl) {
+                    // on reconstruit le contenu pour ajouter le bouton
+                    labelEl.innerHTML = "";
+
+                    const spanTxt = document.createElement("span");
+                    spanTxt.textContent = labelText;
+
+                    labelEl.appendChild(spanTxt);
+
+                    if (enabled) {
+                      const btn = document.createElement("button");
+                      btn.type = "button";
+                      btn.className = "ep-crit-help sb-btn sb-btn-ghost";
+                      btn.textContent = "ⓘ";
+                      btn.style.marginLeft = "10px";
+                      btn.style.padding = "2px 8px";
+                      btn.style.lineHeight = "18px";
+                      btn.style.borderRadius = "999px";
+                      btn.title = "Guide de notation";
+
+                      btn.addEventListener("click", (ev) => {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+
+                        const sel = $(`ep_critNote${i}`);
+                        const selectedNote = sel ? (sel.value || "") : "";
+
+                        openGuidePopover(btn, i, labelText, evals, selectedNote);
+                      });
+
+                      labelEl.appendChild(btn);
+                    }
+                  }
+
                   setDisabled(`ep_critNote${i}`, !enabled);
                   setDisabled(`ep_critCom${i}`, !enabled);
 
                   if (enabled) nbEnabled += 1;
                 }
+
 
                 // Coef + affichage score (placeholder, calcul plus tard sur saisie)
                 const coef = (nbEnabled === 1) ? 6 : (nbEnabled === 2) ? 3 : (nbEnabled === 3) ? 2 : (nbEnabled === 4) ? 1.5 : "—";
