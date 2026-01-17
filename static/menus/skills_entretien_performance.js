@@ -8,6 +8,7 @@
 
   const VIEW = "entretien-performance";
   const ALL_SERVICES_ID = "__ALL__";
+  const LS_KEY_SERVICE = "sb_ep_service";
 
   let _bound = false;
   let _portal = null;
@@ -96,8 +97,8 @@
     const sel = $("ep_selService");
     if (!sel) return;
 
-    const saved = localStorage.getItem("sb_ep_service") || "";
-    const current = sel.value || saved || "";
+    const saved = localStorage.getItem(LS_KEY_SERVICE) || "";
+    const current = (sel.value || saved || "").trim();
 
     sel.innerHTML = `<option value="" disabled>— Sélectionner —</option>`;
 
@@ -119,6 +120,9 @@
     // Restore / default
     if (current && Array.from(sel.options).some(o => o.value === current)) {
       sel.value = current;
+    } else if (allowAll && Array.from(sel.options).some(o => o.value === ALL_SERVICES_ID)) {
+      // par défaut: Tous les services
+      sel.value = ALL_SERVICES_ID;
     } else if (flat && flat.length === 1) {
       // un seul service => on auto-sélectionne, logique
       sel.value = flat[0].id_service;
@@ -267,7 +271,8 @@
       const data = await _portal.apiJson(url);
       state.scoring = data?.scoring || null;
     } catch (e) {
-      _portal.showAlert("error", "Erreur", String(e?.message || e));
+      _portal.showAlert("error", "Erreur bootstrap : " + String(e?.message || e));
+      console.error(e);
     }
   }
 
@@ -284,11 +289,11 @@
       _servicesFlat = flat;
       _servicesLoaded = true;
 
-      const allowAll = canSeeAllServices(ctx);
-      fillServiceSelect(flat, allowAll);
+      fillServiceSelect(flat, true);
 
     } catch (e) {
-      _portal.showAlert("error", "Erreur", "Impossible de charger la liste des services : " + String(e?.message || e));
+      _portal.showAlert("error", "Impossible de charger la liste des services : " + String(e?.message || e));
+      console.error(e);
       _servicesFlat = [];
       _servicesLoaded = false;
     }
@@ -361,7 +366,8 @@
       setText("ep_ctxService", getSelectedServiceName() || "—");
 
     } catch (e) {
-      _portal.showAlert("error", "Erreur", "Impossible de charger les collaborateurs : " + String(e?.message || e));
+      _portal.showAlert("error", "Impossible de charger les collaborateurs : " + String(e?.message || e));
+      console.error(e);
       renderCollaborateurs([]);
       setText("ep_ctxService", getSelectedServiceName() || "—");
     }
@@ -486,19 +492,19 @@
 
     // Actions évaluation (placeholders)
     const btnSave = $("ep_btnSave");
-    if (btnSave) btnSave.addEventListener("click", () => _portal && _portal.showAlert("info", "Squelette", "Enregistrement (à implémenter)."));
+    if (btnSave) btnSave.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette : Enregistrement (à implémenter)."));
 
     const btnSaveNext = $("ep_btnSaveNext");
-    if (btnSaveNext) btnSaveNext.addEventListener("click", () => _portal && _portal.showAlert("info", "Squelette", "Enregistrer + suivant (à implémenter)."));
+    if (btnSaveNext) btnSaveNext.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Enregistrer + suivant (à implémenter)."));
 
     const btnReview = $("ep_btnMarkReview");
-    if (btnReview) btnReview.addEventListener("click", () => _portal && _portal.showAlert("info", "Squelette", "Marquer à revoir (à implémenter)."));
+    if (btnReview) btnReview.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Marquer à revoir (à implémenter)."));
 
     const btnFinalize = $("ep_btnFinalize");
-    if (btnFinalize) btnFinalize.addEventListener("click", () => _portal && _portal.showAlert("info", "Squelette", "Finalisation (à implémenter)."));
+    if (btnFinalize) btnFinalize.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Finalisation (à implémenter)."));
 
     const btnGen = $("ep_btnGenerateSummary");
-    if (btnGen) btnGen.addEventListener("click", () => _portal && _portal.showAlert("info", "Squelette", "Génération synthèse (à implémenter)."));
+    if (btnGen) btnGen.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Génération synthèse (à implémenter)."));
   }
 
   async function onShow(portal) {
