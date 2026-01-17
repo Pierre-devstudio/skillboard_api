@@ -475,7 +475,21 @@
               setText("ep_evalHint", "Évaluation en cours.");
               setText("ep_compTitle", `${(x.code || "").toString().trim()} — ${(x.intitule || "").toString().trim()}`.trim() || "—");
               const domEl = $("ep_compDomain");
-              if (domEl) domEl.textContent = (x.domaine || "").toString().trim();
+              if (domEl) {
+                const dom = (x.domaine || "").toString().trim();
+                domEl.textContent = dom || "";
+
+                // Couleur domaine: on réutilise le helper portail s'il existe (même logique que les autres pages)
+                if (window.SB && typeof window.SB.getDomainColor === "function") {
+                  const col = window.SB.getDomainColor(dom);
+                  if (col) {
+                    domEl.style.background = col;
+                    domEl.style.borderColor = col;
+                    domEl.style.color = "#fff";
+                  }
+                }
+              }
+
 
               setText("ep_compCurrent", (x.niveau_actuel || "—").toString().trim() || "—");
 
