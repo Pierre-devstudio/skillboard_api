@@ -312,9 +312,9 @@
     wrap.classList.add("sb-tree");
 
     arr.forEach(c => {
-      const name = `${(c.nom_effectif || "").toString().trim()} ${(c.prenom_effectif || "").toString().trim()}`.trim() || "Collaborateur";
-      const poste = (c.intitule_poste || "").toString().trim();
-      const code = (c.code_effectif || "").toString().trim();
+      const prenom = (c.prenom_effectif || "").toString().trim();
+      const nom = (c.nom_effectif || "").toString().trim().toUpperCase();
+      const name = `${nom} ${prenom}`.trim() || "Collaborateur";
 
       const left = document.createElement("div");
       left.className = "sb-tree-name";
@@ -322,13 +322,13 @@
 
       const right = document.createElement("div");
       right.className = "sb-tree-meta";
-      right.textContent = [code, poste].filter(Boolean).join(" • ");
+      right.textContent = ""; // plus de matricule, plus de poste
+
 
       const item = document.createElement("div");
       item.className = "sb-tree-item";
       item.appendChild(left);
-      item.appendChild(right);
-
+    
       // sélection collaborateur (on garde juste l’id, contenu métier plus tard)
       item.addEventListener("click", () => {
         state.selectedCollaborateurId = c.id_effectif || null;
