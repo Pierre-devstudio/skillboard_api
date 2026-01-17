@@ -121,82 +121,99 @@
     pop.style.display = "none";
   }
 
-  function openGuidePopover(anchorEl, critIndex, critLabel, evals, selectedNote) {
-    const pop = ensureGuidePopover();
-    if (!pop || !anchorEl) return;
+    function openGuidePopover(anchorEl, critIndex, critLabel, evals, selectedNote) {
+        const pop = ensureGuidePopover();
+        if (!pop || !anchorEl) return;
 
-    const title = document.getElementById("ep_popGuideTitle");
-    if (title) {
-      const lbl = (critLabel || "").toString().trim();
-      title.textContent = lbl ? `Critère ${critIndex} : ${lbl}` : `Critère ${critIndex}`;
+        // On retrouve le select de note du critère depuis la ligne du tableau
+        const tr = anchorEl.closest("tr");
+        const noteSelect = tr ? tr.querySelector('select[id^="ep_critNote"]') : null;
+
+        const title = document.getElementById("ep_popGuideTitle");
+        if (title) {
+            const lbl = (critLabel || "").toString().trim();
+            title.textContent = lbl ? `Critère ${critIndex} : ${lbl}` : `Critère ${critIndex}`;
+        }
+
+        const body = document.getElementById("ep_popGuideBody");
+        if (body) body.innerHTML = "";
+
+        const arr = Array.isArray(evals) ? evals : [];
+
+        for (let i = 1; i <= 4; i++) {
+            const txt = (arr[i - 1] || "").toString().trim();
+
+            const line = document.createElement("div");
+            line.style.display = "flex";
+            line.style.gap = "10px";
+            line.style.alignItems = "flex-start";
+            line.style.padding = "8px 10px";
+            line.style.border = "1px solid #e5e7eb";
+            line.style.borderRadius = "10px";
+            line.style.cursor = "pointer";
+
+            // surlignage de la note sélectionnée
+            if (String(selectedNote || "") === String(i)) {
+            line.style.background = "color-mix(in srgb, var(--reading-accent) 10%, #ffffff)";
+            line.style.borderColor = "color-mix(in srgb, var(--reading-accent) 35%, #e5e7eb)";
+            } else {
+            line.style.background = "#fff";
+            }
+
+            const badge = document.createElement("span");
+            badge.className = "sb-badge";
+            badge.textContent = String(i);
+            badge.style.minWidth = "28px";
+            badge.style.textAlign = "center";
+
+            const text = document.createElement("div");
+            text.style.flex = "1";
+            text.style.minWidth = "0";
+            text.textContent = txt || "—";
+
+            line.appendChild(badge);
+            line.appendChild(text);
+
+            // Clic = on pousse la note dans le select du critère
+            line.addEventListener("click", () => {
+            if (noteSelect && !noteSelect.disabled) {
+                noteSelect.value = String(i);
+                // déclenche les listeners éventuels (recalcul / score, etc.)
+                noteSelect.dispatchEvent(new Event("input", { bubbles: true }));
+                noteSelect.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+            closeGuidePopover();
+            });
+
+            if (body) body.appendChild(line);
+        }
+
+        // Affiche + positionne
+        pop.style.display = "block";
+        pop.style.left = "0px";
+        pop.style.top = "0px";
+
+        const r = anchorEl.getBoundingClientRect();
+        const pw = pop.offsetWidth || 360;
+        const ph = pop.offsetHeight || 220;
+
+        const pad = 10;
+        let left = r.left;
+        let top = r.bottom + 8;
+
+        if (left + pw > window.innerWidth - pad) left = window.innerWidth - pw - pad;
+        if (left < pad) left = pad;
+
+        // si pas de place en bas -> au-dessus
+        if (top + ph > window.innerHeight - pad) {
+            top = r.top - ph - 8;
+            if (top < pad) top = pad;
+        }
+
+        pop.style.left = `${Math.round(left)}px`;
+        pop.style.top = `${Math.round(top)}px`;
     }
 
-    const body = document.getElementById("ep_popGuideBody");
-    if (body) body.innerHTML = "";
-
-    const arr = Array.isArray(evals) ? evals : [];
-
-    for (let i = 1; i <= 4; i++) {
-      const txt = (arr[i - 1] || "").toString().trim();
-
-      const line = document.createElement("div");
-      line.style.display = "flex";
-      line.style.gap = "10px";
-      line.style.alignItems = "flex-start";
-      line.style.padding = "8px 10px";
-      line.style.border = "1px solid #e5e7eb";
-      line.style.borderRadius = "10px";
-
-      // surlignage de la note sélectionnée
-      if (String(selectedNote || "") === String(i)) {
-        line.style.background = "color-mix(in srgb, var(--reading-accent) 10%, #ffffff)";
-        line.style.borderColor = "color-mix(in srgb, var(--reading-accent) 35%, #e5e7eb)";
-      } else {
-        line.style.background = "#fff";
-      }
-
-      const badge = document.createElement("span");
-      badge.className = "sb-badge";
-      badge.textContent = String(i);
-      badge.style.minWidth = "28px";
-      badge.style.textAlign = "center";
-
-      const text = document.createElement("div");
-      text.style.flex = "1";
-      text.style.minWidth = "0";
-      text.textContent = txt || "—";
-
-      line.appendChild(badge);
-      line.appendChild(text);
-
-      if (body) body.appendChild(line);
-    }
-
-    // Affiche + positionne
-    pop.style.display = "block";
-    pop.style.left = "0px";
-    pop.style.top = "0px";
-
-    const r = anchorEl.getBoundingClientRect();
-    const pw = pop.offsetWidth || 360;
-    const ph = pop.offsetHeight || 220;
-
-    const pad = 10;
-    let left = r.left;
-    let top = r.bottom + 8;
-
-    if (left + pw > window.innerWidth - pad) left = window.innerWidth - pw - pad;
-    if (left < pad) left = pad;
-
-    // si pas de place en bas -> au-dessus
-    if (top + ph > window.innerHeight - pad) {
-      top = r.top - ph - 8;
-      if (top < pad) top = pad;
-    }
-
-    pop.style.left = `${Math.round(left)}px`;
-    pop.style.top = `${Math.round(top)}px`;
-  }
 
 
   function flattenServices(nodes) {
