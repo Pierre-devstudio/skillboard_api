@@ -676,6 +676,35 @@
     return await res.json();
   }
 
+  async function fetchPrevisionsPosteRougeModal(portal, id_poste, horizonYears, id_service, criticite_min) {
+    const ctx = getPortalContext(portal);
+    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
+
+    const poste = (id_poste || "").toString().trim();
+    if (!poste) throw new Error("id_poste manquant.");
+
+    const qs = new URLSearchParams();
+    qs.set("id_poste", poste);
+    qs.set("horizon_years", String(horizonYears || 1));
+
+    const svc = (id_service || "").toString().trim();
+    if (svc) qs.set("id_service", svc);
+
+    const cmin = Number.isFinite(Number(criticite_min)) ? Number(criticite_min) : 3;
+    qs.set("criticite_min", String(cmin));
+
+    const url = `${ctx.apiBase}/skills/analyse/previsions/postes-rouges/modal/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
+
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
+    }
+    return await res.json();
+  }
+
+
 
   function ensureMatchPersonModal() {
     let modal = byId("modalMatchPerson");
@@ -3459,6 +3488,94 @@ function renderDetail(mode) {
   }
 
 
+// =====================================================
+// PREVISIONS - MODAL "POSTE ROUGE" (open/close + tabs)
+// IDs HTML existants (NE PAS CHANGER):
+// - modalAnalysePrevPosteRed
+// - btnCloseAnalysePrevPosteRedModal, btnAnalysePrevPosteRedModalClose
+// - tabPrevPosteRedSynthese, tabPrevPosteRedCauses, tabPrevPosteRedSortants, tabPrevPosteRedCouverture, tabPrevPosteRedVoisins
+// - analysePrevPosteRedTabSynthese, analysePrevPosteRedTabCauses, analysePrevPosteRedTabSortants, analysePrevPosteRedTabCouverture, analysePrevPosteRedTabVoisins
+// =====================================================
+
+function openAnalysePrevPosteRedModal() {
+  const m = byId("modalAnalysePrevPosteRed");
+  if (!m) return;
+  m.classList.add("show");
+  m.setAttribute("aria-hidden", "false");
+}
+
+function closeAnalysePrevPosteRedModal() {
+  const m = byId("modalAnalysePrevPosteRed");
+  if (!m) return;
+  m.classList.remove("show");
+  m.setAttribute("aria-hidden", "true");
+}
+
+function setAnalysePrevPosteRedTab(key) {
+  const tabs = [
+    ["synthese", "tabPrevPosteRedSynthese", "analysePrevPosteRedTabSynthese"],
+    ["causes",   "tabPrevPosteRedCauses",   "analysePrevPosteRedTabCauses"],
+    ["sortants", "tabPrevPosteRedSortants", "analysePrevPosteRedTabSortants"],
+    ["couverture","tabPrevPosteRedCouverture","analysePrevPosteRedTabCouverture"],
+    ["voisins",  "tabPrevPosteRedVoisins",  "analysePrevPosteRedTabVoisins"],
+  ];
+
+  tabs.forEach(([k, tabId, paneId]) => {
+    const t = byId(tabId);
+    const p = byId(paneId);
+    const on = (k === key);
+
+    if (t) {
+      // style simple (cohérent avec tes autres tabs)
+      t.classList.toggle("is-active", on);
+      t.style.borderColor = on ? "var(--reading-accent)" : "";
+      t.style.background = on ? "color-mix(in srgb, var(--reading-accent) 8%, #ffffff)" : "";
+      t.style.fontWeight = on ? "700" : "";
+    }
+    if (p) p.style.display = on ? "" : "none";
+  });
+}
+
+// Bind une seule fois
+(function bindAnalysePrevPosteRedModalOnce() {
+  if (window.__sbBoundPrevPosteRedModal) return;
+  window.__sbBoundPrevPosteRedModal = true;
+
+  const btnX = byId("btnCloseAnalysePrevPosteRedModal");
+  const btnClose = byId("btnAnalysePrevPosteRedModalClose");
+
+  if (btnX) btnX.addEventListener("click", closeAnalysePrevPosteRedModal);
+  if (btnClose) btnClose.addEventListener("click", closeAnalysePrevPosteRedModal);
+
+  const m = byId("modalAnalysePrevPosteRed");
+  if (m) {
+    // clic dehors = fermer
+    m.addEventListener("click", (ev) => {
+      if (ev.target === m) closeAnalysePrevPosteRedModal();
+    });
+
+    // ESC = fermer (si tu as déjà un handler global, ça ne gêne pas)
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && m.classList.contains("show")) {
+        closeAnalysePrevPosteRedModal();
+      }
+    });
+  }
+
+  const tSyn = byId("tabPrevPosteRedSynthese");
+  const tCau = byId("tabPrevPosteRedCauses");
+  const tSor = byId("tabPrevPosteRedSortants");
+  const tCov = byId("tabPrevPosteRedCouverture");
+  const tVoi = byId("tabPrevPosteRedVoisins");
+
+  if (tSyn) tSyn.addEventListener("click", () => setAnalysePrevPosteRedTab("synthese"));
+  if (tCau) tCau.addEventListener("click", () => setAnalysePrevPosteRedTab("causes"));
+  if (tSor) tSor.addEventListener("click", () => setAnalysePrevPosteRedTab("sortants"));
+  if (tCov) tCov.addEventListener("click", () => setAnalysePrevPosteRedTab("couverture"));
+  if (tVoi) tVoi.addEventListener("click", () => setAnalysePrevPosteRedTab("voisins"));
+})();
+
+
 function bindOnce(portal) {
   if (_bound) return;
   _bound = true;
@@ -3716,8 +3833,8 @@ function bindOnce(portal) {
 
       const id_service = (byId("analyseServiceSelect")?.value || "").trim();
 
-      // Réutilise ton modal poste existant (au moins tu as quelque chose d’actionnable)
-      await showAnalysePosteDetailModal(portal, id_poste, id_service, "total-fragiles");
+      // Modal dédié "Poste rouge" 
+      await showAnalysePrevPosteRedModal(portal, id_poste, id_service);
       return;
     }
 
