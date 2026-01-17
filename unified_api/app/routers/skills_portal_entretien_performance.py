@@ -1,6 +1,6 @@
 # unified_api/app/routers/skills_portal_entretien_performance.py
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 
@@ -47,6 +47,32 @@ class ScoringConfig(BaseModel):
 class EntretienPerformanceBootstrapResponse(BaseModel):
     contact: ContactEntInfo
     scoring: ScoringConfig
+
+
+# ======================================================
+# Constantes
+# ======================================================
+ALL_SERVICES_ID = "__ALL__"
+
+
+# ======================================================
+# Models (liste collaborateurs)
+# ======================================================
+class CollaborateurListItem(BaseModel):
+    id_effectif: str
+    nom_effectif: str
+    prenom_effectif: str
+    code_effectif: Optional[str] = None
+
+    id_poste_actuel: Optional[str] = None
+    codif_poste: Optional[str] = None
+    intitule_poste: Optional[str] = None
+
+    id_service: Optional[str] = None
+    nom_service: Optional[str] = None
+
+    ismanager: Optional[bool] = None
+
 
 
 # ======================================================
@@ -133,6 +159,113 @@ def get_entretien_performance_bootstrap(id_contact: str):
                     ),
                     scoring=_get_scoring_config(),
                 )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+# ======================================================
+# Endpoints Collaborateurs
+# ======================================================
+@router.get(
+    "/skills/entretien-performance/collaborateurs/{id_contact}/{id_service}",
+    response_model=List[CollaborateurListItem],
+)
+def get_entretien_performance_collaborateurs(
+    id_contact: str,
+    id_service: str,
+    q: Optional[str] = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=500),
+):
+    """
+    Liste des collaborateurs (tbl_effectif_client) filtrée par service.
+    - id_service = "__ALL__" => tous les services (dans l’état actuel, pas de contrôle de droits ici)
+    - filtre entreprise via code_ent du contact
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                contact = _fetch_contact_and_ent(cur, id_contact)
+                id_ent = contact["code_ent"]
+
+                where_parts: List[str] = [
+                    "e.id_ent = %s",
+                    "e.archive = FALSE",
+                    "e.statut_actif = TRUE",
+                    "e.is_temp = FALSE",
+                ]
+                params: List[Any] = [id_ent]
+
+                if id_service != ALL_SERVICES_ID:
+                    where_parts.append("e.id_service = %s")
+                    params.append(id_service)
+
+                like = None
+                if q and q.strip():
+                    like = f"%{q.strip()}%"
+                    where_parts.append(
+                        "("
+                        "e.nom_effectif ILIKE %s OR "
+                        "e.prenom_effectif ILIKE %s OR "
+                        "COALESCE(e.code_effectif,'') ILIKE %s OR "
+                        "COALESCE(e.matricule_interne,'') ILIKE %s"
+                        ")"
+                    )
+                    params.extend([like, like, like, like])
+
+                where_sql = " AND ".join(where_parts)
+
+                cur.execute(
+                    f"""
+                    SELECT
+                        e.id_effectif,
+                        e.nom_effectif,
+                        e.prenom_effectif,
+                        e.code_effectif,
+
+                        e.id_poste_actuel,
+                        fp.codif_poste,
+                        fp.intitule_poste,
+
+                        e.id_service,
+                        o.nom_service,
+
+                        e.ismanager
+                    FROM public.tbl_effectif_client e
+                    LEFT JOIN public.tbl_fiche_poste fp
+                        ON fp.id_poste = e.id_poste_actuel
+                       AND COALESCE(fp.actif, TRUE) = TRUE
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                        ON o.id_service = e.id_service
+                       AND o.id_ent = %s
+                       AND o.archive = FALSE
+                    WHERE {where_sql}
+                    ORDER BY e.nom_effectif, e.prenom_effectif
+                    LIMIT %s
+                    """,
+                    tuple([*params, id_ent, limit]),
+                )
+
+                rows = cur.fetchall() or []
+                return [
+                    CollaborateurListItem(
+                        id_effectif=r["id_effectif"],
+                        nom_effectif=r.get("nom_effectif") or "",
+                        prenom_effectif=r.get("prenom_effectif") or "",
+                        code_effectif=r.get("code_effectif"),
+
+                        id_poste_actuel=r.get("id_poste_actuel"),
+                        codif_poste=r.get("codif_poste"),
+                        intitule_poste=r.get("intitule_poste"),
+
+                        id_service=r.get("id_service"),
+                        nom_service=r.get("nom_service"),
+
+                        ismanager=r.get("ismanager"),
+                    )
+                    for r in rows
+                ]
 
     except HTTPException:
         raise
