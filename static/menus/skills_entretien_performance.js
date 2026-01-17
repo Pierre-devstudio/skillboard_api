@@ -992,101 +992,183 @@
   }
 
   function bindOnce() {
-    if (_bound) return;
-    _bound = true;
+        if (_bound) return;
+        _bound = true;
 
-    // Modal Scoring (standard)
-    const modalScoring = $("modalEpScoring");
-    const btnXScoring = $("btnCloseEpScoringModalX");
-    const btnCloseScoring = $("btnEpScoringModalClose");
-    const closeScoring = () => closeModal("modalEpScoring");
+        // Modal Scoring (standard)
+        const modalScoring = $("modalEpScoring");
+        const btnXScoring = $("btnCloseEpScoringModalX");
+        const btnCloseScoring = $("btnEpScoringModalClose");
+        const closeScoring = () => closeModal("modalEpScoring");
 
-    if (btnXScoring) btnXScoring.addEventListener("click", closeScoring);
-    if (btnCloseScoring) btnCloseScoring.addEventListener("click", closeScoring);
-    if (modalScoring) {
-      modalScoring.addEventListener("click", (e) => {
-        if (e.target === modalScoring) closeScoring();
-      });
-    }
+        if (btnXScoring) btnXScoring.addEventListener("click", closeScoring);
+        if (btnCloseScoring) btnCloseScoring.addEventListener("click", closeScoring);
+        if (modalScoring) {
+        modalScoring.addEventListener("click", (e) => {
+            if (e.target === modalScoring) closeScoring();
+        });
+        }
 
-    // Modal History (standard)
-    const modalHistory = $("modalEpHistory");
-    const btnXHistory = $("btnCloseEpHistoryModalX");
-    const btnCloseHistory = $("btnEpHistoryModalClose");
-    const closeHistory = () => closeModal("modalEpHistory");
+        // Modal History (standard)
+        const modalHistory = $("modalEpHistory");
+        const btnXHistory = $("btnCloseEpHistoryModalX");
+        const btnCloseHistory = $("btnEpHistoryModalClose");
+        const closeHistory = () => closeModal("modalEpHistory");
 
-    if (btnXHistory) btnXHistory.addEventListener("click", closeHistory);
-    if (btnCloseHistory) btnCloseHistory.addEventListener("click", closeHistory);
-    if (modalHistory) {
-      modalHistory.addEventListener("click", (e) => {
-        if (e.target === modalHistory) closeHistory();
-      });
-    }
+        if (btnXHistory) btnXHistory.addEventListener("click", closeHistory);
+        if (btnCloseHistory) btnCloseHistory.addEventListener("click", closeHistory);
+        if (modalHistory) {
+        modalHistory.addEventListener("click", (e) => {
+            if (e.target === modalHistory) closeHistory();
+        });
+        }
 
-    // Header actions
-    const btnHelp = $("ep_btnHelpScoring");
-    if (btnHelp) btnHelp.addEventListener("click", () => openModal("modalEpScoring"));
+        // Header actions
+        const btnHelp = $("ep_btnHelpScoring");
+        if (btnHelp) btnHelp.addEventListener("click", () => openModal("modalEpScoring"));
 
-    const btnHist = $("ep_btnHistoryGlobal");
-    if (btnHist) btnHist.addEventListener("click", () => openModal("modalEpHistory"));
+        const btnHist = $("ep_btnHistoryGlobal");
+        if (btnHist) btnHist.addEventListener("click", () => openModal("modalEpHistory"));
 
-    // Scope
-    const selService = $("ep_selService");
-    if (selService) {
-      selService.addEventListener("change", async () => {
-        state.serviceId = selService.value || "";
-        await onScopeChanged();
-      });
-    }
+        // Scope
+        const selService = $("ep_selService");
+        if (selService) {
+        selService.addEventListener("change", async () => {
+            state.serviceId = selService.value || "";
+            await onScopeChanged();
+        });
+        }
 
-    const selPop = $("ep_selPopulation");
-    if (selPop) {
-      selPop.addEventListener("change", async () => {
-        state.population = selPop.value || "team";
-        // Pour l’instant on ne l’utilise pas côté API, mais on déclenche pareil un refresh.
-        await onScopeChanged();
-      });
-    }
+        const selPop = $("ep_selPopulation");
+        if (selPop) {
+        selPop.addEventListener("change", async () => {
+            state.population = selPop.value || "team";
+            // Pour l’instant on ne l’utilise pas côté API, mais on déclenche pareil un refresh.
+            await onScopeChanged();
+        });
+        }
 
-    const btnReset = $("ep_btnScopeReset");
-    if (btnReset) btnReset.addEventListener("click", () => resetScope());
+        const btnReset = $("ep_btnScopeReset");
+        if (btnReset) btnReset.addEventListener("click", () => resetScope());
 
-    // Search collab (reload)
-    const txtSearchCollab = $("ep_txtSearchCollab");
-    if (txtSearchCollab) {
-      let t = null;
-      txtSearchCollab.addEventListener("input", () => {
-        if (t) clearTimeout(t);
-        t = setTimeout(() => {
-          if (state.serviceId) loadCollaborateurs();
-        }, 250);
-      });
-    }
+        // Search collab (reload)
+        const txtSearchCollab = $("ep_txtSearchCollab");
+        if (txtSearchCollab) {
+        let t = null;
+        txtSearchCollab.addEventListener("input", () => {
+            if (t) clearTimeout(t);
+            t = setTimeout(() => {
+            if (state.serviceId) loadCollaborateurs();
+            }, 250);
+        });
+        }
 
-    // Focus mode
-    const chkFocus = $("ep_chkFocus");
-    if (chkFocus) {
-      chkFocus.addEventListener("change", () => {
-        state.focusMode = !!chkFocus.checked;
-        applyFocusMode();
-      });
-    }
+        // Focus mode
+        const chkFocus = $("ep_chkFocus");
+        if (chkFocus) {
+        chkFocus.addEventListener("change", () => {
+            state.focusMode = !!chkFocus.checked;
+            applyFocusMode();
+        });
+        }
 
-    // Actions évaluation (placeholders)
-    const btnSave = $("ep_btnSave");
-    if (btnSave) btnSave.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette : Enregistrement (à implémenter)."));
+        // ======================================================
+        // Scoring live (Somme brute / Coef / Score /24 / Niveau)
+        // ======================================================
+        const computeCoef = (n) => {
+        if (n === 4) return 1.5;
+        if (n === 3) return 2;
+        if (n === 2) return 3;
+        if (n === 1) return 6;
+        return null;
+        };
 
-    const btnSaveNext = $("ep_btnSaveNext");
-    if (btnSaveNext) btnSaveNext.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Enregistrer + suivant (à implémenter)."));
+        const computeLevel = (score24) => {
+        if (score24 >= 6 && score24 <= 9) return "A (Initial)";
+        if (score24 >= 10 && score24 <= 18) return "B (Avancé)";
+        if (score24 >= 19 && score24 <= 24) return "C (Expert)";
+        return "—";
+        };
 
-    const btnReview = $("ep_btnMarkReview");
-    if (btnReview) btnReview.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Marquer à revoir (à implémenter)."));
+        const recalcScore = () => {
+        // Pas de compétence sélectionnée -> on ne calcule rien
+        if (!state.selectedCompetenceId) return;
 
-    const btnFinalize = $("ep_btnFinalize");
-    if (btnFinalize) btnFinalize.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Finalisation (à implémenter)."));
+        let enabledCount = 0;
+        let sum = 0;
+        let filledCount = 0;
 
-    const btnGen = $("ep_btnGenerateSummary");
-    if (btnGen) btnGen.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Génération synthèse (à implémenter)."));
+        for (let i = 1; i <= 4; i++) {
+            const labelEl = $(`ep_critLabel${i}`);
+            const tr = labelEl ? labelEl.closest("tr") : null;
+            const sel = $(`ep_critNote${i}`);
+
+            // Critère actif = ligne visible + select non désactivé
+            const isVisible = !tr || tr.style.display !== "none";
+            const isEnabled = !!sel && !sel.disabled && isVisible;
+
+            if (!isEnabled) continue;
+
+            enabledCount++;
+
+            const v = (sel.value || "").toString().trim();
+            if (v) {
+            const n = parseInt(v, 10);
+            if (!Number.isNaN(n)) sum += n;
+            filledCount++;
+            }
+        }
+
+        const coef = computeCoef(enabledCount);
+        setText("ep_scoreCoef", coef ? String(coef) : "—");
+
+        // Si aucune note encore saisie: on garde propre
+        if (filledCount === 0) {
+            setText("ep_scoreRaw", "—");
+            setText("ep_score24", "—");
+            setText("ep_levelABC", "—");
+            return;
+        }
+
+        setText("ep_scoreRaw", String(sum));
+
+        const score24 = coef ? Math.round(sum * coef * 10) / 10 : null;
+        setText("ep_score24", (score24 !== null) ? String(score24) : "—");
+
+        // Niveau: seulement quand toutes les notes des critères actifs sont renseignées
+        if (enabledCount > 0 && filledCount === enabledCount && score24 !== null) {
+            setText("ep_levelABC", computeLevel(score24));
+        } else {
+            setText("ep_levelABC", "—");
+        }
+        };
+
+        // Bind notes (une fois) : toute modification de note déclenche le recalcul
+        for (let i = 1; i <= 4; i++) {
+        const sel = $(`ep_critNote${i}`);
+        if (!sel) continue;
+        sel.addEventListener("change", recalcScore);
+        sel.addEventListener("input", recalcScore);
+        }
+
+        // ======================================================
+        // Actions évaluation (placeholders)
+        // ======================================================
+        const btnSave = $("ep_btnSave");
+        if (btnSave) btnSave.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette : Enregistrement (à implémenter)."));
+
+        const btnSaveNext = $("ep_btnSaveNext");
+        if (btnSaveNext) btnSaveNext.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Enregistrer + suivant (à implémenter)."));
+
+        const btnReview = $("ep_btnMarkReview");
+        if (btnReview) btnReview.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Marquer à revoir (à implémenter)."));
+
+        const btnFinalize = $("ep_btnFinalize");
+        if (btnFinalize) btnFinalize.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Finalisation (à implémenter)."));
+
+        const btnGen = $("ep_btnGenerateSummary");
+        if (btnGen) btnGen.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Génération synthèse (à implémenter)."));
+
   }
 
   async function onShow(portal) {
