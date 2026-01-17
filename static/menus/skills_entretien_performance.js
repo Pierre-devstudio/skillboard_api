@@ -769,60 +769,89 @@
                 let nbEnabled = 0;
 
                 for (let i = 1; i <= 4; i++) {
-                  const key = ordered[i - 1];
-                  const c = key ? (grid[key] || {}) : null;
+                const key = ordered[i - 1];
+                const c = key ? (grid[key] || {}) : null;
 
-                  const nom = c ? (c.Nom ?? c.nom ?? "").toString().trim() : "";
-                  const evalsRaw = c ? (Array.isArray(c.Eval || c.eval) ? (c.Eval || c.eval) : []) : [];
-                  const evals = (evalsRaw || []).map(v => (v ?? "").toString().trim());
+                const nom = c ? (c.Nom ?? c.nom ?? "").toString().trim() : "";
+                const evalsRaw = c ? (Array.isArray(c.Eval || c.eval) ? (c.Eval || c.eval) : []) : [];
 
-                  const enabled = !!key && (evals.length > 0 || nom.length > 0);
+                // On garde les 4 textes pour le popover…
+                const evalsAll = (evalsRaw || []).map(v => (v ?? "").toString().trim());
+                // …mais pour décider si le critère existe, on ne compte que les textes non vides
+                const evalsNonEmpty = evalsAll.filter(v => v.length > 0);
 
-                  // Label
-                  const labelText = enabled ? (nom || key) : "—";
-                  setText(`ep_critLabel${i}`, labelText);
+                const enabled = !!key && (nom.length > 0 || evalsNonEmpty.length > 0);
 
-                  // Ajout bouton aide ⓘ (dans la cellule label, sans toucher au HTML)
-                  const labelEl = $(`ep_critLabel${i}`);
-                  if (labelEl) {
-                    // on reconstruit le contenu pour ajouter le bouton
+                const labelEl = $(`ep_critLabel${i}`);
+                const noteId = `ep_critNote${i}`;
+                const comId  = `ep_critCom${i}`;
+
+                // Ligne (tr) pour masquer/afficher
+                const tr = labelEl ? labelEl.closest("tr") : null;
+                if (tr) tr.style.display = enabled ? "" : "none";
+
+                // Si critère vide -> on bloque tout et on nettoie
+                if (!enabled) {
+                    if (labelEl) labelEl.textContent = "";
+                    const sel = $(noteId);
+                    if (sel) sel.value = "";
+                    const com = $(comId);
+                    if (com) com.value = "";
+
+                    setDisabled(noteId, true);
+                    setDisabled(comId, true);
+                    continue;
+                }
+
+                // Label + bouton aide ⓘ propre
+                const labelText = (nom || key || "").toString().trim();
+
+                if (labelEl) {
                     labelEl.innerHTML = "";
 
                     const spanTxt = document.createElement("span");
                     spanTxt.textContent = labelText;
-
                     labelEl.appendChild(spanTxt);
 
-                    if (enabled) {
-                      const btn = document.createElement("button");
-                      btn.type = "button";
-                      btn.className = "ep-crit-help sb-btn sb-btn-ghost";
-                      btn.textContent = "ⓘ";
-                      btn.style.marginLeft = "10px";
-                      btn.style.padding = "2px 8px";
-                      btn.style.lineHeight = "18px";
-                      btn.style.borderRadius = "999px";
-                      btn.title = "Guide de notation";
+                    const btn = document.createElement("button");
+                    btn.type = "button";
+                    btn.className = "ep-crit-help";
+                    btn.textContent = "i";
+                    btn.title = "Guide de notation";
+                    btn.setAttribute("aria-label", "Guide de notation");
 
-                      btn.addEventListener("click", (ev) => {
-                        ev.preventDefault();
-                        ev.stopPropagation();
+                    // Style minimal, propre, lisible (pas la bordure de tracteur)
+                    btn.style.marginLeft = "10px";
+                    btn.style.width = "22px";
+                    btn.style.height = "22px";
+                    btn.style.borderRadius = "999px";
+                    btn.style.border = "1px solid #d1d5db";
+                    btn.style.background = "#fff";
+                    btn.style.color = "#111";
+                    btn.style.fontWeight = "700";
+                    btn.style.fontSize = "13px";
+                    btn.style.lineHeight = "20px";
+                    btn.style.padding = "0";
+                    btn.style.cursor = "pointer";
 
-                        const sel = $(`ep_critNote${i}`);
-                        const selectedNote = sel ? (sel.value || "") : "";
+                    btn.addEventListener("click", (ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
 
-                        openGuidePopover(btn, i, labelText, evals, selectedNote);
-                      });
+                    const sel = $(noteId);
+                    const selectedNote = sel ? (sel.value || "") : "";
+                    openGuidePopover(btn, i, labelText, evalsAll, selectedNote);
+                    });
 
-                      labelEl.appendChild(btn);
-                    }
-                  }
-
-                  setDisabled(`ep_critNote${i}`, !enabled);
-                  setDisabled(`ep_critCom${i}`, !enabled);
-
-                  if (enabled) nbEnabled += 1;
+                    labelEl.appendChild(btn);
                 }
+
+                setDisabled(noteId, false);
+                setDisabled(comId, false);
+
+                nbEnabled += 1;
+                }
+
 
 
                 // Coef + affichage score (placeholder, calcul plus tard sur saisie)
