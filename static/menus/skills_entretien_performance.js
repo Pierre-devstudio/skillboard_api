@@ -378,14 +378,34 @@
             setText("ep_ctxService", "—");
           }
 
-          // ---- Checklist table ----
+          // ---- Checklist table (compact) ----
           const tbody = $("ep_tblCompetences")?.querySelector("tbody");
           if (tbody) tbody.innerHTML = "";
 
-          const list = Array.isArray(data?.competences) ? data.competences : [];
+          let list = Array.isArray(data?.competences) ? data.competences : [];
 
-          setText("ep_compCount", String(list.length));
-          setText("ep_kpiToDo", String(list.length));
+          // flag "jamais audité" = date_derniere_eval null
+          list = list.map(x => ({
+            ...x,
+            _neverAudited: !x.date_derniere_eval
+          }));
+
+          // Bonus: tri => jamais audité en haut, puis code
+          list.sort((a, b) => {
+            const na = a._neverAudited ? 1 : 0;
+            const nb = b._neverAudited ? 1 : 0;
+            if (na !== nb) return nb - na; // 1 avant 0
+            return String(a.code || "").localeCompare(String(b.code || ""), "fr", { sensitivity: "base" });
+          });
+
+          const total = list.length;
+          const neverCount = list.filter(x => x._neverAudited).length;
+
+          setText("ep_compCount", String(total));
+          // KPI: à faire = compétences jamais auditées
+          setText("ep_kpiToDo", `${neverCount} / ${total}`);
+
+          // (les autres KPI restent à 0 pour l’instant, on les fera quand on sauvegardera des audits)
           setText("ep_kpiDone", "0");
           setText("ep_kpiChanged", "0");
           setText("ep_kpiReview", "0");
@@ -395,46 +415,56 @@
             tr.dataset.idEffectifCompetence = x.id_effectif_competence || "";
             tr.dataset.idComp = x.id_comp || "";
 
+            // Col 1: indicateur rouge si jamais audité
+            const tdFlag = document.createElement("td");
+            tdFlag.style.width = "26px";
+            tdFlag.style.textAlign = "center";
+            tdFlag.title = x._neverAudited ? "Jamais audité" : "Déjà audité";
+            tdFlag.textContent = x._neverAudited ? "●" : "";
+            tdFlag.style.color = x._neverAudited ? "#d11a2a" : "";
+
+            // Col 2: code + intitulé ellipsis
             const tdComp = document.createElement("td");
+
+            const rowWrap = document.createElement("div");
+            rowWrap.style.display = "flex";
+            rowWrap.style.alignItems = "center";
+            rowWrap.style.gap = "8px";
+            rowWrap.style.minWidth = "0";
+
             const badge = document.createElement("span");
             badge.className = "sb-badge sb-badge-accent";
             badge.textContent = (x.code || "").toString().trim();
+
             const title = document.createElement("span");
-            title.style.marginLeft = "8px";
             title.textContent = (x.intitule || "").toString().trim();
-            tdComp.appendChild(badge);
-            tdComp.appendChild(title);
+            title.title = title.textContent; // tooltip = texte complet
+            // Ellipsis
+            title.style.display = "block";
+            title.style.minWidth = "0";
+            title.style.flex = "1";
+            title.style.fontSize = "13px";
+            title.style.whiteSpace = "nowrap";
+            title.style.overflow = "hidden";
+            title.style.textOverflow = "ellipsis";
 
-            const tdNiv = document.createElement("td");
-            const bNiv = document.createElement("span");
-            bNiv.className = "sb-badge";
-            bNiv.textContent = ((x.niveau_actuel || "—").toString().trim() || "—");
-            tdNiv.appendChild(bNiv);
+            rowWrap.appendChild(badge);
+            rowWrap.appendChild(title);
+            tdComp.appendChild(rowWrap);
 
-            const tdStat = document.createElement("td");
-            const bStat = document.createElement("span");
-            bStat.className = "sb-badge";
-            bStat.textContent = x.date_derniere_eval ? "OK" : "À évaluer";
-            tdStat.appendChild(bStat);
-
-            const tdDelta = document.createElement("td");
-            tdDelta.textContent = "";
-
+            tr.appendChild(tdFlag);
             tr.appendChild(tdComp);
-            tr.appendChild(tdNiv);
-            tr.appendChild(tdStat);
-            tr.appendChild(tdDelta);
 
             if (tbody) tbody.appendChild(tr);
           });
 
-          // Filtre compétences activé (sinon c’est juste un champ décoratif)
-            const txtSearchComp = $("ep_txtSearchComp");
-            if (txtSearchComp) {
-            txtSearchComp.addEventListener("input", () => {
-                filterChecklistRows();
-            });
-            }
+          // Filtre compétences activé
+          const txtSearchComp = $("ep_txtSearchComp");
+          if (txtSearchComp) txtSearchComp.disabled = false;
+
+          // Bonus: filtre appliqué si l’utilisateur avait déjà tapé quelque chose
+          filterChecklistRows();
+
 
 
         } catch (e) {
