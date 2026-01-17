@@ -145,9 +145,12 @@
     setText("ep_collabCount", "0");
     state.selectedCollaborateurId = null;
     setText("ep_ctxCollaborateur", "—");
+    setText("ep_ctxMatricule", "—");
     setText("ep_ctxPoste", "—");
     setText("ep_ctxService", "—");
+    setText("ep_ctxDate", "—");
   }
+
 
   function clearCompetences() {
     const tbody = $("ep_tblCompetences")?.querySelector("tbody");
@@ -159,9 +162,11 @@
   function resetContextPanel() {
     setText("ep_ctxStatus", "Brouillon");
     setText("ep_ctxCollaborateur", "—");
+    setText("ep_ctxMatricule", "—");
     setText("ep_ctxPoste", "—");
     setText("ep_ctxService", "—");
     setText("ep_ctxDate", "—");
+
 
     setText("ep_kpiToDo", "0");
     setText("ep_kpiDone", "0");
@@ -230,7 +235,7 @@
     if (txtSearchCollab) txtSearchCollab.disabled = !scopeOk;
 
     const txtSearchComp = $("ep_txtSearchComp");
-    if (txtSearchComp) txtSearchComp.disabled = true;
+    if (txtSearchComp) txtSearchComp.disabled = !(scopeOk && !!state.selectedCollaborateurId);
 
     for (let i = 1; i <= 4; i++) {
       setDisabled(`ep_critNote${i}`, true);
@@ -329,20 +334,130 @@
       item.className = "sb-tree-item";
       item.appendChild(left);
     
-      // sélection collaborateur (on garde juste l’id, contenu métier plus tard)
-      item.addEventListener("click", () => {
+      item.addEventListener("click", async () => {
+        // sélection visuelle
+        wrap.querySelectorAll(".sb-tree-item.active").forEach(x => x.classList.remove("active"));
+        item.classList.add("active");
+
         state.selectedCollaborateurId = c.id_effectif || null;
+        state.selectedCompetenceId = null;
 
-        setText("ep_ctxCollaborateur", name);
-        setText("ep_ctxPoste", poste || "—");
-        setText("ep_ctxService", getSelectedServiceName() || "—");
-
-        // TODO: chargement compétences du collaborateur
         clearCompetences();
         resetEvaluationPanel();
+
+        if (!state.selectedCollaborateurId || !_portal) return;
+
+        try {
+          _portal.showAlert("", "");
+
+          // Date entretien = date du clic (pour l’instant)
+          setText("ep_ctxDate", new Date().toLocaleDateString("fr-FR"));
+
+          // Contexte réel + checklist compétences
+          const url = `${_portal.apiBase}/skills/entretien-performance/effectif-checklist/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}`;
+          const data = await _portal.apiJson(url);
+
+          const eff = data?.effectif || null;
+
+          // ---- Contexte (service réel + matricule) ----
+          if (eff) {
+            const prenom = (eff.prenom_effectif || "").toString().trim();
+            const nom = (eff.nom_effectif || "").toString().trim();
+            setText("ep_ctxCollaborateur", `${prenom} ${nom}`.trim() || "—");
+
+            setText("ep_ctxMatricule", (eff.matricule_interne || "").toString().trim() || "—");
+            setText("ep_ctxPoste", (eff.intitule_poste || "").toString().trim() || "—");
+
+            const svc = (eff.nom_service || eff.id_service || "").toString().trim();
+            setText("ep_ctxService", svc || "—");
+          } else {
+            // fallback si jamais l’API ne renvoie pas le contexte
+            setText("ep_ctxCollaborateur", name || "—");
+            setText("ep_ctxMatricule", "—");
+            setText("ep_ctxPoste", "—");
+            setText("ep_ctxService", "—");
+          }
+
+          // ---- Checklist table ----
+          const tbody = $("ep_tblCompetences")?.querySelector("tbody");
+          if (tbody) tbody.innerHTML = "";
+
+          const list = Array.isArray(data?.competences) ? data.competences : [];
+
+          setText("ep_compCount", String(list.length));
+          setText("ep_kpiToDo", String(list.length));
+          setText("ep_kpiDone", "0");
+          setText("ep_kpiChanged", "0");
+          setText("ep_kpiReview", "0");
+
+          list.forEach(x => {
+            const tr = document.createElement("tr");
+            tr.dataset.idEffectifCompetence = x.id_effectif_competence || "";
+            tr.dataset.idComp = x.id_comp || "";
+
+            const tdComp = document.createElement("td");
+            const badge = document.createElement("span");
+            badge.className = "sb-badge sb-badge-accent";
+            badge.textContent = (x.code || "").toString().trim();
+            const title = document.createElement("span");
+            title.style.marginLeft = "8px";
+            title.textContent = (x.intitule || "").toString().trim();
+            tdComp.appendChild(badge);
+            tdComp.appendChild(title);
+
+            const tdNiv = document.createElement("td");
+            const bNiv = document.createElement("span");
+            bNiv.className = "sb-badge";
+            bNiv.textContent = ((x.niveau_actuel || "—").toString().trim() || "—");
+            tdNiv.appendChild(bNiv);
+
+            const tdStat = document.createElement("td");
+            const bStat = document.createElement("span");
+            bStat.className = "sb-badge";
+            bStat.textContent = x.date_derniere_eval ? "OK" : "À évaluer";
+            tdStat.appendChild(bStat);
+
+            const tdDelta = document.createElement("td");
+            tdDelta.textContent = "";
+
+            tr.appendChild(tdComp);
+            tr.appendChild(tdNiv);
+            tr.appendChild(tdStat);
+            tr.appendChild(tdDelta);
+
+            if (tbody) tbody.appendChild(tr);
+          });
+
+          // Filtre compétences activé (sinon c’est juste un champ décoratif)
+            const txtSearchComp = $("ep_txtSearchComp");
+            if (txtSearchComp) {
+            txtSearchComp.addEventListener("input", () => {
+                filterChecklistRows();
+            });
+            }
+
+
+        } catch (e) {
+          _portal.showAlert("error", "Checklist collaborateur : " + String(e?.message || e));
+          console.error(e);
+          clearCompetences();
+          setText("ep_compCount", "0");
+        }
       });
 
+
       wrap.appendChild(item);
+    });
+  }
+
+    function filterChecklistRows() {
+    const q = ($("ep_txtSearchComp")?.value || "").trim().toLowerCase();
+    const tbody = $("ep_tblCompetences")?.querySelector("tbody");
+    if (!tbody) return;
+
+    Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
+      const txt = (tr.textContent || "").toLowerCase();
+      tr.style.display = (!q || txt.includes(q)) ? "" : "none";
     });
   }
 

@@ -48,6 +48,33 @@ class EntretienPerformanceBootstrapResponse(BaseModel):
     contact: ContactEntInfo
     scoring: ScoringConfig
 
+
+class EffectifContext(BaseModel):
+    id_effectif: str
+    nom_effectif: str
+    prenom_effectif: str
+    matricule_interne: Optional[str] = None
+    id_service: Optional[str] = None
+    nom_service: Optional[str] = None
+    id_poste_actuel: Optional[str] = None
+    intitule_poste: Optional[str] = None
+
+
+class ChecklistCompetenceItem(BaseModel):
+    id_effectif_competence: str
+    id_comp: str
+    code: str
+    intitule: str
+    domaine: Optional[str] = None
+    niveau_actuel: Optional[str] = None
+    date_derniere_eval: Optional[str] = None
+
+
+class EffectifChecklistResponse(BaseModel):
+    effectif: EffectifContext
+    competences: List[ChecklistCompetenceItem]
+
+
 class CollaborateurListItem(BaseModel):
     id_effectif: str
     nom_effectif: str
@@ -112,6 +139,38 @@ def _fetch_contact_and_ent(cur, id_contact: str) -> Dict[str, Any]:
         raise HTTPException(status_code=404, detail="Contact introuvable.")
     if not row.get("code_ent"):
         raise HTTPException(status_code=400, detail="Contact sans code_ent associé.")
+    return row
+
+def _fetch_effectif_context(cur, id_ent: str, id_effectif: str) -> Dict[str, Any]:
+    cur.execute(
+        """
+        SELECT
+            e.id_effectif,
+            e.nom_effectif,
+            e.prenom_effectif,
+            e.matricule_interne,
+            e.id_service,
+            o.nom_service,
+            e.id_poste_actuel,
+            fp.intitule_poste
+        FROM public.tbl_effectif_client e
+        LEFT JOIN public.tbl_entreprise_organigramme o
+            ON o.id_ent = e.id_ent
+           AND o.id_service = e.id_service
+           AND o.archive = FALSE
+        LEFT JOIN public.tbl_fiche_poste fp
+            ON fp.id_poste = e.id_poste_actuel
+           AND COALESCE(fp.actif, TRUE) = TRUE
+        WHERE e.id_effectif = %s
+          AND e.id_ent = %s
+          AND COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
+        """,
+        (id_effectif, id_ent),
+    )
+    row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
     return row
 
 
@@ -262,6 +321,85 @@ def get_entretien_performance_collaborateurs(
                     )
                     for r in rows
                 ]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+# ======================================================
+# Endpoints Checklist competences
+# ======================================================
+@router.get(
+    "/skills/entretien-performance/effectif-checklist/{id_contact}/{id_effectif}",
+    response_model=EffectifChecklistResponse,
+)
+def get_effectif_checklist(id_contact: str, id_effectif: str):
+    """
+    Contexte réel du collaborateur + checklist des compétences (niveau actuel, date dernière eval).
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                contact_row = _fetch_contact_and_ent(cur, id_contact)
+                id_ent = contact_row["code_ent"]
+
+                eff = _fetch_effectif_context(cur, id_ent, id_effectif)
+
+                cur.execute(
+                    """
+                    SELECT
+                        ec.id_effectif_competence,
+                        ec.id_comp,
+                        c.code,
+                        c.intitule,
+                        c.domaine,
+                        ec.niveau_actuel,
+                        ec.date_derniere_eval::text AS date_derniere_eval
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN public.tbl_effectif_client e
+                        ON e.id_effectif = ec.id_effectif_client
+                    JOIN public.tbl_competence c
+                        ON c.id_comp = ec.id_comp
+                    WHERE ec.id_effectif_client = %s
+                      AND e.id_ent = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.statut_actif, TRUE) = TRUE
+                      AND ec.actif = TRUE
+                      AND ec.archive = FALSE
+                      AND COALESCE(c.masque, FALSE) = FALSE
+                      AND COALESCE(c.etat, 'valide') <> 'inactive'
+                    ORDER BY c.code, c.intitule
+                    """,
+                    (id_effectif, id_ent),
+                )
+                rows = cur.fetchall() or []
+
+                effectif = EffectifContext(
+                    id_effectif=eff["id_effectif"],
+                    nom_effectif=eff.get("nom_effectif") or "",
+                    prenom_effectif=eff.get("prenom_effectif") or "",
+                    matricule_interne=eff.get("matricule_interne"),
+                    id_service=eff.get("id_service"),
+                    nom_service=eff.get("nom_service"),
+                    id_poste_actuel=eff.get("id_poste_actuel"),
+                    intitule_poste=eff.get("intitule_poste"),
+                )
+
+                competences = [
+                    ChecklistCompetenceItem(
+                        id_effectif_competence=r["id_effectif_competence"],
+                        id_comp=r["id_comp"],
+                        code=r["code"],
+                        intitule=r["intitule"],
+                        domaine=r.get("domaine"),
+                        niveau_actuel=r.get("niveau_actuel"),
+                        date_derniere_eval=r.get("date_derniere_eval"),
+                    )
+                    for r in rows
+                ]
+
+                return EffectifChecklistResponse(effectif=effectif, competences=competences)
 
     except HTTPException:
         raise
