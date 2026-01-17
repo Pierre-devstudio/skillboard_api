@@ -157,16 +157,21 @@
           <!-- En-tête compétence -->
           <div class="sb-grid-2">
             <div>
-              <div class="sb-label">Compétence</div>
+              <div class="sb-label"><b>Compétence</b></div>
               <div class="sb-value" id="ep_compTitle">—</div>
-              <div class="card-sub" id="ep_compDomain" style="margin-top:4px;"></div>
+
+              <!-- Domaine en badge (texte alimenté par le JS via id ep_compDomain) -->
+              <div style="margin-top:6px;">
+                <span class="sb-badge" id="ep_compDomain" style="display:inline-block;"></span>
+              </div>
             </div>
             <div>
-              <div class="sb-label">État actuel</div>
+              <div class="sb-label"><b>Niveau de maîtrise actuel</b></div>
               <div class="sb-value" id="ep_compCurrent">—</div>
               <div class="card-sub" id="ep_compLastEval" style="margin-top:4px;"></div>
             </div>
           </div>
+
 
           <hr class="sb-sep" style="margin:14px 0;" />
 
