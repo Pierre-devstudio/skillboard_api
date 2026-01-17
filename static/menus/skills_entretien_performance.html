@@ -1,18 +1,14 @@
 <!-- static/menus/skills_entretien_performance.html -->
 <section id="view-entretien-performance" style="display:none;">
 
-  <div class="sb-page-header">
-    <div>
-      <h2 style="margin:0;">Entretien de performance</h2>
-      <div class="sb-muted" style="margin-top:4px;">
-        Assistant d’entretien individuel (audit compétences + mise à jour des données Skills)
-      </div>
-    </div>
+  <div class="card">
+    <div class="card-title">Entretien de performance</div>
+    <div class="card-sub">Assistant d’entretien individuel (audit compétences + mise à jour des données Skills)</div>
 
-    <div class="sb-actions">
-      <button class="sb-btn sb-btn-secondary" id="ep_btnHelpScoring" type="button">Règles de scoring</button>
-      <button class="sb-btn sb-btn-secondary" id="ep_btnHistoryGlobal" type="button">Historique</button>
-      <button class="sb-btn" id="ep_btnFinalize" type="button" disabled>Finaliser</button>
+    <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+      <button class="btn-secondary" id="ep_btnHelpScoring" type="button">Règles de scoring</button>
+      <button class="btn-secondary" id="ep_btnHistoryGlobal" type="button">Historique</button>
+      <button class="btn-secondary" id="ep_btnFinalize" type="button" disabled>Finaliser</button>
     </div>
   </div>
 
@@ -20,45 +16,46 @@
   <div class="card" style="margin-top:12px;">
     <div class="card-header">
       <div class="card-title">Contexte</div>
-      <div class="sb-muted" id="ep_ctxStatus">Brouillon</div>
+      <div class="card-sub" id="ep_ctxStatus">Brouillon</div>
     </div>
 
     <div class="card-body">
-      <div class="sb-grid-4">
-        <div>
-          <div class="sb-label">Collaborateur</div>
-          <div class="sb-value" id="ep_ctxCollaborateur">—</div>
+      <div class="row" style="gap:12px; margin-top:6px; flex-wrap:wrap;">
+        <div class="info-item" style="min-width:160px;">
+          <div class="label">Collaborateur</div>
+          <div class="value" id="ep_ctxCollaborateur">—</div>
         </div>
-        <div>
-          <div class="sb-label">Poste</div>
-          <div class="sb-value" id="ep_ctxPoste">—</div>
+        <div class="info-item" style="min-width:160px;">
+          <div class="label">Poste</div>
+          <div class="value" id="ep_ctxPoste">—</div>
         </div>
-        <div>
-          <div class="sb-label">Service</div>
-          <div class="sb-value" id="ep_ctxService">—</div>
+        <div class="info-item" style="min-width:160px;">
+          <div class="label">Service</div>
+          <div class="value" id="ep_ctxService">—</div>
         </div>
-        <div>
-          <div class="sb-label">Date</div>
-          <div class="sb-value" id="ep_ctxDate">—</div>
+        <div class="info-item" style="min-width:160px;">
+          <div class="label">Date</div>
+          <div class="value" id="ep_ctxDate">—</div>
         </div>
       </div>
 
-      <div class="sb-grid-4" style="margin-top:12px;">
-        <div class="sb-kpi-card">
-          <div class="sb-kpi-label">Compétences à auditer</div>
-          <div class="sb-kpi-value" id="ep_kpiToDo">0</div>
+
+      <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
+        <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+          <div class="label">Compétences à auditer</div>
+          <div class="value" id="ep_kpiToDo">0</div>
         </div>
-        <div class="sb-kpi-card">
-          <div class="sb-kpi-label">Évaluées</div>
-          <div class="sb-kpi-value" id="ep_kpiDone">0</div>
+        <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+          <div class="label">Évaluées</div>
+          <div class="value" id="ep_kpiDone">0</div>
         </div>
-        <div class="sb-kpi-card">
-          <div class="sb-kpi-label">Modifiées</div>
-          <div class="sb-kpi-value" id="ep_kpiChanged">0</div>
+        <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+          <div class="label">Modifiées</div>
+          <div class="value" id="ep_kpiChanged">0</div>
         </div>
-        <div class="sb-kpi-card">
-          <div class="sb-kpi-label">À revoir</div>
-          <div class="sb-kpi-value" id="ep_kpiReview">0</div>
+        <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+          <div class="label">À revoir</div>
+          <div class="value" id="ep_kpiReview">0</div>
         </div>
       </div>
     </div>
@@ -68,54 +65,51 @@
     <!-- Colonne gauche: Périmètre + Sélection collaborateur + Checklist -->
     <div class="sb-col" style="min-width:320px; max-width:380px;">
       <!-- Périmètre -->
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Périmètre</div>
-          <div class="sb-muted">Le service est obligatoire (et deviendra restreint selon les droits).</div>
-        </div>
-        <div class="card-body">
-          <div class="sb-field">
-            <label class="sb-label" for="ep_selService">Service</label>
-            <select id="ep_selService" class="sb-input">
+      <div class="card" id="ep_cardPerimetre">
+        <div class="card-title">Périmètre</div>
+        <div class="card-sub">Filtrer la population de collaborateurs à auditer.</div>
+
+        <div class="row" style="flex-direction:column; gap:12px; margin-top:12px;">
+          <div class="info-item" style="min-width:0;">
+            <div class="label">Service</div>
+            <select id="ep_selService">
               <option value="">— Sélectionner —</option>
             </select>
           </div>
 
-          <div class="sb-field" style="margin-top:10px;">
-            <label class="sb-label" for="ep_selPopulation">Population</label>
-            <select id="ep_selPopulation" class="sb-input">
+          <div class="info-item" style="min-width:0;">
+            <div class="label">Population</div>
+            <select id="ep_selPopulation">
               <option value="team">Mon équipe</option>
               <option value="service">Mon service</option>
               <option value="ent">Toute l’entreprise</option>
             </select>
-            <div class="sb-muted" style="margin-top:6px;">
-              Options ajustées selon les droits.
-            </div>
           </div>
 
-          <button class="sb-btn" id="ep_btnResetScope" type="button" style="margin-top:12px; width:100%;">
-            Réinitialiser
-          </button>
+          <div class="info-item" style="min-width:0;">
+            <button type="button" class="btn-secondary" id="ep_btnScopeReset" style="margin-left:0; width:100%;">Réinitialiser</button>
+          </div>
         </div>
       </div>
+
 
       <!-- Sélection collaborateur -->
       <div class="card" style="margin-top:12px;">
         <div class="card-header">
           <div class="card-title">Collaborateurs</div>
-          <div class="sb-muted" id="ep_collabCount">0</div>
+          <div class="card-sub" id="ep_collabCount">0</div>
         </div>
         <div class="card-body">
           <div class="sb-field">
             <label class="sb-label" for="ep_txtSearchCollab">Recherche</label>
-            <input id="ep_txtSearchCollab" class="sb-input" placeholder="Nom, prénom, code..." />
+            <input id="ep_txtSearchCollab"  placeholder="Nom, prénom, code..." />
           </div>
 
           <div class="sb-list" id="ep_listCollaborateurs" style="margin-top:10px; max-height:260px; overflow:auto;">
             <!-- items -->
           </div>
 
-          <div class="sb-muted" style="margin-top:8px;">
+          <div class="card-sub" style="margin-top:8px;">
             Sélectionne un collaborateur pour démarrer l’entretien.
           </div>
         </div>
@@ -125,15 +119,15 @@
       <div class="card" style="margin-top:12px;">
         <div class="card-header">
           <div class="card-title">Compétences à auditer</div>
-          <div class="sb-muted" id="ep_compCount">0</div>
+          <div class="card-sub" id="ep_compCount">0</div>
         </div>
         <div class="card-body">
           <div class="sb-field">
             <label class="sb-label" for="ep_txtSearchComp">Filtrer compétences</label>
-            <input id="ep_txtSearchComp" class="sb-input" placeholder="Code, intitulé, mots-clés..." />
+            <input id="ep_txtSearchComp"  placeholder="Code, intitulé, mots-clés..." />
           </div>
 
-          <div class="sb-table-wrap" style="margin-top:10px; max-height:340px; overflow:auto;">
+          <div class="table-wrap" style="margin-top:10px; max-height:340px; overflow:auto;">
             <table class="sb-table" id="ep_tblCompetences">
               <thead>
                 <tr>
@@ -149,7 +143,7 @@
             </table>
           </div>
 
-          <div class="sb-muted" style="margin-top:8px;">
+          <div class="card-sub" style="margin-top:8px;">
             Le statut reflète la saisie en cours (brouillon) avant finalisation.
           </div>
         </div>
@@ -161,7 +155,7 @@
       <div class="card" id="ep_cardEvaluation">
         <div class="card-header">
           <div class="card-title">Évaluation</div>
-          <div class="sb-muted" id="ep_evalHint">Sélectionne une compétence dans la liste de gauche.</div>
+          <div class="card-sub" id="ep_evalHint">Sélectionne une compétence dans la liste de gauche.</div>
         </div>
 
         <div class="card-body">
@@ -170,23 +164,23 @@
             <div>
               <div class="sb-label">Compétence</div>
               <div class="sb-value" id="ep_compTitle">—</div>
-              <div class="sb-muted" id="ep_compDomain" style="margin-top:4px;"></div>
+              <div class="card-sub" id="ep_compDomain" style="margin-top:4px;"></div>
             </div>
             <div>
               <div class="sb-label">État actuel</div>
               <div class="sb-value" id="ep_compCurrent">—</div>
-              <div class="sb-muted" id="ep_compLastEval" style="margin-top:4px;"></div>
+              <div class="card-sub" id="ep_compLastEval" style="margin-top:4px;"></div>
             </div>
           </div>
 
           <hr class="sb-sep" style="margin:14px 0;" />
 
           <!-- Critères -->
-          <div class="sb-muted" style="margin-bottom:8px;">
+          <div class="card-sub" style="margin-bottom:8px;">
             Notes de 1 à 4. Le calcul du score final est pondéré pour ramener sur 24.
           </div>
 
-          <div class="sb-table-wrap">
+          <div class="table-wrap">
             <table class="sb-table" id="ep_tblCriteres">
               <thead>
                 <tr>
@@ -199,7 +193,7 @@
                 <tr data-crit="1">
                   <td><span id="ep_critLabel1">—</span></td>
                   <td>
-                    <select id="ep_critNote1" class="sb-input sb-input-compact" disabled>
+                    <select id="ep_critNote1"  disabled>
                       <option value="">—</option>
                       <option value="1">1</option>
                       <option value="2">2</option>
@@ -207,13 +201,13 @@
                       <option value="4">4</option>
                     </select>
                   </td>
-                  <td><input id="ep_critCom1" class="sb-input sb-input-compact" disabled /></td>
+                  <td><input id="ep_critCom1"  disabled /></td>
                 </tr>
 
                 <tr data-crit="2">
                   <td><span id="ep_critLabel2">—</span></td>
                   <td>
-                    <select id="ep_critNote2" class="sb-input sb-input-compact" disabled>
+                    <select id="ep_critNote2"  disabled>
                       <option value="">—</option>
                       <option value="1">1</option>
                       <option value="2">2</option>
@@ -221,13 +215,13 @@
                       <option value="4">4</option>
                     </select>
                   </td>
-                  <td><input id="ep_critCom2" class="sb-input sb-input-compact" disabled /></td>
+                  <td><input id="ep_critCom2"  disabled /></td>
                 </tr>
 
                 <tr data-crit="3">
                   <td><span id="ep_critLabel3">—</span></td>
                   <td>
-                    <select id="ep_critNote3" class="sb-input sb-input-compact" disabled>
+                    <select id="ep_critNote3"  disabled>
                       <option value="">—</option>
                       <option value="1">1</option>
                       <option value="2">2</option>
@@ -235,13 +229,13 @@
                       <option value="4">4</option>
                     </select>
                   </td>
-                  <td><input id="ep_critCom3" class="sb-input sb-input-compact" disabled /></td>
+                  <td><input id="ep_critCom3"  disabled /></td>
                 </tr>
 
                 <tr data-crit="4">
                   <td><span id="ep_critLabel4">—</span></td>
                   <td>
-                    <select id="ep_critNote4" class="sb-input sb-input-compact" disabled>
+                    <select id="ep_critNote4"  disabled>
                       <option value="">—</option>
                       <option value="1">1</option>
                       <option value="2">2</option>
@@ -249,41 +243,45 @@
                       <option value="4">4</option>
                     </select>
                   </td>
-                  <td><input id="ep_critCom4" class="sb-input sb-input-compact" disabled /></td>
+                  <td><input id="ep_critCom4"  disabled /></td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           <!-- Résultats calcul -->
-          <div class="sb-grid-4" style="margin-top:12px;">
-            <div class="sb-kpi-card">
-              <div class="sb-kpi-label">Somme brute</div>
-              <div class="sb-kpi-value" id="ep_scoreRaw">—</div>
+          <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
+            <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+              <div class="label">Somme brute</div>
+              <div class="value" id="ep_scoreRaw">—</div>
             </div>
-            <div class="sb-kpi-card">
-              <div class="sb-kpi-label">Coef.</div>
-              <div class="sb-kpi-value" id="ep_scoreCoef">—</div>
+
+            <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+              <div class="label">Coef.</div>
+              <div class="value" id="ep_scoreCoef">—</div>
             </div>
-            <div class="sb-kpi-card">
-              <div class="sb-kpi-label">Score /24</div>
-              <div class="sb-kpi-value" id="ep_score24">—</div>
+
+            <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+              <div class="label">Score /24</div>
+              <div class="value" id="ep_score24">—</div>
             </div>
-            <div class="sb-kpi-card">
-              <div class="sb-kpi-label">Niveau</div>
-              <div class="sb-kpi-value" id="ep_levelABC">—</div>
+
+            <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+              <div class="label">Niveau</div>
+              <div class="value" id="ep_levelABC">—</div>
             </div>
           </div>
+
 
           <div class="sb-field" style="margin-top:12px;">
             <label class="sb-label" for="ep_txtObservation">Observation</label>
-            <textarea id="ep_txtObservation" class="sb-input" rows="4" placeholder="Faits observables, exemples, contexte..." disabled></textarea>
+            <textarea id="ep_txtObservation"  rows="4" placeholder="Faits observables, exemples, contexte..." disabled></textarea>
           </div>
 
           <div class="sb-actions" style="margin-top:12px; justify-content:flex-end;">
-            <button class="sb-btn sb-btn-secondary" id="ep_btnMarkReview" type="button" disabled>Marquer à revoir</button>
-            <button class="sb-btn sb-btn-secondary" id="ep_btnSaveNext" type="button" disabled>Enregistrer + suivant</button>
-            <button class="sb-btn" id="ep_btnSave" type="button" disabled>Enregistrer</button>
+            <button class="btn-secondary" id="ep_btnMarkReview" type="button" disabled>Marquer à revoir</button>
+            <button class="btn-secondary" id="ep_btnSaveNext" type="button" disabled>Enregistrer + suivant</button>
+            <button class="btn-secondary" id="ep_btnSave" type="button" disabled>Enregistrer</button>
           </div>
         </div>
       </div>
@@ -294,14 +292,14 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title">Synthèse</div>
-          <div class="sb-muted">Évolution constatée pendant l’entretien</div>
+          <div class="card-sub">Évolution constatée pendant l’entretien</div>
         </div>
         <div class="card-body">
           <div class="sb-list" id="ep_listSummary" style="max-height:240px; overflow:auto;">
             <!-- items -->
           </div>
 
-          <div class="sb-muted" style="margin-top:8px;">
+          <div class="card-sub" style="margin-top:8px;">
             La synthèse se mettra à jour au fil des évaluations.
           </div>
         </div>
@@ -310,15 +308,15 @@
       <div class="card" style="margin-top:12px;">
         <div class="card-header">
           <div class="card-title">Plan d’action</div>
-          <div class="sb-muted">Objectifs, formations, mobilité</div>
+          <div class="card-sub">Objectifs, formations, mobilité</div>
         </div>
         <div class="card-body">
           <div class="sb-field">
             <label class="sb-label" for="ep_txtGlobalNotes">Notes globales</label>
-            <textarea id="ep_txtGlobalNotes" class="sb-input" rows="6" placeholder="Synthèse entretien, objectifs, axes de progrès..." disabled></textarea>
+            <textarea id="ep_txtGlobalNotes"  rows="6" placeholder="Synthèse entretien, objectifs, axes de progrès..." disabled></textarea>
           </div>
 
-          <button class="sb-btn sb-btn-secondary" id="ep_btnGenerateSummary" type="button" style="margin-top:10px; width:100%;" disabled>
+          <button class="btn-secondary" id="ep_btnGenerateSummary" type="button" style="margin-top:10px; width:100%;" disabled>
             Générer une synthèse
           </button>
         </div>
@@ -327,14 +325,14 @@
       <div class="card" style="margin-top:12px;">
         <div class="card-header">
           <div class="card-title">Mode Focus</div>
-          <div class="sb-muted">Agrandit la zone d’évaluation</div>
+          <div class="card-sub">Agrandit la zone d’évaluation</div>
         </div>
         <div class="card-body">
           <label class="sb-switch">
             <input type="checkbox" id="ep_chkFocus" />
             <span>Activer le mode Focus</span>
           </label>
-          <div class="sb-muted" style="margin-top:8px;">
+          <div class="card-sub" style="margin-top:8px;">
             Masque la colonne de droite pour se concentrer sur l’évaluation.
           </div>
         </div>
@@ -346,15 +344,16 @@
   <div class="modal" id="modalEpScoring" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-header">
-        <div class="modal-title">Règles de scoring</div>
-        <button class="modal-close" data-close="modalEpScoring" aria-label="Fermer">×</button>
+        <div style="font-weight:600;">Règles de scoring</div>
+        <button type="button" class="modal-x" id="btnCloseEpScoringModalX" aria-label="Fermer">×</button>
       </div>
+
       <div class="modal-body">
-        <div class="sb-muted">
+        <div class="card-sub" style="margin-top:0;">
           Chaque compétence peut avoir entre 1 et 4 critères (notes 1 à 4). La somme est pondérée pour obtenir un score sur 24.
         </div>
 
-        <div class="sb-table-wrap" style="margin-top:10px;">
+        <div class="table-wrap" style="margin-top:10px;">
           <table class="sb-table">
             <thead>
               <tr>
@@ -373,7 +372,7 @@
           </table>
         </div>
 
-        <div class="sb-table-wrap" style="margin-top:12px;">
+        <div class="table-wrap" style="margin-top:12px;">
           <table class="sb-table">
             <thead>
               <tr>
@@ -390,25 +389,28 @@
           </table>
         </div>
       </div>
+
       <div class="modal-footer">
-        <button class="sb-btn" data-close="modalEpScoring" type="button">Fermer</button>
+        <button type="button" class="btn-secondary" id="btnEpScoringModalClose">Fermer</button>
       </div>
     </div>
   </div>
+
 
   <!-- Modal: historique (placeholder) -->
   <div class="modal" id="modalEpHistory" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-header">
-        <div class="modal-title">Historique</div>
-        <button class="modal-close" data-close="modalEpHistory" aria-label="Fermer">×</button>
+        <div style="font-weight:600;">Historique</div>
+        <button type="button" class="modal-x" id="btnCloseEpHistoryModalX" aria-label="Fermer">×</button>
       </div>
+
       <div class="modal-body">
-        <div class="sb-muted">
+        <div class="card-sub" style="margin-top:0;">
           Historique des audits et/ou de l’entretien (contenu à venir).
         </div>
 
-        <div class="sb-table-wrap" style="margin-top:10px;">
+        <div class="table-wrap" style="margin-top:10px;">
           <table class="sb-table" id="ep_tblHistory">
             <thead>
               <tr>
@@ -420,16 +422,16 @@
                 <th>Observation</th>
               </tr>
             </thead>
-            <tbody>
-              <!-- rows -->
-            </tbody>
+            <tbody></tbody>
           </table>
         </div>
       </div>
+
       <div class="modal-footer">
-        <button class="sb-btn" data-close="modalEpHistory" type="button">Fermer</button>
+        <button type="button" class="btn-secondary" id="btnEpHistoryModalClose">Fermer</button>
       </div>
     </div>
   </div>
+
 
 </section>

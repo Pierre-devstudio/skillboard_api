@@ -45,58 +45,52 @@
   function openModal(modalId) {
     const m = $(modalId);
     if (!m) return;
-    m.classList.add("open");
+    m.classList.add("show");
     m.setAttribute("aria-hidden", "false");
+
+    const body = m.querySelector(".modal-body");
+    if (body) body.scrollTop = 0;
   }
 
   function closeModal(modalId) {
     const m = $(modalId);
     if (!m) return;
-    m.classList.remove("open");
+    m.classList.remove("show");
     m.setAttribute("aria-hidden", "true");
-  }
-
-  function closeModalFromEvent(e) {
-    const btn = e.target.closest("[data-close]");
-    if (!btn) return;
-    const id = btn.getAttribute("data-close");
-    if (id) closeModal(id);
-  }
-
-  function bindModalBehaviorsOnce() {
-    // Close buttons
-    document.addEventListener("click", (e) => {
-      const btn = e.target.closest("[data-close]");
-      if (btn) closeModalFromEvent(e);
-    });
-
-    // Click outside modal-card closes
-    document.addEventListener("mousedown", (e) => {
-      const modal = e.target.closest(".modal");
-      if (!modal) return;
-      const card = e.target.closest(".modal-card");
-      if (!card && modal.classList.contains("open")) {
-        modal.classList.remove("open");
-        modal.setAttribute("aria-hidden", "true");
-      }
-    });
-
-    // ESC closes any open modal
-    document.addEventListener("keydown", (e) => {
-      if (e.key !== "Escape") return;
-      const open = document.querySelectorAll(".modal.open");
-      open.forEach((m) => {
-        m.classList.remove("open");
-        m.setAttribute("aria-hidden", "true");
-      });
-    });
   }
 
   function bindOnce() {
     if (_bound) return;
     _bound = true;
 
-    bindModalBehaviorsOnce();
+        // Modal Scoring (standard)
+    const modalScoring = $("modalEpScoring");
+    const btnXScoring = $("btnCloseEpScoringModalX");
+    const btnCloseScoring = $("btnEpScoringModalClose");
+    const closeScoring = () => closeModal("modalEpScoring");
+
+    if (btnXScoring) btnXScoring.addEventListener("click", closeScoring);
+    if (btnCloseScoring) btnCloseScoring.addEventListener("click", closeScoring);
+    if (modalScoring) {
+      modalScoring.addEventListener("click", (e) => {
+        if (e.target === modalScoring) closeScoring();
+      });
+    }
+
+    // Modal History (standard)
+    const modalHistory = $("modalEpHistory");
+    const btnXHistory = $("btnCloseEpHistoryModalX");
+    const btnCloseHistory = $("btnEpHistoryModalClose");
+    const closeHistory = () => closeModal("modalEpHistory");
+
+    if (btnXHistory) btnXHistory.addEventListener("click", closeHistory);
+    if (btnCloseHistory) btnCloseHistory.addEventListener("click", closeHistory);
+    if (modalHistory) {
+      modalHistory.addEventListener("click", (e) => {
+        if (e.target === modalHistory) closeHistory();
+      });
+    }
+
 
     // Header actions
     const btnHelp = $("ep_btnHelpScoring");
@@ -132,7 +126,7 @@
       });
     }
 
-    const btnReset = $("ep_btnResetScope");
+    const btnReset = $("ep_btnScopeReset");
     if (btnReset) {
       btnReset.addEventListener("click", () => {
         resetScope();
@@ -346,9 +340,22 @@
     }
   }
 
+  async function ensureContext(portal) {
+    if (portal.context) return portal.context;
+
+    const ctx = await portal.apiJson(`${portal.apiBase}/skills/context/${encodeURIComponent(portal.contactId)}`);
+    portal.context = ctx;
+
+    const civ = (ctx.civilite || "").trim();
+    const prenom = (ctx.prenom || "").trim();
+    const nom = (ctx.nom || "").trim();
+    const display = [civ, prenom, nom].filter(Boolean).join(" ").trim();
+
+    portal.setTopbar(display || "Contact", "Portail Skills — JMB CONSULTANT");
+    return ctx;
+  }
+
   async function loadBootstrap() {
-    // Appel minimal au router "entretien-performance" (bootstrap scoring + info contact)
-    // Le reste viendra plus tard (services, collaborateurs, compétences, audits).
     if (!_portal) return;
 
     try {
@@ -356,21 +363,14 @@
       const data = await _portal.apiJson(url);
       state.scoring = data?.scoring || null;
 
-      // Topbar
-      const contact = data?.contact || null;
-      if (contact) {
-        const nom = [contact.civ_ca, contact.prenom_ca, contact.nom_ca].filter(Boolean).join(" ").trim();
-        _portal.setTopbar("Entretien de performance", nom ? nom : " ");
-      } else {
-        _portal.setTopbar("Entretien de performance", " ");
-      }
+      // IMPORTANT: on ne touche PAS à la topbar ici.
+      // La topbar est gérée par ensureContext(portal) comme les autres pages.
 
-      // La carte "Contexte" restera neutre tant qu’on ne choisit pas un collaborateur.
-      // A terme, on affichera aussi l’évaluateur et la date entretien.
     } catch (e) {
       _portal.showAlert("error", "Erreur", String(e?.message || e));
     }
   }
+
 
   async function onShow(portal) {
     _portal = portal;
@@ -386,6 +386,7 @@
     applyUiLockedState();
     applyFocusMode();
 
+    await ensureContext(_portal);
     await loadBootstrap();
 
     // Placeholder: on remplira les services ici (API existante skills_portal_common / organisation, etc.)
