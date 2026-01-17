@@ -13,7 +13,6 @@
 
   const state = {
     serviceId: "",
-    population: "team",
     focusMode: false,
     selectedCollaborateurId: null,
     selectedCompetenceId: null,
@@ -115,17 +114,6 @@
       });
     }
 
-    const selPop = $("ep_selPopulation");
-    if (selPop) {
-      selPop.addEventListener("change", () => {
-        state.population = selPop.value || "team";
-        // Placeholder: futur rechargement collaborateurs
-        clearCollaborateurs();
-        clearCompetences();
-        applyUiLockedState();
-      });
-    }
-
     const btnReset = $("ep_btnScopeReset");
     if (btnReset) {
       btnReset.addEventListener("click", () => {
@@ -196,15 +184,11 @@
 
   function resetScope() {
     state.serviceId = "";
-    state.population = "team";
     state.selectedCollaborateurId = null;
     state.selectedCompetenceId = null;
 
     const selService = $("ep_selService");
     if (selService) selService.value = "";
-
-    const selPop = $("ep_selPopulation");
-    if (selPop) selPop.value = "team";
 
     const chkFocus = $("ep_chkFocus");
     if (chkFocus) chkFocus.checked = false;
