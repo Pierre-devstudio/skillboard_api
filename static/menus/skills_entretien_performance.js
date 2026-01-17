@@ -580,7 +580,37 @@
                     domEl.style.borderRadius = "999px";
                     domEl.style.border = `1px solid ${col}`;
                     domEl.style.background = col;
-                    domEl.style.color = "#fff";
+                        // Texte auto (noir/blanc) selon la luminosité du fond
+                    const pickTextColor = (bg) => {
+                    const s = (bg || "").toString().trim();
+                    let r = 0, g = 0, b = 0;
+
+                    if (s.startsWith("#")) {
+                        const hex = s.slice(1);
+                        if (hex.length === 6) {
+                        r = parseInt(hex.slice(0, 2), 16);
+                        g = parseInt(hex.slice(2, 4), 16);
+                        b = parseInt(hex.slice(4, 6), 16);
+                        }
+                    } else if (s.startsWith("rgb")) {
+                        const m = s.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
+                        if (m) {
+                        r = parseInt(m[1], 10);
+                        g = parseInt(m[2], 10);
+                        b = parseInt(m[3], 10);
+                        }
+                    } else {
+                        // couleur non parsable (nom CSS, var(), etc.) -> on évite le blanc par défaut
+                        return "#111";
+                    }
+
+                    // luminance (0..255)
+                    const lum = (r * 299 + g * 587 + b * 114) / 1000;
+                    return lum >= 160 ? "#111" : "#fff";
+                    };
+
+                    domEl.style.color = pickTextColor(col);
+
                     domEl.style.fontSize = "12px";
                     domEl.style.lineHeight = "18px";
                 }
