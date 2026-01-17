@@ -534,10 +534,58 @@
 
                 // Domaine (si le référentiel renvoie un objet domaine)
                 const dom = comp?.domaine || null;
-                if (domEl) {
-                  const label = dom ? (dom.titre_court || dom.titre || dom.id_domaine_competence || "") : (x.domaine || "");
-                  domEl.textContent = (label || "").toString().trim();
+
+                // même logique que skills_referentiel_competence.js : int ARGB signé (WinForms) -> #RRGGBB
+                const normalizeColor = (raw) => {
+                if (raw === null || raw === undefined) return "";
+                const s = raw.toString().trim();
+                if (!s) return "";
+
+                // déjà du CSS
+                if (s.startsWith("#") || s.startsWith("rgb") || s.startsWith("hsl")) return s;
+
+                // WinForms: int ARGB signé (ex: -256)
+                if (/^-?\d+$/.test(s)) {
+                    const n = parseInt(s, 10);
+                    const u = (n >>> 0);
+                    const r = (u >> 16) & 255;
+                    const g = (u >> 8) & 255;
+                    const b = u & 255;
+                    return "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
                 }
+
+                // sinon on laisse passer ("red", "var(--x)", etc.)
+                return s;
+                };
+
+                if (domEl) {
+                const label = dom ? (dom.titre_court || dom.titre || dom.id_domaine_competence || "") : (x.domaine || "");
+                domEl.textContent = (label || "").toString().trim();
+
+                // reset style (évite de garder la couleur précédente)
+                domEl.style.background = "";
+                domEl.style.border = "";
+                domEl.style.color = "";
+                domEl.style.display = "";
+                domEl.style.padding = "";
+                domEl.style.borderRadius = "";
+                domEl.style.fontSize = "";
+                domEl.style.lineHeight = "";
+
+                const col = normalizeColor(dom?.couleur);
+                if (col) {
+                    // rendu “badge” même si ton élément est un <div class="card-sub">
+                    domEl.style.display = "inline-block";
+                    domEl.style.padding = "3px 8px";
+                    domEl.style.borderRadius = "999px";
+                    domEl.style.border = `1px solid ${col}`;
+                    domEl.style.background = col;
+                    domEl.style.color = "#fff";
+                    domEl.style.fontSize = "12px";
+                    domEl.style.lineHeight = "18px";
+                }
+                }
+
 
                 // Critères: on prend jusqu’à 4 critères renseignés
                 const keys = (grid && typeof grid === "object") ? Object.keys(grid) : [];
