@@ -415,15 +415,7 @@
             tr.dataset.idEffectifCompetence = x.id_effectif_competence || "";
             tr.dataset.idComp = x.id_comp || "";
 
-            // Col 1: indicateur rouge si jamais audité
-            const tdFlag = document.createElement("td");
-            tdFlag.style.width = "26px";
-            tdFlag.style.textAlign = "center";
-            tdFlag.title = x._neverAudited ? "Jamais audité" : "Déjà audité";
-            tdFlag.textContent = x._neverAudited ? "●" : "";
-            tdFlag.style.color = x._neverAudited ? "#d11a2a" : "";
-
-            // Col 2: code + intitulé ellipsis
+            // Col: code + intitulé ellipsis
             const tdComp = document.createElement("td");
 
             const rowWrap = document.createElement("div");
@@ -433,13 +425,20 @@
             rowWrap.style.minWidth = "0";
 
             const badge = document.createElement("span");
-            badge.className = "sb-badge sb-badge-accent";
+            badge.className = x._neverAudited ? "sb-badge" : "sb-badge sb-badge-accent";
             badge.textContent = (x.code || "").toString().trim();
+
+            // Badge rouge si jamais auditée
+            if (x._neverAudited) {
+              badge.style.background = "#d11a2a";
+              badge.style.borderColor = "#d11a2a";
+              badge.style.color = "#fff";
+              badge.title = "Jamais auditée";
+            }
 
             const title = document.createElement("span");
             title.textContent = (x.intitule || "").toString().trim();
             title.title = title.textContent; // tooltip = texte complet
-            // Ellipsis
             title.style.display = "block";
             title.style.minWidth = "0";
             title.style.flex = "1";
@@ -452,11 +451,11 @@
             rowWrap.appendChild(title);
             tdComp.appendChild(rowWrap);
 
-            tr.appendChild(tdFlag);
             tr.appendChild(tdComp);
 
             if (tbody) tbody.appendChild(tr);
           });
+
 
           // Filtre compétences activé
           const txtSearchComp = $("ep_txtSearchComp");
