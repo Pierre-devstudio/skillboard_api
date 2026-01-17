@@ -51,10 +51,16 @@
   htmlUrl: "/menus/skills_analyse.html",
   jsUrl: "/menus/skills_analyse.js",
   onShow: (p) => window.SkillsAnalyse?.onShow?.(p),
-});
+  });
+
+  portal.registerMenu({
+  view: "entretien-performance",
+  htmlUrl: "/menus/skills_entretien_performance.html",
+  jsUrl: "/menus/skills_entretien_performance.js",
+  onShow: (p) => window.SkillsEntretienPerformance?.onShow?.(p),
+  });
 
   // Placeholders (pour éviter les clics “vides”)      
-  portal.registerMenu({ view: "entretien-performance", placeholderTitle: "Entretien de performance", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "catalogue-formation", placeholderTitle: "Votre catalogue de formation", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "actions-programmer", placeholderTitle: "Actions à programmer", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "actions-en-cours", placeholderTitle: "Actions en cours", placeholderSub: "Page à venir." });
