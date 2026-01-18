@@ -1031,16 +1031,83 @@
             openModal("modalEpHistory");
 
             const tbody = $("ep_tblHistory")?.querySelector("tbody");
+            const txtSearch = $("ep_histSearch");
+            const selEval = $("ep_histSelEvaluateur");
+            const selMeth = $("ep_histSelMethode");
+
             if (!tbody) return;
 
+            const esc = (s) => String(s ?? "")
+              .replaceAll("&", "&amp;")
+              .replaceAll("<", "&lt;")
+              .replaceAll(">", "&gt;")
+              .replaceAll('"', "&quot;")
+              .replaceAll("'", "&#39;");
+
             const setRowMessage = (msg) => {
-              tbody.innerHTML = `
-                <tr>
-                  <td colspan="6" style="padding:10px; color:#6b7280;">${escapeHtml(msg)}</td>
-                </tr>`;
+              tbody.innerHTML = `<tr><td colspan="6" style="padding:10px; color:#6b7280;">${esc(msg)}</td></tr>`;
             };
 
-            // Pas de collaborateur sélectionné = pas d’historique à afficher
+            const formatDateFR = (v) => {
+              if (!v) return "—";
+              try {
+                const d = new Date(v);
+                if (isNaN(d.getTime())) return String(v);
+                return d.toLocaleDateString("fr-FR");
+              } catch {
+                return String(v);
+              }
+            };
+
+            const niveauFromScore = (score) => {
+              const s = Number(score);
+              if (!isFinite(s)) return "—";
+
+              // Si tu as le scoring bootstrap, on l’utilise
+              const niveaux = state.scoring?.niveaux;
+              if (Array.isArray(niveaux) && niveaux.length) {
+                const hit = niveaux.find(n => s >= Number(n.min) && s <= Number(n.max));
+                if (hit) return (hit.libelle || hit.code || "—");
+              }
+
+              // fallback règles Skillboard
+              if (s >= 19) return "Expert";
+              if (s >= 10) return "Avancé";
+              if (s >= 6) return "Initial";
+              return "—";
+            };
+
+            const getEvalKey = (x) => (x?.nom_evaluateur || x?.id_evaluateur || "Non affecté").toString().trim() || "Non affecté";
+            const getMethKey = (x) => (x?.methode_eval || "Non renseignée").toString().trim() || "Non renseignée";
+
+            // Bind modal observation (une fois)
+            if (!state._histObsBound) {
+              state._histObsBound = true;
+
+              const closeObs = () => closeModal("modalEpHistoryObs");
+              const btnX = $("btnCloseEpHistoryObsModalX");
+              const btnClose = $("btnEpHistoryObsModalClose");
+              const modalObs = $("modalEpHistoryObs");
+
+              if (btnX) btnX.addEventListener("click", closeObs);
+              if (btnClose) btnClose.addEventListener("click", closeObs);
+              if (modalObs) {
+                modalObs.addEventListener("click", (e) => {
+                  if (e.target === modalObs) closeObs();
+                });
+              }
+            }
+
+            const openObs = (title, meta, text) => {
+              const t = $("ep_histObsTitle");
+              const m = $("ep_histObsMeta");
+              const b = $("ep_histObsText");
+              if (t) t.textContent = title || "Observation";
+              if (m) m.textContent = meta || "";
+              if (b) b.textContent = text || "";
+              openModal("modalEpHistoryObs");
+            };
+
             if (!state.selectedCollaborateurId) {
               setRowMessage("Sélectionne un collaborateur pour afficher l’historique.");
               return;
@@ -1048,90 +1115,145 @@
 
             setRowMessage("Chargement…");
 
+            // 1) Charger data
+            let rows = [];
             try {
               const url = `${_portal.apiBase}/skills/entretien-performance/historique/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}`;
               const data = await _portal.apiJson(url);
-              renderHistory(Array.isArray(data) ? data : []);
+              rows = Array.isArray(data) ? data : [];
+              state._historyAll = rows;
             } catch (e) {
               setRowMessage("Impossible de charger l’historique : " + String(e?.message || e));
+              return;
             }
 
-            function escapeHtml(s) {
-              return String(s || "")
-                .replaceAll("&", "&amp;")
-                .replaceAll("<", "&lt;")
-                .replaceAll(">", "&gt;")
-                .replaceAll('"', "&quot;")
-                .replaceAll("'", "&#39;");
-            }
+            // 2) Remplir selects Evaluateur / Méthode
+            const fillSelect = (sel, firstLabel, values) => {
+              if (!sel) return;
+              const current = (sel.value || "").toString();
+              sel.innerHTML = `<option value="">${esc(firstLabel)}</option>`;
+              values.forEach(v => {
+                const opt = document.createElement("option");
+                opt.value = v;
+                opt.textContent = v;
+                sel.appendChild(opt);
+              });
+              // restore si possible
+              if (current && values.includes(current)) sel.value = current;
+              else sel.value = "";
+            };
 
-            function formatDateFR(v) {
-              if (!v) return "—";
-              try {
-                const d = (v instanceof Date) ? v : new Date(v);
-                if (isNaN(d.getTime())) return String(v);
-                return d.toLocaleDateString("fr-FR");
-              } catch {
-                return String(v);
-              }
-            }
+            const evals = Array.from(new Set(rows.map(getEvalKey))).sort((a,b)=>a.localeCompare(b, "fr"));
+            const meths = Array.from(new Set(rows.map(getMethKey))).sort((a,b)=>a.localeCompare(b, "fr"));
 
-            function levelFromScore(score24) {
-              const s = Number(score24);
-              if (!isFinite(s)) return "—";
+            fillSelect(selEval, "Tous", evals);
+            fillSelect(selMeth, "Toutes", meths);
 
-              // Priorité: règles chargées du bootstrap si dispo
-              const niveaux = state.scoring?.niveaux;
-              if (Array.isArray(niveaux) && niveaux.length) {
-                const hit = niveaux.find(n => s >= Number(n.min) && s <= Number(n.max));
-                if (hit) return hit.libelle || hit.code || "—";
-              }
-
-              // Fallback: règles standards Skillboard
-              if (s >= 19) return "Expert";
-              if (s >= 10) return "Avancé";
-              if (s >= 6) return "Initial";
-              return "—";
-            }
-
-            function renderHistory(list) {
-              if (!tbody) return;
-
+            // 3) Render + filtres
+            const render = (list) => {
               if (!list.length) {
-                setRowMessage("Aucun audit trouvé pour ce collaborateur.");
+                setRowMessage("Aucun audit trouvé.");
                 return;
               }
 
               tbody.innerHTML = "";
 
               list.forEach(x => {
-                const date = formatDateFR(x.date_audit || x.date || x.dt);
-                const evalNom = (x.nom_evaluateur || x.evaluateur || x.id_evaluateur || "—").toString();
+                const dateTxt = formatDateFR(x.date_audit);
+                const evalTxt = getEvalKey(x);
 
-                const code = (x.code || x.code_comp || "").toString().trim();
-                const intitule = (x.intitule || x.titre || "").toString().trim();
-                const comp = [code, intitule].filter(Boolean).join(" — ") || (x.competence || "—");
+                const code = (x.code || "").toString().trim();
+                const intitule = (x.intitule || "").toString().trim();
+                const compTitle = [code, intitule].filter(Boolean).join(" — ") || "—";
 
-                const score = (x.score24 ?? x.resultat_eval ?? x.score ?? null);
+                const score = (x.resultat_eval ?? "");
                 const scoreTxt = (score === null || score === undefined || score === "") ? "—" : String(score);
 
-                const niveau = (x.niveau || levelFromScore(score)).toString();
-                const obs = (x.observation || x.obs || "").toString();
+                const niveau = niveauFromScore(score);
+
+                const obs = (x.observation || "").toString().trim();
+                const hasObs = !!obs;
+
+                const tdComp = `
+                  <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                    ${code ? `<span class="sb-badge">${esc(code)}</span>` : ""}
+                    <span title="${esc(intitule || compTitle)}"
+                          style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;">
+                      ${esc(intitule || "—")}
+                    </span>
+                  </div>
+                `;
+
+                const tdNiveau = `
+                  <span class="sb-badge${niveau === "Avancé" ? " sb-badge-accent" : ""}">${esc(niveau)}</span>
+                `;
+
+                const tdObs = hasObs
+                  ? `<button type="button" class="btn-secondary" style="padding:4px 10px; font-size:12px;" data-obs="1">Voir</button>`
+                  : "";
 
                 const tr = document.createElement("tr");
                 tr.innerHTML = `
-                  <td>${escapeHtml(date)}</td>
-                  <td>${escapeHtml(evalNom)}</td>
-                  <td>${escapeHtml(comp)}</td>
-                  <td>${escapeHtml(scoreTxt)}</td>
-                  <td>${escapeHtml(niveau)}</td>
-                  <td>${escapeHtml(obs)}</td>
+                  <td>${esc(dateTxt)}</td>
+                  <td>${esc(evalTxt)}</td>
+                  <td>${tdComp}</td>
+                  <td style="font-weight:600;">${esc(scoreTxt)}</td>
+                  <td>${tdNiveau}</td>
+                  <td>${tdObs}</td>
                 `;
+
+                // Clic "Voir" observation
+                const btn = tr.querySelector('button[data-obs="1"]');
+                if (btn) {
+                  btn.addEventListener("click", () => {
+                    const meta = `${dateTxt} • ${evalTxt} • score ${scoreTxt} • ${niveau}`;
+                    openObs(compTitle, meta, obs);
+                  });
+                }
+
                 tbody.appendChild(tr);
               });
-            }
+            };
+
+            const applyFilters = () => {
+              const q = (txtSearch?.value || "").toString().trim().toLowerCase();
+              const fe = (selEval?.value || "").toString().trim();
+              const fm = (selMeth?.value || "").toString().trim();
+
+              const filtered = (state._historyAll || []).filter(x => {
+                const evalKey = getEvalKey(x);
+                const methKey = getMethKey(x);
+
+                if (fe && evalKey !== fe) return false;
+                if (fm && methKey !== fm) return false;
+
+                if (q) {
+                  const hay = [
+                    (x.code || ""),
+                    (x.intitule || ""),
+                    (x.observation || ""),
+                    evalKey,
+                    methKey
+                  ].join(" ").toLowerCase();
+                  if (!hay.includes(q)) return false;
+                }
+
+                return true;
+              });
+
+              render(filtered);
+            };
+
+            // Events filtres (on remplace, pas d’empilement)
+            if (txtSearch) txtSearch.oninput = () => applyFilters();
+            if (selEval) selEval.onchange = () => applyFilters();
+            if (selMeth) selMeth.onchange = () => applyFilters();
+
+            // Initial render
+            applyFilters();
           });
         }
+
 
 
         // Scope
