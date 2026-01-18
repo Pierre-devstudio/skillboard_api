@@ -1175,15 +1175,18 @@
                 const hasObs = !!obs;
 
                 const tdComp = `
-                  <div style="display:flex; align-items:center; gap:8px; min-width:0;">
-                    ${code ? `<span class="sb-badge">${esc(code)}</span>` : ""}
-                    <span title="${esc(intitule || compTitle)}"
-                          style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block;">
+                  <div style="min-width:0;">
+                    <div style="line-height:1; margin-bottom:6px;">
+                      ${code ? `<span class="sb-badge">${esc(code)}</span>` : ""}
+                    </div>
+
+                    <div title="${esc(intitule || compTitle)}"
+                        style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                       ${esc(intitule || "—")}
-                    </span>
+                    </div>
                   </div>
                 `;
-
+                
                 const tdNiveau = `
                   <span class="sb-badge${niveau === "Avancé" ? " sb-badge-accent" : ""}">${esc(niveau)}</span>
                 `;
