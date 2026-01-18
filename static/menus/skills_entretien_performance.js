@@ -1045,7 +1045,7 @@
               .replaceAll("'", "&#39;");
 
             const setRowMessage = (msg) => {
-              tbody.innerHTML = `<tr><td colspan="6" style="padding:10px; color:#6b7280;">${esc(msg)}</td></tr>`;
+              tbody.innerHTML = `<tr><td colspan="5" style="padding:10px; color:#6b7280;">${esc(msg)}</td></tr>`;
             };
 
             const formatDateFR = (v) => {
@@ -1186,7 +1186,7 @@
                     </div>
                   </div>
                 `;
-                
+
                 const tdNiveau = `
                   <span class="sb-badge${niveau === "Avancé" ? " sb-badge-accent" : ""}">${esc(niveau)}</span>
                 `;
@@ -1196,12 +1196,18 @@
                   : "";
 
                 const tr = document.createElement("tr");
+                const tdResult = `
+                  <div style="line-height:1.1;">
+                    <div style="font-weight:700;">${esc(scoreTxt)}</div>
+                    <div style="margin-top:6px;">${tdNiveau}</div>
+                  </div>
+                `;
+
                 tr.innerHTML = `
                   <td>${esc(dateTxt)}</td>
                   <td>${esc(evalTxt)}</td>
                   <td>${tdComp}</td>
-                  <td style="font-weight:600;">${esc(scoreTxt)}</td>
-                  <td>${tdNiveau}</td>
+                  <td>${tdResult}</td>
                   <td>${tdObs}</td>
                 `;
 
