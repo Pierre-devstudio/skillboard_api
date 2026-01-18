@@ -105,7 +105,7 @@ class AuditSavePayload(BaseModel):
     niveau_actuel: str                   # "Initial" | "Avancé" | "Expert"
     observation: Optional[str] = None
     criteres: List[AuditCritereItem]
-    methode_eval: Optional[str] = "entretien_performance"
+    methode_eval: Optional[str] = "Entretien de performance"
 
 
 class AuditSaveResponse(BaseModel):

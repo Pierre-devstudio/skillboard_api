@@ -1157,21 +1157,37 @@
           btnSave.addEventListener("click", async () => {
             if (!_portal) return;
 
+            const msg = $("ep_saveInlineMsg");
+            const setMsg = (isOk, text) => {
+              if (!msg) return;
+              msg.style.display = "block";
+              msg.textContent = text || "";
+              msg.style.fontWeight = "600";
+              msg.style.color = isOk ? "#0a7a2f" : "#b42318";
+            };
+
+            const clearMsg = () => {
+              if (!msg) return;
+              msg.style.display = "none";
+              msg.textContent = "";
+            };
+
             try {
+              clearMsg();
               btnSave.disabled = true;
-              _portal.showAlert("", "");
 
-              const res = await saveCurrentAudit();
-              _portal.showAlert("success", `Enregistré. Audit: ${res.id_audit_competence}`);
+              await saveCurrentAudit();
 
+              setMsg(true, "Audit enregistré avec succès");
             } catch (e) {
-              _portal.showAlert("error", "Impossible d’enregistrer : " + String(e?.message || e));
+              const reason = String(e?.message || e || "").trim();
+              setMsg(false, `Échec de l'enregistrement - ${reason || "raison inconnue"}`);
             } finally {
-              // On re-débloque si l'écran est toujours en mode saisie
               btnSave.disabled = false;
             }
           });
         }
+
         
         const btnFinalize = $("ep_btnFinalize");
         if (btnFinalize) btnFinalize.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Finalisation (à implémenter)."));
@@ -1314,7 +1330,7 @@
         niveau: x.niveau,
         commentaire: x.commentaire
       })),
-      methode_eval: "entretien_performance",
+      methode_eval: "Entretien de performance",
     };
 
     const url = `${_portal.apiBase}/skills/entretien-performance/audit/${encodeURIComponent(_portal.contactId)}`;
