@@ -1157,12 +1157,30 @@
           btnSave.addEventListener("click", async () => {
             if (!_portal) return;
 
-            const msg = $("ep_saveInlineMsg");
+            let msg = $("ep_saveInlineMsg") || $("ep_saveMsg");
+
+            if (!msg) {
+              // Si le HTML n'est pas à jour, on crée le message juste à côté du bouton
+              msg = document.createElement("div");
+              msg.id = "ep_saveInlineMsg";
+              msg.className = "card-sub";
+              msg.style.display = "none";
+              msg.style.margin = "0";
+
+              const parent = btnSave.parentElement;
+              if (parent) parent.insertBefore(msg, btnSave);
+            }
+
             const setMsg = (isOk, text) => {
               if (!msg) return;
-              msg.style.display = "block";
+              msg.style.display = "inline-block";
               msg.textContent = text || "";
               msg.style.fontWeight = "600";
+              msg.style.whiteSpace = "nowrap";
+              msg.style.padding = "6px 10px";
+              msg.style.borderRadius = "10px";
+              msg.style.border = "1px solid " + (isOk ? "#0a7a2f" : "#b42318");
+              msg.style.background = isOk ? "rgba(10,122,47,.08)" : "rgba(180,35,24,.08)";
               msg.style.color = isOk ? "#0a7a2f" : "#b42318";
             };
 
