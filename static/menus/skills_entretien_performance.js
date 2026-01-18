@@ -1026,7 +1026,113 @@
         if (btnHelp) btnHelp.addEventListener("click", () => openModal("modalEpScoring"));
 
         const btnHist = $("ep_btnHistoryGlobal");
-        if (btnHist) btnHist.addEventListener("click", () => openModal("modalEpHistory"));
+        if (btnHist) {
+          btnHist.addEventListener("click", async () => {
+            openModal("modalEpHistory");
+
+            const tbody = $("ep_tblHistory")?.querySelector("tbody");
+            if (!tbody) return;
+
+            const setRowMessage = (msg) => {
+              tbody.innerHTML = `
+                <tr>
+                  <td colspan="6" style="padding:10px; color:#6b7280;">${escapeHtml(msg)}</td>
+                </tr>`;
+            };
+
+            // Pas de collaborateur sélectionné = pas d’historique à afficher
+            if (!state.selectedCollaborateurId) {
+              setRowMessage("Sélectionne un collaborateur pour afficher l’historique.");
+              return;
+            }
+
+            setRowMessage("Chargement…");
+
+            try {
+              const url = `${_portal.apiBase}/skills/entretien-performance/historique/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}`;
+              const data = await _portal.apiJson(url);
+              renderHistory(Array.isArray(data) ? data : []);
+            } catch (e) {
+              setRowMessage("Impossible de charger l’historique : " + String(e?.message || e));
+            }
+
+            function escapeHtml(s) {
+              return String(s || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+            }
+
+            function formatDateFR(v) {
+              if (!v) return "—";
+              try {
+                const d = (v instanceof Date) ? v : new Date(v);
+                if (isNaN(d.getTime())) return String(v);
+                return d.toLocaleDateString("fr-FR");
+              } catch {
+                return String(v);
+              }
+            }
+
+            function levelFromScore(score24) {
+              const s = Number(score24);
+              if (!isFinite(s)) return "—";
+
+              // Priorité: règles chargées du bootstrap si dispo
+              const niveaux = state.scoring?.niveaux;
+              if (Array.isArray(niveaux) && niveaux.length) {
+                const hit = niveaux.find(n => s >= Number(n.min) && s <= Number(n.max));
+                if (hit) return hit.libelle || hit.code || "—";
+              }
+
+              // Fallback: règles standards Skillboard
+              if (s >= 19) return "Expert";
+              if (s >= 10) return "Avancé";
+              if (s >= 6) return "Initial";
+              return "—";
+            }
+
+            function renderHistory(list) {
+              if (!tbody) return;
+
+              if (!list.length) {
+                setRowMessage("Aucun audit trouvé pour ce collaborateur.");
+                return;
+              }
+
+              tbody.innerHTML = "";
+
+              list.forEach(x => {
+                const date = formatDateFR(x.date_audit || x.date || x.dt);
+                const evalNom = (x.nom_evaluateur || x.evaluateur || x.id_evaluateur || "—").toString();
+
+                const code = (x.code || x.code_comp || "").toString().trim();
+                const intitule = (x.intitule || x.titre || "").toString().trim();
+                const comp = [code, intitule].filter(Boolean).join(" — ") || (x.competence || "—");
+
+                const score = (x.score24 ?? x.resultat_eval ?? x.score ?? null);
+                const scoreTxt = (score === null || score === undefined || score === "") ? "—" : String(score);
+
+                const niveau = (x.niveau || levelFromScore(score)).toString();
+                const obs = (x.observation || x.obs || "").toString();
+
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                  <td>${escapeHtml(date)}</td>
+                  <td>${escapeHtml(evalNom)}</td>
+                  <td>${escapeHtml(comp)}</td>
+                  <td>${escapeHtml(scoreTxt)}</td>
+                  <td>${escapeHtml(niveau)}</td>
+                  <td>${escapeHtml(obs)}</td>
+                `;
+                tbody.appendChild(tr);
+              });
+            }
+          });
+        }
+
 
         // Scope
         const selService = $("ep_selService");
