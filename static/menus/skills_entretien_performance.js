@@ -361,8 +361,6 @@
     setDisabled("ep_txtObservation", true);
 
     setDisabled("ep_btnSave", true);
-    setDisabled("ep_btnSaveNext", true);
-    setDisabled("ep_btnMarkReview", true);
     setDisabled("ep_btnFinalize", true);
     setDisabled("ep_btnGenerateSummary", true);
 
@@ -1155,14 +1153,26 @@
         // Actions évaluation (placeholders)
         // ======================================================
         const btnSave = $("ep_btnSave");
-        if (btnSave) btnSave.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette : Enregistrement (à implémenter)."));
+        if (btnSave) {
+          btnSave.addEventListener("click", async () => {
+            if (!_portal) return;
 
-        const btnSaveNext = $("ep_btnSaveNext");
-        if (btnSaveNext) btnSaveNext.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Enregistrer + suivant (à implémenter)."));
+            try {
+              btnSave.disabled = true;
+              _portal.showAlert("", "");
 
-        const btnReview = $("ep_btnMarkReview");
-        if (btnReview) btnReview.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Marquer à revoir (à implémenter)."));
+              const res = await saveCurrentAudit();
+              _portal.showAlert("success", `Enregistré. Audit: ${res.id_audit_competence}`);
 
+            } catch (e) {
+              _portal.showAlert("error", "Impossible d’enregistrer : " + String(e?.message || e));
+            } finally {
+              // On re-débloque si l'écran est toujours en mode saisie
+              btnSave.disabled = false;
+            }
+          });
+        }
+        
         const btnFinalize = $("ep_btnFinalize");
         if (btnFinalize) btnFinalize.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Finalisation (à implémenter)."));
 
@@ -1200,6 +1210,119 @@
     } else {
       applyUiLockedState();
     }
+  }
+
+  function _getEnabledCriteria() {
+    const arr = [];
+    for (let i = 1; i <= 4; i++) {
+      const lbl = (document.getElementById(`ep_critLabel${i}`)?.textContent || "").trim();
+      const sel = document.getElementById(`ep_critNote${i}`);
+      const com = document.getElementById(`ep_critCom${i}`);
+      if (!sel) continue;
+
+      // Critère vide => on considère inactif
+      if (!lbl || lbl === "—") continue;
+
+      // Si le select est désactivé, on ne le prend pas
+      if (sel.disabled) continue;
+
+      arr.push({
+        idx: i,
+        code_critere: `Critere${i}`,
+        select: sel,
+        input: com,
+      });
+    }
+    return arr;
+  }
+
+  function _computeScore24(sum, nbCrit) {
+    let coef = 1;
+    if (nbCrit === 4) coef = 1.5;
+    else if (nbCrit === 3) coef = 2;
+    else if (nbCrit === 2) coef = 3;
+    else if (nbCrit === 1) coef = 6;
+
+    return { coef, score24: Math.round((sum * coef) * 10) / 10 };
+  }
+
+  function _levelFromScore24(score24) {
+    if (score24 >= 6 && score24 <= 9) return "Initial";
+    if (score24 >= 10 && score24 <= 18) return "Avancé";
+    if (score24 >= 19 && score24 <= 24) return "Expert";
+    return "Initial"; // fallback (cas tordu)
+  }
+
+  async function saveCurrentAudit() {
+    // On a besoin d’un collaborateur + d’une compétence sélectionnée
+    const id_effectif_competence =
+      (state.selectedEffectifCompetenceId || "").toString().trim();
+
+    const id_comp = (state.selectedCompetenceId || "").toString().trim();
+
+    if (!id_effectif_competence) {
+      throw new Error("id_effectif_competence manquant (sélection compétence).");
+    }
+    if (!id_comp) {
+      throw new Error("Compétence non sélectionnée.");
+    }
+
+    const enabled = _getEnabledCriteria();
+    if (!enabled.length) {
+      throw new Error("Aucun critère actif pour cette compétence.");
+    }
+
+    let sum = 0;
+    const criteres = [];
+
+    for (const c of enabled) {
+      const v = (c.select.value || "").trim();
+      if (!v) throw new Error("Notes incomplètes: renseigne tous les critères.");
+
+      const note = parseInt(v, 10);
+      if (!note || note < 1 || note > 4) throw new Error("Note invalide (1..4).");
+
+      sum += note;
+
+      const commentaire = (c.input?.value || "").trim();
+      criteres.push({
+        code_critere: c.code_critere,
+        niveau: note,
+        commentaire: commentaire || null,
+      });
+    }
+
+    const { coef, score24 } = _computeScore24(sum, enabled.length);
+    const niveau_actuel = _levelFromScore24(score24);
+
+    // Alignement UI (si tes champs existent)
+    if (document.getElementById("ep_scoreRaw")) document.getElementById("ep_scoreRaw").textContent = String(sum);
+    if (document.getElementById("ep_scoreCoef")) document.getElementById("ep_scoreCoef").textContent = String(coef);
+    if (document.getElementById("ep_score24")) document.getElementById("ep_score24").textContent = String(score24);
+    if (document.getElementById("ep_levelABC")) document.getElementById("ep_levelABC").textContent = niveau_actuel;
+
+    const observation = (document.getElementById("ep_txtObservation")?.value || "").trim();
+
+    const payload = {
+      id_effectif_competence,
+      id_comp,
+      resultat_eval: score24,
+      niveau_actuel,
+      observation: observation || null,
+      criteres: criteres.map(x => ({
+        code_critere: x.code_critere,
+        niveau: x.niveau,
+        commentaire: x.commentaire
+      })),
+      methode_eval: "entretien_performance",
+    };
+
+    const url = `${_portal.apiBase}/skills/entretien-performance/audit/${encodeURIComponent(_portal.contactId)}`;
+    return await _portal.apiJson(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
   }
 
   window.SkillsEntretienPerformance = { onShow };

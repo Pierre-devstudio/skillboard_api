@@ -3,6 +3,9 @@
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+from uuid import uuid4
+from datetime import date
+import json
 
 from psycopg.rows import dict_row
 
@@ -88,6 +91,27 @@ class CollaborateurListItem(BaseModel):
     intitule_poste: Optional[str] = None
 
     ismanager: Optional[bool] = None
+
+class AuditCritereItem(BaseModel):
+    code_critere: str  # "Critere1".."Critere4"
+    niveau: int        # 1..4
+    commentaire: Optional[str] = None
+
+
+class AuditSavePayload(BaseModel):
+    id_effectif_competence: str
+    id_comp: Optional[str] = None
+    resultat_eval: float                 # score /24
+    niveau_actuel: str                   # "Initial" | "Avancé" | "Expert"
+    observation: Optional[str] = None
+    criteres: List[AuditCritereItem]
+    methode_eval: Optional[str] = "entretien_performance"
+
+
+class AuditSaveResponse(BaseModel):
+    id_audit_competence: str
+    date_audit: str
+
 
 # ======================================================
 # Constantes
@@ -400,6 +424,149 @@ def get_effectif_checklist(id_contact: str, id_effectif: str):
                 ]
 
                 return EffectifChecklistResponse(effectif=effectif, competences=competences)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+# ======================================================
+# Endpoints Save Audit
+# ======================================================
+@router.post(
+    "/skills/entretien-performance/audit/{id_contact}",
+    response_model=AuditSaveResponse,
+)
+def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload):
+    """
+    Enregistre un audit compétence (tbl_effectif_client_audit_competence)
+    + met à jour le niveau actuel (tbl_effectif_client_competence).
+    """
+    try:
+        # validations simples (front fait déjà le gros du job)
+        niveau_ok = payload.niveau_actuel in ["Initial", "Avancé", "Expert"]
+        if not niveau_ok:
+            raise HTTPException(status_code=400, detail="niveau_actuel invalide (Initial/Avancé/Expert attendu).")
+
+        if not payload.criteres or len(payload.criteres) > 4:
+            raise HTTPException(status_code=400, detail="Liste de critères invalide.")
+
+        for c in payload.criteres:
+            if c.niveau < 1 or c.niveau > 4:
+                raise HTTPException(status_code=400, detail="Note critère invalide (1..4).")
+            if c.code_critere not in ["Critere1", "Critere2", "Critere3", "Critere4"]:
+                raise HTTPException(status_code=400, detail="code_critere invalide (Critere1..4).")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                contact_row = _fetch_contact_and_ent(cur, id_contact)
+                id_ent = contact_row["code_ent"]
+
+                # Vérifie appartenance entreprise + actif/non archivé
+                cur.execute(
+                    """
+                    SELECT
+                        ec.id_effectif_competence,
+                        ec.id_effectif_client,
+                        ec.id_comp
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN public.tbl_effectif_client e
+                      ON e.id_effectif = ec.id_effectif_client
+                    WHERE ec.id_effectif_competence = %s
+                      AND ec.actif = TRUE
+                      AND ec.archive = FALSE
+                      AND e.archive = FALSE
+                      AND COALESCE(e.statut_actif, TRUE) = TRUE
+                      AND e.id_ent = %s
+                    """,
+                    (payload.id_effectif_competence, id_ent),
+                )
+                row = cur.fetchone()
+                if row is None:
+                    raise HTTPException(status_code=404, detail="Ligne compétence salarié introuvable (ou hors périmètre).")
+
+                if payload.id_comp and payload.id_comp != row.get("id_comp"):
+                    raise HTTPException(status_code=400, detail="id_comp ne correspond pas à la ligne effectif_competence.")
+
+                id_audit = str(uuid4())
+                today = date.today()
+
+                civ = (contact_row.get("civ_ca") or "").strip()
+                prenom = (contact_row.get("prenom_ca") or "").strip()
+                nom = (contact_row.get("nom_ca") or "").strip()
+                nom_eval = " ".join([x for x in [civ, prenom, nom] if x]).strip() or None
+
+                detail_eval = {
+                    "criteres": [
+                        {
+                            "niveau": int(c.niveau),
+                            "code_critere": c.code_critere,
+                            **({"commentaire": (c.commentaire or "").strip()} if (c.commentaire or "").strip() else {}),
+                        }
+                        for c in payload.criteres
+                    ]
+                }
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_effectif_client_audit_competence
+                    (
+                        id_audit_competence,
+                        id_effectif_competence,
+                        date_audit,
+                        id_evaluateur,
+                        methode_eval,
+                        resultat_eval,
+                        detail_eval,
+                        observation,
+                        nametable_evaluateur,
+                        nom_evaluateur
+                    )
+                    VALUES
+                    (
+                        %s, %s, %s,
+                        %s, %s, %s,
+                        %s::jsonb, %s,
+                        %s, %s
+                    )
+                    """,
+                    (
+                        id_audit,
+                        payload.id_effectif_competence,
+                        today,
+                        id_contact,
+                        payload.methode_eval,
+                        round(float(payload.resultat_eval), 1),
+                        json.dumps(detail_eval, ensure_ascii=False),
+                        (payload.observation or None),
+                        "tbl_contact",
+                        nom_eval,
+                    ),
+                )
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client_competence
+                    SET
+                        niveau_actuel = %s,
+                        date_derniere_eval = %s,
+                        id_dernier_audit = %s
+                    WHERE id_effectif_competence = %s
+                    """,
+                    (
+                        payload.niveau_actuel,
+                        today,
+                        id_audit,
+                        payload.id_effectif_competence,
+                    ),
+                )
+
+                conn.commit()
+
+                return AuditSaveResponse(
+                    id_audit_competence=id_audit,
+                    date_audit=str(today),
+                )
 
     except HTTPException:
         raise
