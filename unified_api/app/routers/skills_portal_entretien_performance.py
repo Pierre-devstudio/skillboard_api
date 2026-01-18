@@ -112,6 +112,18 @@ class AuditSaveResponse(BaseModel):
     id_audit_competence: str
     date_audit: str
 
+class AuditHistoryItem(BaseModel):
+    date_audit: Optional[str] = None
+    id_evaluateur: Optional[str] = None
+    nom_evaluateur: Optional[str] = None
+
+    id_comp: Optional[str] = None
+    code: Optional[str] = None
+    intitule: Optional[str] = None
+
+    resultat_eval: Optional[float] = None
+    observation: Optional[str] = None
+    methode_eval: Optional[str] = None
 
 # ======================================================
 # Constantes
@@ -567,6 +579,90 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload):
                     id_audit_competence=id_audit,
                     date_audit=str(today),
                 )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+# ======================================================
+# Historique (audits compétences par collaborateur)
+# ======================================================
+
+@router.get(
+    "/skills/entretien-performance/historique/{id_contact}/{id_effectif_client}",
+    response_model=List[AuditHistoryItem],
+)
+def get_entretien_performance_historique(id_contact: str, id_effectif_client: str):
+    """
+    Retourne l'historique des audits compétences d'un collaborateur (derniers en premier).
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                contact = _fetch_contact_and_ent(cur, id_contact)
+                id_ent = contact["code_ent"]
+
+                # Sécurité périmètre entreprise
+                cur.execute(
+                    """
+                    SELECT e.id_effectif
+                    FROM public.tbl_effectif_client e
+                    WHERE e.id_effectif = %s
+                      AND e.id_ent = %s
+                      AND e.archive = FALSE
+                    """,
+                    (id_effectif_client, id_ent),
+                )
+                if not cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Collaborateur introuvable (ou archivé).")
+
+                cur.execute(
+                    """
+                    SELECT
+                        a.date_audit,
+                        a.id_evaluateur,
+                        a.nom_evaluateur,
+                        a.methode_eval,
+                        a.resultat_eval,
+                        a.observation,
+
+                        c.id_comp,
+                        c.code,
+                        c.intitule
+                    FROM public.tbl_effectif_client_audit_competence a
+                    JOIN public.tbl_effectif_client_competence ec
+                      ON ec.id_effectif_competence = a.id_effectif_competence
+                    JOIN public.tbl_competence c
+                      ON c.id_comp = ec.id_comp
+                    WHERE ec.id_effectif_client = %s
+                      AND ec.archive = FALSE
+                      AND ec.actif = TRUE
+                    ORDER BY a.date_audit DESC
+                    LIMIT 200
+                    """,
+                    (id_effectif_client,),
+                )
+
+                rows = cur.fetchall() or []
+                out: List[AuditHistoryItem] = []
+
+                for r in rows:
+                    out.append(
+                        AuditHistoryItem(
+                            date_audit=str(r["date_audit"]) if r.get("date_audit") else None,
+                            id_evaluateur=r.get("id_evaluateur"),
+                            nom_evaluateur=r.get("nom_evaluateur"),
+                            methode_eval=r.get("methode_eval"),
+                            resultat_eval=float(r["resultat_eval"]) if r.get("resultat_eval") is not None else None,
+                            observation=r.get("observation"),
+                            id_comp=r.get("id_comp"),
+                            code=r.get("code"),
+                            intitule=r.get("intitule"),
+                        )
+                    )
+
+                return out
 
     except HTTPException:
         raise
