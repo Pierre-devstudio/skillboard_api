@@ -1188,7 +1188,7 @@
                 `;
 
                 const tdNiveau = `
-                  <span class="sb-badge${niveau === "Avancé" ? " sb-badge-accent" : ""}">${esc(niveau)}</span>
+                  <span class="sb-badge">${esc(niveau)}</span>
                 `;
 
                 const tdObs = hasObs
