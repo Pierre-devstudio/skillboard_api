@@ -393,21 +393,44 @@
         <button type="button" class="modal-x" id="btnCloseEpHistoryModalX" aria-label="Fermer">×</button>
       </div>
 
-      <div class="modal-body">
+      <div class="modal-body" style="font-size:13px;">
         <div class="card-sub" style="margin-top:0;">
-          Historique des audits et/ou de l’entretien (contenu à venir).
+          Historique des audits et/ou de l’entretien.
         </div>
 
-        <div class="table-wrap" style="margin-top:10px;">
+        <!-- Filtres -->
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:flex-end;">
+          <div style="flex:1; min-width:240px;">
+            <div class="sb-label">Recherche</div>
+            <input id="ep_histSearch" placeholder="Code, intitulé, mots-clés..." />
+          </div>
+
+          <div style="min-width:200px;">
+            <div class="sb-label">Évaluateur</div>
+            <select id="ep_histSelEvaluateur">
+              <option value="">Tous</option>
+            </select>
+          </div>
+
+          <div style="min-width:220px;">
+            <div class="sb-label">Méthode</div>
+            <select id="ep_histSelMethode">
+              <option value="">Toutes</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Tableau -->
+        <div class="table-wrap" style="margin-top:10px; font-size:13px;">
           <table class="sb-table" id="ep_tblHistory">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Évaluateur</th>
+                <th style="width:90px;">Date</th>
+                <th style="width:170px;">Évaluateur</th>
                 <th>Compétence</th>
-                <th>Score</th>
-                <th>Niveau</th>
-                <th>Observation</th>
+                <th style="width:90px;">Score</th>
+                <th style="width:110px;">Niveau</th>
+                <th style="width:110px;">Observation</th>
               </tr>
             </thead>
             <tbody></tbody>
@@ -420,6 +443,26 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal Observation (depuis Historique) -->
+  <div class="modal" id="modalEpHistoryObs" aria-hidden="true">
+    <div class="modal-card" style="max-width:720px;">
+      <div class="modal-header">
+        <div style="font-weight:600;" id="ep_histObsTitle">Observation</div>
+        <button type="button" class="modal-x" id="btnCloseEpHistoryObsModalX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body" style="font-size:13px;">
+        <div class="card-sub" id="ep_histObsMeta" style="margin-top:0;"></div>
+        <div id="ep_histObsText" style="margin-top:10px; white-space:pre-wrap;"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnEpHistoryObsModalClose">Fermer</button>
+      </div>
+    </div>
+  </div>
+
 
 
 </section>
