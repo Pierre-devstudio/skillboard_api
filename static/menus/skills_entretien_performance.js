@@ -1197,9 +1197,9 @@
 
                 const tr = document.createElement("tr");
                 const tdResult = `
-                  <div style="line-height:1.1;">
+                  <div style="line-height:1.1; text-align:center;">
                     <div style="font-weight:700;">${esc(scoreTxt)}</div>
-                    <div style="margin-top:6px;">${tdNiveau}</div>
+                    <div style="margin-top:6px; display:flex; justify-content:center;">${tdNiveau}</div>
                   </div>
                 `;
 
