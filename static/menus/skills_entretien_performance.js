@@ -721,12 +721,16 @@
 
         // ---- Couverture poste actuel (jauge) ----
         // On affiche tout de suite le bloc + le toggle, et on passe en "Calcul en cours…"
-        if (typeof bindCouverturePosteOnce === "function") bindCouverturePosteOnce();
-        if (typeof showCouverturePosteWrap === "function") showCouverturePosteWrap("Calcul en cours…");
+        bindCouverturePosteOnce();
+        showCouverturePosteWrap("Calcul en cours…");
 
-        // On force un recalcul (quand on codera l'endpoint, ça se rafraîchira proprement)
+        // On force un recalcul à chaque changement de collaborateur
         state._covLastKey = null;
         state._covData = null;
+
+        // Lance le calcul (asynchrone, ne bloque pas le reste du chargement)
+        refreshCouverturePosteActuel(true);
+
 
         try {
           _portal.showAlert("", "");

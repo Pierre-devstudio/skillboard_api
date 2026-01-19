@@ -149,7 +149,40 @@ class CollaborateurListItem(BaseModel):
 
     ismanager: Optional[bool] = None
 
+# ======================================================
+# Couverture poste actuel (jauge)
+# ======================================================
+class CouverturePosteDetailItem(BaseModel):
+    id_comp: str
+    code: str
+    intitule: str
+    niveau_requis: str
+    poids_criticite: int = 1
+    score: float = 0.0
+    date_audit: Optional[str] = None
+    methode_eval: Optional[str] = None
 
+
+class CouverturePosteVariant(BaseModel):
+    ponderer: bool
+    gauge_min: float
+    gauge_max: float
+    expected_min: float
+    expected_max: float
+    score: float
+    pct_attendus: float
+    pct_max: float
+    details: List[CouverturePosteDetailItem] = []
+
+
+class CouverturePosteResponse(BaseModel):
+    id_effectif: str
+    id_poste: Optional[str] = None
+    intitule_poste: Optional[str] = None
+    nb_competences: int = 0
+    plain: CouverturePosteVariant
+    weighted: CouverturePosteVariant
+    message: Optional[str] = None
 
 # ======================================================
 # Helpers
@@ -663,6 +696,251 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
                     )
 
                 return out
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+    
+
+    # ======================================================
+    # Endpoint Couverture poste actuel (jauge)
+    # ======================================================
+    def _expected_range_for_level(niveau_requis: str) -> (float, float):
+        """
+        Règle validée:
+        A: [6 ; 10[
+        B: [10 ; 19[
+        C: [19 ; 24] (plafond physique)
+        """
+        n = (niveau_requis or "").strip().upper()
+        if n == "A":
+            return 6.0, 10.0
+        if n == "B":
+            return 10.0, 19.0
+        if n == "C":
+            return 19.0, 24.0
+        # fallback safe
+        return 6.0, 24.0
+
+
+def _safe_int_weight(v: Any) -> int:
+    try:
+        x = int(v)
+        return x if x > 0 else 1
+    except Exception:
+        return 1
+
+
+def _round1(v: float) -> float:
+    try:
+        return float(round(float(v), 1))
+    except Exception:
+        return 0.0
+
+
+@router.get(
+    "/skills/entretien-performance/couverture-poste-actuel/{id_contact}/{id_effectif}",
+    response_model=CouverturePosteResponse,
+)
+def get_couverture_poste_actuel(id_contact: str, id_effectif: str):
+    """
+    Calcule la couverture du poste actuel:
+    - zone attendue = somme des min/max des niveaux requis par compétence
+    - score salarié = somme des scores du dernier audit par compétence (0 si jamais évaluée)
+    - 2 variantes: non pondérée / pondérée par poids_criticite
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                contact = _fetch_contact_and_ent(cur, id_contact)
+                id_ent = contact["code_ent"]
+
+                # --- Effectif + poste actuel ---
+                cur.execute(
+                    """
+                    SELECT
+                        e.id_effectif,
+                        e.id_poste_actuel
+                    FROM public.tbl_effectif_client e
+                    WHERE e.id_effectif = %s
+                      AND e.id_ent = %s
+                      AND e.archive = FALSE
+                    """,
+                    (id_effectif, id_ent),
+                )
+                eff = cur.fetchone()
+                if not eff:
+                    raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+
+                id_poste = (eff.get("id_poste_actuel") or "").strip()
+                if not id_poste:
+                    # pas de poste => pas d'attendus
+                    empty_variant = CouverturePosteVariant(
+                        ponderer=False,
+                        gauge_min=0.0,
+                        gauge_max=0.0,
+                        expected_min=0.0,
+                        expected_max=0.0,
+                        score=0.0,
+                        pct_attendus=0.0,
+                        pct_max=0.0,
+                        details=[],
+                    )
+                    return CouverturePosteResponse(
+                        id_effectif=id_effectif,
+                        id_poste=None,
+                        intitule_poste=None,
+                        nb_competences=0,
+                        plain=empty_variant,
+                        weighted=CouverturePosteVariant(**{**empty_variant.model_dump(), "ponderer": True}),
+                        message="Poste actuel non renseigné pour ce collaborateur.",
+                    )
+
+                cur.execute(
+                    """
+                    SELECT p.intitule_poste
+                    FROM public.tbl_fiche_poste p
+                    WHERE p.id_poste = %s
+                      AND p.id_ent = %s
+                      AND COALESCE(p.actif, TRUE) = TRUE
+                    """,
+                    (id_poste, id_ent),
+                )
+                poste_row = cur.fetchone() or {}
+                intitule_poste = (poste_row.get("intitule_poste") or "").strip() or None
+
+                # --- Attendus poste + score dernier audit ---
+                cur.execute(
+                    """
+                    SELECT
+                        fp.id_competence AS id_comp,
+                        fp.niveau_requis,
+                        COALESCE(NULLIF(fp.poids_criticite, 0), 1) AS poids_criticite,
+                        c.code,
+                        c.intitule,
+                        a.date_audit,
+                        a.methode_eval,
+                        a.resultat_eval
+                    FROM public.tbl_fiche_poste_competence fp
+                    JOIN public.tbl_competence c
+                      ON c.id_comp = fp.id_competence
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                    LEFT JOIN public.tbl_effectif_client_competence ec
+                      ON ec.id_effectif_client = %s
+                     AND ec.id_comp = fp.id_competence
+                     AND ec.actif = TRUE
+                     AND ec.archive = FALSE
+                    LEFT JOIN public.tbl_effectif_client_audit_competence a
+                      ON a.id_audit_competence = ec.id_dernier_audit
+                    WHERE fp.id_poste = %s
+                    ORDER BY c.code
+                    """,
+                    (id_effectif, id_poste),
+                )
+                rows = cur.fetchall() or []
+
+                details: List[CouverturePosteDetailItem] = []
+                n = 0
+
+                # Agrégats non pondérés
+                sum_expected_min = 0.0
+                sum_expected_max = 0.0
+                sum_score = 0.0
+
+                # Agrégats pondérés
+                w_sum_expected_min = 0.0
+                w_sum_expected_max = 0.0
+                w_sum_score = 0.0
+                w_sum_6 = 0.0
+                w_sum_24 = 0.0
+
+                for r in rows:
+                    id_comp = (r.get("id_comp") or "").strip()
+                    if not id_comp:
+                        continue
+
+                    niv_req = (r.get("niveau_requis") or "").strip().upper()
+                    w = _safe_int_weight(r.get("poids_criticite"))
+
+                    # score = dernier audit sur 24 (0 si jamais évaluée)
+                    sc = r.get("resultat_eval")
+                    try:
+                        score_val = float(sc) if sc is not None else 0.0
+                    except Exception:
+                        score_val = 0.0
+
+                    exp_min, exp_max = _expected_range_for_level(niv_req)
+
+                    n += 1
+                    sum_expected_min += exp_min
+                    sum_expected_max += exp_max
+                    sum_score += score_val
+
+                    w_sum_expected_min += exp_min * w
+                    w_sum_expected_max += exp_max * w
+                    w_sum_score += score_val * w
+                    w_sum_6 += 6.0 * w
+                    w_sum_24 += 24.0 * w
+
+                    details.append(
+                        CouverturePosteDetailItem(
+                            id_comp=id_comp,
+                            code=(r.get("code") or "").strip(),
+                            intitule=(r.get("intitule") or "").strip(),
+                            niveau_requis=niv_req or "",
+                            poids_criticite=w,
+                            score=_round1(score_val),
+                            date_audit=(str(r.get("date_audit")) if r.get("date_audit") else None),
+                            methode_eval=(r.get("methode_eval") or None),
+                        )
+                    )
+
+                # Limites jauge (VALIDÉES)
+                gauge_min = float(n) * 6.0
+                gauge_max = float(n) * 24.0
+
+                # % couverture
+                pct_att = (sum_score / sum_expected_max * 100.0) if (sum_expected_max > 0) else 0.0
+                pct_max = (sum_score / gauge_max * 100.0) if (gauge_max > 0) else 0.0
+
+                w_gauge_min = w_sum_6
+                w_gauge_max = w_sum_24
+                w_pct_att = (w_sum_score / w_sum_expected_max * 100.0) if (w_sum_expected_max > 0) else 0.0
+                w_pct_max = (w_sum_score / w_gauge_max * 100.0) if (w_gauge_max > 0) else 0.0
+
+                plain = CouverturePosteVariant(
+                    ponderer=False,
+                    gauge_min=_round1(gauge_min),
+                    gauge_max=_round1(gauge_max),
+                    expected_min=_round1(sum_expected_min),
+                    expected_max=_round1(sum_expected_max),
+                    score=_round1(sum_score),
+                    pct_attendus=_round1(pct_att),
+                    pct_max=_round1(pct_max),
+                    details=details,
+                )
+
+                weighted = CouverturePosteVariant(
+                    ponderer=True,
+                    gauge_min=_round1(w_gauge_min),
+                    gauge_max=_round1(w_gauge_max),
+                    expected_min=_round1(w_sum_expected_min),
+                    expected_max=_round1(w_sum_expected_max),
+                    score=_round1(w_sum_score),
+                    pct_attendus=_round1(w_pct_att),
+                    pct_max=_round1(w_pct_max),
+                    details=details,
+                )
+
+                return CouverturePosteResponse(
+                    id_effectif=id_effectif,
+                    id_poste=id_poste,
+                    intitule_poste=intitule_poste,
+                    nb_competences=n,
+                    plain=plain,
+                    weighted=weighted,
+                )
 
     except HTTPException:
         raise
