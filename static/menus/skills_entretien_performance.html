@@ -277,21 +277,45 @@
 
     <!-- Droite: synthèse / plan d'action -->
     <div class="sb-col" style="min-width:320px; max-width:380px;">
-      <div class="card">
+      <div class="card" id="ep_cardCouverturePoste">
         <div class="card-header">
-          <div class="card-title">Synthèse</div>
-          <div class="card-sub">Évolution constatée pendant l’entretien</div>
+          <div class="card-title">Couverture poste actuel</div>
+          <div class="card-sub">Écart entre les compétences du salarié et les attendus du poste.</div>
         </div>
+
         <div class="card-body">
-          <div class="sb-list" id="ep_listSummary" style="max-height:240px; overflow:auto;">
-            <!-- items -->
+          <div class="card-sub" id="ep_covHint" style="margin-top:0;">
+            Sélectionne un collaborateur pour afficher la couverture du poste.
           </div>
 
-          <div class="card-sub" style="margin-top:8px;">
-            La synthèse se mettra à jour au fil des évaluations.
+          <div id="ep_covWrap" style="display:none;">
+            <div style="display:flex; justify-content:center; margin-top:10px;">
+              <svg id="ep_svgGauge"
+                  viewBox="0 0 240 150"
+                  style="width:100%; max-width:320px; height:auto; display:block;">
+              </svg>
+            </div>
+
+            <div style="text-align:center; margin-top:8px;">
+              <span id="ep_covPctPoste" style="font-weight:800; font-size:22px;">—</span>
+              <span style="margin:0 8px; color:var(--muted);">-</span>
+              <span id="ep_covPctMax" style="font-style:italic; font-size:14px; color:var(--muted);">—</span>
+            </div>
+
+            <div style="margin-top:10px; display:flex; justify-content:center;">
+              <label class="sb-switch">
+                <input type="checkbox" id="ep_chkPondere" />
+                <span>Pondérer par criticité</span>
+              </label>
+            </div>
+
+            <div class="card-sub" style="margin-top:8px; text-align:center;">
+              L’aiguille indique le score actuel. La zone colorée représente la plage attendue du poste.
+            </div>
           </div>
         </div>
       </div>
+
 
       <div class="card" style="margin-top:12px;">
         <div class="card-header">
