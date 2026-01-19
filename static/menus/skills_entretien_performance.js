@@ -58,6 +58,105 @@
     m.setAttribute("aria-hidden", "true");
   }
 
+  // ------------------------------------------------------
+  // Couverture poste: modal détail (réutilise state._covData)
+  // ------------------------------------------------------
+  function _epGetCovWeightedFlag() {
+    // on cherche large (selon ids possibles)
+    const chk =
+      $("ep_covChkWeight") ||
+      $("ep_covChkWeighted") ||
+      $("ep_covChkCrit") ||
+      $("ep_chkCovWeighted") ||
+      document.querySelector("#ep_covWrap input[type='checkbox']");
+    return chk ? !!chk.checked : false;
+  }
+
+  function _epLevelFromScore24(score) {
+    const s = Number(score || 0);
+    if (!isFinite(s) || s <= 0) return "—";
+    // bornes validées: A [6..10[, B [10..19[, C [19..24]
+    if (s >= 19) return "Expert";
+    if (s >= 10) return "Avancé";
+    if (s >= 6) return "Initial";
+    return "—";
+  }
+
+  function renderCoverageDetailModal() {
+    const info = $("ep_covDetailInfo");
+    const tbody = $("ep_tblCoverageDetail")?.querySelector("tbody");
+    if (tbody) tbody.innerHTML = "";
+
+    // data calculée par l’API couverture
+    const covRoot = state._covData || state.covData || null;
+    if (!covRoot) {
+      if (info) info.textContent = "Aucun calcul disponible. Sélectionne un collaborateur.";
+      return;
+    }
+
+    const weighted = _epGetCovWeightedFlag();
+
+    // tolérant aux noms (plain/weighted)
+    const cov =
+      (weighted ? (covRoot.weighted || covRoot.pondered || covRoot.weight || null)
+                : (covRoot.plain || covRoot.simple || covRoot.unweighted || null))
+      || null;
+
+    if (!cov) {
+      if (info) info.textContent = "Données de couverture indisponibles (mode).";
+      return;
+    }
+
+    const poste = (covRoot.poste_intitule || covRoot.poste || cov.poste || "").toString().trim();
+    const modeTxt = weighted ? "Pondéré par criticité" : "Non pondéré";
+    if (info) info.textContent = [poste ? `Poste : ${poste}` : "", modeTxt].filter(Boolean).join(" • ");
+
+    const details = Array.isArray(cov.details) ? cov.details : [];
+    if (!details.length) return;
+
+    details.forEach(d => {
+      const code = (d.code || "").toString().trim();
+      const intitule = (d.intitule || "").toString().trim();
+
+      const poids = (d.poids_criticite ?? d.poids ?? "").toString().trim();
+      const niveauRequis = (d.niveau_requis || d.niveau_attendu || "").toString().trim();
+
+      const score24 = Number(d.score ?? d.score_24 ?? d.resultat ?? 0);
+      const niveauSalarie = _epLevelFromScore24(score24);
+
+      const tr = document.createElement("tr");
+
+      // Compétence: badge code ligne 1, intitulé ligne 2
+      const tdComp = document.createElement("td");
+      tdComp.innerHTML = `
+        <div>
+          <div><span class="sb-badge sb-badge-accent">${code || "—"}</span></div>
+          <div style="margin-top:4px; font-size:13px;">${intitule || "—"}</div>
+        </div>
+      `;
+
+      const tdPoids = document.createElement("td");
+      tdPoids.className = "col-center";
+      tdPoids.textContent = poids || "—";
+
+      const tdReq = document.createElement("td");
+      tdReq.className = "col-center";
+      tdReq.innerHTML = niveauRequis ? `<span class="sb-badge">${niveauRequis}</span>` : "—";
+
+      const tdSal = document.createElement("td");
+      tdSal.className = "col-center";
+      tdSal.innerHTML = (niveauSalarie && niveauSalarie !== "—") ? `<span class="sb-badge">${niveauSalarie}</span>` : "—";
+
+      tr.appendChild(tdComp);
+      tr.appendChild(tdPoids);
+      tr.appendChild(tdReq);
+      tr.appendChild(tdSal);
+
+      if (tbody) tbody.appendChild(tr);
+    });
+  }
+
+
   /* ======================================================
      Guide de notation (popover par critère)
      - Créé en JS (pas besoin de toucher au CSS)
@@ -1278,6 +1377,36 @@
             if (e.target === modalHistory) closeHistory();
         });
         }
+
+        // Modal Coverage Detail (standard)
+        const modalCov = $("modalEpCoverageDetail");
+        const btnXCov = $("btnCloseEpCoverageDetailModalX");
+        const btnCloseCov = $("btnEpCoverageDetailModalClose");
+        const closeCov = () => closeModal("modalEpCoverageDetail");
+
+        if (btnXCov) btnXCov.addEventListener("click", closeCov);
+        if (btnCloseCov) btnCloseCov.addEventListener("click", closeCov);
+        if (modalCov) {
+          modalCov.addEventListener("click", (e) => {
+            if (e.target === modalCov) closeCov();
+          });
+        }
+
+        // Clic sur la jauge -> ouvre le détail
+        const svgCov =
+          $("ep_covSvg") ||
+          $("ep_covGauge") ||
+          $("ep_covGaugeSvg") ||
+          $("ep_svgCoverage");
+
+        if (svgCov) {
+          svgCov.style.cursor = "pointer";
+          svgCov.addEventListener("click", () => {
+            openModal("modalEpCoverageDetail");
+            renderCoverageDetailModal();
+          });
+        }
+
 
         // Header actions
         const btnHelp = $("ep_btnHelpScoring");

@@ -467,6 +467,43 @@
     </div>
   </div>
 
+  <!-- Modal: détail couverture poste -->
+  <div class="modal" id="modalEpCoverageDetail" aria-hidden="true">
+    <div class="modal-card" style="max-width:1100px; width:calc(100vw - 80px);">
+      <div class="modal-header">
+        <div style="font-weight:600;">Détail couverture du poste</div>
+        <button type="button" class="modal-x" id="btnCloseEpCoverageDetailModalX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="card-sub" style="margin-top:0;">
+          Détail des compétences attendues pour le poste actuel, avec le niveau requis, la criticité et le niveau du salarié.
+        </div>
+
+        <div class="hint" id="ep_covDetailInfo" style="margin-top:8px;"></div>
+
+        <div class="table-wrap" style="margin-top:10px;">
+          <table class="sb-table" id="ep_tblCoverageDetail">
+            <thead>
+              <tr>
+                <th>Compétence</th>
+                <th class="col-center">Criticité</th>
+                <th class="col-center">Niveau requis</th>
+                <th class="col-center">Niveau salarié</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnEpCoverageDetailModalClose">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+
   <!-- Modal Observation (depuis Historique) -->
   <div class="modal" id="modalEpHistoryObs" aria-hidden="true">
     <div class="modal-card" style="max-width:720px;">
