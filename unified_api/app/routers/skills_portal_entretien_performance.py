@@ -703,219 +703,242 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
     
 
-    # ======================================================
-    # Couverture poste actuel (jauge)
-    # - plain : sans pondération
-    # - weighted : pondéré par criticité (poids normalisés)
-    # Limites jauge: min = nb_comp * 6, max = nb_comp * 24
-    # ======================================================
+# ======================================================
+# Couverture poste actuel (jauge)
+# - plain : sans pondération
+# - weighted : pondéré par criticité (poids normalisés)
+# Limites jauge: min = nb_comp * 6, max = nb_comp * 24
+# ======================================================
 
-    @router.get("/skills/entretien-performance/couverture-poste-actuel/{id_contact}/{id_effectif}")
-    def ep_get_couverture_poste_actuel(id_contact: str, id_effectif: str):
-        try:
-            with get_conn() as conn:
-                with conn.cursor(row_factory=dict_row) as cur:
+@router.get(
+    "/skills/entretien-performance/couverture-poste-actuel/{id_contact}/{id_effectif}",
+    response_model=CouverturePosteResponse,
+)
+def ep_get_couverture_poste_actuel(id_contact: str, id_effectif: str):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
 
-                    # --- Effectif + poste actuel (on reste simple: basé sur l'effectif) ---
-                    cur.execute(
-                        """
-                        SELECT
-                            e.id_effectif,
-                            e.id_ent,
-                            e.id_poste_actuel
-                        FROM public.tbl_effectif_client e
-                        WHERE e.id_effectif = %s
-                        AND e.archive = FALSE
-                        """,
-                        (id_effectif,),
-                    )
-                    eff = cur.fetchone()
-                    if not eff:
-                        raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+                # Sécurité + périmètre entreprise via contact
+                contact = _fetch_contact_and_ent(cur, id_contact)
+                id_ent = contact["code_ent"]
 
-                    id_ent = (eff.get("id_ent") or "").strip()
-                    id_poste = (eff.get("id_poste_actuel") or "").strip()
+                # Contexte effectif (inclut poste actuel + intitulé poste)
+                eff = _fetch_effectif_context(cur, id_ent, id_effectif)
 
-                    if not id_poste:
-                        return {
-                            "id_effectif": id_effectif,
-                            "id_poste": None,
-                            "intitule_poste": None,
-                            "nb_competences": 0,
-                            "plain": {
-                                "gauge_min": 0.0,
-                                "gauge_max": 0.0,
-                                "expected_min": 0.0,
-                                "expected_max": 0.0,
-                                "score": 0.0,
-                            },
-                            "weighted": {
-                                "gauge_min": 0.0,
-                                "gauge_max": 0.0,
-                                "expected_min": 0.0,
-                                "expected_max": 0.0,
-                                "score": 0.0,
-                            },
-                            "message": "Poste actuel non renseigné pour ce collaborateur.",
+                id_poste = (eff.get("id_poste_actuel") or "").strip()
+                intitule_poste = (eff.get("intitule_poste") or "").strip() or None
+
+                # Poste non renseigné -> réponse vide mais propre
+                if not id_poste:
+                    empty_variant = {
+                        "ponderer": False,
+                        "gauge_min": 0.0,
+                        "gauge_max": 0.0,
+                        "expected_min": 0.0,
+                        "expected_max": 0.0,
+                        "score": 0.0,
+                        "pct_attendus": 0.0,
+                        "pct_max": 0.0,
+                        "details": [],
+                    }
+                    return {
+                        "id_effectif": id_effectif,
+                        "id_poste": None,
+                        "intitule_poste": None,
+                        "nb_competences": 0,
+                        "plain": {**empty_variant, "ponderer": False},
+                        "weighted": {**empty_variant, "ponderer": True},
+                        "message": "Poste actuel non renseigné pour ce collaborateur.",
+                    }
+
+                # --- mapping min/max attendus par niveau requis ---
+                # A: [6 ; 10[
+                # B: [10 ; 19[
+                # C: [19 ; 24]
+                def _range_lvl(niv: str):
+                    n = (niv or "").strip().upper()
+                    if n == "A":
+                        return 6.0, 10.0
+                    if n == "B":
+                        return 10.0, 19.0
+                    if n == "C":
+                        return 19.0, 24.0
+                    return 6.0, 24.0
+
+                def _w(v):
+                    try:
+                        x = int(v)
+                        return x if x > 0 else 1
+                    except Exception:
+                        return 1
+
+                def _pct(num, den):
+                    if den is None:
+                        return 0.0
+                    try:
+                        denf = float(den)
+                        if denf <= 0:
+                            return 0.0
+                        return (float(num) / denf) * 100.0
+                    except Exception:
+                        return 0.0
+
+                # --- attendus poste + score salarié (dernier audit via id_dernier_audit) ---
+                cur.execute(
+                    """
+                    SELECT
+                        fp.id_competence     AS id_comp,
+                        fp.niveau_requis     AS niveau_requis,
+                        COALESCE(NULLIF(fp.poids_criticite,0),1) AS poids_criticite,
+                        c.code              AS code,
+                        c.intitule          AS intitule,
+                        a.resultat_eval     AS resultat_eval,
+                        a.date_audit        AS date_audit,
+                        a.methode_eval      AS methode_eval
+                    FROM public.tbl_fiche_poste_competence fp
+                    JOIN public.tbl_competence c
+                      ON c.id_comp = fp.id_competence
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                    LEFT JOIN public.tbl_effectif_client_competence ec
+                      ON ec.id_effectif_client = %s
+                     AND ec.id_comp = fp.id_competence
+                     AND ec.actif = TRUE
+                     AND ec.archive = FALSE
+                    LEFT JOIN public.tbl_effectif_client_audit_competence a
+                      ON a.id_audit_competence = ec.id_dernier_audit
+                    WHERE fp.id_poste = %s
+                    ORDER BY c.code
+                    """,
+                    (id_effectif, id_poste),
+                )
+                rows = cur.fetchall() or []
+
+                details = []
+                weights = []
+                tmp = []
+
+                n = 0
+                sum_exp_min = 0.0
+                sum_exp_max = 0.0
+                sum_score = 0.0
+
+                for r in rows:
+                    id_comp = (r.get("id_comp") or "").strip()
+                    if not id_comp:
+                        continue
+
+                    n += 1
+
+                    w_raw = _w(r.get("poids_criticite"))
+                    weights.append(w_raw)
+
+                    try:
+                        sc = float(r.get("resultat_eval")) if r.get("resultat_eval") is not None else 0.0
+                    except Exception:
+                        sc = 0.0
+
+                    # compétence jamais évaluée = 0 (déjà géré par fallback)
+                    exp_min, exp_max = _range_lvl(r.get("niveau_requis"))
+
+                    sum_exp_min += exp_min
+                    sum_exp_max += exp_max
+                    sum_score += sc
+
+                    details.append(
+                        {
+                            "id_comp": id_comp,
+                            "code": (r.get("code") or "").strip(),
+                            "intitule": (r.get("intitule") or "").strip(),
+                            "niveau_requis": (r.get("niveau_requis") or "").strip(),
+                            "poids_criticite": w_raw,
+                            "score": round(sc, 1),
+                            "date_audit": str(r["date_audit"]) if r.get("date_audit") else None,
+                            "methode_eval": r.get("methode_eval"),
                         }
-
-                    cur.execute(
-                        """
-                        SELECT p.intitule_poste
-                        FROM public.tbl_fiche_poste p
-                        WHERE p.id_poste = %s
-                        """,
-                        (id_poste,),
                     )
-                    poste_row = cur.fetchone() or {}
-                    intitule_poste = (poste_row.get("intitule_poste") or "").strip() or None
 
-                    # --- mapping min/max attendus par niveau requis ---
-                    # A: [6 ; 10[
-                    # B: [10 ; 19[
-                    # C: [19 ; 24]
-                    def _range_lvl(niv: str):
-                        n = (niv or "").strip().upper()
-                        if n == "A":
-                            return 6.0, 10.0
-                        if n == "B":
-                            return 10.0, 19.0
-                        if n == "C":
-                            return 19.0, 24.0
-                        return 6.0, 24.0
+                    tmp.append((w_raw, exp_min, exp_max, sc))
 
-                    def _w(v):
-                        try:
-                            x = int(v)
-                            return x if x > 0 else 1
-                        except Exception:
-                            return 1
+                gauge_min = float(n) * 6.0
+                gauge_max = float(n) * 24.0
 
-                    # --- attendus poste + score salarié (dernier audit via id_dernier_audit) ---
-                    cur.execute(
-                        """
-                        SELECT
-                            fp.id_competence     AS id_comp,
-                            fp.niveau_requis     AS niveau_requis,
-                            COALESCE(NULLIF(fp.poids_criticite,0),1) AS poids_criticite,
-                            c.code              AS code,
-                            c.intitule          AS intitule,
-                            a.resultat_eval     AS resultat_eval
-                        FROM public.tbl_fiche_poste_competence fp
-                        JOIN public.tbl_competence c
-                        ON c.id_comp = fp.id_competence
-                        AND COALESCE(c.masque, FALSE) = FALSE
-                        LEFT JOIN public.tbl_effectif_client_competence ec
-                        ON ec.id_effectif_client = %s
-                        AND ec.id_comp = fp.id_competence
-                        AND ec.actif = TRUE
-                        AND ec.archive = FALSE
-                        LEFT JOIN public.tbl_effectif_client_audit_competence a
-                        ON a.id_audit_competence = ec.id_dernier_audit
-                        WHERE fp.id_poste = %s
-                        ORDER BY c.code
-                        """,
-                        (id_effectif, id_poste),
-                    )
-                    rows = cur.fetchall() or []
-
-                    n = 0
-                    sum_exp_min = 0.0
-                    sum_exp_max = 0.0
-                    sum_score = 0.0
-
-                    # pondération normalisée: somme(w_norm)=nb_comp pour garder gauge_min/max inchangés
-                    weights = []
-                    tmp = []
-
-                    for r in rows:
-                        id_comp = (r.get("id_comp") or "").strip()
-                        if not id_comp:
-                            continue
-
-                        n += 1
-                        w_raw = _w(r.get("poids_criticite"))
-                        weights.append(w_raw)
-
-                        try:
-                            sc = float(r.get("resultat_eval")) if r.get("resultat_eval") is not None else 0.0
-                        except Exception:
-                            sc = 0.0
-
-                        exp_min, exp_max = _range_lvl(r.get("niveau_requis"))
-                        sum_exp_min += exp_min
-                        sum_exp_max += exp_max
-                        sum_score += sc
-
-                        tmp.append((w_raw, exp_min, exp_max, sc))
-
-                    gauge_min = float(n) * 6.0
-                    gauge_max = float(n) * 24.0
-
-                    if n == 0:
-                        return {
-                            "id_effectif": id_effectif,
-                            "id_poste": id_poste,
-                            "intitule_poste": intitule_poste,
-                            "nb_competences": 0,
-                            "plain": {
-                                "gauge_min": 0.0,
-                                "gauge_max": 0.0,
-                                "expected_min": 0.0,
-                                "expected_max": 0.0,
-                                "score": 0.0,
-                            },
-                            "weighted": {
-                                "gauge_min": 0.0,
-                                "gauge_max": 0.0,
-                                "expected_min": 0.0,
-                                "expected_max": 0.0,
-                                "score": 0.0,
-                            },
-                            "message": "Aucune compétence attendue n'est valorisée sur ce poste.",
-                        }
-
-                    # --- weighted (normalisé) ---
-                    w_sum = float(sum(weights)) if weights else 0.0
-                    # normalisation -> somme = n
-                    def _wnorm(w_raw: float):
-                        if w_sum <= 0:
-                            return 1.0
-                        return (float(w_raw) * float(n)) / w_sum
-
-                    w_exp_min = 0.0
-                    w_exp_max = 0.0
-                    w_score = 0.0
-
-                    for w_raw, exp_min, exp_max, sc in tmp:
-                        wn = _wnorm(w_raw)
-                        w_exp_min += exp_min * wn
-                        w_exp_max += exp_max * wn
-                        w_score += sc * wn
-
-                    # sortie
+                # Aucun attendu sur le poste
+                if n == 0:
+                    empty_variant = {
+                        "ponderer": False,
+                        "gauge_min": 0.0,
+                        "gauge_max": 0.0,
+                        "expected_min": 0.0,
+                        "expected_max": 0.0,
+                        "score": 0.0,
+                        "pct_attendus": 0.0,
+                        "pct_max": 0.0,
+                        "details": [],
+                    }
                     return {
                         "id_effectif": id_effectif,
                         "id_poste": id_poste,
                         "intitule_poste": intitule_poste,
-                        "nb_competences": n,
-                        "plain": {
-                            "gauge_min": round(gauge_min, 1),
-                            "gauge_max": round(gauge_max, 1),
-                            "expected_min": round(sum_exp_min, 1),
-                            "expected_max": round(sum_exp_max, 1),
-                            "score": round(sum_score, 1),
-                        },
-                        "weighted": {
-                            "gauge_min": round(gauge_min, 1),
-                            "gauge_max": round(gauge_max, 1),
-                            "expected_min": round(w_exp_min, 1),
-                            "expected_max": round(w_exp_max, 1),
-                            "score": round(w_score, 1),
-                        },
+                        "nb_competences": 0,
+                        "plain": {**empty_variant, "ponderer": False},
+                        "weighted": {**empty_variant, "ponderer": True},
+                        "message": "Aucune compétence attendue n'est valorisée sur ce poste.",
                     }
 
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+                # --- weighted (normalisé) : somme(wn)=n pour garder gauge_min/max inchangés ---
+                w_sum = float(sum(weights)) if weights else 0.0
+
+                def _wnorm(wr: float):
+                    if w_sum <= 0:
+                        return 1.0
+                    return (float(wr) * float(n)) / w_sum
+
+                w_exp_min = 0.0
+                w_exp_max = 0.0
+                w_score = 0.0
+
+                for w_raw, exp_min, exp_max, sc in tmp:
+                    wn = _wnorm(w_raw)
+                    w_exp_min += exp_min * wn
+                    w_exp_max += exp_max * wn
+                    w_score += sc * wn
+
+                plain = {
+                    "ponderer": False,
+                    "gauge_min": round(gauge_min, 1),
+                    "gauge_max": round(gauge_max, 1),
+                    "expected_min": round(sum_exp_min, 1),
+                    "expected_max": round(sum_exp_max, 1),
+                    "score": round(sum_score, 1),
+                    "pct_attendus": round(_pct(sum_score, sum_exp_max), 1),
+                    "pct_max": round(_pct(sum_score, gauge_max), 1),
+                    "details": details,
+                }
+
+                weighted = {
+                    "ponderer": True,
+                    "gauge_min": round(gauge_min, 1),
+                    "gauge_max": round(gauge_max, 1),
+                    "expected_min": round(w_exp_min, 1),
+                    "expected_max": round(w_exp_max, 1),
+                    "score": round(w_score, 1),
+                    "pct_attendus": round(_pct(w_score, w_exp_max), 1),
+                    "pct_max": round(_pct(w_score, gauge_max), 1),
+                    "details": details,
+                }
+
+                return {
+                    "id_effectif": id_effectif,
+                    "id_poste": id_poste,
+                    "intitule_poste": intitule_poste,
+                    "nb_competences": n,
+                    "plain": plain,
+                    "weighted": weighted,
+                    "message": None,
+                }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
