@@ -560,11 +560,29 @@
   }
 
   function renderGauge(svg, gaugeMin, gaugeMax, expectedMin, expectedMax, value) {
-    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-    const range = Math.max(1e-9, (gaugeMax - gaugeMin));
+    // Normalisation des bornes (au cas où l’API renvoie inversé)
+    let gMin = Number(gaugeMin ?? 0);
+    let gMax = Number(gaugeMax ?? 1);
+    if (!isFinite(gMin)) gMin = 0;
+    if (!isFinite(gMax)) gMax = 1;
+    if (gMax < gMin) { const t = gMin; gMin = gMax; gMax = t; }
 
-    const tFromValue = (v) => (clamp(v, gaugeMin, gaugeMax) - gaugeMin) / range;
-    const angleFromT = (t) => 180 - (180 * t); // 180 (gauche) -> 0 (droite), arc du haut
+    let eMin = Number(expectedMin ?? 0);
+    let eMax = Number(expectedMax ?? 0);
+    if (!isFinite(eMin)) eMin = 0;
+    if (!isFinite(eMax)) eMax = 0;
+    if (eMax < eMin) { const t = eMin; eMin = eMax; eMax = t; }
+
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const range = Math.max(1e-9, (gMax - gMin));
+
+    const tFromValue = (v) => (clamp(v, gMin, gMax) - gMin) / range;
+
+    // IMPORTANT:
+    // On travaille en repère SVG natif (Y vers le bas)
+    // 0° = droite, 90° = bas, 180° = gauche, 270° = haut
+    // Pour une jauge "compteur vitesse" (arc du haut) : 180° -> 360° (via 270°)
+    const angleFromT = (t) => 180 + (180 * t); // 180 (gauche) -> 360 (droite) en passant par 270 (haut)
 
     const cx = 120;
     const cy = 120;
@@ -575,31 +593,42 @@
       const rad = (angleDeg * Math.PI) / 180;
       return {
         x: cx + (radius * Math.cos(rad)),
-        y: cy - (radius * Math.sin(rad)),
+        y: cy + (radius * Math.sin(rad)), // SVG natif: +sin => vers le bas
       };
     };
 
     const arcPath = (a1, a2) => {
+      // On force le sens "gauche->droite" sur 180° (arc du haut)
+      // Si inversé, on swap
+      if (a2 < a1) { const t = a1; a1 = a2; a2 = t; }
+
       const p1 = polar(a1, r);
       const p2 = polar(a2, r);
-      const large = (Math.abs(a2 - a1) <= 180) ? "0" : "1";
-      const sweep = "0"; // sens anti-horaire => arc du haut pour 180->0
+
+      const diff = Math.abs(a2 - a1);
+      const large = (diff <= 180) ? "0" : "1";
+
+      // sweep=1 => suit l’augmentation d’angle en SVG (sens horaire en coordonnées écran)
+      // ici 180->360 passe par 270 (haut), donc c’est bien le demi-cercle du haut.
+      const sweep = "1";
+
       return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} ${sweep} ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
     };
 
-    // Background arc (haut)
-    const bgD = arcPath(180, 0);
+    // Background arc (haut) : 180 -> 360
+    const bgD = arcPath(180, 360);
 
-    const tExpMin = tFromValue(expectedMin);
-    const tExpMax = tFromValue(expectedMax);
+    // Zone attendue
+    const tExpMin = tFromValue(eMin);
+    const tExpMax = tFromValue(eMax);
     const aExpMin = angleFromT(tExpMin);
     const aExpMax = angleFromT(tExpMax);
 
-    // Zone attendue (si expMin/expMax cohérents)
     const zoneOk = isFinite(aExpMin) && isFinite(aExpMax) && (Math.abs(aExpMin - aExpMax) > 0.0001);
     const zoneD = zoneOk ? arcPath(aExpMin, aExpMax) : "";
 
-    const aNeedle = angleFromT(tFromValue(value));
+    // Aiguille
+    const aNeedle = angleFromT(tFromValue(clamp(Number(value ?? 0), gMin, gMax)));
     const pNeedle = polar(aNeedle, rNeedle);
 
     svg.innerHTML = `
@@ -623,6 +652,7 @@
       <circle cx="${cx}" cy="${cy}" r="6" fill="rgba(0,0,0,.65)"></circle>
     `;
   }
+
 
 
   async function ensureContext(portal) {
