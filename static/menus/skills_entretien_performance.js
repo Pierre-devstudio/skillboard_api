@@ -1393,19 +1393,19 @@
         }
 
         // Clic sur la jauge -> ouvre le détail
-        const svgCov =
-          $("ep_covSvg") ||
-          $("ep_covGauge") ||
-          $("ep_covGaugeSvg") ||
-          $("ep_svgCoverage");
-
+        const svgCov = $("ep_svgGauge") || document.querySelector("#ep_covWrap svg");
         if (svgCov) {
           svgCov.style.cursor = "pointer";
-          svgCov.addEventListener("click", () => {
+          svgCov.style.pointerEvents = "auto";
+
+          svgCov.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
             openModal("modalEpCoverageDetail");
-            renderCoverageDetailModal();
+            if (typeof renderCoverageDetailModal === "function") renderCoverageDetailModal();
           });
         }
+
 
 
         // Header actions
