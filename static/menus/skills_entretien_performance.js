@@ -388,12 +388,13 @@
 
   function applyUiLockedState() {
     const scopeOk = !!state.serviceId;
+    const collabOk = scopeOk && !!state.selectedCollaborateurId;
 
     const txtSearchCollab = $("ep_txtSearchCollab");
     if (txtSearchCollab) txtSearchCollab.disabled = !scopeOk;
 
     const txtSearchComp = $("ep_txtSearchComp");
-    if (txtSearchComp) txtSearchComp.disabled = !(scopeOk && !!state.selectedCollaborateurId);
+    if (txtSearchComp) txtSearchComp.disabled = !collabOk;
 
     for (let i = 1; i <= 4; i++) {
       setDisabled(`ep_critNote${i}`, true);
@@ -409,7 +410,220 @@
     setDisabled("ep_txtGlobalNotes", true);
 
     if (!scopeOk) setText("ep_ctxService", "—");
+
+    // -------- Couverture poste actuel (jauge) --------
+    bindCouverturePosteOnce();
+
+    if (!collabOk) {
+      resetCouverturePosteUI();
+      return;
+    }
+
+    // Au moins, on affiche le bloc (sinon tu ne verras jamais le toggle)
+    showCouverturePosteWrap("Calcul en cours…");
+
+    // Recharge seulement si le collaborateur a changé
+    const key = String(state.selectedCollaborateurId || "");
+    if (state._covLastKey !== key) {
+      state._covLastKey = key;
+      state._covData = null;
+      refreshCouverturePosteActuel(true);
+    } else {
+      // si déjà chargé, on re-render (ex: toggle)
+      renderCouverturePoste();
+    }
   }
+
+  // ======================================================
+  // Couverture poste actuel (jauge)
+  // ======================================================
+  function bindCouverturePosteOnce() {
+    if (state._covBound) return;
+    state._covBound = true;
+
+    const chk = $("ep_chkPondere");
+    if (chk) {
+      chk.addEventListener("change", () => {
+        renderCouverturePoste();
+      });
+    }
+  }
+
+  function resetCouverturePosteUI() {
+    const hint = $("ep_covHint");
+    const wrap = $("ep_covWrap");
+    const svg = $("ep_svgGauge");
+    const pctPoste = $("ep_covPctPoste");
+    const pctMax = $("ep_covPctMax");
+
+    if (hint) {
+      hint.style.display = "";
+      hint.textContent = "Sélectionne un collaborateur pour afficher la couverture du poste.";
+    }
+    if (wrap) wrap.style.display = "none";
+    if (svg) svg.innerHTML = "";
+    if (pctPoste) pctPoste.textContent = "—";
+    if (pctMax) pctMax.textContent = "—";
+  }
+
+  function showCouverturePosteWrap(message) {
+    const hint = $("ep_covHint");
+    const wrap = $("ep_covWrap");
+
+    if (wrap) wrap.style.display = ""; // on affiche pour voir jauge + toggle
+
+    if (hint) {
+      if (message) {
+        hint.style.display = "";
+        hint.textContent = message;
+      } else {
+        hint.style.display = "none";
+        hint.textContent = "";
+      }
+    }
+  }
+
+  function getCouvertureMode() {
+    const chk = $("ep_chkPondere");
+    return (chk && chk.checked) ? "weighted" : "plain";
+  }
+
+  async function refreshCouverturePosteActuel(force) {
+    if (!_portal) return;
+    if (!state.selectedCollaborateurId) return;
+
+    if (state._covLoading) return;
+    if (!force && state._covData) return;
+
+    state._covLoading = true;
+
+    try {
+      // Endpoint à ajouter côté API (on le fera ensuite) :
+      // GET /skills/entretien-performance/couverture-poste-actuel/{id_contact}/{id_effectif}
+      const url = `${_portal.apiBase}/skills/entretien-performance/couverture-poste-actuel/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}`;
+      const data = await _portal.apiJson(url);
+
+      state._covData = data || null;
+
+      // OK => on masque le texte et on rend
+      showCouverturePosteWrap("");
+      renderCouverturePoste();
+
+    } catch (e) {
+      // On garde le bloc visible (toggle inclus), mais on affiche l’erreur.
+      showCouverturePosteWrap("Impossible de calculer la couverture du poste actuel.");
+      console.error(e);
+
+      // petite jauge vide pour éviter un “grand trou”
+      const svg = $("ep_svgGauge");
+      if (svg) {
+        renderGauge(svg, 0, 1, 0, 0, 0);
+      }
+    } finally {
+      state._covLoading = false;
+    }
+  }
+
+  function renderCouverturePoste() {
+    const data = state._covData;
+    if (!data) return;
+
+    const mode = getCouvertureMode();
+    const pack = (mode === "weighted") ? (data.weighted || null) : (data.plain || null);
+    if (!pack) return;
+
+    const svg = $("ep_svgGauge");
+    if (!svg) return;
+
+    // jauge bornée comme demandé (min/max théoriques)
+    const gMin = Number(pack.gauge_min ?? 0);
+    const gMax = Number(pack.gauge_max ?? 1);
+
+    const expMin = Number(pack.expected_min ?? 0);
+    const expMax = Number(pack.expected_max ?? 0);
+    const score = Number(pack.score ?? 0);
+
+    // Needle: clamp pour rester dans les limites de jauge
+    const needle = Math.max(gMin, Math.min(gMax, score));
+
+    renderGauge(svg, gMin, gMax, expMin, expMax, needle);
+
+    // % sous jauge (avec le score réel, pas le needle clampé)
+    const pct1 = (expMax > 0) ? ((score / expMax) * 100) : null;
+    const pct2 = (gMax > 0) ? ((score / gMax) * 100) : null;
+
+    const pctPoste = $("ep_covPctPoste");
+    const pctMax = $("ep_covPctMax");
+
+    if (pctPoste) pctPoste.textContent = (pct1 === null || !isFinite(pct1)) ? "—" : `${Math.round(pct1)}%`;
+    if (pctMax) pctMax.textContent = (pct2 === null || !isFinite(pct2)) ? "—" : `${Math.round(pct2)}%`;
+  }
+
+  function renderGauge(svg, gaugeMin, gaugeMax, expectedMin, expectedMax, value) {
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const range = Math.max(1e-9, (gaugeMax - gaugeMin));
+
+    const tFromValue = (v) => (clamp(v, gaugeMin, gaugeMax) - gaugeMin) / range;
+    const angleFromT = (t) => 180 - (180 * t); // 180 (gauche) -> 0 (droite), arc du haut
+
+    const cx = 120;
+    const cy = 120;
+    const r = 90;
+    const rNeedle = 74;
+
+    const polar = (angleDeg, radius) => {
+      const rad = (angleDeg * Math.PI) / 180;
+      return {
+        x: cx + (radius * Math.cos(rad)),
+        y: cy + (radius * Math.sin(rad)),
+      };
+    };
+
+    const arcPath = (a1, a2) => {
+      const p1 = polar(a1, r);
+      const p2 = polar(a2, r);
+      const large = (Math.abs(a2 - a1) <= 180) ? "0" : "1";
+      const sweep = "0"; // sens anti-horaire => arc du haut pour 180->0
+      return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} ${sweep} ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+    };
+
+    // Background arc (haut)
+    const bgD = arcPath(180, 0);
+
+    const tExpMin = tFromValue(expectedMin);
+    const tExpMax = tFromValue(expectedMax);
+    const aExpMin = angleFromT(tExpMin);
+    const aExpMax = angleFromT(tExpMax);
+
+    // Zone attendue (si expMin/expMax cohérents)
+    const zoneOk = isFinite(aExpMin) && isFinite(aExpMax) && (Math.abs(aExpMin - aExpMax) > 0.0001);
+    const zoneD = zoneOk ? arcPath(aExpMin, aExpMax) : "";
+
+    const aNeedle = angleFromT(tFromValue(value));
+    const pNeedle = polar(aNeedle, rNeedle);
+
+    svg.innerHTML = `
+      <path d="${bgD}"
+            stroke="rgba(0,0,0,.15)"
+            stroke-width="14"
+            fill="none"
+            stroke-linecap="round"></path>
+
+      ${zoneOk ? `<path d="${zoneD}"
+            stroke="var(--accent)"
+            stroke-width="14"
+            fill="none"
+            stroke-linecap="round"></path>` : ""}
+
+      <line x1="${cx}" y1="${cy}" x2="${pNeedle.x.toFixed(2)}" y2="${pNeedle.y.toFixed(2)}"
+            stroke="rgba(0,0,0,.65)"
+            stroke-width="3"
+            stroke-linecap="round"></line>
+
+      <circle cx="${cx}" cy="${cy}" r="6" fill="rgba(0,0,0,.65)"></circle>
+    `;
+  }
+
 
   async function ensureContext(portal) {
     if (portal.context) return portal.context;
