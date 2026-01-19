@@ -719,8 +719,18 @@
 
         if (!state.selectedCollaborateurId || !_portal) return;
 
+        // ---- Couverture poste actuel (jauge) ----
+        // On affiche tout de suite le bloc + le toggle, et on passe en "Calcul en cours…"
+        if (typeof bindCouverturePosteOnce === "function") bindCouverturePosteOnce();
+        if (typeof showCouverturePosteWrap === "function") showCouverturePosteWrap("Calcul en cours…");
+
+        // On force un recalcul (quand on codera l'endpoint, ça se rafraîchira proprement)
+        state._covLastKey = null;
+        state._covData = null;
+
         try {
           _portal.showAlert("", "");
+
 
           // Date entretien = date du clic (pour l’instant)
           setText("ep_ctxDate", new Date().toLocaleDateString("fr-FR"));
