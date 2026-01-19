@@ -575,7 +575,7 @@
       const rad = (angleDeg * Math.PI) / 180;
       return {
         x: cx + (radius * Math.cos(rad)),
-        y: cy + (radius * Math.sin(rad)),
+        y: cy - (radius * Math.sin(rad)),
       };
     };
 
