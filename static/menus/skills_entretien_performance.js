@@ -511,8 +511,8 @@
 
     } catch (e) {
       // On garde le bloc visible (toggle inclus), mais on affiche l’erreur.
-      showCouverturePosteWrap("Impossible de calculer la couverture du poste actuel.");
-      console.error(e);
+      showCouverturePosteWrap("Impossible de calculer la couverture du poste actuel : " + String(e?.message || e));
+      console.error("Couverture poste actuel:", e);
 
       // petite jauge vide pour éviter un “grand trou”
       const svg = $("ep_svgGauge");
