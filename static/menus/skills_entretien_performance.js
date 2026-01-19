@@ -752,7 +752,7 @@
         // ---- Couverture poste actuel (jauge) ----
         // On affiche tout de suite le bloc + le toggle, et on passe en "Calcul en cours…"
         bindCouverturePosteOnce();
-        showCouverturePosteWrap("Calcul en cours…");
+        showCouverturePosteWrap("");
 
         // On force un recalcul à chaque changement de collaborateur
         state._covLastKey = null;
