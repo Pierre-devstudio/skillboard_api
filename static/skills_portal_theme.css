@@ -896,3 +896,15 @@ body{
   min-height: 0; /* indispensable en flex column */
   overflow: auto; /* on force le scroll ici */
 }
+
+/* ======================================================
+   Organisation: badge "X collab." (pastille soft)
+   - Cible uniquement la vue "Votre organisation"
+   - Exclut le badge "Responsable" (.sb-badge-accent)
+   ====================================================== */
+#view-votre-organisation .sb-accordion summary .sb-acc-right .sb-badge:not(.sb-badge-accent){
+  background: color-mix(in srgb, var(--reading-accent) 12%, #ffffff);
+  border-color: color-mix(in srgb, var(--reading-accent) 30%, #d1d5db);
+  color: var(--reading-accent-hover);
+  font-weight: 700;
+}
