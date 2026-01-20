@@ -227,26 +227,80 @@
 
     if (body) {
       body.innerHTML = `
-        <div class="row" style="flex-direction:column; gap:10px;">
-          <div class="sb-field">
-            <div class="label">Service</div>
-            <div class="value">${escapeHtml(it.nom_service || (it.id_service ? it.id_service : "Non lié"))}</div>
+        <div class="sb-tabbar" role="tablist" aria-label="Onglets collaborateur">
+          <button type="button" class="sb-seg sb-seg--soft is-active" data-tab="ident" role="tab" aria-selected="true">
+            Identification
+          </button>
+          <button type="button" class="sb-seg sb-seg--soft" data-tab="skills" role="tab" aria-selected="false">
+            Compétences
+          </button>
+          <button type="button" class="sb-seg sb-seg--soft" data-tab="certs" role="tab" aria-selected="false">
+            Certifications
+          </button>
+        </div>
+
+        <div class="sb-tab-panel is-active" data-panel="ident" role="tabpanel">
+          <div class="row" style="flex-direction:column; gap:10px;">
+            <div class="sb-field">
+              <div class="label">Service</div>
+              <div class="value">${escapeHtml(it.nom_service || (it.id_service ? it.id_service : "Non lié"))}</div>
+            </div>
+            <div class="sb-field">
+              <div class="label">Poste</div>
+              <div class="value">${escapeHtml(it.intitule_poste || "–")}</div>
+            </div>
+            <div class="sb-field">
+              <div class="label">Email</div>
+              <div class="value">${escapeHtml(it.email_effectif || "–")}</div>
+            </div>
+            <div class="sb-field">
+              <div class="label">Téléphone</div>
+              <div class="value">${escapeHtml(it.telephone_effectif || "–")}</div>
+            </div>
           </div>
-          <div class="sb-field">
-            <div class="label">Poste</div>
-            <div class="value">${escapeHtml(it.intitule_poste || "–")}</div>
+        </div>
+
+        <div class="sb-tab-panel" data-panel="skills" role="tabpanel">
+          <div class="card-sub" style="margin:0;">
+            Onglet en construction (liste compétences + niveaux à venir).
           </div>
-          <div class="sb-field">
-            <div class="label">Email</div>
-            <div class="value">${escapeHtml(it.email_effectif || "–")}</div>
-          </div>
-          <div class="sb-field">
-            <div class="label">Téléphone</div>
-            <div class="value">${escapeHtml(it.telephone_effectif || "–")}</div>
+        </div>
+
+        <div class="sb-tab-panel" data-panel="certs" role="tabpanel">
+          <div class="card-sub" style="margin:0;">
+            Onglet en construction (certifications attendues / acquises à venir).
           </div>
         </div>
       `;
     }
+
+        // Onglets modal (Identification / Compétences / Certifications)
+    if (body) {
+      const tabs = Array.from(body.querySelectorAll(".sb-tabbar [data-tab]"));
+      const panels = Array.from(body.querySelectorAll(".sb-tab-panel[data-panel]"));
+
+      const setActiveTab = (key) => {
+        tabs.forEach(b => {
+          const active = b.getAttribute("data-tab") === key;
+          b.classList.toggle("is-active", active);
+          b.setAttribute("aria-selected", active ? "true" : "false");
+        });
+        panels.forEach(p => {
+          const active = p.getAttribute("data-panel") === key;
+          p.classList.toggle("is-active", active);
+        });
+      };
+
+      tabs.forEach(btn => {
+        btn.addEventListener("click", () => {
+          setActiveTab(btn.getAttribute("data-tab"));
+        });
+      });
+
+      // sécurité: force l’onglet par défaut à chaque ouverture
+      setActiveTab("ident");
+    }
+
 
     if (modal) {
       modal.classList.add("show");

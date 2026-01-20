@@ -672,6 +672,44 @@ button[id$="ModalClose"]:active{
   background:#ffffff;
 }
 
+/* ======================================================
+   Modal Collaborateur: onglets (Identification / Compétences / Certifications)
+   ====================================================== */
+
+/* Barre d’onglets */
+#modalCollaborateur .sb-tabbar{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+  padding-bottom:10px;
+  margin-bottom:12px;
+  border-bottom:1px solid #e5e7eb;
+}
+
+/* Boutons onglets (soft) */
+#modalCollaborateur .sb-seg.sb-seg--soft{
+  font-weight:600;
+}
+
+/* Actif */
+#modalCollaborateur .sb-seg.sb-seg--soft.is-active{
+  border-color: var(--reading-accent);
+  background: color-mix(in srgb, var(--reading-accent) 10%, #ffffff);
+  font-weight:700;
+}
+
+/* Inactif */
+#modalCollaborateur .sb-seg.sb-seg--soft:not(.is-active){
+  border-color:#d1d5db;
+  background:#ffffff;
+}
+
+/* Panels */
+#modalCollaborateur .sb-tab-panel{ display:none; }
+#modalCollaborateur .sb-tab-panel.is-active{ display:block; }
+
+
 /* Badges écarts (composant générique) */
 .sb-gap-badges{
   display:inline-flex;
