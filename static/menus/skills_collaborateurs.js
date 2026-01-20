@@ -99,6 +99,12 @@
     return await window.portal.apiJson(url);
   }
 
+  async function loadIdentification(id_contact, id_effectif) {
+    const url = `${API_BASE}/skills/collaborateurs/identification/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_effectif)}`;
+    return await window.portal.apiJson(url);
+  }
+
+
   function renderServicesSelect(items) {
     const sel = byId("collabServiceSelect");
     if (!sel) return;
@@ -240,23 +246,8 @@
         </div>
 
         <div class="sb-tab-panel is-active" data-panel="ident" role="tabpanel">
-          <div class="row" style="flex-direction:column; gap:10px;">
-            <div class="sb-field">
-              <div class="label">Service</div>
-              <div class="value">${escapeHtml(it.nom_service || (it.id_service ? it.id_service : "Non lié"))}</div>
-            </div>
-            <div class="sb-field">
-              <div class="label">Poste</div>
-              <div class="value">${escapeHtml(it.intitule_poste || "–")}</div>
-            </div>
-            <div class="sb-field">
-              <div class="label">Email</div>
-              <div class="value">${escapeHtml(it.email_effectif || "–")}</div>
-            </div>
-            <div class="sb-field">
-              <div class="label">Téléphone</div>
-              <div class="value">${escapeHtml(it.telephone_effectif || "–")}</div>
-            </div>
+          <div id="collabIdentPanel" class="row" style="flex-direction:column; gap:10px;">
+            <div class="card-sub" style="margin:0;">Chargement…</div>
           </div>
         </div>
 
@@ -299,6 +290,154 @@
 
       // sécurité: force l’onglet par défaut à chaque ouverture
       setActiveTab("ident");
+
+      // Chargement Identification (API) + rendu
+      const identHost = body.querySelector("#collabIdentPanel");
+      if (identHost) {
+        identHost.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+
+        const id_contact = window.portal?.contactId;
+        if (!id_contact || !it?.id_effectif) {
+          identHost.innerHTML = `<div class="card-sub" style="margin:0; color:#b91c1c;">Erreur : identifiants manquants.</div>`;
+        } else {
+          loadIdentification(id_contact, it.id_effectif)
+            .then(d => {
+              const v = (x) => {
+                const s = (x ?? "").toString().trim();
+                return s ? escapeHtml(s) : "–";
+              };
+
+              const badges = [];
+              if (d.archive) badges.push("Archivé");
+              else if (d.statut_actif) badges.push("Actif");
+              else badges.push("Inactif");
+
+              if (d.is_temp) badges.push("Temp");
+              if (d.ismanager) badges.push("Manager");
+              if (d.isformateur) badges.push("Formateur");
+
+              const badgesHtml = badges
+                .map(lbl => `<span class="sb-badge">${escapeHtml(lbl)}</span>`)
+                .join("");
+
+              const showRetraite = d.retraite_estimee != null && d.retraite_estimee !== "";
+
+              identHost.innerHTML = `
+                <div class="row" style="gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                  ${badgesHtml}
+                </div>
+
+                <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px 18px;">
+
+                  <div class="sb-field">
+                    <div class="label">Service</div>
+                    <div class="value">${v(d.nom_service || (d.id_service ? d.id_service : "Non lié"))}</div>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Poste</div>
+                    <div class="value">${v(d.intitule_poste)}</div>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Matricule</div>
+                    <div class="value">${v(d.matricule)}</div>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Type de contrat</div>
+                    <div class="value">${v(d.type_contrat)}</div>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Entrée entreprise</div>
+                    <div class="value">${formatDateFR(d.date_entree_entreprise_effectif)}</div>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Début poste actuel</div>
+                    <div class="value">${formatDateFR(d.date_debut_poste_actuel)}</div>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Sortie prévue</div>
+                    <div class="value">${formatDateFR(d.date_sortie_prevue)}</div>
+                  </div>
+
+                  ${showRetraite ? `
+                  <div class="sb-field">
+                    <div class="label">Retraite estimée</div>
+                    <div class="value">${v(d.retraite_estimee)}</div>
+                  </div>` : `
+                  <div class="sb-field">
+                    <div class="label">Retraite estimée</div>
+                    <div class="value">–</div>
+                  </div>`}
+
+                  <div class="sb-field">
+                    <div class="label">Email</div>
+                    <div class="value">${v(d.email_effectif)}</div>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Téléphone</div>
+                    <div class="value">${v(d.telephone_effectif)}</div>
+                  </div>
+
+                  <div class="sb-field" style="grid-column: 1 / -1;">
+                    <div class="label">Adresse</div>
+                    <div class="value">
+                      ${v(d.adresse_effectif)}<br/>
+                      ${v(d.code_postal_effectif)} ${v(d.ville_effectif)}<br/>
+                      ${v(d.pays_effectif)}
+                    </div>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Distance (km)</div>
+                    <div class="value">${d.distance_km_entreprise != null ? escapeHtml(String(d.distance_km_entreprise)) : "–"}</div>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Niveau d’éducation</div>
+                    <div class="value">${v(d.niveau_education_label)}</div>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Domaine d’éducation</div>
+                    <div class="value">${v(d.domaine_education)}</div>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Date de naissance</div>
+                    <div class="value">${formatDateFR(d.date_naissance_effectif)}</div>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Postes précédents</div>
+                    <div class="value">${(d.nb_postes_precedents ?? 0).toString()}</div>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Motif sortie</div>
+                    <div class="value">${v(d.motif_sortie)}</div>
+                  </div>
+
+                  <div class="sb-field" style="grid-column: 1 / -1;">
+                    <div class="label">Commentaire</div>
+                    <div class="value">${v(d.note_commentaire)}</div>
+                  </div>
+
+                </div>
+              `;
+            })
+            .catch(e => {
+              identHost.innerHTML = `<div class="card-sub" style="margin:0; color:#b91c1c;">Erreur chargement identification : ${escapeHtml(e.message || String(e))}</div>`;
+              console.error(e);
+            });
+        }
+      }
+
     }
 
 

@@ -57,6 +57,55 @@ class CollaborateurItem(BaseModel):
     date_sortie_prevue: Optional[str] = None
     havedatefin: Optional[bool] = None
 
+class CollaborateurIdentification(BaseModel):
+    id_effectif: str
+    nom_effectif: str
+    prenom_effectif: str
+
+    # Contact (déjà affiché)
+    email_effectif: Optional[str] = None
+    telephone_effectif: Optional[str] = None
+
+    # Affectation
+    id_service: Optional[str] = None
+    nom_service: Optional[str] = None
+    id_poste_actuel: Optional[str] = None
+    intitule_poste: Optional[str] = None
+
+    # Statuts / rôles (badges côté front)
+    statut_actif: bool
+    archive: bool
+    ismanager: bool
+    isformateur: bool
+    is_temp: bool
+
+    # RH / contrat
+    type_contrat: Optional[str] = None
+    matricule: Optional[str] = None
+    date_entree_entreprise_effectif: Optional[str] = None
+    date_debut_poste_actuel: Optional[str] = None
+    date_sortie_prevue: Optional[str] = None
+    havedatefin: Optional[bool] = None
+    retraite_estimee: Optional[int] = None
+    nb_postes_precedents: Optional[int] = None
+    motif_sortie: Optional[str] = None
+
+    # Adresse
+    adresse_effectif: Optional[str] = None
+    code_postal_effectif: Optional[str] = None
+    ville_effectif: Optional[str] = None
+    pays_effectif: Optional[str] = None
+    distance_km_entreprise: Optional[float] = None
+
+    # Profil
+    date_naissance_effectif: Optional[str] = None
+    niveau_education_code: Optional[str] = None
+    niveau_education_label: Optional[str] = None
+    domaine_education: Optional[str] = None
+
+    # Notes
+    note_commentaire: Optional[str] = None
+
 
 # ======================================================
 # Helpers
@@ -382,6 +431,177 @@ def get_collaborateurs_list(
             )
 
         return out
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/skills/collaborateurs/identification/{id_contact}/{id_effectif}",
+    response_model=CollaborateurIdentification,
+)
+def get_collaborateur_identification(id_contact: str, id_effectif: str):
+    """
+    Détail "Identification" d'un collaborateur.
+    - Ne renvoie pas: civilité, business_travel, champs techniques (date_creation, dernier_update, etc.)
+    - Matricule: matricule_interne, sinon code_effectif
+    - Retraite estimée: renvoyée uniquement si havedatefin = FALSE
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _get_id_ent_from_contact(cur, id_contact)
+
+                cur.execute(
+                    """
+                    SELECT
+                        ec.id_effectif,
+                        ec.nom_effectif,
+                        ec.prenom_effectif,
+
+                        ec.email_effectif,
+                        ec.telephone_effectif,
+
+                        ec.adresse_effectif,
+                        ec.code_postal_effectif,
+                        ec.ville_effectif,
+                        ec.pays_effectif,
+                        ec.distance_km_entreprise,
+
+                        ec.date_naissance_effectif,
+                        ec.niveau_education,
+                        ec.domaine_education,
+
+                        ec.id_poste_actuel,
+                        fp.intitule_poste,
+
+                        ec.type_contrat,
+                        ec.matricule_interne,
+                        ec.code_effectif,
+
+                        ec.id_service,
+                        org.nom_service,
+
+                        ec.date_entree_entreprise_effectif,
+                        ec.date_debut_poste_actuel,
+                        ec.date_sortie_prevue,
+
+                        COALESCE(ec.statut_actif, FALSE) AS statut_actif,
+                        COALESCE(ec.archive, FALSE) AS archive,
+
+                        COALESCE(ec.ismanager, FALSE) AS ismanager,
+                        COALESCE(ec.isformateur, FALSE) AS isformateur,
+                        COALESCE(ec.is_temp, FALSE) AS is_temp,
+
+                        COALESCE(ec.havedatefin, FALSE) AS havedatefin,
+                        ec.retraite_estimee,
+
+                        COALESCE(ec.nb_postes_precedents, 0) AS nb_postes_precedents,
+                        ec.motif_sortie,
+                        ec.note_commentaire
+                    FROM public.tbl_effectif_client ec
+                    LEFT JOIN public.tbl_entreprise_organigramme org
+                      ON org.id_service = ec.id_service
+                     AND org.id_ent = ec.id_ent
+                     AND org.archive = FALSE
+                    LEFT JOIN public.tbl_fiche_poste fp
+                      ON fp.id_poste = ec.id_poste_actuel
+                     AND COALESCE(fp.actif, TRUE) = TRUE
+                    WHERE ec.id_ent = %s
+                      AND ec.id_effectif = %s
+                    """,
+                    (id_ent, id_effectif),
+                )
+                r = cur.fetchone()
+
+        if r is None:
+            raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+
+        # Matricule: matricule_interne sinon code_effectif
+        matricule = (r.get("matricule_interne") or "").strip()
+        if not matricule:
+            matricule = (r.get("code_effectif") or "").strip()
+        matricule = matricule if matricule else None
+
+        # Service: si NULL/'' => Non lié
+        id_service = _normalize_id_service(r.get("id_service"))
+        nom_service = (r.get("nom_service") or "").strip() if id_service else "Non lié"
+
+        # Niveau éducation: transformation soft (à affiner quand tu me donnes la vraie transfo)
+        niv_code = (r.get("niveau_education") or "").strip()
+        niv_code = niv_code if niv_code else None
+
+        niv_map = {
+            "0": "Aucun diplôme",
+            "3": "Niveau 3 : CAP, BEP",
+            "4": "Niveau 4 : Bac",
+            "5": "Niveau 5 : Bac+2 (BTS, DUT)",
+            "6": "Niveau 6 : Bac+3 (Licence, BUT)",
+            "7": "Niveau 7 : Bac+5 (Master, Ingénieur, Grandes écoles)",
+            "8": "Niveau 8 : Bac+8 (Doctorat)",
+        }
+        if niv_code is None:
+            niv_label = None
+        else:
+            niv_label = niv_map.get(niv_code, "Non renseigné")
+
+
+        # Retraite estimée seulement si havedatefin = FALSE
+        havedatefin = bool(r.get("havedatefin"))
+        retraite_estimee = None if havedatefin else r.get("retraite_estimee")
+
+        # Dates => str
+        def _s(v):
+            return str(v) if v is not None else None
+
+        # Numeric => float
+        dist = r.get("distance_km_entreprise")
+        dist = float(dist) if dist is not None else None
+
+        return CollaborateurIdentification(
+            id_effectif=r["id_effectif"],
+            nom_effectif=r["nom_effectif"],
+            prenom_effectif=r["prenom_effectif"],
+
+            email_effectif=r.get("email_effectif"),
+            telephone_effectif=r.get("telephone_effectif"),
+
+            id_service=id_service,
+            nom_service=nom_service,
+            id_poste_actuel=r.get("id_poste_actuel"),
+            intitule_poste=r.get("intitule_poste"),
+
+            statut_actif=bool(r.get("statut_actif")),
+            archive=bool(r.get("archive")),
+            ismanager=bool(r.get("ismanager")),
+            isformateur=bool(r.get("isformateur")),
+            is_temp=bool(r.get("is_temp")),
+
+            type_contrat=r.get("type_contrat"),
+            matricule=matricule,
+
+            date_entree_entreprise_effectif=_s(r.get("date_entree_entreprise_effectif")),
+            date_debut_poste_actuel=_s(r.get("date_debut_poste_actuel")),
+            date_sortie_prevue=_s(r.get("date_sortie_prevue")),
+            havedatefin=havedatefin,
+            retraite_estimee=retraite_estimee,
+            nb_postes_precedents=int(r.get("nb_postes_precedents") or 0),
+            motif_sortie=r.get("motif_sortie"),
+
+            adresse_effectif=r.get("adresse_effectif"),
+            code_postal_effectif=r.get("code_postal_effectif"),
+            ville_effectif=r.get("ville_effectif"),
+            pays_effectif=r.get("pays_effectif"),
+            distance_km_entreprise=dist,
+
+            date_naissance_effectif=_s(r.get("date_naissance_effectif")),
+            niveau_education_code=niv_code,
+            niveau_education_label=niv_label,
+            domaine_education=r.get("domaine_education"),
+
+            note_commentaire=r.get("note_commentaire"),
+        )
 
     except HTTPException:
         raise
