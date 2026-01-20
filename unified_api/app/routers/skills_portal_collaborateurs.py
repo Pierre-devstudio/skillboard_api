@@ -651,7 +651,7 @@ def get_collaborateur_competences(id_contact: str, id_effectif: str):
     - Union: compétences requises par le poste + compétences existantes du salarié
     - Niveau actuel: tbl_effectif_client_competence (actif=TRUE, archive=FALSE)
     - Détails dernier audit: via id_dernier_audit -> tbl_effectif_client_audit_competence
-    - Catalogue: tbl_competence (etat='valide', masque=FALSE)
+    - Catalogue: tbl_competence (etat='active', masque=FALSE)
     """
     try:
         with get_conn() as conn:
@@ -735,7 +735,7 @@ def get_collaborateur_competences(id_contact: str, id_effectif: str):
                       ON a.id_audit_competence = curc.id_dernier_audit
                     WHERE (req.id_comp IS NOT NULL OR curc.id_comp IS NOT NULL)
                       AND COALESCE(c.masque, FALSE) = FALSE
-                      AND COALESCE(c.etat, 'valide') = 'valide'
+                      AND COALESCE(c.etat, 'active') = 'active'
                     ORDER BY (req.id_comp IS NULL) ASC, c.intitule
                     """,
                     (id_poste, id_effectif),
