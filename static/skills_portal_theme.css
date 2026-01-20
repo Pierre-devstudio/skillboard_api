@@ -903,8 +903,8 @@ body{
    - Exclut le badge "Responsable" (.sb-badge-accent)
    ====================================================== */
 #view-votre-organisation .sb-accordion summary .sb-acc-right .sb-badge:not(.sb-badge-accent){
-  background: rgba(15, 23, 42, 0.08) !important;     /* bleu nuit très soft */
-  border-color: rgba(15, 23, 42, 0.18) !important;
-  color: rgba(15, 23, 42, 0.85) !important;
+  background: rgb(62, 190, 73) !important;     /* bleu nuit très soft */
+  border-color: rgb(62, 190, 73) !important;
+  color: rgba(255, 255, 255, 0.808) !important;
   font-weight: 700;
 }
