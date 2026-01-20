@@ -69,6 +69,22 @@
   white-space: normal;
 }
 
+/* --- Vos collaborateurs : compact + Poste plus large + suppression colonne Contact --- */
+
+/* Police légèrement plus petite */
+#view-vos-collaborateurs .sb-table thead th{ font-size: 12px; }
+#view-vos-collaborateurs .sb-table tbody td{ font-size: 13px; }
+
+/* Poste (col 3) plus large */
+#view-vos-collaborateurs .sb-table thead th:nth-child(3){ width: 320px; }
+
+/* Masquer la colonne Contact (col 7) */
+#view-vos-collaborateurs .sb-table thead th:nth-child(7),
+#view-vos-collaborateurs .sb-table tbody td:nth-child(7){
+  display: none;
+}
+
+
 
 /* Référentiel compétences: tables plus aérées et lisibles */
 #view-referentiel-competences .sb-table {

@@ -209,15 +209,6 @@
       tdSortie.textContent = formatDateFR(it.date_sortie_prevue);
       tr.appendChild(tdSortie);
 
-      const tdContact = document.createElement("td");
-      const mail = (it.email_effectif || "").trim();
-      const tel = (it.telephone_effectif || "").trim();
-
-      const parts = [];
-      if (mail) parts.push(`📧 ${mail}`);
-      if (tel) parts.push(`📞 ${tel}`);
-      tdContact.textContent = parts.length ? parts.join("  ") : "–";
-      tr.appendChild(tdContact);
 
       tr.addEventListener("click", () => openCollaborateurModal(it));
 
