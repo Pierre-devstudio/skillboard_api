@@ -1,7 +1,8 @@
 # app/routers/skills_portal_collaborateurs.py
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Tuple
+import re
 
 from psycopg.rows import dict_row
 
@@ -111,6 +112,8 @@ class CollaborateurCompetenceItem(BaseModel):
     code: str
     intitule: str
     domaine: Optional[str] = None
+    domaine_titre: Optional[str] = None
+    domaine_couleur: Optional[str] = None
 
     # Comparatif poste
     is_required: bool = False
@@ -203,6 +206,134 @@ def _build_service_where_clause(id_service: Optional[str], params: List):
 
     params.append(sid)
     return " AND ec.id_service = %s ", params
+
+def _normalize_hex_color(v: Optional[str]) -> Optional[str]:
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s:
+        return None
+
+    # Accepte "#RRGGBB" ou "RRGGBB"
+    if s.startswith("#"):
+        s = s[1:].strip()
+
+    if re.fullmatch(r"[0-9a-fA-F]{6}", s):
+        return f"#{s.lower()}"
+
+    return None
+
+
+def _resolve_domaine_competence_meta(cur) -> Optional[Tuple[str, str, str]]:
+    """
+    Trouve la table des domaines de compétences + colonnes (id, titre, couleur).
+    On évite de supposer un schéma figé, on détecte via information_schema.
+    """
+    cur.execute(
+        """
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_type = 'BASE TABLE'
+          AND table_name ILIKE 'tbl_domaine%comp%'
+        ORDER BY
+          CASE WHEN table_name = 'tbl_domaine_competence' THEN 0 ELSE 1 END,
+          table_name
+        LIMIT 1
+        """
+    )
+    t = cur.fetchone()
+    if not t or not t.get("table_name"):
+        return None
+
+    table_name = t["table_name"]
+
+    cur.execute(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = %s
+        """,
+        (table_name,),
+    )
+    cols = {r["column_name"] for r in (cur.fetchall() or [])}
+
+    id_candidates = [
+        "id_domaine_competence",
+        "id_domaine",
+        "id_dom",
+        "id",
+    ]
+    titre_candidates = [
+        "titre",
+        "nom",
+        "intitule",
+        "libelle",
+        "titre_domaine",
+        "nom_domaine",
+    ]
+    couleur_candidates = [
+        "couleur",
+        "color",
+        "code_couleur",
+        "couleur_hex",
+        "hex",
+    ]
+
+    id_col = next((c for c in id_candidates if c in cols), None)
+    titre_col = next((c for c in titre_candidates if c in cols), None)
+    couleur_col = next((c for c in couleur_candidates if c in cols), None)
+
+    if not id_col or not titre_col:
+        return None
+
+    # couleur_col peut être absent (on gère avec None)
+    return (table_name, id_col, titre_col, couleur_col or "")
+
+
+def _load_domaine_competence_map(cur, ids: List[str]) -> Dict[str, Dict[str, Optional[str]]]:
+    """
+    Retourne un mapping:
+      { id_domaine: { "titre": "...", "couleur": "#rrggbb" } }
+    """
+    ids = [str(x).strip() for x in (ids or []) if str(x).strip()]
+    if not ids:
+        return {}
+
+    meta = _resolve_domaine_competence_meta(cur)
+    if meta is None:
+        return {}
+
+    table_name, id_col, titre_col, couleur_col = meta
+
+    select_color = "NULL::text AS couleur"
+    if couleur_col:
+        select_color = f"{couleur_col}::text AS couleur"
+
+    cur.execute(
+        f"""
+        SELECT
+            {id_col}::text AS id,
+            {titre_col}::text AS titre,
+            {select_color}
+        FROM public.{table_name}
+        WHERE {id_col} = ANY(%s)
+        """,
+        (ids,),
+    )
+
+    out: Dict[str, Dict[str, Optional[str]]] = {}
+    for r in (cur.fetchall() or []):
+        did = (r.get("id") or "").strip()
+        if not did:
+            continue
+        out[did] = {
+            "titre": (r.get("titre") or "").strip() or None,
+            "couleur": _normalize_hex_color(r.get("couleur")),
+        }
+
+    return out
 
 
 # ======================================================
@@ -742,18 +873,36 @@ def get_collaborateur_competences(id_contact: str, id_effectif: str):
                 )
                 rows = cur.fetchall() or []
 
+                # Domaine compétence: map id -> (titre, couleur)
+                domaine_ids = []
+                seen = set()
+                for rr in rows:
+                    did = (rr.get("domaine") or "").strip()
+                    if did and did not in seen:
+                        seen.add(did)
+                        domaine_ids.append(did)
+
+                domaine_map = _load_domaine_competence_map(cur, domaine_ids)
+
+
         def _s(v):
             return str(v) if v is not None else None
 
         items: List[CollaborateurCompetenceItem] = []
         for r in rows:
             res = r.get("resultat_eval")
+            did = (r.get("domaine") or "").strip()
+            dmeta = domaine_map.get(did, {}) if did else {}
+            dom_titre = dmeta.get("titre")
+            dom_couleur = dmeta.get("couleur")
             items.append(
                 CollaborateurCompetenceItem(
                     id_comp=r["id_comp"],
                     code=r["code"],
                     intitule=r["intitule"],
                     domaine=r.get("domaine"),
+                    domaine_titre=dom_titre,
+                    domaine_couleur=dom_couleur,
 
                     is_required=bool(r.get("is_required")),
                     niveau_requis=r.get("niveau_requis"),

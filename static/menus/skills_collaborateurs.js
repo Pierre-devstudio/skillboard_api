@@ -460,41 +460,30 @@
                 const fmtDate = (d) => formatDateFR(d);
 
                 const rows = items.map(x => {
-                  const req = (x.niveau_requis || "").trim();
                   const cur = (x.niveau_actuel || "").trim();
+                  const d = formatDateFR(x.date_derniere_eval);
+
                   const isReq = !!x.is_required;
 
-                  let gap = "–";
-                  if (isReq) {
-                    if (!cur) gap = "À évaluer";
-                    else if (cur === req) gap = "OK";
-                    else gap = "Écart";
-                  }
+                  const domTitleRaw = (x.domaine_titre || "").toString().trim();
+                  const domTitle = domTitleRaw ? domTitleRaw : "Domaine";
+                  const domColorRaw = (x.domaine_couleur || "").toString().trim();
+                  const domStyle = domColorRaw ? ` style="--dom-color:${escapeHtml(domColorRaw)}"` : "";
 
-                  const colReq = isReq ? (req || "–") : "—";
-                  const colCur = cur || "–";
-
-                  const d = fmtDate(x.date_derniere_eval);
-
-                  const leftBadges = [];
-                  if (isReq) leftBadges.push(badge("Requis"));
-                  if (x.poids_criticite != null) leftBadges.push(badge(`Crit. ${x.poids_criticite}`));
+                  const badges = [];
+                  if (x.code) badges.push(`<span class="sb-badge">${escapeHtml(x.code)}</span>`);
+                  if (isReq) badges.push(`<span class="sb-badge">Requis</span>`);
+                  badges.push(`<span class="sb-badge sb-badge-domain"${domStyle}>${escapeHtml(domTitle)}</span>`);
 
                   return `
                     <tr>
                       <td>
-                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                          <strong>${escapeHtml(x.intitule || "")}</strong>
-                          <span class="sb-badge">${escapeHtml(x.code || "")}</span>
-                          ${leftBadges.join("")}
-                        </div>
-                        <div class="card-sub" style="margin:4px 0 0 0;">
-                          Domaine: ${escapeHtml((x.domaine || "–").toString())}
+                        <div class="sb-comp-title">${escapeHtml(x.intitule || "")}</div>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:6px;">
+                          ${badges.join("")}
                         </div>
                       </td>
-                      <td style="text-align:center;">${escapeHtml(colReq)}</td>
-                      <td style="text-align:center;">${escapeHtml(colCur)}</td>
-                      <td style="text-align:center;">${escapeHtml(gap)}</td>
+                      <td style="text-align:center;">${escapeHtml(cur || "–")}</td>
                       <td style="text-align:center;">${escapeHtml(d)}</td>
                     </tr>
                   `;
@@ -510,10 +499,8 @@
                       <thead>
                         <tr>
                           <th>Compétence</th>
-                          <th style="width:90px; text-align:center;">Requis</th>
-                          <th style="width:90px; text-align:center;">Actuel</th>
-                          <th style="width:110px; text-align:center;">Écart</th>
-                          <th style="width:120px; text-align:center;">Dernière éval.</th>
+                          <th style="width:140px; text-align:center;">Actuel</th>
+                          <th style="width:140px; text-align:center;">Dernière éval.</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -522,6 +509,7 @@
                     </table>
                   </div>
                 `;
+
               };
 
               const loadSkillsIfNeeded = () => {
