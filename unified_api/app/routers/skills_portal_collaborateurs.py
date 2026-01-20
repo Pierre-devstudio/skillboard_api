@@ -210,18 +210,30 @@ def _build_service_where_clause(id_service: Optional[str], params: List):
 def _normalize_hex_color(v: Optional[str]) -> Optional[str]:
     if v is None:
         return None
+
     s = str(v).strip()
     if not s:
         return None
 
-    # Accepte "#RRGGBB" ou "RRGGBB"
+    # 1) Accepte "#RRGGBB" ou "RRGGBB"
     if s.startswith("#"):
-        s = s[1:].strip()
-
+        s2 = s[1:].strip()
+        if re.fullmatch(r"[0-9a-fA-F]{6}", s2):
+            return f"#{s2.lower()}"
     if re.fullmatch(r"[0-9a-fA-F]{6}", s):
         return f"#{s.lower()}"
 
-    return None
+    # 2) Accepte une couleur stockée en entier signé (ARGB .NET / WinForms)
+    # Ex: -16744193, -256, etc.
+    try:
+        n = int(s, 10) & 0xFFFFFFFF  # convertit en unsigned 32 bits
+        r = (n >> 16) & 0xFF
+        g = (n >> 8) & 0xFF
+        b = n & 0xFF
+        return f"#{r:02x}{g:02x}{b:02x}"
+    except Exception:
+        return None
+
 
 
 def _resolve_domaine_competence_meta(cur) -> Optional[Tuple[str, str, str]]:
