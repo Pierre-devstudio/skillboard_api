@@ -865,3 +865,34 @@ button[id$="ModalClose"]:active{
 #view-analyse-competences .sb-row-click:hover{
   background: color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
 }
+
+/* ======================================================
+   Layout shell: sidebar fixe + scroll contenu (pas la page)
+   ====================================================== */
+
+html, body { height: 100%; }
+
+body{
+  height: 100vh;
+  overflow: hidden; /* stop le scroll global */
+}
+
+/* Sidebar fixe visuellement (le body ne scroll plus) */
+.sidebar{
+  height: 100vh;
+  overflow: auto; /* si le menu dépasse, il scrolle dans la sidebar */
+}
+
+/* Conteneur principal: pas de scroll ici */
+.main{
+  height: 100vh;
+  overflow: hidden;
+  min-height: 0; /* clé pour que le scroll interne marche en flex */
+}
+
+/* Seul le contenu scrolle */
+.content{
+  flex: 1 1 auto;
+  min-height: 0; /* indispensable en flex column */
+  overflow: auto; /* on force le scroll ici */
+}
