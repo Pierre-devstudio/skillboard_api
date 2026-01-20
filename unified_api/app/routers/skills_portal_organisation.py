@@ -9,6 +9,7 @@ from app.routers.skills_portal_common import get_conn
 router = APIRouter()
 
 NON_LIE_ID = "__NON_LIE__"
+TOUS_SERVICES_ID = "__TOUS__"
 
 
 # ======================================================
@@ -224,8 +225,22 @@ def get_services_tree(id_contact: str):
                     children=[],
                 )
 
-                # On le met en premier pour qu'il soit visible tout de suite
-                return [non_lie_node] + roots
+                # Noeud spécial "Tous les services" au niveau root
+                total_postes = len(postes)
+                total_effectifs = sum(eff_by_poste.get(p.get("id_poste"), 0) for p in postes)
+
+                tous_node = ServiceNode(
+                    id_service=TOUS_SERVICES_ID,
+                    nom_service="Tous les services",
+                    id_service_parent=None,
+                    nb_postes=total_postes,
+                    nb_effectifs=total_effectifs,
+                    children=[],
+                )
+
+                # Ordre d'affichage: Tous -> services -> Non lié
+                return [tous_node] + roots + [non_lie_node]
+
 
     except HTTPException:
         raise
@@ -263,6 +278,60 @@ def get_postes_for_service(id_contact: str, id_service: str):
                       AND e.id_poste_actuel IS NOT NULL
                     GROUP BY e.id_poste_actuel
                 """
+
+                if id_service == TOUS_SERVICES_ID:
+                    service_info = ServiceInfo(id_service=TOUS_SERVICES_ID, nom_service="Tous les services")
+
+                    cur.execute(
+                        f"""
+                        SELECT
+                            p.id_poste,
+                            p.codif_poste,
+                            p.intitule_poste,
+                            p.id_service,
+                            p.isresponsable,
+                            p.mission_principale,
+                            p.responsabilites,
+                            p.mobilite,
+                            p.niveau_contrainte,
+                            p.detail_contrainte,
+                            p.perspectives_evolution,
+                            p.niveau_education_minimum,
+                            p.risque_physique,
+                            COALESCE(ec.nb, 0)::int AS nb_effectifs
+                        FROM public.tbl_fiche_poste p
+                        LEFT JOIN ({eff_subquery}) ec
+                               ON ec.id_poste_actuel = p.id_poste
+                        WHERE p.id_ent = %s
+                          AND COALESCE(p.actif, TRUE) = TRUE
+                        ORDER BY p.intitule_poste
+                        """,
+                        (id_ent, id_ent),
+                    )
+                    rows = cur.fetchall() or []
+
+                    postes = [
+                        PosteItem(
+                            id_poste=r["id_poste"],
+                            codif_poste=r["codif_poste"],
+                            intitule_poste=r["intitule_poste"],
+                            id_service=r.get("id_service"),
+                            isresponsable=r.get("isresponsable"),
+                            mission_principale=r.get("mission_principale"),
+                            responsabilites=r.get("responsabilites"),
+                            mobilite=r.get("mobilite"),
+                            niveau_contrainte=r.get("niveau_contrainte"),
+                            detail_contrainte=r.get("detail_contrainte"),
+                            perspectives_evolution=r.get("perspectives_evolution"),
+                            niveau_education_minimum=r.get("niveau_education_minimum"),
+                            risque_physique=r.get("risque_physique"),
+                            nb_effectifs=int(r.get("nb_effectifs") or 0),
+                        )
+                        for r in rows
+                    ]
+
+                    return PostesResponse(service=service_info, postes=postes)
+
 
                 if id_service == NON_LIE_ID:
                     service_info = ServiceInfo(id_service=NON_LIE_ID, nom_service="Non lié")

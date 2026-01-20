@@ -1,5 +1,7 @@
 (function () {
   const NON_LIE_ID = "__NON_LIE__";
+  const TOUS_SERVICES_ID = "__TOUS__";
+
 
   let _bound = false;
   let _servicesLoaded = false;
@@ -166,10 +168,11 @@
 
     rec(nodes, 0);
 
-    // sélection par défaut: Non lié si présent et qu'il y a des postes, sinon premier service
-    const nonLie = nodes.find(x => x.id_service === NON_LIE_ID);
-    if (nonLie && (nonLie.nb_postes ?? 0) > 0) selectService(NON_LIE_ID);
+    // sélection par défaut: Tous les services si présent, sinon premier service
+    const tous = nodes.find(x => x.id_service === TOUS_SERVICES_ID);
+    if (tous) selectService(TOUS_SERVICES_ID);
     else if (nodes.length > 0) selectService(nodes[0].id_service);
+
   }
 
   function renderPostes(list) {
