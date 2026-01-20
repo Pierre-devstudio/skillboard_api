@@ -104,6 +104,10 @@
     return await window.portal.apiJson(url);
   }
 
+  async function loadCompetences(id_contact, id_effectif) {
+    const url = `${API_BASE}/skills/collaborateurs/competences/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_effectif)}`;
+    return await window.portal.apiJson(url);
+  }
 
   function renderServicesSelect(items) {
     const sel = byId("collabServiceSelect");
@@ -252,8 +256,8 @@
         </div>
 
         <div class="sb-tab-panel" data-panel="skills" role="tabpanel">
-          <div class="card-sub" style="margin:0;">
-            Onglet en construction (liste compétences + niveaux à venir).
+          <div id="collabSkillsPanel">
+            <div class="card-sub" style="margin:0;">Chargement…</div>
           </div>
         </div>
 
@@ -436,8 +440,118 @@
               console.error(e);
             });
         }
-      }
 
+              // Chargement Compétences (lazy: au premier clic onglet)
+              let _skillsLoaded = false;
+
+              const renderCompetences = (data) => {
+                const host = body.querySelector("#collabSkillsPanel");
+                if (!host) return;
+
+                const items = Array.isArray(data?.items) ? data.items : [];
+
+                if (items.length === 0) {
+                  host.innerHTML = `<div class="card-sub" style="margin:0;">Aucune compétence trouvée.</div>`;
+                  return;
+                }
+
+                const badge = (txt) => `<span class="sb-badge">${escapeHtml(txt)}</span>`;
+
+                const fmtDate = (d) => formatDateFR(d);
+
+                const rows = items.map(x => {
+                  const req = (x.niveau_requis || "").trim();
+                  const cur = (x.niveau_actuel || "").trim();
+                  const isReq = !!x.is_required;
+
+                  let gap = "–";
+                  if (isReq) {
+                    if (!cur) gap = "À évaluer";
+                    else if (cur === req) gap = "OK";
+                    else gap = "Écart";
+                  }
+
+                  const colReq = isReq ? (req || "–") : "—";
+                  const colCur = cur || "–";
+
+                  const d = fmtDate(x.date_derniere_eval);
+
+                  const leftBadges = [];
+                  if (isReq) leftBadges.push(badge("Requis"));
+                  if (x.poids_criticite != null) leftBadges.push(badge(`Crit. ${x.poids_criticite}`));
+
+                  return `
+                    <tr>
+                      <td>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                          <strong>${escapeHtml(x.intitule || "")}</strong>
+                          <span class="sb-badge">${escapeHtml(x.code || "")}</span>
+                          ${leftBadges.join("")}
+                        </div>
+                        <div class="card-sub" style="margin:4px 0 0 0;">
+                          Domaine: ${escapeHtml((x.domaine || "–").toString())}
+                        </div>
+                      </td>
+                      <td style="text-align:center;">${escapeHtml(colReq)}</td>
+                      <td style="text-align:center;">${escapeHtml(colCur)}</td>
+                      <td style="text-align:center;">${escapeHtml(gap)}</td>
+                      <td style="text-align:center;">${escapeHtml(d)}</td>
+                    </tr>
+                  `;
+                }).join("");
+
+                host.innerHTML = `
+                  <div class="card-sub" style="margin:0 0 10px 0;">
+                    Poste: <strong>${escapeHtml(data.intitule_poste || "–")}</strong>
+                  </div>
+
+                  <div class="sb-table-wrap">
+                    <table class="sb-table">
+                      <thead>
+                        <tr>
+                          <th>Compétence</th>
+                          <th style="width:90px; text-align:center;">Requis</th>
+                          <th style="width:90px; text-align:center;">Actuel</th>
+                          <th style="width:110px; text-align:center;">Écart</th>
+                          <th style="width:120px; text-align:center;">Dernière éval.</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${rows}
+                      </tbody>
+                    </table>
+                  </div>
+                `;
+              };
+
+              const loadSkillsIfNeeded = () => {
+                if (_skillsLoaded) return;
+                _skillsLoaded = true;
+
+                const host = body.querySelector("#collabSkillsPanel");
+                if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+
+                const id_contact = window.portal?.contactId;
+                if (!id_contact || !it?.id_effectif) {
+                  if (host) host.innerHTML = `<div class="card-sub" style="margin:0; color:#b91c1c;">Erreur : identifiants manquants.</div>`;
+                  return;
+                }
+
+                loadCompetences(id_contact, it.id_effectif)
+                  .then(renderCompetences)
+                  .catch(e => {
+                    if (host) host.innerHTML = `<div class="card-sub" style="margin:0; color:#b91c1c;">Erreur chargement compétences : ${escapeHtml(e.message || String(e))}</div>`;
+                    console.error(e);
+                  });
+              };
+
+              // Hook: au clic onglet "Compétences"
+              tabs.forEach(btn => {
+                if (btn.getAttribute("data-tab") === "skills") {
+                  btn.addEventListener("click", loadSkillsIfNeeded);
+                }
+              });
+      }
     }
 
 

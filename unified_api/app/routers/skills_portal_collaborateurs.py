@@ -106,6 +106,39 @@ class CollaborateurIdentification(BaseModel):
     # Notes
     note_commentaire: Optional[str] = None
 
+class CollaborateurCompetenceItem(BaseModel):
+    id_comp: str
+    code: str
+    intitule: str
+    domaine: Optional[str] = None
+
+    # Comparatif poste
+    is_required: bool = False
+    niveau_requis: Optional[str] = None
+
+    # État actuel
+    niveau_actuel: Optional[str] = None
+    date_derniere_eval: Optional[str] = None
+    id_dernier_audit: Optional[str] = None
+
+    # Détails audit (utile plus tard)
+    methode_eval: Optional[str] = None
+    resultat_eval: Optional[float] = None
+    observation: Optional[str] = None
+
+    # Criticité (si valorisée sur le poste)
+    poids_criticite: Optional[int] = None
+    freq_usage: Optional[int] = None
+    impact_resultat: Optional[int] = None
+    dependance: Optional[int] = None
+
+
+class CollaborateurCompetencesResponse(BaseModel):
+    id_effectif: str
+    id_poste_actuel: Optional[str] = None
+    intitule_poste: Optional[str] = None
+    items: List[CollaborateurCompetenceItem]
+
 
 # ======================================================
 # Helpers
@@ -601,6 +634,150 @@ def get_collaborateur_identification(id_contact: str, id_effectif: str):
             domaine_education=r.get("domaine_education"),
 
             note_commentaire=r.get("note_commentaire"),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/skills/collaborateurs/competences/{id_contact}/{id_effectif}",
+    response_model=CollaborateurCompetencesResponse,
+)
+def get_collaborateur_competences(id_contact: str, id_effectif: str):
+    """
+    Onglet Compétences (fiche salarié)
+    - Union: compétences requises par le poste + compétences existantes du salarié
+    - Niveau actuel: tbl_effectif_client_competence (actif=TRUE, archive=FALSE)
+    - Détails dernier audit: via id_dernier_audit -> tbl_effectif_client_audit_competence
+    - Catalogue: tbl_competence (etat='valide', masque=FALSE)
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _get_id_ent_from_contact(cur, id_contact)
+
+                # Poste actuel (et libellé) pour ce salarié
+                cur.execute(
+                    """
+                    SELECT
+                        ec.id_effectif,
+                        ec.id_poste_actuel,
+                        fp.intitule_poste
+                    FROM public.tbl_effectif_client ec
+                    LEFT JOIN public.tbl_fiche_poste fp
+                      ON fp.id_poste = ec.id_poste_actuel
+                     AND COALESCE(fp.actif, TRUE) = TRUE
+                    WHERE ec.id_ent = %s
+                      AND ec.id_effectif = %s
+                    """,
+                    (id_ent, id_effectif),
+                )
+                eff = cur.fetchone()
+                if eff is None:
+                    raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+
+                id_poste = eff.get("id_poste_actuel")
+                intitule_poste = eff.get("intitule_poste")
+
+                cur.execute(
+                    """
+                    WITH req AS (
+                        SELECT
+                            fpc.id_competence AS id_comp,
+                            fpc.niveau_requis,
+                            fpc.poids_criticite,
+                            fpc.freq_usage,
+                            fpc.impact_resultat,
+                            fpc.dependance
+                        FROM public.tbl_fiche_poste_competence fpc
+                        WHERE fpc.id_poste = %s
+                    ),
+                    curc AS (
+                        SELECT
+                            ecc.id_comp,
+                            ecc.niveau_actuel,
+                            ecc.date_derniere_eval,
+                            ecc.id_dernier_audit
+                        FROM public.tbl_effectif_client_competence ecc
+                        WHERE ecc.id_effectif_client = %s
+                          AND ecc.actif = TRUE
+                          AND ecc.archive = FALSE
+                    )
+                    SELECT
+                        c.id_comp,
+                        c.code,
+                        c.intitule,
+                        c.domaine,
+
+                        (req.id_comp IS NOT NULL) AS is_required,
+                        req.niveau_requis,
+
+                        curc.niveau_actuel,
+                        curc.date_derniere_eval,
+                        curc.id_dernier_audit,
+
+                        a.methode_eval,
+                        a.resultat_eval,
+                        a.observation,
+
+                        req.poids_criticite,
+                        req.freq_usage,
+                        req.impact_resultat,
+                        req.dependance
+                    FROM public.tbl_competence c
+                    LEFT JOIN req
+                      ON req.id_comp = c.id_comp
+                    LEFT JOIN curc
+                      ON curc.id_comp = c.id_comp
+                    LEFT JOIN public.tbl_effectif_client_audit_competence a
+                      ON a.id_audit_competence = curc.id_dernier_audit
+                    WHERE (req.id_comp IS NOT NULL OR curc.id_comp IS NOT NULL)
+                      AND COALESCE(c.masque, FALSE) = FALSE
+                      AND COALESCE(c.etat, 'valide') = 'valide'
+                    ORDER BY (req.id_comp IS NULL) ASC, c.intitule
+                    """,
+                    (id_poste, id_effectif),
+                )
+                rows = cur.fetchall() or []
+
+        def _s(v):
+            return str(v) if v is not None else None
+
+        items: List[CollaborateurCompetenceItem] = []
+        for r in rows:
+            res = r.get("resultat_eval")
+            items.append(
+                CollaborateurCompetenceItem(
+                    id_comp=r["id_comp"],
+                    code=r["code"],
+                    intitule=r["intitule"],
+                    domaine=r.get("domaine"),
+
+                    is_required=bool(r.get("is_required")),
+                    niveau_requis=r.get("niveau_requis"),
+
+                    niveau_actuel=r.get("niveau_actuel"),
+                    date_derniere_eval=_s(r.get("date_derniere_eval")),
+                    id_dernier_audit=r.get("id_dernier_audit"),
+
+                    methode_eval=r.get("methode_eval"),
+                    resultat_eval=float(res) if res is not None else None,
+                    observation=r.get("observation"),
+
+                    poids_criticite=r.get("poids_criticite"),
+                    freq_usage=r.get("freq_usage"),
+                    impact_resultat=r.get("impact_resultat"),
+                    dependance=r.get("dependance"),
+                )
+            )
+
+        return CollaborateurCompetencesResponse(
+            id_effectif=id_effectif,
+            id_poste_actuel=id_poste,
+            intitule_poste=intitule_poste,
+            items=items,
         )
 
     except HTTPException:
