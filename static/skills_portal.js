@@ -5,6 +5,35 @@
     topbarInfoText: "Portail Skills — JMB CONSULTANT",
   });
 
+    // Contexte + topbar centralisés (évite de dupliquer ensureContext dans chaque menu)
+  portal.ensureContext = async () => {
+    if (portal.context) return portal.context;
+    if (portal._contextPromise) return portal._contextPromise;
+
+    portal._contextPromise = (async () => {
+      const ctx = await portal.apiJson(
+        `${portal.apiBase}/skills/context/${encodeURIComponent(portal.contactId)}`
+      );
+      portal.context = ctx;
+
+      const civ = (ctx.civilite || "").trim();
+      const prenom = (ctx.prenom || "").trim();
+      const nom = (ctx.nom || "").trim();
+      const display = [civ, prenom, nom].filter(Boolean).join(" ").trim();
+
+      portal.setTopbar(display || "Contact", portal.topbarInfoText || "Portail Skills — JMB CONSULTANT");
+      return ctx;
+    })();
+
+    try {
+      return await portal._contextPromise;
+    } catch (e) {
+      portal._contextPromise = null; // autorise un retry en cas d'échec
+      throw e;
+    }
+  };
+
+
   // Dashboard (HTML + JS)
   portal.registerMenu({
     view: "dashboard",
@@ -71,6 +100,7 @@
     const ok = portal.initShell();
     if (!ok) return;
 
+    await portal.ensureContext();
     // Vue par défaut
     await portal.switchView("dashboard");
   });

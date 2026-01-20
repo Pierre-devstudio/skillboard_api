@@ -158,21 +158,7 @@
     modal.setAttribute("aria-hidden", "true");
   }
 
-  async function ensureContext(portal) {
-    if (portal.context) return portal.context;
-
-    const ctx = await portal.apiJson(`${portal.apiBase}/skills/context/${encodeURIComponent(portal.contactId)}`);
-    portal.context = ctx;
-
-    const civ = (ctx.civilite || "").trim();
-    const prenom = (ctx.prenom || "").trim();
-    const nom = (ctx.nom || "").trim();
-    const display = [civ, prenom, nom].filter(Boolean).join(" ").trim();
-
-    portal.setTopbar(display || "Contact", "Portail Skills — JMB CONSULTANT");
-    return ctx;
-  }
-
+  
   async function loadServices(portal) {
     const nodes = await portal.apiJson(`${portal.apiBase}/skills/organisation/services/${encodeURIComponent(portal.contactId)}`);
     const flat = flattenServices(Array.isArray(nodes) ? nodes : []);
@@ -878,8 +864,7 @@
     onShow: async (portal) => {
       try {
         bindOnce(portal);
-        await ensureContext(portal);
-
+        
         if (!_servicesLoaded) {
           await loadServices(portal);
 

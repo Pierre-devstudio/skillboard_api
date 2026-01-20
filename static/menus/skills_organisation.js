@@ -20,19 +20,6 @@
       .replaceAll("'", "&#039;");
   }
 
-  async function ensureContext(portal) {
-    if (portal.context) return portal.context;
-    const ctx = await portal.apiJson(`${portal.apiBase}/skills/context/${encodeURIComponent(portal.contactId)}`);
-    portal.context = ctx;
-
-    const civ = (ctx.civilite || "").trim();
-    const prenom = (ctx.prenom || "").trim();
-    const nom = (ctx.nom || "").trim();
-    const display = [civ, prenom, nom].filter(Boolean).join(" ").trim();
-
-    portal.setTopbar(display || "Contact", "Portail Skills — JMB CONSULTANT");
-    return ctx;
-  }
 
   function setServiceHeader(node) {
     const title = document.getElementById("orgServiceTitle");
@@ -307,8 +294,7 @@
       window.__skillsPortalInstance = portal;
 
       try {
-        bindOnce(portal);
-        await ensureContext(portal);
+        bindOnce(portal);        
         if (!_servicesLoaded) await loadServices(portal);
       } catch (e) {
         portal.showAlert("error", "Erreur organisation : " + e.message);
