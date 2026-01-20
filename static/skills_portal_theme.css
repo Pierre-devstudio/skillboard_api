@@ -998,7 +998,6 @@ body{
 }
 
 /* Modal Collaborateur: plus large */
-#modalCollaborateur .modal-content{
-  max-width: 1280px;
-  width: min(1280px, calc(100vw - 60px));
+#modalCollaborateur .modal-card{
+  width: min(1280px, calc(100vw - 32px)) !important;
 }
