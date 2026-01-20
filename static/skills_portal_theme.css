@@ -972,6 +972,10 @@ body{
   font-weight: 600;
   font-size: 13px;
   line-height: 1.25;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Badge Domaine: pastille avec indicateur couleur (barre à gauche) */
@@ -991,4 +995,10 @@ body{
   transform: translateY(-50%);
   border-radius: 2px;
   background: var(--dom-color, #9ca3af);
+}
+
+/* Modal Collaborateur: plus large */
+#modalCollaborateur .modal-content{
+  max-width: 1100px;
+  width: min(1100px, calc(100vw - 80px));
 }
