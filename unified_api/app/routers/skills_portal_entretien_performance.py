@@ -72,6 +72,12 @@ class ChecklistCompetenceItem(BaseModel):
     niveau_actuel: Optional[str] = None
     date_derniere_eval: Optional[str] = None
 
+    # Criticité (référentiel poste) pour filtrage côté UI
+    # - poids_criticite : valeur brute (int) issue de tbl_fiche_poste_competence
+    # - poids_criticite_pct : poids normalisé en % par rapport au total du poste
+    poids_criticite: Optional[int] = None
+    poids_criticite_pct: Optional[float] = None
+
 
 class EffectifChecklistResponse(BaseModel):
     effectif: EffectifContext
@@ -414,9 +420,18 @@ def get_effectif_checklist(id_contact: str, id_effectif: str):
                 id_ent = contact_row["code_ent"]
 
                 eff = _fetch_effectif_context(cur, id_ent, id_effectif)
+                id_poste = eff.get("id_poste_actuel")
 
                 cur.execute(
                     """
+                    WITH poste_total AS (
+                        SELECT
+                            id_poste,
+                            SUM(COALESCE(NULLIF(poids_criticite,0),1))::float AS total_weight
+                        FROM public.tbl_fiche_poste_competence
+                        WHERE id_poste = %s
+                        GROUP BY id_poste
+                    )
                     SELECT
                         ec.id_effectif_competence,
                         ec.id_comp,
@@ -424,12 +439,35 @@ def get_effectif_checklist(id_contact: str, id_effectif: str):
                         c.intitule,
                         c.domaine,
                         ec.niveau_actuel,
-                        ec.date_derniere_eval::text AS date_derniere_eval
+                        ec.date_derniere_eval::text AS date_derniere_eval,
+
+                        CASE
+                            WHEN fp.id_competence IS NULL THEN NULL
+                            ELSE COALESCE(NULLIF(fp.poids_criticite,0),1)
+                        END AS poids_criticite,
+
+                        CASE
+                            WHEN fp.id_competence IS NULL THEN 0.0
+                            WHEN pt.total_weight IS NULL OR pt.total_weight <= 0 THEN 0.0
+                            ELSE ROUND(
+                                (COALESCE(NULLIF(fp.poids_criticite,0),1)::float / pt.total_weight) * 100.0,
+                                2
+                            )::float
+                        END AS poids_criticite_pct
+
                     FROM public.tbl_effectif_client_competence ec
                     JOIN public.tbl_effectif_client e
                         ON e.id_effectif = ec.id_effectif_client
                     JOIN public.tbl_competence c
                         ON c.id_comp = ec.id_comp
+
+                    LEFT JOIN public.tbl_fiche_poste_competence fp
+                        ON fp.id_poste = %s
+                       AND fp.id_competence = ec.id_comp
+
+                    LEFT JOIN poste_total pt
+                        ON pt.id_poste = %s
+
                     WHERE ec.id_effectif_client = %s
                       AND e.id_ent = %s
                       AND COALESCE(e.archive, FALSE) = FALSE
@@ -440,7 +478,7 @@ def get_effectif_checklist(id_contact: str, id_effectif: str):
                       AND COALESCE(c.etat, 'valide') <> 'inactive'
                     ORDER BY c.code, c.intitule
                     """,
-                    (id_effectif, id_ent),
+                    (id_poste, id_poste, id_poste, id_effectif, id_ent),
                 )
                 rows = cur.fetchall() or []
 
@@ -464,9 +502,12 @@ def get_effectif_checklist(id_contact: str, id_effectif: str):
                         domaine=r.get("domaine"),
                         niveau_actuel=r.get("niveau_actuel"),
                         date_derniere_eval=r.get("date_derniere_eval"),
+                        poids_criticite=r.get("poids_criticite"),
+                        poids_criticite_pct=r.get("poids_criticite_pct"),
                     )
                     for r in rows
                 ]
+
 
                 return EffectifChecklistResponse(effectif=effectif, competences=competences)
 

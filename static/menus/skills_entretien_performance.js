@@ -492,8 +492,16 @@
     const txtSearchCollab = $("ep_txtSearchCollab");
     if (txtSearchCollab) txtSearchCollab.disabled = !scopeOk;
 
-    const txtSearchComp = $("ep_txtSearchComp");
-    if (txtSearchComp) txtSearchComp.disabled = !collabOk;
+    const rngCrit = $("ep_rngCriticite");
+    const rngCritVal = $("ep_rngCriticiteVal");
+
+    if (rngCrit) rngCrit.disabled = !collabOk;
+
+    if (!collabOk) {
+      if (rngCrit) rngCrit.value = "0";
+      if (rngCritVal) rngCritVal.textContent = "0";
+    }
+
 
     for (let i = 1; i <= 4; i++) {
       setDisabled(`ep_critNote${i}`, true);
@@ -902,12 +910,12 @@
             return String(a.code || "").localeCompare(String(b.code || ""), "fr", { sensitivity: "base" });
           });
 
-          const total = list.length;
-          const neverCount = list.filter(x => x._neverAudited).length;
+          // On garde la liste complète en mémoire pour recalculer les KPI après filtrage
+          state._checklistAll = list;
 
-          setText("ep_compCount", String(total));
-          // KPI: à faire = compétences jamais auditées
-          setText("ep_kpiToDo", `${neverCount} / ${total}`);
+          // Valeurs provisoires, recalculées juste après rendu par applyChecklistCriticiteFilter()
+          setText("ep_compCount", String(list.length));
+          setText("ep_kpiToDo", `0 / ${list.length}`);
 
           // (les autres KPI restent à 0 pour l’instant, on les fera quand on sauvegardera des audits)
           setText("ep_kpiDone", "0");
@@ -915,9 +923,12 @@
           setText("ep_kpiReview", "0");
 
           list.forEach(x => {
+
             const tr = document.createElement("tr");
             tr.dataset.idEffectifCompetence = x.id_effectif_competence || "";
             tr.dataset.idComp = x.id_comp || "";
+            tr.dataset.critPct = String(Number(x.poids_criticite_pct || 0));
+
 
             // Col: code + intitulé ellipsis
             const tdComp = document.createElement("td");
@@ -1233,12 +1244,29 @@
 
 
 
-          // Filtre compétences activé
-          const txtSearchComp = $("ep_txtSearchComp");
-          if (txtSearchComp) txtSearchComp.disabled = false;
+          // Slider criticité activé + filtre appliqué
+          bindCriticiteSliderOnce();
 
-          // Bonus: filtre appliqué si l’utilisateur avait déjà tapé quelque chose
-          filterChecklistRows();
+          const rngCrit = $("ep_rngCriticite");
+          const rngCritVal = $("ep_rngCriticiteVal");
+
+          if (rngCrit) {
+            rngCrit.disabled = false;
+
+            // Reprend le seuil mémorisé si déjà défini, sinon conserve la valeur courante
+            const seuil = (typeof state._critSeuil === "number")
+              ? state._critSeuil
+              : Number(rngCrit.value || 0);
+
+            rngCrit.value = String(Math.max(0, Math.min(100, seuil)));
+          }
+
+          if (rngCritVal) {
+            rngCritVal.textContent = String(Number(rngCrit?.value || 0));
+          }
+
+          applyChecklistCriticiteFilter();
+
 
 
 
@@ -1255,16 +1283,56 @@
     });
   }
 
-    function filterChecklistRows() {
-    const q = ($("ep_txtSearchComp")?.value || "").trim().toLowerCase();
-    const tbody = $("ep_tblCompetences")?.querySelector("tbody");
-    if (!tbody) return;
+  function bindCriticiteSliderOnce() {
+    const rng = $("ep_rngCriticite");
+    if (!rng) return;
 
-    Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
-      const txt = (tr.textContent || "").toLowerCase();
-      tr.style.display = (!q || txt.includes(q)) ? "" : "none";
+    if (state._critBound) return;
+    state._critBound = true;
+
+    rng.addEventListener("input", () => {
+      applyChecklistCriticiteFilter();
     });
   }
+
+  function applyChecklistCriticiteFilter() {
+    const rng = $("ep_rngCriticite");
+    const valEl = $("ep_rngCriticiteVal");
+    const tbody = $("ep_tblCompetences")?.querySelector("tbody");
+    if (!rng || !tbody) return;
+
+    const seuil = Math.max(0, Math.min(100, Number(rng.value || 0)));
+    state._critSeuil = seuil;
+    if (valEl) valEl.textContent = String(seuil);
+
+    // Filtrage DOM (chaque ligne doit avoir tr.dataset.critPct)
+    Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
+      const pct = Number(tr.dataset.critPct || 0);
+      tr.style.display = (pct >= seuil) ? "" : "none";
+    });
+
+    // Compteurs / KPI basés sur la liste complète en mémoire
+    const all = Array.isArray(state._checklistAll) ? state._checklistAll : [];
+    const filtered = all.filter(x => Number(x.poids_criticite_pct || 0) >= seuil);
+
+    const total = all.length;
+    const shown = filtered.length;
+    const todo = filtered.filter(x => x._neverAudited).length;
+
+    // Affiche "X / Y" pour que l’utilisateur comprenne le filtre
+    setText("ep_compCount", total ? `${shown} / ${total}` : "0");
+    setText("ep_kpiToDo", `${todo} / ${shown}`);
+
+    // Si la compétence sélectionnée vient d'être masquée -> on reset
+    const active = tbody.querySelector("tr.active");
+    if (active && active.style.display === "none") {
+      active.classList.remove("active");
+      state.selectedCompetenceId = null;
+      state.selectedEffectifCompetenceId = null;
+      resetEvaluationPanel();
+    }
+  }
+
 
   async function loadCollaborateurs() {
     if (!_portal) return;

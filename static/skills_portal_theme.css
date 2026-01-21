@@ -1001,3 +1001,31 @@ body{
 #modalCollaborateur .modal-card{
   width: min(1280px, calc(100vw - 32px)) !important;
 }
+
+/* ======================================================
+   Entretien de performance - Slider criticité
+   ====================================================== */
+
+#view-entretien-performance .ep-crit-slider{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#view-entretien-performance .ep-crit-slider input[type="range"]{
+  width: 100%;
+}
+
+#view-entretien-performance .ep-crit-slider-meta{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+#view-entretien-performance #ep_rngCriticiteVal{
+  display: inline-block;
+  min-width: 28px;
+  text-align: right;
+}
+
