@@ -450,7 +450,7 @@ def get_effectif_checklist(id_contact: str, id_effectif: str):
                             WHEN fp.id_competence IS NULL THEN 0.0
                             WHEN pt.total_weight IS NULL OR pt.total_weight <= 0 THEN 0.0
                             ELSE ROUND(
-                                (COALESCE(NULLIF(fp.poids_criticite,0),1)::float / pt.total_weight) * 100.0,
+                                ((COALESCE(NULLIF(fp.poids_criticite,0),1)::float / pt.total_weight) * 100.0)::numeric,
                                 2
                             )::float
                         END AS poids_criticite_pct

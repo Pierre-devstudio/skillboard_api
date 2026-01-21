@@ -927,7 +927,10 @@
             const tr = document.createElement("tr");
             tr.dataset.idEffectifCompetence = x.id_effectif_competence || "";
             tr.dataset.idComp = x.id_comp || "";
-            tr.dataset.critPct = String(Number(x.poids_criticite_pct || 0));
+            const _pctRaw = (x && x.poids_criticite_pct !== undefined && x.poids_criticite_pct !== null) ? x.poids_criticite_pct : 0;
+            const _pct = parseFloat(String(_pctRaw).replace(",", "."));
+            tr.dataset.critPct = String(isNaN(_pct) ? 0 : _pct);
+
 
 
             // Col: code + intitulé ellipsis
