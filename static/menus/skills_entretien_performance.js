@@ -469,7 +469,156 @@
     const txtGlobal = $("ep_txtGlobalNotes");
     if (txtGlobal) txtGlobal.value = "";
     setDisabled("ep_txtGlobalNotes", true);
+
+    clearSaveInlineMsg();
   }
+
+    // ======================================================
+  // Helpers UI post-save
+  // ======================================================
+
+  function clearSaveInlineMsg() {
+    const msg = $("ep_saveInlineMsg") || $("ep_saveMsg");
+    if (!msg) return;
+
+    msg.style.display = "none";
+    msg.textContent = "";
+
+    // reset styles inline (sinon ça “colle” au prochain affichage)
+    msg.style.fontWeight = "";
+    msg.style.whiteSpace = "";
+    msg.style.padding = "";
+    msg.style.borderRadius = "";
+    msg.style.border = "";
+    msg.style.background = "";
+    msg.style.color = "";
+  }
+
+  function _formatDateFR(v) {
+    const s = (v ?? "").toString().trim();
+    if (!s) return "";
+
+    // déjà au format FR
+    if (/^\d{2}[\/\-]\d{2}[\/\-]\d{4}$/.test(s)) return s.replace(/-/g, "/");
+
+    // ISO / timestamp
+    const d = new Date(s);
+    if (!Number.isNaN(d.getTime())) return d.toLocaleDateString("fr-FR");
+
+    return s;
+  }
+
+  function _findChecklistRowById(idEffectifCompetence) {
+    const id = (idEffectifCompetence || "").toString().trim();
+    if (!id) return null;
+
+    const tbody = $("ep_tblCompetences")?.querySelector("tbody");
+    if (!tbody) return null;
+
+    return Array.from(tbody.querySelectorAll("tr"))
+      .find(r => (r.dataset.idEffectifCompetence || "").toString() === id) || null;
+  }
+
+  function _setRowAuditedVisual(tr) {
+    if (!tr) return;
+
+    const badge = tr.querySelector("span.sb-badge");
+    if (!badge) return;
+
+    // repasse en badge normal (accent)
+    badge.className = "sb-badge sb-badge-accent";
+    badge.style.background = "";
+    badge.style.borderColor = "";
+    badge.style.color = "";
+    badge.title = "";
+  }
+
+  function _recalcKpiToDoFallbackFromDOM() {
+    const tbody = $("ep_tblCompetences")?.querySelector("tbody");
+    if (!tbody) return;
+
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    const total = rows.length;
+
+    // “jamais auditée” = badge rouge (title) OU style rouge (selon implémentation)
+    const never = rows.filter(r => {
+      const b = r.querySelector("span.sb-badge");
+      if (!b) return false;
+      const t = (b.title || "").toLowerCase();
+      if (t.includes("jamais")) return true;
+
+      // fallback: rouge inline
+      const bg = (b.style.background || "").toLowerCase();
+      return bg === "#d11a2a" || bg.includes("rgb(209");
+    }).length;
+
+    setText("ep_compCount", String(total));
+    setText("ep_kpiToDo", `${never} / ${total}`);
+  }
+
+  function _recalcKpiToDoPreferState() {
+    const list = Array.isArray(state._checklistAll) ? state._checklistAll : null;
+    if (!list) {
+      _recalcKpiToDoFallbackFromDOM();
+      return;
+    }
+
+    const total = list.length;
+    const never = list.filter(x => !!x._neverAudited).length;
+
+    setText("ep_compCount", String(total));
+    setText("ep_kpiToDo", `${never} / ${total}`);
+  }
+
+  async function afterAuditSavedRefresh(savedApiResp) {
+    // 1) Rafraîchir la jauge (couverture poste) sans attendre un changement de collaborateur
+    state._covData = null;
+    state._covLastKey = null;
+    try {
+      refreshCouverturePosteActuel(true);
+    } catch (_) {
+      // pas bloquant
+    }
+
+    // 2) Mettre à jour l’en-tête de la compétence (niveau + date dernière éval)
+    const levelTxt = (document.getElementById("ep_levelABC")?.textContent || "").toString().trim();
+    if (levelTxt && levelTxt !== "—") {
+      setText("ep_compCurrent", levelTxt);
+    }
+
+    const apiDate = _formatDateFR(savedApiResp?.date_audit);
+    const dateTxt = apiDate || new Date().toLocaleDateString("fr-FR");
+    const lastEl = $("ep_compLastEval");
+    if (lastEl) lastEl.textContent = `Dernière éval : ${dateTxt}`;
+
+    // 3) Mettre à jour la checklist (state + visuel badge rouge)
+    const idEc = (state.selectedEffectifCompetenceId || "").toString().trim();
+    if (idEc) {
+      if (Array.isArray(state._checklistAll)) {
+        const it = state._checklistAll.find(x => String(x.id_effectif_competence || "") === idEc);
+        if (it) {
+          it._neverAudited = false;
+          it.date_derniere_eval = dateTxt;
+          if (levelTxt && levelTxt !== "—") it.niveau_actuel = levelTxt;
+        }
+      }
+
+      const tr = _findChecklistRowById(idEc);
+      _setRowAuditedVisual(tr);
+    }
+
+    // 4) KPI “à faire” (jamais auditées)
+    _recalcKpiToDoPreferState();
+
+    // 5) Réappliquer filtres éventuels (recherche / slider selon ta version)
+    try {
+      if (typeof applyChecklistCriticiteFilter === "function") applyChecklistCriticiteFilter();
+      else if (typeof filterChecklistRows === "function") filterChecklistRows();
+    } catch (_) {
+      // pas bloquant
+    }
+  }
+
 
   function applyFocusMode() {
     const section = $("view-entretien-performance");
@@ -1863,16 +2012,15 @@
             };
 
             const clearMsg = () => {
-              if (!msg) return;
-              msg.style.display = "none";
-              msg.textContent = "";
+              clearSaveInlineMsg();
             };
 
             try {
               clearMsg();
               btnSave.disabled = true;
 
-              await saveCurrentAudit();
+              const saved = await saveCurrentAudit();
+              await afterAuditSavedRefresh(saved);
 
               setMsg(true, "Audit enregistré avec succès");
             } catch (e) {
@@ -1881,6 +2029,7 @@
             } finally {
               btnSave.disabled = false;
             }
+
           });
         }
 
