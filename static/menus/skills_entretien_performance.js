@@ -1130,6 +1130,8 @@
               state.selectedCompetenceId = x.id_comp || null;
               state.selectedEffectifCompetenceId = x.id_effectif_competence || null;
 
+              clearSaveInlineMsg();
+
               // En-tête évaluation (avec niveau + dernière éval)
               setText("ep_evalHint", "Évaluation en cours.");
               setText("ep_compTitle", `${(x.code || "").toString().trim()} — ${(x.intitule || "").toString().trim()}`.trim() || "—");
