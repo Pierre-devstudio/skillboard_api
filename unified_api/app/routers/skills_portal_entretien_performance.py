@@ -443,16 +443,14 @@ def get_effectif_checklist(id_contact: str, id_effectif: str):
 
                         CASE
                             WHEN fp.id_competence IS NULL THEN NULL
-                            ELSE COALESCE(NULLIF(fp.poids_criticite,0),1)
+                            ELSE fp.poids_criticite
                         END AS poids_criticite,
 
                         CASE
-                            WHEN fp.id_competence IS NULL THEN 0.0
-                            WHEN pt.total_weight IS NULL OR pt.total_weight <= 0 THEN 0.0
-                            ELSE ROUND(
-                                ((COALESCE(NULLIF(fp.poids_criticite,0),1)::float / pt.total_weight) * 100.0)::numeric,
-                                2
-                            )::float
+                            WHEN fp.id_competence IS NULL OR fp.poids_criticite IS NULL THEN 0.0
+                            -- au cas où la valeur serait stockée en 0.xx au lieu de xx
+                            WHEN fp.poids_criticite::float <= 1.0 THEN ROUND((fp.poids_criticite::float * 100.0)::numeric, 2)::float
+                            ELSE fp.poids_criticite::float
                         END AS poids_criticite_pct
 
                     FROM public.tbl_effectif_client_competence ec
