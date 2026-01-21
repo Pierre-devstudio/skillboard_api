@@ -879,7 +879,10 @@ def get_collaborateur_competences(id_contact: str, id_effectif: str):
                     WHERE (req.id_comp IS NOT NULL OR curc.id_comp IS NOT NULL)
                       AND COALESCE(c.masque, FALSE) = FALSE
                       AND COALESCE(c.etat, 'active') = 'active'
-                    ORDER BY (req.id_comp IS NULL) ASC, c.intitule
+                    ORDER BY
+                        (req.id_comp IS NULL) ASC,
+                        COALESCE(req.poids_criticite, 0) DESC,
+                        c.intitule
                     """,
                     (id_poste, id_effectif),
                 )
