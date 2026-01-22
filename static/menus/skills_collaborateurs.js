@@ -256,7 +256,11 @@
           <button type="button" class="sb-seg sb-seg--soft" data-tab="certs" role="tab" aria-selected="false">
             Certifications
           </button>
+          <button type="button" class="sb-seg sb-seg--soft" data-tab="history" role="tab" aria-selected="false">
+            Historique
+          </button>
         </div>
+
 
         <div class="sb-tab-panel is-active" data-panel="ident" role="tabpanel">
           <div id="collabIdentPanel" class="row" style="flex-direction:column; gap:10px;">
@@ -275,6 +279,81 @@
             <div class="card-sub" style="margin:0;">Chargement…</div>
           </div>
         </div>
+
+        <div class="sb-tab-panel" data-panel="history" role="tabpanel" style="display:none;">
+          <div id="collabHistoryPanel">
+
+            <!-- Filtres -->
+            <div class="sb-history-filters">
+              <div class="sb-field">
+                <label class="sb-label" for="histPeriodSelect">Période</label>
+                <select id="histPeriodSelect" class="sb-select">
+                  <option value="12">12 mois</option>
+                  <option value="24">24 mois</option>
+                  <option value="all" selected>Tout</option>
+                </select>
+              </div>
+
+              <label class="sb-check">
+                <input type="checkbox" id="histIncludeArchived" />
+                <span>Inclure éléments expirés/archivés</span>
+              </label>
+            </div>
+
+            <!-- Accordéons -->
+            <div class="sb-accordion" id="histAccJmb">
+              <button type="button" class="sb-acc-head" data-acc="jmb" aria-expanded="false">
+                <span>Formations effectuées avec JMBCONSULTANT</span>
+                <span class="sb-acc-chevron">▾</span>
+              </button>
+              <div class="sb-acc-body" data-acc-body="jmb" style="display:none;">
+                <div class="card-sub" style="margin:0;">Aucun élément.</div>
+              </div>
+            </div>
+
+            <div class="sb-accordion" id="histAccOther">
+              <button type="button" class="sb-acc-head" data-acc="other" aria-expanded="false">
+                <span>Formations effectuées via autre organisme</span>
+                <span class="sb-acc-chevron">▾</span>
+              </button>
+              <div class="sb-acc-body" data-acc-body="other" style="display:none;">
+                <div class="card-sub" style="margin:0;">Aucun élément.</div>
+              </div>
+            </div>
+
+            <div class="sb-accordion" id="histAccAudits">
+              <button type="button" class="sb-acc-head" data-acc="audits" aria-expanded="false">
+                <span>Audits des compétences</span>
+                <span class="sb-acc-chevron">▾</span>
+              </button>
+              <div class="sb-acc-body" data-acc-body="audits" style="display:none;">
+                <div class="card-sub" style="margin:0;">Aucun élément.</div>
+              </div>
+            </div>
+
+            <div class="sb-accordion" id="histAccCerts">
+              <button type="button" class="sb-acc-head" data-acc="certs_hist" aria-expanded="false">
+                <span>Certifications</span>
+                <span class="sb-acc-chevron">▾</span>
+              </button>
+              <div class="sb-acc-body" data-acc-body="certs_hist" style="display:none;">
+                <div class="card-sub" style="margin:0;">Aucun élément.</div>
+              </div>
+            </div>
+
+            <div class="sb-accordion" id="histAccMoves">
+              <button type="button" class="sb-acc-head" data-acc="moves" aria-expanded="false">
+                <span>Évolutions structurantes</span>
+                <span class="sb-acc-chevron">▾</span>
+              </button>
+              <div class="sb-acc-body" data-acc-body="moves" style="display:none;">
+                <div class="card-sub" style="margin:0;">Aucun élément.</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
       `;
     }
 
@@ -292,6 +371,7 @@
         panels.forEach(p => {
           const active = p.getAttribute("data-panel") === key;
           p.classList.toggle("is-active", active);
+          p.style.display = active ? "" : "none";
         });
       };
 
@@ -303,6 +383,22 @@
 
       // sécurité: force l’onglet par défaut à chaque ouverture
       setActiveTab("ident");
+
+      // Accordéons (Historique)
+      const accHeads = Array.from(body.querySelectorAll(".sb-acc-head[data-acc]"));
+      accHeads.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const key = btn.getAttribute("data-acc");
+          const target = body.querySelector(`.sb-acc-body[data-acc-body="${key}"]`);
+          if (!target) return;
+
+          const isOpen = btn.getAttribute("aria-expanded") === "true";
+          btn.setAttribute("aria-expanded", isOpen ? "false" : "true");
+          btn.classList.toggle("is-open", !isOpen);
+          target.style.display = isOpen ? "none" : "";
+        });
+      });
+
 
       // Chargement Identification (API) + rendu
       const identHost = body.querySelector("#collabIdentPanel");

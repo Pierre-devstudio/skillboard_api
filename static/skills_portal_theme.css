@@ -1003,6 +1003,115 @@ body{
 }
 
 /* ======================================================
+   Modal Collaborateur - Onglet Historique
+   ====================================================== */
+
+#modalCollaborateur .sb-history-filters{
+  display:flex;
+  gap:12px;
+  align-items:flex-end;
+  flex-wrap:wrap;
+  margin:0 0 12px 0;
+  padding:10px 12px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  background:#fafafa;
+}
+
+#modalCollaborateur .sb-history-filters .sb-field{
+  min-width: 220px;
+}
+
+#modalCollaborateur .sb-history-filters .sb-label{
+  display:block;
+  font-size:12px;
+  font-weight:700;
+  color:#374151;
+  margin-bottom:4px;
+}
+
+#modalCollaborateur .sb-history-filters .sb-select{
+  width:100%;
+  padding:8px 10px;
+  border-radius:10px;
+  border:1px solid #d1d5db;
+  background:#ffffff;
+  color:#111827;
+  font-size:13px;
+}
+
+#modalCollaborateur .sb-history-filters .sb-select:focus{
+  outline:none;
+  box-shadow: 0 0 0 3px var(--reading-accent-ring);
+  border-color: var(--reading-accent);
+}
+
+#modalCollaborateur .sb-history-filters .sb-check{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:13px;
+  color:#374151;
+  user-select:none;
+  padding:6px 8px;
+  border-radius:10px;
+}
+
+#modalCollaborateur .sb-history-filters .sb-check:hover{
+  background: color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
+}
+
+#modalCollaborateur .sb-history-filters .sb-check input{
+  transform: translateY(1px);
+}
+
+/* Accordéons */
+#modalCollaborateur .sb-accordion{
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  overflow:hidden;
+  background:#ffffff;
+  margin-bottom:10px;
+}
+
+#modalCollaborateur .sb-acc-head{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  border:0;
+  background:#ffffff;
+  cursor:pointer;
+  text-align:left;
+  font-weight:700;
+  color:#111827;
+}
+
+#modalCollaborateur .sb-acc-head:hover{
+  background: color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
+}
+
+#modalCollaborateur .sb-acc-chevron{
+  font-size:14px;
+  color:#6b7280;
+  transition: transform .12s ease;
+  flex:0 0 auto;
+}
+
+#modalCollaborateur .sb-acc-head.is-open .sb-acc-chevron{
+  transform: rotate(180deg);
+}
+
+#modalCollaborateur .sb-acc-body{
+  padding:12px;
+  border-top:1px solid #e5e7eb;
+  background:#ffffff;
+}
+
+
+/* ======================================================
    Entretien de performance - Slider criticité
    ====================================================== */
 
