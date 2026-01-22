@@ -548,9 +548,9 @@
               <colgroup>
                 <col style="width:50px;">
                 <col>
-                <col style="width:65px;">
-                <col style="width:65px;">
-                <col style="width:50px;">
+                <col style="width:40px;">
+                <col style="width:40px;">
+                <col style="width:30px;">
               </colgroup>
               <thead>
                 <tr>
