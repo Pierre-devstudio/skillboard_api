@@ -545,13 +545,20 @@
         host.innerHTML = `
           <div class="sb-table-wrap">
             <table class="sb-table" style="table-layout:fixed;">
+              <colgroup>
+                <col style="width:90px;">
+                <col>
+                <col style="width:85px;">
+                <col style="width:95px;">
+                <col style="width:70px;">
+              </colgroup>
               <thead>
                 <tr>
-                  <th style="width:110px;">Code</th>
+                  <th>Code</th>
                   <th>Formation</th>
-                  <th style="width:95px; text-align:center;">Fin</th>
-                  <th style="width:110px; text-align:center;">État</th>
-                  <th style="width:80px; text-align:center;">&nbsp;</th>
+                  <th style="text-align:center;">Fin</th>
+                  <th style="text-align:center;">État</th>
+                  <th style="text-align:center;">&nbsp;</th>
                 </tr>
               </thead>
               <tbody>${rows}</tbody>
