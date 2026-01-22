@@ -142,6 +142,42 @@ class CollaborateurCompetencesResponse(BaseModel):
     intitule_poste: Optional[str] = None
     items: List[CollaborateurCompetenceItem]
 
+class CollaborateurCertificationItem(BaseModel):
+    id_certification: str
+    nom_certification: str
+    categorie: Optional[str] = None
+    description: Optional[str] = None
+
+    # Comparatif poste
+    is_required: bool = False
+    niveau_exigence: Optional[str] = None
+    validite_reference: Optional[int] = None
+    validite_override: Optional[int] = None
+    validite_attendue: Optional[int] = None
+    delai_renouvellement: Optional[int] = None  
+    commentaire_poste: Optional[str] = None
+
+    # État actuel (salarié)
+    is_acquired: bool = False
+    id_effectif_certification: Optional[str] = None
+    date_obtention: Optional[str] = None
+    date_expiration: Optional[str] = None
+    date_expiration_calculee: Optional[str] = None
+    statut_validite: Optional[str] = None
+    jours_restants: Optional[int] = None
+
+    organisme: Optional[str] = None
+    reference: Optional[str] = None
+    commentaire: Optional[str] = None
+    id_preuve_doc: Optional[str] = None
+
+
+class CollaborateurCertificationsResponse(BaseModel):
+    id_effectif: str
+    id_poste_actuel: Optional[str] = None
+    intitule_poste: Optional[str] = None
+    items: List[CollaborateurCertificationItem]
+
 
 # ======================================================
 # Helpers
@@ -938,6 +974,207 @@ def get_collaborateur_competences(id_contact: str, id_effectif: str):
             )
 
         return CollaborateurCompetencesResponse(
+            id_effectif=id_effectif,
+            id_poste_actuel=id_poste,
+            intitule_poste=intitule_poste,
+            items=items,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+    
+
+
+@router.get(
+    "/skills/collaborateurs/certifications/{id_contact}/{id_effectif}",
+    response_model=CollaborateurCertificationsResponse,
+)
+def get_collaborateur_certifications(id_contact: str, id_effectif: str):
+    """
+    Onglet Certifications (fiche salarié)
+    - Union: certifications requises par le poste + certifications acquises par le salarié
+    - Acquises: tbl_effectif_client_certification (archive=FALSE) avec prise du dernier enregistrement par certification
+    - Validité attendue: COALESCE(tbl_fiche_poste_certification.validite_override, tbl_certification.duree_validite)
+    - Statut: 'valide' / 'a_renouveler' / 'expiree' (basé sur date_expiration si renseignée, sinon expiration calculée)
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _get_id_ent_from_contact(cur, id_contact)
+
+                # Poste actuel (et libellé) pour ce salarié
+                cur.execute(
+                    """
+                    SELECT
+                        ec.id_effectif,
+                        ec.id_poste_actuel,
+                        fp.intitule_poste
+                    FROM public.tbl_effectif_client ec
+                    LEFT JOIN public.tbl_fiche_poste fp
+                      ON fp.id_poste = ec.id_poste_actuel
+                     AND COALESCE(fp.actif, TRUE) = TRUE
+                    WHERE ec.id_ent = %s
+                      AND ec.id_effectif = %s
+                    """,
+                    (id_ent, id_effectif),
+                )
+                eff = cur.fetchone()
+                if eff is None:
+                    raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+
+                id_poste = eff.get("id_poste_actuel")
+                intitule_poste = eff.get("intitule_poste")
+
+                cur.execute(
+                    """
+                    WITH req AS (
+                        SELECT
+                            fpc.id_certification,
+                            fpc.validite_override,
+                            fpc.niveau_exigence,
+                            fpc.commentaire
+                        FROM public.tbl_fiche_poste_certification fpc
+                        WHERE fpc.id_poste = %s
+                    ),
+                    curc_raw AS (
+                        SELECT
+                            ecc.*,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY ecc.id_certification
+                                ORDER BY
+                                    ecc.date_obtention DESC NULLS LAST,
+                                    ecc.date_creation DESC,
+                                    ecc.id_effectif_certification DESC
+                            ) AS rn
+                        FROM public.tbl_effectif_client_certification ecc
+                        WHERE ecc.id_effectif = %s
+                        AND ecc.archive = FALSE
+                    ),
+                    curc AS (
+                        SELECT
+                            id_effectif_certification,
+                            id_certification,
+                            date_obtention,
+                            date_expiration,
+                            organisme,
+                            reference,
+                            commentaire,
+                            id_preuve_doc
+                        FROM curc_raw
+                        WHERE rn = 1
+                    ),
+                    base AS (
+                        SELECT
+                            c.id_certification,
+                            c.nom_certification,
+                            c.description,
+                            c.categorie,
+                            c.delai_renouvellement,
+
+                            (req.id_certification IS NOT NULL) AS is_required,
+                            COALESCE(req.niveau_exigence, 'requis') AS niveau_exigence,
+                            c.duree_validite AS validite_reference,
+                            req.validite_override,
+                            COALESCE(req.validite_override, c.duree_validite) AS validite_attendue,
+                            req.commentaire AS commentaire_poste,
+
+                            (curc.id_certification IS NOT NULL) AS is_acquired,
+                            curc.id_effectif_certification,
+                            curc.date_obtention,
+                            curc.date_expiration,
+                            curc.organisme,
+                            curc.reference,
+                            curc.commentaire,
+                            curc.id_preuve_doc,
+
+                            CASE
+                                WHEN curc.date_expiration IS NULL
+                                AND curc.date_obtention IS NOT NULL
+                                AND COALESCE(req.validite_override, c.duree_validite) IS NOT NULL
+                                THEN (curc.date_obtention + make_interval(months => COALESCE(req.validite_override, c.duree_validite)))::date
+                                ELSE NULL
+                            END AS date_expiration_calculee
+                        FROM public.tbl_certification c
+                        LEFT JOIN req
+                        ON req.id_certification = c.id_certification
+                        LEFT JOIN curc
+                        ON curc.id_certification = c.id_certification
+                        WHERE (req.id_certification IS NOT NULL OR curc.id_certification IS NOT NULL)
+                        AND COALESCE(c.masque, FALSE) = FALSE
+                    ),
+                    calc AS (
+                        SELECT
+                            b.*,
+                            COALESCE(b.date_expiration, b.date_expiration_calculee) AS date_expiration_effective
+                        FROM base b
+                    )
+                    SELECT
+                        c.*,
+                        CASE
+                            WHEN c.date_expiration_effective IS NULL THEN NULL
+                            WHEN c.date_expiration_effective < CURRENT_DATE THEN 'expiree'
+                            WHEN c.date_expiration_effective < (CURRENT_DATE + COALESCE(c.delai_renouvellement, 60)) THEN 'a_renouveler'
+                            ELSE 'valide'
+                        END AS statut_validite,
+                        CASE
+                            WHEN c.date_expiration_effective IS NULL THEN NULL
+                            ELSE (c.date_expiration_effective - CURRENT_DATE)
+                        END AS jours_restants
+                    FROM calc c
+                    ORDER BY
+                        (c.is_required = FALSE) ASC,
+                        CASE lower(COALESCE(c.niveau_exigence, 'requis'))
+                            WHEN 'requis' THEN 0
+                            WHEN 'souhaite' THEN 1
+                            WHEN 'souhaité' THEN 1
+                            ELSE 2
+                        END ASC,
+                        COALESCE(c.categorie, '') ASC,
+                        c.nom_certification;
+                    """,
+                    (id_poste, id_effectif),
+                )
+                rows = cur.fetchall() or []
+
+        def _s(v):
+            return str(v) if v is not None else None
+
+        items: List[CollaborateurCertificationItem] = []
+        for r in rows:
+            jr = r.get("jours_restants")
+            items.append(
+                CollaborateurCertificationItem(
+                    id_certification=r["id_certification"],
+                    nom_certification=r["nom_certification"],
+                    categorie=r.get("categorie"),
+                    description=r.get("description"),
+
+                    is_required=bool(r.get("is_required")),
+                    niveau_exigence=r.get("niveau_exigence"),
+                    validite_reference=r.get("validite_reference"),
+                    validite_override=r.get("validite_override"),
+                    validite_attendue=r.get("validite_attendue"),
+                    delai_renouvellement=r.get("delai_renouvellement"),
+                    commentaire_poste=r.get("commentaire_poste"),
+
+                    is_acquired=bool(r.get("is_acquired")),
+                    id_effectif_certification=r.get("id_effectif_certification"),
+                    date_obtention=_s(r.get("date_obtention")),
+                    date_expiration=_s(r.get("date_expiration")),
+                    date_expiration_calculee=_s(r.get("date_expiration_calculee")),
+                    statut_validite=r.get("statut_validite"),
+                    jours_restants=int(jr) if jr is not None else None,
+
+                    organisme=r.get("organisme"),
+                    reference=r.get("reference"),
+                    commentaire=r.get("commentaire"),
+                    id_preuve_doc=r.get("id_preuve_doc"),
+                )
+            )
+
+        return CollaborateurCertificationsResponse(
             id_effectif=id_effectif,
             id_poste_actuel=id_poste,
             intitule_poste=intitule_poste,

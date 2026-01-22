@@ -109,6 +109,11 @@
     return await window.portal.apiJson(url);
   }
 
+  async function loadCertifications(id_contact, id_effectif) {
+    const url = `${API_BASE}/skills/collaborateurs/certifications/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_effectif)}`;
+    return await window.portal.apiJson(url);
+  }
+
   function renderServicesSelect(items) {
     const sel = byId("collabServiceSelect");
     if (!sel) return;
@@ -262,8 +267,8 @@
         </div>
 
         <div class="sb-tab-panel" data-panel="certs" role="tabpanel">
-          <div class="card-sub" style="margin:0;">
-            Onglet en construction (certifications attendues / acquises à venir).
+          <div id="collabCertsPanel">
+            <div class="card-sub" style="margin:0;">Chargement…</div>
           </div>
         </div>
       `;
@@ -539,6 +544,132 @@
                   btn.addEventListener("click", loadSkillsIfNeeded);
                 }
               });
+
+              // Chargement Certifications (lazy: au premier clic onglet)
+              let _certsLoaded = false;
+
+              const renderCertifications = (data) => {
+                const host = body.querySelector("#collabCertsPanel");
+                if (!host) return;
+
+                const items = Array.isArray(data?.items) ? data.items : [];
+
+                if (items.length === 0) {
+                  host.innerHTML = `<div class="card-sub" style="margin:0;">Aucune certification trouvée.</div>`;
+                  return;
+                }
+
+                const badge = (txt) => `<span class="sb-badge">${escapeHtml(txt)}</span>`;
+
+                const fmtValidite = (n) => (n == null ? "–" : `${n} mois`);
+                const fmtDelai = (n) => (n == null ? "–" : `${n} j`);
+                const fmtObt = (x) => (x?.is_acquired ? formatDateFR(x.date_obtention) : "–");
+
+                const getExpIso = (x) => x?.date_expiration || x?.date_expiration_calculee || null;
+                const fmtExp = (x) => (x?.is_acquired ? formatDateFR(getExpIso(x)) : "–");
+
+                const statutLabel = (x) => {
+                  if (!x?.is_acquired) return "Non acquis";
+                  const s = (x?.statut_validite || "").toString().toLowerCase();
+                  if (s === "valide") return "Valide";
+                  if (s === "a_renouveler") return "À renouveler";
+                  if (s === "expiree") return "Expirée";
+                  return "–";
+                };
+
+                const rows = items.map(x => {
+                  const badges = [];
+
+                  if (x.categorie) badges.push(badge(x.categorie));
+
+                  if (x.is_required) {
+                    const ne = (x.niveau_exigence || "requis").toString().toLowerCase();
+                    badges.push(badge(ne.includes("souhait") ? "Souhaité" : "Requis"));
+                  } else {
+                    badges.push(badge("Hors poste"));
+                  }
+
+                  const statut = statutLabel(x);
+                  const jr = x?.jours_restants != null ? `${x.jours_restants} j` : "–";
+
+                  return `
+                    <tr>
+                      <td>
+                        <div class="sb-comp-title">${escapeHtml(x.nom_certification || "")}</div>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:6px;">
+                          ${badges.join("")}
+                        </div>
+                      </td>
+
+                      <td style="text-align:center;">
+                        <div>${escapeHtml(fmtValidite(x.validite_attendue))}</div>
+                        <div class="card-sub" style="margin:6px 0 0 0;">Renouv.: ${escapeHtml(fmtDelai(x.delai_renouvellement))}</div>
+                      </td>
+
+                      <td style="text-align:center;">
+                        ${badge(statut)}
+                        <div class="card-sub" style="margin:6px 0 0 0;">${escapeHtml(jr)}</div>
+                      </td>
+
+                      <td style="text-align:center;">
+                        <div>${escapeHtml(fmtObt(x))}</div>
+                        <div class="card-sub" style="margin:6px 0 0 0;">${escapeHtml(fmtExp(x))}</div>
+                      </td>
+                    </tr>
+                  `;
+                }).join("");
+
+                host.innerHTML = `
+                  <div class="card-sub" style="margin:0 0 10px 0;">
+                    Poste: <strong>${escapeHtml(data.intitule_poste || "–")}</strong>
+                  </div>
+
+                  <div class="sb-table-wrap">
+                    <table class="sb-table">
+                      <thead>
+                        <tr>
+                          <th>Certification</th>
+                          <th style="width:160px; text-align:center;">Validité</th>
+                          <th style="width:160px; text-align:center;">État</th>
+                          <th style="width:180px; text-align:center;">Dates</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${rows}
+                      </tbody>
+                    </table>
+                  </div>
+                `;
+              };
+
+              const loadCertsIfNeeded = () => {
+                if (_certsLoaded) return;
+                _certsLoaded = true;
+
+                const host = body.querySelector("#collabCertsPanel");
+                if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+
+                const id_contact = window.portal?.contactId;
+                if (!id_contact || !it?.id_effectif) {
+                  if (host) host.innerHTML = `<div class="card-sub" style="margin:0; color:#b91c1c;">Erreur : identifiants manquants.</div>`;
+                  return;
+                }
+
+                loadCertifications(id_contact, it.id_effectif)
+                  .then(renderCertifications)
+                  .catch(e => {
+                    if (host) host.innerHTML = `<div class="card-sub" style="margin:0; color:#b91c1c;">Erreur chargement certifications : ${escapeHtml(e.message || String(e))}</div>`;
+                    console.error(e);
+                  });
+              };
+
+              // Hook: au clic onglet "Certifications"
+              tabs.forEach(btn => {
+                if (btn.getAttribute("data-tab") === "certs") {
+                  btn.addEventListener("click", loadCertsIfNeeded);
+                }
+              });
+
       }
     }
 
