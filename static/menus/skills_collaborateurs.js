@@ -561,7 +561,14 @@
 
                 const badge = (txt) => `<span class="sb-badge">${escapeHtml(txt)}</span>`;
 
-                const fmtValidite = (n) => (n == null ? "–" : `${n} mois`);
+                const fmtValidite = (n) => {
+                  if (n == null) return "–";
+                  const v = Number(n);
+                  if (!Number.isFinite(v)) return "–";
+                  if (v <= 0) return "Permanent";
+                  return `${v} mois`;
+                };
+
                 const fmtDelai = (n) => (n == null ? "–" : `${n} j`);
                 const fmtObt = (x) => (x?.is_acquired ? formatDateFR(x.date_obtention) : "–");
 
