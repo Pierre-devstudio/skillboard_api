@@ -546,7 +546,7 @@
           <div class="sb-table-wrap">
             <table class="sb-table" style="table-layout:fixed;">
               <colgroup>
-                <col style="width:75px;">
+                <col style="width:50px;">
                 <col>
                 <col style="width:65px;">
                 <col style="width:65px;">
