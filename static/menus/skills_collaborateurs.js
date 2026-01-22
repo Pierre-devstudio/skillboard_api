@@ -515,9 +515,10 @@
 
         const fmtFormation = (x) => {
           const titre = x?.titre_formation ? escapeHtml(x.titre_formation) : "–";
-          const code = x?.code_formation ? ` <span class="card-sub" style="margin:0;">(${escapeHtml(x.code_formation)})</span>` : "";
-          return `${titre}${code}`;
+          const code = x?.code_formation ? ` (${escapeHtml(x.code_formation)})` : "";
+          return `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${titre}${code}</div>`;
         };
+
 
         const rows = items.map((x) => {
           const codeAction = x?.code_action_formation ? escapeHtml(x.code_action_formation) : "–";
@@ -525,14 +526,14 @@
 
           return `
             <tr>
-              <td style="white-space:nowrap;">${codeAction}</td>
-              <td>${fmtFormation(x)}</td>
+              <td style="white-space:nowrap; font-weight:700;">${codeAction}</td>
+              <td style="overflow:hidden; max-width:0;">${fmtFormation(x)}</td>
               <td style="text-align:center; white-space:nowrap;">${escapeHtml(fmtFin(x))}</td>
               <td style="text-align:center; white-space:nowrap;">${etat}</td>
               <td style="text-align:center;">
                 <button type="button"
                         class="btn-secondary"
-                        style="padding:6px 10px; font-size:12px;"
+                        style="padding:5px 8px; font-size:12px;"
                         data-jmb-detail="${escapeHtml(x.id_action_formation_effectif || "")}">
                   Détail
                 </button>
@@ -543,14 +544,14 @@
 
         host.innerHTML = `
           <div class="sb-table-wrap">
-            <table class="sb-table">
+            <table class="sb-table" style="table-layout:fixed;">
               <thead>
                 <tr>
-                  <th style="width:160px;">Code action</th>
+                  <th style="width:110px;">Code</th>
                   <th>Formation</th>
-                  <th style="width:130px; text-align:center;">Date fin</th>
-                  <th style="width:140px; text-align:center;">État</th>
-                  <th style="width:110px; text-align:center;">&nbsp;</th>
+                  <th style="width:95px; text-align:center;">Fin</th>
+                  <th style="width:110px; text-align:center;">État</th>
+                  <th style="width:80px; text-align:center;">&nbsp;</th>
                 </tr>
               </thead>
               <tbody>${rows}</tbody>
