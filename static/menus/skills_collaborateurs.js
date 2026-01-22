@@ -544,7 +544,7 @@
 
         host.innerHTML = `
           <div class="sb-table-wrap">
-            <table class="sb-table" style="table-layout:fixed;">
+            <table class="sb-table" style="width:100%; table-layout:fixed;">
               <colgroup>
                 <col style="width:50px;">
                 <col>
