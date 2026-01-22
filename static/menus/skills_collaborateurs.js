@@ -238,7 +238,11 @@
     const body = byId("collabModalBody");
 
     if (title) title.textContent = `${it.prenom_effectif || ""} ${it.nom_effectif || ""}`.trim() || "Collaborateur";
-    if (sub) sub.textContent = "Détail du collaborateur.";
+    if (sub) {
+      sub.textContent = "";
+      sub.style.display = "none";
+    }
+
 
     if (body) {
       body.innerHTML = `
