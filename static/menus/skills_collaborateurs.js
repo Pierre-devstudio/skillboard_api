@@ -114,6 +114,20 @@
     return await window.portal.apiJson(url);
   }
 
+  async function loadHistoriqueFormationsJmb(id_contact, id_effectif, months, include_archived) {
+    const qs = new URLSearchParams();
+    if (months != null && months !== "all") qs.set("months", String(months));
+    if (include_archived) qs.set("include_archived", "true");
+
+    const url =
+      `${API_BASE}/skills/collaborateurs/historique/formations-jmb/` +
+      `${encodeURIComponent(id_contact)}/${encodeURIComponent(id_effectif)}` +
+      (qs.toString() ? `?${qs.toString()}` : "");
+
+    return await window.portal.apiJson(url);
+  }
+
+
   function renderServicesSelect(items) {
     const sel = byId("collabServiceSelect");
     if (!sel) return;
@@ -398,6 +412,212 @@
           target.style.display = isOpen ? "none" : "";
         });
       });
+
+      // ======================================================
+      // Historique > Formations JMBCONSULTANT (V1 = liste + modal placeholder)
+      // ======================================================
+
+      let _histJmbLastKey = null;
+
+      const getHistFilters = () => {
+        const p = body.querySelector("#histPeriodSelect")?.value || "all";
+        const months = (p === "all") ? null : parseInt(p, 10);
+        const include_archived = !!body.querySelector("#histIncludeArchived")?.checked;
+        return { months: (Number.isFinite(months) ? months : null), include_archived };
+      };
+
+      const getJmbAccHead = () => body.querySelector('#histAccJmb .sb-acc-head[data-acc="jmb"]');
+      const getJmbAccBody = () => body.querySelector('.sb-acc-body[data-acc-body="jmb"]');
+
+      const ensureJmbDetailModal = () => {
+        let m = document.getElementById("modalCollabJmbDetail");
+        if (m) return m;
+
+        m = document.createElement("section");
+        m.className = "modal";
+        m.id = "modalCollabJmbDetail";
+        m.setAttribute("aria-hidden", "true");
+
+        m.innerHTML = `
+          <div class="modal-card">
+            <div class="modal-header">
+              <div style="font-weight:600;" id="jmbDetailTitle">Détail formation</div>
+              <button type="button" class="modal-x" id="btnCloseJmbDetailModal" aria-label="Fermer">×</button>
+            </div>
+            <div class="modal-body">
+              <div class="card-sub" style="margin-top:0;" id="jmbDetailSub">Détail à venir</div>
+              <div id="jmbDetailBody" style="margin-top:12px;">
+                <div class="card-sub" style="margin:0;">Contenu du détail non implémenté (volontairement).</div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn-secondary" id="btnJmbDetailClose">Fermer</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(m);
+
+        const close = () => {
+          m.classList.remove("show");
+          m.setAttribute("aria-hidden", "true");
+        };
+
+        m.querySelector("#btnCloseJmbDetailModal")?.addEventListener("click", close);
+        m.querySelector("#btnJmbDetailClose")?.addEventListener("click", close);
+
+        return m;
+      };
+
+      const openJmbDetailModal = (row) => {
+        const m = ensureJmbDetailModal();
+        const t = m.querySelector("#jmbDetailTitle");
+        const s = m.querySelector("#jmbDetailSub");
+        const b = m.querySelector("#jmbDetailBody");
+
+        const titre = row?.titre_formation ? row.titre_formation : "Formation";
+        const codeF = row?.code_formation ? ` • ${row.code_formation}` : "";
+        const codeA = row?.code_action_formation ? ` • ${row.code_action_formation}` : "";
+
+        if (t) t.textContent = `${titre}${codeF}${codeA}`;
+        if (s) s.textContent = "Détail (contenu à venir)";
+        if (b) {
+          b.innerHTML = `
+            <div class="card-sub" style="margin:0;">
+              Modal placeholder. On branchera ici : compétences obtenues + documents SharePoint.
+            </div>
+          `;
+        }
+
+        m.classList.add("show");
+        m.setAttribute("aria-hidden", "false");
+      };
+
+      const renderHistJmb = (data) => {
+        const host = getJmbAccBody();
+        if (!host) return;
+
+        const items = Array.isArray(data?.items) ? data.items : [];
+        if (items.length === 0) {
+          host.innerHTML = `<div class="card-sub" style="margin:0;">Aucune formation trouvée.</div>`;
+          return;
+        }
+
+        const badge = (txt) => `<span class="sb-badge">${escapeHtml(txt)}</span>`;
+
+        const fmtEtat = (s) => {
+          const v = (s ?? "").toString().trim();
+          return v ? v : "–";
+        };
+
+        const fmtFin = (x) => {
+          return formatDateFR(x?.date_fin_formation || x?.date_debut_formation || null);
+        };
+
+        const fmtFormation = (x) => {
+          const titre = x?.titre_formation ? escapeHtml(x.titre_formation) : "–";
+          const code = x?.code_formation ? ` <span class="card-sub" style="margin:0;">(${escapeHtml(x.code_formation)})</span>` : "";
+          return `${titre}${code}`;
+        };
+
+        const rows = items.map((x) => {
+          const codeAction = x?.code_action_formation ? escapeHtml(x.code_action_formation) : "–";
+          const etat = badge(fmtEtat(x?.etat_action));
+
+          return `
+            <tr>
+              <td style="white-space:nowrap;">${codeAction}</td>
+              <td>${fmtFormation(x)}</td>
+              <td style="text-align:center; white-space:nowrap;">${escapeHtml(fmtFin(x))}</td>
+              <td style="text-align:center; white-space:nowrap;">${etat}</td>
+              <td style="text-align:center;">
+                <button type="button"
+                        class="btn-secondary"
+                        style="padding:6px 10px; font-size:12px;"
+                        data-jmb-detail="${escapeHtml(x.id_action_formation_effectif || "")}">
+                  Détail
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+
+        host.innerHTML = `
+          <div class="sb-table-wrap">
+            <table class="sb-table">
+              <thead>
+                <tr>
+                  <th style="width:160px;">Code action</th>
+                  <th>Formation</th>
+                  <th style="width:130px; text-align:center;">Date fin</th>
+                  <th style="width:140px; text-align:center;">État</th>
+                  <th style="width:110px; text-align:center;">&nbsp;</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        `;
+
+        // Bind boutons détail
+        const btns = Array.from(host.querySelectorAll("[data-jmb-detail]"));
+        btns.forEach(btn => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-jmb-detail");
+            const row = items.find(r => (r.id_action_formation_effectif || "") === id);
+            openJmbDetailModal(row || null);
+          });
+        });
+      };
+
+      const loadHistJmb = (force = false) => {
+        const id_contact = window.portal?.contactId;
+        if (!id_contact || !it?.id_effectif) return;
+
+        const f = getHistFilters();
+        const key = `${f.months ?? "all"}|${f.include_archived ? "1" : "0"}`;
+
+        if (!force && _histJmbLastKey === key) return;
+        _histJmbLastKey = key;
+
+        const host = getJmbAccBody();
+        if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+
+        loadHistoriqueFormationsJmb(id_contact, it.id_effectif, f.months, f.include_archived)
+          .then(renderHistJmb)
+          .catch(e => {
+            if (host) host.innerHTML = `<div class="card-sub" style="margin:0; color:#b91c1c;">Erreur chargement : ${escapeHtml(e.message || String(e))}</div>`;
+            console.error(e);
+          });
+      };
+
+      // Au dépliage de l'accordéon JMB -> charge
+      const jmbHead = getJmbAccHead();
+      if (jmbHead) {
+        jmbHead.addEventListener("click", () => {
+          // On se place après le toggle (le listener accordéon a déjà tourné)
+          if (jmbHead.getAttribute("aria-expanded") === "true") {
+            loadHistJmb(false);
+          }
+        });
+      }
+
+      // Si filtres changent et accordéon ouvert -> reload
+      const periodSel = body.querySelector("#histPeriodSelect");
+      if (periodSel) {
+        periodSel.addEventListener("change", () => {
+          _histJmbLastKey = null;
+          if (jmbHead?.getAttribute("aria-expanded") === "true") loadHistJmb(true);
+        });
+      }
+
+      const incChk = body.querySelector("#histIncludeArchived");
+      if (incChk) {
+        incChk.addEventListener("change", () => {
+          _histJmbLastKey = null;
+          if (jmbHead?.getAttribute("aria-expanded") === "true") loadHistJmb(true);
+        });
+      }
+
 
 
       // Chargement Identification (API) + rendu

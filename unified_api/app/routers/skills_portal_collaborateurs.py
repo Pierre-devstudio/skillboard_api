@@ -178,6 +178,28 @@ class CollaborateurCertificationsResponse(BaseModel):
     intitule_poste: Optional[str] = None
     items: List[CollaborateurCertificationItem]
 
+class CollaborateurFormationJmbItem(BaseModel):
+    id_action_formation_effectif: str
+
+    id_action_formation: Optional[str] = None
+    code_action_formation: Optional[str] = None
+    etat_action: Optional[str] = None
+
+    date_debut_formation: Optional[str] = None
+    date_fin_formation: Optional[str] = None
+
+    id_form: Optional[str] = None
+    code_formation: Optional[str] = None
+    titre_formation: Optional[str] = None
+
+    archive_inscription: Optional[bool] = None
+    archive_action: Optional[bool] = None
+
+
+class CollaborateurFormationsJmbResponse(BaseModel):
+    id_effectif: str
+    items: List[CollaborateurFormationJmbItem]
+
 
 # ======================================================
 # Helpers
@@ -1180,6 +1202,132 @@ def get_collaborateur_certifications(id_contact: str, id_effectif: str):
             intitule_poste=intitule_poste,
             items=items,
         )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/skills/collaborateurs/historique/formations-jmb/{id_contact}/{id_effectif}",
+    response_model=CollaborateurFormationsJmbResponse,
+)
+def get_collaborateur_formations_jmb(
+    id_contact: str,
+    id_effectif: str,
+    months: Optional[int] = Query(None, ge=1, le=120),
+    include_archived: bool = Query(False),
+):
+    """
+    Historique > Formations effectuées avec JMBCONSULTANT (V1 = liste)
+    Source:
+      - tbl_action_formation_effectif (inscriptions) -> tbl_action_formation -> tbl_fiche_formation
+
+    Règles:
+      - Filtre entreprise via id_contact -> id_ent
+      - Par défaut: exclut archives (inscription + action formation)
+      - Tri: date_fin DESC, date_debut DESC, date_creation DESC
+      - Filtre période: months (si renseigné), basé sur date_fin/date_debut/date_creation
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _get_id_ent_from_contact(cur, id_contact)
+
+                # Sécurise que l'effectif appartient bien à l'entreprise
+                cur.execute(
+                    """
+                    SELECT id_effectif
+                    FROM public.tbl_effectif_client
+                    WHERE id_ent = %s
+                      AND id_effectif = %s
+                    """,
+                    (id_ent, id_effectif),
+                )
+                if cur.fetchone() is None:
+                    raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+
+                where_arch = ""
+                params: List = [id_ent, id_effectif]
+
+                if not include_archived:
+                    where_arch = """
+                      AND COALESCE(acfe.archive, FALSE) = FALSE
+                      AND COALESCE(af.archive, FALSE) = FALSE
+                    """
+
+                where_period = ""
+                if months is not None:
+                    where_period = """
+                      AND COALESCE(af.date_fin_formation, af.date_debut_formation, af.date_creation::date)
+                          >= (CURRENT_DATE - make_interval(months => %s))::date
+                    """
+                    params.append(months)
+
+                cur.execute(
+                    f"""
+                    SELECT
+                        acfe.id_action_formation_effectif,
+                        acfe.id_action_formation,
+                        COALESCE(acfe.archive, FALSE) AS archive_inscription,
+
+                        af.code_action_formation,
+                        af.etat_action,
+                        af.date_debut_formation,
+                        af.date_fin_formation,
+                        COALESCE(af.archive, FALSE) AS archive_action,
+                        af.id_form,
+
+                        ff.code AS code_formation,
+                        ff.titre AS titre_formation
+
+                    FROM public.tbl_action_formation_effectif acfe
+                    JOIN public.tbl_effectif_client ec
+                      ON ec.id_effectif = acfe.id_effectif
+                    LEFT JOIN public.tbl_action_formation af
+                      ON af.id_action_formation = acfe.id_action_formation
+                    LEFT JOIN public.tbl_fiche_formation ff
+                      ON ff.id_form = af.id_form
+
+                    WHERE ec.id_ent = %s
+                      AND acfe.id_effectif = %s
+                      AND acfe.id_action_formation IS NOT NULL
+                      {where_arch}
+                      {where_period}
+                      AND (ff.id_form IS NULL OR COALESCE(ff.masque, FALSE) = FALSE)
+
+                    ORDER BY
+                      af.date_fin_formation DESC NULLS LAST,
+                      af.date_debut_formation DESC NULLS LAST,
+                      af.date_creation DESC NULLS LAST,
+                      acfe.id_action_formation_effectif DESC
+                    """,
+                    tuple(params),
+                )
+                rows = cur.fetchall() or []
+
+        def _s(v):
+            return str(v) if v is not None else None
+
+        items: List[CollaborateurFormationJmbItem] = []
+        for r in rows:
+            items.append(
+                CollaborateurFormationJmbItem(
+                    id_action_formation_effectif=r["id_action_formation_effectif"],
+                    id_action_formation=r.get("id_action_formation"),
+                    code_action_formation=r.get("code_action_formation"),
+                    etat_action=r.get("etat_action"),
+                    date_debut_formation=_s(r.get("date_debut_formation")),
+                    date_fin_formation=_s(r.get("date_fin_formation")),
+                    id_form=r.get("id_form"),
+                    code_formation=r.get("code_formation"),
+                    titre_formation=r.get("titre_formation"),
+                    archive_inscription=bool(r.get("archive_inscription")) if r.get("archive_inscription") is not None else None,
+                    archive_action=bool(r.get("archive_action")) if r.get("archive_action") is not None else None,
+                )
+            )
+
+        return CollaborateurFormationsJmbResponse(id_effectif=id_effectif, items=items)
 
     except HTTPException:
         raise

@@ -1138,3 +1138,61 @@ body{
   text-align: right;
 }
 
+/* ======================================================
+   Modal générique (fallback) - détail formation historique
+   ====================================================== */
+
+.modal{
+  position:fixed;
+  inset:0;
+  background: rgba(0,0,0,.35);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index: 9999;
+}
+
+.modal.show{ display:flex; }
+
+.modal .modal-card{
+  width:min(900px, 92vw);
+  max-height: 88vh;
+  overflow:hidden;
+  background:#fff;
+  border-radius: 14px;
+  border:1px solid #e5e7eb;
+  box-shadow: 0 14px 40px rgba(0,0,0,.20);
+  display:flex;
+  flex-direction:column;
+}
+
+.modal .modal-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 14px;
+  border-bottom:1px solid #e5e7eb;
+}
+
+.modal .modal-x{
+  border:0;
+  background:transparent;
+  font-size:22px;
+  line-height:1;
+  cursor:pointer;
+  color:#6b7280;
+}
+
+.modal .modal-body{
+  padding:14px;
+  overflow:auto;
+}
+
+.modal .modal-footer{
+  padding:12px 14px;
+  border-top:1px solid #e5e7eb;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+}
