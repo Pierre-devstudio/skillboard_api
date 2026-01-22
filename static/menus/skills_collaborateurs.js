@@ -546,11 +546,11 @@
           <div class="sb-table-wrap">
             <table class="sb-table" style="table-layout:fixed;">
               <colgroup>
-                <col style="width:90px;">
+                <col style="width:75px;">
                 <col>
-                <col style="width:85px;">
-                <col style="width:95px;">
-                <col style="width:70px;">
+                <col style="width:65px;">
+                <col style="width:65px;">
+                <col style="width:50px;">
               </colgroup>
               <thead>
                 <tr>
