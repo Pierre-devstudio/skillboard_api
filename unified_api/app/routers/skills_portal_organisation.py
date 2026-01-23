@@ -35,6 +35,7 @@ class ServiceInfo(BaseModel):
 class PosteItem(BaseModel):
     id_poste: str
     codif_poste: str
+    codif_client: Optional[str] = None
     intitule_poste: str
     id_service: Optional[str] = None
     isresponsable: Optional[bool] = None
@@ -545,6 +546,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                         SELECT
                             p.id_poste,
                             p.codif_poste,
+                            p.codif_client,
                             p.intitule_poste,
                             p.id_service,
                             p.isresponsable,
@@ -572,6 +574,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                         PosteItem(
                             id_poste=r["id_poste"],
                             codif_poste=r["codif_poste"],
+                            codif_client=r.get("codif_client"),
                             intitule_poste=r["intitule_poste"],
                             id_service=r.get("id_service"),
                             isresponsable=r.get("isresponsable"),
@@ -600,6 +603,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                         SELECT
                             p.id_poste,
                             p.codif_poste,
+                            p.codif_client,
                             p.intitule_poste,
                             p.id_service,
                             p.isresponsable,
@@ -632,6 +636,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                         PosteItem(
                             id_poste=r["id_poste"],
                             codif_poste=r["codif_poste"],
+                            codif_client=r.get("codif_client"),
                             intitule_poste=r["intitule_poste"],
                             id_service=r.get("id_service"),
                             isresponsable=r.get("isresponsable"),
@@ -675,6 +680,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                     SELECT
                         p.id_poste,
                         p.codif_poste,
+                        p.codif_client,
                         p.intitule_poste,
                         p.id_service,
                         p.isresponsable,
@@ -703,6 +709,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                     PosteItem(
                         id_poste=r["id_poste"],
                         codif_poste=r["codif_poste"],
+                        codif_client=r.get("codif_client"),
                         intitule_poste=r["intitule_poste"],
                         id_service=r.get("id_service"),
                         isresponsable=r.get("isresponsable"),

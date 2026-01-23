@@ -184,12 +184,15 @@
 
       const code = (p.codif_poste || "").trim();
       const title = (p.intitule_poste || "").trim();
+      const clientCode = (p.codif_client || "").trim();
+      const sub = [code, clientCode].filter(Boolean).join(" · ");
+
 
       details.innerHTML = `
         <summary>
           <div class="sb-acc-left">
             <div class="sb-acc-title">${escapeHtml(title || "Poste")}</div>
-            <div class="sb-acc-sub">${escapeHtml(code)}</div>
+            <div class="sb-acc-sub">${escapeHtml(sub)}</div>
           </div>
           <div class="sb-acc-right">
             ${badgeEff}
