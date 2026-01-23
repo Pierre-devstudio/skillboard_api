@@ -964,23 +964,28 @@ body{
 }
 
 /* Votre organisation - rendu richtext (responsabilités HTML) */
+#view-votre-organisation .sb-field.text-block .value.sb-richtext{
+  padding-top: 0 !important; /* au cas où .text-block ajoute du padding */
+}
+
+#view-votre-organisation .sb-richtext > :first-child{
+  margin-top: 0 !important; /* supprime le gros blanc au début */
+}
+
 #view-votre-organisation .sb-richtext p{
   margin: 0 0 8px 0;
 }
 
-#view-votre-organisation .sb-richtext p:last-child{
-  margin-bottom: 0;
-}
-
 #view-votre-organisation .sb-richtext ul,
 #view-votre-organisation .sb-richtext ol{
-  margin: 6px 0 0 18px;
+  margin: 0 0 8px 18px; /* pas de marge top */
   padding: 0;
 }
 
 #view-votre-organisation .sb-richtext li{
   margin: 2px 0;
 }
+
 
 
 /* ======================================================
