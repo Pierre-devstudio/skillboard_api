@@ -968,6 +968,10 @@ body{
   padding-top: 0 !important; /* au cas où .text-block ajoute du padding */
 }
 
+#view-votre-organisation .sb-richtext{
+  white-space: normal !important;
+}
+
 #view-votre-organisation .sb-richtext > :first-child{
   margin-top: 0 !important; /* supprime le gros blanc au début */
 }

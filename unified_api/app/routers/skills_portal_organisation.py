@@ -208,6 +208,12 @@ def _rtf_to_html_basic(rtf: str) -> str:
             i += 1
             continue
 
+        # IMPORTANT: les retours ligne "physiques" dans une string RTF ne sont pas du contenu.
+        # On les ignore, sinon ça produit des trous énormes en HTML (surtout avec white-space: pre-wrap).
+        if ch in "\r\n\t":
+            i += 1
+            continue
+
         # texte normal
         if ch != "\\":
             if not in_body:

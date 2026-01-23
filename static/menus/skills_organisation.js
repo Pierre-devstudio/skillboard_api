@@ -201,9 +201,7 @@
           ${(p.responsabilites_html || p.responsabilites) ? `
             <div class="sb-field text-block">
               <div class="label">Responsabilités</div>
-              <div class="value sb-richtext">
-                ${p.responsabilites_html ? p.responsabilites_html : escapeHtml(p.responsabilites)}
-              </div>
+              <div class="value sb-richtext">${p.responsabilites_html ? p.responsabilites_html : escapeHtml(p.responsabilites)}</div>
             </div>
           ` : ""}
           ${p.mobilite ? `<div class="sb-field"><div class="label">Mobilité</div><div class="value">${escapeHtml(p.mobilite)}</div></div>` : ""}
