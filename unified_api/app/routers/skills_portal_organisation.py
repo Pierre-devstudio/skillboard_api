@@ -129,14 +129,14 @@ def _build_tree(flat_services: List[Dict], counts_by_service: Dict[str, Dict[str
 _BULLET_CHARS = {"•", "·"}  # selon export RTF (Symbol / cp1252)
 
 def _rtf_to_html_basic(rtf: str) -> str:
-    """
+    r"""
     Convertisseur RTF minimal:
-    - \b / \b0 -> <strong>
-    - \par -> nouvelle ligne (paragraphes)
-    - listes RichEdit via \pntext -> <ul><li>...</li></ul>
-    - \line -> <br>
-    - \'xx -> décodage cp1252
-    - \uN? -> unicode
+    - \\b / \\b0 -> <strong>
+    - \\par -> nouvelle ligne (paragraphes)
+    - listes RichEdit via \\pntext -> <ul><li>...</li></ul>
+    - \\line -> <br>
+    - \\'xx -> décodage cp1252
+    - \\uN? -> unicode
     """
     paragraphs = []  # list[(is_list: bool, html_content: str)]
     parts = []
