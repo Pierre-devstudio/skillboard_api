@@ -180,10 +180,15 @@ def _rtf_to_html_basic(rtf: str) -> str:
         if not html_txt:
             return
 
-        # Détection liste: pntext ou bullet au début (au cas où)
+        # Si le paragraphe ne contient que des tags (ex: <strong></strong>), on le jette
         plain = re.sub(r"<[^>]+>", "", html_txt)
+        if not plain.strip():
+            return
+
+        # Détection liste: pntext ou bullet au début (au cas où)
         lt = plain.lstrip()
         is_list = saw_pntext_local or (lt[:1] in _BULLET_CHARS)
+
 
         if is_list:
             # Si un bullet "survit", on le retire (cas sans pntext)
