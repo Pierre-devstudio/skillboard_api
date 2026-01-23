@@ -995,10 +995,6 @@ body{
    Objectif: supprimer le vide inutile entre le label et le texte
    ====================================================== */
 
-#view-votre-organisation .sb-field.text-block .label{
-  margin-bottom: 6px !important; /* rapproche le contenu */
-}
-
 /* Le premier bloc HTML (souvent <p> ou <ul>) ne doit pas avoir de marge top */
 #view-votre-organisation .sb-field.text-block .value > :first-child{
   margin-top: 0 !important;
@@ -1023,6 +1019,27 @@ body{
 /* Sécurité: si .value est en pre-wrap dans ton CSS commun, on neutralise */
 #view-votre-organisation .sb-field.text-block .value{
   white-space: normal !important;
+}
+
+/* ======================================================
+   Organisation — FIX spacing label -> value
+   Cause: .sb-field est piloté par gap/row-gap dans le CSS global
+   ====================================================== */
+#view-votre-organisation .sb-field.text-block{
+  /* on garde la mise en page propre, mais on réduit l’espace */
+  display: flex;
+  flex-direction: column;
+  gap: 6px !important;
+  row-gap: 6px !important;
+}
+
+#view-votre-organisation .sb-field.text-block .label{
+  margin: 0 !important; /* inutile si gap gère l’espace, mais on verrouille */
+}
+
+#view-votre-organisation .sb-field.text-block .value{
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 
