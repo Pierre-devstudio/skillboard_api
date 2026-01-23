@@ -198,7 +198,14 @@
         </summary>
         <div class="sb-acc-body">
           ${p.mission_principale ? `<div class="sb-field"><div class="label">Mission principale</div><div class="value">${escapeHtml(p.mission_principale)}</div></div>` : ""}
-          ${p.responsabilites ? `<div class="sb-field text-block"><div class="label">Responsabilités</div><div class="value">${escapeHtml(p.responsabilites)}</div></div>` : ""}
+          ${(p.responsabilites_html || p.responsabilites) ? `
+            <div class="sb-field text-block">
+              <div class="label">Responsabilités</div>
+              <div class="value sb-richtext">
+                ${p.responsabilites_html ? p.responsabilites_html : escapeHtml(p.responsabilites)}
+              </div>
+            </div>
+          ` : ""}
           ${p.mobilite ? `<div class="sb-field"><div class="label">Mobilité</div><div class="value">${escapeHtml(p.mobilite)}</div></div>` : ""}
           ${p.niveau_contrainte ? `<div class="sb-field"><div class="label">Niveau contrainte</div><div class="value">${escapeHtml(p.niveau_contrainte)}</div></div>` : ""}
           ${p.detail_contrainte ? `<div class="sb-field"><div class="label">Détail contrainte</div><div class="value">${escapeHtml(p.detail_contrainte)}</div></div>` : ""}

@@ -5,6 +5,9 @@ from typing import Optional, List, Dict
 from psycopg.rows import dict_row
 
 from app.routers.skills_portal_common import get_conn
+import html as _html
+import re
+
 
 router = APIRouter()
 
@@ -38,6 +41,7 @@ class PosteItem(BaseModel):
 
     mission_principale: Optional[str] = None
     responsabilites: Optional[str] = None
+    responsabilites_html: Optional[str] = None
     mobilite: Optional[str] = None
     niveau_contrainte: Optional[str] = None
     detail_contrainte: Optional[str] = None
@@ -116,6 +120,249 @@ def _build_tree(flat_services: List[Dict], counts_by_service: Dict[str, Dict[str
 
     sort_rec(roots)
     return roots
+# ======================================================
+# RTF -> HTML (minimal, safe)
+# - Objectif: conserver le gras (\b) et les listes à puces (RichEdit \pntext)
+# - Sortie: HTML sans attributs (safe), uniquement <p>, <strong>, <ul>, <li>, <br>
+# ======================================================
+
+_BULLET_CHARS = {"•", "·"}  # selon export RTF (Symbol / cp1252)
+
+def _rtf_to_html_basic(rtf: str) -> str:
+    """
+    Convertisseur RTF minimal:
+    - \b / \b0 -> <strong>
+    - \par -> nouvelle ligne (paragraphes)
+    - listes RichEdit via \pntext -> <ul><li>...</li></ul>
+    - \line -> <br>
+    - \'xx -> décodage cp1252
+    - \uN? -> unicode
+    """
+    paragraphs = []  # list[(is_list: bool, html_content: str)]
+    parts = []
+    bold_open = False
+    saw_pntext = False
+    suppress_bullet = False
+    suppress_tab = False
+    in_body = False  # on ignore l'en-tête RTF (fonttbl, colortbl, generator...)
+
+    def set_bold(on: bool):
+        nonlocal bold_open
+        if on and not bold_open:
+            parts.append("<strong>")
+            bold_open = True
+        if (not on) and bold_open:
+            parts.append("</strong>")
+            bold_open = False
+
+    def flush_paragraph():
+        nonlocal parts, bold_open, saw_pntext, suppress_bullet, suppress_tab
+        if not in_body:
+            parts = []
+            bold_open = False
+            saw_pntext = False
+            suppress_bullet = False
+            suppress_tab = False
+            return
+
+        if bold_open:
+            parts.append("</strong>")
+            bold_open = False
+
+        html_txt = "".join(parts).strip()
+        parts = []
+
+        saw_pntext_local = saw_pntext
+        saw_pntext = False
+        suppress_bullet = False
+        suppress_tab = False
+
+        if not html_txt:
+            return
+
+        # Détection liste: pntext ou bullet au début (au cas où)
+        plain = re.sub(r"<[^>]+>", "", html_txt)
+        lt = plain.lstrip()
+        is_list = saw_pntext_local or (lt[:1] in _BULLET_CHARS)
+
+        if is_list:
+            # Si un bullet "survit", on le retire (cas sans pntext)
+            html_txt = re.sub(r"^(<strong>)?\s*[•·]\s*", r"\1", html_txt)
+            paragraphs.append((True, html_txt.strip()))
+        else:
+            paragraphs.append((False, html_txt.strip()))
+
+    i = 0
+    n = len(rtf)
+
+    while i < n:
+        ch = rtf[i]
+
+        # on ignore les accolades (structure RTF)
+        if ch in "{}":
+            i += 1
+            continue
+
+        # texte normal
+        if ch != "\\":
+            if not in_body:
+                i += 1
+                continue
+
+            # suppression bullet dans la séquence pntext
+            if suppress_bullet and ch in _BULLET_CHARS:
+                suppress_bullet = False
+                i += 1
+                continue
+
+            parts.append(_html.escape(ch))
+            i += 1
+            continue
+
+        # contrôle RTF
+        i += 1
+        if i >= n:
+            break
+
+        c = rtf[i]
+
+        # échappements littéraux \\, \{, \}
+        if c in ["\\", "{", "}"]:
+            if in_body:
+                parts.append(_html.escape(c))
+            i += 1
+            continue
+
+        # hex escape \'xx
+        if c == "'":
+            if i + 2 < n:
+                hx = rtf[i + 1 : i + 3]
+                try:
+                    char = bytes([int(hx, 16)]).decode("cp1252")
+                except Exception:
+                    char = ""
+
+                if in_body:
+                    if suppress_bullet and char in _BULLET_CHARS:
+                        suppress_bullet = False
+                    else:
+                        parts.append(_html.escape(char))
+
+                i += 3
+            else:
+                break
+            continue
+
+        # control word (lettres)
+        j = i
+        while j < n and rtf[j].isalpha():
+            j += 1
+        word = rtf[i:j]
+        k = j
+
+        # param numérique optionnel
+        sign = 1
+        if k < n and rtf[k] == "-":
+            sign = -1
+            k += 1
+        num = ""
+        while k < n and rtf[k].isdigit():
+            num += rtf[k]
+            k += 1
+
+        # control symbol (ex: \~, \-)
+        if word == "":
+            sym = rtf[i]
+            if in_body:
+                if sym == "~":
+                    parts.append(" ")
+                elif sym == "-":
+                    parts.append("-")
+            i += 1
+            continue
+
+        # Dès qu'on voit \pard ou \plain, on considère qu'on est dans le "vrai" contenu
+        if word in ("pard", "plain"):
+            in_body = True
+            set_bold(False)
+
+        # si pas encore dans le contenu, on skip tout
+        if not in_body:
+            if k < n and rtf[k] == " ":
+                k += 1
+            i = k
+            continue
+
+        # gestion des mots utiles
+        if word == "par":
+            flush_paragraph()
+        elif word == "line":
+            parts.append("<br>")
+        elif word == "tab":
+            if suppress_tab:
+                suppress_tab = False
+            else:
+                parts.append(" ")
+        elif word == "b":
+            if num == "":
+                set_bold(True)
+            else:
+                set_bold(int(num) != 0)
+        elif word == "pntext":
+            # marqueur de liste (RichEdit)
+            saw_pntext = True
+            suppress_bullet = True
+            suppress_tab = True
+        elif word == "u" and num:
+            val = sign * int(num)
+            if val < 0:
+                val += 65536
+            try:
+                parts.append(_html.escape(chr(val)))
+            except Exception:
+                pass
+            # parfois un fallback '?' suit, on l'ignore
+            if k < n and rtf[k] == "?":
+                k += 1
+
+        # consomme l'espace délimiteur
+        if k < n and rtf[k] == " ":
+            k += 1
+        i = k
+
+    flush_paragraph()
+
+    # Regroupement des items de liste consécutifs
+    out = []
+    idx = 0
+    while idx < len(paragraphs):
+        is_list, content = paragraphs[idx]
+        if is_list:
+            items = []
+            while idx < len(paragraphs) and paragraphs[idx][0]:
+                items.append(f"<li>{paragraphs[idx][1]}</li>")
+                idx += 1
+            out.append("<ul>" + "".join(items) + "</ul>")
+        else:
+            out.append(f"<p>{content}</p>")
+            idx += 1
+
+    return "".join(out).strip()
+
+
+def _responsabilites_to_html(raw: str | None) -> str | None:
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+
+    # RTF ?
+    if s.startswith("{\\rtf"):
+        return _rtf_to_html_basic(s)
+
+    # texte simple -> HTML safe
+    return _html.escape(s).replace("\n", "<br>")
 
 
 # ======================================================
@@ -319,6 +566,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                             isresponsable=r.get("isresponsable"),
                             mission_principale=r.get("mission_principale"),
                             responsabilites=r.get("responsabilites"),
+                            responsabilites_html=_responsabilites_to_html(r.get("responsabilites")),
                             mobilite=r.get("mobilite"),
                             niveau_contrainte=r.get("niveau_contrainte"),
                             detail_contrainte=r.get("detail_contrainte"),
@@ -378,6 +626,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                             isresponsable=r.get("isresponsable"),
                             mission_principale=r.get("mission_principale"),
                             responsabilites=r.get("responsabilites"),
+                            responsabilites_html=_responsabilites_to_html(r.get("responsabilites")),
                             mobilite=r.get("mobilite"),
                             niveau_contrainte=r.get("niveau_contrainte"),
                             detail_contrainte=r.get("detail_contrainte"),
@@ -448,6 +697,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                         isresponsable=r.get("isresponsable"),
                         mission_principale=r.get("mission_principale"),
                         responsabilites=r.get("responsabilites"),
+                        responsabilites_html=_responsabilites_to_html(r.get("responsabilites")),
                         mobilite=r.get("mobilite"),
                         niveau_contrainte=r.get("niveau_contrainte"),
                         detail_contrainte=r.get("detail_contrainte"),

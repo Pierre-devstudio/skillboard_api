@@ -963,6 +963,26 @@ body{
   font-weight: 700;
 }
 
+/* Votre organisation - rendu richtext (responsabilités HTML) */
+#view-votre-organisation .sb-richtext p{
+  margin: 0 0 8px 0;
+}
+
+#view-votre-organisation .sb-richtext p:last-child{
+  margin-bottom: 0;
+}
+
+#view-votre-organisation .sb-richtext ul,
+#view-votre-organisation .sb-richtext ol{
+  margin: 6px 0 0 18px;
+  padding: 0;
+}
+
+#view-votre-organisation .sb-richtext li{
+  margin: 2px 0;
+}
+
+
 /* ======================================================
    Modal Collaborateur - Onglet Compétences
    ====================================================== */
