@@ -990,6 +990,40 @@ body{
   margin: 2px 0;
 }
 
+/* ======================================================
+   Votre organisation - Responsabilités (RTF -> HTML)
+   Objectif: supprimer le vide inutile entre le label et le texte
+   ====================================================== */
+
+#view-votre-organisation .sb-field.text-block .label{
+  margin-bottom: 6px !important; /* rapproche le contenu */
+}
+
+/* Le premier bloc HTML (souvent <p> ou <ul>) ne doit pas avoir de marge top */
+#view-votre-organisation .sb-field.text-block .value > :first-child{
+  margin-top: 0 !important;
+}
+
+/* Paragraphes: pas de gros espace par défaut */
+#view-votre-organisation .sb-field.text-block .value p{
+  margin: 0 0 8px 0 !important;
+}
+
+/* Listes: pas de marge top, indentation maîtrisée */
+#view-votre-organisation .sb-field.text-block .value ul,
+#view-votre-organisation .sb-field.text-block .value ol{
+  margin: 0 0 8px 18px !important;
+  padding: 0 !important;
+}
+
+#view-votre-organisation .sb-field.text-block .value li{
+  margin: 2px 0 !important;
+}
+
+/* Sécurité: si .value est en pre-wrap dans ton CSS commun, on neutralise */
+#view-votre-organisation .sb-field.text-block .value{
+  white-space: normal !important;
+}
 
 
 /* ======================================================
