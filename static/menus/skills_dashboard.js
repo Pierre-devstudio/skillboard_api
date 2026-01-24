@@ -54,14 +54,80 @@
     }
   }
 
-    function renderAgePyramid(data){
+  function renderAgePyramid(data){
     const body = byId("agePyramidBody");
-    const note = byId("agePyramidNote");
+    const noteRoot = byId("agePyramidNote");
+    const quality = byId("agePyramidQuality");
+
     if (!body) return;
 
-    const bandsRaw = Array.isArray(data?.bands) ? data.bands : [];
+    const setTxt = (id, v) => {
+      const el = byId(id);
+      if (el) el.textContent = v;
+    };
 
-    // Ordre pyramide: +60 en haut, <25 en bas
+    const fmtPct = (v) => {
+      if (typeof v !== "number" || !isFinite(v)) return "–";
+      return v.toLocaleString("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+    };
+
+    const fmtRatio = (v) => {
+      if (v === null || v === undefined || typeof v !== "number" || !isFinite(v)) return "–";
+      return v.toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    // reset qualité (interdit d'afficher les manquants)
+    if (quality) quality.textContent = "";
+
+    // ----- KPI (sous la pyramide)
+    const totalAgeKnown = Number(data?.risk_sortie_total || 0);
+    const seniors58 = Number(data?.risk_sortie_count || 0);
+    const juniors = Number(data?.releve_junior || 0);
+    const seniorsForRatio = Number(data?.releve_senior || 0);
+
+    // KPI 1 — Risque de sortie (58+)
+    if (totalAgeKnown > 0){
+      setTxt("kpiRiskSortie", fmtPct(Number(data?.risk_sortie_pct || 0)));
+      setTxt("kpiRiskSortieSub", `${seniors58} salarié(s) (58+)`);
+    } else {
+      setTxt("kpiRiskSortie", "–");
+      setTxt("kpiRiskSortieSub", "Données âge indisponibles");
+    }
+
+    // KPI 2 — Capacité de relève
+    if (seniorsForRatio > 0){
+      setTxt("kpiCapaciteReleve", fmtRatio(Number(data?.releve_ratio)));
+      setTxt("kpiCapaciteReleveSub", `<35: ${juniors} • 58+: ${seniorsForRatio}`);
+    } else if (totalAgeKnown > 0){
+      setTxt("kpiCapaciteReleve", "–");
+      setTxt("kpiCapaciteReleveSub", "Aucun senior 58+");
+    } else {
+      setTxt("kpiCapaciteReleve", "–");
+      setTxt("kpiCapaciteReleveSub", "");
+    }
+
+    // KPI 3 — Transmission en danger (experts)
+    const compTotal = Number(data?.transmission_comp_total || 0);
+    const compDanger = Number(data?.transmission_comp_danger || 0);
+
+    if (compTotal > 0){
+      setTxt("kpiTransmissionDanger", fmtPct(Number(data?.transmission_pct || 0)));
+      const transSub = document.querySelector("#agePyramidKpis .sb-agepyr-kpi--trans .sb-agepyr-kpi-sub");
+      if (transSub) transSub.textContent = `Experts (C) proches de sortie • ${compDanger}/${compTotal}`;
+    } else {
+      setTxt("kpiTransmissionDanger", "–");
+      const transSub = document.querySelector("#agePyramidKpis .sb-agepyr-kpi--trans .sb-agepyr-kpi-sub");
+      if (transSub) transSub.textContent = "Aucun expert (C) identifié";
+    }
+
+    // Afficher le bloc KPI si on a au moins une info exploitable
+    if (noteRoot){
+      const hasKpi = (totalAgeKnown > 0) || (compTotal > 0);
+      noteRoot.style.display = hasKpi ? "" : "none";
+    }
+
+    // ----- Pyramide (barres)
+    const bandsRaw = Array.isArray(data?.bands) ? data.bands : [];
     const order = ["60+", "55-59", "45-54", "35-44", "25-34", "<25"];
     const rank = new Map(order.map((k, i) => [k, i]));
     const bands = bandsRaw.slice().sort((a, b) => {
@@ -70,7 +136,6 @@
       return ra - rb;
     });
 
-    // max commun (même échelle gauche/droite)
     let max = 0;
     for (const b of bands){
       const f = Number(b?.femmes || 0);
@@ -81,10 +146,6 @@
 
     if (!bands.length || max <= 0){
       body.innerHTML = `<div class="card-sub" style="margin:0;">Aucune donnée exploitable</div>`;
-      if (note){
-        note.style.display = "none";
-        note.textContent = "";
-      }
       return;
     }
 
@@ -126,27 +187,8 @@
 
       body.appendChild(row);
     }
-
-    // Qualité data
-    if (note){
-      const total = Number(data?.total_actifs || 0);
-      const unkBirth = Number(data?.unknown_birth || 0);
-      const unkGender = Number(data?.unknown_gender || 0);
-
-      const parts = [];
-      if (total) parts.push(`Actifs: ${total}`);
-      if (unkBirth) parts.push(`Dates de naissance manquantes: ${unkBirth}`);
-      if (unkGender) parts.push(`Sexe non renseigné: ${unkGender}`);
-
-      if (parts.length){
-        note.textContent = parts.join(" • ");
-        note.style.display = "";
-      } else {
-        note.textContent = "";
-        note.style.display = "none";
-      }
-    }
   }
+
 
   async function tryLoadAgePyramid(portal){
     const body = byId("agePyramidBody");
@@ -154,6 +196,9 @@
     if (!body) return;
 
     body.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+    const noteRoot = byId("agePyramidNote");
+    if (noteRoot) noteRoot.style.display = "none";
+
     if (note){
       note.style.display = "none";
       note.textContent = "";

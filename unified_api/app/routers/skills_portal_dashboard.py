@@ -27,9 +27,31 @@ class AgePyramidBand(BaseModel):
 
 class AgePyramidResponse(BaseModel):
     bands: List[AgePyramidBand]
+
+    # Meta (on garde, même si on ne l'affiche plus côté UI)
     total_actifs: int = 0
     unknown_birth: int = 0
     unknown_gender: int = 0
+
+    # KPI — seuils
+    seuil_senior: int = 58
+    seuil_junior: int = 35
+
+    # KPI 1 — Risque de sortie (58+), dénominateur = actifs avec date naissance
+    risk_sortie_pct: float = 0.0
+    risk_sortie_count: int = 0
+    risk_sortie_total: int = 0
+
+    # KPI 2 — Capacité de relève = <35 / 58+ (sur actifs avec date naissance)
+    releve_ratio: Optional[float] = None
+    releve_junior: int = 0
+    releve_senior: int = 0
+
+    # KPI 3 — Transmission en danger (Experts majoritairement 58+)
+    transmission_pct: float = 0.0
+    transmission_comp_danger: int = 0
+    transmission_comp_total: int = 0
+
 
 
 @router.get(
@@ -180,6 +202,70 @@ def get_dashboard_age_pyramid(id_contact: str):
                 )
                 meta = cur.fetchone() or {}
 
+                                # KPI ÂGE (dénominateur robuste = actifs avec date naissance)
+                cur.execute(
+                    """
+                    WITH base AS (
+                        SELECT
+                            EXTRACT(YEAR FROM age(CURRENT_DATE, date_naissance_effectif))::int AS age
+                        FROM public.tbl_effectif_client
+                        WHERE id_ent = %s
+                          AND archive = FALSE
+                          AND statut_actif = TRUE
+                          AND date_naissance_effectif IS NOT NULL
+                    )
+                    SELECT
+                        COUNT(*)::int AS total_age_known,
+                        SUM(CASE WHEN age >= 58 THEN 1 ELSE 0 END)::int AS seniors_58,
+                        SUM(CASE WHEN age < 35 THEN 1 ELSE 0 END)::int AS juniors_under35
+                    FROM base
+                    WHERE age IS NOT NULL AND age >= 0
+                    """,
+                    (id_ent,),
+                )
+                age_kpis = cur.fetchone() or {}
+
+                # KPI TRANSMISSION (Experts "niveau_actuel" = 'Expert')
+                cur.execute(
+                    """
+                    WITH experts AS (
+                        SELECT
+                            ecc.id_comp,
+                            EXTRACT(YEAR FROM age(CURRENT_DATE, e.date_naissance_effectif))::int AS age
+                        FROM public.tbl_effectif_client_competence ecc
+                        JOIN public.tbl_effectif_client e
+                          ON e.id_effectif = ecc.id_effectif_client
+                        JOIN public.tbl_competence c
+                          ON c.id_comp = ecc.id_comp
+                        WHERE e.id_ent = %s
+                          AND e.archive = FALSE
+                          AND e.statut_actif = TRUE
+                          AND e.date_naissance_effectif IS NOT NULL
+                          AND ecc.actif = TRUE
+                          AND ecc.archive = FALSE
+                          AND ecc.niveau_actuel = 'Expert'
+                          AND COALESCE(c.masque, FALSE) = FALSE
+                          AND COALESCE(c.etat, 'valide') = 'valide'
+                    ),
+                    agg AS (
+                        SELECT
+                            id_comp,
+                            COUNT(*)::int AS total_experts,
+                            SUM(CASE WHEN age >= 58 THEN 1 ELSE 0 END)::int AS experts_58
+                        FROM experts
+                        WHERE age IS NOT NULL AND age >= 0
+                        GROUP BY id_comp
+                    )
+                    SELECT
+                        COUNT(*)::int AS total_comp_with_experts,
+                        SUM(CASE WHEN experts_58 * 2 > total_experts THEN 1 ELSE 0 END)::int AS comp_in_danger
+                    FROM agg
+                    """,
+                    (id_ent,),
+                )
+                trans_kpis = cur.fetchone() or {}
+
+
                 # Comptage par tranches
                 cur.execute(
                     """
@@ -233,12 +319,40 @@ def get_dashboard_age_pyramid(id_contact: str):
             for t in order
         ]
 
+        total_age_known = int(age_kpis.get("total_age_known") or 0)
+        seniors_58 = int(age_kpis.get("seniors_58") or 0)
+        juniors_under35 = int(age_kpis.get("juniors_under35") or 0)
+
+        risk_sortie_pct = round((seniors_58 / total_age_known) * 100.0, 1) if total_age_known else 0.0
+        releve_ratio = round((juniors_under35 / seniors_58), 2) if seniors_58 else None
+
+        comp_total = int(trans_kpis.get("total_comp_with_experts") or 0)
+        comp_danger = int(trans_kpis.get("comp_in_danger") or 0)
+        transmission_pct = round((comp_danger / comp_total) * 100.0, 1) if comp_total else 0.0
+
         return AgePyramidResponse(
             bands=bands,
+
             total_actifs=int(meta.get("total_actifs") or 0),
             unknown_birth=int(meta.get("unknown_birth") or 0),
             unknown_gender=int(meta.get("unknown_gender") or 0),
+
+            seuil_senior=58,
+            seuil_junior=35,
+
+            risk_sortie_pct=risk_sortie_pct,
+            risk_sortie_count=seniors_58,
+            risk_sortie_total=total_age_known,
+
+            releve_ratio=releve_ratio,
+            releve_junior=juniors_under35,
+            releve_senior=seniors_58,
+
+            transmission_pct=transmission_pct,
+            transmission_comp_danger=comp_danger,
+            transmission_comp_total=comp_total,
         )
+
 
     except HTTPException:
         raise

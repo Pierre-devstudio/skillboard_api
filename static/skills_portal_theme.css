@@ -1418,3 +1418,73 @@ body{
   font-size: 12px;
   color: #6b7280;
 }
+
+#view-dashboard .sb-agepyr-kpis{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+#view-dashboard .sb-agepyr-kpi{
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+#view-dashboard .sb-agepyr-kpi-label{
+  font-size: 11px;
+  font-weight: 800;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  line-height: 1.1;
+}
+
+#view-dashboard .sb-agepyr-kpi-value{
+  font-size: 22px;
+  font-weight: 900;
+  color: #111827;
+  margin-top: 4px;
+  line-height: 1.05;
+}
+
+#view-dashboard .sb-agepyr-kpi-sub{
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+  line-height: 1.2;
+}
+
+/* marqueurs visuels */
+#view-dashboard .sb-agepyr-kpi--risk{
+  border-left: 5px solid var(--accent);
+}
+
+#view-dashboard .sb-agepyr-kpi--relay{
+  border-left: 5px solid var(--sidebar-bg);
+}
+
+#view-dashboard .sb-agepyr-kpi--trans{
+  border-left: 5px solid #9ca3af;
+}
+
+#view-dashboard .sb-agepyr-quality{
+  margin-top: 8px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* responsive */
+@media (max-width: 1100px){
+  #view-dashboard .sb-agepyr-kpis{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 740px){
+  #view-dashboard .sb-agepyr-kpis{
+    grid-template-columns: 1fr;
+  }
+}
