@@ -3,10 +3,52 @@
     <img src="/Logo_Skillboard.png" alt="Skillboard" class="sb-logo">
   </div>
 
+  <!-- Bienvenue -->
   <div class="card">
-    <div class="card-title" id="welcomeTitle">Bienvenue</div>
+    <div class="card-title" id="welcomeTitle">
+      Bienvenue <span id="welcomePrenom"></span>
+    </div>
     <div class="card-sub" id="welcomeIntro">
       Cet espace vous permet de piloter votre démarche Skills: organisation, référentiel, cartographie, risques, actions et documents.
+    </div>
+  </div>
+
+  <!-- Bandeau nouveautés / info (affiché seulement si contenu) -->
+  <div class="card sb-dash-banner" id="dashInfoBanner" style="display:none;">
+    <div class="card-title" id="dashInfoTitle">Les nouveautés dans Skillboard Insights</div>
+    <div class="card-sub" id="dashInfoText">[Nouveautés] à venir</div>
+  </div>
+
+  <!-- KPI rapides (2 lignes de 3 tuiles) -->
+  <div class="sb-dash-grid" id="dashKpiGrid">
+    <div class="card sb-dash-tile" data-kpi="pyramide-ages">
+      <div class="sb-dash-tile-title">Pyramide des âges</div>
+      <div class="sb-dash-tile-sub">[Pyramide des âges] à venir</div>
+    </div>
+
+    <div class="card sb-dash-tile" data-kpi="etat-global">
+      <div class="sb-dash-tile-title">État global compétences vs attentes</div>
+      <div class="sb-dash-tile-sub">[Jauge globale] à venir</div>
+    </div>
+
+    <div class="card sb-dash-tile" data-kpi="sans-formation-12m">
+      <div class="sb-dash-tile-title">Sans formation depuis 12 mois</div>
+      <div class="sb-dash-tile-sub">[Sans formation 12 mois] à venir</div>
+    </div>
+
+    <div class="card sb-dash-tile" data-kpi="competences-non-auditees-6m">
+      <div class="sb-dash-tile-title">Compétences non auditées depuis 6 mois</div>
+      <div class="sb-dash-tile-sub">[Compétences non auditées 6 mois] à venir</div>
+    </div>
+
+    <div class="card sb-dash-tile" data-kpi="formations-programmees">
+      <div class="sb-dash-tile-title">Formations programmées</div>
+      <div class="sb-dash-tile-sub">[Formations programmées] à venir</div>
+    </div>
+
+    <div class="card sb-dash-tile" data-kpi="certifications-obso-60j">
+      <div class="sb-dash-tile-title">Certifications à renouveler (60 jours)</div>
+      <div class="sb-dash-tile-sub">[Certifications < 60j] à venir</div>
     </div>
   </div>
 </section>

@@ -1276,3 +1276,54 @@ body{
   justify-content:flex-end;
   gap:10px;
 }
+
+/* =========================
+   Dashboard (Insights)
+   ========================= */
+
+#view-dashboard .sb-logo{
+  max-width: 360px;
+  height: auto;
+}
+
+#view-dashboard .sb-dash-banner{
+  margin-top: 14px;
+  border-left: 6px solid var(--accent);
+}
+
+#view-dashboard .sb-dash-grid{
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+#view-dashboard .sb-dash-tile{
+  min-height: 96px;
+}
+
+#view-dashboard .sb-dash-tile-title{
+  font-weight: 700;
+  font-size: 14px;
+  color: #111827;
+  margin-bottom: 6px;
+}
+
+#view-dashboard .sb-dash-tile-sub{
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.35;
+}
+
+/* Responsive */
+@media (max-width: 1100px){
+  #view-dashboard .sb-dash-grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 740px){
+  #view-dashboard .sb-dash-grid{
+    grid-template-columns: 1fr;
+  }
+}
