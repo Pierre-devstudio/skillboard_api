@@ -386,16 +386,22 @@
     const circ = 2 * Math.PI * r;
     const filled = circ * p;
 
-    svg.innerHTML = `
+    const bg = `
       <circle class="sb-ring-bg"
               cx="${cx}" cy="${cy}" r="${r}"
               stroke-width="${stroke}"></circle>
+    `;
 
+    // IMPORTANT: si 0%, on n’affiche pas le cercle de progression (sinon “point” à cause du round cap)
+    const prog = (p > 0.0001) ? `
       <circle class="sb-ring-prog"
               cx="${cx}" cy="${cy}" r="${r}"
               stroke-width="${stroke}"
               stroke-dasharray="${filled.toFixed(2)} ${circ.toFixed(2)}"></circle>
-    `;
+    ` : "";
+
+    svg.innerHTML = bg + prog;
+
   }
 
   async function tryLoadNoTraining12m(portal){
@@ -420,7 +426,22 @@
       const qs = serviceId ? `?id_service=${encodeURIComponent(serviceId)}` : "";
 
       const url = `${portal.apiBase}/skills/dashboard/no-training-12m/${encodeURIComponent(portal.contactId)}${qs}`;
-      const data = await portal.apiJson(url);
+      // DEBUG dur: on veut le vrai statut + le detail serveur (au lieu de “Erreur de chargement.”)
+      const res = await fetch(url, { headers: { "Accept": "application/json" } });
+
+      if (!res.ok){
+        let detail = "";
+        try{
+          const j = await res.json();
+          detail = j && j.detail ? String(j.detail) : JSON.stringify(j);
+        } catch {
+          detail = await res.text();
+        }
+        throw new Error(`HTTP ${res.status} - ${detail}`.slice(0, 300));
+      }
+
+      const data = await res.json();
+
 
       const total = Number(data?.total_effectif ?? 0);
       const countNo = Number(data?.count_no_training_12m ?? 0);
@@ -459,7 +480,7 @@
       if (elSub) elSub.textContent = "";
       if (note){
         note.style.display = "";
-        note.textContent = "Erreur de chargement.";
+        note.textContent = `Erreur: ${String(e && e.message ? e.message : e)}`;
       }
     }
   }
