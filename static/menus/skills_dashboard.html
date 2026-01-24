@@ -126,8 +126,25 @@
 
     <div class="card sb-dash-tile" data-kpi="sans-formation-12m">
       <div class="sb-dash-tile-title">Sans formation depuis 12 mois</div>
-      <div class="sb-dash-tile-sub">[Sans formation 12 mois] à venir</div>
+
+      <div class="sb-dash-tile-sub">
+        <div class="sb-ring" id="noTrain12mRing">
+
+          <svg class="sb-ring-svg" id="noTrain12mSvg" viewBox="0 0 120 120" aria-label="Sans formation depuis 12 mois">
+            <!-- cercle de fond + progression injectés en JS -->
+          </svg>
+
+          <div class="sb-ring-center">
+            <div class="sb-ring-pct" id="noTrain12mPct">–%</div>
+            <div class="sb-ring-sub" id="noTrain12mSub"></div>
+          </div>
+
+          <div class="card-sub sb-ring-note" id="noTrain12mNote">Chargement…</div>
+
+        </div>
+      </div>
     </div>
+
 
     <div class="card sb-dash-tile" data-kpi="competences-non-auditees-6m">
       <div class="sb-dash-tile-title">Compétences non auditées depuis 6 mois</div>

@@ -1656,3 +1656,68 @@ body{
   min-height: 240px;
 }
 
+/* =========================
+   Dashboard — KPI Ring (Sans formation 12 mois)
+   ========================= */
+
+#view-dashboard .sb-ring{
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  position: relative;
+}
+
+#view-dashboard .sb-ring-svg{
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  display: block;
+}
+
+#view-dashboard .sb-ring-center{
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+#view-dashboard .sb-ring-pct{
+  font-size: 20px;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.05;
+}
+
+#view-dashboard .sb-ring-sub{
+  margin-top: 2px;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
+  text-align: center;
+}
+
+#view-dashboard .sb-ring-note{
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* SVG circles */
+#view-dashboard .sb-ring-bg{
+  stroke: rgba(0,0,0,.10);
+  fill: none;
+}
+
+#view-dashboard .sb-ring-prog{
+  stroke: var(--accent);
+  fill: none;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}

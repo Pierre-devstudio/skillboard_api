@@ -213,7 +213,8 @@
     }
   }
 
-    function renderGlobalGauge(svg, gaugeMin, gaugeMax, value){
+
+  function renderGlobalGauge(svg, gaugeMin, gaugeMax, value){
     let gMin = Number(gaugeMin ?? 0);
     let gMax = Number(gaugeMax ?? 1);
     if (!isFinite(gMin)) gMin = 0;
@@ -372,6 +373,96 @@
     }
   }
 
+  function renderRing(svg, pct01){
+    if (!svg) return;
+
+    let p = Number(pct01 ?? 0);
+    if (!isFinite(p)) p = 0;
+    p = Math.max(0, Math.min(1, p));
+
+    const cx = 60, cy = 60;
+    const r = 46;              // rayon
+    const stroke = 12;         // épaisseur anneau
+    const circ = 2 * Math.PI * r;
+    const filled = circ * p;
+
+    svg.innerHTML = `
+      <circle class="sb-ring-bg"
+              cx="${cx}" cy="${cy}" r="${r}"
+              stroke-width="${stroke}"></circle>
+
+      <circle class="sb-ring-prog"
+              cx="${cx}" cy="${cy}" r="${r}"
+              stroke-width="${stroke}"
+              stroke-dasharray="${filled.toFixed(2)} ${circ.toFixed(2)}"></circle>
+    `;
+  }
+
+  async function tryLoadNoTraining12m(portal){
+    const svg = byId("noTrain12mSvg");
+    const elPct = byId("noTrain12mPct");
+    const elSub = byId("noTrain12mSub");
+    const note = byId("noTrain12mNote");
+
+    if (!svg) return;
+
+    // état initial
+    renderRing(svg, 0);
+    if (elPct) elPct.textContent = "–%";
+    if (elSub) elSub.textContent = "";
+    if (note){
+      note.style.display = "";
+      note.textContent = "Chargement…";
+    }
+
+    try{
+      const serviceId = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+      const qs = serviceId ? `?id_service=${encodeURIComponent(serviceId)}` : "";
+
+      const url = `${portal.apiBase}/skills/dashboard/no-training-12m/${encodeURIComponent(portal.contactId)}${qs}`;
+      const data = await portal.apiJson(url);
+
+      const total = Number(data?.total_effectif ?? 0);
+      const countNo = Number(data?.count_no_training_12m ?? 0);
+      let pct = Number(data?.pct_no_training_12m ?? 0);
+
+      if (!isFinite(pct)) pct = 0;
+      pct = Math.max(0, Math.min(100, pct));
+
+      if (!total || total <= 0){
+        renderRing(svg, 0);
+        if (elPct) elPct.textContent = "–%";
+        if (elSub) elSub.textContent = "";
+        if (note){
+          note.style.display = "";
+          note.textContent = "Aucun effectif actif (périmètre).";
+        }
+        return;
+      }
+
+      renderRing(svg, pct / 100);
+
+      if (elPct){
+        elPct.textContent = pct.toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + "%";
+      }
+      if (elSub){
+        elSub.textContent = `${countNo} / ${total} salarié(s)`;
+      }
+      if (note){
+        note.style.display = "none";
+        note.textContent = "";
+      }
+
+    } catch (e){
+      renderRing(svg, 0);
+      if (elPct) elPct.textContent = "–%";
+      if (elSub) elSub.textContent = "";
+      if (note){
+        note.style.display = "";
+        note.textContent = "Erreur de chargement.";
+      }
+    }
+  }
 
 
   window.SkillsDashboard = {
@@ -387,6 +478,7 @@
         await tryLoadDashBanner(portal);
         await tryLoadAgePyramid(portal);
         await tryLoadGlobalGauge(portal);
+        await tryLoadNoTraining12m(portal);
 
 
       } catch (e) {

@@ -66,6 +66,12 @@ class GlobalGaugeResponse(BaseModel):
     # Périmètre futur (droits): si renseigné, jauge calculée uniquement sur ce service
     id_service_scope: Optional[str] = None
 
+class NoTraining12mResponse(BaseModel):
+    pct_no_training_12m: float = 0.0
+    count_no_training_12m: int = 0
+    total_effectif: int = 0
+    id_service_scope: Optional[str] = None
+
 
 
 @router.get(
@@ -474,6 +480,87 @@ def get_dashboard_global_gauge(id_contact: str, id_service: Optional[str] = None
             score=score,
             nb_items=nb,
             id_service_scope=id_service.strip() if isinstance(id_service, str) and id_service.strip() else None,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/skills/dashboard/no-training-12m/{id_contact}",
+    response_model=NoTraining12mResponse,
+)
+def get_dashboard_no_training_12m(id_contact: str, id_service: Optional[str] = None):
+    """
+    KPI: % de l'effectif actif sans formation depuis 12 mois (toutes sources)
+    Source vérité: tbl_effectif_client_historique_formation
+    (les formations JMB doivent y être synchronisées via id_action_formation_effectif)
+
+    Règles:
+    - Population: statut_actif = TRUE, archive = FALSE, id_poste_actuel NON NULL (comme demandé)
+    - Périmètre futur droits: si id_service fourni -> filtre e.id_service = id_service
+    - Sans formation 12 mois: aucune ligne non archivée avec date_formation >= CURRENT_DATE - interval '12 months'
+    """
+    try:
+        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+
+                id_ent = None
+                if isinstance(row_contact, dict):
+                    id_ent = row_contact.get("id_ent")
+                if not id_ent and isinstance(row_ent, dict):
+                    id_ent = row_ent.get("id_ent")
+
+                if not id_ent:
+                    return NoTraining12mResponse()
+
+                cur.execute(
+                    """
+                    WITH eff AS (
+                        SELECT e.id_effectif
+                        FROM public.tbl_effectif_client e
+                        WHERE e.id_ent = %s
+                          AND e.archive = FALSE
+                          AND e.statut_actif = TRUE
+                          AND e.id_poste_actuel IS NOT NULL
+                          AND (%s IS NULL OR e.id_service = %s)
+                    ),
+                    last_train AS (
+                        SELECT
+                            h.id_effectif,
+                            MAX(h.date_formation) AS last_date
+                        FROM public.tbl_effectif_client_historique_formation h
+                        JOIN eff ON eff.id_effectif = h.id_effectif
+                        WHERE h.archive = FALSE
+                        GROUP BY h.id_effectif
+                    )
+                    SELECT
+                        (SELECT COUNT(*) FROM eff)::int AS total_effectif,
+                        (SELECT COUNT(*)
+                         FROM eff e
+                         LEFT JOIN last_train lt ON lt.id_effectif = e.id_effectif
+                         WHERE lt.last_date IS NULL
+                            OR lt.last_date < (CURRENT_DATE - INTERVAL '12 months')
+                        )::int AS count_no_training_12m
+                    """,
+                    (id_ent, id_service_clean, id_service_clean),
+                )
+
+                row = cur.fetchone() or {}
+
+        total_eff = int(row.get("total_effectif") or 0)
+        count_no = int(row.get("count_no_training_12m") or 0)
+        pct = round((count_no / total_eff) * 100.0, 1) if total_eff else 0.0
+
+        return NoTraining12mResponse(
+            pct_no_training_12m=pct,
+            count_no_training_12m=count_no,
+            total_effectif=total_eff,
+            id_service_scope=id_service_clean,
         )
 
     except HTTPException:
