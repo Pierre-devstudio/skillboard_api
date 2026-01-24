@@ -23,7 +23,26 @@
   <div class="sb-dash-grid" id="dashKpiGrid">
     <div class="card sb-dash-tile" data-kpi="pyramide-ages">
       <div class="sb-dash-tile-title">Pyramide des âges</div>
-      <div class="sb-dash-tile-sub">[Pyramide des âges] à venir</div>
+
+      <div class="sb-dash-tile-sub">
+
+        <div class="sb-agepyr" id="agePyramid">
+
+          <div class="sb-agepyr-head">
+            <span class="sb-agepyr-leg sb-agepyr-leg--f">Femmes</span>
+            <span class="sb-agepyr-leg sb-agepyr-leg--m">Hommes</span>
+          </div>
+
+          <div class="sb-agepyr-body" id="agePyramidBody">
+            <div class="card-sub" style="margin:0;">Chargement…</div>
+          </div>
+
+          <div class="sb-agepyr-foot" id="agePyramidNote" style="display:none;"></div>
+
+        </div>
+
+      </div>
+
     </div>
 
     <div class="card sb-dash-tile" data-kpi="etat-global">
