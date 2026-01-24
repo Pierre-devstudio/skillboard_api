@@ -331,6 +331,13 @@
           note.style.display = "";
           note.textContent = "Aucune compétence critique (poids > 80) sur les postes actuels.";
         }
+
+        const scopeEl = byId("globalGaugeScope");
+        if (scopeEl){
+          const serviceId2 = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+          scopeEl.textContent = serviceId2 ? "Périmètre : Service" : "Périmètre : Entreprise";
+        }
+
         return;
       }
 
@@ -342,12 +349,26 @@
         note.textContent = "";
       }
 
+      const scopeEl = byId("globalGaugeScope");
+      if (scopeEl){
+        // futur droits: si scopeServiceId défini -> service, sinon entreprise
+        const serviceId2 = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+        scopeEl.textContent = serviceId2 ? "Périmètre : Service" : "Périmètre : Entreprise";
+      }
+
+
     } catch (e){
       renderGlobalGauge(svg, 0, 1, 0);
       if (note){
         note.style.display = "";
         note.textContent = "Erreur de chargement de la jauge.";
       }
+      const scopeEl = byId("globalGaugeScope");
+      if (scopeEl){
+        const serviceId2 = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+        scopeEl.textContent = serviceId2 ? "Périmètre : Service" : "Périmètre : Entreprise";
+      }
+
     }
   }
 

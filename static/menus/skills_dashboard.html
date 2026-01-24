@@ -75,7 +75,27 @@
     </div>
 
     <div class="card sb-dash-tile" data-kpi="etat-global">
-      <div class="sb-dash-tile-title">État global compétences vs attentes</div>
+      <div class="sb-dash-tile-title sb-dash-tile-title--with-tip">
+        <span>État global compétences vs attentes</span>
+
+        <span class="sb-tip" tabindex="0" aria-label="Informations jauge">
+          <span class="sb-tip-ico">i</span>
+
+          <span class="sb-tip-box">
+            <div class="sb-tip-title">Lecture</div>
+
+            <div class="sb-tip-line"><span class="sb-tip-dot sb-tip-dot--r"></span> Rouge : écart fort</div>
+            <div class="sb-tip-line"><span class="sb-tip-dot sb-tip-dot--y"></span> Orange : à renforcer</div>
+            <div class="sb-tip-line"><span class="sb-tip-dot sb-tip-dot--g"></span> Vert : conforme</div>
+
+            <div class="sb-tip-sep"></div>
+            <div class="sb-tip-mini">Compétences : postes actuels, criticité &gt; 80.</div>
+            <div class="sb-tip-mini">Score : somme des derniers audits (manquant = 0).</div>
+            <div class="sb-tip-mini">Périmètre : entreprise (puis service selon droits).</div>
+          </span>
+        </span>
+      </div>
+
 
       <div class="sb-dash-tile-sub">
         <div class="sb-globalgauge" id="globalGauge">
@@ -84,6 +104,17 @@
               class="sb-globalgauge-svg"
               aria-label="Jauge état global compétences vs attentes">
           </svg>
+
+          <div class="sb-globalgauge-meta">
+            <div class="sb-globalgauge-legend">
+              <span class="sb-legend-item"><span class="sb-legend-dot sb-legend-dot--r"></span> Écart fort</span>
+              <span class="sb-legend-item"><span class="sb-legend-dot sb-legend-dot--y"></span> À renforcer</span>
+              <span class="sb-legend-item"><span class="sb-legend-dot sb-legend-dot--g"></span> Conforme</span>
+            </div>
+
+            <div class="sb-globalgauge-scope" id="globalGaugeScope">Périmètre : Entreprise</div>
+          </div>
+
 
           <div class="card-sub sb-globalgauge-note" id="globalGaugeNote">
             Chargement…
