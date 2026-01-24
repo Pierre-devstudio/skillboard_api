@@ -213,6 +213,144 @@
     }
   }
 
+    function renderGlobalGauge(svg, gaugeMin, gaugeMax, value){
+    let gMin = Number(gaugeMin ?? 0);
+    let gMax = Number(gaugeMax ?? 1);
+    if (!isFinite(gMin)) gMin = 0;
+    if (!isFinite(gMax)) gMax = 1;
+    if (gMax < gMin) { const t = gMin; gMin = gMax; gMax = t; }
+
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const range = Math.max(1e-9, (gMax - gMin));
+
+    const tFromValue = (v) => (clamp(v, gMin, gMax) - gMin) / range;
+
+    // 180° (gauche) -> 360° (droite) en passant par 270° (haut)
+    const angleFromT = (t) => 180 + (180 * t);
+
+    const cx = 120;
+    const cy = 120;
+    const r = 90;
+    const rNeedle = 74;
+
+    const polar = (angleDeg, radius) => {
+      const rad = (angleDeg * Math.PI) / 180;
+      return {
+        x: cx + (radius * Math.cos(rad)),
+        y: cy + (radius * Math.sin(rad)), // SVG: +sin vers le bas
+      };
+    };
+
+    const arcPath = (a1, a2) => {
+      if (a2 < a1) { const t = a1; a1 = a2; a2 = t; }
+      const p1 = polar(a1, r);
+      const p2 = polar(a2, r);
+      const diff = Math.abs(a2 - a1);
+      const large = (diff <= 180) ? "0" : "1";
+      const sweep = "1";
+      return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} ${sweep} ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+    };
+
+    // zones: 20% / 30% / 50% sur la plage [min..max]
+    const a0 = angleFromT(0.0);
+    const a1 = angleFromT(0.2);
+    const a2 = angleFromT(0.5);
+    const a3 = angleFromT(1.0);
+
+    const bgD = arcPath(180, 360);
+    const z1D = arcPath(a0, a1);
+    const z2D = arcPath(a1, a2);
+    const z3D = arcPath(a2, a3);
+
+    const aNeedle = angleFromT(tFromValue(clamp(Number(value ?? 0), gMin, gMax)));
+    const pNeedle = polar(aNeedle, rNeedle);
+
+    // stroke-linecap butt => jonctions propres entre segments
+    svg.innerHTML = `
+      <path d="${bgD}"
+            stroke="rgba(0,0,0,.10)"
+            stroke-width="16"
+            fill="none"
+            stroke-linecap="round"></path>
+
+      <path d="${z1D}"
+            stroke="var(--accent)"
+            stroke-width="14"
+            fill="none"
+            stroke-linecap="butt"></path>
+
+      <path d="${z2D}"
+            stroke="#f59e0b"
+            stroke-width="14"
+            fill="none"
+            stroke-linecap="butt"></path>
+
+      <path d="${z3D}"
+            stroke="#16a34a"
+            stroke-width="14"
+            fill="none"
+            stroke-linecap="butt"></path>
+
+      <line x1="${cx}" y1="${cy}" x2="${pNeedle.x.toFixed(2)}" y2="${pNeedle.y.toFixed(2)}"
+            stroke="rgba(0,0,0,.65)"
+            stroke-width="3"
+            stroke-linecap="round"></line>
+
+      <circle cx="${cx}" cy="${cy}" r="6" fill="rgba(0,0,0,.65)"></circle>
+    `;
+  }
+
+  async function tryLoadGlobalGauge(portal){
+    const svg = byId("globalGaugeSvg");
+    const note = byId("globalGaugeNote");
+    if (!svg) return;
+
+    if (note){
+      note.style.display = "";
+      note.textContent = "Chargement…";
+    }
+    svg.innerHTML = "";
+
+    try{
+      // Périmètre futur (droits) : si portal.scopeServiceId est défini, on le passe.
+      const serviceId = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+      const qs = serviceId ? `?id_service=${encodeURIComponent(serviceId)}` : "";
+
+      const url = `${portal.apiBase}/skills/dashboard/global-gauge/${encodeURIComponent(portal.contactId)}${qs}`;
+      const data = await portal.apiJson(url);
+
+      const gMin = Number(data?.gauge_min ?? 0);
+      const gMax = Number(data?.gauge_max ?? 0);
+      const score = Number(data?.score ?? 0);
+      const nb = Number(data?.nb_items ?? 0);
+
+      // Pas de chiffres affichés: uniquement visu + message si vide/KO
+      if (!isFinite(gMin) || !isFinite(gMax) || !isFinite(score) || nb <= 0 || gMax <= gMin){
+        renderGlobalGauge(svg, 0, 1, 0);
+        if (note){
+          note.style.display = "";
+          note.textContent = "Aucune compétence critique (poids > 80) sur les postes actuels.";
+        }
+        return;
+      }
+
+      const needle = Math.max(gMin, Math.min(gMax, score));
+      renderGlobalGauge(svg, gMin, gMax, needle);
+
+      if (note){
+        note.style.display = "none";
+        note.textContent = "";
+      }
+
+    } catch (e){
+      renderGlobalGauge(svg, 0, 1, 0);
+      if (note){
+        note.style.display = "";
+        note.textContent = "Erreur de chargement de la jauge.";
+      }
+    }
+  }
+
 
 
   window.SkillsDashboard = {
@@ -227,6 +365,8 @@
         renderWelcome(ctx);
         await tryLoadDashBanner(portal);
         await tryLoadAgePyramid(portal);
+        await tryLoadGlobalGauge(portal);
+
 
       } catch (e) {
         portal.showAlert("error", "Erreur de chargement du dashboard : " + (e?.message || e));

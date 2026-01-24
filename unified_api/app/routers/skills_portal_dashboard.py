@@ -52,6 +52,20 @@ class AgePyramidResponse(BaseModel):
     transmission_comp_danger: int = 0
     transmission_comp_total: int = 0
 
+class GlobalGaugeResponse(BaseModel):
+    # Limites jauge = somme des seuils min/max requis (A/B/C) sur les compétences critiques (poids > 80)
+    gauge_min: float = 0.0
+    gauge_max: float = 0.0
+
+    # Position aiguille = somme des scores (dernier audit), audit manquant => 0
+    score: float = 0.0
+
+    # Volume de calcul (nb de lignes "compétence requise" agrégées)
+    nb_items: int = 0
+
+    # Périmètre futur (droits): si renseigné, jauge calculée uniquement sur ce service
+    id_service_scope: Optional[str] = None
+
 
 
 @router.get(
@@ -353,6 +367,114 @@ def get_dashboard_age_pyramid(id_contact: str):
             transmission_comp_total=comp_total,
         )
 
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/skills/dashboard/global-gauge/{id_contact}",
+    response_model=GlobalGaugeResponse,
+)
+def get_dashboard_global_gauge(id_contact: str, id_service: Optional[str] = None):
+    """
+    Jauge "État global compétences vs attentes"
+    - Périmètre actuel: entreprise entière
+    - Périmètre futur (droits):
+        * si id_service fourni -> filtre sur tbl_effectif_client.id_service
+        * sinon -> tout id_ent
+    Règles:
+    - Effectifs: statut_actif = TRUE, archive = FALSE, poste actuel requis (id_poste_actuel non null)
+    - Compétences pointées: tbl_fiche_poste_competence.poids_criticite > 80 sur le poste actuel
+    - Limites jauge: somme des seuils min/max selon niveau requis (A=6-9, B=10-18, C=19-24)
+    - Aiguille: somme des resultat_eval du dernier audit (via id_dernier_audit), manquant => 0
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+
+                # id_ent = périmètre entreprise
+                id_ent = None
+                if isinstance(row_contact, dict):
+                    id_ent = row_contact.get("id_ent")
+                if not id_ent and isinstance(row_ent, dict):
+                    id_ent = row_ent.get("id_ent")
+
+                if not id_ent:
+                    return GlobalGaugeResponse()
+
+                service_filter_sql = ""
+                params = [id_ent]
+
+                if id_service:
+                    service_filter_sql = " AND e.id_service = %s "
+                    params.append(id_service)
+
+                cur.execute(
+                    f"""
+                    WITH eff AS (
+                        SELECT e.id_effectif, e.id_poste_actuel
+                        FROM public.tbl_effectif_client e
+                        WHERE e.id_ent = %s
+                          AND e.archive = FALSE
+                          AND e.statut_actif = TRUE
+                          AND e.id_poste_actuel IS NOT NULL
+                          {service_filter_sql}
+                    )
+                    SELECT
+                        COALESCE(SUM(
+                            CASE fpc.niveau_requis
+                                WHEN 'A' THEN 6
+                                WHEN 'B' THEN 10
+                                WHEN 'C' THEN 19
+                                ELSE 0
+                            END
+                        ), 0)::numeric AS gauge_min,
+
+                        COALESCE(SUM(
+                            CASE fpc.niveau_requis
+                                WHEN 'A' THEN 9
+                                WHEN 'B' THEN 18
+                                WHEN 'C' THEN 24
+                                ELSE 0
+                            END
+                        ), 0)::numeric AS gauge_max,
+
+                        COALESCE(SUM(COALESCE(a.resultat_eval, 0)), 0)::numeric AS score_sum,
+
+                        COUNT(*)::int AS nb_items
+                    FROM eff
+                    JOIN public.tbl_fiche_poste_competence fpc
+                      ON fpc.id_poste = eff.id_poste_actuel
+                     AND fpc.poids_criticite > 80
+                    LEFT JOIN public.tbl_effectif_client_competence ec
+                      ON ec.id_effectif_client = eff.id_effectif
+                     AND ec.id_comp = fpc.id_competence
+                     AND ec.actif = TRUE
+                     AND ec.archive = FALSE
+                    LEFT JOIN public.tbl_effectif_client_audit_competence a
+                      ON a.id_audit_competence = ec.id_dernier_audit
+                     AND a.id_effectif_competence = ec.id_effectif_competence
+                    """,
+                    tuple(params),
+                )
+
+                row = cur.fetchone() or {}
+
+        gmin = float(row.get("gauge_min") or 0.0)
+        gmax = float(row.get("gauge_max") or 0.0)
+        score = float(row.get("score_sum") or 0.0)
+        nb = int(row.get("nb_items") or 0)
+
+        return GlobalGaugeResponse(
+            gauge_min=gmin,
+            gauge_max=gmax,
+            score=score,
+            nb_items=nb,
+            id_service_scope=id_service.strip() if isinstance(id_service, str) and id_service.strip() else None,
+        )
 
     except HTTPException:
         raise

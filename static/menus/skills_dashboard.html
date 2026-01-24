@@ -76,8 +76,22 @@
 
     <div class="card sb-dash-tile" data-kpi="etat-global">
       <div class="sb-dash-tile-title">État global compétences vs attentes</div>
-      <div class="sb-dash-tile-sub">[Jauge globale] à venir</div>
+
+      <div class="sb-dash-tile-sub">
+        <div class="sb-globalgauge" id="globalGauge">
+          <svg id="globalGaugeSvg"
+              viewBox="0 0 240 150"
+              class="sb-globalgauge-svg"
+              aria-label="Jauge état global compétences vs attentes">
+          </svg>
+
+          <div class="card-sub sb-globalgauge-note" id="globalGaugeNote">
+            Chargement…
+          </div>
+        </div>
+      </div>
     </div>
+
 
     <div class="card sb-dash-tile" data-kpi="sans-formation-12m">
       <div class="sb-dash-tile-title">Sans formation depuis 12 mois</div>

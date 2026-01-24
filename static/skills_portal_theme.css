@@ -1277,6 +1277,8 @@ body{
   gap:10px;
 }
 
+
+
 /* =========================
    Dashboard (Insights)
    ========================= */
@@ -1488,3 +1490,35 @@ body{
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================
+   Dashboard — Jauge état global (compétences vs attentes)
+   ========================= */
+
+#view-dashboard .sb-globalgauge{
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+#view-dashboard .sb-globalgauge-svg{
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  display: block;
+}
+
+#view-dashboard .sb-globalgauge-note{
+  margin-top: 6px;
+  text-align: center;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* (optionnel) un peu d’air dans la tuile */
+#view-dashboard .sb-dash-tile[data-kpi="etat-global"]{
+  min-height: 240px;
+}
+
