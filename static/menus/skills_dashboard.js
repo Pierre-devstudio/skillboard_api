@@ -192,17 +192,15 @@
 
   async function tryLoadAgePyramid(portal){
     const body = byId("agePyramidBody");
-    const note = byId("agePyramidNote");
+    const noteRoot = byId("agePyramidNote");
+    const quality = byId("agePyramidQuality");
     if (!body) return;
 
     body.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
-    const noteRoot = byId("agePyramidNote");
-    if (noteRoot) noteRoot.style.display = "none";
 
-    if (note){
-      note.style.display = "none";
-      note.textContent = "";
-    }
+    // IMPORTANT: on masque, mais on n'efface jamais le contenu HTML du conteneur KPI
+    if (noteRoot) noteRoot.style.display = "none";
+    if (quality) quality.textContent = "";
 
     try{
       const url = `${portal.apiBase}/skills/dashboard/age-pyramid/${encodeURIComponent(portal.contactId)}`;
@@ -210,12 +208,11 @@
       renderAgePyramid(data);
     } catch (e){
       body.innerHTML = `<div class="card-sub" style="margin:0;">Erreur de chargement</div>`;
-      if (note){
-        note.style.display = "none";
-        note.textContent = "";
-      }
+      if (noteRoot) noteRoot.style.display = "none";
+      if (quality) quality.textContent = "";
     }
   }
+
 
 
   window.SkillsDashboard = {
