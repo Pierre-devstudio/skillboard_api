@@ -527,7 +527,8 @@ def get_dashboard_no_training_12m(id_contact: str, id_service: Optional[str] = N
                           AND e.archive = FALSE
                           AND e.statut_actif = TRUE
                           AND e.id_poste_actuel IS NOT NULL
-                          AND (%s IS NULL OR e.id_service = %s)
+                          AND (%s::text IS NULL OR e.id_service = %s::text)
+
                     ),
                     last_train AS (
                         SELECT
