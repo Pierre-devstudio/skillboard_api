@@ -719,19 +719,21 @@
     }
   }
 
-
-    function openModal(id){
+  function openModal(id){
     const m = byId(id);
     if (!m) return;
+    m.classList.add("show");
     m.setAttribute("aria-hidden", "false");
-    m.classList.add("open");
+
+    const body = m.querySelector(".modal-body");
+    if (body) body.scrollTop = 0;
   }
 
   function closeModal(id){
     const m = byId(id);
     if (!m) return;
+    m.classList.remove("show");
     m.setAttribute("aria-hidden", "true");
-    m.classList.remove("open");
   }
 
   function setDashDetailModal(title, sub, html){
@@ -785,7 +787,7 @@
         if (e.target === modal) closeModal("modalDashDetail");
       });
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && modal.classList.contains("open")) closeModal("modalDashDetail");
+        if (e.key === "Escape" && modal.classList.contains("show")) closeModal("modalDashDetail");
       });
     }
 
