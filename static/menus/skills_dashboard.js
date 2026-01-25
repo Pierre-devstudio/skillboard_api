@@ -485,6 +485,74 @@
     }
   }
 
+    async function tryLoadNoPerformance12m(portal){
+    const svg = byId("noPerf12mSvg");
+    const elPct = byId("noPerf12mPct");
+    const elSub = byId("noPerf12mSub");
+    const note = byId("noPerf12mNote");
+
+    if (!svg) return;
+
+    // état initial
+    renderRing(svg, 0);
+    if (elPct) elPct.textContent = "–%";
+    if (elSub) elSub.textContent = "";
+    if (note){
+      note.style.display = "";
+      note.textContent = "Chargement…";
+    }
+
+    try{
+      // périmètre futur (droits)
+      const serviceId = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+      const qs = serviceId ? `?id_service=${encodeURIComponent(serviceId)}` : "";
+
+      const url = `${portal.apiBase}/skills/dashboard/no-performance-12m/${encodeURIComponent(portal.contactId)}${qs}`;
+      const data = await portal.apiJson(url);
+
+      const total = Number(data?.total_effectif ?? 0);
+      const countNo = Number(data?.count_no_perf_12m ?? 0);
+      let pct = Number(data?.pct_no_perf_12m ?? 0);
+
+      if (!isFinite(pct)) pct = 0;
+      pct = Math.max(0, Math.min(100, pct));
+
+      if (!total || total <= 0){
+        renderRing(svg, 0);
+        if (elPct) elPct.textContent = "–%";
+        if (elSub) elSub.textContent = "";
+        if (note){
+          note.style.display = "";
+          note.textContent = "Aucun effectif actif (périmètre).";
+        }
+        return;
+      }
+
+      // Ici, on affiche le % "à risque" (sans point performance)
+      renderRing(svg, pct / 100);
+
+      if (elPct){
+        elPct.textContent = pct.toLocaleString("fr-FR", { maximumFractionDigits: 0 }) + "%";
+      }
+      if (elSub){
+        elSub.textContent = `${countNo} / ${total} salarié(s)`;
+      }
+      if (note){
+        note.style.display = "none";
+        note.textContent = "";
+      }
+
+    } catch (e){
+      renderRing(svg, 0);
+      if (elPct) elPct.textContent = "–%";
+      if (elSub) elSub.textContent = "";
+      if (note){
+        note.style.display = "";
+        note.textContent = "Erreur de chargement.";
+      }
+    }
+  }
+
 
   window.SkillsDashboard = {
     onShow: async (portal) => {
@@ -500,6 +568,8 @@
         await tryLoadAgePyramid(portal);
         await tryLoadGlobalGauge(portal);
         await tryLoadNoTraining12m(portal);
+        await tryLoadNoPerformance12m(portal);
+
 
 
       } catch (e) {
