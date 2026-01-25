@@ -167,9 +167,26 @@
     </div>
 
     <div class="card sb-dash-tile" data-kpi="formations-programmees">
-      <div class="sb-dash-tile-title">Formations programmées</div>
-      <div class="sb-dash-tile-sub">[Formations programmées] à venir</div>
+      <div class="sb-dash-tile-title">
+        Formations à venir
+        <span class="sb-uptrain-badge" id="upTrainBadge" style="display:none;"></span>
+      </div>
+
+      <div class="sb-dash-tile-sub">
+        <div class="sb-uptrain" id="upTrainRoot">
+
+          <div class="sb-uptrain-list" id="upTrainList">
+            <div class="card-sub" style="margin:0;">Chargement…</div>
+          </div>
+
+          <div class="sb-uptrain-more" id="upTrainMore" style="display:none;"></div>
+
+          <div class="card-sub sb-uptrain-note" id="upTrainNote" style="display:none;"></div>
+
+        </div>
+      </div>
     </div>
+
 
     <div class="card sb-dash-tile" data-kpi="certifications-obso-60j">
       <div class="sb-dash-tile-title">Certifications à renouveler (60 jours)</div>

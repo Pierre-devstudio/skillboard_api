@@ -553,6 +553,104 @@
     }
   }
 
+    function fmtDateShortFR(isoDate) {
+    if (!isoDate) return "";
+    const d = new Date(String(isoDate).slice(0, 10) + "T00:00:00");
+    if (isNaN(d.getTime())) return String(isoDate);
+
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+
+    const now = new Date();
+    return (yyyy === now.getFullYear()) ? `${dd}/${mm}` : `${dd}/${mm}/${yyyy}`;
+  }
+
+  function fmtTrainingDateRange(item) {
+    const d1 = item?.date_debut_formation ? fmtDateShortFR(item.date_debut_formation) : "";
+    const d2 = item?.date_fin_formation ? fmtDateShortFR(item.date_fin_formation) : "";
+
+    if (d1 && d2 && d1 !== d2) return `${d1} - ${d2}`;
+    return d1 || d2 || "";
+  }
+
+  async function tryLoadUpcomingTrainings(portal) {
+    const list = byId("upTrainList");
+    const badge = byId("upTrainBadge");
+    const more = byId("upTrainMore");
+    const note = byId("upTrainNote");
+
+    if (!list) return;
+
+    list.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+    if (badge) badge.style.display = "none";
+    if (more) more.style.display = "none";
+    if (note) note.style.display = "none";
+
+    try {
+      const serviceId = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+      const qs = serviceId ? `?id_service=${encodeURIComponent(serviceId)}` : "";
+
+      const url = `${portal.apiBase}/skills/dashboard/upcoming-trainings/${encodeURIComponent(portal.contactId)}${qs}`;
+      const data = await portal.apiJson(url);
+
+      const total = Number(data?.total ?? 0);
+      const items = Array.isArray(data?.items) ? data.items : [];
+
+      if (!total || total <= 0 || items.length === 0) {
+        list.innerHTML = `<div class="card-sub" style="margin:0;">Aucune formation programmée.</div>`;
+        if (badge) badge.style.display = "none";
+        if (more) more.style.display = "none";
+        if (note) note.style.display = "none";
+        return;
+      }
+
+      // Badge: nombre total à venir
+      if (badge) {
+        badge.textContent = `${total}`;
+        badge.style.display = "";
+      }
+
+      // Rendu 3 lignes max (API limite déjà à 3)
+      list.innerHTML = items.map(it => {
+        const dateTxt = fmtTrainingDateRange(it) || "Date à préciser";
+        const title = (it?.label ?? "").toString().trim() || "Formation";
+        const n = Number(it?.nb_participants ?? 0);
+        const countTxt = `${isFinite(n) ? n : 0} pers.`;
+
+        return `
+          <div class="sb-uptrain-row">
+            <div class="sb-uptrain-date">${dateTxt}</div>
+            <div class="sb-uptrain-title" title="${title.replace(/"/g, "&quot;")}">${title}</div>
+            <div class="sb-uptrain-count">${countTxt}</div>
+          </div>
+        `;
+      }).join("");
+
+      // +N autres
+      const remaining = total - items.length;
+      if (more) {
+        if (remaining > 0) {
+          more.textContent = `+${remaining} autre(s) formation(s)`;
+          more.style.display = "";
+        } else {
+          more.style.display = "none";
+        }
+      }
+
+      if (note) note.style.display = "none";
+
+    } catch (e) {
+      list.innerHTML = `<div class="card-sub" style="margin:0;">Erreur de chargement.</div>`;
+      if (badge) badge.style.display = "none";
+      if (more) more.style.display = "none";
+      if (note) {
+        note.style.display = "none";
+        note.textContent = "";
+      }
+    }
+  }
+
 
   window.SkillsDashboard = {
     onShow: async (portal) => {
@@ -569,6 +667,7 @@
         await tryLoadGlobalGauge(portal);
         await tryLoadNoTraining12m(portal);
         await tryLoadNoPerformance12m(portal);
+        await tryLoadUpcomingTrainings(portal);
 
 
 

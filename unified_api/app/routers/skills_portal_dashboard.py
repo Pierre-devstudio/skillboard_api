@@ -79,6 +79,19 @@ class NoPerformance12mResponse(BaseModel):
     seuil_couverture: float = 0.7
     id_service_scope: Optional[str] = None
 
+class UpcomingTrainingItem(BaseModel):
+    id_action_formation: str
+    label: str
+    date_debut_formation: Optional[str] = None
+    date_fin_formation: Optional[str] = None
+    nb_participants: int = 0
+
+
+class UpcomingTrainingsResponse(BaseModel):
+    total: int = 0
+    items: List[UpcomingTrainingItem] = []
+    id_service_scope: Optional[str] = None
+
 
 @router.get(
     "/skills/context/{id_contact}",
@@ -683,6 +696,112 @@ def get_dashboard_no_performance_12m(id_contact: str, id_service: Optional[str] 
             count_no_perf_12m=count_no,
             total_effectif=total_eff,
             seuil_couverture=seuil,
+            id_service_scope=id_service_clean,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/skills/dashboard/upcoming-trainings/{id_contact}",
+    response_model=UpcomingTrainingsResponse,
+)
+def get_dashboard_upcoming_trainings(id_contact: str, id_service: Optional[str] = None):
+    """
+    Dashboard — Formations à venir
+    - Programmée si l'entreprise (id_ent) est présente dans tbl_action_formation_entreprises
+    - Dates dans tbl_action_formation
+    - Participants via tbl_action_formation_effectif (archive=false)
+    - Périmètre futur (droits): si id_service fourni -> on ne garde que les formations
+      ayant au moins 1 participant de ce service, et le compteur participants est filtré service.
+    """
+    try:
+        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+
+                id_ent = None
+                if isinstance(row_contact, dict):
+                    id_ent = row_contact.get("id_ent")
+                if not id_ent and isinstance(row_ent, dict):
+                    id_ent = row_ent.get("id_ent")
+
+                if not id_ent:
+                    return UpcomingTrainingsResponse()
+
+                cur.execute(
+                    """
+                    WITH base AS (
+                        SELECT DISTINCT
+                            a.id_action_formation,
+                            a.date_debut_formation,
+                            a.date_fin_formation,
+                            COALESCE(NULLIF(a.code_action_formation, ''), a.id_action_formation) AS label
+                        FROM public.tbl_action_formation a
+                        JOIN public.tbl_action_formation_entreprises ae
+                          ON ae.id_action_formation = a.id_action_formation
+                         AND ae.id_ent = %s
+                        WHERE COALESCE(a.archive, FALSE) = FALSE
+                          AND COALESCE(a.date_fin_formation, a.date_debut_formation) IS NOT NULL
+                          AND COALESCE(a.date_fin_formation, a.date_debut_formation) >= CURRENT_DATE
+                    ),
+                    scoped AS (
+                        SELECT
+                            b.id_action_formation,
+                            b.date_debut_formation,
+                            b.date_fin_formation,
+                            b.label,
+                            COUNT(e.id_effectif)::int AS nb_participants
+                        FROM base b
+                        LEFT JOIN public.tbl_action_formation_effectif afe
+                          ON afe.id_action_formation = b.id_action_formation
+                         AND COALESCE(afe.archive, FALSE) = FALSE
+                        LEFT JOIN public.tbl_effectif_client e
+                          ON e.id_effectif = afe.id_effectif
+                         AND e.archive = FALSE
+                         AND e.statut_actif = TRUE
+                         AND (%s::text IS NULL OR e.id_service = %s::text)
+                        GROUP BY b.id_action_formation, b.date_debut_formation, b.date_fin_formation, b.label
+                        HAVING (%s::text IS NULL OR COUNT(e.id_effectif) > 0)
+                    )
+                    SELECT
+                        s.id_action_formation,
+                        s.date_debut_formation,
+                        s.date_fin_formation,
+                        s.label,
+                        s.nb_participants,
+                        COUNT(*) OVER()::int AS total
+                    FROM scoped s
+                    ORDER BY COALESCE(s.date_debut_formation, s.date_fin_formation) ASC
+                    LIMIT 3
+                    """,
+                    (id_ent, id_service_clean, id_service_clean, id_service_clean),
+                )
+
+                rows = cur.fetchall() or []
+
+        items: List[UpcomingTrainingItem] = []
+        total = 0
+
+        for r in rows:
+            total = int(r.get("total") or 0)
+            items.append(
+                UpcomingTrainingItem(
+                    id_action_formation=r["id_action_formation"],
+                    label=r.get("label") or r["id_action_formation"],
+                    date_debut_formation=str(r["date_debut_formation"]) if r.get("date_debut_formation") else None,
+                    date_fin_formation=str(r["date_fin_formation"]) if r.get("date_fin_formation") else None,
+                    nb_participants=int(r.get("nb_participants") or 0),
+                )
+            )
+
+        return UpcomingTrainingsResponse(
+            total=total,
+            items=items,
             id_service_scope=id_service_clean,
         )
 

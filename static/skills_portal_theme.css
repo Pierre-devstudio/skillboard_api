@@ -1721,3 +1721,95 @@ body{
   transform: rotate(-90deg);
   transform-origin: 50% 50%;
 }
+
+/* =========================
+   Dashboard — Formations à venir (liste)
+   ========================= */
+
+#view-dashboard .sb-uptrain{
+  width: 100%;
+}
+
+#view-dashboard .sb-uptrain-badge{
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--accent) 10%, #ffffff);
+  color: #111827;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, #e5e7eb);
+}
+
+#view-dashboard .sb-uptrain-list{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+#view-dashboard .sb-uptrain-row{
+  display: grid;
+  grid-template-columns: 92px 1fr 70px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid #f1f5f9;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+#view-dashboard .sb-uptrain-date{
+  font-weight: 800;
+  font-size: 12px;
+  color: #111827;
+  white-space: nowrap;
+}
+
+#view-dashboard .sb-uptrain-title{
+  font-weight: 700;
+  font-size: 13px;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#view-dashboard .sb-uptrain-count{
+  justify-self: end;
+  font-size: 12px;
+  font-weight: 800;
+  color: #111827;
+  white-space: nowrap;
+}
+
+#view-dashboard .sb-uptrain-more{
+  margin-top: 8px;
+  text-align: center;
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+#view-dashboard .sb-uptrain-note{
+  margin-top: 8px;
+  text-align: center;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* Responsive: on empile un peu */
+@media (max-width: 740px){
+  #view-dashboard .sb-uptrain-row{
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  #view-dashboard .sb-uptrain-count{
+    justify-self: start;
+  }
+
+  #view-dashboard .sb-uptrain-title{
+    white-space: normal;
+  }
+}
