@@ -302,7 +302,7 @@ def get_dashboard_age_pyramid(id_contact: str):
                           AND ecc.archive = FALSE
                           AND ecc.niveau_actuel = 'Expert'
                           AND COALESCE(c.masque, FALSE) = FALSE
-                          AND COALESCE(c.etat, 'valide') = 'valide'
+                          AND COALESCE(c.etat, 'active') = 'active'
                     ),
                     agg AS (
                         SELECT
