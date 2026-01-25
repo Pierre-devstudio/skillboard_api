@@ -720,6 +720,94 @@
   }
 
 
+    function openModal(id){
+    const m = byId(id);
+    if (!m) return;
+    m.setAttribute("aria-hidden", "false");
+    m.classList.add("open");
+  }
+
+  function closeModal(id){
+    const m = byId(id);
+    if (!m) return;
+    m.setAttribute("aria-hidden", "true");
+    m.classList.remove("open");
+  }
+
+  function setDashDetailModal(title, sub, html){
+    const t = byId("modalDashDetailTitle");
+    const s = byId("modalDashDetailSub");
+    const b = byId("modalDashDetailBody");
+    if (t) t.textContent = title || "Détail";
+    if (s) s.textContent = sub || "";
+    if (b) b.innerHTML = html || "";
+  }
+
+  async function openDashDetailForTile(portal, tileEl){
+    const kpiKey = (tileEl?.dataset?.kpi || "").trim();
+    const titleEl = tileEl.querySelector(".sb-dash-tile-title");
+    const title = titleEl ? titleEl.textContent.replace(/\s+/g, " ").trim() : "Détail";
+
+    const scope = (portal && portal.scopeServiceId) ? "Périmètre : Service" : "Périmètre : Entreprise";
+    setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+    openModal("modalDashDetail");
+
+    // Pour l’instant: placeholder par KPI (on branchera les endpoints détail ensuite)
+    let body = `<div class="sb-muted">Aucun détail branché pour <b>${kpiKey || "kpi"}</b> (à faire tuile par tuile).</div>`;
+
+    // Exemple de table placeholder (histoire de valider le rendu)
+    body += `
+      <table class="sb-table" style="margin-top:10px;">
+        <thead><tr><th>Colonne</th><th>Valeur</th></tr></thead>
+        <tbody>
+          <tr><td>kpi</td><td>${(kpiKey || "-")}</td></tr>
+          <tr><td>scope</td><td>${scope}</td></tr>
+        </tbody>
+      </table>
+    `;
+
+    setDashDetailModal(title, scope, body);
+  }
+
+  function bindDashTiles(portal){
+    const root = byId("view-dashboard");
+    if (!root) return;
+
+    // Fermeture modal
+    const x = byId("btnDashDetailClose");
+    const x2 = byId("btnDashDetailClose2");
+    if (x) x.onclick = () => closeModal("modalDashDetail");
+    if (x2) x2.onclick = () => closeModal("modalDashDetail");
+
+    const modal = byId("modalDashDetail");
+    if (modal){
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeModal("modalDashDetail");
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && modal.classList.contains("open")) closeModal("modalDashDetail");
+      });
+    }
+
+    // Clic tuiles
+    root.querySelectorAll(".sb-dash-tile[data-kpi]").forEach(tile => {
+      tile.setAttribute("tabindex", "0");
+
+      tile.addEventListener("click", () => {
+        openDashDetailForTile(portal, tile);
+      });
+
+      tile.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " "){
+          e.preventDefault();
+          openDashDetailForTile(portal, tile);
+        }
+      });
+    });
+  }
+
+
+
   window.SkillsDashboard = {
     onShow: async (portal) => {
       try {
@@ -737,7 +825,9 @@
         await tryLoadNoPerformance12m(portal);
         await tryLoadUpcomingTrainings(portal);
         await tryLoadCertifsExpiring(portal);
+        await tryLoadAgePyramid(portal);
 
+        bindDashTiles(portal);
 
 
       } catch (e) {
