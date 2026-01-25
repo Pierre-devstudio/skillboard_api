@@ -651,6 +651,74 @@
     }
   }
 
+    async function tryLoadCertifsExpiring(portal) {
+    const list = byId("certExpList");
+    const badge = byId("certExpBadge");
+    const more = byId("certExpMore");
+    const note = byId("certExpNote");
+
+    if (!list) return;
+
+    list.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+    if (badge) badge.style.display = "none";
+    if (more) more.style.display = "none";
+    if (note) note.style.display = "none";
+
+    try {
+      const serviceId = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+      const qs = serviceId ? `?days=60&id_service=${encodeURIComponent(serviceId)}` : `?days=60`;
+
+      const url = `${portal.apiBase}/skills/dashboard/certifs-expiring/${encodeURIComponent(portal.contactId)}${qs}`;
+      const data = await portal.apiJson(url);
+
+      const totalInstances = Number(data?.total_instances ?? 0);
+      const totalGroups = Number(data?.total_groups ?? 0);
+      const items = Array.isArray(data?.items) ? data.items : [];
+
+      if (!totalInstances || totalInstances <= 0 || items.length === 0) {
+        list.innerHTML = `<div class="card-sub" style="margin:0;">Aucun renouvellement à prévoir.</div>`;
+        if (badge) badge.style.display = "none";
+        if (more) more.style.display = "none";
+        return;
+      }
+
+      if (badge) {
+        badge.textContent = `${totalInstances}`;
+        badge.style.display = "";
+      }
+
+      list.innerHTML = items.map(it => {
+        const dateTxt = fmtDateShortFR(it?.date_expiration) || "Date ?";
+        const title = (it?.certification ?? "").toString().trim() || "Certification";
+        const n = Number(it?.nb_personnes ?? 0);
+        const countTxt = `${isFinite(n) ? n : 0} pers.`;
+
+        return `
+          <div class="sb-uptrain-row">
+            <div class="sb-uptrain-date">${dateTxt}</div>
+            <div class="sb-uptrain-title" title="${title.replace(/"/g, "&quot;")}">${title}</div>
+            <div class="sb-uptrain-count">${countTxt}</div>
+          </div>
+        `;
+      }).join("");
+
+      const remaining = totalGroups - items.length;
+      if (more) {
+        if (remaining > 0) {
+          more.textContent = `+${remaining} autre(s) certification(s)`;
+          more.style.display = "";
+        } else {
+          more.style.display = "none";
+        }
+      }
+
+    } catch (e) {
+      list.innerHTML = `<div class="card-sub" style="margin:0;">Erreur de chargement.</div>`;
+      if (badge) badge.style.display = "none";
+      if (more) more.style.display = "none";
+    }
+  }
+
 
   window.SkillsDashboard = {
     onShow: async (portal) => {
@@ -668,6 +736,7 @@
         await tryLoadNoTraining12m(portal);
         await tryLoadNoPerformance12m(portal);
         await tryLoadUpcomingTrainings(portal);
+        await tryLoadCertifsExpiring(portal);
 
 
 

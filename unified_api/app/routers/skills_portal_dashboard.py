@@ -92,6 +92,24 @@ class UpcomingTrainingsResponse(BaseModel):
     items: List[UpcomingTrainingItem] = []
     id_service_scope: Optional[str] = None
 
+class CertExpiringItem(BaseModel):
+    date_expiration: str
+    certification: str
+    nb_personnes: int = 0
+
+
+class CertExpiringResponse(BaseModel):
+    days: int = 60
+
+    # Badge = total "instances" à renouveler (somme des personnes sur toutes lignes)
+    total_instances: int = 0
+
+    # Pour le "+N autres" (nb de lignes agrégées date+certif)
+    total_groups: int = 0
+
+    items: List[CertExpiringItem] = []
+    id_service_scope: Optional[str] = None
+
 
 @router.get(
     "/skills/context/{id_contact}",
@@ -801,6 +819,121 @@ def get_dashboard_upcoming_trainings(id_contact: str, id_service: Optional[str] 
 
         return UpcomingTrainingsResponse(
             total=total,
+            items=items,
+            id_service_scope=id_service_clean,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+@router.get(
+    "/skills/dashboard/certifs-expiring/{id_contact}",
+    response_model=CertExpiringResponse,
+)
+def get_dashboard_certifs_expiring(id_contact: str, days: int = 60, id_service: Optional[str] = None):
+    """
+    Dashboard — Certifications à renouveler
+    - Badge: total des certifications à renouveler (instances = nb personnes à traiter)
+    - Micro-liste (3): date expiration + certification + X pers.
+    - Périmètre futur (droits): si id_service fourni -> filtre effectif sur ce service
+
+    Règles population (cohérence dashboard):
+    - effectif actif: statut_actif = TRUE
+    - archive = FALSE
+    - id_poste_actuel NON NULL
+    - certif détenue: tbl_effectif_client_certification.archive = FALSE
+    - date_expiration non NULL, entre aujourd'hui et (aujourd'hui + days)
+    - certif masquée: ignorée (tbl_certification.masque = FALSE)
+    """
+    try:
+        days = int(days or 60)
+        if days <= 0:
+            days = 60
+
+        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+
+                id_ent = None
+                if isinstance(row_contact, dict):
+                    id_ent = row_contact.get("id_ent")
+                if not id_ent and isinstance(row_ent, dict):
+                    id_ent = row_ent.get("id_ent")
+
+                if not id_ent:
+                    return CertExpiringResponse(days=days)
+
+                cur.execute(
+                    """
+                    WITH eff AS (
+                        SELECT e.id_effectif
+                        FROM public.tbl_effectif_client e
+                        WHERE e.id_ent = %s
+                          AND e.archive = FALSE
+                          AND e.statut_actif = TRUE
+                          AND e.id_poste_actuel IS NOT NULL
+                          AND (%s::text IS NULL OR e.id_service = %s::text)
+                    ),
+                    base AS (
+                        SELECT
+                            ec.id_effectif,
+                            ec.id_certification,
+                            ec.date_expiration::date AS date_expiration
+                        FROM public.tbl_effectif_client_certification ec
+                        JOIN eff ON eff.id_effectif = ec.id_effectif
+                        WHERE ec.archive = FALSE
+                          AND ec.date_expiration IS NOT NULL
+                          AND ec.date_expiration >= CURRENT_DATE
+                          AND ec.date_expiration < (CURRENT_DATE + (%s * INTERVAL '1 day'))
+                    ),
+                    agg AS (
+                        SELECT
+                            b.date_expiration,
+                            c.nom_certification,
+                            COUNT(DISTINCT b.id_effectif)::int AS nb_personnes
+                        FROM base b
+                        JOIN public.tbl_certification c
+                          ON c.id_certification = b.id_certification
+                         AND COALESCE(c.masque, FALSE) = FALSE
+                        GROUP BY b.date_expiration, c.nom_certification
+                    )
+                    SELECT
+                        a.date_expiration,
+                        a.nom_certification,
+                        a.nb_personnes,
+                        SUM(a.nb_personnes) OVER()::int AS total_instances,
+                        COUNT(*) OVER()::int AS total_groups
+                    FROM agg a
+                    ORDER BY a.date_expiration ASC, a.nom_certification ASC
+                    LIMIT 3
+                    """,
+                    (id_ent, id_service_clean, id_service_clean, days),
+                )
+
+                rows = cur.fetchall() or []
+
+        items: List[CertExpiringItem] = []
+        total_instances = 0
+        total_groups = 0
+
+        for r in rows:
+            total_instances = int(r.get("total_instances") or 0)
+            total_groups = int(r.get("total_groups") or 0)
+            items.append(
+                CertExpiringItem(
+                    date_expiration=str(r["date_expiration"]),
+                    certification=str(r.get("nom_certification") or "").strip() or "Certification",
+                    nb_personnes=int(r.get("nb_personnes") or 0),
+                )
+            )
+
+        return CertExpiringResponse(
+            days=days,
+            total_instances=total_instances,
+            total_groups=total_groups,
             items=items,
             id_service_scope=id_service_clean,
         )
