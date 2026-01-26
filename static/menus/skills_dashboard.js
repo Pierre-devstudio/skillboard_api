@@ -992,6 +992,129 @@
     }
   }
 
+    async function loadDashDetailCertifsExpiring(portal, title, scope, offset){
+    const limit = 50;
+
+    const serviceId = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+    const qs =
+      `?days=60&limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}` +
+      (serviceId ? `&id_service=${encodeURIComponent(serviceId)}` : "");
+
+    const url = `${portal.apiBase}/skills/dashboard/certifs-expiring/detail/${encodeURIComponent(portal.contactId)}${qs}`;
+
+    const esc = (v) => String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+    try{
+      const data = await portal.apiJson(url);
+
+      const total = Number(data?.total ?? 0);
+      const rows = Array.isArray(data?.rows) ? data.rows : [];
+      const days = Number(data?.days ?? 60);
+
+      let html = `
+        <div class="sb-muted" style="margin-bottom:10px;">
+          Fenêtre : <b>${isFinite(days) ? days : 60}</b> jours.
+          <br>
+          <b>${total}</b> certification(s) à renouveler (instances nominatives) sur ce périmètre.
+        </div>
+      `;
+
+      if (!rows.length){
+        html += `<div class="card-sub" style="margin:0;">Aucun renouvellement à prévoir.</div>`;
+        setDashDetailModal(title, scope, html);
+        return;
+      }
+
+      html += `
+        <div class="table-wrap">
+          <table class="sb-table">
+            <thead>
+              <tr>
+                <th>Expiration</th>
+                <th>J-</th>
+                <th>Certification</th>
+                <th>Salarié</th>
+                <th>Service</th>
+                <th>Poste</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => {
+                const exp = r?.date_expiration
+                  ? (typeof fmtDateShortFR === "function" ? fmtDateShortFR(r.date_expiration) : esc(r.date_expiration))
+                  : "-";
+                const j = Number(r?.jours_avant_expiration ?? 0);
+                const jTxt = isFinite(j) ? String(j) : "0";
+
+                const cert = esc(r?.certification ?? "");
+                const nom = `${esc(r?.prenom)} ${esc(r?.nom)}`.trim();
+                const service = esc(r?.service ?? "");
+                const poste = esc(r?.poste ?? "");
+
+                return `
+                  <tr>
+                    <td><b>${exp}</b></td>
+                    <td>${jTxt}</td>
+                    <td>${cert || "-"}</td>
+                    <td>${nom || "-"}</td>
+                    <td>${service || "-"}</td>
+                    <td>${poste || "-"}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      const curOffset = Number(data?.offset ?? offset) || 0;
+      const curLimit = Number(data?.limit ?? limit) || limit;
+
+      const canPrev = curOffset > 0;
+      const canNext = (curOffset + curLimit) < total;
+
+      html += `
+        <div class="sb-dash-pager">
+          <div class="sb-muted">Page : ${Math.floor(curOffset / curLimit) + 1} / ${Math.max(1, Math.ceil(total / curLimit))}</div>
+          <div>
+            <button type="button" class="btn-secondary" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
+            <button type="button" class="btn-secondary" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
+          </div>
+        </div>
+      `;
+
+      setDashDetailModal(title, scope, html);
+
+      const btnPrev = byId("btnDashDetailPrev");
+      const btnNext = byId("btnDashDetailNext");
+
+      if (btnPrev){
+        btnPrev.onclick = async () => {
+          if (!canPrev) return;
+          setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+          await loadDashDetailCertifsExpiring(portal, title, scope, Math.max(0, curOffset - curLimit));
+        };
+      }
+
+      if (btnNext){
+        btnNext.onclick = async () => {
+          if (!canNext) return;
+          setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+          await loadDashDetailCertifsExpiring(portal, title, scope, curOffset + curLimit);
+        };
+      }
+
+    } catch (e){
+      setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Erreur de chargement.</div>`);
+    }
+  }
+
+
   async function openDashDetailForTile(portal, tileEl){
     const kpiKey = (tileEl?.dataset?.kpi || "").trim();
     const titleEl = tileEl.querySelector(".sb-dash-tile-title");
@@ -1008,6 +1131,11 @@
 
     if (kpiKey === "sans-formation-12m"){
       await loadDashDetailNoTraining12m(portal, title, scope, 0);
+      return;
+    }
+
+    if (kpiKey === "certifications-renouveler-60j"){
+      await loadDashDetailCertifsExpiring(portal, title, scope, 0);
       return;
     }
 

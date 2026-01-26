@@ -153,6 +153,27 @@ class NoTraining12mDetailResponse(BaseModel):
     rows: List[NoTraining12mDetailRow] = []
     id_service_scope: Optional[str] = None
 
+class CertExpiringDetailRow(BaseModel):
+    date_expiration: str
+    jours_avant_expiration: int = 0
+    certification: str
+
+    id_effectif: str
+    nom: str
+    prenom: str
+    service: Optional[str] = None
+    poste: Optional[str] = None
+
+
+class CertExpiringDetailResponse(BaseModel):
+    days: int = 60
+    total: int = 0
+    limit: int = 50
+    offset: int = 0
+
+    rows: List[CertExpiringDetailRow] = []
+    id_service_scope: Optional[str] = None
+
 
 @router.get(
     "/skills/context/{id_contact}",
@@ -1358,6 +1379,178 @@ def get_dashboard_no_training_12m_detail(
             limit=limit,
             offset=offset,
             periode_mois=periode_mois,
+            rows=out_rows,
+            id_service_scope=id_service_clean,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/skills/dashboard/certifs-expiring/detail/{id_contact}",
+    response_model=CertExpiringDetailResponse,
+)
+def get_dashboard_certifs_expiring_detail(
+    id_contact: str,
+    days: int = 60,
+    limit: int = 50,
+    offset: int = 0,
+    id_service: Optional[str] = None,
+):
+    """
+    Détail paginé — liste nominative des certifications qui expirent sous X jours.
+    """
+    try:
+        days = int(days or 60)
+        if days <= 0:
+            days = 60
+
+        try:
+            limit = int(limit or 50)
+        except Exception:
+            limit = 50
+
+        try:
+            offset = int(offset or 0)
+        except Exception:
+            offset = 0
+
+        if limit < 1:
+            limit = 50
+        if limit > 200:
+            limit = 200
+        if offset < 0:
+            offset = 0
+
+        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+
+                id_ent = None
+                if isinstance(row_contact, dict):
+                    id_ent = row_contact.get("id_ent")
+                if not id_ent and isinstance(row_ent, dict):
+                    id_ent = row_ent.get("id_ent")
+
+                if not id_ent:
+                    return CertExpiringDetailResponse(days=days, total=0, limit=limit, offset=offset, rows=[])
+
+                # Total (pour pagination)
+                cur.execute(
+                    """
+                    WITH eff AS (
+                        SELECT e.id_effectif
+                        FROM public.tbl_effectif_client e
+                        WHERE e.id_ent = %s
+                          AND e.archive = FALSE
+                          AND e.statut_actif = TRUE
+                          AND e.id_poste_actuel IS NOT NULL
+                          AND (%s::text IS NULL OR e.id_service = %s::text)
+                    ),
+                    base AS (
+                        SELECT
+                            ec.id_effectif,
+                            ec.id_certification,
+                            ec.date_expiration::date AS date_expiration
+                        FROM public.tbl_effectif_client_certification ec
+                        JOIN eff ON eff.id_effectif = ec.id_effectif
+                        WHERE ec.archive = FALSE
+                          AND ec.date_expiration IS NOT NULL
+                          AND ec.date_expiration >= CURRENT_DATE
+                          AND ec.date_expiration < (CURRENT_DATE + (%s * INTERVAL '1 day'))
+                    )
+                    SELECT COUNT(*)::int AS total
+                    FROM base b
+                    JOIN public.tbl_certification c
+                      ON c.id_certification = b.id_certification
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                    """,
+                    (id_ent, id_service_clean, id_service_clean, days),
+                )
+                total = int((cur.fetchone() or {}).get("total") or 0)
+
+                # Détail paginé
+                cur.execute(
+                    """
+                    WITH eff AS (
+                        SELECT
+                            e.id_effectif,
+                            e.nom_effectif,
+                            e.prenom_effectif,
+                            e.id_service,
+                            e.id_poste_actuel
+                        FROM public.tbl_effectif_client e
+                        WHERE e.id_ent = %s
+                          AND e.archive = FALSE
+                          AND e.statut_actif = TRUE
+                          AND e.id_poste_actuel IS NOT NULL
+                          AND (%s::text IS NULL OR e.id_service = %s::text)
+                    ),
+                    base AS (
+                        SELECT
+                            ec.id_effectif,
+                            ec.id_certification,
+                            ec.date_expiration::date AS date_expiration
+                        FROM public.tbl_effectif_client_certification ec
+                        JOIN eff ON eff.id_effectif = ec.id_effectif
+                        WHERE ec.archive = FALSE
+                          AND ec.date_expiration IS NOT NULL
+                          AND ec.date_expiration >= CURRENT_DATE
+                          AND ec.date_expiration < (CURRENT_DATE + (%s * INTERVAL '1 day'))
+                    )
+                    SELECT
+                        b.date_expiration,
+                        (b.date_expiration - CURRENT_DATE)::int AS jours_avant_expiration,
+                        c.nom_certification,
+                        e.id_effectif,
+                        e.nom_effectif,
+                        e.prenom_effectif,
+                        o.nom_service,
+                        p.intitule_poste
+                    FROM base b
+                    JOIN public.tbl_certification c
+                      ON c.id_certification = b.id_certification
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                    JOIN eff e
+                      ON e.id_effectif = b.id_effectif
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_service = e.id_service
+                     AND o.archive = FALSE
+                    LEFT JOIN public.tbl_fiche_poste p
+                      ON p.id_poste = e.id_poste_actuel
+                     AND COALESCE(p.actif, TRUE) = TRUE
+                    ORDER BY b.date_expiration ASC, c.nom_certification ASC, e.nom_effectif ASC, e.prenom_effectif ASC
+                    LIMIT %s OFFSET %s
+                    """,
+                    (id_ent, id_service_clean, id_service_clean, days, limit, offset),
+                )
+
+                rows = cur.fetchall() or []
+
+        out_rows: List[CertExpiringDetailRow] = []
+        for r in rows:
+            out_rows.append(
+                CertExpiringDetailRow(
+                    date_expiration=str(r["date_expiration"]),
+                    jours_avant_expiration=int(r.get("jours_avant_expiration") or 0),
+                    certification=str(r.get("nom_certification") or "").strip() or "Certification",
+                    id_effectif=str(r["id_effectif"]),
+                    nom=str(r.get("nom_effectif") or ""),
+                    prenom=str(r.get("prenom_effectif") or ""),
+                    service=(str(r.get("nom_service")) if r.get("nom_service") else None),
+                    poste=(str(r.get("intitule_poste")) if r.get("intitule_poste") else None),
+                )
+            )
+
+        return CertExpiringDetailResponse(
+            days=days,
+            total=total,
+            limit=limit,
+            offset=offset,
             rows=out_rows,
             id_service_scope=id_service_clean,
         )
