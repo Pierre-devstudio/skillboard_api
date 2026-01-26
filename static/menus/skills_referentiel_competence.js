@@ -113,10 +113,11 @@
       (list || []).forEach(n => {
         if (!n || !n.id_service) return;
 
-        // On gère ces options nous-mêmes dans le select, donc on ne les duplique jamais.
+        // Ces 2 "services" sont des pseudo-choix gérés par le select, on ne les injecte jamais depuis l'API
         if (n.id_service === ALL_SERVICES_ID) return;
+        if (n.id_service === NON_LIE_ID) return;
 
-        // Dédoublonnage (au cas où l’arbre contient le même service à plusieurs endroits)
+        // Dédoublonnage strict par id
         if (seen.has(n.id_service)) return;
         seen.add(n.id_service);
 
@@ -130,50 +131,48 @@
       });
     }
 
-    rec(nodes || [], 0);
+    rec(Array.isArray(nodes) ? nodes : [], 0);
     return out;
   }
 
 
+
   function fillServiceSelect(flat) {
-  const sel = byId("refServiceSelect");
-  if (!sel) return;
+    const sel = byId("refServiceSelect");
+    if (!sel) return;
 
-  const current = sel.value || localStorage.getItem("sb_ref_service") || "";
+    const current = (sel.value || localStorage.getItem("sb_ref_service") || "").trim();
 
-  sel.innerHTML = `<option value="" disabled>Sélectionnez un service…</option>`;
+    // On veut: 1) Tous les services 2) services 3) Non lié
+    sel.innerHTML = "";
 
-  // Option "Tous les services"
-  const optAll = document.createElement("option");
-  optAll.value = ALL_SERVICES_ID;
-  optAll.textContent = "Tous les services";
-  sel.appendChild(optAll);
+    // 1) Tous les services (en premier)
+    const optAll = document.createElement("option");
+    optAll.value = ALL_SERVICES_ID;
+    optAll.textContent = "Tous les services";
+    sel.appendChild(optAll);
 
-  // Option "Non lié"
-  const optNon = document.createElement("option");
-  optNon.value = NON_LIE_ID;
-  optNon.textContent = "Non lié";
-  sel.appendChild(optNon);
+    // 2) Services (dédoublonnés déjà par flattenServices)
+    (flat || []).forEach(s => {
+      if (!s || !s.id_service) return;
+      const opt = document.createElement("option");
+      opt.value = s.id_service;
+      const prefix = s.depth ? "— ".repeat(Math.min(6, s.depth)) : "";
+      opt.textContent = prefix + (s.nom_service || s.id_service);
+      sel.appendChild(opt);
+    });
 
-  (flat || []).forEach(s => {
-    const opt = document.createElement("option");
-    opt.value = s.id_service;
-    const prefix = s.depth ? "— ".repeat(Math.min(6, s.depth)) : "";
-    opt.textContent = prefix + (s.nom_service || s.id_service);
-    sel.appendChild(opt);
-  });
+    // 3) Non lié (en dernier, une seule fois)
+    const optNon = document.createElement("option");
+    optNon.value = NON_LIE_ID;
+    optNon.textContent = "Non lié";
+    sel.appendChild(optNon);
 
-  // restore if possible
-  if (current && Array.from(sel.options).some(o => o.value === current)) {
-    sel.value = current;
-  } else if (flat && flat.length) {
-    // garde ton comportement actuel: par défaut premier service
-    sel.value = flat[0].id_service;
-  } else {
-    // si aucun service, au moins on peut afficher quelque chose
-    sel.value = ALL_SERVICES_ID;
+    // Restore si possible, sinon défaut = Tous les services
+    const exists = Array.from(sel.options).some(o => o.value === current);
+    sel.value = exists ? current : ALL_SERVICES_ID;
   }
-  }
+
 
 
   function fillDomaineSelect(domaines) {
