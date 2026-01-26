@@ -152,14 +152,20 @@ def _civilite_ui_to_db(v: Optional[str]) -> Optional[str]:
     if s == "":
         return None
 
-    # UI attend: M. / Mme
-    if s in ("M", "M."):
+    # UI: M / F (car HTML value="M" ou "F")
+    if s == "M":
         return "M"
-    if s in ("F", "Mme", "Mme."):
+    if s == "F":
         return "F"
 
-    # fallback (évite de throw si tu as d'autres libellés un jour)
+    # Tolérance si jamais un vieux front envoie encore "Mme"
+    if s in ("Mme", "Mme."):
+        return "F"
+    if s in ("M.",):
+        return "M"
+
     return s
+
 
 
 def _lookup_idcc(cur, idcc: Optional[str]) -> Optional[str]:
@@ -287,7 +293,7 @@ def _get_informations(cur, id_contact: str) -> InformationsResponse:
     contact = ContactInfo(
         id_contact=row_contact["id_contact"],
         id_ent=row_contact["id_ent"],
-        civ_ca=_civilite_db_to_ui(row_contact.get("civ_ca")),
+        civ_ca=row_contact.get("civ_ca"),
         nom_ca=row_contact["nom_ca"],
         prenom_ca=row_contact.get("prenom_ca"),
         role_ca=row_contact.get("role_ca"),
