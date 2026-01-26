@@ -298,33 +298,39 @@ def upload_enterprise_document_to_sharepoint(
 # ======================================================
 # Helpers SQL
 # ======================================================
-def fetch_contact_with_entreprise(cur, id_contact: str):
+def fetch_effectif_with_entreprise(cur, id_effectif: str):
     """
-    Récupère le contact + entreprise associée (code_ent = id_ent).
+    Récupère l'effectif (tbl_effectif_client) + entreprise associée (id_ent).
 
     Validité:
-    - Contact: COALESCE(masque, FALSE) = FALSE
+    - Effectif: COALESCE(archive, FALSE) = FALSE
     - Entreprise: COALESCE(masque, FALSE) = FALSE
     - Contrat Skills: COALESCE(contrat_skills, FALSE) = TRUE
 
-    Retourne: (row_contact: dict, row_entreprise: dict)
+    Note:
+    - On NE filtre PAS sur statut_actif ici : ce champ sert à exclure des analyses,
+      pas à bloquer l'accès au portail.
+
+    Retourne: (row_effectif: dict, row_entreprise: dict)
     """
     cur.execute(
         """
         SELECT
-            c.id_contact,
-            c.code_ent AS id_ent,
-            c.civ_ca,
-            c.nom_ca,
-            c.prenom_ca,
-            c.role_ca,
-            c.tel_ca,
-            c.tel2_ca,
-            c.mail_ca,
-            c.obs_ca,
-            c.created_at,
-            c.masque,
-            c.est_principal,
+            ec.id_effectif,
+            ec.id_ent,
+            ec.id_service,
+            ec.civilite_effectif,
+            ec.nom_effectif,
+            ec.prenom_effectif,
+            ec.email_effectif,
+            ec.telephone_effectif,
+            ec.note_commentaire,
+            ec.date_creation,
+            ec.archive,
+            ec.ismanager,
+            ec.isformateur,
+            ec.is_temp,
+            ec.role_temp,
 
             e.nom_ent,
             e.num_entreprise,
@@ -350,38 +356,39 @@ def fetch_contact_with_entreprise(cur, id_contact: str):
             e.tete_groupe,
             e.group_ok,
             e.contrat_skills
-        FROM public.tbl_contact c
-        JOIN public.tbl_entreprise e ON e.id_ent = c.code_ent
-        WHERE c.id_contact = %s
-          AND COALESCE(c.masque, FALSE) = FALSE
+        FROM public.tbl_effectif_client ec
+        JOIN public.tbl_entreprise e ON e.id_ent = ec.id_ent
+        WHERE ec.id_effectif = %s
+          AND COALESCE(ec.archive, FALSE) = FALSE
           AND COALESCE(e.masque, FALSE) = FALSE
           AND COALESCE(e.contrat_skills, FALSE) = TRUE
         """,
-        (id_contact,),
+        (id_effectif,),
     )
     row = cur.fetchone()
 
     if row is None:
         raise HTTPException(
             status_code=404,
-            detail="Contact introuvable, masqué, ou entreprise non éligible Skills.",
+            detail="Effectif introuvable, archivé, ou entreprise non éligible Skills.",
         )
 
-    # On sépare en 2 dictionnaires pour éviter les collisions de noms
-    row_contact = {
-        "id_contact": row.get("id_contact"),
+    row_effectif = {
+        "id_effectif": row.get("id_effectif"),
         "id_ent": row.get("id_ent"),
-        "civ_ca": row.get("civ_ca"),
-        "nom_ca": row.get("nom_ca"),
-        "prenom_ca": row.get("prenom_ca"),
-        "role_ca": row.get("role_ca"),
-        "tel_ca": row.get("tel_ca"),
-        "tel2_ca": row.get("tel2_ca"),
-        "mail_ca": row.get("mail_ca"),
-        "obs_ca": row.get("obs_ca"),
-        "created_at": row.get("created_at"),
-        "masque": row.get("masque"),
-        "est_principal": row.get("est_principal"),
+        "id_service": row.get("id_service"),
+        "civilite_effectif": row.get("civilite_effectif"),
+        "nom_effectif": row.get("nom_effectif"),
+        "prenom_effectif": row.get("prenom_effectif"),
+        "email_effectif": row.get("email_effectif"),
+        "telephone_effectif": row.get("telephone_effectif"),
+        "note_commentaire": row.get("note_commentaire"),
+        "date_creation": row.get("date_creation"),
+        "archive": row.get("archive"),
+        "ismanager": row.get("ismanager"),
+        "isformateur": row.get("isformateur"),
+        "is_temp": row.get("is_temp"),
+        "role_temp": row.get("role_temp"),
     }
 
     row_entreprise = {
@@ -412,4 +419,45 @@ def fetch_contact_with_entreprise(cur, id_contact: str):
         "contrat_skills": row.get("contrat_skills"),
     }
 
-    return row_contact, row_entreprise
+    return row_effectif, row_entreprise
+
+
+def fetch_contact_with_entreprise(cur, id_contact: str):
+    """
+    COMPAT: l'ancien code appelle fetch_contact_with_entreprise(id_contact).
+    Désormais, l'ID attendu est un id_effectif (tbl_effectif_client).
+
+    Objectif: ne pas casser tout le projet maintenant.
+    On mappe les champs effectif -> anciens noms "contact".
+
+    Retourne: (row_contact_like: dict, row_entreprise: dict)
+    """
+    row_eff, row_ent = fetch_effectif_with_entreprise(cur, id_contact)
+
+    role_ca = row_eff.get("role_temp")
+    if not role_ca and row_eff.get("ismanager"):
+        role_ca = "Manager"
+
+    row_contact_like = {
+        # anciens champs attendus par certains modules
+        "id_contact": row_eff.get("id_effectif"),
+        "id_ent": row_eff.get("id_ent"),
+        "id_service": row_eff.get("id_service"),
+        "civ_ca": row_eff.get("civilite_effectif"),
+        "nom_ca": row_eff.get("nom_effectif"),
+        "prenom_ca": row_eff.get("prenom_effectif"),
+        "role_ca": role_ca,
+        "tel_ca": row_eff.get("telephone_effectif"),
+        "tel2_ca": None,
+        "mail_ca": row_eff.get("email_effectif"),
+        "obs_ca": row_eff.get("note_commentaire"),
+        "created_at": row_eff.get("date_creation"),
+        "masque": row_eff.get("archive"),
+        "est_principal": None,
+
+        # bonus: champs “nouveaux”
+        "id_effectif": row_eff.get("id_effectif"),
+    }
+
+    return row_contact_like, row_ent
+
