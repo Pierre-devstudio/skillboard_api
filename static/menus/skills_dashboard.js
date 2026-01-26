@@ -1279,10 +1279,16 @@
     `;
 
     try{
-      setDashDetailModal(title, scope, tabsHtml("seniors") + `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+      setDashDetailModal(title, scope, tabsHtml("seniors"));
       bindDashAgeTabs(portal, title, scope);
 
+      const host = byId("dashAgeTabContent");
+      if (host){
+        host.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+      }
+
       const data = await portal.apiJson(url);
+
       const total = Number(data?.total ?? 0);
       const rows = Array.isArray(data?.rows) ? data.rows : [];
       const ageMin = Number(data?.age_min ?? 58);
@@ -1390,6 +1396,7 @@
       (serviceId ? `&id_service=${encodeURIComponent(serviceId)}` : "");
 
     const url = `${portal.apiBase}/skills/dashboard/age-pyramid/detail-transmission-danger/${encodeURIComponent(portal.contactId)}${qs}`;
+    
 
     const esc = (v) => String(v ?? "")
       .replaceAll("&", "&amp;")
@@ -1407,10 +1414,16 @@
     `;
 
     try{
-      setDashDetailModal(title, scope, tabsHtml("trans") + `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+      setDashDetailModal(title, scope, tabsHtml("trans"));
       bindDashAgeTabs(portal, title, scope);
 
+      const host = byId("dashAgeTabContent");
+      if (host){
+        host.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+      }
+
       const data = await portal.apiJson(url);
+
       const total = Number(data?.total ?? 0);
       const rows = Array.isArray(data?.rows) ? data.rows : [];
       const ageMin = Number(data?.age_min ?? 58);

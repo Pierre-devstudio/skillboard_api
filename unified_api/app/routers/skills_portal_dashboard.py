@@ -1968,3 +1968,174 @@ def get_dashboard_age_pyramid_detail_seniors(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/skills/dashboard/age-pyramid/detail-transmission-danger/{id_contact}",
+    response_model=TransmissionDangerDetailResponse,
+)
+def get_dashboard_age_pyramid_detail_transmission_danger(
+    id_contact: str,
+    age_min: int = 58,
+    limit: int = 50,
+    offset: int = 0,
+    id_service: Optional[str] = None,
+):
+    """
+    Détail paginé — "Transmission en danger"
+    Règle :
+      - on prend les compétences avec des experts (niveau_actuel='Expert')
+      - une compétence est "en danger" si la majorité stricte de ses experts sont seniors (>= age_min)
+      - on liste ensuite les experts seniors (>= age_min) sur ces compétences
+    Population (cohérence dashboard) :
+      - statut_actif=TRUE, archive=FALSE, id_poste_actuel NOT NULL, date_naissance NOT NULL
+      - périmètre futur : id_service (si fourni)
+    """
+    try:
+        try:
+            age_min = int(age_min or 58)
+        except Exception:
+            age_min = 58
+        if age_min < 0:
+            age_min = 58
+
+        try:
+            limit = int(limit or 50)
+        except Exception:
+            limit = 50
+        try:
+            offset = int(offset or 0)
+        except Exception:
+            offset = 0
+
+        if limit < 1:
+            limit = 50
+        if limit > 200:
+            limit = 200
+        if offset < 0:
+            offset = 0
+
+        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+
+                id_ent = None
+                if isinstance(row_contact, dict):
+                    id_ent = row_contact.get("id_ent")
+                if not id_ent and isinstance(row_ent, dict):
+                    id_ent = row_ent.get("id_ent")
+
+                if not id_ent:
+                    return TransmissionDangerDetailResponse(
+                        age_min=age_min, total=0, limit=limit, offset=offset, rows=[], id_service_scope=id_service_clean
+                    )
+
+                cur.execute(
+                    """
+                    WITH experts AS (
+                        SELECT
+                            ecc.id_comp,
+                            c.code AS code_comp,
+                            c.intitule AS competence,
+                            e.id_effectif,
+                            e.nom_effectif,
+                            e.prenom_effectif,
+                            EXTRACT(YEAR FROM age(CURRENT_DATE, e.date_naissance_effectif))::int AS age,
+                            e.id_service,
+                            e.id_poste_actuel
+                        FROM public.tbl_effectif_client_competence ecc
+                        JOIN public.tbl_effectif_client e
+                          ON e.id_effectif = ecc.id_effectif_client
+                        JOIN public.tbl_competence c
+                          ON c.id_comp = ecc.id_comp
+                        WHERE e.id_ent = %s
+                          AND e.archive = FALSE
+                          AND e.statut_actif = TRUE
+                          AND e.id_poste_actuel IS NOT NULL
+                          AND e.date_naissance_effectif IS NOT NULL
+                          AND (%s::text IS NULL OR e.id_service = %s::text)
+                          AND ecc.actif = TRUE
+                          AND ecc.archive = FALSE
+                          AND ecc.niveau_actuel = 'Expert'
+                          AND COALESCE(c.masque, FALSE) = FALSE
+                          AND COALESCE(c.etat, 'active') <> 'inactive'
+                    ),
+                    agg AS (
+                        SELECT
+                            id_comp,
+                            COUNT(*)::int AS total_experts,
+                            SUM(CASE WHEN age >= %s THEN 1 ELSE 0 END)::int AS experts_seniors
+                        FROM experts
+                        WHERE age IS NOT NULL AND age >= 0
+                        GROUP BY id_comp
+                    ),
+                    danger_comp AS (
+                        SELECT id_comp
+                        FROM agg
+                        WHERE experts_seniors * 2 > total_experts
+                    ),
+                    danger_rows AS (
+                        SELECT *
+                        FROM experts
+                        WHERE age IS NOT NULL
+                          AND age >= %s
+                          AND id_comp IN (SELECT id_comp FROM danger_comp)
+                    )
+                    SELECT
+                        dr.id_comp,
+                        dr.code_comp,
+                        dr.competence,
+                        dr.id_effectif,
+                        dr.nom_effectif,
+                        dr.prenom_effectif,
+                        dr.age,
+                        o.nom_service,
+                        p.intitule_poste,
+                        COUNT(*) OVER()::int AS total
+                    FROM danger_rows dr
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_service = dr.id_service
+                     AND o.archive = FALSE
+                    LEFT JOIN public.tbl_fiche_poste p
+                      ON p.id_poste = dr.id_poste_actuel
+                     AND COALESCE(p.actif, TRUE) = TRUE
+                    ORDER BY dr.competence ASC, dr.nom_effectif ASC, dr.prenom_effectif ASC
+                    LIMIT %s OFFSET %s
+                    """,
+                    (id_ent, id_service_clean, id_service_clean, age_min, age_min, limit, offset),
+                )
+
+                rows = cur.fetchall() or []
+
+        total = int(rows[0].get("total") or 0) if rows else 0
+
+        out_rows: List[TransmissionDangerRow] = []
+        for r in rows:
+            out_rows.append(
+                TransmissionDangerRow(
+                    id_comp=str(r["id_comp"]),
+                    code_comp=(str(r.get("code_comp")) if r.get("code_comp") else None),
+                    competence=str(r.get("competence") or "Compétence"),
+                    id_effectif=str(r["id_effectif"]),
+                    nom=str(r.get("nom_effectif") or ""),
+                    prenom=str(r.get("prenom_effectif") or ""),
+                    age=int(r.get("age") or 0),
+                    service=(str(r.get("nom_service")) if r.get("nom_service") else None),
+                    poste=(str(r.get("intitule_poste")) if r.get("intitule_poste") else None),
+                )
+            )
+
+        return TransmissionDangerDetailResponse(
+            age_min=age_min,
+            total=total,
+            limit=limit,
+            offset=offset,
+            rows=out_rows,
+            id_service_scope=id_service_clean,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
