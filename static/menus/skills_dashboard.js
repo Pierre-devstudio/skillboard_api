@@ -1254,6 +1254,267 @@
     }
   }
 
+    async function loadDashDetailAgePyramidSeniors(portal, title, scope, offset){
+    const limit = 50;
+    const serviceId = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+    const qs =
+      `?age_min=58&limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}` +
+      (serviceId ? `&id_service=${encodeURIComponent(serviceId)}` : "");
+
+    const url = `${portal.apiBase}/skills/dashboard/age-pyramid/detail-seniors/${encodeURIComponent(portal.contactId)}${qs}`;
+
+    const esc = (v) => String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+    const tabsHtml = (active) => `
+      <div class="sb-dash-tabs">
+        <button type="button" class="btn-secondary sb-dash-tab ${active === "seniors" ? "sb-dash-tab--active" : ""}" data-age-tab="seniors">Seniors (≥58)</button>
+        <button type="button" class="btn-secondary sb-dash-tab ${active === "trans" ? "sb-dash-tab--active" : ""}" data-age-tab="trans">Transmission en danger</button>
+      </div>
+      <div id="dashAgeTabContent"></div>
+    `;
+
+    try{
+      setDashDetailModal(title, scope, tabsHtml("seniors") + `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+      bindDashAgeTabs(portal, title, scope);
+
+      const data = await portal.apiJson(url);
+      const total = Number(data?.total ?? 0);
+      const rows = Array.isArray(data?.rows) ? data.rows : [];
+      const ageMin = Number(data?.age_min ?? 58);
+
+      let html = `
+        <div class="sb-muted" style="margin-bottom:10px;">
+          Liste des salariés âgés de <b>${isFinite(ageMin) ? ageMin : 58} ans</b> et plus.
+          <br><b>${total}</b> personne(s) sur ce périmètre.
+        </div>
+      `;
+
+      if (!rows.length){
+        html += `<div class="card-sub" style="margin:0;">Aucun senior identifié.</div>`;
+        byId("dashAgeTabContent").innerHTML = html;
+        return;
+      }
+
+      html += `
+        <div class="table-wrap">
+          <table class="sb-table">
+            <thead>
+              <tr>
+                <th>Salarié</th>
+                <th>Âge</th>
+                <th>Service</th>
+                <th>Poste</th>
+                <th>Comp. Expert</th>
+                <th>Retraite</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => {
+                const nom = `${esc(r?.prenom)} ${esc(r?.nom)}`.trim();
+                const age = Number(r?.age ?? 0);
+                const service = esc(r?.service ?? "");
+                const poste = esc(r?.poste ?? "");
+                const nbExp = Number(r?.nb_comp_expert ?? 0);
+                const ret = (r?.retraite_estimee === null || r?.retraite_estimee === undefined || r?.retraite_estimee === "") ? "-" : esc(r?.retraite_estimee);
+                return `
+                  <tr>
+                    <td>${nom || "-"}</td>
+                    <td><b>${isFinite(age) ? age : 0}</b></td>
+                    <td>${service || "-"}</td>
+                    <td>${poste || "-"}</td>
+                    <td>${isFinite(nbExp) ? nbExp : 0}</td>
+                    <td>${ret}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      const curOffset = Number(data?.offset ?? offset) || 0;
+      const curLimit = Number(data?.limit ?? limit) || limit;
+      const canPrev = curOffset > 0;
+      const canNext = (curOffset + curLimit) < total;
+
+      html += `
+        <div class="sb-dash-pager">
+          <div class="sb-muted">Page : ${Math.floor(curOffset / curLimit) + 1} / ${Math.max(1, Math.ceil(total / curLimit))}</div>
+          <div>
+            <button type="button" class="btn-secondary" id="btnDashAgePrev" ${canPrev ? "" : "disabled"}>Précédent</button>
+            <button type="button" class="btn-secondary" id="btnDashAgeNext" ${canNext ? "" : "disabled"}>Suivant</button>
+          </div>
+        </div>
+      `;
+
+      byId("dashAgeTabContent").innerHTML = html;
+
+      const prev = byId("btnDashAgePrev");
+      const next = byId("btnDashAgeNext");
+
+      if (prev){
+        prev.onclick = async () => {
+          if (!canPrev) return;
+          await loadDashDetailAgePyramidSeniors(portal, title, scope, Math.max(0, curOffset - curLimit));
+        };
+      }
+      if (next){
+        next.onclick = async () => {
+          if (!canNext) return;
+          await loadDashDetailAgePyramidSeniors(portal, title, scope, curOffset + curLimit);
+        };
+      }
+
+    } catch (e){
+      setDashDetailModal(title, scope, tabsHtml("seniors") + `<div class="card-sub" style="margin:0;">Erreur de chargement.</div>`);
+      bindDashAgeTabs(portal, title, scope);
+    }
+  }
+
+  async function loadDashDetailAgePyramidTransmissionDanger(portal, title, scope, offset){
+    const limit = 50;
+    const serviceId = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+    const qs =
+      `?age_min=58&limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}` +
+      (serviceId ? `&id_service=${encodeURIComponent(serviceId)}` : "");
+
+    const url = `${portal.apiBase}/skills/dashboard/age-pyramid/detail-transmission-danger/${encodeURIComponent(portal.contactId)}${qs}`;
+
+    const esc = (v) => String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+    const tabsHtml = (active) => `
+      <div class="sb-dash-tabs">
+        <button type="button" class="btn-secondary sb-dash-tab ${active === "seniors" ? "sb-dash-tab--active" : ""}" data-age-tab="seniors">Seniors (≥58)</button>
+        <button type="button" class="btn-secondary sb-dash-tab ${active === "trans" ? "sb-dash-tab--active" : ""}" data-age-tab="trans">Transmission en danger</button>
+      </div>
+      <div id="dashAgeTabContent"></div>
+    `;
+
+    try{
+      setDashDetailModal(title, scope, tabsHtml("trans") + `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+      bindDashAgeTabs(portal, title, scope);
+
+      const data = await portal.apiJson(url);
+      const total = Number(data?.total ?? 0);
+      const rows = Array.isArray(data?.rows) ? data.rows : [];
+      const ageMin = Number(data?.age_min ?? 58);
+
+      let html = `
+        <div class="sb-muted" style="margin-bottom:10px;">
+          Détail nominatif des <b>experts</b> (niveau “Expert”) âgés de <b>${isFinite(ageMin) ? ageMin : 58} ans</b> et plus,
+          sur des compétences où la transmission est considérée “en danger” (majorité stricte d’experts = seniors).
+          <br><b>${total}</b> ligne(s) sur ce périmètre.
+        </div>
+      `;
+
+      if (!rows.length){
+        html += `<div class="card-sub" style="margin:0;">Aucun risque de transmission identifié.</div>`;
+        byId("dashAgeTabContent").innerHTML = html;
+        return;
+      }
+
+      html += `
+        <div class="table-wrap">
+          <table class="sb-table">
+            <thead>
+              <tr>
+                <th>Compétence</th>
+                <th>Expert</th>
+                <th>Âge</th>
+                <th>Service</th>
+                <th>Poste</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => {
+                const comp = esc(r?.competence ?? "");
+                const code = esc(r?.code_comp ?? "");
+                const compLabel = code ? `${code} - ${comp}` : (comp || "-");
+
+                const nom = `${esc(r?.prenom)} ${esc(r?.nom)}`.trim();
+                const age = Number(r?.age ?? 0);
+                const service = esc(r?.service ?? "");
+                const poste = esc(r?.poste ?? "");
+                return `
+                  <tr>
+                    <td>${compLabel}</td>
+                    <td>${nom || "-"}</td>
+                    <td><b>${isFinite(age) ? age : 0}</b></td>
+                    <td>${service || "-"}</td>
+                    <td>${poste || "-"}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      const curOffset = Number(data?.offset ?? offset) || 0;
+      const curLimit = Number(data?.limit ?? limit) || limit;
+      const canPrev = curOffset > 0;
+      const canNext = (curOffset + curLimit) < total;
+
+      html += `
+        <div class="sb-dash-pager">
+          <div class="sb-muted">Page : ${Math.floor(curOffset / curLimit) + 1} / ${Math.max(1, Math.ceil(total / curLimit))}</div>
+          <div>
+            <button type="button" class="btn-secondary" id="btnDashAgePrev" ${canPrev ? "" : "disabled"}>Précédent</button>
+            <button type="button" class="btn-secondary" id="btnDashAgeNext" ${canNext ? "" : "disabled"}>Suivant</button>
+          </div>
+        </div>
+      `;
+
+      byId("dashAgeTabContent").innerHTML = html;
+
+      const prev = byId("btnDashAgePrev");
+      const next = byId("btnDashAgeNext");
+
+      if (prev){
+        prev.onclick = async () => {
+          if (!canPrev) return;
+          await loadDashDetailAgePyramidTransmissionDanger(portal, title, scope, Math.max(0, curOffset - curLimit));
+        };
+      }
+      if (next){
+        next.onclick = async () => {
+          if (!canNext) return;
+          await loadDashDetailAgePyramidTransmissionDanger(portal, title, scope, curOffset + curLimit);
+        };
+      }
+
+    } catch (e){
+      setDashDetailModal(title, scope, tabsHtml("trans") + `<div class="card-sub" style="margin:0;">Erreur de chargement.</div>`);
+      bindDashAgeTabs(portal, title, scope);
+    }
+  }
+
+  function bindDashAgeTabs(portal, title, scope){
+    const root = byId("modalDashDetailBody");
+    if (!root) return;
+
+    root.querySelectorAll("[data-age-tab]").forEach(btn => {
+      btn.onclick = async () => {
+        const tab = btn.getAttribute("data-age-tab");
+        if (tab === "seniors"){
+          await loadDashDetailAgePyramidSeniors(portal, title, scope, 0);
+        } else {
+          await loadDashDetailAgePyramidTransmissionDanger(portal, title, scope, 0);
+        }
+      };
+    });
+  }
+
 
 
   async function openDashDetailForTile(portal, tileEl){
@@ -1284,6 +1545,12 @@
       await loadDashDetailUpcomingTrainings(portal, title, scope, 0);
       return;
     }
+
+    if (kpiKey === "pyramide-ages"){
+      await loadDashDetailAgePyramidSeniors(portal, title, scope, 0);
+      return;
+    }
+
 
     // Pour l’instant: placeholder par KPI (on branchera les endpoints détail ensuite)
     let body = `<div class="sb-muted">Aucun détail branché pour <b>${kpiKey || "kpi"}</b> (à faire tuile par tuile).</div>`;

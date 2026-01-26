@@ -1885,3 +1885,23 @@ body{
   padding: 6px 10px;
   font-size: 12px;
 }
+
+/* Dashboard — onglets modal (pyramide des âges) */
+#modalDashDetail .sb-dash-tabs{
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+#modalDashDetail .sb-dash-tab{
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+#modalDashDetail .sb-dash-tab--active{
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 800;
+}

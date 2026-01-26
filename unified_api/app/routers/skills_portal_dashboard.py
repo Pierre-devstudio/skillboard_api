@@ -198,6 +198,50 @@ class UpcomingTrainingsDetailResponse(BaseModel):
     items: List[UpcomingTrainingSessionDetail] = []
     id_service_scope: Optional[str] = None
 
+class AgePyramidSeniorRow(BaseModel):
+    id_effectif: str
+    nom: str
+    prenom: str
+    age: int = 0
+
+    service: Optional[str] = None
+    poste: Optional[str] = None
+
+    date_naissance: Optional[str] = None
+    retraite_estimee: Optional[int] = None
+    nb_comp_expert: int = 0
+
+
+class AgePyramidSeniorsDetailResponse(BaseModel):
+    age_min: int = 58
+    total: int = 0
+    limit: int = 50
+    offset: int = 0
+    rows: List[AgePyramidSeniorRow] = []
+    id_service_scope: Optional[str] = None
+
+
+class TransmissionDangerRow(BaseModel):
+    id_comp: str
+    code_comp: Optional[str] = None
+    competence: str
+
+    id_effectif: str
+    nom: str
+    prenom: str
+    age: int = 0
+
+    service: Optional[str] = None
+    poste: Optional[str] = None
+
+
+class TransmissionDangerDetailResponse(BaseModel):
+    age_min: int = 58
+    total: int = 0
+    limit: int = 50
+    offset: int = 0
+    rows: List[TransmissionDangerRow] = []
+    id_service_scope: Optional[str] = None
 
 
 @router.get(
@@ -1764,6 +1808,159 @@ def get_dashboard_upcoming_trainings_detail(
             limit=limit,
             offset=offset,
             items=items,
+            id_service_scope=id_service_clean,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/skills/dashboard/age-pyramid/detail-seniors/{id_contact}",
+    response_model=AgePyramidSeniorsDetailResponse,
+)
+def get_dashboard_age_pyramid_detail_seniors(
+    id_contact: str,
+    age_min: int = 58,
+    limit: int = 50,
+    offset: int = 0,
+    id_service: Optional[str] = None,
+):
+    """
+    Détail paginé — liste des seniors (>= age_min) + nb compétences Expert.
+    Population:
+      - statut_actif=TRUE, archive=FALSE, id_poste_actuel NOT NULL, date_naissance NOT NULL
+    """
+    try:
+        try:
+            age_min = int(age_min or 58)
+        except Exception:
+            age_min = 58
+        if age_min < 0:
+            age_min = 58
+
+        try:
+            limit = int(limit or 50)
+        except Exception:
+            limit = 50
+        try:
+            offset = int(offset or 0)
+        except Exception:
+            offset = 0
+
+        if limit < 1:
+            limit = 50
+        if limit > 200:
+            limit = 200
+        if offset < 0:
+            offset = 0
+
+        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+
+                id_ent = None
+                if isinstance(row_contact, dict):
+                    id_ent = row_contact.get("id_ent")
+                if not id_ent and isinstance(row_ent, dict):
+                    id_ent = row_ent.get("id_ent")
+
+                if not id_ent:
+                    return AgePyramidSeniorsDetailResponse(
+                        age_min=age_min, total=0, limit=limit, offset=offset, rows=[], id_service_scope=id_service_clean
+                    )
+
+                cur.execute(
+                    """
+                    WITH eff AS (
+                        SELECT
+                            e.id_effectif,
+                            e.nom_effectif,
+                            e.prenom_effectif,
+                            e.date_naissance_effectif,
+                            e.retraite_estimee,
+                            e.id_service,
+                            e.id_poste_actuel
+                        FROM public.tbl_effectif_client e
+                        WHERE e.id_ent = %s
+                          AND e.archive = FALSE
+                          AND e.statut_actif = TRUE
+                          AND e.id_poste_actuel IS NOT NULL
+                          AND e.date_naissance_effectif IS NOT NULL
+                          AND (%s::text IS NULL OR e.id_service = %s::text)
+                    ),
+                    seniors AS (
+                        SELECT
+                            ef.*,
+                            EXTRACT(YEAR FROM AGE(CURRENT_DATE, ef.date_naissance_effectif))::int AS age
+                        FROM eff ef
+                        WHERE EXTRACT(YEAR FROM AGE(CURRENT_DATE, ef.date_naissance_effectif))::int >= %s
+                    ),
+                    expcnt AS (
+                        SELECT
+                            ecc.id_effectif_client AS id_effectif,
+                            COUNT(*)::int AS nb_comp_expert
+                        FROM public.tbl_effectif_client_competence ecc
+                        JOIN seniors s ON s.id_effectif = ecc.id_effectif_client
+                        WHERE ecc.actif = TRUE
+                          AND ecc.archive = FALSE
+                          AND ecc.niveau_actuel = 'Expert'
+                        GROUP BY ecc.id_effectif_client
+                    )
+                    SELECT
+                        s.id_effectif,
+                        s.nom_effectif,
+                        s.prenom_effectif,
+                        s.age,
+                        s.date_naissance_effectif,
+                        s.retraite_estimee,
+                        o.nom_service,
+                        p.intitule_poste,
+                        COALESCE(ex.nb_comp_expert, 0)::int AS nb_comp_expert,
+                        COUNT(*) OVER()::int AS total
+                    FROM seniors s
+                    LEFT JOIN expcnt ex ON ex.id_effectif = s.id_effectif
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_service = s.id_service
+                     AND o.archive = FALSE
+                    LEFT JOIN public.tbl_fiche_poste p
+                      ON p.id_poste = s.id_poste_actuel
+                     AND COALESCE(p.actif, TRUE) = TRUE
+                    ORDER BY s.age DESC, s.nom_effectif ASC, s.prenom_effectif ASC
+                    LIMIT %s OFFSET %s
+                    """,
+                    (id_ent, id_service_clean, id_service_clean, age_min, limit, offset),
+                )
+
+                rows = cur.fetchall() or []
+
+        total = int(rows[0].get("total") or 0) if rows else 0
+
+        out_rows: List[AgePyramidSeniorRow] = []
+        for r in rows:
+            out_rows.append(
+                AgePyramidSeniorRow(
+                    id_effectif=str(r["id_effectif"]),
+                    nom=str(r.get("nom_effectif") or ""),
+                    prenom=str(r.get("prenom_effectif") or ""),
+                    age=int(r.get("age") or 0),
+                    service=(str(r.get("nom_service")) if r.get("nom_service") else None),
+                    poste=(str(r.get("intitule_poste")) if r.get("intitule_poste") else None),
+                    date_naissance=(str(r["date_naissance_effectif"]) if r.get("date_naissance_effectif") else None),
+                    retraite_estimee=(int(r["retraite_estimee"]) if r.get("retraite_estimee") is not None else None),
+                    nb_comp_expert=int(r.get("nb_comp_expert") or 0),
+                )
+            )
+
+        return AgePyramidSeniorsDetailResponse(
+            age_min=age_min,
+            total=total,
+            limit=limit,
+            offset=offset,
+            rows=out_rows,
             id_service_scope=id_service_clean,
         )
 
