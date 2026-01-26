@@ -4,7 +4,8 @@ from typing import Optional, List, Dict, Any, Tuple
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn
+from app.routers.skills_portal_common import get_conn, resolve_insights_context
+
 
 router = APIRouter()
 
@@ -177,30 +178,6 @@ def _normalize_etat(etat: Optional[str]) -> Optional[str]:
     return None
 
 
-def _fetch_contact_and_ent(cur, id_contact: str) -> Dict[str, Any]:
-    # Aligné sur skills_portal_organisation.py (mêmes champs, mêmes règles)
-    cur.execute(
-        """
-        SELECT
-            c.id_contact,
-            c.code_ent,
-            c.civ_ca,
-            c.prenom_ca,
-            c.nom_ca
-        FROM public.tbl_contact c
-        WHERE c.id_contact = %s
-          AND COALESCE(c.masque, FALSE) = FALSE
-        """,
-        (id_contact,),
-    )
-    row = cur.fetchone()
-    if row is None:
-        raise HTTPException(status_code=404, detail="Contact introuvable.")
-    if not row.get("code_ent"):
-        raise HTTPException(status_code=400, detail="Contact sans code_ent associé.")
-    return row
-
-
 def _fetch_service_label(cur, id_ent: str, id_service: str) -> ServiceScope:
     if id_service == ALL_SERVICES_ID:
         return ServiceScope(id_service=ALL_SERVICES_ID, nom_service="Tous les services")
@@ -336,8 +313,9 @@ def get_referentiel_competences_service(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 service_scope = _fetch_service_label(cur, id_ent, id_service)
                 nb_postes_scope = _count_postes_in_scope(cur, id_ent, id_service)
@@ -505,8 +483,9 @@ def get_referentiel_competence_detail(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 service_scope = _fetch_service_label(cur, id_ent, id_service)
 
@@ -661,8 +640,9 @@ def get_referentiel_certifications_service(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 service_scope = _fetch_service_label(cur, id_ent, id_service)
                 nb_postes_scope = _count_postes_in_scope(cur, id_ent, id_service)
@@ -780,8 +760,9 @@ def get_referentiel_certification_detail(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 service_scope = _fetch_service_label(cur, id_ent, id_service)
 
