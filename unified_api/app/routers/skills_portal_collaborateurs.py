@@ -6,7 +6,7 @@ import re
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn
+from app.routers.skills_portal_common import get_conn, resolve_insights_context
 
 router = APIRouter()
 
@@ -204,42 +204,6 @@ class CollaborateurFormationsJmbResponse(BaseModel):
 # ======================================================
 # Helpers
 # ======================================================
-def _get_id_ent_from_contact(cur, id_contact: str) -> str:
-    """
-    Résout l'entreprise (id_ent) à partir d'un contact.
-    Règle : contact valide uniquement si masque = FALSE.
-    code_ent contient l'id_ent (oui, on sait, mais on vit avec).
-    """
-    cur.execute(
-        """
-        SELECT id_contact, code_ent, masque
-        FROM public.tbl_contact
-        WHERE id_contact = %s
-          AND COALESCE(masque, FALSE) = FALSE
-        """,
-        (id_contact,),
-    )
-    c = cur.fetchone()
-    if c is None or not c.get("code_ent"):
-        raise HTTPException(status_code=404, detail="Contact introuvable ou masqué.")
-
-    id_ent = c["code_ent"]
-
-    cur.execute(
-        """
-        SELECT id_ent, nom_ent
-        FROM public.tbl_entreprise
-        WHERE id_ent = %s
-          AND COALESCE(masque, FALSE) = FALSE
-        """,
-        (id_ent,),
-    )
-    e = cur.fetchone()
-    if e is None:
-        raise HTTPException(status_code=404, detail="Entreprise introuvable ou masquée.")
-
-    return id_ent
-
 
 def _normalize_id_service(id_service: Optional[str]) -> Optional[str]:
     if id_service is None:
@@ -420,7 +384,9 @@ def get_services_for_filter(id_contact: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                id_ent = _get_id_ent_from_contact(cur, id_contact)
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 cur.execute(
                     """
@@ -481,7 +447,9 @@ def get_collaborateurs_kpis(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                id_ent = _get_id_ent_from_contact(cur, id_contact)
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 params: List = [id_ent]
                 where_service, params = _build_service_where_clause(id_service, params)
@@ -548,7 +516,9 @@ def get_collaborateurs_list(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                id_ent = _get_id_ent_from_contact(cur, id_contact)
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 params: List = [id_ent]
                 where = " WHERE ec.id_ent = %s "
@@ -685,7 +655,9 @@ def get_collaborateur_identification(id_contact: str, id_effectif: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                id_ent = _get_id_ent_from_contact(cur, id_contact)
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 cur.execute(
                     """
@@ -857,7 +829,9 @@ def get_collaborateur_competences(id_contact: str, id_effectif: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                id_ent = _get_id_ent_from_contact(cur, id_contact)
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 # Poste actuel (et libellé) pour ce salarié
                 cur.execute(
@@ -1024,7 +998,9 @@ def get_collaborateur_certifications(id_contact: str, id_effectif: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                id_ent = _get_id_ent_from_contact(cur, id_contact)
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 # Poste actuel (et libellé) pour ce salarié
                 cur.execute(
@@ -1232,7 +1208,9 @@ def get_collaborateur_formations_jmb(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                id_ent = _get_id_ent_from_contact(cur, id_contact)
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 # Sécurise que l'effectif appartient bien à l'entreprise
                 cur.execute(

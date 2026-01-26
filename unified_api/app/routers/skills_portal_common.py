@@ -421,6 +421,25 @@ def fetch_effectif_with_entreprise(cur, id_effectif: str):
 
     return row_effectif, row_entreprise
 
+def resolve_insights_context(cur, id_effectif: str) -> dict:
+    """
+    Résout le contexte Insights depuis tbl_effectif_client.
+    Retour:
+      { "id_effectif": ..., "id_ent": ..., "id_service": ... }
+
+    Règles:
+    - effectif non archivé
+    - entreprise non masquée
+    - contrat_skills = TRUE
+    """
+    row_eff, _row_ent = fetch_effectif_with_entreprise(cur, id_effectif)
+
+    return {
+        "id_effectif": row_eff.get("id_effectif"),
+        "id_ent": row_eff.get("id_ent"),
+        "id_service": row_eff.get("id_service"),
+    }
+
 
 def fetch_contact_with_entreprise(cur, id_contact: str):
     """
