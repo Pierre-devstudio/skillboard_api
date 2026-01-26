@@ -111,29 +111,30 @@
 
     function rec(list, depth) {
       (list || []).forEach(n => {
-        if (!n || !n.id_service) return;
+        const id = (n?.id_service ?? "").toString().trim();
+        if (!id) return;
 
-        // Ces 2 "services" sont des pseudo-choix gérés par le select, on ne les injecte jamais depuis l'API
-        if (n.id_service === ALL_SERVICES_ID) return;
-        if (n.id_service === NON_LIE_ID) return;
+        // Pseudo-choix (ne doivent jamais venir de l'API)
+        if (id === ALL_SERVICES_ID) return;
+        if (id === NON_LIE_ID) return;
 
-        // Dédoublonnage strict par id
-        if (seen.has(n.id_service)) return;
-        seen.add(n.id_service);
+        if (seen.has(id)) return;
+        seen.add(id);
 
         out.push({
-          id_service: n.id_service,
-          nom_service: n.nom_service || n.id_service,
+          id_service: id,
+          nom_service: (n?.nom_service ?? id).toString().trim(),
           depth: depth || 0
         });
 
-        if (n.children && n.children.length) rec(n.children, (depth || 0) + 1);
+        if (n?.children && n.children.length) rec(n.children, (depth || 0) + 1);
       });
     }
 
     rec(Array.isArray(nodes) ? nodes : [], 0);
     return out;
   }
+
 
 
 
@@ -157,22 +158,27 @@
 
     // 2) Services (on skippe __ALL__ et __NON_LIE__ s'ils viennent de l'API + dédoublonnage)
     (flat || []).forEach(s => {
-      if (!s || !s.id_service) return;
+      const id = (s?.id_service ?? "").toString().trim();
+      if (!id) return;
 
-      // Bloque les pseudo-IDs si l'API les renvoie dans l'arbre
-      if (s.id_service === ALL_SERVICES_ID) return;
-      if (s.id_service === NON_LIE_ID) return;
+      const label = (s?.nom_service ?? "").toString().trim();
+      const labelNorm = label.replace(/\s+/g, " ").toLowerCase();
 
-      // Dédoublonnage strict
-      if (seen.has(s.id_service)) return;
-      seen.add(s.id_service);
+      // Bloque les pseudo-IDs + le libellé réservé (au cas où l'API renvoie une racine "Tous les services")
+      if (id === ALL_SERVICES_ID) return;
+      if (id === NON_LIE_ID) return;
+      if (labelNorm === "tous les services") return;
+
+      if (seen.has(id)) return;
+      seen.add(id);
 
       const opt = document.createElement("option");
-      opt.value = s.id_service;
+      opt.value = id;
       const prefix = s.depth ? "— ".repeat(Math.min(6, s.depth)) : "";
-      opt.textContent = prefix + (s.nom_service || s.id_service);
+      opt.textContent = prefix + (label || id);
       sel.appendChild(opt);
     });
+
 
     // 3) Non lié (toujours en dernier, jamais en double)
     const optNon = document.createElement("option");
