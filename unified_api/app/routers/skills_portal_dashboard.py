@@ -174,6 +174,31 @@ class CertExpiringDetailResponse(BaseModel):
     rows: List[CertExpiringDetailRow] = []
     id_service_scope: Optional[str] = None
 
+class UpcomingTrainingParticipant(BaseModel):
+    id_effectif: str
+    nom: str
+    prenom: str
+    service: Optional[str] = None
+    poste: Optional[str] = None
+
+
+class UpcomingTrainingSessionDetail(BaseModel):
+    id_action_formation: str
+    label: str
+    date_debut_formation: Optional[str] = None
+    date_fin_formation: Optional[str] = None
+    nb_participants: int = 0
+    participants: List[UpcomingTrainingParticipant] = []
+
+
+class UpcomingTrainingsDetailResponse(BaseModel):
+    total_sessions: int = 0
+    limit: int = 20
+    offset: int = 0
+    items: List[UpcomingTrainingSessionDetail] = []
+    id_service_scope: Optional[str] = None
+
+
 
 @router.get(
     "/skills/context/{id_contact}",
@@ -1552,6 +1577,193 @@ def get_dashboard_certifs_expiring_detail(
             limit=limit,
             offset=offset,
             rows=out_rows,
+            id_service_scope=id_service_clean,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/skills/dashboard/upcoming-trainings/detail/{id_contact}",
+    response_model=UpcomingTrainingsDetailResponse,
+)
+def get_dashboard_upcoming_trainings_detail(
+    id_contact: str,
+    limit: int = 20,
+    offset: int = 0,
+    id_service: Optional[str] = None,
+):
+    """
+    Détail paginé — Formations à venir + participants.
+    - Même logique de périmètre que le résumé: si id_service fourni -> on garde seulement
+      les sessions ayant au moins 1 participant de ce service + participants filtrés service.
+    """
+    try:
+        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
+
+        try:
+            limit = int(limit or 20)
+        except Exception:
+            limit = 20
+
+        try:
+            offset = int(offset or 0)
+        except Exception:
+            offset = 0
+
+        if limit < 1:
+            limit = 20
+        if limit > 100:
+            limit = 100
+        if offset < 0:
+            offset = 0
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+
+                id_ent = None
+                if isinstance(row_contact, dict):
+                    id_ent = row_contact.get("id_ent")
+                if not id_ent and isinstance(row_ent, dict):
+                    id_ent = row_ent.get("id_ent")
+
+                if not id_ent:
+                    return UpcomingTrainingsDetailResponse(limit=limit, offset=offset, items=[], total_sessions=0)
+
+                # 1) Sessions paginées
+                cur.execute(
+                    """
+                    WITH base AS (
+                        SELECT DISTINCT
+                            a.id_action_formation,
+                            a.date_debut_formation,
+                            a.date_fin_formation,
+                            COALESCE(NULLIF(a.code_action_formation, ''), a.id_action_formation) AS label
+                        FROM public.tbl_action_formation a
+                        JOIN public.tbl_action_formation_entreprises ae
+                          ON ae.id_action_formation = a.id_action_formation
+                         AND ae.id_ent = %s
+                        WHERE COALESCE(a.archive, FALSE) = FALSE
+                          AND COALESCE(a.date_fin_formation, a.date_debut_formation) IS NOT NULL
+                          AND COALESCE(a.date_fin_formation, a.date_debut_formation) >= CURRENT_DATE
+                    ),
+                    scoped AS (
+                        SELECT
+                            b.id_action_formation,
+                            b.date_debut_formation,
+                            b.date_fin_formation,
+                            b.label,
+                            COUNT(e.id_effectif)::int AS nb_participants
+                        FROM base b
+                        LEFT JOIN public.tbl_action_formation_effectif afe
+                          ON afe.id_action_formation = b.id_action_formation
+                         AND COALESCE(afe.archive, FALSE) = FALSE
+                        LEFT JOIN public.tbl_effectif_client e
+                          ON e.id_effectif = afe.id_effectif
+                         AND e.archive = FALSE
+                         AND e.statut_actif = TRUE
+                         AND e.id_poste_actuel IS NOT NULL
+                         AND (%s::text IS NULL OR e.id_service = %s::text)
+                        GROUP BY b.id_action_formation, b.date_debut_formation, b.date_fin_formation, b.label
+                        HAVING (%s::text IS NULL OR COUNT(e.id_effectif) > 0)
+                    )
+                    SELECT
+                        s.id_action_formation,
+                        s.date_debut_formation,
+                        s.date_fin_formation,
+                        s.label,
+                        s.nb_participants,
+                        COUNT(*) OVER()::int AS total_sessions
+                    FROM scoped s
+                    ORDER BY COALESCE(s.date_debut_formation, s.date_fin_formation) ASC
+                    LIMIT %s OFFSET %s
+                    """,
+                    (id_ent, id_service_clean, id_service_clean, id_service_clean, limit, offset),
+                )
+
+                session_rows = cur.fetchall() or []
+                total_sessions = int(session_rows[0].get("total_sessions") or 0) if session_rows else 0
+
+                if not session_rows:
+                    return UpcomingTrainingsDetailResponse(
+                        total_sessions=0,
+                        limit=limit,
+                        offset=offset,
+                        items=[],
+                        id_service_scope=id_service_clean,
+                    )
+
+                session_ids = [r["id_action_formation"] for r in session_rows if r.get("id_action_formation")]
+
+                # 2) Participants pour les sessions de la page
+                participants_by_session = {}
+                if session_ids:
+                    cur.execute(
+                        """
+                        SELECT
+                            afe.id_action_formation,
+                            e.id_effectif,
+                            e.nom_effectif,
+                            e.prenom_effectif,
+                            o.nom_service,
+                            p.intitule_poste
+                        FROM public.tbl_action_formation_effectif afe
+                        JOIN public.tbl_effectif_client e
+                          ON e.id_effectif = afe.id_effectif
+                         AND e.archive = FALSE
+                         AND e.statut_actif = TRUE
+                         AND e.id_poste_actuel IS NOT NULL
+                         AND (%s::text IS NULL OR e.id_service = %s::text)
+                        LEFT JOIN public.tbl_entreprise_organigramme o
+                          ON o.id_service = e.id_service
+                         AND o.archive = FALSE
+                        LEFT JOIN public.tbl_fiche_poste p
+                          ON p.id_poste = e.id_poste_actuel
+                         AND COALESCE(p.actif, TRUE) = TRUE
+                        WHERE COALESCE(afe.archive, FALSE) = FALSE
+                          AND afe.id_action_formation = ANY(%s)
+                        ORDER BY afe.id_action_formation ASC, e.nom_effectif ASC, e.prenom_effectif ASC
+                        """,
+                        (id_service_clean, id_service_clean, session_ids),
+                    )
+
+                    part_rows = cur.fetchall() or []
+                    for pr in part_rows:
+                        sid = pr.get("id_action_formation")
+                        if not sid:
+                            continue
+                        participants_by_session.setdefault(sid, []).append(
+                            UpcomingTrainingParticipant(
+                                id_effectif=str(pr["id_effectif"]),
+                                nom=str(pr.get("nom_effectif") or ""),
+                                prenom=str(pr.get("prenom_effectif") or ""),
+                                service=(str(pr.get("nom_service")) if pr.get("nom_service") else None),
+                                poste=(str(pr.get("intitule_poste")) if pr.get("intitule_poste") else None),
+                            )
+                        )
+
+        items: List[UpcomingTrainingSessionDetail] = []
+        for r in session_rows:
+            sid = str(r["id_action_formation"])
+            items.append(
+                UpcomingTrainingSessionDetail(
+                    id_action_formation=sid,
+                    label=str(r.get("label") or "").strip() or sid,
+                    date_debut_formation=(str(r["date_debut_formation"]) if r.get("date_debut_formation") else None),
+                    date_fin_formation=(str(r["date_fin_formation"]) if r.get("date_fin_formation") else None),
+                    nb_participants=int(r.get("nb_participants") or 0),
+                    participants=participants_by_session.get(sid, []),
+                )
+            )
+
+        return UpcomingTrainingsDetailResponse(
+            total_sessions=total_sessions,
+            limit=limit,
+            offset=offset,
+            items=items,
             id_service_scope=id_service_clean,
         )
 

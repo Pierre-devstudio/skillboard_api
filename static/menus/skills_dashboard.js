@@ -1114,6 +1114,147 @@
     }
   }
 
+    async function loadDashDetailUpcomingTrainings(portal, title, scope, offset){
+    const limit = 20;
+
+    const serviceId = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+    const qs =
+      `?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}` +
+      (serviceId ? `&id_service=${encodeURIComponent(serviceId)}` : "");
+
+    const url = `${portal.apiBase}/skills/dashboard/upcoming-trainings/detail/${encodeURIComponent(portal.contactId)}${qs}`;
+
+    const esc = (v) => String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+    const fmtRange = (it) => {
+      const d1 = it?.date_debut_formation ? (typeof fmtDateShortFR === "function" ? fmtDateShortFR(it.date_debut_formation) : esc(it.date_debut_formation)) : "";
+      const d2 = it?.date_fin_formation ? (typeof fmtDateShortFR === "function" ? fmtDateShortFR(it.date_fin_formation) : esc(it.date_fin_formation)) : "";
+      if (d1 && d2 && d1 !== d2) return `${d1} - ${d2}`;
+      return d1 || d2 || "-";
+    };
+
+    try{
+      const data = await portal.apiJson(url);
+
+      const totalSessions = Number(data?.total_sessions ?? 0);
+      const items = Array.isArray(data?.items) ? data.items : [];
+
+      let html = `
+        <div class="sb-muted" style="margin-bottom:10px;">
+          <b>${totalSessions}</b> session(s) à venir sur ce périmètre.
+        </div>
+      `;
+
+      if (!items.length){
+        html += `<div class="card-sub" style="margin:0;">Aucune formation programmée.</div>`;
+        setDashDetailModal(title, scope, html);
+        return;
+      }
+
+      html += items.map(it => {
+        const sid = esc(it?.id_action_formation ?? "");
+        const label = esc(it?.label ?? "Formation");
+        const dates = fmtRange(it);
+        const nb = Number(it?.nb_participants ?? 0);
+        const nbTxt = isFinite(nb) ? nb : 0;
+
+        const parts = Array.isArray(it?.participants) ? it.participants : [];
+
+        const partTable = parts.length ? `
+          <div class="table-wrap" style="margin-top:8px;">
+            <table class="sb-table">
+              <thead>
+                <tr>
+                  <th>Participant</th>
+                  <th>Service</th>
+                  <th>Poste</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${parts.map(p => {
+                  const nom = `${esc(p?.prenom)} ${esc(p?.nom)}`.trim();
+                  const service = esc(p?.service ?? "");
+                  const poste = esc(p?.poste ?? "");
+                  return `
+                    <tr>
+                      <td>${nom || "-"}</td>
+                      <td>${service || "-"}</td>
+                      <td>${poste || "-"}</td>
+                    </tr>
+                  `;
+                }).join("")}
+              </tbody>
+            </table>
+          </div>
+        ` : `<div class="sb-muted" style="margin-top:6px;">Aucun participant.</div>`;
+
+        return `
+          <div style="border:1px solid #f1f5f9; border-radius:12px; padding:10px 12px; margin-bottom:10px; background:#fff;">
+            <div style="display:flex; align-items:baseline; justify-content:space-between; gap:12px;">
+              <div style="font-weight:800; font-size:13px; color:#111827; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${label}">
+                ${label}
+              </div>
+              <div class="sb-muted" style="white-space:nowrap;">${dates}</div>
+            </div>
+
+            <div style="margin-top:2px; display:flex; justify-content:space-between; align-items:center;">
+              <div class="sb-muted">ID: ${sid || "-"}</div>
+              <div style="font-weight:800; font-size:12px; white-space:nowrap;">${nbTxt} pers.</div>
+            </div>
+
+            ${partTable}
+          </div>
+        `;
+      }).join("");
+
+      const curOffset = Number(data?.offset ?? offset) || 0;
+      const curLimit = Number(data?.limit ?? limit) || limit;
+
+      const canPrev = curOffset > 0;
+      const canNext = (curOffset + curLimit) < totalSessions;
+
+      html += `
+        <div class="sb-dash-pager">
+          <div class="sb-muted">Page : ${Math.floor(curOffset / curLimit) + 1} / ${Math.max(1, Math.ceil(totalSessions / curLimit))}</div>
+          <div>
+            <button type="button" class="btn-secondary" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
+            <button type="button" class="btn-secondary" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
+          </div>
+        </div>
+      `;
+
+      setDashDetailModal(title, scope, html);
+
+      const btnPrev = byId("btnDashDetailPrev");
+      const btnNext = byId("btnDashDetailNext");
+
+      if (btnPrev){
+        btnPrev.onclick = async () => {
+          if (!canPrev) return;
+          setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+          await loadDashDetailUpcomingTrainings(portal, title, scope, Math.max(0, curOffset - curLimit));
+        };
+      }
+
+      if (btnNext){
+        btnNext.onclick = async () => {
+          if (!canNext) return;
+          setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+          await loadDashDetailUpcomingTrainings(portal, title, scope, curOffset + curLimit);
+        };
+      }
+
+    } catch (e){
+      setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Erreur de chargement.</div>`);
+    }
+  }
+
+
 
   async function openDashDetailForTile(portal, tileEl){
     const kpiKey = (tileEl?.dataset?.kpi || "").trim();
@@ -1136,6 +1277,11 @@
 
     if (kpiKey === "certifications-renouveler-60j"){
       await loadDashDetailCertifsExpiring(portal, title, scope, 0);
+      return;
+    }
+
+    if (kpiKey === "formations-programmees"){
+      await loadDashDetailUpcomingTrainings(portal, title, scope, 0);
       return;
     }
 
