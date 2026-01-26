@@ -107,20 +107,33 @@
 
   function flattenServices(nodes) {
     const out = [];
+    const seen = new Set();
+
     function rec(list, depth) {
       (list || []).forEach(n => {
         if (!n || !n.id_service) return;
+
+        // On gère ces options nous-mêmes dans le select, donc on ne les duplique jamais.
+        if (n.id_service === ALL_SERVICES_ID) return;
+
+        // Dédoublonnage (au cas où l’arbre contient le même service à plusieurs endroits)
+        if (seen.has(n.id_service)) return;
+        seen.add(n.id_service);
+
         out.push({
           id_service: n.id_service,
           nom_service: n.nom_service || n.id_service,
           depth: depth || 0
         });
+
         if (n.children && n.children.length) rec(n.children, (depth || 0) + 1);
       });
     }
+
     rec(nodes || [], 0);
     return out;
   }
+
 
   function fillServiceSelect(flat) {
   const sel = byId("refServiceSelect");
@@ -135,6 +148,12 @@
   optAll.value = ALL_SERVICES_ID;
   optAll.textContent = "Tous les services";
   sel.appendChild(optAll);
+
+  // Option "Non lié"
+  const optNon = document.createElement("option");
+  optNon.value = NON_LIE_ID;
+  optNon.textContent = "Non lié";
+  sel.appendChild(optNon);
 
   (flat || []).forEach(s => {
     const opt = document.createElement("option");
