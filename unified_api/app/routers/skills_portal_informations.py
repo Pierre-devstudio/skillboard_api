@@ -125,6 +125,42 @@ def _build_patch_set(payload) -> Dict[str, Any]:
     data = payload.dict()
     return {k: data.get(k) for k in fields}
 
+def _civilite_db_to_ui(v: Optional[str]) -> Optional[str]:
+    if v is None:
+        return None
+    s = str(v).strip()
+    if s == "":
+        return None
+
+    # DB attend: M / F
+    if s.upper() == "M":
+        return "M."
+    if s.upper() == "F":
+        return "Mme"
+
+    # Si déjà au bon format, on laisse
+    if s in ("M.", "Mme", "Mme."):
+        return "M." if s == "M." else "Mme"
+
+    return s  # fallback (évite de casser si valeur inattendue)
+
+
+def _civilite_ui_to_db(v: Optional[str]) -> Optional[str]:
+    if v is None:
+        return None
+    s = str(v).strip()
+    if s == "":
+        return None
+
+    # UI attend: M. / Mme
+    if s in ("M", "M."):
+        return "M"
+    if s in ("F", "Mme", "Mme."):
+        return "F"
+
+    # fallback (évite de throw si tu as d'autres libellés un jour)
+    return s
+
 
 def _lookup_idcc(cur, idcc: Optional[str]) -> Optional[str]:
     if not idcc:
@@ -251,7 +287,7 @@ def _get_informations(cur, id_contact: str) -> InformationsResponse:
     contact = ContactInfo(
         id_contact=row_contact["id_contact"],
         id_ent=row_contact["id_ent"],
-        civ_ca=row_contact.get("civ_ca"),
+        civ_ca=_civilite_db_to_ui(row_contact.get("civ_ca")),
         nom_ca=row_contact["nom_ca"],
         prenom_ca=row_contact.get("prenom_ca"),
         role_ca=row_contact.get("role_ca"),
@@ -394,6 +430,10 @@ def update_contact_infos(id_contact: str, payload: UpdateContactPayload):
                     for k, v in patch.items():
                         target = mapping.get(k)
                         if target:
+                            # Mapping civilité UI -> DB
+                            if k == "civ_ca":
+                                v = _civilite_ui_to_db(v)
+
                             eff_cols.append(f"{target} = %s")
                             eff_vals.append(v)
 
