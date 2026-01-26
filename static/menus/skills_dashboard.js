@@ -871,6 +871,127 @@
     }
   }
 
+    async function loadDashDetailNoTraining12m(portal, title, scope, offset){
+    const limit = 50;
+
+    const serviceId = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+    const qs =
+      `?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}` +
+      (serviceId ? `&id_service=${encodeURIComponent(serviceId)}` : "");
+
+    const url = `${portal.apiBase}/skills/dashboard/no-training-12m/detail/${encodeURIComponent(portal.contactId)}${qs}`;
+
+    const esc = (v) => String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+    try{
+      const data = await portal.apiJson(url);
+
+      const total = Number(data?.total ?? 0);
+      const totalEff = Number(data?.total_effectif ?? 0);
+      const rows = Array.isArray(data?.rows) ? data.rows : [];
+      const mois = Number(data?.periode_mois ?? 12);
+
+      let html = `
+        <div class="sb-muted" style="margin-bottom:10px;">
+          Période : <b>${isFinite(mois) ? mois : 12}</b> mois.
+          <br>
+          <b>${total}</b> salarié(s) sans formation sur <b>${totalEff}</b> (périmètre).
+        </div>
+      `;
+
+      if (!rows.length){
+        html += `<div class="card-sub" style="margin:0;">Aucun salarié concerné.</div>`;
+        setDashDetailModal(title, scope, html);
+        return;
+      }
+
+      html += `
+        <div class="table-wrap">
+          <table class="sb-table">
+            <thead>
+              <tr>
+                <th>Salarié</th>
+                <th>Service</th>
+                <th>Poste</th>
+                <th>Dernière formation</th>
+                <th>Jours</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => {
+                const nom = `${esc(r?.prenom)} ${esc(r?.nom)}`.trim();
+                const service = esc(r?.service ?? "");
+                const poste = esc(r?.poste ?? "");
+
+                const df = r?.date_derniere_formation
+                  ? (typeof fmtDateShortFR === "function" ? fmtDateShortFR(r.date_derniere_formation) : esc(r.date_derniere_formation))
+                  : "-";
+
+                const j = r?.jours_depuis_derniere_formation;
+                const jours = (j === null || j === undefined || j === "") ? "-" : esc(j);
+
+                return `
+                  <tr>
+                    <td>${nom || "-"}</td>
+                    <td>${service || "-"}</td>
+                    <td>${poste || "-"}</td>
+                    <td><b>${df}</b></td>
+                    <td>${jours}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      const curOffset = Number(data?.offset ?? offset) || 0;
+      const curLimit = Number(data?.limit ?? limit) || limit;
+
+      const canPrev = curOffset > 0;
+      const canNext = (curOffset + curLimit) < total;
+
+      html += `
+        <div class="sb-dash-pager">
+          <div class="sb-muted">Page : ${Math.floor(curOffset / curLimit) + 1} / ${Math.max(1, Math.ceil(total / curLimit))}</div>
+          <div>
+            <button type="button" class="btn-secondary" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
+            <button type="button" class="btn-secondary" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
+          </div>
+        </div>
+      `;
+
+      setDashDetailModal(title, scope, html);
+
+      const btnPrev = byId("btnDashDetailPrev");
+      const btnNext = byId("btnDashDetailNext");
+
+      if (btnPrev){
+        btnPrev.onclick = async () => {
+          if (!canPrev) return;
+          setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+          await loadDashDetailNoTraining12m(portal, title, scope, Math.max(0, curOffset - curLimit));
+        };
+      }
+
+      if (btnNext){
+        btnNext.onclick = async () => {
+          if (!canNext) return;
+          setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+          await loadDashDetailNoTraining12m(portal, title, scope, curOffset + curLimit);
+        };
+      }
+
+    } catch (e){
+      setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Erreur de chargement.</div>`);
+    }
+  }
+
   async function openDashDetailForTile(portal, tileEl){
     const kpiKey = (tileEl?.dataset?.kpi || "").trim();
     const titleEl = tileEl.querySelector(".sb-dash-tile-title");
@@ -882,6 +1003,11 @@
 
     if (kpiKey === "sans-point-performance-12m"){
       await loadDashDetailNoPerf12m(portal, title, scope, 0);
+      return;
+    }
+
+    if (kpiKey === "sans-formation-12m"){
+      await loadDashDetailNoTraining12m(portal, title, scope, 0);
       return;
     }
 

@@ -132,6 +132,27 @@ class NoPerformance12mDetailResponse(BaseModel):
     rows: List[NoPerformance12mDetailRow] = []
     id_service_scope: Optional[str] = None
 
+class NoTraining12mDetailRow(BaseModel):
+    id_effectif: str
+    nom: str
+    prenom: str
+    service: Optional[str] = None
+    poste: Optional[str] = None
+
+    date_derniere_formation: Optional[str] = None
+    jours_depuis_derniere_formation: Optional[int] = None
+
+
+class NoTraining12mDetailResponse(BaseModel):
+    total: int = 0                 # nb de salariés concernés (sans formation 12m)
+    total_effectif: int = 0        # effectif actif (périmètre)
+    limit: int = 50
+    offset: int = 0
+    periode_mois: int = 12
+
+    rows: List[NoTraining12mDetailRow] = []
+    id_service_scope: Optional[str] = None
+
 
 @router.get(
     "/skills/context/{id_contact}",
@@ -1140,6 +1161,203 @@ def get_dashboard_no_performance_12m_detail(
             limit=limit,
             offset=offset,
             seuil_couverture=seuil,
+            rows=out_rows,
+            id_service_scope=id_service_clean,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/skills/dashboard/no-training-12m/detail/{id_contact}",
+    response_model=NoTraining12mDetailResponse,
+)
+def get_dashboard_no_training_12m_detail(
+    id_contact: str,
+    limit: int = 50,
+    offset: int = 0,
+    id_service: Optional[str] = None,
+):
+    """
+    Détail paginé — salariés sans formation depuis 12 mois.
+    Source: tbl_effectif_client_historique_formation (formations internes/externe saisies)
+    Règles population:
+      - statut_actif = TRUE
+      - archive = FALSE
+      - id_poste_actuel IS NOT NULL
+      - périmètre futur: id_service (si fourni)
+    """
+    try:
+        periode_mois = 12
+
+        try:
+            limit = int(limit or 50)
+        except Exception:
+            limit = 50
+
+        try:
+            offset = int(offset or 0)
+        except Exception:
+            offset = 0
+
+        if limit < 1:
+            limit = 50
+        if limit > 200:
+            limit = 200
+        if offset < 0:
+            offset = 0
+
+        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+
+                id_ent = None
+                if isinstance(row_contact, dict):
+                    id_ent = row_contact.get("id_ent")
+                if not id_ent and isinstance(row_ent, dict):
+                    id_ent = row_ent.get("id_ent")
+
+                if not id_ent:
+                    return NoTraining12mDetailResponse(
+                        total=0,
+                        total_effectif=0,
+                        limit=limit,
+                        offset=offset,
+                        periode_mois=periode_mois,
+                        rows=[],
+                        id_service_scope=id_service_clean,
+                    )
+
+                # Totaux (même si aucune ligne “concernée”)
+                cur.execute(
+                    """
+                    WITH eff AS (
+                        SELECT e.id_effectif
+                        FROM public.tbl_effectif_client e
+                        WHERE e.id_ent = %s
+                          AND e.archive = FALSE
+                          AND e.statut_actif = TRUE
+                          AND e.id_poste_actuel IS NOT NULL
+                          AND (%s::text IS NULL OR e.id_service = %s::text)
+                    ),
+                    last_train AS (
+                        SELECT
+                            h.id_effectif,
+                            MAX(h.date_formation)::date AS date_derniere_formation
+                        FROM public.tbl_effectif_client_historique_formation h
+                        JOIN eff ON eff.id_effectif = h.id_effectif
+                        WHERE h.archive = FALSE
+                          AND h.id_ent = %s
+                        GROUP BY h.id_effectif
+                    ),
+                    filt AS (
+                        SELECT
+                            eff.id_effectif,
+                            lt.date_derniere_formation
+                        FROM eff
+                        LEFT JOIN last_train lt ON lt.id_effectif = eff.id_effectif
+                        WHERE lt.date_derniere_formation IS NULL
+                           OR lt.date_derniere_formation < (CURRENT_DATE - INTERVAL '12 months')
+                    )
+                    SELECT
+                        (SELECT COUNT(*) FROM eff)::int AS total_effectif,
+                        (SELECT COUNT(*) FROM filt)::int AS total_concernes
+                    """,
+                    (id_ent, id_service_clean, id_service_clean, id_ent),
+                )
+                tot = cur.fetchone() or {}
+                total_effectif = int(tot.get("total_effectif") or 0)
+                total_concernes = int(tot.get("total_concernes") or 0)
+
+                # Détail paginé
+                cur.execute(
+                    """
+                    WITH eff AS (
+                        SELECT
+                            e.id_effectif,
+                            e.nom_effectif,
+                            e.prenom_effectif,
+                            e.id_service,
+                            e.id_poste_actuel
+                        FROM public.tbl_effectif_client e
+                        WHERE e.id_ent = %s
+                          AND e.archive = FALSE
+                          AND e.statut_actif = TRUE
+                          AND e.id_poste_actuel IS NOT NULL
+                          AND (%s::text IS NULL OR e.id_service = %s::text)
+                    ),
+                    last_train AS (
+                        SELECT
+                            h.id_effectif,
+                            MAX(h.date_formation)::date AS date_derniere_formation
+                        FROM public.tbl_effectif_client_historique_formation h
+                        JOIN eff ON eff.id_effectif = h.id_effectif
+                        WHERE h.archive = FALSE
+                          AND h.id_ent = %s
+                        GROUP BY h.id_effectif
+                    ),
+                    filt AS (
+                        SELECT
+                            e.*,
+                            lt.date_derniere_formation,
+                            CASE
+                                WHEN lt.date_derniere_formation IS NULL THEN NULL
+                                ELSE (CURRENT_DATE - lt.date_derniere_formation)::int
+                            END AS jours_depuis
+                        FROM eff e
+                        LEFT JOIN last_train lt ON lt.id_effectif = e.id_effectif
+                        WHERE lt.date_derniere_formation IS NULL
+                           OR lt.date_derniere_formation < (CURRENT_DATE - INTERVAL '12 months')
+                    )
+                    SELECT
+                        f.id_effectif,
+                        f.nom_effectif,
+                        f.prenom_effectif,
+                        o.nom_service,
+                        p.intitule_poste,
+                        f.date_derniere_formation,
+                        f.jours_depuis
+                    FROM filt f
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_service = f.id_service
+                     AND o.archive = FALSE
+                    LEFT JOIN public.tbl_fiche_poste p
+                      ON p.id_poste = f.id_poste_actuel
+                     AND COALESCE(p.actif, TRUE) = TRUE
+                    ORDER BY f.date_derniere_formation ASC NULLS FIRST,
+                             f.nom_effectif ASC,
+                             f.prenom_effectif ASC
+                    LIMIT %s OFFSET %s
+                    """,
+                    (id_ent, id_service_clean, id_service_clean, id_ent, limit, offset),
+                )
+
+                rows = cur.fetchall() or []
+
+        out_rows: List[NoTraining12mDetailRow] = []
+        for r in rows:
+            out_rows.append(
+                NoTraining12mDetailRow(
+                    id_effectif=str(r["id_effectif"]),
+                    nom=str(r.get("nom_effectif") or ""),
+                    prenom=str(r.get("prenom_effectif") or ""),
+                    service=(str(r.get("nom_service")) if r.get("nom_service") else None),
+                    poste=(str(r.get("intitule_poste")) if r.get("intitule_poste") else None),
+                    date_derniere_formation=(str(r["date_derniere_formation"]) if r.get("date_derniere_formation") else None),
+                    jours_depuis_derniere_formation=(int(r["jours_depuis"]) if r.get("jours_depuis") is not None else None),
+                )
+            )
+
+        return NoTraining12mDetailResponse(
+            total=total_concernes,
+            total_effectif=total_effectif,
+            limit=limit,
+            offset=offset,
+            periode_mois=periode_mois,
             rows=out_rows,
             id_service_scope=id_service_clean,
         )
