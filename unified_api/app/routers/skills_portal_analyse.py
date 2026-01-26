@@ -6,7 +6,8 @@ import json
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn
+from app.routers.skills_portal_common import get_conn, resolve_insights_context
+
 
 router = APIRouter()
 
@@ -66,25 +67,6 @@ class AnalyseSummaryResponse(BaseModel):
 # ======================================================
 # Helpers
 # ======================================================
-def _fetch_contact_and_ent(cur, id_contact: str) -> Dict[str, Any]:
-    cur.execute(
-        """
-        SELECT
-            c.id_contact,
-            c.code_ent
-        FROM public.tbl_contact c
-        WHERE c.id_contact = %s
-          AND COALESCE(c.masque, FALSE) = FALSE
-        """,
-        (id_contact,),
-    )
-    row = cur.fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Contact introuvable.")
-    if not row.get("code_ent"):
-        raise HTTPException(status_code=404, detail="Entreprise introuvable pour ce contact.")
-    return row
-
 
 def _fetch_service_label(cur, id_ent: str, id_service: Optional[str]) -> ServiceScope:
     if not id_service:
@@ -266,8 +248,9 @@ def get_analyse_summary(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
 
@@ -782,8 +765,9 @@ def get_analyse_previsions_sorties_detail(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
                 cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
@@ -959,8 +943,9 @@ def get_analyse_previsions_critiques_impactees_detail(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
                 cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
@@ -1170,8 +1155,9 @@ def get_analyse_previsions_critiques_modal(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
                 cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
@@ -1546,8 +1532,9 @@ def get_analyse_previsions_postes_rouges_detail(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
                 cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
@@ -1774,8 +1761,9 @@ def get_analyse_previsions_postes_rouges_modal(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 id_poste = (id_poste or "").strip()
                 if not id_poste:
@@ -2462,8 +2450,9 @@ def get_analyse_risques_detail(
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
 
@@ -2836,8 +2825,9 @@ def get_analyse_risques_poste_detail(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
 
@@ -3059,8 +3049,9 @@ def get_analyse_matching_poste(
             with conn.cursor(row_factory=dict_row) as cur:
 
                 # --- id_ent depuis contact
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 scope = _fetch_service_label(cur, id_ent, id_service)
 
@@ -3316,8 +3307,9 @@ def get_analyse_matching_effectif_detail(
             with conn.cursor(row_factory=dict_row) as cur:
 
                 # --- id_ent depuis contact
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
                 cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
@@ -3639,21 +3631,9 @@ def get_risque_competence_detail(
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
 
-                # --- id_ent depuis contact
-                cur.execute(
-                    """
-                    SELECT code_ent
-                    FROM public.tbl_contact
-                    WHERE id_contact = %s
-                      AND COALESCE(masque, FALSE) = FALSE
-                    LIMIT 1
-                    """,
-                    (id_contact,)
-                )
-                c = cur.fetchone()
-                if not c or not c.get("code_ent"):
-                    raise HTTPException(status_code=404, detail="Contact introuvable.")
-                id_ent = c["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 # --- scope label
                 scope = {"id_service": None, "nom_service": "Tous les services"}
