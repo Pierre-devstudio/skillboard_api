@@ -146,15 +146,27 @@
     // On veut: 1) Tous les services 2) services 3) Non lié
     sel.innerHTML = "";
 
-    // 1) Tous les services (en premier)
+    const seen = new Set();
+
+    // 1) Tous les services (toujours en premier, jamais en double)
     const optAll = document.createElement("option");
-    optAll.value = ALL_SERVICES_ID;
+    optAll.value = ALL_SERVICES_ID;           // "__ALL__"
     optAll.textContent = "Tous les services";
     sel.appendChild(optAll);
+    seen.add(ALL_SERVICES_ID);
 
-    // 2) Services (dédoublonnés déjà par flattenServices)
+    // 2) Services (on skippe __ALL__ et __NON_LIE__ s'ils viennent de l'API + dédoublonnage)
     (flat || []).forEach(s => {
       if (!s || !s.id_service) return;
+
+      // Bloque les pseudo-IDs si l'API les renvoie dans l'arbre
+      if (s.id_service === ALL_SERVICES_ID) return;
+      if (s.id_service === NON_LIE_ID) return;
+
+      // Dédoublonnage strict
+      if (seen.has(s.id_service)) return;
+      seen.add(s.id_service);
+
       const opt = document.createElement("option");
       opt.value = s.id_service;
       const prefix = s.depth ? "— ".repeat(Math.min(6, s.depth)) : "";
@@ -162,16 +174,18 @@
       sel.appendChild(opt);
     });
 
-    // 3) Non lié (en dernier, une seule fois)
+    // 3) Non lié (toujours en dernier, jamais en double)
     const optNon = document.createElement("option");
-    optNon.value = NON_LIE_ID;
+    optNon.value = NON_LIE_ID;                 // "__NON_LIE__"
     optNon.textContent = "Non lié";
     sel.appendChild(optNon);
+    seen.add(NON_LIE_ID);
 
-    // Restore si possible, sinon défaut = Tous les services
+    // Restore si possible, sinon "Tous les services"
     const exists = Array.from(sel.options).some(o => o.value === current);
     sel.value = exists ? current : ALL_SERVICES_ID;
   }
+
 
 
 
