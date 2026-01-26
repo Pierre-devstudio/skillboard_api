@@ -1371,8 +1371,14 @@
       }
 
     } catch (e){
-      setDashDetailModal(title, scope, tabsHtml("seniors") + `<div class="card-sub" style="margin:0;">Erreur de chargement.</div>`);
+      setDashDetailModal(title, scope, tabsHtml("seniors"));
       bindDashAgeTabs(portal, title, scope);
+
+      const host = byId("dashAgeTabContent");
+      if (host){
+        host.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
+      }
+
     }
   }
 
@@ -1494,9 +1500,17 @@
       }
 
     } catch (e){
-      setDashDetailModal(title, scope, tabsHtml("trans") + `<div class="card-sub" style="margin:0;">Erreur de chargement.</div>`);
+      // On affiche l'erreur réelle (HTTP + message) au lieu d'un vague "Erreur de chargement."
+      const msg = (e && e.message) ? String(e.message) : String(e || "Erreur inconnue");
+      setDashDetailModal(title, scope, tabsHtml("trans"));
       bindDashAgeTabs(portal, title, scope);
+
+      const host = byId("dashAgeTabContent");
+      if (host){
+        host.innerHTML = `<div class="card-sub" style="margin:0;">Erreur: ${msg}</div>`;
+      }
     }
+
   }
 
   function bindDashAgeTabs(portal, title, scope){
