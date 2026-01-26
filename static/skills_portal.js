@@ -19,7 +19,7 @@
       const civ = (ctx.civilite || "").trim();
       const prenom = (ctx.prenom || "").trim();
       const nom = (ctx.nom || "").trim();
-      const display = [civ, prenom, nom].filter(Boolean).join(" ").trim();
+      const display = [prenom, nom].filter(Boolean).join(" ").trim();
 
       portal.setTopbar(display || "Contact", portal.topbarInfoText || "Portail Skills — JMB CONSULTANT");
       return ctx;
