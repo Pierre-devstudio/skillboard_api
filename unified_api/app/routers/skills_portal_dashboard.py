@@ -110,6 +110,28 @@ class CertExpiringResponse(BaseModel):
     items: List[CertExpiringItem] = []
     id_service_scope: Optional[str] = None
 
+class NoPerformance12mDetailRow(BaseModel):
+    id_effectif: str
+    nom: str
+    prenom: str
+    service: Optional[str] = None
+    poste: Optional[str] = None
+
+    couverture_pct: float = 0.0
+    nb_comp_total: int = 0
+    nb_comp_auditees_12m: int = 0
+    date_dernier_audit: Optional[str] = None
+
+
+class NoPerformance12mDetailResponse(BaseModel):
+    total: int = 0
+    limit: int = 50
+    offset: int = 0
+    seuil_couverture: float = 0.7
+
+    rows: List[NoPerformance12mDetailRow] = []
+    id_service_scope: Optional[str] = None
+
 
 @router.get(
     "/skills/context/{id_contact}",
@@ -935,6 +957,190 @@ def get_dashboard_certifs_expiring(id_contact: str, days: int = 60, id_service: 
             total_instances=total_instances,
             total_groups=total_groups,
             items=items,
+            id_service_scope=id_service_clean,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/skills/dashboard/no-performance-12m/detail/{id_contact}",
+    response_model=NoPerformance12mDetailResponse,
+)
+def get_dashboard_no_performance_12m_detail(
+    id_contact: str,
+    limit: int = 50,
+    offset: int = 0,
+    id_service: Optional[str] = None,
+):
+    """
+    Détail paginé — salariés "sans point performance" depuis 12 mois (Option A)
+    Point performance OK si couverture >= 70% des compétences actives auditées < 12 mois.
+    """
+    try:
+        seuil = 0.7
+
+        try:
+            limit = int(limit or 50)
+        except Exception:
+            limit = 50
+
+        try:
+            offset = int(offset or 0)
+        except Exception:
+            offset = 0
+
+        if limit < 1:
+            limit = 50
+        if limit > 200:
+            limit = 200
+        if offset < 0:
+            offset = 0
+
+        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+
+                id_ent = None
+                if isinstance(row_contact, dict):
+                    id_ent = row_contact.get("id_ent")
+                if not id_ent and isinstance(row_ent, dict):
+                    id_ent = row_ent.get("id_ent")
+
+                if not id_ent:
+                    return NoPerformance12mDetailResponse(
+                        total=0,
+                        limit=limit,
+                        offset=offset,
+                        seuil_couverture=seuil,
+                        rows=[],
+                        id_service_scope=id_service_clean,
+                    )
+
+                cur.execute(
+                    """
+                    WITH eff AS (
+                        SELECT
+                            e.id_effectif,
+                            e.nom_effectif,
+                            e.prenom_effectif,
+                            e.id_service,
+                            e.id_poste_actuel
+                        FROM public.tbl_effectif_client e
+                        WHERE e.id_ent = %s
+                          AND e.archive = FALSE
+                          AND e.statut_actif = TRUE
+                          AND e.id_poste_actuel IS NOT NULL
+                          AND (%s::text IS NULL OR e.id_service = %s::text)
+                    ),
+                    comp AS (
+                        SELECT
+                            ecc.id_effectif_client AS id_effectif,
+                            ecc.id_effectif_competence,
+                            ecc.id_dernier_audit
+                        FROM public.tbl_effectif_client_competence ecc
+                        JOIN eff ON eff.id_effectif = ecc.id_effectif_client
+                        WHERE ecc.actif = TRUE
+                          AND ecc.archive = FALSE
+                    ),
+                    last_audit AS (
+                        SELECT
+                            c.id_effectif,
+                            c.id_effectif_competence,
+                            a.date_audit
+                        FROM comp c
+                        LEFT JOIN public.tbl_effectif_client_audit_competence a
+                          ON a.id_audit_competence = c.id_dernier_audit
+                         AND a.id_effectif_competence = c.id_effectif_competence
+                    ),
+                    agg AS (
+                        SELECT
+                            e.id_effectif,
+                            e.nom_effectif,
+                            e.prenom_effectif,
+                            e.id_service,
+                            e.id_poste_actuel,
+                            COUNT(c.id_effectif_competence)::int AS total_comp,
+                            SUM(
+                                CASE
+                                    WHEN la.date_audit >= (CURRENT_DATE - INTERVAL '12 months') THEN 1
+                                    ELSE 0
+                                END
+                            )::int AS audited_12m,
+                            MAX(la.date_audit) AS date_dernier_audit
+                        FROM eff e
+                        LEFT JOIN comp c ON c.id_effectif = e.id_effectif
+                        LEFT JOIN last_audit la ON la.id_effectif_competence = c.id_effectif_competence
+                        GROUP BY e.id_effectif, e.nom_effectif, e.prenom_effectif, e.id_service, e.id_poste_actuel
+                    ),
+                    filtered AS (
+                        SELECT
+                            a.*,
+                            CASE
+                                WHEN a.total_comp <= 0 THEN 0.0
+                                ELSE ROUND((a.audited_12m::numeric / NULLIF(a.total_comp, 0)) * 100.0, 1)
+                            END AS couverture_pct
+                        FROM agg a
+                        WHERE a.total_comp <= 0
+                           OR (a.audited_12m::numeric / NULLIF(a.total_comp, 0)) < %s
+                    )
+                    SELECT
+                        f.id_effectif,
+                        f.nom_effectif,
+                        f.prenom_effectif,
+                        o.nom_service,
+                        p.intitule_poste,
+                        f.total_comp,
+                        f.audited_12m,
+                        f.date_dernier_audit,
+                        f.couverture_pct,
+                        COUNT(*) OVER()::int AS total
+                    FROM filtered f
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_service = f.id_service
+                     AND o.archive = FALSE
+                    LEFT JOIN public.tbl_fiche_poste p
+                      ON p.id_poste = f.id_poste_actuel
+                     AND COALESCE(p.actif, TRUE) = TRUE
+                    ORDER BY f.couverture_pct ASC,
+                             f.date_dernier_audit ASC NULLS FIRST,
+                             f.nom_effectif ASC,
+                             f.prenom_effectif ASC
+                    LIMIT %s OFFSET %s
+                    """,
+                    (id_ent, id_service_clean, id_service_clean, seuil, limit, offset),
+                )
+
+                rows = cur.fetchall() or []
+
+        total = int(rows[0].get("total") or 0) if rows else 0
+
+        out_rows: List[NoPerformance12mDetailRow] = []
+        for r in rows:
+            out_rows.append(
+                NoPerformance12mDetailRow(
+                    id_effectif=str(r["id_effectif"]),
+                    nom=str(r.get("nom_effectif") or ""),
+                    prenom=str(r.get("prenom_effectif") or ""),
+                    service=(str(r.get("nom_service")) if r.get("nom_service") else None),
+                    poste=(str(r.get("intitule_poste")) if r.get("intitule_poste") else None),
+                    couverture_pct=float(r.get("couverture_pct") or 0.0),
+                    nb_comp_total=int(r.get("total_comp") or 0),
+                    nb_comp_auditees_12m=int(r.get("audited_12m") or 0),
+                    date_dernier_audit=(str(r["date_dernier_audit"]) if r.get("date_dernier_audit") else None),
+                )
+            )
+
+        return NoPerformance12mDetailResponse(
+            total=total,
+            limit=limit,
+            offset=offset,
+            seuil_couverture=seuil,
+            rows=out_rows,
             id_service_scope=id_service_clean,
         )
 

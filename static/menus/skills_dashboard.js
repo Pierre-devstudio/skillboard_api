@@ -745,6 +745,132 @@
     if (b) b.innerHTML = html || "";
   }
 
+    async function loadDashDetailNoPerf12m(portal, title, scope, offset){
+    const limit = 50;
+
+    const serviceId = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+    const qs =
+      `?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}` +
+      (serviceId ? `&id_service=${encodeURIComponent(serviceId)}` : "");
+
+    const url = `${portal.apiBase}/skills/dashboard/no-performance-12m/detail/${encodeURIComponent(portal.contactId)}${qs}`;
+
+    // mini helper local pour éviter les injections HTML
+    const esc = (v) => String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+    try{
+      const data = await portal.apiJson(url);
+
+      const total = Number(data?.total ?? 0);
+      const rows = Array.isArray(data?.rows) ? data.rows : [];
+      const seuil = Number(data?.seuil_couverture ?? 0.7);
+      const seuilPct = Math.round(seuil * 100);
+
+      let html = `
+        <div class="sb-muted" style="margin-bottom:10px;">
+          Règle : point performance OK si couverture ≥ <b>${seuilPct}%</b> (compétences actives auditées sur 12 mois).
+          <br>
+          <b>${total}</b> salarié(s) concerné(s) sur ce périmètre.
+        </div>
+      `;
+
+      if (!rows.length){
+        html += `<div class="card-sub" style="margin:0;">Aucun salarié concerné.</div>`;
+        setDashDetailModal(title, scope, html);
+        return;
+      }
+
+      html += `
+        <div class="table-wrap">
+          <table class="sb-table">
+            <thead>
+              <tr>
+                <th>Salarié</th>
+                <th>Service</th>
+                <th>Poste</th>
+                <th>Couverture</th>
+                <th>Audits &lt; 12 mois</th>
+                <th>Dernier audit</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => {
+                const nom = `${esc(r?.prenom)} ${esc(r?.nom)}`.trim();
+                const service = esc(r?.service ?? "");
+                const poste = esc(r?.poste ?? "");
+                const cov = Number(r?.couverture_pct ?? 0);
+                const covTxt = (isFinite(cov) ? cov.toLocaleString("fr-FR", { maximumFractionDigits: 1 }) : "0") + "%";
+
+                const a = Number(r?.nb_comp_auditees_12m ?? 0);
+                const t = Number(r?.nb_comp_total ?? 0);
+                const auditsTxt = `${isFinite(a) ? a : 0} / ${isFinite(t) ? t : 0}`;
+
+                // fmtDateShortFR existe déjà (utilisée sur tes autres tuiles). Si non, affiche brut.
+                const da = r?.date_dernier_audit ? (typeof fmtDateShortFR === "function" ? fmtDateShortFR(r.date_dernier_audit) : esc(r.date_dernier_audit)) : "";
+
+                return `
+                  <tr>
+                    <td>${nom || "-"}</td>
+                    <td>${service || "-"}</td>
+                    <td>${poste || "-"}</td>
+                    <td><b>${covTxt}</b></td>
+                    <td>${auditsTxt}</td>
+                    <td>${da || "-"}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      const curOffset = Number(data?.offset ?? offset) || 0;
+      const curLimit = Number(data?.limit ?? limit) || limit;
+
+      const canPrev = curOffset > 0;
+      const canNext = (curOffset + curLimit) < total;
+
+      html += `
+        <div class="sb-dash-pager">
+          <div class="sb-muted">Page : ${Math.floor(curOffset / curLimit) + 1} / ${Math.max(1, Math.ceil(total / curLimit))}</div>
+          <div>
+            <button type="button" class="btn-secondary" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
+            <button type="button" class="btn-secondary" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
+          </div>
+        </div>
+      `;
+
+      setDashDetailModal(title, scope, html);
+
+      const btnPrev = byId("btnDashDetailPrev");
+      const btnNext = byId("btnDashDetailNext");
+
+      if (btnPrev){
+        btnPrev.onclick = async () => {
+          if (!canPrev) return;
+          setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+          await loadDashDetailNoPerf12m(portal, title, scope, Math.max(0, curOffset - curLimit));
+        };
+      }
+
+      if (btnNext){
+        btnNext.onclick = async () => {
+          if (!canNext) return;
+          setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+          await loadDashDetailNoPerf12m(portal, title, scope, curOffset + curLimit);
+        };
+      }
+
+    } catch (e){
+      setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Erreur de chargement.</div>`);
+    }
+  }
+
   async function openDashDetailForTile(portal, tileEl){
     const kpiKey = (tileEl?.dataset?.kpi || "").trim();
     const titleEl = tileEl.querySelector(".sb-dash-tile-title");
@@ -753,6 +879,11 @@
     const scope = (portal && portal.scopeServiceId) ? "Périmètre : Service" : "Périmètre : Entreprise";
     setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Chargement…</div>`);
     openModal("modalDashDetail");
+
+    if (kpiKey === "sans-point-performance-12m"){
+      await loadDashDetailNoPerf12m(portal, title, scope, 0);
+      return;
+    }
 
     // Pour l’instant: placeholder par KPI (on branchera les endpoints détail ensuite)
     let body = `<div class="sb-muted">Aucun détail branché pour <b>${kpiKey || "kpi"}</b> (à faire tuile par tuile).</div>`;
