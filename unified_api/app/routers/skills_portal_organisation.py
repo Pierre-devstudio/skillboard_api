@@ -4,7 +4,7 @@ from typing import Optional, List, Dict
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn
+from app.routers.skills_portal_common import get_conn, resolve_insights_context
 import html as _html
 import re
 
@@ -64,28 +64,6 @@ ServiceNode.model_rebuild()
 # ======================================================
 # Helpers
 # ======================================================
-def _fetch_contact_and_ent(cur, id_contact: str) -> Dict:
-    cur.execute(
-        """
-        SELECT
-            c.id_contact,
-            c.code_ent,
-            c.civ_ca,
-            c.prenom_ca,
-            c.nom_ca
-        FROM public.tbl_contact c
-        WHERE c.id_contact = %s
-          AND COALESCE(c.masque, FALSE) = FALSE
-        """,
-        (id_contact,),
-    )
-    row = cur.fetchone()
-    if row is None:
-        raise HTTPException(status_code=404, detail="Contact introuvable ou masqué.")
-    if not row.get("code_ent"):
-        raise HTTPException(status_code=400, detail="Contact sans code_ent (id_ent) associé.")
-    return row
-
 
 def _build_tree(flat_services: List[Dict], counts_by_service: Dict[str, Dict[str, int]]) -> List[ServiceNode]:
     nodes: Dict[str, ServiceNode] = {}
@@ -398,8 +376,9 @@ def get_services_tree(id_contact: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 # Services actifs
                 cur.execute(
@@ -520,8 +499,9 @@ def get_postes_for_service(id_contact: str, id_service: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 # Effectifs par poste (sous-requête)
                 # (on la réutilise via LEFT JOIN)
