@@ -12,7 +12,7 @@ import re
 router = APIRouter()
 
 NON_LIE_ID = "__NON_LIE__"
-TOUS_SERVICES_ID = "__TOUS__"
+TOUS_SERVICES_ID = "__ALL__"
 
 
 # ======================================================
