@@ -4,7 +4,8 @@ from typing import Optional, List, Dict, Any, Tuple
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn
+from app.routers.skills_portal_common import get_conn, resolve_insights_context
+
 
 router = APIRouter()
 
@@ -61,26 +62,6 @@ class CartographieMatriceResponse(BaseModel):
 # ======================================================
 # Helpers
 # ======================================================
-def _fetch_contact_and_ent(cur, id_contact: str) -> Dict[str, Any]:
-    cur.execute(
-        """
-        SELECT
-            c.id_contact,
-            c.code_ent,
-            c.civ_ca,
-            c.prenom_ca,
-            c.nom_ca
-        FROM public.tbl_contact c
-        WHERE c.id_contact = %s
-          AND COALESCE(c.masque, FALSE) = FALSE
-        """,
-        (id_contact,),
-    )
-    row = cur.fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Contact introuvable.")
-    return row
-
 
 def _normalize_etat(etat: Optional[str]) -> Optional[str]:
     if etat is None:
@@ -221,8 +202,9 @@ def get_cartographie_matrice(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 # scope label
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
@@ -429,20 +411,9 @@ def get_cartographie_cell_detail(
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
 
-                # --- id_ent depuis le contact
-                cur.execute(
-                    """
-                    SELECT code_ent
-                    FROM public.tbl_contact
-                    WHERE id_contact = %s
-                    LIMIT 1
-                    """,
-                    (id_contact,)
-                )
-                c = cur.fetchone()
-                if not c or not c.get("code_ent"):
-                    raise HTTPException(status_code=404, detail="Contact introuvable")
-                id_ent = c["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 # --- scope postes (cohérent avec ton filtre service)
                 svc_where = "TRUE"
