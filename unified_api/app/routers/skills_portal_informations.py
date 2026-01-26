@@ -375,15 +375,43 @@ def update_contact_infos(id_contact: str, payload: UpdateContactPayload):
 
                     vals.append(row_contact["id_contact"])
 
-                    cur.execute(
-                        f"""
-                        UPDATE public.tbl_contact
-                        SET {", ".join(cols)}
-                        WHERE id_contact = %s
-                        """,
-                        tuple(vals),
-                    )
-                    conn.commit()
+                    # IMPORTANT: le "contact" connecté est désormais un effectif (tbl_effectif_client)
+                    # Mapping champs API (civ_ca, nom_ca, etc.) -> champs effectif_client
+                    mapping = {
+                        "civ_ca": "civilite_effectif",
+                        "nom_ca": "nom_effectif",
+                        "prenom_ca": "prenom_effectif",
+                        "role_ca": None,  # pas de champ direct côté effectif_client dans ta table actuelle
+                        "tel_ca": "telephone_effectif",
+                        "tel2_ca": None,  # pas de champ tel2 côté effectif_client
+                        "mail_ca": "email_effectif",
+                        "obs_ca": "note_commentaire",
+                    }
+
+                    eff_cols = []
+                    eff_vals = []
+
+                    for k, v in patch.items():
+                        target = mapping.get(k)
+                        if target:
+                            eff_cols.append(f"{target} = %s")
+                            eff_vals.append(v)
+
+                    # Si tu ne modifies que des champs non mappés (role_ca / tel2_ca), on ne fait rien
+                    if eff_cols:
+                        eff_vals.append(row_contact["id_contact"])  # id_contact = id_effectif (compat)
+                        cur.execute(
+                            f"""
+                            UPDATE public.tbl_effectif_client
+                            SET {", ".join(eff_cols)},
+                                dernier_update = NOW()
+                            WHERE id_effectif = %s
+                            """,
+                            tuple(eff_vals),
+                        )
+                        conn.commit()
+
+                  
 
                 return _get_informations(cur, id_contact)
 
