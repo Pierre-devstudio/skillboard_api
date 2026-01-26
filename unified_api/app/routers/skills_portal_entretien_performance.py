@@ -9,7 +9,8 @@ import json
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn
+from app.routers.skills_portal_common import get_conn, resolve_insights_context
+
 
 
 router = APIRouter()
@@ -193,28 +194,6 @@ class CouverturePosteResponse(BaseModel):
 # ======================================================
 # Helpers
 # ======================================================
-def _fetch_contact_and_ent(cur, id_contact: str) -> Dict[str, Any]:
-    # Aligné sur les autres routers Skills (mêmes champs, mêmes règles)
-    cur.execute(
-        """
-        SELECT
-            c.id_contact,
-            c.code_ent,
-            c.civ_ca,
-            c.prenom_ca,
-            c.nom_ca
-        FROM public.tbl_contact c
-        WHERE c.id_contact = %s
-          AND COALESCE(c.masque, FALSE) = FALSE
-        """,
-        (id_contact,),
-    )
-    row = cur.fetchone()
-    if row is None:
-        raise HTTPException(status_code=404, detail="Contact introuvable.")
-    if not row.get("code_ent"):
-        raise HTTPException(status_code=400, detail="Contact sans code_ent associé.")
-    return row
 
 def _fetch_effectif_context(cur, id_ent: str, id_effectif: str) -> Dict[str, Any]:
     cur.execute(
@@ -294,18 +273,20 @@ def get_entretien_performance_bootstrap(id_contact: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact_row = _fetch_contact_and_ent(cur, id_contact)
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
 
+                # Bootstrap minimal: on conserve la shape attendue par le front
                 return EntretienPerformanceBootstrapResponse(
                     contact=ContactEntInfo(
-                        id_contact=contact_row["id_contact"],
-                        code_ent=contact_row["code_ent"],
-                        civ_ca=contact_row.get("civ_ca"),
-                        prenom_ca=contact_row.get("prenom_ca"),
-                        nom_ca=contact_row.get("nom_ca"),
+                        id_contact=ctx["id_effectif"],     # compat
+                        code_ent=ctx["id_ent"],
+                        civ_ca=None,
+                        prenom_ca=None,
+                        nom_ca=None,
                     ),
                     scoring=_get_scoring_config(),
                 )
+
 
     except HTTPException:
         raise
@@ -328,8 +309,9 @@ def get_entretien_performance_collaborateurs(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact_row = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact_row["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 where_parts: List[str] = [
                     "e.id_ent = %s",
@@ -416,8 +398,9 @@ def get_effectif_checklist(id_contact: str, id_effectif: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact_row = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact_row["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 eff = _fetch_effectif_context(cur, id_ent, id_effectif)
                 id_poste = eff.get("id_poste_actuel")
@@ -543,8 +526,9 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload):
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact_row = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact_row["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 # Vérifie appartenance entreprise + actif/non archivé
                 cur.execute(
@@ -575,10 +559,24 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload):
                 id_audit = str(uuid4())
                 today = date.today()
 
-                civ = (contact_row.get("civ_ca") or "").strip()
-                prenom = (contact_row.get("prenom_ca") or "").strip()
-                nom = (contact_row.get("nom_ca") or "").strip()
-                nom_eval = " ".join([x for x in [civ, prenom, nom] if x]).strip() or None
+                # Evaluateur = effectif (celui qui est connecté)
+                cur.execute(
+                    """
+                    SELECT
+                        ec.nom_effectif,
+                        ec.prenom_effectif
+                    FROM public.tbl_effectif_client ec
+                    WHERE ec.id_effectif = %s
+                    AND COALESCE(ec.archive, FALSE) = FALSE
+                    LIMIT 1
+                    """,
+                    (id_contact,),
+                )
+                ev = cur.fetchone() or {}
+                nom_eval = " ".join(
+                    [x for x in [(ev.get("prenom_effectif") or "").strip(), (ev.get("nom_effectif") or "").strip()] if x]
+                ).strip() or None
+
 
                 detail_eval = {
                     "criteres": [
@@ -623,7 +621,7 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload):
                         round(float(payload.resultat_eval), 1),
                         json.dumps(detail_eval, ensure_ascii=False),
                         (payload.observation or None),
-                        "tbl_contact",
+                        "tbl_effectif_client",
                         nom_eval,
                     ),
                 )
@@ -672,8 +670,9 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 # Sécurité périmètre entreprise
                 cur.execute(
@@ -759,8 +758,9 @@ def ep_get_couverture_poste_actuel(id_contact: str, id_effectif: str):
             with conn.cursor(row_factory=dict_row) as cur:
 
                 # Sécurité + périmètre entreprise via contact
-                contact = _fetch_contact_and_ent(cur, id_contact)
-                id_ent = contact["code_ent"]
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
 
                 # Contexte effectif (inclut poste actuel + intitulé poste)
                 eff = _fetch_effectif_context(cur, id_ent, id_effectif)
