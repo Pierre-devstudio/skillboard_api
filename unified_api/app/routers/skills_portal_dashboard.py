@@ -243,6 +243,27 @@ class TransmissionDangerDetailResponse(BaseModel):
     rows: List[TransmissionDangerRow] = []
     id_service_scope: Optional[str] = None
 
+class GlobalGaugeNonCoveredRow(BaseModel):
+    id_comp: str
+    code_comp: Optional[str] = None
+    competence: str = ""
+
+    requis_max_niveau: str = ""      # A/B/C
+    requis_max_seuil: int = 0        # 9/18/24
+
+    meilleur_reel: int = 0           # max resultat_eval sur la pop, sinon 0
+    ecart: int = 0                   # requis_max_seuil - meilleur_reel
+
+    nb_postes_critiques: int = 0     # nb postes (poids_criticite >= 80) concernés
+
+
+class GlobalGaugeNonCoveredDetailResponse(BaseModel):
+    total: int = 0
+    limit: int = 50
+    offset: int = 0
+    rows: List[GlobalGaugeNonCoveredRow] = []
+    id_service_scope: Optional[str] = None
+
 
 @router.get(
     "/skills/context/{id_contact}",
@@ -2128,6 +2149,179 @@ def get_dashboard_age_pyramid_detail_transmission_danger(
 
         return TransmissionDangerDetailResponse(
             age_min=age_min,
+            total=total,
+            limit=limit,
+            offset=offset,
+            rows=out_rows,
+            id_service_scope=id_service_clean,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/skills/dashboard/global-gauge/detail-non-covered/{id_contact}",
+    response_model=GlobalGaugeNonCoveredDetailResponse,
+)
+def get_dashboard_global_gauge_detail_non_covered(
+    id_contact: str,
+    limit: int = 50,
+    offset: int = 0,
+    id_service: Optional[str] = None,
+):
+    """
+    Détail paginé — "Compétences critiques (poids_criticite >= 80) non couvertes"
+    Définition "non couverte" :
+      - meilleur niveau réel constaté (max resultat_eval dernier audit sur la population) < niveau requis max (borne haute A=9,B=18,C=24)
+    Population :
+      - statut_actif = TRUE
+      - archive = FALSE
+      - id_poste_actuel IS NOT NULL
+    Périmètre :
+      - entreprise entière (id_ent depuis contact)
+      - futur : filtre id_service si fourni
+    """
+    try:
+        try:
+            limit = int(limit or 50)
+        except Exception:
+            limit = 50
+
+        try:
+            offset = int(offset or 0)
+        except Exception:
+            offset = 0
+
+        if limit < 1:
+            limit = 50
+        if limit > 200:
+            limit = 200
+        if offset < 0:
+            offset = 0
+
+        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+
+                id_ent = None
+                if isinstance(row_contact, dict):
+                    id_ent = row_contact.get("id_ent")
+                if not id_ent and isinstance(row_ent, dict):
+                    id_ent = row_ent.get("id_ent")
+
+                if not id_ent:
+                    return GlobalGaugeNonCoveredDetailResponse(
+                        total=0,
+                        limit=limit,
+                        offset=offset,
+                        rows=[],
+                        id_service_scope=id_service_clean,
+                    )
+
+                cur.execute(
+                    """
+                    WITH eff AS (
+                        SELECT e.id_effectif, e.id_poste_actuel
+                        FROM public.tbl_effectif_client e
+                        WHERE e.id_ent = %s
+                          AND e.archive = FALSE
+                          AND e.statut_actif = TRUE
+                          AND e.id_poste_actuel IS NOT NULL
+                          AND (%s::text IS NULL OR e.id_service = %s::text)
+                    ),
+                    crit AS (
+                        SELECT
+                            fpc.id_competence,
+                            MAX(
+                                CASE fpc.niveau_requis
+                                    WHEN 'A' THEN 9
+                                    WHEN 'B' THEN 18
+                                    WHEN 'C' THEN 24
+                                    ELSE 0
+                                END
+                            )::int AS requis_max_seuil,
+                            COUNT(DISTINCT eff.id_poste_actuel)::int AS nb_postes_critiques
+                        FROM eff
+                        JOIN public.tbl_fiche_poste_competence fpc
+                          ON fpc.id_poste = eff.id_poste_actuel
+                         AND fpc.poids_criticite >= 80
+                        GROUP BY fpc.id_competence
+                    ),
+                    real AS (
+                        SELECT
+                            crit.id_competence,
+                            COALESCE(MAX(COALESCE(a.resultat_eval, 0)), 0)::int AS meilleur_reel
+                        FROM crit
+                        LEFT JOIN public.tbl_effectif_client_competence ec
+                          ON ec.id_comp = crit.id_competence
+                         AND ec.actif = TRUE
+                         AND ec.archive = FALSE
+                         AND EXISTS (
+                            SELECT 1 FROM eff e2 WHERE e2.id_effectif = ec.id_effectif_client
+                         )
+                        LEFT JOIN public.tbl_effectif_client_audit_competence a
+                          ON a.id_audit_competence = ec.id_dernier_audit
+                         AND a.id_effectif_competence = ec.id_effectif_competence
+                        GROUP BY crit.id_competence
+                    )
+                    SELECT
+                        crit.id_competence AS id_comp,
+                        c.code_comp AS code_comp,
+                        c.intitule_comp AS competence,
+
+                        CASE crit.requis_max_seuil
+                            WHEN 9 THEN 'A'
+                            WHEN 18 THEN 'B'
+                            WHEN 24 THEN 'C'
+                            ELSE ''
+                        END AS requis_max_niveau,
+                        crit.requis_max_seuil,
+
+                        COALESCE(real.meilleur_reel, 0)::int AS meilleur_reel,
+                        (crit.requis_max_seuil - COALESCE(real.meilleur_reel, 0))::int AS ecart,
+                        crit.nb_postes_critiques,
+
+                        COUNT(*) OVER()::int AS total
+                    FROM crit
+                    LEFT JOIN real ON real.id_competence = crit.id_competence
+                    LEFT JOIN public.tbl_competence c
+                      ON c.id_comp = crit.id_competence
+                    WHERE COALESCE(real.meilleur_reel, 0) < crit.requis_max_seuil
+                    ORDER BY
+                        (crit.requis_max_seuil - COALESCE(real.meilleur_reel, 0)) DESC,
+                        crit.requis_max_seuil DESC,
+                        COALESCE(c.intitule_comp, '') ASC
+                    LIMIT %s OFFSET %s
+                    """,
+                    (id_ent, id_service_clean, id_service_clean, limit, offset),
+                )
+
+                rows = cur.fetchall() or []
+
+        total = int(rows[0].get("total") or 0) if rows else 0
+
+        out_rows: List[GlobalGaugeNonCoveredRow] = []
+        for r in rows:
+            out_rows.append(
+                GlobalGaugeNonCoveredRow(
+                    id_comp=str(r.get("id_comp") or ""),
+                    code_comp=(str(r.get("code_comp")) if r.get("code_comp") else None),
+                    competence=str(r.get("competence") or ""),
+
+                    requis_max_niveau=str(r.get("requis_max_niveau") or ""),
+                    requis_max_seuil=int(r.get("requis_max_seuil") or 0),
+
+                    meilleur_reel=int(r.get("meilleur_reel") or 0),
+                    ecart=int(r.get("ecart") or 0),
+                    nb_postes_critiques=int(r.get("nb_postes_critiques") or 0),
+                )
+            )
+
+        return GlobalGaugeNonCoveredDetailResponse(
             total=total,
             limit=limit,
             offset=offset,

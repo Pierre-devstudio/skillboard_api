@@ -1526,6 +1526,131 @@
 
   }
 
+    async function loadDashDetailGlobalGaugeNonCovered(portal, title, scope, offset){
+    const limit = 50;
+
+    const serviceId = (portal && portal.scopeServiceId) ? String(portal.scopeServiceId).trim() : "";
+    const qs =
+      `?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}` +
+      (serviceId ? `&id_service=${encodeURIComponent(serviceId)}` : "");
+
+    const url = `${portal.apiBase}/skills/dashboard/global-gauge/detail-non-covered/${encodeURIComponent(portal.contactId)}${qs}`;
+
+    const esc = (v) => String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+
+    try{
+      const data = await portal.apiJson(url);
+
+      const total = Number(data?.total ?? 0);
+      const rows = Array.isArray(data?.rows) ? data.rows : [];
+
+      let html = `
+        <div class="sb-muted" style="margin-bottom:10px;">
+          Liste actionnable : <b>compétences critiques (poids_criticite ≥ 80) non couvertes</b>.
+          <br>
+          Non couverte = meilleur score réel (dernier audit, manquant = 0) < requis max (A=9, B=18, C=24).
+          <br>
+          <b>${isFinite(total) ? total : 0}</b> compétence(s) sur ce périmètre.
+        </div>
+      `;
+
+      if (!rows.length){
+        html += `<div class="card-sub" style="margin:0;">Aucune compétence critique non couverte.</div>`;
+        setDashDetailModal(title, scope, html);
+        return;
+      }
+
+      html += `
+        <div class="table-wrap">
+          <table class="sb-table">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Compétence</th>
+                <th>Requis max</th>
+                <th>Meilleur réel</th>
+                <th>Écart</th>
+                <th>Postes critiques</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(r => {
+                const code = esc(r?.code_comp ?? "");
+                const comp = esc(r?.competence ?? "");
+
+                const niv = esc(r?.requis_max_niveau ?? "");
+                const seuil = Number(r?.requis_max_seuil ?? 0);
+                const requisTxt = (niv ? `<b>${niv}</b>` : "-") + (isFinite(seuil) && seuil ? ` (${seuil})` : "");
+
+                const mr = Number(r?.meilleur_reel ?? 0);
+                const ec = Number(r?.ecart ?? 0);
+                const nbp = Number(r?.nb_postes_critiques ?? 0);
+
+                return `
+                  <tr>
+                    <td>${code || "-"}</td>
+                    <td>${comp || "-"}</td>
+                    <td>${requisTxt}</td>
+                    <td><b>${isFinite(mr) ? mr : 0}</b></td>
+                    <td><b>${isFinite(ec) ? ec : 0}</b></td>
+                    <td>${isFinite(nbp) ? nbp : 0}</td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      const curOffset = Number(data?.offset ?? offset) || 0;
+      const curLimit = Number(data?.limit ?? limit) || limit;
+
+      const canPrev = curOffset > 0;
+      const canNext = (curOffset + curLimit) < total;
+
+      html += `
+        <div class="sb-dash-pager">
+          <div class="sb-muted">Page : ${Math.floor(curOffset / curLimit) + 1} / ${Math.max(1, Math.ceil(total / curLimit))}</div>
+          <div>
+            <button type="button" class="btn-secondary" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
+            <button type="button" class="btn-secondary" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
+          </div>
+        </div>
+      `;
+
+      setDashDetailModal(title, scope, html);
+
+      const btnPrev = byId("btnDashDetailPrev");
+      const btnNext = byId("btnDashDetailNext");
+
+      if (btnPrev){
+        btnPrev.onclick = async () => {
+          if (!canPrev) return;
+          setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+          await loadDashDetailGlobalGaugeNonCovered(portal, title, scope, Math.max(0, curOffset - curLimit));
+        };
+      }
+
+      if (btnNext){
+        btnNext.onclick = async () => {
+          if (!canNext) return;
+          setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Chargement…</div>`);
+          await loadDashDetailGlobalGaugeNonCovered(portal, title, scope, curOffset + curLimit);
+        };
+      }
+
+    } catch (e){
+      const msg = (e && e.message) ? String(e.message) : String(e || "Erreur inconnue");
+      setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Erreur: ${esc(msg)}</div>`);
+    }
+  }
+
+
   function bindDashAgeTabs(portal, title, scope){
     const root = byId("modalDashDetailBody");
     if (!root) return;
@@ -1575,6 +1700,11 @@
 
     if (kpiKey === "pyramide-ages"){
       await loadDashDetailAgePyramidSeniors(portal, title, scope, 0);
+      return;
+    }
+
+    if (kpiKey === "etat-global"){
+      await loadDashDetailGlobalGaugeNonCovered(portal, title, scope, 0);
       return;
     }
 
