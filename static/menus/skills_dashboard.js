@@ -1672,7 +1672,16 @@
   async function openDashDetailForTile(portal, tileEl){
     const kpiKey = (tileEl?.dataset?.kpi || "").trim();
     const titleEl = tileEl.querySelector(".sb-dash-tile-title");
-    const title = titleEl ? titleEl.textContent.replace(/\s+/g, " ").trim() : "Détail";
+
+    // IMPORTANT: certaines tuiles ont un tooltip (.sb-tip) dans le titre.
+    // On prend uniquement le 1er enfant (le <span> du titre), pas tout le textContent.
+    const titleMain =
+      (titleEl && titleEl.children && titleEl.children.length > 0)
+        ? titleEl.children[0].textContent
+        : (titleEl ? titleEl.textContent : "");
+
+    const title = (titleMain || "Détail").replace(/\s+/g, " ").trim();
+
 
     const scope = (portal && portal.scopeServiceId) ? "Périmètre : Service" : "Périmètre : Entreprise";
     setDashDetailModal(title, scope, `<div class="card-sub" style="margin:0;">Chargement…</div>`);

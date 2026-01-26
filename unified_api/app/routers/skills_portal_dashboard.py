@@ -2270,8 +2270,8 @@ def get_dashboard_global_gauge_detail_non_covered(
                     )
                     SELECT
                         crit.id_competence AS id_comp,
-                        c.code_comp AS code_comp,
-                        c.intitule_comp AS competence,
+                        c.code AS code_comp,
+                        c.intitule AS competence,
 
                         CASE crit.requis_max_seuil
                             WHEN 9 THEN 'A'
@@ -2294,7 +2294,7 @@ def get_dashboard_global_gauge_detail_non_covered(
                     ORDER BY
                         (crit.requis_max_seuil - COALESCE(real.meilleur_reel, 0)) DESC,
                         crit.requis_max_seuil DESC,
-                        COALESCE(c.intitule_comp, '') ASC
+                        COALESCE(c.intitule, '') ASC
                     LIMIT %s OFFSET %s
                     """,
                     (id_ent, id_service_clean, id_service_clean, limit, offset),
