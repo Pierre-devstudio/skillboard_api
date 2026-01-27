@@ -183,6 +183,23 @@
   flex: 1 1 auto;
 }
 
+/* Modal Référentiel — Grille d’évaluation : lisibilité (espacement des bullets) */
+#modalRefDetail .sb-acc-body ul{
+  /* on ne touche pas à padding-left (déjà inline), on ajoute juste de l’air */
+  padding-top: 6px;
+  padding-bottom: 2px;
+}
+
+#modalRefDetail .sb-acc-body li{
+  line-height: 1.45;      /* lecture plus fluide */
+  margin: 6px 0;          /* espace entre items */
+}
+
+#modalRefDetail .sb-acc-body li:last-child{
+  margin-bottom: 0;
+}
+
+
 /* Modal Référentiel — Niveaux en tableau (badge | texte) */
 #modalRefDetail .ref-levels-table {
   display: flex;
