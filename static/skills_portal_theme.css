@@ -208,10 +208,10 @@
 #modalRefDetail .ref-level-row {
   display: grid;
 
-  /* Colonne badge dimensionnée intelligemment (évite le débordement sur le texte) */
-  grid-template-columns: fit-content(150px) 1fr;
+  /* Colonne badge fixe (alignement nickel) */
+  grid-template-columns: 150px 1fr;
 
-  /* Un peu plus d’air entre badge et texte */
+  /* Air entre badge et texte */
   column-gap: 16px;
 
   align-items: start;
@@ -232,16 +232,16 @@
 #modalRefDetail .ref-level-badge {
   white-space: nowrap;
   font-size: 12px;
+
+  /* Badge = largeur de colonne (tous identiques) */
+  width: 100%;
+  box-sizing: border-box;
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
 
-  /* Autorise le badge à se caler dans sa colonne */
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-
-  /* Un peu moins large, mais sans casser */
+  /* Compact mais lisible */
   padding: 4px 8px;
 }
 
