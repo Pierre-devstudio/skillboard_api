@@ -11,7 +11,6 @@
   let _servicesLoaded = false;
   const _cache = new Map(); // key: service|domaine
 
-  const NON_LIE_ID = "__NON_LIE__";
   const STORE_SERVICE = "sb_map_service";
   const STORE_DOMAINE = "sb_map_domaine";
 
@@ -62,46 +61,6 @@
   function setCounts(text) {
     const ct = byId("hmCounts") || byId("mapCount"); // tolérant
     if (ct) ct.textContent = text || "—";
-  }
-
-  function flattenServices(nodes) {
-    const out = [];
-    function rec(list, depth) {
-      (list || []).forEach(n => {
-        if (!n || !n.id_service) return;
-        out.push({
-          id_service: n.id_service,
-          nom_service: n.nom_service || n.id_service,
-          depth: depth || 0
-        });
-        if (n.children && n.children.length) rec(n.children, (depth || 0) + 1);
-      });
-    }
-    rec(nodes || [], 0);
-    return out;
-  }
-
-  function fillServiceSelect(flat) {
-    const sel = byId("mapServiceSelect");
-    if (!sel) return;
-
-    const stored = localStorage.getItem(STORE_SERVICE) || "";
-    const current = (sel.value || stored || "").trim();
-
-    sel.innerHTML = "";
-    sel.insertAdjacentHTML("beforeend", `<option value="">Tous les services</option>`);
-    sel.insertAdjacentHTML("beforeend", `<option value="${NON_LIE_ID}">Non liés (sans service)</option>`);
-
-    (flat || []).forEach(s => {
-      const opt = document.createElement("option");
-      opt.value = s.id_service;
-      const prefix = s.depth ? "— ".repeat(Math.min(6, s.depth)) : "";
-      opt.textContent = prefix + (s.nom_service || s.id_service);
-      sel.appendChild(opt);
-    });
-
-    if (current && Array.from(sel.options).some(o => o.value === current)) sel.value = current;
-    else sel.value = "";
   }
 
   function fillDomaineSelect(domaines) {
@@ -689,7 +648,7 @@
 
     if (btnReset) {
       btnReset.addEventListener("click", () => {
-        if (selService) selService.value = "";
+        if (selService) selService.value = window.portal.serviceFilter.ALL_ID;
         if (selDom) selDom.value = "";
         _cache.clear();
         refreshAll(portal);

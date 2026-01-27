@@ -3685,7 +3685,7 @@ function bindOnce(portal) {
 
   if (btnReset) {
     btnReset.addEventListener("click", () => {
-      if (selService) selService.value = "";
+      if (selService) selService.value = window.portal.serviceFilter.ALL_ID;
       localStorage.setItem(STORE_SERVICE, "");
       refreshSummary(portal);
       renderDetail(localStorage.getItem(STORE_MODE) || "risques");
