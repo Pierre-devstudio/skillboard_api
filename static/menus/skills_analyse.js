@@ -13,7 +13,6 @@
   let _prevData = null;
   let apiBase = "";
 
-  const NON_LIE_ID = "__NON_LIE__";
   const STORE_SERVICE = "sb_analyse_service";
   const STORE_MODE = "sb_analyse_mode";
   const STORE_RISK_FILTER = "sb_analyse_risk_filter";
@@ -138,50 +137,12 @@
     setText("analyseStatus", text || "—", "—");
   }
 
-  function flattenServices(nodes) {
-    const out = [];
-    function rec(list, depth) {
-      (list || []).forEach(n => {
-        if (!n || !n.id_service) return;
-        out.push({
-          id_service: n.id_service,
-          nom_service: n.nom_service || n.id_service,
-          depth: depth || 0
-        });
-        if (n.children && n.children.length) rec(n.children, (depth || 0) + 1);
-      });
-    }
-    rec(nodes || [], 0);
-    return out;
-  }
-
-  function fillServiceSelect(flat) {
-    const sel = byId("analyseServiceSelect");
-    if (!sel) return;
-
-    const stored = (localStorage.getItem(STORE_SERVICE) || "").trim();
-    const current = (sel.value || stored || "").trim();
-
-    sel.innerHTML = "";
-    sel.insertAdjacentHTML("beforeend", `<option value="">Tous les services</option>`);
-    sel.insertAdjacentHTML("beforeend", `<option value="${NON_LIE_ID}">Non liés (sans service)</option>`);
-
-    (flat || []).forEach(s => {
-      const opt = document.createElement("option");
-      opt.value = s.id_service;
-      const prefix = s.depth ? "— ".repeat(Math.min(6, s.depth)) : "";
-      opt.textContent = prefix + (s.nom_service || s.id_service);
-      sel.appendChild(opt);
-    });
-
-    if (current && Array.from(sel.options).some(o => o.value === current)) sel.value = current;
-    else sel.value = "";
-  }
-
   function getFilters() {
-    const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+    const raw = (byId("analyseServiceSelect")?.value || "").trim();
+    const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
     return { id_service };
   }
+
 
   function getScopeLabel() {
     const sel = byId("analyseServiceSelect");
@@ -244,11 +205,19 @@
   }
 
   async function loadServices(portal) {
-    const nodes = await portal.apiJson(`${portal.apiBase}/skills/organisation/services/${encodeURIComponent(portal.contactId)}`);
-    const flat = flattenServices(Array.isArray(nodes) ? nodes : []);
-    fillServiceSelect(flat);
+    await portal.serviceFilter.populateSelect({
+      portal,
+      selectId: "analyseServiceSelect",
+      storageKey: STORE_SERVICE,
+      labelAll: "Tous les services",
+      labelNonLie: "Non lié",
+      includeAll: true,
+      includeNonLie: true,
+      allowIndent: true
+    });
     _servicesLoaded = true;
   }
+
 
   function clearKpis() {
     setText("kpiRiskPostes", "—");
@@ -2394,7 +2363,7 @@ function renderDetail(mode) {
 
     if (typeof setActiveMatchKpi === "function") setActiveMatchKpi(getMatchView());
 
-    const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+    const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
     body.innerHTML = renderMatchingShell();
 
     if (!_portalref) {
@@ -2478,7 +2447,8 @@ function renderDetail(mode) {
         if (!box) return;
 
         try {
-          const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+          const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
+
 
           if (!_portalref) {
             box.textContent = "Contexte portail indisponible (_portalref manquant).";
@@ -2597,7 +2567,8 @@ function renderDetail(mode) {
         if (!box) return;
 
         try {
-          const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+          const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
+
 
           if (!_portalref) {
             box.textContent = "Contexte portail indisponible (_portalref manquant).";
@@ -2720,7 +2691,8 @@ function renderDetail(mode) {
         if (!box) return;
 
         try {
-          const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+          const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
+
           if (!_portalref) {
             box.textContent = "Contexte portail indisponible (_portalref manquant).";
             return;
@@ -2842,7 +2814,8 @@ function renderDetail(mode) {
   if (sub) sub.textContent = filterSub;
 
   const selSvc = byId("analyseServiceSelect") || byId("anaServiceSelect") || byId("mapServiceSelect");
-  const id_service = (selSvc?.value || "").trim();
+  const id_service = window.portal.serviceFilter.toQueryId(selSvc?.value || "");
+
 
   function badge(txt, accent) {
     const cls = accent ? "sb-badge sb-badge-accent" : "sb-badge";
@@ -3785,7 +3758,8 @@ function bindOnce(portal) {
     const p = portal || _portalref;
     if (!p) return;
 
-    const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+    const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
+
 
     // ------------------------------
     // 1) Click sur POSTE FRAGILE (table risques)
@@ -3816,7 +3790,8 @@ function bindOnce(portal) {
       const id_poste = (trPrevRed.getAttribute("data-id_poste") || "").trim();
       if (!id_poste) return;
 
-      const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+      const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
+
 
       // Modal dédié "Poste rouge" 
       await showAnalysePrevPosteRedModal(portal, id_poste, id_service);
@@ -3983,7 +3958,8 @@ function bindOnce(portal) {
       const id_poste = (d.id_poste_actuel || "").trim();
       if (!id_poste) return;
 
-      const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+      const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
+
 
       close();
       // Ouvre ton modal existant "poste detail"
@@ -4716,7 +4692,8 @@ function bindOnce(portal) {
       if (trComp) {
         const compKey = (trComp.getAttribute("data-comp-key") || "").trim();
         if (!compKey) return;
-        const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+        const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
+
         if (_portalRef && typeof showAnalysePrevCritModal === "function") {
           await showAnalysePrevCritModal(_portalRef, compKey, id_service);
         }
@@ -4729,7 +4706,8 @@ function bindOnce(portal) {
         const id_poste = (tr.getAttribute("data-id_poste") || "").trim();
         if (!id_poste) return;
 
-        const id_service = (byId("analyseServiceSelect")?.value || "").trim();
+        const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
+
 
         const seed = {
           intitule_poste: (tr.getAttribute("data-intitule_poste") || "").trim(),

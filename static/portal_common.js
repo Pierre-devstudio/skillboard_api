@@ -310,6 +310,172 @@
     }
   };
 
+    // ======================================================
+  // SERVICES (filtre service) — point unique de gestion
+  // - Source: GET /skills/organisation/services/{id_contact}
+  // - Objectif: plus aucun menu ne 'réinvente' le select service
+  // - Ordre: Tous les services -> services -> Non lié
+  // ======================================================
+
+  const SERVICE_ALL_ID = "__ALL__";
+  const SERVICE_NON_LIE_ID = "__NON_LIE__";
+
+  function _normServiceId(raw) {
+    const s = (raw ?? "").toString().trim();
+    if (!s) return SERVICE_ALL_ID;
+    if (s === "__TOUS__") return SERVICE_ALL_ID; // legacy toléré
+    if (s === SERVICE_ALL_ID) return SERVICE_ALL_ID;
+    if (s === SERVICE_NON_LIE_ID) return SERVICE_NON_LIE_ID;
+    return s;
+  }
+
+  function _isAllService(id) {
+    return _normServiceId(id) === SERVICE_ALL_ID;
+  }
+
+  function _toQueryServiceId(id) {
+    const n = _normServiceId(id);
+    return n === SERVICE_ALL_ID ? null : n;
+  }
+
+  function _flattenServicesTree(nodes) {
+    const out = [];
+
+    function walk(list, depth) {
+      (Array.isArray(list) ? list : []).forEach(n => {
+        if (!n) return;
+        const id = _normServiceId(n.id_service);
+        const label = (n.nom_service ?? id).toString().trim();
+
+        out.push({
+          id_service: id,
+          nom_service: label,
+          depth: depth || 0
+        });
+
+        if (Array.isArray(n.children) && n.children.length) {
+          walk(n.children, (depth || 0) + 1);
+        }
+      });
+    }
+
+    walk(nodes, 0);
+    return out;
+  }
+
+  function _fillServiceSelect(selectId, flat, opts) {
+    const sel = typeof selectId === "string" ? byId(selectId) : selectId;
+    if (!sel) return;
+
+    const options = opts || {};
+    const includeAll = options.includeAll !== false;
+    const includeNonLie = options.includeNonLie !== false;
+    const allowIndent = options.allowIndent !== false;
+
+    const labelAll = options.labelAll || "Tous les services";
+    const labelNonLie = options.labelNonLie || "Non lié";
+
+    const storageKey = options.storageKey || null;
+    const preferId = _normServiceId(
+      sel.value ||
+      (storageKey ? localStorage.getItem(storageKey) : "") ||
+      SERVICE_ALL_ID
+    );
+
+    // Dédoublonnage + séparation ALL / NON_LIE / services
+    let allItem = null;
+    let nonItem = null;
+    const services = [];
+    const seen = new Set();
+
+    (Array.isArray(flat) ? flat : []).forEach(x => {
+      if (!x) return;
+
+      const id = _normServiceId(x.id_service);
+      const name = (x.nom_service ?? id).toString().trim();
+      const depth = Number.isFinite(x.depth) ? x.depth : 0;
+
+      // garde-fou anti-“Tous les services” injecté côté métier
+      if (id !== SERVICE_ALL_ID && name.toLowerCase() === "tous les services") return;
+      if (id !== SERVICE_NON_LIE_ID && name.toLowerCase() === "non lié") {
+        // on laisse passer s'il est vraiment "non lié" métier, sinon on s'aligne sur l'id spécial
+      }
+
+      if (id === SERVICE_ALL_ID) {
+        if (!allItem) allItem = { id_service: SERVICE_ALL_ID, nom_service: labelAll, depth: 0 };
+        return;
+      }
+
+      if (id === SERVICE_NON_LIE_ID) {
+        if (!nonItem) nonItem = { id_service: SERVICE_NON_LIE_ID, nom_service: labelNonLie, depth: 0 };
+        return;
+      }
+
+      if (seen.has(id)) return;
+      seen.add(id);
+
+      services.push({ id_service: id, nom_service: name, depth });
+    });
+
+    if (!allItem) allItem = { id_service: SERVICE_ALL_ID, nom_service: labelAll, depth: 0 };
+    if (!nonItem) nonItem = { id_service: SERVICE_NON_LIE_ID, nom_service: labelNonLie, depth: 0 };
+
+    sel.innerHTML = "";
+
+    function addOpt(item) {
+      const opt = document.createElement("option");
+      opt.value = item.id_service;
+      const prefix = allowIndent && item.depth > 0 ? "  ".repeat(Math.min(6, item.depth)) + "• " : "";
+      opt.textContent = prefix + item.nom_service;
+      sel.appendChild(opt);
+    }
+
+    if (includeAll) addOpt(allItem);
+    services.forEach(addOpt);
+    if (includeNonLie) addOpt(nonItem);
+
+    // restore selection
+    const ids = Array.from(sel.options).map(o => o.value);
+    if (ids.includes(preferId)) sel.value = preferId;
+    else if (includeAll) sel.value = SERVICE_ALL_ID;
+    else sel.value = ids[0] || "";
+
+    // persist selection
+    if (storageKey) {
+      localStorage.setItem(storageKey, _normServiceId(sel.value));
+      sel.addEventListener("change", () => {
+        localStorage.setItem(storageKey, _normServiceId(sel.value));
+      });
+    }
+  }
+
+  async function _populateServiceSelect(params) {
+    const portalRef = params?.portal || portal;
+    const contactId = params?.contactId || portalRef?.contactId;
+    const selectId = params?.selectId;
+
+    if (!portalRef || !contactId || !selectId) return;
+
+    const nodes = await portalRef.apiJson(
+      `${portalRef.apiBase}/skills/organisation/services/${encodeURIComponent(contactId)}`
+    );
+
+    const flat = _flattenServicesTree(Array.isArray(nodes) ? nodes : []);
+    _fillServiceSelect(selectId, flat, params);
+  }
+
+  portal.serviceFilter = {
+    ALL_ID: SERVICE_ALL_ID,
+    NON_LIE_ID: SERVICE_NON_LIE_ID,
+    normalizeId: _normServiceId,
+    isAll: _isAllService,
+    toQueryId: _toQueryServiceId,
+    flattenTree: _flattenServicesTree,
+    fillSelect: _fillServiceSelect,
+    populateSelect: _populateServiceSelect
+  };
+
+
   // Expose helpers (pratique dans les menus)
   portal.getQueryParam = getQueryParam;
   portal.showAlert = showAlert;
