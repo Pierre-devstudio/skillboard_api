@@ -11,7 +11,6 @@
 
   const API_BASE = window.portal.apiBase || "https://skillboard-services.onrender.com";
 
-  const SERVICE_NON_LIE = "__NON_LIE__";
   const VIEW_NAME = "vos-collaborateurs";
 
   let _handlersBound = false;
@@ -48,7 +47,8 @@
   }
 
   function getFilters() {
-    const id_service = byId("collabServiceSelect")?.value || "";
+    const rawS = (byId("collabServiceSelect")?.value || "").trim();
+    const id_service = window.portal.serviceFilter.toQueryId(rawS); // "__ALL__" => null
     const q = (byId("collabSearch")?.value || "").trim();
 
     const only_actifs = !!byId("collabOnlyActifs")?.checked;
@@ -59,7 +59,7 @@
     const only_temp = !!byId("collabOnlyTemp")?.checked;
 
     return {
-      id_service: id_service || null,
+      id_service,
       q: q || null,
       only_actifs,
       include_archived,
@@ -82,10 +82,6 @@
     return qs ? `?${qs}` : "";
   }
 
-  async function loadServices(id_contact) {
-    const url = `${API_BASE}/skills/collaborateurs/services/${encodeURIComponent(id_contact)}`;
-    return await window.portal.apiJson(url);
-  }
 
   async function loadKpis(id_contact, id_service) {
     const qs = buildQuery({ id_service: id_service || null });
@@ -128,26 +124,6 @@
   }
 
 
-  function renderServicesSelect(items) {
-    const sel = byId("collabServiceSelect");
-    if (!sel) return;
-
-    const current = sel.value || "";
-
-    sel.innerHTML = `<option value="">Tous les services</option>`;
-
-    (items || []).forEach(s => {
-      if (!s || !s.id_service) return;
-      const opt = document.createElement("option");
-      opt.value = s.id_service;
-      opt.textContent = s.nom_service || s.id_service;
-      sel.appendChild(opt);
-    });
-
-    // restore selection if possible
-    if (current) sel.value = current;
-  }
-
   function renderKpis(k) {
     setText("kpiTotal", k?.total ?? 0);
     setText("kpiActifs", k?.actifs ?? 0);
@@ -162,16 +138,18 @@
     const el = byId("collabKpiScope");
     if (!sel || !el) return;
 
-    const v = sel.value || "";
-    if (!v) {
+    const v = (sel.value || "").trim();
+
+    if (window.portal.serviceFilter.isAll(v)) {
       el.textContent = "Périmètre : entreprise";
       return;
     }
 
-    if (v === SERVICE_NON_LIE) {
+    if (v === window.portal.serviceFilter.NON_LIE_ID) {
       el.textContent = "Périmètre : non liés (sans service)";
       return;
     }
+
 
     const label = sel.options[sel.selectedIndex]?.textContent || "service";
     el.textContent = `Périmètre : ${label}`;
@@ -1088,7 +1066,7 @@
 
       if (btnReset) {
         btnReset.addEventListener("click", () => {
-          if (selService) selService.value = "";
+          if (selService) selService.value = window.portal.serviceFilter.ALL_ID;
           if (inputSearch) inputSearch.value = "";
           if (chkActifs) chkActifs.checked = true;
           if (chkArchived) chkArchived.checked = false;
@@ -1113,13 +1091,23 @@
       }
     }
 
-    // Services (1 shot à chaque entrée sur le menu, c'est OK)
+    // Services (source unique + anti-doublons)
     try {
-      const services = await loadServices(id_contact);
-      renderServicesSelect(services);
+      await window.portal.serviceFilter.populateSelect({
+        portal: window.portal,
+        contactId: id_contact,
+        selectId: "collabServiceSelect",
+        storageKey: "sb_collab_service",
+        labelAll: "Tous les services",
+        labelNonLie: "Non lié",
+        includeAll: true,
+        includeNonLie: true,
+        allowIndent: true
+      });
     } catch (e) {
       window.portal.showAlert("error", "Erreur chargement services : " + e.message);
     }
+
 
     // Premier refresh complet
     await refreshAll(id_contact);
