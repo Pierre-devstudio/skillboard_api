@@ -230,7 +230,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 100px;     /* badges alignés */
+  min-width: 90px;     /* badges alignés */
   padding: 4px 10px;    /* rendu plus “badge” */
 }
 
