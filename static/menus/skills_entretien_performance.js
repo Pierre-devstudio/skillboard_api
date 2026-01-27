@@ -7,7 +7,6 @@
   "use strict";
 
   const VIEW = "entretien-performance";
-  const ALL_SERVICES_ID = "__ALL__";
   const LS_KEY_SERVICE = "sb_ep_service";
 
   let _bound = false;
@@ -313,83 +312,6 @@
         pop.style.top = `${Math.round(top)}px`;
     }
 
-
-
-  function flattenServices(nodes) {
-    const out = [];
-    function rec(list, depth) {
-      (list || []).forEach(n => {
-        if (!n || !n.id_service) return;
-        out.push({
-          id_service: n.id_service,
-          nom_service: n.nom_service || n.id_service,
-          depth: depth || 0
-        });
-        if (n.children && n.children.length) rec(n.children, (depth || 0) + 1);
-      });
-    }
-    rec(nodes || [], 0);
-    return out;
-  }
-
-  function canSeeAllServices(ctx) {
-    // On essaie d’être intelligent sans inventer ton modèle.
-    // Si ton /skills/context renvoie un flag explicite, il sera pris.
-    // Sinon: par défaut on n’affiche PAS "Tous les services".
-    if (!ctx) return false;
-
-    if (ctx.allow_all_services === true) return true;
-    if (ctx.is_admin === true) return true;
-    if (ctx.is_rh === true) return true;
-    if (ctx.is_direction === true) return true;
-
-    const role = (ctx.role || "").toString().toLowerCase();
-    if (role === "rh" || role === "direction" || role === "admin") return true;
-
-    const roles = Array.isArray(ctx.roles) ? ctx.roles.map(x => (x || "").toString().toLowerCase()) : [];
-    if (roles.includes("rh") || roles.includes("direction") || roles.includes("admin")) return true;
-
-    return false;
-  }
-
-  function fillServiceSelect(flat, allowAll) {
-    const sel = $("ep_selService");
-    if (!sel) return;
-
-    const saved = localStorage.getItem(LS_KEY_SERVICE) || "";
-    const current = (sel.value || saved || "").trim();
-
-    sel.innerHTML = `<option value="" disabled>— Sélectionner —</option>`;
-
-    if (allowAll) {
-      const optAll = document.createElement("option");
-      optAll.value = ALL_SERVICES_ID;
-      optAll.textContent = "Tous les services";
-      sel.appendChild(optAll);
-    }
-
-    (flat || []).forEach(s => {
-      const opt = document.createElement("option");
-      opt.value = s.id_service;
-      const prefix = s.depth ? "— ".repeat(Math.min(6, s.depth)) : "";
-      opt.textContent = prefix + (s.nom_service || s.id_service);
-      sel.appendChild(opt);
-    });
-
-    // Restore / default
-    if (current && Array.from(sel.options).some(o => o.value === current)) {
-      sel.value = current;
-    } else if (allowAll && Array.from(sel.options).some(o => o.value === ALL_SERVICES_ID)) {
-      // par défaut: Tous les services
-      sel.value = ALL_SERVICES_ID;
-    } else if (flat && flat.length === 1) {
-      // un seul service => on auto-sélectionne, logique
-      sel.value = flat[0].id_service;
-    } else {
-      // plusieurs services => on laisse choisir
-      sel.value = "";
-    }
-  }
 
   function getSelectedServiceName() {
     const sel = $("ep_selService");
@@ -926,24 +848,28 @@
     if (!_portal) return;
 
     try {
-      const ctx = _portal.context || null;
+      await _portal.serviceFilter.populateSelect({
+        portal: _portal,
+        contactId: _portal.contactId,
+        selectId: "ep_selService",
+        storageKey: LS_KEY_SERVICE,
+        labelAll: "Tous les services",
+        labelNonLie: "Non lié",
+        includeAll: true,
+        includeNonLie: true,
+        allowIndent: true
+      });
 
-      const nodes = await _portal.apiJson(
-        `${_portal.apiBase}/skills/organisation/services/${encodeURIComponent(_portal.contactId)}`
-      );
-      const flat = flattenServices(Array.isArray(nodes) ? nodes : []);
-      _servicesFlat = flat;
       _servicesLoaded = true;
-
-      fillServiceSelect(flat, true);
-
+      _servicesFlat = []; // plus utilisé ici (centralisé)
     } catch (e) {
       _portal.showAlert("error", "Impossible de charger la liste des services : " + String(e?.message || e));
       console.error(e);
-      _servicesFlat = [];
       _servicesLoaded = false;
+      _servicesFlat = [];
     }
   }
+
 
   function renderCollaborateurs(list) {
     const wrap = $("ep_listCollaborateurs");
@@ -1528,13 +1454,13 @@
   }
 
   function resetScope() {
-    state.serviceId = "";
+    state.serviceId = window.portal.serviceFilter.ALL_ID;
     state.population = "team";
     state.selectedCollaborateurId = null;
     state.selectedCompetenceId = null;
 
     const selService = $("ep_selService");
-    if (selService) selService.value = "";
+    if (selService) selService.value = window.portal.serviceFilter.ALL_ID;
 
     const selPop = $("ep_selPopulation");
     if (selPop) selPop.value = "team";
@@ -1861,7 +1787,7 @@
         const selService = $("ep_selService");
         if (selService) {
         selService.addEventListener("change", async () => {
-            state.serviceId = selService.value || "";
+            state.serviceId = window.portal.serviceFilter.normalizeId(selService.value || "");
             await onScopeChanged();
         });
         }
