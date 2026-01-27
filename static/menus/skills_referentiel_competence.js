@@ -407,7 +407,7 @@
     if (!id_contact) return;
 
     const f = getFilters();
-    if (!f.id_service) return;
+    if (!f.id_service) f.id_service = ALL_SERVICES_ID;
 
     localStorage.setItem("sb_ref_service", f.id_service);
 
@@ -758,14 +758,23 @@
 
     if (btnReset) {
       btnReset.addEventListener("click", () => {
+        // reset filtres
+        if (selService) selService.value = ALL_SERVICES_ID; // <-- le vrai fix
         if (selDom) selDom.value = "";
         if (txtSearch) txtSearch.value = "";
         if (selEtat) selEtat.value = "active";
+
+        // reset état UI
         _paretoOnly = false;
         updateParetoKpi(_lastCompList.length, _paretoTopCount);
+
+        // cache + refresh
+        _cacheComp.clear();
+        _cacheCert.clear();
         refreshAll(portal);
       });
     }
+
 
     if (kpiParetoCard) {
       kpiParetoCard.addEventListener("click", () => {
