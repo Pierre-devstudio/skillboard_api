@@ -1082,11 +1082,10 @@
                     <thead>
                       <tr>
                         <th style="width:90px;">Code</th>
-                        ${isPosteTotal ? `<th style="width:140px;">Domaine</th>` : ``}
                         <th>Compétence</th>
-                        <th class="col-center" style="width:110px;">Niveau</th>
-                        <th class="col-center" style="width:90px;">Criticité</th>
-                        <th class="col-center" style="width:110px;">Couverture</th>
+                        <th class="col-center" style="width:150px;">Niveau</th>
+                        <th class="col-center" style="width:70px;">Criticité</th>
+                        <th class="col-center" style="width:70px;">Couverture</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1111,11 +1110,6 @@
                         return `
                           <tr>
                             <td style="font-weight:700; white-space:nowrap;">${code}</td>
-                            ${isPosteTotal ? (() => {
-                              const domTxt =
-                                (c.domaine_titre_court || c.domaine_court || c.domaine || c.titre_domaine || c.domaine_titre || c.id_domaine_competence || "").toString().trim();
-                              return `<td style="white-space:nowrap;">${escapeHtml(domTxt || "—")}</td>`;
-                            })() : ``}
                             <td>
                               ${intit}
                               ${porteursHtml}
