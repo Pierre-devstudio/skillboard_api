@@ -1453,7 +1453,7 @@
     }
   }
 
-  function resetScope() {
+  async function resetScope() {
     state.serviceId = window.portal.serviceFilter.ALL_ID;
     state.population = "team";
     state.selectedCollaborateurId = null;
@@ -1470,11 +1470,7 @@
     state.focusMode = false;
     applyFocusMode();
 
-    clearCollaborateurs();
-    clearCompetences();
-    resetEvaluationPanel();
-    resetContextPanel();
-    applyUiLockedState();
+    await onScopeChanged();
   }
 
   function bindOnce() {
@@ -1802,7 +1798,8 @@
         }
 
         const btnReset = $("ep_btnScopeReset");
-        if (btnReset) btnReset.addEventListener("click", () => resetScope());
+        if (btnReset) btnReset.addEventListener("click", async () => { await resetScope(); });
+
 
         // Search collab (reload)
         const txtSearchCollab = $("ep_txtSearchCollab");
