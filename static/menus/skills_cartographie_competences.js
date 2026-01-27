@@ -807,7 +807,7 @@
     let trs = "";
     rows.forEach(p => {
       const r = map.get(p.id_poste);
-      const cod = (p.codif_poste || "").toString().trim();
+      const cod = ((p.codif_client || p.codif_poste) || "").toString().trim();
       const intit = (p.intitule_poste || "").toString().trim();
       const svc = (p.nom_service || "").toString().trim();
 
@@ -832,7 +832,10 @@
       trs += `
         <tr>
           <td class="hm-rowhead">
-            <div class="hm-poste-title">${escapeHtml(cod ? `${cod} — ${intit}` : (intit || "—"))}</div>
+            ${cod ? `<div class="hm-poste-code" style="margin-bottom:6px;">
+                      <span class="sb-badge">${escapeHtml(cod)}</span>
+                    </div>` : ``}
+            <div class="hm-poste-title">${escapeHtml(intit || "—")}</div>
             <div class="hm-poste-sub">${escapeHtml(svc || "—")}</div>
           </td>
           ${tds}
