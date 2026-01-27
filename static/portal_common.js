@@ -425,9 +425,11 @@
     function addOpt(item) {
       const opt = document.createElement("option");
       opt.value = item.id_service;
-      const prefix = allowIndent && item.depth > 0
-      ? "— ".repeat(Math.min(6, item.depth))
-      : "";
+      const depth = Math.min(6, item.depth || 0);
+      const indent = allowIndent && depth > 0 ? "\u00A0\u00A0".repeat(depth) : ""; // NBSP
+      const marker = allowIndent && depth > 0 ? "› " : "";
+      const prefix = indent + marker;
+
       opt.textContent = prefix + item.nom_service;
       sel.appendChild(opt);
     }
