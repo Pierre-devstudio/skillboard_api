@@ -32,6 +32,7 @@ class DomaineItem(BaseModel):
 class PosteItem(BaseModel):
     id_poste: str
     codif_poste: str
+    codif_client: Optional[str] = None
     intitule_poste: str
     id_service: Optional[str] = None
     nom_service: Optional[str] = None
@@ -234,6 +235,7 @@ def get_cartographie_matrice(
                     SELECT
                         fp.id_poste,
                         fp.codif_poste,
+                        fp.codif_client,
                         fp.intitule_poste,
                         fp.id_service,
                         o.nom_service
@@ -265,6 +267,7 @@ def get_cartographie_matrice(
                     PosteItem(
                         id_poste=r["id_poste"],
                         codif_poste=r.get("codif_poste") or "",
+                        codif_client=r.get("codif_client"),
                         intitule_poste=r.get("intitule_poste") or "",
                         id_service=r.get("id_service"),
                         nom_service=r.get("nom_service"),
@@ -431,6 +434,7 @@ def get_cartographie_cell_detail(
                     SELECT
                         p.id_poste,
                         p.codif_poste,
+                        p.codif_client,
                         p.intitule_poste,
                         p.id_service,
                         COALESCE(o.nom_service, '') AS nom_service
@@ -639,6 +643,7 @@ def get_cartographie_cell_detail(
                     "poste": {
                         "id_poste": poste.get("id_poste"),
                         "codif_poste": poste.get("codif_poste"),
+                        "codif_client": poste.get("codif_client"),
                         "intitule_poste": poste.get("intitule_poste"),
                         "id_service": poste.get("id_service"),
                         "nom_service": poste.get("nom_service"),

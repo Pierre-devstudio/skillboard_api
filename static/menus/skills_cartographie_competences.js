@@ -42,6 +42,23 @@
     return s;
   }
 
+  function safeTrim(v) {
+    if (v === null || v === undefined) return "";
+    if (typeof v === "string" || typeof v === "number") return String(v).trim();
+    return "";
+  }
+
+  /**
+   * Code poste affiché :
+   * - on préfère le code interne (si présent)
+   * - sinon fallback sur le code PT (codif_poste)
+   */
+  function getPosteCodeDisplay(p) {
+    if (!p) return "";
+    return safeTrim(p.codif_client) || safeTrim(p.codif_poste);
+  }
+
+
   function setText(id, v, fallback = "–") {
     const el = byId(id);
     if (!el) return;
@@ -507,7 +524,7 @@
     let trs = "";
     rows.forEach(p => {
       const r = map.get(p.id_poste);
-      const cod = (p.codif_poste || "").toString().trim();
+      const cod = getPosteCodeDisplay(p);
       const intit = (p.intitule_poste || "").toString().trim();
       const svc = (p.nom_service || "").toString().trim();
 
@@ -1034,7 +1051,8 @@
           const dom = data?.domaine || {};
           const list = Array.isArray(data?.competences) ? data.competences : [];
 
-          const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
+          const posteCode = getPosteCodeDisplay(poste);
+          const posteLabel = `${posteCode ? posteCode + " — " : ""}${(poste.intitule_poste || "").toString().trim()}`.trim();
 
           const domLabel = isPosteTotal
             ? "Tous les domaines"
