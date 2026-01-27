@@ -86,10 +86,12 @@
   }
 
   function getFilters() {
-    const id_service = (byId("mapServiceSelect")?.value || "").trim();
+    const rawS = (byId("mapServiceSelect")?.value || "").trim();
+    const id_service = window.portal.serviceFilter.toQueryId(rawS); // "__ALL__" => null
     const id_domaine = (byId("mapDomaineSelect")?.value || "").trim();
     return { id_service, id_domaine };
   }
+
 
   function openModal(title, sub, bodyHtml) {
     const modal = byId("modalMapDetail");
@@ -150,10 +152,12 @@
     const key = `${filters.id_service || ""}|${filters.id_domaine || ""}`;
     if (_cache.has(key)) return _cache.get(key);
 
+    const svc = filters?.id_service;
     const qs = buildQuery({
-      id_service: filters.id_service || null,
-      id_domaine: filters.id_domaine || null
+      id_service: (svc && svc !== window.portal.serviceFilter.ALL_ID) ? svc : null,
+      id_domaine: filters?.id_domaine || null
     });
+
 
     const url = `${portal.apiBase}/skills/cartographie/matrice/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
@@ -169,7 +173,11 @@
   if (id_domaine) params.set("id_domaine", id_domaine);
 
   // pour rester cohérent avec le filtre Service en cours
-  if (filters?.id_service) params.set("id_service", filters.id_service);
+  const svc = filters?.id_service;
+  if (svc && svc !== window.portal.serviceFilter.ALL_ID) {
+    params.set("id_service", svc);
+  }
+
 
   const url = `${portal.apiBase}/skills/cartographie/cell/${encodeURIComponent(portal.contactId)}?${params.toString()}`;
   return await portal.apiJson(url);
