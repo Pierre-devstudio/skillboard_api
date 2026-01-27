@@ -393,9 +393,9 @@
         overflow:hidden; text-overflow:ellipsis; max-width:520px;
       }
       #view-cartographie-competences .hb-poste-code-badge{
-        background: #14ddb1;     /* backcolor */
+        background: rgb(62, 190, 73);     /* backcolor */
         color: #ffffff;          /* forecolor */
-        border-color: #14ddb1;   /* border cohérent */
+        border-color: rgb(62, 190, 73);   /* border cohérent */
         font-weight: 700;
       }
       #view-cartographie-competences .hb-dom-dot{
