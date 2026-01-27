@@ -171,12 +171,73 @@
   max-height: calc(100vh - 48px);
   display: flex;
   flex-direction: column;
+
+  /* élargissement modal détail référentiel */
+  width: 920px;
+  max-width: calc(100vw - 40px);
 }
+
 
 #modalRefDetail .modal-body {
   overflow: auto;
   flex: 1 1 auto;
 }
+
+/* Modal Référentiel — Niveaux en tableau (badge | texte) */
+#modalRefDetail .ref-levels-table {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+  font-size: 12px;        /* police un peu plus petite */
+  line-height: 1.25;
+}
+
+/* Responsive : sur petit écran, on empile badge + texte */
+@media (max-width: 520px) {
+  #modalRefDetail .ref-level-row {
+    grid-template-columns: 1fr;
+    row-gap: 6px;
+  }
+
+  #modalRefDetail .ref-level-badge {
+    justify-self: start;
+    min-width: 0;
+  }
+}
+
+#modalRefDetail .ref-level-row {
+  display: grid;
+  grid-template-columns: 140px 1fr; /* colonne badge | colonne texte */
+  column-gap: 12px;
+  align-items: start;
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(209, 213, 219, 0.65);
+}
+
+/* micro feedback visuel sans “arc-en-ciel” */
+#modalRefDetail .ref-level-row:hover {
+  background: rgba(17, 24, 39, 0.03);
+  border-radius: 8px;
+}
+
+#modalRefDetail .ref-level-row:last-child {
+  border-bottom: 0;
+}
+
+#modalRefDetail .ref-level-badge {
+  white-space: nowrap;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;     /* badges alignés */
+  padding: 4px 10px;    /* rendu plus “badge” */
+}
+
+#modalRefDetail .ref-level-text {
+  color: #111827;
+}
+
 
 /* ============================
    Collaborateurs: boutons (soft)

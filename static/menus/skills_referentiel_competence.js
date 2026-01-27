@@ -611,13 +611,26 @@
     const levels = `
       <div class="card" style="padding:12px; margin:0;">
         <div class="card-title" style="margin-bottom:6px;">Niveaux</div>
-        <div class="row" style="flex-direction:column; gap:10px; margin-top:10px;">
-          <div><span class="sb-badge sb-badge-accent">A</span> ${escapeHtml(c.niveaua || "—")}</div>
-          <div><span class="sb-badge sb-badge-accent">B</span> ${escapeHtml(c.niveaub || "—")}</div>
-          <div><span class="sb-badge sb-badge-accent">C</span> ${escapeHtml(c.niveauc || "—")}</div>
+
+        <div class="ref-levels-table">
+          <div class="ref-level-row">
+            <span class="sb-badge sb-badge-accent ref-level-badge">A - Initial</span>
+            <div class="ref-level-text">${escapeHtml(c.niveaua || "—")}</div>
+          </div>
+
+          <div class="ref-level-row">
+            <span class="sb-badge sb-badge-accent ref-level-badge">B - Avancé</span>
+            <div class="ref-level-text">${escapeHtml(c.niveaub || "—")}</div>
+          </div>
+
+          <div class="ref-level-row">
+            <span class="sb-badge sb-badge-accent ref-level-badge">C - Expert</span>
+            <div class="ref-level-text">${escapeHtml(c.niveauc || "—")}</div>
+          </div>
         </div>
       </div>
     `;
+
 
     const grid = renderGridEvaluation(c.grille_evaluation);
     const postes = renderPostesTable(data?.postes_concernes || [], false, null);
