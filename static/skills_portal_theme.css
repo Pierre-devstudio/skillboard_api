@@ -188,7 +188,7 @@
   display: flex;
   flex-direction: column;
   margin-top: 10px;
-  font-size: 12px;        /* police un peu plus petite */
+  font-size: 14px;        /* police un peu plus petite */
   line-height: 1.25;
 }
 
@@ -207,7 +207,7 @@
 
 #modalRefDetail .ref-level-row {
   display: grid;
-  grid-template-columns: 140px 1fr; /* colonne badge | colonne texte */
+  grid-template-columns: 110px 1fr; /* colonne badge | colonne texte */
   column-gap: 12px;
   align-items: start;
   padding: 8px 6px;
@@ -230,7 +230,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 120px;     /* badges alignés */
+  min-width: 100px;     /* badges alignés */
   padding: 4px 10px;    /* rendu plus “badge” */
 }
 
