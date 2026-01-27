@@ -405,6 +405,12 @@
         font-weight:900;
         text-align:center;
       }
+      #view-cartographie-competences .hb-totalclick{
+        cursor:pointer;
+      }
+      #view-cartographie-competences .hb-totalclick:hover{
+        background: rgba(17, 24, 39, 0.03);
+      }
       #view-cartographie-competences .hb-grandtotal{
         background:#f3f4f6;
         font-weight:900;
@@ -535,7 +541,13 @@
             <div class="hb-poste-sub">${escapeHtml(svc || "—")}</div>
           </td>
           ${tds}
-          <td class="hb-totalcell">${tot ? tot : ""}</td>
+          <td class="hb-totalcell hb-totalclick"
+              data-id_poste="${escapeHtml(p.id_poste)}"
+              data-id_domaine=""
+              data-value="${tot}"
+              title="Voir toutes les compétences du poste (${tot})">
+            ${tot ? tot : ""}
+          </td>
         </tr>
       `;
     });
@@ -964,7 +976,9 @@
     if (grid) {
       grid.addEventListener("click", async (ev) => {
         // Support: rendu WOW (table td.hm-cell) + ancien rendu (div dataset)
-        const td = ev.target.closest("td.hm-cell[data-id_poste][data-id_domaine], td.hm-cell[data-poste][data-dom]");
+        const td = ev.target.closest(
+          "td.hb-cell[data-id_poste][data-id_domaine], td.hb-totalclick[data-id_poste], td.hm-cell[data-id_poste][data-id_domaine], td.hm-cell[data-poste][data-dom]"
+        );
         const dv = ev.target.closest("div[data-id_poste][data-id_domaine]");
 
         let id_poste = "";
@@ -977,10 +991,26 @@
           id_poste = (dv.dataset.id_poste || "").trim();
           id_dom = (dv.dataset.id_domaine || "").trim();
         } else {
+          return;
+        }
+
+        if (!id_poste) return;
+
+        // si id_dom vide => clic sur Total poste (tous domaines)
+        const isPosteTotal = !id_dom;
+
+
+        if (td) {
+          id_poste = (td.getAttribute("data-id_poste") || td.getAttribute("data-poste") || "").trim();
+          id_dom   = (td.getAttribute("data-id_domaine") || td.getAttribute("data-dom") || "").trim();
+        } else if (dv) {
+          id_poste = (dv.dataset.id_poste || "").trim();
+          id_dom = (dv.dataset.id_domaine || "").trim();
+        } else {
           return; // pas une cellule
         }
 
-        if (!id_poste || !id_dom) return;
+        if (!id_poste) return;
 
 
         const f = getFilters();
@@ -989,15 +1019,16 @@
 
         // modal "loading" instant (sinon l’utilisateur croit que ça ne fait rien)
         openModal(
-          "Détail cellule",
+          isPosteTotal ? "Détail poste" : "Détail cellule",
           `<span class="sb-badge">Service : ${escapeHtml(scope)}</span>`,
           `<div class="card" style="padding:12px; margin:0;">
             <div class="card-sub" style="margin:0;">Chargement…</div>
           </div>`
         );
 
+
         try {
-          const data = await fetchCellDetail(portal, id_poste, id_dom, f);
+          const data = await fetchCellDetail(portal, id_poste, (id_dom || null), f);
 
           const poste = data?.poste || {};
           const dom = data?.domaine || {};
@@ -1005,8 +1036,13 @@
 
           const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
 
-          const domLabel = (dom.titre_court || dom.titre || dom.id_domaine_competence || "Domaine").toString();
-          const domColor = normalizeColor(dom.couleur) || "#e5e7eb";
+          const domLabel = isPosteTotal
+            ? "Tous les domaines"
+            : (dom.titre_court || dom.titre || dom.id_domaine_competence || "Domaine").toString();
+
+          const domColor = isPosteTotal
+            ? "#e5e7eb"
+            : (normalizeColor(dom.couleur) || "#e5e7eb");
 
           const sub = `
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
@@ -1046,6 +1082,7 @@
                     <thead>
                       <tr>
                         <th style="width:90px;">Code</th>
+                        ${isPosteTotal ? `<th style="width:140px;">Domaine</th>` : ``}
                         <th>Compétence</th>
                         <th class="col-center" style="width:110px;">Niveau</th>
                         <th class="col-center" style="width:90px;">Criticité</th>
@@ -1074,6 +1111,11 @@
                         return `
                           <tr>
                             <td style="font-weight:700; white-space:nowrap;">${code}</td>
+                            ${isPosteTotal ? (() => {
+                              const domTxt =
+                                (c.domaine_titre_court || c.domaine_court || c.domaine || c.titre_domaine || c.domaine_titre || c.id_domaine_competence || "").toString().trim();
+                              return `<td style="white-space:nowrap;">${escapeHtml(domTxt || "—")}</td>`;
+                            })() : ``}
                             <td>
                               ${intit}
                               ${porteursHtml}
@@ -1098,7 +1140,7 @@
 
           body += `</div>`;
 
-          openModal(posteLabel || "Détail cellule", sub, body);
+          openModal(isPosteTotal ? (posteLabel || "Détail poste") : (posteLabel || "Détail cellule"), sub, body);
 
         } catch (e) {
           openModal(
