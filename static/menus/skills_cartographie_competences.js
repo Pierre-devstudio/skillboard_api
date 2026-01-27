@@ -276,6 +276,292 @@
     return { domaines, postes, matrixMap };
   }
 
+    // ==============================
+  // V2: Histogrammes par ligne (Poste × Domaine)
+  // - 1 ligne par poste
+  // - 1 barre par domaine (ordre alphabétique)
+  // - légende des couleurs 1 seule fois en haut
+  // - clic sur une barre => on réutilise le modal cellule (point 3)
+  // ==============================
+  let _hbStylesInjected = false;
+
+  function injectHistogramBarsStylesOnce() {
+    if (_hbStylesInjected) return;
+    _hbStylesInjected = true;
+
+    const style = document.createElement("style");
+    style.textContent = `
+      /* Histogramme (V2) */
+      #view-cartographie-competences .hb-dom-legend{
+        display:flex; flex-wrap:wrap; gap:10px 12px;
+        margin-top:10px;
+        color:#6b7280; font-size:12px;
+      }
+      #view-cartographie-competences .hb-leg-item{
+        display:inline-flex; align-items:center; gap:8px;
+        padding:4px 10px;
+        border:1px solid #e5e7eb;
+        border-radius:999px;
+        background:#fff;
+        max-width: 100%;
+      }
+      #view-cartographie-competences .hb-leg-dot{
+        width:10px; height:10px; border-radius:999px;
+        border:1px solid #d1d5db;
+        flex:0 0 auto;
+      }
+      #view-cartographie-competences .hb-leg-txt{
+        overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+        max-width: 220px;
+        color:#111827;
+      }
+
+      #view-cartographie-competences .hb-wrap{
+        margin-top:10px;
+        border:1px solid #e5e7eb;
+        border-radius:12px;
+        overflow:auto;
+        background:#fff;
+      }
+
+      #view-cartographie-competences .hb-table{
+        width:100%;
+        border-collapse:separate;
+        border-spacing:0;
+        min-width: 680px;
+      }
+
+      #view-cartographie-competences .hb-table th,
+      #view-cartographie-competences .hb-table td{
+        border-bottom:1px solid #f3f4f6;
+        border-right:1px solid #f3f4f6;
+        padding:10px 8px;
+        vertical-align:middle;
+        white-space:nowrap;
+        background:#fff;
+      }
+
+      #view-cartographie-competences .hb-table thead th{
+        position:sticky; top:0; z-index:3;
+        background:#fafafa;
+        font-size:12px;
+        font-weight:700;
+        color:#111827;
+        text-align:center;
+      }
+
+      #view-cartographie-competences .hb-rowhead{
+        text-align:left !important;
+        min-width: 360px;
+        position:sticky;
+        left:0;
+        z-index:4;
+        background:#fff;
+      }
+
+      #view-cartographie-competences .hb-sticky.hb-rowhead{
+        background:#fafafa;
+      }
+
+      #view-cartographie-competences .hb-poste-title{
+        font-weight:700; font-size:13px; color:#111827;
+        overflow:hidden; text-overflow:ellipsis; max-width:520px;
+      }
+      #view-cartographie-competences .hb-poste-sub{
+        font-size:12px; color:#6b7280;
+        overflow:hidden; text-overflow:ellipsis; max-width:520px;
+      }
+
+      #view-cartographie-competences .hb-dom-dot{
+        display:inline-block;
+        width:12px; height:12px;
+        border-radius:999px;
+        border:1px solid #d1d5db;
+      }
+
+      #view-cartographie-competences .hb-cell{
+        cursor:pointer;
+        user-select:none;
+        text-align:center;
+      }
+      #view-cartographie-competences .hb-cell:hover{
+        background: rgba(17, 24, 39, 0.03);
+      }
+
+      #view-cartographie-competences .hb-barbox{
+        height:34px;
+        display:flex;
+        align-items:flex-end;
+        justify-content:center;
+      }
+      #view-cartographie-competences .hb-bar{
+        width:18px;
+        border-radius:6px 6px 4px 4px;
+        border:1px solid rgba(0,0,0,.06);
+      }
+
+      #view-cartographie-competences .hb-totalcell{
+        background:#f9fafb;
+        font-weight:900;
+        text-align:center;
+      }
+      #view-cartographie-competences .hb-grandtotal{
+        background:#f3f4f6;
+        font-weight:900;
+        text-align:center;
+      }
+      #view-cartographie-competences .hb-totalrow td{
+        position:sticky;
+        bottom:0;
+        background:#fff;
+        z-index:2;
+      }
+      #view-cartographie-competences .hb-totalrow .hb-rowhead{
+        background:#fff;
+        z-index:5;
+        font-weight:900;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function renderHistogramBars(containerEl, domaines, postes, matrixMap) {
+    const el = containerEl;
+    if (!el) return;
+
+    injectHistogramBarsStylesOnce();
+
+    const rows = Array.isArray(postes) ? postes : [];
+    const map = (matrixMap instanceof Map) ? matrixMap : new Map();
+
+    // Domaines triés alphabétique (clé = titre_court/titre/id)
+    const doms = (Array.isArray(domaines) ? domaines : []).slice().sort((a, b) => {
+      const ka = ((a?.titre_court || a?.titre || a?.id_domaine_competence || "") + "").trim().toLowerCase();
+      const kb = ((b?.titre_court || b?.titre || b?.id_domaine_competence || "") + "").trim().toLowerCase();
+      return ka.localeCompare(kb, "fr", { sensitivity: "base" });
+    });
+
+    // Totaux + max (pour échelle barres)
+    const rowTotal = new Map();
+    const colTotal = new Map();
+    let maxVal = 0;
+
+    rows.forEach(p => {
+      const r = map.get(p.id_poste);
+      let sum = 0;
+      doms.forEach(d => {
+        const v = (r && r.get(d.id_domaine_competence)) ? Number(r.get(d.id_domaine_competence)) : 0;
+        sum += v;
+        colTotal.set(d.id_domaine_competence, (colTotal.get(d.id_domaine_competence) || 0) + v);
+        if (v > maxVal) maxVal = v;
+      });
+      rowTotal.set(p.id_poste, sum);
+    });
+
+    const grandTotal = Array.from(rowTotal.values()).reduce((a, b) => a + b, 0);
+
+    function barHeight(v) {
+      v = Number(v || 0);
+      if (v <= 0 || maxVal <= 0) return 0;
+      const h = Math.round((v / maxVal) * 30); // max 30px
+      return Math.max(2, h); // barre visible si v>0
+    }
+
+    // Légende couleurs (1 seule fois)
+    const legend = `
+      <div class="hb-dom-legend">
+        ${doms.map(d => {
+          const fullLabel = (d.titre || d.titre_court || d.id_domaine_competence || "").toString().trim();
+          const shortLabel = (d.titre_court || d.titre || d.id_domaine_competence || "").toString().trim();
+          const col = normalizeColor(d.couleur ?? d.domaine_couleur) || "#e5e7eb";
+          return `
+            <span class="hb-leg-item" title="${escapeHtml(fullLabel)}">
+              <span class="hb-leg-dot" style="background:${escapeHtml(col)}; border-color:${escapeHtml(col)};"></span>
+              <span class="hb-leg-txt">${escapeHtml(shortLabel || "—")}</span>
+            </span>
+          `;
+        }).join("")}
+      </div>
+    `;
+
+    // Header (dots only)
+    let ths = `<th class="hb-sticky hb-rowhead">Poste</th>`;
+    doms.forEach(d => {
+      const fullLabel = (d.titre || d.titre_court || d.id_domaine_competence || "").toString().trim();
+      const col = normalizeColor(d.couleur ?? d.domaine_couleur) || "#e5e7eb";
+      ths += `
+        <th title="${escapeHtml(fullLabel)}">
+          <span class="hb-dom-dot" style="background:${escapeHtml(col)}; border-color:${escapeHtml(col)};"></span>
+        </th>
+      `;
+    });
+    ths += `<th>Total</th>`;
+
+    // Body rows
+    let trs = "";
+    rows.forEach(p => {
+      const r = map.get(p.id_poste);
+      const cod = (p.codif_poste || "").toString().trim();
+      const intit = (p.intitule_poste || "").toString().trim();
+      const svc = (p.nom_service || "").toString().trim();
+
+      let tds = "";
+      doms.forEach(d => {
+        const v = (r && r.get(d.id_domaine_competence)) ? Number(r.get(d.id_domaine_competence)) : 0;
+        const col = normalizeColor(d.couleur ?? d.domaine_couleur) || "#e5e7eb";
+        const h = barHeight(v);
+
+        const title = `${cod ? cod + " — " : ""}${intit || "Poste"} | ${d.titre_court || d.titre || d.id_domaine_competence} : ${v}`;
+
+        tds += `
+          <td class="hb-cell"
+              data-id_poste="${escapeHtml(p.id_poste)}"
+              data-id_domaine="${escapeHtml(d.id_domaine_competence)}"
+              data-value="${v}"
+              title="${escapeHtml(title)}">
+            <div class="hb-barbox">
+              ${h > 0 ? `<div class="hb-bar" style="height:${h}px; background:${escapeHtml(col)};"></div>` : ``}
+            </div>
+          </td>
+        `;
+      });
+
+      const tot = rowTotal.get(p.id_poste) || 0;
+
+      trs += `
+        <tr>
+          <td class="hb-rowhead">
+            <div class="hb-poste-title">${escapeHtml(cod ? `${cod} — ${intit}` : (intit || "—"))}</div>
+            <div class="hb-poste-sub">${escapeHtml(svc || "—")}</div>
+          </td>
+          ${tds}
+          <td class="hb-totalcell">${tot ? tot : ""}</td>
+        </tr>
+      `;
+    });
+
+    // Total row (chiffres)
+    let totalRow = `<td class="hb-rowhead">Total</td>`;
+    doms.forEach(d => {
+      const v = colTotal.get(d.id_domaine_competence) || 0;
+      totalRow += `<td class="hb-totalcell">${v ? v : ""}</td>`;
+    });
+    totalRow += `<td class="hb-grandtotal">${grandTotal ? grandTotal : ""}</td>`;
+
+    el.innerHTML = `
+      ${legend}
+      <div class="hb-wrap">
+        <table class="hb-table">
+          <thead><tr>${ths}</tr></thead>
+          <tbody>
+            ${trs || `<tr><td class="hb-rowhead">—</td><td class="hb-totalcell">—</td></tr>`}
+            <tr class="hb-totalrow">${totalRow}</tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
   // ==============================
   // WAOOOUUU: Heatmap table + styles inject
   // ==============================
@@ -596,8 +882,8 @@
       setVisible("mapEmpty", false);
       applyScopeLabels();
 
-      // render WAOOOUUU
-      renderHeatmapWow(grid, domainesShown, model.postes, model.matrixMap);
+      // render V2: histogrammes par ligne
+      renderHistogramBars(grid, domainesShown, model.postes, model.matrixMap);
 
       // KPI (sur domainesShown)
       let totalCompetences = 0;
