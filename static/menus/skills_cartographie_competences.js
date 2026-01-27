@@ -119,11 +119,21 @@
 
   
   async function loadServices(portal) {
-    const nodes = await portal.apiJson(`${portal.apiBase}/skills/organisation/services/${encodeURIComponent(portal.contactId)}`);
-    const flat = flattenServices(Array.isArray(nodes) ? nodes : []);
-    fillServiceSelect(flat);
+    // Filtre service : géré UNE SEULE FOIS (portal_common.js)
+    await portal.serviceFilter.populateSelect({
+      portal,
+      selectId: "mapServiceSelect",
+      storageKey: STORE_SERVICE,
+      labelAll: "Tous les services",
+      labelNonLie: "Non lié",
+      includeAll: true,
+      includeNonLie: true,
+      allowIndent: true
+    });
+
     _servicesLoaded = true;
   }
+
 
   function buildQuery(params) {
     const usp = new URLSearchParams();
