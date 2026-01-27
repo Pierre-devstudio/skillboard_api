@@ -384,11 +384,20 @@
         font-weight:700; font-size:13px; color:#111827;
         overflow:hidden; text-overflow:ellipsis; max-width:520px;
       }
+      #view-cartographie-competences .hb-poste-code{
+        margin-bottom: 6px;
+      }
+      
       #view-cartographie-competences .hb-poste-sub{
         font-size:12px; color:#6b7280;
         overflow:hidden; text-overflow:ellipsis; max-width:520px;
       }
-
+      #view-cartographie-competences .hb-poste-code-badge{
+        background: #14ddb1;     /* backcolor */
+        color: #ffffff;          /* forecolor */
+        border-color: #14ddb1;   /* border cohérent */
+        font-weight: 700;
+      }
       #view-cartographie-competences .hb-dom-dot{
         display:inline-block;
         width:12px; height:12px;
@@ -554,7 +563,8 @@
       trs += `
         <tr>
           <td class="hb-rowhead">
-            <div class="hb-poste-title">${escapeHtml(cod ? `${cod} — ${intit}` : (intit || "—"))}</div>
+            ${cod ? `<div class="hb-poste-code"><span class="sb-badge hb-poste-code-badge">${escapeHtml(cod)}</span></div>` : ``}
+            <div class="hb-poste-title">${escapeHtml(intit || "—")}</div>
             <div class="hb-poste-sub">${escapeHtml(svc || "—")}</div>
           </td>
           ${tds}
