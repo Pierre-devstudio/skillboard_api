@@ -222,34 +222,32 @@
     }
 
     function levelRank(v) {
-      const s0 = (v ?? "").toString().trim().toLowerCase();
-      if (!s0) return -1;
+      const raw = (v ?? "").toString().trim();
+      if (!raw) return -1;
 
-      // Normalisation (accents, tirets, espaces)
-      const s = s0
+      const s = raw
+        .toLowerCase()
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/\s+/g, " ")
         .trim();
 
-      // Cas A/B/C direct
-      const c = s[0].toUpperCase();
-      if (c === "A") return 1;
-      if (c === "B") return 2;
-      if (c === "C") return 3;
+      // 1) Libellés (à traiter AVANT A/B/C, sinon "avance" commence par "a")
+      if (s.startsWith("init") || s.includes("initial")) return 1;
+      if (s.startsWith("avan") || s.includes("avance")) return 2;
+      if (s.startsWith("exp")  || s.includes("expert")) return 3;
 
-      // Cas libellés: Initial / Avancé / Expert (ou variantes)
-      if (s.startsWith("init")) return 1;
-      if (s.startsWith("avan") || s.startsWith("avance")) return 2;
-      if (s.startsWith("exp")) return 3;
+      // 2) A/B/C uniquement si c'est un token (A, B, C, "B - ...", "C ..."), pas un mot
+      const mABC = s.match(/^([abc])\b/i);
+      if (mABC) {
+        const c = mABC[1].toUpperCase();
+        if (c === "A") return 1;
+        if (c === "B") return 2;
+        if (c === "C") return 3;
+      }
 
-      // Cas "B - Avancé" etc
-      if (s.includes("initial")) return 1;
-      if (s.includes("avance")) return 2;
-      if (s.includes("expert")) return 3;
-
-      // Cas numérique
-      const m = s.match(/^\d+/);
-      return m ? Number(m[0]) : -1;
+      // 3) Numérique si jamais
+      const mNum = s.match(/^\d+/);
+      return mNum ? Number(mNum[0]) : -1;
     }
 
     function pickLevel(p) {
