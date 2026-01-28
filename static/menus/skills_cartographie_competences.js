@@ -222,23 +222,43 @@
     }
 
     function levelRank(v) {
-      const s = (v ?? "").toString().trim().toUpperCase();
-      if (!s) return -1;
-      const c = s[0]; // marche aussi pour "B - Avancé"
+      const s0 = (v ?? "").toString().trim().toLowerCase();
+      if (!s0) return -1;
+
+      // Normalisation (accents, tirets, espaces)
+      const s = s0
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      // Cas A/B/C direct
+      const c = s[0].toUpperCase();
       if (c === "A") return 1;
       if (c === "B") return 2;
       if (c === "C") return 3;
+
+      // Cas libellés: Initial / Avancé / Expert (ou variantes)
+      if (s.startsWith("init")) return 1;
+      if (s.startsWith("avan") || s.startsWith("avance")) return 2;
+      if (s.startsWith("exp")) return 3;
+
+      // Cas "B - Avancé" etc
+      if (s.includes("initial")) return 1;
+      if (s.includes("avance")) return 2;
+      if (s.includes("expert")) return 3;
+
+      // Cas numérique
       const m = s.match(/^\d+/);
       return m ? Number(m[0]) : -1;
     }
 
     function pickLevel(p) {
-      // champs possibles + cas où c’est un objet
+      // ton besoin: niveau_actuel = Initial/Avancé/Expert (ou similaire)
       const candidates = [
+        p?.niveau_actuel,
         p?.niveau,
         p?.niveau_porteur,
         p?.niveau_competence,
-        p?.niveau_actuel,
         p?.niveau_evalue,
         p?.niveau_eval,
         p?.niveau_obtenu,
@@ -250,15 +270,15 @@
         if (v === null || v === undefined) continue;
 
         if (typeof v === "object") {
-          // ex: { code:"B", libelle:"Avancé" }
-          const code = (v.code ?? v.niveau ?? v.valeur ?? "").toString().trim();
-          if (code) return code;
+          // ex: { libelle:"Avancé" } ou { niveau:"Expert" }
+          const s = (v.libelle ?? v.label ?? v.niveau ?? v.valeur ?? v.code ?? "").toString().trim();
+          if (s) return s;
         } else {
           const s = v.toString().trim();
           if (s) return s;
         }
       }
-      return ""; // non évalué
+      return "";
     }
 
     const reqRank = levelRank(niveauRequis);
