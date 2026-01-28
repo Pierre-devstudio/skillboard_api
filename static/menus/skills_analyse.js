@@ -1489,8 +1489,13 @@
 
     host.innerHTML = list.map(r => {
       const idp = (r.id_poste || "").toString().trim();
-      const poste = `${(r.codif_poste || "").trim()}${r.codif_poste ? " — " : ""}${(r.intitule_poste || "").trim()}`.trim() || "—";
+      const intitule = (r.intitule_poste || "").trim() || "—";
+      const codifClient = (r.codif_client || "").trim();
+      const codifPoste = (r.codif_poste || "").trim();
+      const codeAffiche = (codifClient !== "") ? codifClient : codifPoste;
+
       const svc = (r.nom_service || "").trim() || "—";
+      const bottom = `${(codeAffiche || "—")}${svc ? " • " : ""}${svc}`.trim();
 
       const isActive = selectedId && idp === selectedId;
       const style = isActive
@@ -1503,10 +1508,10 @@
                 data-match-id_poste="${escapeHtml(idp)}"
                 style="text-align:left; margin:0; ${style}">
           <div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-            ${escapeHtml(poste)}
+            ${escapeHtml(intitule)}
           </div>
           <div style="font-size:11px; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-            ${escapeHtml(svc)}
+            ${escapeHtml(bottom)}
           </div>
         </button>
       `;

@@ -2387,6 +2387,7 @@ class AnalyseRisqueItem(BaseModel):
     # Poste (pour "postes-fragiles")
     id_poste: Optional[str] = None
     codif_poste: Optional[str] = None
+    codif_client: Optional[str] = None
     intitule_poste: Optional[str] = None
     id_service: Optional[str] = None
     nom_service: Optional[str] = None
@@ -2510,6 +2511,7 @@ def get_analyse_risques_detail(
                     SELECT
                         fp.id_poste,
                         fp.codif_poste,
+                        fp.codif_client,
                         fp.intitule_poste,
                         fp.id_service,
                         COALESCE(o.nom_service, '') AS nom_service,
@@ -2540,6 +2542,7 @@ def get_analyse_risques_detail(
                         items.append(AnalyseRisqueItem(
                             id_poste=r.get("id_poste"),
                             codif_poste=r.get("codif_poste"),
+                            codif_client=r.get("codif_client"),
                             intitule_poste=r.get("intitule_poste"),
                             id_service=r.get("id_service"),
                             nom_service=r.get("nom_service"),
@@ -2568,6 +2571,7 @@ def get_analyse_risques_detail(
                     SELECT
                         fp.id_poste,
                         fp.codif_poste,
+                        fp.codif_client,
                         fp.intitule_poste,
                         fp.id_service,
                         COALESCE(o.nom_service, '') AS nom_service,
@@ -2597,6 +2601,7 @@ def get_analyse_risques_detail(
                         items.append(AnalyseRisqueItem(
                             id_poste=r.get("id_poste"),
                             codif_poste=r.get("codif_poste"),
+                            codif_client=r.get("codif_client"),
                             intitule_poste=r.get("intitule_poste"),
                             id_service=r.get("id_service"),
                             nom_service=r.get("nom_service"),
