@@ -224,7 +224,7 @@
     function levelRank(v) {
       const s = (v ?? "").toString().trim().toUpperCase();
       if (!s) return -1;
-      const c = s[0];
+      const c = s[0]; // marche aussi pour "B - Avancé"
       if (c === "A") return 1;
       if (c === "B") return 2;
       if (c === "C") return 3;
@@ -232,10 +232,11 @@
       return m ? Number(m[0]) : -1;
     }
 
-    function getPorteurLevel(p) {
-      // on tente plusieurs clés possibles, sans casser si aucune n’existe
-      const cand = [
+    function pickLevel(p) {
+      // champs possibles + cas où c’est un objet
+      const candidates = [
         p?.niveau,
+        p?.niveau_porteur,
         p?.niveau_competence,
         p?.niveau_actuel,
         p?.niveau_evalue,
@@ -244,9 +245,18 @@
         p?.niveau_acquis,
         p?.niveau_atteint
       ];
-      for (const x of cand) {
-        const s = (x ?? "").toString().trim();
-        if (s) return s;
+
+      for (const v of candidates) {
+        if (v === null || v === undefined) continue;
+
+        if (typeof v === "object") {
+          // ex: { code:"B", libelle:"Avancé" }
+          const code = (v.code ?? v.niveau ?? v.valeur ?? "").toString().trim();
+          if (code) return code;
+        } else {
+          const s = v.toString().trim();
+          if (s) return s;
+        }
       }
       return ""; // non évalué
     }
@@ -262,20 +272,20 @@
       const left = parts[0] || "—";
       const right = parts[1] || "";
 
-      const pLevel = getPorteurLevel(p);
+      const pLevel = pickLevel(p);
       const pRank = levelRank(pLevel);
 
-      const ok = (reqRank > 0)
-        ? (pRank >= reqRank)
-        : (pRank > 0); // si pas de niveau requis exploitable, on considère "conforme" dès qu’il est évalué
+      const ok = (reqRank > 0) ? (pRank >= reqRank) : (pRank > 0);
+      const tip = ok ? "niveau conforme" : "niveau à améliorer";
 
-      const dotCls = ok ? "sb-niv-dot sb-niv-dot-ok" : "sb-niv-dot sb-niv-dot-ko";
-      const dotTip = ok ? "niveau conforme" : "niveau à améliorer";
+      const dotStyle = ok
+        ? "width:10px;height:10px;border-radius:2px;display:inline-block;background:rgb(62,190,73);border:1px solid rgb(62,190,73);"
+        : "width:10px;height:10px;border-radius:2px;display:inline-block;background:rgb(220,38,38);border:1px solid rgb(220,38,38);";
 
       return `
         <div style="display:flex; justify-content:space-between; gap:10px;">
           <span style="display:flex; align-items:center; gap:8px; min-width:0;">
-            <span class="${dotCls}" title="${escapeHtml(dotTip)}"></span>
+            <span title="${escapeHtml(tip)}" style="${dotStyle}"></span>
             <span style="font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
               ${escapeHtml(left)}
             </span>
@@ -293,6 +303,7 @@
 
     return `<div style="margin-top:6px; display:flex; flex-direction:column; gap:4px;">${rows}${more}</div>`;
   }
+
 
 
   function buildMatrix(data) {
@@ -1173,6 +1184,7 @@
               <div class="card" style="padding:12px; margin:0;">
                 <div class="card-title" style="margin-bottom:6px;">Synthèse</div>
                 <div class="card-sub" style="margin:0;">
+                  ${posteCode ? `<span class="sb-badge sb-badge-poste-code">${escapeHtml(posteCode)}</span><br/>` : ``}
                   Poste : <b>${escapeHtml(posteLabel)}</b><br/>
                   Domaine de compétence : <b>${escapeHtml(domLabel)}</b>
                 </div>
