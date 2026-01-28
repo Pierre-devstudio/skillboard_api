@@ -593,7 +593,8 @@ def get_cartographie_cell_detail(
                         e.id_service,
                         COALESCE(o.nom_service, '') AS nom_service,
                         e.id_poste_actuel,
-                        COALESCE(p.intitule_poste, '') AS intitule_poste
+                        COALESCE(p.intitule_poste, '') AS intitule_poste,
+                        ec.niveau_actuel
                     FROM comp_scope cs
                     JOIN public.tbl_effectif_client_competence ec
                       ON ec.id_comp = cs.id_comp
@@ -630,6 +631,7 @@ def get_cartographie_cell_detail(
                             "nom_service": rp.get("nom_service"),
                             "id_poste_actuel": rp.get("id_poste_actuel"),
                             "intitule_poste": rp.get("intitule_poste"),
+                            "niveau_actuel": rp.get("niveau_actuel"),
                         })
 
                     for comp in competences:
