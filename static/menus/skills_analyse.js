@@ -18,6 +18,7 @@
   const STORE_RISK_FILTER = "sb_analyse_risk_filter";
   const STORE_MATCH_VIEW = "sb_analyse_match_view"; // "titulaire" | "candidats"
   const STORE_PREV_HORIZON = "sb_analyse_prev_horizon";
+  const STORE_MATCH_POSTE_MODE = "sb_analyse_match_poste_mode"; // "fragiles" | "tous"
 
 
   function byId(id) { return document.getElementById(id); }
@@ -326,6 +327,18 @@
     setActiveMatchKpi(getMatchView());
   }
 
+  function getMatchPosteMode() {
+    const v = (localStorage.getItem(STORE_MATCH_POSTE_MODE) || "").trim().toLowerCase();
+    return (v === "tous" || v === "fragiles") ? v : "fragiles";
+  }
+
+  function setMatchPosteMode(mode) {
+    const v = (mode || "").toString().trim().toLowerCase();
+    if (v === "tous" || v === "fragiles") localStorage.setItem(STORE_MATCH_POSTE_MODE, v);
+    else localStorage.removeItem(STORE_MATCH_POSTE_MODE);
+  }
+
+
   function setActiveMatchKpi(view) {
     const tile = byId("tileMatching");
     if (!tile) return;
@@ -459,13 +472,20 @@
     return 0.2;                            // trop bas
   }
 
-  async function fetchMatchingPostes(portal, id_service) {
+  async function fetchMatchingPostes(portal, id_service, modePostes) {
     const svc = (id_service || "").trim();
-    const key = svc || "__ALL__";
+
+    const mRaw = (modePostes || getMatchPosteMode() || "fragiles").toString().trim().toLowerCase();
+    const mode = (mRaw === "tous") ? "tous" : "fragiles";
+
+    const key = `${mode}|${svc || "__ALL__"}`;
     if (_matchPostesCache.has(key)) return _matchPostesCache.get(key);
 
-    // On réutilise l’API "postes-fragiles" comme liste de postes prioritaire
-    const data = await fetchRisquesDetail(portal, "postes-fragiles", svc, 500);
+    // "fragiles" => KPI existant
+    // "tous"     => nouveau KPI (ajouté au backend au bloc 4)
+    const kpi = (mode === "tous") ? "postes-scope" : "postes-fragiles";
+
+    const data = await fetchRisquesDetail(portal, kpi, svc, 2000);
     const items = Array.isArray(data?.items) ? data.items : [];
 
     _matchPostesCache.set(key, items);
@@ -1412,24 +1432,50 @@
   }
 
   function renderMatchingShell() {
-    return `
-      <div style="display:flex; gap:12px; align-items:stretch; min-height:360px;">
-        <div class="card" style="padding:12px; margin:0; width:360px; flex:0 0 auto;">
-          <div class="card-title" style="margin-bottom:6px;">Postes (priorité: fragiles)</div>
-          <div class="card-sub" style="margin:0;">Clique un poste pour obtenir les candidats internes.</div>
-          <div id="matchPosteList" style="margin-top:10px; display:flex; flex-direction:column; gap:6px;"></div>
-        </div>
+    const modePostes = getMatchPosteMode(); // "fragiles" | "tous"
+    const isFrag = (modePostes === "fragiles");
 
-        <div class="card" style="padding:12px; margin:0; flex:1;">
-          <div class="card-title" style="margin-bottom:6px;">Candidats</div>
-          <div class="card-sub" style="margin:0;">Score pondéré (niveau + criticité). Écarts critiques visibles.</div>
-          <div id="matchResult" style="margin-top:10px;">
-            <div class="card-sub" style="margin:0; color:#6b7280;">Sélectionne un poste.</div>
+    const leftTitle = isFrag ? "Postes (priorité: fragiles)" : "Postes (tous)";
+    const stOn = `border-color:var(--reading-accent); background:color-mix(in srgb, var(--reading-accent) 10%, #fff);`;
+    const stOff = `border-color:#d1d5db; background:#ffffff;`;
+
+    return `
+        <div style="display:flex; gap:12px; align-items:stretch; min-height:360px;">
+          <div class="card" style="padding:12px; margin:0; width:360px; flex:0 0 auto;">
+            <div class="card-title" style="margin-bottom:6px;">${escapeHtml(leftTitle)}</div>
+            <div class="card-sub" style="margin:0;">Clique un poste pour obtenir les candidats internes.</div>
+
+            <div class="sb-segbar" style="margin-top:10px; margin-bottom:10px;">
+              <button type="button"
+                      class="sb-seg ${isFrag ? "is-active" : ""}"
+                      data-match-poste-mode="fragiles"
+                      aria-pressed="${isFrag ? "true" : "false"}"
+                      style="${isFrag ? stOn : stOff}">
+                Postes fragiles
+              </button>
+              <button type="button"
+                      class="sb-seg ${!isFrag ? "is-active" : ""}"
+                      data-match-poste-mode="tous"
+                      aria-pressed="${!isFrag ? "true" : "false"}"
+                      style="${!isFrag ? stOn : stOff}">
+                Tous les postes
+              </button>
+            </div>
+
+            <div id="matchPosteList" style="margin-top:0; display:flex; flex-direction:column; gap:6px;"></div>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1;">
+            <div class="card-title" style="margin-bottom:6px;">Candidats</div>
+            <div class="card-sub" style="margin:0;">Score pondéré (niveau + criticité). Écarts critiques visibles.</div>
+            <div id="matchResult" style="margin-top:10px;">
+              <div class="card-sub" style="margin:0; color:#6b7280;">Sélectionne un poste.</div>
+            </div>
           </div>
         </div>
-      </div>
-    `;
+      `;
   }
+
 
   function renderMatchingPosteList(items, selectedId) {
     const host = byId("matchPosteList");
@@ -2376,7 +2422,7 @@ function renderDetail(mode) {
 
     (async () => {
       try {
-        const postes = await fetchMatchingPostes(_portalref, id_service);
+        const postes = await fetchMatchingPostes(_portalref, id_service, getMatchPosteMode());
         if (mySeq !== _matchReqSeq) return;
 
         if (_matchSelectedPoste && !postes.some(p => (p.id_poste || "").toString().trim() === _matchSelectedPoste)) {
@@ -3809,6 +3855,28 @@ function bindOnce(portal) {
       showAnalyseCompetenceDetailModal(p, compKey, id_service);
       return;
     }
+
+    // ------------------------------
+    // 3) Toggle "Postes fragiles" / "Tous les postes"
+    // ------------------------------
+    const btnMatchMode = ev.target.closest("button[data-match-poste-mode]");
+    if (btnMatchMode) {
+      const mode = (btnMatchMode.getAttribute("data-match-poste-mode") || "").trim().toLowerCase();
+      if (!mode) return;
+
+      // Si l’utilisateur reclique sur l’actif, on ne refait pas du bruit.
+      if (mode === getMatchPosteMode()) return;
+
+      setMatchPosteMode(mode);
+
+      // on reset la sélection poste pour repartir propre
+      _matchSelectedPoste = "";
+
+      // rerender + reload via le pipeline standard
+      renderDetail("matching");
+      return;
+    }
+
 
     // ------------------------------
     // 3) Click sur POSTE (liste matching gauche)

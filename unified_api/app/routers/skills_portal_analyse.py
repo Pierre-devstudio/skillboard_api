@@ -2427,7 +2427,7 @@ class AnalyseRisquesDetailResponse(BaseModel):
 )
 def get_analyse_risques_detail(
     id_contact: str,
-    kpi: str = Query(...),  # "postes-fragiles" | "critiques-sans-porteur" | "porteur-unique"
+    kpi: str = Query(...),  # "postes-fragiles" | "postes-scope" | "critiques-sans-porteur" | "porteur-unique"
     id_service: Optional[str] = Query(default=None),
     criticite_min: int = Query(default=3),
     limit: int = Query(default=50),
@@ -2440,7 +2440,7 @@ def get_analyse_risques_detail(
     """
     try:
         k = (kpi or "").strip().lower()
-        if k not in ("postes-fragiles", "critiques-sans-porteur", "porteur-unique"):
+        if k not in ("postes-fragiles", "postes-scope", "critiques-sans-porteur", "porteur-unique"):
             raise HTTPException(status_code=400, detail="Paramètre kpi invalide.")
 
         if limit < 1:
@@ -2547,6 +2547,64 @@ def get_analyse_risques_detail(
                             nb_critiques_sans_porteur=int(r.get("nb_critiques_sans_porteur") or 0),
                             nb_critiques_porteur_unique=int(r.get("nb_critiques_porteur_unique") or 0),
                         ))
+
+                # ---------------------------
+                # KPI: Tous les postes (scope)
+                # ---------------------------
+                elif k == "postes-scope":
+                    sql = base_cte + """
+                    ,
+                    poste_agg AS (
+                        SELECT
+                            ps.id_poste,
+                            SUM(CASE WHEN r.id_comp IS NOT NULL AND r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) <= 1 THEN 1 ELSE 0 END)::int AS nb_critiques_fragiles,
+                            SUM(CASE WHEN r.id_comp IS NOT NULL AND r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 0 THEN 1 ELSE 0 END)::int AS nb_critiques_sans_porteur,
+                            SUM(CASE WHEN r.id_comp IS NOT NULL AND r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 1 THEN 1 ELSE 0 END)::int AS nb_critiques_porteur_unique
+                        FROM postes_scope ps
+                        LEFT JOIN req r ON r.id_poste = ps.id_poste
+                        LEFT JOIN porteurs p ON p.id_comp = r.id_comp
+                        GROUP BY ps.id_poste
+                    )
+                    SELECT
+                        fp.id_poste,
+                        fp.codif_poste,
+                        fp.intitule_poste,
+                        fp.id_service,
+                        COALESCE(o.nom_service, '') AS nom_service,
+                        pa.nb_critiques_fragiles,
+                        pa.nb_critiques_sans_porteur,
+                        pa.nb_critiques_porteur_unique
+                    FROM poste_agg pa
+                    JOIN public.tbl_fiche_poste fp ON fp.id_poste = pa.id_poste
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = fp.id_service
+                     AND o.archive = FALSE
+                    ORDER BY
+                        pa.nb_critiques_sans_porteur DESC,
+                        pa.nb_critiques_porteur_unique DESC,
+                        pa.nb_critiques_fragiles DESC,
+                        fp.codif_poste,
+                        fp.intitule_poste
+                    LIMIT %s
+                    """
+                    cur.execute(
+                        sql,
+                        tuple(cte_params + [criticite_min, criticite_min, criticite_min, id_ent, limit])
+                    )
+                    rows = cur.fetchall() or []
+                    for r in rows:
+                        items.append(AnalyseRisqueItem(
+                            id_poste=r.get("id_poste"),
+                            codif_poste=r.get("codif_poste"),
+                            intitule_poste=r.get("intitule_poste"),
+                            id_service=r.get("id_service"),
+                            nom_service=r.get("nom_service"),
+                            nb_critiques_fragiles=int(r.get("nb_critiques_fragiles") or 0),
+                            nb_critiques_sans_porteur=int(r.get("nb_critiques_sans_porteur") or 0),
+                            nb_critiques_porteur_unique=int(r.get("nb_critiques_porteur_unique") or 0),
+                        ))
+
 
                 # ---------------------------
                 # KPI: Critiques sans porteur
