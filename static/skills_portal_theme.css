@@ -419,6 +419,51 @@
   background: color-mix(in srgb, var(--accent) 10%, transparent);
   border-radius: 8px;
 }
+
+#modalMapDetail .sb-badge.sb-badge-poste-code{
+  background: rgb(62, 190, 73);     /* backcolor */
+  color: #ffffff;          /* forecolor */
+  border-color: rgb(62, 190, 73);   /* cohérent si le badge a une bordure */
+  font-weight: 700;
+}
+
+/* Cartographie — Couverture (badge) */
+#modalMapDetail .sb-badge.sb-badge-cover-0{
+  background: rgb(220,38,38);
+  color:#fff;
+  border-color: rgb(220,38,38);
+}
+#modalMapDetail .sb-badge.sb-badge-cover-1{
+  background: rgb(245,158,11);
+  color:#fff;
+  border-color: rgb(245,158,11);
+}
+#modalMapDetail .sb-badge.sb-badge-cover-2{
+  background: rgb(62,190,73);
+  color:#fff;
+  border-color: rgb(62,190,73);
+}
+
+/* Cartographie — indicateur conformité niveau porteur */
+#modalMapDetail .sb-niv-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 2px; /* petit carré légèrement adouci */
+  display: inline-block;
+  flex: 0 0 auto;
+}
+
+#modalMapDetail .sb-niv-dot-ok{
+  background: rgb(62,190,73);
+  border: 1px solid rgb(62,190,73);
+}
+
+#modalMapDetail .sb-niv-dot-ko{
+  background: rgb(220,38,38);
+  border: 1px solid rgb(220,38,38);
+}
+
+
 /* ============================
    Cartographie: Heatmap (WOW)
    ============================ */

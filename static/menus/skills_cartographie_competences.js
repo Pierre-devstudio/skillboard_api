@@ -215,11 +215,43 @@
     return right ? `${full}|||${right}` : `${full}|||`;
   }
 
-  function renderPorteursMini(porteurs) {
+  function renderPorteursMini(porteurs, niveauRequis) {
     const list = Array.isArray(porteurs) ? porteurs : [];
     if (!list.length) {
       return `<div class="card-sub" style="margin-top:6px; color:#6b7280;">Aucun porteur</div>`;
     }
+
+    function levelRank(v) {
+      const s = (v ?? "").toString().trim().toUpperCase();
+      if (!s) return -1;
+      const c = s[0];
+      if (c === "A") return 1;
+      if (c === "B") return 2;
+      if (c === "C") return 3;
+      const m = s.match(/^\d+/);
+      return m ? Number(m[0]) : -1;
+    }
+
+    function getPorteurLevel(p) {
+      // on tente plusieurs clés possibles, sans casser si aucune n’existe
+      const cand = [
+        p?.niveau,
+        p?.niveau_competence,
+        p?.niveau_actuel,
+        p?.niveau_evalue,
+        p?.niveau_eval,
+        p?.niveau_obtenu,
+        p?.niveau_acquis,
+        p?.niveau_atteint
+      ];
+      for (const x of cand) {
+        const s = (x ?? "").toString().trim();
+        if (s) return s;
+      }
+      return ""; // non évalué
+    }
+
+    const reqRank = levelRank(niveauRequis);
 
     const max = 6;
     const shown = list.slice(0, max);
@@ -230,10 +262,23 @@
       const left = parts[0] || "—";
       const right = parts[1] || "";
 
+      const pLevel = getPorteurLevel(p);
+      const pRank = levelRank(pLevel);
+
+      const ok = (reqRank > 0)
+        ? (pRank >= reqRank)
+        : (pRank > 0); // si pas de niveau requis exploitable, on considère "conforme" dès qu’il est évalué
+
+      const dotCls = ok ? "sb-niv-dot sb-niv-dot-ok" : "sb-niv-dot sb-niv-dot-ko";
+      const dotTip = ok ? "niveau conforme" : "niveau à améliorer";
+
       return `
         <div style="display:flex; justify-content:space-between; gap:10px;">
-          <span style="font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-            ${escapeHtml(left)}
+          <span style="display:flex; align-items:center; gap:8px; min-width:0;">
+            <span class="${dotCls}" title="${escapeHtml(dotTip)}"></span>
+            <span style="font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              ${escapeHtml(left)}
+            </span>
           </span>
           <span style="color:#6b7280; font-size:12px; white-space:nowrap;">
             ${escapeHtml(right || "—")}
@@ -1065,7 +1110,7 @@
           const list = Array.isArray(data?.competences) ? data.competences : [];
 
           const posteCode = getPosteCodeDisplay(poste);
-          const posteLabel = `${posteCode ? posteCode + " — " : ""}${(poste.intitule_poste || "").toString().trim()}`.trim();
+          const posteLabel = ((poste.intitule_poste || "").toString().trim()) || "Poste";
 
           const domLabel = isPosteTotal
             ? "Tous les domaines"
@@ -1074,6 +1119,43 @@
           const domColor = isPosteTotal
             ? "#e5e7eb"
             : (normalizeColor(dom.couleur) || "#e5e7eb");
+
+          // Tri: criticité décroissante, puis niveau requis décroissant (C > B > A)
+          function toCrit(v) {
+            const n = Number(v);
+            return Number.isFinite(n) ? n : -1;
+          }
+          function toNivRank(v) {
+            const s = (v ?? "").toString().trim().toUpperCase();
+            if (!s) return -1;
+            const c = s[0];
+            if (c === "A") return 1;
+            if (c === "B") return 2;
+            if (c === "C") return 3;
+            const m = s.match(/^\d+/);
+            return m ? Number(m[0]) : -1;
+          }
+
+          const listSorted = list.slice().sort((a, b) => {
+            const ca = toCrit(a?.poids_criticite);
+            const cb = toCrit(b?.poids_criticite);
+            if (cb !== ca) return cb - ca;
+
+            const na = toNivRank(a?.niveau_requis);
+            const nb = toNivRank(b?.niveau_requis);
+            if (nb !== na) return nb - na;
+
+            // stabilité: code puis intitulé
+            const coda = (a?.code || "").toString();
+            const codb = (b?.code || "").toString();
+            const dc = codb.localeCompare(coda, "fr", { sensitivity: "base" });
+            if (dc !== 0) return dc;
+
+            const ia = (a?.intitule || "").toString();
+            const ib = (b?.intitule || "").toString();
+            return ia.localeCompare(ib, "fr", { sensitivity: "base" });
+          });
+
 
           const sub = `
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
@@ -1092,7 +1174,7 @@
                 <div class="card-title" style="margin-bottom:6px;">Synthèse</div>
                 <div class="card-sub" style="margin:0;">
                   Poste : <b>${escapeHtml(posteLabel)}</b><br/>
-                  Domaine : <b>${escapeHtml(domLabel)}</b>
+                  Domaine de compétence : <b>${escapeHtml(domLabel)}</b>
                 </div>
               </div>
           `;
@@ -1114,13 +1196,13 @@
                       <tr>
                         <th style="width:90px;">Code</th>
                         <th>Compétence</th>
-                        <th class="col-center" style="width:150px;">Niveau</th>
+                        <th class="col-center" style="width:70px;">Niveau</th>
                         <th class="col-center" style="width:70px;">Criticité</th>
                         <th class="col-center" style="width:70px;">Couverture</th>
                       </tr>
                     </thead>
                     <tbody>
-                      ${list.map(c => {
+                      ${listSorted.map(c => {
                         const code = escapeHtml(c.code || "—");
                         const intit = escapeHtml(c.intitule || "—");
                         const niv = escapeHtml(c.niveau_requis || "—");
@@ -1131,12 +1213,17 @@
                           ? porteurs.length
                           : Number(c.nb_porteurs || 0);
 
-                        const badge = nb > 0
-                          ? `<span class="sb-badge sb-badge-accent">${nb}</span>`
-                          : `<span class="sb-badge">0</span>`;
+                        const nbNum = Number.isFinite(nb) ? nb : 0;
+
+                        let coverCls = "sb-badge sb-badge-cover-0";
+                        if (nbNum === 1) coverCls = "sb-badge sb-badge-cover-1";
+                        else if (nbNum > 1) coverCls = "sb-badge sb-badge-cover-2";
+
+                        const badge = `<span class="${coverCls}">${escapeHtml(String(nbNum))}</span>`;
+
 
                         // Liste des porteurs sous l’intitulé
-                        const porteursHtml = renderPorteursMini(porteurs);
+                        const porteursHtml = renderPorteursMini(porteurs, c.niveau_requis);
 
                         return `
                           <tr>
@@ -1165,7 +1252,10 @@
 
           body += `</div>`;
 
-          openModal(isPosteTotal ? (posteLabel || "Détail poste") : (posteLabel || "Détail cellule"), sub, body);
+          const posteTitleOnly = ((poste.intitule_poste || "").toString().trim());
+          const posteModalTitle = posteTitleOnly || posteCode || (isPosteTotal ? "Détail poste" : "Détail cellule");
+
+          openModal(posteModalTitle, sub, body);
 
         } catch (e) {
           openModal(
