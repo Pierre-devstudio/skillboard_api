@@ -1436,8 +1436,7 @@
     const isFrag = (modePostes === "fragiles");
 
     const leftTitle = isFrag ? "Postes (priorité: fragiles)" : "Postes (tous)";
-    const stOn = `border-color:var(--reading-accent); background:color-mix(in srgb, var(--reading-accent) 10%, #fff);`;
-    const stOff = `border-color:#d1d5db; background:#ffffff;`;
+    // Styles du toggle gérés par CSS via .sb-seg--match (pas de couleurs inline ici)
 
     return `
         <div style="display:flex; gap:12px; align-items:stretch; min-height:360px;">
@@ -1446,18 +1445,16 @@
             <div class="card-sub" style="margin:0;">Clique un poste pour obtenir les candidats internes.</div>
 
             <div class="sb-segbar" style="margin-top:10px; margin-bottom:10px;">
-              <button type="button"
-                      class="sb-seg ${isFrag ? "is-active" : ""}"
-                      data-match-poste-mode="fragiles"
-                      aria-pressed="${isFrag ? "true" : "false"}"
-                      style="${isFrag ? stOn : stOff}">
+            <button type="button"
+                    class="sb-seg sb-seg--match ${isFrag ? "is-active" : ""}"
+                    data-match-poste-mode="fragiles"
+                    aria-pressed="${isFrag ? "true" : "false"}">
                 Postes fragiles
               </button>
               <button type="button"
-                      class="sb-seg ${!isFrag ? "is-active" : ""}"
-                      data-match-poste-mode="tous"
-                      aria-pressed="${!isFrag ? "true" : "false"}"
-                      style="${!isFrag ? stOn : stOff}">
+                    class="sb-seg sb-seg--match ${!isFrag ? "is-active" : ""}"
+                    data-match-poste-mode="tous"
+                    aria-pressed="${!isFrag ? "true" : "false"}">
                 Tous les postes
               </button>
             </div>
