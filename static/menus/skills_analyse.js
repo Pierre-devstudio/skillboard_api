@@ -791,6 +791,7 @@
     const codeAffiche = (codifClient !== "") ? codifClient : codifPoste;
 
     const posteIntitule = (poste.intitule_poste || "").trim();
+    const posteLabel = `${codeAffiche ? codeAffiche + " — " : ""}${(posteIntitule || "Poste")}`;
 
     const personLabel = person.full || "—";
     const svc = person.nom_service || "—";
