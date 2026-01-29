@@ -768,7 +768,12 @@
     const stats = data?.stats || {};
     const items = Array.isArray(data?.items) ? data.items : [];
 
-    const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
+    const codifClient = (poste.codif_client || "").trim();
+    const codifPoste = (poste.codif_poste || "").trim();
+    const codeAffiche = (codifClient !== "") ? codifClient : codifPoste;
+
+    const posteIntitule = (poste.intitule_poste || "").trim();
+
     const personLabel = person.full || "—";
     const svc = person.nom_service || "—";
     const isTit = !!person.is_titulaire;
@@ -1464,7 +1469,6 @@
 
           <div class="card" style="padding:12px; margin:0; flex:1;">
             <div class="card-title" style="margin-bottom:6px;">Candidats</div>
-            <div class="card-sub" style="margin:0;">Score pondéré (niveau + criticité). Écarts critiques visibles.</div>
             <div id="matchResult" style="margin-top:10px;">
               <div class="card-sub" style="margin:0; color:#6b7280;">Sélectionne un poste.</div>
             </div>
@@ -1690,27 +1694,27 @@
     const emptyText = (v === "titulaire") ? "Aucun titulaire détecté sur ce poste" : "Aucun candidat (hors titulaires)";
 
     
-function renderRow(c) {
-  const critHtml = gapBadges(c.crit_missing, c.crit_under);
-  const missHtml = gapBadges(c.nb_missing, c.nb_under);
+    function renderRow(c) {
+      const critHtml = gapBadges(c.crit_missing, c.crit_under);
+      const missHtml = gapBadges(c.nb_missing, c.nb_under);
 
-  const score = Number(c.score_pct || 0);
-  const scoreBadge = score >= 80 ? badge(score + "%", true) : badge(score + "%", false);
+      const score = Number(c.score_pct || 0);
+      const scoreBadge = score >= 80 ? badge(score + "%", true) : badge(score + "%", false);
 
-  const ide = String(c.id_effectif || "").trim();
+      const ide = String(c.id_effectif || "").trim();
 
-  return `
-    <tr class="match-person-row" data-match-id_effectif="${escapeHtml(ide)}" style="cursor:pointer;">
-      <td style="font-weight:700;">${escapeHtml(c.full || "—")}</td>
-      <td>${escapeHtml(c.nom_service || "—")}</td>
-      <td class="col-center">${scoreBadge}</td>
-      <td class="col-center">${critHtml}</td>
-      <td class="col-center">${missHtml}</td>
-    </tr>
-  `;
-}
+      return `
+        <tr class="match-person-row" data-match-id_effectif="${escapeHtml(ide)}" style="cursor:pointer;">
+          <td style="font-weight:700;">${escapeHtml(c.full || "—")}</td>
+          <td>${escapeHtml(c.nom_service || "—")}</td>
+          <td class="col-center">${scoreBadge}</td>
+          <td class="col-center">${critHtml}</td>
+          <td class="col-center">${missHtml}</td>
+        </tr>
+      `;
+    }
 
-function renderHeaderRow(title) {
+    function renderHeaderRow(title) {
       return `
         <tr>
           <td colspan="5" style="padding:10px 8px; font-weight:800; color:#111827; border-top:1px solid #e5e7eb;">
@@ -1722,7 +1726,9 @@ function renderHeaderRow(title) {
 
     host.innerHTML = `
       <div class="card-sub" style="margin:0 0 8px 0;">
-        Poste : <b>${escapeHtml(posteLabel || "—")}</b>
+        Poste :
+        ${badge(escapeHtml(codeAffiche || "—"), "#111827", "color-mix(in srgb, var(--ui-accent) 18%, #fff)")}
+        <b>${escapeHtml(posteIntitule || "—")}</b>
       </div>
 
       <div class="table-wrap" style="margin-top:10px;">

@@ -2903,6 +2903,7 @@ def get_analyse_risques_poste_detail(
                     SELECT
                         fp.id_poste,
                         fp.codif_poste,
+                        fp.codif_client,
                         fp.intitule_poste,
                         fp.id_service,
                         COALESCE(o.nom_service, '') AS nom_service
@@ -3078,6 +3079,7 @@ def get_analyse_risques_poste_detail(
                     poste={
                         "id_poste": poste.get("id_poste"),
                         "codif_poste": poste.get("codif_poste"),
+                        "codif_client": poste.get("codif_client"),
                         "intitule_poste": poste.get("intitule_poste"),
                         "id_service": poste.get("id_service"),
                         "nom_service": poste.get("nom_service"),
