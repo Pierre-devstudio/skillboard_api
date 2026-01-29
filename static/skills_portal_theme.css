@@ -1047,7 +1047,7 @@ button[id$="ModalClose"]:active{
 }
 
 #view-analyse-competences .sb-table tbody td{
-  font-size:12px;
+  font-size:13px;
   padding:12px 14px;
   vertical-align:middle;
   border-bottom:1px solid #f3f4f6;
@@ -1073,6 +1073,29 @@ button[id$="ModalClose"]:active{
 
 #view-analyse-competences .sb-row-click:hover{
   background: color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
+}
+
+/* Analyse compétences — bandeaux sections dans le tableau candidats (matching) */
+#view-analyse-competences #matchResult tr.sb-match-section td.sb-match-section-cell{
+  background: #f3f4f6;
+  border-top: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  position: relative;
+}
+
+#view-analyse-competences #matchResult tr.sb-match-section td.sb-match-section-cell::before{
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--ui-accent);
+  border-radius: 2px;
 }
 
 /* ======================================================

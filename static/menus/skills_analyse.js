@@ -1747,8 +1747,8 @@
 
     function renderHeaderRow(title) {
       return `
-        <tr>
-          <td colspan="5" style="padding:10px 8px; font-weight:800; color:#111827; border-top:1px solid #e5e7eb;">
+        <tr class="sb-match-section">
+          <td colspan="5" class="sb-match-section-cell"> 
             ${escapeHtml(title)}
           </td>
         </tr>
