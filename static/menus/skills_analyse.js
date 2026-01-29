@@ -1730,7 +1730,7 @@
         <span style="display:inline-flex; align-items:center; justify-content:center;
                      padding:2px 8px; border-radius:999px;
                      font-size:12px; font-weight:800; line-height:1.2;
-                     color:rgba(255, 255, 255, 0.808);
+                     color:rgb(255, 255, 255);
                      background:rgb(62, 190, 73);
                      border:1px solid rgb(62, 190, 73);">
           ${escapeHtml(((poste?.codif_client || "").trim() || (poste?.codif_poste || "").trim() || "—"))}
