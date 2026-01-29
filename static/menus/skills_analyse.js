@@ -1851,15 +1851,29 @@
     _compDetailCache.set(key, data);
     return data;
   }
- 
+  
   function openAnalysePosteModal(title, subHtml) {
     const modal = byId("modalAnalysePoste");
     if (!modal) return;
 
-    const t = byId("analysePosteModalTitle");
+    const tWrap = byId("analysePosteModalTitle");
+    const tCode = byId("analysePosteModalTitleCode");
+    const tText = byId("analysePosteModalTitleText");
     const s = byId("analysePosteModalSub");
 
-    if (t) t.textContent = title || "Détail poste";
+    const titleText = title || "Détail poste";
+
+    // Si la structure "Code + Texte" existe (HTML modifié), on l’utilise.
+    // Sinon, fallback sur l’ancien fonctionnement.
+    if (tText) tText.textContent = titleText;
+    else if (tWrap) tWrap.textContent = titleText;
+
+    // À chaque ouverture, on reset le badge code (il sera rempli après chargement data)
+    if (tCode) {
+      tCode.textContent = "";
+      tCode.style.display = "none";
+    }
+
     if (s) s.innerHTML = subHtml || "";
 
     modal.classList.add("show");
@@ -1868,6 +1882,7 @@
     const mb = modal.querySelector(".modal-body");
     if (mb) mb.scrollTop = 0;
   }
+
 
   function closeAnalysePosteModal() {
     const modal = byId("modalAnalysePoste");
@@ -2379,7 +2394,13 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
     if (mySeq !== _posteDetailReqSeq) return;
 
     const poste = data?.poste || {};
-    const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
+
+    const codifClient = (poste.codif_client || "").trim();
+    const codifPoste  = (poste.codif_poste || "").trim();
+    const codeAffiche = (codifClient !== "") ? codifClient : codifPoste;
+
+    const posteIntitule = (poste.intitule_poste || "").trim() || "Poste";
+
 
     const scope = (data?.scope?.nom_service || "").trim() || "Tous les services";
 
@@ -2396,7 +2417,19 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
       </div>
     `;
 
-    openAnalysePosteModal(posteLabel || "Détail poste", sub);
+    oopenAnalysePosteModal(posteIntitule || "Détail poste", sub);
+
+    // Injecte le code dans le badge du titre si la structure HTML existe
+    const tCode = byId("analysePosteModalTitleCode");
+    if (tCode) {
+      if ((codeAffiche || "").trim() !== "") {
+        tCode.textContent = codeAffiche;
+        tCode.style.display = "inline-flex";
+      } else {
+        tCode.textContent = "";
+        tCode.style.display = "none";
+      }
+    }
 
     // ----- Filtrage côté UI selon le focus (sinon tu verras toujours la même table)
     const comps = Array.isArray(data?.competences) ? data.competences : [];
