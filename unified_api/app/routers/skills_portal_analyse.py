@@ -262,7 +262,7 @@ def get_analyse_summary(
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
 
                 # V1: valeurs par défaut (0) => UI propre, pas d’erreur, pas de “—”
-                CRITICITE_MIN = 3  # ajustable: définit ce que tu considères "critique"
+                CRITICITE_MIN = CRITICITE_MIN_DEFAULT  # score 0–100 : seuil "compétence critique"
 
                 cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
 
