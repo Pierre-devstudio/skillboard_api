@@ -395,6 +395,12 @@
   function getCriticiteMin() {
     return Number.isFinite(_CRITICITE_MIN) ? _CRITICITE_MIN : null;
   }
+
+  function critMinLabel() {
+    const n = Number(getCriticiteMin());
+    return Number.isFinite(n) ? String(n) : "—";
+  }
+
   const _riskDetailCache = new Map();
   let _riskDetailReqSeq = 0;
 
@@ -1138,7 +1144,7 @@
         </div>
 
         <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-          Critiques = poids_criticite ≥ ${CRITICITE_MIN}. Seuil (A/B/C) = 6 / 10 / 19. Niveau = déduit du score /24.
+          Critiques = criticité ≥ ${escapeHtml(critMinLabel())}. Score = moyenne pondérée des compétences requises.
         </div>
         </div>
 
@@ -1775,7 +1781,7 @@
       ${MATCH_LEGEND_HTML}
 
       <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-        Critiques = poids_criticite ≥ ${CRITICITE_MIN}. Score = moyenne pondérée des compétences requises.
+        Critiques = poids_criticite ≥ ${escapeHtml(critMinLabel())}. Score = moyenne pondérée des compétences requises.
       </div>
     `;
 
@@ -3012,7 +3018,7 @@ function renderDetail(mode) {
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
           ${badge(filterLabel, true)}
-          ${badge("Criticité min: " + CRITICITE_MIN, false)}
+          ${badge("Criticité min: " + critMinLabel(), false)}
         </div>
         <button type="button" class="btn-secondary" id="btnRiskFilterReset" style="margin-left:0;">
           Tout afficher
@@ -3022,7 +3028,7 @@ function renderDetail(mode) {
     : `
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
         ${badge("Vue globale", true)}
-        ${badge("Criticité min: " + CRITICITE_MIN, false)}
+        ${badge("Criticité min: " + critMinLabel(), false)}
       </div>
     `;
 
