@@ -1037,7 +1037,7 @@ button[id$="ModalClose"]:active{
 
 #view-analyse-competences .sb-table thead th{
   text-align:left;
-  font-weight:500;
+  font-weight:300;
   font-size:13px;
   color:#111827;
   padding:12px 14px;

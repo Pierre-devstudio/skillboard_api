@@ -13,6 +13,13 @@ router = APIRouter()
 
 NON_LIE_ID = "__NON_LIE__"
 
+# ======================================================
+# Criticité (score 0–100)
+# ======================================================
+CRITICITE_MIN_DEFAULT = 70   # seuil "compétence critique"
+CRITICITE_MIN_MIN = 0
+CRITICITE_MIN_MAX = 100
+
 
 # ======================================================
 # Models
@@ -937,7 +944,7 @@ def get_analyse_previsions_critiques_impactees_detail(
     id_contact: str,
     horizon_years: int = Query(default=1, ge=1, le=5),
     id_service: Optional[str] = Query(default=None),
-    criticite_min: int = Query(default=3, ge=0),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
     limit: int = Query(default=200, ge=1, le=2000),
 ):
     try:
@@ -1143,7 +1150,7 @@ def get_analyse_previsions_critiques_modal(
     comp_key: str = Query(..., min_length=1),
     horizon_years: int = Query(default=1, ge=1, le=5),
     id_service: Optional[str] = Query(default=None),
-    criticite_min: int = Query(default=3, ge=1, le=4),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
     limit: int = Query(default=500, ge=50, le=2000),
 ):
     """
@@ -1521,7 +1528,7 @@ def get_analyse_previsions_postes_rouges_detail(
     id_contact: str,
     horizon_years: int = Query(default=1, ge=1, le=5),
     id_service: Optional[str] = Query(default=None),
-    criticite_min: int = Query(default=3, ge=1, le=4),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
     limit: int = Query(default=200, ge=10, le=2000),
 ):
     """
@@ -1750,7 +1757,7 @@ def get_analyse_previsions_postes_rouges_modal(
     id_poste: str = Query(..., min_length=1),
     horizon_years: int = Query(default=1, ge=1, le=5),
     id_service: Optional[str] = Query(default=None),
-    criticite_min: int = Query(default=3, ge=1, le=4),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
     limit_sortants: int = Query(default=500, ge=50, le=2000),
     limit_couverture: int = Query(default=800, ge=50, le=5000),
     limit_voisins: int = Query(default=20, ge=5, le=200),
@@ -2430,7 +2437,7 @@ def get_analyse_risques_detail(
     id_contact: str,
     kpi: str = Query(...),  # "postes-fragiles" | "postes-scope" | "critiques-sans-porteur" | "porteur-unique"
     id_service: Optional[str] = Query(default=None),
-    criticite_min: int = Query(default=3),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
     limit: int = Query(default=50),
 ):
     """
@@ -2877,7 +2884,7 @@ def get_analyse_risques_poste_detail(
     id_contact: str,
     id_poste: str = Query(...),
     id_service: Optional[str] = Query(default=None),
-    criticite_min: int = Query(default=3),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
 ):
     """
     Drilldown "poste fragile":
@@ -3106,7 +3113,7 @@ def get_analyse_matching_poste(
     id_contact: str,
     id_poste: str = Query(...),
     id_service: Optional[str] = Query(default=None),
-    criticite_min: int = Query(default=3, ge=0),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
     limit: int = Query(default=300, ge=1, le=2000),
 ):
     try:
@@ -3365,7 +3372,7 @@ def get_analyse_matching_effectif_detail(
     id_poste: str = Query(...),
     id_effectif: str = Query(...),
     id_service: Optional[str] = Query(default=None),
-    criticite_min: int = Query(default=3, ge=0),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
 ):
     try:
         with get_conn() as conn:
@@ -3686,7 +3693,7 @@ def get_risque_competence_detail(
     id_contact: str,
     id_comp: str = Query(..., description="id_comp OU code compétence"),
     id_service: Optional[str] = Query(default=None),
-    criticite_min: int = Query(default=3, ge=0),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
     limit_postes: int = Query(default=200, ge=1, le=2000),
     limit_porteurs: int = Query(default=300, ge=1, le=2000),
 ):

@@ -385,7 +385,16 @@
 
 
 
-  const CRITICITE_MIN = 3;
+  let _CRITICITE_MIN = null;
+
+  function syncCriticiteMinFromResponse(data) {
+    const v = Number(data?.criticite_min);
+    if (Number.isFinite(v)) _CRITICITE_MIN = v;
+  }
+
+  function getCriticiteMin() {
+    return Number.isFinite(_CRITICITE_MIN) ? _CRITICITE_MIN : null;
+  }
   const _riskDetailCache = new Map();
   let _riskDetailReqSeq = 0;
 
@@ -402,19 +411,19 @@
 
   async function fetchRisquesDetail(portal, kpiKey, id_service, limit = 50) {
     const svc = (id_service || "").trim();
-    const key = `${svc}|${kpiKey}|${CRITICITE_MIN}|${limit}`;
+    const key = `${svc}|${kpiKey}|${limit}`;
     if (_riskDetailCache.has(key)) return _riskDetailCache.get(key);
 
     const qs = buildQueryString({
       kpi: kpiKey,
       id_service: svc || null,
-      criticite_min: CRITICITE_MIN,
       limit: limit
     });
 
     const url = `${portal.apiBase}/skills/analyse/risques/detail/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
 
+    syncCriticiteMinFromResponse(data);
     _riskDetailCache.set(key, data);
     return data;
   }
@@ -424,18 +433,18 @@
 
   async function fetchAnalysePosteDetail(portal, id_poste, id_service) {
     const svc = (id_service || "").trim();
-    const key = `${id_poste}|${svc}|${CRITICITE_MIN}`;
+    const key = `${id_poste}|${svc}`;
     if (_posteDetailCache.has(key)) return _posteDetailCache.get(key);
 
     const qs = buildQueryString({
       id_poste: id_poste,
-      id_service: svc || null,
-      criticite_min: CRITICITE_MIN
+      id_service: svc || null
     });
 
     const url = `${portal.apiBase}/skills/analyse/risques/poste/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
 
+    syncCriticiteMinFromResponse(data);
     _posteDetailCache.set(key, data);
     return data;
   }
@@ -494,21 +503,22 @@
 
   // Détail effectif (drilldown)
   const _matchEffDetailCache = new Map(); // key: id_poste|id_effectif|id_service|crit
+
   async function fetchMatchingEffectifDetail(portal, id_poste, id_effectif, id_service) {
     const svc = (id_service || "").trim();
-    const key = `${id_poste}|${id_effectif}|${svc}|${CRITICITE_MIN}`;
+    const key = `${id_poste}|${id_effectif}|${svc}`;
     if (_matchEffDetailCache.has(key)) return _matchEffDetailCache.get(key);
 
     const qs = buildQueryString({
       id_poste: id_poste,
       id_effectif: id_effectif,
-      id_service: svc || null,
-      criticite_min: CRITICITE_MIN
+      id_service: svc || null
     });
 
     const url = `${portal.apiBase}/skills/analyse/matching/effectif/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
 
+    syncCriticiteMinFromResponse(data);
     _matchEffDetailCache.set(key, data);
     return data;
   }
@@ -665,8 +675,8 @@
     const svc = (id_service || "").toString().trim();
     if (svc) qs.set("id_service", svc);
 
-    const cmin = Number.isFinite(Number(criticite_min)) ? Number(criticite_min) : 3;
-    qs.set("criticite_min", String(cmin));
+    const cmin = Number(criticite_min);
+    if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
 
     const url = `${ctx.apiBase}/skills/analyse/previsions/postes-rouges/modal/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
 
@@ -675,7 +685,9 @@
       const txt = await res.text().catch(() => "");
       throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
     }
-    return await res.json();
+      const data = await res.json();
+      syncCriticiteMinFromResponse(data);
+      return data;
   }
 
 
@@ -1524,11 +1536,13 @@
     if (!comps.length) return [];
 
     // Liste des compétences requises + poids
+    const critMin = Number(data?.criticite_min);
+    const critMinVal = Number.isFinite(critMin) ? critMin : (getCriticiteMin() ?? 0);
     const compReq = comps.map(c => {
       const code = (c.code || c.id_competence || "").toString().trim(); // on privilégie code
       const lvlReq = nivReqToNum(c.niveau_requis);
       const w = Number(c.poids_criticite || 1);
-      const isCrit = w >= CRITICITE_MIN;
+      const isCrit = w >= critMinVal;
       return { code, lvlReq, w, isCrit, raw: c };
     }).filter(x => x.code);
 
@@ -1789,7 +1803,7 @@
 
   async function fetchAnalyseCompetenceDetail(portal, codeOrId, id_service) {
     const svc = (id_service || "").trim();
-    const key = `${codeOrId}|${svc}|${CRITICITE_MIN}`;
+    const key = `${codeOrId}|${svc}`;
     if (_compDetailCache.has(key)) return _compDetailCache.get(key);
 
     const raw = (codeOrId || "").trim();
@@ -1801,8 +1815,7 @@
       code: isCode ? raw : null,
       id_comp: !isCode ? raw : null,          // nom courant côté backend
       id_competence: !isCode ? raw : null,    // alias au cas où
-      id_service: svc || null,
-      criticite_min: CRITICITE_MIN,
+      id_service: svc || null,      
       limit_postes: 500,
       limit_porteurs: 500
     });
@@ -1811,6 +1824,7 @@
     const url = `${portal.apiBase}/skills/analyse/risques/competence/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
 
+    syncCriticiteMinFromResponse(data);
     _compDetailCache.set(key, data);
     return data;
   }
@@ -1938,7 +1952,7 @@
     const porteurs = Array.isArray(data?.porteurs) ? data.porteurs : [];
 
     const scope = (data?.scope?.nom_service || "").trim() || "Tous les services";
-    const critMin = String(data?.criticite_min ?? CRITICITE_MIN);
+    const critMin = String(data?.criticite_min ?? getCriticiteMin() ?? "—");
 
     const postesHtml = postes.length ? `
       <div class="table-wrap" style="margin-top:10px;">
@@ -2048,7 +2062,7 @@
       const sub = `
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
           <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
-          <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(String(data?.criticite_min ?? CRITICITE_MIN))}</span>
+          <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(String(data?.criticite_min ?? getCriticiteMin() ?? "—"))}</span>
         </div>
       `;
 
@@ -2277,7 +2291,7 @@
       <div class="card" style="padding:12px; margin:0;">
         <div class="card-title" style="margin-bottom:6px;">Couverture du poste</div>
         <div class="card-sub" style="margin:0;">
-          Mesure simple basée sur le nombre de porteurs par compétence. Criticité min: <b>${escapeHtml(String(data?.criticite_min ?? CRITICITE_MIN))}</b>
+          Mesure simple basée sur le nombre de porteurs par compétence. Criticité min: <b>${escapeHtml(String(data?.criticite_min ?? getCriticiteMin() ?? "—"))}</b>
         </div>
 
         <div style="margin-top:12px;">
@@ -2289,7 +2303,7 @@
 
         <div class="card" style="padding:12px; margin-top:12px;">
           <div class="card-title" style="margin-bottom:6px;">Focus compétences critiques</div>
-          <div class="card-sub" style="margin:0;">Critiques = criticité ≥ ${escapeHtml(String(data?.criticite_min ?? CRITICITE_MIN))}</div>
+          <div class="card-sub" style="margin:0;">Critiques = criticité ≥ ${escapeHtml(String(data?.criticite_min ?? getCriticiteMin() ?? "—"))}</div>
 
           <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
             <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
@@ -2354,7 +2368,7 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
     const sub = `
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
-        <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(String(data?.criticite_min ?? CRITICITE_MIN))}</span>
+        <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(String(data?.criticite_min ?? getCriticiteMin() ?? "—"))}</span>
         ${focusHtml}
       </div>
     `;
