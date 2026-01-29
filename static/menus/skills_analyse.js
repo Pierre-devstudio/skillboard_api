@@ -2238,7 +2238,7 @@
     const list = showAll ? listAll : listAll.filter(c => Number(c?.poids_criticite) >= critMinVal);
 
     // Style du toggle: même backcolor que "Réinitialiser"
-    const toggleStyle = "background:var(--ui-accent); color:#fff; border-color:var(--ui-accent);";
+    const toggleStyle = "background:var(--reading-accent); color:#fff; border-color:var(--reading-accent);";
     const toggleText = showAll ? "Voir critiques" : "Voir tout";
 
     if (!list.length) {
