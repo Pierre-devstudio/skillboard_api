@@ -1638,7 +1638,7 @@
 
     const list = Array.isArray(candidates) ? candidates : [];
     if (!list.length) {
-      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun candidat détecté (aucun porteur sur les compétences du poste).</div>`;
+      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun candidat détecté (aucun candidat ne possède les compétences du poste).</div>`;
       return;
     }
 
@@ -2042,7 +2042,7 @@
           </tbody>
         </table>
       </div>
-    ` : `<div class="card-sub" style="margin:0;">Aucun porteur.</div>`;
+    ` : `<div class="card-sub" style="margin:0;">Aucune personne.</div>`;
 
     host.innerHTML = `
       <div class="card" style="padding:12px; margin:0;">
@@ -2134,7 +2134,7 @@
   function renderPostePorteurs(porteurs, idPosteAnalyse) {
     const list = Array.isArray(porteurs) ? porteurs : [];
     if (!list.length) {
-      return `<div class="card-sub" style="margin-top:6px; color:#6b7280;">Aucun porteur</div>`;
+      return `<div class="card-sub" style="margin-top:6px; color:#6b7280;">Aucune personne</div>`;
     }
 
     function mapNiveauActuel(raw) {
@@ -2265,7 +2265,7 @@
         </div>
 
         <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-          Couverture = nombre de collaborateurs porteurs de la compétence (dans le périmètre filtré).
+          Couverture = nombre de collaborateurs possédant la compétence (dans le périmètre filtré).
           Le niveau affiché entre parenthèses correspond à <b>niveau_actuel</b>.
         </div>
       </div>
@@ -2314,14 +2314,14 @@
       <div class="card" style="padding:12px; margin:0;">
         <div class="card-title" style="margin-bottom:6px;">Couverture du poste</div>
         <div class="card-sub" style="margin:0;">
-          Mesure simple basée sur le nombre de porteurs par compétence. Criticité min: <b>${escapeHtml(String(data?.criticite_min ?? getCriticiteMin() ?? "—"))}</b>
+          Mesure simple basée sur le nombre de possédant la compétence. Criticité min: <b>${escapeHtml(String(data?.criticite_min ?? getCriticiteMin() ?? "—"))}</b>
         </div>
 
         <div style="margin-top:12px;">
-          ${bar("Compétences couvertes (≥ 1 porteur)", c1, `${c1}/${total} compétences`)}
-          ${bar("Compétences sécurisées (≥ 2 porteurs)", c2, `${c2}/${total} compétences`)}
-          ${bar("Compétences non couvertes (0 porteur)", nc, `${nc}/${total} compétences`)}
-          ${bar("Compétences à dépendance (1 porteur)", u1, `${u1}/${total} compétences`)}
+          ${bar("Compétences couvertes (≥ 1 personne)", c1, `${c1}/${total} compétences`)}
+          ${bar("Compétences sécurisées (≥ 2 personnes)", c2, `${c2}/${total} compétences`)}
+          ${bar("Compétences non couvertes (0 personne)", nc, `${nc}/${total} compétences`)}
+          ${bar("Compétences à dépendance (1 personne)", u1, `${u1}/${total} compétences`)}
         </div>
 
         <div class="card" style="padding:12px; margin-top:12px;">
@@ -2338,7 +2338,7 @@
               <div class="value">${critNc}</div>
             </div>
             <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
-              <div class="label">Critiques porteur unique</div>
+              <div class="label">Critiques à couverture unique</div>
               <div class="value">${critU1}</div>
             </div>
           </div>
@@ -2856,15 +2856,15 @@ function renderDetail(mode) {
                     <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Poste</th>
                     <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:220px;">Service</th>
                     <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:130px;">Fragiles (horizon)</th>
-                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:140px;">Sans porteur</th>
-                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:140px;">Porteur unique</th>
+                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:140px;">Sans couverture</th>
+                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:140px;">Couverture unique</th>
                     <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:140px;">Prochaine sortie</th>
                   </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
               </table>
               <div class="card-sub" style="margin-top:8px;">
-                Astuce lecture: “Fragiles” = nb de compétences critiques qui tombent à 0 ou 1 porteur à l’horizon.
+                Astuce lecture: “Fragiles” = nb de compétences critiques qui tombent à 0 ou 1 personne la possédant à l’horizon.
               </div>
             </div>
           `;
@@ -2973,10 +2973,10 @@ function renderDetail(mode) {
                     </div>
                   </td>
                   <td data-focus="poste">${escapeHtml(svc)}</td>
-                  <td class="col-center" data-focus="critiques-sans-porteur" title="Voir les compétences critiques sans porteur">
+                  <td class="col-center" data-focus="critiques-sans-porteur" title="Voir les compétences critiques sans couverture">
                     ${a ? badge(String(a), true) : badge("0", false)}
                   </td>
-                  <td class="col-center" data-focus="porteur-unique" title="Voir les compétences critiques à porteur unique">
+                  <td class="col-center" data-focus="porteur-unique" title="Voir les compétences critiques à couverture unique">
                     ${b ? badge(String(b), true) : badge("0", false)}
                   </td>
                   <td class="col-center" data-focus="total-fragiles" title="Voir la synthèse de couverture du poste">
@@ -3424,7 +3424,7 @@ function renderDetail(mode) {
             </div>
 
             <div class="card-sub" style="margin-top:10px;">
-              <b>Lecture RH:</b> pertes prévues de porteurs sur une compétence critique, à horizon ${escapeHtml(String(horizon))} an${horizon > 1 ? "s" : ""}.
+              <b>Lecture RH:</b> pertes prévues de couverture sur une compétence critique, à horizon ${escapeHtml(String(horizon))} an${horizon > 1 ? "s" : ""}.
               L’objectif est de décider: transfert de savoir, formation ciblée, mobilité, recrutement.
             </div>
           </div>
@@ -3434,7 +3434,7 @@ function renderDetail(mode) {
       // Restants
       if (paneRest) {
         if (!restants.length) {
-          paneRest.innerHTML = `<div class="card-sub" style="margin:0;">Aucun porteur restant.</div>`;
+          paneRest.innerHTML = `<div class="card-sub" style="margin:0;">Aucune couverture restante.</div>`;
         } else {
           const rows = restants.map(r => {
             const full = (r.full || `${(r.prenom || r.prenom_effectif || "").trim()} ${(r.nom || r.nom_effectif || "").trim()}`.trim() || "—");
@@ -4318,7 +4318,7 @@ function bindOnce(portal) {
 
       // Porteurs
       if (!porteurs.length) {
-        panePorteurs.innerHTML = `<div class="card-sub" style="margin:0;">Aucun porteur retourné.</div>`;
+        panePorteurs.innerHTML = `<div class="card-sub" style="margin:0;">Aucune couverture retournée.</div>`;
       } else {
         const rows = porteurs.map(p => {
           const nom = (p.full || `${p.prenom || ""} ${p.nom || ""}`).trim() || "—";
@@ -4466,10 +4466,10 @@ function bindOnce(portal) {
 
     function _decisionText(futureFragiles, futureSans, futureUnique) {
       if (futureSans > 0) {
-        return "Décision RH: risque de rupture (sans porteur). Priorité: sécurisation immédiate (recrutement / mobilité / externalisation) + plan de transfert.";
+        return "Décision RH: risque de rupture (sans couverture). Priorité: sécurisation immédiate (recrutement / mobilité / externalisation) + plan de transfert.";
       }
       if (futureUnique > 0) {
-        return "Décision RH: dépendance forte (porteur unique). Priorité: double portage + transfert de savoir + montée en compétences d’un binôme.";
+        return "Décision RH: dépendance forte (couverture unique). Priorité: double portage + transfert de savoir + montée en compétences d’un binôme.";
       }
       if (futureFragiles > 0) {
         return "Décision RH: fragilité à court terme. Priorité: plan de montée en compétences, ajustement staffing, prévention des sorties.";
@@ -4608,12 +4608,12 @@ function bindOnce(portal) {
               <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                 <span class="sb-badge">${escapeHtml(svc)}</span>
                 <span class="sb-badge">Fragiles (horizon) : ${escapeHtml(String(fFrag || 0))}</span>
-                <span class="sb-badge">Sans porteur : ${escapeHtml(String(fSans || 0))}</span>
-                <span class="sb-badge">Porteur unique : ${escapeHtml(String(fUniq || 0))}</span>
+                <span class="sb-badge">Sans couverture : ${escapeHtml(String(fSans || 0))}</span>
+                <span class="sb-badge">Couverture unique : ${escapeHtml(String(fUniq || 0))}</span>
               </div>
 
               <div class="card-sub" style="margin-top:10px;">
-                <b>Lecture RH:</b> le poste bascule en rouge car des compétences critiques perdent des porteurs sur l’horizon.
+                <b>Lecture RH:</b> le poste bascule en rouge car des compétences critiques perdent leur couverture sur l’horizon.
                 Objectif: sécuriser (double portage, transfert, formation) ou décider (mobilité/recrutement).
               </div>
 
@@ -4678,7 +4678,7 @@ function bindOnce(portal) {
         // --- Sortants
         if (paneOut) {
           if (!sortants.length) {
-            paneOut.innerHTML = `<div class="card-sub" style="margin:0;">Aucun porteur à risque remonté.</div>`;
+            paneOut.innerHTML = `<div class="card-sub" style="margin:0;">Aucune couverture à risque remonté.</div>`;
           } else {
             const rows = sortants.map(r => {
               const full = (r.full || `${(r.prenom || r.prenom_effectif || "").trim()} ${(r.nom || r.nom_effectif || "").trim()}`.trim() || "—");
