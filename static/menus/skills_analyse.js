@@ -437,6 +437,11 @@
   const _posteDetailCache = new Map();
   let _posteDetailReqSeq = 0;
 
+  // Modal détail poste (risques) — filtre compétences par criticité
+  let _analysePosteShowAllCompetences = false;  // false = "voir critiques" (filtré) ; true = "voir tout"
+  let _analysePosteLastData = null;             // cache du dernier payload du poste pour re-render sans refetch
+
+
   async function fetchAnalysePosteDetail(portal, id_poste, id_service) {
     const svc = (id_service || "").trim();
     const key = `${id_poste}|${svc}`;
@@ -2220,12 +2225,39 @@
     const host = byId("analysePosteTabCompetences");
     if (!host) return;
 
-    const list = Array.isArray(data?.competences) ? data.competences : [];
+    // Cache pour re-render sans refetch (toggle)
+    _analysePosteLastData = data || null;
+
+    const listAll = Array.isArray(data?.competences) ? data.competences : [];
+
+    const critMin = Number(data?.criticite_min);
+    const critMinVal = Number.isFinite(critMin) ? critMin : 0;
+
+    // Par défaut: on montre uniquement les compétences >= criticité min
+    const showAll = !!_analysePosteShowAllCompetences;
+    const list = showAll ? listAll : listAll.filter(c => Number(c?.poids_criticite) >= critMinVal);
+
+    // Style du toggle: même backcolor que "Réinitialiser"
+    const toggleStyle = "background:var(--ui-accent); color:#fff; border-color:var(--ui-accent);";
+    const toggleText = showAll ? "Voir critiques" : "Voir tout";
 
     if (!list.length) {
+      const msg = showAll
+        ? "Aucune compétence trouvée pour ce poste."
+        : `Aucune compétence critique (criticité ≥ ${critMinVal}%).`;
+
       host.innerHTML = `
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-sub" style="margin:0;">Aucune compétence trouvée pour ce poste.</div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;">
+            <div class="card-title" style="margin:0;">Compétences requises</div>
+            <button type="button"
+                    id="btnAnalysePosteCritToggle"
+                    class="btn-secondary"
+                    style="${toggleStyle} padding:6px 10px; font-weight:700;">
+              ${toggleText}
+            </button>
+          </div>
+          <div class="card-sub" style="margin:0;">${escapeHtml(msg)}</div>
         </div>
       `;
       return;
@@ -2233,7 +2265,15 @@
 
     host.innerHTML = `
       <div class="card" style="padding:12px; margin:0;">
-        <div class="card-title" style="margin-bottom:6px;">Compétences requises</div>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;">
+          <div class="card-title" style="margin:0;">Compétences requises</div>
+          <button type="button"
+                  id="btnAnalysePosteCritToggle"
+                  class="btn-secondary"
+                  style="${toggleStyle} padding:6px 10px; font-weight:700;">
+            ${toggleText}
+          </button>
+        </div>
 
         <div class="table-wrap" style="margin-top:10px;">
           <table class="sb-table">
@@ -2375,6 +2415,10 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
     if (k === "total-fragiles") return "Fragilités (0 ou 1 personne au niveau attendu)";
     return "";
   }
+
+  // Reset filtre compétences à chaque ouverture du modal (par défaut: critiques uniquement)
+  _analysePosteShowAllCompetences = false;
+  _analysePosteLastData = null;
 
   openAnalysePosteModal(
     "Détail poste",
@@ -3850,6 +3894,17 @@ function bindOnce(portal) {
 
   if (modalPoste) {
     modalPoste.addEventListener("click", (e) => {
+
+      // Toggle "Voir tout / Voir critiques" (table compétences du poste)
+      const btnToggle = e.target && e.target.closest ? e.target.closest("#btnAnalysePosteCritToggle") : null;
+      if (btnToggle) {
+        _analysePosteShowAllCompetences = !_analysePosteShowAllCompetences;
+        if (_analysePosteLastData) {
+          renderAnalysePosteCompetencesTab(_analysePosteLastData);
+        }
+        return;
+      }
+
       if (e.target === modalPoste) closeAnalysePosteModal();
     });
   }
