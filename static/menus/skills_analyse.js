@@ -2950,7 +2950,12 @@ function renderDetail(mode) {
           </thead>
           <tbody>
             ${list.map(r => {
-              const poste = `${(r.codif_poste || "").trim()}${r.codif_poste ? " — " : ""}${(r.intitule_poste || "").trim()}`.trim() || "—";
+              const intitule = (r.intitule_poste || "").trim() || "—";
+
+              const codifClient = (r.codif_client || "").trim();
+              const codifPoste  = (r.codif_poste || "").trim();
+              const codeAffiche = (codifClient !== "") ? codifClient : codifPoste;
+
               const svc = (r.nom_service || "").trim() || "—";
 
               const a = Number(r.nb_critiques_sans_porteur || 0);
@@ -2959,7 +2964,14 @@ function renderDetail(mode) {
 
               return `
                 <tr class="risk-poste-row" data-id_poste="${escapeHtml(r.id_poste || "")}" style="cursor:pointer;">
-                  <td data-focus="poste" style="font-weight:700;">${escapeHtml(poste)}</td>
+                  <td data-focus="poste">
+                    <div style="display:flex; gap:8px; align-items:center; min-width:0;">
+                      <span class="sb-badge sb-badge-poste-code">${escapeHtml(codeAffiche || "—")}</span>
+                      <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${escapeHtml(intitule)}
+                      </span>
+                    </div>
+                  </td>
                   <td data-focus="poste">${escapeHtml(svc)}</td>
                   <td class="col-center" data-focus="critiques-sans-porteur" title="Voir les compétences critiques sans porteur">
                     ${a ? badge(String(a), true) : badge("0", false)}

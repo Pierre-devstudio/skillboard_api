@@ -1098,6 +1098,23 @@ button[id$="ModalClose"]:active{
   border-radius: 2px;
 }
 
+/* Analyse compétences — badge code poste */
+#view-analyse-competences .sb-badge-poste-code{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:2px 8px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+  background: rgb(62,190,73);
+  color:#fff;
+  border:1px solid rgb(62,190,73);
+  line-height:1.2;
+  white-space:nowrap;
+}
+
+
 /* ======================================================
    Layout shell: sidebar fixe + scroll contenu (pas la page)
    ====================================================== */
