@@ -826,6 +826,11 @@ button[id$="ModalClose"]:active{
   background:#ffffff;
 }
 
+/* Modal analyse poste — titre */
+#modalAnalysePoste #analysePosteModalTitleText{
+  font-weight: 500;
+}
+
 /* ======================================================
    Modal Collaborateur: onglets (Identification / Compétences / Certifications)
    ====================================================== */
