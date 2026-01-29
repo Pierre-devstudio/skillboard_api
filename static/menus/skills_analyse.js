@@ -1611,7 +1611,7 @@
     return out;
   }
 
-  function renderMatchingCandidates(id_poste_selected, posteLabel, candidates, view) {
+  function renderMatchingCandidates(id_poste_selected, poste, candidates, view) {
     const host = byId("matchResult");
     if (!host) return;
 
@@ -1767,10 +1767,9 @@
     if (seqGuard && seqGuard !== _matchReqSeq) return;
 
     const poste = data?.poste || {};
-    const posteLabel = `${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
 
     const cands = computeCandidatesFromPosteDetail(data);
-    renderMatchingCandidates(id_poste, posteLabel, cands, getMatchView());
+    renderMatchingCandidates(id_poste, poste, cands, getMatchView());
   }
 
     // ==============================
