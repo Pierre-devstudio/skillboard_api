@@ -2417,7 +2417,7 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
       </div>
     `;
 
-    oopenAnalysePosteModal(posteIntitule || "Détail poste", sub);
+    openAnalysePosteModal(posteIntitule || "Détail poste", sub);
 
     // Injecte le code dans le badge du titre si la structure HTML existe
     const tCode = byId("analysePosteModalTitleCode");
