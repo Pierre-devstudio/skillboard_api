@@ -2354,9 +2354,9 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
   if (modal) modal.setAttribute("data-focus", focus);
 
   function focusLabel(k) {
-    if (k === "critiques-sans-porteur") return "Critiques sans porteur";
-    if (k === "porteur-unique") return "Porteur unique";
-    if (k === "total-fragiles") return "Fragilités (0 ou 1 porteur)";
+    if (k === "critiques-sans-porteur") return "Compétences critiques non couvertes";
+    if (k === "porteur-unique") return "Compétences critiques à couverture unique";
+    if (k === "total-fragiles") return "Fragilités (0 ou 1 personne au niveau attendu)";
     return "";
   }
 
@@ -2900,13 +2900,13 @@ function renderDetail(mode) {
 
   if (rf === "postes-fragiles") {
     filterLabel = "Postes fragiles";
-    filterSub = "Postes à sécuriser en priorité (critiques avec couverture faible).";
+    filterSub = "Postes à sécuriser en priorité (Contenant des compétences critiques avec couverture faible).";
   } else if (rf === "critiques-sans-porteur") {
-    filterLabel = "Critiques sans porteur";
-    filterSub = "Compétences critiques requises mais non portées (dans le périmètre).";
+    filterLabel = "Compétences critiques non couvertes";
+    filterSub = "Compétences requises mais non couvertes (dans le périmètre).";
   } else if (rf === "porteur-unique") {
-    filterLabel = "Porteur unique";
-    filterSub = "Compétences critiques portées par une seule personne (dépendance).";
+    filterLabel = "Compétences critiques à couverture unique";
+    filterSub = "Compétences critiques couvertes par une seule personne (dépendance).";
   }
 
   if (sub) sub.textContent = filterSub;
@@ -2942,8 +2942,8 @@ function renderDetail(mode) {
             <tr>
               <th>Poste</th>
               <th style="width:200px;">Service</th>
-              <th class="col-center" style="width:160px;">Critiques sans porteur</th>
-              <th class="col-center" style="width:140px;">Porteur unique</th>
+              <th class="col-center" style="width:160px;">Critiques non couvertes</th>
+              <th class="col-center" style="width:140px;">Couverture unique</th>
               <th class="col-center" style="width:140px;">Total fragiles</th>
             </tr>
           </thead>
@@ -3125,14 +3125,14 @@ function renderDetail(mode) {
         </div>
 
         <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">Critiques sans porteur</div>
-          <div class="card-sub" style="margin:0;">Compétences critiques requises mais non portées.</div>
+          <div class="card-title" style="margin-bottom:6px;">Compétences critiques non couvertes</div>
+          <div class="card-sub" style="margin:0;">Compétences critiques requises mais non couvertes.</div>
           ${renderTableCompetences(itemsB)}
         </div>
 
         <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">Porteur unique</div>
-          <div class="card-sub" style="margin:0;">Compétences critiques portées par une seule personne.</div>
+          <div class="card-title" style="margin-bottom:6px;">Compétences critiques à couverture unique</div>
+          <div class="card-sub" style="margin:0;">Compétences critiques couvertes par une seule personne.</div>
           ${renderTableCompetences(itemsC)}
         </div>
       `;
