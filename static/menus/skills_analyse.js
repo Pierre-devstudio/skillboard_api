@@ -1726,9 +1726,18 @@
 
     host.innerHTML = `
       <div class="card-sub" style="margin:0 0 8px 0;">
-        Poste :
-        ${badge(escapeHtml(codeAffiche || "—"), "#111827", "color-mix(in srgb, var(--ui-accent) 18%, #fff)")}
-        <b>${escapeHtml(posteIntitule || "—")}</b>
+        <span>Poste :</span>
+        <span style="display:inline-flex; align-items:center; justify-content:center;
+                     padding:2px 8px; border-radius:999px;
+                     font-size:12px; font-weight:800; line-height:1.2;
+                     color:#111827;
+                     background:color-mix(in srgb, var(--ui-accent) 18%, #fff);
+                     border:1px solid color-mix(in srgb, var(--ui-accent) 55%, #fff);">
+          ${escapeHtml(((poste?.codif_client || "").trim() || (poste?.codif_poste || "").trim() || "—"))}
+        </span>
+        <b style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          ${escapeHtml(((poste?.intitule_poste || "").trim() || "—"))}
+        </b>
       </div>
 
       <div class="table-wrap" style="margin-top:10px;">
