@@ -1698,17 +1698,28 @@
     }
 
     const MATCH_LEGEND_HTML = `
-      <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:center; margin-top:10px;">
-        <div style="display:flex; align-items:center; gap:6px;">
+    <div style="display:flex; flex-direction:column; gap:6px; margin-top:10px;">
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <span style="font-size:12px; color:#6b7280;">Badges (gauche / droite) :</span>
+
+        <span style="display:inline-flex; align-items:center; gap:6px;">
           <span style="width:12px; height:12px; border-radius:3px; background:#ef4444; border:1px solid rgba(0,0,0,.12);"></span>
-          <span style="font-size:12px; color:#6b7280;">Manquantes</span>
-        </div>
-        <div style="display:flex; align-items:center; gap:6px;">
+          <span style="font-size:12px; color:#6b7280;">Compétences manquantes</span>
+        </span>
+
+        <span style="font-size:12px; color:#9ca3af;">/</span>
+
+        <span style="display:inline-flex; align-items:center; gap:6px;">
           <span style="width:12px; height:12px; border-radius:3px; background:#f59e0b; border:1px solid rgba(0,0,0,.12);"></span>
-          <span style="font-size:12px; color:#6b7280;">À renforcer</span>
-        </div>
+          <span style="font-size:12px; color:#6b7280;">Compétences à renforcer</span>
+        </span>
       </div>
-    `;
+
+      <div style="font-size:12px; color:#6b7280;">
+        Compétence critique : compétence indispensable à la tenue du poste, avec un impact fort sur le résultat et/ou la sécurité.
+      </div>
+    </div>
+  `;
 
     const headerTitle = (v === "titulaire") ? "Adéquation au poste (titulaire" + (titulairesAll.length > 1 ? "s" : "") + ")" : "Top candidats (hors titulaires)";
     const emptyText = (v === "titulaire") ? "Aucun titulaire détecté sur ce poste" : "Aucun candidat (hors titulaires)";
@@ -1766,9 +1777,14 @@
             <tr>
               <th>Personne</th>
               <th style="width:180px;">Service</th>
-              <th class="col-center" style="width:110px;">Score</th>
-              <th class="col-center" style="width:140px;">Critiques</th>
-              <th class="col-center" style="width:140px;">Écarts</th>
+              <th class="col-center" style="width:110px;"
+                  title="Adéquation globale au poste (synthèse des compétences requises).">Score</th>
+
+              <th class="col-center" style="width:140px;"
+                  title="Nombre de compétences critiques requises : manquantes / à renforcer.">Critiques</th>
+
+              <th class="col-center" style="width:140px;"
+                  title="Nombre d’écarts sur compétences critiques vs niveau attendu : manquantes / à renforcer.">Écarts</th>
             </tr>
           </thead>
           <tbody>
@@ -1781,7 +1797,7 @@
       ${MATCH_LEGEND_HTML}
 
       <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-        Critiques = poids_criticite ≥ ${escapeHtml(critMinLabel())}. Score = moyenne pondérée des compétences requises.
+        Seuil “compétence critique” : criticité ≥ ${escapeHtml(typeof critMinLabel === "function" ? critMinLabel() : "—")}%.
       </div>
     `;
 
@@ -2440,7 +2456,7 @@ function renderDetail(mode) {
   // MATCHING (MVP)
   // -----------------------
   if (mode === "matching") {
-    if (title) title.textContent = "Matching poste-porteur";
+    if (title) title.textContent = "Matching";
     if (sub) sub.textContent = "Top candidats internes par poste (score pondéré niveau + criticité).";
 
     if (typeof setActiveMatchKpi === "function") setActiveMatchKpi(getMatchView());

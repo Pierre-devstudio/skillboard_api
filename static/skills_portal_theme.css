@@ -1047,6 +1047,7 @@ button[id$="ModalClose"]:active{
 }
 
 #view-analyse-competences .sb-table tbody td{
+  font-size:12px;
   padding:12px 14px;
   vertical-align:middle;
   border-bottom:1px solid #f3f4f6;
