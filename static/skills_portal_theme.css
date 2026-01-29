@@ -772,8 +772,8 @@ button[id$="ModalClose"]:active{
 
 #view-analyse-competences .sb-seg.sb-seg--match.is-active{
   border-color: var(--ui-accent);
-  background: color-mix(in srgb, var(--ui-accent) 12%, #fff);
-  color: #111827;
+  background: var(--ui-accent);
+  color: #ffffff;
 }
 
 #view-analyse-competences .sb-seg.sb-seg--match:focus{
