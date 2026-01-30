@@ -2141,12 +2141,14 @@
     // Visuel simple sans ajouter de CSS
     if (btnA) {
       btnA.style.borderColor = isA ? "var(--accent)" : "#d1d5db";
-      btnA.style.background = isA ? "color-mix(in srgb, var(--accent) 10%, #ffffff)" : "#ffffff";
+      btnA.style.background = isA ? "var(--accent)" : "#ffffff";
+      btnA.style.color = isA ? "#ffffff" : "#111827";
       btnA.style.fontWeight = isA ? "700" : "600";
     }
     if (btnB) {
       btnB.style.borderColor = !isA ? "var(--accent)" : "#d1d5db";
-      btnB.style.background = !isA ? "color-mix(in srgb, var(--accent) 10%, #ffffff)" : "#ffffff";
+      btnB.style.background = !isA ? "var(--accent)" : "#ffffff";
+      btnB.style.color = !isA ? "#ffffff" : "#111827";
       btnB.style.fontWeight = !isA ? "700" : "600";
     }
   }
