@@ -3097,7 +3097,16 @@ function renderDetail(mode) {
               <th>Poste</th>
               <th style="width:180px;">Service</th>
 
-              <th class="col-center" style="width:220px;">Indice de fragilité</th>
+              <th class="col-center" style="width:220px;">
+                <span class="sb-th-with-tip">
+                  <span>Indice<br>de fragilité</span>
+                  <span class="sb-iinfo"
+                        data-sbtip="fragility-index"
+                        tabindex="0"
+                        role="button"
+                        aria-label="Informations sur l'indice de fragilité">i</span>
+                </span>
+              </th>
 
               <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;"
                   title="Nombre de compétences critiques non couvertes">
@@ -3307,44 +3316,7 @@ function renderDetail(mode) {
         ${buildResetHtml()}
 
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title sb-risk-title" style="margin-bottom:6px; display:flex; align-items:center; gap:8px;">
-            <span>Postes fragiles</span>
-
-            <span class="sb-tip" tabindex="0" aria-label="Informations sur l'indice de fragilité">
-              <span class="sb-tip-ico">i</span>
-
-              <span class="sb-tip-box">
-                <div class="sb-tip-title">Indice de fragilité</div>
-
-                <div class="sb-tip-mini">
-                  <b>Formule :</b> Indice = 100 × (1 − (1−0,85)^N0 × (1−0,60)^N1 × (1−0,25)^N2)
-                </div>
-
-                <div class="sb-tip-sep"></div>
-
-                <div class="sb-tip-line">
-                  <span class="sb-tip-dot sb-tip-dot--r"></span>
-                  <span><b>N0</b> : critiques non couvertes (poids 0,85)</span>
-                </div>
-
-                <div class="sb-tip-line">
-                  <span class="sb-tip-dot sb-tip-dot--y"></span>
-                  <span><b>N1</b> : critiques à couverture unique (poids 0,60)</span>
-                </div>
-
-                <div class="sb-tip-line">
-                  <span class="sb-tip-dot sb-tip-dot--g"></span>
-                  <span><b>N2</b> : critiques fragiles hors 0/1 (poids 0,25)</span>
-                </div>
-
-                <div class="sb-tip-sep"></div>
-
-                <div class="sb-tip-mini">
-                  Lecture: plus l’indice est élevé, plus le poste est exposé à un risque de rupture (dépendance / manque de porteurs).
-                </div>
-              </span>
-            </span>
-          </div>
+          <div class="card-title" style="margin-bottom:6px;">Postes fragiles</div>
 
           <div class="card-sub" style="margin:0;">Top postes à sécuriser (critiques avec couverture faible).</div>
           ${renderTablePostes(itemsA)}
@@ -4084,6 +4056,129 @@ function bindOnce(portal) {
     if (m && m.classList.contains("show")) closeAnalysePrevCritModal();
   });
 
+
+  // ==============================
+  // Tooltip "i" (Analyse) : portail hors table (#sbTipPortal)
+  // ==============================
+  let _sbTipAnchor = null;
+
+  function ensureSbTipPortal() {
+    let el = document.getElementById("sbTipPortal");
+    if (el) return el;
+    el = document.createElement("div");
+    el.id = "sbTipPortal";
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function sbTipHtml(key) {
+    // IMPORTANT: on colle ici la formule réelle utilisée côté UI
+    if (key === "fragility-index") {
+      return `
+        <div class="sb-tip-title">Indice de fragilité</div>
+
+        <div class="sb-tip-mini" style="margin-bottom:8px;">
+          Score pondéré basé sur les 3 compteurs “critiques”.
+        </div>
+
+        <div class="sb-tip-line">
+          <span class="sb-tip-dot sb-tip-dot--r"></span>
+          <span><b>Critique non couverte</b> = le plus pénalisant</span>
+        </div>
+        <div class="sb-tip-line">
+          <span class="sb-tip-dot sb-tip-dot--y"></span>
+          <span><b>Critique à couverture unique</b> = dépendance</span>
+        </div>
+        <div class="sb-tip-line">
+          <span class="sb-tip-dot sb-tip-dot--g"></span>
+          <span><b>Total fragiles</b> = fragilités restantes</span>
+        </div>
+
+        <div class="sb-tip-sep"></div>
+
+        <div class="sb-tip-mini">
+          <b>Formule (UI)</b> : Indice = (3 × Non couvertes) + (2 × Couverture unique) + (1 × Total fragiles)
+        </div>
+      `;
+    }
+
+    return `<div class="sb-tip-title">Info</div><div class="sb-tip-mini">Aucune aide définie.</div>`;
+  }
+
+  function hideSbTipPortal() {
+    const el = document.getElementById("sbTipPortal");
+    if (!el) return;
+    el.style.display = "none";
+    _sbTipAnchor = null;
+  }
+
+  function positionSbTipPortal(el, anchorEl) {
+    const pad = 12;
+    const gap = 8;
+    const r = anchorEl.getBoundingClientRect();
+
+    // mesurer sans flash
+    el.style.left = "0px";
+    el.style.top = "0px";
+    el.style.visibility = "hidden";
+    el.style.display = "block";
+
+    const w = el.offsetWidth || 320;
+    const h = el.offsetHeight || 160;
+
+    // position par défaut: sous le bouton
+    let left = r.left;
+    let top = r.bottom + gap;
+
+    // clamp horizontal
+    left = Math.max(pad, Math.min(left, window.innerWidth - w - pad));
+
+    // si ça déborde en bas, on ouvre au-dessus
+    if (top + h > window.innerHeight - pad) {
+      top = r.top - h - gap;
+    }
+    top = Math.max(pad, Math.min(top, window.innerHeight - h - pad));
+
+    el.style.left = `${Math.round(left)}px`;
+    el.style.top = `${Math.round(top)}px`;
+    el.style.visibility = "visible";
+  }
+
+  function toggleSbTip(anchorEl) {
+    const el = ensureSbTipPortal();
+
+    // toggle si on reclique le même "i"
+    if (_sbTipAnchor === anchorEl && el.style.display === "block") {
+      hideSbTipPortal();
+      return;
+    }
+
+    const key = (anchorEl.getAttribute("data-sbtip") || "").trim();
+    el.innerHTML = sbTipHtml(key);
+
+    _sbTipAnchor = anchorEl;
+    positionSbTipPortal(el, anchorEl);
+  }
+
+  // fermeture: clic dehors / scroll / resize / ESC
+  document.addEventListener("pointerdown", (ev) => {
+    const el = document.getElementById("sbTipPortal");
+    if (!el || el.style.display !== "block") return;
+
+    const t = ev.target;
+    if (t === el || el.contains(t)) return;
+    if (_sbTipAnchor && (t === _sbTipAnchor || _sbTipAnchor.contains(t))) return;
+
+    hideSbTipPortal();
+  }, true);
+
+  window.addEventListener("scroll", hideSbTipPortal, true);
+  window.addEventListener("resize", hideSbTipPortal);
+
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") hideSbTipPortal();
+  });
+
   // ==============================
   // Click délégué global (survit aux rerender)
   // ==============================
@@ -4091,6 +4186,23 @@ function bindOnce(portal) {
   if (!analyseBody) return;
     
   analyseBody.addEventListener("click", async (ev) => {
+    // ------------------------------
+    // Tooltip "i" (Indice de fragilité) : portail hors table
+    // ------------------------------
+    const infoBtn = ev.target.closest(".sb-iinfo");
+    if (infoBtn) {
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      // sécurité: si l'attribut n'existe pas encore, on le force
+      if (!infoBtn.getAttribute("data-sbtip")) {
+        infoBtn.setAttribute("data-sbtip", "fragility-index");
+      }
+
+      toggleSbTip(infoBtn);
+      return;
+    }
+
     // 0) pas de portail => pas de drilldown
     const p = portal || _portalref;
     if (!p) return;

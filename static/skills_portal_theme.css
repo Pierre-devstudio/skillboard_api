@@ -1059,19 +1059,8 @@ button[id$="ModalClose"]:active{
   gap: 8px;
 }
 
-#view-analyse-competences .sb-tip{
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  cursor: default;
-  user-select: none;
-  outline: none;
-}
-
-#view-analyse-competences .sb-tip-ico{
+/* Analyse — icône "i" cliquable (déclenche #sbTipPortal via JS) */
+#view-analyse-competences .sb-iinfo{
   width: 18px;
   height: 18px;
   border-radius: 999px;
@@ -1083,12 +1072,25 @@ button[id$="ModalClose"]:active{
   color: #111827;
   border: 1px solid #e5e7eb;
   background: #ffffff;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
 }
 
-#view-analyse-competences .sb-tip-box{
-  position: absolute;
-  right: 0;
-  top: 24px;
+#view-analyse-competences .sb-iinfo:hover{
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+#view-analyse-competences .sb-iinfo:focus{
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* Popover portail (hors table) */
+#sbTipPortal{
+  position: fixed;
+  display: none;
+  z-index: 99999;
   width: 320px;
   max-width: min(360px, calc(100vw - 24px));
   background: #111827;
@@ -1096,51 +1098,37 @@ button[id$="ModalClose"]:active{
   border-radius: 12px;
   padding: 10px 12px;
   box-shadow: 0 10px 30px rgba(0,0,0,.25);
-  display: none;
-  z-index: 9999;
   text-align: left;
   white-space: normal;
-  overflow: visible;
 }
 
-#view-analyse-competences .sb-tip:hover .sb-tip-box,
-#view-analyse-competences .sb-tip:focus .sb-tip-box{
-  display: block;
-}
-
-
-#view-analyse-competences .sb-tip-title{
+#sbTipPortal .sb-tip-title{
   font-size: 12px;
   font-weight: 900;
   margin-bottom: 8px;
 }
-
-#view-analyse-competences .sb-tip-line{
+#sbTipPortal .sb-tip-line{
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 12px;
   margin: 4px 0;
 }
-
-#view-analyse-competences .sb-tip-dot{
+#sbTipPortal .sb-tip-dot{
   width: 10px;
   height: 10px;
   border-radius: 999px;
   display: inline-block;
 }
-
-#view-analyse-competences .sb-tip-dot--r{ background: var(--accent); }
-#view-analyse-competences .sb-tip-dot--y{ background: #f59e0b; }
-#view-analyse-competences .sb-tip-dot--g{ background: #16a34a; }
-
-#view-analyse-competences .sb-tip-sep{
+#sbTipPortal .sb-tip-dot--r{ background: var(--accent); }
+#sbTipPortal .sb-tip-dot--y{ background: #f59e0b; }
+#sbTipPortal .sb-tip-dot--g{ background: #16a34a; }
+#sbTipPortal .sb-tip-sep{
   height: 1px;
   background: rgba(255,255,255,.15);
   margin: 8px 0;
 }
-
-#view-analyse-competences .sb-tip-mini{
+#sbTipPortal .sb-tip-mini{
   font-size: 11px;
   color: rgba(255,255,255,.82);
   margin: 2px 0;
@@ -1957,50 +1945,6 @@ body{
   font-size: 11px;
   color: rgba(255,255,255,.82);
   margin: 2px 0;
-}
-
-/* Tooltip "i" : anti-coupure écran (flip up + contraintes viewport) */
-/* ---- Analyse — Tooltip "i" : pas de scrollbars, pas de découpe ---- */
-#view-analyse-competences .sb-tip-host{
-  overflow-x: auto;   /* on garde le scroll horizontal du tableau */
-  overflow-y: visible;/* mais on autorise le tooltip à dépasser en vertical */
-  position: relative; /* repère pour les z-index */
-}
-
-/* En analyse: tooltip au-dessus, sans overflow interne (sinon tu revois la barre) */
-#view-analyse-competences .sb-tip-box{
-  top: auto !important;
-  bottom: 24px !important;     /* s'ouvre au-dessus du i */
-  width: 280px !important;
-  max-width: 280px !important;
-  max-height: none !important;
-  overflow: visible !important; /* supprime les scrollbars internes */
-  white-space: normal !important;/* wrap du texte */
-  z-index: 9999 !important;
-}
-
-#view-dashboard .sb-tip.is-open .sb-tip-box,
-#view-analyse-competences .sb-tip.is-open .sb-tip-box{
-  display: block;
-}
-
-#view-dashboard .sb-tip.is-measuring .sb-tip-box,
-#view-analyse-competences .sb-tip.is-measuring .sb-tip-box{
-  visibility: hidden;
-}
-
-#view-dashboard .sb-tip.is-up .sb-tip-box,
-#view-analyse-competences .sb-tip.is-up .sb-tip-box{
-  top: auto;
-  bottom: 24px; /* ouvre au-dessus du i */
-}
-
-/* Empêche le popover de dépasser l’écran (et ajoute un scroll si besoin) */
-#view-dashboard .sb-tip-box,
-#view-analyse-competences .sb-tip-box{
-  max-width: min(360px, calc(100vw - 24px));
-  max-height: min(320px, calc(100vh - 32px));
-  overflow: auto;
 }
 
 /* (optionnel) un peu d’air dans la tuile */
