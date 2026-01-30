@@ -1955,6 +1955,31 @@ body{
   margin: 2px 0;
 }
 
+/* Tooltip "i" : anti-coupure écran (flip up + contraintes viewport) */
+#view-dashboard .sb-tip.is-open .sb-tip-box,
+#view-analyse-competences .sb-tip.is-open .sb-tip-box{
+  display: block;
+}
+
+#view-dashboard .sb-tip.is-measuring .sb-tip-box,
+#view-analyse-competences .sb-tip.is-measuring .sb-tip-box{
+  visibility: hidden;
+}
+
+#view-dashboard .sb-tip.is-up .sb-tip-box,
+#view-analyse-competences .sb-tip.is-up .sb-tip-box{
+  top: auto;
+  bottom: 24px; /* ouvre au-dessus du i */
+}
+
+/* Empêche le popover de dépasser l’écran (et ajoute un scroll si besoin) */
+#view-dashboard .sb-tip-box,
+#view-analyse-competences .sb-tip-box{
+  max-width: min(360px, calc(100vw - 24px));
+  max-height: min(320px, calc(100vh - 32px));
+  overflow: auto;
+}
+
 /* (optionnel) un peu d’air dans la tuile */
 #view-dashboard .sb-dash-tile[data-kpi="etat-global"]{
   min-height: 240px;
