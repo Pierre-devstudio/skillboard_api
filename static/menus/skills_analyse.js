@@ -2242,14 +2242,53 @@
 
     const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
-    function niveauToNum(v) {
-      const s = (v || "").toString().trim().toUpperCase();
+    function _normStr(v) {
+      return (v ?? "")
+        .toString()
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, ""); // supprime accents (avancé -> avance)
+    }
+
+    function nivReqToNum(v) {
+      const s = (v ?? "").toString().trim().toUpperCase();
       if (s === "A") return 1;
       if (s === "B") return 2;
       if (s === "C") return 3;
       const n = Number(s);
       return Number.isFinite(n) ? n : 0;
     }
+
+    function nivActToNum(v) {
+      // Valeurs attendues côté API: "Initial" / "Avancé" / "Expert"
+      // Mais on gère aussi: "Expert - C", "Avancé - B", "Initial - A", "A/B/C", etc.
+      const raw = (v ?? "").toString().trim();
+      if (!raw) return 0;
+
+      // 1) Si on trouve A/B/C en token, c’est prioritaire (ex: "Expert - C")
+      const m = raw.match(/\b([ABC])\b/i);
+      if (m && m[1]) {
+        const t = m[1].toUpperCase();
+        if (t === "A") return 1;
+        if (t === "B") return 2;
+        if (t === "C") return 3;
+      }
+
+      // 2) Sinon on mappe sur les libellés
+      const s = _normStr(raw);
+      if (s === "a" || s.includes("initial")) return 1;
+
+      // "avance", "avancee", "avancee", "avancé" etc -> "avance" après normalisation
+      if (s === "b" || s.includes("avance")) return 2;
+
+      if (s === "c" || s.includes("expert")) return 3;
+
+      // 3) Dernier recours : numérique 1/2/3
+      const n = Number(s);
+      return Number.isFinite(n) ? n : 0;
+    }
+
 
     function getNbTotal(c) {
       const porteurs = Array.isArray(c?.porteurs) ? c.porteurs : [];
@@ -2258,7 +2297,7 @@
     }
 
     function getNbOk(c) {
-      const req = niveauToNum(c?.niveau_requis);
+      const req = nivReqToNum(c?.niveau_requis);
       const porteurs = Array.isArray(c?.porteurs) ? c.porteurs : [];
       const nbTotal = getNbTotal(c);
 
@@ -2267,7 +2306,7 @@
 
       let ok = 0;
       for (const p of porteurs) {
-        const act = niveauToNum(p?.niveau_actuel);
+         const act = nivActToNum(p?.niveau_actuel);
 
         // Si niveau requis absent/0 : on considère “porteur” = OK
         if (req <= 0) {
