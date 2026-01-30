@@ -1051,6 +1051,97 @@ button[id$="ModalClose"]:active{
   background:#fafafa;
 }
 
+/* ---- Analyse — Titre + tooltip (bouton i comme Dashboard) ---- */
+#view-analyse-competences .sb-th-with-tip{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+#view-analyse-competences .sb-tip{
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  cursor: default;
+  user-select: none;
+  outline: none;
+}
+
+#view-analyse-competences .sb-tip-ico{
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #111827;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+#view-analyse-competences .sb-tip-box{
+  position: absolute;
+  right: 0;
+  top: 24px;
+  width: 320px;
+  background: #111827;
+  color: #f9fafb;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  display: none;
+  z-index: 50;
+  text-align: left;
+}
+
+#view-analyse-competences .sb-tip:hover .sb-tip-box,
+#view-analyse-competences .sb-tip:focus .sb-tip-box{
+  display: block;
+}
+
+#view-analyse-competences .sb-tip-title{
+  font-size: 12px;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+#view-analyse-competences .sb-tip-line{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+#view-analyse-competences .sb-tip-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+#view-analyse-competences .sb-tip-dot--r{ background: var(--accent); }
+#view-analyse-competences .sb-tip-dot--y{ background: #f59e0b; }
+#view-analyse-competences .sb-tip-dot--g{ background: #16a34a; }
+
+#view-analyse-competences .sb-tip-sep{
+  height: 1px;
+  background: rgba(255,255,255,.15);
+  margin: 8px 0;
+}
+
+#view-analyse-competences .sb-tip-mini{
+  font-size: 11px;
+  color: rgba(255,255,255,.82);
+  margin: 2px 0;
+}
+
 #view-analyse-competences .sb-table tbody td{
   font-size:13px;
   padding:12px 14px;
