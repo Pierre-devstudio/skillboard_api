@@ -3095,24 +3095,24 @@ function renderDetail(mode) {
           <thead>
             <tr>
               <th>Poste</th>
-              <th style="width:200px;">Service</th>
+              <th style="width:180px;">Service</th>
 
               <th class="col-center" style="width:220px;"
                   title="Indice de fragilité (0–100). Calcul: Indice = 100 × (1 − (1−0,85)^N0 × (1−0,60)^N1 × (1−0,25)^N2). Pondérations: N0 (non couverte) = impact majeur, N1 (unique) = impact fort, N2 (faible hors 0/1) = impact modéré.">
                 Indice de fragilité
               </th>
 
-              <th class="col-center" style="width:140px; white-space:normal; line-height:1.1;"
+              <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;"
                   title="Nombre de compétences critiques non couvertes">
                 Critique<br>non couverte
               </th>
 
-              <th class="col-center" style="width:170px; white-space:normal; line-height:1.1;"
+              <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;"
                   title="Nombre de compétences critiques couvertes par une seule personne">
                 Critique à<br>couverture unique
               </th>
 
-              <th class="col-center" style="width:160px; white-space:normal; line-height:1.1;">
+              <th class="col-center" style="width:130px; white-space:normal; line-height:1.1;">
                 Priorité de<br>traitement
               </th>
 
