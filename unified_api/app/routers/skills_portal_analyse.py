@@ -235,6 +235,52 @@ def _niveau_from_score(score: Optional[float]) -> Optional[str]:
     return None
 
 
+def _clamp_int(v: int, lo: int, hi: int) -> int:
+    try:
+        x = int(v)
+    except Exception:
+        x = lo
+    return max(lo, min(hi, x))
+
+
+def _calc_fragility_score(nb0: int, nb1: int, nb_fragiles: int) -> int:
+    """
+    Copie conforme de la logique front (skills_analyse.js / calcFragilityScore)
+    => score 0..100, pondérations non couverte / unique / fragilité latente.
+    """
+    a = int(nb0 or 0)           # N0 : non couvertes
+    b = int(nb1 or 0)           # N1 : couverture unique
+    f = int(nb_fragiles or 0)   # total fragiles (incluant 0/1)
+    n2 = max(f - a - b, 0)      # N2 : fragiles hors 0/1
+
+    w0, w1, w2 = 0.85, 0.60, 0.25
+    risk = 1 - (pow(1 - w0, a) * pow(1 - w1, b) * pow(1 - w2, n2))
+    return _clamp_int(round(risk * 100), 0, 100)
+
+
+def _bucket_porteurs(n: Optional[int]) -> int:
+    x = int(n or 0)
+    if x <= 0:
+        return 0
+    if x == 1:
+        return 1
+    return 2
+
+
+def _type_risque_from_bucket(nb_porteurs_bucket: int) -> str:
+    if nb_porteurs_bucket <= 0:
+        return "NON_COUVERTE"
+    if nb_porteurs_bucket == 1:
+        return "COUV_UNIQUE"
+    return "FRAGILE"
+
+
+def _reco_from_type(type_risque: str) -> str:
+    if type_risque == "NON_COUVERTE":
+        return "recruter"
+    if type_risque == "COUV_UNIQUE":
+        return "former"
+    return "mutualiser"
 
 # ======================================================
 # Endpoint: Summary (tuiles)
@@ -2796,6 +2842,34 @@ class AnalysePosteDetailResponse(BaseModel):
     coverage: AnalysePosteCoverage
     competences: List[AnalysePosteCompetenceItem]
 
+class AnalysePosteFragiliteComposantes(BaseModel):
+    nb0: int = 0
+    nb1: int = 0
+    nb_total_fragiles: int = 0
+    criticite_min: int
+
+
+class AnalysePosteTopRisqueItem(BaseModel):
+    id_comp: str
+    code_comp: Optional[str] = None
+    intitule: Optional[str] = None
+    poids_criticite: Optional[int] = None
+
+    type_risque: str  # NON_COUVERTE / COUV_UNIQUE / FRAGILE
+    nb_porteurs: int = 0
+    recommandation: str  # former / mutualiser / recruter
+
+
+class AnalysePosteDiagnosticResponse(BaseModel):
+    scope: ServiceScope
+    criticite_min: int
+    updated_at: str
+    poste: Dict[str, Any]
+
+    indice_fragilite: int
+    composantes: AnalysePosteFragiliteComposantes
+    top_risques: List[AnalysePosteTopRisqueItem]
+
 
 class AnalyseMatchingItem(BaseModel):
     id_effectif: str
@@ -3100,6 +3174,184 @@ def get_analyse_risques_poste_detail(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
+# ======================================================
+# Endpoint: Diagnostic décisionnel (poste fragile)
+# ======================================================
+@router.get(
+    "/skills/analyse/risques/poste/diagnostic/{id_contact}",
+    response_model=AnalysePosteDiagnosticResponse,
+)
+def get_analyse_risques_poste_diagnostic(
+    id_contact: str,
+    id_poste: str = Query(...),
+    id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
+    limit: int = Query(default=8, ge=1, le=8),
+):
+    
+    # Sécurités "anti-front" : même si Query borne déjà, on verrouille côté serveur.
+    id_poste = (id_poste or "").strip()
+    if not id_poste:
+        raise HTTPException(status_code=400, detail="Paramètre id_poste manquant.")
+
+    criticite_min = _clamp_int(int(criticite_min or CRITICITE_MIN_DEFAULT), CRITICITE_MIN_MIN, CRITICITE_MIN_MAX)
+    limit = _clamp_int(int(limit or 8), 1, 8)
+
+    if id_service is not None:
+        id_service = (id_service or "").strip() or None
+
+    """
+    Diagnostic décisionnel en 1 appel pour un poste:
+    - composantes fragilité (nb0/nb1/nb_total_fragiles + seuil criticité)
+    - indice_fragilite 0..100 (même logique que le front)
+    - top_risques (max 8) triés par gravité
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
+                scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
+                cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
+
+                # 1) Vérifier que le poste est dans le scope (même logique que le drilldown poste)
+                cur.execute(
+                    f"""
+                    WITH {cte_sql}
+                    SELECT
+                        fp.id_poste,
+                        fp.codif_poste,
+                        fp.codif_client,
+                        fp.intitule_poste,
+                        fp.id_service,
+                        COALESCE(o.nom_service, '') AS nom_service
+                    FROM postes_scope ps
+                    JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = fp.id_service
+                     AND o.archive = FALSE
+                    WHERE fp.id_poste = %s
+                    LIMIT 1
+                    """,
+                    tuple(cte_params + [id_ent, id_poste]),
+                )
+                poste = cur.fetchone()
+                if not poste:
+                    raise HTTPException(status_code=404, detail="Poste introuvable (ou hors périmètre service).")
+
+                # 2) Compétences critiques requises + nb porteurs dans le scope (agrégé)
+                cur.execute(
+                    f"""
+                    WITH
+                    {cte_sql},
+                    req AS (
+                        SELECT DISTINCT
+                            c.id_comp,
+                            c.code,
+                            c.intitule,
+                            COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite
+                        FROM public.tbl_fiche_poste_competence fpc
+                        JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
+                        JOIN public.tbl_competence c
+                          ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                        WHERE
+                            fpc.id_poste = %s
+                            AND c.etat = 'active'
+                            AND COALESCE(c.masque, FALSE) = FALSE
+                            AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+                    ),
+                    porteurs AS (
+                        SELECT
+                            ec.id_comp,
+                            COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
+                        FROM public.tbl_effectif_client_competence ec
+                        JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
+                        GROUP BY ec.id_comp
+                    )
+                    SELECT
+                        r.id_comp,
+                        r.code,
+                        r.intitule,
+                        r.poids_criticite,
+                        COALESCE(p.nb_porteurs, 0)::int AS nb_porteurs
+                    FROM req r
+                    LEFT JOIN porteurs p ON p.id_comp = r.id_comp
+                    """,
+                    tuple(cte_params + [id_poste, criticite_min]),
+                )
+                rows = cur.fetchall() or []
+
+                nb0 = 0
+                nb1 = 0
+                risques: List[AnalysePosteTopRisqueItem] = []
+
+                for r in rows:
+                    bucket = _bucket_porteurs(r.get("nb_porteurs"))
+                    if bucket == 0:
+                        nb0 += 1
+                    elif bucket == 1:
+                        nb1 += 1
+
+                    type_risque = _type_risque_from_bucket(bucket)
+
+                    risques.append(
+                        AnalysePosteTopRisqueItem(
+                            id_comp=r.get("id_comp"),
+                            code_comp=r.get("code"),
+                            intitule=r.get("intitule"),
+                            poids_criticite=int(r.get("poids_criticite") or 0),
+                            type_risque=type_risque,
+                            nb_porteurs=bucket,  # 0 / 1 / 2 (2 = 2+)
+                            recommandation=_reco_from_type(type_risque),
+                        )
+                    )
+
+                # Aligné avec le KPI "postes-fragiles": fragiles = (nb_porteurs <= 1)
+                nb_total_fragiles = nb0 + nb1
+
+                indice = _calc_fragility_score(nb0, nb1, nb_total_fragiles)
+
+                # Tri gravité: type_risque (0>1>2+) puis criticité desc puis code
+                rank = {"NON_COUVERTE": 3, "COUV_UNIQUE": 2, "FRAGILE": 1}
+                risques_sorted = sorted(
+                    risques,
+                    key=lambda x: (
+                        -rank.get(x.type_risque, 0),
+                        -(int(x.poids_criticite or 0)),
+                        (x.code_comp or ""),
+                    ),
+                )
+
+                top = risques_sorted[: int(limit or 8)]
+
+                return AnalysePosteDiagnosticResponse(
+                    scope=scope,
+                    criticite_min=int(criticite_min),
+                    updated_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    poste={
+                        "id_poste": poste.get("id_poste"),
+                        "codif_poste": poste.get("codif_poste"),
+                        "codif_client": poste.get("codif_client"),
+                        "intitule_poste": poste.get("intitule_poste"),
+                        "id_service": poste.get("id_service"),
+                        "nom_service": poste.get("nom_service"),
+                    },
+                    indice_fragilite=int(indice),
+                    composantes=AnalysePosteFragiliteComposantes(
+                        nb0=int(nb0),
+                        nb1=int(nb1),
+                        nb_total_fragiles=int(nb_total_fragiles),
+                        criticite_min=int(criticite_min),
+                    ),
+                    top_risques=top,
+                )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
 # ======================================================
 # Endpoint: Matching poste-porteur

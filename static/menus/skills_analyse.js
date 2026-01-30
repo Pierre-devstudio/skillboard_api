@@ -437,9 +437,14 @@
   const _posteDetailCache = new Map();
   let _posteDetailReqSeq = 0;
 
-  // Modal détail poste (risques) — filtre compétences par criticité
-  let _analysePosteShowAllCompetences = false;  // false = "voir critiques" (filtré) ; true = "voir tout"
-  let _analysePosteLastData = null;             // cache du dernier payload du poste pour re-render sans refetch
+  // Modal détail poste (risques) — mode décisionnel
+  // _analysePosteShowAllCompetences est réutilisé comme switch UI :
+  // false = n’afficher que les compétences À RISQUE (0/1 porteur au niveau requis)
+  // true  = afficher toutes les compétences CRITIQUES (criticité >= criticite_min)
+  let _analysePosteShowAllCompetences = false;
+  let _analysePosteLastData = null;
+  let _analysePosteFocusKey = "";
+
 
 
   async function fetchAnalysePosteDetail(portal, id_poste, id_service) {
@@ -2235,99 +2240,391 @@
     const critMin = Number(data?.criticite_min);
     const critMinVal = Number.isFinite(critMin) ? critMin : 0;
 
-    // Par défaut: on montre uniquement les compétences >= criticité min
-    const showAll = !!_analysePosteShowAllCompetences;
-    const list = showAll ? listAll : listAll.filter(c => Number(c?.poids_criticite) >= critMinVal);
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
-    // Style du toggle: même backcolor que "Réinitialiser"
-    const toggleStyle = "background:var(--reading-accent); color:#fff; border-color:var(--reading-accent);";
-    const toggleText = showAll ? "Voir critiques" : "Voir tout";
-
-    if (!list.length) {
-      const msg = showAll
-        ? "Aucune compétence trouvée pour ce poste."
-        : `Aucune compétence critique (criticité ≥ ${critMinVal}%).`;
-
-      host.innerHTML = `
-        <div class="card" style="padding:12px; margin:0;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;">
-            <div class="card-title" style="margin:0;">Compétences requises</div>
-            <button type="button"
-                    id="btnAnalysePosteCritToggle"
-                    class="btn-secondary"
-                    style="${toggleStyle} padding:6px 10px; font-weight:700;">
-              ${toggleText}
-            </button>
-          </div>
-          <div class="card-sub" style="margin:0;">${escapeHtml(msg)}</div>
-        </div>
-      `;
-      return;
+    function niveauToNum(v) {
+      const s = (v || "").toString().trim().toUpperCase();
+      if (s === "A") return 1;
+      if (s === "B") return 2;
+      if (s === "C") return 3;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : 0;
     }
 
+    function getNbTotal(c) {
+      const porteurs = Array.isArray(c?.porteurs) ? c.porteurs : [];
+      const nb = (c?.nb_porteurs === null || c?.nb_porteurs === undefined) ? porteurs.length : Number(c.nb_porteurs || 0);
+      return Number.isFinite(nb) ? nb : porteurs.length;
+    }
+
+    function getNbOk(c) {
+      const req = niveauToNum(c?.niveau_requis);
+      const porteurs = Array.isArray(c?.porteurs) ? c.porteurs : [];
+      const nbTotal = getNbTotal(c);
+
+      // Si l’API ne renvoie pas les porteurs, on retombe sur nb_porteurs (approx)
+      if (!porteurs.length) return nbTotal;
+
+      let ok = 0;
+      for (const p of porteurs) {
+        const act = niveauToNum(p?.niveau_actuel);
+
+        // Si niveau requis absent/0 : on considère “porteur” = OK
+        if (req <= 0) {
+          ok += 1;
+          continue;
+        }
+
+        if (act >= req) ok += 1;
+      }
+      return ok;
+    }
+
+    function typeRisque(nbOk) {
+      if (nbOk <= 0) return "NON_COUVERTE";
+      if (nbOk === 1) return "COUV_UNIQUE";
+      return "OK";
+    }
+
+    function recommandation(nbOk, nbTotal) {
+      // Heuristique décisionnelle (cohérente et exploitable en 30s)
+      // - 0 OK et 0 porteur => recruter
+      // - 0 OK mais porteurs présents (sous-niveau) => former
+      // - 1 OK et 1 porteur => mutualiser (il faut un backup)
+      // - 1 OK mais plusieurs porteurs => former (monter les autres au niveau)
+      if (nbOk <= 0) return (nbTotal > 0) ? "former" : "recruter";
+      if (nbOk === 1) return (nbTotal > 1) ? "former" : "mutualiser";
+      return "former";
+    }
+
+    // Compétences critiques (criticité >= seuil)
+    const critEnriched = listAll
+      .filter(c => Number(c?.poids_criticite) >= critMinVal)
+      .map(c => {
+        const nbTotal = getNbTotal(c);
+        const nbOk = getNbOk(c);
+        const t = typeRisque(nbOk);
+        return {
+          ...c,
+          _nb_total: nbTotal,
+          _nb_ok: nbOk,
+          _type_risque: t,
+          _reco: recommandation(nbOk, nbTotal)
+        };
+      });
+
+    // Compétences à risque = critiques avec 0/1 porteur AU NIVEAU requis
+    const riskList = critEnriched.filter(x => Number(x._nb_ok || 0) <= 1);
+
+    const nb0 = riskList.filter(x => Number(x._nb_ok || 0) <= 0).length;
+    const nb1 = riskList.filter(x => Number(x._nb_ok || 0) === 1).length;
+    const nbF = riskList.length;
+
+    // Indice fragilité 0..100 (même logique que le tableau postes)
+    function calcFragilityScore(nb0, nb1, nbFragiles) {
+      const a = Number(nb0 || 0);
+      const b = Number(nb1 || 0);
+      const f = Number(nbFragiles || 0);
+      const n2 = Math.max(f - a - b, 0);
+
+      const w0 = 0.85, w1 = 0.60, w2 = 0.25;
+      const risk = 1 - Math.pow(1 - w0, a) * Math.pow(1 - w1, b) * Math.pow(1 - w2, n2);
+      return clamp(Math.round(risk * 100), 0, 100);
+    }
+
+    function scoreHue(score) {
+      const s = clamp(Number(score || 0), 0, 100) / 100;
+      return Math.round(120 * (1 - s)); // 120 (vert) -> 0 (rouge)
+    }
+
+    function ring(score) {
+      const s = clamp(Math.round(Number(score || 0)), 0, 100);
+      const h = scoreHue(s);
+      const fill = `hsl(${h} 70% 45%)`;
+
+      return `
+        <div style="width:92px; height:92px; border-radius:999px; background:conic-gradient(${fill} ${s}%, #e5e7eb 0); display:flex; align-items:center; justify-content:center;">
+          <div style="width:70px; height:70px; border-radius:999px; background:#fff; border:1px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+            <div style="font-weight:900; font-size:22px; line-height:1;">
+              ${s}<span style="font-size:12px; font-weight:800;">%</span>
+            </div>
+            <div style="font-size:11px; color:#6b7280; font-weight:800; margin-top:2px;">fragilité</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function badge(txt, accent) {
+      const cls = accent ? "sb-badge sb-badge-accent" : "sb-badge";
+      return `<span class="${cls}">${escapeHtml(txt || "—")}</span>`;
+    }
+
+    function pill(txt) {
+      return `
+        <span style="
+          display:inline-flex; align-items:center; justify-content:center;
+          padding:4px 10px; border-radius:999px; border:1px solid #d1d5db;
+          background:#fff; color:#374151; font-weight:800; font-size:12px; white-space:nowrap;">
+          ${escapeHtml(txt || "—")}
+        </span>
+      `;
+    }
+
+    function pillReco(rec) {
+      const r = (rec || "").toString().toLowerCase();
+      let label = "—";
+      if (r === "former") label = "Former";
+      else if (r === "mutualiser") label = "Mutualiser";
+      else if (r === "recruter") label = "Recruter";
+
+      return `
+        <span style="
+          display:inline-flex; align-items:center; justify-content:center;
+          padding:4px 10px; border-radius:999px; border:1px solid #d1d5db;
+          background:var(--chip-bg, #f3f4f6); color:#111827; font-weight:900; font-size:12px; white-space:nowrap;">
+          ${escapeHtml(label)}
+        </span>
+      `;
+    }
+
+    function typeLabel(t) {
+      if (t === "NON_COUVERTE") return "NON_COUVERTE";
+      if (t === "COUV_UNIQUE") return "COUV_UNIQUE";
+      return "OK";
+    }
+
+    // Top causes (max 8) triées “gravité”
+    const typeOrder = (t) => (t === "NON_COUVERTE" ? 0 : (t === "COUV_UNIQUE" ? 1 : 9));
+
+    const topRisks = [...riskList]
+      .sort((a, b) =>
+        typeOrder(a._type_risque) - typeOrder(b._type_risque)
+        || (Number(b.poids_criticite || 0) - Number(a.poids_criticite || 0))
+        || (String(a.code || "").localeCompare(String(b.code || "")))
+      )
+      .slice(0, 8);
+
+    // Plan de sécurisation (comptage sur toutes les compétences à risque)
+    const plan = { former: [], mutualiser: [], recruter: [] };
+    for (const x of riskList) {
+      const k = (x._reco || "").toLowerCase();
+      if (plan[k]) plan[k].push(x);
+    }
+
+    function planCard(title, key, sub) {
+      const arr = Array.isArray(plan[key]) ? plan[key] : [];
+      const n = arr.length;
+      const ex = arr
+        .slice(0, 3)
+        .map(x => (x.code || "").toString().trim())
+        .filter(Boolean)
+        .join(", ");
+
+      return `
+        <div class="card" style="padding:12px; margin:0; flex:1; min-width:220px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <div style="font-weight:900;">${escapeHtml(title)}</div>
+            ${badge(String(n), n > 0)}
+          </div>
+          <div class="card-sub" style="margin:6px 0 0 0;">${escapeHtml(sub)}</div>
+          ${n && ex ? `<div style="margin-top:10px; font-size:12px; color:#374151;"><b>Ex:</b> ${escapeHtml(ex)}</div>` : ``}
+        </div>
+      `;
+    }
+
+    // Diagnostic phrase auto
+    let diag = `Seuil criticité (source de vérité) : ≥ ${critMinVal}%.`;
+    if (!critEnriched.length) {
+      diag = `Aucune compétence critique détectée (seuil ≥ ${critMinVal}%).`;
+    } else if (!nbF) {
+      diag = `Aucune fragilité critique détectée (≥ ${critMinVal}%, couverture au niveau requis).`;
+    } else {
+      diag = `Poste fragile : ${nbF} compétences critiques à risque (couverture au niveau requis). ${nb0} non couvertes, ${nb1} à couverture unique.`;
+    }
+
+    const score = calcFragilityScore(nb0, nb1, nbF);
+
+    // Toggle (réutilisation du bouton existant)
+    const showAllCrit = !!_analysePosteShowAllCompetences;
+    const toggleStyle = "background:var(--reading-accent); color:#fff; border-color:var(--reading-accent);";
+    const toggleText = showAllCrit ? "Voir uniquement les risques" : "Voir toutes les compétences critiques";
+
+    // Focus appliqué sur la LISTE DETAIL, pas sur le diagnostic
+    const focus = (_analysePosteFocusKey || "").trim();
+    function matchFocus(x) {
+      const ok = Number(x?._nb_ok || 0);
+      if (focus === "critiques-sans-porteur") return ok <= 0;
+      if (focus === "porteur-unique") return ok === 1;
+      if (focus === "total-fragiles") return ok <= 1;
+      return true;
+    }
+
+    let detailList = showAllCrit ? [...critEnriched] : [...riskList];
+    detailList = detailList.filter(matchFocus);
+
+    detailList.sort((a, b) =>
+      typeOrder(a._type_risque) - typeOrder(b._type_risque)
+      || (Number(b.poids_criticite || 0) - Number(a.poids_criticite || 0))
+      || (String(a.code || "").localeCompare(String(b.code || "")))
+    );
+
+    const detailTitle = showAllCrit ? "Compétences critiques (détail)" : "Compétences à risque (détail)";
+
+    // Rendu
     host.innerHTML = `
       <div class="card" style="padding:12px; margin:0;">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:320px;">
+            <div class="card-title" style="margin:0;">Diagnostic décisionnel</div>
+            <div class="card-sub" style="margin-top:6px;">${escapeHtml(diag)}</div>
+            <div class="card-sub" style="margin-top:8px;">
+              Couverture analysée au <b>niveau requis</b>. Criticité min renvoyée par l’API : <b>${escapeHtml(String(data?.criticite_min ?? critMinVal))}</b>.
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:14px;">
+            ${ring(score)}
+            <div style="display:flex; flex-direction:column; gap:8px; min-width:180px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                <div style="font-weight:800;">Non couvertes</div>
+                ${badge(String(nb0), nb0 > 0)}
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                <div style="font-weight:800;">Couverture unique</div>
+                ${badge(String(nb1), nb1 > 0)}
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                <div style="font-weight:800;">Total fragiles</div>
+                ${badge(String(nbF), nbF > 0)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px; margin-top:12px;">
+        <div class="card-title" style="margin:0 0 6px 0;">Causes racines (top 8)</div>
+        <div class="card-sub" style="margin:0;">Compétences critiques les plus pénalisantes (triées par gravité).</div>
+
+        ${topRisks.length ? `
+          <div class="table-wrap" style="margin-top:10px;">
+            <table class="sb-table">
+              <thead>
+                <tr>
+                  <th style="width:90px;">Code</th>
+                  <th>Compétence</th>
+                  <th class="col-center" style="width:140px;">Type</th>
+                  <th class="col-center" style="width:90px;">Criticité</th>
+                  <th class="col-center" style="width:140px;">Porteurs (OK)</th>
+                  <th class="col-center" style="width:140px;">Action reco</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${topRisks.map(c => {
+                  const code = escapeHtml(c.code || "—");
+                  const intit = escapeHtml(c.intitule || "—");
+                  const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "—" : escapeHtml(String(c.poids_criticite));
+                  const nbOk = Number(c._nb_ok || 0);
+                  const nbOkTxt = nbOk >= 2 ? "2+" : String(nbOk);
+                  const type = typeLabel(c._type_risque);
+                  return `
+                    <tr>
+                      <td style="font-weight:800; white-space:nowrap;">${code}</td>
+                      <td style="min-width:280px;">
+                        <div style="font-size:14px; font-weight:700;">${intit}</div>
+                      </td>
+                      <td class="col-center">${pill(type)}</td>
+                      <td class="col-center" style="white-space:nowrap;">${crit}</td>
+                      <td class="col-center">${badge(nbOkTxt, nbOk <= 1)}</td>
+                      <td class="col-center">${pillReco(c._reco)}</td>
+                    </tr>
+                  `;
+                }).join("")}
+              </tbody>
+            </table>
+          </div>
+        ` : `
+          <div class="card-sub" style="margin-top:10px;">Aucune cause racine à afficher (aucune compétence critique à risque).</div>
+        `}
+      </div>
+
+      <div class="card" style="padding:12px; margin-top:12px;">
+        <div class="card-title" style="margin:0 0 6px 0;">Plan de sécurisation</div>
+        <div class="card-sub" style="margin:0;">Répartition des actions recommandées sur l’ensemble des compétences à risque.</div>
+
+        <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
+          ${planCard("Former", "former", "Monter au niveau requis (réduction du risque à court terme).")}
+          ${planCard("Mutualiser", "mutualiser", "Créer un backup (bus factor) via doublure/rotation.")}
+          ${planCard("Recruter", "recruter", "Absence totale de porteur, ou rupture structurelle.")}
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px; margin-top:12px;">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;">
-          <div class="card-title" style="margin:0;">Compétences requises</div>
+          <div class="card-title" style="margin:0;">${escapeHtml(detailTitle)}</div>
           <button type="button"
                   id="btnAnalysePosteCritToggle"
                   class="btn-secondary"
-                  style="${toggleStyle} padding:6px 10px; font-weight:700;">
-            ${toggleText}
+                  style="${toggleStyle} padding:6px 10px; font-weight:800;">
+            ${escapeHtml(toggleText)}
           </button>
         </div>
 
-        <div class="table-wrap" style="margin-top:10px;">
-          <table class="sb-table">
-            <thead>
-              <tr>
-                <th style="width:90px;">Code</th>
-                <th>Compétence</th>
-                <th class="col-center" style="width:120px;">Niveau requis</th>
-                <th class="col-center" style="width:90px;">Criticité</th>
-                <th class="col-center" style="width:120px;">Couverture</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${list.map(c => {
-                const code = escapeHtml(c.code || "—");
-                const intit = escapeHtml(c.intitule || "—");
-                const nivReq = escapeHtml(c.niveau_requis || "—");
-                const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "—" : escapeHtml(String(c.poids_criticite));
+        ${detailList.length ? `
+          <div class="table-wrap" style="margin-top:10px;">
+            <table class="sb-table">
+              <thead>
+                <tr>
+                  <th style="width:90px;">Code</th>
+                  <th>Compétence</th>
+                  <th class="col-center" style="width:120px;">Niveau requis</th>
+                  <th class="col-center" style="width:90px;">Criticité</th>
+                  <th class="col-center" style="width:140px;">Porteurs (OK)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${detailList.map(c => {
+                  const code = escapeHtml(c.code || "—");
+                  const intit = escapeHtml(c.intitule || "—");
+                  const nivReq = escapeHtml(c.niveau_requis || "—");
+                  const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "—" : escapeHtml(String(c.poids_criticite));
+                  const porteurs = Array.isArray(c.porteurs) ? c.porteurs : [];
+                  const nbOk = Number(c._nb_ok || 0);
+                  const nbOkTxt = nbOk >= 2 ? "2+" : String(nbOk);
 
-                const porteurs = Array.isArray(c.porteurs) ? c.porteurs : [];
-                const nb = (c.nb_porteurs === null || c.nb_porteurs === undefined) ? porteurs.length : Number(c.nb_porteurs || 0);
+                  const badgeOk = nbOk > 1
+                    ? `<span class="sb-badge sb-badge-accent">${escapeHtml(nbOkTxt)}</span>`
+                    : `<span class="sb-badge">${escapeHtml(nbOkTxt)}</span>`;
 
-                const badge = nb > 0
-                  ? `<span class="sb-badge sb-badge-accent">${nb}</span>`
-                  : `<span class="sb-badge">0</span>`;
+                  const porteursHtml = renderPostePorteurs(porteurs, data?.poste?.id_poste);
 
-                const porteursHtml = renderPostePorteurs(porteurs, data?.poste?.id_poste);
+                  return `
+                    <tr>
+                      <td style="font-weight:800; white-space:nowrap;">${code}</td>
+                      <td>
+                        <div style="font-size:14px; font-weight:650;">${intit}</div>
+                        ${porteursHtml}
+                      </td>
+                      <td class="col-center" style="white-space:nowrap;">${nivReq}</td>
+                      <td class="col-center" style="white-space:nowrap;">${crit}</td>
+                      <td class="col-center" style="white-space:nowrap;">${badgeOk}</td>
+                    </tr>
+                  `;
+                }).join("")}
+              </tbody>
+            </table>
+          </div>
 
-                return `
-                  <tr>
-                    <td style="font-weight:700; white-space:nowrap;">${code}</td>
-                    <td>
-                      <div style="font-size:14px; font-weight:600;">${intit}</div>
-                      ${porteursHtml}
-                    </td>
-                    <td class="col-center" style="white-space:nowrap;">${nivReq}</td>
-                    <td class="col-center" style="white-space:nowrap;">${crit}</td>
-                    <td class="col-center" style="white-space:nowrap;">${badge}</td>
-                  </tr>
-                `;
-              }).join("")}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-          Couverture = nombre de collaborateurs possédant la compétence (dans le périmètre filtré).
-          Le niveau affiché entre parenthèses correspond à <b>niveau_actuel</b>.
-        </div>
+          <div class="card-sub" style="margin-top:10px; color:#6b7280;">
+            “Porteurs (OK)” = nombre de collaborateurs <b>au niveau requis</b> (dans le périmètre filtré).
+          </div>
+        ` : `
+          <div class="card-sub" style="margin:0;">Aucun résultat sur ce périmètre.</div>
+        `}
       </div>
     `;
   }
+
 
   function renderAnalysePosteCouvertureTab(data) {
     const host = byId("analysePosteTabCouverture");
@@ -2477,31 +2774,15 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
       }
     }
 
-    // ----- Filtrage côté UI selon le focus (sinon tu verras toujours la même table)
-    const comps = Array.isArray(data?.competences) ? data.competences : [];
+    // Focus conservé pour le rendu (diagnostic + liste), sans tronquer le dataset
+    _analysePosteFocusKey = focus;
 
-    function getNbPorteurs(c) {
-      const p = Array.isArray(c?.porteurs) ? c.porteurs : [];
-      const nb = (c?.nb_porteurs === null || c?.nb_porteurs === undefined) ? p.length : Number(c.nb_porteurs || 0);
-      return nb;
-    }
+    // On rend l’onglet Compétences avec le dataset COMPLET (sinon le diagnostic est faux)
+    renderAnalysePosteCompetencesTab(data);
 
-    let compsFiltered = comps;
-
-    if (focus === "critiques-sans-porteur") {
-      compsFiltered = comps.filter(c => getNbPorteurs(c) === 0);
-    } else if (focus === "porteur-unique") {
-      compsFiltered = comps.filter(c => getNbPorteurs(c) === 1);
-    } else if (focus === "total-fragiles") {
-      compsFiltered = comps.filter(c => getNbPorteurs(c) <= 1);
-    }
-
-    const dataForCompetences = { ...data, competences: compsFiltered };
-
-    renderAnalysePosteCompetencesTab(dataForCompetences);
-
-    // Couverture = calculée sur le dataset complet (pas filtré)
+    // Couverture = calculée sur le dataset complet
     renderAnalysePosteCouvertureTab(data);
+
 
   } catch (e) {
     if (mySeq !== _posteDetailReqSeq) return;
