@@ -587,10 +587,16 @@
     if (focus === "porteur-unique") risks = risks.filter(x => Number(x?.nb_porteurs || 0) === 1);
     // total-fragiles => 0 ou 1 (déjà le cas)
 
-    // Plan de sécurisation: décision simple basée sur composantes (global, pas juste top 8)
+    // Plan de sécurisation: cohérent avec Action reco (source API)
+    // - nb0 => recruter
+    // - nb1_ok => mutualiser (1 porteur ET OK niveau requis)
+    // - nb1_a_former => former (1 porteur mais PAS OK niveau requis)
+    const nb1Ok = Number(comp.nb1_ok || 0);
+    const nb1Former = Number(comp.nb1_a_former || 0);
+
     const planRecruter = nb0;
-    const planMutualiser = nb1;
-    const planFormer = 0;
+    const planMutualiser = nb1Ok;
+    const planFormer = nb1Former;
 
     const toggleText = "Voir toutes les compétences critiques";
 
