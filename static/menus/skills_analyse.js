@@ -3097,47 +3097,7 @@ function renderDetail(mode) {
               <th>Poste</th>
               <th style="width:180px;">Service</th>
 
-              <th class="col-center" style="width:220px;">
-                <span class="sb-th-with-tip">
-                  <span>Indice de fragilité</span>
-
-                  <span class="sb-tip" tabindex="0">
-                    <span class="sb-tip-ico">i</span>
-
-                    <span class="sb-tip-box">
-                      <div class="sb-tip-title">Indice de fragilité</div>
-
-                      <div class="sb-tip-mini">
-                        <b>Formule :</b> Indice = 100 × (1 − (1−0,85)^N0 × (1−0,60)^N1 × (1−0,25)^N2)
-                      </div>
-
-                      <div class="sb-tip-sep"></div>
-
-                      <div class="sb-tip-line">
-                        <span class="sb-tip-dot sb-tip-dot--r"></span>
-                        <span><b>N0</b> : critiques non couvertes (poids 0,85)</span>
-                      </div>
-
-                      <div class="sb-tip-line">
-                        <span class="sb-tip-dot sb-tip-dot--y"></span>
-                        <span><b>N1</b> : critiques à couverture unique (poids 0,60)</span>
-                      </div>
-
-                      <div class="sb-tip-line">
-                        <span class="sb-tip-dot sb-tip-dot--g"></span>
-                        <span><b>N2</b> : fragiles hors 0/1 (poids 0,25)</span>
-                      </div>
-
-                      <div class="sb-tip-sep"></div>
-
-                      <div class="sb-tip-mini">
-                        Lecture: plus l’indice est élevé, plus le poste est dépendant d’un nombre insuffisant de porteurs sur des compétences critiques.
-                      </div>
-                    </span>
-                  </span>
-                </span>
-              </th>
-
+              <th class="col-center" style="width:220px;">Indice de fragilité</th>
 
               <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;"
                   title="Nombre de compétences critiques non couvertes">
@@ -3347,7 +3307,45 @@ function renderDetail(mode) {
         ${buildResetHtml()}
 
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">Postes fragiles</div>
+          <div class="card-title sb-risk-title" style="margin-bottom:6px; display:flex; align-items:center; gap:8px;">
+            <span>Postes fragiles</span>
+
+            <span class="sb-tip" tabindex="0" aria-label="Informations sur l'indice de fragilité">
+              <span class="sb-tip-ico">i</span>
+
+              <span class="sb-tip-box">
+                <div class="sb-tip-title">Indice de fragilité</div>
+
+                <div class="sb-tip-mini">
+                  <b>Formule :</b> Indice = 100 × (1 − (1−0,85)^N0 × (1−0,60)^N1 × (1−0,25)^N2)
+                </div>
+
+                <div class="sb-tip-sep"></div>
+
+                <div class="sb-tip-line">
+                  <span class="sb-tip-dot sb-tip-dot--r"></span>
+                  <span><b>N0</b> : critiques non couvertes (poids 0,85)</span>
+                </div>
+
+                <div class="sb-tip-line">
+                  <span class="sb-tip-dot sb-tip-dot--y"></span>
+                  <span><b>N1</b> : critiques à couverture unique (poids 0,60)</span>
+                </div>
+
+                <div class="sb-tip-line">
+                  <span class="sb-tip-dot sb-tip-dot--g"></span>
+                  <span><b>N2</b> : critiques fragiles hors 0/1 (poids 0,25)</span>
+                </div>
+
+                <div class="sb-tip-sep"></div>
+
+                <div class="sb-tip-mini">
+                  Lecture: plus l’indice est élevé, plus le poste est exposé à un risque de rupture (dépendance / manque de porteurs).
+                </div>
+              </span>
+            </span>
+          </div>
+
           <div class="card-sub" style="margin:0;">Top postes à sécuriser (critiques avec couverture faible).</div>
           ${renderTablePostes(itemsA)}
         </div>
