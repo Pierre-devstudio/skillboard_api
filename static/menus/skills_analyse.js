@@ -2308,7 +2308,7 @@
                   <tr>
                     <td style="font-weight:700; white-space:nowrap;">${code}</td>
                     <td>
-                      ${intit}
+                      <div style="font-weight:600;">${intit}</div>
                       ${porteursHtml}
                     </td>
                     <td class="col-center" style="white-space:nowrap;">${nivReq}</td>
