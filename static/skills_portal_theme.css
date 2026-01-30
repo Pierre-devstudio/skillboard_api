@@ -1956,6 +1956,25 @@ body{
 }
 
 /* Tooltip "i" : anti-coupure écran (flip up + contraintes viewport) */
+/* ---- Analyse — Tooltip "i" : pas de scrollbars, pas de découpe ---- */
+#view-analyse-competences .sb-tip-host{
+  overflow-x: auto;   /* on garde le scroll horizontal du tableau */
+  overflow-y: visible;/* mais on autorise le tooltip à dépasser en vertical */
+  position: relative; /* repère pour les z-index */
+}
+
+/* En analyse: tooltip au-dessus, sans overflow interne (sinon tu revois la barre) */
+#view-analyse-competences .sb-tip-box{
+  top: auto !important;
+  bottom: 24px !important;     /* s'ouvre au-dessus du i */
+  width: 280px !important;
+  max-width: 280px !important;
+  max-height: none !important;
+  overflow: visible !important; /* supprime les scrollbars internes */
+  white-space: normal !important;/* wrap du texte */
+  z-index: 9999 !important;
+}
+
 #view-dashboard .sb-tip.is-open .sb-tip-box,
 #view-analyse-competences .sb-tip.is-open .sb-tip-box{
   display: block;

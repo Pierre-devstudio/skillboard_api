@@ -3090,7 +3090,7 @@ function renderDetail(mode) {
     }
 
     return `
-      <div class="table-wrap" style="margin-top:10px;">
+      <div class="table-wrap sb-tip-host" style="margin-top:10px;">
         <table class="sb-table" id="tblRiskPostesFragiles">
           <thead>
             <tr>
@@ -4091,59 +4091,7 @@ function bindOnce(portal) {
   // ==============================
   const analyseBody = byId("analyseDetailBody");
   if (!analyseBody) return;
-
-    // ==============================
-  // Tooltip "i" : auto-flip pour éviter la coupure écran
-  // (ouvre en haut si pas assez de place en bas)
-  // ==============================
-  function _sbPlaceTip(tipEl) {
-    if (!tipEl) return;
-
-    // uniquement dans la vue analyse (on ne casse pas le dashboard)
-    const inAnalyse = !!tipEl.closest("#view-analyse-competences");
-    if (!inAnalyse) return;
-
-    const box = tipEl.querySelector(".sb-tip-box");
-    if (!box) return;
-
-    // 1) On force l'affichage (mais invisible) pour mesurer
-    tipEl.classList.add("is-open", "is-measuring");
-    tipEl.classList.remove("is-up");
-
-    requestAnimationFrame(() => {
-      const rTip = tipEl.getBoundingClientRect();
-      const rBox = box.getBoundingClientRect();
-      const boxH = rBox.height || box.offsetHeight || 0;
-
-      const pad = 12;
-      const spaceBelow = window.innerHeight - rTip.bottom;
-      const spaceAbove = rTip.top;
-
-      // 2) Flip si ça déborde en bas et que le haut offre mieux (ou assez)
-      const shouldUp = (spaceBelow < boxH + pad) && (spaceAbove > spaceBelow);
-      if (shouldUp) tipEl.classList.add("is-up");
-
-      // 3) On repasse visible, sans forcer l'état (hover/focus gère l'affichage)
-      tipEl.classList.remove("is-measuring");
-      tipEl.classList.remove("is-open");
-    });
-  }
-
-  // Détection entrée tooltip (évite les recalculs en boucle en filtrant relatedTarget)
-  analyseBody.addEventListener("mouseover", (ev) => {
-    const tip = ev.target.closest(".sb-tip");
-    if (!tip) return;
-    if (ev.relatedTarget && tip.contains(ev.relatedTarget)) return;
-    _sbPlaceTip(tip);
-  });
-
-  analyseBody.addEventListener("focusin", (ev) => {
-    const tip = ev.target.closest(".sb-tip");
-    if (!tip) return;
-    _sbPlaceTip(tip);
-  });
-
-
+    
   analyseBody.addEventListener("click", async (ev) => {
     // 0) pas de portail => pas de drilldown
     const p = portal || _portalref;
