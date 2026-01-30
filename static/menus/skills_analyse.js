@@ -3020,19 +3020,22 @@ function renderDetail(mode) {
     // Indice fragilité 0..100 (déterministe, basé sur ce qu'on a: 0 critique + 1 critique)
     // - 0 critique => très pénalisant
     // - 1 critique => pénalisant (dépendance)
-    function calcFragilityScore(nb0, nb1) {
-      const a = Number(nb0 || 0);
-      const b = Number(nb1 || 0);
+    function calcFragilityScore(nb0, nb1, nbFragiles) {
+      const a = Number(nb0 || 0);            // N0 : non couvertes
+      const b = Number(nb1 || 0);            // N1 : couverture unique
+      const f = Number(nbFragiles || 0);     // total fragiles (incluant 0/1)
+      const n2 = Math.max(f - a - b, 0);     // N2 : fragiles hors 0/1
 
-      if (a <= 0) {
-        // uniquement des couvertures uniques => 1 => 40, 2 => 80 (cap)
-        return clamp(b * 40, 0, 80);
-      }
+      // Pondérations (impact “par item”):
+      // - N0 non couverte : 0.85 (rupture potentielle)
+      // - N1 unique       : 0.60 (dépendance forte)
+      // - N2 faible       : 0.25 (fragilité latente)
+      const w0 = 0.85, w1 = 0.60, w2 = 0.25;
 
-      // dès qu’il y a du "0", on passe en zone critique
-      // a=1 => 85 ; a=1,b=1 => 90 ; a=2 => 92 ; etc (cap 100)
-      return clamp(85 + (a - 1) * 7 + b * 5, 0, 100);
+      const risk = 1 - Math.pow(1 - w0, a) * Math.pow(1 - w1, b) * Math.pow(1 - w2, n2);
+      return clamp(Math.round(risk * 100), 0, 100);
     }
+
 
     function scoreHue(score) {
       const s = clamp(Number(score || 0), 0, 100) / 100;
@@ -3093,10 +3096,26 @@ function renderDetail(mode) {
             <tr>
               <th>Poste</th>
               <th style="width:200px;">Service</th>
-              <th class="col-center" style="width:200px;">Indice fragilité</th>
-              <th class="col-center" style="width:120px;">0 critique</th>
-              <th class="col-center" style="width:120px;">1 critique</th>
-              <th class="col-center" style="width:130px;">Priorité</th>
+
+              <th class="col-center" style="width:220px;"
+                  title="Indice de fragilité (0–100). Calcul: Indice = 100 × (1 − (1−0,85)^N0 × (1−0,60)^N1 × (1−0,25)^N2). Pondérations: N0 (non couverte) = impact majeur, N1 (unique) = impact fort, N2 (faible hors 0/1) = impact modéré.">
+                Indice de fragilité
+              </th>
+
+              <th class="col-center" style="width:170px;"
+                  title="Nombre de compétences critiques non couvertes">
+                Critique non couverte
+              </th>
+
+              <th class="col-center" style="width:210px;"
+                  title="Nombre de compétences critiques couvertes par une seule personne">
+                Critique à couverture unique
+              </th>
+
+              <th class="col-center" style="width:190px;">
+                Priorité de traitement
+              </th>
+
               <th class="col-center" style="width:140px;">Action</th>
             </tr>
           </thead>
@@ -3112,8 +3131,9 @@ function renderDetail(mode) {
 
               const nb0 = Number(r.nb_critiques_sans_porteur || 0);
               const nb1 = Number(r.nb_critiques_porteur_unique || 0);
+              const nbF = Number(r.nb_critiques_fragiles || 0);
 
-              const score = calcFragilityScore(nb0, nb1);
+              const score = calcFragilityScore(nb0, nb1, nbF);
               const prio  = priorityLabel(score, nb0);
 
               return `
