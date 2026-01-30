@@ -3015,6 +3015,77 @@ function renderDetail(mode) {
     const list = Array.isArray(rows) ? rows : [];
     if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
 
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+    // Indice fragilité 0..100 (déterministe, basé sur ce qu'on a: 0 critique + 1 critique)
+    // - 0 critique => très pénalisant
+    // - 1 critique => pénalisant (dépendance)
+    function calcFragilityScore(nb0, nb1) {
+      const a = Number(nb0 || 0);
+      const b = Number(nb1 || 0);
+
+      if (a <= 0) {
+        // uniquement des couvertures uniques => 1 => 40, 2 => 80 (cap)
+        return clamp(b * 40, 0, 80);
+      }
+
+      // dès qu’il y a du "0", on passe en zone critique
+      // a=1 => 85 ; a=1,b=1 => 90 ; a=2 => 92 ; etc (cap 100)
+      return clamp(85 + (a - 1) * 7 + b * 5, 0, 100);
+    }
+
+    function scoreHue(score) {
+      const s = clamp(Number(score || 0), 0, 100) / 100;
+      return Math.round(120 * (1 - s)); // 120 (vert) -> 0 (rouge)
+    }
+
+    function scoreChip(score) {
+      const s = clamp(Math.round(Number(score || 0)), 0, 100);
+      const h = scoreHue(s);
+      const fill = `hsl(${h} 70% 45%)`;
+
+      return `
+        <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+          <div style="width:84px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
+            <div style="height:100%; width:${s}%; background:${fill};"></div>
+          </div>
+          <div style="min-width:44px; text-align:right; font-weight:800;">
+            ${s}<span style="font-weight:700; font-size:12px;">%</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function priorityLabel(score, nb0) {
+      const s = clamp(Number(score || 0), 0, 100);
+      const a = Number(nb0 || 0);
+
+      if (a > 0) return "Critique";
+      if (s >= 75) return "Élevée";
+      if (s >= 45) return "Modérée";
+      return "Faible";
+    }
+
+    function priorityPill(label, score) {
+      const s = clamp(Math.round(Number(score || 0)), 0, 100);
+      const h = scoreHue(s);
+
+      const bg = `hsl(${h} 70% 95%)`;
+      const br = `hsl(${h} 70% 80%)`;
+      const tx = `hsl(${h} 70% 28%)`;
+
+      return `
+        <span style="
+          display:inline-flex; align-items:center; justify-content:center;
+          padding:4px 10px; border-radius:999px;
+          border:1px solid ${br}; background:${bg}; color:${tx};
+          font-weight:800; font-size:12px; white-space:nowrap;
+        ">
+          ${escapeHtml(label)}
+        </span>
+      `;
+    }
+
     return `
       <div class="table-wrap" style="margin-top:10px;">
         <table class="sb-table" id="tblRiskPostesFragiles">
@@ -3022,9 +3093,11 @@ function renderDetail(mode) {
             <tr>
               <th>Poste</th>
               <th style="width:200px;">Service</th>
-              <th class="col-center" style="width:160px;">Critiques non couvertes</th>
-              <th class="col-center" style="width:140px;">Couverture unique</th>
-              <th class="col-center" style="width:140px;">Total fragiles</th>
+              <th class="col-center" style="width:200px;">Indice fragilité</th>
+              <th class="col-center" style="width:120px;">0 critique</th>
+              <th class="col-center" style="width:120px;">1 critique</th>
+              <th class="col-center" style="width:130px;">Priorité</th>
+              <th class="col-center" style="width:140px;">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -3037,13 +3110,15 @@ function renderDetail(mode) {
 
               const svc = (r.nom_service || "").trim() || "—";
 
-              const a = Number(r.nb_critiques_sans_porteur || 0);
-              const b = Number(r.nb_critiques_porteur_unique || 0);
-              const c = Number(r.nb_critiques_fragiles || 0);
+              const nb0 = Number(r.nb_critiques_sans_porteur || 0);
+              const nb1 = Number(r.nb_critiques_porteur_unique || 0);
+
+              const score = calcFragilityScore(nb0, nb1);
+              const prio  = priorityLabel(score, nb0);
 
               return `
-                <tr class="risk-poste-row" data-id_poste="${escapeHtml(r.id_poste || "")}" style="cursor:pointer;">
-                  <td data-focus="poste">
+                <tr class="risk-poste-row" data-id_poste="${escapeHtml(r.id_poste || "")}">
+                  <td class="risk-poste-open" style="cursor:pointer;">
                     <div style="display:flex; gap:8px; align-items:center; min-width:0;">
                       <span class="sb-badge sb-badge-poste-code">${escapeHtml(codeAffiche || "—")}</span>
                       <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
@@ -3051,15 +3126,21 @@ function renderDetail(mode) {
                       </span>
                     </div>
                   </td>
-                  <td data-focus="poste">${escapeHtml(svc)}</td>
-                  <td class="col-center" data-focus="critiques-sans-porteur" title="Voir les compétences critiques sans couverture">
-                    ${a ? badge(String(a), true) : badge("0", false)}
-                  </td>
-                  <td class="col-center" data-focus="porteur-unique" title="Voir les compétences critiques à couverture unique">
-                    ${b ? badge(String(b), true) : badge("0", false)}
-                  </td>
-                  <td class="col-center" data-focus="total-fragiles" title="Voir la synthèse de couverture du poste">
-                    ${c ? badge(String(c), true) : badge("0", false)}
+                  <td>${escapeHtml(svc)}</td>
+
+                  <td class="col-center" title="Indice fragilité (0-100)">${scoreChip(score)}</td>
+
+                  <td class="col-center">${nb0 ? badge(String(nb0), true) : badge("0", false)}</td>
+                  <td class="col-center">${nb1 ? badge(String(nb1), true) : badge("0", false)}</td>
+
+                  <td class="col-center">${priorityPill(prio, score)}</td>
+
+                  <td class="col-center">
+                    <button type="button"
+                            class="btn-secondary risk-poste-open"
+                            style="padding:6px 10px; font-size:12px; line-height:1;">
+                      Voir analyse
+                    </button>
                   </td>
                 </tr>
               `;
@@ -3069,6 +3150,7 @@ function renderDetail(mode) {
       </div>
     `;
   }
+
 
   function renderTableCompetences(rows) {
     const list = Array.isArray(rows) ? rows : [];
@@ -3964,24 +4046,25 @@ function bindOnce(portal) {
 
     // ------------------------------
     // 1) Click sur POSTE FRAGILE (table risques)
+    // -> ouverture uniquement si clic sur libellé poste OU bouton "Voir analyse"
     // ------------------------------
     const trPoste = ev.target.closest("tr.risk-poste-row[data-id_poste]");
     if (trPoste) {
+      // On évite d’ouvrir le modal sur n’importe quel clic dans la ligne
+      const hit = ev.target.closest(".risk-poste-open");
+      if (!hit) return;
+
       const id_poste = (trPoste.getAttribute("data-id_poste") || "").trim();
       if (!id_poste) return;
 
-      // focus selon la cellule cliquée
-      const td = ev.target.closest("td[data-focus]");
-      let focusKey = (td?.getAttribute("data-focus") || "").trim();
-      if (focusKey === "poste") focusKey = ""; // clic sur libellé poste/service => focus normal
-
       try {
-        await showAnalysePosteDetailModal(p, id_poste, id_service, focusKey);
+        await showAnalysePosteDetailModal(p, id_poste, id_service, "");
       } catch (e) {
-        // on laisse tes modals gérer leurs erreurs, pas de drama ici
+        // on laisse tes modals gérer leurs erreurs
       }
       return;
     }
+
 
     // ------------------------------
     // PREVISIONS: clic sur un poste "rouge"
