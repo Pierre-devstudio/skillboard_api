@@ -2319,30 +2319,40 @@
       return ok;
     }
 
-    function typeRisque(nbOk) {
-      if (nbOk <= 0) return "NON_COUVERTE";
-      if (nbOk === 1) return "COUV_UNIQUE";
+    function typeRisque(nbTotal) {
+      // Définition KPI "poste fragile" = bus factor
+      // 0 porteur => NON_COUVERTE
+      // 1 porteur => COUV_UNIQUE
+      // 2+ => OK (pas fragile selon KPI)
+      const n = Number(nbTotal || 0);
+      if (n <= 0) return "NON_COUVERTE";
+      if (n === 1) return "COUV_UNIQUE";
       return "OK";
     }
 
     function recommandation(nbOk, nbTotal) {
-      // Heuristique décisionnelle (cohérente et exploitable en 30s)
-      // - 0 OK et 0 porteur => recruter
-      // - 0 OK mais porteurs présents (sous-niveau) => former
-      // - 1 OK et 1 porteur => mutualiser (il faut un backup)
-      // - 1 OK mais plusieurs porteurs => former (monter les autres au niveau)
-      if (nbOk <= 0) return (nbTotal > 0) ? "former" : "recruter";
-      if (nbOk === 1) return (nbTotal > 1) ? "former" : "mutualiser";
+      // Décision rapide:
+      // - aucun porteur total => recruter
+      // - 1 porteur total:
+      //    - si ce porteur est OK niveau requis => mutualiser (backup)
+      //    - sinon => former (monter au niveau requis)
+      // - 2+ porteurs => former (consolider/standardiser si besoin)
+      const tot = Number(nbTotal || 0);
+      const ok = Number(nbOk || 0);
+
+      if (tot <= 0) return "recruter";
+      if (tot === 1) return (ok >= 1) ? "mutualiser" : "former";
       return "former";
     }
+
 
     // Compétences critiques (criticité >= seuil)
     const critEnriched = listAll
       .filter(c => Number(c?.poids_criticite) >= critMinVal)
       .map(c => {
-        const nbTotal = getNbTotal(c);
-        const nbOk = getNbOk(c);
-        const t = typeRisque(nbOk);
+        const nbTotal = getNbTotal(c); // porteurs TOTAL (bus factor, définition KPI)
+        const nbOk = getNbOk(c);       // porteurs OK au niveau requis (info décisionnelle)
+        const t = typeRisque(nbTotal);
         return {
           ...c,
           _nb_total: nbTotal,
@@ -2352,12 +2362,13 @@
         };
       });
 
-    // Compétences à risque = critiques avec 0/1 porteur AU NIVEAU requis
-    const riskList = critEnriched.filter(x => Number(x._nb_ok || 0) <= 1);
+    // Compétences à risque = critiques avec bus factor <= 1 (aligné KPI/table)
+    const riskList = critEnriched.filter(x => Number(x._nb_total || 0) <= 1);
 
-    const nb0 = riskList.filter(x => Number(x._nb_ok || 0) <= 0).length;
-    const nb1 = riskList.filter(x => Number(x._nb_ok || 0) === 1).length;
+    const nb0 = riskList.filter(x => Number(x._nb_total || 0) <= 0).length;
+    const nb1 = riskList.filter(x => Number(x._nb_total || 0) === 1).length;
     const nbF = riskList.length;
+
 
     // Indice fragilité 0..100 (même logique que le tableau postes)
     function calcFragilityScore(nb0, nb1, nbFragiles) {
@@ -2478,7 +2489,7 @@
     } else if (!nbF) {
       diag = `Aucune fragilité critique détectée (≥ ${critMinVal}%, couverture au niveau requis).`;
     } else {
-      diag = `Poste fragile : ${nbF} compétences critiques à risque (couverture au niveau requis). ${nb0} non couvertes, ${nb1} à couverture unique.`;
+      diag = `Poste fragile : ${nbF} compétences critiques à risque (bus factor ≤ 1). ${nb0} non couvertes, ${nb1} à couverture unique.`;
     }
 
     const score = calcFragilityScore(nb0, nb1, nbF);
