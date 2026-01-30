@@ -3102,18 +3102,18 @@ function renderDetail(mode) {
                 Indice de fragilité
               </th>
 
-              <th class="col-center" style="width:170px;"
+              <th class="col-center" style="width:140px; white-space:normal; line-height:1.1;"
                   title="Nombre de compétences critiques non couvertes">
-                Critique non couverte
+                Critique<br>non couverte
               </th>
 
-              <th class="col-center" style="width:210px;"
+              <th class="col-center" style="width:170px; white-space:normal; line-height:1.1;"
                   title="Nombre de compétences critiques couvertes par une seule personne">
-                Critique à couverture unique
+                Critique à<br>couverture unique
               </th>
 
-              <th class="col-center" style="width:190px;">
-                Priorité de traitement
+              <th class="col-center" style="width:160px; white-space:normal; line-height:1.1;">
+                Priorité de<br>traitement
               </th>
 
               <th class="col-center" style="width:140px;">Action</th>
