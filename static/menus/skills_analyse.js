@@ -642,14 +642,12 @@
         ${risks.length ? `
           <div class="table-wrap" style="margin-top:10px;">
             <table class="sb-table">
-              <thead>
+             <thead>
                 <tr>
                   <th style="width:90px;">Code</th>
                   <th>Compétence</th>
                   <th class="col-center" style="width:140px;">Type</th>
                   <th class="col-center" style="width:90px;">Criticité</th>
-                  <th class="col-center" style="width:110px;">Porteurs</th>
-                  <th class="col-center" style="width:110px;">OK</th>
                   <th class="col-center" style="width:140px;">Action reco</th>
                 </tr>
               </thead>
@@ -677,8 +675,6 @@
                       </td>
                       <td class="col-center">${pill(type)}</td>
                       <td class="col-center" style="white-space:nowrap;">${crit}</td>
-                      <td class="col-center">${badge(nbTxt, nb <= 1)}</td>
-                      <td class="col-center">${badge(nbOkTxt, nbOk <= 1)}</td>
                       <td class="col-center">${recoPill(reco)}</td>
                     </tr>
                   `;
