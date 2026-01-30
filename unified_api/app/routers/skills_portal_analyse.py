@@ -2848,6 +2848,11 @@ class AnalysePosteFragiliteComposantes(BaseModel):
     nb_total_fragiles: int = 0
     criticite_min: int
 
+    # Pour stabiliser les recos (Former vs Mutualiser) sur les couvertures uniques
+    nb1_ok: int = 0           # couvertures uniques avec 1 porteur AU NIVEAU requis
+    nb1_a_former: int = 0     # couvertures uniques avec 1 porteur mais PAS au niveau requis
+
+
 
 class AnalysePosteTopRisqueItem(BaseModel):
     id_comp: str
@@ -2856,8 +2861,10 @@ class AnalysePosteTopRisqueItem(BaseModel):
     poids_criticite: Optional[int] = None
 
     type_risque: str  # NON_COUVERTE / COUV_UNIQUE / FRAGILE
-    nb_porteurs: int = 0
-    recommandation: str  # former / mutualiser / recruter
+    nb_porteurs: int = 0      # 0 / 1 / 2 (2 = 2+)
+    nb_ok: int = 0            # 0 / 1 / 2 (2 = 2+), au niveau requis
+    recommandation: str       # former / mutualiser / recruter
+
 
 
 class AnalysePosteDiagnosticResponse(BaseModel):
@@ -3248,10 +3255,12 @@ def get_analyse_risques_poste_diagnostic(
                     {cte_sql},
                     req AS (
                         SELECT DISTINCT
+                            fpc.id_poste,
                             c.id_comp,
                             c.code,
                             c.intitule,
-                            COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite
+                            COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite,
+                            COALESCE(fpc.niveau_requis, '')::text AS niveau_requis
                         FROM public.tbl_fiche_poste_competence fpc
                         JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
                         JOIN public.tbl_competence c
@@ -3262,22 +3271,43 @@ def get_analyse_risques_poste_diagnostic(
                             AND COALESCE(c.masque, FALSE) = FALSE
                             AND COALESCE(fpc.poids_criticite, 0)::int >= %s
                     ),
-                    porteurs AS (
+                    porteurs_total AS (
                         SELECT
                             ec.id_comp,
                             COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
                         FROM public.tbl_effectif_client_competence ec
                         JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
+                        WHERE COALESCE(ec.niveau_actuel, '') <> ''
                         GROUP BY ec.id_comp
+                    ),
+                    porteurs_ok AS (
+                        SELECT
+                            r.id_comp,
+                            COUNT(DISTINCT ec.id_effectif_client)::int AS nb_ok
+                        FROM req r
+                        JOIN public.tbl_effectif_client_competence ec
+                          ON ec.id_comp = r.id_comp
+                        JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
+                        WHERE
+                            COALESCE(ec.niveau_actuel, '') <> ''
+                            AND (
+                                (UPPER(COALESCE(r.niveau_requis, '')) = 'A' AND UPPER(ec.niveau_actuel) IN ('A','B','C')) OR
+                                (UPPER(COALESCE(r.niveau_requis, '')) = 'B' AND UPPER(ec.niveau_actuel) IN ('B','C')) OR
+                                (UPPER(COALESCE(r.niveau_requis, '')) = 'C' AND UPPER(ec.niveau_actuel) IN ('C')) OR
+                                (COALESCE(r.niveau_requis, '') = '')  -- si pas de niveau requis, tout porteur compte comme OK
+                            )
+                        GROUP BY r.id_comp
                     )
                     SELECT
                         r.id_comp,
                         r.code,
                         r.intitule,
                         r.poids_criticite,
-                        COALESCE(p.nb_porteurs, 0)::int AS nb_porteurs
+                        COALESCE(pt.nb_porteurs, 0)::int AS nb_porteurs,
+                        COALESCE(po.nb_ok, 0)::int AS nb_ok
                     FROM req r
-                    LEFT JOIN porteurs p ON p.id_comp = r.id_comp
+                    LEFT JOIN porteurs_total pt ON pt.id_comp = r.id_comp
+                    LEFT JOIN porteurs_ok po ON po.id_comp = r.id_comp
                     """,
                     tuple(cte_params + [id_poste, criticite_min]),
                 )
@@ -3285,16 +3315,40 @@ def get_analyse_risques_poste_diagnostic(
 
                 nb0 = 0
                 nb1 = 0
+                nb1_ok = 0
+                nb1_a_former = 0
+
                 risques: List[AnalysePosteTopRisqueItem] = []
 
                 for r in rows:
-                    bucket = _bucket_porteurs(r.get("nb_porteurs"))
-                    if bucket == 0:
-                        nb0 += 1
-                    elif bucket == 1:
-                        nb1 += 1
+                    bucket_total = _bucket_porteurs(r.get("nb_porteurs"))
+                    bucket_ok = _bucket_porteurs(r.get("nb_ok"))
 
-                    type_risque = _type_risque_from_bucket(bucket)
+                    # Compteurs "fragiles" basés sur bus factor TOTAL (aligné KPI)
+                    if bucket_total == 0:
+                        nb0 += 1
+                    elif bucket_total == 1:
+                        nb1 += 1
+                        # Stabilisation reco: si l'unique porteur n'est pas OK => Former
+                        if bucket_ok >= 1:
+                            nb1_ok += 1
+                        else:
+                            nb1_a_former += 1
+
+                    type_risque = _type_risque_from_bucket(bucket_total)
+
+                    # Reco stable:
+                    # - 0 porteur total => recruter
+                    # - 1 porteur total:
+                    #     - si OK au niveau requis => mutualiser (backup)
+                    #     - sinon => former (monter au niveau requis)
+                    # - 2+ => former (consolider)
+                    if bucket_total == 0:
+                        reco = "recruter"
+                    elif bucket_total == 1:
+                        reco = "mutualiser" if bucket_ok >= 1 else "former"
+                    else:
+                        reco = "former"
 
                     risques.append(
                         AnalysePosteTopRisqueItem(
@@ -3303,10 +3357,12 @@ def get_analyse_risques_poste_diagnostic(
                             intitule=r.get("intitule"),
                             poids_criticite=int(r.get("poids_criticite") or 0),
                             type_risque=type_risque,
-                            nb_porteurs=bucket,  # 0 / 1 / 2 (2 = 2+)
-                            recommandation=_reco_from_type(type_risque),
+                            nb_porteurs=bucket_total,  # 0 / 1 / 2 (2 = 2+)
+                            nb_ok=bucket_ok,           # 0 / 1 / 2 (2 = 2+)
+                            recommandation=reco,
                         )
                     )
+
 
                 # Aligné avec le KPI "postes-fragiles": fragiles = (nb_porteurs <= 1)
                 nb_total_fragiles = nb0 + nb1
@@ -3344,6 +3400,8 @@ def get_analyse_risques_poste_diagnostic(
                         nb1=int(nb1),
                         nb_total_fragiles=int(nb_total_fragiles),
                         criticite_min=int(criticite_min),
+                        nb1_ok=int(nb1_ok),
+                        nb1_a_former=int(nb1_a_former),
                     ),
                     top_risques=top,
                 )
