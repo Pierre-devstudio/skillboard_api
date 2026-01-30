@@ -737,6 +737,7 @@
         <div class="card-sub" style="margin-top:6px;">
           Charge la liste complète des compétences critiques (et la couverture) uniquement si nécessaire.
         </div>
+        <div id="analysePosteDiagCartoSlot"></div>
       </div>
     `;
   }
