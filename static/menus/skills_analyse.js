@@ -437,6 +437,16 @@
   const _posteDetailCache = new Map();
   let _posteDetailReqSeq = 0;
 
+  // Diagnostic décisionnel (poste fragile) - endpoint dédié
+  const _posteDiagCache = new Map();      // key: id_poste|id_service|critMin|limit
+  let _posteDiagReqSeq = 0;
+
+  // Contexte du dernier poste ouvert (pour lazy-load détail/couverture)
+  let _analysePosteLastParams = { id_poste: "", id_service: "" };
+  let _analysePosteDetailLoaded = false;  // détail (endpoint /poste) chargé ou non
+  let _analysePosteDetailLoading = false; // anti double-call
+
+
   // Modal détail poste (risques) — mode décisionnel
   // _analysePosteShowAllCompetences est réutilisé comme switch UI :
   // false = n’afficher que les compétences À RISQUE (0/1 porteur au niveau requis)
@@ -464,6 +474,269 @@
     _posteDetailCache.set(key, data);
     return data;
   }
+
+  async function fetchAnalysePosteDiagnostic(portal, id_poste, id_service, criticite_min, limit = 8) {
+    const svc = (id_service || "").trim();
+
+    const crit = (criticite_min === null || criticite_min === undefined || criticite_min === "")
+      ? (getCriticiteMin() ?? null)
+      : Number(criticite_min);
+
+    const critVal = Number.isFinite(crit) ? String(crit) : "";
+    const lim = Math.max(1, Math.min(8, Number(limit || 8)));
+
+    const key = `${id_poste}|${svc}|${critVal}|${lim}`;
+    if (_posteDiagCache.has(key)) return _posteDiagCache.get(key);
+
+    const qs = buildQueryString({
+      id_poste: id_poste,
+      id_service: svc || null,
+      criticite_min: critVal || null,
+      limit: lim
+    });
+
+    const url = `${portal.apiBase}/skills/analyse/risques/poste/diagnostic/${encodeURIComponent(portal.contactId)}${qs}`;
+    const data = await portal.apiJson(url);
+
+    syncCriticiteMinFromResponse(data);
+    _posteDiagCache.set(key, data);
+    return data;
+  }
+
+    // Dernier diagnostic chargé (pour re-render quand on rebascule en "risques uniquement")
+  let _analysePosteLastDiag = null;
+
+  function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
+    _analysePosteLastDiag = diag || null;
+
+    const host = byId("analysePosteTabCompetences");
+    if (!host) return;
+
+    const comp = diag?.composantes || {};
+    const nb0 = Number(comp.nb0 || 0);
+    const nb1 = Number(comp.nb1 || 0);
+    const nbF = Number(comp.nb_total_fragiles || 0);
+
+    const critMin = Number(diag?.criticite_min ?? comp.criticite_min ?? getCriticiteMin() ?? 70);
+    const score = Number(diag?.indice_fragilite ?? 0);
+
+    const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+    const s = clamp(Math.round(score || 0), 0, 100);
+
+    const focus = (focusKey || "").trim();
+
+    function scoreHue(score100) {
+      const x = clamp(Number(score100 || 0), 0, 100) / 100;
+      return Math.round(120 * (1 - x)); // 120=vert -> 0=rouge
+    }
+
+    function ring(score100) {
+      const hue = scoreHue(score100);
+      const fill = `hsl(${hue} 70% 45%)`;
+      return `
+        <div style="width:92px; height:92px; border-radius:999px; background:conic-gradient(${fill} ${score100}%, #e5e7eb 0); display:flex; align-items:center; justify-content:center;">
+          <div style="width:70px; height:70px; border-radius:999px; background:#fff; border:1px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+            <div style="font-weight:900; font-size:22px; line-height:1;">
+              ${score100}<span style="font-size:12px; font-weight:800;">%</span>
+            </div>
+            <div style="font-size:11px; color:#6b7280; font-weight:800; margin-top:2px;">fragilité</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function badge(txt, accent) {
+      const cls = accent ? "sb-badge sb-badge-accent" : "sb-badge";
+      return `<span class="${cls}">${escapeHtml(txt || "—")}</span>`;
+    }
+
+    function pill(txt) {
+      return `
+        <span style="
+          display:inline-flex; align-items:center; justify-content:center;
+          padding:4px 10px; border-radius:999px; border:1px solid #d1d5db;
+          background:#fff; color:#374151; font-weight:900; font-size:12px; white-space:nowrap;">
+          ${escapeHtml(txt || "—")}
+        </span>
+      `;
+    }
+
+    function recoFromNb(n) {
+      const x = Number(n || 0);
+      if (x <= 0) return "recruter";
+      if (x === 1) return "mutualiser";
+      return "former";
+    }
+
+    function recoLabel(r) {
+      const k = (r || "").toLowerCase();
+      if (k === "recruter") return "Recruter";
+      if (k === "mutualiser") return "Mutualiser";
+      return "Former";
+    }
+
+    function recoPill(r) {
+      return `
+        <span style="
+          display:inline-flex; align-items:center; justify-content:center;
+          padding:4px 10px; border-radius:999px; border:1px solid #d1d5db;
+          background:var(--chip-bg, #f3f4f6); color:#111827; font-weight:900; font-size:12px; white-space:nowrap;">
+          ${escapeHtml(recoLabel(r))}
+        </span>
+      `;
+    }
+
+    // Top risques: on ne montre que les vrais risques (bus factor ≤ 1)
+    const all = Array.isArray(diag?.top_risques) ? diag.top_risques : [];
+    let risks = all.filter(x => Number(x?.nb_porteurs || 0) <= 1);
+
+    if (focus === "critiques-sans-porteur") risks = risks.filter(x => Number(x?.nb_porteurs || 0) <= 0);
+    if (focus === "porteur-unique") risks = risks.filter(x => Number(x?.nb_porteurs || 0) === 1);
+    // total-fragiles => 0 ou 1 (déjà le cas)
+
+    // Plan de sécurisation: décision simple basée sur composantes (global, pas juste top 8)
+    const planRecruter = nb0;
+    const planMutualiser = nb1;
+    const planFormer = 0;
+
+    const toggleText = "Voir toutes les compétences critiques";
+
+    let diagPhrase = `Seuil criticité (source de vérité) : ≥ ${critMin}%.`;
+    if (!all.length) {
+      diagPhrase = `Aucune compétence critique détectée (seuil ≥ ${critMin}%).`;
+    } else if (!nbF) {
+      diagPhrase = `Aucune fragilité critique détectée (≥ ${critMin}%, bus factor > 1).`;
+    } else {
+      diagPhrase = `Poste fragile : ${nbF} compétences critiques à risque (bus factor ≤ 1). ${nb0} non couvertes, ${nb1} à couverture unique.`;
+    }
+
+    host.innerHTML = `
+      <div class="card" style="padding:12px; margin:0;">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:320px;">
+            <div class="card-title" style="margin:0;">Diagnostic décisionnel</div>
+            <div class="card-sub" style="margin-top:6px;">${escapeHtml(diagPhrase)}</div>
+            <div class="card-sub" style="margin-top:8px;">
+              <b>Définition :</b> fragilité = compétences critiques avec <b>nb porteurs total ≤ 1</b>.
+              (Le détail “au niveau requis” est visible dans la cartographie si tu l’ouvres.)
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:14px;">
+            ${ring(s)}
+            <div style="display:flex; flex-direction:column; gap:8px; min-width:180px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                <div style="font-weight:800;">Non couvertes</div>
+                ${badge(String(nb0), nb0 > 0)}
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                <div style="font-weight:800;">Couverture unique</div>
+                ${badge(String(nb1), nb1 > 0)}
+              </div>
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                <div style="font-weight:800;">Total fragiles</div>
+                ${badge(String(nbF), nbF > 0)}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px; margin-top:12px;">
+        <div class="card-title" style="margin:0 0 6px 0;">Causes racines (top)</div>
+        <div class="card-sub" style="margin:0;">Max 8 compétences critiques à risque, triées par gravité (nb porteurs puis criticité).</div>
+
+        ${risks.length ? `
+          <div class="table-wrap" style="margin-top:10px;">
+            <table class="sb-table">
+              <thead>
+                <tr>
+                  <th style="width:90px;">Code</th>
+                  <th>Compétence</th>
+                  <th class="col-center" style="width:140px;">Type</th>
+                  <th class="col-center" style="width:90px;">Criticité</th>
+                  <th class="col-center" style="width:120px;">Porteurs</th>
+                  <th class="col-center" style="width:140px;">Action reco</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${risks.map(x => {
+                  const code = escapeHtml(x?.code_comp || "—");
+                  const intit = escapeHtml(x?.intitule || "—");
+                  const crit = (x?.poids_criticite === null || x?.poids_criticite === undefined) ? "—" : escapeHtml(String(x.poids_criticite));
+                  const nb = Number(x?.nb_porteurs || 0);
+                  const type = (nb <= 0) ? "NON_COUVERTE" : "COUV_UNIQUE";
+                  const reco = recoFromNb(nb);
+                  return `
+                    <tr>
+                      <td style="font-weight:800; white-space:nowrap;">${code}</td>
+                      <td style="min-width:280px;">
+                        <div style="font-size:14px; font-weight:700;">${intit}</div>
+                      </td>
+                      <td class="col-center">${pill(type)}</td>
+                      <td class="col-center" style="white-space:nowrap;">${crit}</td>
+                      <td class="col-center">${badge(nb <= 0 ? "0" : "1", nb <= 1)}</td>
+                      <td class="col-center">${recoPill(reco)}</td>
+                    </tr>
+                  `;
+                }).join("")}
+              </tbody>
+            </table>
+          </div>
+        ` : `
+          <div class="card-sub" style="margin-top:10px;">Aucune cause racine sur le focus actuel.</div>
+        `}
+      </div>
+
+      <div class="card" style="padding:12px; margin-top:12px;">
+        <div class="card-title" style="margin:0 0 6px 0;">Plan de sécurisation</div>
+        <div class="card-sub" style="margin:0;">Synthèse globale (sur toutes les compétences critiques à risque, pas seulement le top).</div>
+
+        <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:220px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+              <div style="font-weight:900;">Former</div>
+              ${badge(String(planFormer), planFormer > 0)}
+            </div>
+            <div class="card-sub" style="margin:6px 0 0 0;">Montée en niveau requise (visible dans le détail).</div>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:220px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+              <div style="font-weight:900;">Mutualiser</div>
+              ${badge(String(planMutualiser), planMutualiser > 0)}
+            </div>
+            <div class="card-sub" style="margin:6px 0 0 0;">Créer une doublure (bus factor = 1).</div>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:220px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+              <div style="font-weight:900;">Recruter</div>
+              ${badge(String(planRecruter), planRecruter > 0)}
+            </div>
+            <div class="card-sub" style="margin:6px 0 0 0;">Absence totale de porteur (bus factor = 0).</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:12px; margin-top:12px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div class="card-title" style="margin:0;">Cartographie détaillée</div>
+          <button type="button"
+                  id="btnAnalysePosteCritToggle"
+                  class="btn-secondary"
+                  style="background:var(--reading-accent); color:#fff; border-color:var(--reading-accent); padding:6px 10px; font-weight:800;">
+            ${escapeHtml(toggleText)}
+          </button>
+        </div>
+        <div class="card-sub" style="margin-top:6px;">
+          Charge la liste complète des compétences critiques (et la couverture) uniquement si nécessaire.
+        </div>
+      </div>
+    `;
+  }
+
+
 
     // ==============================
   // MATCHING (MVP)
@@ -2752,8 +3025,6 @@
   }
 
 async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKey) {
-  const mySeq = ++_posteDetailReqSeq;
-
   const focus = (focusKey || "").trim(); // "critiques-sans-porteur" | "porteur-unique" | "total-fragiles" | ""
   const modal = byId("modalAnalysePoste");
   if (modal) modal.setAttribute("data-focus", focus);
@@ -2761,41 +3032,46 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
   function focusLabel(k) {
     if (k === "critiques-sans-porteur") return "Compétences critiques non couvertes";
     if (k === "porteur-unique") return "Compétences critiques à couverture unique";
-    if (k === "total-fragiles") return "Fragilités (0 ou 1 personne au niveau attendu)";
+    if (k === "total-fragiles") return "Fragilités (bus factor ≤ 1)";
     return "";
   }
 
-  // Reset filtre compétences à chaque ouverture du modal (par défaut: critiques uniquement)
+  // Reset état modal
+  _analysePosteFocusKey = focus;
   _analysePosteShowAllCompetences = false;
   _analysePosteLastData = null;
 
+  // Lazy-load détail (endpoint lourd) : pas chargé à l’ouverture
+  _analysePosteLastParams = { id_poste: id_poste, id_service: id_service || "" };
+  _analysePosteDetailLoaded = false;
+  _analysePosteDetailLoading = false;
+
   openAnalysePosteModal(
     "Détail poste",
-    `<div class="card-sub" style="margin:0;">Chargement…</div>`
+    `<div class="card-sub" style="margin:0;">Chargement du diagnostic…</div>`
   );
 
-  // Par défaut, si clic sur "Total fragiles" => on ouvre l’onglet Couverture
-  setAnalysePosteTab(focus === "total-fragiles" ? "couverture" : "competences");
+  // On force l’onglet Compétences pour le diagnostic (décision en 30s)
+  setAnalysePosteTab("competences");
 
   const tabA = byId("analysePosteTabCompetences");
   const tabB = byId("analysePosteTabCouverture");
   if (tabA) tabA.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
-  if (tabB) tabB.innerHTML = "";
+  if (tabB) tabB.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Charge le détail si tu veux la couverture complète.</div></div>`;
+
+  const mySeq = ++_posteDiagReqSeq;
 
   try {
-    const data = await fetchAnalysePosteDetail(portal, id_poste, id_service);
-    if (mySeq !== _posteDetailReqSeq) return;
+    const diag = await fetchAnalysePosteDiagnostic(portal, id_poste, id_service, getCriticiteMin(), 8);
+    if (mySeq !== _posteDiagReqSeq) return;
 
-    const poste = data?.poste || {};
-
+    const poste = diag?.poste || {};
     const codifClient = (poste.codif_client || "").trim();
     const codifPoste  = (poste.codif_poste || "").trim();
     const codeAffiche = (codifClient !== "") ? codifClient : codifPoste;
 
     const posteIntitule = (poste.intitule_poste || "").trim() || "Poste";
-
-
-    const scope = (data?.scope?.nom_service || "").trim() || "Tous les services";
+    const scope = (diag?.scope?.nom_service || "").trim() || "Tous les services";
 
     const focusLab = focusLabel(focus);
     const focusHtml = focusLab
@@ -2805,14 +3081,14 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
     const sub = `
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
-        <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(String(data?.criticite_min ?? getCriticiteMin() ?? "—"))}</span>
+        <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(String(diag?.criticite_min ?? getCriticiteMin() ?? "—"))}</span>
         ${focusHtml}
       </div>
     `;
 
-    openAnalysePosteModal(posteIntitule || "Détail poste", sub);
+    openAnalysePosteModal(posteIntitule, sub);
 
-    // Injecte le code dans le badge du titre si la structure HTML existe
+    // Badge code poste dans le titre
     const tCode = byId("analysePosteModalTitleCode");
     if (tCode) {
       if ((codeAffiche || "").trim() !== "") {
@@ -2824,32 +3100,22 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
       }
     }
 
-    // Focus conservé pour le rendu (diagnostic + liste), sans tronquer le dataset
-    _analysePosteFocusKey = focus;
-
-    // On rend l’onglet Compétences avec le dataset COMPLET (sinon le diagnostic est faux)
-    renderAnalysePosteCompetencesTab(data);
-
-    // Couverture = calculée sur le dataset complet
-    renderAnalysePosteCouvertureTab(data);
-
+    // Rendu diagnostic ONLY (sans charger la carto)
+    renderAnalysePosteDiagnosticOnly(diag, focus);
 
   } catch (e) {
-    if (mySeq !== _posteDetailReqSeq) return;
+    if (mySeq !== _posteDiagReqSeq) return;
 
     openAnalysePosteModal(
       "Détail poste",
       `<div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>`
     );
 
-    const tabA = byId("analysePosteTabCompetences");
     if (tabA) {
-      tabA.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Impossible de charger le détail.</div></div>`;
+      tabA.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Impossible de charger le diagnostic.</div></div>`;
     }
   }
 }
-
-
 
 
 function renderDetail(mode) {
@@ -4334,21 +4600,65 @@ function bindOnce(portal) {
   if (btnClosePoste) btnClosePoste.addEventListener("click", closeAnalysePosteModal);
 
   if (modalPoste) {
-    modalPoste.addEventListener("click", (e) => {
+    modalPoste.addEventListener("click", async (e) => {
 
-      // Toggle "Voir tout / Voir critiques" (table compétences du poste)
+      // Toggle "Voir toutes les compétences critiques" / "Voir uniquement les risques"
       const btnToggle = e.target && e.target.closest ? e.target.closest("#btnAnalysePosteCritToggle") : null;
       if (btnToggle) {
+
+        // 1) Lazy-load du détail AU PREMIER clic uniquement
+        if (!_analysePosteDetailLoaded && !_analysePosteDetailLoading) {
+          _analysePosteDetailLoading = true;
+
+          const id_poste = (_analysePosteLastParams?.id_poste || "").trim();
+          const id_service = (_analysePosteLastParams?.id_service || "").trim();
+
+          try {
+            const data = await fetchAnalysePosteDetail(portal, id_poste, id_service);
+
+            _analysePosteLastData = data;
+            _analysePosteDetailLoaded = true;
+            _analysePosteDetailLoading = false;
+
+            // On bascule directement en "toutes compétences critiques"
+            _analysePosteShowAllCompetences = true;
+
+            renderAnalysePosteCompetencesTab(data);
+            if (typeof renderAnalysePosteCouvertureTab === "function") {
+              renderAnalysePosteCouvertureTab(data);
+            }
+
+          } catch (err) {
+            _analysePosteDetailLoading = false;
+
+            // Fallback: on reste sur le diagnostic-only si dispo
+            if (typeof renderAnalysePosteDiagnosticOnly === "function" && _analysePosteLastDiag) {
+              renderAnalysePosteDiagnosticOnly(_analysePosteLastDiag, _analysePosteFocusKey);
+            }
+
+            if (typeof showToast === "function") showToast("Erreur chargement cartographie poste.", "error");
+            else console.error(err);
+          }
+
+          return;
+        }
+
+        // 2) Détail déjà chargé => simple toggle + re-render
         _analysePosteShowAllCompetences = !_analysePosteShowAllCompetences;
+
         if (_analysePosteLastData) {
           renderAnalysePosteCompetencesTab(_analysePosteLastData);
+        } else if (typeof renderAnalysePosteDiagnosticOnly === "function" && _analysePosteLastDiag) {
+          renderAnalysePosteDiagnosticOnly(_analysePosteLastDiag, _analysePosteFocusKey);
         }
+
         return;
       }
 
       if (e.target === modalPoste) closeAnalysePosteModal();
     });
   }
+
 
   if (tabA) tabA.addEventListener("click", () => setAnalysePosteTab("competences"));
   if (tabB) tabB.addEventListener("click", () => setAnalysePosteTab("couverture"));
