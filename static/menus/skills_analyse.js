@@ -561,13 +561,6 @@
       `;
     }
 
-    function recoFromNb(n) {
-      const x = Number(n || 0);
-      if (x <= 0) return "recruter";
-      if (x === 1) return "mutualiser";
-      return "former";
-    }
-
     function recoLabel(r) {
       const k = (r || "").toLowerCase();
       if (k === "recruter") return "Recruter";
@@ -655,7 +648,8 @@
                   <th>Compétence</th>
                   <th class="col-center" style="width:140px;">Type</th>
                   <th class="col-center" style="width:90px;">Criticité</th>
-                  <th class="col-center" style="width:120px;">Porteurs</th>
+                  <th class="col-center" style="width:110px;">Porteurs</th>
+                  <th class="col-center" style="width:110px;">OK</th>
                   <th class="col-center" style="width:140px;">Action reco</th>
                 </tr>
               </thead>
@@ -664,9 +658,17 @@
                   const code = escapeHtml(x?.code_comp || "—");
                   const intit = escapeHtml(x?.intitule || "—");
                   const crit = (x?.poids_criticite === null || x?.poids_criticite === undefined) ? "—" : escapeHtml(String(x.poids_criticite));
-                  const nb = Number(x?.nb_porteurs || 0);
+                  const nb = Number(x?.nb_porteurs || 0); // 0/1/2 (2 = 2+)
+                  const nbOk = Number(x?.nb_ok || 0);     // 0/1/2 (2 = 2+)
+
+                  const nbTxt = (nb >= 2) ? "2+" : String(nb);
+                  const nbOkTxt = (nbOk >= 2) ? "2+" : String(nbOk);
+
                   const type = (nb <= 0) ? "NON_COUVERTE" : "COUV_UNIQUE";
-                  const reco = recoFromNb(nb);
+
+                  // Source de vérité: recommandation renvoyée par l'API diagnostic
+                  const reco = (x?.recommandation || "").toString().trim().toLowerCase() || "former";
+
                   return `
                     <tr>
                       <td style="font-weight:800; white-space:nowrap;">${code}</td>
@@ -675,7 +677,8 @@
                       </td>
                       <td class="col-center">${pill(type)}</td>
                       <td class="col-center" style="white-space:nowrap;">${crit}</td>
-                      <td class="col-center">${badge(nb <= 0 ? "0" : "1", nb <= 1)}</td>
+                      <td class="col-center">${badge(nbTxt, nb <= 1)}</td>
+                      <td class="col-center">${badge(nbOkTxt, nbOk <= 1)}</td>
                       <td class="col-center">${recoPill(reco)}</td>
                     </tr>
                   `;
