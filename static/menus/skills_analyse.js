@@ -3223,7 +3223,7 @@ function renderDetail(mode) {
     `;
   }
 
-  const resetHtml = rf
+  const buildResetHtml = () => rf
     ? `
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
@@ -3242,28 +3242,32 @@ function renderDetail(mode) {
       </div>
     `;
 
+  function bindRiskResetBtn() {
+    const btnReset = byId("btnRiskFilterReset");
+    if (btnReset) {
+      btnReset.addEventListener("click", () => {
+        setRiskFilter("");
+        renderDetail("risques");
+      });
+    }
+  }
+
   body.innerHTML = `
-    ${resetHtml}
+    ${buildResetHtml()}
     <div class="card" style="padding:12px; margin:0;">
       <div class="card-sub" style="margin:0;">Chargement…</div>
     </div>
   `;
-
-  const btnReset = byId("btnRiskFilterReset");
-  if (btnReset) {
-    btnReset.addEventListener("click", () => {
-      setRiskFilter("");
-      renderDetail("risques");
-    });
-  }
+  bindRiskResetBtn();
 
   if (!_portalref) {
     body.innerHTML = `
-      ${resetHtml}
+      ${buildResetHtml()}
       <div class="card" style="padding:12px; margin:0;">
         <div class="card-sub" style="margin:0;">Contexte portail indisponible.</div>
       </div>
     `;
+    bindRiskResetBtn();
     return;
   }
 
@@ -3285,15 +3289,8 @@ function renderDetail(mode) {
           </div>
         `;
 
-        body.innerHTML = `${resetHtml}${content}`;
-
-        const btnReset2 = byId("btnRiskFilterReset");
-        if (btnReset2) {
-          btnReset2.addEventListener("click", () => {
-            setRiskFilter("");
-            renderDetail("risques");
-          });
-        }
+        body.innerHTML = `${buildResetHtml()}${content}`;
+        bindRiskResetBtn();
         return;
       }
 
@@ -3310,7 +3307,7 @@ function renderDetail(mode) {
       const itemsC = Array.isArray(c?.items) ? c.items : [];
 
       body.innerHTML = `
-        ${resetHtml}
+        ${buildResetHtml()}
 
         <div class="card" style="padding:12px; margin:0;">
           <div class="card-title" style="margin-bottom:6px;">Postes fragiles</div>
@@ -3330,20 +3327,22 @@ function renderDetail(mode) {
           ${renderTableCompetences(itemsC)}
         </div>
       `;
+      bindRiskResetBtn();
+
     } catch (e) {
       if (mySeq !== _riskDetailReqSeq) return;
 
       body.innerHTML = `
-        ${resetHtml}
+        ${buildResetHtml()}
         <div class="card" style="padding:12px; margin:0;">
           <div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(e.message || "inconnue")}</div>
         </div>
       `;
+      bindRiskResetBtn();
     }
   })();
+
 }
-
-
 
 
   async function refreshSummary(portal) {
