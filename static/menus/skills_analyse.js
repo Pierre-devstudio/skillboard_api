@@ -2562,12 +2562,21 @@
         };
       });
 
-    // Compétences à risque = critiques avec bus factor <= 1 (aligné KPI/table)
+    // Poste non tenu = fragilité max (règle métier)
+    const nbTitRaw = data?.poste?.nb_titulaires;
+    const nbTit = (nbTitRaw === null || nbTitRaw === undefined || nbTitRaw === "") ? null : Number(nbTitRaw);
+    const isVacant = (nbTit === 0);
+
+    // Risques “bus factor” (définition KPI)
     const riskList = critEnriched.filter(x => Number(x._nb_total || 0) <= 1);
 
     const nb0 = riskList.filter(x => Number(x._nb_total || 0) <= 0).length;
     const nb1 = riskList.filter(x => Number(x._nb_total || 0) === 1).length;
     const nbF = riskList.length;
+
+    // Pour un poste non tenu: on veut des causes “top criticité”, même si bus factor OK
+    const causesSource = isVacant ? [...critEnriched] : [...riskList];
+
 
 
     // Indice fragilité 0..100 (même logique que le tableau postes)
@@ -2646,7 +2655,7 @@
     // Top causes (max 8) triées “gravité”
     const typeOrder = (t) => (t === "NON_COUVERTE" ? 0 : (t === "COUV_UNIQUE" ? 1 : 9));
 
-    const topRisks = [...riskList]
+    const topRisks = [...causesSource]
       .sort((a, b) =>
         typeOrder(a._type_risque) - typeOrder(b._type_risque)
         || (Number(b.poids_criticite || 0) - Number(a.poids_criticite || 0))
@@ -2656,10 +2665,23 @@
 
     // Plan de sécurisation (comptage sur toutes les compétences à risque)
     const plan = { former: [], mutualiser: [], recruter: [] };
-    for (const x of riskList) {
-      const k = (x._reco || "").toLowerCase();
-      if (plan[k]) plan[k].push(x);
+
+    if (isVacant) {
+      // Poste non tenu: si la compétence existe ailleurs -> mutualiser (affecter/backup),
+      // sinon -> recruter (compétence absente)
+      for (const x of critEnriched) {
+        const tot = Number(x._nb_total || 0);
+        const k = (tot <= 0) ? "recruter" : "mutualiser";
+        plan[k].push(x);
+      }
+    } else {
+      // Poste tenu: plan basé sur les compétences à risque (bus factor <= 1)
+      for (const x of riskList) {
+        const k = (x._reco || "").toLowerCase();
+        if (plan[k]) plan[k].push(x);
+      }
     }
+
 
     function planCard(title, key, sub) {
       const arr = Array.isArray(plan[key]) ? plan[key] : [];
@@ -2684,7 +2706,12 @@
 
     // Diagnostic phrase auto
     let diag = `Seuil criticité (source de vérité) : ≥ ${critMinVal}%.`;
-    if (!critEnriched.length) {
+
+    if (isVacant) {
+      const nCrit = critEnriched.length;
+      diag = `Poste non tenu (0 titulaire) : fragilité maximale. ${nCrit} compétences critiques identifiées (top 8 ci-dessous).`;
+      if (!nCrit) diag = `Poste non tenu (0 titulaire) : fragilité maximale. Aucune compétence critique détectée (seuil ≥ ${critMinVal}%).`;
+    } else if (!critEnriched.length) {
       diag = `Aucune compétence critique détectée (seuil ≥ ${critMinVal}%).`;
     } else if (!nbF) {
       diag = `Aucune fragilité critique détectée (≥ ${critMinVal}%, couverture au niveau requis).`;
@@ -2692,7 +2719,9 @@
       diag = `Poste fragile : ${nbF} compétences critiques à risque (bus factor ≤ 1). ${nb0} non couvertes, ${nb1} à couverture unique.`;
     }
 
-    const score = calcFragilityScore(nb0, nb1, nbF);
+
+    const score = isVacant ? 100 : calcFragilityScore(nb0, nb1, nbF);
+
 
     // Toggle (réutilisation du bouton existant)
     const showAllCrit = !!_analysePosteShowAllCompetences;

@@ -323,7 +323,7 @@ def get_analyse_summary(
                     FROM public.tbl_fiche_poste_competence fpc
                     JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
                     JOIN public.tbl_competence c
-                    ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                      ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
                     WHERE
                         c.etat = 'active'
                         AND COALESCE(c.masque, FALSE) = FALSE
@@ -381,6 +381,7 @@ def get_analyse_summary(
                 FROM req r
                 LEFT JOIN porteurs p ON p.id_comp = r.id_comp
                 """
+
 
 
                 cur.execute(sql_risques, tuple(cte_params + [CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN]))
@@ -3055,6 +3056,21 @@ def get_analyse_risques_poste_detail(
                 poste = cur.fetchone()
                 if not poste:
                     raise HTTPException(status_code=404, detail="Poste introuvable (ou hors périmètre service).")
+                
+                # 1bis) Nb titulaires (poste non tenu = fragilité max)
+                cur.execute(
+                    f"""
+                    WITH {cte_sql}
+                    SELECT COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
+                    FROM public.tbl_effectif_client e
+                    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                    WHERE COALESCE(e.archive, FALSE) = FALSE
+                      AND e.id_poste_actuel = %s
+                    """,
+                    tuple(cte_params + [id_poste]),
+                )
+                nb_titulaires = int((cur.fetchone() or {}).get("nb_titulaires") or 0)
+
 
                 # 2) Compétences requises du poste
                 cur.execute(
@@ -3217,6 +3233,8 @@ def get_analyse_risques_poste_detail(
                         "intitule_poste": poste.get("intitule_poste"),
                         "id_service": poste.get("id_service"),
                         "nom_service": poste.get("nom_service"),
+                        "nb_titulaires": nb_titulaires,
+
                     },
                     coverage=cov,
                     competences=competences,
