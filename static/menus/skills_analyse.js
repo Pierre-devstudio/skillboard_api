@@ -2410,33 +2410,6 @@
     }
   }
 
-
-  function setAnalysePosteTab(tabName) {
-    const btnA = byId("tabAnalysePosteCompetences");
-    const btnB = byId("tabAnalysePosteCouverture");
-    const a = byId("analysePosteTabCompetences");
-    const b = byId("analysePosteTabCouverture");
-
-    const isA = tabName === "competences";
-
-    if (a) a.style.display = isA ? "" : "none";
-    if (b) b.style.display = isA ? "none" : "";
-
-    // Visuel simple sans ajouter de CSS
-    if (btnA) {
-      btnA.style.borderColor = isA ? "var(--accent)" : "#d1d5db";
-      btnA.style.background = isA ? "var(--accent)" : "#ffffff";
-      btnA.style.color = isA ? "#ffffff" : "#111827";
-      btnA.style.fontWeight = isA ? "700" : "600";
-    }
-    if (btnB) {
-      btnB.style.borderColor = !isA ? "var(--accent)" : "#d1d5db";
-      btnB.style.background = !isA ? "var(--accent)" : "#ffffff";
-      btnB.style.color = !isA ? "#ffffff" : "#111827";
-      btnB.style.fontWeight = !isA ? "700" : "600";
-    }
-  }
-
   function renderPostePorteurs(porteurs, idPosteAnalyse) {
     const list = Array.isArray(porteurs) ? porteurs : [];
     if (!list.length) {
@@ -2955,81 +2928,6 @@
   }
 
 
-  function renderAnalysePosteCouvertureTab(data) {
-    const host = byId("analysePosteTabCouverture");
-    if (!host) return;
-
-    const cov = data?.coverage || {};
-    const total = Number(cov.total_competences || 0);
-
-    function pct(part) {
-      const p = Number(part || 0);
-      if (!total) return 0;
-      return Math.round((p / total) * 100);
-    }
-
-    function bar(label, part, sub) {
-      const p = pct(part);
-      return `
-        <div class="card" style="padding:12px; margin:0 0 10px 0;">
-          <div style="display:flex; justify-content:space-between; gap:10px; align-items:baseline;">
-            <div style="font-weight:700;">${escapeHtml(label)}</div>
-            <div class="sb-badge sb-badge-accent">${p}%</div>
-          </div>
-          <div style="margin-top:8px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
-            <div style="height:10px; width:${p}%; background:var(--accent); border-radius:999px;"></div>
-          </div>
-          ${sub ? `<div class="card-sub" style="margin-top:6px;">${sub}</div>` : ``}
-        </div>
-      `;
-    }
-
-    const c1 = Number(cov.couvert_1plus || 0);
-    const c2 = Number(cov.couvert_2plus || 0);
-    const nc = Number(cov.non_couvert || 0);
-    const u1 = Number(cov.porteur_unique || 0);
-
-    const critTot = Number(cov.total_critiques || 0);
-    const critNc = Number(cov.critiques_non_couvert || 0);
-    const critU1 = Number(cov.critiques_porteur_unique || 0);
-
-    host.innerHTML = `
-      <div class="card" style="padding:12px; margin:0;">
-        <div class="card-title" style="margin-bottom:6px;">Couverture du poste</div>
-        <div class="card-sub" style="margin:0;">
-          Mesure simple basée sur le nombre de possédant la compétence. Criticité min: <b>${escapeHtml(String(data?.criticite_min ?? getCriticiteMin() ?? "—"))}</b>
-        </div>
-
-        <div style="margin-top:12px;">
-          ${bar("Compétences couvertes (≥ 1 personne)", c1, `${c1}/${total} compétences`)}
-          ${bar("Compétences sécurisées (≥ 2 personnes)", c2, `${c2}/${total} compétences`)}
-          ${bar("Compétences non couvertes (0 personne)", nc, `${nc}/${total} compétences`)}
-          ${bar("Compétences à dépendance (1 personne)", u1, `${u1}/${total} compétences`)}
-        </div>
-
-        <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">Focus compétences critiques</div>
-          <div class="card-sub" style="margin:0;">Critiques = criticité ≥ ${escapeHtml(String(data?.criticite_min ?? getCriticiteMin() ?? "—"))}</div>
-
-          <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
-            <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
-              <div class="label">Critiques (total)</div>
-              <div class="value">${critTot}</div>
-            </div>
-            <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
-              <div class="label">Critiques non couvertes</div>
-              <div class="value">${critNc}</div>
-            </div>
-            <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
-              <div class="label">Critiques à couverture unique</div>
-              <div class="value">${critU1}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-
 async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKey) {
   const focus = (focusKey || "").trim(); // "critiques-sans-porteur" | "porteur-unique" | "total-fragiles" | ""
   const modal = byId("modalAnalysePoste");
@@ -3057,13 +2955,9 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
     `<div class="card-sub" style="margin:0;">Chargement du diagnostic…</div>`
   );
 
-  // On force l’onglet Compétences pour le diagnostic (décision en 30s)
-  setAnalysePosteTab("competences");
-
+  // Init contenu (Compétences)
   const tabA = byId("analysePosteTabCompetences");
-  const tabB = byId("analysePosteTabCouverture");
   if (tabA) tabA.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
-  if (tabB) tabB.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Charge le détail si tu veux la couverture complète.</div></div>`;
 
   const mySeq = ++_posteDiagReqSeq;
 
@@ -4599,8 +4493,7 @@ function bindOnce(portal) {
   const modalPoste = byId("modalAnalysePoste");
   const btnXPoste = byId("btnCloseAnalysePosteModal");
   const btnClosePoste = byId("btnAnalysePosteModalClose");
-  const tabA = byId("tabAnalysePosteCompetences");
-  const tabB = byId("tabAnalysePosteCouverture");
+
 
   if (btnXPoste) btnXPoste.addEventListener("click", closeAnalysePosteModal);
   if (btnClosePoste) btnClosePoste.addEventListener("click", closeAnalysePosteModal);
@@ -4630,9 +4523,6 @@ function bindOnce(portal) {
             _analysePosteShowAllCompetences = true;
 
             renderAnalysePosteCompetencesTab(data);
-            if (typeof renderAnalysePosteCouvertureTab === "function") {
-              renderAnalysePosteCouvertureTab(data);
-            }
 
           } catch (err) {
             _analysePosteDetailLoading = false;
@@ -4664,10 +4554,6 @@ function bindOnce(portal) {
       if (e.target === modalPoste) closeAnalysePosteModal();
     });
   }
-
-
-  if (tabA) tabA.addEventListener("click", () => setAnalysePosteTab("competences"));
-  if (tabB) tabB.addEventListener("click", () => setAnalysePosteTab("couverture"));
 
   // ==============================
   // Modal Prévisions Critiques - wiring
