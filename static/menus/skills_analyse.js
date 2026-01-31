@@ -517,6 +517,24 @@
     const nb1 = Number(comp.nb1 || 0);
     const nbF = Number(comp.nb_total_fragiles || 0);
 
+    // Stats affichées dans le panneau de droite (diagnostic-only)
+    const _nb0 = Number(data?.composantes?.nb0 || 0);
+    const _nb1 = Number(data?.composantes?.nb1 || 0);
+    const _nbF = Number(data?.composantes?.nb_total_fragiles || 0);
+
+    const statA_label = "Non couvertes";
+    const statA_value = String(_nb0);
+    const statA_alert = (_nb0 > 0);
+
+    const statB_label = "Couverture unique";
+    const statB_value = String(_nb1);
+    const statB_alert = (_nb1 > 0);
+
+    const statC_label = "Total fragiles";
+    const statC_value = String(_nbF);
+    const statC_alert = (_nbF > 0);
+
+
     const critMin = Number(diag?.criticite_min ?? comp.criticite_min ?? getCriticiteMin() ?? 70);
     const score = Number(diag?.indice_fragilite ?? 0);
 
@@ -2567,7 +2585,7 @@
     const nbTit = (nbTitRaw === null || nbTitRaw === undefined || nbTitRaw === "") ? null : Number(nbTitRaw);
     const isVacant = (nbTit === 0);
 
-        // Stats affichées dans le panneau de droite (cohérence métier)
+    // Stats affichées dans le panneau de droite (cohérence métier)
     const statA_label = isVacant ? "Titulaires" : "Non couvertes";
     const statA_value = isVacant ? String(nbTit ?? 0) : String(nb0);
     const statA_alert = isVacant ? true : (nb0 > 0);
