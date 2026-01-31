@@ -2945,8 +2945,34 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
       }
     }
 
-    // Rendu diagnostic ONLY (sans charger la carto)
+    // Rendu diagnostic immédiat (affichage rapide)
     renderAnalysePosteDiagnosticOnly(diag, focus);
+
+    // Chargement AUTO du détail (endpoint lourd) pour afficher la cartographie + causes racines dès l’ouverture
+    if (!_analysePosteDetailLoaded && !_analysePosteDetailLoading) {
+      _analysePosteDetailLoading = true;
+
+      try {
+        const data = await fetchAnalysePosteDetail(portal, id_poste, id_service);
+
+        // Si une autre requête a pris la main entre temps, on n’écrase rien
+        if (mySeq !== _posteDiagReqSeq) return;
+
+        _analysePosteLastData = data;
+        _analysePosteDetailLoaded = true;
+        _analysePosteDetailLoading = false;
+
+        // Affiche la vue “Compétences” (inclut Causes racines)
+        renderAnalysePosteCompetencesTab(data);
+
+      } catch (err) {
+        _analysePosteDetailLoading = false;
+        if (typeof showToast === "function") showToast("Erreur chargement cartographie poste.", "error");
+        else console.error(err);
+        // On reste sur le diagnostic-only déjà affiché
+      }
+    }
+
 
   } catch (e) {
     if (mySeq !== _posteDiagReqSeq) return;
@@ -4450,41 +4476,7 @@ function bindOnce(portal) {
       const btnToggle = e.target && e.target.closest ? e.target.closest("#btnAnalysePosteCritToggle") : null;
       if (btnToggle) {
 
-        // 1) Lazy-load du détail AU PREMIER clic uniquement
-        if (!_analysePosteDetailLoaded && !_analysePosteDetailLoading) {
-          _analysePosteDetailLoading = true;
-
-          const id_poste = (_analysePosteLastParams?.id_poste || "").trim();
-          const id_service = (_analysePosteLastParams?.id_service || "").trim();
-
-          try {
-            const data = await fetchAnalysePosteDetail(portal, id_poste, id_service);
-
-            _analysePosteLastData = data;
-            _analysePosteDetailLoaded = true;
-            _analysePosteDetailLoading = false;
-
-            // On bascule directement en "toutes compétences critiques"
-            _analysePosteShowAllCompetences = true;
-
-            renderAnalysePosteCompetencesTab(data);
-
-          } catch (err) {
-            _analysePosteDetailLoading = false;
-
-            // Fallback: on reste sur le diagnostic-only si dispo
-            if (typeof renderAnalysePosteDiagnosticOnly === "function" && _analysePosteLastDiag) {
-              renderAnalysePosteDiagnosticOnly(_analysePosteLastDiag, _analysePosteFocusKey);
-            }
-
-            if (typeof showToast === "function") showToast("Erreur chargement cartographie poste.", "error");
-            else console.error(err);
-          }
-
-          return;
-        }
-
-        // 2) Détail déjà chargé => simple toggle + re-render
+        // Le détail est chargé à l’ouverture du modal : ici on fait uniquement un toggle + re-render
         _analysePosteShowAllCompetences = !_analysePosteShowAllCompetences;
 
         if (_analysePosteLastData) {
