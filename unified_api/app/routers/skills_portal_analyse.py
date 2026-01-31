@@ -2448,6 +2448,7 @@ class AnalyseRisqueItem(BaseModel):
     nb_critiques_fragiles: Optional[int] = None
     nb_critiques_sans_porteur: Optional[int] = None
     nb_critiques_porteur_unique: Optional[int] = None
+    nb_titulaires: Optional[int] = None
 
     # Compétence (pour "critiques-sans-porteur" et "porteur-unique")
     id_comp: Optional[str] = None
@@ -2551,15 +2552,28 @@ def get_analyse_risques_detail(
                 if k == "postes-fragiles":
                     sql = base_cte + """
                     ,
+                    titulaires AS (
+                        SELECT
+                            e.id_poste_actuel AS id_poste,
+                            COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
+                        FROM public.tbl_effectif_client e
+                        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                        WHERE COALESCE(e.archive, FALSE) = FALSE
+                          AND COALESCE(e.id_poste_actuel, '') <> ''
+                        GROUP BY e.id_poste_actuel
+                    ),
                     poste_agg AS (
                         SELECT
-                            r.id_poste,
-                            SUM(CASE WHEN r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) <= 1 THEN 1 ELSE 0 END)::int AS nb_critiques_fragiles,
-                            SUM(CASE WHEN r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 0 THEN 1 ELSE 0 END)::int AS nb_critiques_sans_porteur,
-                            SUM(CASE WHEN r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 1 THEN 1 ELSE 0 END)::int AS nb_critiques_porteur_unique
-                        FROM req r
+                            ps.id_poste,
+                            SUM(CASE WHEN r.id_comp IS NOT NULL AND r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) <= 1 THEN 1 ELSE 0 END)::int AS nb_critiques_fragiles,
+                            SUM(CASE WHEN r.id_comp IS NOT NULL AND r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 0 THEN 1 ELSE 0 END)::int AS nb_critiques_sans_porteur,
+                            SUM(CASE WHEN r.id_comp IS NOT NULL AND r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 1 THEN 1 ELSE 0 END)::int AS nb_critiques_porteur_unique,
+                            COALESCE(t.nb_titulaires, 0)::int AS nb_titulaires
+                        FROM postes_scope ps
+                        LEFT JOIN req r ON r.id_poste = ps.id_poste
                         LEFT JOIN porteurs p ON p.id_comp = r.id_comp
-                        GROUP BY r.id_poste
+                        LEFT JOIN titulaires t ON t.id_poste = ps.id_poste
+                        GROUP BY ps.id_poste, COALESCE(t.nb_titulaires, 0)
                     )
                     SELECT
                         fp.id_poste,
@@ -2570,15 +2584,17 @@ def get_analyse_risques_detail(
                         COALESCE(o.nom_service, '') AS nom_service,
                         pa.nb_critiques_fragiles,
                         pa.nb_critiques_sans_porteur,
-                        pa.nb_critiques_porteur_unique
+                        pa.nb_critiques_porteur_unique,
+                        pa.nb_titulaires
                     FROM poste_agg pa
                     JOIN public.tbl_fiche_poste fp ON fp.id_poste = pa.id_poste
                     LEFT JOIN public.tbl_entreprise_organigramme o
                       ON o.id_ent = %s
                      AND o.id_service = fp.id_service
                      AND o.archive = FALSE
-                    WHERE pa.nb_critiques_fragiles > 0
+                    WHERE (pa.nb_critiques_fragiles > 0 OR pa.nb_titulaires = 0)
                     ORDER BY
+                        pa.nb_titulaires ASC,
                         pa.nb_critiques_sans_porteur DESC,
                         pa.nb_critiques_porteur_unique DESC,
                         pa.nb_critiques_fragiles DESC,
@@ -2602,7 +2618,9 @@ def get_analyse_risques_detail(
                             nb_critiques_fragiles=int(r.get("nb_critiques_fragiles") or 0),
                             nb_critiques_sans_porteur=int(r.get("nb_critiques_sans_porteur") or 0),
                             nb_critiques_porteur_unique=int(r.get("nb_critiques_porteur_unique") or 0),
+                            nb_titulaires=int(r.get("nb_titulaires") or 0),
                         ))
+
 
                 # ---------------------------
                 # KPI: Tous les postes (scope)

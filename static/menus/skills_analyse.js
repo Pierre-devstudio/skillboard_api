@@ -3425,22 +3425,19 @@ function renderDetail(mode) {
     // Indice fragilité 0..100 (déterministe, basé sur ce qu'on a: 0 critique + 1 critique)
     // - 0 critique => très pénalisant
     // - 1 critique => pénalisant (dépendance)
-    function calcFragilityScore(nb0, nb1, nbFragiles) {
+    function calcFragilityScore(nb0, nb1, nbFragiles, nbTitulaires) {
+      // Règle métier: poste non tenu = poste fragile prioritaire
+      if (nbTitulaires === 0) return 100;
+
       const a = Number(nb0 || 0);            // N0 : non couvertes
       const b = Number(nb1 || 0);            // N1 : couverture unique
       const f = Number(nbFragiles || 0);     // total fragiles (incluant 0/1)
       const n2 = Math.max(f - a - b, 0);     // N2 : fragiles hors 0/1
 
-      // Pondérations (impact “par item”):
-      // - N0 non couverte : 0.85 (rupture potentielle)
-      // - N1 unique       : 0.60 (dépendance forte)
-      // - N2 faible       : 0.25 (fragilité latente)
       const w0 = 0.85, w1 = 0.60, w2 = 0.25;
-
       const risk = 1 - Math.pow(1 - w0, a) * Math.pow(1 - w1, b) * Math.pow(1 - w2, n2);
       return clamp(Math.round(risk * 100), 0, 100);
     }
-
 
     function scoreHue(score) {
       const s = clamp(Number(score || 0), 0, 100) / 100;
@@ -3464,15 +3461,17 @@ function renderDetail(mode) {
       `;
     }
 
-    function priorityLabel(score, nb0) {
+    function priorityLabel(score, nb0, nbTitulaires) {
       const s = clamp(Number(score || 0), 0, 100);
       const a = Number(nb0 || 0);
 
+      if (nbTitulaires === 0) return "Critique";
       if (a > 0) return "Critique";
       if (s >= 75) return "Élevée";
       if (s >= 45) return "Modérée";
       return "Faible";
     }
+
 
     function priorityPill(label, score) {
       const s = clamp(Math.round(Number(score || 0)), 0, 100);
@@ -3544,8 +3543,13 @@ function renderDetail(mode) {
               const nb1 = Number(r.nb_critiques_porteur_unique || 0);
               const nbF = Number(r.nb_critiques_fragiles || 0);
 
-              const score = calcFragilityScore(nb0, nb1, nbF);
-              const prio  = priorityLabel(score, nb0);
+              const nbTit = (r.nb_titulaires === null || r.nb_titulaires === undefined)
+                ? null
+                : Number(r.nb_titulaires);
+
+              const score = calcFragilityScore(nb0, nb1, nbF, nbTit);
+              const prio  = priorityLabel(score, nb0, nbTit);
+
 
               return `
                 <tr class="risk-poste-row" data-id_poste="${escapeHtml(r.id_poste || "")}">
