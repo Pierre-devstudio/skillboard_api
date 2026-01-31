@@ -642,58 +642,6 @@
       </div>
 
       <div class="card" style="padding:12px; margin-top:12px;">
-        <div class="card-title" style="margin:0 0 6px 0;">Causes racines (top)</div>
-        <div class="card-sub" style="margin:0;">Max 8 compétences critiques à risque, triées par gravité (nb porteurs puis criticité).</div>
-
-        ${risks.length ? `
-          <div class="table-wrap" style="margin-top:10px;">
-            <table class="sb-table">
-             <thead>
-                <tr>
-                  <th style="width:90px;">Code</th>
-                  <th>Compétence</th>
-                  <th class="col-center" style="width:140px;">Type</th>
-                  <th class="col-center" style="width:90px;">Criticité</th>
-                  <th class="col-center" style="width:140px;">Action reco</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${risks.map(x => {
-                  const code = escapeHtml(x?.code_comp || "—");
-                  const intit = escapeHtml(x?.intitule || "—");
-                  const crit = (x?.poids_criticite === null || x?.poids_criticite === undefined) ? "—" : escapeHtml(String(x.poids_criticite));
-                  const nb = Number(x?.nb_porteurs || 0); // 0/1/2 (2 = 2+)
-                  const nbOk = Number(x?.nb_ok || 0);     // 0/1/2 (2 = 2+)
-
-                  const nbTxt = (nb >= 2) ? "2+" : String(nb);
-                  const nbOkTxt = (nbOk >= 2) ? "2+" : String(nbOk);
-
-                  const type = (nb <= 0) ? "NON_COUVERTE" : "COUV_UNIQUE";
-
-                  // Source de vérité: recommandation renvoyée par l'API diagnostic
-                  const reco = (x?.recommandation || "").toString().trim().toLowerCase() || "former";
-
-                  return `
-                    <tr>
-                      <td style="font-weight:800; white-space:nowrap;">${code}</td>
-                      <td style="min-width:280px;">
-                        <div style="font-size:14px; font-weight:700;">${intit}</div>
-                      </td>
-                      <td class="col-center">${pill(type)}</td>
-                      <td class="col-center" style="white-space:nowrap;">${crit}</td>
-                      <td class="col-center">${recoPill(reco)}</td>
-                    </tr>
-                  `;
-                }).join("")}
-              </tbody>
-            </table>
-          </div>
-        ` : `
-          <div class="card-sub" style="margin-top:10px;">Aucune cause racine sur le focus actuel.</div>
-        `}
-      </div>
-
-      <div class="card" style="padding:12px; margin-top:12px;">
         <div class="card-title" style="margin:0 0 6px 0;">Plan de sécurisation</div>
         <div class="card-sub" style="margin:0;">Synthèse globale (sur toutes les compétences critiques à risque, pas seulement le top).</div>
 
@@ -2817,7 +2765,6 @@
                   <th>Compétence</th>
                   <th class="col-center" style="width:140px;">Type</th>
                   <th class="col-center" style="width:90px;">Criticité</th>
-                  <th class="col-center" style="width:140px;">Porteurs (OK)</th>
                   <th class="col-center" style="width:140px;">Action reco</th>
                 </tr>
               </thead>
@@ -2826,8 +2773,6 @@
                   const code = escapeHtml(c.code || "—");
                   const intit = escapeHtml(c.intitule || "—");
                   const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "—" : escapeHtml(String(c.poids_criticite));
-                  const nbOk = Number(c._nb_ok || 0);
-                  const nbOkTxt = nbOk >= 2 ? "2+" : String(nbOk);
                   const type = typeLabel(c._type_risque);
                   return `
                     <tr>
@@ -2837,7 +2782,6 @@
                       </td>
                       <td class="col-center">${pill(type)}</td>
                       <td class="col-center" style="white-space:nowrap;">${crit}</td>
-                      <td class="col-center">${badge(nbOkTxt, nbOk <= 1)}</td>
                       <td class="col-center">${pillReco(c._reco)}</td>
                     </tr>
                   `;
@@ -2849,6 +2793,7 @@
           <div class="card-sub" style="margin-top:10px;">Aucune cause racine à afficher (aucune compétence critique à risque).</div>
         `}
       </div>
+
 
       <div class="card" style="padding:12px; margin-top:12px;">
         <div class="card-title" style="margin:0 0 6px 0;">Plan de sécurisation</div>
