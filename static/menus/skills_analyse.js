@@ -625,16 +625,16 @@
             ${ring(s)}
             <div style="display:flex; flex-direction:column; gap:8px; min-width:180px;">
               <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                <div style="font-weight:800;">Non couvertes</div>
-                ${badge(String(nb0), nb0 > 0)}
+                <div style="font-weight:800;">${escapeHtml(statA_label)}</div>
+                ${badge(statA_value, statA_alert)}
               </div>
               <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                <div style="font-weight:800;">Couverture unique</div>
-                ${badge(String(nb1), nb1 > 0)}
+                <div style="font-weight:800;">${escapeHtml(statB_label)}</div>
+                ${badge(statB_value, statB_alert)}
               </div>
               <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-                <div style="font-weight:800;">Total fragiles</div>
-                ${badge(String(nbF), nbF > 0)}
+                <div style="font-weight:800;">${escapeHtml(statC_label)}</div>
+                ${badge(statC_value, statC_alert)}
               </div>
             </div>
           </div>
@@ -2567,6 +2567,21 @@
     const nbTit = (nbTitRaw === null || nbTitRaw === undefined || nbTitRaw === "") ? null : Number(nbTitRaw);
     const isVacant = (nbTit === 0);
 
+        // Stats affichées dans le panneau de droite (cohérence métier)
+    const statA_label = isVacant ? "Titulaires" : "Non couvertes";
+    const statA_value = isVacant ? String(nbTit ?? 0) : String(nb0);
+    const statA_alert = isVacant ? true : (nb0 > 0);
+
+    const statB_label = isVacant ? "Critiques" : "Couverture unique";
+    const statB_value = isVacant ? String(critEnriched.length) : String(nb1);
+    const statB_alert = isVacant ? (critEnriched.length > 0) : (nb1 > 0);
+
+    const absentCrit = isVacant ? critEnriched.filter(x => Number(x._nb_total || 0) <= 0).length : 0;
+    const statC_label = isVacant ? "Critiques absentes" : "Total fragiles";
+    const statC_value = isVacant ? String(absentCrit) : String(nbF);
+    const statC_alert = isVacant ? (absentCrit > 0) : (nbF > 0);
+
+
     // Risques “bus factor” (définition KPI)
     const riskList = critEnriched.filter(x => Number(x._nb_total || 0) <= 1);
 
@@ -2802,8 +2817,12 @@
                   const code = escapeHtml(c.code || "—");
                   const intit = escapeHtml(c.intitule || "—");
                   const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "—" : escapeHtml(String(c.poids_criticite));
-                  const type = typeLabel(c._type_risque);
+                  const type = isVacant ? "POSTE_NON_TENU" : typeLabel(c._type_risque);
+
+                  const recoVacant = (Number(c._nb_total || 0) <= 0) ? "recruter" : "mutualiser";
+                  const reco = isVacant ? recoVacant : (c._reco || "");
                   return `
+
                     <tr>
                       <td style="font-weight:800; white-space:nowrap;">${code}</td>
                       <td style="min-width:280px;">
@@ -2811,7 +2830,7 @@
                       </td>
                       <td class="col-center">${pill(type)}</td>
                       <td class="col-center" style="white-space:nowrap;">${crit}</td>
-                      <td class="col-center">${pillReco(c._reco)}</td>
+                      <td class="col-center">${pillReco(reco)}</td>
                     </tr>
                   `;
                 }).join("")}
