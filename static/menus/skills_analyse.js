@@ -2806,69 +2806,6 @@
         </div>
       </div>
 
-      <div class="card" style="padding:12px; margin-top:12px;">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;">
-          <div class="card-title" style="margin:0;">${escapeHtml(detailTitle)}</div>
-          <button type="button"
-                  id="btnAnalysePosteCritToggle"
-                  class="btn-secondary"
-                  style="${toggleStyle} padding:6px 10px; font-weight:800;">
-            ${escapeHtml(toggleText)}
-          </button>
-        </div>
-
-        ${detailList.length ? `
-          <div class="table-wrap" style="margin-top:10px;">
-            <table class="sb-table">
-              <thead>
-                <tr>
-                  <th style="width:90px;">Code</th>
-                  <th>Compétence</th>
-                  <th class="col-center" style="width:120px;">Niveau requis</th>
-                  <th class="col-center" style="width:90px;">Criticité</th>
-                  <th class="col-center" style="width:140px;">Porteurs (OK)</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${detailList.map(c => {
-                  const code = escapeHtml(c.code || "—");
-                  const intit = escapeHtml(c.intitule || "—");
-                  const nivReq = escapeHtml(c.niveau_requis || "—");
-                  const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "—" : escapeHtml(String(c.poids_criticite));
-                  const porteurs = Array.isArray(c.porteurs) ? c.porteurs : [];
-                  const nbOk = Number(c._nb_ok || 0);
-                  const nbOkTxt = nbOk >= 2 ? "2+" : String(nbOk);
-
-                  const badgeOk = nbOk > 1
-                    ? `<span class="sb-badge sb-badge-accent">${escapeHtml(nbOkTxt)}</span>`
-                    : `<span class="sb-badge">${escapeHtml(nbOkTxt)}</span>`;
-
-                  const porteursHtml = renderPostePorteurs(porteurs, data?.poste?.id_poste);
-
-                  return `
-                    <tr>
-                      <td style="font-weight:800; white-space:nowrap;">${code}</td>
-                      <td>
-                        <div style="font-size:14px; font-weight:650;">${intit}</div>
-                        ${porteursHtml}
-                      </td>
-                      <td class="col-center" style="white-space:nowrap;">${nivReq}</td>
-                      <td class="col-center" style="white-space:nowrap;">${crit}</td>
-                      <td class="col-center" style="white-space:nowrap;">${badgeOk}</td>
-                    </tr>
-                  `;
-                }).join("")}
-              </tbody>
-            </table>
-          </div>
-
-          <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-            “Porteurs (OK)” = nombre de collaborateurs <b>au niveau requis</b> (dans le périmètre filtré).
-          </div>
-        ` : `
-          <div class="card-sub" style="margin:0;">Aucun résultat sur ce périmètre.</div>
-        `}
-      </div>
     `;
   }
 
@@ -4470,24 +4407,7 @@ function bindOnce(portal) {
   if (btnClosePoste) btnClosePoste.addEventListener("click", closeAnalysePosteModal);
 
   if (modalPoste) {
-    modalPoste.addEventListener("click", async (e) => {
-
-      // Toggle "Voir toutes les compétences critiques" / "Voir uniquement les risques"
-      const btnToggle = e.target && e.target.closest ? e.target.closest("#btnAnalysePosteCritToggle") : null;
-      if (btnToggle) {
-
-        // Le détail est chargé à l’ouverture du modal : ici on fait uniquement un toggle + re-render
-        _analysePosteShowAllCompetences = !_analysePosteShowAllCompetences;
-
-        if (_analysePosteLastData) {
-          renderAnalysePosteCompetencesTab(_analysePosteLastData);
-        } else if (typeof renderAnalysePosteDiagnosticOnly === "function" && _analysePosteLastDiag) {
-          renderAnalysePosteDiagnosticOnly(_analysePosteLastDiag, _analysePosteFocusKey);
-        }
-
-        return;
-      }
-
+    modalPoste.addEventListener("click", async (e) => {    
       if (e.target === modalPoste) closeAnalysePosteModal();
     });
   }
