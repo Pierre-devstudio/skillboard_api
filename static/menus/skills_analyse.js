@@ -518,9 +518,11 @@
     const nbF = Number(comp.nb_total_fragiles || 0);
 
     // Stats affichées dans le panneau de droite (diagnostic-only)
-    const _nb0 = Number(data?.composantes?.nb0 || 0);
-    const _nb1 = Number(data?.composantes?.nb1 || 0);
-    const _nbF = Number(data?.composantes?.nb_total_fragiles || 0);
+    const diagData = arguments[0] || {};
+
+    const _nb0 = Number(diagData?.composantes?.nb0 || 0);
+    const _nb1 = Number(diagData?.composantes?.nb1 || 0);
+    const _nbF = Number(diagData?.composantes?.nb_total_fragiles || 0);
 
     const statA_label = "Non couvertes";
     const statA_value = String(_nb0);
@@ -533,6 +535,7 @@
     const statC_label = "Total fragiles";
     const statC_value = String(_nbF);
     const statC_alert = (_nbF > 0);
+
 
 
     const critMin = Number(diag?.criticite_min ?? comp.criticite_min ?? getCriticiteMin() ?? 70);
