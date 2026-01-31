@@ -2585,20 +2585,6 @@
     const nbTit = (nbTitRaw === null || nbTitRaw === undefined || nbTitRaw === "") ? null : Number(nbTitRaw);
     const isVacant = (nbTit === 0);
 
-    // Stats affichées dans le panneau de droite (cohérence métier)
-    const statA_label = isVacant ? "Titulaires" : "Non couvertes";
-    const statA_value = isVacant ? String(nbTit ?? 0) : String(nb0);
-    const statA_alert = isVacant ? true : (nb0 > 0);
-
-    const statB_label = isVacant ? "Critiques" : "Couverture unique";
-    const statB_value = isVacant ? String(critEnriched.length) : String(nb1);
-    const statB_alert = isVacant ? (critEnriched.length > 0) : (nb1 > 0);
-
-    const absentCrit = isVacant ? critEnriched.filter(x => Number(x._nb_total || 0) <= 0).length : 0;
-    const statC_label = isVacant ? "Critiques absentes" : "Total fragiles";
-    const statC_value = isVacant ? String(absentCrit) : String(nbF);
-    const statC_alert = isVacant ? (absentCrit > 0) : (nbF > 0);
-
 
     // Risques “bus factor” (définition KPI)
     const riskList = critEnriched.filter(x => Number(x._nb_total || 0) <= 1);
