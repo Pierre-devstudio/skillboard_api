@@ -335,12 +335,39 @@ def get_analyse_summary(
                     FROM public.tbl_effectif_client_competence ec
                     JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
                     GROUP BY ec.id_comp
+                ),
+                titulaires AS (
+                    SELECT
+                        e.id_poste_actuel AS id_poste,
+                        COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
+                    FROM public.tbl_effectif_client e
+                    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                    WHERE COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.id_poste_actuel, '') <> ''
+                    GROUP BY e.id_poste_actuel
+                ),
+                poste_agg AS (
+                    SELECT
+                        ps.id_poste,
+                        SUM(CASE
+                              WHEN r.id_comp IS NOT NULL
+                               AND r.poids_criticite >= %s
+                               AND COALESCE(p.nb_porteurs, 0) <= 1
+                              THEN 1 ELSE 0
+                            END)::int AS nb_critiques_fragiles,
+                        COALESCE(t.nb_titulaires, 0)::int AS nb_titulaires
+                    FROM postes_scope ps
+                    LEFT JOIN req r ON r.id_poste = ps.id_poste
+                    LEFT JOIN porteurs p ON p.id_comp = r.id_comp
+                    LEFT JOIN titulaires t ON t.id_poste = ps.id_poste
+                    GROUP BY ps.id_poste, COALESCE(t.nb_titulaires, 0)
                 )
                 SELECT
-                    COUNT(DISTINCT CASE
-                        WHEN r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) <= 1 THEN r.id_poste
+                    (SELECT COUNT(DISTINCT CASE
+                        WHEN (pa.nb_critiques_fragiles > 0 OR pa.nb_titulaires = 0) THEN pa.id_poste
                         ELSE NULL
-                    END)::int AS postes_fragiles,
+                    END)
+                    FROM poste_agg pa)::int AS postes_fragiles,
 
                     COUNT(DISTINCT CASE
                         WHEN r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 0 THEN r.id_comp
@@ -354,6 +381,7 @@ def get_analyse_summary(
                 FROM req r
                 LEFT JOIN porteurs p ON p.id_comp = r.id_comp
                 """
+
 
                 cur.execute(sql_risques, tuple(cte_params + [CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN]))
                 rk = cur.fetchone() or {}
