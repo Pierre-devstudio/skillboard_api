@@ -63,19 +63,37 @@ _db_pool_lock = threading.Lock()
 _db_pool_created = 0
 
 
+def _is_pooler_saturated(err: Exception) -> bool:
+    msg = str(err) if err is not None else ""
+    m = msg.lower()
+    return ("maxclientsinsessionmode" in msg) or ("max clients reached" in m) or ("pool_size" in m)
+
+
 def _create_conn():
-    try:
-        return psycopg.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            dbname=DB_NAME,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            sslmode="require",
-            connect_timeout=10,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur connexion DB: {e}")
+    # Retry court UNIQUEMENT si pooler saturé (session mode / pool_size)
+    delays = [0.0, 0.3, 0.7, 1.2]  # ~2.2s max
+    last_err = None
+
+    for d in delays:
+        if d > 0:
+            time.sleep(d)
+        try:
+            return psycopg.connect(
+                host=DB_HOST,
+                port=DB_PORT,
+                dbname=DB_NAME,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                sslmode="require",
+                connect_timeout=10,
+            )
+        except Exception as e:
+            last_err = e
+            if not _is_pooler_saturated(e):
+                raise HTTPException(status_code=500, detail=f"Erreur connexion DB: {e}")
+
+    raise HTTPException(status_code=503, detail=f"DB saturée (pooler). Réessaie. {last_err}")
+
 
 
 class _ConnCtx:
@@ -92,12 +110,34 @@ class _ConnCtx:
                 detail=f"Variables manquantes: {', '.join(missing)}",
             )
 
-        # 1) Récupérer une connexion disponible
+        # 1) Récupérer une connexion disponible (et vérifier qu'elle est vivante)
         try:
             self.conn = _db_pool.get_nowait()
-            return self.conn
         except Exception:
             self.conn = None
+
+        if self.conn is not None:
+            try:
+                # Conn déjà fermée ?
+                if getattr(self.conn, "closed", False):
+                    try:
+                        self.conn.close()
+                    except Exception:
+                        pass
+                    self.conn = None
+                else:
+                    # Ping minimal
+                    with self.conn.cursor() as cur:
+                        cur.execute("select 1;")
+                    return self.conn
+            except Exception:
+                # Conn morte -> on la jette
+                try:
+                    self.conn.close()
+                except Exception:
+                    pass
+                self.conn = None
+
 
         # 2) Sinon, en créer une si on n’a pas atteint la limite
         with _db_pool_lock:
