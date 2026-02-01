@@ -6,6 +6,9 @@ import requests
 
 import psycopg
 from dotenv import load_dotenv
+import threading
+import queue
+import time
 
 # ======================================================
 # ENV
@@ -47,13 +50,20 @@ def _missing_env():
     ]
 
 
-def get_conn():
-    missing = _missing_env()
-    if missing:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Variables manquantes: {', '.join(missing)}",
-        )
+# ======================================================
+# Pool DB (simple, fiable, sans dépendance externe)
+# - Evite de saturer Supabase pooler (session mode)
+# - Limite strictement le nb de connexions ouvertes
+# ======================================================
+_DB_POOL_MAX = int(os.getenv("DB_POOL_SIZE", "3") or 3)
+_DB_POOL_TIMEOUT = float(os.getenv("DB_POOL_TIMEOUT", "10") or 10)
+
+_db_pool = queue.LifoQueue(maxsize=_DB_POOL_MAX)
+_db_pool_lock = threading.Lock()
+_db_pool_created = 0
+
+
+def _create_conn():
     try:
         return psycopg.connect(
             host=DB_HOST,
@@ -62,9 +72,89 @@ def get_conn():
             user=DB_USER,
             password=DB_PASSWORD,
             sslmode="require",
+            connect_timeout=10,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur connexion DB: {e}")
+
+
+class _ConnCtx:
+    def __init__(self):
+        self.conn = None
+
+    def __enter__(self):
+        global _db_pool_created
+
+        missing = _missing_env()
+        if missing:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Variables manquantes: {', '.join(missing)}",
+            )
+
+        # 1) Récupérer une connexion disponible
+        try:
+            self.conn = _db_pool.get_nowait()
+            return self.conn
+        except Exception:
+            self.conn = None
+
+        # 2) Sinon, en créer une si on n’a pas atteint la limite
+        with _db_pool_lock:
+            if _db_pool_created < _DB_POOL_MAX:
+                self.conn = _create_conn()
+                _db_pool_created += 1
+                return self.conn
+
+        # 3) Sinon, attendre qu’une connexion se libère
+        try:
+            self.conn = _db_pool.get(timeout=_DB_POOL_TIMEOUT)
+            return self.conn
+        except Exception:
+            raise HTTPException(
+                status_code=503,
+                detail="DB saturée (pool complet). Réessaie dans quelques secondes.",
+            )
+
+    def __exit__(self, exc_type, exc, tb):
+        # On remet la connexion dans le pool si elle est saine
+        try:
+            if self.conn is None:
+                return False
+
+            # Si exception et transaction ouverte -> rollback best effort
+            try:
+                if exc_type is not None:
+                    self.conn.rollback()
+            except Exception:
+                pass
+
+            # Conn cassée / fermée -> on la jette
+            try:
+                if getattr(self.conn, "closed", False):
+                    return False
+            except Exception:
+                return False
+
+            # Remettre dans le pool (non bloquant)
+            try:
+                _db_pool.put_nowait(self.conn)
+            except Exception:
+                try:
+                    self.conn.close()
+                except Exception:
+                    pass
+
+        finally:
+            self.conn = None
+
+        return False
+
+
+def get_conn():
+    # Conserve l’API existante: "with get_conn() as conn:"
+    return _ConnCtx()
+
 
 
 # ======================================================
