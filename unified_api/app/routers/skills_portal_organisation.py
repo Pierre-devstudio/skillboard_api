@@ -51,6 +51,7 @@ class PosteItem(BaseModel):
     risque_physique: Optional[str] = None
 
     nb_effectifs: int = 0
+    date_maj: Optional[str] = None
 
 
 class PostesResponse(BaseModel):
@@ -106,6 +107,18 @@ def _build_tree(flat_services: List[Dict], counts_by_service: Dict[str, Dict[str
 # ======================================================
 
 _BULLET_CHARS = {"•", "·"}  # selon export RTF (Symbol / cp1252)
+def _dt_to_iso(v):
+    """Sérialisation stable (datetime/date -> ISO)."""
+    if v is None:
+        return None
+    try:
+        return v.isoformat()
+    except Exception:
+        try:
+            return str(v)
+        except Exception:
+            return None
+
 
 def _rtf_to_html_basic(rtf: str) -> str:
     r"""
@@ -124,6 +137,16 @@ def _rtf_to_html_basic(rtf: str) -> str:
     suppress_bullet = False
     suppress_tab = False
     in_body = False  # on ignore l'en-tête RTF (fonttbl, colortbl, generator...)
+    underline_open = False
+
+    def set_underline(on: bool):
+        nonlocal underline_open
+        if on and not underline_open:
+            parts.append("<u>")
+            underline_open = True
+        if (not on) and underline_open:
+            parts.append("</u>")
+            underline_open = False
 
     def set_bold(on: bool):
         nonlocal bold_open
@@ -143,6 +166,11 @@ def _rtf_to_html_basic(rtf: str) -> str:
             suppress_bullet = False
             suppress_tab = False
             return
+        
+        if underline_open:
+            parts.append("</u>")
+            underline_open = False
+
 
         if bold_open:
             parts.append("</strong>")
@@ -275,6 +303,7 @@ def _rtf_to_html_basic(rtf: str) -> str:
         if word in ("pard", "plain"):
             in_body = True
             set_bold(False)
+            set_underline(False)
 
         # si pas encore dans le contenu, on skip tout
         if not in_body:
@@ -303,6 +332,13 @@ def _rtf_to_html_basic(rtf: str) -> str:
             saw_pntext = True
             suppress_bullet = True
             suppress_tab = True
+        elif word == "ul":
+            if num == "":
+                set_underline(True)
+            else:
+                set_underline(int(num) != 0)
+        elif word in ("ulnone", "ul0"):
+            set_underline(False)
         elif word == "u" and num:
             val = sign * int(num)
             if val < 0:
@@ -354,6 +390,18 @@ def _responsabilites_to_html(raw: str | None) -> str | None:
     # texte simple -> HTML safe
     return _html.escape(s).replace("\n", "<br>")
 
+class PosteDetailResponse(BaseModel):
+    id_poste: str
+    codif_poste: Optional[str] = None
+    codif_client: Optional[str] = None
+    intitule_poste: Optional[str] = None
+
+    mission_principale: Optional[str] = None
+    responsabilites: Optional[str] = None            # RTF brut (pour round-trip futur)
+    responsabilites_html: Optional[str] = None       # HTML prêt à afficher
+
+    isresponsable: Optional[bool] = None
+    date_maj: Optional[str] = None                   # ISO timestamp (JS -> date only)
 
 # ======================================================
 # Routes
@@ -485,6 +533,70 @@ def get_services_tree(id_contact: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
+@router.get(
+    "/skills/organisation/poste_detail/{id_contact}/{id_poste}",
+    response_model=PosteDetailResponse,
+)
+def get_poste_detail(id_contact: str, id_poste: str):
+    """
+    Détail d'un poste pour le modal.
+    On renvoie uniquement les champs nécessaires à l'onglet "Définition".
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
+                cur.execute(
+                    """
+                    SELECT
+                        p.id_poste,
+                        p.codif_poste,
+                        p.codif_client,
+                        p.intitule_poste,
+                        p.isresponsable,
+                        p.mission_principale,
+                        p.responsabilites,
+                        p.date_maj
+                    FROM public.tbl_fiche_poste p
+                    WHERE p.id_ent = %s
+                      AND COALESCE(p.actif, TRUE) = TRUE
+                      AND p.id_poste = %s
+                    LIMIT 1
+                    """,
+                    (id_ent, id_poste),
+                )
+
+                r = cur.fetchone()
+                if not r:
+                    raise HTTPException(status_code=404, detail="Poste introuvable.")
+
+                dm = r.get("date_maj")
+                try:
+                    dm_iso = dm.isoformat() if dm else None
+                except Exception:
+                    dm_iso = str(dm) if dm else None
+
+                raw_resp = r.get("responsabilites")
+
+                return PosteDetailResponse(
+                    id_poste=r["id_poste"],
+                    codif_poste=r.get("codif_poste"),
+                    codif_client=r.get("codif_client"),
+                    intitule_poste=r.get("intitule_poste"),
+                    isresponsable=r.get("isresponsable"),
+                    mission_principale=r.get("mission_principale"),
+                    responsabilites=raw_resp,
+                    responsabilites_html=_responsabilites_to_html(raw_resp),
+                    date_maj=dm_iso,
+                )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
 
 @router.get(
     "/skills/organisation/postes/{id_contact}/{id_service}",
@@ -530,6 +642,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                             p.intitule_poste,
                             p.id_service,
                             p.isresponsable,
+                            p.date_maj,
                             COALESCE(ec.nb, 0)::int AS nb_effectifs
                         FROM public.tbl_fiche_poste p
                         LEFT JOIN ({eff_subquery}) ec
@@ -552,6 +665,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                             id_service=r.get("id_service"),
                             isresponsable=r.get("isresponsable"),
                             nb_effectifs=int(r.get("nb_effectifs") or 0),
+                            date_maj=_dt_to_iso(r.get("date_maj")),
                         )
                         for r in rows
                     ]
@@ -572,6 +686,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                             p.intitule_poste,
                             p.id_service,
                             p.isresponsable,
+                            p.date_maj,
                             COALESCE(ec.nb, 0)::int AS nb_effectifs
                         FROM public.tbl_fiche_poste p
                         LEFT JOIN ({eff_subquery}) ec
@@ -599,6 +714,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                             id_service=r.get("id_service"),
                             isresponsable=r.get("isresponsable"),
                             nb_effectifs=int(r.get("nb_effectifs") or 0),
+                            date_maj=_dt_to_iso(r.get("date_maj")),
                         )
                         for r in rows
                     ]
@@ -633,6 +749,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                         p.intitule_poste,
                         p.id_service,
                         p.isresponsable,
+                        p.date_maj,
                         COALESCE(ec.nb, 0)::int AS nb_effectifs
                     FROM public.tbl_fiche_poste p
                     LEFT JOIN ({eff_subquery}) ec
@@ -656,6 +773,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
                         id_service=r.get("id_service"),
                         isresponsable=r.get("isresponsable"),
                         nb_effectifs=int(r.get("nb_effectifs") or 0),
+                        date_maj=_dt_to_iso(r.get("date_maj")),
                     )
                     for r in rows
                 ]

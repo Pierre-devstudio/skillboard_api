@@ -81,11 +81,30 @@
     <div class="modal-body">
       <!-- Définition -->
       <div class="sb-tab-panel is-active" data-panel="def">
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title">Définition du poste</div>
-          <div class="card-sub" style="margin:0;">(squelette) Contenu à venir.</div>
+        <div class="card org-poste-def-card" style="padding:12px; margin:0;">
+          <div class="org-poste-def-head">
+            <div class="card-title" style="margin:0;">Définition du poste</div>
+            <span id="orgPosteDefRespBadge" class="sb-badge sb-badge-resp" style="display:none;">Responsable</span>
+          </div>
+
+          <div id="orgPosteDefMissionWrap" class="sb-field" style="margin-top:10px; display:none;">
+            <div class="label">Mission principale</div>
+            <div id="orgPosteDefMission" class="value"></div>
+          </div>
+
+          <div id="orgPosteDefRespWrap" class="sb-field text-block" style="margin-top:10px; display:none;">
+            <div class="label">Responsabilités</div>
+            <div id="orgPosteDefResp" class="value sb-richtext"></div>
+          </div>
+
+          <div id="orgPosteDefEmpty" class="card-sub" style="margin-top:10px; display:none;">
+            Aucune description renseignée.
+          </div>
+
+          <div id="orgPosteDefDate" class="org-poste-def-date" style="display:none;"></div>
         </div>
       </div>
+
 
       <!-- Exigences -->
       <div class="sb-tab-panel" data-panel="exi">

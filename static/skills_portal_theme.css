@@ -1327,6 +1327,35 @@ body{
   border-color: rgb(62,190,73);
 }
 
+/* Modal poste - bloc Définition */
+#modalOrgPoste .org-poste-def-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+
+#modalOrgPoste .sb-badge.sb-badge-resp{
+  background: rgba(193, 39, 45, 0.18) !important;
+  border: 1px solid rgb(193, 39, 45) !important;
+  color: rgb(193, 39, 45) !important;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+#modalOrgPoste .org-poste-def-date{
+  margin-top: 10px;
+  font-size: 12px;
+  color: #6b7280;
+  text-align: right;
+}
+
+/* Responsabilités (RTF -> HTML) dans le modal */
+#modalOrgPoste .sb-richtext p{ margin: 0 0 8px 0; }
+#modalOrgPoste .sb-richtext ul,
+#modalOrgPoste .sb-richtext ol{ margin: 0 0 8px 18px; padding:0; }
+#modalOrgPoste .sb-richtext li{ margin: 2px 0; }
+
 /* Onglets: accent plein, texte blanc */
 #modalOrgPoste .sb-seg{
   font-weight: 700;

@@ -36,16 +36,21 @@
     });
   }
 
-  function openOrgPosteModal(p){
-    const modal = byId("modalOrgPoste");
+  async function openOrgPosteModal(p){
+    const portal = window.__skillsPortalInstance;
+    if (!portal) return;
+
+    const modal = document.getElementById("modalOrgPoste");
     if (!modal) return;
 
-    const badge = byId("orgPosteModalBadge");
-    const title = byId("orgPosteModalTitle");
+    const badge = document.getElementById("orgPosteModalBadge");
+    const title = document.getElementById("orgPosteModalTitle");
 
     const code = ((p?.codif_client || p?.codif_poste || "") + "").trim();
     const lib = ((p?.intitule_poste || "") + "").trim();
+    const id_poste = (p?.id_poste || "").trim();
 
+    // Header
     if (badge){
       if (code){
         badge.textContent = code;
@@ -54,15 +59,34 @@
         badge.style.display = "none";
       }
     }
-
     if (title){
       title.textContent = lib || "Poste";
     }
 
+    // Ouvre le modal + onglet def
     setOrgPosteTab("def");
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
+
+    // Placeholder rapide (évite effet “vide”)
+    fillPosteDefinitionTab({
+      mission_principale: "",
+      responsabilites_html: "",
+      responsabilites: "",
+      isresponsable: !!p?.isresponsable,
+      date_maj: ""
+    });
+
+    // Détail (fetch)
+    try {
+      if (!id_poste) return;
+      const detail = await fetchPosteDetail(portal, id_poste);
+      fillPosteDefinitionTab(detail);
+    } catch (e) {
+      portal.showAlert("error", "Erreur chargement poste : " + e.message);
+    }
   }
+
 
   function closeOrgPosteModal(){
     const modal = byId("modalOrgPoste");
@@ -295,6 +319,102 @@
       container.appendChild(row);
     });
 
+  }
+
+  function formatDateOnly(v) {
+    if (!v) return "";
+    const s = String(v);
+    // ISO "YYYY-MM-DD..." -> "DD/MM/YYYY"
+    if (s.length >= 10 && s[4] === "-" && s[7] === "-") {
+      const y = s.substring(0, 4);
+      const m = s.substring(5, 7);
+      const d = s.substring(8, 10);
+      return `${d}/${m}/${y}`;
+    }
+    return s;
+  }
+
+  const _posteDetailCache = new Map(); // id_poste -> detail
+
+  function formatDateOnly(v) {
+    if (!v) return "";
+    const s = String(v);
+    if (s.length >= 10 && s[4] === "-" && s[7] === "-") {
+      const y = s.substring(0, 4);
+      const m = s.substring(5, 7);
+      const d = s.substring(8, 10);
+      return `${d}/${m}/${y}`;
+    }
+    return s;
+  }
+
+  async function fetchPosteDetail(portal, id_poste) {
+    if (_posteDetailCache.has(id_poste)) return _posteDetailCache.get(id_poste);
+
+    const url = `${portal.apiBase}/skills/organisation/poste_detail/${encodeURIComponent(portal.contactId)}/${encodeURIComponent(id_poste)}`;
+    const data = await portal.apiJson(url);
+    _posteDetailCache.set(id_poste, data);
+    return data;
+  }
+
+  function fillPosteDefinitionTab(detail) {
+    const missionWrap = document.getElementById("orgPosteDefMissionWrap");
+    const mission = document.getElementById("orgPosteDefMission");
+    const respWrap = document.getElementById("orgPosteDefRespWrap");
+    const resp = document.getElementById("orgPosteDefResp");
+    const empty = document.getElementById("orgPosteDefEmpty");
+    const badgeResp = document.getElementById("orgPosteDefRespBadge");
+    const dateEl = document.getElementById("orgPosteDefDate");
+
+    const m = (detail?.mission_principale || "").trim();
+    const rh = (detail?.responsabilites_html || "").trim();
+
+    // Badge responsable (bloc)
+    if (badgeResp) {
+      badgeResp.style.display = detail?.isresponsable ? "" : "none";
+    }
+
+    // Mission
+    if (missionWrap && mission) {
+      if (m) {
+        mission.textContent = m;
+        missionWrap.style.display = "";
+      } else {
+        mission.textContent = "";
+        missionWrap.style.display = "none";
+      }
+    }
+
+    // Responsabilités (HTML)
+    if (respWrap && resp) {
+      if (rh) {
+        resp.innerHTML = rh;
+        // On garde le RTF brut en mémoire pour le round-trip futur
+        resp.dataset.rtf = detail?.responsabilites || "";
+        respWrap.style.display = "";
+      } else {
+        resp.innerHTML = "";
+        resp.dataset.rtf = "";
+        respWrap.style.display = "none";
+      }
+    }
+
+    // Empty
+    if (empty) {
+      empty.style.display = (!m && !rh) ? "" : "none";
+    }
+
+    // Date maj (date only)
+    if (dateEl) {
+      const d = formatDateOnly(detail?.date_maj);
+      if (d) {
+        dateEl.textContent = `Dernière mise à jour : ${d}`;
+        dateEl.style.display = "";
+      } else {
+        dateEl.textContent = "";
+        dateEl.style.display = "none";
+      }
+    }
   }
 
   function applyPosteFilter() {
