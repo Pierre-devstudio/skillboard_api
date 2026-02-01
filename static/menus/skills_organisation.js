@@ -176,8 +176,8 @@
     }
 
     list.forEach(p => {
-      const details = document.createElement("details");
-      details.className = "sb-accordion";
+      const row = document.createElement("div");
+      row.className = "org-poste-row";
 
       const badgeEff = `<span class="sb-badge">${escapeHtml((p.nb_effectifs ?? 0).toString())} collab.</span>`;
       const badgeResp = p.isresponsable ? `<span class="sb-badge sb-badge-accent">Responsable</span>` : "";
@@ -187,40 +187,23 @@
       const clientCode = (p.codif_client || "").trim();
       const sub = [code, clientCode].filter(Boolean).join(" · ");
 
-
-      details.innerHTML = `
-        <summary>
-          <div class="sb-acc-left">
-            <div class="sb-acc-title">${escapeHtml(title || "Poste")}</div>
-            <div class="sb-acc-sub">${escapeHtml(sub)}</div>
-          </div>
-          <div class="sb-acc-right">
-            ${badgeEff}
-            ${badgeResp}
-          </div>
-        </summary>
-        <div class="sb-acc-body">
-          ${p.mission_principale ? `<div class="sb-field"><div class="label">Mission principale</div><div class="value">${escapeHtml(p.mission_principale)}</div></div>` : ""}
-          ${(p.responsabilites_html || p.responsabilites) ? `
-            <div class="sb-field text-block">
-              <div class="label">Responsabilités</div>
-              <div class="value sb-richtext">${p.responsabilites_html ? p.responsabilites_html : escapeHtml(p.responsabilites)}</div>
-            </div>
-          ` : ""}
-          ${p.mobilite ? `<div class="sb-field"><div class="label">Mobilité</div><div class="value">${escapeHtml(p.mobilite)}</div></div>` : ""}
-          ${p.niveau_contrainte ? `<div class="sb-field"><div class="label">Niveau contrainte</div><div class="value">${escapeHtml(p.niveau_contrainte)}</div></div>` : ""}
-          ${p.detail_contrainte ? `<div class="sb-field"><div class="label">Détail contrainte</div><div class="value">${escapeHtml(p.detail_contrainte)}</div></div>` : ""}
-          ${p.perspectives_evolution ? `<div class="sb-field"><div class="label">Perspectives</div><div class="value">${escapeHtml(p.perspectives_evolution)}</div></div>` : ""}
-          ${p.niveau_education_minimum ? `<div class="sb-field"><div class="label">Niveau requis</div><div class="value">${escapeHtml(p.niveau_education_minimum)}</div></div>` : ""}
-          ${p.risque_physique ? `<div class="sb-field"><div class="label">Risque physique</div><div class="value">${escapeHtml(p.risque_physique)}</div></div>` : ""}
-          ${(!p.mission_principale && !p.responsabilites && !p.mobilite && !p.niveau_contrainte && !p.detail_contrainte && !p.perspectives_evolution && !p.niveau_education_minimum && !p.risque_physique)
-            ? `<div class="card-sub" style="margin:0;">Aucune description renseignée.</div>` : ""
-          }
+      row.innerHTML = `
+        <div class="sb-acc-left">
+          <div class="sb-acc-title">${escapeHtml(title || "Poste")}</div>
+          <div class="sb-acc-sub">${escapeHtml(sub)}</div>
+        </div>
+        <div class="sb-acc-right">
+          ${badgeEff}
+          ${badgeResp}
         </div>
       `;
 
-      container.appendChild(details);
+      // IMPORTANT: pas d'accordéon, pas de contenu déroulant.
+      // Le détail viendra dans le modal (prochaine étape).
+
+      container.appendChild(row);
     });
+
   }
 
   function applyPosteFilter() {

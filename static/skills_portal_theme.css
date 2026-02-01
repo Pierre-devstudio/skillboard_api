@@ -1239,7 +1239,7 @@ body{
    - Cible uniquement la vue "Votre organisation"
    - Exclut le badge "Responsable" (.sb-badge-accent)
    ====================================================== */
-#view-votre-organisation .sb-accordion summary .sb-acc-right .sb-badge:not(.sb-badge-accent){
+#view-votre-organisation .sb-acc-right .sb-badge:not(.sb-badge-accent){
   background: rgb(62, 190, 73) !important;     /* bleu nuit très soft */
   border-color: rgb(62, 190, 73) !important;
   color: rgba(255, 255, 255, 0.808) !important;
@@ -1271,6 +1271,37 @@ body{
 
 #view-votre-organisation .sb-richtext li{
   margin: 2px 0;
+}
+
+/* ======================================================
+   Votre organisation — Liste de postes (sans accordéon)
+   ====================================================== */
+#view-votre-organisation .org-poste-row{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 12px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  background:#ffffff;
+  margin-bottom:10px;
+}
+
+#view-votre-organisation .org-poste-row:hover{
+  background: color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
+}
+
+#view-votre-organisation .org-poste-row .sb-acc-title{
+  font-weight:700;
+  color:#111827;
+  line-height:1.2;
+}
+
+#view-votre-organisation .org-poste-row .sb-acc-sub{
+  margin-top:2px;
+  font-size:12px;
+  color:#6b7280;
 }
 
 /* ======================================================
