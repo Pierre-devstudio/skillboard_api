@@ -185,18 +185,21 @@
       const code = (p.codif_poste || "").trim();
       const title = (p.intitule_poste || "").trim();
       const clientCode = (p.codif_client || "").trim();
-      const sub = [code, clientCode].filter(Boolean).join(" · ");
+      const codeBadge = clientCode || code;
 
       row.innerHTML = `
         <div class="sb-acc-left">
-          <div class="sb-acc-title">${escapeHtml(title || "Poste")}</div>
-          <div class="sb-acc-sub">${escapeHtml(sub)}</div>
+          <div class="org-poste-head">
+            ${codeBadge ? `<span class="sb-badge sb-badge-poste-code">${escapeHtml(codeBadge)}</span>` : ``}
+            <div class="sb-acc-title">${escapeHtml(title || "Poste")}</div>
+          </div>
         </div>
         <div class="sb-acc-right">
           ${badgeEff}
           ${badgeResp}
         </div>
       `;
+
 
       // IMPORTANT: pas d'accordéon, pas de contenu déroulant.
       // Le détail viendra dans le modal (prochaine étape).

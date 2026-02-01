@@ -1288,6 +1288,18 @@ body{
   margin-bottom:10px;
 }
 
+#view-votre-organisation .org-poste-head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+
+#view-votre-organisation .org-poste-head .sb-acc-title{
+  margin:0;
+  min-width:0;
+}
+
 #view-votre-organisation .org-poste-row:hover{
   background: color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
 }
