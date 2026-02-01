@@ -530,24 +530,17 @@ def get_postes_for_service(id_contact: str, id_service: str):
                             p.intitule_poste,
                             p.id_service,
                             p.isresponsable,
-                            p.mission_principale,
-                            p.responsabilites,
-                            p.mobilite,
-                            p.niveau_contrainte,
-                            p.detail_contrainte,
-                            p.perspectives_evolution,
-                            p.niveau_education_minimum,
-                            p.risque_physique,
                             COALESCE(ec.nb, 0)::int AS nb_effectifs
                         FROM public.tbl_fiche_poste p
                         LEFT JOIN ({eff_subquery}) ec
-                               ON ec.id_poste_actuel = p.id_poste
+                            ON ec.id_poste_actuel = p.id_poste
                         WHERE p.id_ent = %s
-                          AND COALESCE(p.actif, TRUE) = TRUE
+                        AND COALESCE(p.actif, TRUE) = TRUE
                         ORDER BY p.intitule_poste
                         """,
                         (id_ent, id_ent),
                     )
+
                     rows = cur.fetchall() or []
 
                     postes = [
@@ -558,19 +551,11 @@ def get_postes_for_service(id_contact: str, id_service: str):
                             intitule_poste=r["intitule_poste"],
                             id_service=r.get("id_service"),
                             isresponsable=r.get("isresponsable"),
-                            mission_principale=r.get("mission_principale"),
-                            responsabilites=r.get("responsabilites"),
-                            responsabilites_html=_responsabilites_to_html(r.get("responsabilites")),
-                            mobilite=r.get("mobilite"),
-                            niveau_contrainte=r.get("niveau_contrainte"),
-                            detail_contrainte=r.get("detail_contrainte"),
-                            perspectives_evolution=r.get("perspectives_evolution"),
-                            niveau_education_minimum=r.get("niveau_education_minimum"),
-                            risque_physique=r.get("risque_physique"),
                             nb_effectifs=int(r.get("nb_effectifs") or 0),
                         )
                         for r in rows
                     ]
+
 
                     return PostesResponse(service=service_info, postes=postes)
 
@@ -587,29 +572,22 @@ def get_postes_for_service(id_contact: str, id_service: str):
                             p.intitule_poste,
                             p.id_service,
                             p.isresponsable,
-                            p.mission_principale,
-                            p.responsabilites,
-                            p.mobilite,
-                            p.niveau_contrainte,
-                            p.detail_contrainte,
-                            p.perspectives_evolution,
-                            p.niveau_education_minimum,
-                            p.risque_physique,
                             COALESCE(ec.nb, 0)::int AS nb_effectifs
                         FROM public.tbl_fiche_poste p
                         LEFT JOIN ({eff_subquery}) ec
-                               ON ec.id_poste_actuel = p.id_poste
+                            ON ec.id_poste_actuel = p.id_poste
                         LEFT JOIN public.tbl_entreprise_organigramme o
-                               ON o.id_service = p.id_service
-                              AND o.id_ent = %s
-                              AND o.archive = FALSE
+                            ON o.id_service = p.id_service
+                            AND o.id_ent = %s
+                            AND o.archive = FALSE
                         WHERE p.id_ent = %s
-                          AND COALESCE(p.actif, TRUE) = TRUE
-                          AND (p.id_service IS NULL OR o.id_service IS NULL)
+                        AND COALESCE(p.actif, TRUE) = TRUE
+                        AND (p.id_service IS NULL OR o.id_service IS NULL)
                         ORDER BY p.intitule_poste
                         """,
                         (id_ent, id_ent, id_ent),
                     )
+
                     rows = cur.fetchall() or []
 
                     postes = [
@@ -620,15 +598,6 @@ def get_postes_for_service(id_contact: str, id_service: str):
                             intitule_poste=r["intitule_poste"],
                             id_service=r.get("id_service"),
                             isresponsable=r.get("isresponsable"),
-                            mission_principale=r.get("mission_principale"),
-                            responsabilites=r.get("responsabilites"),
-                            responsabilites_html=_responsabilites_to_html(r.get("responsabilites")),
-                            mobilite=r.get("mobilite"),
-                            niveau_contrainte=r.get("niveau_contrainte"),
-                            detail_contrainte=r.get("detail_contrainte"),
-                            perspectives_evolution=r.get("perspectives_evolution"),
-                            niveau_education_minimum=r.get("niveau_education_minimum"),
-                            risque_physique=r.get("risque_physique"),
                             nb_effectifs=int(r.get("nb_effectifs") or 0),
                         )
                         for r in rows
@@ -664,25 +633,18 @@ def get_postes_for_service(id_contact: str, id_service: str):
                         p.intitule_poste,
                         p.id_service,
                         p.isresponsable,
-                        p.mission_principale,
-                        p.responsabilites,
-                        p.mobilite,
-                        p.niveau_contrainte,
-                        p.detail_contrainte,
-                        p.perspectives_evolution,
-                        p.niveau_education_minimum,
-                        p.risque_physique,
                         COALESCE(ec.nb, 0)::int AS nb_effectifs
                     FROM public.tbl_fiche_poste p
                     LEFT JOIN ({eff_subquery}) ec
-                           ON ec.id_poste_actuel = p.id_poste
+                        ON ec.id_poste_actuel = p.id_poste
                     WHERE p.id_ent = %s
-                      AND COALESCE(p.actif, TRUE) = TRUE
-                      AND p.id_service = %s
+                    AND COALESCE(p.actif, TRUE) = TRUE
+                    AND p.id_service = %s
                     ORDER BY p.intitule_poste
                     """,
                     (id_ent, id_ent, id_service),
                 )
+
                 rows = cur.fetchall() or []
 
                 postes = [
@@ -693,15 +655,6 @@ def get_postes_for_service(id_contact: str, id_service: str):
                         intitule_poste=r["intitule_poste"],
                         id_service=r.get("id_service"),
                         isresponsable=r.get("isresponsable"),
-                        mission_principale=r.get("mission_principale"),
-                        responsabilites=r.get("responsabilites"),
-                        responsabilites_html=_responsabilites_to_html(r.get("responsabilites")),
-                        mobilite=r.get("mobilite"),
-                        niveau_contrainte=r.get("niveau_contrainte"),
-                        detail_contrainte=r.get("detail_contrainte"),
-                        perspectives_evolution=r.get("perspectives_evolution"),
-                        niveau_education_minimum=r.get("niveau_education_minimum"),
-                        risque_physique=r.get("risque_physique"),
                         nb_effectifs=int(r.get("nb_effectifs") or 0),
                     )
                     for r in rows
