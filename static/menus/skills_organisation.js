@@ -195,8 +195,8 @@
           </div>
         </div>
         <div class="sb-acc-right">
-          ${badgeEff}
           ${badgeResp}
+          ${badgeEff}
         </div>
       `;
 
