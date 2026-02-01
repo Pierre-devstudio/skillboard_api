@@ -1791,7 +1791,7 @@
         await tryLoadNoPerformance12m(portal);
         await tryLoadUpcomingTrainings(portal);
         await tryLoadCertifsExpiring(portal);
-        await tryLoadAgePyramid(portal);
+        
 
         bindDashTiles(portal);
 
