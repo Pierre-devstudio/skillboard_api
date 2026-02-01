@@ -50,3 +50,71 @@
     </div>
   </div>
 </section>
+
+<!-- ======================================================
+     Modal Poste (Votre organisation) — Squelette 3 onglets
+     ====================================================== -->
+<div id="modalOrgPoste" class="modal" aria-hidden="true">
+  <div class="modal-card">
+
+    <div class="modal-header" style="align-items:flex-start;">
+      <div style="display:flex; flex-direction:column; gap:10px; min-width:0; flex:1;">
+        <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+          <span id="orgPosteModalBadge" class="sb-badge sb-badge-poste-code" style="display:none;"></span>
+          <div id="orgPosteModalTitle" style="font-weight:800; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            Poste
+          </div>
+        </div>
+
+        <div class="sb-segbar" id="orgPosteTabbar">
+          <button type="button" class="sb-seg is-active" data-tab="def">Définition</button>
+          <button type="button" class="sb-seg" data-tab="exi">Exigences</button>
+          <button type="button" class="sb-seg" data-tab="rh">Paramétrage RH</button>
+        </div>
+      </div>
+
+      <button type="button" class="modal-x" id="orgPosteModalX" aria-label="Fermer">×</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Définition -->
+      <div class="sb-tab-panel is-active" data-panel="def">
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="card-title">Définition du poste</div>
+          <div class="card-sub" style="margin:0;">(squelette) Contenu à venir.</div>
+        </div>
+      </div>
+
+      <!-- Exigences -->
+      <div class="sb-tab-panel" data-panel="exi">
+        <div class="card" style="padding:12px; margin:0 0 10px 0;">
+          <div class="card-title">Contraintes</div>
+          <div class="card-sub" style="margin:0;">(squelette) Contenu à venir.</div>
+        </div>
+
+        <div class="card" style="padding:12px; margin:0 0 10px 0;">
+          <div class="card-title">Compétences requises</div>
+          <div class="card-sub" style="margin:0;">(squelette) Contenu à venir.</div>
+        </div>
+
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="card-title">Certifications requises</div>
+          <div class="card-sub" style="margin:0;">(squelette) Contenu à venir.</div>
+        </div>
+      </div>
+
+      <!-- Paramétrage RH -->
+      <div class="sb-tab-panel" data-panel="rh">
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="card-title">Paramètres</div>
+          <div class="card-sub" style="margin:0;">(squelette) Contenu à venir.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-secondary" id="orgPosteModalClose">Fermer</button>
+    </div>
+
+  </div>
+</div>

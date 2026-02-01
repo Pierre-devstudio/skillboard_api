@@ -20,6 +20,90 @@
       .replaceAll("'", "&#039;");
   }
 
+    function byId(id){ return document.getElementById(id); }
+
+  function setOrgPosteTab(tab){
+    const modal = byId("modalOrgPoste");
+    if (!modal) return;
+
+    modal.querySelectorAll("#orgPosteTabbar .sb-seg").forEach(btn => {
+      btn.classList.toggle("is-active", btn.getAttribute("data-tab") === tab);
+    });
+
+    modal.querySelectorAll(".sb-tab-panel").forEach(p => {
+      const isOn = (p.getAttribute("data-panel") === tab);
+      p.classList.toggle("is-active", isOn);
+    });
+  }
+
+  function openOrgPosteModal(p){
+    const modal = byId("modalOrgPoste");
+    if (!modal) return;
+
+    const badge = byId("orgPosteModalBadge");
+    const title = byId("orgPosteModalTitle");
+
+    const code = ((p?.codif_client || p?.codif_poste || "") + "").trim();
+    const lib = ((p?.intitule_poste || "") + "").trim();
+
+    if (badge){
+      if (code){
+        badge.textContent = code;
+        badge.style.display = "";
+      } else {
+        badge.style.display = "none";
+      }
+    }
+
+    if (title){
+      title.textContent = lib || "Poste";
+    }
+
+    setOrgPosteTab("def");
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeOrgPosteModal(){
+    const modal = byId("modalOrgPoste");
+    if (!modal) return;
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function bindOrgPosteModalOnce(){
+    const modal = byId("modalOrgPoste");
+    if (!modal) return;
+
+    if (modal.getAttribute("data-bound") === "1") return;
+    modal.setAttribute("data-bound", "1");
+
+    // Close buttons
+    byId("orgPosteModalClose")?.addEventListener("click", closeOrgPosteModal);
+    byId("orgPosteModalX")?.addEventListener("click", closeOrgPosteModal);
+
+    // Click backdrop (zone grisée = .modal)
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeOrgPosteModal();
+    });
+
+    // Tabs
+    modal.querySelectorAll("#orgPosteTabbar .sb-seg").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tab = btn.getAttribute("data-tab");
+        setOrgPosteTab(tab);
+      });
+    });
+
+    // Esc
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal.classList.contains("show")) {
+        closeOrgPosteModal();
+      }
+    });
+  }
+
+
 
   function setServiceHeader(node) {
     const title = document.getElementById("orgServiceTitle");
@@ -203,6 +287,10 @@
 
       // IMPORTANT: pas d'accordéon, pas de contenu déroulant.
       // Le détail viendra dans le modal (prochaine étape).
+      row.addEventListener("click", () => {
+        openOrgPosteModal(p);
+      });
+
 
       container.appendChild(row);
     });
@@ -286,6 +374,7 @@
   window.SkillsOrganisation = {
     onShow: async (portal) => {
       window.__skillsPortalInstance = portal;
+      bindOrgPosteModalOnce();
 
       try {
         bindOnce(portal);        

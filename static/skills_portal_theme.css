@@ -1311,6 +1311,29 @@ body{
   background: color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
 }
 
+/* ======================================================
+   Votre organisation — Modal Poste (squelette)
+   ====================================================== */
+
+#modalOrgPoste .modal-card{
+  width: min(980px, calc(100vw - 24px));
+}
+
+/* Tabs (sb-seg) actives dans CE modal */
+#modalOrgPoste .sb-seg{
+  font-weight: 700;
+}
+
+#modalOrgPoste .sb-seg.is-active{
+  border-color: var(--reading-accent);
+  background: color-mix(in srgb, var(--reading-accent) 10%, #ffffff);
+  color: #111827;
+}
+
+/* Panels */
+#modalOrgPoste .sb-tab-panel{ display:none; }
+#modalOrgPoste .sb-tab-panel.is-active{ display:block; }
+
 #view-votre-organisation .org-poste-row .sb-acc-title{
   font-weight:700;
   color:#111827;
