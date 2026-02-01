@@ -1295,6 +1295,13 @@ body{
   min-width:0;
 }
 
+/* Badge code poste (codif_client / code_poste) */
+#view-votre-organisation .sb-badge-poste-code{
+  background: rgb(62,190,73);
+  color:#fff;
+  border-color: rgb(62,190,73);
+}
+
 #view-votre-organisation .org-poste-head .sb-acc-title{
   margin:0;
   min-width:0;
