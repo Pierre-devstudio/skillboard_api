@@ -139,14 +139,7 @@ def _rtf_to_html_basic(rtf: str) -> str:
     in_body = False  # on ignore l'en-tête RTF (fonttbl, colortbl, generator...)
     underline_open = False
 
-    def set_underline(on: bool):
-        nonlocal underline_open
-        if on and not underline_open:
-            parts.append("<u>")
-            underline_open = True
-        if (not on) and underline_open:
-            parts.append("</u>")
-            underline_open = False
+
 
     def set_bold(on: bool):
         nonlocal bold_open
@@ -157,24 +150,35 @@ def _rtf_to_html_basic(rtf: str) -> str:
             parts.append("</strong>")
             bold_open = False
 
+    def set_underline(on: bool):
+        nonlocal underline_open
+        if on and not underline_open:
+            parts.append("<u>")
+            underline_open = True
+        if (not on) and underline_open:
+            parts.append("</u>")
+            underline_open = False
+
     def flush_paragraph():
-        nonlocal parts, bold_open, saw_pntext, suppress_bullet, suppress_tab
+        nonlocal parts, bold_open, underline_open, saw_pntext, suppress_bullet, suppress_tab
         if not in_body:
             parts = []
             bold_open = False
+            underline_open = False
             saw_pntext = False
             suppress_bullet = False
             suppress_tab = False
             return
-        
-        if underline_open:
-            parts.append("</u>")
-            underline_open = False
+             
 
 
         if bold_open:
             parts.append("</strong>")
             bold_open = False
+
+        if underline_open:
+            parts.append("</u>")
+            underline_open = False
 
         html_txt = "".join(parts).strip()
         parts = []
@@ -327,18 +331,18 @@ def _rtf_to_html_basic(rtf: str) -> str:
                 set_bold(True)
             else:
                 set_bold(int(num) != 0)
-        elif word == "pntext":
-            # marqueur de liste (RichEdit)
-            saw_pntext = True
-            suppress_bullet = True
-            suppress_tab = True
         elif word == "ul":
             if num == "":
                 set_underline(True)
             else:
                 set_underline(int(num) != 0)
-        elif word in ("ulnone", "ul0"):
+        elif word in ("ulnone",):
             set_underline(False)
+        elif word == "pntext":
+            # marqueur de liste (RichEdit)
+            saw_pntext = True
+            suppress_bullet = True
+            suppress_tab = True
         elif word == "u" and num:
             val = sign * int(num)
             if val < 0:
