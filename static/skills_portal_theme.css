@@ -1356,6 +1356,31 @@ body{
 #modalOrgPoste .sb-richtext ol{ margin: 0 0 8px 18px; padding:0; }
 #modalOrgPoste .sb-richtext li{ margin: 2px 0; }
 
+/* Modal Poste — FIX spacing label -> value (responsabilités)
+   Cause: gap/row-gap global sur .sb-field
+*/
+#modalOrgPoste .sb-field.text-block{
+  display: flex;
+  flex-direction: column;
+  gap: 6px !important;
+  row-gap: 6px !important;
+}
+
+#modalOrgPoste .sb-field.text-block .label{
+  margin: 0 !important;
+}
+
+#modalOrgPoste .sb-field.text-block .value{
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Sécurité: le premier bloc HTML ne doit pas créer de "blanc" */
+#modalOrgPoste .sb-richtext > :first-child{
+  margin-top: 0 !important;
+}
+
+
 /* Onglets: accent plein, texte blanc */
 #modalOrgPoste .sb-seg{
   font-weight: 700;
