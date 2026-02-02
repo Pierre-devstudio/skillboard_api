@@ -407,6 +407,17 @@ class PosteDetailResponse(BaseModel):
     isresponsable: Optional[bool] = None
     date_maj: Optional[str] = None                   # ISO timestamp (JS -> date only)
 
+    # Exigences > Contraintes
+    niveau_education_minimum: Optional[str] = None
+    nsf_groupe_code: Optional[str] = None
+    nsf_groupe_titre: Optional[str] = None
+    nsf_groupe_obligatoire: Optional[bool] = None
+    mobilite: Optional[str] = None
+    risque_physique: Optional[str] = None
+    perspectives_evolution: Optional[str] = None
+    niveau_contrainte: Optional[str] = None
+    detail_contrainte: Optional[str] = None
+
 # ======================================================
 # Routes
 # ======================================================
@@ -562,8 +573,25 @@ def get_poste_detail(id_contact: str, id_poste: str):
                         p.isresponsable,
                         p.mission_principale,
                         p.responsabilites,
-                        p.date_maj
+                        p.date_maj,
+
+                        -- Contraintes
+                        p.niveau_education_minimum,
+                        p.nsf_groupe_code,
+                        p.nsf_groupe_obligatoire,
+                        p.mobilite,
+                        p.risque_physique,
+                        p.perspectives_evolution,
+                        p.niveau_contrainte,
+                        p.detail_contrainte,
+
+                        -- Domaine diplôme (NSF)
+                        g.titre AS nsf_groupe_titre
+
                     FROM public.tbl_fiche_poste p
+                    LEFT JOIN public.tbl_nsf_groupe g
+                           ON g.code = p.nsf_groupe_code
+                          AND COALESCE(g.masque, FALSE) = FALSE
                     WHERE p.id_ent = %s
                       AND COALESCE(p.actif, TRUE) = TRUE
                       AND p.id_poste = %s
@@ -571,6 +599,7 @@ def get_poste_detail(id_contact: str, id_poste: str):
                     """,
                     (id_ent, id_poste),
                 )
+
 
                 r = cur.fetchone()
                 if not r:
@@ -594,6 +623,16 @@ def get_poste_detail(id_contact: str, id_poste: str):
                     responsabilites=raw_resp,
                     responsabilites_html=_responsabilites_to_html(raw_resp),
                     date_maj=dm_iso,
+                    niveau_education_minimum=r.get("niveau_education_minimum"),
+                    nsf_groupe_code=r.get("nsf_groupe_code"),
+                    nsf_groupe_titre=r.get("nsf_groupe_titre"),
+                    nsf_groupe_obligatoire=r.get("nsf_groupe_obligatoire"),
+                    mobilite=r.get("mobilite"),
+                    risque_physique=r.get("risque_physique"),
+                    perspectives_evolution=r.get("perspectives_evolution"),
+                    niveau_contrainte=r.get("niveau_contrainte"),
+                    detail_contrainte=r.get("detail_contrainte"),
+
                 )
 
     except HTTPException:

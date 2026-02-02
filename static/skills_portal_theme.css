@@ -1405,6 +1405,35 @@ body{
 #modalOrgPoste .sb-tab-panel{ display:none; }
 #modalOrgPoste .sb-tab-panel.is-active{ display:block; }
 
+/* Organisation - Bloc Contraintes (Exigences) */
+.org-form-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px 14px;
+  margin-top:10px;
+}
+
+.org-form-grid .sb-field{
+  min-width: 0;
+}
+
+.org-form-grid .org-span-2{
+  grid-column: 1 / -1;
+}
+
+.sb-check{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:6px;
+}
+
+.sb-check input[type="checkbox"]{
+  width:16px;
+  height:16px;
+}
+
+
 #view-votre-organisation .org-poste-row .sb-acc-title{
   font-weight:700;
   color:#111827;

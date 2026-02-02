@@ -108,10 +108,54 @@
 
       <!-- Exigences -->
       <div class="sb-tab-panel" data-panel="exi">
-        <div class="card" style="padding:12px; margin:0 0 10px 0;">
+        <div class="card org-bloc" id="orgPosteBlocContraintes">
           <div class="card-title">Contraintes</div>
-          <div class="card-sub" style="margin:0;">(squelette) Contenu à venir.</div>
+
+          <div class="org-form-grid">
+            <div class="sb-field">
+              <div class="label">Niveau d’étude minimum requis</div>
+              <select id="orgCtrEduMin" disabled></select>
+            </div>
+
+            <div class="sb-field">
+              <div class="label">Domaine du diplôme (NSF)</div>
+              <select id="orgCtrNsfGroupe" disabled></select>
+            </div>
+
+            <div class="sb-field org-span-2">
+              <label class="sb-check">
+                <input type="checkbox" id="orgCtrNsfOblig" disabled />
+                <span>Diplôme impératif</span>
+              </label>
+            </div>
+
+            <div class="sb-field">
+              <div class="label">Mobilité</div>
+              <input type="text" id="orgCtrMobilite" disabled />
+            </div>
+
+            <div class="sb-field">
+              <div class="label">Risques physiques</div>
+              <select id="orgCtrRisquePhys" disabled></select>
+            </div>
+
+            <div class="sb-field org-span-2">
+              <div class="label">Perspectives d’évolution</div>
+              <textarea id="orgCtrPerspEvol" rows="2" disabled></textarea>
+            </div>
+
+            <div class="sb-field">
+              <div class="label">Niveau de contraintes</div>
+              <select id="orgCtrNivContrainte" disabled></select>
+            </div>
+
+            <div class="sb-field org-span-2">
+              <div class="label">Détails des contraintes</div>
+              <textarea id="orgCtrDetailContrainte" rows="4" disabled></textarea>
+            </div>
+          </div>
         </div>
+
 
         <div class="card" style="padding:12px; margin:0 0 10px 0;">
           <div class="card-title">Compétences requises</div>
