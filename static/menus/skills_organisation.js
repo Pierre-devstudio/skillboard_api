@@ -79,6 +79,7 @@
 
     fillPosteCompetencesTab({ competences: [] });
     fillPosteCertificationsTab({ certifications: [] });
+    fillPosteParamRhTab({});
 
 
     // Détail (fetch)
@@ -89,6 +90,7 @@
       fillPosteContraintesTab(detail);
       fillPosteCompetencesTab(detail);
       fillPosteCertificationsTab(detail);
+      fillPosteParamRhTab(detail);
     } catch (e) {
       portal.showAlert("error", "Erreur chargement poste : " + e.message);
     }
@@ -673,7 +675,7 @@
     });
   }
 
-    function fillPosteCertificationsTab(detail){
+  function fillPosteCertificationsTab(detail){
     const tbody = byId("orgPosteCertTbody");
     const empty = byId("orgPosteCertEmpty");
     if (!tbody || !empty) return;
@@ -706,6 +708,80 @@
       tbody.appendChild(tr);
     });
   }
+  
+  let _rhSelectsInit = false;
+
+  function initRhSelects(){
+    if (_rhSelectsInit) return;
+    _rhSelectsInit = true;
+
+    _fillSelect(byId("orgRhStatut"), [
+      { value:"", text:"—" },
+      { value:"actif", text:"Actif" },
+      { value:"a_pourvoir", text:"À pourvoir" },
+      { value:"gele", text:"Gelé" },
+      { value:"temporaire", text:"Temporaire" },
+      { value:"archive", text:"Archivé" }
+    ]);
+
+    _fillSelect(byId("orgRhCriticite"), [
+      { value:"", text:"—" },
+      { value:"1", text:"1 - Secondaire" },
+      { value:"2", text:"2 - Important" },
+      { value:"3", text:"3 - Essentiel" }
+    ]);
+
+    _fillSelect(byId("orgRhStrategie"), [
+      { value:"", text:"—" },
+      { value:"interne", text:"Interne" },
+      { value:"externe", text:"Externe" },
+      { value:"mixte", text:"Mixte" }
+    ]);
+  }
+
+  function _toIsoDate(v){
+    if (!v) return "";
+    const s = String(v);
+    // si déjà YYYY-MM-DD
+    if (s.length >= 10 && s[4] === "-" && s[7] === "-") return s.substring(0,10);
+    return "";
+  }
+
+  function _formatMajForRh(v){
+    const d = formatDateOnly(v);
+    return d || "";
+  }
+
+  function fillPosteParamRhTab(detail){
+    initRhSelects();
+
+    const lock = !!detail?.param_rh_verrouille;
+    const src = (detail?.param_rh_source ?? "").toString().trim();
+    const maj = _formatMajForRh(detail?.param_rh_date_maj);
+
+    // Valeurs
+    _selectByStoredValue("orgRhStatut", detail?.statut_poste);
+    _selectByStoredValue("orgRhCriticite", (detail?.criticite_poste ?? "").toString());
+    _selectByStoredValue("orgRhStrategie", detail?.strategie_pourvoi);
+
+    _setValue("orgRhNbTitulaires", (detail?.nb_titulaires_cible ?? "").toString());
+    _setValue("orgRhDateDebut", _toIsoDate(detail?.date_debut_validite));
+    _setValue("orgRhDateFin", _toIsoDate(detail?.date_fin_validite));
+    _setChecked("orgRhVerrouille", lock);
+
+    _setValue("orgRhSource", src || "—");
+    _setValue("orgRhDateMaj", maj || "—");
+
+    _setValue("orgRhCommentaire", detail?.param_rh_commentaire ?? "");
+
+    // UI lock
+    const badge = byId("orgRhLockBadge");
+    const info = byId("orgRhLockInfo");
+    if (badge) badge.style.display = lock ? "" : "none";
+    if (info) info.style.display = lock ? "" : "none";
+  }
+
+
 
 
 

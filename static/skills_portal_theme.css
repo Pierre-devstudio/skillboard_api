@@ -1566,6 +1566,48 @@ body{
 }
 
 /* ======================================================
+   Modal Poste — Onglet Paramétrage RH (read-only propre)
+   ====================================================== */
+
+#modalOrgPoste .org-poste-rh-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+#modalOrgPoste .sb-badge.sb-badge-rh-lock{
+  background: rgba(193, 39, 45, 0.14) !important;
+  border: 1px solid rgba(193, 39, 45, 0.85) !important;
+  color: rgb(193, 39, 45) !important;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+#modalOrgPoste .org-rh-lock-info{
+  margin: 8px 0 10px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(193, 39, 45, 0.25);
+  background: rgba(193, 39, 45, 0.06);
+  color: #374151;
+  font-size: 13px;
+}
+
+#modalOrgPoste .org-rh-grid input[disabled],
+#modalOrgPoste .org-rh-grid select[disabled],
+#modalOrgPoste .org-rh-grid textarea[disabled]{
+  background: #f8fafc;
+  color: #111827;
+  border-color: #e5e7eb;
+}
+
+#modalOrgPoste .org-rh-grid input[type="date"][disabled]{
+  color: #111827;
+}
+
+/* ======================================================
    Organisation — FIX spacing label -> value
    Cause: .sb-field est piloté par gap/row-gap dans le CSS global
    ====================================================== */

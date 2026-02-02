@@ -210,12 +210,72 @@
 
       <!-- Paramétrage RH -->
       <div class="sb-tab-panel" data-panel="rh">
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title">Paramètres</div>
-          <div class="card-sub" style="margin:0;">(squelette) Contenu à venir.</div>
+        <div class="card org-bloc" id="orgPosteBlocRh">
+          <div class="org-poste-rh-head">
+            <div class="card-title" style="margin:0;">Paramétrage RH</div>
+            <span id="orgRhLockBadge" class="sb-badge sb-badge-rh-lock" style="display:none;">Modifié par le client</span>
+          </div>
+
+          <div id="orgRhLockInfo" class="org-rh-lock-info" style="display:none;">
+            Ces paramètres ont été modifiés côté Insights et sont verrouillés pour le Desktop.
+          </div>
+
+          <div class="org-form-grid org-rh-grid">
+            <div class="sb-field">
+              <div class="label">Statut du poste</div>
+              <select id="orgRhStatut" disabled></select>
+            </div>
+
+            <div class="sb-field">
+              <div class="label">Criticité du poste</div>
+              <select id="orgRhCriticite" disabled></select>
+            </div>
+
+            <div class="sb-field">
+              <div class="label">Stratégie de pourvoi</div>
+              <select id="orgRhStrategie" disabled></select>
+            </div>
+
+            <div class="sb-field">
+              <div class="label">Nb titulaires cible</div>
+              <input id="orgRhNbTitulaires" type="number" min="0" step="1" disabled />
+            </div>
+
+            <div class="sb-field">
+              <div class="label">Début de validité</div>
+              <input id="orgRhDateDebut" type="date" disabled />
+            </div>
+
+            <div class="sb-field">
+              <div class="label">Fin de validité</div>
+              <input id="orgRhDateFin" type="date" disabled />
+            </div>
+
+            <div class="sb-field org-span-2">
+              <label class="sb-check">
+                <input type="checkbox" id="orgRhVerrouille" disabled />
+                <span>Verrouillé</span>
+              </label>
+            </div>
+
+            <div class="sb-field">
+              <div class="label">Source</div>
+              <input id="orgRhSource" type="text" disabled />
+            </div>
+
+            <div class="sb-field">
+              <div class="label">Dernière mise à jour</div>
+              <input id="orgRhDateMaj" type="text" disabled />
+            </div>
+
+            <div class="sb-field org-span-2">
+              <div class="label">Commentaire</div>
+              <textarea id="orgRhCommentaire" rows="3" disabled></textarea>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+
 
     <div class="modal-footer">
       <button type="button" class="btn-secondary" id="orgPosteModalClose">Fermer</button>

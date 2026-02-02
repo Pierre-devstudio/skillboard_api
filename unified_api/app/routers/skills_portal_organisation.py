@@ -440,6 +440,19 @@ class PosteDetailResponse(BaseModel):
     competences: List[PosteCompetenceItem] = []
     certifications: List[PosteCertificationItem] = []
 
+        # Paramétrage RH (tbl_fiche_poste_param_rh)
+    rh_statut_poste: Optional[str] = None
+    rh_date_debut_validite: Optional[str] = None
+    rh_date_fin_validite: Optional[str] = None
+    rh_nb_titulaires_cible: Optional[int] = None
+    rh_criticite_poste: Optional[int] = None
+    rh_strategie_pourvoi: Optional[str] = None
+    rh_param_rh_source: Optional[str] = None
+    rh_param_rh_date_maj: Optional[str] = None
+    rh_param_rh_verrouille: Optional[bool] = None
+    rh_param_rh_commentaire: Optional[str] = None
+
+
 
 # ======================================================
 # Routes
@@ -690,6 +703,65 @@ def get_poste_detail(id_contact: str, id_poste: str):
                         "niveau_exigence": rr.get("niveau_exigence"),
                     })
 
+                # --- Paramétrage RH : lecture + auto-init si absent
+                cur.execute(
+                    """
+                    SELECT
+                      pr.id_poste,
+                      pr.statut_poste,
+                      pr.date_debut_validite,
+                      pr.date_fin_validite,
+                      pr.nb_titulaires_cible,
+                      pr.criticite_poste,
+                      pr.strategie_pourvoi,
+                      pr.param_rh_source,
+                      pr.param_rh_date_maj,
+                      pr.param_rh_verrouille,
+                      pr.param_rh_commentaire
+                    FROM public.tbl_fiche_poste_param_rh pr
+                    WHERE pr.id_poste = %s
+                    LIMIT 1
+                    """,
+                    (id_poste,),
+                )
+                pr = cur.fetchone()
+
+                if not pr:
+                    # init auto avec valeurs par défaut
+                    cur.execute(
+                        """
+                        INSERT INTO public.tbl_fiche_poste_param_rh (id_poste)
+                        VALUES (%s)
+                        """,
+                        (id_poste,),
+                    )
+                    try:
+                        conn.commit()
+                    except Exception:
+                        pass
+
+                    cur.execute(
+                        """
+                        SELECT
+                          pr.id_poste,
+                          pr.statut_poste,
+                          pr.date_debut_validite,
+                          pr.date_fin_validite,
+                          pr.nb_titulaires_cible,
+                          pr.criticite_poste,
+                          pr.strategie_pourvoi,
+                          pr.param_rh_source,
+                          pr.param_rh_date_maj,
+                          pr.param_rh_verrouille,
+                          pr.param_rh_commentaire
+                        FROM public.tbl_fiche_poste_param_rh pr
+                        WHERE pr.id_poste = %s
+                        LIMIT 1
+                        """,
+                        (id_poste,),
+                    )
+                    pr = cur.fetchone()
+
 
                 dm = r.get("date_maj")
                 try:
@@ -720,6 +792,17 @@ def get_poste_detail(id_contact: str, id_poste: str):
                     detail_contrainte=r.get("detail_contrainte"),
                     competences=comps,
                     certifications=certs,
+                    rh_statut_poste=(pr.get("statut_poste") if pr else None),
+                    rh_date_debut_validite=(pr.get("date_debut_validite").isoformat() if pr and pr.get("date_debut_validite") else None),
+                    rh_date_fin_validite=(pr.get("date_fin_validite").isoformat() if pr and pr.get("date_fin_validite") else None),
+                    rh_nb_titulaires_cible=(pr.get("nb_titulaires_cible") if pr else None),
+                    rh_criticite_poste=(pr.get("criticite_poste") if pr else None),
+                    rh_strategie_pourvoi=(pr.get("strategie_pourvoi") if pr else None),
+                    rh_param_rh_source=(pr.get("param_rh_source") if pr else None),
+                    rh_param_rh_date_maj=(pr.get("param_rh_date_maj").isoformat() if pr and pr.get("param_rh_date_maj") else None),
+                    rh_param_rh_verrouille=(pr.get("param_rh_verrouille") if pr else None),
+                    rh_param_rh_commentaire=(pr.get("param_rh_commentaire") if pr else None),
+
 
                 )
 
