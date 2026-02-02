@@ -1433,6 +1433,22 @@ body{
   height:16px;
 }
 
+/* Contraintes (modal poste) : inputs/textarea/select doivent rester dans la typo du site */
+#modalOrgPoste .org-form-grid input,
+#modalOrgPoste .org-form-grid select,
+#modalOrgPoste .org-form-grid textarea{
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+/* Aide sous les selects à libellés longs (on affiche le texte complet sélectionné) */
+#modalOrgPoste .org-form-grid .sb-help{
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: #6b7280;
+}
 
 #view-votre-organisation .org-poste-row .sb-acc-title{
   font-weight:700;

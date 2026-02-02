@@ -498,6 +498,26 @@
       { value:"8", text:"Niveau 8 : Bac+8 (Doctorat)" }
     ]);
 
+        // Mobilité
+    _fillSelect(byId("orgCtrMobilite"), [
+      { value:"", text:"—" },
+      { value:"Aucune", text:"Aucune" },
+      { value:"Rare", text:"Rare" },
+      { value:"Occasionnelle", text:"Occasionnelle" },
+      { value:"Fréquente", text:"Fréquente" }
+    ]);
+
+    // Perspectives évolution
+    _fillSelect(byId("orgCtrPerspEvol"), [
+      { value:"", text:"—" },
+      { value:"Aucune", text:"Aucune" },
+      { value:"Faible", text:"Faible" },
+      { value:"Modérée", text:"Modérée" },
+      { value:"Forte", text:"Forte" },
+      { value:"Rapide", text:"Rapide" }
+    ]);
+
+
     // Risques physiques (valeurs stockées : "Aucun","Faible","Modéré","Élevé","Critique")
     _fillSelect(byId("orgCtrRisquePhys"), [
       { value:"", text:"—" },
@@ -516,6 +536,39 @@
       { value:"Élevée", text:"Élevée : forte pression, conditions difficiles, grande responsabilité." },
       { value:"Critique", text:"Critique : stress ou responsabilité vitale." }
     ]);
+
+        // Aide : afficher le libellé complet sélectionné (utile car <select> tronque)
+    const bindHelp = (selectId, helpId) => {
+      const sel = byId(selectId);
+      const help = byId(helpId);
+      if (!sel || !help) return;
+
+      const refresh = () => {
+        const opt = sel.options[sel.selectedIndex];
+        const txt = (opt?.textContent || "").trim();
+        if (txt && txt !== "—") {
+          help.textContent = txt;
+          help.style.display = "";
+          sel.title = txt; // tooltip natif en bonus
+        } else {
+          help.textContent = "";
+          help.style.display = "none";
+          sel.title = "";
+        }
+      };
+
+      // Stocke pour réutilisation depuis fillPosteContraintesTab
+      sel._sbRefreshHelp = refresh;
+
+      // Pour le futur (quand tu enlèveras disabled)
+      sel.addEventListener("change", refresh);
+
+      refresh();
+    };
+
+    bindHelp("orgCtrRisquePhys", "orgCtrRisquePhysHelp");
+    bindHelp("orgCtrNivContrainte", "orgCtrNivContrainteHelp");
+
   }
 
   function fillPosteContraintesTab(detail){
@@ -539,13 +592,20 @@
 
     _setChecked("orgCtrNsfOblig", detail?.nsf_groupe_obligatoire);
 
-    _setValue("orgCtrMobilite", detail?.mobilite);
-    _selectByStoredValue("orgCtrRisquePhys", detail?.risque_physique);
+    _selectByStoredValue("orgCtrMobilite", detail?.mobilite);
 
-    _setValue("orgCtrPerspEvol", detail?.perspectives_evolution);
+    _selectByStoredValue("orgCtrRisquePhys", detail?.risque_physique);
+    const rSel = byId("orgCtrRisquePhys");
+    if (rSel && typeof rSel._sbRefreshHelp === "function") rSel._sbRefreshHelp();
+
+    _selectByStoredValue("orgCtrPerspEvol", detail?.perspectives_evolution);
 
     _selectByStoredValue("orgCtrNivContrainte", detail?.niveau_contrainte);
+    const nSel = byId("orgCtrNivContrainte");
+    if (nSel && typeof nSel._sbRefreshHelp === "function") nSel._sbRefreshHelp();
+
     _setValue("orgCtrDetailContrainte", detail?.detail_contrainte);
+
   }
 
 
