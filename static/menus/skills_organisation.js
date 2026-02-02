@@ -77,12 +77,16 @@
       date_maj: ""
     });
 
+    fillPosteCompetencesTab({ competences: [] });
+
+
     // Détail (fetch)
     try {
       if (!id_poste) return;
       const detail = await fetchPosteDetail(portal, id_poste);
       fillPosteDefinitionTab(detail);
       fillPosteContraintesTab(detail);
+      fillPosteCompetencesTab(detail);
     } catch (e) {
       portal.showAlert("error", "Erreur chargement poste : " + e.message);
     }
@@ -607,6 +611,66 @@
     _setValue("orgCtrDetailContrainte", detail?.detail_contrainte);
 
   }
+
+    function _nivLabel(niv){
+    const n = (niv || "").toString().trim().toUpperCase();
+    if (n === "A") return "A - Initial";
+    if (n === "B") return "B - Avancé";
+    if (n === "C") return "C - Expert";
+    return n || "";
+  }
+
+  function _nivClass(niv){
+    const n = (niv || "").toString().trim().toUpperCase();
+    if (n === "A") return "sb-badge-niv-a";
+    if (n === "B") return "sb-badge-niv-b";
+    if (n === "C") return "sb-badge-niv-c";
+    return "";
+  }
+
+  function fillPosteCompetencesTab(detail){
+    const tbody = byId("orgPosteCompTbody");
+    const empty = byId("orgPosteCompEmpty");
+    if (!tbody || !empty) return;
+
+    const list = Array.isArray(detail?.competences) ? detail.competences : [];
+
+    tbody.innerHTML = "";
+    if (!list.length){
+      empty.style.display = "";
+      return;
+    }
+    empty.style.display = "none";
+
+    list.forEach(it => {
+      const code = (it?.code || "").toString().trim();
+      const title = (it?.intitule || "").toString().trim();
+      const desc = (it?.description || "").toString().trim();
+      const etat = (it?.etat || "").toString().trim().toLowerCase();
+      const niv = (it?.niveau_requis || "").toString().trim().toUpperCase();
+
+      const crit = it?.poids_criticite;
+      const critTxt = (crit === null || crit === undefined || crit === "") ? "-" : escapeHtml(String(crit));
+
+      const nivLbl = _nivLabel(niv);
+      const nivCell = (!nivLbl) ? "-" : `<span class="sb-badge sb-badge-niv ${_nivClass(niv)}">${escapeHtml(nivLbl)}</span>`;
+
+      const ind = (etat === "à valider" || etat === "a valider")
+        ? `<span class="sb-dot-avalider" title="Compétence à valider"></span>`
+        : "";
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${code ? `<span class="sb-badge sb-badge-comp-code">${escapeHtml(code)}</span>` : "-"}</td>
+        <td title="${escapeHtml(desc)}">${escapeHtml(title || "—")}</td>
+        <td>${nivCell}</td>
+        <td>${critTxt}</td>
+        <td class="col-center">${ind}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
 
 
   function applyPosteFilter() {

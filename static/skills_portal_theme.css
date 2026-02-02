@@ -1327,6 +1327,38 @@ body{
   border-color: rgb(62,190,73);
 }
 
+/* Modal poste - Compétences requises */
+.sb-badge-comp-code{
+  background:#0f172a;      /* bleu marine */
+  color:#fff;
+  border-color:#0f172a;
+  font-weight:600;
+}
+
+.sb-badge-niv{
+  background:transparent;
+  font-weight:600;
+}
+
+/* bordures orange dégradées selon niveau */
+.sb-badge-niv-a{ border-color:#fdba74; color:#9a3412; }
+.sb-badge-niv-b{ border-color:#fb923c; color:#9a3412; }
+.sb-badge-niv-c{ border-color:#f97316; color:#7c2d12; }
+
+.sb-dot-avalider{
+  display:inline-block;
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:var(--accent);
+  opacity:0.9;
+}
+
+#orgPosteCompTable td{
+  vertical-align:top;
+}
+
+
 /* Modal poste - bloc Définition */
 #modalOrgPoste .org-poste-def-head{
   display:flex;

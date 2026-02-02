@@ -394,6 +394,17 @@ def _responsabilites_to_html(raw: str | None) -> str | None:
     # texte simple -> HTML safe
     return _html.escape(s).replace("\n", "<br>")
 
+
+
+class PosteCompetenceItem(BaseModel):
+    id_competence: str
+    code: str
+    intitule: str
+    description: Optional[str] = None
+    etat: Optional[str] = None
+    niveau_requis: Optional[str] = None
+    poids_criticite: Optional[float] = None
+
 class PosteDetailResponse(BaseModel):
     id_poste: str
     codif_poste: Optional[str] = None
@@ -417,6 +428,8 @@ class PosteDetailResponse(BaseModel):
     perspectives_evolution: Optional[str] = None
     niveau_contrainte: Optional[str] = None
     detail_contrainte: Optional[str] = None
+
+    competences: List[PosteCompetenceItem] = []
 
 # ======================================================
 # Routes
@@ -604,6 +617,40 @@ def get_poste_detail(id_contact: str, id_poste: str):
                 r = cur.fetchone()
                 if not r:
                     raise HTTPException(status_code=404, detail="Poste introuvable.")
+                
+                                # --- Compétences requises (tbl_fiche_poste_competence + tbl_competence)
+                cur.execute(
+                    """
+                    SELECT
+                      c.id_comp,
+                      c.code,
+                      c.intitule,
+                      c.description,
+                      c.etat,
+                      fpc.niveau_requis,
+                      fpc.poids_criticite
+                    FROM public.tbl_fiche_poste_competence fpc
+                    JOIN public.tbl_competence c ON c.id_comp = fpc.id_competence
+                    WHERE fpc.id_poste = %s
+                      AND c.etat IN ('active', 'à valider')
+                      AND COALESCE(c.masque, FALSE) = FALSE
+                    ORDER BY fpc.poids_criticite DESC NULLS LAST, c.intitule ASC
+                    """,
+                    (id_poste,)
+                )
+
+                comps = []
+                for rr in cur.fetchall() or []:
+                    comps.append({
+                        "id_competence": (rr.get("id_comp") or ""),
+                        "code": (rr.get("code") or ""),
+                        "intitule": (rr.get("intitule") or ""),
+                        "description": rr.get("description"),
+                        "etat": rr.get("etat"),
+                        "niveau_requis": rr.get("niveau_requis"),
+                        "poids_criticite": rr.get("poids_criticite"),
+                    })
+
 
                 dm = r.get("date_maj")
                 try:
@@ -632,6 +679,7 @@ def get_poste_detail(id_contact: str, id_poste: str):
                     perspectives_evolution=r.get("perspectives_evolution"),
                     niveau_contrainte=r.get("niveau_contrainte"),
                     detail_contrainte=r.get("detail_contrainte"),
+                    competences=comps,
 
                 )
 

@@ -161,10 +161,29 @@
         </div>
 
 
-        <div class="card" style="padding:12px; margin:0 0 10px 0;">
-          <div class="card-title">Compétences requises</div>
-          <div class="card-sub" style="margin:0;">(squelette) Contenu à venir.</div>
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="card-title" style="margin-bottom:6px;">Compétences requises</div>
+
+          <div class="table-wrap" style="margin-top:10px;">
+            <table class="sb-table" id="orgPosteCompTable">
+              <thead>
+                <tr>
+                  <th style="width:110px;">Code</th>
+                  <th>Compétence</th>
+                  <th style="width:160px;">Niveau requis</th>
+                  <th style="width:120px;">Criticité</th>
+                  <th style="width:70px;" class="col-center">Ind.</th>
+                </tr>
+              </thead>
+              <tbody id="orgPosteCompTbody"></tbody>
+            </table>
+          </div>
+
+          <div class="card-sub" id="orgPosteCompEmpty" style="display:none; margin-top:10px;">
+            Aucune compétence requise pour ce poste.
+          </div>
         </div>
+
 
         <div class="card" style="padding:12px; margin:0;">
           <div class="card-title">Certifications requises</div>
