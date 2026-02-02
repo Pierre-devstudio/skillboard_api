@@ -186,9 +186,26 @@
 
 
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title">Certifications requises</div>
-          <div class="card-sub" style="margin:0;">(squelette) Contenu à venir.</div>
+          <div class="card-title" style="margin-bottom:6px;">Certifications requises</div>
+
+          <div class="table-wrap" style="margin-top:10px;">
+            <table class="sb-table" id="orgPosteCertTable">
+              <thead>
+                <tr>
+                  <th>Certification</th>
+                  <th style="width:140px;">Catégorie</th>
+                  <th style="width:40px;" class="col-center">Ind.</th>
+                </tr>
+              </thead>
+              <tbody id="orgPosteCertTbody"></tbody>
+            </table>
+          </div>
+
+          <div class="card-sub" id="orgPosteCertEmpty" style="display:none; margin-top:10px;">
+            Aucune certification requise pour ce poste.
+          </div>
         </div>
+
       </div>
 
       <!-- Paramétrage RH -->

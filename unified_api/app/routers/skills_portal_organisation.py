@@ -405,6 +405,14 @@ class PosteCompetenceItem(BaseModel):
     niveau_requis: Optional[str] = None
     poids_criticite: Optional[float] = None
 
+class PosteCertificationItem(BaseModel):
+    id_certification: str
+    nom_certification: str
+    description: Optional[str] = None
+    categorie: Optional[str] = None
+    niveau_exigence: Optional[str] = None
+
+
 class PosteDetailResponse(BaseModel):
     id_poste: str
     codif_poste: Optional[str] = None
@@ -430,6 +438,8 @@ class PosteDetailResponse(BaseModel):
     detail_contrainte: Optional[str] = None
 
     competences: List[PosteCompetenceItem] = []
+    certifications: List[PosteCertificationItem] = []
+
 
 # ======================================================
 # Routes
@@ -618,7 +628,7 @@ def get_poste_detail(id_contact: str, id_poste: str):
                 if not r:
                     raise HTTPException(status_code=404, detail="Poste introuvable.")
                 
-                                # --- Compétences requises (tbl_fiche_poste_competence + tbl_competence)
+                # --- Compétences requises (tbl_fiche_poste_competence + tbl_competence)
                 cur.execute(
                     """
                     SELECT
@@ -651,6 +661,35 @@ def get_poste_detail(id_contact: str, id_poste: str):
                         "poids_criticite": rr.get("poids_criticite"),
                     })
 
+                # --- Certifications requises (tbl_fiche_poste_certification + tbl_certification)
+                cur.execute(
+                    """
+                    SELECT
+                      c.id_certification,
+                      c.nom_certification,
+                      c.description,
+                      c.categorie,
+                      fpc.niveau_exigence
+                    FROM public.tbl_fiche_poste_certification fpc
+                    JOIN public.tbl_certification c
+                      ON c.id_certification = fpc.id_certification
+                    WHERE fpc.id_poste = %s
+                      AND COALESCE(c.masque, FALSE) = FALSE
+                    ORDER BY c.categorie ASC NULLS LAST, c.nom_certification ASC
+                    """,
+                    (id_poste,)
+                )
+
+                certs = []
+                for rr in cur.fetchall() or []:
+                    certs.append({
+                        "id_certification": (rr.get("id_certification") or ""),
+                        "nom_certification": (rr.get("nom_certification") or ""),
+                        "description": rr.get("description"),
+                        "categorie": rr.get("categorie"),
+                        "niveau_exigence": rr.get("niveau_exigence"),
+                    })
+
 
                 dm = r.get("date_maj")
                 try:
@@ -680,6 +719,7 @@ def get_poste_detail(id_contact: str, id_poste: str):
                     niveau_contrainte=r.get("niveau_contrainte"),
                     detail_contrainte=r.get("detail_contrainte"),
                     competences=comps,
+                    certifications=certs,
 
                 )
 

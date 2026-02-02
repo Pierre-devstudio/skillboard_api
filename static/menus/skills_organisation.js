@@ -78,6 +78,7 @@
     });
 
     fillPosteCompetencesTab({ competences: [] });
+    fillPosteCertificationsTab({ certifications: [] });
 
 
     // Détail (fetch)
@@ -87,6 +88,7 @@
       fillPosteDefinitionTab(detail);
       fillPosteContraintesTab(detail);
       fillPosteCompetencesTab(detail);
+      fillPosteCertificationsTab(detail);
     } catch (e) {
       portal.showAlert("error", "Erreur chargement poste : " + e.message);
     }
@@ -670,6 +672,41 @@
       tbody.appendChild(tr);
     });
   }
+
+    function fillPosteCertificationsTab(detail){
+    const tbody = byId("orgPosteCertTbody");
+    const empty = byId("orgPosteCertEmpty");
+    if (!tbody || !empty) return;
+
+    const list = Array.isArray(detail?.certifications) ? detail.certifications : [];
+
+    tbody.innerHTML = "";
+    if (!list.length){
+      empty.style.display = "";
+      return;
+    }
+    empty.style.display = "none";
+
+    list.forEach(it => {
+      const nom = (it?.nom_certification || "").toString().trim();
+      const desc = (it?.description || "").toString().trim();
+      const cat = (it?.categorie || "").toString().trim();
+      const niv = (it?.niveau_exigence || "").toString().trim().toLowerCase();
+
+      const ind = (niv === "requis")
+        ? `<span class="sb-dot-cert-requis" title="Certification requise"></span>`
+        : "";
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td title="${escapeHtml(desc)}">${escapeHtml(nom || "—")}</td>
+        <td>${escapeHtml(cat || "-")}</td>
+        <td class="col-center">${ind}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
 
 
 

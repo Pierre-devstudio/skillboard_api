@@ -1363,6 +1363,21 @@ body{
   font-size: 13px;
 }
 
+/* Modal poste - table certifications : même police que compétences */
+#orgPosteCertTable td:nth-child(1){
+  font-size: 13px;
+}
+
+/* Indicateur certification "requis" */
+.sb-dot-cert-requis{
+  display:inline-block;
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background: rgb(62, 190, 73); /* vert clair (cohérent projet) */
+  opacity: 0.95;
+}
+
 /* Modal poste - bloc Définition */
 #modalOrgPoste .org-poste-def-head{
   display:flex;
