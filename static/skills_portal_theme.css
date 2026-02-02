@@ -1494,6 +1494,24 @@ body{
 }
 
 /* ======================================================
+   Modal Poste — FIX selects invisibles (Risques / Contraintes)
+   ====================================================== */
+#modalOrgPoste #orgCtrRisquePhys,
+#modalOrgPoste #orgCtrNivContrainte{
+  display: block !important;
+  width: 100% !important;
+  min-height: 34px !important;
+  height: auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+#modalOrgPoste #orgCtrRisquePhys:disabled,
+#modalOrgPoste #orgCtrNivContrainte:disabled{
+  display: block !important;
+}
+
+/* ======================================================
    Organisation — FIX spacing label -> value
    Cause: .sb-field est piloté par gap/row-gap dans le CSS global
    ====================================================== */
