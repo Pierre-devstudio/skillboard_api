@@ -238,7 +238,11 @@
 
             <div class="sb-field">
               <div class="label">Nb titulaires cible</div>
-              <input id="orgRhNbTitulaires" type="number" min="0" step="1" disabled />
+              <div class="sb-stepper" aria-label="Nb titulaires cible">
+                <button type="button" class="sb-stepper-btn" id="orgRhNbMinus" disabled>-</button>
+                <input id="orgRhNbTitulaires" type="number" min="0" step="1" disabled />
+                <button type="button" class="sb-stepper-btn" id="orgRhNbPlus" disabled>+</button>
+              </div>
             </div>
 
             <div class="sb-field">

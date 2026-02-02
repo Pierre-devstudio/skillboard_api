@@ -708,7 +708,7 @@
       tbody.appendChild(tr);
     });
   }
-  
+
   let _rhSelectsInit = false;
 
   function initRhSelects(){
@@ -779,6 +779,37 @@
     const info = byId("orgRhLockInfo");
     if (badge) badge.style.display = lock ? "" : "none";
     if (info) info.style.display = lock ? "" : "none";
+
+    // Stepper boutons (prêt pour quand on activera l'édition)
+    const minus = byId("orgRhNbMinus");
+    const plus = byId("orgRhNbPlus");
+    const nb = byId("orgRhNbTitulaires");
+
+    const bindOnce = (btn, delta) => {
+      if (!btn || btn._sbBound) return;
+      btn._sbBound = true;
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (!nb || nb.disabled) return;
+
+        const min = Number(nb.min || 0);
+        const cur = Number(nb.value || 0);
+        const next = Math.max(min, cur + delta);
+        nb.value = String(next);
+      });
+    };
+
+    bindOnce(minus, -1);
+    bindOnce(plus, +1);
+
+    // Synchroniser l'état disabled
+    if (minus) minus.disabled = true;
+    if (plus) plus.disabled = true;
+    if (nb && !nb.disabled){
+      if (minus) minus.disabled = false;
+      if (plus) plus.disabled = false;
+    }
+
   }
 
 

@@ -1603,6 +1603,59 @@ body{
   border-color: #e5e7eb;
 }
 
+/* Stepper (numeric up/down moderne) */
+#modalOrgPoste .sb-stepper{
+  display:flex;
+  align-items:stretch;
+  width:100%;
+  min-height:38px;
+  border:1px solid #e5e7eb;
+  border-radius:10px;
+  background:#f8fafc;
+  overflow:hidden;
+}
+
+#modalOrgPoste .sb-stepper input{
+  flex:1;
+  border:0 !important;
+  background:transparent !important;
+  padding:8px 10px;
+  text-align:center;
+  font-family: inherit;
+  font-size: 14px;
+  outline:none;
+  box-shadow:none;
+}
+
+#modalOrgPoste .sb-stepper-btn{
+  width:40px;
+  border:0;
+  background:#eef2f7;
+  color:#111827;
+  font-weight:800;
+  cursor:pointer;
+}
+
+#modalOrgPoste .sb-stepper-btn:hover:not(:disabled){
+  background:#e5e7eb;
+}
+
+#modalOrgPoste .sb-stepper-btn:disabled{
+  opacity:0.6;
+  cursor:default;
+}
+
+/* Masquer les spinners natifs du input number */
+#modalOrgPoste input[type=number]::-webkit-outer-spin-button,
+#modalOrgPoste input[type=number]::-webkit-inner-spin-button{
+  -webkit-appearance: none;
+  margin: 0;
+}
+#modalOrgPoste input[type=number]{
+  -moz-appearance: textfield;
+}
+
+
 #modalOrgPoste .org-rh-grid input[type="date"][disabled]{
   color: #111827;
 }
