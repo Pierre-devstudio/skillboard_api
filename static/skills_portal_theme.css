@@ -1368,6 +1368,9 @@ body{
   font-size: 13px;
 }
 
+#orgPosteCertTable td:nth-child(2){
+  font-size: 13px;
+}
 /* Indicateur certification "requis" */
 .sb-dot-cert-requis{
   display:inline-block;
