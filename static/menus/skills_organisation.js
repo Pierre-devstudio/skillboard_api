@@ -664,7 +664,7 @@
         <td>${code ? `<span class="sb-badge sb-badge-comp-code">${escapeHtml(code)}</span>` : "-"}</td>
         <td title="${escapeHtml(desc)}">${escapeHtml(title || "—")}</td>
         <td>${nivCell}</td>
-        <td>${critTxt}</td>
+        <td class="col-center">${critTxt}</td>
         <td class="col-center">${ind}</td>
       `;
       tbody.appendChild(tr);

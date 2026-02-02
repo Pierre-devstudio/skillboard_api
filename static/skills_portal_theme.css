@@ -1329,9 +1329,9 @@ body{
 
 /* Modal poste - Compétences requises */
 .sb-badge-comp-code{
-  background:#0f172a;      /* bleu marine */
+  background:#1e2a44;      /* bleu marine plus clair */
   color:#fff;
-  border-color:#0f172a;
+  border-color:#1e2a44;
   font-weight:600;
 }
 
@@ -1358,6 +1358,10 @@ body{
   vertical-align:top;
 }
 
+/* Modal poste - table compétences : texte compétence un poil plus petit */
+#orgPosteCompTable td:nth-child(2){
+  font-size: 13px;
+}
 
 /* Modal poste - bloc Définition */
 #modalOrgPoste .org-poste-def-head{
