@@ -116,6 +116,26 @@ body {
   flex-shrink: 0;
 }
 
+.topbar-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.sb-btn-ghost{
+  border:1px solid #e5e7eb;
+  background:#fff;
+  color:#111827;
+  padding:6px 10px;
+  border-radius:10px;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+.sb-btn-ghost:hover{
+  background:#f9fafb;
+}
+
 .menu-toggle {
   display: none;
   border: none;

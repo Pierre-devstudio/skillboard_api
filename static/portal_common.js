@@ -261,10 +261,12 @@
     portal.contactId = getQueryParam("id");
 
     if (!portal.contactId) {
-      showAlert(
-        "error",
-        "Identifiant manquant dans l’URL. Le lien utilisé n’est pas valide."
-      );
+      const loginUrl = (window.PORTAL_LOGIN_URL || "").toString().trim();
+      const msg = loginUrl
+        ? `Identifiant manquant dans l’URL. <a href="${loginUrl}">Se connecter</a>`
+        : "Identifiant manquant dans l’URL. Le lien utilisé n’est pas valide.";
+
+      showAlert("error", msg);
       return;
     }
 

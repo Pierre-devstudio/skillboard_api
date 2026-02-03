@@ -59,7 +59,10 @@
         <button class="menu-toggle" id="btnMenuToggle" aria-label="Ouvrir le menu">&#9776;</button>
         <span id="topbarName">Contact</span>
       </div>
-      <div class="topbar-right" id="topbarInfo">Chargement…</div>
+      <div class="topbar-right topbar-actions">
+        <span id="topbarInfo">Chargement…</span>
+        <button id="btnLogout" class="sb-btn-ghost" style="display:none;">Déconnexion</button>
+      </div>
     </header>
 
     <main class="content">
@@ -68,8 +71,14 @@
     </main>
   </div>
 
-  <script>window.PORTAL_NO_AUTOINIT = true;</script>
+  <script>
+    window.PORTAL_NO_AUTOINIT = true;
+    window.PORTAL_LOGIN_URL = "/skills_login.html";
+  </script>
   <script src="/portal_common.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/portal_auth_common.js"></script>
+  <script src="/skills_portal_auth.js"></script>
   <script src="/skills_portal.js"></script>
   <script>
     window.portal.init();
