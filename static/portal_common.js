@@ -72,30 +72,86 @@
   // -----------------------------
   // API helper
   // -----------------------------
+    // -----------------------------
+  // Contexte Skills (cache) : permet de savoir si le user est super-admin
+  // -----------------------------
+  let _skillsCtxCache = null;
+  let _skillsCtxCacheTs = 0;
+  let _skillsCtxPromise = null;
+
+  async function _getSkillsContext(accessToken) {
+    try {
+      const token = String(accessToken || "").trim();
+      if (!token) return null;
+
+      const now = Date.now();
+      if (_skillsCtxCache && (now - _skillsCtxCacheTs) < 5 * 60 * 1000) {
+        return _skillsCtxCache; // 5 minutes de cache
+      }
+
+      if (_skillsCtxPromise) return await _skillsCtxPromise;
+
+      const base = String(portal.apiBase || DEFAULT_API_BASE).replace(/\/+$/, "");
+
+      _skillsCtxPromise = fetch(`${base}/skills/auth/context`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then(async (r) => {
+          if (!r.ok) return null;
+          return await r.json().catch(() => null);
+        })
+        .catch(() => null)
+        .finally(() => { _skillsCtxPromise = null; });
+
+      const ctx = await _skillsCtxPromise;
+      _skillsCtxCache = ctx;
+      _skillsCtxCacheTs = Date.now();
+      return ctx;
+    } catch (_) {
+      return null;
+    }
+  }
+
   async function apiJson(url, options) {
     const opts = options ? Object.assign({}, options) : {};
     const headers = new Headers(opts.headers || {});
 
     // 1) JWT Supabase (si session active)
+    let jwtToken = "";
     try {
       if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
         const session = await window.PortalAuthCommon.getSession();
-        const token = session && session.access_token ? String(session.access_token) : "";
-        if (token && !headers.has("Authorization")) {
-          headers.set("Authorization", `Bearer ${token}`);
+        jwtToken = session && session.access_token ? String(session.access_token) : "";
+        if (jwtToken && !headers.has("Authorization")) {
+          headers.set("Authorization", `Bearer ${jwtToken}`);
         }
       }
     } catch (_) {
+      jwtToken = "";
       // Pas de session / supabase pas initialisé: on laisse vivre le legacy
     }
 
-    // 2) Contexte entreprise (super admin) - stocké côté front
+    // 2) Contexte entreprise (super admin) - UNIQUEMENT si super-admin + token
     try {
-      const entId = localStorage.getItem("sb_skills_active_ent") || "";
-      if (entId && !headers.has("X-Ent-Id")) {
-        headers.set("X-Ent-Id", entId);
+      const entId = (localStorage.getItem("sb_skills_active_ent") || "").trim();
+
+      if (!entId) {
+        // rien
+      } else if (!jwtToken) {
+        // Legacy ou client sans token -> on purge pour éviter de casser tout le monde
+        localStorage.removeItem("sb_skills_active_ent");
+      } else if (!headers.has("X-Ent-Id")) {
+        const ctx = await _getSkillsContext(jwtToken);
+
+        if (ctx && ctx.is_super_admin) {
+          headers.set("X-Ent-Id", entId);
+        } else {
+          // Client connecté -> ce header n'a rien à faire là
+          localStorage.removeItem("sb_skills_active_ent");
+        }
       }
     } catch (_) {}
+
 
     opts.headers = headers;
 
