@@ -1,10 +1,16 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, Tuple
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn, resolve_insights_context
+from app.routers.skills_portal_common import (
+    get_conn,
+    resolve_insights_context,
+    skills_require_user,
+    skills_validate_enterprise,
+)
+
 
 
 router = APIRouter()
@@ -152,6 +158,35 @@ class CertificationDetailResponse(BaseModel):
 # ======================================================
 # Helpers
 # ======================================================
+def _resolve_id_ent_for_request(cur, id_contact: str, request: Request) -> str:
+    """
+    Résolution entreprise:
+    - Si header X-Ent-Id présent => mode super-admin (Supabase auth obligatoire)
+    - Sinon => legacy via resolve_insights_context (id_contact = id_effectif)
+    """
+    x_ent = ""
+    try:
+        x_ent = (request.headers.get("X-Ent-Id") or "").strip()
+    except Exception:
+        x_ent = ""
+
+    if x_ent:
+        auth = ""
+        try:
+            auth = request.headers.get("Authorization", "")
+        except Exception:
+            auth = ""
+
+        u = skills_require_user(auth)
+        if not u.get("is_super_admin"):
+            raise HTTPException(status_code=403, detail="Accès refusé (X-Ent-Id réservé super-admin).")
+
+        ent = skills_validate_enterprise(cur, x_ent)
+        return ent.get("id_ent")
+
+    ctx = resolve_insights_context(cur, id_contact)  # legacy
+    return ctx["id_ent"]
+
 def _normalize_etat(etat: Optional[str]) -> Optional[str]:
     """
     Tolère les anciennes valeurs côté front (valide/validée) et évite les accents en query si besoin.
@@ -296,6 +331,7 @@ def _count_postes_in_scope(cur, id_ent: str, id_service: str) -> int:
 )
 def get_referentiel_competences_service(
     id_contact: str,
+    request: Request,
     id_service: str,
     id_domaine: Optional[str] = Query(default=None),
     q: Optional[str] = Query(default=None),
@@ -313,8 +349,7 @@ def get_referentiel_competences_service(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 service_scope = _fetch_service_label(cur, id_ent, id_service)
@@ -472,6 +507,7 @@ def get_referentiel_competences_service(
 )
 def get_referentiel_competence_detail(
     id_contact: str,
+    request: Request,
     id_service: str,
     id_comp: str,
     include_masque: bool = Query(default=False),
@@ -483,8 +519,7 @@ def get_referentiel_competence_detail(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 service_scope = _fetch_service_label(cur, id_ent, id_service)
@@ -630,6 +665,7 @@ def get_referentiel_competence_detail(
 )
 def get_referentiel_certifications_service(
     id_contact: str,
+    request: Request,
     id_service: str,
     q: Optional[str] = Query(default=None),
     include_masque: bool = Query(default=False),
@@ -640,8 +676,7 @@ def get_referentiel_certifications_service(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 service_scope = _fetch_service_label(cur, id_ent, id_service)
@@ -750,6 +785,7 @@ def get_referentiel_certifications_service(
 )
 def get_referentiel_certification_detail(
     id_contact: str,
+    request: Request,
     id_service: str,
     id_certification: str,
     include_masque: bool = Query(default=False),
@@ -760,8 +796,7 @@ def get_referentiel_certification_detail(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 service_scope = _fetch_service_label(cur, id_ent, id_service)
