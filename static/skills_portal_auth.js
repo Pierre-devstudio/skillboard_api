@@ -85,10 +85,21 @@
         }
 
         if (!contactId) {
-        // Connecté mais pas rattaché à un effectif -> retour login (message géré côté login)
+        // Cas super-admin: pas besoin d'id_effectif, on entre via X-Ent-Id + scope
+        const me = await fetchMe();
+        const isSuper = !!(me && me.is_super_admin);
+
+        if (isSuper) {
+            // id_contact "dummy": en mode super-admin, il ne sert pas (X-Ent-Id pilote le scope)
+            window.location.href = buildPortalUrlWithId("__superadmin__");
+            return;
+        }
+
+        // User standard: id_effectif obligatoire
         window.location.href = loginUrl;
         return;
         }
+
 
         // On reste compatible 100%: on redirige vers le mode legacy ?id=...
         window.location.href = buildPortalUrlWithId(contactId);
@@ -111,6 +122,20 @@
         localStorage.setItem("sb_skills_active_ent", (ent?.id_ent || "").toString().trim());
         localStorage.setItem("sb_skills_active_ent_label", _entLabel(ent));
         } catch (_) {}
+    }
+
+    async function fetchMe() {
+        const session = await window.PortalAuthCommon.getSession();
+        const token = session?.access_token || "";
+        if (!token) return null;
+
+        const r = await fetch(`${API_BASE}/skills/me`, {
+        headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        const data = await r.json().catch(() => null);
+        if (!r.ok) return null;
+        return data;
     }
 
     async function fetchScope() {
