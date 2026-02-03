@@ -217,6 +217,42 @@
     return `${dd}/${mm}/${yy}`;
   }
 
+    function _rhIsStatutSansFin(statut){
+    const s = (statut || "").toString().trim().toLowerCase();
+    return (s === "actif" || s === "a_pourvoir");
+  }
+
+  function _rhApplyFinValiditeVisibility(){
+    const sel = byId("orgRhStatut");
+    const statut = sel ? sel.value : "";
+
+    const inputFin = byId("orgRhDateFin");
+    if (!inputFin) return;
+
+    // On masque le bloc complet (label + input)
+    const wrap = inputFin.closest(".sb-field") || inputFin.parentElement;
+    if (!wrap) return;
+
+    if (_rhIsStatutSansFin(statut)){
+      wrap.style.display = "none";
+      inputFin.value = "";
+      inputFin.disabled = true;
+    } else {
+      wrap.style.display = "";
+      inputFin.disabled = !_rhEdit.editing;
+    }
+  }
+
+  function _rhBindStatutChangeOnce(){
+    const sel = byId("orgRhStatut");
+    if (!sel || sel._sbRhBound) return;
+    sel._sbRhBound = true;
+
+    sel.addEventListener("change", () => {
+      _rhApplyFinValiditeVisibility();
+    });
+  }
+
   function _rhReadForm(){
     return {
       statut_poste: (byId("orgRhStatut")?.value || "").trim(),
@@ -263,6 +299,8 @@
     if (plus) plus.disabled = !editing;
 
     _rhSetButtons(editing);
+    _rhApplyFinValiditeVisibility();
+
   }
 
   function _rhEnterEditMode(){
@@ -307,14 +345,16 @@
       return;
     }
 
+    const statutNorm = (v.statut_poste || "actif").trim().toLowerCase();
+
     // Defaults si l'utilisateur laisse "—"
     const payload = {
-      statut_poste: v.statut_poste || "actif",
+      statut_poste: statutNorm || "actif",
       criticite_poste: Number(v.criticite_poste || 2),
       strategie_pourvoi: v.strategie_pourvoi || "mixte",
       nb_titulaires_cible: Number(v.nb_titulaires_cible || 1),
       date_debut_validite: v.date_debut_validite || null,
-      date_fin_validite: v.date_fin_validite || null,
+      date_fin_validite: _rhIsStatutSansFin(statutNorm) ? null : (v.date_fin_validite || null),
       param_rh_commentaire: (v.param_rh_commentaire || "").trim() || null
       // source/date_maj/verrouille forcés côté API
     };
@@ -333,7 +373,7 @@
 
       // refresh UI (retour lecture)
       fillPosteParamRhTab(updated);
-      portal.showAlert("success", "Paramétrage RH enregistré.");
+      
     } catch (e) {
       portal.showAlert("error", "Erreur enregistrement RH : " + e.message);
     }
@@ -956,6 +996,7 @@
 
   function fillPosteParamRhTab(detail){
     initRhSelects();
+    _rhBindStatutChangeOnce();
 
     const lock = !!detail?.rh_param_rh_verrouille;
     const src = (detail?.rh_param_rh_source ?? "").toString().trim();
@@ -976,10 +1017,9 @@
     _setValue("orgRhCommentaire", detail?.rh_param_rh_commentaire ?? "");
 
     // UI lock (info interne)
-    const badge = byId("orgRhLockBadge");
-    const info = byId("orgRhLockInfo");
+    const badge = byId("orgRhLockBadge");    
     if (badge) badge.style.display = lock ? "" : "none";
-    if (info) info.style.display = lock ? "" : "none";
+    
 
     // Stepper boutons (bind une fois)
     const minus = byId("orgRhNbMinus");
@@ -1006,6 +1046,8 @@
     // Retour en lecture systématique quand on remplit depuis API
     _rhEdit.snapshot = null;
     _setRhEditMode(false);
+    _rhApplyFinValiditeVisibility();
+
   }
 
 

@@ -1598,10 +1598,29 @@ body{
   line-height:1;
 }
 
+#modalOrgPoste #orgRhBtnEdit{
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+#modalOrgPoste #orgRhBtnSave{
+  background: rgb(190, 62, 73);
+  border-color: rgb(190, 62, 73);
+  color: #fff;
+}
+
+/* optionnel mais utile : hover léger sans casser la charte */
+#modalOrgPoste #orgRhBtnEdit:hover,
+#modalOrgPoste #orgRhBtnSave:hover{
+  filter: brightness(0.95);
+}
+
+
 #modalOrgPoste .sb-badge.sb-badge-rh-lock{
-  background: rgba(193, 39, 45, 0.14) !important;
-  border: 1px solid rgba(193, 39, 45, 0.85) !important;
-  color: rgb(193, 39, 45) !important;
+  background: rgba(131, 39, 193, 0.14) !important;
+  border: 1px solid rgba(131, 39, 193, 0.85) !important;
+  color: rgb(131, 39, 193) !important;
   font-weight: 800;
   white-space: nowrap;
 }
