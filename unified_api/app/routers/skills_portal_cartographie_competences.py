@@ -1,10 +1,15 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, Tuple
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn, resolve_insights_context
+from app.routers.skills_portal_common import (
+    get_conn,
+    resolve_insights_context,
+    skills_require_user,
+    skills_validate_enterprise,
+)
 
 
 router = APIRouter()
@@ -63,6 +68,34 @@ class CartographieMatriceResponse(BaseModel):
 # ======================================================
 # Helpers
 # ======================================================
+def _resolve_id_ent_for_request(cur, id_contact: str, request: Request) -> str:
+    """
+    Résolution entreprise:
+    - Si header X-Ent-Id présent => mode super-admin (Supabase auth obligatoire)
+    - Sinon => legacy via resolve_insights_context (id_contact = id_effectif)
+    """
+    x_ent = ""
+    try:
+        x_ent = (request.headers.get("X-Ent-Id") or "").strip()
+    except Exception:
+        x_ent = ""
+
+    if x_ent:
+        auth = ""
+        try:
+            auth = request.headers.get("Authorization", "")
+        except Exception:
+            auth = ""
+
+        u = skills_require_user(auth)
+        if not u.get("is_super_admin"):
+            raise HTTPException(status_code=403, detail="Accès refusé (X-Ent-Id réservé super-admin).")
+
+        ent = skills_validate_enterprise(cur, x_ent)
+        return ent.get("id_ent")
+
+    ctx = resolve_insights_context(cur, id_contact)  # legacy
+    return ctx["id_ent"]
 
 def _normalize_etat(etat: Optional[str]) -> Optional[str]:
     if etat is None:
@@ -190,6 +223,7 @@ def _build_postes_scope_cte(id_service: Optional[str]) -> Tuple[str, Tuple[Any, 
 )
 def get_cartographie_matrice(
     id_contact: str,
+    request: Request,
     id_service: Optional[str] = Query(default=None),
     etat: Optional[str] = Query(default=ETAT_ACTIVE),
     include_masque: bool = Query(default=False),
@@ -203,8 +237,7 @@ def get_cartographie_matrice(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 # scope label
@@ -404,6 +437,7 @@ def get_cartographie_matrice(
 @router.get("/skills/cartographie/cell/{id_contact}")
 def get_cartographie_cell_detail(
     id_contact: str,
+    request: Request,
     id_poste: str = Query(...),
     id_domaine: Optional[str] = Query(default=None),
     id_service: Optional[str] = Query(default=None),  # pour rester cohérent avec le filtre en cours
@@ -414,8 +448,7 @@ def get_cartographie_cell_detail(
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
 
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 # --- scope postes (cohérent avec ton filtre service)
