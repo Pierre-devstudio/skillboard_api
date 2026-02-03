@@ -73,7 +73,33 @@
   // API helper
   // -----------------------------
   async function apiJson(url, options) {
-    const resp = await fetch(url, options || {});
+    const opts = options ? Object.assign({}, options) : {};
+    const headers = new Headers(opts.headers || {});
+
+    // 1) JWT Supabase (si session active)
+    try {
+      if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
+        const session = await window.PortalAuthCommon.getSession();
+        const token = session && session.access_token ? String(session.access_token) : "";
+        if (token && !headers.has("Authorization")) {
+          headers.set("Authorization", `Bearer ${token}`);
+        }
+      }
+    } catch (_) {
+      // Pas de session / supabase pas initialisé: on laisse vivre le legacy
+    }
+
+    // 2) Contexte entreprise (super admin) - stocké côté front
+    try {
+      const entId = localStorage.getItem("sb_skills_active_ent") || "";
+      if (entId && !headers.has("X-Ent-Id")) {
+        headers.set("X-Ent-Id", entId);
+      }
+    } catch (_) {}
+
+    opts.headers = headers;
+
+    const resp = await fetch(url, opts);
     const ct = (resp.headers.get("content-type") || "").toLowerCase();
     const body = ct.includes("application/json") ? await resp.json() : await resp.text();
 
@@ -86,6 +112,7 @@
     }
     return body;
   }
+
 
   // -----------------------------
   // Chargement JS "once"

@@ -136,6 +136,17 @@ body {
   background:#f9fafb;
 }
 
+.sb-topbar-select{
+  width: auto !important;
+  min-width: 240px;
+  max-width: 340px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  background: #fff;
+}
+
 .menu-toggle {
   display: none;
   border: none;

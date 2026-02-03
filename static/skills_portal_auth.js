@@ -94,6 +94,100 @@
         window.location.href = buildPortalUrlWithId(contactId);
     }
 
+    function _entLabel(e) {
+        const name = (e?.nom_ent || "").toString().trim();
+        const num = (e?.num_entreprise || "").toString().trim();
+        if (num) return `${name} (${num})`;
+        return name || (e?.id_ent || "");
+    }
+
+    function getActiveEntId() {
+        try { return (localStorage.getItem("sb_skills_active_ent") || "").trim(); }
+        catch (_) { return ""; }
+    }
+
+    function setActiveEnt(ent) {
+        try {
+        localStorage.setItem("sb_skills_active_ent", (ent?.id_ent || "").toString().trim());
+        localStorage.setItem("sb_skills_active_ent_label", _entLabel(ent));
+        } catch (_) {}
+    }
+
+    async function fetchScope() {
+        // nécessite session
+        const session = await window.PortalAuthCommon.getSession();
+        const token = session?.access_token || "";
+        if (!token) return null;
+
+        const r = await fetch(`${API_BASE}/skills/me/scope`, {
+        headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        const data = await r.json().catch(() => null);
+        if (!r.ok) return null;
+        return data;
+    }
+
+    async function wireSuperAdminSelect() {
+        const sel = byId("selSuperEnt");
+        if (!sel) return;
+
+        const cfg = await initAuth();
+        if (!cfg) {
+        sel.style.display = "none";
+        return;
+        }
+
+        // session ?
+        let session = null;
+        try { session = await window.PortalAuthCommon.getSession(); } catch (_) {}
+        if (!session) {
+        sel.style.display = "none";
+        return;
+        }
+
+        const scope = await fetchScope();
+        const mode = scope?.mode || "";
+        const list = Array.isArray(scope?.entreprises) ? scope.entreprises : [];
+
+        if (mode !== "super_admin" || !list.length) {
+        sel.style.display = "none";
+        return;
+        }
+
+        // show select
+        sel.style.display = "inline-flex";
+
+        const current = getActiveEntId();
+        sel.innerHTML = "";
+
+        list.forEach((e) => {
+        const opt = document.createElement("option");
+        opt.value = e.id_ent || "";
+        opt.textContent = _entLabel(e);
+        sel.appendChild(opt);
+        });
+
+        // default selection
+        let chosen = null;
+        if (current) chosen = list.find(x => (x.id_ent || "") === current) || null;
+        if (!chosen) chosen = list[0];
+
+        sel.value = chosen?.id_ent || "";
+        setActiveEnt(chosen);
+
+        // changement => on stocke + reload (prépare le futur mode id_ent)
+        sel.addEventListener("change", () => {
+        const id = (sel.value || "").trim();
+        const ent = list.find(x => (x.id_ent || "") === id) || null;
+        if (ent) setActiveEnt(ent);
+
+        // Pour l'instant ça ne “bascule” pas les données legacy (elles dépendent de ?id=).
+        // Mais ça met en place le contexte X-Ent-Id pour les endpoints qu’on va adapter ensuite.
+        try { window.location.reload(); } catch (_) {}
+        });
+    }
+
     async function wireLogout() {
         const btn = byId("btnLogout");
         if (!btn) return;
@@ -133,5 +227,6 @@
   window.addEventListener("DOMContentLoaded", async () => {
     await ensurePortalEntry();
     wireLogout();
+    wireSuperAdminSelect();
   });
 })();
