@@ -672,6 +672,41 @@ def skills_list_enterprises(cur) -> list:
         )
     return out
 
+def skills_validate_enterprise(cur, id_ent: str) -> dict:
+    """
+    Valide qu'une entreprise est éligible Skills:
+    - masque = FALSE
+    - contrat_skills = TRUE
+    Retourne {id_ent, nom_ent, num_entreprise}
+    """
+    eid = (id_ent or "").strip()
+    if not eid:
+        raise HTTPException(status_code=400, detail="id_ent manquant.")
+
+    cur.execute(
+        """
+        SELECT
+          id_ent,
+          nom_ent,
+          num_entreprise
+        FROM public.tbl_entreprise
+        WHERE id_ent = %s
+          AND COALESCE(masque, FALSE) = FALSE
+          AND COALESCE(contrat_skills, FALSE) = TRUE
+        LIMIT 1
+        """,
+        (eid,),
+    )
+    r = cur.fetchone()
+    if not r:
+        raise HTTPException(status_code=404, detail="Entreprise introuvable ou non éligible Skills.")
+    return {
+        "id_ent": r.get("id_ent"),
+        "nom_ent": r.get("nom_ent"),
+        "num_entreprise": r.get("num_entreprise"),
+    }
+
+
 def resolve_insights_context(cur, id_effectif: str) -> dict:
     """
     Résout le contexte Insights depuis tbl_effectif_client.

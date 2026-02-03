@@ -1,10 +1,16 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn, resolve_insights_context
+from app.routers.skills_portal_common import (
+    get_conn,
+    resolve_insights_context,
+    skills_require_user,
+    skills_validate_enterprise,
+)
+
 import html as _html
 import re
 
@@ -65,6 +71,37 @@ ServiceNode.model_rebuild()
 # ======================================================
 # Helpers
 # ======================================================
+def _resolve_id_ent_for_request(cur, id_contact: str, request: Request) -> str:
+    """
+    Résolution de l'entreprise:
+    - Si header X-Ent-Id présent => mode super-admin (Supabase auth obligatoire)
+    - Sinon => legacy (id_contact = id_effectif) via resolve_insights_context
+    """
+    x_ent = ""
+    try:
+        x_ent = (request.headers.get("X-Ent-Id") or "").strip()
+    except Exception:
+        x_ent = ""
+
+    # Mode super-admin (impersonation)
+    if x_ent:
+        auth = ""
+        try:
+            auth = request.headers.get("Authorization", "")
+        except Exception:
+            auth = ""
+
+        u = skills_require_user(auth)
+        if not u.get("is_super_admin"):
+            raise HTTPException(status_code=403, detail="Accès refusé (X-Ent-Id réservé super-admin).")
+
+        # Validation entreprise éligible Skills
+        ent = skills_validate_enterprise(cur, x_ent)
+        return ent.get("id_ent")
+
+    # Legacy (inchangé)
+    ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+    return ctx["id_ent"]
 
 def _build_tree(flat_services: List[Dict], counts_by_service: Dict[str, Dict[str, int]]) -> List[ServiceNode]:
     nodes: Dict[str, ServiceNode] = {}
@@ -469,7 +506,7 @@ class PosteParamRhUpdatePayload(BaseModel):
     "/skills/organisation/services/{id_contact}",
     response_model=List[ServiceNode],
 )
-def get_services_tree(id_contact: str):
+def get_services_tree(id_contact: str, request: Request):
     """
     Renvoie l'arbre des services (multi-niveaux) + un noeud spécial "Non lié"
     pour les postes sans service (ou service inexistant/archivé).
@@ -483,8 +520,7 @@ def get_services_tree(id_contact: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 # Services actifs
@@ -596,7 +632,7 @@ def get_services_tree(id_contact: str):
     "/skills/organisation/poste_detail/{id_contact}/{id_poste}",
     response_model=PosteDetailResponse,
 )
-def get_poste_detail(id_contact: str, id_poste: str):
+def get_poste_detail(id_contact: str, id_poste: str, request: Request):
     """
     Détail d'un poste pour le modal.
     On renvoie uniquement les champs nécessaires à l'onglet "Définition".
@@ -604,8 +640,7 @@ def get_poste_detail(id_contact: str, id_poste: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
                 cur.execute(
                     """
@@ -823,7 +858,7 @@ def get_poste_detail(id_contact: str, id_poste: str):
     "/skills/organisation/poste_param_rh_update/{id_contact}/{id_poste}",
     response_model=PosteDetailResponse,
 )
-def update_poste_param_rh(id_contact: str, id_poste: str, payload: PosteParamRhUpdatePayload):
+def update_poste_param_rh(id_contact: str, id_poste: str, payload: PosteParamRhUpdatePayload, request: Request):
     """
     Update du paramétrage RH d'un poste (tbl_fiche_poste_param_rh).
     Règles:
@@ -835,8 +870,7 @@ def update_poste_param_rh(id_contact: str, id_poste: str, payload: PosteParamRhU
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
                 # Sécurité minimum: le poste doit appartenir à l'entreprise du contact
                 cur.execute(
@@ -918,7 +952,7 @@ def update_poste_param_rh(id_contact: str, id_poste: str, payload: PosteParamRhU
                 conn.commit()
 
         # On renvoie le détail complet rafraîchi (comme au chargement modal)
-        return get_poste_detail(id_contact, id_poste)
+        return get_poste_detail(id_contact, id_poste, request)
 
     except HTTPException:
         raise
@@ -930,7 +964,7 @@ def update_poste_param_rh(id_contact: str, id_poste: str, payload: PosteParamRhU
     "/skills/organisation/postes/{id_contact}/{id_service}",
     response_model=PostesResponse,
 )
-def get_postes_for_service(id_contact: str, id_service: str):
+def get_postes_for_service(id_contact: str, id_service: str, request: Request):
     """
     Renvoie les postes (fiches de poste) rattachés au service sélectionné.
     - Si id_service = "__NON_LIE__", renvoie les postes sans service ou service inexistant/archivé.
@@ -939,8 +973,7 @@ def get_postes_for_service(id_contact: str, id_service: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 # Effectifs par poste (sous-requête)
