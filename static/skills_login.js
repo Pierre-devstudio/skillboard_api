@@ -44,6 +44,7 @@
       supabaseAnonKey: cfg.supabase_anon_key,
       portalKey: "skills",
       storagePrefix: "sb",
+      apiBase: API_BASE,
     });
 
     return cfg;

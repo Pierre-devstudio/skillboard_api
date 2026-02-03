@@ -18,6 +18,7 @@
     supabaseAnonKey: null,
     storagePrefix: "sb",          // prefix global
     portalKey: "generic",         // ex: "skills", "people", "partner"
+    apiBase: null,               // ex: "https://xxx.onrender.com" (pour appeler /skills/me)
     contactIdMetaKeys: ["id_effectif", "contact_id", "id_contact"], // ordre de fallback
   };
 
@@ -56,6 +57,7 @@
     _cfg.supabaseUrl = c.supabaseUrl || _cfg.supabaseUrl;
     _cfg.supabaseAnonKey = c.supabaseAnonKey || _cfg.supabaseAnonKey;
     _cfg.portalKey = c.portalKey || _cfg.portalKey;
+    _cfg.apiBase = c.apiBase || _cfg.apiBase;
     _cfg.storagePrefix = c.storagePrefix || _cfg.storagePrefix;
 
     if (!_cfg.supabaseUrl || !_cfg.supabaseAnonKey) {
@@ -113,6 +115,24 @@
     return null;
   }
 
+  async function _isSuperAdminFromApi(accessToken) {
+    try {
+      const token = (accessToken || "").trim();
+      const base = (_cfg.apiBase || "").trim();
+      if (!token || !base) return false;
+      if (_cfg.portalKey !== "skills") return false;
+
+      const r = await fetch(`${base}/skills/me`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      const me = await r.json().catch(() => null);
+      return !!(r.ok && me && me.is_super_admin);
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ---- ContactId (cache local) ----
   function setContactId(contactId) {
     _setLocal(_storageKey("contact_id"), contactId);
@@ -138,12 +158,25 @@
     if (error) throw new Error(error.message || "Connexion impossible.");
 
     const user = data?.user || null;
-    const contactId = _extractContactIdFromUser(user);
+    let contactId = _extractContactIdFromUser(user);
 
-    // On stocke le contactId si dispo, sinon on ne bloque pas (tu pourras gérer plus tard)
-    if (contactId) setContactId(contactId);
+    // Standard: on stocke le contactId si dispo
+    if (contactId) {
+      setContactId(contactId);
+      return { user, session: data?.session || null, contactId };
+    }
 
-    return { user, session: data?.session || null, contactId };
+    // Super-admin: pas besoin d'id_effectif -> on autorise une entrée "dummy"
+    const token = data?.session?.access_token || "";
+    const isSuper = await _isSuperAdminFromApi(token);
+    if (isSuper) {
+      contactId = "__superadmin__";
+      setContactId(contactId);
+      return { user, session: data?.session || null, contactId };
+    }
+
+    return { user, session: data?.session || null, contactId: null };
+
   }
 
   async function signOut() {
@@ -165,9 +198,26 @@
     if (error) return null;
 
     const user = data?.user || null;
-    const contactId = _extractContactIdFromUser(user);
-    if (contactId) setContactId(contactId);
-    return contactId;
+    let contactId = _extractContactIdFromUser(user);
+
+    if (contactId) {
+      setContactId(contactId);
+      return contactId;
+    }
+
+    // Super-admin: autoriser sans id_effectif
+    const session = await getSession().catch(() => null);
+    const token = session?.access_token || "";
+    const isSuper = await _isSuperAdminFromApi(token);
+
+    if (isSuper) {
+      contactId = "__superadmin__";
+      setContactId(contactId);
+      return contactId;
+    }
+
+    return null;
+
   }
 
   async function sendPasswordResetEmail(email, redirectTo) {
