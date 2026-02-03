@@ -84,7 +84,7 @@
       }
 
       // On reste compatible 100% legacy: portail actuel = ?id=...
-      window.location.href = `/skills_portal.html?id=${encodeURIComponent(contactId)}`;
+      window.location.href = `/insights/?id=${encodeURIComponent(contactId)}`;
     } catch (e) {
       setMsg(e.message || "Connexion impossible.", "error");
     } finally {
