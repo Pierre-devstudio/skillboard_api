@@ -1,6 +1,6 @@
 # unified_api/app/routers/skills_portal_entretien_performance.py
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from uuid import uuid4
@@ -9,7 +9,12 @@ import json
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn, resolve_insights_context
+from app.routers.skills_portal_common import (
+    get_conn,
+    resolve_insights_context,
+    skills_require_user,
+    skills_validate_enterprise,
+)
 
 
 
@@ -194,6 +199,34 @@ class CouverturePosteResponse(BaseModel):
 # ======================================================
 # Helpers
 # ======================================================
+def _resolve_id_ent_for_request(cur, id_contact: str, request: Request) -> str:
+    """
+    Résolution entreprise:
+    - Si header X-Ent-Id présent => mode super-admin (Supabase auth obligatoire)
+    - Sinon => legacy via resolve_insights_context (id_contact = id_effectif)
+    """
+    x_ent = ""
+    try:
+        x_ent = (request.headers.get("X-Ent-Id") or "").strip()
+    except Exception:
+        x_ent = ""
+
+    if x_ent:
+        auth = ""
+        try:
+            auth = request.headers.get("Authorization", "")
+        except Exception:
+            auth = ""
+
+        u = skills_require_user(auth)
+        if not u.get("is_super_admin"):
+            raise HTTPException(status_code=403, detail="Accès refusé (X-Ent-Id réservé super-admin).")
+
+        ent = skills_validate_enterprise(cur, x_ent)
+        return ent.get("id_ent")
+
+    ctx = resolve_insights_context(cur, id_contact)  # legacy
+    return ctx["id_ent"]
 
 def _fetch_effectif_context(cur, id_ent: str, id_effectif: str) -> Dict[str, Any]:
     cur.execute(
@@ -265,7 +298,7 @@ def entretien_performance_healthz():
     "/skills/entretien-performance/bootstrap/{id_contact}",
     response_model=EntretienPerformanceBootstrapResponse,
 )
-def get_entretien_performance_bootstrap(id_contact: str):
+def get_entretien_performance_bootstrap(id_contact: str, request: Request):
     """
     Squelette: retourne les infos contact/entreprise + configuration de scoring.
     (Pas encore de contenu métier: effectifs, compétences, audits, etc.)
@@ -273,13 +306,12 @@ def get_entretien_performance_bootstrap(id_contact: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
-                # Bootstrap minimal: on conserve la shape attendue par le front
                 return EntretienPerformanceBootstrapResponse(
                     contact=ContactEntInfo(
-                        id_contact=ctx["id_effectif"],     # compat
-                        code_ent=ctx["id_ent"],
+                        id_contact=id_contact,   # compat (on garde l'id de l'appelant)
+                        code_ent=id_ent,
                         civ_ca=None,
                         prenom_ca=None,
                         nom_ca=None,
@@ -302,6 +334,7 @@ def get_entretien_performance_bootstrap(id_contact: str):
 )
 def get_entretien_performance_collaborateurs(
     id_contact: str,
+    request: Request,
     id_service: str,
     q: Optional[str] = Query(default=None),
     limit: int = Query(default=200, ge=1, le=500),
@@ -309,8 +342,7 @@ def get_entretien_performance_collaborateurs(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 where_parts: List[str] = [
@@ -391,15 +423,14 @@ def get_entretien_performance_collaborateurs(
     "/skills/entretien-performance/effectif-checklist/{id_contact}/{id_effectif}",
     response_model=EffectifChecklistResponse,
 )
-def get_effectif_checklist(id_contact: str, id_effectif: str):
+def get_effectif_checklist(id_contact: str, id_effectif: str, request: Request):
     """
     Contexte réel du collaborateur + checklist des compétences (niveau actuel, date dernière eval).
     """
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 eff = _fetch_effectif_context(cur, id_ent, id_effectif)
@@ -504,7 +535,7 @@ def get_effectif_checklist(id_contact: str, id_effectif: str):
     "/skills/entretien-performance/audit/{id_contact}",
     response_model=AuditSaveResponse,
 )
-def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload):
+def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload, request: Request):
     """
     Enregistre un audit compétence (tbl_effectif_client_audit_competence)
     + met à jour le niveau actuel (tbl_effectif_client_competence).
@@ -526,8 +557,7 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload):
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 # Vérifie appartenance entreprise + actif/non archivé
@@ -663,15 +693,14 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload):
     "/skills/entretien-performance/historique/{id_contact}/{id_effectif_client}",
     response_model=List[AuditHistoryItem],
 )
-def get_entretien_performance_historique(id_contact: str, id_effectif_client: str):
+def get_entretien_performance_historique(id_contact: str, id_effectif_client: str, request: Request):
     """
     Retourne l'historique des audits compétences d'un collaborateur (derniers en premier).
     """
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 # Sécurité périmètre entreprise
@@ -752,14 +781,13 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
     "/skills/entretien-performance/couverture-poste-actuel/{id_contact}/{id_effectif}",
     response_model=CouverturePosteResponse,
 )
-def ep_get_couverture_poste_actuel(id_contact: str, id_effectif: str):
+def ep_get_couverture_poste_actuel(id_contact: str, id_effectif: str, request: Request):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
 
                 # Sécurité + périmètre entreprise via contact
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 # Contexte effectif (inclut poste actuel + intitulé poste)
