@@ -755,24 +755,24 @@
   function fillPosteParamRhTab(detail){
     initRhSelects();
 
-    const lock = !!detail?.param_rh_verrouille;
-    const src = (detail?.param_rh_source ?? "").toString().trim();
-    const maj = _formatMajForRh(detail?.param_rh_date_maj);
+    const lock = !!detail?.rh_param_rh_verrouille;
+    const src = (detail?.rh_param_rh_source ?? "").toString().trim();
+    const maj = _formatMajForRh(detail?.rh_param_rh_date_maj);
 
     // Valeurs
-    _selectByStoredValue("orgRhStatut", detail?.statut_poste);
-    _selectByStoredValue("orgRhCriticite", (detail?.criticite_poste ?? "").toString());
-    _selectByStoredValue("orgRhStrategie", detail?.strategie_pourvoi);
+    _selectByStoredValue("orgRhStatut", detail?.rh_statut_poste);
+    _selectByStoredValue("orgRhCriticite", (detail?.rh_criticite_poste ?? "").toString());
+    _selectByStoredValue("orgRhStrategie", detail?.rh_strategie_pourvoi);
 
-    _setValue("orgRhNbTitulaires", (detail?.nb_titulaires_cible ?? "").toString());
-    _setValue("orgRhDateDebut", _toIsoDate(detail?.date_debut_validite));
-    _setValue("orgRhDateFin", _toIsoDate(detail?.date_fin_validite));
+    _setValue("orgRhNbTitulaires", (detail?.rh_nb_titulaires_cible ?? "").toString());
+    _setValue("orgRhDateDebut", _toIsoDate(detail?.rh_date_debut_validite));
+    _setValue("orgRhDateFin", _toIsoDate(detail?.rh_date_fin_validite));
     _setChecked("orgRhVerrouille", lock);
 
     _setValue("orgRhSource", src || "—");
     _setValue("orgRhDateMaj", maj || "—");
 
-    _setValue("orgRhCommentaire", detail?.param_rh_commentaire ?? "");
+    _setValue("orgRhCommentaire", detail?.rh_param_rh_commentaire ?? "");
 
     // UI lock
     const badge = byId("orgRhLockBadge");
@@ -811,11 +811,6 @@
     }
 
   }
-
-
-
-
-
 
   function applyPosteFilter() {
     const q = (document.getElementById("posteSearch")?.value || "").trim().toLowerCase();
