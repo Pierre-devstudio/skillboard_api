@@ -1,12 +1,17 @@
 # app/routers/skills_portal_collaborateurs.py
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Tuple
 import re
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn, resolve_insights_context
+from app.routers.skills_portal_common import (
+    get_conn,
+    resolve_insights_context,
+    skills_require_user,
+    skills_validate_enterprise,
+)
 
 router = APIRouter()
 
@@ -205,6 +210,35 @@ class CollaborateurFormationsJmbResponse(BaseModel):
 # Helpers
 # ======================================================
 
+def _resolve_id_ent_for_request(cur, id_contact: str, request: Request) -> str:
+    """
+    Résolution entreprise:
+    - Si header X-Ent-Id présent => mode super-admin (Supabase auth obligatoire)
+    - Sinon => legacy via resolve_insights_context (id_contact = id_effectif)
+    """
+    x_ent = ""
+    try:
+        x_ent = (request.headers.get("X-Ent-Id") or "").strip()
+    except Exception:
+        x_ent = ""
+
+    if x_ent:
+        auth = ""
+        try:
+            auth = request.headers.get("Authorization", "")
+        except Exception:
+            auth = ""
+
+        u = skills_require_user(auth)
+        if not u.get("is_super_admin"):
+            raise HTTPException(status_code=403, detail="Accès refusé (X-Ent-Id réservé super-admin).")
+
+        ent = skills_validate_enterprise(cur, x_ent)
+        return ent.get("id_ent")
+
+    ctx = resolve_insights_context(cur, id_contact)  # legacy
+    return ctx["id_ent"]
+
 def _normalize_id_service(id_service: Optional[str]) -> Optional[str]:
     if id_service is None:
         return None
@@ -377,15 +411,15 @@ def _load_domaine_competence_map(cur, ids: List[str]) -> Dict[str, Dict[str, Opt
     "/skills/collaborateurs/services/{id_contact}",
     response_model=List[ServiceItem],
 )
-def get_services_for_filter(id_contact: str):
+def get_services_for_filter(id_contact: str, request: Request):
     """
     Liste des services (organigramme) pour le filtre + entrée virtuelle "Non lié".
     """
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
 
 
                 cur.execute(
@@ -436,6 +470,7 @@ def get_services_for_filter(id_contact: str):
 )
 def get_collaborateurs_kpis(
     id_contact: str,
+    request: Request,
     id_service: Optional[str] = Query(default=None),
 ):
     """
@@ -447,8 +482,8 @@ def get_collaborateurs_kpis(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
 
 
                 params: List = [id_ent]
@@ -500,6 +535,7 @@ def get_collaborateurs_kpis(
 )
 def get_collaborateurs_list(
     id_contact: str,
+    request: Request,
     q: Optional[str] = Query(default=None),
     id_service: Optional[str] = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
@@ -516,8 +552,8 @@ def get_collaborateurs_list(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
 
 
                 params: List = [id_ent]
@@ -645,7 +681,7 @@ def get_collaborateurs_list(
     "/skills/collaborateurs/identification/{id_contact}/{id_effectif}",
     response_model=CollaborateurIdentification,
 )
-def get_collaborateur_identification(id_contact: str, id_effectif: str):
+def get_collaborateur_identification(id_contact: str, id_effectif: str, request: Request):
     """
     Détail "Identification" d'un collaborateur.
     - Ne renvoie pas: civilité, business_travel, champs techniques (date_creation, dernier_update, etc.)
@@ -655,8 +691,7 @@ def get_collaborateur_identification(id_contact: str, id_effectif: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 cur.execute(
@@ -818,7 +853,7 @@ def get_collaborateur_identification(id_contact: str, id_effectif: str):
     "/skills/collaborateurs/competences/{id_contact}/{id_effectif}",
     response_model=CollaborateurCompetencesResponse,
 )
-def get_collaborateur_competences(id_contact: str, id_effectif: str):
+def get_collaborateur_competences(id_contact: str, id_effectif: str, request: Request):
     """
     Onglet Compétences (fiche salarié)
     - Union: compétences requises par le poste + compétences existantes du salarié
@@ -829,8 +864,7 @@ def get_collaborateur_competences(id_contact: str, id_effectif: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 # Poste actuel (et libellé) pour ce salarié
@@ -987,7 +1021,7 @@ def get_collaborateur_competences(id_contact: str, id_effectif: str):
     "/skills/collaborateurs/certifications/{id_contact}/{id_effectif}",
     response_model=CollaborateurCertificationsResponse,
 )
-def get_collaborateur_certifications(id_contact: str, id_effectif: str):
+def get_collaborateur_certifications(id_contact: str, id_effectif: str, request: Request):
     """
     Onglet Certifications (fiche salarié)
     - Union: certifications requises par le poste + certifications acquises par le salarié
@@ -998,8 +1032,7 @@ def get_collaborateur_certifications(id_contact: str, id_effectif: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 # Poste actuel (et libellé) pour ce salarié
@@ -1191,6 +1224,7 @@ def get_collaborateur_certifications(id_contact: str, id_effectif: str):
 def get_collaborateur_formations_jmb(
     id_contact: str,
     id_effectif: str,
+    request: Request,
     months: Optional[int] = Query(None, ge=1, le=120),
     include_archived: bool = Query(False),
 ):
@@ -1208,9 +1242,7 @@ def get_collaborateur_formations_jmb(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
-
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
                 # Sécurise que l'effectif appartient bien à l'entreprise
                 cur.execute(
