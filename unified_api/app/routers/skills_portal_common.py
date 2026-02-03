@@ -25,6 +25,15 @@ SP_TENANT_ID = os.getenv("SP_TENANT_ID")
 SP_CLIENT_ID = os.getenv("SP_CLIENT_ID")
 SP_CLIENT_SECRET = os.getenv("SP_CLIENT_SECRET")
 SP_SITE_ID = os.getenv("SP_SITE_ID")
+# ======================================================
+# Supabase Auth (Skills)
+# ======================================================
+SKILLS_SUPABASE_URL = os.getenv("SKILLS_SUPABASE_URL")
+SKILLS_SUPABASE_ANON_KEY = os.getenv("SKILLS_SUPABASE_ANON_KEY")
+
+# Emails super admin (séparés par virgule)
+# Exemple: "pierre@xxx.fr, admin@xxx.fr"
+SKILLS_SUPER_ADMIN_EMAILS = os.getenv("SKILLS_SUPER_ADMIN_EMAILS", "")
 
 
 # ======================================================
@@ -550,6 +559,118 @@ def fetch_effectif_with_entreprise(cur, id_effectif: str):
     }
 
     return row_effectif, row_entreprise
+# ======================================================
+# Supabase Auth helpers
+# - Validation "pratique" via /auth/v1/user (pas de JWT local)
+# ======================================================
+def _skills_is_super_admin(email: str) -> bool:
+    e = (email or "").strip().lower()
+    if not e:
+        return False
+    raw = (SKILLS_SUPER_ADMIN_EMAILS or "").strip()
+    if not raw:
+        return False
+    allowed = [x.strip().lower() for x in raw.split(",") if x.strip()]
+    return e in allowed
+
+
+def _skills_extract_bearer_token(authorization: str) -> str:
+    a = (authorization or "").strip()
+    if not a:
+        return ""
+    low = a.lower()
+    if not low.startswith("bearer "):
+        return ""
+    return a[7:].strip()
+
+
+def skills_get_supabase_user(access_token: str) -> dict:
+    """
+    Récupère l'utilisateur Supabase à partir d'un access token.
+    Appel réseau vers Supabase Auth: GET /auth/v1/user
+    """
+    if not SKILLS_SUPABASE_URL or not SKILLS_SUPABASE_ANON_KEY:
+        raise HTTPException(status_code=500, detail="Config Supabase Skills manquante côté serveur.")
+
+    tok = (access_token or "").strip()
+    if not tok:
+        raise HTTPException(status_code=401, detail="Token manquant.")
+
+    url = f"{SKILLS_SUPABASE_URL.rstrip('/')}/auth/v1/user"
+    headers = {
+        "apikey": SKILLS_SUPABASE_ANON_KEY,
+        "Authorization": f"Bearer {tok}",
+    }
+
+    try:
+        r = requests.get(url, headers=headers, timeout=15)
+        if r.status_code in (401, 403):
+            raise HTTPException(status_code=401, detail="Session invalide ou expirée.")
+        if r.status_code >= 400:
+            raise HTTPException(status_code=500, detail=f"Erreur Supabase Auth: {r.status_code} {r.text}")
+
+        js = r.json() if r.content else {}
+        return js or {}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur Supabase Auth: {e}")
+
+
+def skills_require_user(authorization_header: str) -> dict:
+    """
+    Retour normalisé:
+      {
+        "id": "...",
+        "email": "...",
+        "user_metadata": {...},
+        "is_super_admin": bool
+      }
+    """
+    token = _skills_extract_bearer_token(authorization_header)
+    user = skills_get_supabase_user(token)
+
+    uid = user.get("id") or ""
+    email = (user.get("email") or "").strip()
+    meta = user.get("user_metadata") or {}
+
+    return {
+        "id": uid,
+        "email": email,
+        "user_metadata": meta,
+        "is_super_admin": _skills_is_super_admin(email),
+    }
+
+
+def skills_list_enterprises(cur) -> list:
+    """
+    Liste les entreprises éligibles Skills:
+    - masque = FALSE
+    - contrat_skills = TRUE
+    """
+    cur.execute(
+        """
+        SELECT
+          id_ent,
+          nom_ent,
+          num_entreprise
+        FROM public.tbl_entreprise
+        WHERE COALESCE(masque, FALSE) = FALSE
+          AND COALESCE(contrat_skills, FALSE) = TRUE
+        ORDER BY nom_ent
+        """
+    )
+    rows = cur.fetchall() or []
+    out = []
+    for r in rows:
+        out.append(
+            {
+                "id_ent": r.get("id_ent"),
+                "nom_ent": r.get("nom_ent"),
+                "num_entreprise": r.get("num_entreprise"),
+            }
+        )
+    return out
 
 def resolve_insights_context(cur, id_effectif: str) -> dict:
     """
