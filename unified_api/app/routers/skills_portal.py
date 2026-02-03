@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 
-from app.routers import skills_portal_dashboard, skills_portal_informations, skills_portal_organisation, skills_portal_collaborateurs, skills_portal_referentiel_competence, skills_portal_cartographie_competences, skills_portal_analyse, skills_portal_entretien_performance
+from app.routers import skills_portal_auth, skills_portal_dashboard, skills_portal_informations, skills_portal_organisation, skills_portal_collaborateurs, skills_portal_referentiel_competence, skills_portal_cartographie_competences, skills_portal_analyse, skills_portal_entretien_performance
 from psycopg.rows import dict_row
 from app.routers.skills_portal_common import (
     get_conn,
@@ -95,6 +95,9 @@ def skills_me_scope(request: Request):
 # Injection manuelle des routes des menus
 # (ajouté au fur et à mesure, même principe que consultant_portal.py)
 # ======================================================
+for route in skills_portal_auth.router.routes:
+     app_local.router.routes.append(route)
+     
 for route in skills_portal_dashboard.router.routes:
      app_local.router.routes.append(route)
 

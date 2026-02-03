@@ -115,23 +115,26 @@
     return null;
   }
 
-  async function _isSuperAdminFromApi(accessToken) {
+  async function _fetchSkillsContextFromApi(accessToken) {
     try {
       const token = (accessToken || "").trim();
       const base = (_cfg.apiBase || "").trim();
-      if (!token || !base) return false;
-      if (_cfg.portalKey !== "skills") return false;
+      if (!token || !base) return null;
+      if (_cfg.portalKey !== "skills") return null;
 
-      const r = await fetch(`${base}/skills/me`, {
+      const r = await fetch(`${base}/skills/auth/context`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
 
-      const me = await r.json().catch(() => null);
-      return !!(r.ok && me && me.is_super_admin);
+      const ctx = await r.json().catch(() => null);
+      if (!r.ok) return null;
+      return ctx;
     } catch (_) {
-      return false;
+      return null;
     }
   }
+
+
 
   // ---- ContactId (cache local) ----
   function setContactId(contactId) {
@@ -166,16 +169,28 @@
       return { user, session: data?.session || null, contactId };
     }
 
-    // Super-admin: pas besoin d'id_effectif -> on autorise une entrée "dummy"
+    // Pas de metadata: on demande le contexte à l'API Skillboard
     const token = data?.session?.access_token || "";
-    const isSuper = await _isSuperAdminFromApi(token);
-    if (isSuper) {
+    const ctx = await _fetchSkillsContextFromApi(token);
+
+    // Super-admin: pas besoin d'id_effectif
+    if (ctx && ctx.is_super_admin) {
       contactId = "__superadmin__";
       setContactId(contactId);
       return { user, session: data?.session || null, contactId };
     }
 
+    // User client: mapping DB -> id_effectif
+    if (ctx && ctx.id_effectif) {
+      contactId = String(ctx.id_effectif).trim();
+      if (contactId) {
+        setContactId(contactId);
+        return { user, session: data?.session || null, contactId };
+      }
+    }
+
     return { user, session: data?.session || null, contactId: null };
+
 
   }
 
@@ -205,18 +220,27 @@
       return contactId;
     }
 
-    // Super-admin: autoriser sans id_effectif
+    // Pas de metadata: on demande le contexte à l'API Skillboard
     const session = await getSession().catch(() => null);
     const token = session?.access_token || "";
-    const isSuper = await _isSuperAdminFromApi(token);
+    const ctx = await _fetchSkillsContextFromApi(token);
 
-    if (isSuper) {
+    if (ctx && ctx.is_super_admin) {
       contactId = "__superadmin__";
       setContactId(contactId);
       return contactId;
     }
 
+    if (ctx && ctx.id_effectif) {
+      contactId = String(ctx.id_effectif).trim();
+      if (contactId) {
+        setContactId(contactId);
+        return contactId;
+      }
+    }
+
     return null;
+
 
   }
 
