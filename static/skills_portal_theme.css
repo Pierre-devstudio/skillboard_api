@@ -1577,6 +1577,27 @@ body{
   margin-bottom:10px;
 }
 
+#modalOrgPoste .org-poste-rh-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+#modalOrgPoste .org-rh-btns{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+#modalOrgPoste .org-rh-btns .btn-secondary{
+  height:32px;
+  padding:6px 12px;
+  font-size:13px;
+  border-radius:10px;
+  line-height:1;
+}
+
 #modalOrgPoste .sb-badge.sb-badge-rh-lock{
   background: rgba(193, 39, 45, 0.14) !important;
   border: 1px solid rgba(193, 39, 45, 0.85) !important;

@@ -50,6 +50,14 @@
     const lib = ((p?.intitule_poste || "") + "").trim();
     const id_poste = (p?.id_poste || "").trim();
 
+    // Contexte (utile pour save RH)
+    modal.setAttribute("data-id-poste", id_poste);
+
+    // Reset RH édition
+    _rhEdit.editing = false;
+    _rhEdit.snapshot = null;
+    _setRhEditMode(false);
+
     // Header
     if (badge){
       if (code){
@@ -128,6 +136,36 @@
       });
     });
 
+    // Param RH buttons (bind once)
+    const btnEdit = byId("orgRhBtnEdit");
+    const btnSave = byId("orgRhBtnSave");
+    const btnCancel = byId("orgRhBtnCancel");
+
+    if (btnEdit && !btnEdit._sbBound){
+      btnEdit._sbBound = true;
+      btnEdit.addEventListener("click", (e) => {
+        e.preventDefault();
+        _rhEnterEditMode();
+      });
+    }
+
+    if (btnCancel && !btnCancel._sbBound){
+      btnCancel._sbBound = true;
+      btnCancel.addEventListener("click", (e) => {
+        e.preventDefault();
+        _rhCancelEdit();
+      });
+    }
+
+    if (btnSave && !btnSave._sbBound){
+      btnSave._sbBound = true;
+      btnSave.addEventListener("click", (e) => {
+        e.preventDefault();
+        _rhSaveEdit();
+      });
+    }
+
+
     // Esc
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && modal.classList.contains("show")) {
@@ -136,6 +174,170 @@
     });
   }
 
+
+    // ============================
+  // Paramétrage RH: édition / save / cancel
+  // ============================
+  let _rhEdit = { editing:false, snapshot:null };
+
+  function _rhGetEditableIds(){
+    return [
+      "orgRhStatut",
+      "orgRhCriticite",
+      "orgRhStrategie",
+      "orgRhNbTitulaires",
+      "orgRhDateDebut",
+      "orgRhDateFin",
+      "orgRhCommentaire"
+    ];
+  }
+
+  function _rhSetDisabled(ids, disabled){
+    ids.forEach(id => {
+      const el = byId(id);
+      if (el) el.disabled = !!disabled;
+    });
+  }
+
+  function _rhSetButtons(editing){
+    const btnEdit = byId("orgRhBtnEdit");
+    const btnSave = byId("orgRhBtnSave");
+    const btnCancel = byId("orgRhBtnCancel");
+
+    if (btnEdit) btnEdit.style.display = editing ? "none" : "";
+    if (btnSave) btnSave.style.display = editing ? "" : "none";
+    if (btnCancel) btnCancel.style.display = editing ? "" : "none";
+  }
+
+  function _rhFormatNowDateOnly(){
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yy = String(d.getFullYear());
+    return `${dd}/${mm}/${yy}`;
+  }
+
+  function _rhReadForm(){
+    return {
+      statut_poste: (byId("orgRhStatut")?.value || "").trim(),
+      criticite_poste: (byId("orgRhCriticite")?.value || "").trim(),
+      strategie_pourvoi: (byId("orgRhStrategie")?.value || "").trim(),
+      nb_titulaires_cible: (byId("orgRhNbTitulaires")?.value || "").trim(),
+      date_debut_validite: (byId("orgRhDateDebut")?.value || "").trim(),
+      date_fin_validite: (byId("orgRhDateFin")?.value || "").trim(),
+      param_rh_commentaire: (byId("orgRhCommentaire")?.value ?? "").toString(),
+
+      // affichage (read-only)
+      param_rh_source: (byId("orgRhSource")?.value || "").trim(),
+      param_rh_date_maj: (byId("orgRhDateMaj")?.value || "").trim()
+    };
+  }
+
+  function _rhWriteForm(v){
+    _selectByStoredValue("orgRhStatut", v?.statut_poste);
+    _selectByStoredValue("orgRhCriticite", (v?.criticite_poste ?? "").toString());
+    _selectByStoredValue("orgRhStrategie", v?.strategie_pourvoi);
+
+    _setValue("orgRhNbTitulaires", (v?.nb_titulaires_cible ?? "").toString());
+    _setValue("orgRhDateDebut", (v?.date_debut_validite ?? "").toString());
+    _setValue("orgRhDateFin", (v?.date_fin_validite ?? "").toString());
+    _setValue("orgRhCommentaire", (v?.param_rh_commentaire ?? "").toString());
+
+    _setValue("orgRhSource", (v?.param_rh_source ?? "").toString());
+    _setValue("orgRhDateMaj", (v?.param_rh_date_maj ?? "").toString());
+  }
+
+  function _setRhEditMode(editing){
+    _rhEdit.editing = !!editing;
+
+    // source + date maj restent toujours non éditables
+    _rhSetDisabled(["orgRhSource", "orgRhDateMaj"], true);
+
+    // champs RH
+    _rhSetDisabled(_rhGetEditableIds(), !editing);
+
+    // stepper
+    const minus = byId("orgRhNbMinus");
+    const plus = byId("orgRhNbPlus");
+    if (minus) minus.disabled = !editing;
+    if (plus) plus.disabled = !editing;
+
+    _rhSetButtons(editing);
+  }
+
+  function _rhEnterEditMode(){
+    if (_rhEdit.editing) return;
+
+    _rhEdit.snapshot = _rhReadForm();
+    _setRhEditMode(true);
+
+    // affichage immédiat (sans attendre le serveur)
+    _setValue("orgRhSource", "insights");
+    _setValue("orgRhDateMaj", _rhFormatNowDateOnly());
+  }
+
+  function _rhCancelEdit(){
+    if (!_rhEdit.editing) return;
+
+    if (_rhEdit.snapshot){
+      _rhWriteForm(_rhEdit.snapshot);
+    }
+    _rhEdit.snapshot = null;
+    _setRhEditMode(false);
+  }
+
+  async function _rhSaveEdit(){
+    const portal = window.__skillsPortalInstance;
+    if (!portal) return;
+
+    const modal = byId("modalOrgPoste");
+    const id_poste = modal?.getAttribute("data-id-poste") || "";
+    if (!id_poste) {
+      portal.showAlert("error", "Impossible d’enregistrer : id_poste manquant.");
+      return;
+    }
+
+    const v = _rhReadForm();
+
+    // Validation minimale dates (contrainte DB)
+    const d1 = v.date_debut_validite || "";
+    const d2 = v.date_fin_validite || "";
+    if (d1 && d2 && d2 < d1){
+      portal.showAlert("error", "La date de fin doit être ≥ à la date de début.");
+      return;
+    }
+
+    // Defaults si l'utilisateur laisse "—"
+    const payload = {
+      statut_poste: v.statut_poste || "actif",
+      criticite_poste: Number(v.criticite_poste || 2),
+      strategie_pourvoi: v.strategie_pourvoi || "mixte",
+      nb_titulaires_cible: Number(v.nb_titulaires_cible || 1),
+      date_debut_validite: v.date_debut_validite || null,
+      date_fin_validite: v.date_fin_validite || null,
+      param_rh_commentaire: (v.param_rh_commentaire || "").trim() || null
+      // source/date_maj/verrouille forcés côté API
+    };
+
+    try {
+      const url = `${portal.apiBase}/skills/organisation/poste_param_rh_update/${encodeURIComponent(portal.contactId)}/${encodeURIComponent(id_poste)}`;
+
+      const updated = await portal.apiJson(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      // cache détail
+      _posteDetailCache.set(id_poste, updated);
+
+      // refresh UI (retour lecture)
+      fillPosteParamRhTab(updated);
+      portal.showAlert("success", "Paramétrage RH enregistré.");
+    } catch (e) {
+      portal.showAlert("error", "Erreur enregistrement RH : " + e.message);
+    }
+  }
 
 
   function setServiceHeader(node) {
@@ -767,20 +969,19 @@
     _setValue("orgRhNbTitulaires", (detail?.rh_nb_titulaires_cible ?? "").toString());
     _setValue("orgRhDateDebut", _toIsoDate(detail?.rh_date_debut_validite));
     _setValue("orgRhDateFin", _toIsoDate(detail?.rh_date_fin_validite));
-    _setChecked("orgRhVerrouille", lock);
 
     _setValue("orgRhSource", src || "—");
     _setValue("orgRhDateMaj", maj || "—");
 
     _setValue("orgRhCommentaire", detail?.rh_param_rh_commentaire ?? "");
 
-    // UI lock
+    // UI lock (info interne)
     const badge = byId("orgRhLockBadge");
     const info = byId("orgRhLockInfo");
     if (badge) badge.style.display = lock ? "" : "none";
     if (info) info.style.display = lock ? "" : "none";
 
-    // Stepper boutons (prêt pour quand on activera l'édition)
+    // Stepper boutons (bind une fois)
     const minus = byId("orgRhNbMinus");
     const plus = byId("orgRhNbPlus");
     const nb = byId("orgRhNbTitulaires");
@@ -802,15 +1003,11 @@
     bindOnce(minus, -1);
     bindOnce(plus, +1);
 
-    // Synchroniser l'état disabled
-    if (minus) minus.disabled = true;
-    if (plus) plus.disabled = true;
-    if (nb && !nb.disabled){
-      if (minus) minus.disabled = false;
-      if (plus) plus.disabled = false;
-    }
-
+    // Retour en lecture systématique quand on remplit depuis API
+    _rhEdit.snapshot = null;
+    _setRhEditMode(false);
   }
+
 
   function applyPosteFilter() {
     const q = (document.getElementById("posteSearch")?.value || "").trim().toLowerCase();

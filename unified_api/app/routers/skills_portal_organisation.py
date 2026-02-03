@@ -452,6 +452,14 @@ class PosteDetailResponse(BaseModel):
     rh_param_rh_verrouille: Optional[bool] = None
     rh_param_rh_commentaire: Optional[str] = None
 
+class PosteParamRhUpdatePayload(BaseModel):
+    statut_poste: Optional[str] = None
+    date_debut_validite: Optional[str] = None      # "YYYY-MM-DD" ou None
+    date_fin_validite: Optional[str] = None        # "YYYY-MM-DD" ou None
+    nb_titulaires_cible: Optional[int] = None
+    criticite_poste: Optional[int] = None
+    strategie_pourvoi: Optional[str] = None
+    param_rh_commentaire: Optional[str] = None
 
 
 # ======================================================
@@ -805,6 +813,112 @@ def get_poste_detail(id_contact: str, id_poste: str):
 
 
                 )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.post(
+    "/skills/organisation/poste_param_rh_update/{id_contact}/{id_poste}",
+    response_model=PosteDetailResponse,
+)
+def update_poste_param_rh(id_contact: str, id_poste: str, payload: PosteParamRhUpdatePayload):
+    """
+    Update du paramétrage RH d'un poste (tbl_fiche_poste_param_rh).
+    Règles:
+    - UPSERT sur id_poste (PK)
+    - source forcée = 'insights'
+    - date_maj forcée = now()
+    - verrouille forcé = TRUE (flag interne desktop, pas un verrou fonctionnel)
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
+                id_ent = ctx["id_ent"]
+
+                # Sécurité minimum: le poste doit appartenir à l'entreprise du contact
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM public.tbl_fiche_poste p
+                    WHERE p.id_ent = %s
+                      AND COALESCE(p.actif, TRUE) = TRUE
+                      AND p.id_poste = %s
+                    LIMIT 1
+                    """,
+                    (id_ent, id_poste),
+                )
+                if not cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Poste introuvable.")
+
+                # Normalisation légère + defaults
+                statut = (payload.statut_poste or "actif").strip().lower()
+                strategie = (payload.strategie_pourvoi or "mixte").strip().lower()
+
+                nb_titulaires = int(payload.nb_titulaires_cible) if payload.nb_titulaires_cible is not None else 1
+                criticite = int(payload.criticite_poste) if payload.criticite_poste is not None else 2
+
+                d_debut = payload.date_debut_validite if payload.date_debut_validite else None
+                d_fin = payload.date_fin_validite if payload.date_fin_validite else None
+
+                commentaire = payload.param_rh_commentaire
+                if commentaire is not None:
+                    commentaire = commentaire.strip()
+                    if commentaire == "":
+                        commentaire = None
+
+                # UPSERT (source/date/verrouille forcés)
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_fiche_poste_param_rh (
+                        id_poste,
+                        statut_poste,
+                        date_debut_validite,
+                        date_fin_validite,
+                        nb_titulaires_cible,
+                        criticite_poste,
+                        strategie_pourvoi,
+                        param_rh_source,
+                        param_rh_date_maj,
+                        param_rh_verrouille,
+                        param_rh_commentaire
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s,
+                        'insights',
+                        now(),
+                        TRUE,
+                        %s
+                    )
+                    ON CONFLICT (id_poste) DO UPDATE SET
+                        statut_poste = EXCLUDED.statut_poste,
+                        date_debut_validite = EXCLUDED.date_debut_validite,
+                        date_fin_validite = EXCLUDED.date_fin_validite,
+                        nb_titulaires_cible = EXCLUDED.nb_titulaires_cible,
+                        criticite_poste = EXCLUDED.criticite_poste,
+                        strategie_pourvoi = EXCLUDED.strategie_pourvoi,
+                        param_rh_source = 'insights',
+                        param_rh_date_maj = now(),
+                        param_rh_verrouille = TRUE,
+                        param_rh_commentaire = EXCLUDED.param_rh_commentaire
+                    """,
+                    (
+                        id_poste,
+                        statut,
+                        d_debut,
+                        d_fin,
+                        nb_titulaires,
+                        criticite,
+                        strategie,
+                        commentaire,
+                    ),
+                )
+
+                conn.commit()
+
+        # On renvoie le détail complet rafraîchi (comme au chargement modal)
+        return get_poste_detail(id_contact, id_poste)
 
     except HTTPException:
         raise

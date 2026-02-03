@@ -213,7 +213,16 @@
         <div class="card org-bloc" id="orgPosteBlocRh">
           <div class="org-poste-rh-head">
             <div class="card-title" style="margin:0;">Paramétrage RH</div>
-            <span id="orgRhLockBadge" class="sb-badge sb-badge-rh-lock" style="display:none;">Modifié par le client</span>
+
+            <div class="org-poste-rh-actions">
+              <span id="orgRhLockBadge" class="sb-badge sb-badge-rh-lock" style="display:none;">Modifié par le client</span>
+
+              <div class="org-rh-btns">
+                <button type="button" class="btn-secondary btn-rh-edit" id="orgRhBtnEdit">Modifier</button>
+                <button type="button" class="btn-secondary btn-rh-save" id="orgRhBtnSave" style="display:none;">Enregistrer</button>
+                <button type="button" class="btn-secondary btn-rh-cancel" id="orgRhBtnCancel" style="display:none;">Annuler</button>
+              </div>
+            </div>
           </div>
 
           <div id="orgRhLockInfo" class="org-rh-lock-info" style="display:none;">
@@ -253,13 +262,6 @@
             <div class="sb-field">
               <div class="label">Fin de validité</div>
               <input id="orgRhDateFin" type="date" class="sb-date" disabled />
-            </div>
-
-            <div class="sb-field org-span-2">
-              <label class="sb-check">
-                <input type="checkbox" id="orgRhVerrouille" disabled />
-                <span>Verrouillé</span>
-              </label>
             </div>
 
             <div class="sb-field">
