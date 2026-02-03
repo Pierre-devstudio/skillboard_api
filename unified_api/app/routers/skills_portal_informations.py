@@ -1,11 +1,16 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import re
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn, fetch_contact_with_entreprise
+from app.routers.skills_portal_common import (
+    get_conn,
+    fetch_contact_with_entreprise,
+    skills_require_user,
+    skills_validate_enterprise,
+)
 
 router = APIRouter()
 
@@ -111,6 +116,62 @@ class RefApeResponse(BaseModel):
 # ======================================================
 # Helpers
 # ======================================================
+def _pick_effectif_for_ent(cur, id_ent: str) -> str:
+    """
+    Choisit un effectif "représentant" pour une entreprise:
+    - priorité: manager
+    - sinon: premier effectif non archivé
+    """
+    cur.execute(
+        """
+        SELECT id_effectif
+        FROM public.tbl_effectif_client
+        WHERE id_ent = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        ORDER BY
+          COALESCE(ismanager, FALSE) DESC,
+          nom_effectif NULLS LAST,
+          prenom_effectif NULLS LAST
+        LIMIT 1
+        """,
+        (id_ent,),
+    )
+    r = cur.fetchone()
+    if not r or not r.get("id_effectif"):
+        raise HTTPException(status_code=404, detail="Aucun effectif actif trouvé pour cette entreprise.")
+    return r["id_effectif"]
+
+
+def _resolve_effectif_for_request(cur, id_contact: str, request: Request) -> str:
+    """
+    Résolution de l'effectif utilisé pour afficher/modifier la page Informations:
+    - Si header X-Ent-Id présent => mode super-admin (Supabase auth obligatoire)
+      -> on valide l'entreprise Skills, puis on choisit un effectif de cette entreprise
+    - Sinon => legacy: id_contact = id_effectif (compat)
+    """
+    x_ent = ""
+    try:
+        x_ent = (request.headers.get("X-Ent-Id") or "").strip()
+    except Exception:
+        x_ent = ""
+
+    if x_ent:
+        auth = ""
+        try:
+            auth = request.headers.get("Authorization", "")
+        except Exception:
+            auth = ""
+
+        u = skills_require_user(auth)
+        if not u.get("is_super_admin"):
+            raise HTTPException(status_code=403, detail="Accès refusé (X-Ent-Id réservé super-admin).")
+
+        ent = skills_validate_enterprise(cur, x_ent)  # valide périmètre skills + masque
+        return _pick_effectif_for_ent(cur, ent.get("id_ent"))
+
+    # legacy
+    return id_contact
+
 def _build_patch_set(payload) -> Dict[str, Any]:
     """
     Patch propre:
@@ -314,7 +375,7 @@ def _get_informations(cur, id_contact: str) -> InformationsResponse:
     "/skills/informations/{id_contact}",
     response_model=InformationsResponse,
 )
-def get_informations(id_contact: str):
+def get_informations(id_contact: str, request: Request):
     """
     Retourne les informations du contact connecté + entreprise liée,
     avec libellés (IDCC / APE / OPCO).
@@ -322,7 +383,8 @@ def get_informations(id_contact: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                return _get_informations(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                return _get_informations(cur, eff_id)
 
     except HTTPException:
         raise
@@ -334,7 +396,7 @@ def get_informations(id_contact: str):
     "/skills/informations/entreprise/{id_contact}",
     response_model=InformationsResponse,
 )
-def update_entreprise_infos(id_contact: str, payload: UpdateEntreprisePayload):
+def update_entreprise_infos(id_contact: str, payload: UpdateEntreprisePayload, request: Request):
     """
     Mise à jour des infos entreprise (nom_ent non modifiable).
     Patch:
@@ -346,7 +408,8 @@ def update_entreprise_infos(id_contact: str, payload: UpdateEntreprisePayload):
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
                 id_ent = row_ent["id_ent"]
 
                 # Validations référentiels
@@ -376,7 +439,7 @@ def update_entreprise_infos(id_contact: str, payload: UpdateEntreprisePayload):
                     )
                     conn.commit()
 
-                return _get_informations(cur, id_contact)
+                return _get_informations(cur, eff_id)
 
     except HTTPException:
         raise
@@ -388,7 +451,7 @@ def update_entreprise_infos(id_contact: str, payload: UpdateEntreprisePayload):
     "/skills/informations/contact/{id_contact}",
     response_model=InformationsResponse,
 )
-def update_contact_infos(id_contact: str, payload: UpdateContactPayload):
+def update_contact_infos(id_contact: str, payload: UpdateContactPayload, request: Request):
     """
     Mise à jour des infos du contact connecté.
     Patch:
@@ -406,7 +469,11 @@ def update_contact_infos(id_contact: str, payload: UpdateContactPayload):
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 # Validation du contact + périmètre skills
-                row_contact, _ = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+
+                # Validation du contact + périmètre skills
+                row_contact, _ = fetch_contact_with_entreprise(cur, eff_id)
+
 
                 if patch:
                     cols = []
@@ -459,7 +526,7 @@ def update_contact_infos(id_contact: str, payload: UpdateContactPayload):
 
                   
 
-                return _get_informations(cur, id_contact)
+                return _get_informations(cur, eff_id)
 
     except HTTPException:
         raise
