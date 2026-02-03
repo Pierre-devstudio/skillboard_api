@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
@@ -6,7 +6,12 @@ import json
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn, resolve_insights_context
+from app.routers.skills_portal_common import (
+    get_conn,
+    resolve_insights_context,
+    skills_require_user,
+    skills_validate_enterprise,
+)
 
 
 router = APIRouter()
@@ -74,6 +79,34 @@ class AnalyseSummaryResponse(BaseModel):
 # ======================================================
 # Helpers
 # ======================================================
+def _resolve_id_ent_for_request(cur, id_contact: str, request: Request) -> str:
+    """
+    Résolution entreprise:
+    - Si header X-Ent-Id présent => mode super-admin (Supabase auth obligatoire)
+    - Sinon => legacy via resolve_insights_context (id_contact = id_effectif)
+    """
+    x_ent = ""
+    try:
+        x_ent = (request.headers.get("X-Ent-Id") or "").strip()
+    except Exception:
+        x_ent = ""
+
+    if x_ent:
+        auth = ""
+        try:
+            auth = request.headers.get("Authorization", "")
+        except Exception:
+            auth = ""
+
+        u = skills_require_user(auth)
+        if not u.get("is_super_admin"):
+            raise HTTPException(status_code=403, detail="Accès refusé (X-Ent-Id réservé super-admin).")
+
+        ent = skills_validate_enterprise(cur, x_ent)
+        return ent.get("id_ent")
+
+    ctx = resolve_insights_context(cur, id_contact)  # legacy
+    return ctx["id_ent"]
 
 def _fetch_service_label(cur, id_ent: str, id_service: Optional[str]) -> ServiceScope:
     if not id_service:
@@ -291,6 +324,7 @@ def _reco_from_type(type_risque: str) -> str:
 )
 def get_analyse_summary(
     id_contact: str,
+    request: Request,
     id_service: Optional[str] = Query(default=None),
 ):
     """
@@ -301,8 +335,7 @@ def get_analyse_summary(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
@@ -840,6 +873,7 @@ class AnalysePrevisionsSortiesDetailResponse(BaseModel):
 )
 def get_analyse_previsions_sorties_detail(
     id_contact: str,
+    request: Request,
     horizon_years: int = Query(default=1, ge=1, le=5),
     id_service: Optional[str] = Query(default=None),
     limit: int = Query(default=200, ge=1, le=2000),
@@ -847,8 +881,7 @@ def get_analyse_previsions_sorties_detail(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
@@ -1017,6 +1050,7 @@ class AnalysePrevisionsCritiquesImpacteesDetailResponse(BaseModel):
 )
 def get_analyse_previsions_critiques_impactees_detail(
     id_contact: str,
+    request: Request,
     horizon_years: int = Query(default=1, ge=1, le=5),
     id_service: Optional[str] = Query(default=None),
     criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
@@ -1025,8 +1059,7 @@ def get_analyse_previsions_critiques_impactees_detail(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
@@ -1601,6 +1634,7 @@ def get_analyse_previsions_critiques_modal(
 @router.get("/skills/analyse/previsions/postes-rouges/detail/{id_contact}")
 def get_analyse_previsions_postes_rouges_detail(
     id_contact: str,
+    request: Request,
     horizon_years: int = Query(default=1, ge=1, le=5),
     id_service: Optional[str] = Query(default=None),
     criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
@@ -1614,8 +1648,7 @@ def get_analyse_previsions_postes_rouges_detail(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
@@ -1829,6 +1862,7 @@ def get_analyse_previsions_postes_rouges_detail(
 @router.get("/skills/analyse/previsions/postes-rouges/modal/{id_contact}")
 def get_analyse_previsions_postes_rouges_modal(
     id_contact: str,
+    request: Request,
     id_poste: str = Query(..., min_length=1),
     horizon_years: int = Query(default=1, ge=1, le=5),
     id_service: Optional[str] = Query(default=None),
@@ -1843,8 +1877,7 @@ def get_analyse_previsions_postes_rouges_modal(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 id_poste = (id_poste or "").strip()
@@ -2511,6 +2544,7 @@ class AnalyseRisquesDetailResponse(BaseModel):
 )
 def get_analyse_risques_detail(
     id_contact: str,
+    request: Request,
     kpi: str = Query(...),  # "postes-fragiles" | "postes-scope" | "critiques-sans-porteur" | "porteur-unique"
     id_service: Optional[str] = Query(default=None),
     criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
@@ -2534,8 +2568,7 @@ def get_analyse_risques_detail(
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
@@ -3010,6 +3043,7 @@ class AnalyseMatchingEffectifResponse(BaseModel):
 )
 def get_analyse_risques_poste_detail(
     id_contact: str,
+    request: Request,
     id_poste: str = Query(...),
     id_service: Optional[str] = Query(default=None),
     criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
@@ -3023,8 +3057,7 @@ def get_analyse_risques_poste_detail(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
@@ -3254,6 +3287,7 @@ def get_analyse_risques_poste_detail(
 )
 def get_analyse_risques_poste_diagnostic(
     id_contact: str,
+    request: Request,
     id_poste: str = Query(...),
     id_service: Optional[str] = Query(default=None),
     criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
@@ -3280,8 +3314,7 @@ def get_analyse_risques_poste_diagnostic(
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
                 cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
@@ -3485,6 +3518,7 @@ def get_analyse_risques_poste_diagnostic(
 )
 def get_analyse_matching_poste(
     id_contact: str,
+    request: Request,
     id_poste: str = Query(...),
     id_service: Optional[str] = Query(default=None),
     criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
@@ -3495,8 +3529,7 @@ def get_analyse_matching_poste(
             with conn.cursor(row_factory=dict_row) as cur:
 
                 # --- id_ent depuis contact
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 scope = _fetch_service_label(cur, id_ent, id_service)
@@ -3743,6 +3776,7 @@ def get_analyse_matching_poste(
 )
 def get_analyse_matching_effectif_detail(
     id_contact: str,
+    request: Request,
     id_poste: str = Query(...),
     id_effectif: str = Query(...),
     id_service: Optional[str] = Query(default=None),
@@ -3753,8 +3787,7 @@ def get_analyse_matching_effectif_detail(
             with conn.cursor(row_factory=dict_row) as cur:
 
                 # --- id_ent depuis contact
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
@@ -4065,6 +4098,7 @@ def get_analyse_matching_effectif_detail(
 @router.get("/skills/analyse/risques/competence/{id_contact}")
 def get_risque_competence_detail(
     id_contact: str,
+    request: Request,
     id_comp: str = Query(..., description="id_comp OU code compétence"),
     id_service: Optional[str] = Query(default=None),
     criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
@@ -4077,8 +4111,7 @@ def get_risque_competence_detail(
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
 
-                ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-                id_ent = ctx["id_ent"]
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
 
                 # --- scope label
