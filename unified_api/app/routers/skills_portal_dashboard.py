@@ -1,13 +1,72 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List
 
 from psycopg.rows import dict_row
 
-from app.routers.skills_portal_common import get_conn, fetch_contact_with_entreprise
+from app.routers.skills_portal_common import (
+    get_conn,
+    fetch_contact_with_entreprise,
+    skills_require_user,
+    skills_validate_enterprise,
+)
 
 router = APIRouter()
 
+def _pick_effectif_for_ent(cur, id_ent: str) -> str:
+    """
+    Choisit un effectif "représentant" pour une entreprise:
+    - priorité: manager
+    - sinon: premier effectif non archivé
+    """
+    cur.execute(
+        """
+        SELECT id_effectif
+        FROM public.tbl_effectif_client
+        WHERE id_ent = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        ORDER BY
+          COALESCE(ismanager, FALSE) DESC,
+          nom_effectif NULLS LAST,
+          prenom_effectif NULLS LAST
+        LIMIT 1
+        """,
+        (id_ent,),
+    )
+    r = cur.fetchone()
+    if not r or not r.get("id_effectif"):
+        raise HTTPException(status_code=404, detail="Aucun effectif actif trouvé pour cette entreprise.")
+    return r["id_effectif"]
+
+
+def _resolve_effectif_for_request(cur, id_contact: str, request: Request) -> str:
+    """
+    Résolution de l'effectif utilisé par le dashboard:
+    - Si header X-Ent-Id présent => mode super-admin (Supabase auth obligatoire)
+      -> valide entreprise Skills, puis choisit un effectif de cette entreprise
+    - Sinon => legacy: id_contact = id_effectif (compat)
+    """
+    x_ent = ""
+    try:
+        x_ent = (request.headers.get("X-Ent-Id") or "").strip()
+    except Exception:
+        x_ent = ""
+
+    if x_ent:
+        auth = ""
+        try:
+            auth = request.headers.get("Authorization", "")
+        except Exception:
+            auth = ""
+
+        u = skills_require_user(auth)
+        if not u.get("is_super_admin"):
+            raise HTTPException(status_code=403, detail="Accès refusé (X-Ent-Id réservé super-admin).")
+
+        ent = skills_validate_enterprise(cur, x_ent)
+        return _pick_effectif_for_ent(cur, ent.get("id_ent"))
+
+    return id_contact
 
 class SkillsContext(BaseModel):
     id_contact: str
@@ -269,7 +328,7 @@ class GlobalGaugeNonCoveredDetailResponse(BaseModel):
     "/skills/context/{id_contact}",
     response_model=SkillsContext,
 )
-def get_skills_context(id_contact: str):
+def get_skills_context(id_contact: str, request: Request):
     """
     Contexte minimal pour le dashboard / topbar :
     id_contact, civilité, prénom, nom.
@@ -277,7 +336,8 @@ def get_skills_context(id_contact: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, _ = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, _ = fetch_contact_with_entreprise(cur, eff_id)
 
         return SkillsContext(
             id_contact=row_contact["id_contact"],
@@ -296,7 +356,7 @@ def get_skills_context(id_contact: str):
     "/skills/dashboard/banner/{id_contact}",
     response_model=DashboardBanner,
 )
-def get_dashboard_banner(id_contact: str):
+def get_dashboard_banner(id_contact: str, request: Request):
     """
     Bandeau d'information du dashboard.
     - Si aucun contenu => message vide (le front masque le bandeau)
@@ -305,7 +365,8 @@ def get_dashboard_banner(id_contact: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
 
                 # On tente de récupérer l'entreprise (selon ce que renvoie fetch_contact_with_entreprise)
                 id_entreprise = None
@@ -368,7 +429,7 @@ def get_dashboard_banner(id_contact: str):
     "/skills/dashboard/age-pyramid/{id_contact}",
     response_model=AgePyramidResponse,
 )
-def get_dashboard_age_pyramid(id_contact: str):
+def get_dashboard_age_pyramid(id_contact: str, request: Request):
     """
     Pyramide des âges (actifs uniquement).
     - Femmes (F) à gauche
@@ -379,7 +440,8 @@ def get_dashboard_age_pyramid(id_contact: str):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
 
                 # fetch_contact_with_entreprise fournit id_ent (pas id_entreprise)
                 id_ent = None
@@ -574,7 +636,7 @@ def get_dashboard_age_pyramid(id_contact: str):
     "/skills/dashboard/global-gauge/{id_contact}",
     response_model=GlobalGaugeResponse,
 )
-def get_dashboard_global_gauge(id_contact: str, id_service: Optional[str] = None):
+def get_dashboard_global_gauge(id_contact: str, request: Request, id_service: Optional[str] = None):
     """
     Jauge "État global compétences vs attentes"
     - Périmètre actuel: entreprise entière
@@ -590,7 +652,8 @@ def get_dashboard_global_gauge(id_contact: str, id_service: Optional[str] = None
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
 
                 # id_ent = périmètre entreprise
                 id_ent = None
@@ -682,7 +745,7 @@ def get_dashboard_global_gauge(id_contact: str, id_service: Optional[str] = None
     "/skills/dashboard/no-training-12m/{id_contact}",
     response_model=NoTraining12mResponse,
 )
-def get_dashboard_no_training_12m(id_contact: str, id_service: Optional[str] = None):
+def get_dashboard_no_training_12m(id_contact: str, request: Request, id_service: Optional[str] = None):
     """
     KPI: % de l'effectif actif sans formation depuis 12 mois (toutes sources)
     Source vérité: tbl_effectif_client_historique_formation
@@ -698,7 +761,8 @@ def get_dashboard_no_training_12m(id_contact: str, id_service: Optional[str] = N
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
 
                 id_ent = None
                 if isinstance(row_contact, dict):
@@ -764,7 +828,7 @@ def get_dashboard_no_training_12m(id_contact: str, id_service: Optional[str] = N
     "/skills/dashboard/no-performance-12m/{id_contact}",
     response_model=NoPerformance12mResponse,
 )
-def get_dashboard_no_performance_12m(id_contact: str, id_service: Optional[str] = None):
+def get_dashboard_no_performance_12m(id_contact: str, request: Request, id_service: Optional[str] = None):
     """
     KPI: % de salariés (actifs) n'ayant pas eu de "point performance" depuis 12 mois.
 
@@ -786,7 +850,8 @@ def get_dashboard_no_performance_12m(id_contact: str, id_service: Optional[str] 
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
 
                 id_ent = None
                 if isinstance(row_contact, dict):
@@ -880,7 +945,7 @@ def get_dashboard_no_performance_12m(id_contact: str, id_service: Optional[str] 
     "/skills/dashboard/upcoming-trainings/{id_contact}",
     response_model=UpcomingTrainingsResponse,
 )
-def get_dashboard_upcoming_trainings(id_contact: str, id_service: Optional[str] = None):
+def get_dashboard_upcoming_trainings(id_contact: str, request: Request, id_service: Optional[str] = None):
     """
     Dashboard — Formations à venir
     - Programmée si l'entreprise (id_ent) est présente dans tbl_action_formation_entreprises
@@ -894,7 +959,8 @@ def get_dashboard_upcoming_trainings(id_contact: str, id_service: Optional[str] 
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
 
                 id_ent = None
                 if isinstance(row_contact, dict):
@@ -985,7 +1051,7 @@ def get_dashboard_upcoming_trainings(id_contact: str, id_service: Optional[str] 
     "/skills/dashboard/certifs-expiring/{id_contact}",
     response_model=CertExpiringResponse,
 )
-def get_dashboard_certifs_expiring(id_contact: str, days: int = 60, id_service: Optional[str] = None):
+def get_dashboard_certifs_expiring(id_contact: str, request: Request, days: int = 60, id_service: Optional[str] = None):
     """
     Dashboard — Certifications à renouveler
     - Badge: total des certifications à renouveler (instances = nb personnes à traiter)
@@ -1009,7 +1075,8 @@ def get_dashboard_certifs_expiring(id_contact: str, days: int = 60, id_service: 
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
 
                 id_ent = None
                 if isinstance(row_contact, dict):
@@ -1103,6 +1170,7 @@ def get_dashboard_certifs_expiring(id_contact: str, days: int = 60, id_service: 
 )
 def get_dashboard_no_performance_12m_detail(
     id_contact: str,
+    request: Request,
     limit: int = 50,
     offset: int = 0,
     id_service: Optional[str] = None,
@@ -1135,7 +1203,8 @@ def get_dashboard_no_performance_12m_detail(
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
 
                 id_ent = None
                 if isinstance(row_contact, dict):
@@ -1287,6 +1356,7 @@ def get_dashboard_no_performance_12m_detail(
 )
 def get_dashboard_no_training_12m_detail(
     id_contact: str,
+    request: Request,
     limit: int = 50,
     offset: int = 0,
     id_service: Optional[str] = None,
@@ -1324,7 +1394,9 @@ def get_dashboard_no_training_12m_detail(
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
+
 
                 id_ent = None
                 if isinstance(row_contact, dict):
@@ -1484,6 +1556,7 @@ def get_dashboard_no_training_12m_detail(
 )
 def get_dashboard_certifs_expiring_detail(
     id_contact: str,
+    request: Request,
     days: int = 60,
     limit: int = 50,
     offset: int = 0,
@@ -1518,7 +1591,9 @@ def get_dashboard_certifs_expiring_detail(
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
+
 
                 id_ent = None
                 if isinstance(row_contact, dict):
@@ -1656,6 +1731,7 @@ def get_dashboard_certifs_expiring_detail(
 )
 def get_dashboard_upcoming_trainings_detail(
     id_contact: str,
+    request: Request,
     limit: int = 20,
     offset: int = 0,
     id_service: Optional[str] = None,
@@ -1687,7 +1763,9 @@ def get_dashboard_upcoming_trainings_detail(
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
+
 
                 id_ent = None
                 if isinstance(row_contact, dict):
@@ -1843,6 +1921,7 @@ def get_dashboard_upcoming_trainings_detail(
 )
 def get_dashboard_age_pyramid_detail_seniors(
     id_contact: str,
+    request: Request,
     age_min: int = 58,
     limit: int = 50,
     offset: int = 0,
@@ -1881,7 +1960,9 @@ def get_dashboard_age_pyramid_detail_seniors(
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
+
 
                 id_ent = None
                 if isinstance(row_contact, dict):
@@ -1996,6 +2077,7 @@ def get_dashboard_age_pyramid_detail_seniors(
 )
 def get_dashboard_age_pyramid_detail_transmission_danger(
     id_contact: str,
+    request: Request,
     age_min: int = 58,
     limit: int = 50,
     offset: int = 0,
@@ -2039,7 +2121,9 @@ def get_dashboard_age_pyramid_detail_transmission_danger(
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
+
 
                 id_ent = None
                 if isinstance(row_contact, dict):
@@ -2167,6 +2251,7 @@ def get_dashboard_age_pyramid_detail_transmission_danger(
 )
 def get_dashboard_global_gauge_detail_non_covered(
     id_contact: str,
+    request: Request,
     limit: int = 50,
     offset: int = 0,
     id_service: Optional[str] = None,
@@ -2205,7 +2290,9 @@ def get_dashboard_global_gauge_detail_non_covered(
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, id_contact)
+                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
+
 
                 id_ent = None
                 if isinstance(row_contact, dict):
