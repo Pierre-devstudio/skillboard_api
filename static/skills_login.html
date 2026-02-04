@@ -166,18 +166,26 @@
       gap:10px;
       margin-bottom:12px;
     }
-    .brand-pill{
+    
+    .brand-name{
+      font-size:12px;
+      font-weight:800;
+      color:#111827;
+      letter-spacing:.2px;
+    }
+    .brand-module{
       display:inline-flex;
       align-items:center;
-      gap:8px;
       padding:6px 10px;
       border-radius:999px;
-      border:1px solid #e5e7eb;
+      background: var(--accent, #c1272d);
+      color:#fff;
       font-size:12px;
-      font-weight:700;
-      color:#111827;
-      background:#fafafa;
+      font-weight:800;
+      letter-spacing:.2px;
+      box-shadow: 0 4px 12px rgba(193,39,45,.18);
     }
+
   </style>
 </head>
 
@@ -186,13 +194,13 @@
     <div class="login-left">
       <div class="login-card">
         <div class="brand-line">
-          <div class="brand-pill">Skillboard <span style="opacity:.6;">|</span> Insights</div>
+          <div class="brand-name">Skillboard</div>
+          <div class="brand-module">Insights</div>
         </div>
 
         <!-- PANEL LOGIN -->
         <div class="panel active" id="panelLogin">
-          <h1 class="login-title">Connexion</h1>
-          <p class="login-sub">Accès au portail Skills (Insights).</p>
+          <h1 class="login-title">Connexion</h1>          
 
           <div class="login-row">
             <label for="loginEmail">Email</label>
@@ -210,8 +218,7 @@
           </div>
 
           <p class="hint">
-            Astuce: si ton compte n’est pas encore rattaché à un effectif Skills, tu ne rentreras nulle part.
-            Ce n’est pas un bug, c’est une barrière.
+            Skillboard est une solution propriétaire JMBCONSULTANT.
           </p>
         </div>
 
