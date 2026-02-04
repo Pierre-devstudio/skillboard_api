@@ -10,6 +10,19 @@ import threading
 import queue
 import time
 
+import logging
+import contextvars
+
+_log = logging.getLogger("skills_pool")
+
+_current_endpoint = contextvars.ContextVar("current_endpoint", default="?")
+
+_db_in_use = 0
+_db_waits = 0
+_db_timeouts = 0
+_db_discarded = 0
+
+
 # ======================================================
 # ENV
 # ======================================================
@@ -71,6 +84,39 @@ _db_pool = queue.LifoQueue(maxsize=_DB_POOL_MAX)
 _db_pool_lock = threading.Lock()
 _db_pool_created = 0
 
+def _pool_stats() -> dict:
+    try:
+        avail = _db_pool.qsize()
+    except Exception:
+        avail = -1
+    return {
+        "max": _DB_POOL_MAX,
+        "created": _db_pool_created,
+        "in_use": _db_in_use,
+        "available": avail,
+        "waits": _db_waits,
+        "timeouts": _db_timeouts,
+        "discarded": _db_discarded,
+        "endpoint": _current_endpoint.get(),
+    }
+
+def _discard_conn(conn, reason: str):
+    global _db_pool_created, _db_discarded
+    try:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+    finally:
+        with _db_pool_lock:
+            if _db_pool_created > 0:
+                _db_pool_created -= 1
+            _db_discarded += 1
+        try:
+            _log.error(f"[DB_POOL] DISCARD reason={reason} stats={_pool_stats()}")
+        except Exception:
+            pass
 
 def _is_pooler_saturated(err: Exception) -> bool:
     msg = str(err) if err is not None else ""
@@ -111,6 +157,10 @@ class _ConnCtx:
 
     def __enter__(self):
         global _db_pool_created
+        global _db_in_use, _db_waits, _db_timeouts
+
+        t0 = time.time()
+
 
         missing = _missing_env()
         if missing:
@@ -129,22 +179,25 @@ class _ConnCtx:
             try:
                 # Conn déjà fermée ?
                 if getattr(self.conn, "closed", False):
-                    try:
-                        self.conn.close()
-                    except Exception:
-                        pass
+                    _discard_conn(self.conn, "already_closed")
                     self.conn = None
+
                 else:
                     # Ping minimal
                     with self.conn.cursor() as cur:
                         cur.execute("select 1;")
+
+                    with _db_pool_lock:
+                        _db_in_use += 1
+
+                    waited_ms = int((time.time() - t0) * 1000)
+                    if waited_ms >= 200:
+                        _log.error(f"[DB_POOL] ACQUIRE waited_ms={waited_ms} stats={_pool_stats()}")                    
+
                     return self.conn
             except Exception:
-                # Conn morte -> on la jette
-                try:
-                    self.conn.close()
-                except Exception:
-                    pass
+                # Conn morte -> on la jette (et on décrémente created)
+                _discard_conn(self.conn, "ping_failed")
                 self.conn = None
 
 
@@ -153,48 +206,97 @@ class _ConnCtx:
             if _db_pool_created < _DB_POOL_MAX:
                 self.conn = _create_conn()
                 _db_pool_created += 1
+
+                with _db_pool_lock:
+                    _db_in_use += 1
+
+                waited_ms = int((time.time() - t0) * 1000)
+                if waited_ms >= 200:
+                    _log.error(f"[DB_POOL] ACQUIRE waited_ms={waited_ms} stats={_pool_stats()}")
+
                 return self.conn
+
 
         # 3) Sinon, attendre qu’une connexion se libère
         try:
+            with _db_pool_lock:
+                _db_waits += 1
+
             self.conn = _db_pool.get(timeout=_DB_POOL_TIMEOUT)
+
+            # Conn récupérée: vérifier qu'elle est vivante (sinon discard + continuer à attendre)
+            try:
+                if getattr(self.conn, "closed", False):
+                    _discard_conn(self.conn, "wait_got_closed")
+                    self.conn = None
+                    raise Exception("wait_got_closed")
+
+                with self.conn.cursor() as cur:
+                    cur.execute("select 1;")
+            except Exception:
+                _discard_conn(self.conn, "wait_ping_failed")
+                self.conn = None
+                raise Exception("wait_ping_failed")
+
+            with _db_pool_lock:
+                _db_in_use += 1
+
+            waited_ms = int((time.time() - t0) * 1000)
+            if waited_ms >= 200:
+                _log.error(f"[DB_POOL] ACQUIRE waited_ms={waited_ms} stats={_pool_stats()}")
+
             return self.conn
+
         except Exception:
+            with _db_pool_lock:
+                _db_timeouts += 1
+            _log.error(f"[DB_POOL] TIMEOUT wait_s={_DB_POOL_TIMEOUT} stats={_pool_stats()}")
+
             raise HTTPException(
                 status_code=503,
                 detail="DB saturée (pool complet). Réessaie dans quelques secondes.",
             )
 
+
     def __exit__(self, exc_type, exc, tb):
         # On remet la connexion dans le pool si elle est saine
         try:
+            global _db_in_use
+
             if self.conn is None:
                 return False
 
-            # Si exception et transaction ouverte -> rollback best effort
+            # Nettoyage transaction: rollback systématique (évite transaction "idle in transaction")
             try:
-                if exc_type is not None:
-                    self.conn.rollback()
+                self.conn.rollback()
             except Exception:
                 pass
+
 
             # Conn cassée / fermée -> on la jette
             try:
                 if getattr(self.conn, "closed", False):
+                    _discard_conn(self.conn, "closed_on_exit")
                     return False
             except Exception:
+                _discard_conn(self.conn, "closed_check_failed")
                 return False
 
             # Remettre dans le pool (non bloquant)
             try:
                 _db_pool.put_nowait(self.conn)
             except Exception:
-                try:
-                    self.conn.close()
-                except Exception:
-                    pass
+                _discard_conn(self.conn, "put_nowait_failed")
+
 
         finally:
+            try:
+                with _db_pool_lock:
+                    if _db_in_use > 0:
+                        _db_in_use -= 1
+            except Exception:
+                pass
+
             self.conn = None
 
         return False
