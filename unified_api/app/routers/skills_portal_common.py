@@ -206,15 +206,14 @@ class _ConnCtx:
             if _db_pool_created < _DB_POOL_MAX:
                 self.conn = _create_conn()
                 _db_pool_created += 1
-
-                with _db_pool_lock:
-                    _db_in_use += 1
+                _db_in_use += 1
 
                 waited_ms = int((time.time() - t0) * 1000)
                 if waited_ms >= 200:
                     _log.error(f"[DB_POOL] ACQUIRE waited_ms={waited_ms} stats={_pool_stats()}")
 
                 return self.conn
+
 
 
         # 3) Sinon, attendre qu’une connexion se libère
