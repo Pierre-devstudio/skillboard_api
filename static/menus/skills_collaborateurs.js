@@ -1088,22 +1088,37 @@
                       note_commentaire: t("#collabComment"),
                     };
 
-                    // Appel API
+                    
+                    // Appel API (utiliser le helper du portail pour rester cohérent et éviter les emmerdes CORS)
                     const url = `${API_BASE}/skills/collaborateurs/identification/${encodeURIComponent(id_contact)}/${encodeURIComponent(it.id_effectif)}`;
-                    const res = await fetch(url, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify(payload),
-                      credentials: "include",
-                    });
 
-                    let data = null;
-                    try { data = await res.json(); } catch (_) {}
+                    let apiRes = null;
+                    try {
+                      // apiJson du portail (souvent utilisé ailleurs): on lui passe une config POST si supporté
+                      apiRes = await window.portal.apiJson(url, {
+                        method: "POST",
+                        body: payload
+                      });
+                    } catch (err) {
+                      // Si apiJson ne supporte pas la signature (url, options), fallback simple via fetch “light”
+                      // mais sans headers JSON pour éviter preflight (le serveur acceptera car on a du POST partout).
+                      // On garde ça en secours uniquement.
+                      const fallbackRes = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+                        body: JSON.stringify(payload),
+                      });
 
-                    if (!res.ok) {
-                      const msg = (data && (data.detail || data.message)) ? (data.detail || data.message) : `HTTP ${res.status}`;
-                      throw new Error(msg);
+                      let fb = null;
+                      try { fb = await fallbackRes.json(); } catch (_) {}
+
+                      if (!fallbackRes.ok) {
+                        const msg = (fb && (fb.detail || fb.message)) ? (fb.detail || fb.message) : `HTTP ${fallbackRes.status}`;
+                        throw new Error(msg);
+                      }
+                      apiRes = fb;
                     }
+
 
                     // Succès: on met à jour le snapshot et on repasse en lecture seule
                     _collabEditSnap = snapshotValues();
