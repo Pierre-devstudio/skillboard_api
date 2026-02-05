@@ -939,6 +939,8 @@
               };
 
               let setEditMode = (isEdit) => {
+                _collabIsEdit = !!isEdit;
+
                 // Toggle enabled/disabled sur tous les champs
                 getEditableNodes().forEach(el => {
                   if (!el) return;
@@ -954,40 +956,42 @@
                 if (saveBtn) saveBtn.style.display = isEdit ? "" : "none";
                 if (cancelBtn) cancelBtn.style.display = isEdit ? "" : "none";
 
-                // Sortie prévue pilote Date + Motif (uniquement utile en édition)
-                const chk = identHost.querySelector("#collabChkSortie");
-                const dt = identHost.querySelector("#collabDateSortie");
-                const motif = identHost.querySelector("#collabMotifSortie");
-
-                if (chk && dt && motif) {
-                  const apply = () => {
-                    const on = !!chk.checked;
-
-                    // checkbox est déjà activée/désactivée par le toggle global
-                    // ici on pilote les dépendances
-                    dt.disabled = (!isEdit) || (!on);
-                    motif.disabled = (!isEdit) || (!on);
-
-                    if (isEdit && !on) {
-                      dt.value = "";
-                      motif.value = "";
-                    }
-                  };
-
-                  // refresh immédiat
-                  apply();
-
-                  // listener (idempotent: on évite l'empilement)
-                  if (!chk._sbBoundSortie) {
-                    chk.addEventListener("change", apply);
-                    chk._sbBoundSortie = true;
-                  }
-                }
+                // Sortie prévue: dépendances
+                syncSortie();
               };
+
 
 
               let _collabEditSnap = snapshotValues();
               setEditMode(false);
+
+              // Etat global édition (pour éviter les closures foireuses)
+              let _collabIsEdit = false;
+
+              const syncSortie = () => {
+                const chk = identHost.querySelector("#collabChkSortie");
+                const dt = identHost.querySelector("#collabDateSortie");
+                const motif = identHost.querySelector("#collabMotifSortie");
+                if (!chk || !dt || !motif) return;
+
+                const on = !!chk.checked;
+
+                // En dehors du mode édition: tout reste bloqué
+                if (!_collabIsEdit) {
+                  dt.disabled = true;
+                  motif.disabled = true;
+                  return;
+                }
+
+                // En édition: la checkbox pilote les dépendances
+                dt.disabled = !on;
+                motif.disabled = !on;
+
+                if (!on) {
+                  dt.value = "";
+                  motif.value = "";
+                }
+              };
 
               if (editBtn) {
                 editBtn.addEventListener("click", () => {
@@ -995,6 +999,14 @@
                   setEditMode(true);
                 });
               }
+
+              // Bind 1 seule fois sur la checkbox (et sync à chaque changement)
+              const chkSortie = identHost.querySelector("#collabChkSortie");
+              if (chkSortieEl && !chkSortieEl._sbBoundSortie) {
+                chkSortieEl.addEventListener("change", syncSortie);
+                chkSortieEl._sbBoundSortie = true;
+              }
+
 
               if (cancelBtn) {
                 cancelBtn.addEventListener("click", () => {
@@ -1011,7 +1023,7 @@
               }
 
               // Sortie prévue: en édition, la checkbox active/désactive la date
-              const chkSortie = identHost.querySelector("#collabChkSortie");
+              const chkSortieEl = identHost.querySelector("#collabChkSortie");
               const dtSortie = identHost.querySelector("#collabDateSortie");
 
               const syncSortieUi = () => {
