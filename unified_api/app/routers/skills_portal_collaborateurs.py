@@ -1,5 +1,6 @@
 # app/routers/skills_portal_collaborateurs.py
 from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Tuple
 import re
@@ -901,10 +902,35 @@ def get_collaborateur_identification(id_contact: str, id_effectif: str, request:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
+def _cors_headers_for_request(request: Request) -> Dict[str, str]:
+    """
+    CORS ciblé pour endpoints d'édition.
+    On renvoie l'Origin appelant (pas '*') pour supporter credentials.
+    """
+    origin = ""
+    try:
+        origin = (request.headers.get("origin") or "").strip()
+    except Exception:
+        origin = ""
+
+    # Si pas d'origin (appel server-side), on ne force rien
+    if not origin:
+        return {}
+
+    return {
+        "Access-Control-Allow-Origin": origin,
+        "Vary": "Origin",
+        "Access-Control-Allow-Credentials": "true",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Ent-Id",
+    }
+
+
 @router.options("/skills/collaborateurs/identification/{id_contact}/{id_effectif}")
-def options_update_collaborateur_identification(id_contact: str, id_effectif: str):
-    # Réponse preflight pour éviter les "Failed to fetch" sur POST/PUT JSON
-    return Response(status_code=204)
+def options_update_collaborateur_identification(id_contact: str, id_effectif: str, request: Request):
+    # Preflight CORS (obligatoire pour POST/PUT JSON)
+    return Response(status_code=204, headers=_cors_headers_for_request(request))
+
 
 @router.put("/skills/collaborateurs/identification/{id_contact}/{id_effectif}")
 @router.post("/skills/collaborateurs/identification/{id_contact}/{id_effectif}")
@@ -1041,7 +1067,7 @@ def update_collaborateur_identification(
 
                 conn.commit()
 
-        return {"ok": True}
+        return JSONResponse({"ok": True}, headers=_cors_headers_for_request(request))
 
     except HTTPException:
         raise
