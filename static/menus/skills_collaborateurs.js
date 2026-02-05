@@ -966,9 +966,9 @@
               setEditMode(false);
 
               // Etat global édition (pour éviter les closures foireuses)
-              let _collabIsEdit = false;
+              var _collabIsEdit = false;
 
-              const syncSortie = () => {
+              function syncSortie() {
                 const chk = identHost.querySelector("#collabChkSortie");
                 const dt = identHost.querySelector("#collabDateSortie");
                 const motif = identHost.querySelector("#collabMotifSortie");
@@ -991,7 +991,7 @@
                   dt.value = "";
                   motif.value = "";
                 }
-              };
+              }
 
               if (editBtn) {
                 editBtn.addEventListener("click", () => {
