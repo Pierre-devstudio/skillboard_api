@@ -811,15 +811,14 @@
                     <div class="sb-field">
                       <div class="sb-label">Dernier diplôme obtenu</div>
                         <select class="sb-select" id="collabEduNiv" disabled>
-                          <option value=""></option>
-                          <option value="1"${eduCode === "1" ? " selected" : ""}>Niveau 1 : École primaire</option>
-                          <option value="2"${eduCode === "2" ? " selected" : ""}>Niveau 2 : Collège</option>
+                          <option value=""></option>                          
                           <option value="3"${eduCode === "3" ? " selected" : ""}>Niveau 3 : CAP / BEP</option>
                           <option value="4"${eduCode === "4" ? " selected" : ""}>Niveau 4 : Bac</option>
                           <option value="5"${eduCode === "5" ? " selected" : ""}>Niveau 5 : Bac+2 (BTS, DUT)</option>
                           <option value="6"${eduCode === "6" ? " selected" : ""}>Niveau 6 : Bac+3 (Licence, BUT)</option>
-                          <option value="7"${eduCode === "7" ? " selected" : ""}>Niveau 7 : Bac+5 (Master)</option>
+                          <option value="7"${eduCode === "7" ? " selected" : ""}>Niveau 7 : Bac+5 (Master, Ingénieur, Grandes écoles)</option>
                           <option value="8"${eduCode === "8" ? " selected" : ""}>Niveau 8 : Doctorat</option>
+                          <option value="0"${eduCode === "0" ? " selected" : ""}>Aucun diplôme</option>
                         </select>
                     </div>
 
