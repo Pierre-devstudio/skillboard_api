@@ -872,6 +872,28 @@ button[id$="ModalClose"]:active{
 #modalCollaborateur .sb-tab-panel.is-active{ display:block; }
 
 /* ======================================================
+   Modal Collaborateur: header (Titre + badges)
+   ====================================================== */
+
+#modalCollaborateur .sb-collab-modal-head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+#modalCollaborateur #collabModalTitle{
+  white-space:nowrap;
+}
+
+#modalCollaborateur .sb-collab-modal-badges{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+/* ======================================================
    Modal Collaborateur: onglet Identification (blocs + contrôles prêts édition)
    ====================================================== */
 

@@ -228,6 +228,8 @@
     const title = byId("collabModalTitle");
     const sub = byId("collabModalSub");
     const body = byId("collabModalBody");
+    const hb = byId("collabModalBadges");
+    if (hb) hb.innerHTML = "";
 
     if (title) title.textContent = `${it.prenom_effectif || ""} ${it.nom_effectif || ""}`.trim() || "Collaborateur";
     if (sub) {
@@ -646,6 +648,11 @@
                 .map(lbl => `<span class="sb-badge">${escapeHtml(lbl)}</span>`)
                 .join("");
 
+              // Push badges dans le header du modal (à côté du nom)
+              const headerBadges = byId("collabModalBadges");
+              if (headerBadges) headerBadges.innerHTML = badgesHtml;
+
+
               // Civilité: priorité label renvoyé par l’API
               const civLabel = (d.civilite_label || "").toString().trim() || "Autre";
 
@@ -685,9 +692,6 @@
 
               // Rendu HTML
               identHost.innerHTML = `
-                <div class="row" style="gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-                  ${badgesHtml}
-                </div>
 
                 <!-- Bloc 1 : Coordonnées -->
                 <div class="sb-collab-actions">

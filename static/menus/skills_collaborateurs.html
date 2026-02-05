@@ -153,9 +153,14 @@
   <div class="modal" id="modalCollaborateur" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-header">
-        <div style="font-weight:600;" id="collabModalTitle">Collaborateur</div>
+        <div class="sb-collab-modal-head">
+          <div style="font-weight:600;" id="collabModalTitle">Collaborateur</div>
+          <div id="collabModalBadges" class="sb-collab-modal-badges"></div>
+        </div>
+
         <button type="button" class="modal-x" id="btnCloseCollabModal" aria-label="Fermer">×</button>
       </div>
+
       <div class="modal-body">
         <div class="card-sub" id="collabModalSub" style="margin-top:0;">Détail du collaborateur.</div>
         <div id="collabModalBody" style="margin-top:12px;"></div>
