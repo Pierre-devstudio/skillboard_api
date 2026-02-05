@@ -964,7 +964,7 @@
 
               let _collabEditSnap = snapshotValues();
               setEditMode(false);
-
+              
               // Etat global édition (pour éviter les closures foireuses)
               var _collabIsEdit = false;
 
@@ -974,9 +974,7 @@
                 const motif = identHost.querySelector("#collabMotifSortie");
                 if (!chk || !dt || !motif) return;
 
-                const on = !!chk.checked;
-
-                // En dehors du mode édition: tout reste bloqué
+                // Hors édition: tout reste bloqué
                 if (!_collabIsEdit) {
                   dt.disabled = true;
                   motif.disabled = true;
@@ -984,6 +982,7 @@
                 }
 
                 // En édition: la checkbox pilote les dépendances
+                const on = !!chk.checked;
                 dt.disabled = !on;
                 motif.disabled = !on;
 
@@ -993,6 +992,7 @@
                 }
               }
 
+
               if (editBtn) {
                 editBtn.addEventListener("click", () => {
                   _collabEditSnap = snapshotValues();
@@ -1000,12 +1000,13 @@
                 });
               }
 
-              // Bind 1 seule fois sur la checkbox (et sync à chaque changement)
-              const chkSortie = identHost.querySelector("#collabChkSortie");
-              if (chkSortieEl && !chkSortieEl._sbBoundSortie) {
-                chkSortieEl.addEventListener("change", syncSortie);
-                chkSortieEl._sbBoundSortie = true;
+              // Bind une seule fois sur la checkbox sortie prévue
+              const chkEl = identHost.querySelector("#collabChkSortie");
+              if (chkEl && !chkEl._sbBoundSortie) {
+                chkEl.addEventListener("change", syncSortie);
+                chkEl._sbBoundSortie = true;
               }
+
 
 
               if (cancelBtn) {
@@ -1021,39 +1022,6 @@
                   setEditMode(false);
                 });
               }
-
-              // Sortie prévue: en édition, la checkbox active/désactive la date
-              const chkSortieEl = identHost.querySelector("#collabChkSortie");
-              const dtSortie = identHost.querySelector("#collabDateSortie");
-
-              const syncSortieUi = () => {
-                // En lecture seule, tout reste disabled de toute façon.
-                // En édition, la checkbox pilote la date.
-                if (!dtSortie || !chkSortie) return;
-
-                if (!dtSortie.disabled) {
-                  // on est en édition (date field enabled)
-                  const on = !!chkSortie.checked;
-                  dtSortie.disabled = !on;
-                  if (!on) dtSortie.value = "";
-                }
-              };
-
-              if (chkSortie && dtSortie) {
-                chkSortie.addEventListener("change", syncSortieUi);
-              }
-
-              // Appel après activation édition et après annulation
-              const _origSetEditMode = setEditMode;
-              setEditMode = (isEdit) => {
-                _origSetEditMode(isEdit);
-                // En édition, dtSortie dépend de chkSortie
-                if (isEdit) {
-                  if (dtSortie) dtSortie.disabled = false;
-                  syncSortieUi();
-                }
-              };
-
 
               // -------------------------
               // Chargement des listes (services / postes / domaines NSF)
