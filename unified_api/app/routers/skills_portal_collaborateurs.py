@@ -1025,7 +1025,7 @@ def update_collaborateur_identification(
                       motif_sortie = %s,
                       note_commentaire = %s,
 
-                      date_modification = NOW()
+                      dernier_update = NOW()
                     WHERE id_ent = %s
                       AND id_effectif = %s
                     """,
