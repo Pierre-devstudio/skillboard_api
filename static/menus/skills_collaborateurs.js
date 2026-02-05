@@ -689,8 +689,10 @@
                   ${badgesHtml}
                 </div>
 
+                <!-- Bloc 1 : Coordonnées -->
                 <div class="sb-collab-block">
                   <div class="sb-collab-grid">
+                    <!-- civilité | nom | prenom -->
                     <div class="sb-field">
                       <div class="sb-label">Civilité</div>
                       <select class="sb-select" id="collabCiv" disabled>
@@ -710,26 +712,13 @@
                       <input class="sb-ctrl" id="collabPrenom" type="text" value="${escapeHtml(v(d.prenom_effectif))}" disabled />
                     </div>
 
-                    <div class="sb-field">
-                      <div class="sb-label">Email</div>
-                      <input class="sb-ctrl" id="collabEmail" type="text" value="${escapeHtml(v(d.email_effectif))}" disabled />
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Téléphone</div>
-                      <input class="sb-ctrl" id="collabTel" type="text" value="${escapeHtml(v(d.telephone_effectif))}" disabled />
-                    </div>
-
-                    <div class="sb-field">
-                      <div class="sb-label">Date de naissance</div>
-                      <input class="sb-ctrl" id="collabNaissance" type="date" value="${escapeHtml(dateNaiss)}" disabled />
-                    </div>
-
+                    <!-- adresse -->
                     <div class="sb-field" style="grid-column: 1 / -1;">
                       <div class="sb-label">Adresse</div>
                       <input class="sb-ctrl" id="collabAdr" type="text" value="${escapeHtml(v(d.adresse_effectif))}" disabled />
                     </div>
 
+                    <!-- cp | ville | pays -->
                     <div class="sb-field">
                       <div class="sb-label">CP</div>
                       <input class="sb-ctrl" id="collabCP" type="text" value="${escapeHtml(v(d.code_postal_effectif))}" disabled />
@@ -744,11 +733,34 @@
                       <div class="sb-label">Pays</div>
                       <input class="sb-ctrl" id="collabPays" type="text" value="${escapeHtml(v(d.pays_effectif))}" disabled />
                     </div>
+
+                    <!-- telephone | email | date de naissance -->
+                    <div class="sb-field">
+                      <div class="sb-label">Téléphone</div>
+                      <input class="sb-ctrl" id="collabTel" type="text" value="${escapeHtml(v(d.telephone_effectif))}" disabled />
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="sb-label">Email</div>
+                      <input class="sb-ctrl" id="collabEmail" type="text" value="${escapeHtml(v(d.email_effectif))}" disabled />
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="sb-label">Date de naissance</div>
+                      <input class="sb-ctrl" id="collabNaissance" type="date" value="${escapeHtml(dateNaiss)}" disabled />
+                    </div>
                   </div>
                 </div>
 
+                <!-- Bloc 2 : Contrat & Affectation -->
                 <div class="sb-collab-block">
                   <div class="sb-collab-grid">
+                    <!-- matricule | service | poste actuel -->
+                    <div class="sb-field">
+                      <div class="sb-label">Matricule</div>
+                      <input class="sb-ctrl" id="collabMatricule" type="text" value="${escapeHtml(v(d.matricule))}" disabled />
+                    </div>
+
                     <div class="sb-field">
                       <div class="sb-label">Service</div>
                       <select class="sb-select" id="collabService" disabled>
@@ -757,10 +769,13 @@
                     </div>
 
                     <div class="sb-field">
-                      <div class="sb-label">Matricule</div>
-                      <input class="sb-ctrl" id="collabMatricule" type="text" value="${escapeHtml(v(d.matricule))}" disabled />
+                      <div class="sb-label">Poste actuel</div>
+                      <select class="sb-select" id="collabPoste" disabled>
+                        <option value="">Chargement…</option>
+                      </select>
                     </div>
 
+                    <!-- date entree | type contrat | date debut poste -->
                     <div class="sb-field">
                       <div class="sb-label">Date entrée entreprise</div>
                       <input class="sb-ctrl" id="collabEntree" type="date" value="${escapeHtml(dateEntree)}" disabled />
@@ -778,35 +793,33 @@
                     </div>
 
                     <div class="sb-field">
-                      <div class="sb-label">Poste actuel</div>
-                      <select class="sb-select" id="collabPoste" disabled>
-                        <option value="">Chargement…</option>
-                      </select>
-                    </div>
-
-                    <div class="sb-field">
                       <div class="sb-label">Date début poste actuel</div>
                       <input class="sb-ctrl" id="collabDebutPoste" type="date" value="${escapeHtml(dateDebutPoste)}" disabled />
                     </div>
                   </div>
                 </div>
 
+                <!-- Bloc 3 : Pilotage RH -->
                 <div class="sb-collab-block">
                   <div class="sb-collab-grid">
+                    <!-- Dernier diplôme obtenu | Domaine d'éducation -->
                     <div class="sb-field">
-                      <div class="sb-label">Niveau d’éducation</div>
+                      <div class="sb-label">Dernier diplôme obtenu</div>
                       <select class="sb-select" id="collabEduNiv" disabled>
                         <option value="${escapeHtml(eduCode)}" selected>${escapeHtml(eduLabel || "–")}</option>
                       </select>
                     </div>
 
                     <div class="sb-field">
-                      <div class="sb-label">Domaine éducation</div>
+                      <div class="sb-label">Domaine d'éducation</div>
                       <select class="sb-select" id="collabEduDom" disabled>
                         <option value="">Chargement…</option>
                       </select>
                     </div>
 
+                    <div></div>
+
+                    <!-- distance | retraite -->
                     <div class="sb-field">
                       <div class="sb-label">Distance entreprise/domicile (km)</div>
                       <input class="sb-ctrl" id="collabDist" type="text" value="${escapeHtml(safeNum(d.distance_km_entreprise))}" disabled />
@@ -817,12 +830,17 @@
                       <input class="sb-ctrl" id="collabRetraite" type="text" value="${d.retraite_estimee != null && d.retraite_estimee !== "" ? escapeHtml(String(d.retraite_estimee)) : ""}" disabled />
                     </div>
 
+                    <div></div>
+
+                    <!-- sortie prévue | date sortie | motif -->
                     <div class="sb-field">
                       <div class="sb-label">Sortie prévue</div>
-                      <div class="row" style="gap:10px; align-items:center;">
-                        <input id="collabChkSortie" type="checkbox" ${hasSortie ? "checked" : ""} disabled />
-                        <input class="sb-ctrl" id="collabDateSortie" type="date" value="${escapeHtml(dateSortie)}" disabled />
-                      </div>
+                      <input id="collabChkSortie" type="checkbox" ${hasSortie ? "checked" : ""} disabled />
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="sb-label">Date de sortie prévue</div>
+                      <input class="sb-ctrl" id="collabDateSortie" type="date" value="${escapeHtml(dateSortie)}" disabled />
                     </div>
 
                     <div class="sb-field">
@@ -836,6 +854,7 @@
                       </select>
                     </div>
 
+                    <!-- commentaires -->
                     <div class="sb-field" style="grid-column: 1 / -1;">
                       <div class="sb-label">Commentaires</div>
                       <textarea class="sb-ctrl" id="collabComment" disabled>${escapeHtml(v(d.note_commentaire))}</textarea>
@@ -843,6 +862,7 @@
                   </div>
                 </div>
               `;
+
 
               // -------------------------
               // Chargement des listes (services / postes / domaines NSF)
@@ -906,7 +926,10 @@
                   const postes = await window.portal.apiJson(postesUrl);
                   fillSelect(selPoste, postes, d.id_poste_actuel || "", "");
                 } catch (e) {
-                  if (selPoste) selPoste.innerHTML = `<option value="">Erreur chargement</option>`;
+                  if (selPoste) {
+                    const msg = (e && (e.message || e.detail)) ? String(e.message || e.detail) : String(e);
+                    selPoste.innerHTML = `<option value="">Erreur chargement: ${escapeHtml(msg)}</option>`;
+                  }
                   console.error(e);
                 }
               };

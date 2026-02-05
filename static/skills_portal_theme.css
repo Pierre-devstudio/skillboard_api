@@ -895,9 +895,42 @@ button[id$="ModalClose"]:active{
 
 #modalCollaborateur .sb-collab-grid{
   display:grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap:10px 14px;
 }
+
+/* évite les débordements dans les grilles */
+#modalCollaborateur .sb-collab-grid > *{
+  min-width:0;
+}
+
+#modalCollaborateur input.sb-ctrl,
+#modalCollaborateur textarea.sb-ctrl{
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid #d1d5db !important;
+  background:#ffffff !important;
+  padding:8px 10px;
+  border-radius:10px;
+  font-family:inherit;
+  font-size:13px;
+  color:#111827;
+  text-align:left;
+  outline:none;
+  box-shadow:none;
+}
+
+#modalCollaborateur .sb-select{
+  width:100%;
+  box-sizing:border-box;
+}
+
+@media (max-width: 780px){
+  #modalCollaborateur .sb-collab-grid{
+    grid-template-columns: 1fr;
+  }
+}
+
 
 #modalCollaborateur .sb-collab-grid .sb-field{
   margin:0;
