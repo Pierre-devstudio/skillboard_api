@@ -989,6 +989,52 @@ button[id$="ModalClose"]:active{
   }
 }
 
+/* Actions édition (bloc 1, en haut à droite) */
+#modalCollaborateur .sb-collab-actions{
+  display:flex;
+  gap:8px;
+  justify-content:flex-end;
+  align-items:center;
+  margin-bottom:10px;
+}
+
+#modalCollaborateur .sb-collab-btn{
+  border-radius:10px;
+  padding:7px 12px;
+  font-size:12px;
+  font-weight:700;
+  border:1px solid transparent;
+  cursor:pointer;
+  line-height:1;
+}
+
+#modalCollaborateur .sb-collab-btn:disabled{
+  opacity:0.6;
+  cursor:not-allowed;
+}
+
+#modalCollaborateur .sb-collab-btn--edit,
+#modalCollaborateur .sb-collab-btn--save{
+  background:var(--accent);
+  color:#fff;
+  border-color:var(--accent);
+}
+
+#modalCollaborateur .sb-collab-btn--edit:hover,
+#modalCollaborateur .sb-collab-btn--save:hover{
+  filter:brightness(0.95);
+}
+
+#modalCollaborateur .sb-collab-btn--cancel{
+  background:#ffffff;
+  color:#111827;
+  border-color:#d1d5db;
+}
+
+#modalCollaborateur .sb-collab-btn--cancel:hover{
+  background:#f9fafb;
+}
+
 
 
 /* Badges écarts (composant générique) */

@@ -690,6 +690,11 @@
                 </div>
 
                 <!-- Bloc 1 : Coordonnées -->
+                <div class="sb-collab-actions">
+                  <button type="button" class="sb-collab-btn sb-collab-btn--edit" id="collabBtnEdit">Modifier</button>
+                  <button type="button" class="sb-collab-btn sb-collab-btn--save" id="collabBtnSave" style="display:none;">Enregistrer</button>
+                  <button type="button" class="sb-collab-btn sb-collab-btn--cancel" id="collabBtnCancel" style="display:none;">Annuler</button>
+                </div>
                 <div class="sb-collab-block">
                   <div class="sb-collab-grid">
                     <!-- civilité | nom | prenom -->
@@ -862,6 +867,137 @@
                   </div>
                 </div>
               `;
+
+              // -------------------------
+              // Mode édition (toggle global sur l’onglet Identification)
+              // -------------------------
+              const editBtn = identHost.querySelector("#collabBtnEdit");
+              const saveBtn = identHost.querySelector("#collabBtnSave");
+              const cancelBtn = identHost.querySelector("#collabBtnCancel");
+
+              // Champs éditables (on les activera au clic)
+              const editableSelectors = [
+                "#collabCiv",
+                "#collabNom",
+                "#collabPrenom",
+                "#collabAdr",
+                "#collabCP",
+                "#collabVille",
+                "#collabPays",
+                "#collabTel",
+                "#collabEmail",
+                "#collabNaissance",
+
+                "#collabMatricule",
+                "#collabService",
+                "#collabPoste",
+                "#collabEntree",
+                "#collabContrat",
+                "#collabDebutPoste",
+
+                "#collabEduNiv",
+                "#collabEduDom",
+                "#collabDist",
+                "#collabDateSortie",
+                "#collabMotifSortie",
+                "#collabComment",
+                "#collabChkSortie",
+              ];
+
+              const getEditableNodes = () => {
+                return editableSelectors
+                  .map(sel => identHost.querySelector(sel))
+                  .filter(Boolean);
+              };
+
+              const snapshotValues = () => {
+                const snap = {};
+                editableSelectors.forEach(sel => {
+                  const el = identHost.querySelector(sel);
+                  if (!el) return;
+                  if (el.type === "checkbox") snap[sel] = !!el.checked;
+                  else snap[sel] = el.value;
+                });
+                return snap;
+              };
+
+              const restoreValues = (snap) => {
+                if (!snap) return;
+                editableSelectors.forEach(sel => {
+                  const el = identHost.querySelector(sel);
+                  if (!el) return;
+                  if (el.type === "checkbox") el.checked = !!snap[sel];
+                  else el.value = (snap[sel] ?? "");
+                });
+              };
+
+              const setEditMode = (isEdit) => {
+                getEditableNodes().forEach(el => {
+                  // “Retraite estimée” reste non éditable (calcul)
+                  if (el && el.id === "collabRetraite") return;
+                  el.disabled = !isEdit;
+                });
+
+                if (editBtn) editBtn.style.display = isEdit ? "none" : "";
+                if (saveBtn) saveBtn.style.display = isEdit ? "" : "none";
+                if (cancelBtn) cancelBtn.style.display = isEdit ? "" : "none";
+              };
+
+              let _collabEditSnap = snapshotValues();
+              setEditMode(false);
+
+              if (editBtn) {
+                editBtn.addEventListener("click", () => {
+                  _collabEditSnap = snapshotValues();
+                  setEditMode(true);
+                });
+              }
+
+              if (cancelBtn) {
+                cancelBtn.addEventListener("click", () => {
+                  restoreValues(_collabEditSnap);
+                  setEditMode(false);
+                });
+              }
+
+              if (saveBtn) {
+                saveBtn.addEventListener("click", () => {
+                  // Pas encore de persistance côté API: on prépare juste l’UI
+                  setEditMode(false);
+                });
+              }
+
+              // Sortie prévue: en édition, la checkbox active/désactive la date
+              const chkSortie = identHost.querySelector("#collabChkSortie");
+              const dtSortie = identHost.querySelector("#collabDateSortie");
+
+              const syncSortieUi = () => {
+                // En lecture seule, tout reste disabled de toute façon.
+                // En édition, la checkbox pilote la date.
+                if (!dtSortie || !chkSortie) return;
+
+                if (!dtSortie.disabled) {
+                  // on est en édition (date field enabled)
+                  const on = !!chkSortie.checked;
+                  dtSortie.disabled = !on;
+                  if (!on) dtSortie.value = "";
+                }
+              };
+
+              if (chkSortie && dtSortie) {
+                chkSortie.addEventListener("change", syncSortieUi);
+              }
+
+              // Appel après activation édition et après annulation
+              const _origSetEditMode = setEditMode;
+              setEditMode = (isEdit) => {
+                _origSetEditMode(isEdit);
+                // En édition, dtSortie dépend de chkSortie
+                if (isEdit) {
+                  if (dtSortie) dtSortie.disabled = false;
+                  syncSortieUi();
+                }
+              };
 
 
               // -------------------------
