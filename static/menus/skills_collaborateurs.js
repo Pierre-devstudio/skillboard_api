@@ -1089,27 +1089,25 @@
                     };
 
                     
-                    // Appel API (POST JSON)
+                    // Appel API (POST JSON) - IMPORTANT: passer par portal.apiJson (auth + contexte entreprise)
                     const url = `${API_BASE}/skills/collaborateurs/identification/${encodeURIComponent(id_contact)}/${encodeURIComponent(it.id_effectif)}`;
 
-                    const res = await fetch(url, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify(payload),
-                      credentials: "include",
-                    });
+                    const data = await window.portal.apiJson(
+                      url,
+                      {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                      }
+                    );
 
-                    let data = null;
-                    try { data = await res.json(); } catch (_) { data = null; }
-
-                    if (!res.ok) {
+                    // Sécurité: l'API renvoie normalement { ok: true }
+                    if (!data || data.ok !== true) {
                       const msg = (data && (data.detail || data.message))
                         ? (data.detail || data.message)
-                        : `HTTP ${res.status}`;
+                        : "Erreur enregistrement (réponse invalide).";
                       throw new Error(msg);
                     }
-
-
 
                     // Succès: on met à jour le snapshot et on repasse en lecture seule
                     _collabEditSnap = snapshotValues();
