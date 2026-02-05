@@ -902,6 +902,7 @@ def get_collaborateur_identification(id_contact: str, id_effectif: str, request:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
     
 @router.put("/skills/collaborateurs/identification/{id_contact}/{id_effectif}")
+@router.post("/skills/collaborateurs/identification/{id_contact}/{id_effectif}")
 def update_collaborateur_identification(
     id_contact: str,
     id_effectif: str,

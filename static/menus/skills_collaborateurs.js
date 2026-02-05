@@ -1091,7 +1091,7 @@
                     // Appel API
                     const url = `${API_BASE}/skills/collaborateurs/identification/${encodeURIComponent(id_contact)}/${encodeURIComponent(it.id_effectif)}`;
                     const res = await fetch(url, {
-                      method: "PUT",
+                      method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify(payload),
                       credentials: "include",
