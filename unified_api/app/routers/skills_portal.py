@@ -20,6 +20,7 @@ app_local.add_middleware(
     CORSMiddleware,
     allow_origins=[
         # À ajuster quand tu auras le domaine final du portail skills
+        "https://skillboard.jmbconsultant.fr",
         "https://skills.jmbconsultant.fr",
         "https://forms.jmbconsultant.fr",
         "https://skillboard-services.onrender.com",
