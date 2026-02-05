@@ -616,17 +616,28 @@
           identHost.innerHTML = `<div class="card-sub" style="margin:0; color:#b91c1c;">Erreur : identifiants manquants.</div>`;
         } else {
           loadIdentification(id_contact, it.id_effectif)
-            .then(d => {
+            .then(async d => {
               const v = (x) => {
+                const s = (x ?? "").toString().trim();
+                return s ? s : "";
+              };
+
+              const vDash = (x) => {
                 const s = (x ?? "").toString().trim();
                 return s ? escapeHtml(s) : "–";
               };
 
+              const safeNum = (x) => {
+                if (x == null || x === "") return "";
+                const n = Number(x);
+                return Number.isFinite(n) ? String(n) : "";
+              };
+
+              // Badges (statuts)
               const badges = [];
               if (d.archive) badges.push("Archivé");
               else if (d.statut_actif) badges.push("Actif");
               else badges.push("Inactif");
-
               if (d.is_temp) badges.push("Temp");
               if (d.ismanager) badges.push("Manager");
               if (d.isformateur) badges.push("Formateur");
@@ -635,116 +646,288 @@
                 .map(lbl => `<span class="sb-badge">${escapeHtml(lbl)}</span>`)
                 .join("");
 
-              const showRetraite = d.retraite_estimee != null && d.retraite_estimee !== "";
+              // Civilité: priorité label renvoyé par l’API
+              const civLabel = (d.civilite_label || "").toString().trim() || "Autre";
 
+              // Préparation valeurs dates (input type=date attend YYYY-MM-DD)
+              const dateEntree = (d.date_entree_entreprise_effectif || "").toString().slice(0, 10);
+              const dateDebutPoste = (d.date_debut_poste_actuel || "").toString().slice(0, 10);
+              const dateNaiss = (d.date_naissance_effectif || "").toString().slice(0, 10);
+              const dateSortie = (d.date_sortie_prevue || "").toString().slice(0, 10);
+
+              // Sortie prévue: checkbox + date (prêt pour édition, mais disabled pour l’instant)
+              const hasSortie = !!dateSortie;
+
+              // Options “Type contrat”
+              const contratOptions = [
+                "CDI",
+                "CDD",
+                "Intérim",
+                "Apprentissage",
+                "Professionalisation",
+                "Stage",
+                "Consultant",
+                "Autre",
+              ];
+
+              // Options “Motif sortie” (DB stocke uniquement la catégorie)
+              const motifOptions = [
+                "Volontaire",
+                "Subi",
+                "Légal",
+                "Non renseigné",
+              ];
+
+              // Niveau d’éducation: on utilise ce que renvoie l’API (label), et on prépare un select prêt édition
+              // (Les valeurs codes restent côté DB, on activera l’édition plus tard)
+              const eduLabel = (d.niveau_education_label || "").toString().trim();
+              const eduCode = (d.niveau_education_code || "").toString().trim();
+
+              // Rendu HTML
               identHost.innerHTML = `
                 <div class="row" style="gap:8px; flex-wrap:wrap; margin-bottom:10px;">
                   ${badgesHtml}
                 </div>
 
-                <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px 18px;">
+                <div class="sb-collab-block">
+                  <div class="sb-collab-grid">
+                    <div class="sb-field">
+                      <div class="sb-label">Civilité</div>
+                      <select class="sb-select" id="collabCiv" disabled>
+                        <option value="M"${civLabel === "M" ? " selected" : ""}>M</option>
+                        <option value="Mme"${civLabel === "Mme" ? " selected" : ""}>Mme</option>
+                        <option value="Autre"${civLabel === "Autre" ? " selected" : ""}>Autre</option>
+                      </select>
+                    </div>
 
-                  <div class="sb-field">
-                    <div class="label">Service</div>
-                    <div class="value">${v(d.nom_service || (d.id_service ? d.id_service : "Non lié"))}</div>
-                  </div>
+                    <div class="sb-field">
+                      <div class="sb-label">Nom</div>
+                      <input class="sb-ctrl" id="collabNom" type="text" value="${escapeHtml(v(d.nom_effectif))}" disabled />
+                    </div>
 
-                  <div class="sb-field">
-                    <div class="label">Poste</div>
-                    <div class="value">${v(d.intitule_poste)}</div>
-                  </div>
+                    <div class="sb-field">
+                      <div class="sb-label">Prénom</div>
+                      <input class="sb-ctrl" id="collabPrenom" type="text" value="${escapeHtml(v(d.prenom_effectif))}" disabled />
+                    </div>
 
-                  <div class="sb-field">
-                    <div class="label">Matricule</div>
-                    <div class="value">${v(d.matricule)}</div>
-                  </div>
+                    <div class="sb-field">
+                      <div class="sb-label">Email</div>
+                      <input class="sb-ctrl" id="collabEmail" type="text" value="${escapeHtml(v(d.email_effectif))}" disabled />
+                    </div>
 
-                  <div class="sb-field">
-                    <div class="label">Type de contrat</div>
-                    <div class="value">${v(d.type_contrat)}</div>
-                  </div>
+                    <div class="sb-field">
+                      <div class="sb-label">Téléphone</div>
+                      <input class="sb-ctrl" id="collabTel" type="text" value="${escapeHtml(v(d.telephone_effectif))}" disabled />
+                    </div>
 
-                  <div class="sb-field">
-                    <div class="label">Entrée entreprise</div>
-                    <div class="value">${formatDateFR(d.date_entree_entreprise_effectif)}</div>
-                  </div>
+                    <div class="sb-field">
+                      <div class="sb-label">Date de naissance</div>
+                      <input class="sb-ctrl" id="collabNaissance" type="date" value="${escapeHtml(dateNaiss)}" disabled />
+                    </div>
 
-                  <div class="sb-field">
-                    <div class="label">Début poste actuel</div>
-                    <div class="value">${formatDateFR(d.date_debut_poste_actuel)}</div>
-                  </div>
+                    <div class="sb-field" style="grid-column: 1 / -1;">
+                      <div class="sb-label">Adresse</div>
+                      <input class="sb-ctrl" id="collabAdr" type="text" value="${escapeHtml(v(d.adresse_effectif))}" disabled />
+                    </div>
 
-                  <div class="sb-field">
-                    <div class="label">Sortie prévue</div>
-                    <div class="value">${formatDateFR(d.date_sortie_prevue)}</div>
-                  </div>
+                    <div class="sb-field">
+                      <div class="sb-label">CP</div>
+                      <input class="sb-ctrl" id="collabCP" type="text" value="${escapeHtml(v(d.code_postal_effectif))}" disabled />
+                    </div>
 
-                  ${showRetraite ? `
-                  <div class="sb-field">
-                    <div class="label">Retraite estimée</div>
-                    <div class="value">${v(d.retraite_estimee)}</div>
-                  </div>` : `
-                  <div class="sb-field">
-                    <div class="label">Retraite estimée</div>
-                    <div class="value">–</div>
-                  </div>`}
+                    <div class="sb-field">
+                      <div class="sb-label">Ville</div>
+                      <input class="sb-ctrl" id="collabVille" type="text" value="${escapeHtml(v(d.ville_effectif))}" disabled />
+                    </div>
 
-                  <div class="sb-field">
-                    <div class="label">Email</div>
-                    <div class="value">${v(d.email_effectif)}</div>
-                  </div>
-
-                  <div class="sb-field">
-                    <div class="label">Téléphone</div>
-                    <div class="value">${v(d.telephone_effectif)}</div>
-                  </div>
-
-                  <div class="sb-field" style="grid-column: 1 / -1;">
-                    <div class="label">Adresse</div>
-                    <div class="value">
-                      ${v(d.adresse_effectif)}<br/>
-                      ${v(d.code_postal_effectif)} ${v(d.ville_effectif)}<br/>
-                      ${v(d.pays_effectif)}
+                    <div class="sb-field">
+                      <div class="sb-label">Pays</div>
+                      <input class="sb-ctrl" id="collabPays" type="text" value="${escapeHtml(v(d.pays_effectif))}" disabled />
                     </div>
                   </div>
+                </div>
 
-                  <div class="sb-field">
-                    <div class="label">Distance (km)</div>
-                    <div class="value">${d.distance_km_entreprise != null ? escapeHtml(String(d.distance_km_entreprise)) : "–"}</div>
+                <div class="sb-collab-block">
+                  <div class="sb-collab-grid">
+                    <div class="sb-field">
+                      <div class="sb-label">Service</div>
+                      <select class="sb-select" id="collabService" disabled>
+                        <option value="">Chargement…</option>
+                      </select>
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="sb-label">Matricule</div>
+                      <input class="sb-ctrl" id="collabMatricule" type="text" value="${escapeHtml(v(d.matricule))}" disabled />
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="sb-label">Date entrée entreprise</div>
+                      <input class="sb-ctrl" id="collabEntree" type="date" value="${escapeHtml(dateEntree)}" disabled />
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="sb-label">Type de contrat</div>
+                      <select class="sb-select" id="collabContrat" disabled>
+                        <option value=""></option>
+                        ${contratOptions.map(x => {
+                          const sel = (String(d.type_contrat || "").trim() === x) ? " selected" : "";
+                          return `<option value="${escapeHtml(x)}"${sel}>${escapeHtml(x)}</option>`;
+                        }).join("")}
+                      </select>
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="sb-label">Poste actuel</div>
+                      <select class="sb-select" id="collabPoste" disabled>
+                        <option value="">Chargement…</option>
+                      </select>
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="sb-label">Date début poste actuel</div>
+                      <input class="sb-ctrl" id="collabDebutPoste" type="date" value="${escapeHtml(dateDebutPoste)}" disabled />
+                    </div>
                   </div>
+                </div>
 
-                  <div class="sb-field">
-                    <div class="label">Niveau d’éducation</div>
-                    <div class="value">${v(d.niveau_education_label)}</div>
+                <div class="sb-collab-block">
+                  <div class="sb-collab-grid">
+                    <div class="sb-field">
+                      <div class="sb-label">Niveau d’éducation</div>
+                      <select class="sb-select" id="collabEduNiv" disabled>
+                        <option value="${escapeHtml(eduCode)}" selected>${escapeHtml(eduLabel || "–")}</option>
+                      </select>
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="sb-label">Domaine éducation</div>
+                      <select class="sb-select" id="collabEduDom" disabled>
+                        <option value="">Chargement…</option>
+                      </select>
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="sb-label">Distance entreprise/domicile (km)</div>
+                      <input class="sb-ctrl" id="collabDist" type="text" value="${escapeHtml(safeNum(d.distance_km_entreprise))}" disabled />
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="sb-label">Retraite estimée</div>
+                      <input class="sb-ctrl" id="collabRetraite" type="text" value="${d.retraite_estimee != null && d.retraite_estimee !== "" ? escapeHtml(String(d.retraite_estimee)) : ""}" disabled />
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="sb-label">Sortie prévue</div>
+                      <div class="row" style="gap:10px; align-items:center;">
+                        <input id="collabChkSortie" type="checkbox" ${hasSortie ? "checked" : ""} disabled />
+                        <input class="sb-ctrl" id="collabDateSortie" type="date" value="${escapeHtml(dateSortie)}" disabled />
+                      </div>
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="sb-label">Motif de sortie</div>
+                      <select class="sb-select" id="collabMotifSortie" disabled>
+                        <option value=""></option>
+                        ${motifOptions.map(x => {
+                          const sel = (String(d.motif_sortie || "").trim() === x) ? " selected" : "";
+                          return `<option value="${escapeHtml(x)}"${sel}>${escapeHtml(x)}</option>`;
+                        }).join("")}
+                      </select>
+                    </div>
+
+                    <div class="sb-field" style="grid-column: 1 / -1;">
+                      <div class="sb-label">Commentaires</div>
+                      <textarea class="sb-ctrl" id="collabComment" disabled>${escapeHtml(v(d.note_commentaire))}</textarea>
+                    </div>
                   </div>
-
-                  <div class="sb-field">
-                    <div class="label">Domaine d’éducation</div>
-                    <div class="value">${v(d.domaine_education)}</div>
-                  </div>
-
-                  <div class="sb-field">
-                    <div class="label">Date de naissance</div>
-                    <div class="value">${formatDateFR(d.date_naissance_effectif)}</div>
-                  </div>
-
-                  <div class="sb-field">
-                    <div class="label">Postes précédents</div>
-                    <div class="value">${(d.nb_postes_precedents ?? 0).toString()}</div>
-                  </div>
-
-                  <div class="sb-field">
-                    <div class="label">Motif sortie</div>
-                    <div class="value">${v(d.motif_sortie)}</div>
-                  </div>
-
-                  <div class="sb-field" style="grid-column: 1 / -1;">
-                    <div class="label">Commentaire</div>
-                    <div class="value">${v(d.note_commentaire)}</div>
-                  </div>
-
                 </div>
               `;
+
+              // -------------------------
+              // Chargement des listes (services / postes / domaines NSF)
+              // -------------------------
+              const qs = (obj) => {
+                const p = new URLSearchParams();
+                Object.keys(obj || {}).forEach(k => {
+                  const val = obj[k];
+                  if (val == null) return;
+                  const s = String(val).trim();
+                  if (!s) return;
+                  p.set(k, s);
+                });
+                const q = p.toString();
+                return q ? `?${q}` : "";
+              };
+
+              const selService = identHost.querySelector("#collabService");
+              const selPoste = identHost.querySelector("#collabPoste");
+              const selDomEdu = identHost.querySelector("#collabEduDom");
+
+              const fillSelect = (sel, items, selectedId, emptyLabel) => {
+                if (!sel) return;
+                const arr = Array.isArray(items) ? items : [];
+                const opt0 = `<option value="">${escapeHtml(emptyLabel || "")}</option>`;
+                const opts = arr.map(x => {
+                  const id = (x?.id ?? "").toString();
+                  const label = (x?.label ?? "").toString();
+                  const selAttr = (selectedId && String(selectedId) === String(id)) ? " selected" : "";
+                  return `<option value="${escapeHtml(id)}"${selAttr}>${escapeHtml(label)}</option>`;
+                }).join("");
+                sel.innerHTML = opt0 + opts;
+              };
+
+              const fillSelectStrings = (sel, items, selectedLabel, emptyLabel) => {
+                if (!sel) return;
+                const arr = Array.isArray(items) ? items : [];
+                const opt0 = `<option value="">${escapeHtml(emptyLabel || "")}</option>`;
+                const opts = arr.map(t => {
+                  const label = (t ?? "").toString();
+                  const selAttr = (selectedLabel && String(selectedLabel) === String(label)) ? " selected" : "";
+                  return `<option value="${escapeHtml(label)}"${selAttr}>${escapeHtml(label)}</option>`;
+                }).join("");
+                sel.innerHTML = opt0 + opts;
+              };
+
+              // Services
+              try {
+                const servicesUrl = `${API_BASE}/skills/collaborateurs/listes/services/${encodeURIComponent(id_contact)}`;
+                const services = await window.portal.apiJson(servicesUrl);
+                fillSelect(selService, services, d.id_service || "", "Non lié");
+              } catch (e) {
+                if (selService) selService.innerHTML = `<option value="">Erreur chargement</option>`;
+                console.error(e);
+              }
+
+              // Postes (filtre service)
+              const loadPostes = async (idServ) => {
+                try {
+                  const postesUrl = `${API_BASE}/skills/collaborateurs/listes/postes/${encodeURIComponent(id_contact)}${qs({ id_service: idServ || "" })}`;
+                  const postes = await window.portal.apiJson(postesUrl);
+                  fillSelect(selPoste, postes, d.id_poste_actuel || "", "");
+                } catch (e) {
+                  if (selPoste) selPoste.innerHTML = `<option value="">Erreur chargement</option>`;
+                  console.error(e);
+                }
+              };
+              await loadPostes(d.id_service || "");
+
+              // Domaine éducation (NSF)
+              try {
+                const domUrl = `${API_BASE}/skills/collaborateurs/listes/nsf_domaines/${encodeURIComponent(id_contact)}`;
+                const doms = await window.portal.apiJson(domUrl);
+                fillSelectStrings(selDomEdu, doms, d.domaine_education || "", "");
+              } catch (e) {
+                if (selDomEdu) selDomEdu.innerHTML = `<option value="">Erreur chargement</option>`;
+                console.error(e);
+              }
+
+              // Prêt édition: si demain on active le service select, on recharge les postes
+              if (selService && selPoste) {
+                selService.addEventListener("change", () => {
+                  loadPostes(selService.value || "");
+                });
+              }
             })
             .catch(e => {
               identHost.innerHTML = `<div class="card-sub" style="margin:0; color:#b91c1c;">Erreur chargement identification : ${escapeHtml(e.message || String(e))}</div>`;

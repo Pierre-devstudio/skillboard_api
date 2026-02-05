@@ -846,27 +846,116 @@ button[id$="ModalClose"]:active{
   border-bottom:1px solid #e5e7eb;
 }
 
-/* Boutons onglets (soft) */
+/* Onglets: rouge Insights plein, texte blanc (pas de transparence) */
 #modalCollaborateur .sb-seg.sb-seg--soft{
-  font-weight:600;
-}
-
-/* Actif */
-#modalCollaborateur .sb-seg.sb-seg--soft.is-active{
-  border-color: var(--reading-accent);
-  background: color-mix(in srgb, var(--reading-accent) 10%, #ffffff);
   font-weight:700;
+  background: var(--accent);
+  color:#ffffff;
+  border-color: var(--accent);
 }
 
-/* Inactif */
-#modalCollaborateur .sb-seg.sb-seg--soft:not(.is-active){
-  border-color:#d1d5db;
-  background:#ffffff;
+/* Hover léger */
+#modalCollaborateur .sb-seg.sb-seg--soft:hover{
+  filter: brightness(0.95);
+}
+
+/* Actif: bordure blanche légère (inset) */
+#modalCollaborateur .sb-seg.sb-seg--soft.is-active{
+  background: var(--accent);
+  color:#ffffff;
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.85);
 }
 
 /* Panels */
 #modalCollaborateur .sb-tab-panel{ display:none; }
 #modalCollaborateur .sb-tab-panel.is-active{ display:block; }
+
+/* ======================================================
+   Modal Collaborateur: onglet Identification (blocs + contrôles prêts édition)
+   ====================================================== */
+
+#modalCollaborateur .sb-collab-block{
+  padding:12px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  background:#ffffff;
+}
+
+#modalCollaborateur .sb-collab-block + .sb-collab-block{
+  margin-top:12px;
+}
+
+#modalCollaborateur .sb-collab-block-title{
+  margin:0 0 10px 0;
+  font-weight:800;
+  font-size:13px;
+  color:#111827;
+}
+
+#modalCollaborateur .sb-collab-grid{
+  display:grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap:10px 14px;
+}
+
+#modalCollaborateur .sb-collab-grid .sb-field{
+  margin:0;
+}
+
+#modalCollaborateur .sb-collab-grid .sb-field .sb-label{
+  display:block;
+  font-weight:600;
+  font-size:12px;
+  color:#374151;
+  margin:0 0 6px 0;
+}
+
+/* Inputs/textarea: override du input{...} global (sinon c’est transparent et centré) */
+#modalCollaborateur input.sb-ctrl,
+#modalCollaborateur textarea.sb-ctrl{
+  width:100%;
+  border:1px solid #d1d5db !important;
+  background:#ffffff !important;
+  padding:8px 10px;
+  border-radius:10px;
+  font-family:inherit;
+  font-size:13px;
+  color:#111827;
+  text-align:left;
+  outline:none;
+  box-shadow:none;
+}
+
+#modalCollaborateur textarea.sb-ctrl{
+  min-height:70px;
+  resize:vertical;
+}
+
+/* Select: on garde .sb-select existant, mais on harmonise le focus */
+#modalCollaborateur .sb-select:focus,
+#modalCollaborateur input.sb-ctrl:focus,
+#modalCollaborateur textarea.sb-ctrl:focus{
+  outline:none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, #d1d5db) !important;
+}
+
+#modalCollaborateur input.sb-ctrl:disabled,
+#modalCollaborateur textarea.sb-ctrl:disabled,
+#modalCollaborateur .sb-select:disabled{
+  background:#f8fafc !important;
+  color:#111827;
+  opacity:0.85;
+  cursor:not-allowed;
+}
+
+@media (max-width: 780px){
+  #modalCollaborateur .sb-collab-grid{
+    grid-template-columns: 1fr;
+  }
+}
+
 
 
 /* Badges écarts (composant générique) */

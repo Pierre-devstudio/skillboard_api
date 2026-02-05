@@ -68,6 +68,10 @@ class CollaborateurIdentification(BaseModel):
     nom_effectif: str
     prenom_effectif: str
 
+    # Civilité (base: M / F / NULL)
+    civilite_effectif: Optional[str] = None  # "M" / "F" / None
+    civilite_label: Optional[str] = None     # "M" / "Mme" / "Autre"
+
     # Contact (déjà affiché)
     email_effectif: Optional[str] = None
     telephone_effectif: Optional[str] = None
@@ -109,8 +113,9 @@ class CollaborateurIdentification(BaseModel):
     niveau_education_label: Optional[str] = None
     domaine_education: Optional[str] = None
 
-    # Notes
+    # Commentaire
     note_commentaire: Optional[str] = None
+
 
 class CollaborateurCompetenceItem(BaseModel):
     id_comp: str
@@ -700,6 +705,7 @@ def get_collaborateur_identification(id_contact: str, id_effectif: str, request:
                         ec.id_effectif,
                         ec.nom_effectif,
                         ec.prenom_effectif,
+                        ec.civilite_effectif,
 
                         ec.email_effectif,
                         ec.telephone_effectif,
@@ -758,6 +764,20 @@ def get_collaborateur_identification(id_contact: str, id_effectif: str, request:
 
         if r is None:
             raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+        
+        # Civilité: base M / F / NULL  -> UI M / Mme / Autre
+        civ_raw = r.get("civilite_effectif")
+        civ = (str(civ_raw).strip().upper() if civ_raw is not None else None)
+        if civ not in ("M", "F"):
+            civ = None
+
+        if civ == "M":
+            civ_label = "M"
+        elif civ == "F":
+            civ_label = "Mme"
+        else:
+            civ_label = "Autre"
+
 
         # Matricule: matricule_interne sinon code_effectif
         matricule = (r.get("matricule_interne") or "").strip()
@@ -805,6 +825,10 @@ def get_collaborateur_identification(id_contact: str, id_effectif: str, request:
             nom_effectif=r["nom_effectif"],
             prenom_effectif=r["prenom_effectif"],
 
+            
+            civilite_effectif=civ,
+            civilite_label=civ_label,
+
             email_effectif=r.get("email_effectif"),
             telephone_effectif=r.get("telephone_effectif"),
 
@@ -848,6 +872,117 @@ def get_collaborateur_identification(id_contact: str, id_effectif: str, request:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+    
+# ------------------------
+# Collaborateurs - Listes (services / postes / domaines)
+# ------------------------
+
+class SimpleItem(BaseModel):
+    id: str
+    label: str
+
+
+@router.get("/skills/collaborateurs/listes/services/{id_contact}", response_model=List[SimpleItem])
+def get_liste_services_for_contact(id_contact: str, request: Request):
+    """
+    Liste des services de l'entreprise (organigramme) pour le contexte du contact connecté.
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                cur.execute(
+                    """
+                    SELECT
+                      o.id_service AS id,
+                      o.nom_service AS label
+                    FROM public.tbl_entreprise_organigramme o
+                    WHERE o.id_ent = %s
+                      AND COALESCE(o.archive, FALSE) = FALSE
+                      AND COALESCE(o.id_service, '') <> ''
+                      AND COALESCE(o.nom_service, '') <> ''
+                    ORDER BY o.nom_service ASC
+                    """,
+                    (id_ent,),
+                )
+                rows = cur.fetchall() or []
+
+        return [SimpleItem(id=r["id"], label=r["label"]) for r in rows]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+@router.get("/skills/collaborateurs/listes/postes/{id_contact}", response_model=List[SimpleItem])
+def get_liste_postes_for_contact(id_contact: str, request: Request, id_service: Optional[str] = None):
+    """
+    Liste des postes de l'entreprise, filtrable par service.
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                params = [id_ent]
+                where_service = ""
+                if id_service and str(id_service).strip():
+                    where_service = " AND p.id_service = %s "
+                    params.append(str(id_service).strip())
+
+                cur.execute(
+                    f"""
+                    SELECT
+                      p.id_poste AS id,
+                      p.intitule_poste AS label
+                    FROM public.tbl_fiche_poste p
+                    WHERE p.id_ent = %s
+                      AND COALESCE(p.archive, FALSE) = FALSE
+                      AND COALESCE(p.intitule_poste, '') <> ''
+                      {where_service}
+                    ORDER BY p.intitule_poste ASC
+                    """,
+                    tuple(params),
+                )
+                rows = cur.fetchall() or []
+
+        return [SimpleItem(id=r["id"], label=r["label"]) for r in rows]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get("/skills/collaborateurs/listes/nsf_domaines/{id_contact}", response_model=List[str])
+def get_liste_nsf_domaines_for_contact(id_contact: str, request: Request):
+    """
+    Liste des domaines éducation (NSF) : titre uniquement.
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                # Contexte entreprise (même logique que les autres listes)
+                _ = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                cur.execute(
+                    """
+                    SELECT DISTINCT titre
+                    FROM public.tbl_nsf_domaine
+                    WHERE COALESCE(titre, '') <> ''
+                    ORDER BY titre ASC
+                    """
+                )
+                rows = cur.fetchall() or []
+
+        return [r["titre"] for r in rows if r.get("titre")]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
 
 @router.get(
     "/skills/collaborateurs/competences/{id_contact}/{id_effectif}",
