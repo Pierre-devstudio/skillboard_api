@@ -810,9 +810,17 @@
                     <!-- Dernier diplôme obtenu | Domaine d'éducation -->
                     <div class="sb-field">
                       <div class="sb-label">Dernier diplôme obtenu</div>
-                      <select class="sb-select" id="collabEduNiv" disabled>
-                        <option value="${escapeHtml(eduCode)}" selected>${escapeHtml(eduLabel || "–")}</option>
-                      </select>
+                        <select class="sb-select" id="collabEduNiv" disabled>
+                          <option value=""></option>
+                          <option value="1"${eduCode === "1" ? " selected" : ""}>Niveau 1 : École primaire</option>
+                          <option value="2"${eduCode === "2" ? " selected" : ""}>Niveau 2 : Collège</option>
+                          <option value="3"${eduCode === "3" ? " selected" : ""}>Niveau 3 : CAP / BEP</option>
+                          <option value="4"${eduCode === "4" ? " selected" : ""}>Niveau 4 : Bac</option>
+                          <option value="5"${eduCode === "5" ? " selected" : ""}>Niveau 5 : Bac+2 (BTS, DUT)</option>
+                          <option value="6"${eduCode === "6" ? " selected" : ""}>Niveau 6 : Bac+3 (Licence, BUT)</option>
+                          <option value="7"${eduCode === "7" ? " selected" : ""}>Niveau 7 : Bac+5 (Master)</option>
+                          <option value="8"${eduCode === "8" ? " selected" : ""}>Niveau 8 : Doctorat</option>
+                        </select>
                     </div>
 
                     <div class="sb-field">
@@ -932,16 +940,52 @@
               };
 
               let setEditMode = (isEdit) => {
+                // Toggle enabled/disabled sur tous les champs
                 getEditableNodes().forEach(el => {
-                  // “Retraite estimée” reste non éditable (calcul)
-                  if (el && el.id === "collabRetraite") return;
+                  if (!el) return;
+
+                  // Retraite estimée reste non éditable (calcul)
+                  if (el.id === "collabRetraite") return;
+
                   el.disabled = !isEdit;
                 });
 
+                // Boutons
                 if (editBtn) editBtn.style.display = isEdit ? "none" : "";
                 if (saveBtn) saveBtn.style.display = isEdit ? "" : "none";
                 if (cancelBtn) cancelBtn.style.display = isEdit ? "" : "none";
+
+                // Sortie prévue pilote Date + Motif (uniquement utile en édition)
+                const chk = identHost.querySelector("#collabChkSortie");
+                const dt = identHost.querySelector("#collabDateSortie");
+                const motif = identHost.querySelector("#collabMotifSortie");
+
+                if (chk && dt && motif) {
+                  const apply = () => {
+                    const on = !!chk.checked;
+
+                    // checkbox est déjà activée/désactivée par le toggle global
+                    // ici on pilote les dépendances
+                    dt.disabled = (!isEdit) || (!on);
+                    motif.disabled = (!isEdit) || (!on);
+
+                    if (isEdit && !on) {
+                      dt.value = "";
+                      motif.value = "";
+                    }
+                  };
+
+                  // refresh immédiat
+                  apply();
+
+                  // listener (idempotent: on évite l'empilement)
+                  if (!chk._sbBoundSortie) {
+                    chk.addEventListener("change", apply);
+                    chk._sbBoundSortie = true;
+                  }
+                }
               };
+
 
               let _collabEditSnap = snapshotValues();
               setEditMode(false);
