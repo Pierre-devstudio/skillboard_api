@@ -931,7 +931,7 @@
                 });
               };
 
-              const setEditMode = (isEdit) => {
+              let setEditMode = (isEdit) => {
                 getEditableNodes().forEach(el => {
                   // “Retraite estimée” reste non éditable (calcul)
                   if (el && el.id === "collabRetraite") return;
