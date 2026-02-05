@@ -939,7 +939,7 @@ def get_liste_postes_for_contact(id_contact: str, request: Request, id_service: 
                       p.intitule_poste AS label
                     FROM public.tbl_fiche_poste p
                     WHERE p.id_ent = %s
-                      AND COALESCE(p.archive, FALSE) = FALSE
+                      AND COALESCE(p.actif, TRUE) = TRUE
                       AND COALESCE(p.intitule_poste, '') <> ''
                       {where_service}
                     ORDER BY p.intitule_poste ASC
