@@ -1,5 +1,5 @@
 # app/routers/skills_portal_collaborateurs.py
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Tuple
 import re
@@ -900,7 +900,12 @@ def get_collaborateur_identification(id_contact: str, id_effectif: str, request:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-    
+
+@router.options("/skills/collaborateurs/identification/{id_contact}/{id_effectif}")
+def options_update_collaborateur_identification(id_contact: str, id_effectif: str):
+    # Réponse preflight pour éviter les "Failed to fetch" sur POST/PUT JSON
+    return Response(status_code=204)
+
 @router.put("/skills/collaborateurs/identification/{id_contact}/{id_effectif}")
 @router.post("/skills/collaborateurs/identification/{id_contact}/{id_effectif}")
 def update_collaborateur_identification(
