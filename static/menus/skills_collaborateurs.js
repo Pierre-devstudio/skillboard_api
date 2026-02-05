@@ -1021,11 +1021,104 @@
               }
 
               if (saveBtn) {
-                saveBtn.addEventListener("click", () => {
-                  // Pas encore de persistance côté API: on prépare juste l’UI
-                  setEditMode(false);
+                saveBtn.addEventListener("click", async () => {
+                  try {
+                    // Helpers
+                    const q = (sel) => identHost.querySelector(sel);
+
+                    const t = (sel) => {
+                      const el = q(sel);
+                      if (!el) return null;
+                      const s = String(el.value ?? "").trim();
+                      return s === "" ? null : s;
+                    };
+
+                    const dte = (sel) => {
+                      // input type=date -> "YYYY-MM-DD" ou null
+                      return t(sel);
+                    };
+
+                    const chk = (sel) => {
+                      const el = q(sel);
+                      return !!(el && el.checked);
+                    };
+
+                    const num = (sel) => {
+                      const el = q(sel);
+                      if (!el) return null;
+                      const s = String(el.value ?? "").trim().replace(",", ".");
+                      if (!s) return null;
+                      const n = Number(s);
+                      return Number.isFinite(n) ? n : null;
+                    };
+
+                    // Sortie prévue: si décoché -> NULL date + motif
+                    const sortieOn = chk("#collabChkSortie");
+
+                    const payload = {
+                      // Bloc 1
+                      civilite_label: t("#collabCiv"),
+                      nom_effectif: t("#collabNom"),
+                      prenom_effectif: t("#collabPrenom"),
+                      adresse_effectif: t("#collabAdr"),
+                      code_postal_effectif: t("#collabCP"),
+                      ville_effectif: t("#collabVille"),
+                      pays_effectif: t("#collabPays"),
+                      telephone_effectif: t("#collabTel"),
+                      email_effectif: t("#collabEmail"),
+                      date_naissance_effectif: dte("#collabNaissance"),
+
+                      // Bloc 2
+                      // Règle métier: toujours dans matricule_interne
+                      matricule_interne: t("#collabMatricule"),
+                      id_service: t("#collabService"),
+                      id_poste_actuel: t("#collabPoste"),
+                      date_entree_entreprise_effectif: dte("#collabEntree"),
+                      type_contrat: t("#collabContrat"),
+                      date_debut_poste_actuel: dte("#collabDebutPoste"),
+
+                      // Bloc 3
+                      niveau_education: t("#collabEduNiv"),
+                      // Domaine éducation: stocker le texte choisi (pas d'id derrière)
+                      domaine_education: t("#collabEduDom"),
+                      distance_km_entreprise: num("#collabDist"),
+
+                      date_sortie_prevue: sortieOn ? dte("#collabDateSortie") : null,
+                      motif_sortie: sortieOn ? t("#collabMotifSortie") : null,
+                      note_commentaire: t("#collabComment"),
+                    };
+
+                    // Appel API
+                    const url = `${API_BASE}/skills/collaborateurs/identification/${encodeURIComponent(id_contact)}/${encodeURIComponent(it.id_effectif)}`;
+                    const res = await fetch(url, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(payload),
+                      credentials: "include",
+                    });
+
+                    let data = null;
+                    try { data = await res.json(); } catch (_) {}
+
+                    if (!res.ok) {
+                      const msg = (data && (data.detail || data.message)) ? (data.detail || data.message) : `HTTP ${res.status}`;
+                      throw new Error(msg);
+                    }
+
+                    // Succès: on met à jour le snapshot et on repasse en lecture seule
+                    _collabEditSnap = snapshotValues();
+                    setEditMode(false);
+
+                    // (Optionnel) feedback léger
+                    // window.portal.toast && window.portal.toast("Enregistré", "success");
+
+                  } catch (e) {
+                    console.error(e);
+                    alert(`Erreur enregistrement: ${e.message || e}`);
+                  }
                 });
               }
+
 
               // -------------------------
               // Chargement des listes (services / postes / domaines NSF)

@@ -116,6 +116,34 @@ class CollaborateurIdentification(BaseModel):
     # Commentaire
     note_commentaire: Optional[str] = None
 
+class CollaborateurIdentificationUpdate(BaseModel):
+    # Bloc 1
+    civilite_label: Optional[str] = None   # "M" / "Mme" / "Autre"
+    nom_effectif: Optional[str] = None
+    prenom_effectif: Optional[str] = None
+    adresse_effectif: Optional[str] = None
+    code_postal_effectif: Optional[str] = None
+    ville_effectif: Optional[str] = None
+    pays_effectif: Optional[str] = None
+    telephone_effectif: Optional[str] = None
+    email_effectif: Optional[str] = None
+    date_naissance_effectif: Optional[str] = None  # "YYYY-MM-DD" ou ""
+
+    # Bloc 2
+    matricule_interne: Optional[str] = None
+    id_service: Optional[str] = None
+    id_poste_actuel: Optional[str] = None
+    date_entree_entreprise_effectif: Optional[str] = None  # "YYYY-MM-DD" ou ""
+    type_contrat: Optional[str] = None
+    date_debut_poste_actuel: Optional[str] = None  # "YYYY-MM-DD" ou ""
+
+    # Bloc 3
+    niveau_education: Optional[str] = None          # code "0".."8" (ou "")
+    domaine_education: Optional[str] = None         # TITRE (string)
+    distance_km_entreprise: Optional[float] = None
+    date_sortie_prevue: Optional[str] = None        # "YYYY-MM-DD" ou ""
+    motif_sortie: Optional[str] = None              # "Volontaire" / "Subi" / "Légal" / "Non renseigné" / ""
+    note_commentaire: Optional[str] = None
 
 class CollaborateurCompetenceItem(BaseModel):
     id_comp: str
@@ -873,6 +901,147 @@ def get_collaborateur_identification(id_contact: str, id_effectif: str, request:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
     
+@router.put("/skills/collaborateurs/identification/{id_contact}/{id_effectif}")
+def update_collaborateur_identification(
+    id_contact: str,
+    id_effectif: str,
+    payload: CollaborateurIdentificationUpdate,
+    request: Request,
+):
+    """
+    Mise à jour des informations Identification (mode édition).
+    Règles:
+    - civilite_label UI ("M"/"Mme"/"Autre") => DB civilite_effectif ("M"/"F"/NULL)
+    - matricule: toujours enregistré dans ec.matricule_interne
+    - domaine_education: stocke le TITRE (string)
+    """
+    try:
+        def _trim(v):
+            if v is None:
+                return None
+            s = str(v).strip()
+            return s if s != "" else None
+
+        def _date(v):
+            # On accepte "YYYY-MM-DD" ou "" / None
+            v = _trim(v)
+            return v  # psycopg gère le cast si la colonne est date/timestamp
+
+        # Civilité
+        civ_label = _trim(payload.civilite_label)
+        if civ_label == "M":
+            civ_db = "M"
+        elif civ_label == "Mme":
+            civ_db = "F"
+        else:
+            civ_db = None
+
+        # Motif sortie: on stocke la catégorie uniquement
+        motif = _trim(payload.motif_sortie)
+        if motif not in ("Volontaire", "Subi", "Légal", "Non renseigné"):
+            motif = None
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                # Sécurité: on vérifie existence + archive
+                cur.execute(
+                    """
+                    SELECT COALESCE(archive, FALSE) AS archive
+                    FROM public.tbl_effectif_client
+                    WHERE id_ent = %s AND id_effectif = %s
+                    """,
+                    (id_ent, id_effectif),
+                )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+                if bool(row.get("archive")):
+                    raise HTTPException(status_code=400, detail="Collaborateur archivé: modification interdite.")
+
+                # Update
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client
+                    SET
+                      civilite_effectif = %s,
+                      nom_effectif = COALESCE(%s, nom_effectif),
+                      prenom_effectif = COALESCE(%s, prenom_effectif),
+
+                      adresse_effectif = %s,
+                      code_postal_effectif = %s,
+                      ville_effectif = %s,
+                      pays_effectif = %s,
+
+                      telephone_effectif = %s,
+                      email_effectif = %s,
+                      date_naissance_effectif = %s,
+
+                      matricule_interne = %s,
+                      id_service = %s,
+                      id_poste_actuel = %s,
+                      date_entree_entreprise_effectif = %s,
+                      type_contrat = %s,
+                      date_debut_poste_actuel = %s,
+
+                      niveau_education = %s,
+                      domaine_education = %s,
+                      distance_km_entreprise = %s,
+
+                      date_sortie_prevue = %s,
+                      motif_sortie = %s,
+                      note_commentaire = %s,
+
+                      date_modification = NOW()
+                    WHERE id_ent = %s
+                      AND id_effectif = %s
+                    """,
+                    (
+                        civ_db,
+                        _trim(payload.nom_effectif),
+                        _trim(payload.prenom_effectif),
+
+                        _trim(payload.adresse_effectif),
+                        _trim(payload.code_postal_effectif),
+                        _trim(payload.ville_effectif),
+                        _trim(payload.pays_effectif),
+
+                        _trim(payload.telephone_effectif),
+                        _trim(payload.email_effectif),
+                        _date(payload.date_naissance_effectif),
+
+                        # Règle métier: toujours dans matricule_interne
+                        _trim(payload.matricule_interne),
+
+                        _trim(payload.id_service),
+                        _trim(payload.id_poste_actuel),
+                        _date(payload.date_entree_entreprise_effectif),
+                        _trim(payload.type_contrat),
+                        _date(payload.date_debut_poste_actuel),
+
+                        _trim(payload.niveau_education),
+                        _trim(payload.domaine_education),   # TITRE (string)
+                        payload.distance_km_entreprise,
+
+                        _date(payload.date_sortie_prevue),
+                        motif,
+                        _trim(payload.note_commentaire),
+
+                        id_ent,
+                        id_effectif,
+                    ),
+                )
+
+                conn.commit()
+
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
 # ------------------------
 # Collaborateurs - Listes (services / postes / domaines)
 # ------------------------
