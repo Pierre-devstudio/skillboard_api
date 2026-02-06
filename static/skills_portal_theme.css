@@ -316,11 +316,15 @@
 }
 
 #modalBreakEdit .sb-edit-dates{
-  margin-left: 16px; /* aligne visuellement sous le libellé radio */
+  margin-left: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 #modalBreakEdit .sb-edit-dates .info-item{
-  min-width: 240px;
+  flex: 1 1 260px;
+  min-width: 260px;
 }
 
 /* Référentiel compétences: tables plus aérées et lisibles */
