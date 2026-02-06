@@ -95,6 +95,153 @@
   min-width: 140px;
 }
 
+/* Planning indisponibilités : calendrier type agenda (vue mois) */
+#view-planning-indispo #planCalendar .sb-cal{
+  width: 100%;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-head{
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid #e5e7eb;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-wd{
+  padding: 10px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #374151;
+  text-align: left;
+  user-select: none;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-grid{
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: 120px;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-day{
+  position: relative;
+  padding: 8px;
+  background: #fff;
+  border-right: 1px solid #f3f4f6;
+  border-bottom: 1px solid #f3f4f6;
+  overflow: hidden;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-day:nth-child(7n){
+  border-right: none;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-day.is-out{
+  background: #fafafa;
+  color: #6b7280;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-day.is-today{
+  box-shadow: inset 0 0 0 2px var(--accent);
+  border-radius: 10px;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-daynum{
+  font-size: 12px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-evts{
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 92px;
+  overflow: hidden;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-evt{
+  font-size: 11px;
+  line-height: 1.2;
+  color: #fff;
+  padding: 3px 6px;
+  border-radius: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+#view-planning-indispo #planCalendar .sb-cal-more{
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 2px;
+  user-select: none;
+}
+
+/* Planning indisponibilités : liste collaborateurs + légende */
+#view-planning-indispo .sb-collab-pick{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+#view-planning-indispo .sb-collab-pick-row{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+}
+
+#view-planning-indispo .sb-collab-pick-row input[type="checkbox"]{
+  transform: translateY(1px);
+}
+
+#view-planning-indispo .sb-dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex: 0 0 10px;
+}
+
+#view-planning-indispo .sb-collab-pick-name{
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
+
+#view-planning-indispo .sb-collab-pick-svc{
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+#view-planning-indispo .sb-legend{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#view-planning-indispo .sb-legend-item{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #111827;
+}
+
 
 /* Référentiel compétences: tables plus aérées et lisibles */
 #view-referentiel-competences .sb-table {
