@@ -1595,7 +1595,23 @@
       renderKpis(kpis);
 
       const items = await loadList(id_contact, filters);
-      renderList(items);
+
+      // Base pour KPI + filtre “focus”
+      _lastListItems = Array.isArray(items) ? items : [];
+
+      // KPI indispos (si fonctions présentes)
+      try {
+        if (typeof refreshIndispoKpis === "function") {
+          await refreshIndispoKpis(id_contact, filters, _lastListItems);
+        }
+      } catch (_) {}
+
+      const listToRender = (typeof applyIndispoFocus === "function")
+        ? applyIndispoFocus(_lastListItems)
+        : _lastListItems;
+
+      renderList(listToRender);
+
 
     } catch (e) {
       window.portal.showAlert("error", "Erreur chargement collaborateurs : " + e.message);
