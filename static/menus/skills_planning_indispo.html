@@ -136,28 +136,37 @@
 
       <div class="modal-body">
         <div class="row" style="flex-direction:column; gap:10px;">
-          <label class="sb-radio-row">
-            <input type="radio" name="breakEditAction" id="radBreakEditUpdate" value="update" checked>
-            <span>Modifier la période</span>
-          </label>
+          <div class="sb-radio-card">
+            <label class="sb-radio-row" style="border:none; padding:0; background:transparent;">
+              <input type="radio" name="breakEditAction" id="radBreakEditUpdate" value="update" checked>
+              <span>Modifier la période</span>
+            </label>
 
-          <label class="sb-radio-row">
-            <input type="radio" name="breakEditAction" id="radBreakEditArchive" value="archive">
-            <span>Supprimer l’indisponibilité</span>
-          </label>
-        </div>
+            <div class="row sb-edit-dates" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
+              <div class="info-item" style="min-width:220px; flex:1;">
+                <div class="label">Date début</div>
+                <input type="date" id="breakEditStart">
+              </div>
 
-        <div class="row" style="gap:12px; margin-top:14px; flex-wrap:wrap;">
-          <div class="info-item" style="min-width:220px; flex:1;">
-            <div class="label">Date début</div>
-            <input type="date" id="breakEditStart">
+              <div class="info-item" style="min-width:220px; flex:1;">
+                <div class="label">Date fin</div>
+                <input type="date" id="breakEditEnd">
+              </div>
+            </div>
           </div>
 
-          <div class="info-item" style="min-width:220px; flex:1;">
-            <div class="label">Date fin</div>
-            <input type="date" id="breakEditEnd">
+          <div class="sb-radio-card">
+            <label class="sb-radio-row" style="border:none; padding:0; background:transparent;">
+              <input type="radio" name="breakEditAction" id="radBreakEditArchive" value="archive">
+              <span>Supprimer l’indisponibilité</span>
+            </label>
+
+            <div class="card-sub" style="margin:10px 0 0 28px;">
+              L’événement sera archivé et ne sera plus visible dans le planning.
+            </div>
           </div>
         </div>
+
 
         <input type="hidden" id="breakEditId">
 
