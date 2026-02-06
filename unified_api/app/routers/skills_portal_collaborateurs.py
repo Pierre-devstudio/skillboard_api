@@ -4,6 +4,9 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Tuple
 import re
+import uuid
+from datetime import date
+
 
 from psycopg.rows import dict_row
 
@@ -239,6 +242,26 @@ class CollaborateurFormationsJmbResponse(BaseModel):
     id_effectif: str
     items: List[CollaborateurFormationJmbItem]
 
+# ------------------------
+# Indisponibilités (breaks)
+# ------------------------
+class BreakRangeItem(BaseModel):
+    date_debut: str
+    date_fin: str
+
+
+class BreakBatchCreate(BaseModel):
+    items: List[BreakRangeItem]
+
+
+class BreakEventItem(BaseModel):
+    id_break: str
+    id_effectif: str
+    nom_effectif: Optional[str] = None
+    prenom_effectif: Optional[str] = None
+    date_debut: str
+    date_fin: str
+
 
 # ======================================================
 # Helpers
@@ -278,6 +301,107 @@ def _normalize_id_service(id_service: Optional[str]) -> Optional[str]:
         return None
     v = (id_service or "").strip()
     return v if v else None
+
+# ------------------------
+# Breaks helpers
+# ------------------------
+def _parse_iso_date_400(field: str, v: Optional[str]) -> date:
+    s = (v or "").strip()
+    if not s:
+        raise HTTPException(status_code=400, detail=f"{field} manquant (attendu YYYY-MM-DD).")
+
+    # Autorise "YYYY-MM-DD" ou "YYYY-MM-DDTHH:MM:SS..."
+    if len(s) >= 10:
+        s = s[:10]
+
+    try:
+        return date.fromisoformat(s)
+    except Exception:
+        raise HTTPException(status_code=400, detail=f"{field} invalide (attendu YYYY-MM-DD).")
+
+
+def _ranges_overlap(a_start: date, a_end: date, b_start: date, b_end: date) -> bool:
+    # chevauchement inclusif
+    return a_start <= b_end and a_end >= b_start
+
+
+def _validate_break_batch_400(items: List) -> List[Tuple[date, date]]:
+    """
+    - parse dates
+    - contrôle ordre début/fin
+    - interdit chevauchement DANS le lot (même collab)
+    Retourne une liste de tuples (start, end).
+    """
+    if not items:
+        raise HTTPException(status_code=400, detail="Aucune indisponibilité à enregistrer.")
+
+    ranges: List[Tuple[date, date]] = []
+    for i, it in enumerate(items, start=1):
+        d1 = _parse_iso_date_400(f"date_debut (ligne {i})", getattr(it, "date_debut", None))
+        d2 = _parse_iso_date_400(f"date_fin (ligne {i})", getattr(it, "date_fin", None))
+        if d2 < d1:
+            raise HTTPException(status_code=400, detail=f"Dates invalides (ligne {i}): date_fin < date_debut.")
+        ranges.append((d1, d2))
+
+    # Anti-chevauchement intra-lot (inclusif)
+    ordered = sorted(enumerate(ranges, start=1), key=lambda x: (x[1][0], x[1][1]))
+    prev_idx, (prev_s, prev_e) = ordered[0]
+    for idx, (s, e) in ordered[1:]:
+        if s <= prev_e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Chevauchement détecté dans le lot (lignes {prev_idx} et {idx})."
+            )
+        prev_idx, (prev_s, prev_e) = idx, (s, e)
+
+    return ranges
+
+
+def _check_break_overlap_db_400(
+    cur,
+    id_ent: str,
+    id_effectif: str,
+    new_ranges: List[Tuple[date, date]],
+    exclude_id_break: Optional[str] = None,
+):
+    """
+    Interdit chevauchement avec l'existant (même collaborateur).
+    Chevauchement autorisé entre collaborateurs différents => on filtre par id_effectif.
+    """
+    if not new_ranges:
+        return
+
+    min_s = min(s for s, _ in new_ranges)
+    max_e = max(e for _, e in new_ranges)
+
+    sql = """
+        SELECT id_break, date_debut, date_fin
+        FROM public.tbl_effectif_client_break
+        WHERE id_ent = %s
+          AND id_effectif = %s
+          AND archive = FALSE
+          AND date_debut <= %s
+          AND date_fin >= %s
+    """
+    params: List = [id_ent, id_effectif, max_e, min_s]
+
+    if exclude_id_break:
+        sql += " AND id_break <> %s "
+        params.append(exclude_id_break)
+
+    cur.execute(sql, params)
+    existing = cur.fetchall() or []
+
+    # contrôle fin (évite les faux positifs du "broad fetch")
+    for r in existing:
+        es = r["date_debut"]
+        ee = r["date_fin"]
+        for ns, ne in new_ranges:
+            if _ranges_overlap(es, ee, ns, ne):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Chevauchement avec une indisponibilité existante ({r['id_break']})."
+                )
 
 
 def _build_service_where_clause(id_service: Optional[str], params: List):
@@ -1674,6 +1798,225 @@ def get_collaborateur_formations_jmb(
             )
 
         return CollaborateurFormationsJmbResponse(id_effectif=id_effectif, items=items)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+# ======================================================
+# Indisponibilités (breaks)
+# ======================================================
+@router.options("/skills/collaborateurs/breaks/{id_contact}/{id_effectif}")
+def options_create_breaks(id_contact: str, id_effectif: str, request: Request):
+    # Preflight CORS (obligatoire pour POST/PUT JSON)
+    return Response(status_code=204, headers=_cors_headers_for_request(request))
+
+
+@router.put("/skills/collaborateurs/breaks/{id_contact}/{id_effectif}")
+@router.post("/skills/collaborateurs/breaks/{id_contact}/{id_effectif}")
+def create_collaborateur_breaks_batch(
+    id_contact: str,
+    id_effectif: str,
+    payload: BreakBatchCreate,
+    request: Request,
+):
+    """
+    Création batch d'indisponibilités pour UN collaborateur (modal multi-lignes).
+    Règles:
+    - date_debut <= date_fin
+    - pas de chevauchement intra-lot
+    - pas de chevauchement avec l'existant pour ce collaborateur
+    - archivage uniquement (pas de suppression)
+    """
+    try:
+        # 1) Valide le lot (dates + anti-chevauchement intra-lot)
+        ranges = _validate_break_batch_400(payload.items)
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                # 2) Contexte entreprise
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                # 3) Sécurité: collaborateur existant + non archivé
+                cur.execute(
+                    """
+                    SELECT COALESCE(archive, FALSE) AS archive
+                    FROM public.tbl_effectif_client
+                    WHERE id_ent = %s AND id_effectif = %s
+                    """,
+                    (id_ent, id_effectif),
+                )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+                if bool(row.get("archive")):
+                    raise HTTPException(status_code=400, detail="Collaborateur archivé: modification interdite.")
+
+                # 4) Anti-chevauchement DB (même collaborateur)
+                _check_break_overlap_db_400(cur, id_ent, id_effectif, ranges)
+
+                # 5) Insert
+                for (d1, d2) in ranges:
+                    cur.execute(
+                        """
+                        INSERT INTO public.tbl_effectif_client_break
+                          (id_break, id_ent, id_effectif, date_debut, date_fin, archive, date_creation, dernier_update)
+                        VALUES
+                          (%s, %s, %s, %s, %s, FALSE, NOW(), NOW())
+                        """,
+                        (str(uuid.uuid4()), id_ent, id_effectif, d1, d2),
+                    )
+
+                conn.commit()
+
+        return JSONResponse(
+            {"ok": True, "created": len(ranges)},
+            headers=_cors_headers_for_request(request),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.options("/skills/collaborateurs/breaks/archive/{id_contact}/{id_break}")
+def options_archive_break(id_contact: str, id_break: str, request: Request):
+    # Preflight CORS (obligatoire pour POST/PUT JSON)
+    return Response(status_code=204, headers=_cors_headers_for_request(request))
+
+
+@router.put("/skills/collaborateurs/breaks/archive/{id_contact}/{id_break}")
+@router.post("/skills/collaborateurs/breaks/archive/{id_contact}/{id_break}")
+def archive_break(
+    id_contact: str,
+    id_break: str,
+    request: Request,
+):
+    """
+    Archivage d'une indisponibilité (jamais de suppression définitive).
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client_break
+                    SET archive = TRUE,
+                        dernier_update = NOW()
+                    WHERE id_ent = %s
+                      AND id_break = %s
+                      AND archive = FALSE
+                    RETURNING id_break, id_effectif
+                    """,
+                    (id_ent, id_break),
+                )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail="Indisponibilité introuvable (ou déjà archivée).")
+
+                conn.commit()
+
+        return JSONResponse(
+            {"ok": True, "id_break": row["id_break"], "id_effectif": row["id_effectif"]},
+            headers=_cors_headers_for_request(request),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.get(
+    "/skills/collaborateurs/breaks/{id_contact}",
+    response_model=List[BreakEventItem],
+)
+def get_collaborateurs_breaks(
+    id_contact: str,
+    request: Request,
+    start: str = Query(..., description="YYYY-MM-DD"),
+    end: str = Query(..., description="YYYY-MM-DD"),
+    id_service: Optional[str] = Query(default=None),
+    ids_effectif: Optional[str] = Query(default=None, description="CSV d'id_effectif"),
+):
+    """
+    Retourne les indisponibilités sur une plage (pour vue calendrier).
+    - Filtrage entreprise via id_contact -> id_ent
+    - Chevauchements autorisés entre collaborateurs différents
+    - Exclut breaks archivés + collaborateurs archivés
+    - Filtrage service (strict) si id_service fourni (même logique que la liste collaborateurs)
+    - Filtrage collaborateurs via ids_effectif (CSV)
+    """
+    try:
+        d_start = _parse_iso_date_400("start", start)
+        d_end = _parse_iso_date_400("end", end)
+        if d_end < d_start:
+            raise HTTPException(status_code=400, detail="Plage invalide: end < start.")
+
+        ids: List[str] = []
+        if ids_effectif is not None:
+            ids = [x.strip() for x in str(ids_effectif).split(",") if x.strip()]
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                params: List = [id_ent, id_ent, d_end, d_start]
+
+                svc_where, params = _build_service_where_clause(id_service, params)
+
+                where_ids = ""
+                if ids:
+                    where_ids = " AND ec.id_effectif = ANY(%s) "
+                    params.append(ids)
+
+                cur.execute(
+                    f"""
+                    SELECT
+                        b.id_break,
+                        b.id_effectif,
+                        ec.nom_effectif,
+                        ec.prenom_effectif,
+                        b.date_debut,
+                        b.date_fin
+                    FROM public.tbl_effectif_client_break b
+                    JOIN public.tbl_effectif_client ec
+                      ON ec.id_effectif = b.id_effectif
+                    WHERE b.id_ent = %s
+                      AND ec.id_ent = %s
+                      AND b.archive = FALSE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND b.date_debut <= %s
+                      AND b.date_fin >= %s
+                      {svc_where}
+                      {where_ids}
+                    ORDER BY
+                      b.date_debut ASC,
+                      ec.nom_effectif ASC,
+                      ec.prenom_effectif ASC
+                    """,
+                    tuple(params),
+                )
+                rows = cur.fetchall() or []
+
+        def _s(v):
+            return str(v) if v is not None else None
+
+        out: List[BreakEventItem] = []
+        for r in rows:
+            out.append(
+                BreakEventItem(
+                    id_break=r["id_break"],
+                    id_effectif=r["id_effectif"],
+                    nom_effectif=r.get("nom_effectif"),
+                    prenom_effectif=r.get("prenom_effectif"),
+                    date_debut=_s(r.get("date_debut")),
+                    date_fin=_s(r.get("date_fin")),
+                )
+            )
+
+        return out
 
     except HTTPException:
         raise

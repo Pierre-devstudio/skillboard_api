@@ -1,0 +1,128 @@
+<section id="view-planning-indispo" style="display:none;">
+  <div class="card">
+    <div class="row" style="align-items:center; justify-content:space-between; gap:12px;">
+      <div style="min-width:0;">
+        <div class="card-title">Planning des indisponibilités</div>
+        <div class="card-sub" style="margin:0;">
+          Visualisez et planifiez les indisponibilités (dates uniquement). Chevauchements autorisés entre collaborateurs, interdits pour un même collaborateur.
+        </div>
+      </div>
+
+      <div class="row" style="gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+        <button type="button" class="btn-secondary" id="btnPlanBack">Retour aux collaborateurs</button>
+        <button type="button" class="btn-secondary" id="btnPlanAdd">Ajouter des indisponibilités</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sb-split">
+    <!-- Colonne filtres -->
+    <div class="sb-col">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:6px;">Filtres</div>
+        <div class="card-sub" style="margin:0;">Filtrez le planning par service et collaborateurs.</div>
+
+        <div class="row" style="flex-direction:column; gap:12px; margin-top:12px;">
+          <div class="info-item" style="min-width:0;">
+            <div class="label">Service</div>
+            <select id="planServiceSelect">
+              <option value="">Tous les services</option>
+            </select>
+          </div>
+
+          <div class="info-item" style="min-width:0;">
+            <div class="label">Recherche collaborateur</div>
+            <input type="text" id="planCollabSearch" placeholder="Nom, prénom…" />
+          </div>
+
+          <div class="info-item" style="min-width:0;">
+            <div class="label">Collaborateurs</div>
+            <div id="planCollabList" class="sb-collab-pick"></div>
+            <div class="card-sub" style="margin-top:8px;">
+              Astuce: cochez plusieurs collaborateurs pour superposer leurs indisponibilités.
+            </div>
+          </div>
+
+          <div class="info-item" style="min-width:0;">
+            <button type="button" class="btn-secondary" id="btnPlanReset" style="margin-left:0; width:100%;">
+              Réinitialiser
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div class="card-title" style="margin-bottom:6px;">Légende</div>
+        <div class="card-sub" style="margin:0;">Couleurs par collaborateur (stables).</div>
+        <div id="planLegend" style="margin-top:10px;"></div>
+      </div>
+    </div>
+
+    <!-- Colonne calendrier -->
+    <div class="sb-col">
+      <div class="card">
+        <div class="row" style="align-items:center; justify-content:space-between; gap:12px;">
+          <div class="card-title" id="planMonthLabel" style="margin:0;">—</div>
+
+          <div class="row" style="gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+            <button type="button" class="btn-secondary" id="btnPlanPrev">◀</button>
+            <button type="button" class="btn-secondary" id="btnPlanToday">Aujourd’hui</button>
+            <button type="button" class="btn-secondary" id="btnPlanNext">▶</button>
+          </div>
+        </div>
+
+        <div id="planCalendar" class="sb-cal" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal ajout batch indisponibilités -->
+  <div class="modal" id="modalBreakBatch" aria-hidden="true">
+    <div class="modal-card" style="max-width:760px;">
+      <div class="modal-header">
+        <div style="font-weight:600;">Ajouter des indisponibilités</div>
+        <button type="button" class="modal-x" id="btnCloseBreakBatch" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="card-sub" style="margin-top:0;">
+          Saisie en lot pour un collaborateur. Dates uniquement. Chevauchements interdits pour ce collaborateur.
+        </div>
+
+        <div class="row" style="gap:12px; margin-top:12px; align-items:flex-end; flex-wrap:wrap;">
+          <div class="info-item" style="min-width:240px; flex:1;">
+            <div class="label">Collaborateur</div>
+            <select id="breakBatchEffectifSelect"></select>
+          </div>
+
+          <div class="info-item" style="min-width:220px;">
+            <button type="button" class="btn-secondary" id="btnBreakBatchAddRow" style="margin-left:0; width:100%;">
+              + Ajouter une ligne
+            </button>
+          </div>
+        </div>
+
+        <div class="table-wrap" style="margin-top:12px;">
+          <table class="sb-table">
+            <thead>
+              <tr>
+                <th style="width:170px;">Date début</th>
+                <th style="width:170px;">Date fin</th>
+                <th>Contrôle</th>
+                <th style="width:70px;" class="col-center">Suppr.</th>
+              </tr>
+            </thead>
+            <tbody id="breakBatchRows"></tbody>
+          </table>
+        </div>
+
+        <div id="breakBatchError" class="card-sub" style="display:none; margin-top:10px; color:#b91c1c;"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="btnBreakBatchCancel">Annuler</button>
+        <button type="button" class="btn-secondary" id="btnBreakBatchSave">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</section>

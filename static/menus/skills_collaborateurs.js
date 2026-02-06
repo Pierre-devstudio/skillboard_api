@@ -1509,27 +1509,7 @@
       const chkTemp = byId("collabOnlyTemp");
 
       const btnReset = byId("btnCollabReset");
-
-      if (selService) {
-        selService.addEventListener("change", () => {
-          refreshAll(id_contact);
-        });
-      }
-
-      if (inputSearch) {
-        inputSearch.addEventListener("input", () => {
-          clearTimeout(_searchTimer);
-          _searchTimer = setTimeout(() => refreshAll(id_contact), 250);
-        });
-      }
-
-      const onToggle = () => refreshAll(id_contact);
-
-      if (chkActifs) chkActifs.addEventListener("change", onToggle);
-      if (chkArchived) chkArchived.addEventListener("change", onToggle);
-      if (chkManagers) chkManagers.addEventListener("change", onToggle);
-      if (chkFormateurs) chkFormateurs.addEventListener("change", onToggle);
-      if (chkTemp) chkTemp.addEventListener("change", onToggle);
+      const btnOpenPlanning = byId("btnOpenIndispoPlanning");
 
       if (btnReset) {
         btnReset.addEventListener("click", () => {
@@ -1542,6 +1522,12 @@
           if (chkTemp) chkTemp.checked = false;
 
           refreshAll(id_contact);
+        });
+      }
+
+      if (btnOpenPlanning) {
+        btnOpenPlanning.addEventListener("click", () => {
+          window.location.hash = "planning-indispo";
         });
       }
 

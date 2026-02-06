@@ -57,36 +57,44 @@
   });
 
   portal.registerMenu({
-  view: "vos-collaborateurs",
-  htmlUrl: "/menus/skills_collaborateurs.html",
-  onShow: (p) => window.skillsCollaborateurs?.onShow?.(p)
+    view: "vos-collaborateurs",
+    htmlUrl: "/menus/skills_collaborateurs.html",
+    onShow: (p) => window.skillsCollaborateurs?.onShow?.(p)
   });
 
   portal.registerMenu({
-  view: "referentiel-competences",
-  htmlUrl: "/menus/skills_referentiel_competence.html",
-  onShow: (p) => window.SkillsReferentielCompetence.onShow(p),
+    view: "planning-indispo",
+    htmlUrl: "/menus/skills_planning_indispo.html",
+    jsUrl: "/menus/skills_planning_indispo.js",
+    onShow: (p) => window.SkillsPlanningIndispo?.onShow?.(p),
+  });
+
+
+  portal.registerMenu({
+    view: "referentiel-competences",
+    htmlUrl: "/menus/skills_referentiel_competence.html",
+    onShow: (p) => window.SkillsReferentielCompetence.onShow(p),
   });
 
   portal.registerMenu({
-  view: "cartographie-competences",
-  htmlUrl: "/menus/skills_cartographie_competences.html",
-  jsUrl: "/menus/skills_cartographie_competences.js", // optionnel (auto-guess), mais on le met pour être clair
-  onShow: (p) => window.SkillsCartographieCompetences?.onShow?.(p),
+    view: "cartographie-competences",
+    htmlUrl: "/menus/skills_cartographie_competences.html",
+    jsUrl: "/menus/skills_cartographie_competences.js", // optionnel (auto-guess), mais on le met pour être clair
+    onShow: (p) => window.SkillsCartographieCompetences?.onShow?.(p),
   });
 
   portal.registerMenu({
-  view: "analyse-competences",
-  htmlUrl: "/menus/skills_analyse.html",
-  jsUrl: "/menus/skills_analyse.js",
-  onShow: (p) => window.SkillsAnalyse?.onShow?.(p),
+    view: "analyse-competences",
+    htmlUrl: "/menus/skills_analyse.html",
+    jsUrl: "/menus/skills_analyse.js",
+    onShow: (p) => window.SkillsAnalyse?.onShow?.(p),
   });
 
   portal.registerMenu({
-  view: "entretien-performance",
-  htmlUrl: "/menus/skills_entretien_performance.html",
-  jsUrl: "/menus/skills_entretien_performance.js",
-  onShow: (p) => window.SkillsEntretienPerformance?.onShow?.(p),
+    view: "entretien-performance",
+    htmlUrl: "/menus/skills_entretien_performance.html",
+    jsUrl: "/menus/skills_entretien_performance.js",
+    onShow: (p) => window.SkillsEntretienPerformance?.onShow?.(p),
   });
 
   // Placeholders (pour éviter les clics “vides”)      
@@ -101,7 +109,42 @@
     if (!ok) return;
 
     await portal.ensureContext();
-    // Vue par défaut
-    await portal.switchView("dashboard");
+    // Vue initiale: hash > défaut dashboard
+    const rawHash = (window.location.hash || "").replace(/^#/, "").trim();
+    const viewFromHash = rawHash ? rawHash.split(/[?&]/)[0].replace(/^\/+/, "").trim() : "";
+    const initialView = viewFromHash || "dashboard";
+
+    const getViewFromHash = () => {
+    const rawHash = (window.location.hash || "").replace(/^#/, "").trim();
+    const view = rawHash ? rawHash.split(/[?&]/)[0].replace(/^\/+/, "").trim() : "";
+    return view || "dashboard";
+    };
+
+    let _navLock = false;
+    let _lastView = null;
+
+    const go = async (viewName) => {
+      const v = (viewName || "").trim() || "dashboard";
+      if (_navLock) return;
+      if (_lastView === v) return;
+
+      _navLock = true;
+      try {
+        _lastView = v;
+        await portal.switchView(v);
+      } finally {
+        _navLock = false;
+      }
+    };
+
+    // Vue initiale (hash si présent)
+    await go(getViewFromHash());
+
+    // Navigation option 2 : hashchange => switchView
+    window.addEventListener("hashchange", () => {
+      go(getViewFromHash());
+    });
+
+
   });
 })();
