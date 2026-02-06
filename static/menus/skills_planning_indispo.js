@@ -488,8 +488,67 @@
       .filter(x => (x.tr?.dataset?.batchKind || "") === "ok")
       .map(x => x.item);
 
-    return { hasError, items };
+    // rowsOk: on garde le lien TR + dates (pour contrôle DB sans recalcul destructif)
+    const rowsOk = valids
+      .filter(x => (x.tr?.dataset?.batchKind || "") === "ok")
+      .map(x => ({ tr: x.tr, ds: x.ds, de: x.de, item: x.item }));
+
+    return { hasError, items, rowsOk };
   }
+
+
+  async function markBatchExistingOverlaps(id_contact, id_effectif, rowsOk) {
+    // Contrôle chevauchement avec existant en base (même collaborateur)
+    // Règle inclusive: start <= other.end && end >= other.start
+    try {
+      if (!rowsOk || !rowsOk.length) return { hasError: false };
+
+      // Fenêtre minimale: min(start) -> max(end)
+      let minD = rowsOk[0].ds;
+      let maxD = rowsOk[0].de;
+
+      for (const r of rowsOk) {
+        if (r.ds < minD) minD = r.ds;
+        if (r.de > maxD) maxD = r.de;
+      }
+
+      const qs = buildQuery({
+        start: toYmd(minD),
+        end: toYmd(maxD),
+        ids_effectif: String(id_effectif || "").trim(),
+      });
+
+      const url = `${API_BASE}/skills/collaborateurs/breaks/${encodeURIComponent(id_contact)}${qs}`;
+      const existing = await window.portal.apiJson(url);
+
+      const exRanges = (Array.isArray(existing) ? existing : [])
+        .map(e => {
+          const ds = parseYmd(e?.date_debut);
+          const de = parseYmd(e?.date_fin);
+          return (ds && de) ? { ds, de } : null;
+        })
+        .filter(Boolean);
+
+      if (!exRanges.length) return { hasError: false };
+
+      let hasError = false;
+
+      for (const r of rowsOk) {
+        const overlap = exRanges.some(ex => (r.ds <= ex.de && r.de >= ex.ds));
+        if (overlap) {
+          _setBatchStatus(r.tr, "Chevauchement existant", "err");
+          hasError = true;
+        }
+      }
+
+      return { hasError };
+
+    } catch (e) {
+      // Si on ne peut pas contrôler, on bloque (sinon la colonne ne sert à rien)
+      throw new Error("Contrôle chevauchement impossible (réseau/API).");
+    }
+  }
+
 
 
   async function saveBatch(id_contact) {
@@ -499,8 +558,14 @@
 
     const chk = validateBatchRows();
     if (chk.hasError) throw new Error("Corrige les lignes en erreur.");
+
+    // Contrôle base: chevauchement existant (même collaborateur)
+    const ex = await markBatchExistingOverlaps(id_contact, id_eff, chk.rowsOk || []);
+    if (ex.hasError) throw new Error("Chevauchement détecté avec une indisponibilité existante.");
+
     const items = chk.items;
     if (!items.length) throw new Error("Ajoute au moins une indisponibilité.");
+
 
 
     const url = `${API_BASE}/skills/collaborateurs/breaks/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_eff)}`;
@@ -759,8 +824,22 @@
         await saveBatch(id_contact);
         closeModalBreakBatch();
       } catch (err) {
-        showBatchError(err?.message || String(err));
+        const msg = err?.message || String(err);
+        showBatchError(msg);
+
+        // Si le serveur refuse un chevauchement, on marque les lignes comme KO (sinon colonne "Contrôle" inutile)
+        try {
+          if ((msg || "").toLowerCase().includes("chevauchement")) {
+            const sel = byId("breakBatchEffectifSelect");
+            const id_eff = (sel?.value || "").trim();
+            const chk = validateBatchRows(); // remet à jour les statuts locaux
+            if (id_eff && chk.rowsOk && chk.rowsOk.length) {
+              await markBatchExistingOverlaps(id_contact, id_eff, chk.rowsOk);
+            }
+          }
+        } catch (_) {}
       } finally {
+
         btnSave.disabled = false;
       }
     });
