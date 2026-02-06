@@ -5,6 +5,25 @@
     topbarInfoText: "Portail Skills — JMB CONSULTANT",
   });
 
+    // URL propre: on supprime le #... dès qu'on quitte le planning
+  const _origSwitchView = (typeof portal.switchView === "function") ? portal.switchView.bind(portal) : null;
+  if (_origSwitchView) {
+    portal.switchView = async (viewName, ...args) => {
+      const v = String(viewName || "").trim();
+
+      // Toutes les vues "classiques" => URL sans hash
+      if (v && v !== "planning-indispo") {
+        const base = window.location.pathname + window.location.search;
+        if (window.location.hash) {
+          history.replaceState(null, document.title, base);
+        }
+      }
+
+      return await _origSwitchView(viewName, ...args);
+    };
+  }
+
+
     // Contexte + topbar centralisés (évite de dupliquer ensureContext dans chaque menu)
   portal.ensureContext = async () => {
     if (portal.context) return portal.context;
