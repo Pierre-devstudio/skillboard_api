@@ -242,6 +242,25 @@
   color: #111827;
 }
 
+/* Planning indisponibilités : boutons header en rouge Insights */
+#view-planning-indispo #btnPlanBack,
+#view-planning-indispo #btnPlanAdd{
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+}
+
+#view-planning-indispo #btnPlanBack:hover,
+#view-planning-indispo #btnPlanAdd:hover{
+  filter: brightness(0.92);
+}
+
+#view-planning-indispo #btnPlanBack:focus,
+#view-planning-indispo #btnPlanAdd:focus{
+  box-shadow: 0 0 0 3px rgba(193,39,45,0.18);
+}
+
+
 /* Modal batch indisponibilités : inputs date plus modernes */
 #modalBreakBatch input[type="date"]{
   width: 100%;
