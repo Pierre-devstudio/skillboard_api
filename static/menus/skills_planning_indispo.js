@@ -505,8 +505,21 @@
     let tSearch = null;
 
     if (btnBack) btnBack.addEventListener("click", () => {
-      window.location.hash = "vos-collaborateurs";
+      const base = window.location.pathname + window.location.search;
+
+      // Nettoie l’URL (supprime le #...) sans ajouter d’historique
+      if (window.location.hash) {
+        history.replaceState(null, document.title, base);
+      }
+
+      // Retour UI sur la vue collaborateurs
+      if (window.portal && typeof window.portal.switchView === "function") {
+        window.portal.switchView("vos-collaborateurs");
+      } else {
+        window.location.href = base;
+      }
     });
+
 
     if (btnPrev) btnPrev.addEventListener("click", async () => {
       _state.current = new Date(_state.current.getFullYear(), _state.current.getMonth() - 1, 1);
