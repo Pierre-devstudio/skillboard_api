@@ -95,6 +95,22 @@
   min-width: 140px;
 }
 
+/* Vos collaborateurs : bouton tuile Indisponibilités en rouge Insights */
+#btnOpenIndispoPlanning{
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+}
+
+#btnOpenIndispoPlanning:hover{
+  filter: brightness(0.92);
+}
+
+#btnOpenIndispoPlanning:focus{
+  box-shadow: 0 0 0 3px rgba(193,39,45,0.18);
+}
+
+
 /* Planning indisponibilités : calendrier type agenda (vue mois) */
 #view-planning-indispo #planCalendar .sb-cal{
   width: 100%;
