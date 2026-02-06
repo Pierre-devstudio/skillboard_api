@@ -84,6 +84,16 @@
   display: none;
 }
 
+/* Vos collaborateurs : tuile Indisponibilités (colonne filtres) */
+#collabIndispoTile .row{
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#collabIndispoTile .row .card{
+  flex: 1 1 140px;
+  min-width: 140px;
+}
 
 
 /* Référentiel compétences: tables plus aérées et lisibles */
