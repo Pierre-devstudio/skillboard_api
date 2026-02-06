@@ -315,23 +315,24 @@
   padding: 12px;
 }
 
-#modalBreakEdit .sb-edit-dates{
+#modalBreakEdit .sb-edit-dates-grid{
   margin-left: 16px;
-  display: grid !important;
+  display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
-#modalBreakEdit .sb-edit-dates .info-item{
-  width: 100% !important;
-  min-width: 0 !important;
-  flex: none !important;
-  float: none !important;
-  position: static !important;
+#modalBreakEdit .sb-edit-dates-grid .info-item{
+  min-width: 0;
+}
+
+#modalBreakEdit .sb-edit-dates-grid input[type="date"]{
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 @media (max-width: 720px){
-  #modalBreakEdit .sb-edit-dates{
+  #modalBreakEdit .sb-edit-dates-grid{
     grid-template-columns: 1fr;
     margin-left: 0;
   }
