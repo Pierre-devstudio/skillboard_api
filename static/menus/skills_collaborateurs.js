@@ -1528,9 +1528,12 @@
       if (btnOpenPlanning) {
         btnOpenPlanning.addEventListener("click", () => {
           window.location.hash = "planning-indispo";
+          if (window.portal && typeof window.portal.switchView === "function") {
+            window.portal.switchView("planning-indispo");
+          }
         });
       }
-
+      
       const btnClose = byId("btnCloseCollabModal");
       const btnClose2 = byId("btnCollabModalClose");
       const modal = byId("modalCollaborateur");
