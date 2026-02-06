@@ -578,30 +578,130 @@
       });
     }
 
-    // Clic sur event => archive rapide (v1)
+    // --- Modal édition indisponibilité ---
+    const editModal = byId("modalBreakEdit");
+    const btnEditX = byId("btnCloseBreakEdit");
+    const btnEditCancel = byId("btnBreakEditCancel");
+    const btnEditSave = byId("btnBreakEditSave");
+    const radUpdate = byId("radBreakEditUpdate");
+    const radArchive = byId("radBreakEditArchive");
+    const editStart = byId("breakEditStart");
+    const editEnd = byId("breakEditEnd");
+    const editId = byId("breakEditId");
+    const editErr = byId("breakEditError");
+
+    const showEditError = (msg) => {
+      if (!editErr) return;
+      if (!msg) {
+        editErr.style.display = "none";
+        editErr.textContent = "";
+        return;
+      }
+      editErr.style.display = "block";
+      editErr.textContent = msg;
+    };
+
+    const openEditModal = (b) => {
+      if (!editModal) return;
+      showEditError(null);
+
+      if (radUpdate) radUpdate.checked = true;
+      if (radArchive) radArchive.checked = false;
+
+      if (editId) editId.value = String(b?.id_break || "");
+      if (editStart) editStart.value = String(b?.date_debut || "").slice(0, 10);
+      if (editEnd) editEnd.value = String(b?.date_fin || "").slice(0, 10);
+
+      // champs actifs par défaut (update)
+      if (editStart) editStart.disabled = false;
+      if (editEnd) editEnd.disabled = false;
+
+      editModal.classList.add("show");
+      editModal.setAttribute("aria-hidden", "false");
+    };
+
+    const closeEditModal = () => {
+      if (!editModal) return;
+      editModal.classList.remove("show");
+      editModal.setAttribute("aria-hidden", "true");
+    };
+
+    const syncEditMode = () => {
+      const isArchive = !!(radArchive && radArchive.checked);
+      if (editStart) editStart.disabled = isArchive;
+      if (editEnd) editEnd.disabled = isArchive;
+    };
+
+    if (radUpdate) radUpdate.addEventListener("change", syncEditMode);
+    if (radArchive) radArchive.addEventListener("change", syncEditMode);
+
+    if (btnEditX) btnEditX.addEventListener("click", closeEditModal);
+    if (btnEditCancel) btnEditCancel.addEventListener("click", closeEditModal);
+    if (editModal) {
+      editModal.addEventListener("click", (e) => {
+        if (e.target === editModal) closeEditModal();
+      });
+    }
+
+    if (btnEditSave) {
+      btnEditSave.addEventListener("click", async () => {
+        showEditError(null);
+        try {
+          const bid = (editId?.value || "").trim();
+          if (!bid) throw new Error("Indisponibilité introuvable.");
+
+          const action = (radArchive && radArchive.checked) ? "archive" : "update";
+          const payload = { action };
+
+          if (action === "update") {
+            const d1 = (editStart?.value || "").trim();
+            const d2 = (editEnd?.value || "").trim();
+            if (!d1 || !d2) throw new Error("Dates obligatoires.");
+            payload.date_debut = d1;
+            payload.date_fin = d2;
+          }
+
+          btnEditSave.disabled = true;
+
+          const url = `${API_BASE}/skills/collaborateurs/breaks/edit/${encodeURIComponent(id_contact)}/${encodeURIComponent(bid)}`;
+          const data = await window.portal.apiJson(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (!data || data.ok !== true) {
+            throw new Error((data && (data.detail || data.message)) || "Erreur mise à jour.");
+          }
+
+          closeEditModal();
+          await refreshBreaksForCurrentMonth(id_contact);
+
+        } catch (err) {
+          showEditError(err?.message || String(err));
+        } finally {
+          btnEditSave.disabled = false;
+        }
+      });
+    }
+
+    // Clic sur event => ouvre modal edit
     const calHost = byId("planCalendar");
     if (calHost) {
-      calHost.addEventListener("click", async (e) => {
+      calHost.addEventListener("click", (e) => {
         const el = e.target;
         if (!el || !el.classList.contains("sb-cal-evt")) return;
 
         const bid = String(el.getAttribute("data-break-id") || "").trim();
         if (!bid) return;
 
-        const ok = confirm("Archiver cette indisponibilité ?");
-        if (!ok) return;
+        const b = (_state.breaks || []).find(x => String(x?.id_break || "") === bid);
+        if (!b) return;
 
-        try {
-          const url = `${API_BASE}/skills/collaborateurs/breaks/archive/${encodeURIComponent(id_contact)}/${encodeURIComponent(bid)}`;
-          const data = await window.portal.apiJson(url, { method: "POST" });
-          if (!data || data.ok !== true) throw new Error((data && (data.detail || data.message)) || "Erreur archive.");
-
-          await refreshBreaksForCurrentMonth(id_contact);
-        } catch (err) {
-          alert("Erreur: " + (err?.message || String(err)));
-        }
+        openEditModal(b);
       });
     }
+
 
     if (btnCloseModal) btnCloseModal.addEventListener("click", () => closeModalBreakBatch());
     if (btnCancelModal) btnCancelModal.addEventListener("click", () => closeModalBreakBatch());

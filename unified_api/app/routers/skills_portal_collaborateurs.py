@@ -262,6 +262,11 @@ class BreakEventItem(BaseModel):
     date_debut: str
     date_fin: str
 
+class BreakEditPayload(BaseModel):
+    action: str  # "update" ou "archive"
+    date_debut: Optional[str] = None
+    date_fin: Optional[str] = None
+
 
 # ======================================================
 # Helpers
@@ -1884,6 +1889,92 @@ def options_archive_break(id_contact: str, id_break: str, request: Request):
     # Preflight CORS (obligatoire pour POST/PUT JSON)
     return Response(status_code=204, headers=_cors_headers_for_request(request))
 
+@router.options("/skills/collaborateurs/breaks/edit/{id_contact}/{id_break}")
+def options_edit_break(id_contact: str, id_break: str, request: Request):
+    return Response(status_code=204, headers=_cors_headers_for_request(request))
+
+
+@router.put("/skills/collaborateurs/breaks/edit/{id_contact}/{id_break}")
+@router.post("/skills/collaborateurs/breaks/edit/{id_contact}/{id_break}")
+def edit_break(
+    id_contact: str,
+    id_break: str,
+    payload: BreakEditPayload,
+    request: Request,
+):
+    """
+    Edition d'une indisponibilité:
+    - action="update": modifie date_debut/date_fin (anti-chevauchement sur même collaborateur)
+    - action="archive": archive l'indisponibilité (archive=TRUE)
+    """
+    try:
+        action = (payload.action or "").strip().lower()
+        if action not in ("update", "archive"):
+            raise HTTPException(status_code=400, detail="Action invalide (attendu: update ou archive).")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                # Récupère l'événement + collaborateur
+                cur.execute(
+                    """
+                    SELECT id_break, id_effectif, date_debut, date_fin, archive
+                    FROM public.tbl_effectif_client_break
+                    WHERE id_ent = %s AND id_break = %s
+                    """,
+                    (id_ent, id_break),
+                )
+                ev = cur.fetchone()
+                if not ev:
+                    raise HTTPException(status_code=404, detail="Indisponibilité introuvable.")
+                if bool(ev.get("archive")):
+                    raise HTTPException(status_code=400, detail="Indisponibilité déjà archivée.")
+
+                id_effectif = ev["id_effectif"]
+
+                if action == "archive":
+                    cur.execute(
+                        """
+                        UPDATE public.tbl_effectif_client_break
+                        SET archive = TRUE,
+                            dernier_update = NOW()
+                        WHERE id_ent = %s AND id_break = %s AND archive = FALSE
+                        """,
+                        (id_ent, id_break),
+                    )
+                    conn.commit()
+                    return JSONResponse({"ok": True, "action": "archive"}, headers=_cors_headers_for_request(request))
+
+                # action == "update"
+                d1 = _parse_iso_date_400("date_debut", payload.date_debut)
+                d2 = _parse_iso_date_400("date_fin", payload.date_fin)
+                if d2 < d1:
+                    raise HTTPException(status_code=400, detail="Dates invalides: date_fin < date_debut.")
+
+                # Anti-chevauchement DB pour ce collaborateur (exclut cet id_break)
+                _check_break_overlap_db_400(cur, id_ent, id_effectif, [(d1, d2)], exclude_id_break=id_break)
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client_break
+                    SET date_debut = %s,
+                        date_fin = %s,
+                        dernier_update = NOW()
+                    WHERE id_ent = %s
+                      AND id_break = %s
+                      AND archive = FALSE
+                    """,
+                    (d1, d2, id_ent, id_break),
+                )
+                conn.commit()
+
+                return JSONResponse({"ok": True, "action": "update"}, headers=_cors_headers_for_request(request))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
 @router.put("/skills/collaborateurs/breaks/archive/{id_contact}/{id_break}")
 @router.post("/skills/collaborateurs/breaks/archive/{id_contact}/{id_break}")
