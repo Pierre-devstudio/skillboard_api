@@ -16,6 +16,13 @@
   let _handlersBound = false;
   let _searchTimer = null;
 
+  // Indisponibilités (KPI + filtre table)
+  let _lastListItems = [];
+  let _breakNowIds = new Set();     // collaborateurs indispo aujourd'hui
+  let _breakNext30Ids = new Set();  // collaborateurs avec indispo qui démarre dans les 30j
+  let _breakFocus = null;           // "now" | "next30" | null
+
+
   function byId(id) {
     return document.getElementById(id);
   }
@@ -45,6 +52,36 @@
     const yyyy = d.getFullYear();
     return `${dd}/${mm}/${yyyy}`;
   }
+
+    function pad2(n) { return String(n).padStart(2, "0"); }
+
+  function toDateOnly(d) {
+    const x = (d instanceof Date) ? d : new Date(d);
+    return new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  }
+
+  function addDays(d, n) {
+    const x = toDateOnly(d);
+    x.setDate(x.getDate() + n);
+    return x;
+  }
+
+  function toYmd(d) {
+    const x = toDateOnly(d);
+    const yyyy = x.getFullYear();
+    const mm = pad2(x.getMonth() + 1);
+    const dd = pad2(x.getDate());
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function parseYmd(s) {
+    const v = (s || "").trim();
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v.length >= 10 ? v.slice(0, 10) : v);
+    if (!m) return null;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
 
   function getFilters() {
     const rawS = (byId("collabServiceSelect")?.value || "").trim();
@@ -88,6 +125,81 @@
     const url = `${API_BASE}/skills/collaborateurs/kpis/${encodeURIComponent(id_contact)}${qs}`;
     return await window.portal.apiJson(url);
   }
+
+    async function loadBreaks(id_contact, params) {
+    const qs = buildQuery(params || {});
+    const url = `${API_BASE}/skills/collaborateurs/breaks/${encodeURIComponent(id_contact)}${qs}`;
+    return await window.portal.apiJson(url);
+  }
+
+  async function refreshIndispoKpis(id_contact, filters, items) {
+    // Reset
+    _breakNowIds = new Set();
+    _breakNext30Ids = new Set();
+
+    // Scope: même périmètre que la liste (service + filtres liste déjà appliqués)
+    const list = Array.isArray(items) ? items : [];
+    const ids = list.map(x => String(x?.id_effectif || "").trim()).filter(Boolean);
+
+    if (!ids.length) {
+      setText("kpiBreakNow", 0);
+      setText("kpiBreakNext30", 0);
+      return;
+    }
+
+    const today = toDateOnly(new Date());
+    const end30 = addDays(today, 30);
+
+    // On récupère toutes les indispos qui intersectent [today ; today+30]
+    const breaks = await loadBreaks(id_contact, {
+      start: toYmd(today),
+      end: toYmd(end30),
+      id_service: filters?.id_service || null,
+      ids_effectif: ids.join(",")
+    });
+
+    const rows = Array.isArray(breaks) ? breaks : [];
+
+    rows.forEach(b => {
+      const id_eff = String(b?.id_effectif || "").trim();
+      if (!id_eff) return;
+
+      const ds = parseYmd(b?.date_debut);
+      const de = parseYmd(b?.date_fin);
+      if (!ds || !de) return;
+
+      const s = toDateOnly(ds);
+      const e = toDateOnly(de);
+
+      // En cours: start <= today <= end
+      if (s <= today && e >= today) {
+        _breakNowIds.add(id_eff);
+      }
+
+      // A venir: start dans (today ; today+30]
+      if (s > today && s <= end30) {
+        _breakNext30Ids.add(id_eff);
+      }
+    });
+
+    setText("kpiBreakNow", _breakNowIds.size);
+    setText("kpiBreakNext30", _breakNext30Ids.size);
+  }
+
+  function applyIndispoFocus(items) {
+    const list = Array.isArray(items) ? items : [];
+
+    if (_breakFocus === "now") {
+      return list.filter(x => _breakNowIds.has(String(x?.id_effectif || "")));
+    }
+
+    if (_breakFocus === "next30") {
+      return list.filter(x => _breakNext30Ids.has(String(x?.id_effectif || "")));
+    }
+
+    return list;
+  }
+
 
   async function loadList(id_contact, filters) {
     const qs = buildQuery(filters);
@@ -1533,7 +1645,7 @@
           }
         });
       }
-      
+
       const btnClose = byId("btnCloseCollabModal");
       const btnClose2 = byId("btnCollabModalClose");
       const modal = byId("modalCollaborateur");

@@ -69,30 +69,28 @@
         </div>
       </div>
 
+
       <!-- Tuile Indisponibilités -->
       <div class="card" id="collabIndispoTile" style="margin-top:12px;">
         <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; flex-wrap:wrap;">
           <div>
             <div class="card-title" style="margin-bottom:4px;">Indisponibilités</div>
-            <div class="card-sub" style="margin:0;">
-              Accédez au planning et planifiez les indisponibilités (dates uniquement).
-            </div>
+            <div class="card-sub" style="margin:0;">Accédez au planning et planifiez les indisponibilités.</div>
           </div>
 
           <button type="button" class="btn-secondary" id="btnOpenIndispoPlanning"
                   style="background:var(--accent); border-color:var(--accent); color:#fff;">
             Voir le planning
           </button>
-
         </div>
 
         <div class="row" style="margin-top:12px;">
-          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+          <div class="card" id="kpiBreakNowCard" style="padding:12px; margin:0; flex:1; min-width:160px; cursor:pointer;">
             <div class="label">Indispos en cours</div>
             <div class="value" id="kpiBreakNow">–</div>
           </div>
 
-          <div class="card" style="padding:12px; margin:0; flex:1; min-width:160px;">
+          <div class="card" id="kpiBreakNext30Card" style="padding:12px; margin:0; flex:1; min-width:160px; cursor:pointer;">
             <div class="label">Indispos à venir (30j)</div>
             <div class="value" id="kpiBreakNext30">–</div>
           </div>
@@ -101,6 +99,7 @@
     </div>
 
     <!-- Colonne contenu -->
+
 
     <div class="sb-col">
       <!-- KPI -->
