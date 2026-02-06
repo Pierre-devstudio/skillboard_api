@@ -411,58 +411,97 @@
     host.appendChild(tr);
   }
 
-  function collectBatchItems() {
+  function _setBatchStatus(tr, text, kind) {
+    const cell = tr ? tr.querySelector(".sb-batch-status") : null;
+    if (cell) cell.textContent = text || "—";
+
+    if (tr) {
+      tr.dataset.batchKind = kind || "";
+      tr.classList.toggle("is-ok", kind === "ok");
+      tr.classList.toggle("is-err", kind === "err");
+    }
+  }
+
+  function validateBatchRows() {
     const host = byId("breakBatchRows");
-    if (!host) return [];
+    const rows = host ? Array.from(host.querySelectorAll("tr")) : [];
 
-    const rows = Array.from(host.querySelectorAll("tr"));
-    const items = [];
+    const valids = []; // {tr, ds, de, item}
+    let hasError = false;
 
-    rows.forEach(r => {
-      const s = r.querySelector('[data-k="start"]')?.value || "";
-      const e = r.querySelector('[data-k="end"]')?.value || "";
-      const ds = s.trim();
-      const de = e.trim();
-      if (!ds && !de) return;
+    // 1) validations simples par ligne
+    for (const tr of rows) {
+      const s = (tr.querySelector('[data-k="start"]')?.value || "").trim();
+      const e = (tr.querySelector('[data-k="end"]')?.value || "").trim();
 
-      items.push({ date_debut: ds, date_fin: de });
-    });
+      if (!s && !e) {
+        _setBatchStatus(tr, "—", "skip");
+        continue;
+      }
 
-    return items;
-  }
+      if (!s || !e) {
+        _setBatchStatus(tr, "Dates manquantes", "err");
+        hasError = true;
+        continue;
+      }
 
-  function validateBatchItems(items) {
-    if (!items.length) return "Ajoute au moins une indisponibilité.";
+      const ds = parseYmd(s);
+      const de = parseYmd(e);
 
-    const parsed = items.map(it => {
-      const ds = parseYmd(it.date_debut);
-      const de = parseYmd(it.date_fin);
-      return { ds, de };
-    });
+      if (!ds || !de) {
+        _setBatchStatus(tr, "Dates invalides", "err");
+        hasError = true;
+        continue;
+      }
 
-    for (const p of parsed) {
-      if (!p.ds || !p.de) return "Dates invalides (format attendu: YYYY-MM-DD).";
-      if (p.ds > p.de) return "Date début > date fin.";
+      if (de < ds) {
+        _setBatchStatus(tr, "Fin < début", "err");
+        hasError = true;
+        continue;
+      }
+
+      // OK provisoire (peut passer en erreur si chevauchement intra-lot)
+      _setBatchStatus(tr, "OK", "ok");
+      valids.push({ tr, ds, de, item: { date_debut: s, date_fin: e } });
     }
 
-    parsed.sort((a, b) => a.ds - b.ds);
-    for (let i = 1; i < parsed.length; i++) {
-      const prev = parsed[i - 1];
-      const cur = parsed[i];
-      if (cur.ds <= prev.de) return "Chevauchement détecté dans les dates saisies (même collaborateur).";
+    // 2) anti-chevauchement intra-lot (inclusif)
+    const ordered = valids.slice().sort((a, b) => (a.ds - b.ds) || (a.de - b.de));
+
+    for (let i = 1; i < ordered.length; i++) {
+      const prev = ordered[i - 1];
+      const cur = ordered[i];
+
+      // chevauchement inclusif: cur.start <= prev.end
+      if (cur.ds <= prev.de) {
+        _setBatchStatus(prev.tr, "Chevauchement", "err");
+        _setBatchStatus(cur.tr, "Chevauchement", "err");
+        hasError = true;
+
+        // on garde le "prev" le plus englobant pour comparer la suite
+        if (cur.de > prev.de) ordered[i].de = cur.de;
+      }
     }
 
-    return null;
+    // items à envoyer (uniquement lignes valides)
+    const items = valids
+      .filter(x => (x.tr?.dataset?.batchKind || "") === "ok")
+      .map(x => x.item);
+
+    return { hasError, items };
   }
+
 
   async function saveBatch(id_contact) {
     const sel = byId("breakBatchEffectifSelect");
     const id_eff = (sel?.value || "").trim();
     if (!id_eff) throw new Error("Choisis un collaborateur.");
 
-    const items = collectBatchItems();
-    const err = validateBatchItems(items);
-    if (err) throw new Error(err);
+    const chk = validateBatchRows();
+    if (chk.hasError) throw new Error("Corrige les lignes en erreur.");
+    const items = chk.items;
+    if (!items.length) throw new Error("Ajoute au moins une indisponibilité.");
+
 
     const url = `${API_BASE}/skills/collaborateurs/breaks/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_eff)}`;
 
