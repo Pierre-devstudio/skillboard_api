@@ -1662,6 +1662,29 @@
         });
       }
 
+            const kpiNowCard = byId("kpiBreakNowCard");
+      const kpiNext30Card = byId("kpiBreakNext30Card");
+
+      const toggleFocus = async (mode) => {
+        _breakFocus = (_breakFocus === mode) ? null : mode;
+
+        // Re-render immédiat depuis la dernière liste chargée
+        const listToRender = (typeof applyIndispoFocus === "function")
+          ? applyIndispoFocus(_lastListItems)
+          : _lastListItems;
+
+        renderList(listToRender);
+      };
+
+      if (kpiNowCard) {
+        kpiNowCard.addEventListener("click", () => toggleFocus("now"));
+      }
+
+      if (kpiNext30Card) {
+        kpiNext30Card.addEventListener("click", () => toggleFocus("next30"));
+      }
+
+
       const btnClose = byId("btnCloseCollabModal");
       const btnClose2 = byId("btnCollabModalClose");
       const modal = byId("modalCollaborateur");
