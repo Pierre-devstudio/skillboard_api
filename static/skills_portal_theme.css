@@ -317,16 +317,25 @@
 
 #modalBreakEdit .sb-edit-dates{
   margin-left: 16px;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
 #modalBreakEdit .sb-edit-dates .info-item{
-  flex: 1 1 260px;
-  min-width: 260px;
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: none !important;
+  float: none !important;
+  position: static !important;
 }
 
+@media (max-width: 720px){
+  #modalBreakEdit .sb-edit-dates{
+    grid-template-columns: 1fr;
+    margin-left: 0;
+  }
+}
 /* Référentiel compétences: tables plus aérées et lisibles */
 #view-referentiel-competences .sb-table {
   width: 100%;
