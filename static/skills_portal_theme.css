@@ -43,6 +43,12 @@
   /*Special */
   --sb-comp: rgb(55, 99, 167);
   --sb-critere: rgb(121, 72, 37);
+
+  /* Modal titles (standard global) */
+  --sb-modal-title-size: 15px;
+  --sb-modal-title-weight: 800;
+  --sb-modal-title-color: var(--sb-gray-900);
+  --sb-modal-title-letterspacing: 0.1px;
 }
 
 
@@ -174,10 +180,18 @@
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
-  font-size: 15px;
-  font-weight: 800;
 }
 
+/* Convention: le titre dans le header a un id qui finit par "Title" (refModalTitle, collabModalTitle, etc.) */
+.modal .modal-header > [id$="Title"],
+.sb-collab-modal-head > [id$="Title"],
+.modal .modal-header > .sb-modal-title,
+.modal .modal-header > .sb-modal-titleline{
+  font-size: var(--sb-modal-title-size);
+  font-weight: var(--sb-modal-title-weight);
+  color: var(--sb-modal-title-color);
+  letter-spacing: var(--sb-modal-title-letterspacing);
+}
 /* -------- Buttons (modifiers manquants) -------- */
 .sb-btn--xs{
   height:26px;
