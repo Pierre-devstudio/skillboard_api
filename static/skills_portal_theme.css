@@ -39,6 +39,9 @@
 
   /* Focus ring */
   --sb-ring-accent: 0 0 0 3px rgba(var(--sb-accent-rgb), 0.18);
+
+  /*Special */
+  --sb-comp: rgb(49, 93, 158);
 }
 
 
@@ -185,10 +188,10 @@
 
 /* Badge code compétence (si tu gardes ce nom au lieu de sb-badge--success) */
 .sb-badge.sb-badge-ref-comp-code{
-  background: var(--sb-success);
-  border-color: var(--sb-success);
+  background: var(--sb-comp);
+  border-color: var(--sb-comp);
   color:#fff;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 
