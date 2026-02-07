@@ -155,7 +155,7 @@
   vertical-align:middle;
   border-bottom:1px solid var(--sb-gray-100);
   line-height:1.35;
-  font-size: var(--sb-fs-13);
+  font-size: var(--sb-fs-14);
 }
 
 .sb-table--zebra tbody tr:nth-child(even){ background: var(--sb-gray-50); }
