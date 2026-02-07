@@ -1241,65 +1241,65 @@ button[id$="ModalClose"]:active{
   --collab-badge-indispo-fg: #111827;
 }
 
-/* Style unique (tous badges header du modal) */
-#modalCollaborateur .sb-collab-status-badge{
+/* Base badge (on cible seulement ceux du header du modal) */
+#modalCollaborateur #collabModalBadges .sb-badge{
   display:inline-flex;
   align-items:center;
   justify-content:center;
-  height:20px;
+  height:22px;
   padding:0 10px;
   border-radius:999px;
   font-size:12px;
   font-weight:800;
   line-height:1;
   white-space:nowrap;
-
-  background: var(--collab-badge-default-bg);
   border:1px solid var(--collab-badge-default-border);
+  background: var(--collab-badge-default-bg);
   color: var(--collab-badge-default-fg);
 }
 
-/* Variantes */
-#modalCollaborateur .sb-collab-status-badge.is-actif{
+/* Variantes couleur (seront pleinement exploitées au PATCH 2/2 JS) */
+#modalCollaborateur #collabModalBadges .sb-badge--indispo,
+#modalCollaborateur #collabModalBadges .sb-badge-indispo{
+  background: var(--collab-badge-indispo-bg);
+  border-color: var(--collab-badge-indispo-border);
+  color: var(--collab-badge-indispo-fg);
+}
+
+#modalCollaborateur #collabModalBadges .sb-badge--actif{
   background: var(--collab-badge-actif-bg);
   border-color: var(--collab-badge-actif-border);
   color: var(--collab-badge-actif-fg);
 }
 
-#modalCollaborateur .sb-collab-status-badge.is-inactif{
+#modalCollaborateur #collabModalBadges .sb-badge--inactif{
   background: var(--collab-badge-inactif-bg);
   border-color: var(--collab-badge-inactif-border);
   color: var(--collab-badge-inactif-fg);
 }
 
-#modalCollaborateur .sb-collab-status-badge.is-archive{
-  background: var(--collab-badge-archive-bg);
-  border-color: var(--collab-badge-archive-border);
-  color: var(--collab-badge-archive-fg);
-}
-
-#modalCollaborateur .sb-collab-status-badge.is-temp{
+#modalCollaborateur #collabModalBadges .sb-badge--temp{
   background: var(--collab-badge-temp-bg);
   border-color: var(--collab-badge-temp-border);
   color: var(--collab-badge-temp-fg);
 }
 
-#modalCollaborateur .sb-collab-status-badge.is-manager{
+#modalCollaborateur #collabModalBadges .sb-badge--manager{
   background: var(--collab-badge-manager-bg);
   border-color: var(--collab-badge-manager-border);
   color: var(--collab-badge-manager-fg);
 }
 
-#modalCollaborateur .sb-collab-status-badge.is-formateur{
+#modalCollaborateur #collabModalBadges .sb-badge--formateur{
   background: var(--collab-badge-formateur-bg);
   border-color: var(--collab-badge-formateur-border);
   color: var(--collab-badge-formateur-fg);
 }
 
-#modalCollaborateur .sb-collab-status-badge.is-indispo{
-  background: var(--collab-badge-indispo-bg);
-  border-color: var(--collab-badge-indispo-border);
-  color: var(--collab-badge-indispo-fg);
+#modalCollaborateur #collabModalBadges .sb-badge--archive{
+  background: var(--collab-badge-archive-bg);
+  border-color: var(--collab-badge-archive-border);
+  color: var(--collab-badge-archive-fg);
 }
 
 /* ======================================================

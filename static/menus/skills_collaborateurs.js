@@ -781,21 +781,21 @@
               // Badge Indisponible (si indispo en cours aujourd’hui)
               try {
                 const indispo = await isEffectifIndispoToday(id_contact, it.id_effectif);
-                if (indispo) badges.push({ label: "Indisponible", cls: "is-indispo" });
+                if (indispo) badges.push({ label: "Indisponible", cls: "sb-badge--indispo" });
               } catch (_) {}
 
-              if (d.archive) badges.push({ label: "Archivé", cls: "is-archive" });
-              else if (d.statut_actif) badges.push({ label: "Actif", cls: "is-actif" });
-              else badges.push({ label: "Inactif", cls: "is-inactif" });
+              if (d.archive) badges.push({ label: "Archivé", cls: "sb-badge--archive" });
+              else if (d.statut_actif) badges.push({ label: "Actif", cls: "sb-badge--actif" });
+              else badges.push({ label: "Inactif", cls: "sb-badge--inactif" });
 
-              if (d.is_temp) badges.push({ label: "Temp", cls: "is-temp" });
-              if (d.ismanager) badges.push({ label: "Manager", cls: "is-manager" });
-              if (d.isformateur) badges.push({ label: "Formateur", cls: "is-formateur" });
-
+              if (d.is_temp) badges.push({ label: "Temp", cls: "sb-badge--temp" });
+              if (d.ismanager) badges.push({ label: "Manager", cls: "sb-badge--manager" });
+              if (d.isformateur) badges.push({ label: "Formateur", cls: "sb-badge--formateur" });
 
               const badgesHtml = badges
-                .map(b => `<span class="sb-collab-badge ${escapeHtml(b.cls)}">${escapeHtml(b.label)}</span>`)
+                .map(b => `<span class="sb-badge ${escapeHtml(b.cls)}">${escapeHtml(b.label)}</span>`)
                 .join("");
+
 
 
               // Push badges dans le header du modal (à côté du nom)
