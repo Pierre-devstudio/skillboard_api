@@ -706,6 +706,7 @@
 #modalRefDetail .sb-acc-body li{
   line-height: 1.45;      /* lecture plus fluide */
   margin: 6px 0;          /* espace entre items */
+  font-size: 13px;
 }
 
 #modalRefDetail .sb-acc-body li:last-child{
