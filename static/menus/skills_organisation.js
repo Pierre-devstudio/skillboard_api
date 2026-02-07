@@ -539,7 +539,7 @@
       row.className = "org-poste-row";
 
       const badgeEff = `<span class="sb-badge">${escapeHtml((p.nb_effectifs ?? 0).toString())} collab.</span>`;
-      const badgeResp = p.isresponsable ? `<span class="sb-badge sb-badge-accent">Responsable</span>` : "";
+      const badgeResp = p.isresponsable ? `<span class="sb-badge sb-badge-manager">Responsable</span>` : "";
 
       const code = (p.codif_poste || "").trim();
       const title = (p.intitule_poste || "").trim();

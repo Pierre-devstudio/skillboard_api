@@ -44,6 +44,7 @@
   --sb-comp: rgb(55, 99, 167);
   --sb-critere: rgb(121, 72, 37);
   --sb-poste: rgb(209, 51, 188);
+  --sb-manager: rgb(202, 199, 16);
 
   /* Modal titles (standard global) */
   --sb-modal-title-size: 15px;
@@ -162,6 +163,18 @@
   background: color-mix(in srgb, var(--accent) 10%, #ffffff);
   border-color: var(--sb-critere);
   color: var(--sb-critere);
+}
+
+/* Badge "Manager" */
+.sb-badge.sb-badge-manager{
+  font-size: 11px;          /* police plus petite */
+  font-weight: 600;         /* plus “badge” */
+  height: 22px;             /* garde le gabarit */
+  padding: 0 10px;
+  
+  background: color-mix(in srgb, var(--sb-manager) 10%, #ffffff);
+  border-color: var(--sb-manager);
+  color: var(--sb-manager);
 }
 
 
@@ -2138,7 +2151,7 @@ body{
    - Cible uniquement la vue "Votre organisation"
    - Exclut le badge "Responsable" (.sb-badge-accent)
    ====================================================== */
-#view-votre-organisation .sb-acc-right .sb-badge:not(.sb-badge-accent){
+#view-votre-organisation .sb-acc-right .sb-badge:not(.sb-badge-manager){
   border-color: var(--sb-poste);
   color: var(--sb-poste);
   font-weight: 700;
