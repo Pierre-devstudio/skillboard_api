@@ -42,6 +42,7 @@
 
   /*Special */
   --sb-comp: rgb(55, 99, 167);
+  --sb-critere: rgb(121, 72, 37);
 }
 
 
@@ -122,6 +123,19 @@
 .sb-badge--warning{ background: var(--sb-warning); border-color: var(--sb-warning); color:#fff; }
 .sb-badge--info{    background: var(--sb-info);    border-color: var(--sb-info);    color:#fff; }
 .sb-badge--violet{  background: var(--sb-violet);  border-color: var(--sb-violet);  color:#fff; }
+
+/* Badge "Critère" (grille d'évaluation) */
+.sb-badge.sb-badge-critere{
+  font-size: 11px;          /* police plus petite */
+  font-weight: 600;         /* plus “badge” */
+  height: 22px;             /* garde le gabarit */
+  padding: 0 10px;
+  
+  background: color-mix(in srgb, var(--accent) 10%, #ffffff);
+  border-color: var(--sb-critere);
+  color: var(--sb-critere);
+}
+
 
 /* -------- Tables (modifiers) -------- */
 .sb-table{ width:100%; border-collapse: separate; border-spacing:0; }
