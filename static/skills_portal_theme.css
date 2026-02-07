@@ -2224,7 +2224,6 @@ body{
   width: min(980px, calc(100vw - 24px));
 }
 
-/* Tabs (sb-seg) actives dans CE modal */
 /* Badge poste dans le modal (vert + texte blanc) */
 #modalOrgPoste .sb-badge-poste-code{
   background: rgb(62,190,73);
@@ -2338,27 +2337,6 @@ body{
 #modalOrgPoste .sb-richtext > :first-child{
   margin-top: 0 !important;
 }
-
-
-/* Onglets: accent plein, texte blanc */
-#modalOrgPoste .sb-seg{
-  font-weight: 700;
-  background: var(--accent);
-  color:#fff;
-  border-color: var(--accent);
-}
-
-#modalOrgPoste .sb-seg:hover{
-  filter: brightness(0.95);
-}
-
-#modalOrgPoste .sb-seg.is-active{
-  background: var(--accent);
-  color:#fff;
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 2px #ffffff;
-}
-
 
 /* Panels */
 #modalOrgPoste .sb-tab-panel{ display:none; }

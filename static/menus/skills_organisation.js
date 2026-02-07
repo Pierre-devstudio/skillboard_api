@@ -26,9 +26,12 @@
     const modal = byId("modalOrgPoste");
     if (!modal) return;
 
-    modal.querySelectorAll("#orgPosteTabbar .sb-seg").forEach(btn => {
-      btn.classList.toggle("is-active", btn.getAttribute("data-tab") === tab);
+    modal.querySelectorAll("#orgPosteTabbar [data-tab]").forEach(btn => {
+      const isOn = (btn.getAttribute("data-tab") === tab);
+      btn.classList.toggle("sb-btn--accent", isOn);
+      btn.classList.toggle("sb-btn--soft", !isOn);
     });
+
 
     modal.querySelectorAll(".sb-tab-panel").forEach(p => {
       const isOn = (p.getAttribute("data-panel") === tab);
@@ -129,7 +132,7 @@
     });
 
     // Tabs
-    modal.querySelectorAll("#orgPosteTabbar .sb-seg").forEach(btn => {
+    modal.querySelectorAll("#orgPosteTabbar [data-tab]").forEach(btn => {
       btn.addEventListener("click", () => {
         const tab = btn.getAttribute("data-tab");
         setOrgPosteTab(tab);
