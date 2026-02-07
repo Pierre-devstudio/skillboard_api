@@ -1060,8 +1060,10 @@
     const filtered = _currentPostes.filter(p => {
       const a = (p.codif_poste || "").toLowerCase();
       const b = (p.intitule_poste || "").toLowerCase();
-      return a.includes(q) || b.includes(q);
+      const c = (p.codif_client || "").toLowerCase();
+      return a.includes(q) || b.includes(q) || c.includes(q);
     });
+
     renderPostes(filtered);
   }
 

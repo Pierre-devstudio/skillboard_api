@@ -204,15 +204,16 @@
 }
 
 /* Convention: le titre dans le header a un id qui finit par "Title" (refModalTitle, collabModalTitle, etc.) */
-.modal .modal-header > [id$="Title"],
-.sb-collab-modal-head > [id$="Title"],
-.modal .modal-header > .sb-modal-title,
-.modal .modal-header > .sb-modal-titleline{
+.modal .modal-header [id$="Title"],
+.sb-collab-modal-head [id$="Title"],
+.modal .modal-header .sb-modal-title,
+.modal .modal-header .sb-modal-titleline{
   font-size: var(--sb-modal-title-size);
   font-weight: var(--sb-modal-title-weight);
   color: var(--sb-modal-title-color);
   letter-spacing: var(--sb-modal-title-letterspacing);
 }
+
 /* -------- Buttons (modifiers manquants) -------- */
 .sb-btn--xs{
   height:26px;
