@@ -44,7 +44,7 @@
   --sb-comp: rgb(55, 99, 167);
   --sb-critere: rgb(121, 72, 37);
   --sb-poste: rgb(209, 51, 188);
-  --sb-manager: rgb(202, 199, 16);
+  --sb-manager: rgb(202, 174, 16);
 
   /* Modal titles (standard global) */
   --sb-modal-title-size: 15px;
@@ -172,7 +172,7 @@
   height: 22px;             /* garde le gabarit */
   padding: 0 10px;
   
-  background: color-mix(in srgb, var(--sb-manager) 10%, #ffffff);
+  background: color-mix(in srgb, var(--sb-manager) 5%, #ffffff);
   border-color: var(--sb-manager);
   color: var(--sb-manager);
 }
