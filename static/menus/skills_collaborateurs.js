@@ -779,14 +779,16 @@
               const badges = [];
 
               // Badge Indisponible (si indispo en cours aujourd’hui)
-              try {
-                const indispo = await isEffectifIndispoToday(id_contact, it.id_effectif);
-                if (indispo) badges.push({ label: "Indisponible", cls: "sb-badge--indispo" });
-              } catch (_) {}
+              
 
               if (d.archive) badges.push({ label: "Archivé", cls: "sb-badge--archive" });
               else if (d.statut_actif) badges.push({ label: "Actif", cls: "sb-badge--actif" });
               else badges.push({ label: "Inactif", cls: "sb-badge--inactif" });
+
+              try {
+                const indispo = await isEffectifIndispoToday(id_contact, it.id_effectif);
+                if (indispo) badges.push({ label: "Indisponible", cls: "sb-badge--indispo" });
+              } catch (_) {}
 
               if (d.is_temp) badges.push({ label: "Temp", cls: "sb-badge--temp" });
               if (d.ismanager) badges.push({ label: "Manager", cls: "sb-badge-manager" });

@@ -69,13 +69,13 @@
   --sb-badge-temp-border: #0284c7;
   --sb-badge-temp-fg: #ffffff;
 
-  --sb-badge-formateur-bg: #a855f7;
-  --sb-badge-formateur-border: #a855f7;
-  --sb-badge-formateur-fg: #ffffff;
+  --sb-badge-formateur-bg: #f82fcd79;
+  --sb-badge-formateur-border: #f82fcc;
+  --sb-badge-formateur-fg: #f82fcc;
 
-  --sb-badge-indispo-bg: #f59e0b;
+  --sb-badge-indispo-bg: #f59f0b7a;
   --sb-badge-indispo-border: #f59e0b;
-  --sb-badge-indispo-fg: #111827;
+  --sb-badge-indispo-fg: #f59e0b;
 
   /* Modal titles (standard global) */
   --sb-modal-title-size: 15px;
