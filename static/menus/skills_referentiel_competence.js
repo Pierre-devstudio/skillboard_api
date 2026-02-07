@@ -671,17 +671,17 @@
 
         <div class="ref-levels-table">
           <div class="ref-level-row">
-            <span class="sb-badge sb-badge-accent ref-level-badge">A - Initial</span>
+            <span class="sb-badge sb-badge--info ref-level-badge">A - Initial</span>
             <div class="ref-level-text">${escapeHtml(c.niveaua || "—")}</div>
           </div>
 
           <div class="ref-level-row">
-            <span class="sb-badge sb-badge-accent ref-level-badge">B - Avancé</span>
+            <span class="sb-badge sb-badge--info ref-level-badge">B - Avancé</span>
             <div class="ref-level-text">${escapeHtml(c.niveaub || "—")}</div>
           </div>
 
           <div class="ref-level-row">
-            <span class="sb-badge sb-badge-accent ref-level-badge">C - Expert</span>
+            <span class="sb-badge sb-badge--info ref-level-badge">C - Expert</span>
             <div class="ref-level-text">${escapeHtml(c.niveauc || "—")}</div>
           </div>
         </div>
