@@ -519,7 +519,7 @@
         <details class="sb-accordion">
           <summary style="display:flex; justify-content:space-between; align-items:center;">
             <span style="font-weight:600;">${nom}</span>
-            <span class="sb-badge">${escapeHtml(k)}</span>
+            <span class="sb-badge sb-badge-critere">${escapeHtml(k)}</span>
           </summary>
           <div class="sb-acc-body">
             <ul style="margin:0; padding-left:18px;">
