@@ -212,6 +212,34 @@
     return await window.portal.apiJson(url);
   }
 
+    async function loadBreaks(id_contact, params) {
+    const qs = buildQuery(params || {});
+    const url = `${API_BASE}/skills/collaborateurs/breaks/${encodeURIComponent(id_contact)}${qs}`;
+    return await window.portal.apiJson(url);
+  }
+
+  function toYmd(d) {
+    const x = (d instanceof Date) ? d : new Date(d);
+    const yyyy = x.getFullYear();
+    const mm = String(x.getMonth() + 1).padStart(2, "0");
+    const dd = String(x.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  async function isEffectifIndispoToday(id_contact, id_effectif) {
+    if (!id_contact || !id_effectif) return false;
+    const today = toYmd(new Date());
+
+    const rows = await loadBreaks(id_contact, {
+      start: today,
+      end: today,
+      ids_effectif: String(id_effectif)
+    });
+
+    return Array.isArray(rows) && rows.length > 0;
+  }
+
+
   async function loadCompetences(id_contact, id_effectif) {
     const url = `${API_BASE}/skills/collaborateurs/competences/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_effectif)}`;
     return await window.portal.apiJson(url);
@@ -749,16 +777,26 @@
 
               // Badges (statuts)
               const badges = [];
-              if (d.archive) badges.push("Archivé");
-              else if (d.statut_actif) badges.push("Actif");
-              else badges.push("Inactif");
-              if (d.is_temp) badges.push("Temp");
-              if (d.ismanager) badges.push("Manager");
-              if (d.isformateur) badges.push("Formateur");
+
+              // Badge Indisponible (si indispo en cours aujourd’hui)
+              try {
+                const indispo = await isEffectifIndispoToday(id_contact, it.id_effectif);
+                if (indispo) badges.push({ label: "Indisponible", cls: "is-indispo" });
+              } catch (_) {}
+
+              if (d.archive) badges.push({ label: "Archivé", cls: "is-archive" });
+              else if (d.statut_actif) badges.push({ label: "Actif", cls: "is-actif" });
+              else badges.push({ label: "Inactif", cls: "is-inactif" });
+
+              if (d.is_temp) badges.push({ label: "Temp", cls: "is-temp" });
+              if (d.ismanager) badges.push({ label: "Manager", cls: "is-manager" });
+              if (d.isformateur) badges.push({ label: "Formateur", cls: "is-formateur" });
+
 
               const badgesHtml = badges
-                .map(lbl => `<span class="sb-badge">${escapeHtml(lbl)}</span>`)
+                .map(b => `<span class="sb-collab-badge ${escapeHtml(b.cls)}">${escapeHtml(b.label)}</span>`)
                 .join("");
+
 
               // Push badges dans le header du modal (à côté du nom)
               const headerBadges = byId("collabModalBadges");

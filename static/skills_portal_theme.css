@@ -1201,6 +1201,108 @@ button[id$="ModalClose"]:active{
 }
 
 /* ======================================================
+   Modal Collaborateur: badges (statuts) — couleurs centralisées
+   Objectif: 1 seul endroit pour modifier les couleurs
+   ====================================================== */
+
+#modalCollaborateur{
+  /* Default (fallback) */
+  --collab-badge-default-bg: #9ca3af;
+  --collab-badge-default-border: #9ca3af;
+  --collab-badge-default-fg: #ffffff;
+
+  /* Statuts */
+  --collab-badge-actif-bg: rgb(62,190,73);
+  --collab-badge-actif-border: rgb(62,190,73);
+  --collab-badge-actif-fg: #ffffff;
+
+  --collab-badge-inactif-bg: #6b7280;
+  --collab-badge-inactif-border: #6b7280;
+  --collab-badge-inactif-fg: #ffffff;
+
+  --collab-badge-archive-bg: #111827;
+  --collab-badge-archive-border: #111827;
+  --collab-badge-archive-fg: #ffffff;
+
+  --collab-badge-temp-bg: #0284c7;
+  --collab-badge-temp-border: #0284c7;
+  --collab-badge-temp-fg: #ffffff;
+
+  --collab-badge-manager-bg: #7c3aed;
+  --collab-badge-manager-border: #7c3aed;
+  --collab-badge-manager-fg: #ffffff;
+
+  --collab-badge-formateur-bg: #a855f7;
+  --collab-badge-formateur-border: #a855f7;
+  --collab-badge-formateur-fg: #ffffff;
+
+  --collab-badge-indispo-bg: #f59e0b;
+  --collab-badge-indispo-border: #f59e0b;
+  --collab-badge-indispo-fg: #111827;
+}
+
+/* Style unique (tous badges header du modal) */
+#modalCollaborateur .sb-collab-status-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:20px;
+  padding:0 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+  line-height:1;
+  white-space:nowrap;
+
+  background: var(--collab-badge-default-bg);
+  border:1px solid var(--collab-badge-default-border);
+  color: var(--collab-badge-default-fg);
+}
+
+/* Variantes */
+#modalCollaborateur .sb-collab-status-badge.is-actif{
+  background: var(--collab-badge-actif-bg);
+  border-color: var(--collab-badge-actif-border);
+  color: var(--collab-badge-actif-fg);
+}
+
+#modalCollaborateur .sb-collab-status-badge.is-inactif{
+  background: var(--collab-badge-inactif-bg);
+  border-color: var(--collab-badge-inactif-border);
+  color: var(--collab-badge-inactif-fg);
+}
+
+#modalCollaborateur .sb-collab-status-badge.is-archive{
+  background: var(--collab-badge-archive-bg);
+  border-color: var(--collab-badge-archive-border);
+  color: var(--collab-badge-archive-fg);
+}
+
+#modalCollaborateur .sb-collab-status-badge.is-temp{
+  background: var(--collab-badge-temp-bg);
+  border-color: var(--collab-badge-temp-border);
+  color: var(--collab-badge-temp-fg);
+}
+
+#modalCollaborateur .sb-collab-status-badge.is-manager{
+  background: var(--collab-badge-manager-bg);
+  border-color: var(--collab-badge-manager-border);
+  color: var(--collab-badge-manager-fg);
+}
+
+#modalCollaborateur .sb-collab-status-badge.is-formateur{
+  background: var(--collab-badge-formateur-bg);
+  border-color: var(--collab-badge-formateur-border);
+  color: var(--collab-badge-formateur-fg);
+}
+
+#modalCollaborateur .sb-collab-status-badge.is-indispo{
+  background: var(--collab-badge-indispo-bg);
+  border-color: var(--collab-badge-indispo-border);
+  color: var(--collab-badge-indispo-fg);
+}
+
+/* ======================================================
    Modal Collaborateur: onglet Identification (blocs + contrôles prêts édition)
    ====================================================== */
 
