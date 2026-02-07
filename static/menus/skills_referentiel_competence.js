@@ -255,7 +255,7 @@
         <td class="col-center col-level">${niveauRequisCell(it)}</td>
         <td class="col-center col-postes">${it.nb_postes_concernes ?? 0}</td>
         <td class="col-center col-detail">
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-action="detail">Détail</button>
+          <button type="button" class="sb-btn sb-btn--xs" data-action="detail">Détail</button>
         </td>
       `;
 
