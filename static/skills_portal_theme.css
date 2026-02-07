@@ -208,7 +208,7 @@
   color: var(--sb-manager);
 }
 
-.sb-badge.sb-badge-indispo{
+.sb-badge.sb-badge--indispo{
   font-size: 11px;          /* police plus petite */
   font-weight: 600;         /* plus “badge” */
   height: 22px;             /* garde le gabarit */
@@ -258,7 +258,7 @@
   height: 22px;             /* garde le gabarit */
   padding: 0 10px;
 
-  background: var(--sb-badge-formateur-bg);
+  background: color-mix(in srgb, var(--sb-badge-formateur-bg) 5%, #ffffff);
   border-color: var(--sb-badge-formateur-border);
   color: var(--sb-badge-formateur-fg);
 }
