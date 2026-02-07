@@ -789,7 +789,7 @@
               else badges.push({ label: "Inactif", cls: "sb-badge--inactif" });
 
               if (d.is_temp) badges.push({ label: "Temp", cls: "sb-badge--temp" });
-              if (d.ismanager) badges.push({ label: "Manager", cls: "sb-badge--manager" });
+              if (d.ismanager) badges.push({ label: "Manager", cls: "sb-badge-manager" });
               if (d.isformateur) badges.push({ label: "Formateur", cls: "sb-badge--formateur" });
 
               const badgesHtml = badges
