@@ -909,11 +909,23 @@
         : "";
 
       const tr = document.createElement("tr");
+      const critVal = Number(critTxt);
+      const lvl =
+        !isFinite(critVal) ? 0 :
+        (critVal >= 80 ? 5 :
+        critVal >= 60 ? 4 :
+        critVal >= 40 ? 3 :
+        critVal >= 20 ? 2 : 1);
+
+      const critHtml = isFinite(critVal)
+        ? `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité : ${escapeHtml(String(critVal))}">${escapeHtml(String(critVal))}</span>`
+        : "—";
+
       tr.innerHTML = `
         <td class="col-center">${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : "-"}</td>
         <td title="${escapeHtml(desc)}">${escapeHtml(title || "—")}</td>
         <td>${nivCell}</td>
-        <td class="col-center">${critTxt}</td>
+        <td class="col-center">${critHtml}</td>
         <td class="col-center">${ind}</td>
       `;
       tbody.appendChild(tr);
