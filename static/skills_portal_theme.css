@@ -573,6 +573,43 @@
   color: #111827;
 }
 
+/* Modal Référentiel — Postes concernés : compact + badge criticité */
+#modalRefDetail .sb-ref-postes-table thead th{
+  font-size: 12px;
+}
+
+#modalRefDetail .sb-ref-postes-table tbody td{
+  font-size: 12.5px; /* on baisse un poil la police sur toute la ligne */
+}
+
+#modalRefDetail .sb-ref-postes-table tbody tr{
+  line-height: 1.25;
+}
+
+/* Badge criticité : rond, fond transparent, bord violet avec 5 niveaux de teinte */
+#modalRefDetail .sb-crit-badge{
+  --crit-violet: 124,58,237; /* violet */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  background: transparent;
+  border: 2px solid rgba(var(--crit-violet), 0.45);
+  color: rgba(var(--crit-violet), 0.85);
+  box-sizing: border-box;
+  user-select: none;
+}
+
+#modalRefDetail .sb-crit-l1{ border-color: rgba(var(--crit-violet), 0.25); color: rgba(var(--crit-violet), 0.55); }
+#modalRefDetail .sb-crit-l2{ border-color: rgba(var(--crit-violet), 0.40); color: rgba(var(--crit-violet), 0.68); }
+#modalRefDetail .sb-crit-l3{ border-color: rgba(var(--crit-violet), 0.55); color: rgba(var(--crit-violet), 0.78); }
+#modalRefDetail .sb-crit-l4{ border-color: rgba(var(--crit-violet), 0.72); color: rgba(var(--crit-violet), 0.88); }
+#modalRefDetail .sb-crit-l5{ border-color: rgba(var(--crit-violet), 0.92); color: rgba(var(--crit-violet), 1.00); }
 
 /* ============================
    Collaborateurs: boutons (soft)

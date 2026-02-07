@@ -620,7 +620,7 @@ def get_referentiel_competence_detail(
                         ON o.id_service = fp.id_service
                        AND o.id_ent = %s
                     WHERE (fpc.id_competence = %s OR fpc.id_competence = %s)
-                    ORDER BY fp.intitule_poste, fp.codif_poste
+                    ORDER BY fpc.poids_criticite DESC NULLS LAST, fp.intitule_poste, fp.codif_poste
                 """
 
                 cur.execute(sql_postes, tuple(params_cte + (id_ent, id_comp, code_comp)))

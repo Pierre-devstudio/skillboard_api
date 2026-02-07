@@ -528,16 +528,54 @@
     return html;
   }
 
+  function critLevel(raw) {
+    const n = Number(raw);
+    if (!isFinite(n)) return 0;
+
+    // Tolérance si la DB stocke déjà un niveau 1..5
+    if (n > 0 && n <= 5 && Number.isInteger(n)) return n;
+
+    // Sinon on considère un score 0..100 (poids_criticite)
+    if (n >= 80) return 5;
+    if (n >= 60) return 4;
+    if (n >= 40) return 3;
+    if (n >= 20) return 2;
+    return 1;
+  }
+
+  function renderCritBadge(raw) {
+    const n = Number(raw);
+    if (!isFinite(n)) return "—";
+
+    const lvl = critLevel(n);
+    const safe = escapeHtml(String(n));
+    return `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité : ${safe}">${safe}</span>`;
+  }
+
   function renderPostesTable(postes, isCertif, baseValidite) {
-    const list = Array.isArray(postes) ? postes : [];
+    const list = Array.isArray(postes) ? [...postes] : [];
+
+    // Compétences: tri décroissant par criticité (puis libellé) pour cohérence UI
+    if (!isCertif) {
+      list.sort((a, b) => {
+        const ca = (a?.poids_criticite === null || a?.poids_criticite === undefined) ? -1 : Number(a.poids_criticite);
+        const cb = (b?.poids_criticite === null || b?.poids_criticite === undefined) ? -1 : Number(b.poids_criticite);
+        if (cb !== ca) return cb - ca;
+        const ta = (a?.intitule_poste || "").toString();
+        const tb = (b?.intitule_poste || "").toString();
+        const tcmp = ta.localeCompare(tb, "fr");
+        if (tcmp !== 0) return tcmp;
+        return (a?.codif_poste || "").toString().localeCompare((b?.codif_poste || "").toString(), "fr");
+      });
+    }
+
     const title = isCertif ? "Postes concernés" : "Postes concernés (niveau requis)";
     const cols = isCertif
       ? ["Poste", "Service", "Exigence", "Validité"]
       : ["Poste", "Service", "Niveau", "Criticité"];
 
-
     const ths = cols.map((c, idx) => {
-      const center = (!isCertif && (idx === 2 || idx === 3)) || (isCertif && (idx === 2 || idx === 3));
+      const center = (idx === 2 || idx === 3);
       return `<th${center ? ` class="col-center"` : ""}>${escapeHtml(c)}</th>`;
     }).join("");
 
@@ -545,7 +583,7 @@
       <div class="card-title" style="margin-bottom:6px;">${escapeHtml(title)}</div>
       <div class="card-sub" style="margin:0;">${list.length} poste(s) impacté(s).</div>
       <div class="table-wrap" style="margin-top:10px;">
-        <table class="sb-table">
+        <table class="sb-table sb-ref-postes-table">
           <thead><tr>${ths}</tr></thead>
           <tbody>`;
 
@@ -553,16 +591,20 @@
       html += `<tr><td colspan="${cols.length}">—</td></tr>`;
     } else {
       list.forEach(p => {
-        const poste = escapeHtml((p.codif_poste ? `${p.codif_poste} — ` : "") + (p.intitule_poste || ""));
+        // On enlève le “code poste” : on garde uniquement l’intitulé (fallback codif si absent)
+        const posteTitle = ((p.intitule_poste || "").toString().trim()) || ((p.codif_poste || "").toString().trim()) || "—";
+        const poste = escapeHtml(posteTitle);
         const service = escapeHtml(p.nom_service || "—");
-        if (isCertif) {
-        const ex = escapeHtml(p.niveau_exigence || "—");
-        const base = (baseValidite === null || baseValidite === undefined) ? null : Number(baseValidite);
-        const ovRaw = (p.validite_override === null || p.validite_override === undefined) ? null : Number(p.validite_override);
-        const eff = (ovRaw !== null) ? ovRaw : base;
 
-        let vlabel = "—";
-        if (eff !== null) vlabel = (eff === 0 ? "Permanent" : `${eff} mois`);
+        if (isCertif) {
+          const ex = escapeHtml(p.niveau_exigence || "—");
+
+          const base = (baseValidite === null || baseValidite === undefined) ? null : Number(baseValidite);
+          const ovRaw = (p.validite_override === null || p.validite_override === undefined) ? null : Number(p.validite_override);
+          const eff = (ovRaw !== null) ? ovRaw : base;
+
+          let vlabel = "—";
+          if (eff !== null) vlabel = (eff === 0 ? "Permanent" : `${eff} mois`);
 
           html += `<tr>
             <td>${poste}</td>
@@ -572,12 +614,13 @@
           </tr>`;
         } else {
           const niv = escapeHtml(p.niveau_requis || "—");
-          const crit = (p.poids_criticite === null || p.poids_criticite === undefined) ? "—" : `${p.poids_criticite}`;
+          const crit = renderCritBadge(p.poids_criticite);
+
           html += `<tr>
             <td>${poste}</td>
             <td>${service}</td>
             <td class="col-center" style="white-space:nowrap;">${niv}</td>
-            <td class="col-center" style="white-space:nowrap;">${escapeHtml(crit)}</td>
+            <td class="col-center" style="white-space:nowrap;">${crit}</td>
           </tr>`;
         }
       });
@@ -586,6 +629,7 @@
     html += `</tbody></table></div></div>`;
     return html;
   }
+
 
   async function openCompetenceDetail(portal, id_comp) {
     const id_contact = portal.contactId;
