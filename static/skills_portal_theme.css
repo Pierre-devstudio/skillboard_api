@@ -45,6 +45,7 @@
   --sb-critere: rgb(121, 72, 37);
   --sb-poste: rgb(209, 51, 188);
   --sb-manager: rgb(202, 174, 16);
+  --sb-niv-soft : rgb(226, 132, 9);
 
   /* Modal titles (standard global) */
   --sb-modal-title-size: 15px;
@@ -176,6 +177,17 @@
   border-color: var(--sb-manager);
   color: var(--sb-manager);
 }
+
+/* Badge Niveau comp soft */
+.sb-badge-niv{
+  background:transparent;
+  font-weight:600;
+}
+
+/* bordures orange dégradées selon niveau */
+.sb-badge-niv-a{ border-color:color-mix(in srgb, var(--sb-niv-soft) 60%); color:color-mix(in srgb, var(--sb-niv-soft) 60%); }
+.sb-badge-niv-b{ border-color:color-mix(in srgb, var(--sb-niv-soft) 85%); color:color-mix(in srgb, var(--sb-niv-soft) 85%); }
+.sb-badge-niv-c{ border-color: var(--sb-niv-soft); color:var(--sb-niv-soft); }
 
 
 /* -------- Tables (modifiers) -------- */
@@ -2224,22 +2236,7 @@ body{
   width: min(980px, calc(100vw - 24px));
 }
 
-/* Badge poste dans le modal (vert + texte blanc) */
-#modalOrgPoste .sb-badge-poste-code{
-  background: rgb(62,190,73);
-  color:#fff;
-  border-color: rgb(62,190,73);
-}
 
-.sb-badge-niv{
-  background:transparent;
-  font-weight:600;
-}
-
-/* bordures orange dégradées selon niveau */
-.sb-badge-niv-a{ border-color:#fdba74; color:#9a3412; }
-.sb-badge-niv-b{ border-color:#fb923c; color:#9a3412; }
-.sb-badge-niv-c{ border-color:#f97316; color:#7c2d12; }
 
 .sb-dot-avalider{
   display:inline-block;
