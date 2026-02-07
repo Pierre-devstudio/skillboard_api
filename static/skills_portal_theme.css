@@ -909,14 +909,6 @@
   min-width: 0;
 }
 
-#modalRefDetail .sb-badge.sb-badge-ref-comp-code{
-  flex: 0 0 auto;
-  background: #26d34b;
-  color: #fff;
-  border-color: #26d34b;
-  font-weight: 800;
-}
-
 
 /* ============================
    Cartographie: heatmap (V1)
