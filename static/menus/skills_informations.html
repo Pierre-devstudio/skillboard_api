@@ -11,10 +11,10 @@
         <div class="card-title" style="margin-bottom:2px;">Informations entreprise</div>
         <div class="card-sub" style="margin:0;">Le nom de l’entreprise n’est pas modifiable.</div>
       </div>
-      <div>
-        <button type="button" class="btn-primary" id="btnEditEntreprise">Modifier les informations</button>
-        <button type="button" class="btn-primary" id="btnSaveEntreprise" style="display:none;">Enregistrer les informations</button>
-        <button type="button" class="btn-secondary" id="btnCancelEntreprise" style="display:none;">Annuler</button>
+      <div class="sb-actions">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnEditEntreprise">Modifier les informations</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnSaveEntreprise" style="display:none;">Enregistrer les informations</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnCancelEntreprise" style="display:none;">Annuler</button>
       </div>
     </div>
 
@@ -78,13 +78,13 @@
       <div class="info-item" style="min-width:220px;">
         <div class="label">Code APE (NN.NN)</div>
         <input type="text" id="ent_code_ape_ent" maxlength="5" inputmode="numeric" data-editable-ent="1" />
-        <div class="hint" id="apeHint">—</div>
+        <div class="sb-hint" id="apeHint">—</div>
       </div>
 
       <div class="info-item" style="min-width:220px;">
         <div class="label">IDCC</div>
         <input type="text" id="ent_idcc" inputmode="numeric" data-editable-ent="1" />
-        <div class="hint" id="idccHint">—</div>
+        <div class="sb-hint" id="idccHint">—</div>
       </div>
 
       <div class="info-item" style="min-width:260px;">
@@ -92,7 +92,7 @@
         <select id="ent_id_opco" data-editable-ent="1">
           <option value="">(Non renseigné)</option>
         </select>
-        <div class="hint" id="opcoHint">—</div>
+        <div class="sb-hint" id="opcoHint">—</div>
       </div>
     </div>
   </div>
@@ -104,10 +104,10 @@
         <div class="card-title" style="margin-bottom:2px;">Informations du contact</div>
         <div class="card-sub" style="margin:0;">Contact actuellement connecté.</div>
       </div>
-      <div>
-        <button type="button" class="btn-primary" id="btnEditContact">Modifier les informations</button>
-        <button type="button" class="btn-primary" id="btnSaveContact" style="display:none;">Enregistrer les informations</button>
-        <button type="button" class="btn-secondary" id="btnCancelContact" style="display:none;">Annuler</button>
+      <div class="sb-actions">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnEditContact">Modifier les informations</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnSaveContact" style="display:none;">Enregistrer les informations</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnCancelContact" style="display:none;">Annuler</button>
       </div>
     </div>
 

@@ -59,16 +59,16 @@
 
   function setEntrepriseEditMode(isEdit) {
     document.querySelectorAll("[data-editable-ent='1']").forEach(el => el.disabled = !isEdit);
-    document.getElementById("btnEditEntreprise").style.display = isEdit ? "none" : "inline-block";
-    document.getElementById("btnSaveEntreprise").style.display = isEdit ? "inline-block" : "none";
-    document.getElementById("btnCancelEntreprise").style.display = isEdit ? "inline-block" : "none";
+    document.getElementById("btnEditEntreprise").style.display = isEdit ? "none" : "inline-flex";
+    document.getElementById("btnSaveEntreprise").style.display = isEdit ? "inline-flex" : "none";
+    document.getElementById("btnCancelEntreprise").style.display = isEdit ? "inline-flex" : "none";
   }
 
   function setContactEditMode(isEdit) {
     document.querySelectorAll("[data-editable-ct='1']").forEach(el => el.disabled = !isEdit);
-    document.getElementById("btnEditContact").style.display = isEdit ? "none" : "inline-block";
-    document.getElementById("btnSaveContact").style.display = isEdit ? "inline-block" : "none";
-    document.getElementById("btnCancelContact").style.display = isEdit ? "inline-block" : "none";
+    document.getElementById("btnEditContact").style.display = isEdit ? "none" : "inline-flex";
+    document.getElementById("btnSaveContact").style.display = isEdit ? "inline-flex" : "none";
+    document.getElementById("btnCancelContact").style.display = isEdit ? "inline-flex" : "none";
   }
 
   async function loadRefOpco(portal) {

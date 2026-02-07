@@ -46,7 +46,7 @@
 
   /* Modal titles (standard global) */
   --sb-modal-title-size: 15px;
-  --sb-modal-title-weight: 800;
+  --sb-modal-title-weight: 700;
   --sb-modal-title-color: var(--sb-gray-900);
   --sb-modal-title-letterspacing: 0.1px;
 }
@@ -63,6 +63,27 @@
 .sb-nowrap{ white-space: nowrap; }
 .sb-ellipsis{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width:0; }
 .col-center{ text-align:center !important; }
+
+/* -------- Actions group (boutons alignés) -------- */
+.sb-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+/* -------- Hints (APE / IDCC / OPCO / messages inline) -------- */
+.sb-hint{
+  margin-top:6px;
+  font-size: var(--sb-fs-12);
+  color: var(--sb-gray-500);
+  line-height: 1.25;
+}
+
+.sb-hint.error{
+  color: var(--sb-danger);
+  font-weight: 700;
+}
 
 /* -------- Buttons -------- */
 .sb-btn{
