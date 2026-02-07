@@ -71,9 +71,7 @@
 
     const card = byId("kpiRefParetoCard");
     if (card) {
-      // indicateur visuel soft
-      card.style.outline = _paretoOnly ? "2px solid rgba(148,163,184,0.9)" : "";
-      card.style.background = _paretoOnly ? "rgba(148,163,184,0.08)" : "";
+      card.classList.toggle("sb-card--active", _paretoOnly);
     }
   }
 
@@ -93,10 +91,14 @@
     const bComp = byId("tabRefCompetences");
     const bCert = byId("tabRefCertifs");
 
-    if (bComp) bComp.classList.toggle("btn-primary", tab === "competences");
-    if (bComp) bComp.classList.toggle("btn-secondary", tab !== "competences");
-    if (bCert) bCert.classList.toggle("btn-primary", tab === "certifs");
-    if (bCert) bCert.classList.toggle("btn-secondary", tab !== "certifs");
+    if (bComp) bComp.classList.add("sb-btn");
+    if (bCert) bCert.classList.add("sb-btn");
+
+    if (bComp) bComp.classList.toggle("sb-btn--accent", tab === "competences");
+    if (bComp) bComp.classList.toggle("sb-btn--soft", tab !== "competences");
+
+    if (bCert) bCert.classList.toggle("sb-btn--accent", tab === "certifs");
+    if (bCert) bCert.classList.toggle("sb-btn--soft", tab !== "certifs");
 
     const wrapComp = byId("wrapRefCompetences");
     const wrapCert = byId("wrapRefCertifs");
@@ -252,7 +254,9 @@
         <td class="col-title">${escapeHtml(it.intitule)}</td>
         <td class="col-center col-level">${niveauRequisCell(it)}</td>
         <td class="col-center col-postes">${it.nb_postes_concernes ?? 0}</td>
-        <td class="col-center col-detail"><button type="button" class="btn-secondary btn-xs" data-action="detail">Détail</button></td>
+        <td class="col-center col-detail">
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-action="detail">Détail</button>
+        </td>
       `;
 
       body.appendChild(tr);

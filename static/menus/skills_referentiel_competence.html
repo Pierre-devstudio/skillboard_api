@@ -42,7 +42,7 @@
           </div>
 
           <div class="info-item" style="min-width:0;">
-            <button type="button" class="btn-secondary" id="btnRefReset" style="margin-left:0; width:100%;">
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--block" id="btnRefReset" style="margin-left:0;">
               Réinitialiser
             </button>
           </div>
@@ -91,8 +91,8 @@
           </div>
 
           <div style="display:flex; gap:8px; align-items:center;">
-            <button type="button" class="btn-secondary" id="tabRefCompetences">Compétences</button>
-            <button type="button" class="btn-secondary" id="tabRefCertifs">Certifications</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="tabRefCompetences">Compétences</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="tabRefCertifs">Certifications</button>
           </div>
         </div>
 
@@ -101,7 +101,7 @@
         <!-- Table compétences -->
         <div id="wrapRefCompetences" style="margin-top:12px;">
           <div class="table-wrap">
-            <table class="sb-table" id="tblRefCompetences">
+            <table class="sb-table sb-table--airy sb-table--hover" id="tblRefCompetences">
               <thead>
                 <tr>
                   <th class="col-dom" title="Domaine">Dom.</th>
@@ -120,7 +120,7 @@
         <!-- Table certifications -->
         <div id="wrapRefCertifs" style="margin-top:12px; display:none;">
           <div class="table-wrap">
-            <table class="sb-table" id="tblRefCertifs">
+            <table class="sb-table sb-table--airy sb-table--hover" id="tblRefCertifs">
               <thead>
                 <tr>
                   <th>Certification</th>
@@ -147,7 +147,7 @@
   <div class="modal" id="modalRefDetail" aria-hidden="true">
     <div class="modal-card">
       <div class="modal-header">
-        <div style="font-weight:600;" id="refModalTitle">Détail</div>
+        <div id="refModalTitle" class="sb-modal-titleline">Détail</div>
         <button type="button" class="modal-x" id="btnCloseRefModal" aria-label="Fermer">×</button>
       </div>
 
@@ -157,7 +157,7 @@
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn-secondary" id="btnRefModalClose">Fermer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnRefModalClose">Fermer</button>
       </div>
     </div>
   </div>
