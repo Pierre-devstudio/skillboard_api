@@ -910,7 +910,7 @@
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td class="col-center">${code ? `<span class="sb-badge sb-badge-comp-code">${escapeHtml(code)}</span>` : "-"}</td>
+        <td class="col-center">${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : "-"}</td>
         <td title="${escapeHtml(desc)}">${escapeHtml(title || "—")}</td>
         <td>${nivCell}</td>
         <td class="col-center">${critTxt}</td>

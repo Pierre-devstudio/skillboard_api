@@ -2231,14 +2231,6 @@ body{
   border-color: rgb(62,190,73);
 }
 
-/* Modal poste - Compétences requises */
-.sb-badge-comp-code{
-  background:#1e2a44;      /* bleu marine plus clair */
-  color:#fff;
-  border-color:#1e2a44;
-  font-weight:600;
-}
-
 .sb-badge-niv{
   background:transparent;
   font-weight:600;
