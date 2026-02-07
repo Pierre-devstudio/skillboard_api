@@ -43,6 +43,7 @@
   /*Special */
   --sb-comp: rgb(55, 99, 167);
   --sb-critere: rgb(121, 72, 37);
+  --sb-poste: rgb(209, 51, 188);
 
   /* Modal titles (standard global) */
   --sb-modal-title-size: 15px;
@@ -242,6 +243,14 @@
 .sb-badge.sb-badge-ref-comp-code{
   background: var(--sb-comp);
   border-color: var(--sb-comp);
+  color:#fff;
+  font-weight: 700;
+}
+
+/* Badge code compétence (si tu gardes ce nom au lieu de sb-badge--success) */
+.sb-badge.sb-badge-ref-poste-code{
+  background: var(--sb-poste);
+  border-color: var(--sb-poste);
   color:#fff;
   font-weight: 700;
 }
@@ -2185,12 +2194,6 @@ body{
   min-width:0;
 }
 
-/* Badge code poste (codif_client / code_poste) */
-#view-votre-organisation .sb-badge-poste-code{
-  background: rgb(62,190,73);
-  color:#fff;
-  border-color: rgb(62,190,73);
-}
 
 #view-votre-organisation .org-poste-head .sb-acc-title{
   margin:0;

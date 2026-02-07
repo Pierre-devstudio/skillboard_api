@@ -549,7 +549,7 @@
       row.innerHTML = `
         <div class="sb-acc-left">
           <div class="org-poste-head">
-            ${codeBadge ? `<span class="sb-badge sb-badge-poste-code">${escapeHtml(codeBadge)}</span>` : ``}
+            ${codeBadge ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(codeBadge)}</span>` : ``}
             <div class="sb-acc-title">${escapeHtml(title || "Poste")}</div>
           </div>
         </div>
