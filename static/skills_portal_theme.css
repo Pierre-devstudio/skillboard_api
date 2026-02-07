@@ -701,6 +701,30 @@
   border-radius: 8px;
 }
 
+/* Modal Référentiel — Header : code en badge + titre sur une seule ligne */
+#modalRefDetail #refModalTitle{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0; /* permet l'ellipsis du titre */
+}
+
+#modalRefDetail #refModalTitle .sb-ref-title-text{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+#modalRefDetail .sb-badge.sb-badge-ref-comp-code{
+  flex: 0 0 auto;
+  background: #26d34b;
+  color: #fff;
+  border-color: #26d34b;
+  font-weight: 800;
+}
+
+
 /* ============================
    Cartographie: heatmap (V1)
    ============================ */

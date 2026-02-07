@@ -320,7 +320,11 @@
     const s = byId("refModalSub");
     const b = byId("refModalBody");
 
-    if (t) t.textContent = title || "Détail";
+    if (t) {
+      // title peut être un string OU un objet { html: "..." } pour du rendu enrichi
+      if (title && typeof title === "object" && typeof title.html === "string") t.innerHTML = title.html;
+      else t.textContent = title || "Détail";
+    }
     if (s) s.innerHTML = sub || "";
     if (b) b.innerHTML = htmlBody || "";
 
@@ -642,7 +646,12 @@
     const c = data?.competence || {};
     const dom = c?.domaine || null;
 
-    const title = `${c.code || ""} — ${c.intitule || "Compétence"}`.trim();
+    const code = (c.code || "").toString().trim();
+    const label = (c.intitule || "Compétence").toString().trim();
+
+    const title = code
+      ? { html: `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span><span class="sb-ref-title-text">${escapeHtml(label)}</span>` }
+      : label;
     let sub = "";
     if (dom) {
       const label = (dom.titre_court || dom.titre || dom.id_domaine_competence || "Domaine").toString();
