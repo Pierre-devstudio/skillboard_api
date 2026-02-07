@@ -247,7 +247,7 @@
   font-weight: 700;
 }
 
-/* Badge code compétence (si tu gardes ce nom au lieu de sb-badge--success) */
+/* Badge code poste (si tu gardes ce nom au lieu de sb-badge--success) */
 .sb-badge.sb-badge-ref-poste-code{
   background: var(--sb-poste);
   border-color: var(--sb-poste);
@@ -2139,9 +2139,8 @@ body{
    - Exclut le badge "Responsable" (.sb-badge-accent)
    ====================================================== */
 #view-votre-organisation .sb-acc-right .sb-badge:not(.sb-badge-accent){
-  background: rgb(62, 190, 73) !important;     /* bleu nuit très soft */
-  border-color: rgb(62, 190, 73) !important;
-  color: rgba(255, 255, 255, 0.808) !important;
+  border-color: var(--sb-poste);
+  color: var(--sb-poste);
   font-weight: 700;
 }
 
