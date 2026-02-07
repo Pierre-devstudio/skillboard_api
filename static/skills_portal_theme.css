@@ -45,7 +45,7 @@
   --sb-critere: rgb(121, 72, 37);
   --sb-poste: rgb(209, 51, 188);
   --sb-manager: rgb(202, 174, 16);
-  --sb-niv-soft : rgb(226, 132, 9);
+  --sb-niv-soft: rgb(226, 114, 9);
 
   /* Modal titles (standard global) */
   --sb-modal-title-size: 15px;
@@ -185,8 +185,8 @@
 }
 
 /* bordures orange dégradées selon niveau */
-.sb-badge-niv-a{ border-color:color-mix(in srgb, var(--sb-niv-soft) 60%); color:color-mix(in srgb, var(--sb-niv-soft) 60%); }
-.sb-badge-niv-b{ border-color:color-mix(in srgb, var(--sb-niv-soft) 85%); color:color-mix(in srgb, var(--sb-niv-soft) 85%); }
+.sb-badge-niv-a{ border-color:color-mix(in srgb, var(--sb-niv-soft) 55%, transparent); color:color-mix(in srgb, var(--sb-niv-soft) 55%, transparent); }
+.sb-badge-niv-b{ border-color:color-mix(in srgb, var(--sb-niv-soft) 85%, transparent); color:color-mix(in srgb, var(--sb-niv-soft) 85%, transparent); }
 .sb-badge-niv-c{ border-color: var(--sb-niv-soft); color:var(--sb-niv-soft); }
 
 
