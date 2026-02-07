@@ -1399,7 +1399,7 @@
                   const domStyle = domColorRaw ? ` style="--dom-color:${escapeHtml(domColorRaw)}"` : "";
 
                   const badges = [];
-                  if (x.code) badges.push(`<span class="sb-badge">${escapeHtml(x.code)}</span>`);
+                  if (x.code) badges.push(`<span class="sb-badge sb-badge-comp-code">${escapeHtml(x.code)}</span>`);
                   if (isReq) badges.push(`<span class="sb-badge">Requis</span>`);
                   badges.push(`<span class="sb-badge sb-badge-domain"${domStyle}>${escapeHtml(domTitle)}</span>`);
 

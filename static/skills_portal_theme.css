@@ -615,6 +615,13 @@
   border-radius: 8px;
 }
 
+/* Badge Code compétence: fond plein + texte blanc */
+#modalCollaborateur .sb-badge.sb-badge-comp-code{
+  background:#26d34b;
+  color:#fff;
+  border-color:#26d34b;
+  font-weight:700;
+}
 
 /* ============================
    Référentiel: boutons (soft)
@@ -2365,22 +2372,21 @@ body{
   text-overflow: ellipsis;
 }
 
-/* Badge Domaine: pastille avec indicateur couleur (barre à gauche) */
+/* Badge Domaine: indicateur couleur (rond) */
 #modalCollaborateur .sb-badge.sb-badge-domain{
   position: relative;
-  padding-left: 14px;
+  padding-left: 20px;
 }
 
-/* Si --dom-color est défini, on l'utilise. Sinon on reste neutre */
 #modalCollaborateur .sb-badge.sb-badge-domain::before{
   content: "";
   position: absolute;
-  left: 6px;
+  left: 8px;
   top: 50%;
-  width: 4px;
-  height: 12px;
+  width: 8px;
+  height: 8px;
   transform: translateY(-50%);
-  border-radius: 2px;
+  border-radius: 50%;
   background: var(--dom-color, #9ca3af);
 }
 
