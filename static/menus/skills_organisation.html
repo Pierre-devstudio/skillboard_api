@@ -107,7 +107,7 @@
         <div class="card org-bloc" id="orgPosteBlocContraintes">
           <div class="card-title">Contraintes</div>
 
-          <div class="org-form-grid">
+          <div class="sb-form-grid">
             <div class="sb-field">
               <div class="label">Niveau d’étude minimum requis</div>
               <select id="orgCtrEduMin" disabled></select>
@@ -210,18 +210,18 @@
           <div class="org-poste-rh-head">
             <div class="card-title" style="margin:0;">Paramétrage RH</div>
 
-            <div class="org-poste-rh-actions">
+            <div class="sb-actions org-poste-rh-actions">
               <span id="orgRhLockBadge" class="sb-badge sb-badge-rh-lock" style="display:none;">Modifié par le client</span>
 
-              <div class="org-rh-btns">
-                <button type="button" class="btn-secondary btn-rh-edit" id="orgRhBtnEdit">Modifier</button>
-                <button type="button" class="btn-secondary btn-rh-save" id="orgRhBtnSave" style="display:none;">Enregistrer</button>
-                <button type="button" class="btn-secondary btn-rh-cancel" id="orgRhBtnCancel" style="display:none;">Annuler</button>
+              <div class="sb-actions org-rh-btns">
+                <button type="button" class="sb-btn sb-btn--accent" id="orgRhBtnEdit">Modifier</button>
+                <button type="button" class="sb-btn sb-btn--accent" id="orgRhBtnSave" style="display:none;">Enregistrer</button>
+                <button type="button" class="sb-btn sb-btn--soft" id="orgRhBtnCancel" style="display:none;">Annuler</button>
               </div>
             </div>
           </div>
 
-          <div class="org-form-grid org-rh-grid">
+          <div class="sb-form-grid org-rh-grid">
             <div class="sb-field">
               <div class="label">Statut du poste</div>
               <select id="orgRhStatut" disabled></select>
@@ -266,7 +266,7 @@
               <input id="orgRhDateMaj" type="text" disabled />
             </div>
 
-            <div class="sb-field org-span-2">
+            <div class="sb-field sb-span-2">
               <div class="label">Commentaire</div>
               <textarea id="orgRhCommentaire" rows="3" disabled></textarea>
             </div>
@@ -276,7 +276,7 @@
     </div> 
     
     <div class="modal-footer">
-      <button type="button" class="btn-secondary" id="orgPosteModalClose">Fermer</button>
+      <button type="button" class="sb-btn sb-btn--soft" id="orgPosteModalClose">Fermer</button>
     </div>
 
   </div>

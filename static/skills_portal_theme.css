@@ -118,6 +118,175 @@
   font-weight: 700;
 }
 
+/* -------- Help text (sous champs) -------- */
+.sb-help{
+  margin-top:6px;
+  font-size: var(--sb-fs-12);
+  line-height: 1.3;
+  color: var(--sb-gray-500);
+}
+
+/* -------- Checkbox row -------- */
+.sb-check{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-top:6px;
+}
+
+.sb-check input[type="checkbox"]{
+  width:16px;
+  height:16px;
+}
+
+/* -------- Richtext (RTF->HTML / responsabilités) -------- */
+.sb-richtext{
+  white-space: normal !important;
+}
+
+.sb-richtext > :first-child{
+  margin-top: 0 !important;
+}
+
+.sb-richtext p{
+  margin: 0 0 8px 0;
+}
+
+.sb-richtext ul,
+.sb-richtext ol{
+  margin: 0 0 8px 18px;
+  padding: 0;
+}
+
+.sb-richtext li{
+  margin: 2px 0;
+}
+
+/* -------- Fields: text-block (label au-dessus) -------- */
+.sb-field.text-block{
+  display: flex;
+  flex-direction: column;
+  gap: 6px !important;
+  row-gap: 6px !important;
+}
+
+.sb-field.text-block .label{
+  margin: 0 !important;
+}
+
+.sb-field.text-block .value{
+  margin: 0 !important;
+  padding: 0 !important;
+  white-space: normal !important;
+}
+
+/* -------- Tabs: panels (pilotés par .is-active) -------- */
+.sb-tab-panel{ display:none; }
+.sb-tab-panel.is-active{ display:block; }
+
+/* -------- Form grids (2 colonnes) -------- */
+.sb-form-grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px 14px;
+  margin-top:10px;
+}
+
+.sb-form-grid .sb-field{ min-width: 0; }
+
+.sb-span-2{
+  grid-column: 1 / -1;
+}
+
+/* -------- Dots / indicateurs -------- */
+.sb-dot-avalider{
+  display:inline-block;
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background:var(--accent);
+  opacity:0.9;
+}
+
+.sb-dot-cert-requis{
+  display:inline-block;
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  background: var(--sb-success);
+  opacity: 0.95;
+}
+
+/* -------- Stepper (numeric up/down moderne) -------- */
+.sb-stepper{
+  display:flex;
+  align-items:stretch;
+  width:100%;
+  min-height:38px;
+  border:1px solid #e5e7eb;
+  border-radius:10px;
+  background:#f8fafc;
+  overflow:hidden;
+}
+
+.sb-stepper input{
+  flex:1;
+  border:0 !important;
+  background:transparent !important;
+  padding:8px 10px;
+  text-align:center;
+  font-family: inherit;
+  font-size: 14px;
+  outline:none;
+  box-shadow:none;
+}
+
+.sb-stepper-btn{
+  width:40px;
+  border:0;
+  background:#eef2f7;
+  color:#111827;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.sb-stepper-btn:hover:not(:disabled){ background:#e5e7eb; }
+.sb-stepper-btn:disabled{ opacity:0.6; cursor:default; }
+
+/* Masquer les spinners natifs du input number */
+.sb-stepper input[type=number]::-webkit-outer-spin-button,
+.sb-stepper input[type=number]::-webkit-inner-spin-button{
+  -webkit-appearance: none;
+  margin: 0;
+}
+.sb-stepper input[type=number]{ -moz-appearance: textfield; }
+
+/* -------- Date inputs -------- */
+.sb-date{
+  width: 100%;
+  min-height: 38px;
+  border-radius: 10px;
+  padding: 8px 40px 8px 12px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  box-sizing: border-box;
+
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px 18px;
+}
+
+.sb-date::-webkit-calendar-picker-indicator{
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+.sb-date:disabled{
+  color: #111827;
+  opacity: 1;
+}
+
 /* -------- Buttons -------- */
 .sb-btn{
   display:inline-flex;
@@ -2094,6 +2263,10 @@ body{
   overflow: auto; /* on force le scroll ici */
 }
 
+/* =========================
+   VUE: Votre organisation
+   ========================= */
+
 /* ======================================================
    Organisation: badge "X collab." (pastille soft)
    - Cible uniquement la vue "Votre organisation"
@@ -2103,33 +2276,6 @@ body{
   border-color: var(--sb-poste);
   color: var(--sb-poste);
   font-weight: 700;
-}
-
-/* Votre organisation - rendu richtext (responsabilités HTML) */
-#view-votre-organisation .sb-field.text-block .value.sb-richtext{
-  padding-top: 0 !important; /* au cas où .text-block ajoute du padding */
-}
-
-#view-votre-organisation .sb-richtext{
-  white-space: normal !important;
-}
-
-#view-votre-organisation .sb-richtext > :first-child{
-  margin-top: 0 !important; /* supprime le gros blanc au début */
-}
-
-#view-votre-organisation .sb-richtext p{
-  margin: 0 0 8px 0;
-}
-
-#view-votre-organisation .sb-richtext ul,
-#view-votre-organisation .sb-richtext ol{
-  margin: 0 0 8px 18px; /* pas de marge top */
-  padding: 0;
-}
-
-#view-votre-organisation .sb-richtext li{
-  margin: 2px 0;
 }
 
 /* ======================================================
@@ -2154,7 +2300,6 @@ body{
   min-width:0;
 }
 
-
 #view-votre-organisation .org-poste-head .sb-acc-title{
   margin:0;
   min-width:0;
@@ -2164,23 +2309,23 @@ body{
   background: color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
 }
 
-/* ======================================================
-   Votre organisation — Modal Poste (squelette)
-   ====================================================== */
-
-#modalOrgPoste .modal-card{
-  width: min(980px, calc(100vw - 24px));
+#view-votre-organisation .org-poste-row .sb-acc-title{
+  font-weight:700;
+  color:#111827;
+  line-height:1.2;
 }
 
+#view-votre-organisation .org-poste-row .sb-acc-sub{
+  margin-top:2px;
+  font-size:12px;
+  color:#6b7280;
+}
 
-
-.sb-dot-avalider{
-  display:inline-block;
-  width:10px;
-  height:10px;
-  border-radius:50%;
-  background:var(--accent);
-  opacity:0.9;
+/* ======================================================
+   Votre organisation — Modal Poste
+   ====================================================== */
+#modalOrgPoste .modal-card{
+  width: min(980px, calc(100vw - 24px));
 }
 
 #orgPosteCompTable td{
@@ -2193,21 +2338,9 @@ body{
 }
 
 /* Modal poste - table certifications : même police que compétences */
-#orgPosteCertTable td:nth-child(1){
-  font-size: 13px;
-}
-
+#orgPosteCertTable td:nth-child(1),
 #orgPosteCertTable td:nth-child(2){
   font-size: 13px;
-}
-/* Indicateur certification "requis" */
-.sb-dot-cert-requis{
-  display:inline-block;
-  width:10px;
-  height:10px;
-  border-radius:50%;
-  background: rgb(62, 190, 73); /* vert clair (cohérent projet) */
-  opacity: 0.95;
 }
 
 /* Modal poste - bloc Définition */
@@ -2233,150 +2366,7 @@ body{
   text-align: right;
 }
 
-/* Responsabilités (RTF -> HTML) dans le modal */
-#modalOrgPoste .sb-richtext p{ margin: 0 0 8px 0; }
-#modalOrgPoste .sb-richtext ul,
-#modalOrgPoste .sb-richtext ol{ margin: 0 0 8px 18px; padding:0; }
-#modalOrgPoste .sb-richtext li{ margin: 2px 0; }
-
-/* Modal Poste — FIX spacing label -> value (responsabilités)
-   Cause: gap/row-gap global sur .sb-field
-*/
-#modalOrgPoste .sb-field.text-block{
-  display: flex;
-  flex-direction: column;
-  gap: 6px !important;
-  row-gap: 6px !important;
-}
-
-#modalOrgPoste .sb-field.text-block .label{
-  margin: 0 !important;
-}
-
-#modalOrgPoste .sb-field.text-block .value{
-  margin: 0 !important;
-  padding: 0 !important;
-}
-
-/* Sécurité: le premier bloc HTML ne doit pas créer de "blanc" */
-#modalOrgPoste .sb-richtext > :first-child{
-  margin-top: 0 !important;
-}
-
-/* Panels */
-#modalOrgPoste .sb-tab-panel{ display:none; }
-#modalOrgPoste .sb-tab-panel.is-active{ display:block; }
-
-/* Organisation - Bloc Contraintes (Exigences) */
-.org-form-grid{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap:12px 14px;
-  margin-top:10px;
-}
-
-.org-form-grid .sb-field{
-  min-width: 0;
-}
-
-.org-form-grid .org-span-2{
-  grid-column: 1 / -1;
-}
-
-.sb-check{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  margin-top:6px;
-}
-
-.sb-check input[type="checkbox"]{
-  width:16px;
-  height:16px;
-}
-
-/* Contraintes (modal poste) : inputs/textarea/select doivent rester dans la typo du site */
-#modalOrgPoste .org-form-grid input,
-#modalOrgPoste .org-form-grid select,
-#modalOrgPoste .org-form-grid textarea{
-  font-family: inherit;
-  font-size: 14px;
-  line-height: 1.35;
-}
-
-/* Aide sous les selects à libellés longs (on affiche le texte complet sélectionné) */
-#modalOrgPoste .org-form-grid .sb-help{
-  margin-top: 6px;
-  font-size: 12px;
-  line-height: 1.3;
-  color: #6b7280;
-}
-
-#view-votre-organisation .org-poste-row .sb-acc-title{
-  font-weight:700;
-  color:#111827;
-  line-height:1.2;
-}
-
-#view-votre-organisation .org-poste-row .sb-acc-sub{
-  margin-top:2px;
-  font-size:12px;
-  color:#6b7280;
-}
-
-/* ======================================================
-   Votre organisation - Responsabilités (RTF -> HTML)
-   Objectif: supprimer le vide inutile entre le label et le texte
-   ====================================================== */
-
-/* Le premier bloc HTML (souvent <p> ou <ul>) ne doit pas avoir de marge top */
-#view-votre-organisation .sb-field.text-block .value > :first-child{
-  margin-top: 0 !important;
-}
-
-/* Paragraphes: pas de gros espace par défaut */
-#view-votre-organisation .sb-field.text-block .value p{
-  margin: 0 0 8px 0 !important;
-}
-
-/* Listes: pas de marge top, indentation maîtrisée */
-#view-votre-organisation .sb-field.text-block .value ul,
-#view-votre-organisation .sb-field.text-block .value ol{
-  margin: 0 0 8px 18px !important;
-  padding: 0 !important;
-}
-
-#view-votre-organisation .sb-field.text-block .value li{
-  margin: 2px 0 !important;
-}
-
-/* Sécurité: si .value est en pre-wrap dans ton CSS commun, on neutralise */
-#view-votre-organisation .sb-field.text-block .value{
-  white-space: normal !important;
-}
-
-/* ======================================================
-   Modal Poste — FIX selects invisibles (Risques / Contraintes)
-   ====================================================== */
-#modalOrgPoste #orgCtrRisquePhys,
-#modalOrgPoste #orgCtrNivContrainte{
-  display: block !important;
-  width: 100% !important;
-  min-height: 34px !important;
-  height: auto !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-#modalOrgPoste #orgCtrRisquePhys:disabled,
-#modalOrgPoste #orgCtrNivContrainte:disabled{
-  display: block !important;
-}
-
-/* ======================================================
-   Modal Poste — Onglet Paramétrage RH (read-only propre)
-   ====================================================== */
-
+/* Paramétrage RH (read-only + édition) */
 #modalOrgPoste .org-poste-rh-head{
   display:flex;
   align-items:flex-start;
@@ -2384,46 +2374,6 @@ body{
   gap:12px;
   margin-bottom:10px;
 }
-
-#modalOrgPoste .org-poste-rh-actions{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
-}
-
-#modalOrgPoste .org-rh-btns{
-  display:flex;
-  align-items:center;
-  gap:8px;
-}
-
-#modalOrgPoste .org-rh-btns .btn-secondary{
-  height:32px;
-  padding:6px 12px;
-  font-size:13px;
-  border-radius:10px;
-  line-height:1;
-}
-
-#modalOrgPoste #orgRhBtnEdit{
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #fff;
-}
-
-#modalOrgPoste #orgRhBtnSave{
-  background: rgb(190, 62, 73);
-  border-color: rgb(190, 62, 73);
-  color: #fff;
-}
-
-/* optionnel mais utile : hover léger sans casser la charte */
-#modalOrgPoste #orgRhBtnEdit:hover,
-#modalOrgPoste #orgRhBtnSave:hover{
-  filter: brightness(0.95);
-}
-
 
 #modalOrgPoste .sb-badge.sb-badge-rh-lock{
   background: rgba(131, 39, 193, 0.14) !important;
@@ -2449,113 +2399,6 @@ body{
   background: #f8fafc;
   color: #111827;
   border-color: #e5e7eb;
-}
-
-/* Stepper (numeric up/down moderne) */
-#modalOrgPoste .sb-stepper{
-  display:flex;
-  align-items:stretch;
-  width:100%;
-  min-height:38px;
-  border:1px solid #e5e7eb;
-  border-radius:10px;
-  background:#f8fafc;
-  overflow:hidden;
-}
-
-#modalOrgPoste .sb-stepper input{
-  flex:1;
-  border:0 !important;
-  background:transparent !important;
-  padding:8px 10px;
-  text-align:center;
-  font-family: inherit;
-  font-size: 14px;
-  outline:none;
-  box-shadow:none;
-}
-
-#modalOrgPoste .sb-stepper-btn{
-  width:40px;
-  border:0;
-  background:#eef2f7;
-  color:#111827;
-  font-weight:800;
-  cursor:pointer;
-}
-
-#modalOrgPoste .sb-stepper-btn:hover:not(:disabled){
-  background:#e5e7eb;
-}
-
-#modalOrgPoste .sb-stepper-btn:disabled{
-  opacity:0.6;
-  cursor:default;
-}
-
-/* Masquer les spinners natifs du input number */
-#modalOrgPoste input[type=number]::-webkit-outer-spin-button,
-#modalOrgPoste input[type=number]::-webkit-inner-spin-button{
-  -webkit-appearance: none;
-  margin: 0;
-}
-#modalOrgPoste input[type=number]{
-  -moz-appearance: textfield;
-}
-
-
-#modalOrgPoste .org-rh-grid input[type="date"][disabled]{
-  color: #111827;
-}
-
-/* Date inputs : look moderne + icône calendrier */
-#modalOrgPoste .sb-date{
-  width: 100%;
-  min-height: 38px;
-  border-radius: 10px;
-  padding: 8px 40px 8px 12px;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
-  box-sizing: border-box;
-
-  /* icône calendrier (SVG inline) */
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 18px 18px;
-}
-
-/* Chrome/Edge : rendre l’icône native cliquable quand ce sera activé */
-#modalOrgPoste .sb-date::-webkit-calendar-picker-indicator{
-  opacity: 0.85;
-  cursor: pointer;
-}
-
-/* Quand disabled, on garde un rendu propre */
-#modalOrgPoste .sb-date:disabled{
-  color: #111827;
-  opacity: 1;
-}
-
-/* ======================================================
-   Organisation — FIX spacing label -> value
-   Cause: .sb-field est piloté par gap/row-gap dans le CSS global
-   ====================================================== */
-#view-votre-organisation .sb-field.text-block{
-  /* on garde la mise en page propre, mais on réduit l’espace */
-  display: flex;
-  flex-direction: column;
-  gap: 6px !important;
-  row-gap: 6px !important;
-}
-
-#view-votre-organisation .sb-field.text-block .label{
-  margin: 0 !important; /* inutile si gap gère l’espace, mais on verrouille */
-}
-
-#view-votre-organisation .sb-field.text-block .value{
-  margin: 0 !important;
-  padding: 0 !important;
 }
 
 
