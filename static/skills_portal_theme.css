@@ -1605,43 +1605,6 @@ textarea.sb-ctrl{
   flex:1 1 auto;
 }
 
-
-/* ======================================================
-   Skills — OVERRIDES STABLES (RESTORE)
-   Objectif:
-   - Reset en teal partout (skills_*)
-   - Modals: hauteur max + scroll interne
-   - Boutons "Fermer" uniformes sur tous les modals
-   NB: section volontairement en fin de fichier (priorité CSS)
-   ====================================================== */
-
-
-/* ---------- Boutons RESET (teal) ---------- */
-/* IMPORTANT:
-   On ne touche plus aux nouveaux boutons standards (.sb-btn).
-   On ne force le teal que sur les anciens boutons legacy (.btn-secondary). */
-button.btn-secondary[id$="Reset"]{
-  background: var(--reading-accent) !important;
-  border-color: var(--reading-accent) !important;
-  color: #ffffff !important;
-}
-
-button.btn-secondary[id$="Reset"]:hover{
-  background: var(--reading-accent-hover) !important;
-  border-color: var(--reading-accent-hover) !important;
-}
-
-button.btn-secondary[id$="Reset"]:active{
-  background: var(--reading-accent-press) !important;
-  border-color: var(--reading-accent-press) !important;
-}
-
-button.btn-secondary[id$="Reset"]:focus{
-  outline: none;
-  box-shadow: 0 0 0 3px var(--reading-accent-ring);
-}
-
-
 /* ---------- MODALS: hauteur max + scroll interne ---------- */
 .modal.show{
   align-items: flex-start; /* évite "centre" + overflow invisible */
