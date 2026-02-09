@@ -1411,268 +1411,191 @@ textarea.sb-ctrl{
   border-radius: 8px;
 }
 
+/* =========================
+   VUE: Cartographie des compétences
+   (V2 uniquement)
+   ========================= */
 
-/* ============================
-   Cartographie: heatmap (V1)
-   ============================ */
-
-#view-cartographie-competences .sb-heatmap {
+#view-cartographie-competences .map-heatmap{
   width: 100%;
   min-height: 120px;
 }
 
 /* Sur mobile / petits écrans, éviter que tout écrase */
 @media (max-width: 900px) {
-  #view-cartographie-competences .sb-heatmap {
+  #view-cartographie-competences .map-heatmap{
     min-width: 720px;
   }
 }
 
-/* Bouton reset (soft comme référentiel) */
-#view-cartographie-competences #btnMapReset {
-  border-color: color-mix(in srgb, var(--accent) 35%, #d1d5db);
-  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
-  color: #1f2937;
-  font-weight: 600;
+/* Histogramme (V2) */
+#view-cartographie-competences .hb-dom-legend{
+  display:flex; flex-wrap:wrap; gap:10px 12px;
+  margin-top:10px;
+  color:#6b7280; font-size:12px;
 }
 
-#view-cartographie-competences #btnMapReset:hover {
-  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
-}
-
-#view-cartographie-competences #btnMapReset:active {
-  transform: translateY(1px);
-}
-
-/* Modal cartographie: scroll + cohérence */
-#modalMapDetail.modal.show {
-  align-items: flex-start;
-}
-
-#modalMapDetail .modal-card {
-  margin-top: 24px;
-  max-height: calc(100vh - 48px);
-  display: flex;
-  flex-direction: column;
-}
-
-#modalMapDetail .modal-body {
-  overflow: auto;
-  flex: 1 1 auto;
-}
-
-/* Bouton fermer (footer) + croix */
-#modalMapDetail #btnMapModalClose {
-  border-color: color-mix(in srgb, var(--accent) 35%, #087016);
-  background: color-mix(in srgb, var(--accent) 8%, #d2ffac);
-  color: #1f2937;
-  font-weight: 600;
-}
-
-#modalMapDetail #btnMapModalClose:hover {
-  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
-}
-
-#modalMapDetail .modal-x {
-  color: var(--accent);
-}
-
-#modalMapDetail .modal-x:hover {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  border-radius: 8px;
-}
-
-#modalMapDetail .sb-badge.sb-badge-poste-code{
-  background: rgb(62, 190, 73);     /* backcolor */
-  color: #ffffff;          /* forecolor */
-  border-color: rgb(62, 190, 73);   /* cohérent si le badge a une bordure */
-  font-weight: 700;
-}
-
-/* Cartographie — Couverture (badge) */
-#modalMapDetail .sb-badge.sb-badge-cover-0{
-  background: rgb(220,38,38);
-  color:#fff;
-  border-color: rgb(220,38,38);
-}
-#modalMapDetail .sb-badge.sb-badge-cover-1{
-  background: rgb(245,158,11);
-  color:#fff;
-  border-color: rgb(245,158,11);
-}
-#modalMapDetail .sb-badge.sb-badge-cover-2{
-  background: rgb(62,190,73);
-  color:#fff;
-  border-color: rgb(62,190,73);
-}
-
-/* Cartographie — indicateur conformité niveau porteur */
-#modalMapDetail .sb-niv-dot{
-  width: 10px;
-  height: 10px;
-  border-radius: 2px; /* petit carré légèrement adouci */
-  display: inline-block;
-  flex: 0 0 auto;
-}
-
-#modalMapDetail .sb-niv-dot-ok{
-  background: rgb(62,190,73);
-  border: 1px solid rgb(62,190,73);
-}
-
-#modalMapDetail .sb-niv-dot-ko{
-  background: rgb(220,38,38);
-  border: 1px solid rgb(220,38,38);
-}
-
-
-/* ============================
-   Cartographie: Heatmap (WOW)
-   ============================ */
-
-#view-cartographie-competences .hm-legend{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  margin: 10px 0 10px 0;
-  color:#6b7280;
-  font-size:12px;
-}
-
-#view-cartographie-competences .hm-legend-lab{ white-space:nowrap; }
-
-#view-cartographie-competences .hm-swatch{
-  width:22px;
-  height:10px;
-  border-radius:6px;
+#view-cartographie-competences .hb-leg-item{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:4px 10px;
   border:1px solid #e5e7eb;
-  display:inline-block;
-}
-
-#view-cartographie-competences .hm-wrap{
-  overflow:auto;
-  border:1px solid #eef2f7;
-  border-radius:12px;
-}
-
-#view-cartographie-competences .hm-table{
-  width:max-content;
-  min-width:100%;
-  border-collapse:separate;
-  border-spacing:0;
-  table-layout:fixed;
-}
-
-#view-cartographie-competences .hm-table thead th{
-  position:sticky;
-  top:0;
-  background:#fafafa;
-  z-index:4;
-  font-weight:600;
-  font-size:13px;
-  color:#111827;
-  padding:12px 14px;
-  border-bottom:1px solid #e5e7eb;
-  text-align:left;
-  white-space:nowrap;
-}
-
-#view-cartographie-competences .hm-rowhead{
-  min-width: 320px;
-  max-width: 360px;
-}
-
-#view-cartographie-competences .hm-table tbody td{
-  padding:10px 12px;
-  border-bottom:1px solid #f3f4f6;
-  vertical-align:middle;
-}
-
-#view-cartographie-competences .hm-sticky.hm-rowhead{
-  position:sticky;
-  left:0;
+  border-radius:999px;
   background:#fff;
-  z-index:3;
-  border-right:1px solid #eef2f7;
+  max-width:100%;
 }
 
-#view-cartographie-competences .hm-poste-title{
-  font-weight:600;
-  color:#111827;
-  line-height:1.2;
-}
-
-#view-cartographie-competences .hm-poste-sub{
-  font-size:12px;
-  color:#6b7280;
-  margin-top:2px;
-}
-
-#view-cartographie-competences .hm-colhead{
-  text-align:center;
-  min-width:140px;              /* un peu plus large pour respirer */
-}
-
-#view-cartographie-competences .hm-dom-dot{
-  display:inline-block;
-  width:12px;
-  height:12px;
-  border-radius:3px;            /* carré arrondi léger (pas rond) */
+#view-cartographie-competences .hb-leg-dot{
+  width:10px; height:10px; border-radius:999px;
   border:1px solid #d1d5db;
-  vertical-align:middle;
-  margin-right:8px;
-  background:#e5e7eb;
   flex:0 0 auto;
 }
 
-#view-cartographie-competences .hm-dom-txt{
-  display:inline-block;
-  vertical-align:middle;
-  max-width:140px;              /* tronque proprement */
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
+#view-cartographie-competences .hb-leg-txt{
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  max-width:220px;
+  color:#111827;
 }
 
-#view-cartographie-competences .hm-cell{
-  text-align:center;
-  min-width:64px;
-  height:46px;
+#view-cartographie-competences .hb-wrap{
+  margin-top:10px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  overflow:auto;
+  background:#fff;
+}
+
+#view-cartographie-competences .hb-table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  min-width:680px;
+}
+
+#view-cartographie-competences .hb-table th,
+#view-cartographie-competences .hb-table td{
+  border-bottom:1px solid #f3f4f6;
+  border-right:1px solid #f3f4f6;
+  padding:10px 8px;
+  vertical-align:middle;
+  white-space:nowrap;
+  background:#fff;
+}
+
+#view-cartographie-competences .hb-table thead th{
+  position:sticky; top:0; z-index:3;
+  background:#fafafa;
+  font-size:12px;
   font-weight:700;
-  border-left:1px solid #f3f4f6;
-  border-radius:10px;
+  color:#111827;
+  text-align:center;
+}
+
+#view-cartographie-competences .hb-rowhead{
+  text-align:left !important;
+  min-width:360px;
+  position:sticky;
+  left:0;
+  z-index:4;
+  background:#fff;
+}
+
+#view-cartographie-competences .hb-sticky.hb-rowhead{
+  background:#fafafa;
+}
+
+#view-cartographie-competences .hb-poste-title{
+  font-weight:700; font-size:13px; color:#111827;
+  overflow:hidden; text-overflow:ellipsis; max-width:520px;
+}
+
+#view-cartographie-competences .hb-poste-code{
+  margin-bottom:6px;
+}
+
+#view-cartographie-competences .hb-poste-sub{
+  font-size:12px; color:#6b7280;
+  overflow:hidden; text-overflow:ellipsis; max-width:520px;
+}
+
+#view-cartographie-competences .hb-dom-dot{
+  display:inline-block;
+  width:12px; height:12px;
+  border-radius:999px;
+  border:1px solid #d1d5db;
+}
+
+#view-cartographie-competences .hb-cell{
   cursor:pointer;
   user-select:none;
-  transition: filter .12s ease, transform .06s ease;
+  text-align:center;
 }
 
-#view-cartographie-competences .hm-cell:hover{
-  filter: brightness(0.98);
-  transform: translateY(-1px);
+#view-cartographie-competences .hb-cell:hover{
+  background: rgba(17, 24, 39, 0.03);
 }
 
-#view-cartographie-competences .hm-totalhead,
-#view-cartographie-competences .hm-totalcell{
-  background:#fafafa;
-  font-weight:700;
+#view-cartographie-competences .hb-barbox{
+  height:34px;
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
 }
 
-#view-cartographie-competences .hm-totalrowlab{
-  font-weight:700;
+#view-cartographie-competences .hb-bar{
+  width:18px;
+  border-radius:6px 6px 4px 4px;
+  border:1px solid rgba(0,0,0,.06);
 }
 
-#view-cartographie-competences .hm-grandtotal{
+#view-cartographie-competences .hb-totalcell{
+  background:#f9fafb;
+  font-weight:900;
+  text-align:center;
+}
+
+#view-cartographie-competences .hb-totalclick{
+  cursor:pointer;
+}
+
+#view-cartographie-competences .hb-totalclick:hover{
+  background: rgba(17, 24, 39, 0.03);
+}
+
+#view-cartographie-competences .hb-grandtotal{
   background:#f3f4f6;
-  font-weight:800;
+  font-weight:900;
+  text-align:center;
 }
 
-/* Niveaux de charge (palette sobre) */
-#view-cartographie-competences .hm-lvl-0{ background:#ffffff; }
-#view-cartographie-competences .hm-lvl-1{ background:color-mix(in srgb, var(--accent) 10%, #fff); }
-#view-cartographie-competences .hm-lvl-2{ background:color-mix(in srgb, var(--accent) 18%, #fff); }
-#view-cartographie-competences .hm-lvl-3{ background:color-mix(in srgb, var(--accent) 26%, #fff); }
-#view-cartographie-competences .hm-lvl-4{ background:color-mix(in srgb, var(--accent) 34%, #fff); }
-#view-cartographie-competences .hm-lvl-5{ background:color-mix(in srgb, var(--accent) 42%, #fff); }
+#view-cartographie-competences .hb-totalrow td{
+  position:sticky;
+  bottom:0;
+  background:#fff;
+  z-index:2;
+}
+
+#view-cartographie-competences .hb-totalrow .hb-rowhead{
+  background:#fff;
+  z-index:5;
+  font-weight:900;
+}
+
+/* Modal cartographie: scroll + cohérence (utile car contenu long) */
+#modalMapDetail.modal.show{
+  align-items:flex-start;
+}
+
+#modalMapDetail .modal-card{
+  margin-top:24px;
+  max-height: calc(100vh - 48px);
+  display:flex;
+  flex-direction:column;
+}
+
+#modalMapDetail .modal-body{
+  overflow:auto;
+  flex:1 1 auto;
+}
 
 
 /* ======================================================

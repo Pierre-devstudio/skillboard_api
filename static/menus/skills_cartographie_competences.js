@@ -374,168 +374,10 @@
   // - légende des couleurs 1 seule fois en haut
   // - clic sur une barre => on réutilise le modal cellule (point 3)
   // ==============================
-  let _hbStylesInjected = false;
-
-  function injectHistogramBarsStylesOnce() {
-    if (_hbStylesInjected) return;
-    _hbStylesInjected = true;
-
-    const style = document.createElement("style");
-    style.textContent = `
-      /* Histogramme (V2) */
-      #view-cartographie-competences .hb-dom-legend{
-        display:flex; flex-wrap:wrap; gap:10px 12px;
-        margin-top:10px;
-        color:#6b7280; font-size:12px;
-      }
-      #view-cartographie-competences .hb-leg-item{
-        display:inline-flex; align-items:center; gap:8px;
-        padding:4px 10px;
-        border:1px solid #e5e7eb;
-        border-radius:999px;
-        background:#fff;
-        max-width: 100%;
-      }
-      #view-cartographie-competences .hb-leg-dot{
-        width:10px; height:10px; border-radius:999px;
-        border:1px solid #d1d5db;
-        flex:0 0 auto;
-      }
-      #view-cartographie-competences .hb-leg-txt{
-        overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-        max-width: 220px;
-        color:#111827;
-      }
-
-      #view-cartographie-competences .hb-wrap{
-        margin-top:10px;
-        border:1px solid #e5e7eb;
-        border-radius:12px;
-        overflow:auto;
-        background:#fff;
-      }
-
-      #view-cartographie-competences .hb-table{
-        width:100%;
-        border-collapse:separate;
-        border-spacing:0;
-        min-width: 680px;
-      }
-
-      #view-cartographie-competences .hb-table th,
-      #view-cartographie-competences .hb-table td{
-        border-bottom:1px solid #f3f4f6;
-        border-right:1px solid #f3f4f6;
-        padding:10px 8px;
-        vertical-align:middle;
-        white-space:nowrap;
-        background:#fff;
-      }
-
-      #view-cartographie-competences .hb-table thead th{
-        position:sticky; top:0; z-index:3;
-        background:#fafafa;
-        font-size:12px;
-        font-weight:700;
-        color:#111827;
-        text-align:center;
-      }
-
-      #view-cartographie-competences .hb-rowhead{
-        text-align:left !important;
-        min-width: 360px;
-        position:sticky;
-        left:0;
-        z-index:4;
-        background:#fff;
-      }
-
-      #view-cartographie-competences .hb-sticky.hb-rowhead{
-        background:#fafafa;
-      }
-
-      #view-cartographie-competences .hb-poste-title{
-        font-weight:700; font-size:13px; color:#111827;
-        overflow:hidden; text-overflow:ellipsis; max-width:520px;
-      }
-      #view-cartographie-competences .hb-poste-code{
-        margin-bottom: 6px;
-      }
-      
-      #view-cartographie-competences .hb-poste-sub{
-        font-size:12px; color:#6b7280;
-        overflow:hidden; text-overflow:ellipsis; max-width:520px;
-      }
-      #view-cartographie-competences .hb-poste-code-badge{
-        background: rgb(62, 190, 73);     /* backcolor */
-        color: #ffffff;          /* forecolor */
-        border-color: rgb(62, 190, 73);   /* border cohérent */
-        font-weight: 700;
-      }
-      #view-cartographie-competences .hb-dom-dot{
-        display:inline-block;
-        width:12px; height:12px;
-        border-radius:999px;
-        border:1px solid #d1d5db;
-      }
-
-      #view-cartographie-competences .hb-cell{
-        cursor:pointer;
-        user-select:none;
-        text-align:center;
-      }
-      #view-cartographie-competences .hb-cell:hover{
-        background: rgba(17, 24, 39, 0.03);
-      }
-
-      #view-cartographie-competences .hb-barbox{
-        height:34px;
-        display:flex;
-        align-items:flex-end;
-        justify-content:center;
-      }
-      #view-cartographie-competences .hb-bar{
-        width:18px;
-        border-radius:6px 6px 4px 4px;
-        border:1px solid rgba(0,0,0,.06);
-      }
-
-      #view-cartographie-competences .hb-totalcell{
-        background:#f9fafb;
-        font-weight:900;
-        text-align:center;
-      }
-      #view-cartographie-competences .hb-totalclick{
-        cursor:pointer;
-      }
-      #view-cartographie-competences .hb-totalclick:hover{
-        background: rgba(17, 24, 39, 0.03);
-      }
-      #view-cartographie-competences .hb-grandtotal{
-        background:#f3f4f6;
-        font-weight:900;
-        text-align:center;
-      }
-      #view-cartographie-competences .hb-totalrow td{
-        position:sticky;
-        bottom:0;
-        background:#fff;
-        z-index:2;
-      }
-      #view-cartographie-competences .hb-totalrow .hb-rowhead{
-        background:#fff;
-        z-index:5;
-        font-weight:900;
-      }
-    `;
-    document.head.appendChild(style);
-  }
 
   function renderHistogramBars(containerEl, domaines, postes, matrixMap) {
     const el = containerEl;
     if (!el) return;
-
-    injectHistogramBarsStylesOnce();
 
     const rows = Array.isArray(postes) ? postes : [];
     const map = (matrixMap instanceof Map) ? matrixMap : new Map();
@@ -637,7 +479,7 @@
       trs += `
         <tr>
           <td class="hb-rowhead">
-            ${cod ? `<div class="hb-poste-code"><span class="sb-badge hb-poste-code-badge">${escapeHtml(cod)}</span></div>` : ``}
+            ${cod ? `<div class="hb-poste-code"><span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(cod)}</span></div>` : ``}
             <div class="hb-poste-title">${escapeHtml(intit || "—")}</div>
             <div class="hb-poste-sub">${escapeHtml(svc || "—")}</div>
           </td>
@@ -669,281 +511,6 @@
           <tbody>
             ${trs || `<tr><td class="hb-rowhead">—</td><td class="hb-totalcell">—</td></tr>`}
             <tr class="hb-totalrow">${totalRow}</tr>
-          </tbody>
-        </table>
-      </div>
-    `;
-  }
-
-  // ==============================
-  // WAOOOUUU: Heatmap table + styles inject
-  // ==============================
-  let _hmStylesInjected = false;
-
-  function injectHeatmapWowStylesOnce() {
-    if (_hmStylesInjected) return;
-    _hmStylesInjected = true;
-
-    const style = document.createElement("style");
-    style.textContent = `
-      /* Heatmap WOW */
-      #view-cartographie-competences .hm-legend{
-        display:flex; align-items:center; gap:8px; margin-top:10px;
-        color:#6b7280; font-size:12px;
-      }
-      #view-cartographie-competences .hm-legend-lab{ white-space:nowrap; }
-
-      #view-cartographie-competences .hm-swatch{
-        width:24px; height:12px; border-radius:6px;
-        border:1px solid rgba(0,0,0,.08); display:inline-block;
-      }
-
-      #view-cartographie-competences .hm-wrap{
-        margin-top:10px;
-        border:1px solid #e5e7eb;
-        border-radius:12px;
-        overflow:auto;
-        background:#fff;
-      }
-
-      #view-cartographie-competences .hm-table{
-        width:100%;
-        border-collapse:separate;
-        border-spacing:0;
-        min-width: 680px;
-      }
-
-      #view-cartographie-competences .hm-table th,
-      #view-cartographie-competences .hm-table td{
-        border-bottom:1px solid #f3f4f6;
-        border-right:1px solid #f3f4f6;
-        padding:12px 12px;
-        vertical-align:middle;
-        white-space:nowrap;
-      }
-
-      #view-cartographie-competences .hm-table thead th{
-        position:sticky; top:0; z-index:3;
-        background:#fafafa;
-        font-size:13px;
-        font-weight:700;
-        color:#111827;
-        text-align:center;
-      }
-
-      #view-cartographie-competences .hm-rowhead{
-        text-align:left !important;
-        min-width: 360px;
-        position:sticky;
-        left:0;
-        z-index:4;
-        background:#fff;
-      }
-
-      #view-cartographie-competences .hm-sticky.hm-rowhead{
-        background:#fafafa;
-      }
-
-      #view-cartographie-competences .hm-poste-title{
-        font-weight:700; font-size:13px; color:#111827;
-        overflow:hidden; text-overflow:ellipsis; max-width:520px;
-      }
-      #view-cartographie-competences .hm-poste-sub{
-        font-size:12px; color:#6b7280;
-        overflow:hidden; text-overflow:ellipsis; max-width:520px;
-      }
-
-      #view-cartographie-competences .hm-dom-dot{
-        display:inline-block;
-        width:12px; height:12px;
-        border-radius:6px;
-        border:1px solid #d1d5db;
-        flex:0 0 auto;
-      }
-
-      #view-cartographie-competences .hm-dom-txt{
-        display:inline-block;
-        max-width:140px;
-        overflow:hidden;
-        text-overflow:ellipsis;
-        white-space:nowrap;
-        text-align:left;
-        color:#111827;
-      }
-
-      #view-cartographie-competences .hm-cell{
-        text-align:center;
-        font-weight:800;
-        border-radius:10px;
-        cursor:pointer;
-        user-select:none;
-        transition:transform .06s ease, filter .12s ease;
-        background:#fff;
-      }
-      #view-cartographie-competences .hm-cell:hover{
-        filter:brightness(0.98);
-        transform:translateY(-1px);
-      }
-
-      #view-cartographie-competences .hm-totalcell{
-        background:#f9fafb;
-        font-weight:900;
-      }
-      #view-cartographie-competences .hm-grandtotal{
-        background:#f3f4f6;
-        font-weight:900;
-      }
-      #view-cartographie-competences .hm-totalrow td{
-        position:sticky;
-        bottom:0;
-        background:#fff;
-        z-index:2;
-      }
-      #view-cartographie-competences .hm-totalrow .hm-rowhead{
-        background:#fff;
-        z-index:5;
-        font-weight:900;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  function renderHeatmapWow(containerEl, domaines, postes, matrixMap) {
-    const el = containerEl;
-    if (!el) return;
-
-    injectHeatmapWowStylesOnce();
-
-    const doms = Array.isArray(domaines) ? domaines : [];
-    const rows = Array.isArray(postes) ? postes : [];
-    const map = (matrixMap instanceof Map) ? matrixMap : new Map();
-
-    // Totaux + max
-    const rowTotal = new Map();
-    const colTotal = new Map();
-    let maxVal = 0;
-
-    rows.forEach(p => {
-      const r = map.get(p.id_poste);
-      let sum = 0;
-      doms.forEach(d => {
-        const v = (r && r.get(d.id_domaine_competence)) ? Number(r.get(d.id_domaine_competence)) : 0;
-        sum += v;
-        colTotal.set(d.id_domaine_competence, (colTotal.get(d.id_domaine_competence) || 0) + v);
-        if (v > maxVal) maxVal = v;
-      });
-      rowTotal.set(p.id_poste, sum);
-    });
-
-    const grandTotal = Array.from(rowTotal.values()).reduce((a, b) => a + b, 0);
-
-    // Couleurs "heat"
-    const accentRaw = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#c1272d";
-    const accent = normalizeColor(accentRaw);
-
-    function bgFor(v) {
-      v = Number(v || 0);
-      if (v <= 0 || maxVal <= 0) return "#fff";
-      const t = Math.min(1, v / maxVal);
-      const a = 0.06 + 0.34 * t; // 0.06 -> 0.40
-      if (accent.startsWith("#")) {
-        const r = parseInt(accent.slice(1, 3), 16);
-        const g = parseInt(accent.slice(3, 5), 16);
-        const b = parseInt(accent.slice(5, 7), 16);
-        return `rgba(${r},${g},${b},${a})`;
-      }
-      // fallback si accent pas en hex
-      return `rgba(193,39,45,${a})`;
-    }
-
-    // Légende (5 niveaux)
-    const legend = `
-      <div class="hm-legend">
-        <span class="hm-legend-lab">Faible</span>
-        <span class="hm-swatch" style="background:${bgFor(maxVal * 0.2)};"></span>
-        <span class="hm-swatch" style="background:${bgFor(maxVal * 0.4)};"></span>
-        <span class="hm-swatch" style="background:${bgFor(maxVal * 0.6)};"></span>
-        <span class="hm-swatch" style="background:${bgFor(maxVal * 0.8)};"></span>
-        <span class="hm-swatch" style="background:${bgFor(maxVal)};"></span>
-        <span class="hm-legend-lab">Fort</span>
-      </div>
-    `;
-
-    // Header
-    let ths = `<th class="hm-sticky hm-rowhead">Poste</th>`;
-    doms.forEach(d => {
-      const fullLabel = (d.titre || d.titre_court || d.id_domaine_competence || "").toString().trim();
-      const shortLabel = (d.titre_court || d.titre || d.id_domaine_competence || "").toString().trim();
-      const col = normalizeColor(d.couleur ?? d.domaine_couleur) || "#e5e7eb";
-
-      ths += `
-        <th class="hm-colhead" title="${escapeHtml(fullLabel)}">
-          <div style="display:flex; align-items:center; gap:8px; justify-content:flex-start;">
-            <span class="hm-dom-dot" style="background:${escapeHtml(col)}; border-color:${escapeHtml(col)};"></span>
-            <span class="hm-dom-txt" title="${escapeHtml(fullLabel)}">${escapeHtml(shortLabel || "—")}</span>
-          </div>
-        </th>
-      `;
-    });
-    ths += `<th class="hm-colhead">Total</th>`;
-
-    // Body rows
-    let trs = "";
-    rows.forEach(p => {
-      const r = map.get(p.id_poste);
-      const cod = ((p.codif_client || p.codif_poste) || "").toString().trim();
-      const intit = (p.intitule_poste || "").toString().trim();
-      const svc = (p.nom_service || "").toString().trim();
-
-      let tds = "";
-      doms.forEach(d => {
-        const v = (r && r.get(d.id_domaine_competence)) ? Number(r.get(d.id_domaine_competence)) : 0;
-        const title = `${cod ? cod + " — " : ""}${intit || "Poste"} | ${d.titre_court || d.titre || d.id_domaine_competence} : ${v}`;
-        tds += `
-          <td class="hm-cell"
-              data-id_poste="${escapeHtml(p.id_poste)}"
-              data-id_domaine="${escapeHtml(d.id_domaine_competence)}"
-              data-value="${v}"
-              title="${escapeHtml(title)}"
-              style="background:${escapeHtml(bgFor(v))};">
-            ${v ? v : ""}
-          </td>
-        `;
-      });
-
-      const tot = rowTotal.get(p.id_poste) || 0;
-
-      trs += `
-        <tr>
-          <td class="hm-rowhead">
-            ${cod ? `<div class="hm-poste-code" style="margin-bottom:6px;">
-                      <span class="sb-badge">${escapeHtml(cod)}</span>
-                    </div>` : ``}
-            <div class="hm-poste-title">${escapeHtml(intit || "—")}</div>
-            <div class="hm-poste-sub">${escapeHtml(svc || "—")}</div>
-          </td>
-          ${tds}
-          <td class="hm-cell hm-totalcell">${tot ? tot : ""}</td>
-        </tr>
-      `;
-    });
-
-    // Total row
-    let totalRow = `<td class="hm-rowhead hm-totalrowlab">Total</td>`;
-    doms.forEach(d => {
-      const v = colTotal.get(d.id_domaine_competence) || 0;
-      totalRow += `<td class="hm-cell hm-totalcell">${v ? v : ""}</td>`;
-    });
-    totalRow += `<td class="hm-cell hm-grandtotal">${grandTotal ? grandTotal : ""}</td>`;
-
-    el.innerHTML = `
-      ${legend}
-      <div class="hm-wrap">
-        <table class="hm-table">
-          <thead><tr>${ths}</tr></thead>
-          <tbody>
-            ${trs || `<tr><td class="hm-rowhead">—</td><td class="hm-cell">—</td></tr>`}
-            <tr class="hm-totalrow">${totalRow}</tr>
           </tbody>
         </table>
       </div>
@@ -1202,7 +769,7 @@
               <div class="card" style="padding:12px; margin:0;">
                 <div class="card-title" style="margin-bottom:6px;">Synthèse</div>
                 <div class="card-sub" style="margin:0;">
-                  ${posteCode ? `<span class="sb-badge sb-badge-poste-code">${escapeHtml(posteCode)}</span><br/>` : ``}
+                  ${posteCode ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(posteCode)}</span><br/>` : ``}
                   Poste : <b>${escapeHtml(posteLabel)}</b><br/>
                   Domaine de compétence : <b>${escapeHtml(domLabel)}</b>
                 </div>
@@ -1221,7 +788,7 @@
                 <div class="card-title" style="margin-bottom:6px;">Compétences requises</div>
 
                 <div class="table-wrap" style="margin-top:10px;">
-                  <table class="sb-table">
+                  <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
                     <thead>
                       <tr>
                         <th style="width:90px;">Code</th>
@@ -1245,9 +812,9 @@
 
                         const nbNum = Number.isFinite(nb) ? nb : 0;
 
-                        let coverCls = "sb-badge sb-badge-cover-0";
-                        if (nbNum === 1) coverCls = "sb-badge sb-badge-cover-1";
-                        else if (nbNum > 1) coverCls = "sb-badge sb-badge-cover-2";
+                        let coverCls = "sb-badge sb-badge--danger";
+                        if (nbNum === 1) coverCls = "sb-badge sb-badge--warning";
+                        else if (nbNum > 1) coverCls = "sb-badge sb-badge--success";
 
                         const badge = `<span class="${coverCls}">${escapeHtml(String(nbNum))}</span>`;
 

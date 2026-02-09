@@ -17,20 +17,20 @@
         <div class="row" style="flex-direction:column; gap:12px; margin-top:12px;">
           <div class="info-item" style="min-width:0;">
             <div class="label">Service</div>
-            <select id="mapServiceSelect">
-              <option value="">Tous les services</option>
+            <select id="mapServiceSelect" class="sb-select">
+              <option value="__ALL__">Tous les services</option>
             </select>
           </div>
 
           <div class="info-item" style="min-width:0;">
             <div class="label">Domaine</div>
-            <select id="mapDomaineSelect">
+            <select id="mapDomaineSelect" class="sb-select">
               <option value="">Tous les domaines</option>
             </select>
           </div>
 
           <div class="info-item" style="min-width:0;">
-            <button type="button" class="btn-secondary" id="btnMapReset" style="margin-left:0; width:100%;">
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--block" id="btnMapReset">
               Réinitialiser
             </button>
           </div>
@@ -87,7 +87,7 @@
 
           <div class="table-wrap" style="overflow:auto;">
             <!-- On génère la grille en JS -->
-            <div id="heatmapGrid" class="sb-heatmap"></div>
+            <div id="heatmapGrid" class="map-heatmap"></div>
           </div>
         </div>
 
@@ -112,7 +112,7 @@
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn-secondary" id="btnMapModalClose">Fermer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnMapModalClose">Fermer</button>
       </div>
     </div>
   </div>
