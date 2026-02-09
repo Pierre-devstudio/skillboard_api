@@ -404,6 +404,14 @@ textarea.sb-ctrl{
 
 .sb-btn--accent:hover{ filter: brightness(0.92); }
 
+.sb-btn--init{
+  background: var(--reading-accent);
+  border-color: var(--reading-accent);
+  color:#fff;
+}
+
+.sb-btn--init:hover{ filter: brightness(0.92); }
+
 /* -------- Badges -------- */
 .sb-badge{
   display:inline-flex;
