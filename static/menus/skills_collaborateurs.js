@@ -1432,7 +1432,7 @@
                       <thead>
                         <tr>
                           <th>Compétence</th>
-                          <th style="width:90px; text-align:center;">Actuel</th>
+                          <th style="width:90px; text-align:center;">Niv. Actuel</th>
                           <th style="width:140px; text-align:center;">Dernière éval.</th>
                         </tr>
                       </thead>
