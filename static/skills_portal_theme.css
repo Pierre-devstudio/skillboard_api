@@ -73,9 +73,9 @@
   --sb-badge-formateur-border: #f82fcc;
   --sb-badge-formateur-fg: #f82fcc;
 
-  --sb-badge-indispo-bg: #f59f0b4b;
-  --sb-badge-indispo-border: #b97704;
-  --sb-badge-indispo-fg: #b97704;
+  --sb-badge-indispo-bg: #f50b0b00;
+  --sb-badge-indispo-border: #ff0000;
+  --sb-badge-indispo-fg: #ff0707;
 
   /* Modal titles (standard global) */
   --sb-modal-title-size: 15px;
@@ -176,6 +176,7 @@
   background: transparent;
   color: var(--sb-gray-900);
   box-sizing:border-box;
+  margin-left: 4px
 }
 
 .sb-badge--success{ background: var(--sb-success); border-color: var(--sb-success); color:#fff; }

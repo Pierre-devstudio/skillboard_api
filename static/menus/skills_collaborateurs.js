@@ -1423,7 +1423,7 @@
                 }).join("");
 
                 host.innerHTML = `
-                  <div class="card-sub" style="margin:5px 0 10px 0;">
+                  <div class="card-sub" style="margin:10px 0 10px 0;">
                     Poste actuel: <strong>${escapeHtml(data.intitule_poste || "–")}</strong>
                   </div>
 
