@@ -28,41 +28,41 @@
 
           <div class="info-item" style="min-width:0;">
             <div class="label">Statut</div>
-            <div class="row" style="gap:10px; margin-top:6px;">
-              <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#374151;">
-                <input type="checkbox" id="collabOnlyActifs" checked />
-                Actifs uniquement
-              </label>
+              <div class="row" style="gap:10px; margin-top:6px;">
+                <label class="sb-check">
+                  <input type="checkbox" id="collabOnlyActifs" checked />
+                  <span>Actifs uniquement</span>
+                </label>
 
-              <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#374151;">
-                <input type="checkbox" id="collabIncludeArchived" />
-                Inclure archivés
-              </label>
-            </div>
+                <label class="sb-check">
+                  <input type="checkbox" id="collabIncludeArchived" />
+                  <span>Inclure archivés</span>
+                </label>
+              </div>
           </div>
 
           <div class="info-item" style="min-width:0;">
             <div class="label">Rôles</div>
-            <div class="row" style="gap:10px; margin-top:6px;">
-              <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#374151;">
-                <input type="checkbox" id="collabOnlyManagers" />
-                Managers
-              </label>
+              <div class="row" style="gap:10px; margin-top:6px;">
+                <label class="sb-check">
+                  <input type="checkbox" id="collabOnlyManagers" />
+                  <span>Managers</span>
+                </label>
 
-              <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#374151;">
-                <input type="checkbox" id="collabOnlyFormateurs" />
-                Formateurs
-              </label>
+                <label class="sb-check">
+                  <input type="checkbox" id="collabOnlyFormateurs" />
+                  <span>Formateurs</span>
+                </label>
 
-              <label style="display:flex; align-items:center; gap:8px; font-size:13px; color:#374151;">
-                <input type="checkbox" id="collabOnlyTemp" />
-                Temporaires
-              </label>
-            </div>
+                <label class="sb-check">
+                  <input type="checkbox" id="collabOnlyTemp" />
+                  <span>Temporaires</span>
+                </label>
+              </div>
           </div>
 
           <div class="info-item" style="min-width:0;">
-            <button type="button" class="btn-secondary" id="btnCollabReset" style="margin-left:0; width:100%;">
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--block" id="btnCollabReset">
               Réinitialiser les filtres
             </button>
           </div>
@@ -78,8 +78,7 @@
             <div class="card-sub" style="margin:0;">Accédez au planning et planifiez les indisponibilités.</div>
           </div>
 
-          <button type="button" class="btn-secondary" id="btnOpenIndispoPlanning"
-                  style="background:var(--accent); border-color:var(--accent); color:#fff;">
+          <button type="button" class="sb-btn sb-btn--accent" id="btnOpenIndispoPlanning">
             Voir le planning
           </button>
         </div>
@@ -156,7 +155,7 @@
         </div>
 
         <div class="table-wrap" style="margin-top:12px;">
-          <table class="sb-table" id="tblCollaborateurs">
+          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" id="tblCollaborateurs">
             <thead>
               <tr>
                 <th>Nom</th>
@@ -196,7 +195,7 @@
         <div id="collabModalBody" style="margin-top:12px;"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-secondary" id="btnCollabModalClose">Fermer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnCollabModalClose">Fermer</button>
       </div>
     </div>
   </div>

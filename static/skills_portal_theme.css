@@ -82,6 +82,29 @@
   --sb-modal-title-weight: 700;
   --sb-modal-title-color: var(--sb-gray-900);
   --sb-modal-title-letterspacing: 0.1px;
+
+  /* Reading accent (teal) */
+  --reading-accent: #0d9488;
+  --reading-accent-hover: #0f766e;
+  --reading-accent-press: #115e59;
+  --reading-accent-ring: rgba(13,148,136,0.30);
+
+  /* UI accent (par défaut = marque) */
+  --ui-accent: var(--accent);
+
+  /* Badges d'écarts (matching) */
+  --gap-missing: #ef4444;
+  --gap-under: #f59e0b;
+  --gap-zero-bg: #e5e7eb;
+  --gap-zero-fg: #6b7280;
+  --gap-zero-border: #d1d5db;
+
+  /* Bouton Fermer (uniforme) */
+  --modal-close-bg: #ffffff;
+  --modal-close-border: #cbd5e1;
+  --modal-close-text: #0f172a;
+  --modal-close-hover-bg: #f8fafc;
+
 }
 
 
@@ -104,6 +127,8 @@
   gap:8px;
   flex-wrap:wrap;
 }
+
+.sb-actions--end{ justify-content:flex-end; }
 
 /* -------- Hints (APE / IDCC / OPCO / messages inline) -------- */
 .sb-hint{
@@ -137,6 +162,11 @@
 .sb-check input[type="checkbox"]{
   width:16px;
   height:16px;
+}
+
+.sb-check span{
+  font-size:13px;
+  color:#374151;
 }
 
 /* -------- Richtext (RTF->HTML / responsabilités) -------- */
@@ -287,6 +317,51 @@
   opacity: 1;
 }
 
+/* -------- Form controls (standard) -------- */
+.sb-label{
+  display:block;
+  font-weight:600;
+  font-size:12px;
+  color:#374151;
+  margin:0 0 6px 0;
+}
+
+.sb-ctrl,
+.sb-select{
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid #d1d5db;
+  background:#ffffff;
+  padding:8px 10px;
+  border-radius:10px;
+  font-family:inherit;
+  font-size:13px;
+  color:#111827;
+  text-align:left;
+  outline:none;
+  box-shadow:none;
+}
+
+textarea.sb-ctrl{
+  min-height:70px;
+  resize:vertical;
+}
+
+.sb-select:focus,
+.sb-ctrl:focus{
+  outline:none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 55%, #d1d5db);
+}
+
+.sb-ctrl:disabled,
+.sb-select:disabled{
+  background:#f8fafc;
+  color:#111827;
+  opacity:0.85;
+  cursor:not-allowed;
+}
+
 /* -------- Buttons -------- */
 .sb-btn{
   display:inline-flex;
@@ -345,8 +420,10 @@
   background: transparent;
   color: var(--sb-gray-900);
   box-sizing:border-box;
-  margin-left: 4px
+  margin-left: 0px;
 }
+
+.sb-badge + .sb-badge{ margin-left:4px; }
 
 .sb-badge--success{ background: var(--sb-success); border-color: var(--sb-success); color:#fff; }
 .sb-badge--danger{  background: var(--sb-danger);  border-color: var(--sb-danger);  color:#fff; }
@@ -509,6 +586,101 @@
   flex: 0 0 8px;
 }
 
+/* -------- Badges: group (alignement + spacing) -------- */
+.sb-badges{
+  display:inline-flex;
+  gap:6px;
+  align-items:center;
+  justify-content:center;
+}
+
+/* -------- Badges: carré (écarts / indicateurs courts) -------- */
+.sb-badge--sq{
+  width:22px;
+  min-width:22px;
+  height:22px;
+  padding:0;
+  border-radius:6px;
+  font-size:12px;
+  font-weight:900;
+  line-height:1;
+  color:#ffffff;
+  background:#9ca3af;
+  border-color: rgba(0,0,0,.12);
+}
+
+.sb-badge--sq-sm{
+  width:18px;
+  min-width:18px;
+  height:18px;
+  border-radius:4px;
+  font-size:11px;
+  font-weight:800;
+}
+
+/* Ancien nom: sb-gap-badges / sb-gap-badge */
+.sb-gap-badges{ 
+  display:inline-flex; 
+  gap:6px; 
+  align-items:center; 
+  justify-content:center; 
+}
+
+.sb-gap-badges--sm{ gap:4px; }
+
+.sb-gap-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:22px;
+  height:22px;
+  border-radius:6px;
+  font-size:12px;
+  font-weight:900;
+  line-height:1;
+  border:1px solid rgba(0,0,0,.12);
+  color:#ffffff;
+  background:#9ca3af;
+}
+
+.sb-gap-badge--sm{
+  height:18px;
+  border-radius:4px;
+  font-weight:800;
+  font-size:11px;
+}
+
+/* -------- Legend (écarts / matching) -------- */
+.sb-gap-legend{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+  align-items:center;
+  font-size:12px;
+  color: var(--sb-gray-500);
+}
+
+.sb-gap-legend--mt{ margin-top:10px; }
+
+.sb-gap-legend-item{
+  display:inline-flex;
+  gap:6px;
+  align-items:center;
+}
+
+.sb-gap-swatch{
+  width:12px;
+  height:12px;
+  border-radius:3px;
+  border:1px solid rgba(0,0,0,.12);
+  display:inline-block;
+  background: var(--gap-zero-bg);
+}
+
+.sb-gap-swatch--missing{ background: var(--gap-missing); }
+.sb-gap-swatch--under{ background: var(--gap-under); }
+
+
 /* -------- Tables (modifiers) -------- */
 .sb-table{ width:100%; border-collapse: separate; border-spacing:0; }
 
@@ -569,6 +741,59 @@
 
 .sb-btn--block{ width:100%; }
 
+/* -------- Segmented control (standard) -------- */
+.sb-segbar{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+.sb-seg{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height:28px;
+  padding:0 10px;
+  border-radius:8px;
+  border:1px solid var(--sb-gray-300);
+  background:#ffffff;
+  color: var(--sb-gray-900);
+  font-size: var(--sb-fs-12);
+  font-weight:600;
+  cursor:pointer;
+  user-select:none;
+}
+
+.sb-seg:hover{ filter: brightness(0.98); }
+
+.sb-seg:focus{
+  outline:none;
+  box-shadow: var(--sb-ring-accent);
+}
+
+/* Variantes actives */
+.sb-seg--fill.is-active,
+.sb-seg--match.is-active{ /* alias legacy */
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+  color:#ffffff;
+}
+
+.sb-seg--soft.is-active{
+  border-color: var(--ui-accent);
+  background: color-mix(in srgb, var(--ui-accent) 10%, #ffffff);
+  color: var(--sb-gray-900);
+  font-weight:700;
+}
+
+.sb-seg--dark.is-active{
+  background:#111827;
+  border-color:#111827;
+  color:#ffffff;
+}
+
+
 /* -------- Cards (état actif, ex: Pareto KPI) -------- */
 .sb-card--active{
   outline:2px solid rgba(148,163,184,0.9);
@@ -599,86 +824,38 @@
   font-weight: 700;
 }
 
+/* =========================
+   VUE: Vos collaborateurs
+   ========================= */
 
-/* Collaborateurs: tables plus aérées et lisibles (aligné référentiel) */
-#view-vos-collaborateurs .sb-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+/* Table: on utilise les modifiers standards dans le HTML/JS
+   (.sb-table--airy .sb-table--zebra .sb-table--hover)
+   Ici: uniquement ajustements métier (colonnes) */
+#view-vos-collaborateurs #tblCollaborateurs td:nth-child(1){
+  font-weight:700;
 }
 
-#view-vos-collaborateurs .sb-table thead th {
-  text-align: left;
-  font-weight: 600;
-  font-size: 13px;
-  color: #111827;
-  padding: 12px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  white-space: nowrap;
+#view-vos-collaborateurs #tblCollaborateurs th:nth-child(4),
+#view-vos-collaborateurs #tblCollaborateurs th:nth-child(5),
+#view-vos-collaborateurs #tblCollaborateurs th:nth-child(6),
+#view-vos-collaborateurs #tblCollaborateurs td:nth-child(4),
+#view-vos-collaborateurs #tblCollaborateurs td:nth-child(5),
+#view-vos-collaborateurs #tblCollaborateurs td:nth-child(6){
+  text-align:center;
 }
 
-#view-vos-collaborateurs .sb-table tbody td {
-  padding: 12px 16px;
-  vertical-align: middle;
-  border-bottom: 1px solid #f3f4f6;
-  line-height: 1.35;
+#view-vos-collaborateurs #tblCollaborateurs td:nth-child(5),
+#view-vos-collaborateurs #tblCollaborateurs td:nth-child(6){
+  white-space:nowrap;
 }
-
-#view-vos-collaborateurs .sb-table tbody tr:nth-child(even) {
-  background: #fafafa;
-}
-
-#view-vos-collaborateurs .sb-table tbody tr:hover {
-  background: #f3f4f6;
-}
-
-/* Nom plus lisible */
-#view-vos-collaborateurs .sb-table tbody td:nth-child(1) {
-  font-weight: 700;
-}
-
-/* Alignements (statut + dates centrés) */
-#view-vos-collaborateurs .sb-table tbody td:nth-child(4),
-#view-vos-collaborateurs .sb-table tbody td:nth-child(5),
-#view-vos-collaborateurs .sb-table tbody td:nth-child(6),
-#view-vos-collaborateurs .sb-table thead th:nth-child(4),
-#view-vos-collaborateurs .sb-table thead th:nth-child(5),
-#view-vos-collaborateurs .sb-table thead th:nth-child(6) {
-  text-align: center;
-}
-
-/* Dates sur une ligne */
-#view-vos-collaborateurs .sb-table tbody td:nth-child(5),
-#view-vos-collaborateurs .sb-table tbody td:nth-child(6) {
-  white-space: nowrap;
-}
-
-/* Tailles de colonnes (équilibre visuel) */
-#view-vos-collaborateurs .sb-table thead th:nth-child(1) { width: 180px; } /* Nom */
-#view-vos-collaborateurs .sb-table thead th:nth-child(2) { width: 150px; } /* Service */
-#view-vos-collaborateurs .sb-table thead th:nth-child(4) { width: 120px; } /* Statut */
-#view-vos-collaborateurs .sb-table thead th:nth-child(5) { width: 110px; } /* Entrée */
-#view-vos-collaborateurs .sb-table thead th:nth-child(6) { width: 130px; } /* Sortie prévue */
-#view-vos-collaborateurs .sb-table thead th:nth-child(7) { width: 220px; } /* Contact */
-
-/* Contact: autoriser retour à la ligne si besoin */
-#view-vos-collaborateurs .sb-table tbody td:nth-child(7) {
-  white-space: normal;
-}
-
-/* --- Vos collaborateurs : compact + Poste plus large + suppression colonne Contact --- */
-
-/* Police légèrement plus petite */
-#view-vos-collaborateurs .sb-table thead th{ font-size: 12px; }
-#view-vos-collaborateurs .sb-table tbody td{ font-size: 13px; }
 
 /* Poste (col 3) plus large */
-#view-vos-collaborateurs .sb-table thead th:nth-child(3){ width: 320px; }
+#view-vos-collaborateurs #tblCollaborateurs thead th:nth-child(3){ width:320px; }
 
 /* Masquer la colonne Contact (col 7) */
-#view-vos-collaborateurs .sb-table thead th:nth-child(7),
-#view-vos-collaborateurs .sb-table tbody td:nth-child(7){
-  display: none;
+#view-vos-collaborateurs #tblCollaborateurs thead th:nth-child(7),
+#view-vos-collaborateurs #tblCollaborateurs tbody td:nth-child(7){
+  display:none;
 }
 
 /* Vos collaborateurs : tuile Indisponibilités (colonne filtres) */
@@ -690,21 +867,6 @@
 #collabIndispoTile .row .card{
   flex: 1 1 140px;
   min-width: 140px;
-}
-
-/* Vos collaborateurs : bouton tuile Indisponibilités en rouge Insights */
-#btnOpenIndispoPlanning{
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
-  color: #fff !important;
-}
-
-#btnOpenIndispoPlanning:hover{
-  filter: brightness(0.92);
-}
-
-#btnOpenIndispoPlanning:focus{
-  box-shadow: 0 0 0 3px rgba(193,39,45,0.18);
 }
 
 
@@ -1522,19 +1684,6 @@
    NB: section volontairement en fin de fichier (priorité CSS)
    ====================================================== */
 
-:root{
-  /* Accent de lecture (calme) */
-  --reading-accent: #0d9488;
-  --reading-accent-hover: #0f766e;
-  --reading-accent-press: #115e59;
-  --reading-accent-ring: rgba(13,148,136,0.30);
-
-  /* Bouton Fermer (uniforme) */
-  --modal-close-bg: #ffffff;
-  --modal-close-border: #cbd5e1;
-  --modal-close-text: #0f172a;
-  --modal-close-hover-bg: #f8fafc;
-}
 
 /* ---------- Boutons RESET (teal) ---------- */
 /* Priorité haute pour écraser les styles par vue existants */
@@ -1608,18 +1757,6 @@ button[id$="ModalClose"]:active{
    Objectif: ne plus mettre de couleurs en inline JS.
    ====================================================== */
 
-:root{
-  /* Accent UI (par défaut = couleur marque). Tu peux le surcharger par vue. */
-  --ui-accent: var(--accent);
-
-  /* Badges d'écarts (matching) */
-  --gap-missing: #ef4444;
-  --gap-under: #f59e0b;
-  --gap-zero-bg: #e5e7eb;
-  --gap-zero-fg: #6b7280;
-  --gap-zero-border: #d1d5db;
-}
-
 /* Tuile sélectionnée (Analyse compétences) */
 #view-analyse-competences .analyse-tile.active{
   outline: 2px solid color-mix(in srgb, var(--reading-accent) 65%, #ffffff) !important;
@@ -1662,70 +1799,6 @@ button[id$="ModalClose"]:active{
   color:#6b7280;
 }
 
-/* Analyse compétences — Toggle matching postes (fragiles / tous) */
-#view-analyse-competences .sb-seg.sb-seg--match{
-  font-weight: 600;          /* fini le pavé */
-  letter-spacing: 0;
-  border-color: #d1d5db;
-  background: #fff;
-}
-
-#view-analyse-competences .sb-seg.sb-seg--match.is-active{
-  border-color: var(--ui-accent);
-  background: var(--ui-accent);
-  color: #ffffff;
-}
-
-#view-analyse-competences .sb-seg.sb-seg--match:focus{
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-accent) 25%, transparent);
-}
-
-
-/* Segmented tabs (modals) */
-.sb-seg{
-  padding:6px 10px;
-  border-radius:8px;
-  border:1px solid #d1d5db;
-  background:#ffffff;
-  color:#111827;
-  font-weight:900;
-  cursor:pointer;
-}
-
-.sb-segbar{
-  display:flex;
-  gap:8px;
-  align-items:center;
-  flex-wrap:wrap;
-}
-
-#modalMatchPerson .sb-seg.sb-seg--dark.is-active{
-  background:#111827;
-  color:#ffffff;
-}
-
-#modalMatchPerson .sb-seg.sb-seg--dark:not(.is-active){
-  background:#ffffff;
-  color:#111827;
-}
-
-/* Tabs "Compétences / Couverture" (modal Analyse poste) */
-#modalAnalysePoste .sb-seg.sb-seg--soft{
-  font-weight:600;
-}
-
-#modalAnalysePoste .sb-seg.sb-seg--soft.is-active{
-  border-color: var(--ui-accent);
-  background: color-mix(in srgb, var(--ui-accent) 10%, #ffffff);
-  font-weight:700;
-}
-
-#modalAnalysePoste .sb-seg.sb-seg--soft:not(.is-active){
-  border-color:#d1d5db;
-  background:#ffffff;
-}
-
 /* Modal analyse poste — titre */
 #modalAnalysePoste #analysePosteModalTitleText{
   font-weight: 500;
@@ -1765,212 +1838,15 @@ button[id$="ModalClose"]:active{
   min-width:0;
 }
 
-#modalCollaborateur input.sb-ctrl,
-#modalCollaborateur textarea.sb-ctrl{
-  width:100%;
-  box-sizing:border-box;
-  border:1px solid #d1d5db !important;
-  background:#ffffff !important;
-  padding:8px 10px;
-  border-radius:10px;
-  font-family:inherit;
-  font-size:13px;
-  color:#111827;
-  text-align:left;
-  outline:none;
-  box-shadow:none;
-}
-
-#modalCollaborateur .sb-select{
-  width:100%;
-  box-sizing:border-box;
-}
-
 @media (max-width: 780px){
   #modalCollaborateur .sb-collab-grid{
     grid-template-columns: 1fr;
   }
 }
-
 
 #modalCollaborateur .sb-collab-grid .sb-field{
   margin:0;
 }
-
-#modalCollaborateur .sb-collab-grid .sb-field .sb-label{
-  display:block;
-  font-weight:600;
-  font-size:12px;
-  color:#374151;
-  margin:0 0 6px 0;
-}
-
-/* Inputs/textarea: override du input{...} global (sinon c’est transparent et centré) */
-#modalCollaborateur input.sb-ctrl,
-#modalCollaborateur textarea.sb-ctrl{
-  width:100%;
-  border:1px solid #d1d5db !important;
-  background:#ffffff !important;
-  padding:8px 10px;
-  border-radius:10px;
-  font-family:inherit;
-  font-size:13px;
-  color:#111827;
-  text-align:left;
-  outline:none;
-  box-shadow:none;
-}
-
-#modalCollaborateur textarea.sb-ctrl{
-  min-height:70px;
-  resize:vertical;
-}
-
-/* Select: on garde .sb-select existant, mais on harmonise le focus */
-#modalCollaborateur .sb-select:focus,
-#modalCollaborateur input.sb-ctrl:focus,
-#modalCollaborateur textarea.sb-ctrl:focus{
-  outline:none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
-  border-color: color-mix(in srgb, var(--accent) 55%, #d1d5db) !important;
-}
-
-#modalCollaborateur input.sb-ctrl:disabled,
-#modalCollaborateur textarea.sb-ctrl:disabled,
-#modalCollaborateur .sb-select:disabled{
-  background:#f8fafc !important;
-  color:#111827;
-  opacity:0.85;
-  cursor:not-allowed;
-}
-
-@media (max-width: 780px){
-  #modalCollaborateur .sb-collab-grid{
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Actions édition (bloc 1, en haut à droite) */
-#modalCollaborateur .sb-collab-actions{
-  display:flex;
-  gap:8px;
-  justify-content:flex-end;
-  align-items:center;
-  margin-bottom:10px;
-}
-
-#modalCollaborateur .sb-collab-btn{
-  border-radius:10px;
-  padding:7px 12px;
-  font-size:12px;
-  font-weight:700;
-  border:1px solid transparent;
-  cursor:pointer;
-  line-height:1;
-}
-
-#modalCollaborateur .sb-collab-btn:disabled{
-  opacity:0.6;
-  cursor:not-allowed;
-}
-
-#modalCollaborateur .sb-collab-btn--edit,
-#modalCollaborateur .sb-collab-btn--save{
-  background:var(--accent);
-  color:#fff;
-  border-color:var(--accent);
-}
-
-#modalCollaborateur .sb-collab-btn--edit:hover,
-#modalCollaborateur .sb-collab-btn--save:hover{
-  filter:brightness(0.95);
-}
-
-#modalCollaborateur .sb-collab-btn--cancel{
-  background:#ffffff;
-  color:#111827;
-  border-color:#d1d5db;
-}
-
-#modalCollaborateur .sb-collab-btn--cancel:hover{
-  background:#f9fafb;
-}
-
-
-
-/* Badges écarts (composant générique) */
-.sb-gap-badges{
-  display:inline-flex;
-  gap:6px;
-  align-items:center;
-  justify-content:center;
-}
-
-.sb-gap-badges--sm .sb-gap-badge{
-  height:18px;
-  border-radius:4px;
-  font-weight:800;
-}
-
-.sb-gap-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:22px;
-  height:22px;
-  border-radius:6px;
-  font-size:12px;
-  font-weight:900;
-  line-height:1;
-  border:1px solid rgba(0,0,0,.12);
-  color:#ffffff;
-  background:#9ca3af;
-}
-
-.sb-gap-badge--sm{
-  height:18px;
-  border-radius:4px;
-  font-weight:800;
-}
-
-.sb-gap-badge--missing{ background: var(--gap-missing); }
-.sb-gap-badge--under{ background: var(--gap-under); }
-
-.sb-gap-badge.is-zero{
-  background: var(--gap-zero-bg);
-  color: var(--gap-zero-fg);
-  border:1px solid var(--gap-zero-border);
-}
-
-/* Légende (écarts) */
-.sb-gap-legend{
-  display:flex;
-  gap:14px;
-  flex-wrap:wrap;
-  align-items:center;
-  font-size:12px;
-  color:#6b7280;
-}
-
-.sb-gap-legend--mt{ margin-top:10px; }
-
-.sb-gap-legend-item{
-  display:inline-flex;
-  gap:6px;
-  align-items:center;
-}
-
-.sb-gap-swatch{
-  width:12px;
-  height:12px;
-  border-radius:3px;
-  border:1px solid rgba(0,0,0,.12);
-  display:inline-block;
-  background:#e5e7eb;
-}
-
-.sb-gap-swatch--missing{ background: var(--gap-missing); }
-.sb-gap-swatch--under{ background: var(--gap-under); }
 
 /* Matching (liste Postes) : focus + sélection = couleur lecture (teal) */
 #view-analyse-competences button.btn-secondary.sb-choice.is-selected{

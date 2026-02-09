@@ -574,7 +574,7 @@
               </div>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn-secondary" id="btnJmbDetailClose">Fermer</button>
+              <button type="button" class="sb-btn sb-btn--soft" id="btnJmbDetailClose">Fermer</button>
             </div>
           </div>
         `;
@@ -655,8 +655,7 @@
               <td style="text-align:center; white-space:nowrap;">${etat}</td>
               <td style="text-align:center;">
                 <button type="button"
-                        class="btn-secondary"
-                        style="padding:5px 8px; font-size:12px;"
+                        class="sb-btn sb-btn--soft sb-btn--xs"
                         data-jmb-detail="${escapeHtml(x.id_action_formation_effectif || "")}">
                   Détail
                 </button>
@@ -667,7 +666,7 @@
 
         host.innerHTML = `
           <div class="sb-table-wrap">
-            <table class="sb-table" style="width:100%; table-layout:fixed;">
+            <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" style="width:100%; table-layout:fixed;">
               <colgroup>
                 <col style="width:50px;">
                 <col>
@@ -849,10 +848,10 @@
               identHost.innerHTML = `
 
                 <!-- Bloc 1 : Coordonnées -->
-                <div class="sb-collab-actions">
-                  <button type="button" class="sb-collab-btn sb-collab-btn--edit" id="collabBtnEdit">Modifier</button>
-                  <button type="button" class="sb-collab-btn sb-collab-btn--save" id="collabBtnSave" style="display:none;">Enregistrer</button>
-                  <button type="button" class="sb-collab-btn sb-collab-btn--cancel" id="collabBtnCancel" style="display:none;">Annuler</button>
+                <div class="sb-actions sb-actions--end">
+                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnEdit">Modifier</button>
+                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="collabBtnSave" style="display:none;">Enregistrer</button>
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="collabBtnCancel" style="display:none;">Annuler</button>
                 </div>
                 <div class="sb-collab-block">
                   <div class="sb-collab-grid">
@@ -1428,7 +1427,7 @@
                   </div>
 
                   <div class="sb-table-wrap">
-                    <table class="sb-table">
+                    <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
                       <thead>
                         <tr>
                           <th>Compétence</th>
@@ -1560,7 +1559,7 @@
                   </div>
 
                   <div class="sb-table-wrap">
-                    <table class="sb-table">
+                    <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
                       <thead>
                         <tr>
                           <th>Certification</th>
