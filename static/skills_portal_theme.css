@@ -335,7 +335,7 @@
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: var(--dot-color, #9ca3af); /* fallback gris */
+  background: var(--dom-color, #9ca3af); /* fallback gris */
   flex: 0 0 8px;
 }
 

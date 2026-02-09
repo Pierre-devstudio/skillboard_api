@@ -1423,8 +1423,8 @@
                 }).join("");
 
                 host.innerHTML = `
-                  <div class="card-sub" style="margin:0 0 10px 0;">
-                    Poste: <strong>${escapeHtml(data.intitule_poste || "–")}</strong>
+                  <div class="card-sub" style="margin:5px 0 10px 0;">
+                    Poste actuel: <strong>${escapeHtml(data.intitule_poste || "–")}</strong>
                   </div>
 
                   <div class="sb-table-wrap">
