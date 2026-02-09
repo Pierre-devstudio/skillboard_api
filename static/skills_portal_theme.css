@@ -1609,31 +1609,21 @@ textarea.sb-ctrl{
 
 
 /* ---------- Boutons RESET (teal) ---------- */
-/* Priorité haute pour écraser les styles par vue existants */
-button.btn-secondary[id$="Reset"],
-#view-cartographie-competences #btnMapReset,
-#view-vos-collaborateurs #btnCollabReset,
-#view-referentiel-competences #btnRefReset,
-#view-analyse-competences #btnAnalyseReset{
+/* IMPORTANT:
+   On ne touche plus aux nouveaux boutons standards (.sb-btn).
+   On ne force le teal que sur les anciens boutons legacy (.btn-secondary). */
+button.btn-secondary[id$="Reset"]{
   background: var(--reading-accent) !important;
   border-color: var(--reading-accent) !important;
   color: #ffffff !important;
 }
 
-button.btn-secondary[id$="Reset"]:hover,
-#view-cartographie-competences #btnMapReset:hover,
-#view-vos-collaborateurs #btnCollabReset:hover,
-#view-referentiel-competences #btnRefReset:hover,
-#view-analyse-competences #btnAnalyseReset:hover{
+button.btn-secondary[id$="Reset"]:hover{
   background: var(--reading-accent-hover) !important;
   border-color: var(--reading-accent-hover) !important;
 }
 
-button.btn-secondary[id$="Reset"]:active,
-#view-cartographie-competences #btnMapReset:active,
-#view-vos-collaborateurs #btnCollabReset:active,
-#view-referentiel-competences #btnRefReset:active,
-#view-analyse-competences #btnAnalyseReset:active{
+button.btn-secondary[id$="Reset"]:active{
   background: var(--reading-accent-press) !important;
   border-color: var(--reading-accent-press) !important;
 }
@@ -1642,6 +1632,7 @@ button.btn-secondary[id$="Reset"]:focus{
   outline: none;
   box-shadow: 0 0 0 3px var(--reading-accent-ring);
 }
+
 
 /* ---------- MODALS: hauteur max + scroll interne ---------- */
 .modal.show{
