@@ -16,24 +16,26 @@
         <div class="row" style="flex-direction:column; gap:12px; margin-top:12px;">
           <div class="info-item" style="min-width:0;">
             <div class="label">Service</div>
-            <select id="refServiceSelect"></select>
+            <select id="refServiceSelect" class="sb-select">
+              <option value="__ALL__">Tous les services</option>
+            </select>
           </div>
 
           <div class="info-item" style="min-width:0;">
             <div class="label">Domaine de compétences</div>
-            <select id="refDomaineSelect">
+            <select id="refDomaineSelect" class="sb-select">
               <option value="">Tous les domaines</option>
             </select>
           </div>
 
           <div class="info-item" style="min-width:0;">
             <div class="label">Recherche</div>
-            <input type="text" id="refSearch" placeholder="Code, intitulé, mots-clés…" />
+            <input type="text" id="refSearch" class="sb-ctrl" placeholder="Code, intitulé, mots-clés…" />
           </div>
 
           <div class="info-item" style="min-width:0;">
             <div class="label">État</div>
-            <select id="refEtatSelect">
+            <select id="refEtatSelect" class="sb-select">
               <option value="active" selected>Validée</option>
               <option value="">Tous</option>
               <option value="a_valider">À valider</option>

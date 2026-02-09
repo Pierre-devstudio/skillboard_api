@@ -107,95 +107,6 @@
     if (wrapCert) wrapCert.style.display = (tab === "certifs") ? "" : "none";
   }
 
-  function flattenServices(nodes) {
-    const out = [];
-    const seen = new Set();
-
-    function rec(list, depth) {
-      (list || []).forEach(n => {
-        const id = (n?.id_service ?? "").toString().trim();
-        if (!id) return;
-
-        // Pseudo-choix (ne doivent jamais venir de l'API)
-        if (id === ALL_SERVICES_ID) return;
-        if (id === NON_LIE_ID) return;
-
-        if (seen.has(id)) return;
-        seen.add(id);
-
-        out.push({
-          id_service: id,
-          nom_service: (n?.nom_service ?? id).toString().trim(),
-          depth: depth || 0
-        });
-
-        if (n?.children && n.children.length) rec(n.children, (depth || 0) + 1);
-      });
-    }
-
-    rec(Array.isArray(nodes) ? nodes : [], 0);
-    return out;
-  }
-
-
-
-
-  function fillServiceSelect(flat) {
-    const sel = byId("refServiceSelect");
-    if (!sel) return;
-
-    const current = (sel.value || localStorage.getItem("sb_ref_service") || "").trim();
-
-    // On veut: 1) Tous les services 2) services 3) Non lié
-    sel.innerHTML = "";
-
-    const seen = new Set();
-
-    // 1) Tous les services (toujours en premier, jamais en double)
-    const optAll = document.createElement("option");
-    optAll.value = ALL_SERVICES_ID;           // "__ALL__"
-    optAll.textContent = "Tous les services";
-    sel.appendChild(optAll);
-    seen.add(ALL_SERVICES_ID);
-
-    // 2) Services (on skippe __ALL__ et __NON_LIE__ s'ils viennent de l'API + dédoublonnage)
-    (flat || []).forEach(s => {
-      const id = (s?.id_service ?? "").toString().trim();
-      if (!id) return;
-
-      const label = (s?.nom_service ?? "").toString().trim();
-      const labelNorm = label.replace(/\s+/g, " ").toLowerCase();
-
-      // Bloque les pseudo-IDs + le libellé réservé (au cas où l'API renvoie une racine "Tous les services")
-      if (id === ALL_SERVICES_ID) return;
-      if (id === NON_LIE_ID) return;
-      if (labelNorm === "tous les services") return;
-
-      if (seen.has(id)) return;
-      seen.add(id);
-
-      const opt = document.createElement("option");
-      opt.value = id;
-      const prefix = s.depth ? "— ".repeat(Math.min(6, s.depth)) : "";
-      opt.textContent = prefix + (label || id);
-      sel.appendChild(opt);
-    });
-
-
-    // 3) Non lié (toujours en dernier, jamais en double)
-    const optNon = document.createElement("option");
-    optNon.value = NON_LIE_ID;                 // "__NON_LIE__"
-    optNon.textContent = "Non lié";
-    sel.appendChild(optNon);
-    seen.add(NON_LIE_ID);
-
-    // Restore si possible, sinon "Tous les services"
-    const exists = Array.from(sel.options).some(o => o.value === current);
-    sel.value = exists ? current : ALL_SERVICES_ID;
-  }
-
-
-
 
   function fillDomaineSelect(domaines) {
     const sel = byId("refDomaineSelect");
@@ -349,11 +260,26 @@
   
   async function loadServices(portal) {
     portal.showAlert("", "");
-    const nodes = await portal.apiJson(`${portal.apiBase}/skills/organisation/services/${encodeURIComponent(portal.contactId)}`);
-    const flat = flattenServices(Array.isArray(nodes) ? nodes : []);
-    fillServiceSelect(flat);
-    _servicesLoaded = true;
+
+    try {
+      await window.portal.serviceFilter.populateSelect({
+        portal: window.portal,
+        contactId: portal.contactId,
+        selectId: "refServiceSelect",
+        storageKey: "sb_ref_service",
+        labelAll: "Tous les services",
+        labelNonLie: "Non lié",
+        includeAll: true,
+        includeNonLie: true,
+        allowIndent: true
+      });
+
+      _servicesLoaded = true;
+    } catch (e) {
+      window.portal.showAlert("error", "Erreur chargement services : " + e.message);
+    }
   }
+
 
   function getFilters() {
     const id_service = (byId("refServiceSelect")?.value || "").trim();
