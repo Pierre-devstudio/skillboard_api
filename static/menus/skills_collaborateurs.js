@@ -381,16 +381,16 @@
     if (body) {
       body.innerHTML = `
         <div class="sb-tabbar" role="tablist" aria-label="Onglets collaborateur">
-          <button type="button" class="sb-seg sb-seg--soft is-active" data-tab="ident" role="tab" aria-selected="true">
+          <button type="button" class="sb-btn sb-btn--soft" data-tab="ident" role="tab" aria-selected="true">
             Identification
           </button>
-          <button type="button" class="sb-seg sb-seg--soft" data-tab="skills" role="tab" aria-selected="false">
+          <button type="button" class="sb-btn sb-btn--soft" data-tab="skills" role="tab" aria-selected="false">
             Compétences
           </button>
-          <button type="button" class="sb-seg sb-seg--soft" data-tab="certs" role="tab" aria-selected="false">
+          <button type="button" class="sb-btn sb-btn--soft" data-tab="certs" role="tab" aria-selected="false">
             Certifications
           </button>
-          <button type="button" class="sb-seg sb-seg--soft" data-tab="history" role="tab" aria-selected="false">
+          <button type="button" class="sb-btn sb-btn--soft" data-tab="history" role="tab" aria-selected="false">
             Historique
           </button>
         </div>
@@ -501,6 +501,9 @@
           const active = b.getAttribute("data-tab") === key;
           b.classList.toggle("is-active", active);
           b.setAttribute("aria-selected", active ? "true" : "false");
+            // état visuel (IMPORTANT)
+          b.classList.toggle("sb-btn--accent", active);
+          b.classList.toggle("sb-btn--soft", !active);
         });
         panels.forEach(p => {
           const active = p.getAttribute("data-panel") === key;
