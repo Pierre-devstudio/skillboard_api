@@ -1355,48 +1355,6 @@ textarea.sb-ctrl{
   line-height: 1.25;
 }
 
-
-
-/* ============================
-   Collaborateurs: boutons (soft)
-   ============================ */
-
-#view-vos-collaborateurs #btnCollabReset {
-  border-color: color-mix(in srgb, var(--accent) 35%, #d1d5db);
-  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
-  color: #1f2937;
-  font-weight: 600;
-}
-
-#view-vos-collaborateurs #btnCollabReset:hover {
-  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
-}
-
-#view-vos-collaborateurs #btnCollabReset:active {
-  transform: translateY(1px);
-}
-
-
-
-/* ============================
-   Référentiel: boutons (soft)
-   ============================ */
-
-#view-referentiel-competences #btnRefReset {
-  border-color: color-mix(in srgb, var(--accent) 35%, #d1d5db);
-  background: color-mix(in srgb, var(--accent) 8%, #ffffff);
-  color: #1f2937;
-  font-weight: 600;
-}
-
-#view-referentiel-competences #btnRefReset:hover {
-  background: color-mix(in srgb, var(--accent) 12%, #ffffff);
-}
-
-#view-referentiel-competences #btnRefReset:active {
-  transform: translateY(1px);
-}
-
 /* Bouton "Fermer" (footer modal détail) */
 #modalRefDetail #btnRefModalClose {
   border-color: color-mix(in srgb, var(--accent) 35%, #087016);
