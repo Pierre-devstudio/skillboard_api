@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, Tuple
+from datetime import date
 
 from psycopg.rows import dict_row
 
@@ -443,6 +444,7 @@ def get_cartographie_cell_detail(
     id_service: Optional[str] = Query(default=None),  # pour rester cohérent avec le filtre en cours
     etat: Optional[str] = Query(default="active"),
     include_masque: bool = Query(default=False),
+    include_porteurs: bool = Query(default=True),
 ):
     try:
         with get_conn() as conn:
@@ -496,6 +498,31 @@ def get_cartographie_cell_detail(
                 poste = cur.fetchone()
                 if not poste:
                     raise HTTPException(status_code=404, detail="Poste hors périmètre (service) ou introuvable")
+                
+                # --- Paramétrage RH (titulaires cible + pause)
+                cur.execute(
+                    """
+                    SELECT statut_poste, date_debut_validite, date_fin_validite, nb_titulaires_cible
+                    FROM public.tbl_fiche_poste_param_rh
+                    WHERE id_poste = %s
+                    LIMIT 1
+                    """,
+                    (id_poste,)
+                )
+                prh = cur.fetchone() or {}
+                statut_poste = (prh.get("statut_poste") or "actif").strip().lower()
+                date_debut_validite = prh.get("date_debut_validite")
+                date_fin_validite = prh.get("date_fin_validite")
+                nb_titulaires_cible = prh.get("nb_titulaires_cible") or 1
+
+                pause_active = False
+                if statut_poste in ("gele", "temporaire"):
+                    today = date.today()
+                    if (date_debut_validite is None or today >= date_debut_validite) and (
+                        date_fin_validite is None or today <= date_fin_validite
+                    ):
+                        pause_active = True
+
 
                 # --- filtres compétence
                 where_parts: List[str] = ["fpc.id_poste = %s"]
@@ -594,13 +621,17 @@ def get_cartographie_cell_detail(
                             "titre_court": r.get("titre_court"),
                             "couleur": r.get("couleur"),
                         },
-                        # champs ajoutés (couverture)
-                        "nb_porteurs": 0,
+                        # Couverture (brute / dispo / qualifiée)
+                        "nb_porteurs": 0,  # compat (brut)
+                        "nb_porteurs_disponibles": 0,
+                        "nb_porteurs_qualifies": 0,
+                        "gap_qualifie": 0,
+                        # Détail porteurs (optionnel via include_porteurs)
                         "porteurs": []
                     })
 
                 # ============================
-                # Couverture collaborateurs (porteurs) pour ces compétences
+                # Couverture collaborateurs (brute / dispo / qualifiée) pour ces compétences
                 # ============================
                 ids_comp = [c.get("id_comp") for c in competences if c.get("id_comp")]
                 if ids_comp:
@@ -614,64 +645,166 @@ def get_cartographie_cell_detail(
                             eff_where = "e.id_service = %s"
                             eff_params.append(id_service)
 
-                    sql_porteurs = f"""
+                    sql_cov = f"""
                     WITH comp_scope AS (
                         SELECT UNNEST(%s::text[]) AS id_comp
+                    ),
+                    base AS (
+                        SELECT
+                            cs.id_comp,
+                            e.id_effectif,
+                            (b.id_break IS NULL) AS is_disponible,
+                            CASE
+                                WHEN UPPER(COALESCE(fpc.niveau_requis, '')) = 'A' THEN 1
+                                WHEN UPPER(COALESCE(fpc.niveau_requis, '')) = 'B' THEN 2
+                                WHEN UPPER(COALESCE(fpc.niveau_requis, '')) = 'C' THEN 3
+                                ELSE 0
+                            END AS req_rank,
+                            CASE
+                                WHEN niv_norm LIKE 'init%' OR niv_norm LIKE '%initial%' THEN 1
+                                WHEN niv_norm LIKE 'avan%' OR niv_norm LIKE '%avance%' THEN 2
+                                WHEN niv_norm LIKE 'exp%'  OR niv_norm LIKE '%expert%' THEN 3
+                                WHEN niv_norm ~ '^[abc]\\b' THEN
+                                    CASE SUBSTRING(niv_norm FROM 1 FOR 1)
+                                        WHEN 'a' THEN 1
+                                        WHEN 'b' THEN 2
+                                        WHEN 'c' THEN 3
+                                        ELSE 0
+                                    END
+                                ELSE 0
+                            END AS act_rank
+                        FROM comp_scope cs
+                        JOIN public.tbl_competence c
+                          ON c.id_comp = cs.id_comp
+                        JOIN public.tbl_fiche_poste_competence fpc
+                          ON fpc.id_poste = %s
+                         AND (fpc.id_competence = cs.id_comp OR fpc.id_competence = c.code)
+                        JOIN public.tbl_effectif_client_competence ec
+                          ON ec.id_comp = cs.id_comp
+                        JOIN public.tbl_effectif_client e
+                          ON e.id_effectif = ec.id_effectif_client
+                        LEFT JOIN public.tbl_effectif_client_break b
+                          ON b.id_effectif = e.id_effectif
+                         AND COALESCE(b.archive, FALSE) = FALSE
+                         AND CURRENT_DATE BETWEEN b.date_debut AND b.date_fin
+                        CROSS JOIN LATERAL (
+                          SELECT translate(
+                                lower(COALESCE(ec.niveau_actuel, '')),
+                                'éèêëàâäîïôöùûüç',
+                                'eeeeaaaiioouuuc'
+                            ) AS niv_norm
+                        ) t
+                        WHERE
+                            e.id_ent = %s
+                            AND COALESCE(e.archive, FALSE) = FALSE
+                            AND COALESCE(e.statut_actif, TRUE) = TRUE
+                            AND COALESCE(ec.actif, TRUE) = TRUE
+                            AND COALESCE(ec.archive, FALSE) = FALSE
+                            AND {eff_where}
                     )
                     SELECT
-                        cs.id_comp,
-                        e.id_effectif,
-                        e.prenom_effectif,
-                        e.nom_effectif,
-                        e.id_service,
-                        COALESCE(o.nom_service, '') AS nom_service,
-                        e.id_poste_actuel,
-                        COALESCE(p.intitule_poste, '') AS intitule_poste,
-                        ec.niveau_actuel
-                    FROM comp_scope cs
-                    JOIN public.tbl_effectif_client_competence ec
-                      ON ec.id_comp = cs.id_comp
-                    JOIN public.tbl_effectif_client e
-                      ON e.id_effectif = ec.id_effectif_client
-                    LEFT JOIN public.tbl_entreprise_organigramme o
-                      ON o.id_ent = e.id_ent
-                     AND o.id_service = e.id_service
-                    LEFT JOIN public.tbl_fiche_poste p
-                      ON p.id_poste = e.id_poste_actuel
-                    WHERE
-                        e.id_ent = %s
-                        AND COALESCE(e.archive, FALSE) = FALSE
-                        AND {eff_where}
-                    ORDER BY cs.id_comp, e.nom_effectif, e.prenom_effectif
+                        id_comp,
+                        COUNT(DISTINCT id_effectif) AS nb_porteurs_brut,
+                        COUNT(DISTINCT id_effectif) FILTER (WHERE is_disponible) AS nb_porteurs_disponibles,
+                        COUNT(DISTINCT id_effectif) FILTER (
+                            WHERE is_disponible AND req_rank > 0 AND act_rank >= req_rank
+                        ) AS nb_porteurs_qualifies
+                    FROM base
+                    GROUP BY id_comp
                     """
 
                     cur.execute(
-                        sql_porteurs,
-                        tuple([ids_comp, id_ent] + eff_params)
+                        sql_cov,
+                        tuple([ids_comp, id_poste, id_ent] + eff_params)
                     )
-                    rows_p = cur.fetchall() or []
-
-                    porteurs_by_comp = {}
-                    for rp in rows_p:
-                        cid = rp.get("id_comp")
-                        if not cid:
-                            continue
-                        porteurs_by_comp.setdefault(cid, []).append({
-                            "id_effectif": rp.get("id_effectif"),
-                            "prenom_effectif": rp.get("prenom_effectif"),
-                            "nom_effectif": rp.get("nom_effectif"),
-                            "id_service": rp.get("id_service"),
-                            "nom_service": rp.get("nom_service"),
-                            "id_poste_actuel": rp.get("id_poste_actuel"),
-                            "intitule_poste": rp.get("intitule_poste"),
-                            "niveau_actuel": rp.get("niveau_actuel"),
-                        })
+                    cov_rows = cur.fetchall() or []
+                    cov_by_comp = {r.get("id_comp"): r for r in cov_rows if r.get("id_comp")}
 
                     for comp in competences:
                         cid = comp.get("id_comp")
-                        plist = porteurs_by_comp.get(cid, [])
-                        comp["porteurs"] = plist
-                        comp["nb_porteurs"] = len(plist)
+                        cvr = cov_by_comp.get(cid) or {}
+                        nb_brut = int(cvr.get("nb_porteurs_brut") or 0)
+                        nb_dispo = int(cvr.get("nb_porteurs_disponibles") or 0)
+                        nb_qual = int(cvr.get("nb_porteurs_qualifies") or 0)
+
+                        # compat: nb_porteurs = brut
+                        comp["nb_porteurs"] = nb_brut
+                        comp["nb_porteurs_disponibles"] = nb_dispo
+                        comp["nb_porteurs_qualifies"] = nb_qual
+                        comp["gap_qualifie"] = max(0, int(nb_titulaires_cible) - nb_qual)
+
+                    # Détail porteurs uniquement si demandé (évite payload inutile)
+                    if include_porteurs:
+                        sql_porteurs = f"""
+                        WITH comp_scope AS (
+                            SELECT UNNEST(%s::text[]) AS id_comp
+                        )
+                        SELECT
+                            cs.id_comp,
+                            e.id_effectif,
+                            e.prenom_effectif,
+                            e.nom_effectif,
+                            e.id_service,
+                            COALESCE(o.nom_service, '') AS nom_service,
+                            e.id_poste_actuel,
+                            COALESCE(p.intitule_poste, '') AS intitule_poste,
+                            ec.niveau_actuel,
+                            (b.id_break IS NULL) AS is_disponible,
+                            b.date_debut AS break_debut,
+                            b.date_fin AS break_fin
+                        FROM comp_scope cs
+                        JOIN public.tbl_effectif_client_competence ec
+                          ON ec.id_comp = cs.id_comp
+                        JOIN public.tbl_effectif_client e
+                          ON e.id_effectif = ec.id_effectif_client
+                        LEFT JOIN public.tbl_effectif_client_break b
+                          ON b.id_effectif = e.id_effectif
+                         AND COALESCE(b.archive, FALSE) = FALSE
+                         AND CURRENT_DATE BETWEEN b.date_debut AND b.date_fin
+                        LEFT JOIN public.tbl_entreprise_organigramme o
+                          ON o.id_ent = e.id_ent
+                         AND o.id_service = e.id_service
+                        LEFT JOIN public.tbl_fiche_poste p
+                          ON p.id_poste = e.id_poste_actuel
+                        WHERE
+                            e.id_ent = %s
+                            AND COALESCE(e.archive, FALSE) = FALSE
+                            AND COALESCE(e.statut_actif, TRUE) = TRUE
+                            AND COALESCE(ec.actif, TRUE) = TRUE
+                            AND COALESCE(ec.archive, FALSE) = FALSE
+                            AND {eff_where}
+                        ORDER BY cs.id_comp, e.nom_effectif, e.prenom_effectif
+                        """
+
+                        cur.execute(
+                            sql_porteurs,
+                            tuple([ids_comp, id_ent] + eff_params)
+                        )
+                        rows_p = cur.fetchall() or []
+
+                        porteurs_by_comp = {}
+                        for rp in rows_p:
+                            cid = rp.get("id_comp")
+                            if not cid:
+                                continue
+                            porteurs_by_comp.setdefault(cid, []).append({
+                                "id_effectif": rp.get("id_effectif"),
+                                "prenom_effectif": rp.get("prenom_effectif"),
+                                "nom_effectif": rp.get("nom_effectif"),
+                                "id_service": rp.get("id_service"),
+                                "nom_service": rp.get("nom_service"),
+                                "id_poste_actuel": rp.get("id_poste_actuel"),
+                                "intitule_poste": rp.get("intitule_poste"),
+                                "niveau_actuel": rp.get("niveau_actuel"),
+                                "is_disponible": rp.get("is_disponible"),
+                                "break_debut": rp.get("break_debut"),
+                                "break_fin": rp.get("break_fin"),
+                            })
+
+                        for comp in competences:
+                            cid = comp.get("id_comp")
+                            comp["porteurs"] = porteurs_by_comp.get(cid, [])
+
 
                 # réponse clean
                 return {
@@ -682,6 +815,13 @@ def get_cartographie_cell_detail(
                         "intitule_poste": poste.get("intitule_poste"),
                         "id_service": poste.get("id_service"),
                         "nom_service": poste.get("nom_service"),
+                        "param_rh": {
+                            "statut_poste": statut_poste,
+                            "date_debut_validite": date_debut_validite,
+                            "date_fin_validite": date_fin_validite,
+                            "nb_titulaires_cible": nb_titulaires_cible,
+                            "pause_active": pause_active,
+                        },
                     },
                     "domaine": domaine_obj,
                     "nb_competences": len(rows),
