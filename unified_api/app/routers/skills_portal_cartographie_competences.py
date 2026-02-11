@@ -661,9 +661,9 @@ def get_cartographie_cell_detail(
                                 ELSE 0
                             END AS req_rank,
                             CASE
-                                WHEN niv_norm LIKE 'init%' OR niv_norm LIKE '%initial%' THEN 1
-                                WHEN niv_norm LIKE 'avan%' OR niv_norm LIKE '%avance%' THEN 2
-                                WHEN niv_norm LIKE 'exp%'  OR niv_norm LIKE '%expert%' THEN 3
+                                WHEN niv_norm LIKE 'init%%' OR niv_norm LIKE '%%initial%%' THEN 1
+                                WHEN niv_norm LIKE 'avan%%' OR niv_norm LIKE '%%avance%%' THEN 2
+                                WHEN niv_norm LIKE 'exp%%'  OR niv_norm LIKE '%%expert%%' THEN 3
                                 WHEN niv_norm ~ '^[abc]\\b' THEN
                                     CASE SUBSTRING(niv_norm FROM 1 FOR 1)
                                         WHEN 'a' THEN 1
