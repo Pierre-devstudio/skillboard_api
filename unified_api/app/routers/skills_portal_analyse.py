@@ -2632,28 +2632,13 @@ def get_analyse_risques_detail(
 
                             COALESCE(fp.niveau_education_minimum, '')::text AS niveau_education_minimum,
 
-                            -- Rang minimal (0..8) basé sur des libellés contrôlés (niveau X / bac+N / bac / BTS / licence / master / doctorat)
-                            (
-                              CASE
-                                WHEN lower(trim(COALESCE(fp.niveau_education_minimum, ''))) = '' THEN 0
-                                WHEN lower(fp.niveau_education_minimum) ~ 'niveau\\s*([0-9])' THEN substring(lower(fp.niveau_education_minimum) from 'niveau\\s*([0-9])')::int
-                                WHEN lower(fp.niveau_education_minimum) ~ 'bac\\+([0-9])' THEN
-                                  CASE
-                                    WHEN substring(lower(fp.niveau_education_minimum) from 'bac\\+([0-9])')::int <= 2 THEN 5
-                                    WHEN substring(lower(fp.niveau_education_minimum) from 'bac\\+([0-9])')::int <= 4 THEN 6
-                                    WHEN substring(lower(fp.niveau_education_minimum) from 'bac\\+([0-9])')::int <= 7 THEN 7
-                                    ELSE 8
-                                  END
-                                WHEN lower(fp.niveau_education_minimum) LIKE '%doctor%' THEN 8
-                                WHEN lower(fp.niveau_education_minimum) LIKE '%master%' THEN 7
-                                WHEN lower(fp.niveau_education_minimum) LIKE '%ing%C3%A9nieur%' OR lower(fp.niveau_education_minimum) LIKE '%ingenieur%' THEN 7
-                                WHEN lower(fp.niveau_education_minimum) LIKE '%licence%' THEN 6
-                                WHEN lower(fp.niveau_education_minimum) LIKE '%bts%' OR lower(fp.niveau_education_minimum) LIKE '%dut%' OR lower(fp.niveau_education_minimum) LIKE '%deug%' THEN 5
-                                WHEN lower(fp.niveau_education_minimum) LIKE '%bac%' THEN 4
-                                WHEN lower(fp.niveau_education_minimum) LIKE '%cap%' OR lower(fp.niveau_education_minimum) LIKE '%bep%' THEN 3
+                            -- Rang minimal: stockage numérique (ex: "3", "4", "5"...)
+                            CASE
+                                WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$'
+                                    THEN trim(fp.niveau_education_minimum)::int
                                 ELSE 0
-                              END
-                            )::int AS edu_min_rank,
+                                END AS edu_min_rank,
+
 
                             -- Domaine NSF (bloquant si nsf_domaine_obligatoire OU nsf_groupe_obligatoire)
                             (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
@@ -2713,33 +2698,18 @@ def get_analyse_risques_detail(
                                   )
                                 )
 
-                                -- Niveau d'éducation minimum bloquant
+                                -- Niveau d'éducation minimum bloquant (stockage numérique côté effectif)
                                 AND (
-                                  pi.edu_min_rank = 0
-                                  OR (
-                                    (
-                                      CASE
-                                        WHEN lower(trim(COALESCE(e.niveau_education, ''))) = '' THEN 0
-                                        WHEN lower(e.niveau_education) ~ 'niveau\\s*([0-9])' THEN substring(lower(e.niveau_education) from 'niveau\\s*([0-9])')::int
-                                        WHEN lower(e.niveau_education) ~ 'bac\\+([0-9])' THEN
-                                          CASE
-                                            WHEN substring(lower(e.niveau_education) from 'bac\\+([0-9])')::int <= 2 THEN 5
-                                            WHEN substring(lower(e.niveau_education) from 'bac\\+([0-9])')::int <= 4 THEN 6
-                                            WHEN substring(lower(e.niveau_education) from 'bac\\+([0-9])')::int <= 7 THEN 7
-                                            ELSE 8
-                                          END
-                                        WHEN lower(e.niveau_education) LIKE '%doctor%' THEN 8
-                                        WHEN lower(e.niveau_education) LIKE '%master%' THEN 7
-                                        WHEN lower(e.niveau_education) LIKE '%ing%C3%A9nieur%' OR lower(e.niveau_education) LIKE '%ingenieur%' THEN 7
-                                        WHEN lower(e.niveau_education) LIKE '%licence%' THEN 6
-                                        WHEN lower(e.niveau_education) LIKE '%bts%' OR lower(e.niveau_education) LIKE '%dut%' OR lower(e.niveau_education) LIKE '%deug%' THEN 5
-                                        WHEN lower(e.niveau_education) LIKE '%bac%' THEN 4
-                                        WHEN lower(e.niveau_education) LIKE '%cap%' OR lower(e.niveau_education) LIKE '%bep%' THEN 3
+                                    pi.edu_min_rank = 0
+                                    OR (
+                                        CASE
+                                        WHEN trim(COALESCE(e.niveau_education, '')) ~ '^[0-9]+$'
+                                            THEN trim(e.niveau_education)::int
                                         ELSE 0
-                                      END
+                                        END
                                     ) >= pi.edu_min_rank
-                                  )
                                 )
+
                             ) AS nb_porteurs_total,
 
                             COUNT(DISTINCT e.id_effectif)::int FILTER (
@@ -2765,31 +2735,16 @@ def get_analyse_risques_detail(
                                   )
                                 )
                                 AND (
-                                  pi.edu_min_rank = 0
-                                  OR (
-                                    (
-                                      CASE
-                                        WHEN lower(trim(COALESCE(e.niveau_education, ''))) = '' THEN 0
-                                        WHEN lower(e.niveau_education) ~ 'niveau\\s*([0-9])' THEN substring(lower(e.niveau_education) from 'niveau\\s*([0-9])')::int
-                                        WHEN lower(e.niveau_education) ~ 'bac\\+([0-9])' THEN
-                                          CASE
-                                            WHEN substring(lower(e.niveau_education) from 'bac\\+([0-9])')::int <= 2 THEN 5
-                                            WHEN substring(lower(e.niveau_education) from 'bac\\+([0-9])')::int <= 4 THEN 6
-                                            WHEN substring(lower(e.niveau_education) from 'bac\\+([0-9])')::int <= 7 THEN 7
-                                            ELSE 8
-                                          END
-                                        WHEN lower(e.niveau_education) LIKE '%doctor%' THEN 8
-                                        WHEN lower(e.niveau_education) LIKE '%master%' THEN 7
-                                        WHEN lower(e.niveau_education) LIKE '%ing%C3%A9nieur%' OR lower(e.niveau_education) LIKE '%ingenieur%' THEN 7
-                                        WHEN lower(e.niveau_education) LIKE '%licence%' THEN 6
-                                        WHEN lower(e.niveau_education) LIKE '%bts%' OR lower(e.niveau_education) LIKE '%dut%' OR lower(e.niveau_education) LIKE '%deug%' THEN 5
-                                        WHEN lower(e.niveau_education) LIKE '%bac%' THEN 4
-                                        WHEN lower(e.niveau_education) LIKE '%cap%' OR lower(e.niveau_education) LIKE '%bep%' THEN 3
+                                    pi.edu_min_rank = 0
+                                    OR (
+                                        CASE
+                                        WHEN trim(COALESCE(e.niveau_education, '')) ~ '^[0-9]+$'
+                                            THEN trim(e.niveau_education)::int
                                         ELSE 0
-                                      END
+                                        END
                                     ) >= pi.edu_min_rank
-                                  )
                                 )
+
                                 AND e.id_poste_actuel = rc.id_poste
                             ) AS nb_porteurs_titulaires
 
