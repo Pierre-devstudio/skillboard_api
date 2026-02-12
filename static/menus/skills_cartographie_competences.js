@@ -183,145 +183,24 @@
     return data;
   }
 
-  async function fetchCellDetail(portal, id_poste, id_domaine, filters) {
-  const params = new URLSearchParams();
-  params.set("id_poste", id_poste);
+  async function fetchCellDetail(portal, id_poste, id_domaine, filters, includePorteurs = false) {
+    const params = new URLSearchParams();
+    params.set("id_poste", id_poste);
 
-  if (id_domaine) params.set("id_domaine", id_domaine);
+    if (id_domaine) params.set("id_domaine", id_domaine);
 
-  // pour rester cohérent avec le filtre Service en cours
-  const svc = filters?.id_service;
-  if (svc && svc !== window.portal.serviceFilter.ALL_ID) {
-    params.set("id_service", svc);
-  }
-
-
-  const url = `${portal.apiBase}/skills/cartographie/cell/${encodeURIComponent(portal.contactId)}?${params.toString()}`;
-  return await portal.apiJson(url);
-  }
-
-    function formatPorteurLabel(p) {
-    if (!p) return "—";
-    const prenom = (p.prenom_effectif || "").trim();
-    const nom = (p.nom_effectif || "").trim();
-    const full = `${prenom} ${nom}`.trim() || "—";
-
-    const poste = (p.intitule_poste || "").trim();
-    const svc = (p.nom_service || "").trim();
-
-    // on préfère le poste, sinon service, sinon rien
-    const right = poste || svc || "";
-
-    return right ? `${full}|||${right}` : `${full}|||`;
-  }
-
-  function renderPorteursMini(porteurs, niveauRequis) {
-    const list = Array.isArray(porteurs) ? porteurs : [];
-    if (!list.length) {
-      return `<div class="card-sub" style="margin-top:6px; color:#6b7280;">Aucun porteur</div>`;
+    // cohérent avec le filtre Service en cours
+    const svc = filters?.id_service;
+    if (svc && svc !== window.portal.serviceFilter.ALL_ID) {
+      params.set("id_service", svc);
     }
 
-    function levelRank(v) {
-      const raw = (v ?? "").toString().trim();
-      if (!raw) return -1;
+    // NEW: porteurs désactivés par défaut (drill-down éventuel plus tard)
+    params.set("include_porteurs", includePorteurs ? "true" : "false");
 
-      const s = raw
-        .toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      // 1) Libellés (à traiter AVANT A/B/C, sinon "avance" commence par "a")
-      if (s.startsWith("init") || s.includes("initial")) return 1;
-      if (s.startsWith("avan") || s.includes("avance")) return 2;
-      if (s.startsWith("exp")  || s.includes("expert")) return 3;
-
-      // 2) A/B/C uniquement si c'est un token (A, B, C, "B - ...", "C ..."), pas un mot
-      const mABC = s.match(/^([abc])\b/i);
-      if (mABC) {
-        const c = mABC[1].toUpperCase();
-        if (c === "A") return 1;
-        if (c === "B") return 2;
-        if (c === "C") return 3;
-      }
-
-      // 3) Numérique si jamais
-      const mNum = s.match(/^\d+/);
-      return mNum ? Number(mNum[0]) : -1;
-    }
-
-    function pickLevel(p) {
-      // ton besoin: niveau_actuel = Initial/Avancé/Expert (ou similaire)
-      const candidates = [
-        p?.niveau_actuel,
-        p?.niveau,
-        p?.niveau_porteur,
-        p?.niveau_competence,
-        p?.niveau_evalue,
-        p?.niveau_eval,
-        p?.niveau_obtenu,
-        p?.niveau_acquis,
-        p?.niveau_atteint
-      ];
-
-      for (const v of candidates) {
-        if (v === null || v === undefined) continue;
-
-        if (typeof v === "object") {
-          // ex: { libelle:"Avancé" } ou { niveau:"Expert" }
-          const s = (v.libelle ?? v.label ?? v.niveau ?? v.valeur ?? v.code ?? "").toString().trim();
-          if (s) return s;
-        } else {
-          const s = v.toString().trim();
-          if (s) return s;
-        }
-      }
-      return "";
-    }
-
-    const reqRank = levelRank(niveauRequis);
-
-    const max = 6;
-    const shown = list.slice(0, max);
-
-    const rows = shown.map(p => {
-      const packed = formatPorteurLabel(p);
-      const parts = packed.split("|||");
-      const left = parts[0] || "—";
-      const right = parts[1] || "";
-
-      const pLevel = pickLevel(p);
-      const pRank = levelRank(pLevel);
-
-      const ok = (reqRank > 0) ? (pRank >= reqRank) : (pRank > 0);
-      const tip = ok ? "niveau conforme" : "niveau à améliorer";
-
-      const dotStyle = ok
-        ? "width:10px;height:10px;border-radius:2px;display:inline-block;background:rgb(62,190,73);border:1px solid rgb(62,190,73);"
-        : "width:10px;height:10px;border-radius:2px;display:inline-block;background:rgb(220,38,38);border:1px solid rgb(220,38,38);";
-
-      return `
-        <div style="display:flex; justify-content:space-between; gap:10px;">
-          <span style="display:flex; align-items:center; gap:8px; min-width:0;">
-            <span title="${escapeHtml(tip)}" style="${dotStyle}"></span>
-            <span style="font-weight:600; color:#111827; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-              ${escapeHtml(left)}
-            </span>
-          </span>
-          <span style="color:#6b7280; font-size:12px; white-space:nowrap;">
-            ${escapeHtml(right || "—")}
-          </span>
-        </div>
-      `;
-    }).join("");
-
-    const more = list.length > max
-      ? `<div class="card-sub" style="margin-top:4px; color:#6b7280;">+ ${list.length - max} autre(s)</div>`
-      : "";
-
-    return `<div style="margin-top:6px; display:flex; flex-direction:column; gap:4px;">${rows}${more}</div>`;
+    const url = `${portal.apiBase}/skills/cartographie/cell/${encodeURIComponent(portal.contactId)}?${params.toString()}`;
+    return await portal.apiJson(url);
   }
-
 
 
   function buildMatrix(data) {
@@ -753,16 +632,44 @@
           });
 
 
+          const prh = (poste && poste.param_rh) ? poste.param_rh : {};
+          const cible = Number(prh?.nb_titulaires_cible || 1);
+          const pauseActive = !!prh?.pause_active;
+
+          const fmtDate = (v) => {
+            const s = (v ?? "").toString().trim();
+            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+            return m ? `${m[3]}/${m[2]}/${m[1]}` : (s || "—");
+          };
+
+          const pauseLabel = (() => {
+            const d1 = prh?.date_debut_validite;
+            const d2 = prh?.date_fin_validite;
+
+            if (!pauseActive) return "";
+            if (!d1 && !d2) return "Pause indéfinie";
+            if (!d1 && d2) return `Pause jusqu’au ${fmtDate(d2)}`;
+            if (d1 && !d2) return `Pause à partir du ${fmtDate(d1)} (indéfinie)`;
+            return `Pause du ${fmtDate(d1)} au ${fmtDate(d2)}`;
+          })();
+
           const sub = `
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
               <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
+
               <span style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; color:#374151; background:#fff;">
                 <span style="display:inline-block; width:10px; height:10px; border-radius:999px; border:1px solid #d1d5db; background:${escapeHtml(domColor)};"></span>
                 <span>${escapeHtml(domLabel)}</span>
               </span>
+
+              <span class="sb-badge">Titulaires cible : <b>${escapeHtml(String(cible))}</b></span>
+
+              ${pauseActive ? `<span class="sb-badge sb-badge--warning" title="${escapeHtml(pauseLabel)}">Poste en pause</span>` : ``}
+
               <span class="sb-badge sb-badge-accent">${list.length} compétence(s)</span>
             </div>
           `;
+
 
           let body = `
             <div class="row" style="flex-direction:column; gap:12px;">
@@ -771,7 +678,9 @@
                 <div class="card-sub" style="margin:0;">
                   ${posteCode ? `<span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(posteCode)}</span><br/>` : ``}
                   Poste : <b>${escapeHtml(posteLabel)}</b><br/>
-                  Domaine de compétence : <b>${escapeHtml(domLabel)}</b>
+                  Domaine de compétence : <b>${escapeHtml(domLabel)}</b><br/>
+                  Titulaires cible : <b>${escapeHtml(String(cible))}</b>
+                  ${pauseActive ? `<br/><span class="sb-badge sb-badge--warning" title="${escapeHtml(pauseLabel)}">Poste en pause</span>` : ``}
                 </div>
               </div>
           `;
@@ -795,7 +704,8 @@
                         <th>Compétence</th>
                         <th class="col-center" style="width:70px;">Niveau</th>
                         <th class="col-center" style="width:70px;">Criticité</th>
-                        <th class="col-center" style="width:70px;">Couverture</th>
+                        <th class="col-center" style="width:110px;">Couv. qualifiée</th>
+                        <th class="col-center" style="width:70px;">Gap</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -805,42 +715,60 @@
                         const niv = escapeHtml(c.niveau_requis || "—");
                         const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "—" : escapeHtml(String(c.poids_criticite));
 
-                        const porteurs = Array.isArray(c.porteurs) ? c.porteurs : [];
-                        const nb = (c.nb_porteurs === null || c.nb_porteurs === undefined)
-                          ? porteurs.length
+                        const nbBrut = (c.nb_porteurs === null || c.nb_porteurs === undefined)
+                          ? 0
                           : Number(c.nb_porteurs || 0);
 
-                        const nbNum = Number.isFinite(nb) ? nb : 0;
+                        const nbDispo = (c.nb_porteurs_disponibles === null || c.nb_porteurs_disponibles === undefined)
+                          ? nbBrut
+                          : Number(c.nb_porteurs_disponibles || 0);
+
+                        const nbQual = (c.nb_porteurs_qualifies === null || c.nb_porteurs_qualifies === undefined)
+                          ? nbDispo
+                          : Number(c.nb_porteurs_qualifies || 0);
+
+                        const gap = (c.gap_qualifie === null || c.gap_qualifie === undefined)
+                          ? Math.max(0, Number(cible || 1) - Number(nbQual || 0))
+                          : Number(c.gap_qualifie || 0);
+
+                        const covTitle = `Qualifiés: ${nbQual} | Disponibles: ${nbDispo} | Bruts: ${nbBrut} | Cible: ${cible}`;
 
                         let coverCls = "sb-badge sb-badge--danger";
-                        if (nbNum === 1) coverCls = "sb-badge sb-badge--warning";
-                        else if (nbNum > 1) coverCls = "sb-badge sb-badge--success";
+                        if (pauseActive) {
+                          coverCls = "sb-badge";
+                        } else if (nbQual >= cible) {
+                          coverCls = "sb-badge sb-badge--success";
+                        } else if (nbQual > 0) {
+                          coverCls = "sb-badge sb-badge--warning";
+                        }
 
-                        const badge = `<span class="${coverCls}">${escapeHtml(String(nbNum))}</span>`;
+                        const gapCls = pauseActive
+                          ? "sb-badge"
+                          : (gap === 0 ? "sb-badge sb-badge--success" : "sb-badge sb-badge--danger");
 
-
-                        // Liste des porteurs sous l’intitulé
-                        const porteursHtml = renderPorteursMini(porteurs, c.niveau_requis);
+                        const badgeCover = `<span class="${coverCls}" title="${escapeHtml(covTitle)}">${escapeHtml(String(nbQual))}</span>`;
+                        const badgeGap = `<span class="${gapCls}">${escapeHtml(String(gap))}</span>`;
 
                         return `
                           <tr>
                             <td style="font-weight:700; white-space:nowrap;">${code}</td>
-                            <td>
-                              ${intit}
-                              ${porteursHtml}
-                            </td>
+                            <td>${intit}</td>
                             <td class="col-center" style="white-space:nowrap;">${niv}</td>
                             <td class="col-center" style="white-space:nowrap;">${crit}</td>
-                            <td class="col-center" style="white-space:nowrap;">${badge}</td>
+                            <td class="col-center" style="white-space:nowrap;">${badgeCover}</td>
+                            <td class="col-center" style="white-space:nowrap;">${badgeGap}</td>
                           </tr>
                         `;
+
                       }).join("")}
                     </tbody>
                   </table>
                 </div>
 
                 <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-                  Couverture = nombre de collaborateurs porteurs de la compétence (selon le périmètre filtré).
+                  Couverture qualifiée = collaborateurs disponibles aujourd’hui (hors indisponibilités) dont le niveau actuel est ≥ au niveau requis.<br/>
+                  Gap = max(0, titulaires cible − couverture qualifiée).
+                  ${pauseActive ? `<br/><b>Poste en pause</b> : indicateurs affichés à titre informatif (hors périmètre).` : ``}
                 </div>
               </div>
             `;
