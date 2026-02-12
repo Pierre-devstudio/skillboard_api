@@ -228,6 +228,13 @@
   grid-column: 1 / -1;
 }
 
+/* Pile verticale standard (remplace les row + gap inline) */
+.sb-stack{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
 /* -------- Dots / indicateurs -------- */
 .sb-dot-avalider{
   display:inline-block;
