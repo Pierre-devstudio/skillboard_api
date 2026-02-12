@@ -2672,7 +2672,7 @@ def get_analyse_risques_detail(
                             rc.id_poste,
                             rc.id_comp,
 
-                            COUNT(DISTINCT e.id_effectif)::int FILTER (
+                            (COUNT(DISTINCT e.id_effectif) FILTER (
                               WHERE
                                 -- Compétence qualifiée (niveau actuel >= requis)
                                 (
@@ -2710,9 +2710,9 @@ def get_analyse_risques_detail(
                                     ) >= pi.edu_min_rank
                                 )
 
-                            ) AS nb_porteurs_total,
+                            ))::int AS nb_porteurs_total,
 
-                            COUNT(DISTINCT e.id_effectif)::int FILTER (
+                            (COUNT(DISTINCT e.id_effectif) FILTER (
                               WHERE
                                 (
                                   CASE upper(trim(COALESCE(rc.niveau_requis, '')))
@@ -2746,7 +2746,7 @@ def get_analyse_risques_detail(
                                 )
 
                                 AND e.id_poste_actuel = rc.id_poste
-                            ) AS nb_porteurs_titulaires
+                            ))::int AS nb_porteurs_titulaires
 
                         FROM req_crit rc
                         JOIN poste_info pi ON pi.id_poste = rc.id_poste
