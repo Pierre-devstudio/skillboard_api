@@ -53,7 +53,7 @@
 <div class="card">
   <div class="card-title">Analyse des compétences</div>
   <div class="card-sub">
-    Exploitez la cartographie: risques, matching interne, prévisions. Objectif: décider (former, bouger, recruter), pas contempler.
+    Exploitez la cartographie: risques, matching interne, prévisions. Objectif: décider (former, bouger, recruter).
   </div>
 </div>
 
@@ -61,20 +61,20 @@
   <!-- Colonne gauche: filtres -->
   <div class="sb-col">
     <div class="card">
-      <div class="card-title" style="margin-bottom:6px;">Périmètre</div>
+      <div class="card-title" style="margin-bottom:6px;">Filtres</div>
       <div class="card-sub" style="margin:0;">Le filtre s’applique aux indicateurs et aux listes.</div>
 
       <div class="row" style="flex-direction:column; gap:12px; margin-top:12px;">
         <div class="info-item" style="min-width:0;">
           <div class="label">Service</div>
-          <select id="analyseServiceSelect">
-            <option value="">Tous les services</option>
+          <select id="analyseServiceSelect" class="sb-select">
+            <option value="__ALL__">Tous les services</option>
           </select>
         </div>
 
         <div class="info-item" style="min-width:0;">
-          <button type="button" class="btn-secondary" id="btnAnalyseReset" style="margin-left:0; width:100%;">
-            Réinitialiser
+          <button type="button" class="sb-btn sb-btn--init sb-btn--block" id="btnAnalyseReset">
+            Réinitialiser les filtres
           </button>
         </div>
 
@@ -85,6 +85,8 @@
       </div>
     </div>
   </div>
+
+
 
   <!-- Colonne droite: tuiles -->
   <div class="sb-col">
