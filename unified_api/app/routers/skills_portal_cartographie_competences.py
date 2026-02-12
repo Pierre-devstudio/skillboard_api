@@ -635,15 +635,6 @@ def get_cartographie_cell_detail(
                 # ============================
                 ids_comp = [c.get("id_comp") for c in competences if c.get("id_comp")]
                 if ids_comp:
-                    eff_where = "TRUE"
-                    eff_params: List[Any] = []
-
-                    if id_service:
-                        if id_service == "__NON_LIE__":
-                            eff_where = "(e.id_service IS NULL OR e.id_service = '')"
-                        else:
-                            eff_where = "e.id_service = %s"
-                            eff_params.append(id_service)
 
                     sql_cov = f"""
                     WITH comp_scope AS (
@@ -700,7 +691,7 @@ def get_cartographie_cell_detail(
                             AND COALESCE(e.statut_actif, TRUE) = TRUE
                             AND COALESCE(ec.actif, TRUE) = TRUE
                             AND COALESCE(ec.archive, FALSE) = FALSE
-                            AND {eff_where}
+                            AND e.id_poste_actuel = %s
                     )
                     SELECT
                         id_comp,
@@ -715,8 +706,9 @@ def get_cartographie_cell_detail(
 
                     cur.execute(
                         sql_cov,
-                        tuple([ids_comp, id_poste, id_ent] + eff_params)
+                        tuple([ids_comp, id_poste, id_ent, id_poste])
                     )
+
                     cov_rows = cur.fetchall() or []
                     cov_by_comp = {r.get("id_comp"): r for r in cov_rows if r.get("id_comp")}
 
@@ -772,14 +764,15 @@ def get_cartographie_cell_detail(
                             AND COALESCE(e.statut_actif, TRUE) = TRUE
                             AND COALESCE(ec.actif, TRUE) = TRUE
                             AND COALESCE(ec.archive, FALSE) = FALSE
-                            AND {eff_where}
+                            AND e.id_poste_actuel = %s
                         ORDER BY cs.id_comp, e.nom_effectif, e.prenom_effectif
                         """
 
                         cur.execute(
                             sql_porteurs,
-                            tuple([ids_comp, id_ent] + eff_params)
+                            tuple([ids_comp, id_ent, id_poste])
                         )
+
                         rows_p = cur.fetchall() or []
 
                         porteurs_by_comp = {}

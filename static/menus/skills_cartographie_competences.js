@@ -704,7 +704,7 @@
                         <th>Compétence</th>
                         <th class="col-center" style="width:70px;">Niveau</th>
                         <th class="col-center" style="width:70px;">Criticité</th>
-                        <th class="col-center" style="width:110px;">Couv. qualifiée</th>
+                        <th class="col-center" style="width:140px;">Couv. titulaires</th>
                         <th class="col-center" style="width:70px;">Gap</th>
                       </tr>
                     </thead>
@@ -731,7 +731,8 @@
                           ? Math.max(0, Number(cible || 1) - Number(nbQual || 0))
                           : Number(c.gap_qualifie || 0);
 
-                        const covTitle = `Qualifiés: ${nbQual} | Disponibles: ${nbDispo} | Bruts: ${nbBrut} | Cible: ${cible}`;
+                        const covTitle = `Titulaires qualifiés: ${nbQual} | Titulaires dispo: ${nbDispo} | Titulaires bruts: ${nbBrut} | Cible: ${cible}`;
+
 
                         let coverCls = "sb-badge sb-badge--danger";
                         if (pauseActive) {
@@ -766,8 +767,8 @@
                 </div>
 
                 <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-                  Couverture qualifiée = collaborateurs disponibles aujourd’hui (hors indisponibilités) dont le niveau actuel est ≥ au niveau requis.<br/>
-                  Gap = max(0, titulaires cible − couverture qualifiée).
+                  Couverture titulaires = titulaires actuels du poste, disponibles aujourd’hui (hors indisponibilités) dont le niveau actuel est ≥ au niveau requis.<br/>
+                  Gap = max(0, titulaires cible − couverture titulaires).
                   ${pauseActive ? `<br/><b>Poste en pause</b> : indicateurs affichés à titre informatif (hors périmètre).` : ``}
                 </div>
               </div>
