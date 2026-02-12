@@ -1593,12 +1593,63 @@ button[id$="ModalClose"]:active{
   transform: translateY(1px);
 }
 
-
-
 /* ======================================================
-   Analyse compétences: couleurs centralisées (v1)
-   Objectif: ne plus mettre de couleurs en inline JS.
+   Analyse compétences: layout tuiles (standardisé)
+   (extrait du HTML, pour éviter styles inline)
    ====================================================== */
+
+#view-analyse-competences .analyse-tiles{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 900px){
+  #view-analyse-competences .analyse-tiles{
+    grid-template-columns: 1fr;
+  }
+}
+
+#view-analyse-competences .analyse-tile{
+  cursor:pointer;
+  transition: transform .06s ease, filter .12s ease, box-shadow .12s ease;
+}
+
+#view-analyse-competences .analyse-tile:hover{
+  filter: brightness(0.99);
+  transform: translateY(-1px);
+}
+
+/* NB: l'état .active est déjà géré plus bas (outline + etc.) */
+
+#view-analyse-competences .mini-kpis{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:12px;
+}
+
+#view-analyse-competences .mini-kpi{
+  border:1px solid #e5e7eb;
+  border-radius:10px;
+  padding:10px 12px;
+  flex:1;
+  min-width:160px;
+  background:#fff;
+}
+
+#view-analyse-competences .tile-sub{
+  color:#6b7280;
+  font-size:13px;
+  margin-top:6px;
+  line-height:1.35;
+}
+
+#view-analyse-competences .tile-hint{
+  margin-top:10px;
+  font-size:12px;
+  color:#6b7280;
+}
 
 /* Tuile sélectionnée (Analyse compétences) */
 #view-analyse-competences .analyse-tile.active{
