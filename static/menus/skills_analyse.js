@@ -3610,7 +3610,7 @@ function renderDetail(mode) {
                 <tr class="risk-poste-row" data-id_poste="${escapeHtml(r.id_poste || "")}">
                   <td class="risk-poste-open" style="cursor:pointer;">
                     <div style="display:flex; gap:8px; align-items:center; min-width:0;">
-                      <span class="sb-badge sb-badge-poste-code">${escapeHtml(codeAffiche || "—")}</span>
+                      <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(codeAffiche || "—")}</span>
                       <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                         ${escapeHtml(intitule)}
                       </span>
