@@ -3700,7 +3700,7 @@ function renderDetail(mode) {
           ${badge(filterLabel, true)}
           ${badge("Criticité min: " + critMinLabel(), false)}
         </div>
-        <button type="button" class="btn-secondary" id="btnRiskFilterReset" style="margin-left:0;">
+        <button type="button" class="sb-btn--init" id="btnRiskFilterReset" style="margin-left:0;">
           Tout afficher
         </button>
       </div>
