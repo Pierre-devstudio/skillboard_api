@@ -2512,6 +2512,13 @@ class AnalyseRisqueItem(BaseModel):
     nb_critiques_porteur_unique: Optional[int] = None
     nb_titulaires: Optional[int] = None
 
+    nb_critiques_sans_releve: Optional[int] = None
+    nb_critiques_releve_faible: Optional[int] = None
+    nb_titulaires_cible: Optional[int] = None
+    gap_titulaires: Optional[int] = None
+    indice_fragilite: Optional[int] = None
+
+
     # Compétence (pour "critiques-sans-porteur" et "porteur-unique")
     id_comp: Optional[str] = None
     code: Optional[str] = None
@@ -2587,7 +2594,8 @@ def get_analyse_risques_detail(
                         c.intitule,
                         c.grille_evaluation,
                         c.domaine AS id_domaine_competence,
-                        COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite
+                        COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite,
+                        fpc.niveau_requis
                     FROM public.tbl_fiche_poste_competence fpc
                     JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
                     JOIN public.tbl_competence c
@@ -2614,6 +2622,55 @@ def get_analyse_risques_detail(
                 if k == "postes-fragiles":
                     sql = base_cte + """
                     ,
+                    poste_info AS (
+                        SELECT
+                            fp.id_poste,
+                            COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
+                            COALESCE(prh.statut_poste, 'actif')::text AS statut_poste,
+                            prh.date_debut_validite,
+                            prh.date_fin_validite,
+
+                            COALESCE(fp.niveau_education_minimum, '')::text AS niveau_education_minimum,
+
+                            -- Rang minimal (0..8) basé sur des libellés contrôlés (niveau X / bac+N / bac / BTS / licence / master / doctorat)
+                            (
+                              CASE
+                                WHEN lower(trim(COALESCE(fp.niveau_education_minimum, ''))) = '' THEN 0
+                                WHEN lower(fp.niveau_education_minimum) ~ 'niveau\\s*([0-9])' THEN substring(lower(fp.niveau_education_minimum) from 'niveau\\s*([0-9])')::int
+                                WHEN lower(fp.niveau_education_minimum) ~ 'bac\\+([0-9])' THEN
+                                  CASE
+                                    WHEN substring(lower(fp.niveau_education_minimum) from 'bac\\+([0-9])')::int <= 2 THEN 5
+                                    WHEN substring(lower(fp.niveau_education_minimum) from 'bac\\+([0-9])')::int <= 4 THEN 6
+                                    WHEN substring(lower(fp.niveau_education_minimum) from 'bac\\+([0-9])')::int <= 7 THEN 7
+                                    ELSE 8
+                                  END
+                                WHEN lower(fp.niveau_education_minimum) LIKE '%doctor%' THEN 8
+                                WHEN lower(fp.niveau_education_minimum) LIKE '%master%' THEN 7
+                                WHEN lower(fp.niveau_education_minimum) LIKE '%ing%C3%A9nieur%' OR lower(fp.niveau_education_minimum) LIKE '%ingenieur%' THEN 7
+                                WHEN lower(fp.niveau_education_minimum) LIKE '%licence%' THEN 6
+                                WHEN lower(fp.niveau_education_minimum) LIKE '%bts%' OR lower(fp.niveau_education_minimum) LIKE '%dut%' OR lower(fp.niveau_education_minimum) LIKE '%deug%' THEN 5
+                                WHEN lower(fp.niveau_education_minimum) LIKE '%bac%' THEN 4
+                                WHEN lower(fp.niveau_education_minimum) LIKE '%cap%' OR lower(fp.niveau_education_minimum) LIKE '%bep%' THEN 3
+                                ELSE 0
+                              END
+                            )::int AS edu_min_rank,
+
+                            -- Domaine NSF (bloquant si nsf_domaine_obligatoire OU nsf_groupe_obligatoire)
+                            (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
+                            COALESCE(nd.titre, '')::text AS nsf_domaine_titre
+
+                        FROM public.tbl_fiche_poste fp
+                        JOIN postes_scope ps ON ps.id_poste = fp.id_poste
+                        LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = fp.id_poste
+                        LEFT JOIN public.tbl_nsf_domaine nd ON nd.code = fp.nsf_domaine_code
+                    ),
+
+                    req_crit AS (
+                        SELECT *
+                        FROM req
+                        WHERE poids_criticite >= %s
+                    ),
+
                     titulaires AS (
                         SELECT
                             e.id_poste_actuel AS id_poste,
@@ -2624,19 +2681,166 @@ def get_analyse_risques_detail(
                           AND COALESCE(e.id_poste_actuel, '') <> ''
                         GROUP BY e.id_poste_actuel
                     ),
+
+                    porteurs_poste AS (
+                        SELECT
+                            rc.id_poste,
+                            rc.id_comp,
+
+                            COUNT(DISTINCT e.id_effectif)::int FILTER (
+                              WHERE
+                                -- Compétence qualifiée (niveau actuel >= requis)
+                                (
+                                  CASE upper(trim(COALESCE(rc.niveau_requis, '')))
+                                    WHEN 'A' THEN 1 WHEN 'B' THEN 2 WHEN 'C' THEN 3 ELSE 0
+                                  END
+                                ) <=
+                                (
+                                  CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
+                                    WHEN 'initial' THEN 1
+                                    WHEN 'avancé' THEN 2 WHEN 'avance' THEN 2 WHEN 'avancee' THEN 2 WHEN 'avancée' THEN 2
+                                    WHEN 'expert' THEN 3
+                                    ELSE 0
+                                  END
+                                )
+
+                                -- NSF domaine bloquant si demandé
+                                AND (
+                                  NOT pi.nsf_domain_required
+                                  OR (
+                                    lower(trim(COALESCE(e.domaine_education, ''))) = lower(trim(COALESCE(pi.nsf_domaine_titre, '')))
+                                    AND COALESCE(pi.nsf_domaine_titre, '') <> ''
+                                  )
+                                )
+
+                                -- Niveau d'éducation minimum bloquant
+                                AND (
+                                  pi.edu_min_rank = 0
+                                  OR (
+                                    (
+                                      CASE
+                                        WHEN lower(trim(COALESCE(e.niveau_education, ''))) = '' THEN 0
+                                        WHEN lower(e.niveau_education) ~ 'niveau\\s*([0-9])' THEN substring(lower(e.niveau_education) from 'niveau\\s*([0-9])')::int
+                                        WHEN lower(e.niveau_education) ~ 'bac\\+([0-9])' THEN
+                                          CASE
+                                            WHEN substring(lower(e.niveau_education) from 'bac\\+([0-9])')::int <= 2 THEN 5
+                                            WHEN substring(lower(e.niveau_education) from 'bac\\+([0-9])')::int <= 4 THEN 6
+                                            WHEN substring(lower(e.niveau_education) from 'bac\\+([0-9])')::int <= 7 THEN 7
+                                            ELSE 8
+                                          END
+                                        WHEN lower(e.niveau_education) LIKE '%doctor%' THEN 8
+                                        WHEN lower(e.niveau_education) LIKE '%master%' THEN 7
+                                        WHEN lower(e.niveau_education) LIKE '%ing%C3%A9nieur%' OR lower(e.niveau_education) LIKE '%ingenieur%' THEN 7
+                                        WHEN lower(e.niveau_education) LIKE '%licence%' THEN 6
+                                        WHEN lower(e.niveau_education) LIKE '%bts%' OR lower(e.niveau_education) LIKE '%dut%' OR lower(e.niveau_education) LIKE '%deug%' THEN 5
+                                        WHEN lower(e.niveau_education) LIKE '%bac%' THEN 4
+                                        WHEN lower(e.niveau_education) LIKE '%cap%' OR lower(e.niveau_education) LIKE '%bep%' THEN 3
+                                        ELSE 0
+                                      END
+                                    ) >= pi.edu_min_rank
+                                  )
+                                )
+                            ) AS nb_porteurs_total,
+
+                            COUNT(DISTINCT e.id_effectif)::int FILTER (
+                              WHERE
+                                (
+                                  CASE upper(trim(COALESCE(rc.niveau_requis, '')))
+                                    WHEN 'A' THEN 1 WHEN 'B' THEN 2 WHEN 'C' THEN 3 ELSE 0
+                                  END
+                                ) <=
+                                (
+                                  CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
+                                    WHEN 'initial' THEN 1
+                                    WHEN 'avancé' THEN 2 WHEN 'avance' THEN 2 WHEN 'avancee' THEN 2 WHEN 'avancée' THEN 2
+                                    WHEN 'expert' THEN 3
+                                    ELSE 0
+                                  END
+                                )
+                                AND (
+                                  NOT pi.nsf_domain_required
+                                  OR (
+                                    lower(trim(COALESCE(e.domaine_education, ''))) = lower(trim(COALESCE(pi.nsf_domaine_titre, '')))
+                                    AND COALESCE(pi.nsf_domaine_titre, '') <> ''
+                                  )
+                                )
+                                AND (
+                                  pi.edu_min_rank = 0
+                                  OR (
+                                    (
+                                      CASE
+                                        WHEN lower(trim(COALESCE(e.niveau_education, ''))) = '' THEN 0
+                                        WHEN lower(e.niveau_education) ~ 'niveau\\s*([0-9])' THEN substring(lower(e.niveau_education) from 'niveau\\s*([0-9])')::int
+                                        WHEN lower(e.niveau_education) ~ 'bac\\+([0-9])' THEN
+                                          CASE
+                                            WHEN substring(lower(e.niveau_education) from 'bac\\+([0-9])')::int <= 2 THEN 5
+                                            WHEN substring(lower(e.niveau_education) from 'bac\\+([0-9])')::int <= 4 THEN 6
+                                            WHEN substring(lower(e.niveau_education) from 'bac\\+([0-9])')::int <= 7 THEN 7
+                                            ELSE 8
+                                          END
+                                        WHEN lower(e.niveau_education) LIKE '%doctor%' THEN 8
+                                        WHEN lower(e.niveau_education) LIKE '%master%' THEN 7
+                                        WHEN lower(e.niveau_education) LIKE '%ing%C3%A9nieur%' OR lower(e.niveau_education) LIKE '%ingenieur%' THEN 7
+                                        WHEN lower(e.niveau_education) LIKE '%licence%' THEN 6
+                                        WHEN lower(e.niveau_education) LIKE '%bts%' OR lower(e.niveau_education) LIKE '%dut%' OR lower(e.niveau_education) LIKE '%deug%' THEN 5
+                                        WHEN lower(e.niveau_education) LIKE '%bac%' THEN 4
+                                        WHEN lower(e.niveau_education) LIKE '%cap%' OR lower(e.niveau_education) LIKE '%bep%' THEN 3
+                                        ELSE 0
+                                      END
+                                    ) >= pi.edu_min_rank
+                                  )
+                                )
+                                AND e.id_poste_actuel = rc.id_poste
+                            ) AS nb_porteurs_titulaires
+
+                        FROM req_crit rc
+                        JOIN poste_info pi ON pi.id_poste = rc.id_poste
+                        JOIN public.tbl_effectif_client_competence ec ON ec.id_comp = rc.id_comp
+                        JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
+                        JOIN public.tbl_effectif_client e ON e.id_effectif = ec.id_effectif_client
+                        WHERE COALESCE(ec.archive, FALSE) = FALSE
+                          AND COALESCE(ec.actif, TRUE) = TRUE
+                        GROUP BY rc.id_poste, rc.id_comp
+                    ),
+
                     poste_agg AS (
                         SELECT
                             ps.id_poste,
-                            SUM(CASE WHEN r.id_comp IS NOT NULL AND r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) <= 1 THEN 1 ELSE 0 END)::int AS nb_critiques_fragiles,
-                            SUM(CASE WHEN r.id_comp IS NOT NULL AND r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 0 THEN 1 ELSE 0 END)::int AS nb_critiques_sans_porteur,
-                            SUM(CASE WHEN r.id_comp IS NOT NULL AND r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 1 THEN 1 ELSE 0 END)::int AS nb_critiques_porteur_unique,
-                            COALESCE(t.nb_titulaires, 0)::int AS nb_titulaires
+
+                            COALESCE(t.nb_titulaires, 0)::int AS nb_titulaires,
+                            COALESCE(pi.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
+                            GREATEST(0, COALESCE(pi.nb_titulaires_cible, 1) - COALESCE(t.nb_titulaires, 0))::int AS gap_titulaires,
+
+                            SUM(CASE WHEN rc.id_comp IS NOT NULL AND COALESCE(pp.nb_porteurs_total, 0) = 0 THEN 1 ELSE 0 END)::int AS nb_critiques_sans_porteur,
+                            SUM(CASE WHEN rc.id_comp IS NOT NULL AND COALESCE(pp.nb_porteurs_total, 0) = 1 THEN 1 ELSE 0 END)::int AS nb_critiques_porteur_unique,
+                            SUM(CASE WHEN rc.id_comp IS NOT NULL AND COALESCE(pp.nb_porteurs_total, 0) <= 1 THEN 1 ELSE 0 END)::int AS nb_critiques_fragiles,
+
+                            SUM(CASE
+                                  WHEN rc.id_comp IS NOT NULL
+                                   AND COALESCE(pp.nb_porteurs_total, 0) >= 2
+                                   AND GREATEST(COALESCE(pp.nb_porteurs_total, 0) - COALESCE(pp.nb_porteurs_titulaires, 0), 0) = 0
+                                  THEN 1 ELSE 0
+                                END)::int AS nb_critiques_sans_releve,
+
+                            SUM(CASE
+                                  WHEN rc.id_comp IS NOT NULL
+                                   AND COALESCE(pp.nb_porteurs_total, 0) >= 2
+                                   AND GREATEST(COALESCE(pp.nb_porteurs_total, 0) - COALESCE(pp.nb_porteurs_titulaires, 0), 0) = 1
+                                  THEN 1 ELSE 0
+                                END)::int AS nb_critiques_releve_faible,
+
+                            pi.statut_poste,
+                            pi.date_debut_validite,
+                            pi.date_fin_validite
+
                         FROM postes_scope ps
-                        LEFT JOIN req r ON r.id_poste = ps.id_poste
-                        LEFT JOIN porteurs p ON p.id_comp = r.id_comp
+                        JOIN poste_info pi ON pi.id_poste = ps.id_poste
+                        LEFT JOIN req_crit rc ON rc.id_poste = ps.id_poste
+                        LEFT JOIN porteurs_poste pp ON pp.id_poste = rc.id_poste AND pp.id_comp = rc.id_comp
                         LEFT JOIN titulaires t ON t.id_poste = ps.id_poste
-                        GROUP BY ps.id_poste, COALESCE(t.nb_titulaires, 0)
+                        GROUP BY ps.id_poste, t.nb_titulaires, pi.nb_titulaires_cible, pi.statut_poste, pi.date_debut_validite, pi.date_fin_validite
                     )
+
                     SELECT
                         fp.id_poste,
                         fp.codif_poste,
@@ -2644,29 +2848,71 @@ def get_analyse_risques_detail(
                         fp.intitule_poste,
                         fp.id_service,
                         COALESCE(o.nom_service, '') AS nom_service,
+
                         pa.nb_critiques_fragiles,
                         pa.nb_critiques_sans_porteur,
                         pa.nb_critiques_porteur_unique,
-                        pa.nb_titulaires
+                        pa.nb_titulaires,
+
+                        pa.nb_critiques_sans_releve,
+                        pa.nb_critiques_releve_faible,
+                        pa.nb_titulaires_cible,
+                        pa.gap_titulaires,
+
+                        CASE
+                          WHEN pa.nb_titulaires = 0 THEN 100
+                          ELSE LEAST(100, GREATEST(0,
+                            ROUND(
+                              100 * (
+                                1
+                                - POWER((1 - 0.90)::numeric, pa.nb_critiques_sans_porteur)
+                                * POWER((1 - 0.65)::numeric, pa.nb_critiques_porteur_unique)
+                                * POWER((1 - 0.35)::numeric, pa.nb_critiques_sans_releve)
+                                * POWER((1 - 0.18)::numeric, pa.nb_critiques_releve_faible)
+                                * POWER((1 - 0.30)::numeric, pa.gap_titulaires)
+                              )
+                            )
+                          ))::int
+                        END AS indice_fragilite
+
                     FROM poste_agg pa
                     JOIN public.tbl_fiche_poste fp ON fp.id_poste = pa.id_poste
                     LEFT JOIN public.tbl_entreprise_organigramme o
                       ON o.id_ent = %s
                      AND o.id_service = fp.id_service
                      AND o.archive = FALSE
-                    WHERE (pa.nb_critiques_fragiles > 0 OR pa.nb_titulaires = 0)
+
+                    WHERE
+                      -- Exclure les postes en pause (gelé/temporaire) si la période couvre aujourd'hui (NULL = indéfini)
+                      NOT (
+                        lower(COALESCE(pa.statut_poste, 'actif')) IN ('gele','temporaire')
+                        AND (pa.date_debut_validite IS NULL OR pa.date_debut_validite <= CURRENT_DATE)
+                        AND (pa.date_fin_validite IS NULL OR pa.date_fin_validite >= CURRENT_DATE)
+                      )
+                      AND (
+                        pa.nb_titulaires = 0
+                        OR pa.nb_critiques_sans_porteur > 0
+                        OR pa.nb_critiques_porteur_unique > 0
+                        OR pa.nb_critiques_sans_releve > 0
+                        OR pa.nb_critiques_releve_faible > 0
+                        OR pa.gap_titulaires > 0
+                      )
+
                     ORDER BY
-                        pa.nb_titulaires ASC,
-                        pa.nb_critiques_sans_porteur DESC,
-                        pa.nb_critiques_porteur_unique DESC,
-                        pa.nb_critiques_fragiles DESC,
-                        fp.codif_poste,
-                        fp.intitule_poste
+                      indice_fragilite DESC,
+                      pa.nb_titulaires ASC,
+                      pa.nb_critiques_sans_porteur DESC,
+                      pa.nb_critiques_porteur_unique DESC,
+                      pa.nb_critiques_sans_releve DESC,
+                      pa.gap_titulaires DESC,
+                      fp.codif_poste,
+                      fp.intitule_poste
                     LIMIT %s
                     """
+
                     cur.execute(
                         sql,
-                        tuple(cte_params + [criticite_min, criticite_min, criticite_min, id_ent, limit])
+                        tuple(cte_params + [criticite_min, id_ent, limit])
                     )
                     rows = cur.fetchall() or []
                     for r in rows:
@@ -2681,6 +2927,12 @@ def get_analyse_risques_detail(
                             nb_critiques_sans_porteur=int(r.get("nb_critiques_sans_porteur") or 0),
                             nb_critiques_porteur_unique=int(r.get("nb_critiques_porteur_unique") or 0),
                             nb_titulaires=int(r.get("nb_titulaires") or 0),
+                            nb_critiques_sans_releve=int(r.get("nb_critiques_sans_releve") or 0),
+                            nb_critiques_releve_faible=int(r.get("nb_critiques_releve_faible") or 0),
+                            nb_titulaires_cible=int(r.get("nb_titulaires_cible") or 1),
+                            gap_titulaires=int(r.get("gap_titulaires") or 0),
+                            indice_fragilite=int(r.get("indice_fragilite") or 0),
+
                         ))
 
 

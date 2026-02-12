@@ -3602,7 +3602,9 @@ function renderDetail(mode) {
                 ? null
                 : Number(r.nb_titulaires);
 
-              const score = calcFragilityScore(nb0, nb1, nbF, nbTit);
+              const score = (r.indice_fragilite !== null && r.indice_fragilite !== undefined)
+                ? clamp(Number(r.indice_fragilite || 0), 0, 100)
+                : calcFragilityScore(nb0, nb1, nbF, nbTit);
               const prio  = priorityLabel(score, nb0, nbTit);
 
 
