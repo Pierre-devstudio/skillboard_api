@@ -40,78 +40,78 @@
 
   <!-- Colonne droite: tuiles -->
   <div class="sb-col">
-    <div class="analyse-tiles">
+    <div class="analyse-tiles sb-tiles">
 
       <!-- Tuile Risques -->
-      <div class="card analyse-tile active" id="tileRisques" data-mode="risques" role="button" tabindex="0" aria-label="Ouvrir Risques">
+      <div class="card analyse-tile sb-tile active" id="tileRisques" data-mode="risques" role="button" tabindex="0" aria-label="Ouvrir Risques">
         <div class="card-title" style="margin-bottom:2px;">Risques</div>
         <div class="tile-sub">Identifier les fragilités: criticité, couverture, dépendance, concentration.</div>
 
-        <div class="mini-kpis">
-          <div class="mini-kpi" data-risk-kpi="postes-fragiles" role="button" tabindex="0" aria-label="Afficher les postes fragiles">
+        <div class="mini-kpis sb-mini-kpis">
+          <div class="mini-kpi sb-mini-kpi" data-risk-kpi="postes-fragiles" role="button" tabindex="0" aria-label="Afficher les postes fragiles">
             <div class="label">Postes fragiles</div>
             <div class="value" id="kpiRiskPostes">—</div>
           </div>
 
-          <div class="mini-kpi" data-risk-kpi="critiques-sans-porteur" role="button" tabindex="0" aria-label="Afficher les compétences critiques sans couverture">
+          <div class="mini-kpi sb-mini-kpi" data-risk-kpi="critiques-sans-porteur" role="button" tabindex="0" aria-label="Afficher les compétences critiques sans couverture">
             <div class="label">Compétences critiques non couvertes</div>
             <div class="value" id="kpiRiskNoOwner">—</div>
           </div>
 
-          <div class="mini-kpi" data-risk-kpi="porteur-unique" role="button" tabindex="0" aria-label="Afficher les compétences à couverture unique">
+          <div class="mini-kpi sb-mini-kpi" data-risk-kpi="porteur-unique" role="button" tabindex="0" aria-label="Afficher les compétences à couverture unique">
             <div class="label">Compétences critiques à couverture unique</div>
             <div class="value" id="kpiRiskBus1">—</div>
           </div>
         </div>
 
-        <div class="tile-hint">Décision: prioriser transfert de savoir, formation ciblée, sécurisation.</div>
+        <div class="tile-hint sb-tile-hint">Décision: prioriser transfert de savoir, formation ciblée, sécurisation.</div>
       </div>
 
       <!-- Tuile Matching -->
-      <div class="card analyse-tile" id="tileMatching" data-mode="matching" role="button" tabindex="0" aria-label="Ouvrir Matching Poste-porteur">
+      <div class="card analyse-tile sb-tile" id="tileMatching" data-mode="matching" role="button" tabindex="0" aria-label="Ouvrir Matching Poste-porteur">
         <div class="card-title" style="margin-bottom:2px;">Matching</div>
-        <div class="tile-sub">Trouver les meilleurs candidats internes, maintenant ou à horizon court, avec écarts.</div>
+        <div class="tile-sub sb-tile-sub">Trouver les meilleurs candidats internes, maintenant ou à horizon court, avec écarts.</div>
 
-        <div class="mini-kpis">
-          <div class="mini-kpi" data-match-view="titulaire" role="button" tabindex="0" aria-label="Afficher l’adéquation au poste (titulaires)">
+        <div class="mini-kpis sb-mini-kpis">
+          <div class="mini-kpi sb-mini-kpi" data-match-view="titulaire" role="button" tabindex="0" aria-label="Afficher l’adéquation au poste (titulaires)">
             <div class="label">Adéquation au poste</div>
             <div class="value">—</div>
           </div>
 
-          <div class="mini-kpi" data-match-view="candidats" role="button" tabindex="0" aria-label="Afficher les top candidats (hors titulaires)">
+          <div class="mini-kpi sb-mini-kpi" data-match-view="candidats" role="button" tabindex="0" aria-label="Afficher les top candidats (hors titulaires)">
             <div class="label">Top candidat</div>
             <div class="value">—</div>
           </div>
         </div>
 
-        <div class="tile-hint">Décision: mobilité, staffing, succession, plan de montée en compétences.</div>
+        <div class="tile-hint sb-tile-hint">Décision: mobilité, staffing, succession, plan de montée en compétences.</div>
       </div>
 
       <!-- Tuile Prévisions -->
-      <div class="card analyse-tile" id="tilePrevisions" data-mode="previsions" role="button" tabindex="0" aria-label="Ouvrir Prévisions">
+      <div class="card analyse-tile sb-tile" id="tilePrevisions" data-mode="previsions" role="button" tabindex="0" aria-label="Ouvrir Prévisions">
         <div class="card-title" style="margin-bottom:2px;">Prévisions</div>
-        <div class="tile-sub">Projeter la couverture: sorties, scénarios, postes qui passent en rouge.</div>
+        <div class="tile-sub sb-tile-sub">Projeter la couverture: sorties, scénarios, postes qui passent en rouge.</div>
 
-        <div class="mini-kpis">
-          <div class="mini-kpi" data-prev-kpi="sorties" role="button" tabindex="0" aria-label="Afficher sorties">
+        <div class="mini-kpis sb-mini-kpis">
+          <div class="mini-kpi sb-mini-kpi" data-prev-kpi="sorties" role="button" tabindex="0" aria-label="Afficher sorties">
             <div class="label">Sorties &lt; <span id="prevHorizonLabel">1 an</span></div>
             <div class="value" id="kpiPrevSorties12">—</div>
             <input type="range" id="prevHorizonSlider" min="1" max="5" step="1" value="1"
                    aria-label="Horizon prévision (années)" style="width:100%; margin-top:8px;">
           </div>
 
-          <div class="mini-kpi" data-prev-kpi="critiques" role="button" tabindex="0" aria-label="Afficher critiques impactées">
+          <div class="mini-kpi sb-mini-kpi" data-prev-kpi="critiques" role="button" tabindex="0" aria-label="Afficher critiques impactées">
             <div class="label">Critiques impactées</div>
             <div class="value" id="kpiPrevCompImpact">—</div>
           </div>
 
-          <div class="mini-kpi" data-prev-kpi="postes-rouges" role="button" tabindex="0" aria-label="Afficher postes rouges">
+          <div class="mini-kpi sb-mini-kpi" data-prev-kpi="postes-rouges" role="button" tabindex="0" aria-label="Afficher postes rouges">
             <div class="label">Postes rouges</div>
             <div class="value" id="kpiPrevPostesRed">—</div>
           </div>
         </div>
 
-        <div class="tile-hint">Décision: plan formation/recrutement/mobilité avec horizons.</div>
+        <div class="tile-hint sb-tile-hint">Décision: plan formation/recrutement/mobilité avec horizons.</div>
       </div>
 
     </div>
