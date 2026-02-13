@@ -3129,17 +3129,6 @@ class AnalysePosteDetailResponse(BaseModel):
     coverage: AnalysePosteCoverage
     competences: List[AnalysePosteCompetenceItem]
 
-class AnalysePosteFragiliteComposantes(BaseModel):
-    nb0: int = 0
-    nb1: int = 0
-    nb_total_fragiles: int = 0
-    criticite_min: int
-
-    # Pour stabiliser les recos (Former vs Mutualiser) sur les couvertures uniques
-    nb1_ok: int = 0           # couvertures uniques avec 1 porteur AU NIVEAU requis
-    nb1_a_former: int = 0     # couvertures uniques avec 1 porteur mais PAS au niveau requis
-
-
 
 class AnalysePosteTopRisqueItem(BaseModel):
     id_comp: str
@@ -3152,17 +3141,40 @@ class AnalysePosteTopRisqueItem(BaseModel):
     nb_ok: int = 0            # 0 / 1 / 2 (2 = 2+), au niveau requis
     recommandation: str       # former / mutualiser / recruter
 
+class AnalysePosteFragiliteComposantes(BaseModel):
+    # Compat legacy (gardé pour éviter de casser)
+    nb0: int = 0
+    nb1: int = 0
+    nb_total_fragiles: int = 0
+    criticite_min: int = 0
+
+    # Nouveau (pour affichage + cohérence)
+    nb_sans_releve: int = 0
+    nb_releve_faible: int = 0
+    gap_titulaires: int = 0
+    nb_evenements: int = 0
+
+    nb_titulaires: int = 0
+    nb_titulaires_cible: int = 1
+
+
+class AnalysePosteDiagnosticConditions(BaseModel):
+    # “lisible dirigeant”, pas du jargon technique
+    releve_phrase: str = "Relève prise en compte : collaborateurs mobilisables immédiatement."
+    diplome_min: Optional[str] = None
+    domaine_formation: Optional[str] = None
+    domaine_bloquant: bool = False
 
 
 class AnalysePosteDiagnosticResponse(BaseModel):
     scope: ServiceScope
-    criticite_min: int
     updated_at: str
     poste: Dict[str, Any]
-
     indice_fragilite: int
     composantes: AnalysePosteFragiliteComposantes
     top_risques: List[AnalysePosteTopRisqueItem]
+    conditions: Optional[AnalysePosteDiagnosticConditions] = None
+
 
 
 class AnalyseMatchingItem(BaseModel):
@@ -3500,23 +3512,13 @@ def get_analyse_risques_poste_diagnostic(
     criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
     limit: int = Query(default=8, ge=1, le=8),
 ):
-    
-    # Sécurités "anti-front" : même si Query borne déjà, on verrouille côté serveur.
-    id_poste = (id_poste or "").strip()
-    if not id_poste:
-        raise HTTPException(status_code=400, detail="Paramètre id_poste manquant.")
-
-    criticite_min = _clamp_int(int(criticite_min or CRITICITE_MIN_DEFAULT), CRITICITE_MIN_MIN, CRITICITE_MIN_MAX)
-    limit = _clamp_int(int(limit or 8), 1, 8)
-
-    if id_service is not None:
-        id_service = (id_service or "").strip() or None
-
     """
-    Diagnostic décisionnel en 1 appel pour un poste:
-    - composantes fragilité (nb0/nb1/nb_total_fragiles + seuil criticité)
-    - indice_fragilite 0..100 (même logique que le front)
-    - top_risques (max 8) triés par gravité
+    Diagnostic “poste fragile” (cohérent avec la table) :
+    - couverture au niveau requis
+    - relève (porteurs hors titulaires)
+    - gap titulaires vs cible
+    - exclusions : indisponibilités (break en cours)
+    - contraintes : diplôme min / domaine formation si bloquant
     """
     try:
         with get_conn() as conn:
@@ -3526,7 +3528,7 @@ def get_analyse_risques_poste_diagnostic(
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
                 cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
 
-                # 1) Vérifier que le poste est dans le scope (même logique que le drilldown poste)
+                # 1) Poste + paramètres RH + contraintes formation
                 cur.execute(
                     f"""
                     WITH {cte_sql}
@@ -3536,13 +3538,23 @@ def get_analyse_risques_poste_diagnostic(
                         fp.codif_client,
                         fp.intitule_poste,
                         fp.id_service,
-                        COALESCE(o.nom_service, '') AS nom_service
+                        COALESCE(o.nom_service, '') AS nom_service,
+
+                        COALESCE(fp.niveau_education_minimum, '') AS niveau_education_minimum,
+                        COALESCE(fp.nsf_domaine_obligatoire, FALSE) AS nsf_domaine_obligatoire,
+                        COALESCE(nd.titre, '') AS nsf_domaine_titre,
+
+                        COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible
                     FROM postes_scope ps
                     JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
                     LEFT JOIN public.tbl_entreprise_organigramme o
                       ON o.id_ent = %s
                      AND o.id_service = fp.id_service
                      AND o.archive = FALSE
+                    LEFT JOIN public.tbl_fiche_poste_param_rh prh
+                      ON prh.id_poste = fp.id_poste
+                    LEFT JOIN public.tbl_nsf_domaine nd
+                      ON nd.code = fp.nsf_domaine_code
                     WHERE fp.id_poste = %s
                     LIMIT 1
                     """,
@@ -3552,143 +3564,266 @@ def get_analyse_risques_poste_diagnostic(
                 if not poste:
                     raise HTTPException(status_code=404, detail="Poste introuvable (ou hors périmètre service).")
 
-                # 2) Compétences critiques requises + nb porteurs dans le scope (agrégé)
+                edu_raw = (poste.get("niveau_education_minimum") or "").strip()
+                edu_min = edu_raw if edu_raw else ""
+                edu_min_rank = int(edu_raw) if edu_raw.isdigit() else 0
+
+                dom_bloq = bool(poste.get("nsf_domaine_obligatoire") or False)
+                dom_title = (poste.get("nsf_domaine_titre") or "").strip()
+                nb_cible = int(poste.get("nb_titulaires_cible") or 1)
+
+                # 1bis) Nb titulaires actuels (hors breaks en cours)
+                cur.execute(
+                    f"""
+                    WITH {cte_sql}
+                    SELECT COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
+                    FROM public.tbl_effectif_client e
+                    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                    WHERE e.id_ent = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                      AND e.id_poste_actuel = %s
+                      AND NOT EXISTS (
+                        SELECT 1
+                        FROM public.tbl_effectif_client_break b
+                        WHERE b.id_effectif = e.id_effectif
+                          AND b.archive = FALSE
+                          AND b.date_debut <= CURRENT_DATE
+                          AND b.date_fin >= CURRENT_DATE
+                      )
+                    """,
+                    tuple(cte_params + [id_ent, id_poste]),
+                )
+                nb_titulaires = int((cur.fetchone() or {}).get("nb_titulaires") or 0)
+
+                gap = max(nb_cible - nb_titulaires, 0)
+
+                # 2) Agrégats par compétence (au niveau requis), avec contraintes + breaks
+                # IMPORTANT psycopg : tout % littéral doit être doublé (%%) sinon “%x placeholder”
                 cur.execute(
                     f"""
                     WITH
                     {cte_sql},
                     req AS (
                         SELECT DISTINCT
-                            fpc.id_poste,
                             c.id_comp,
                             c.code,
                             c.intitule,
-                            COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite,
-                            COALESCE(fpc.niveau_requis, '')::text AS niveau_requis
+                            COALESCE(fpc.niveau_requis, '') AS niveau_requis,
+                            COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite
                         FROM public.tbl_fiche_poste_competence fpc
                         JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
                         JOIN public.tbl_competence c
                           ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
-                        WHERE
-                            fpc.id_poste = %s
-                            AND c.etat = 'active'
-                            AND COALESCE(c.masque, FALSE) = FALSE
-                            AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+                        WHERE fpc.id_poste = %s
+                          AND c.etat = 'active'
+                          AND COALESCE(c.masque, FALSE) = FALSE
+                          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
                     ),
-                    porteurs_total AS (
+                    eligible_effectifs AS (
                         SELECT
-                            ec.id_comp,
-                            COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
-                        FROM public.tbl_effectif_client_competence ec
-                        JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
-                        WHERE COALESCE(ec.niveau_actuel, '') <> ''
-                        GROUP BY ec.id_comp
+                            e.id_effectif,
+                            e.id_poste_actuel,
+                            COALESCE(e.niveau_education, '') AS niveau_education,
+                            COALESCE(e.domaine_education, '') AS domaine_education
+                        FROM public.tbl_effectif_client e
+                        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                        WHERE e.id_ent = %s
+                          AND COALESCE(e.archive, FALSE) = FALSE
+                          AND NOT EXISTS (
+                            SELECT 1
+                            FROM public.tbl_effectif_client_break b
+                            WHERE b.id_effectif = e.id_effectif
+                              AND b.archive = FALSE
+                              AND b.date_debut <= CURRENT_DATE
+                              AND b.date_fin >= CURRENT_DATE
+                          )
+                          AND (
+                            %s <= 0
+                            OR (
+                              CASE
+                                WHEN COALESCE(e.niveau_education, '') ~ '^[0-9]+$' THEN e.niveau_education::int
+                                ELSE 0
+                              END
+                            ) >= %s
+                          )
+                          AND (
+                            %s = FALSE
+                            OR COALESCE(e.domaine_education, '') = COALESCE(%s, '')
+                          )
                     ),
-                    porteurs_ok AS (
+                    ec_raw AS (
                         SELECT
                             r.id_comp,
-                            COUNT(DISTINCT ec.id_effectif_client)::int AS nb_ok
+                            r.code,
+                            r.intitule,
+                            r.poids_criticite,
+                            r.niveau_requis,
+                            ef.id_effectif,
+                            ef.id_poste_actuel,
+
+                            CASE
+                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
+                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
+                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                              WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                              WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                              WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN ec.niveau_actuel::int
+                              ELSE 0
+                            END AS act_rank,
+
+                            CASE
+                              WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
+                              WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
+                              WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
+                              ELSE 0
+                            END AS req_rank
                         FROM req r
                         JOIN public.tbl_effectif_client_competence ec
                           ON ec.id_comp = r.id_comp
-                        JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
-                        WHERE
-                            COALESCE(ec.niveau_actuel, '') <> ''
-                            AND (
-                                (UPPER(COALESCE(r.niveau_requis, '')) = 'A' AND UPPER(ec.niveau_actuel) IN ('A','B','C')) OR
-                                (UPPER(COALESCE(r.niveau_requis, '')) = 'B' AND UPPER(ec.niveau_actuel) IN ('B','C')) OR
-                                (UPPER(COALESCE(r.niveau_requis, '')) = 'C' AND UPPER(ec.niveau_actuel) IN ('C')) OR
-                                (COALESCE(r.niveau_requis, '') = '')  -- si pas de niveau requis, tout porteur compte comme OK
-                            )
-                        GROUP BY r.id_comp
+                        JOIN eligible_effectifs ef
+                          ON ef.id_effectif = ec.id_effectif_client
+                        WHERE COALESCE(ec.actif, TRUE) = TRUE
+                          AND COALESCE(ec.archive, FALSE) = FALSE
+                    ),
+                    ec_ok AS (
+                        SELECT
+                            *,
+                            CASE
+                              WHEN req_rank > 0 THEN (act_rank >= req_rank)
+                              ELSE (act_rank > 0)
+                            END AS is_ok
+                        FROM ec_raw
+                    ),
+                    comp_agg AS (
+                        SELECT
+                            r.id_comp,
+                            r.code,
+                            r.intitule,
+                            r.poids_criticite,
+                            COUNT(DISTINCT CASE WHEN eok.is_ok THEN eok.id_effectif END)::int AS nb_ok,
+                            COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.id_poste_actuel = %s THEN eok.id_effectif END)::int AS nb_ok_titulaires
+                        FROM req r
+                        LEFT JOIN ec_ok eok ON eok.id_comp = r.id_comp
+                        GROUP BY r.id_comp, r.code, r.intitule, r.poids_criticite
                     )
-                    SELECT
-                        r.id_comp,
-                        r.code,
-                        r.intitule,
-                        r.poids_criticite,
-                        COALESCE(pt.nb_porteurs, 0)::int AS nb_porteurs,
-                        COALESCE(po.nb_ok, 0)::int AS nb_ok
-                    FROM req r
-                    LEFT JOIN porteurs_total pt ON pt.id_comp = r.id_comp
-                    LEFT JOIN porteurs_ok po ON po.id_comp = r.id_comp
+                    SELECT * FROM comp_agg
                     """,
-                    tuple(cte_params + [id_poste, criticite_min]),
+                    tuple(cte_params + [
+                        id_poste,
+                        int(criticite_min),
+                        id_ent,
+                        edu_min_rank, edu_min_rank,
+                        dom_bloq, dom_title,
+                        id_poste,
+                    ]),
                 )
+
                 rows = cur.fetchall() or []
 
                 nb0 = 0
                 nb1 = 0
-                nb1_ok = 0
-                nb1_a_former = 0
+                nb_r0 = 0
+                nb_r1 = 0
 
-                risques: List[AnalysePosteTopRisqueItem] = []
+                # Top risques (on garde simple ici : tri par gravité)
+                candidates: list[AnalysePosteTopRisqueItem] = []
 
                 for r in rows:
-                    bucket_total = _bucket_porteurs(r.get("nb_porteurs"))
-                    bucket_ok = _bucket_porteurs(r.get("nb_ok"))
+                    n_ok = int(r.get("nb_ok") or 0)
+                    n_ok_tit = int(r.get("nb_ok_titulaires") or 0)
+                    n_releve = max(n_ok - n_ok_tit, 0)
 
-                    # Compteurs "fragiles" basés sur bus factor TOTAL (aligné KPI)
-                    if bucket_total == 0:
-                        nb0 += 1
-                    elif bucket_total == 1:
-                        nb1 += 1
-                        # Stabilisation reco: si l'unique porteur n'est pas OK => Former
-                        if bucket_ok >= 1:
-                            nb1_ok += 1
-                        else:
-                            nb1_a_former += 1
+                    type_risque = "OK"
+                    reco = None
 
-                    type_risque = _type_risque_from_bucket(bucket_total)
-
-                    # Reco stable:
-                    # - 0 porteur total => recruter
-                    # - 1 porteur total:
-                    #     - si OK au niveau requis => mutualiser (backup)
-                    #     - sinon => former (monter au niveau requis)
-                    # - 2+ => former (consolider)
-                    if bucket_total == 0:
+                    if n_ok <= 0:
+                        type_risque = "NON_COUVERTE"
                         reco = "recruter"
-                    elif bucket_total == 1:
-                        reco = "mutualiser" if bucket_ok >= 1 else "former"
+                        nb0 += 1
+                    elif n_ok == 1:
+                        type_risque = "COUV_UNIQUE"
+                        reco = "mutualiser"
+                        nb1 += 1
                     else:
-                        reco = "former"
+                        if n_releve == 0:
+                            type_risque = "SANS_RELEVE"
+                            reco = "mutualiser"
+                            nb_r0 += 1
+                        elif n_releve == 1:
+                            type_risque = "RELEVE_FAIBLE"
+                            reco = "mutualiser"
+                            nb_r1 += 1
 
-                    risques.append(
-                        AnalysePosteTopRisqueItem(
-                            id_comp=r.get("id_comp"),
-                            code_comp=r.get("code"),
-                            intitule=r.get("intitule"),
-                            poids_criticite=int(r.get("poids_criticite") or 0),
-                            type_risque=type_risque,
-                            nb_porteurs=bucket_total,  # 0 / 1 / 2 (2 = 2+)
-                            nb_ok=bucket_ok,           # 0 / 1 / 2 (2 = 2+)
-                            recommandation=reco,
+                    if type_risque != "OK":
+                        candidates.append(
+                            AnalysePosteTopRisqueItem(
+                                id_comp=r.get("id_comp"),
+                                code_comp=r.get("code"),
+                                intitule=r.get("intitule"),
+                                poids_criticite=int(r.get("poids_criticite") or 0),
+                                type_risque=type_risque,
+                                nb_porteurs=n_ok,
+                                nb_ok=n_ok,
+                                recommandation=reco,
+                            )
                         )
+
+                nb_total_fragiles = nb0 + nb1 + nb_r0 + nb_r1
+                nb_evenements = nb_total_fragiles + (1 if gap > 0 else 0)
+
+                # Indice fragilité (0..100) : cohérent “table”
+                if nb_titulaires <= 0:
+                    score = 100
+                else:
+                    w0 = 0.90
+                    w1 = 0.65
+                    wr0 = 0.35
+                    wr1 = 0.18
+                    wt = 0.30
+
+                    risk = 1 - (pow(1 - w0, nb0)
+                                * pow(1 - w1, nb1)
+                                * pow(1 - wr0, nb_r0)
+                                * pow(1 - wr1, nb_r1)
+                                * pow(1 - wt, gap))
+                    score = int(max(0, min(100, round(risk * 100))))
+
+                # Tri top 8 (ordre “gravité”)
+                order = {"NON_COUVERTE": 0, "COUV_UNIQUE": 1, "SANS_RELEVE": 2, "RELEVE_FAIBLE": 3}
+                candidates.sort(
+                    key=lambda c: (
+                        order.get(c.type_risque or "OK", 9),
+                        -(int(c.poids_criticite or 0)),
+                        str(c.code_comp or ""),
                     )
+                )
+                top_risques = candidates[: int(limit or 8)]
 
-
-                # Aligné avec le KPI "postes-fragiles": fragiles = (nb_porteurs <= 1)
-                nb_total_fragiles = nb0 + nb1
-
-                indice = _calc_fragility_score(nb0, nb1, nb_total_fragiles)
-
-                # Tri gravité: type_risque (0>1>2+) puis criticité desc puis code
-                rank = {"NON_COUVERTE": 3, "COUV_UNIQUE": 2, "FRAGILE": 1}
-                risques_sorted = sorted(
-                    risques,
-                    key=lambda x: (
-                        -rank.get(x.type_risque, 0),
-                        -(int(x.poids_criticite or 0)),
-                        (x.code_comp or ""),
-                    ),
+                cond = AnalysePosteDiagnosticConditions(
+                    diplome_min=(f"Niveau {edu_min}" if edu_min_rank > 0 else None),
+                    domaine_formation=(dom_title or None),
+                    domaine_bloquant=dom_bloq,
+                    releve_phrase="Relève prise en compte : collaborateurs mobilisables immédiatement.",
                 )
 
-                top = risques_sorted[: int(limit or 8)]
+                comp = AnalysePosteFragiliteComposantes(
+                    nb0=nb0,
+                    nb1=nb1,
+                    nb_total_fragiles=nb_total_fragiles,
+                    criticite_min=int(criticite_min),
+
+                    nb_sans_releve=nb_r0,
+                    nb_releve_faible=nb_r1,
+                    gap_titulaires=gap,
+                    nb_evenements=nb_evenements,
+
+                    nb_titulaires=nb_titulaires,
+                    nb_titulaires_cible=nb_cible,
+                )
 
                 return AnalysePosteDiagnosticResponse(
                     scope=scope,
-                    criticite_min=int(criticite_min),
                     updated_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
                     poste={
                         "id_poste": poste.get("id_poste"),
@@ -3697,23 +3832,20 @@ def get_analyse_risques_poste_diagnostic(
                         "intitule_poste": poste.get("intitule_poste"),
                         "id_service": poste.get("id_service"),
                         "nom_service": poste.get("nom_service"),
+                        "nb_titulaires": nb_titulaires,
+                        "nb_titulaires_cible": nb_cible,
                     },
-                    indice_fragilite=int(indice),
-                    composantes=AnalysePosteFragiliteComposantes(
-                        nb0=int(nb0),
-                        nb1=int(nb1),
-                        nb_total_fragiles=int(nb_total_fragiles),
-                        criticite_min=int(criticite_min),
-                        nb1_ok=int(nb1_ok),
-                        nb1_a_former=int(nb1_a_former),
-                    ),
-                    top_risques=top,
+                    indice_fragilite=score,
+                    composantes=comp,
+                    top_risques=top_risques,
+                    conditions=cond,
                 )
 
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
 
 # ======================================================
 # Endpoint: Matching poste-porteur
