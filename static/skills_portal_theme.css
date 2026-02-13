@@ -119,6 +119,10 @@
 .sb-nowrap{ white-space: nowrap; }
 .sb-ellipsis{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width:0; }
 .col-center{ text-align:center !important; }
+.sb-disabled{
+  opacity: 0.55;
+  pointer-events: none;
+}
 
 /* Grille de tuiles */
 .sb-tiles{
@@ -458,6 +462,17 @@ textarea.sb-ctrl{
 .sb-btn:focus{
   outline:none;
   box-shadow: var(--sb-ring-accent);
+}
+
+.sb-btn:disabled{
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+
+.sb-btn:disabled:hover{
+  filter: none;
 }
 
 .sb-btn--soft{

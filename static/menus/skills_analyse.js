@@ -827,14 +827,18 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     </div>
   `;
 
-  // Plan de sécurisation (source API diag)
-  const nb0 = Number(comp.nb0 || 0);
-  const nb1Ok = Number(comp.nb1_ok || 0);
-  const nb1Former = Number(comp.nb1_a_former || 0);
+  // Plan de sécurisation (possibilités)
+  const idPoste = String(p?.id_poste || p?.id || diag?.id_poste || "").trim();
 
-  const planRecruter = nb0;
-  const planMutualiser = nb1Ok;
-  const planFormer = nb1Former;
+  // NOTE : "causes" existe déjà plus haut (bloc Causes racines). On le réutilise.
+  const depList = Array.isArray(causes?.dependance) ? causes.dependance : [];
+  const effList = Array.isArray(causes?.efficacite) ? causes.efficacite : [];
+
+  // Levier "Former" : uniquement si on a un sujet compétences actionnable (efficacité ou couverture insuffisante).
+  // Fallback : si causes pas rempli, on garde la composante historique nb1_a_former.
+  const canTrainFromCauses = (effList.length > 0) || depList.some(x => Number(x?.nb_porteurs_ok || 0) > 0);
+  const canTrainFromComp = Number(comp?.nb1_a_former || 0) > 0;
+  const canTrain = !!(canTrainFromCauses || canTrainFromComp);
 
   // Rendu
   host.innerHTML = `
@@ -863,49 +867,58 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     <div class="card" style="padding:12px; margin-top:12px;">
       <div class="card-title" style="margin:0 0 6px 0;">Plan de sécurisation</div>
-      <div class="card-sub" style="margin:0;">Répartition des actions recommandées (sur l’ensemble des compétences critiques à risque).</div>
+      <div class="card-sub" style="margin:0;">Aperçu des possibilités (sans recommandation automatique).</div>
 
       <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
-        <div class="card" style="padding:12px; margin:0; flex:1; min-width:220px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-            <div style="font-weight:900;">Former</div>
-            ${badge(String(planFormer), planFormer > 0)}
+        <div class="card ${(!canTrain ? "sb-disabled" : "")}" style="padding:12px; margin:0; flex:1; min-width:240px;">
+          <div style="font-weight:900;">Former</div>
+          <div class="card-sub" style="margin:6px 0 10px 0;">
+            Catalogue de formation (filtrage par compétences à venir).
           </div>
-          <div class="card-sub" style="margin:6px 0 0 0;">Monter au niveau requis (réduction du risque).</div>
+          <button type="button"
+                  id="btnAnalysePostePlanFormer"
+                  class="sb-btn sb-btn--xs sb-btn--block"
+                  ${!canTrain ? "disabled" : ""}>
+            Voir les formations
+          </button>
         </div>
 
-        <div class="card" style="padding:12px; margin:0; flex:1; min-width:220px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-            <div style="font-weight:900;">Mutualiser</div>
-            ${badge(String(planMutualiser), planMutualiser > 0)}
+        <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
+          <div style="font-weight:900;">Mutualiser</div>
+          <div class="card-sub" style="margin:6px 0 10px 0;">
+            Ouvrir le matching poste → porteur (sécurisation par doublure / backup).
           </div>
-          <div class="card-sub" style="margin:6px 0 0 0;">Créer une doublure (backup).</div>
+          <button type="button"
+                  id="btnAnalysePostePlanMutualiser"
+                  class="sb-btn sb-btn--xs sb-btn--block">
+            Ouvrir le matching
+          </button>
         </div>
 
-        <div class="card" style="padding:12px; margin:0; flex:1; min-width:220px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-            <div style="font-weight:900;">Recruter</div>
-            ${badge(String(planRecruter), planRecruter > 0)}
+        <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
+          <div style="font-weight:900;">Transférer</div>
+          <div class="card-sub" style="margin:6px 0 10px 0;">
+            Transfert de charge (poste → poste) via matching (module à venir).
           </div>
-          <div class="card-sub" style="margin:6px 0 0 0;">Absence de porteur (rupture structurelle).</div>
+          <button type="button"
+                  id="btnAnalysePostePlanTransferer"
+                  class="sb-btn sb-btn--xs sb-btn--block">
+            Voir les options
+          </button>
+        </div>
+
+        <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
+          <div style="font-weight:900;">Recruter</div>
+          <div class="card-sub" style="margin:6px 0 10px 0;">
+            Ouvrir la fiche de poste pour préparation du recrutement.
+          </div>
+          <button type="button"
+                  id="btnAnalysePostePlanRecruter"
+                  class="sb-btn sb-btn--xs sb-btn--block">
+            Éditer la fiche de poste
+          </button>
         </div>
       </div>
-    </div>
-
-    <div class="card" style="padding:12px; margin-top:12px;">
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-        <div class="card-title" style="margin:0;">Cartographie détaillée</div>
-        <button type="button"
-                id="btnAnalysePosteCritToggle"
-                class="sb-btn sb-btn--xs"
-                style="background:var(--reading-accent); color:#fff; border-color:var(--reading-accent); font-weight:800;">
-          ${escapeHtml(_analysePosteShowAllCompetences ? "Voir uniquement les risques" : "Voir toutes les compétences critiques")}
-        </button>
-      </div>
-      <div class="card-sub" style="margin-top:6px;">
-        Liste détaillée (dans le scope) avec qualification “au niveau requis”.
-      </div>
-      <div id="analysePosteDiagCartoSlot"></div>
     </div>
   `;
 
@@ -924,21 +937,56 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     });
   });
 
-  // Toggle (utile, sinon bouton mort = pollution)
-  const btn = byId("btnAnalysePosteCritToggle");
-  if (btn) {
-    if (!btn.dataset.bound) {
-      btn.dataset.bound = "1";
-      btn.addEventListener("click", () => {
-        _analysePosteShowAllCompetences = !_analysePosteShowAllCompetences;
-        btn.textContent = _analysePosteShowAllCompetences
-          ? "Voir uniquement les risques"
-          : "Voir toutes les compétences critiques";
-
-        if (_analysePosteLastData) renderAnalysePosteCompetencesTab(_analysePosteLastData);
-      });
-    }
+  // Plan de sécurisation - actions (possibilités)
+  const bFormer = byId("btnAnalysePostePlanFormer");
+  if (bFormer && !bFormer.dataset.bound) {
+    bFormer.dataset.bound = "1";
+    bFormer.addEventListener("click", () => {
+      if (!_portalref) return;
+      _portalref.showAlert("info", "Catalogue de formation : module en cours (bouton préparé).");
+    });
   }
+
+  const bMut = byId("btnAnalysePostePlanMutualiser");
+  if (bMut && !bMut.dataset.bound) {
+    bMut.dataset.bound = "1";
+    bMut.addEventListener("click", () => {
+      if (!idPoste) {
+        if (_portalref) _portalref.showAlert("error", "Impossible d’ouvrir le matching : id_poste manquant.");
+        return;
+      }
+      setMatchView("candidats");
+      _matchSelectedPoste = idPoste;
+      setMode("matching");
+      closeAnalysePosteModal();
+    });
+  }
+
+  const bTrans = byId("btnAnalysePostePlanTransferer");
+  if (bTrans && !bTrans.dataset.bound) {
+    bTrans.dataset.bound = "1";
+    bTrans.addEventListener("click", () => {
+      if (_portalref) _portalref.showAlert("info", "Transfert de charge (poste → poste) : module à venir.");
+    });
+  }
+
+  const bRec = byId("btnAnalysePostePlanRecruter");
+  if (bRec && !bRec.dataset.bound) {
+    bRec.dataset.bound = "1";
+    bRec.addEventListener("click", () => {
+      if (!idPoste) {
+        if (_portalref) _portalref.showAlert("error", "Impossible d’ouvrir la fiche : id_poste manquant.");
+        return;
+      }
+
+      // Piste simple et non intrusive : on stocke l’id, à exploiter côté "Votre organisation".
+      localStorage.setItem("sb_org_focus_poste_id", idPoste);
+
+      if (_portalref) _portalref.showAlert("info", "Fiche de poste : ouvrez “Votre organisation” (id préparé).");
+      closeAnalysePosteModal();
+    });
+  }
+
 }
 
     // ==============================
@@ -2684,8 +2732,14 @@ function renderAnalysePosteCompetencesTab(data) {
   // IMPORTANT : si le slot existe, on remplit le slot.
   // On ne doit JAMAIS réécrire tout le tab, sinon tu écrases le diagnostic (et tu retombes à 0%).
   const slot = byId("analysePosteDiagCartoSlot");
-  const host = slot || byId("analysePosteTabCompetences");
-  if (!host) return;
+
+  // Le bloc "Cartographie détaillée" est supprimé : on ne rend rien.
+  // IMPORTANT : on ne doit JAMAIS écrire dans #analysePosteTabCompetences ici,
+  // sinon on écrase le diagnostic (anneau %).
+  if (!slot) return;
+
+  const host = slot;
+
 
   const listAll = Array.isArray(data?.competences) ? data.competences : [];
 
