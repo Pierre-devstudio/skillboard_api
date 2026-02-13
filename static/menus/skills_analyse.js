@@ -222,8 +222,13 @@
 
   function clearKpis() {
     setText("kpiRiskPostes", "—");
-    setText("kpiRiskNoOwner", "—");
-    setText("kpiRiskBus1", "—");
+    setText("kpiRiskCritFragiles", "—");
+
+    const a = byId("kpiRiskCritAlert");
+    if (a) {
+      a.textContent = "";
+      a.style.display = "none";
+    }
 
     setText("kpiMatchNoCandidate", "—");
     setText("kpiMatchReadyNow", "—");
@@ -233,6 +238,7 @@
     setText("kpiPrevCompImpact", "—");
     setText("kpiPrevPostesRed", "—");
   }
+
 
   function setActiveTile(mode) {
     const tiles = [
@@ -286,8 +292,16 @@
 
 
   function getRiskFilter() {
-    return (localStorage.getItem(STORE_RISK_FILTER) || "").trim();
+    const v = (localStorage.getItem(STORE_RISK_FILTER) || "").trim();
+
+    // Migration legacy -> KPI unique "critiques-fragiles"
+    if (v === "critiques-sans-porteur" || v === "porteur-unique") {
+      localStorage.setItem(STORE_RISK_FILTER, "critiques-fragiles");
+      return "critiques-fragiles";
+    }
+    return v;
   }
+
 
   function setRiskFilter(filter) {
     const f = (filter || "").trim();
@@ -3501,10 +3515,7 @@ function renderDetail(mode) {
     return;
   }
 
-  // -----------------------
-  // RISQUES (API + filtre KPI)
-  // -----------------------
-  const rf = getRiskFilter(); // "", "postes-fragiles", "critiques-sans-porteur", "porteur-unique"
+  const rf = getRiskFilter(); // "", "postes-fragiles", "critiques-fragiles"
   if (typeof setActiveRiskKpi === "function") setActiveRiskKpi(rf);
 
   if (title) title.textContent = "Risques";
@@ -3515,15 +3526,13 @@ function renderDetail(mode) {
   if (rf === "postes-fragiles") {
     filterLabel = "Postes fragiles";
     filterSub = "Postes à sécuriser en priorité.";
-  } else if (rf === "critiques-sans-porteur") {
-    filterLabel = "Compétences critiques non couvertes";
-    filterSub = "Compétences requises mais non couvertes (dans le périmètre).";
-  } else if (rf === "porteur-unique") {
-    filterLabel = "Compétences critiques à couverture unique";
-    filterSub = "Compétences critiques couvertes par une seule personne (dépendance).";
+  } else if (rf === "critiques-fragiles") {
+    filterLabel = "Compétences critiques (structurel)";
+    filterSub = "Compétences critiques à sécuriser (0 ou 1 porteur en nominal).";
   }
 
   if (sub) sub.textContent = filterSub;
+
 
   const selSvc = byId("analyseServiceSelect") || byId("anaServiceSelect") || byId("mapServiceSelect");
   const id_service = window.portal.serviceFilter.toQueryId(selSvc?.value || "");
@@ -3732,6 +3741,20 @@ function renderDetail(mode) {
 
               const nbPostes = Number(r.nb_postes_impactes || 0);
               const nbPorteurs = Number(r.nb_porteurs || 0);
+                            const nbPorteursDispo = Number(r.nb_porteurs_dispo);
+              const showDispo = Number.isFinite(nbPorteursDispo) && nbPorteursDispo !== nbPorteurs;
+
+              const dispoHtml = showDispo
+                ? `<span class="sb-badge sb-badge--warning" title="Porteurs disponibles aujourd’hui (breaks en cours exclus)">${escapeHtml(String(nbPorteursDispo))}</span>`
+                : "";
+
+              const porteursHtml = `
+                <div style="display:flex; justify-content:center; gap:6px; align-items:center;">
+                  ${nbPorteurs ? badge(String(nbPorteurs), true) : badge("0", false)}
+                  ${dispoHtml}
+                </div>
+              `;
+
               const crit = Number(r.max_criticite || 0);
 
               return `
@@ -3746,7 +3769,7 @@ function renderDetail(mode) {
                   <td>${escapeHtml(intit)}</td>
                   <td class="col-center">${nbPostes ? badge(String(nbPostes), true) : badge("0", false)}</td>
                   <td class="col-center">${crit ? badge(String(crit), true) : badge("—", false)}</td>
-                  <td class="col-center">${nbPorteurs ? badge(String(nbPorteurs), true) : badge("0", false)}</td>
+                  <td class="col-center">${porteursHtml}</td>
                 </tr>
               `;
             }).join("")}
@@ -3831,39 +3854,32 @@ function renderDetail(mode) {
         return;
       }
 
-      const [a, b, c] = await Promise.all([
+      const [a, b] = await Promise.all([
         fetchRisquesDetail(_portalref, "postes-fragiles", id_service, 20),
-        fetchRisquesDetail(_portalref, "critiques-sans-porteur", id_service, 20),
-        fetchRisquesDetail(_portalref, "porteur-unique", id_service, 20),
+        fetchRisquesDetail(_portalref, "critiques-fragiles", id_service, 40),
       ]);
 
       if (mySeq !== _riskDetailReqSeq) return;
 
       const itemsA = Array.isArray(a?.items) ? a.items : [];
       const itemsB = Array.isArray(b?.items) ? b.items : [];
-      const itemsC = Array.isArray(c?.items) ? c.items : [];
 
       body.innerHTML = `
         ${buildResetHtml()}
 
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">Postes fragiles</div>          
+          <div class="card-title" style="margin-bottom:6px;">Postes fragiles</div>
           ${renderTablePostes(itemsA)}
         </div>
 
         <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">Compétences critiques non couvertes</div>
-          <div class="card-sub" style="margin:0;">Compétences critiques requises mais non couvertes.</div>
+          <div class="card-title" style="margin-bottom:6px;">Compétences critiques (structurel)</div>
+          <div class="card-sub" style="margin:0;">Compétences critiques à sécuriser (0 ou 1 porteur en nominal).</div>
           ${renderTableCompetences(itemsB)}
-        </div>
-
-        <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">Compétences critiques à couverture unique</div>
-          <div class="card-sub" style="margin:0;">Compétences critiques couvertes par une seule personne.</div>
-          ${renderTableCompetences(itemsC)}
         </div>
       `;
       bindRiskResetBtn();
+
 
     } catch (e) {
       if (mySeq !== _riskDetailReqSeq) return;
@@ -3900,8 +3916,20 @@ function renderDetail(mode) {
 
       const r = t.risques || {};
       setText("kpiRiskPostes", r.postes_fragiles);
-      setText("kpiRiskNoOwner", r.comp_critiques_sans_porteur);
-      setText("kpiRiskBus1", r.comp_bus_factor_1);
+      setText("kpiRiskCritFragiles", r.comp_critiques_fragiles);
+
+      const alertN = Number(r.comp_critiques_tombent_zero_auj || 0);
+      const alertEl = byId("kpiRiskCritAlert");
+      if (alertEl) {
+        if (Number.isFinite(alertN) && alertN > 0) {
+          alertEl.textContent = `+${alertN} tombent à 0 aujourd’hui`;
+          alertEl.style.display = "inline-flex";
+        } else {
+          alertEl.textContent = "";
+          alertEl.style.display = "none";
+        }
+      }
+
 
       // Matching : on laisse volontairement les KPI en "—".
       // Les KPI de tuile servent ici de boutons de vue (titulaire vs candidats), pas de compteur.
