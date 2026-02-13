@@ -3440,7 +3440,7 @@ function renderDetail(mode) {
 
   if (rf === "postes-fragiles") {
     filterLabel = "Postes fragiles";
-    filterSub = "Postes à sécuriser en priorité (Contenant des compétences critiques avec couverture faible).";
+    filterSub = "Postes à sécuriser en priorité.";
   } else if (rf === "critiques-sans-porteur") {
     filterLabel = "Compétences critiques non couvertes";
     filterSub = "Compétences requises mais non couvertes (dans le périmètre).";
@@ -3565,17 +3565,7 @@ function renderDetail(mode) {
                         role="button"
                         aria-label="Informations sur l'indice de fragilité">i</span>
                 </span>
-              </th>
-
-              <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;"
-                  title="Nombre de compétences critiques non couvertes">
-                Critique<br>non couverte
-              </th>
-
-              <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;"
-                  title="Nombre de compétences critiques couvertes par une seule personne">
-                Critique à<br>couverture unique
-              </th>
+              </th>              
 
               <th class="col-center" style="width:130px; white-space:normal; line-height:1.1;">
                 Priorité de<br>traitement
@@ -3621,9 +3611,6 @@ function renderDetail(mode) {
                   <td>${escapeHtml(svc)}</td>
 
                   <td class="col-center" title="Indice fragilité (0-100)">${scoreChip(score)}</td>
-
-                  <td class="col-center">${nb0 ? badge(String(nb0), true) : badge("0", false)}</td>
-                  <td class="col-center">${nb1 ? badge(String(nb1), true) : badge("0", false)}</td>
 
                   <td class="col-center">${priorityPill(prio, score)}</td>
 
@@ -3702,7 +3689,7 @@ function renderDetail(mode) {
           ${badge(filterLabel, true)}
           ${badge("Criticité min: " + critMinLabel(), false)}
         </div>
-        <button type="button" class="sb-btn--init" id="btnRiskFilterReset" style="margin-left:0;">
+        <button type="button" class="sb-btn sb-btn--init sb-btn--xs" id="btnRiskFilterReset">
           Tout afficher
         </button>
       </div>
@@ -3753,10 +3740,14 @@ function renderDetail(mode) {
 
         const items = Array.isArray(data?.items) ? data.items : [];
 
+        const subHtml = (rf === "postes-fragiles")
+          ? ""
+          : `<div class="card-sub" style="margin:0;">${escapeHtml(filterSub)}</div>`;
+
         const content = `
           <div class="card" style="padding:12px; margin:0;">
             <div class="card-title" style="margin-bottom:6px;">${escapeHtml(filterLabel)}</div>
-            <div class="card-sub" style="margin:0;">${escapeHtml(filterSub)}</div>
+            ${subHtml}
             ${rf === "postes-fragiles" ? renderTablePostes(items) : renderTableCompetences(items)}
           </div>
         `;
@@ -3782,9 +3773,7 @@ function renderDetail(mode) {
         ${buildResetHtml()}
 
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">Postes fragiles</div>
-
-          <div class="card-sub" style="margin:0;">Top postes à sécuriser (critiques avec couverture faible).</div>
+          <div class="card-title" style="margin-bottom:6px;">Postes fragiles</div>          
           ${renderTablePostes(itemsA)}
         </div>
 
@@ -4529,26 +4518,26 @@ function bindOnce(portal) {
         <div class="sb-tip-title">Indice de fragilité</div>
 
         <div class="sb-tip-mini" style="margin-bottom:8px;">
-          Score pondéré basé sur les 3 compteurs “critiques”.
+          Score 0–100 calculé côté API pour prioriser les postes à sécuriser.
         </div>
 
         <div class="sb-tip-line">
           <span class="sb-tip-dot sb-tip-dot--r"></span>
-          <span><b>Critique non couverte</b> = le plus pénalisant</span>
+          <span>Prend en compte la <b>couverture des compétences critiques</b></span>
         </div>
         <div class="sb-tip-line">
           <span class="sb-tip-dot sb-tip-dot--y"></span>
-          <span><b>Critique à couverture unique</b> = dépendance</span>
+          <span>Intègre la <b>relève disponible</b> (hors titulaires)</span>
         </div>
         <div class="sb-tip-line">
           <span class="sb-tip-dot sb-tip-dot--g"></span>
-          <span><b>Total fragiles</b> = fragilités restantes</span>
+          <span>Intègre l’<b>écart Titulaires / Cible</b> (Paramétrage RH)</span>
         </div>
 
         <div class="sb-tip-sep"></div>
 
         <div class="sb-tip-mini">
-          <b>Formule (UI)</b> : Indice = (3 × Non couvertes) + (2 × Couverture unique) + (1 × Total fragiles)
+          Le détail (causes + chiffres) est dans <b>“Voir analyse”</b>.
         </div>
       `;
     }
