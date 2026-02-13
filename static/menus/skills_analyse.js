@@ -890,7 +890,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
           <button type="button"
                   id="btnAnalysePostePlanMutualiser"
-                  class="sb-btn sb-btn--xs sb-btn--block">
+                  class="sb-btn sb-btn--accent sb-btn--xs sb-btn--block">
             Ouvrir le matching
           </button>
         </div>
@@ -902,7 +902,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
           <button type="button"
                   id="btnAnalysePostePlanTransferer"
-                  class="sb-btn sb-btn--xs sb-btn--block">
+                  class="sb-btn sb-btn--accent sb-btn--xs sb-btn--block">
             Voir les options
           </button>
         </div>
@@ -914,7 +914,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
           <button type="button"
                   id="btnAnalysePostePlanRecruter"
-                  class="sb-btn sb-btn--xs sb-btn--block">
+                  class="sb-btn sb-btn--accent sb-btn--xs sb-btn--block">
             Éditer la fiche de poste
           </button>
         </div>
