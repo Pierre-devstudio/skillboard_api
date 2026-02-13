@@ -36,8 +36,17 @@ class ServiceScope(BaseModel):
 
 class AnalyseRisquesTile(BaseModel):
     postes_fragiles: int = 0
+
+    # Legacy (toujours renvoyé pour compat)
     comp_critiques_sans_porteur: int = 0
     comp_bus_factor_1: int = 0
+
+    # KPI 2 (nouveau): compétences critiques "fragiles" (bus factor ≤ 1) en nominal (sans breaks)
+    comp_critiques_fragiles: int = 0
+
+    # Alerte "aujourd'hui": nb de compétences qui tombent à 0 porteur dispo à cause d'indispos en cours
+    comp_critiques_tombent_zero_auj: int = 0
+
 
 
 class AnalyseMatchingTile(BaseModel):
@@ -361,12 +370,43 @@ def get_analyse_summary(
                         c.etat = 'active'
                         AND COALESCE(c.masque, FALSE) = FALSE
                 ),
+                effectifs_dispo AS (
+                    -- "Aujourd'hui": on enlève les effectifs en indisponibilité en cours
+                    SELECT es.id_effectif
+                    FROM effectifs_scope es
+                    JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+                    WHERE COALESCE(e.archive, FALSE) = FALSE
+                      AND NOT EXISTS (
+                        SELECT 1
+                        FROM public.tbl_effectif_client_break b
+                        WHERE b.id_effectif = e.id_effectif
+                          AND b.archive = FALSE
+                          AND b.date_debut <= CURRENT_DATE
+                          AND b.date_fin >= CURRENT_DATE
+                      )
+                ),
                 porteurs AS (
+                    -- Nominal (structurel): sans prendre en compte les indisponibilités
                     SELECT
                         ec.id_comp,
                         COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
                     FROM public.tbl_effectif_client_competence ec
                     JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
+                    WHERE COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND COALESCE(ec.id_comp, '') <> ''
+                    GROUP BY ec.id_comp
+                ),
+                porteurs_dispo AS (
+                    -- Aujourd'hui: porteurs dispo (exclusion des breaks en cours)
+                    SELECT
+                        ec.id_comp,
+                        COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN effectifs_dispo ed ON ed.id_effectif = ec.id_effectif_client
+                    WHERE COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND COALESCE(ec.id_comp, '') <> ''
                     GROUP BY ec.id_comp
                 ),
                 titulaires AS (
@@ -402,6 +442,7 @@ def get_analyse_summary(
                     END)
                     FROM poste_agg pa)::int AS postes_fragiles,
 
+                    -- Legacy (on garde)
                     COUNT(DISTINCT CASE
                         WHEN r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 0 THEN r.id_comp
                         ELSE NULL
@@ -410,19 +451,38 @@ def get_analyse_summary(
                     COUNT(DISTINCT CASE
                         WHEN r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 1 THEN r.id_comp
                         ELSE NULL
-                    END)::int AS comp_porteur_unique
+                    END)::int AS comp_porteur_unique,
+
+                    -- KPI 2 (nouveau): <= 1 porteur en nominal
+                    COUNT(DISTINCT CASE
+                        WHEN r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) <= 1 THEN r.id_comp
+                        ELSE NULL
+                    END)::int AS comp_critiques_fragiles,
+
+                    -- Alerte: tombent à 0 aujourd'hui (breaks en cours)
+                    COUNT(DISTINCT CASE
+                        WHEN r.poids_criticite >= %s
+                         AND COALESCE(p.nb_porteurs, 0) > 0
+                         AND COALESCE(pd.nb_porteurs, 0) = 0
+                        THEN r.id_comp
+                        ELSE NULL
+                    END)::int AS comp_critiques_tombent_zero_auj
+
                 FROM req r
                 LEFT JOIN porteurs p ON p.id_comp = r.id_comp
+                LEFT JOIN porteurs_dispo pd ON pd.id_comp = r.id_comp
                 """
 
 
 
-                cur.execute(sql_risques, tuple(cte_params + [CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN]))
+                cur.execute(sql_risques, tuple(cte_params + [CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN]))
                 rk = cur.fetchone() or {}
 
                 postes_fragiles = int(rk.get("postes_fragiles") or 0)
                 comp_critiques_sans_porteur = int(rk.get("comp_critiques_sans_porteur") or 0)
                 comp_porteur_unique = int(rk.get("comp_porteur_unique") or 0)
+                comp_critiques_fragiles = int(rk.get("comp_critiques_fragiles") or 0)
+                comp_critiques_tombent_zero_auj = int(rk.get("comp_critiques_tombent_zero_auj") or 0)
 
                 # ---------------------------
 
@@ -815,6 +875,8 @@ def get_analyse_summary(
                         postes_fragiles=postes_fragiles,
                         comp_critiques_sans_porteur=comp_critiques_sans_porteur,
                         comp_bus_factor_1=comp_porteur_unique,  # UI = "Porteur unique"
+                        comp_critiques_fragiles=comp_critiques_fragiles,
+                        comp_critiques_tombent_zero_auj=comp_critiques_tombent_zero_auj,
                     ),
                     matching=AnalyseMatchingTile(
                         postes_sans_candidat=0,
@@ -2531,6 +2593,7 @@ class AnalyseRisqueItem(BaseModel):
 
     nb_postes_impactes: Optional[int] = None
     nb_porteurs: Optional[int] = None
+    nb_porteurs_dispo: Optional[int] = None
     max_criticite: Optional[int] = None
 
 
@@ -2565,7 +2628,7 @@ def get_analyse_risques_detail(
     """
     try:
         k = (kpi or "").strip().lower()
-        if k not in ("postes-fragiles", "postes-scope", "critiques-sans-porteur", "porteur-unique"):
+        if k not in ("postes-fragiles", "postes-scope", "critiques-fragiles", "critiques-sans-porteur", "porteur-unique"):
             raise HTTPException(status_code=400, detail="Paramètre kpi invalide.")
 
         if limit < 1:
@@ -2604,14 +2667,46 @@ def get_analyse_risques_detail(
                         c.etat = 'active'
                         AND COALESCE(c.masque, FALSE) = FALSE
                 ),
+                effectifs_dispo AS (
+                    -- "Aujourd'hui": on enlève les effectifs en indisponibilité en cours
+                    SELECT es.id_effectif
+                    FROM effectifs_scope es
+                    JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+                    WHERE COALESCE(e.archive, FALSE) = FALSE
+                      AND NOT EXISTS (
+                        SELECT 1
+                        FROM public.tbl_effectif_client_break b
+                        WHERE b.id_effectif = e.id_effectif
+                          AND b.archive = FALSE
+                          AND b.date_debut <= CURRENT_DATE
+                          AND b.date_fin >= CURRENT_DATE
+                      )
+                ),
                 porteurs AS (
+                    -- Nominal (structurel): sans prendre en compte les indisponibilités
                     SELECT
                         ec.id_comp,
                         COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
                     FROM public.tbl_effectif_client_competence ec
                     JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
+                    WHERE COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND COALESCE(ec.id_comp, '') <> ''
+                    GROUP BY ec.id_comp
+                ),
+                porteurs_dispo AS (
+                    -- Aujourd'hui: porteurs dispo (exclusion des breaks en cours)
+                    SELECT
+                        ec.id_comp,
+                        COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN effectifs_dispo ed ON ed.id_effectif = ec.id_effectif_client
+                    WHERE COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND COALESCE(ec.id_comp, '') <> ''
                     GROUP BY ec.id_comp
                 )
+
                 """
 
                 items: list[AnalyseRisqueItem] = []
@@ -2948,6 +3043,68 @@ def get_analyse_risques_detail(
                             nb_critiques_fragiles=int(r.get("nb_critiques_fragiles") or 0),
                             nb_critiques_sans_porteur=int(r.get("nb_critiques_sans_porteur") or 0),
                             nb_critiques_porteur_unique=int(r.get("nb_critiques_porteur_unique") or 0),
+                        ))
+
+                # ---------------------------
+                # KPI: Critiques fragiles (≤ 1 porteur en nominal)
+                # ---------------------------
+                elif k == "critiques-fragiles":
+                    sql = base_cte + """
+                    ,
+                    comp_agg AS (
+                        SELECT
+                            r.id_comp,
+                            MAX(r.poids_criticite)::int AS max_criticite,
+                            COUNT(DISTINCT r.id_poste)::int AS nb_postes_impactes,
+                            COALESCE(p.nb_porteurs, 0)::int AS nb_porteurs,
+                            COALESCE(pd.nb_porteurs, 0)::int AS nb_porteurs_dispo
+                        FROM req r
+                        LEFT JOIN porteurs p ON p.id_comp = r.id_comp
+                        LEFT JOIN porteurs_dispo pd ON pd.id_comp = r.id_comp
+                        WHERE r.poids_criticite >= %s
+                          AND COALESCE(p.nb_porteurs, 0) <= 1
+                        GROUP BY r.id_comp, COALESCE(p.nb_porteurs, 0), COALESCE(pd.nb_porteurs, 0)
+                    )
+                    SELECT
+                        c.id_comp,
+                        c.code,
+                        c.intitule,
+                        c.grille_evaluation,
+                        c.domaine AS id_domaine_competence,
+                        d.titre,
+                        d.titre_court,
+                        d.couleur,
+                        ca.nb_postes_impactes,
+                        ca.nb_porteurs,
+                        ca.nb_porteurs_dispo,
+                        ca.max_criticite
+                    FROM comp_agg ca
+                    JOIN public.tbl_competence c ON c.id_comp = ca.id_comp
+                    LEFT JOIN public.tbl_domaine_competence d
+                      ON d.id_domaine_competence = c.domaine
+                    ORDER BY
+                        ca.nb_porteurs ASC,
+                        ca.nb_porteurs_dispo ASC,
+                        ca.nb_postes_impactes DESC,
+                        ca.max_criticite DESC,
+                        c.code
+                    LIMIT %s
+                    """
+                    cur.execute(sql, tuple(cte_params + [criticite_min, limit]))
+                    rows = cur.fetchall() or []
+                    for r in rows:
+                        items.append(AnalyseRisqueItem(
+                            id_comp=r.get("id_comp"),
+                            code=r.get("code"),
+                            intitule=r.get("intitule"),
+                            id_domaine_competence=r.get("id_domaine_competence"),
+                            domaine_titre=r.get("titre"),
+                            domaine_titre_court=r.get("titre_court"),
+                            domaine_couleur=r.get("couleur"),
+                            nb_postes_impactes=int(r.get("nb_postes_impactes") or 0),
+                            nb_porteurs=int(r.get("nb_porteurs") or 0),
+                            nb_porteurs_dispo=int(r.get("nb_porteurs_dispo") or 0),
+                            max_criticite=int(r.get("max_criticite") or 0),
                         ))
 
 
