@@ -3214,7 +3214,7 @@ class AnalysePosteDiagnosticConditions(BaseModel):
 
 
 class AnalysePosteDiagnosticResponse(BaseModel):
-    scope: str
+    scope: ServiceScope
     updated_at: str
     poste: Dict[str, Any]
 
@@ -3224,7 +3224,6 @@ class AnalysePosteDiagnosticResponse(BaseModel):
     top_risques: List[AnalysePosteTopRisqueItem]
     causes: Optional[AnalysePosteCausesRacines] = None
     conditions: Optional[AnalysePosteDiagnosticConditions] = None
-
 
 
 
