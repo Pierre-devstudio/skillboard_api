@@ -861,54 +861,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     ${causesCard}
 
-
-
-    <div class="card" style="padding:12px; margin-top:12px;">
-      <div class="card-title" style="margin:0 0 6px 0;">Causes racines (top 8)</div>
-      <div class="card-sub" style="margin:0;">Les fragilités les plus pénalisantes (triées par gravité).</div>
-
-      ${risks.length ? `
-        <div class="table-wrap" style="margin-top:10px;">
-          <table class="sb-table">
-            <thead>
-              <tr>
-                <th style="width:90px;">Code</th>
-                <th>Compétence</th>
-                <th class="col-center" style="width:160px;">Fragilité</th>
-                <th class="col-center" style="width:90px;">Criticité</th>
-                <th class="col-center" style="width:90px;">Porteurs</th>
-                <th class="col-center" style="width:140px;">Action reco</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${risks.map(r => {
-                const code = escapeHtml(r?.code_comp || r?.code || "—");
-                const intit = escapeHtml(r?.intitule || "—");
-                const type = typeLabel(r?.type_risque || "");
-                const crit = (r?.poids_criticite === null || r?.poids_criticite === undefined) ? "—" : escapeHtml(String(r.poids_criticite));
-                const nbp = escapeHtml(String(r?.nb_porteurs ?? "—"));
-                const reco = r?.recommandation || "";
-                return `
-                  <tr>
-                    <td style="font-weight:800; white-space:nowrap;">${code}</td>
-                    <td style="min-width:280px;">
-                      <div style="font-size:14px; font-weight:700;">${intit}</div>
-                    </td>
-                    <td class="col-center">${pill(type)}</td>
-                    <td class="col-center" style="white-space:nowrap;">${crit}</td>
-                    <td class="col-center">${pill(nbp)}</td>
-                    <td class="col-center">${recoPill(reco)}</td>
-                  </tr>
-                `;
-              }).join("")}
-            </tbody>
-          </table>
-        </div>
-      ` : `
-        <div class="card-sub" style="margin-top:10px;">Aucune cause racine à afficher.</div>
-      `}
-    </div>
-
     <div class="card" style="padding:12px; margin-top:12px;">
       <div class="card-title" style="margin:0 0 6px 0;">Plan de sécurisation</div>
       <div class="card-sub" style="margin:0;">Répartition des actions recommandées (sur l’ensemble des compétences critiques à risque).</div>
