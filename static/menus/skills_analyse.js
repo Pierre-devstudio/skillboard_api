@@ -558,30 +558,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     `;
   }
 
-  function recoLabel(r) {
-    const k = (r || "").toLowerCase();
-    if (k === "recruter") return "Recruter";
-    if (k === "mutualiser") return "Mutualiser";
-    return "Former";
-  }
+  // (recoLabel / recoPill / typeLabel supprimés : plus de recommandations dans le bloc "Causes racines")
 
-  function recoPill(r) {
-    return `
-      <span style="
-        display:inline-flex; align-items:center; justify-content:center;
-        padding:4px 10px; border-radius:999px; border:1px solid #d1d5db;
-        background:var(--chip-bg, #f3f4f6); color:#111827; font-weight:900; font-size:12px; white-space:nowrap;">
-        ${escapeHtml(recoLabel(r))}
-      </span>
-    `;
-  }
-
-  function typeLabel(t) {
-    const k = (t || "").toString().toUpperCase();
-    if (k === "NON_COUVERTE") return "Non couverte";
-    if (k === "COUV_UNIQUE") return "Couverture unique";
-    return "—";
-  }
 
   // Conditions (robuste: si l’API ne renvoie pas encore, on affiche “—”)
   const p = diag?.poste || {};
@@ -595,12 +573,259 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   const releveTxt = "Relève : uniquement les profils immédiatement mobilisables sont comptés.";
 
-  // Causes racines (top 8) : uniquement les vrais risques (bus factor <= 1)
-  const focus = (focusKey || "").trim();
-  const all = Array.isArray(diag?.top_risques) ? diag.top_risques : [];
-  let risks = all.filter(x => Number(x?.nb_porteurs || 0) <= 1);
-  if (focus === "critiques-sans-porteur") risks = risks.filter(x => Number(x?.nb_porteurs || 0) <= 0);
-  if (focus === "porteur-unique") risks = risks.filter(x => Number(x?.nb_porteurs || 0) === 1);
+  // Causes racines (accordéons) : analyse factuelle (pas de recommandations ici)
+  const causes = diag?.causes || {};
+  const cStruct = causes?.structure || null;
+  const cDep = Array.isArray(causes?.dependance) ? causes.dependance : [];
+  const cTrans = causes?.transmission || null;
+  const cEff = Array.isArray(causes?.efficacite) ? causes.efficacite : [];
+
+  const hasStruct = !!cStruct && ((cStruct.poste_non_tenu === true) || Number(cStruct.gap_titulaires || 0) > 0);
+  const hasDep = cDep.length > 0;
+  const hasTrans = !!cTrans && (
+    (Array.isArray(cTrans.raisons) && cTrans.raisons.length > 0) ||
+    Number(cTrans.nb_ressources_potentielles || 0) > 0
+  );
+  const hasEff = cEff.length > 0;
+
+  const critLevelClass = (v) => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return "sb-crit-l1";
+    if (n >= 80) return "sb-crit-l5";
+    if (n >= 60) return "sb-crit-l4";
+    if (n >= 40) return "sb-crit-l3";
+    if (n >= 20) return "sb-crit-l2";
+    return "sb-crit-l1";
+  };
+
+  const critBadgeHtml = (v) => {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n <= 0) return "—";
+    return `<span class="sb-crit-badge ${critLevelClass(n)}">${escapeHtml(String(Math.round(n)))}</span>`;
+  };
+
+  const compCodeBadge = (code) =>
+    `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>`;
+
+  const nivBadgeHtml = (niv) => {
+    const k = String(niv || "").trim().toUpperCase();
+    if (k === "A") return `<span class="sb-badge sb-badge-niv sb-badge-niv-a">A</span>`;
+    if (k === "B") return `<span class="sb-badge sb-badge-niv sb-badge-niv-b">B</span>`;
+    if (k === "C") return `<span class="sb-badge sb-badge-niv sb-badge-niv-c">C</span>`;
+    return `<span class="sb-badge">${escapeHtml(k || "—")}</span>`;
+  };
+
+  const depSans = cDep.filter(x => Number(x?.nb_porteurs_ok || 0) <= 0);
+  const depLim = cDep.filter(x => Number(x?.nb_porteurs_ok || 0) > 0);
+
+  const renderDepTable = (list) => {
+    if (!list.length) return "";
+    return `
+      <div class="table-wrap" style="margin-top:10px;">
+        <table class="sb-table">
+          <thead>
+            <tr>
+              <th style="width:110px;">Code</th>
+              <th>Compétence</th>
+              <th class="col-center" style="width:90px;">Criticité</th>
+              <th class="col-center" style="width:140px;">Couverture</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(r => {
+              const code = String(r?.code_comp || r?.code || "—");
+              const intit = escapeHtml(r?.intitule || "—");
+              const crit = critBadgeHtml(r?.poids_criticite);
+              const nb = Number(r?.nb_porteurs_ok || 0);
+              const seuil = Number(r?.seuil_couverture || 0);
+              const cov = `${nb}/${seuil || "—"}`;
+              return `
+                <tr>
+                  <td style="white-space:nowrap;">${compCodeBadge(code)}</td>
+                  <td style="min-width:280px;">
+                    <div style="font-size:14px; font-weight:700;">${intit}</div>
+                  </td>
+                  <td class="col-center" style="white-space:nowrap;">${crit}</td>
+                  <td class="col-center" style="white-space:nowrap;">
+                    <span class="sb-badge">${escapeHtml(cov)}</span>
+                  </td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  const renderEffTable = (list) => {
+    if (!list.length) return "";
+    return `
+      <div class="table-wrap" style="margin-top:10px;">
+        <table class="sb-table">
+          <thead>
+            <tr>
+              <th style="width:110px;">Code</th>
+              <th>Compétence</th>
+              <th class="col-center" style="width:110px;">Requis</th>
+              <th class="col-center" style="width:160px;">Niveau en défaut</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map(r => {
+              const code = String(r?.code_comp || r?.code || "—");
+              const intit = escapeHtml(r?.intitule || "—");
+              const req = nivBadgeHtml(r?.niveau_requis);
+              const nDef = Number(r?.nb_en_defaut || 0);
+              const nTit = Number(r?.nb_titulaires || 0);
+              return `
+                <tr>
+                  <td style="white-space:nowrap;">${compCodeBadge(code)}</td>
+                  <td style="min-width:280px;">
+                    <div style="font-size:14px; font-weight:700;">${intit}</div>
+                  </td>
+                  <td class="col-center" style="white-space:nowrap;">${req}</td>
+                  <td class="col-center" style="white-space:nowrap;">
+                    <span class="sb-badge">${escapeHtml(String(nDef))}</span>
+                    <span style="color:#6b7280; font-size:12px; margin-left:6px;">/ ${escapeHtml(String(nTit))}</span>
+                  </td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  const structureBody = (() => {
+    if (!hasStruct) return "";
+    const nbT = Number(cStruct?.nb_titulaires || 0);
+    const nbC = Number(cStruct?.nb_titulaires_cible || 1);
+    const gapT = Number(cStruct?.gap_titulaires || 0);
+    const nonTenu = (cStruct?.poste_non_tenu === true) || (nbT <= 0);
+    return `
+      <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:0;">
+        <div class="card" style="padding:10px; margin:0; min-width:180px; flex:1;">
+          <div class="label">Titulaires actuels</div>
+          <div class="value">${escapeHtml(String(nbT))}</div>
+        </div>
+        <div class="card" style="padding:10px; margin:0; min-width:180px; flex:1;">
+          <div class="label">Titulaires cible</div>
+          <div class="value">${escapeHtml(String(nbC))}</div>
+        </div>
+        <div class="card" style="padding:10px; margin:0; min-width:180px; flex:1;">
+          <div class="label">Écart</div>
+          <div class="value">${escapeHtml(String(gapT))}</div>
+        </div>
+      </div>
+      ${nonTenu ? `<div class="sb-help" style="margin-top:10px;"><b>Poste non tenu</b> : aucun titulaire identifié.</div>` : ``}
+      ${(gapT > 0 && !nonTenu) ? `<div class="sb-help" style="margin-top:10px;"><b>Sous-capacité</b> : écart de ${escapeHtml(String(gapT))} titulaire(s) par rapport à la cible.</div>` : ``}
+    `;
+  })();
+
+  const dependanceBody = (() => {
+    if (!hasDep) return "";
+    return `
+      ${depSans.length ? `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <div style="font-weight:800;">Couverture nulle</div>
+          <span class="sb-badge">${escapeHtml(String(depSans.length))}</span>
+        </div>
+        ${renderDepTable(depSans)}
+      ` : ``}
+
+      ${depLim.length ? `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:${depSans.length ? "14px" : "0"};">
+          <div style="font-weight:800;">Couverture insuffisante</div>
+          <span class="sb-badge">${escapeHtml(String(depLim.length))}</span>
+        </div>
+        ${renderDepTable(depLim)}
+      ` : ``}
+    `;
+  })();
+
+  const transmissionBody = (() => {
+    if (!hasTrans) return "";
+    const raisons = Array.isArray(cTrans?.raisons) ? cTrans.raisons : [];
+    const nbPot = Number(cTrans?.nb_ressources_potentielles || 0);
+
+    return `
+      <div class="sb-richtext">
+        ${raisons.length ? `
+          <ul>
+            ${raisons.map(x => `<li>${escapeHtml(String(x || ""))}</li>`).join("")}
+          </ul>
+        ` : `<p style="margin:0;">Des ressources existent mais ne sont pas immédiatement mobilisables selon les critères.</p>`}
+
+        <p class="sb-help" style="margin:0;">
+          ${escapeHtml(String(nbPot))} ressource(s) potentielle(s) détectée(s) sous condition de mise à niveau.
+        </p>
+      </div>
+    `;
+  })();
+
+  const efficaciteBody = (() => {
+    if (!hasEff) return "";
+    return renderEffTable(cEff);
+  })();
+
+  const causesCard = `
+    <div class="card" style="padding:12px; margin-top:12px;">
+      <div class="card-title" style="margin:0 0 6px 0;">Causes racines</div>
+      <div class="card-sub" style="margin:0;">Analyse factuelle des composantes de fragilité.</div>
+
+      ${(!hasStruct && !hasDep && !hasTrans && !hasEff) ? `
+        <div class="card-sub" style="margin-top:10px;">Aucune cause racine à afficher.</div>
+      ` : `
+        ${hasStruct ? `
+          <div class="sb-accordion">
+            <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
+              <span>Risque structurel</span>
+              <span class="sb-acc-chevron">▾</span>
+            </button>
+            <div class="sb-acc-body">${structureBody}</div>
+          </div>
+        ` : ``}
+
+        ${hasDep ? `
+          <div class="sb-accordion">
+            <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
+              <span style="display:flex; align-items:center; gap:8px;">
+                <span>Risque de dépendance</span>
+                <span class="sb-badge">${escapeHtml(String(cDep.length))}</span>
+              </span>
+              <span class="sb-acc-chevron">▾</span>
+            </button>
+            <div class="sb-acc-body">${dependanceBody}</div>
+          </div>
+        ` : ``}
+
+        ${hasTrans ? `
+          <div class="sb-accordion">
+            <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
+              <span>Risque de transmission</span>
+              <span class="sb-acc-chevron">▾</span>
+            </button>
+            <div class="sb-acc-body">${transmissionBody}</div>
+          </div>
+        ` : ``}
+
+        ${hasEff ? `
+          <div class="sb-accordion">
+            <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
+              <span style="display:flex; align-items:center; gap:8px;">
+                <span>Risque d’efficacité</span>
+                <span class="sb-badge">${escapeHtml(String(cEff.length))}</span>
+              </span>
+              <span class="sb-acc-chevron">▾</span>
+            </button>
+            <div class="sb-acc-body">${efficaciteBody}</div>
+          </div>
+        ` : ``}
+      `}
+    </div>
+  `;
 
   // Plan de sécurisation (source API diag)
   const nb0 = Number(comp.nb0 || 0);
@@ -633,6 +858,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </div>
       </div>
     </div>
+
+    ${causesCard}
+
+
 
     <div class="card" style="padding:12px; margin-top:12px;">
       <div class="card-title" style="margin:0 0 6px 0;">Causes racines (top 8)</div>
@@ -727,6 +956,21 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <div id="analysePosteDiagCartoSlot"></div>
     </div>
   `;
+
+    // Accordéons (Causes racines)
+  host.querySelectorAll(".sb-acc-head").forEach(btnAcc => {
+    const body = btnAcc.nextElementSibling;
+    if (body) body.style.display = btnAcc.classList.contains("is-open") ? "" : "none";
+
+    if (btnAcc.dataset.bound) return;
+    btnAcc.dataset.bound = "1";
+
+    btnAcc.addEventListener("click", () => {
+      btnAcc.classList.toggle("is-open");
+      const b = btnAcc.nextElementSibling;
+      if (b) b.style.display = btnAcc.classList.contains("is-open") ? "" : "none";
+    });
+  });
 
   // Toggle (utile, sinon bouton mort = pollution)
   const btn = byId("btnAnalysePosteCritToggle");

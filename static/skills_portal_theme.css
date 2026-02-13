@@ -785,6 +785,58 @@ textarea.sb-ctrl{
 .sb-table--zebra tbody tr:nth-child(even){ background: var(--sb-gray-50); }
 .sb-table--hover tbody tr:hover{ background: var(--sb-gray-100); }
 
+/* Accordéons (standard) */
+.sb-accordion{
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  overflow:hidden;
+  background:#ffffff;
+  margin-bottom:10px;
+}
+
+.sb-accordion:last-child{ margin-bottom:0; }
+
+.sb-acc-head{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  text-align:left;
+}
+
+/* Cas standard : header = bouton (sb-btn) */
+.sb-acc-head.sb-btn{
+  justify-content:space-between;
+  width:100%;
+  height:auto;
+  padding:10px 12px;
+  border:0;
+  border-radius:0;
+  background: var(--sb-soft-bg);
+}
+
+.sb-acc-head.sb-btn:hover{
+  background: var(--sb-soft-bg-hover);
+}
+
+.sb-acc-chevron{
+  font-size:14px;
+  color:var(--sb-gray-500);
+  transition: transform .12s ease;
+  flex:0 0 auto;
+}
+
+.sb-acc-head.is-open .sb-acc-chevron{
+  transform: rotate(180deg);
+}
+
+.sb-acc-body{
+  padding:12px;
+  border-top:1px solid var(--sb-gray-200);
+  background:#ffffff;
+}
+
 /* -------- Modal title line (badge + texte sur 1 ligne) -------- */
 .sb-modal-titleline{
   display:flex;
@@ -2278,50 +2330,7 @@ body{
   transform: translateY(1px);
 }
 
-/* Accordéons */
-#modalCollaborateur .sb-accordion{
-  border:1px solid #e5e7eb;
-  border-radius:12px;
-  overflow:hidden;
-  background:#ffffff;
-  margin-bottom:10px;
-}
 
-#modalCollaborateur .sb-acc-head{
-  width:100%;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  padding:10px 12px;
-  border:0;
-  background:#ffffff;
-  cursor:pointer;
-  text-align:left;
-  font-weight:700;
-  color:#111827;
-}
-
-#modalCollaborateur .sb-acc-head:hover{
-  background: color-mix(in srgb, var(--reading-accent) 6%, #ffffff);
-}
-
-#modalCollaborateur .sb-acc-chevron{
-  font-size:14px;
-  color:#6b7280;
-  transition: transform .12s ease;
-  flex:0 0 auto;
-}
-
-#modalCollaborateur .sb-acc-head.is-open .sb-acc-chevron{
-  transform: rotate(180deg);
-}
-
-#modalCollaborateur .sb-acc-body{
-  padding:12px;
-  border-top:1px solid #e5e7eb;
-  background:#ffffff;
-}
 
 
 /* ======================================================

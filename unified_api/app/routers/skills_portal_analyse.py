@@ -3139,7 +3139,54 @@ class AnalysePosteTopRisqueItem(BaseModel):
     type_risque: str  # NON_COUVERTE / COUV_UNIQUE / FRAGILE
     nb_porteurs: int = 0      # 0 / 1 / 2 (2 = 2+)
     nb_ok: int = 0            # 0 / 1 / 2 (2 = 2+), au niveau requis
-    recommandation: str       # former / mutualiser / recruter
+    recommandation: Optional[str] = None  # legacy (UI n’affiche plus de “reco” ici)
+
+
+class AnalysePosteCauseStructurelle(BaseModel):
+    nb_titulaires: int = 0
+    nb_titulaires_cible: int = 1
+    gap_titulaires: int = 0
+    poste_non_tenu: bool = False
+
+
+class AnalysePosteDependanceItem(BaseModel):
+    id_comp: str
+    code_comp: Optional[str] = None
+    intitule: Optional[str] = None
+    poids_criticite: Optional[int] = None
+
+    nb_porteurs_ok: int = 0
+    seuil_couverture: int = 2
+    type_risque: str = "COUVERTURE_LIMITEE"  # SANS_PORTEUR / COUVERTURE_LIMITEE
+
+
+class AnalysePosteTransmissionCause(BaseModel):
+    raisons: List[str] = []
+    nb_ressources_potentielles: int = 0
+
+    pool_total: int = 0
+    pool_eligible: int = 0
+    pool_diplome_ok: int = 0
+    pool_domaine_ok: int = 0
+
+
+class AnalysePosteEfficaciteItem(BaseModel):
+    id_comp: str
+    code_comp: Optional[str] = None
+    intitule: Optional[str] = None
+    poids_criticite: Optional[int] = None
+    niveau_requis: Optional[str] = None
+
+    nb_en_defaut: int = 0
+    nb_titulaires: int = 0
+
+
+class AnalysePosteCausesRacines(BaseModel):
+    structure: Optional[AnalysePosteCauseStructurelle] = None
+    dependance: List[AnalysePosteDependanceItem] = []
+    transmission: Optional[AnalysePosteTransmissionCause] = None
+    efficacite: List[AnalysePosteEfficaciteItem] = []
+
 
 class AnalysePosteFragiliteComposantes(BaseModel):
     # Compat legacy (gardé pour éviter de casser)
@@ -3167,13 +3214,17 @@ class AnalysePosteDiagnosticConditions(BaseModel):
 
 
 class AnalysePosteDiagnosticResponse(BaseModel):
-    scope: ServiceScope
+    scope: str
     updated_at: str
     poste: Dict[str, Any]
+
     indice_fragilite: int
     composantes: AnalysePosteFragiliteComposantes
+
     top_risques: List[AnalysePosteTopRisqueItem]
+    causes: Optional[AnalysePosteCausesRacines] = None
     conditions: Optional[AnalysePosteDiagnosticConditions] = None
+
 
 
 
@@ -3597,6 +3648,78 @@ def get_analyse_risques_poste_diagnostic(
 
                 gap = max(nb_cible - nb_titulaires, 0)
 
+                                # 1ter) Pool ressources (scope) + contraintes formation (pour “Risque de transmission”)
+                cur.execute(
+                    f"""
+                    WITH {cte_sql}
+                    SELECT
+                      COUNT(DISTINCT e.id_effectif)::int AS pool_total,
+
+                      COUNT(DISTINCT CASE
+                        WHEN (
+                          %s <= 0
+                          OR (
+                            CASE
+                              WHEN COALESCE(e.niveau_education, '') ~ '^[0-9]+$' THEN e.niveau_education::int
+                              ELSE 0
+                            END
+                          ) >= %s
+                        ) THEN e.id_effectif
+                      END)::int AS pool_diplome_ok,
+
+                      COUNT(DISTINCT CASE
+                        WHEN (
+                          %s = FALSE
+                          OR COALESCE(e.domaine_education, '') = COALESCE(%s, '')
+                        ) THEN e.id_effectif
+                      END)::int AS pool_domaine_ok,
+
+                      COUNT(DISTINCT CASE
+                        WHEN (
+                          (
+                            %s <= 0
+                            OR (
+                              CASE
+                                WHEN COALESCE(e.niveau_education, '') ~ '^[0-9]+$' THEN e.niveau_education::int
+                                ELSE 0
+                              END
+                            ) >= %s
+                          )
+                          AND (
+                            %s = FALSE
+                            OR COALESCE(e.domaine_education, '') = COALESCE(%s, '')
+                          )
+                        ) THEN e.id_effectif
+                      END)::int AS pool_eligible
+
+                    FROM public.tbl_effectif_client e
+                    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                    WHERE e.id_ent = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                      AND NOT EXISTS (
+                        SELECT 1
+                        FROM public.tbl_effectif_client_break b
+                        WHERE b.id_effectif = e.id_effectif
+                          AND b.archive = FALSE
+                          AND b.date_debut <= CURRENT_DATE
+                          AND b.date_fin >= CURRENT_DATE
+                      )
+                    """,
+                    tuple(cte_params + [
+                        edu_min_rank, edu_min_rank,
+                        dom_bloq, dom_title,
+                        edu_min_rank, edu_min_rank,
+                        dom_bloq, dom_title,
+                        id_ent,
+                    ]),
+                )
+                pool = cur.fetchone() or {}
+                pool_total = int(pool.get("pool_total") or 0)
+                pool_diplome_ok = int(pool.get("pool_diplome_ok") or 0)
+                pool_domaine_ok = int(pool.get("pool_domaine_ok") or 0)
+                pool_eligible = int(pool.get("pool_eligible") or 0)
+
+
                 # 2) Agrégats par compétence (au niveau requis), avec contraintes + breaks
                 # IMPORTANT psycopg : tout % littéral doit être doublé (%%) sinon “%x placeholder”
                 cur.execute(
@@ -3619,7 +3742,7 @@ def get_analyse_risques_poste_diagnostic(
                           AND COALESCE(c.masque, FALSE) = FALSE
                           AND COALESCE(fpc.poids_criticite, 0)::int >= %s
                     ),
-                    eligible_effectifs AS (
+                    pool_all_effectifs AS (
                         SELECT
                             e.id_effectif,
                             e.id_poste_actuel,
@@ -3636,19 +3759,6 @@ def get_analyse_risques_poste_diagnostic(
                               AND b.archive = FALSE
                               AND b.date_debut <= CURRENT_DATE
                               AND b.date_fin >= CURRENT_DATE
-                          )
-                          AND (
-                            %s <= 0
-                            OR (
-                              CASE
-                                WHEN COALESCE(e.niveau_education, '') ~ '^[0-9]+$' THEN e.niveau_education::int
-                                ELSE 0
-                              END
-                            ) >= %s
-                          )
-                          AND (
-                            %s = FALSE
-                            OR COALESCE(e.domaine_education, '') = COALESCE(%s, '')
                           )
                     ),
                     ec_raw AS (
@@ -3677,11 +3787,30 @@ def get_analyse_risques_poste_diagnostic(
                               WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
                               WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
                               ELSE 0
-                            END AS req_rank
+                            END AS req_rank,
+
+                            CASE
+                              WHEN (
+                                (
+                                  %s <= 0
+                                  OR (
+                                    CASE
+                                      WHEN COALESCE(ef.niveau_education, '') ~ '^[0-9]+$' THEN ef.niveau_education::int
+                                      ELSE 0
+                                    END
+                                  ) >= %s
+                                )
+                                AND (
+                                  %s = FALSE
+                                  OR COALESCE(ef.domaine_education, '') = COALESCE(%s, '')
+                                )
+                              ) THEN TRUE
+                              ELSE FALSE
+                            END AS is_eligible
                         FROM req r
                         JOIN public.tbl_effectif_client_competence ec
                           ON ec.id_comp = r.id_comp
-                        JOIN eligible_effectifs ef
+                        JOIN pool_all_effectifs ef
                           ON ef.id_effectif = ec.id_effectif_client
                         WHERE COALESCE(ec.actif, TRUE) = TRUE
                           AND COALESCE(ec.archive, FALSE) = FALSE
@@ -3701,11 +3830,16 @@ def get_analyse_risques_poste_diagnostic(
                             r.code,
                             r.intitule,
                             r.poids_criticite,
-                            COUNT(DISTINCT CASE WHEN eok.is_ok THEN eok.id_effectif END)::int AS nb_ok,
-                            COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.id_poste_actuel = %s THEN eok.id_effectif END)::int AS nb_ok_titulaires
+                            r.niveau_requis,
+
+                            COUNT(DISTINCT CASE WHEN eok.is_ok THEN eok.id_effectif END)::int AS nb_ok_all,
+                            COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible THEN eok.id_effectif END)::int AS nb_ok,
+
+                            COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.id_poste_actuel = %s THEN eok.id_effectif END)::int AS nb_ok_titulaires_all,
+                            COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible AND eok.id_poste_actuel = %s THEN eok.id_effectif END)::int AS nb_ok_titulaires
                         FROM req r
                         LEFT JOIN ec_ok eok ON eok.id_comp = r.id_comp
-                        GROUP BY r.id_comp, r.code, r.intitule, r.poids_criticite
+                        GROUP BY r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis
                     )
                     SELECT * FROM comp_agg
                     """,
@@ -3716,24 +3850,65 @@ def get_analyse_risques_poste_diagnostic(
                         edu_min_rank, edu_min_rank,
                         dom_bloq, dom_title,
                         id_poste,
+                        id_poste,
                     ]),
                 )
 
                 rows = cur.fetchall() or []
+
 
                 nb0 = 0
                 nb1 = 0
                 nb_r0 = 0
                 nb_r1 = 0
 
-                # Top risques (on garde simple ici : tri par gravité)
                 candidates: list[AnalysePosteTopRisqueItem] = []
+                dep_items: list[AnalysePosteDependanceItem] = []
+                eff_items: list[AnalysePosteEfficaciteItem] = []
+
+                # Couverture minimale “dirigeant-friendly” :
+                # - au moins 2 porteurs (bus factor) même si la cible = 1
+                # - sinon, au moins la cible titulaires
+                seuil_couv = max(2, int(nb_cible or 1))
 
                 for r in rows:
-                    n_ok = int(r.get("nb_ok") or 0)
-                    n_ok_tit = int(r.get("nb_ok_titulaires") or 0)
+                    n_ok_all = int(r.get("nb_ok_all") or 0)
+                    n_ok = int(r.get("nb_ok") or 0)  # AVEC contraintes (diplôme/domaine), utilisé pour l’indice
+                    n_ok_tit_all = int(r.get("nb_ok_titulaires_all") or 0)
+                    n_ok_tit = int(r.get("nb_ok_titulaires") or 0)  # AVEC contraintes
                     n_releve = max(n_ok - n_ok_tit, 0)
 
+                    # --- Causes racines : Risque de dépendance (porteurs au niveau requis, dans le scope)
+                    if n_ok_all < seuil_couv:
+                        dep_items.append(
+                            AnalysePosteDependanceItem(
+                                id_comp=r.get("id_comp"),
+                                code_comp=r.get("code"),
+                                intitule=r.get("intitule"),
+                                poids_criticite=int(r.get("poids_criticite") or 0),
+                                nb_porteurs_ok=n_ok_all,
+                                seuil_couverture=seuil_couv,
+                                type_risque=("SANS_PORTEUR" if n_ok_all <= 0 else "COUVERTURE_LIMITEE"),
+                            )
+                        )
+
+                    # --- Causes racines : Risque d’efficacité (titulaires en défaut vs niveau requis)
+                    if nb_titulaires > 0:
+                        nb_defaut = max(int(nb_titulaires) - n_ok_tit_all, 0)
+                        if nb_defaut > 0:
+                            eff_items.append(
+                                AnalysePosteEfficaciteItem(
+                                    id_comp=r.get("id_comp"),
+                                    code_comp=r.get("code"),
+                                    intitule=r.get("intitule"),
+                                    poids_criticite=int(r.get("poids_criticite") or 0),
+                                    niveau_requis=r.get("niveau_requis"),
+                                    nb_en_defaut=nb_defaut,
+                                    nb_titulaires=int(nb_titulaires),
+                                )
+                            )
+
+                    # --- Indice fragilité (historique) : basé sur “nb_ok” (avec contraintes)
                     type_risque = "OK"
                     reco = None
 
@@ -3769,6 +3944,7 @@ def get_analyse_risques_poste_diagnostic(
                             )
                         )
 
+
                 nb_total_fragiles = nb0 + nb1 + nb_r0 + nb_r1
                 nb_evenements = nb_total_fragiles + (1 if gap > 0 else 0)
 
@@ -3799,6 +3975,48 @@ def get_analyse_risques_poste_diagnostic(
                     )
                 )
                 top_risques = candidates[: int(limit or 8)]
+
+                 # Causes racines (pour l’accordéon du modal)
+                dep_items.sort(key=lambda x: (int(x.nb_porteurs_ok or 0), -(int(x.poids_criticite or 0)), str(x.code_comp or "")))
+                dep_items = dep_items[:12]
+
+                eff_items.sort(key=lambda x: (-(int(x.nb_en_defaut or 0)), -(int(x.poids_criticite or 0)), str(x.code_comp or "")))
+                eff_items = eff_items[:12]
+
+                structure = None
+                if nb_titulaires <= 0 or gap > 0:
+                    structure = AnalysePosteCauseStructurelle(
+                        nb_titulaires=int(nb_titulaires),
+                        nb_titulaires_cible=int(nb_cible or 1),
+                        gap_titulaires=int(gap),
+                        poste_non_tenu=(nb_titulaires <= 0),
+                    )
+
+                raisons = []
+                if edu_min_rank > 0 and pool_diplome_ok <= 0:
+                    raisons.append("Aucune ressource ne possède le niveau de diplôme requis.")
+                if dom_bloq and pool_domaine_ok <= 0:
+                    raisons.append("Aucune ressource n'a suivi la formation initiale requise.")
+
+                nb_pot = max(pool_total - pool_eligible, 0)
+                transmission = None
+                if raisons or nb_pot > 0:
+                    transmission = AnalysePosteTransmissionCause(
+                        raisons=raisons,
+                        nb_ressources_potentielles=int(nb_pot),
+                        pool_total=int(pool_total),
+                        pool_eligible=int(pool_eligible),
+                        pool_diplome_ok=int(pool_diplome_ok),
+                        pool_domaine_ok=int(pool_domaine_ok),
+                    )
+
+                causes = AnalysePosteCausesRacines(
+                    structure=structure,
+                    dependance=dep_items,
+                    transmission=transmission,
+                    efficacite=eff_items,
+                )
+
 
                 cond = AnalysePosteDiagnosticConditions(
                     diplome_min=(f"Niveau {edu_min}" if edu_min_rank > 0 else None),
@@ -3838,6 +4056,7 @@ def get_analyse_risques_poste_diagnostic(
                     indice_fragilite=score,
                     composantes=comp,
                     top_risques=top_risques,
+                    causes=causes,
                     conditions=cond,
                 )
 
