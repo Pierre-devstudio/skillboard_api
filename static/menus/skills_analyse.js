@@ -2607,6 +2607,91 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       </div>
     ` : `<div class="card-sub" style="margin:0;">Aucune personne.</div>`;
 
+    // --- Diagnostic (stats enrichies)
+    const st = data?.stats || {};
+
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+    const Braw = Number(st.besoin_total);
+    const B = (Number.isFinite(Braw) && Braw > 0) ? Braw : 1;
+
+    const P = Number(st.nb_porteurs || 0);
+    const Pd = Number(st.nb_porteurs_dispo);
+
+    const Pe = Number(st.nb_experts || 0);
+    const Ped = Number(st.nb_experts_dispo);
+
+    const N = Number(st.nb_postes_impactes || 0);
+    const Cmax = Number(st.criticite_max ?? 0);
+    const N80 = Number(st.nb_postes_crit_80 || 0);
+
+    const score = clamp(Number(st.indice_fragilite || 0), 0, 100);
+    const prioCode = ((st.priorite || "") + "").trim().toUpperCase();
+
+    const prioLabel =
+      (prioCode === "P1") ? "Critique" :
+      (prioCode === "P2") ? "Élevée"  :
+      "Modérée";
+
+    function scoreHue(sc) {
+      const s = clamp(Number(sc || 0), 0, 100) / 100;
+      return Math.round(120 * (1 - s)); // vert -> rouge
+    }
+
+    function scoreBar(sc) {
+      const s = clamp(Math.round(Number(sc || 0)), 0, 100);
+      const h = scoreHue(s);
+      const fill = `hsl(${h} 70% 45%)`;
+
+      return `
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="flex:1; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
+            <div style="height:100%; width:${s}%; background:${fill};"></div>
+          </div>
+          <div style="min-width:52px; text-align:right; font-weight:800;">
+            ${s}<span style="font-weight:700; font-size:12px;">%</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function priorityPill(label, sc) {
+      const s = clamp(Math.round(Number(sc || 0)), 0, 100);
+      const h = scoreHue(s);
+
+      const bg = `hsl(${h} 70% 95%)`;
+      const br = `hsl(${h} 70% 80%)`;
+      const tx = `hsl(${h} 70% 28%)`;
+
+      return `
+        <span style="
+          display:inline-flex; align-items:center; justify-content:center;
+          padding:4px 10px; border-radius:999px;
+          border:1px solid ${br}; background:${bg}; color:${tx};
+          font-weight:800; font-size:12px; white-space:nowrap;
+        " title="${escapeHtml(prioCode || "—")}">
+          ${escapeHtml(label)}
+        </span>
+      `;
+    }
+
+    // --- Leviers (reco simples, DRH-friendly)
+    const levers = [];
+    if (P === 0) levers.push("Former / intégrer au moins 1 porteur (urgence).");
+    if (P === 1) levers.push("Former un back-up (bus factor).");
+    if (B > P) levers.push(`Couvrir le besoin: ${Math.max(0, B - P)} titulaire(s) manquant(s).`);
+    if (Pe === 0) levers.push("Créer au moins 1 expert (niveau C/Expert): mentorat + montée en compétences.");
+    if (P > 0 && Number.isFinite(Pd) && Pd === 0) levers.push("Risque immédiat: plus aucun porteur disponible aujourd’hui (indisponibilités en cours).");
+    if (Pe > 0 && Number.isFinite(Ped) && Ped === 0) levers.push("Risque transmission: experts indisponibles aujourd’hui.");
+    if (!levers.length) levers.push("Situation maîtrisée: maintenir la couverture et surveiller l’évolution.");
+
+    const leversHtml = `
+      <ul style="margin:8px 0 0 18px;">
+        ${levers.map(x => `<li style="margin:6px 0; color:#374151; font-size:13px;">${escapeHtml(x)}</li>`).join("")}
+      </ul>
+      <div class="sb-help">Leviers proposés automatiquement à partir de la couverture, de l’exposition et des indisponibilités du jour.</div>
+    `;
+
     host.innerHTML = `
       <div class="card" style="padding:12px; margin:0;">
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
@@ -2614,17 +2699,51 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(critMin)}</span>
         </div>
 
+        <!-- 1) Diagnostic -->
         <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">Postes impactés</div>
-          ${postesHtml}
+          <div class="card-title" style="margin-bottom:6px;">Diagnostic</div>
+
+          <div class="sb-badges" style="margin-top:8px;">
+            <span class="sb-badge sb-badge-accent">Présence : ${escapeHtml(String(P) + "/" + String(B))}</span>
+            ${Number.isFinite(Pd) ? `<span class="sb-badge">Dispo auj : ${escapeHtml(String(Pd))}</span>` : ""}
+            <span class="sb-badge">Experts : ${escapeHtml(String(Pe))}</span>
+            ${Number.isFinite(Ped) ? `<span class="sb-badge">Experts dispo : ${escapeHtml(String(Ped))}</span>` : ""}
+            <span class="sb-badge">Postes impactés : ${escapeHtml(String(N))}</span>
+            <span class="sb-badge">Criticité max : ${escapeHtml(String(Cmax))}</span>
+            <span class="sb-badge">Postes ≥80 : ${escapeHtml(String(N80))}</span>
+          </div>
+
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:10px;">
+            <div style="flex:1; min-width:220px;">
+              ${scoreBar(score)}
+            </div>
+            <div>
+              ${priorityPill(prioLabel, score)}
+            </div>
+          </div>
         </div>
 
+        <!-- 2) Causes racines -->
         <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">Porteurs</div>
-          ${porteursHtml}
+          <div class="card-title" style="margin-bottom:6px;">Causes racines</div>
+
+          <div class="card-sub" style="margin:0;">Postes impactés</div>
+          ${postesHtml}
+
+          <div style="margin-top:12px;">
+            <div class="card-sub" style="margin:0;">Porteurs</div>
+            ${porteursHtml}
+          </div>
+        </div>
+
+        <!-- 3) Leviers -->
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <div class="card-title" style="margin-bottom:6px;">Leviers</div>
+          ${leversHtml}
         </div>
       </div>
     `;
+
   }
 
   async function showAnalyseCompetenceDetailModal(portal, id_comp_or_code, id_service) {

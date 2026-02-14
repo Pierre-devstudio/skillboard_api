@@ -5164,9 +5164,11 @@ def get_risque_competence_detail(
                     JOIN public.tbl_effectif_client e
                       ON e.id_effectif = ec.id_effectif_client
                     WHERE e.id_ent = %s
-                      AND COALESCE(e.archive,FALSE) = FALSE
-                      AND ec.id_comp = %s
-                      AND {svc_filter_eff}
+                        AND COALESCE(e.archive,FALSE) = FALSE
+                        AND ec.id_comp = %s
+                        AND COALESCE(ec.actif, TRUE) = TRUE
+                        AND COALESCE(ec.archive, FALSE) = FALSE
+                        AND {svc_filter_eff}
                     GROUP BY e.id_poste_actuel
                 ) pc
                   ON pc.id_poste = p.id_poste
@@ -5223,6 +5225,8 @@ def get_risque_competence_detail(
                     e.id_ent = %s
                     AND COALESCE(e.archive,FALSE) = FALSE
                     AND ec.id_comp = %s
+                    AND COALESCE(ec.actif, TRUE) = TRUE
+                    AND COALESCE(ec.archive, FALSE) = FALSE
                     AND {svc_filter_eff}
                 ORDER BY e.nom_effectif, e.prenom_effectif
                 LIMIT %s
@@ -5237,11 +5241,289 @@ def get_risque_competence_detail(
                 cur.execute(sql_porteurs, tuple(params_porteurs))
                 porteurs = cur.fetchall() or []
 
-                # --- Stats rapides (sur postes)
-                nb_postes = len(postes)
-                nb_porteurs = len(porteurs)
-                nb_postes_sans_porteur = sum(1 for p in postes if int(p.get("nb_porteurs") or 0) == 0)
-                nb_postes_porteur_unique = sum(1 for p in postes if int(p.get("nb_porteurs") or 0) == 1)
+                # --- Diagnostic DRH fiable (indépendant des LIMIT) + Indice/Priorité
+                other_ctes = f"""
+                postes_impactes AS (
+                    SELECT DISTINCT
+                        p.id_poste,
+                        COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite
+                    FROM public.tbl_fiche_poste_competence fpc
+                    JOIN public.tbl_fiche_poste p
+                      ON p.id_poste = fpc.id_poste
+                    JOIN public.tbl_competence c
+                      ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+                    WHERE p.id_ent = %s
+                      AND COALESCE(p.actif, TRUE) = TRUE
+                      AND {svc_filter_poste}
+                      AND c.id_comp = %s
+                      AND COALESCE(fpc.poids_criticite, 0) >= %s
+                ),
+                titulaires AS (
+                    SELECT
+                        e.id_poste_actuel AS id_poste,
+                        COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
+                    FROM public.tbl_effectif_client e
+                    WHERE e.id_ent = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.id_poste_actuel, '') <> ''
+                      AND {svc_filter_eff}
+                    GROUP BY e.id_poste_actuel
+                ),
+                poste_need AS (
+                    SELECT
+                        pi.id_poste,
+                        CASE
+                            WHEN prh.nb_titulaires_cible IS NOT NULL AND prh.nb_titulaires_cible::int > 0
+                                THEN prh.nb_titulaires_cible::int
+                            WHEN COALESCE(t.nb_titulaires, 0)::int > 0
+                                THEN COALESCE(t.nb_titulaires, 0)::int
+                            ELSE 1
+                        END AS besoin_poste
+                    FROM postes_impactes pi
+                    LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = pi.id_poste
+                    LEFT JOIN titulaires t ON t.id_poste = pi.id_poste
+                ),
+                porteurs_poste AS (
+                    SELECT
+                        e.id_poste_actuel AS id_poste,
+                        COUNT(DISTINCT e.id_effectif)::int AS nb_porteurs_poste
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN public.tbl_effectif_client e
+                      ON e.id_effectif = ec.id_effectif_client
+                    WHERE e.id_ent = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                      AND ec.id_comp = %s
+                      AND COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND {svc_filter_eff}
+                    GROUP BY e.id_poste_actuel
+                ),
+                postes_enrichis AS (
+                    SELECT
+                        pi.id_poste,
+                        pi.poids_criticite,
+                        pn.besoin_poste,
+                        COALESCE(pp.nb_porteurs_poste, 0)::int AS nb_porteurs_poste
+                    FROM postes_impactes pi
+                    JOIN poste_need pn ON pn.id_poste = pi.id_poste
+                    LEFT JOIN porteurs_poste pp ON pp.id_poste = pi.id_poste
+                ),
+                need_agg AS (
+                    SELECT
+                        COUNT(DISTINCT id_poste)::int AS nb_postes_impactes,
+                        COALESCE(MAX(poids_criticite), 0)::int AS criticite_max,
+                        COALESCE(SUM(CASE WHEN poids_criticite >= 80 THEN 1 ELSE 0 END), 0)::int AS nb_postes_crit_80,
+                        COALESCE(SUM(besoin_poste), 0)::int AS besoin_total,
+                        COALESCE(SUM(CASE WHEN nb_porteurs_poste = 0 THEN 1 ELSE 0 END), 0)::int AS nb_postes_sans_porteur,
+                        COALESCE(SUM(CASE WHEN nb_porteurs_poste = 1 THEN 1 ELSE 0 END), 0)::int AS nb_postes_porteur_unique
+                    FROM postes_enrichis
+                ),
+                effectifs_scope AS (
+                    SELECT e.id_effectif
+                    FROM public.tbl_effectif_client e
+                    WHERE e.id_ent = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                      AND {svc_filter_eff}
+                ),
+                effectifs_dispo AS (
+                    SELECT es.id_effectif
+                    FROM effectifs_scope es
+                    JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+                    WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM public.tbl_effectif_client_break b
+                        WHERE b.id_effectif = e.id_effectif
+                          AND b.archive = FALSE
+                          AND b.date_debut <= CURRENT_DATE
+                          AND b.date_fin >= CURRENT_DATE
+                    )
+                ),
+                porteurs_nominal AS (
+                    SELECT COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
+                    WHERE ec.id_comp = %s
+                      AND COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                ),
+                porteurs_dispo AS (
+                    SELECT COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN effectifs_dispo es ON es.id_effectif = ec.id_effectif_client
+                    WHERE ec.id_comp = %s
+                      AND COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                ),
+                experts_nominal AS (
+                    SELECT COUNT(DISTINCT ec.id_effectif_client)::int AS nb_experts
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
+                    WHERE ec.id_comp = %s
+                      AND COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND (
+                        CASE
+                          WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
+                            THEN trim(ec.niveau_actuel)::int
+                          WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                          WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                          ELSE 0
+                        END
+                      ) >= 3
+                ),
+                experts_dispo AS (
+                    SELECT COUNT(DISTINCT ec.id_effectif_client)::int AS nb_experts
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN effectifs_dispo es ON es.id_effectif = ec.id_effectif_client
+                    WHERE ec.id_comp = %s
+                      AND COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND (
+                        CASE
+                          WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
+                            THEN trim(ec.niveau_actuel)::int
+                          WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                          WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                          ELSE 0
+                        END
+                      ) >= 3
+                )
+                """
+
+                if services_cte_sql:
+                    sql_diag = "WITH " + services_cte_sql + ",\n" + other_ctes + """
+                    SELECT
+                        na.nb_postes_impactes,
+                        na.criticite_max,
+                        na.nb_postes_crit_80,
+                        na.besoin_total,
+                        na.nb_postes_sans_porteur,
+                        na.nb_postes_porteur_unique,
+                        pn.nb_porteurs AS nb_porteurs,
+                        pd.nb_porteurs AS nb_porteurs_dispo,
+                        en.nb_experts AS nb_experts,
+                        ed.nb_experts AS nb_experts_dispo
+                    FROM need_agg na
+                    CROSS JOIN porteurs_nominal pn
+                    CROSS JOIN porteurs_dispo pd
+                    CROSS JOIN experts_nominal en
+                    CROSS JOIN experts_dispo ed
+                    """
+                else:
+                    sql_diag = "WITH " + other_ctes + """
+                    SELECT
+                        na.nb_postes_impactes,
+                        na.criticite_max,
+                        na.nb_postes_crit_80,
+                        na.besoin_total,
+                        na.nb_postes_sans_porteur,
+                        na.nb_postes_porteur_unique,
+                        pn.nb_porteurs AS nb_porteurs,
+                        pd.nb_porteurs AS nb_porteurs_dispo,
+                        en.nb_experts AS nb_experts,
+                        ed.nb_experts AS nb_experts_dispo
+                    FROM need_agg na
+                    CROSS JOIN porteurs_nominal pn
+                    CROSS JOIN porteurs_dispo pd
+                    CROSS JOIN experts_nominal en
+                    CROSS JOIN experts_dispo ed
+                    """
+
+                params_diag: List[Any] = []
+                params_diag.extend(services_cte_params)
+
+                # postes_impactes
+                params_diag.extend([id_ent])
+                params_diag.extend(extra_poste_params)
+                params_diag.extend([comp_id, criticite_min])
+
+                # titulaires
+                params_diag.append(id_ent)
+                params_diag.extend(extra_eff_params)
+
+                # porteurs_poste
+                params_diag.append(id_ent)
+                params_diag.append(comp_id)
+                params_diag.extend(extra_eff_params)
+
+                # effectifs_scope
+                params_diag.append(id_ent)
+                params_diag.extend(extra_eff_params)
+
+                # porteurs/experts (4x comp_id)
+                params_diag.extend([comp_id, comp_id, comp_id, comp_id])
+
+                cur.execute(sql_diag, tuple(params_diag))
+                diag = cur.fetchone() or {}
+
+                def _clamp(v: float, lo: float, hi: float) -> float:
+                    return max(lo, min(hi, v))
+
+                B = int(diag.get("bessOIN_TOTAL".lower()) or diag.get("besoin_total") or 0)
+                B = B if B > 0 else 1
+
+                P = int(diag.get("nb_porteurs") or 0)
+                Pd = int(diag.get("nb_porteurs_dispo") or 0)
+
+                Pe = int(diag.get("nb_experts") or 0)
+                Ped = int(diag.get("nb_experts_dispo") or 0)
+
+                N = int(diag.get("nb_postes_impactes") or 0)
+                Cmax = int(diag.get("criticite_max") or 0)
+                N80 = int(diag.get("nb_postes_crit_80") or 0)
+
+                nb_postes = N
+                nb_porteurs = P
+                nb_postes_sans_porteur = int(diag.get("nb_postes_sans_porteur") or 0)
+                nb_postes_porteur_unique = int(diag.get("nb_postes_porteur_unique") or 0)
+
+                # Sous-scores (0..1)
+                S_cov = _clamp(1.0 - (P / float(B)), 0.0, 1.0)
+
+                if P == 0:
+                    S_dep = 1.00
+                elif P == 1:
+                    S_dep = 0.80
+                elif P == 2:
+                    S_dep = 0.50
+                elif P == 3:
+                    S_dep = 0.25
+                else:
+                    S_dep = 0.00
+
+                if Pe == 0:
+                    S_exp = 1.00
+                elif Pe == 1:
+                    S_exp = 0.70
+                else:
+                    S_exp = 0.00
+
+                S_expo = min(1.0, N / 5.0)
+                S_sev = 0.7 * (Cmax / 100.0) + 0.3 * min(1.0, N80 / 3.0)
+
+                base = 100.0 * (
+                    0.35 * S_cov
+                    + 0.15 * S_dep
+                    + 0.15 * S_exp
+                    + 0.10 * S_expo
+                    + 0.25 * S_sev
+                )
+
+                bonus = 0.0
+                if P > 0 and Pd == 0:
+                    bonus += 20.0
+                if Pe > 0 and Ped == 0:
+                    bonus += 10.0
+
+                indice = int(round(_clamp(base + bonus, 0.0, 100.0)))
+
+                if indice >= 75:
+                    priorite = "P1"
+                elif indice >= 50:
+                    priorite = "P2"
+                else:
+                    priorite = "P3"
+
 
                 return {
                     "scope": scope,
@@ -5266,7 +5548,20 @@ def get_risque_competence_detail(
                         "nb_porteurs": nb_porteurs,
                         "nb_postes_sans_porteur": nb_postes_sans_porteur,
                         "nb_postes_porteur_unique": nb_postes_porteur_unique,
+
+                        "besoin_total": B,
+                        "nb_porteurs_dispo": Pd,
+
+                        "nb_experts": Pe,
+                        "nb_experts_dispo": Ped,
+
+                        "criticite_max": Cmax,
+                        "nb_postes_crit_80": N80,
+
+                        "indice_fragilite": indice,
+                        "priorite": priorite,
                     },
+
                     "postes": postes,
                     "porteurs": porteurs,
                 }
