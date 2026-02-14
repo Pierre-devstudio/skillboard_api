@@ -2501,7 +2501,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div class="modal-header">
           <div style="min-width:0; display:flex; flex-direction:column; gap:2px;">
             <div id="analyseCompModalTitle" class="modal-title" style="display:flex; gap:8px; align-items:center; min-width:0;">
-              <span id="analyseCompModalTitleCode" class="sb-badge sb-badge-accent" style="display:none;"></span>
+              <span id="analyseCompModalTitleCode" class="sb-badge sb-badge sb-badge-ref-comp-code" style="display:none;"></span>
               <span id="analyseCompModalTitleText" style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                 Détail compétence
               </span>
