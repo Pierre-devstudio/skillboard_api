@@ -535,6 +535,22 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   const nbF = Number(comp.nb_total_fragiles || 0);
   const fragLine = (nbF > 0) ? `${nbF} fragilités détectées` : `Aucune fragilité détectée`;
+  const nb0 = Number(comp.nb0 || 0);
+  const nbTit = Number(diag?.poste?.nb_titulaires ?? comp.nb_titulaires ?? 0);
+
+  function priorityLabel(score100, nb0, nbTit) {
+    const sc = clamp(Number(score100 || 0), 0, 100);
+    const t = Number(nbTit || 0);
+    const z = Number(nb0 || 0);
+
+    if (t <= 0) return "Critique";
+    if (z > 0) return "Critique";
+    if (sc >= 75) return "Élevée";
+    if (sc >= 45) return "Modérée";
+    return "Faible";
+  }
+
+  const prioLabel = priorityLabel(s, nb0, nbTit);
 
   function scoreHue(score100) {
     const x = clamp(Number(score100 || 0), 0, 100) / 100;
@@ -542,19 +558,51 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   }
 
   function ring(score100) {
-    const hue = scoreHue(score100);
+    const s = clamp(Math.round(Number(score100 || 0)), 0, 100);
+    const size = 104;
+    const stroke = 10;
+    const r = (size - stroke) / 2;
+    const c = 2 * Math.PI * r;
+    const offset = c * (1 - s / 100);
+    const hue = scoreHue(s);
     const fill = `hsl(${hue} 70% 45%)`;
+
     return `
-      <div style="width:92px; height:92px; border-radius:999px; background:conic-gradient(${fill} ${score100}%, #e5e7eb 0); display:flex; align-items:center; justify-content:center;">
-        <div style="width:70px; height:70px; border-radius:999px; background:#fff; border:1px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-          <div style="font-weight:900; font-size:22px; line-height:1;">
-            ${score100}<span style="font-size:12px; font-weight:800;">%</span>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+        <div style="position:relative; width:${size}px; height:${size}px;">
+          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;">
+            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
+            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
+                    stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
+                    transform="rotate(-90 ${size / 2} ${size / 2})" />
+          </svg>
+          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+            <div style="font-weight:900; font-size:28px; line-height:1;">
+              ${s}<span style="font-size:12px; font-weight:800;">%</span>
+            </div>
           </div>
-          <div style="font-size:11px; color:#6b7280; font-weight:800; margin-top:2px;">fragilité</div>
         </div>
+        <div class="card-sub" style="margin:0;">Fragilité</div>
       </div>
     `;
   }
+
+  function priorityPill(label, score100) {
+    const hue = scoreHue(score100);
+    const border = `hsl(${hue} 70% 45% / 0.55)`;
+    const bg = `hsl(${hue} 70% 45% / 0.12)`;
+    const fg = `hsl(${hue} 70% 25%)`;
+
+    return `
+      <span style="
+        display:inline-flex; align-items:center; justify-content:center;
+        padding:4px 10px; border-radius:999px; border:1px solid ${border};
+        background:${bg}; color:${fg}; font-weight:900; font-size:12px; white-space:nowrap;">
+        ${escapeHtml(label || "—")}
+      </span>
+    `;
+  }
+
 
   function badge(txt, accent) {
     const cls = accent ? "sb-badge sb-badge-accent" : "sb-badge";
@@ -871,8 +919,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
         </div>
 
-        <div style="display:flex; align-items:center; gap:14px;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
           ${ring(s)}
+          ${priorityPill(prioLabel, s)}
         </div>
       </div>
     </div>
@@ -2450,12 +2499,16 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     <div class="modal" id="modalAnalyseCompetence" aria-hidden="true" style="align-items:flex-start;">
       <div class="modal-card" style="max-width:1120px; width:min(1120px, 96vw); margin-top:24px; max-height:calc(100vh - 48px); display:flex; flex-direction:column;">
         <div class="modal-header">
-          <div id="analyseCompModalTitle" class="modal-title" style="display:flex; gap:8px; align-items:center; min-width:0;">
-            <span id="analyseCompModalTitleCode" class="sb-badge sb-badge-ref-comp-code" style="display:none;"></span>
-            <span id="analyseCompModalTitleText" style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Détail compétence</span>
+          <div style="min-width:0; display:flex; flex-direction:column; gap:2px;">
+            <div id="analyseCompModalTitleLine" class="modal-title" style="display:flex; gap:8px; align-items:center; min-width:0;">
+              <span id="analyseCompModalTitleCode" class="sb-badge sb-badge-ref-comp-code" style="display:none;"></span>
+              <span id="analyseCompModalTitleText" class="sb-ref-title-text" style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Détail compétence</span>
+            </div>
+            <div class="card-sub" id="analyseCompModalSub" style="margin:0;"></div>
           </div>
           <button type="button" class="modal-x" id="btnCloseAnalyseCompModal" aria-label="Fermer">×</button>
         </div>
+
 
         <div class="modal-body" style="overflow:auto; flex:1; padding:14px 16px;">
           <div class="card-sub" id="analyseCompModalSub" style="margin-top:0;"></div>
@@ -2467,7 +2520,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="sb-btn sb-btn--soft" id="btnAnalyseCompModalClose">Fermer</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnAnalyseCompModalClose" style="margin-left:0;">Fermer</button>
         </div>
       </div>
     </div>
@@ -2496,28 +2549,48 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   }
 
   return modal;
-}
+  }
 
-function openAnalyseCompetenceModal(title, subHtml) {
+  function openAnalyseCompetenceModal(title, subHtml) {
     const modal = ensureAnalyseCompetenceModal();
     if (!modal) return;
 
-    const tWrap = byId("analyseCompModalTitle");
     const tCode = byId("analyseCompModalTitleCode");
     const tText = byId("analyseCompModalTitleText");
     const s = byId("analyseCompModalSub");
     const b = byId("analyseCompModalBody");
 
-    const titleText = title || "Détail compétence";
+    let code = "";
+    let text = "";
 
-    // Structure "Code + Texte" (comme le modal Poste fragile)
-    if (tText) tText.textContent = titleText;
-    else if (tWrap) tWrap.textContent = titleText;
+    if (title && typeof title === "object") {
+      code = String(title.code || "").trim();
+      text = String(title.text || "").trim();
+    } else {
+      text = String(title || "").trim();
 
-    // Reset badge code (rempli après chargement data)
+      // Fallback: "CODE — Libellé"
+      if (text.includes("—")) {
+        const parts = text.split("—");
+        const maybeCode = (parts[0] || "").trim();
+        const maybeText = (parts.slice(1).join("—") || "").trim();
+        if (maybeCode && maybeText && maybeCode.length <= 16) {
+          code = maybeCode;
+          text = maybeText;
+        }
+      }
+    }
+
+    if (tText) tText.textContent = text || "Détail compétence";
+
     if (tCode) {
-      tCode.textContent = "";
-      tCode.style.display = "none";
+      if (code) {
+        tCode.textContent = code;
+        tCode.style.display = "inline-flex";
+      } else {
+        tCode.textContent = "";
+        tCode.style.display = "none";
+      }
     }
 
     if (s) s.innerHTML = subHtml || "";
@@ -2525,8 +2598,11 @@ function openAnalyseCompetenceModal(title, subHtml) {
 
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
-    document.body.classList.add("modal-open");
+
+    const mb = modal.querySelector(".modal-body");
+    if (mb) mb.scrollTop = 0;
   }
+
 
 
   function closeAnalyseCompetenceModal() {
@@ -2549,142 +2625,122 @@ function openAnalyseCompetenceModal(title, subHtml) {
     const host = byId("analyseCompModalBody");
     if (!host) return;
 
-    const comp = data?.competence || {};
+    const scope = data?.scope?.nom_service || "Tous les services";
+    const critMin = Number(data?.criticite_min ?? 70);
+
     const postes = Array.isArray(data?.postes) ? data.postes : [];
     const porteurs = Array.isArray(data?.porteurs) ? data.porteurs : [];
 
-    const scope = (data?.scope?.nom_service || "").trim() || "Tous les services";
-    const critMin = String(data?.criticite_min ?? getCriticiteMin() ?? "—");
+    const mapNiveauActuelForDisplay = (v) => {
+      const s = (v ?? "").toString().trim();
+      if (!s) return "—";
+      const up = s.toUpperCase();
+      if (up === "A") return "Initial - A";
+      if (up === "B") return "Autonome - B";
+      if (up === "C") return "Expert - C";
+      if (up.includes("EXPERT")) return "Expert - C";
+      if (/^[0-9]+$/.test(s)) {
+        const n = parseInt(s, 10);
+        if (n <= 1) return "Initial - A";
+        if (n === 2) return "Autonome - B";
+        return "Expert - C";
+      }
+      return s;
+    };
 
-    const postesHtml = postes.length ? `
-      <div class="table-wrap" style="margin-top:10px;">
-        <table class="sb-table">
-          <thead>
-            <tr>
-              <th>Poste</th>
-              <th style="width:220px;">Service</th>
-              <th class="col-center" style="width:120px;">Niveau requis</th>
-              <th class="col-center" style="width:90px;">Criticité</th>
-              <th class="col-center" style="width:110px;">Porteurs</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${postes.map(p => {
-              const poste = `${(p.codif_poste || "").trim()}${p.codif_poste ? " — " : ""}${(p.intitule_poste || "").trim()}`.trim() || "—";
-              const svc = (p.nom_service || "").trim() || "—";
-              const niv = (p.niveau_requis || "").toString().trim() || "—";
-              const crit = (p.poids_criticite === null || p.poids_criticite === undefined) ? "—" : String(p.poids_criticite);
-              const nb = Number(p.nb_porteurs || 0);
-              const badge = nb > 0 ? `<span class="sb-badge sb-badge-accent">${nb}</span>` : `<span class="sb-badge">0</span>`;
+    const postesRows = postes
+      .map((p) => `
+        <tr>
+          <td style="font-weight:700;">
+            ${escapeHtml(p.codif_poste || "—")} — ${escapeHtml(p.intitule_poste || "")}
+          </td>
+          <td>${escapeHtml(p.nom_service || "—")}</td>
+          <td style="text-align:center;">${escapeHtml(p.niveau_requis || "—")}</td>
+          <td style="text-align:center;">${escapeHtml(String(p.poids_criticite ?? ""))}</td>
+          <td style="text-align:center;">
+            <span class="sb-badge">${escapeHtml(String(p.nb_porteurs ?? 0))}</span>
+          </td>
+        </tr>
+      `)
+      .join("");
 
-              return `
-                <tr>
-                  <td style="font-weight:700;">${escapeHtml(poste)}</td>
-                  <td>${escapeHtml(svc)}</td>
-                  <td class="col-center" style="white-space:nowrap;">${escapeHtml(niv)}</td>
-                  <td class="col-center" style="white-space:nowrap;">${escapeHtml(crit)}</td>
-                  <td class="col-center">${badge}</td>
-                </tr>
-              `;
-            }).join("")}
-          </tbody>
-        </table>
-      </div>
-    ` : `<div class="card-sub" style="margin:0;">Aucun poste impacté.</div>`;
+    const postesHtml = `
+      <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" style="margin-top:8px;">
+        <thead>
+          <tr>
+            <th>Poste</th>
+            <th>Service</th>
+            <th style="text-align:center;">Niveau requis</th>
+            <th style="text-align:center;">Criticité</th>
+            <th style="text-align:center;">Porteurs</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${postesRows || `<tr><td colspan="5" class="card-sub" style="padding:12px;">Aucun poste impacté (dans le périmètre / seuil).</td></tr>`}
+        </tbody>
+      </table>
+    `;
 
-    const porteursHtml = porteurs.length ? `
-      <div class="table-wrap" style="margin-top:10px;">
-        <table class="sb-table">
-          <thead>
-            <tr>
-              <th>Porteur</th>
-              <th style="width:220px;">Service</th>
-              <th class="col-center" style="width:160px;">Niveau actuel</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${porteurs.map(p => {
-              const prenom = (p.prenom_effectif || "").trim();
-              const nom = (p.nom_effectif || "").trim();
-              const full = `${prenom} ${nom}`.trim() || "—";
-              const svc = (p.nom_service || "").trim() || "—";
-              const niv = mapNiveauActuelForDisplay(p.niveau_actuel);
+    const porteursRows = porteurs
+      .map((p) => `
+        <tr>
+          <td style="font-weight:700;">${escapeHtml((p.prenom_effectif || "") + " " + (p.nom_effectif || ""))}</td>
+          <td>${escapeHtml(p.nom_service || "—")}</td>
+          <td style="text-align:right;">${escapeHtml(mapNiveauActuelForDisplay(p.niveau_actuel))}</td>
+        </tr>
+      `)
+      .join("");
 
-              return `
-                <tr>
-                  <td style="font-weight:700;">${escapeHtml(full)}</td>
-                  <td>${escapeHtml(svc)}</td>
-                  <td class="col-center" style="white-space:nowrap;">${escapeHtml(niv)}</td>
-                </tr>
-              `;
-            }).join("")}
-          </tbody>
-        </table>
-      </div>
-    ` : `<div class="card-sub" style="margin:0;">Aucune personne.</div>`;
+    const porteursHtml = `
+      <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" style="margin-top:8px;">
+        <thead>
+          <tr>
+            <th>Porteur</th>
+            <th>Service</th>
+            <th style="text-align:right;">Niveau actuel</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${porteursRows || `<tr><td colspan="3" class="card-sub" style="padding:12px;">Aucun porteur (dans le périmètre).</td></tr>`}
+        </tbody>
+      </table>
+    `;
 
-    // --- Diagnostic (stats enrichies)
+    const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
     const st = data?.stats || {};
+    const score = clamp(Math.round(Number(st.indice_fragilite ?? 0)), 0, 100);
 
-    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+    const prioCode = String(st.priorite || "").toUpperCase();
+    const prioLabel = (prioCode === "P1") ? "Critique" : (prioCode === "P2") ? "Élevée" : "Modérée";
 
-    const Braw = Number(st.besoin_total);
-    const B = (Number.isFinite(Braw) && Braw > 0) ? Braw : 1;
-
-    const P = Number(st.nb_porteurs || 0);
-    const Pd = Number(st.nb_porteurs_dispo);
-
-    const Pe = Number(st.nb_experts || 0);
-    const Ped = Number(st.nb_experts_dispo);
-
-    const N = Number(st.nb_postes_impactes || 0);
-    const Cmax = Number(st.criticite_max ?? 0);
-    const N80 = Number(st.nb_postes_crit_80 || 0);
-
-    const score = clamp(Number(st.indice_fragilite || 0), 0, 100);
-    const prioCode = ((st.priorite || "") + "").trim().toUpperCase();
-
-    const prioLabel =
-      (prioCode === "P1") ? "Critique" :
-      (prioCode === "P2") ? "Élevée"  :
-      "Modérée";
-
-    const score100 = clamp(Math.round(score || 0), 0, 100);
-
-    // Diagnostic "décisionnel" (même logique de lecture que le modal Poste fragile)
-    function scoreHue(sc) {
-      const s = clamp(Number(sc || 0), 0, 100) / 100;
-      return Math.round(120 * (1 - s)); // vert -> rouge
+    function scoreHue(score100) {
+      const x = clamp(Number(score100 || 0), 0, 100) / 100;
+      return Math.round(120 * (1 - x));
     }
 
     function ring(score100) {
-      const s = clamp(Number(score100 || 0), 0, 100);
-      const pct = s;
-
-      // Taille globale du ring (px)
-      const size = 76;
-
-      // Géométrie SVG (viewBox 64x64)
+      const s = clamp(Math.round(Number(score100 || 0)), 0, 100);
+      const size = 104;
       const stroke = 10;
-      const r = 24;
-      const C = 2 * Math.PI * r;
-      const off = C * (1 - (pct / 100));
-
-      const hue = scoreHue(pct);
+      const r = (size - stroke) / 2;
+      const c = 2 * Math.PI * r;
+      const offset = c * (1 - s / 100);
+      const hue = scoreHue(s);
+      const fill = `hsl(${hue} 70% 45%)`;
 
       return `
         <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-          <div style="width:${size}px; height:${size}px; position:relative;">
-            <svg viewBox="0 0 64 64" width="${size}" height="${size}">
-              <circle cx="32" cy="32" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}"></circle>
-              <circle cx="32" cy="32" r="${r}" fill="none" stroke="hsl(${hue}, 78%, 45%)" stroke-width="${stroke}"
-                      stroke-linecap="round"
-                      stroke-dasharray="${C.toFixed(1)}"
-                      stroke-dashoffset="${off.toFixed(1)}"
-                      transform="rotate(-90 32 32)"></circle>
+          <div style="position:relative; width:${size}px; height:${size}px;">
+            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;">
+              <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
+              <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
+                      stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
+                      transform="rotate(-90 ${size / 2} ${size / 2})" />
             </svg>
-            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px;">
-              ${escapeHtml(String(pct))}
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+              <div style="font-weight:900; font-size:28px; line-height:1;">
+                ${s}<span style="font-size:12px; font-weight:800;">%</span>
+              </div>
             </div>
           </div>
           <div class="card-sub" style="margin:0;">Fragilité</div>
@@ -2692,53 +2748,48 @@ function openAnalyseCompetenceModal(title, subHtml) {
       `;
     }
 
-
-
-    function priorityPill(label, sc) {
-      const s = clamp(Math.round(Number(sc || 0)), 0, 100);
-      const h = scoreHue(s);
-
-      const bg = `hsl(${h} 70% 95%)`;
-      const br = `hsl(${h} 70% 80%)`;
-      const tx = `hsl(${h} 70% 28%)`;
+    function priorityPill(label, score100) {
+      const hue = scoreHue(score100);
+      const border = `hsl(${hue} 70% 45% / 0.55)`;
+      const bg = `hsl(${hue} 70% 45% / 0.12)`;
+      const fg = `hsl(${hue} 70% 25%)`;
 
       return `
         <span style="
           display:inline-flex; align-items:center; justify-content:center;
-          padding:4px 10px; border-radius:999px;
-          border:1px solid ${br}; background:${bg}; color:${tx};
-          font-weight:800; font-size:12px; white-space:nowrap;
-        " title="${escapeHtml(prioCode || "—")}">
-          ${escapeHtml(label)}
+          padding:4px 10px; border-radius:999px; border:1px solid ${border};
+          background:${bg}; color:${fg}; font-weight:900; font-size:12px; white-space:nowrap;">
+          ${escapeHtml(label || "—")}
         </span>
       `;
     }
 
-    // --- Leviers (reco simples, DRH-friendly)
+    const B = Number(st.besoin_total || 0);
+    const P = Number(st.nb_porteurs || 0);
+    const gap = Math.max(0, (B || 0) - (P || 0));
+
+    const canTrain = (gap > 0) || (Number(st.nb_postes_porteur_unique || 0) > 0);
+
     const levers = [];
-    if (P === 0) levers.push("Former / intégrer au moins 1 porteur (urgence).");
-    if (P === 1) levers.push("Former un back-up (bus factor).");
-    if (B > P) levers.push(`Couvrir le besoin: ${Math.max(0, B - P)} titulaire(s) manquant(s).`);
-    if (Pe === 0) levers.push("Créer au moins 1 expert (niveau C/Expert): mentorat + montée en compétences.");
-    if (P > 0 && Number.isFinite(Pd) && Pd === 0) levers.push("Risque immédiat: plus aucun porteur disponible aujourd’hui (indisponibilités en cours).");
-    if (Pe > 0 && Number.isFinite(Ped) && Ped === 0) levers.push("Risque transmission: experts indisponibles aujourd’hui.");
-    if (!levers.length) levers.push("Situation maîtrisée: maintenir la couverture et surveiller l’évolution.");
+    if (canTrain) levers.push("Former un back-up (bus factor).");
+    if (gap > 0) levers.push(`Couvrir le besoin : ${gap} titulaire(s) manquant(s).`);
+    if (Number(st.nb_experts || 0) <= 0) levers.push("Créer au moins 1 expert (niveau C/Expert) : mentorat + montée en compétences.");
 
     const leversHtml = `
       <ul style="margin:8px 0 0 18px;">
-        ${levers.map(x => `<li style="margin:6px 0; color:#374151; font-size:13px;">${escapeHtml(x)}</li>`).join("")}
+        ${(levers.length ? levers : ["Surveillance simple : couverture suffisante dans le périmètre."]).map(x => `<li>${escapeHtml(x)}</li>`).join("")}
       </ul>
-      <div class="sb-help">Leviers proposés automatiquement à partir de la couverture, de l’exposition et des indisponibilités du jour.</div>
     `;
+
+    const badge = (txt) => `<span class="sb-badge">${escapeHtml(txt || "—")}</span>`;
 
     host.innerHTML = `
       <div class="card" style="padding:12px; margin:0;">
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
-          <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(critMin)}</span>
+          ${badge(`Service : ${scope}`)}
+          ${badge(`Criticité min: ${critMin}`)}
         </div>
 
-        <!-- 1) Diagnostic décisionnel -->
         <div class="card" style="padding:12px; margin-top:12px;">
           <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
             <div style="flex:1; min-width:320px;">
@@ -2748,45 +2799,42 @@ function openAnalyseCompetenceModal(title, subHtml) {
               <div class="card-sub" style="margin-top:10px;">
                 <b>Conditions de l’analyse :</b><br>
                 • Périmètre analysé : <b>${escapeHtml(scope)}</b> (service + sous-services).<br>
-                • Criticité minimum des compétences analysées : <b>${escapeHtml(critMin)}</b>.<br>
-                • Postes pris en compte : postes <b>actifs</b> (actif=TRUE) ayant la compétence requise avec <b>poids_criticite ≥ seuil</b>.<br>
-                • Porteurs pris en compte : effectifs <b>non archivés</b> ayant la compétence <b>active</b> (tous niveaux), dans le même périmètre.<br>
-                • Indisponibilités : prise en compte des <b>breaks en cours</b> à la date du jour (date_debut ≤ aujourd’hui ≤ date_fin).<br>
-                • Besoin “titulaires cible” par poste : <b>nb_titulaires_cible</b> si renseigné, sinon <b>nb_titulaires constatés</b>, sinon <b>1</b>.<br>
+                • Criticité minimum des compétences analysées : <b>${escapeHtml(String(critMin))}</b>.<br>
+                • Postes pris en compte : postes <b>actifs</b> avec <b>poids_criticite ≥ seuil</b>.<br>
+                • Porteurs pris en compte : effectifs <b>non archivés</b> avec compétence <b>active</b>, même périmètre.<br>
+                • Indisponibilités : breaks en cours (date_debut ≤ aujourd’hui ≤ date_fin).<br>
+                • Besoin "titulaires cible" : nb_titulaires_cible si renseigné, sinon nb_titulaires constatés, sinon 1.
               </div>
-
             </div>
 
             <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-              ${ring(score100)}
+              ${ring(score)}
               ${priorityPill(prioLabel, score)}
             </div>
           </div>
         </div>
 
-
-        <!-- 2) Causes racines -->
         <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">Causes racines</div>
+          <div class="card-title" style="margin:0 0 4px 0;">Causes racines</div>
 
           <div class="card-sub" style="margin:0;">Postes impactés</div>
           ${postesHtml}
 
-          <div style="margin-top:12px;">
-            <div class="card-sub" style="margin:0;">Porteurs</div>
-            ${porteursHtml}
-          </div>
+          <div class="card-sub" style="margin:10px 0 0 0;">Porteurs</div>
+          ${porteursHtml}
         </div>
 
-        <!-- 3) Leviers -->
         <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">Leviers</div>
+          <div class="card-title" style="margin:0 0 4px 0;">Leviers</div>
           ${leversHtml}
+          <div class="card-sub" style="margin-top:8px;">
+            Leviers proposés automatiquement à partir de la couverture, de l’exposition et des indisponibilités du jour.
+          </div>
         </div>
       </div>
     `;
-
   }
+
 
   async function showAnalyseCompetenceDetailModal(portal, id_comp_or_code, id_service) {
     const mySeq = ++_compDetailReqSeq;
@@ -2803,8 +2851,8 @@ function openAnalyseCompetenceModal(title, subHtml) {
       if (mySeq !== _compDetailReqSeq) return;
 
       const comp = data?.competence || {};
-      const code = (comp.code || "").toString().trim();
-      const titleText = (comp.intitule || "").toString().trim() || "Compétence";
+      const titleCode = String(comp.code || "").trim();
+      const titleText = String(comp.intitule || "Compétence").trim();
 
       const scope = (data?.scope?.nom_service || "").trim() || "Tous les services";
       const sub = `
@@ -2814,7 +2862,7 @@ function openAnalyseCompetenceModal(title, subHtml) {
         </div>
       `;
 
-      openAnalyseCompetenceModal(titleText || "Détail compétence", sub);
+      openAnalyseCompetenceModal({ code: titleCode, text: titleText }, sub);
 
       // Badge code dans le titre
       const tCode = byId("analyseCompModalTitleCode");
