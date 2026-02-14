@@ -2596,6 +2596,17 @@ class AnalyseRisqueItem(BaseModel):
     nb_porteurs_dispo: Optional[int] = None
     max_criticite: Optional[int] = None
 
+    # Enrichissement "critiques-fragiles" (KPI 2)
+    besoin_total: Optional[int] = None
+    nb_experts: Optional[int] = None
+    nb_experts_dispo: Optional[int] = None
+    criticite_max: Optional[int] = None
+    nb_postes_crit_80: Optional[int] = None
+
+    priorite: Optional[str] = None
+    priorite_score: Optional[int] = None
+
+
 
 class AnalyseRisquesDetailResponse(BaseModel):
     scope: ServiceScope
@@ -3048,22 +3059,120 @@ def get_analyse_risques_detail(
                 # ---------------------------
                 # KPI: Critiques fragiles (≤ 1 porteur en nominal)
                 # ---------------------------
+                # ---------------------------
+                # KPI: Critiques fragiles (≤ 1 porteur en nominal)
+                # ---------------------------
                 elif k == "critiques-fragiles":
                     sql = base_cte + """
                     ,
+                    req_crit AS (
+                        SELECT DISTINCT
+                            r.id_poste,
+                            r.id_comp,
+                            r.poids_criticite
+                        FROM req r
+                        WHERE r.poids_criticite >= %s
+                    ),
+
+                    titulaires AS (
+                        SELECT
+                            e.id_poste_actuel AS id_poste,
+                            COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
+                        FROM public.tbl_effectif_client e
+                        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                        WHERE COALESCE(e.archive, FALSE) = FALSE
+                          AND COALESCE(e.id_poste_actuel, '') <> ''
+                        GROUP BY e.id_poste_actuel
+                    ),
+
+                    poste_need AS (
+                        SELECT
+                            ps.id_poste,
+                            CASE
+                                WHEN prh.nb_titulaires_cible IS NOT NULL AND prh.nb_titulaires_cible::int > 0
+                                    THEN prh.nb_titulaires_cible::int
+                                WHEN COALESCE(t.nb_titulaires, 0)::int > 0
+                                    THEN COALESCE(t.nb_titulaires, 0)::int
+                                ELSE 1
+                            END AS besoin_poste
+                        FROM postes_scope ps
+                        LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = ps.id_poste
+                        LEFT JOIN titulaires t ON t.id_poste = ps.id_poste
+                    ),
+
+                    comp_need AS (
+                        SELECT
+                            rc.id_comp,
+                            MAX(rc.poids_criticite)::int AS criticite_max,
+                            COUNT(DISTINCT rc.id_poste)::int AS nb_postes_impactes,
+                            SUM(pn.besoin_poste)::int AS besoin_total,
+                            SUM(CASE WHEN rc.poids_criticite >= 80 THEN 1 ELSE 0 END)::int AS nb_postes_crit_80
+                        FROM req_crit rc
+                        JOIN poste_need pn ON pn.id_poste = rc.id_poste
+                        GROUP BY rc.id_comp
+                    ),
+
+                    experts AS (
+                        SELECT
+                            ec.id_comp,
+                            COUNT(DISTINCT ec.id_effectif_client)::int AS nb_experts
+                        FROM public.tbl_effectif_client_competence ec
+                        JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
+                        WHERE COALESCE(ec.actif, TRUE) = TRUE
+                          AND COALESCE(ec.archive, FALSE) = FALSE
+                          AND COALESCE(ec.id_comp, '') <> ''
+                          AND (
+                            CASE
+                              WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
+                                THEN trim(ec.niveau_actuel)::int
+                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                              WHEN ec.niveau_actuel ILIKE '%expert%' THEN 3
+                              ELSE 0
+                            END
+                          ) >= 3
+                        GROUP BY ec.id_comp
+                    ),
+
+                    experts_dispo AS (
+                        SELECT
+                            ec.id_comp,
+                            COUNT(DISTINCT ec.id_effectif_client)::int AS nb_experts
+                        FROM public.tbl_effectif_client_competence ec
+                        JOIN effectifs_dispo ed ON ed.id_effectif = ec.id_effectif_client
+                        WHERE COALESCE(ec.actif, TRUE) = TRUE
+                          AND COALESCE(ec.archive, FALSE) = FALSE
+                          AND COALESCE(ec.id_comp, '') <> ''
+                          AND (
+                            CASE
+                              WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
+                                THEN trim(ec.niveau_actuel)::int
+                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                              WHEN ec.niveau_actuel ILIKE '%expert%' THEN 3
+                              ELSE 0
+                            END
+                          ) >= 3
+                        GROUP BY ec.id_comp
+                    ),
+
                     comp_agg AS (
                         SELECT
-                            r.id_comp,
-                            MAX(r.poids_criticite)::int AS max_criticite,
-                            COUNT(DISTINCT r.id_poste)::int AS nb_postes_impactes,
+                            cn.id_comp,
+                            cn.nb_postes_impactes,
+                            cn.besoin_total,
+                            cn.criticite_max,
+                            cn.nb_postes_crit_80,
+
                             COALESCE(p.nb_porteurs, 0)::int AS nb_porteurs,
-                            COALESCE(pd.nb_porteurs, 0)::int AS nb_porteurs_dispo
-                        FROM req r
-                        LEFT JOIN porteurs p ON p.id_comp = r.id_comp
-                        LEFT JOIN porteurs_dispo pd ON pd.id_comp = r.id_comp
-                        WHERE r.poids_criticite >= %s
-                          AND COALESCE(p.nb_porteurs, 0) <= 1
-                        GROUP BY r.id_comp, COALESCE(p.nb_porteurs, 0), COALESCE(pd.nb_porteurs, 0)
+                            COALESCE(pd.nb_porteurs, 0)::int AS nb_porteurs_dispo,
+
+                            COALESCE(ex.nb_experts, 0)::int AS nb_experts,
+                            COALESCE(exd.nb_experts, 0)::int AS nb_experts_dispo
+                        FROM comp_need cn
+                        LEFT JOIN porteurs p ON p.id_comp = cn.id_comp
+                        LEFT JOIN porteurs_dispo pd ON pd.id_comp = cn.id_comp
+                        LEFT JOIN experts ex ON ex.id_comp = cn.id_comp
+                        LEFT JOIN experts_dispo exd ON exd.id_comp = cn.id_comp
+                        WHERE COALESCE(p.nb_porteurs, 0) <= 1
                     )
                     SELECT
                         c.id_comp,
@@ -3074,10 +3183,15 @@ def get_analyse_risques_detail(
                         d.titre,
                         d.titre_court,
                         d.couleur,
+
                         ca.nb_postes_impactes,
                         ca.nb_porteurs,
                         ca.nb_porteurs_dispo,
-                        ca.max_criticite
+                        ca.nb_experts,
+                        ca.nb_experts_dispo,
+                        ca.besoin_total,
+                        ca.criticite_max,
+                        ca.nb_postes_crit_80
                     FROM comp_agg ca
                     JOIN public.tbl_competence c ON c.id_comp = ca.id_comp
                     LEFT JOIN public.tbl_domaine_competence d
@@ -3086,13 +3200,78 @@ def get_analyse_risques_detail(
                         ca.nb_porteurs ASC,
                         ca.nb_porteurs_dispo ASC,
                         ca.nb_postes_impactes DESC,
-                        ca.max_criticite DESC,
+                        ca.criticite_max DESC,
                         c.code
                     LIMIT %s
                     """
+
                     cur.execute(sql, tuple(cte_params + [criticite_min, limit]))
                     rows = cur.fetchall() or []
+
+                    def _clamp(v: float, lo: float, hi: float) -> float:
+                        return max(lo, min(hi, v))
+
                     for r in rows:
+                        B = int(r.get("besoin_total") or 0)
+                        B = B if B > 0 else 1
+
+                        P = int(r.get("nb_porteurs") or 0)
+                        Pd = int(r.get("nb_porteurs_dispo") or 0)
+
+                        Pe = int(r.get("nb_experts") or 0)
+                        Ped = int(r.get("nb_experts_dispo") or 0)
+
+                        N = int(r.get("nb_postes_impactes") or 0)
+                        Cmax = int(r.get("criticite_max") or 0)
+                        N80 = int(r.get("nb_postes_crit_80") or 0)
+
+                        # Sous-scores (0..1)
+                        S_cov = _clamp(1.0 - (P / float(B)), 0.0, 1.0)
+
+                        if P == 0:
+                            S_dep = 1.00
+                        elif P == 1:
+                            S_dep = 0.80
+                        elif P == 2:
+                            S_dep = 0.50
+                        elif P == 3:
+                            S_dep = 0.25
+                        else:
+                            S_dep = 0.00
+
+                        if Pe == 0:
+                            S_exp = 1.00
+                        elif Pe == 1:
+                            S_exp = 0.70
+                        else:
+                            S_exp = 0.00
+
+                        S_expo = min(1.0, N / 5.0)
+                        S_sev = 0.7 * (Cmax / 100.0) + 0.3 * min(1.0, N80 / 3.0)
+
+                        base = 100.0 * (
+                            0.35 * S_cov
+                            + 0.15 * S_dep
+                            + 0.15 * S_exp
+                            + 0.10 * S_expo
+                            + 0.25 * S_sev
+                        )
+
+                        bonus = 0.0
+                        if P > 0 and Pd == 0:
+                            bonus += 20.0
+                        if Pe > 0 and Ped == 0:
+                            bonus += 10.0
+
+                        indice = int(round(_clamp(base + bonus, 0.0, 100.0)))
+
+                        if indice >= 75:
+                            prio = "P1"
+                        elif indice >= 50:
+                            prio = "P2"
+                        else:
+                            prio = "P3"
+
                         items.append(AnalyseRisqueItem(
                             id_comp=r.get("id_comp"),
                             code=r.get("code"),
@@ -3101,11 +3280,26 @@ def get_analyse_risques_detail(
                             domaine_titre=r.get("titre"),
                             domaine_titre_court=r.get("titre_court"),
                             domaine_couleur=r.get("couleur"),
-                            nb_postes_impactes=int(r.get("nb_postes_impactes") or 0),
-                            nb_porteurs=int(r.get("nb_porteurs") or 0),
-                            nb_porteurs_dispo=int(r.get("nb_porteurs_dispo") or 0),
-                            max_criticite=int(r.get("max_criticite") or 0),
+
+                            nb_postes_impactes=N,
+                            nb_porteurs=P,
+                            nb_porteurs_dispo=Pd,
+
+                            besoin_total=B,
+                            nb_experts=Pe,
+                            nb_experts_dispo=Ped,
+                            criticite_max=Cmax,
+                            nb_postes_crit_80=N80,
+
+                            max_criticite=Cmax,          # compat existant
+                            indice_fragilite=indice,     # 0..100 (règle métier)
+                            priorite=prio,
+                            priorite_score=indice,       # tri simple
                         ))
+
+                    # Tri DRH-friendly: d’abord les plus urgentes
+                    items.sort(key=lambda x: (-(x.priorite_score or 0), -(x.nb_postes_impactes or 0), (x.code or "")))
+
 
 
                 # ---------------------------

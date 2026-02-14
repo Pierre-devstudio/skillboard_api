@@ -3545,14 +3545,16 @@ function renderDetail(mode) {
 
   function renderDomainPill(item) {
     const lab = (item?.domaine_titre_court || item?.domaine_titre || item?.id_domaine_competence || "—").toString();
-    const col = normalizeColor(item?.domaine_couleur) || "#e5e7eb";
+    const col = normalizeColor(item?.domaine_couleur) || "#9ca3af";
     return `
-      <span style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; color:#374151; background:#fff;">
-        <span style="display:inline-block; width:10px; height:10px; border-radius:999px; border:1px solid #d1d5db; background:${escapeHtml(col)};"></span>
-        <span title="${escapeHtml(lab)}">${escapeHtml(lab)}</span>
+      <span class="sb-badge-domaine"
+            style="--dom-color:${escapeHtml(col)};"
+            title="${escapeHtml(lab)}">
+        ${escapeHtml(lab)}
       </span>
     `;
   }
+
 
   function renderTablePostes(rows) {
     const list = Array.isArray(rows) ? rows : [];
@@ -3718,17 +3720,82 @@ function renderDetail(mode) {
     const list = Array.isArray(rows) ? rows : [];
     if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
 
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+    function scoreHue(score) {
+      const s = clamp(Number(score || 0), 0, 100) / 100;
+      return Math.round(120 * (1 - s)); // 120 (vert) -> 0 (rouge)
+    }
+
+    function scoreChip(score) {
+      const s = clamp(Math.round(Number(score || 0)), 0, 100);
+      const h = scoreHue(s);
+      const fill = `hsl(${h} 70% 45%)`;
+
+      return `
+        <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+          <div style="width:84px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
+            <div style="height:100%; width:${s}%; background:${fill};"></div>
+          </div>
+          <div style="min-width:44px; text-align:right; font-weight:800;">
+            ${s}%
+          </div>
+        </div>
+      `;
+    }
+
+    function prioFromScore(score) {
+      const s = clamp(Number(score || 0), 0, 100);
+      if (s >= 75) return "P1";
+      if (s >= 50) return "P2";
+      return "P3";
+    }
+
+    function priorityPill(label, score) {
+      const s = clamp(Number(score || 0), 0, 100);
+      const h = scoreHue(s);
+      const bg = `hsl(${h} 80% 92%)`;
+      const br = `hsl(${h} 70% 72%)`;
+      const tx = `hsl(${h} 70% 28%)`;
+
+      return `
+        <span style="
+          display:inline-flex; align-items:center; justify-content:center;
+          padding:4px 10px; border-radius:999px;
+          border:1px solid ${br}; background:${bg}; color:${tx};
+          font-weight:800; font-size:12px; white-space:nowrap;
+        ">
+          ${escapeHtml(label)}
+        </span>
+      `;
+    }
+
     return `
-      <div class="table-wrap" style="margin-top:10px;">
+      <div class="table-wrap sb-tip-host" style="margin-top:10px;">
         <table class="sb-table" id="tblRiskCompetences">
           <thead>
             <tr>
+              <th>Code – Compétence</th>
               <th style="width:240px;">Domaine</th>
-              <th style="width:90px;">Code</th>
-              <th>Compétence</th>
-              <th class="col-center" style="width:130px;">Postes impactés</th>
-              <th class="col-center" style="width:120px;">Criticité</th>
-              <th class="col-center" style="width:110px;">Porteurs</th>
+
+              <th class="col-center" style="width:140px;">Présence</th>
+
+              <th class="col-center" style="width:220px;">
+                <span class="sb-th-with-tip">
+                  <span>Indice<br>de fragilité</span>
+                  <span class="sb-iinfo"
+                        data-sbtip="fragility-index"
+                        tabindex="0"
+                        role="button"
+                        aria-label="Informations sur l'indice de fragilité">i</span>
+                </span>
+              </th>
+
+              <th class="col-center" style="width:130px; white-space:normal; line-height:1.1;">
+                Priorité de<br>traitement
+              </th>
+
+              <th class="col-center" style="width:140px;">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -3739,37 +3806,65 @@ function renderDetail(mode) {
               const idComp = (r.id_competence || r.id_comp || r.id_competence_skillboard || r.id_competence_pk || "").toString().trim();
               const compKey = (idComp || code || "").trim();
 
-              const nbPostes = Number(r.nb_postes_impactes || 0);
-              const nbPorteurs = Number(r.nb_porteurs || 0);
-                            const nbPorteursDispo = Number(r.nb_porteurs_dispo);
-              const showDispo = Number.isFinite(nbPorteursDispo) && nbPorteursDispo !== nbPorteurs;
+              const Braw = Number(r.besoin_total);
+              const B = (Number.isFinite(Braw) && Braw > 0) ? Braw : 1;
 
+              const P = Number(r.nb_porteurs || 0);
+              const Pd = Number(r.nb_porteurs_dispo);
+
+              const score = (r.indice_fragilite !== null && r.indice_fragilite !== undefined)
+                ? clamp(Number(r.indice_fragilite || 0), 0, 100)
+                : 0;
+
+              const prio = ((r.priorite || "") + "").trim().toUpperCase() || prioFromScore(score);
+
+              const showDispo = Number.isFinite(Pd) && Pd !== P;
               const dispoHtml = showDispo
-                ? `<span class="sb-badge sb-badge--warning" title="Porteurs disponibles aujourd’hui (breaks en cours exclus)">${escapeHtml(String(nbPorteursDispo))}</span>`
+                ? `<span class="sb-badge sb-badge--warning" title="Porteurs disponibles aujourd’hui (breaks en cours exclus)">${escapeHtml(String(Pd))}</span>`
                 : "";
 
-              const porteursHtml = `
-                <div style="display:flex; justify-content:center; gap:6px; align-items:center;">
-                  ${nbPorteurs ? badge(String(nbPorteurs), true) : badge("0", false)}
-                  ${dispoHtml}
-                </div>
-              `;
-
-              const crit = Number(r.max_criticite || 0);
+              const presTitle = [
+                `Porteurs nominaux: ${P}`,
+                `Besoin total: ${B}`,
+                Number.isFinite(Pd) ? `Disponibles aujourd’hui: ${Pd}` : null,
+                (r.nb_experts !== null && r.nb_experts !== undefined) ? `Experts: ${Number(r.nb_experts || 0)} (dispo: ${Number(r.nb_experts_dispo || 0)})` : null
+              ].filter(Boolean).join(" | ");
 
               return `
                 <tr class="risk-comp-row"
                     data-comp-key="${escapeHtml(compKey)}"
                     data-code="${escapeHtml(code)}"
-                    data-id_comp="${escapeHtml(idComp)}"
-                    style="cursor:pointer;"
-                    title="Ouvrir le détail de la compétence">
+                    data-id_comp="${escapeHtml(idComp)}">
+
+                  <td class="risk-comp-open" style="cursor:pointer;">
+                    <div style="display:flex; gap:8px; align-items:center; min-width:0;">
+                      <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>
+                      <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${escapeHtml(intit)}
+                      </span>
+                    </div>
+                  </td>
+
                   <td>${renderDomainPill(r)}</td>
-                  <td style="font-weight:700; white-space:nowrap;">${escapeHtml(code || "—")}</td>
-                  <td>${escapeHtml(intit)}</td>
-                  <td class="col-center">${nbPostes ? badge(String(nbPostes), true) : badge("0", false)}</td>
-                  <td class="col-center">${crit ? badge(String(crit), true) : badge("—", false)}</td>
-                  <td class="col-center">${porteursHtml}</td>
+
+                  <td class="col-center" title="${escapeHtml(presTitle)}">
+                    <div class="sb-badges">
+                      <span class="sb-badge sb-badge-accent">${escapeHtml(String(P) + "/" + String(B))}</span>
+                      ${dispoHtml}
+                    </div>
+                  </td>
+
+                  <td class="col-center" title="Indice fragilité (0-100)">${scoreChip(score)}</td>
+
+                  <td class="col-center">${priorityPill(prio, score)}</td>
+
+                  <td class="col-center">
+                    <button type="button"
+                            class="btn-secondary risk-comp-open"
+                            style="padding:6px 10px; font-size:12px; line-height:1;">
+                      Voir détail
+                    </button>
+                  </td>
                 </tr>
               `;
             }).join("")}
@@ -3778,6 +3873,7 @@ function renderDetail(mode) {
       </div>
     `;
   }
+
 
   const buildResetHtml = () => rf
     ? `
@@ -4796,11 +4892,17 @@ function bindOnce(portal) {
     // ------------------------------
     const trComp = ev.target.closest("tr.risk-comp-row[data-comp-key]");
     if (trComp) {
+      // Comme postes fragiles: on n’ouvre pas sur n’importe quel clic dans la ligne
+      const hit = ev.target.closest(".risk-comp-open");
+      if (!hit) return;
+
       const compKey = (trComp.getAttribute("data-comp-key") || "").trim();
       if (!compKey) return;
+
       showAnalyseCompetenceDetailModal(p, compKey, id_service);
       return;
     }
+
 
     // ------------------------------
     // 3) Toggle "Postes fragiles" / "Tous les postes"
