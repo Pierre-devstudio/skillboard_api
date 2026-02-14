@@ -2500,9 +2500,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <div class="modal-card" style="max-width:1120px; width:min(1120px, 96vw); margin-top:24px; max-height:calc(100vh - 48px); display:flex; flex-direction:column;">
         <div class="modal-header">
           <div style="min-width:0; display:flex; flex-direction:column; gap:2px;">
-            <div id="analyseCompModalTitleLine" class="modal-title" style="display:flex; gap:8px; align-items:center; min-width:0;">
-              <span id="analyseCompModalTitleCode" class="sb-badge sb-badge-ref-comp-code" style="display:none;"></span>
-              <span id="analyseCompModalTitleText" class="sb-ref-title-text" style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Détail compétence</span>
+            <div id="analyseCompModalTitle" class="modal-title" style="display:flex; gap:8px; align-items:center; min-width:0;">
+              <span id="analyseCompModalTitleCode" class="sb-badge sb-badge-accent" style="display:none;"></span>
+              <span id="analyseCompModalTitleText" style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                Détail compétence
+              </span>
             </div>
             <div class="card-sub" id="analyseCompModalSub" style="margin:0;"></div>
           </div>
@@ -2555,37 +2557,30 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const modal = ensureAnalyseCompetenceModal();
     if (!modal) return;
 
+    const tWrap = byId("analyseCompModalTitle");
     const tCode = byId("analyseCompModalTitleCode");
     const tText = byId("analyseCompModalTitleText");
     const s = byId("analyseCompModalSub");
     const b = byId("analyseCompModalBody");
 
-    let code = "";
-    let text = "";
+    let compCode = "";
+    let compText = "Détail compétence";
 
     if (title && typeof title === "object") {
-      code = String(title.code || "").trim();
-      text = String(title.text || "").trim();
+      compCode = String(title.code || "").trim();
+      compText = String(title.text || "").trim() || compText;
     } else {
-      text = String(title || "").trim();
-
-      // Fallback: "CODE — Libellé"
-      if (text.includes("—")) {
-        const parts = text.split("—");
-        const maybeCode = (parts[0] || "").trim();
-        const maybeText = (parts.slice(1).join("—") || "").trim();
-        if (maybeCode && maybeText && maybeCode.length <= 16) {
-          code = maybeCode;
-          text = maybeText;
-        }
-      }
+      compText = String(title || "").trim() || compText;
     }
 
-    if (tText) tText.textContent = text || "Détail compétence";
+    // Texte (fallback si jamais tText n’existe pas)
+    if (tText) tText.textContent = compText;
+    else if (tWrap) tWrap.textContent = compText;
 
+    // Badge code
     if (tCode) {
-      if (code) {
-        tCode.textContent = code;
+      if (compCode) {
+        tCode.textContent = compCode;
         tCode.style.display = "inline-flex";
       } else {
         tCode.textContent = "";
@@ -2594,22 +2589,26 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     }
 
     if (s) s.innerHTML = subHtml || "";
-    if (b) b.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
+    if (b) {
+      b.innerHTML = `<div class="card" style="padding:12px; margin:0;">
+        <div class="card-sub" style="margin:0;">Chargement…</div>
+      </div>`;
+    }
 
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
 
     const mb = modal.querySelector(".modal-body");
     if (mb) mb.scrollTop = 0;
   }
-
-
 
   function closeAnalyseCompetenceModal() {
     const modal = byId("modalAnalyseCompetence");
     if (!modal) return;
     modal.classList.remove("show");
     modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
   }
 
   function mapNiveauActuelForDisplay(raw) {
@@ -2863,21 +2862,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       `;
 
       openAnalyseCompetenceModal({ code: titleCode, text: titleText }, sub);
-
-      // Badge code dans le titre
-      const tCode = byId("analyseCompModalTitleCode");
-      if (tCode) {
-        if (code) {
-          tCode.textContent = code;
-          tCode.style.display = "inline-flex";
-        } else {
-          tCode.textContent = "";
-          tCode.style.display = "none";
-        }
-      }
-
       renderAnalyseCompetenceDetail(data);
-
 
     } catch (e) {
       if (mySeq !== _compDetailReqSeq) return;
