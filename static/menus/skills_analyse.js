@@ -2652,25 +2652,21 @@ function openAnalyseCompetenceModal(title, subHtml) {
     const score100 = clamp(Math.round(score || 0), 0, 100);
 
     // Diagnostic "décisionnel" (même logique de lecture que le modal Poste fragile)
-    const decisionTxt =
-      (P <= 0) ? "Risque de rupture : aucun porteur au niveau requis. Sécurisation immédiate (back-up, formation, recrutement, mobilité)." :
-      (Number.isFinite(Pd) && Pd <= 0) ? "Risque immédiat : plus aucun porteur disponible aujourd’hui. Continuité d’activité + back-up prioritaire." :
-      (P === 1) ? "Dépendance forte : couverture unique. Double portage + transfert de savoir à sécuriser." :
-      (B > P) ? ("Couverture insuffisante : besoin " + String(B) + " vs " + String(P) + " porteur(s). Ajuster staffing + montée en compétences.") :
-      (score100 >= 75) ? "Fragilité élevée : sécuriser rapidement (polyvalence, formation ciblée, renfort)." :
-      (score100 >= 45) ? "Fragilité modérée : surveiller et sécuriser sur les postes les plus critiques." :
-      "Situation maîtrisée (selon périmètre).";
-
     function scoreHue(sc) {
       const s = clamp(Number(sc || 0), 0, 100) / 100;
       return Math.round(120 * (1 - s)); // vert -> rouge
     }
 
-        function ring(score100) {
+    function ring(score100) {
       const s = clamp(Number(score100 || 0), 0, 100);
       const pct = s;
 
-      const r = 22;
+      // Taille globale du ring (px)
+      const size = 76;
+
+      // Géométrie SVG (viewBox 64x64)
+      const stroke = 10;
+      const r = 24;
       const C = 2 * Math.PI * r;
       const off = C * (1 - (pct / 100));
 
@@ -2678,16 +2674,16 @@ function openAnalyseCompetenceModal(title, subHtml) {
 
       return `
         <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-          <div style="width:54px; height:54px; position:relative;">
-            <svg viewBox="0 0 64 64" width="54" height="54">
-              <circle cx="32" cy="32" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="8"></circle>
-              <circle cx="32" cy="32" r="${r}" fill="none" stroke="hsl(${hue}, 78%, 45%)" stroke-width="8"
+          <div style="width:${size}px; height:${size}px; position:relative;">
+            <svg viewBox="0 0 64 64" width="${size}" height="${size}">
+              <circle cx="32" cy="32" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}"></circle>
+              <circle cx="32" cy="32" r="${r}" fill="none" stroke="hsl(${hue}, 78%, 45%)" stroke-width="${stroke}"
                       stroke-linecap="round"
                       stroke-dasharray="${C.toFixed(1)}"
                       stroke-dashoffset="${off.toFixed(1)}"
                       transform="rotate(-90 32 32)"></circle>
             </svg>
-            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px;">
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:18px;">
               ${escapeHtml(String(pct))}
             </div>
           </div>
@@ -2695,6 +2691,7 @@ function openAnalyseCompetenceModal(title, subHtml) {
         </div>
       `;
     }
+
 
 
     function priorityPill(label, sc) {
@@ -2746,17 +2743,18 @@ function openAnalyseCompetenceModal(title, subHtml) {
           <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
             <div style="flex:1; min-width:320px;">
               <div class="card-title" style="margin:0;">Diagnostic décisionnel</div>
-              <div class="card-sub" style="margin-top:6px;">${escapeHtml(decisionTxt)}</div>
+              <div class="card-sub" style="margin-top:6px;">&nbsp;</div>
 
               <div class="card-sub" style="margin-top:10px;">
                 <b>Conditions de l’analyse :</b><br>
-                • Besoin (titulaires cible) : <b>${escapeHtml(String(B))}</b><br>
-                • Porteurs (niveau requis) : <b>${escapeHtml(String(P))}</b>${Number.isFinite(Pd) ? ` (dispo auj : <b>${escapeHtml(String(Pd))}</b>)` : ""}<br>
-                • Experts : <b>${escapeHtml(String(Pe))}</b>${Number.isFinite(Ped) ? ` (dispo auj : <b>${escapeHtml(String(Ped))}</b>)` : ""}<br>
-                • Postes impactés : <b>${escapeHtml(String(N))}</b><br>
-                • Criticité max : <b>${escapeHtml(String(Cmax))}</b> (postes ≥80 : <b>${escapeHtml(String(N80))}</b>)<br>
-                • Criticité min (périmètre) : <b>${escapeHtml(critMin)}</b>
+                • Périmètre analysé : <b>${escapeHtml(scope)}</b> (service + sous-services).<br>
+                • Criticité minimum des compétences analysées : <b>${escapeHtml(critMin)}</b>.<br>
+                • Postes pris en compte : postes <b>actifs</b> (actif=TRUE) ayant la compétence requise avec <b>poids_criticite ≥ seuil</b>.<br>
+                • Porteurs pris en compte : effectifs <b>non archivés</b> ayant la compétence <b>active</b> (tous niveaux), dans le même périmètre.<br>
+                • Indisponibilités : prise en compte des <b>breaks en cours</b> à la date du jour (date_debut ≤ aujourd’hui ≤ date_fin).<br>
+                • Besoin “titulaires cible” par poste : <b>nb_titulaires_cible</b> si renseigné, sinon <b>nb_titulaires constatés</b>, sinon <b>1</b>.<br>
               </div>
+
             </div>
 
             <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
