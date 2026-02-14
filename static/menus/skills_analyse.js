@@ -3817,7 +3817,10 @@ function renderDetail(mode) {
                 : 0;
 
               const prio = ((r.priorite || "") + "").trim().toUpperCase() || prioFromScore(score);
-
+              const prioLabel =
+                (prio === "P1") ? "Critique" :
+                (prio === "P2") ? "Élevée"  :
+                "Modérée";
               const showDispo = Number.isFinite(Pd) && Pd !== P;
               const dispoHtml = showDispo
                 ? `<span class="sb-badge sb-badge--warning" title="Porteurs disponibles aujourd’hui (breaks en cours exclus)">${escapeHtml(String(Pd))}</span>`
@@ -3856,7 +3859,7 @@ function renderDetail(mode) {
 
                   <td class="col-center" title="Indice fragilité (0-100)">${scoreChip(score)}</td>
 
-                  <td class="col-center">${priorityPill(prio, score)}</td>
+                  <td class="col-center" title="${escapeHtml(prio)}">${priorityPill(prioLabel, score)}</td>
 
                   <td class="col-center">
                     <button type="button"
