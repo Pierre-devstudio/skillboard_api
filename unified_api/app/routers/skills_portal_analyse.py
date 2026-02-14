@@ -3126,7 +3126,7 @@ def get_analyse_risques_detail(
                               WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
                                 THEN trim(ec.niveau_actuel)::int
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                              WHEN ec.niveau_actuel ILIKE '%expert%' THEN 3
+                              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
                               ELSE 0
                             END
                           ) >= 3
@@ -3147,7 +3147,7 @@ def get_analyse_risques_detail(
                               WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
                                 THEN trim(ec.niveau_actuel)::int
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                              WHEN ec.niveau_actuel ILIKE '%expert%' THEN 3
+                              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
                               ELSE 0
                             END
                           ) >= 3
