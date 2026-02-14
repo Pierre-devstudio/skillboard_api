@@ -2450,25 +2450,29 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     <div class="modal" id="modalAnalyseCompetence" aria-hidden="true" style="align-items:flex-start;">
       <div class="modal-card" style="max-width:1120px; width:min(1120px, 96vw); margin-top:24px; max-height:calc(100vh - 48px); display:flex; flex-direction:column;">
         <div class="modal-header">
-          <div style="min-width:0;">
-            <div style="font-weight:600;" id="analyseCompModalTitle">Détail compétence</div>
-            <div class="card-sub" id="analyseCompModalSub" style="margin:2px 0 0 0;"></div>
+          <div id="analyseCompModalTitle" class="modal-title" style="display:flex; gap:8px; align-items:center; min-width:0;">
+            <span id="analyseCompModalTitleCode" class="sb-badge sb-badge-ref-comp-code" style="display:none;"></span>
+            <span id="analyseCompModalTitleText" style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Détail compétence</span>
           </div>
           <button type="button" class="modal-x" id="btnCloseAnalyseCompModal" aria-label="Fermer">×</button>
         </div>
 
-        <div class="modal-body" id="analyseCompModalBody" style="overflow:auto; flex:1; padding:14px 16px;">
-          <div class="card" style="padding:12px; margin:0;">
-            <div class="card-sub" style="margin:0;">Chargement…</div>
+        <div class="modal-body" style="overflow:auto; flex:1; padding:14px 16px;">
+          <div class="card-sub" id="analyseCompModalSub" style="margin-top:0;"></div>
+          <div id="analyseCompModalBody" style="margin-top:12px;">
+            <div class="card" style="padding:12px; margin:0;">
+              <div class="card-sub" style="margin:0;">Chargement…</div>
+            </div>
           </div>
         </div>
 
         <div class="modal-footer">
-          <button type="button" class="btn-secondary" id="btnAnalyseCompModalClose" style="margin-left:0;">Fermer</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnAnalyseCompModalClose">Fermer</button>
         </div>
       </div>
     </div>
   `;
+
 
   document.body.insertAdjacentHTML("beforeend", html);
   modal = byId("modalAnalyseCompetence");
@@ -2494,24 +2498,36 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   return modal;
 }
 
-  function openAnalyseCompetenceModal(title, subHtml) {
+function openAnalyseCompetenceModal(title, subHtml) {
     const modal = ensureAnalyseCompetenceModal();
     if (!modal) return;
 
-    const t = byId("analyseCompModalTitle");
+    const tWrap = byId("analyseCompModalTitle");
+    const tCode = byId("analyseCompModalTitleCode");
+    const tText = byId("analyseCompModalTitleText");
     const s = byId("analyseCompModalSub");
     const b = byId("analyseCompModalBody");
 
-    if (t) t.textContent = title || "Détail compétence";
+    const titleText = title || "Détail compétence";
+
+    // Structure "Code + Texte" (comme le modal Poste fragile)
+    if (tText) tText.textContent = titleText;
+    else if (tWrap) tWrap.textContent = titleText;
+
+    // Reset badge code (rempli après chargement data)
+    if (tCode) {
+      tCode.textContent = "";
+      tCode.style.display = "none";
+    }
+
     if (s) s.innerHTML = subHtml || "";
     if (b) b.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
 
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
-
-    const mb = modal.querySelector(".modal-body");
-    if (mb) mb.scrollTop = 0;
+    document.body.classList.add("modal-open");
   }
+
 
   function closeAnalyseCompetenceModal() {
     const modal = byId("modalAnalyseCompetence");
@@ -2633,27 +2649,53 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       (prioCode === "P2") ? "Élevée"  :
       "Modérée";
 
+    const score100 = clamp(Math.round(score || 0), 0, 100);
+
+    // Diagnostic "décisionnel" (même logique de lecture que le modal Poste fragile)
+    const decisionTxt =
+      (P <= 0) ? "Risque de rupture : aucun porteur au niveau requis. Sécurisation immédiate (back-up, formation, recrutement, mobilité)." :
+      (Number.isFinite(Pd) && Pd <= 0) ? "Risque immédiat : plus aucun porteur disponible aujourd’hui. Continuité d’activité + back-up prioritaire." :
+      (P === 1) ? "Dépendance forte : couverture unique. Double portage + transfert de savoir à sécuriser." :
+      (B > P) ? ("Couverture insuffisante : besoin " + String(B) + " vs " + String(P) + " porteur(s). Ajuster staffing + montée en compétences.") :
+      (score100 >= 75) ? "Fragilité élevée : sécuriser rapidement (polyvalence, formation ciblée, renfort)." :
+      (score100 >= 45) ? "Fragilité modérée : surveiller et sécuriser sur les postes les plus critiques." :
+      "Situation maîtrisée (selon périmètre).";
+
     function scoreHue(sc) {
       const s = clamp(Number(sc || 0), 0, 100) / 100;
       return Math.round(120 * (1 - s)); // vert -> rouge
     }
 
-    function scoreBar(sc) {
-      const s = clamp(Math.round(Number(sc || 0)), 0, 100);
-      const h = scoreHue(s);
-      const fill = `hsl(${h} 70% 45%)`;
+        function ring(score100) {
+      const s = clamp(Number(score100 || 0), 0, 100);
+      const pct = s;
+
+      const r = 22;
+      const C = 2 * Math.PI * r;
+      const off = C * (1 - (pct / 100));
+
+      const hue = scoreHue(pct);
 
       return `
-        <div style="display:flex; align-items:center; gap:12px;">
-          <div style="flex:1; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
-            <div style="height:100%; width:${s}%; background:${fill};"></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+          <div style="width:54px; height:54px; position:relative;">
+            <svg viewBox="0 0 64 64" width="54" height="54">
+              <circle cx="32" cy="32" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="8"></circle>
+              <circle cx="32" cy="32" r="${r}" fill="none" stroke="hsl(${hue}, 78%, 45%)" stroke-width="8"
+                      stroke-linecap="round"
+                      stroke-dasharray="${C.toFixed(1)}"
+                      stroke-dashoffset="${off.toFixed(1)}"
+                      transform="rotate(-90 32 32)"></circle>
+            </svg>
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px;">
+              ${escapeHtml(String(pct))}
+            </div>
           </div>
-          <div style="min-width:52px; text-align:right; font-weight:800;">
-            ${s}<span style="font-weight:700; font-size:12px;">%</span>
-          </div>
+          <div class="card-sub" style="margin:0;">Fragilité</div>
         </div>
       `;
     }
+
 
     function priorityPill(label, sc) {
       const s = clamp(Math.round(Number(sc || 0)), 0, 100);
@@ -2699,29 +2741,31 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(critMin)}</span>
         </div>
 
-        <!-- 1) Diagnostic -->
+        <!-- 1) Diagnostic décisionnel -->
         <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">Diagnostic</div>
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:320px;">
+              <div class="card-title" style="margin:0;">Diagnostic décisionnel</div>
+              <div class="card-sub" style="margin-top:6px;">${escapeHtml(decisionTxt)}</div>
 
-          <div class="sb-badges" style="margin-top:8px;">
-            <span class="sb-badge sb-badge-accent">Présence : ${escapeHtml(String(P) + "/" + String(B))}</span>
-            ${Number.isFinite(Pd) ? `<span class="sb-badge">Dispo auj : ${escapeHtml(String(Pd))}</span>` : ""}
-            <span class="sb-badge">Experts : ${escapeHtml(String(Pe))}</span>
-            ${Number.isFinite(Ped) ? `<span class="sb-badge">Experts dispo : ${escapeHtml(String(Ped))}</span>` : ""}
-            <span class="sb-badge">Postes impactés : ${escapeHtml(String(N))}</span>
-            <span class="sb-badge">Criticité max : ${escapeHtml(String(Cmax))}</span>
-            <span class="sb-badge">Postes ≥80 : ${escapeHtml(String(N80))}</span>
-          </div>
-
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:10px;">
-            <div style="flex:1; min-width:220px;">
-              ${scoreBar(score)}
+              <div class="card-sub" style="margin-top:10px;">
+                <b>Conditions de l’analyse :</b><br>
+                • Besoin (titulaires cible) : <b>${escapeHtml(String(B))}</b><br>
+                • Porteurs (niveau requis) : <b>${escapeHtml(String(P))}</b>${Number.isFinite(Pd) ? ` (dispo auj : <b>${escapeHtml(String(Pd))}</b>)` : ""}<br>
+                • Experts : <b>${escapeHtml(String(Pe))}</b>${Number.isFinite(Ped) ? ` (dispo auj : <b>${escapeHtml(String(Ped))}</b>)` : ""}<br>
+                • Postes impactés : <b>${escapeHtml(String(N))}</b><br>
+                • Criticité max : <b>${escapeHtml(String(Cmax))}</b> (postes ≥80 : <b>${escapeHtml(String(N80))}</b>)<br>
+                • Criticité min (périmètre) : <b>${escapeHtml(critMin)}</b>
+              </div>
             </div>
-            <div>
+
+            <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+              ${ring(score100)}
               ${priorityPill(prioLabel, score)}
             </div>
           </div>
         </div>
+
 
         <!-- 2) Causes racines -->
         <div class="card" style="padding:12px; margin-top:12px;">
@@ -2761,7 +2805,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       if (mySeq !== _compDetailReqSeq) return;
 
       const comp = data?.competence || {};
-      const title = `${(comp.code ? comp.code + " — " : "")}${comp.intitule || "Compétence"}`.trim();
+      const code = (comp.code || "").toString().trim();
+      const titleText = (comp.intitule || "").toString().trim() || "Compétence";
 
       const scope = (data?.scope?.nom_service || "").trim() || "Tous les services";
       const sub = `
@@ -2771,8 +2816,22 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </div>
       `;
 
-      openAnalyseCompetenceModal(title || "Détail compétence", sub);
+      openAnalyseCompetenceModal(titleText || "Détail compétence", sub);
+
+      // Badge code dans le titre
+      const tCode = byId("analyseCompModalTitleCode");
+      if (tCode) {
+        if (code) {
+          tCode.textContent = code;
+          tCode.style.display = "inline-flex";
+        } else {
+          tCode.textContent = "";
+          tCode.style.display = "none";
+        }
+      }
+
       renderAnalyseCompetenceDetail(data);
+
 
     } catch (e) {
       if (mySeq !== _compDetailReqSeq) return;
