@@ -2506,7 +2506,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 Détail compétence
               </span>
             </div>
-            <div class="card-sub" id="analyseCompModalSub" style="margin:0;"></div>
+            
           </div>
           <button type="button" class="modal-x" id="btnCloseAnalyseCompModal" aria-label="Fermer">×</button>
         </div>
@@ -2559,7 +2559,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const tWrap = byId("analyseCompModalTitle");
     const tCode = byId("analyseCompModalTitleCode");
     const tText = byId("analyseCompModalTitleText");
-    const s = byId("analyseCompModalSub");
     const b = byId("analyseCompModalBody");
 
     let compCode = "";
@@ -2587,11 +2586,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       }
     }
 
-    if (s) {
-      const html = (subHtml || "").trim();
-      s.innerHTML = html;
-      s.style.display = html ? "" : "none";
-    }
     if (b) {
       b.innerHTML = `<div class="card" style="padding:12px; margin:0;">
         <div class="card-sub" style="margin:0;">Chargement…</div>
@@ -2792,7 +2786,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       </div>
 
       <div class="card" style="padding:12px; margin:0;">
-
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
           <div style="flex:1; min-width:320px;">
             <div class="card-title" style="margin:0;">Diagnostic décisionnel</div>
@@ -2814,34 +2807,32 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             ${priorityPill(prioLabel, score)}
           </div>
         </div>
-        
+      </div>
 
-        <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin:0 0 4px 0;">Causes racines</div>
+      <div class="card" style="padding:12px; margin-top:12px;">
+        <div class="card-title" style="margin:0 0 4px 0;">Causes racines</div>
 
-          <div class="card-sub" style="margin:0;">Postes impactés</div>
-          ${postesHtml}
+        <div class="card-sub" style="margin:0;">Postes impactés</div>
+        ${postesHtml}
 
-          <div class="card-sub" style="margin:10px 0 0 0;">Porteurs</div>
-          ${porteursHtml}
-        </div>
+        <div class="card-sub" style="margin:10px 0 0 0;">Porteurs</div>
+        ${porteursHtml}
+      </div>
 
-        <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin:0 0 4px 0;">Leviers</div>
-          ${leversHtml}
-          <div class="card-sub" style="margin-top:8px;">
-            Leviers proposés automatiquement à partir de la couverture, de l’exposition et des indisponibilités du jour.
-          </div>
+      <div class="card" style="padding:12px; margin-top:12px;">
+        <div class="card-title" style="margin:0 0 4px 0;">Leviers</div>
+        ${leversHtml}
+        <div class="card-sub" style="margin-top:8px;">
+          Leviers proposés automatiquement à partir de la couverture, de l’exposition et des indisponibilités du jour.
         </div>
       </div>
     `;
   }
 
-
   async function showAnalyseCompetenceDetailModal(portal, id_comp_or_code, id_service) {
     const mySeq = ++_compDetailReqSeq;
 
-    openAnalyseCompetenceModal("Détail compétence", "");
+    openAnalyseCompetenceModal("Détail compétence");
 
     try {
       const data = await fetchAnalyseCompetenceDetail(portal, id_comp_or_code, id_service);
@@ -2851,20 +2842,23 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const titleCode = String(comp.code || "").trim();
       const titleText = String(comp.intitule || "Compétence").trim();
 
-      openAnalyseCompetenceModal(title || "Détail compétence", "");
+      // ✅ ICI : on passe bien {code,text} (pas de variable "title" fantôme)
+      openAnalyseCompetenceModal({ code: titleCode, text: titleText });
 
       renderAnalyseCompetenceDetail(data);
-
     } catch (e) {
       if (mySeq !== _compDetailReqSeq) return;
 
-      openAnalyseCompetenceModal(
-        "Détail compétence",
-        `<div class="card-sub" style="margin:0;">Erreur : ${escapeHtml(errMsg(e))}</div>`
-      );
+      openAnalyseCompetenceModal("Détail compétence");
+
       const host = byId("analyseCompModalBody");
       if (host) {
-        host.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Impossible de charger le détail.</div></div>`;
+        host.innerHTML = `
+          <div class="card" style="padding:12px; margin:0;">
+            <div class="card-sub" style="margin:0 0 8px 0;">Erreur : ${escapeHtml(errMsg(e))}</div>
+            <div class="card-sub" style="margin:0;">Impossible de charger le détail.</div>
+          </div>
+        `;
       }
     }
   }
