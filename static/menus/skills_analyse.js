@@ -2779,6 +2779,290 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     const badge = (txt) => `<span class="sb-badge">${escapeHtml(txt || "—")}</span>`;
 
+        // ------------------------
+    // Causes racines (accordéons) - même principe que modal Poste
+    // ------------------------
+    const Bneed = Number(B || 0);
+    const Pcov = Number(P || 0);
+    const gapStruct = Number(gap || 0);
+
+    // Stats "dispo" (si l'API les renvoie)
+    const PdRaw = Number(st.nb_porteurs_dispo);
+    const PdStat = Number.isFinite(PdRaw) ? PdRaw : null;
+
+    const EdRaw = Number(st.nb_experts_dispo);
+    const EdStat = Number.isFinite(EdRaw) ? EdRaw : null;
+
+    // Heuristique: tenter d'inférer une dispo par porteur si champs présents
+    function inferDispo(p) {
+      if (!p || typeof p !== "object") return null;
+
+      if (typeof p.disponible === "boolean") return p.disponible;
+      if (typeof p.is_disponible === "boolean") return p.is_disponible;
+      if (typeof p.is_dispo === "boolean") return p.is_dispo;
+
+      if (typeof p.indisponible === "boolean") return !p.indisponible;
+      if (typeof p.en_break === "boolean") return !p.en_break;
+
+      return null;
+    }
+
+    const hasDispoFlag = porteurs.some(p => inferDispo(p) !== null);
+    const PdList = hasDispoFlag ? porteurs.filter(p => inferDispo(p) === true).length : null;
+    const indispoList = hasDispoFlag ? porteurs.filter(p => inferDispo(p) === false) : [];
+
+    const Pd = (PdStat !== null) ? PdStat : (PdList !== null ? PdList : null);
+    const nbIndispo = (Pd !== null) ? Math.max(0, Pcov - Pd) : null;
+
+    // Niveau requis (max observé sur les postes) + niveaux porteurs
+    function rankReq(v) {
+      const s = (v ?? "").toString().trim().toUpperCase();
+      if (s === "C" || s.includes("EXPERT")) return 3;
+      if (s === "B" || s.includes("AUTONOME") || s.includes("AVANCE")) return 2;
+      if (s === "A" || s.includes("INITIAL")) return 1;
+      if (/^\d+$/.test(s)) {
+        const n = parseInt(s, 10);
+        if (n <= 1) return 1;
+        if (n === 2) return 2;
+        return 3;
+      }
+      return 0;
+    }
+
+    function rankPorteur(v) {
+      const s = (v ?? "").toString().trim().toUpperCase();
+      if (!s) return 0;
+      if (s === "C" || s.includes("EXPERT") || s.endsWith(" - C")) return 3;
+      if (s === "B" || s.includes("AUTONOME") || s.includes("AVANCE") || s.endsWith(" - B")) return 2;
+      if (s === "A" || s.includes("INITIAL") || s.endsWith(" - A")) return 1;
+      if (/^\d+$/.test(s)) {
+        const n = parseInt(s, 10);
+        if (n <= 1) return 1;
+        if (n === 2) return 2;
+        return 3;
+      }
+      return 0;
+    }
+
+    function rankToLetter(r) {
+      if (r === 3) return "C";
+      if (r === 2) return "B";
+      if (r === 1) return "A";
+      return "—";
+    }
+
+    const reqMaxRank = postes.reduce((mx, p) => Math.max(mx, rankReq(p?.niveau_requis)), 0);
+    const reqMaxLetter = rankToLetter(reqMaxRank);
+
+    const porteursA = porteurs.filter(p => rankPorteur(p?.niveau_actuel) === 1);
+    const porteursB = porteurs.filter(p => rankPorteur(p?.niveau_actuel) === 2);
+    const porteursC = porteurs.filter(p => rankPorteur(p?.niveau_actuel) === 3);
+
+    const belowReq = (reqMaxRank > 0)
+      ? porteurs.filter(p => {
+          const r = rankPorteur(p?.niveau_actuel);
+          return r > 0 && r < reqMaxRank;
+        })
+      : [];
+
+    // Postes: sans porteur / à porteur unique (preuves factuelles de la fragilité)
+    const postesSansPorteur = postes.filter(p => Number(p?.nb_porteurs || 0) <= 0);
+    const postesPorteurUnique = postes.filter(p => Number(p?.nb_porteurs || 0) === 1);
+
+    function renderPostesTable(list, emptyMsg) {
+      const rows = (Array.isArray(list) ? list : []).map((p) => `
+        <tr>
+          <td style="font-weight:700;">
+            ${escapeHtml(p.codif_poste || "—")} — ${escapeHtml(p.intitule_poste || "")}
+          </td>
+          <td>${escapeHtml(p.nom_service || "—")}</td>
+          <td style="text-align:center;">${escapeHtml(p.niveau_requis || "—")}</td>
+          <td style="text-align:center;">${escapeHtml(String(p.poids_criticite ?? ""))}</td>
+          <td style="text-align:center;"><span class="sb-badge">${escapeHtml(String(p.nb_porteurs ?? 0))}</span></td>
+        </tr>
+      `).join("");
+
+      return `
+        <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" style="margin-top:8px;">
+          <thead>
+            <tr>
+              <th>Poste</th>
+              <th>Service</th>
+              <th style="text-align:center;">Niveau requis</th>
+              <th style="text-align:center;">Criticité</th>
+              <th style="text-align:center;">Porteurs</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || `<tr><td colspan="5" class="card-sub" style="padding:12px;">${escapeHtml(emptyMsg || "—")}</td></tr>`}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderPorteursTable(list, emptyMsg) {
+      const rows = (Array.isArray(list) ? list : []).map((p) => `
+        <tr>
+          <td style="font-weight:700;">${escapeHtml((p.prenom_effectif || "") + " " + (p.nom_effectif || ""))}</td>
+          <td>${escapeHtml(p.nom_service || "—")}</td>
+          <td style="text-align:right;">${escapeHtml(mapNiveauActuelForDisplay(p.niveau_actuel))}</td>
+        </tr>
+      `).join("");
+
+      return `
+        <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" style="margin-top:8px;">
+          <thead>
+            <tr>
+              <th>Porteur</th>
+              <th>Service</th>
+              <th style="text-align:right;">Niveau actuel</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || `<tr><td colspan="3" class="card-sub" style="padding:12px;">${escapeHtml(emptyMsg || "—")}</td></tr>`}
+          </tbody>
+        </table>
+      `;
+    }
+
+    const bodySousCouverture = `
+      <div class="card-sub" style="margin:0;">
+        Besoin total : <b>${escapeHtml(String(Bneed || 0))}</b> · Porteurs (niveau requis) : <b>${escapeHtml(String(Pcov || 0))}</b>
+        · Écart : <b>${escapeHtml(String(gapStruct))}</b>
+      </div>
+      <div class="card-sub" style="margin-top:6px;">
+        ${gapStruct > 0
+          ? "La fragilité vient d’un manque de porteurs au niveau requis."
+          : "Aucun manque structurel détecté sur le volume (couverture nominale OK)."}
+      </div>
+      ${renderPostesTable(
+        postesSansPorteur.length ? postesSansPorteur : postes,
+        postesSansPorteur.length ? "Aucun poste sans porteur (dans le périmètre)." : "Aucun poste analysé (dans le périmètre / seuil)."
+      )}
+    `;
+
+    const depCount = Number(st.nb_postes_porteur_unique || postesPorteurUnique.length || 0);
+    const bodyDependance = `
+      <div class="card-sub" style="margin:0;">
+        Postes à porteur unique : <b>${escapeHtml(String(depCount || 0))}</b>
+      </div>
+      <div class="card-sub" style="margin-top:6px;">
+        La fragilité vient d’une dépendance à 1 seule personne (bus factor).
+      </div>
+      ${renderPostesTable(postesPorteurUnique, "Aucun poste à porteur unique (dans le périmètre).")}
+    `;
+
+    const bodyIndispo = `
+      ${Pd !== null ? `
+        <div class="card-sub" style="margin:0;">
+          Porteurs mobilisables aujourd’hui : <b>${escapeHtml(String(Pd))}</b> / ${escapeHtml(String(Pcov || 0))}
+          ${nbIndispo !== null ? `· Indisponibles : <b>${escapeHtml(String(nbIndispo))}</b>` : ``}
+        </div>
+        <div class="card-sub" style="margin-top:6px;">
+          La fragilité vient d’un écart entre couverture nominale et couverture mobilisable (breaks en cours).
+        </div>
+        ${hasDispoFlag ? renderPorteursTable(indispoList, "Aucun porteur indisponible (selon les infos remontées).") : `
+          <div class="card-sub" style="margin-top:8px;">
+            La liste détaillée des indisponibilités n’est pas exposée (compteurs uniquement).
+          </div>
+        `}
+      ` : `
+        <div class="card-sub" style="margin:0;">
+          Données de disponibilité non remontées sur ce détail (impossible d’objectiver l’indisponibilité).
+        </div>
+      `}
+    `;
+
+    const bodyEcartNiveau = `
+      <div class="card-sub" style="margin:0;">
+        Niveau requis max observé : <b>${escapeHtml(reqMaxLetter)}</b> · Porteurs : A=<b>${escapeHtml(String(porteursA.length))}</b>,
+        B=<b>${escapeHtml(String(porteursB.length))}</b>, C=<b>${escapeHtml(String(porteursC.length))}</b>
+      </div>
+      <div class="card-sub" style="margin-top:6px;">
+        ${belowReq.length > 0
+          ? "La fragilité vient d’un écart de maturité (porteurs en dessous du niveau requis)."
+          : "Aucun écart de niveau détecté au regard du niveau requis maximal."}
+      </div>
+      ${renderPorteursTable(belowReq, "Aucun porteur sous le niveau requis (dans le périmètre).")}
+    `;
+
+    const Eraw = Number(st.nb_experts);
+    const E = Number.isFinite(Eraw) ? Eraw : porteursC.length;
+    const Ed = (EdStat !== null) ? EdStat : (hasDispoFlag ? porteursC.filter(p => inferDispo(p) === true).length : null);
+
+    const bodyTransmission = `
+      <div class="card-sub" style="margin:0;">
+        Experts (niveau C) : <b>${escapeHtml(String(E || 0))}</b>
+        ${Ed !== null ? `· Experts mobilisables : <b>${escapeHtml(String(Ed))}</b>` : ``}
+      </div>
+      <div class="card-sub" style="margin-top:6px;">
+        ${E > 0 ? "Transmission possible, mais à sécuriser si faible redondance." : "La fragilité vient de l’absence d’expertise (transmission difficile)."}
+      </div>
+      ${renderPorteursTable(porteursC, "Aucun expert identifié (niveau C) dans le périmètre.")}
+    `;
+
+    const causesCard = `
+      <div class="card" style="padding:12px; margin-top:12px;">
+        <div class="card-title" style="margin:0 0 6px 0;">Causes racines</div>
+        <div class="card-sub" style="margin:0;">Pourquoi cette compétence est fragile (factuel, actionnable).</div>
+
+        <div class="sb-accordion" style="margin-top:10px;">
+          <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
+            <span style="display:flex; align-items:center; gap:8px;">
+              <span>Risque de sous-couverture</span>
+              ${(gapStruct > 0) ? `<span class="sb-badge">${escapeHtml(String(gapStruct))}</span>` : ``}
+            </span>
+            <span class="sb-acc-chevron">▾</span>
+          </button>
+          <div class="sb-acc-body">${bodySousCouverture}</div>
+        </div>
+
+        <div class="sb-accordion">
+          <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
+            <span style="display:flex; align-items:center; gap:8px;">
+              <span>Risque de dépendance</span>
+              ${(depCount > 0) ? `<span class="sb-badge">${escapeHtml(String(depCount))}</span>` : ``}
+            </span>
+            <span class="sb-acc-chevron">▾</span>
+          </button>
+          <div class="sb-acc-body">${bodyDependance}</div>
+        </div>
+
+        <div class="sb-accordion">
+          <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
+            <span style="display:flex; align-items:center; gap:8px;">
+              <span>Risque d’indisponibilité</span>
+              ${(nbIndispo !== null && nbIndispo > 0) ? `<span class="sb-badge">${escapeHtml(String(nbIndispo))}</span>` : ``}
+            </span>
+            <span class="sb-acc-chevron">▾</span>
+          </button>
+          <div class="sb-acc-body">${bodyIndispo}</div>
+        </div>
+
+        <div class="sb-accordion">
+          <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
+            <span style="display:flex; align-items:center; gap:8px;">
+              <span>Risque d’écart de niveau</span>
+              ${(belowReq.length > 0) ? `<span class="sb-badge">${escapeHtml(String(belowReq.length))}</span>` : ``}
+            </span>
+            <span class="sb-acc-chevron">▾</span>
+          </button>
+          <div class="sb-acc-body">${bodyEcartNiveau}</div>
+        </div>
+
+        <div class="sb-accordion">
+          <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
+            <span style="display:flex; align-items:center; gap:8px;">
+              <span>Risque de transmission</span>
+              ${(E <= 0) ? `<span class="sb-badge">0</span>` : ``}
+            </span>
+            <span class="sb-acc-chevron">▾</span>
+          </button>
+          <div class="sb-acc-body">${bodyTransmission}</div>
+        </div>
+      </div>
+    `;
+
     host.innerHTML = `
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 12px 0;">
         ${badge(`Service : ${scope}`)}
@@ -2809,15 +3093,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </div>
       </div>
 
-      <div class="card" style="padding:12px; margin-top:12px;">
-        <div class="card-title" style="margin:0 0 4px 0;">Causes racines</div>
+      ${causesCard}
 
-        <div class="card-sub" style="margin:0;">Postes impactés</div>
-        ${postesHtml}
-
-        <div class="card-sub" style="margin:10px 0 0 0;">Porteurs</div>
-        ${porteursHtml}
-      </div>
 
       <div class="card" style="padding:12px; margin-top:12px;">
         <div class="card-title" style="margin:0 0 4px 0;">Leviers</div>
@@ -2827,6 +3104,22 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </div>
       </div>
     `;
+
+    // Accordéons (Causes racines) - même principe que modal Poste
+    host.querySelectorAll(".sb-acc-head").forEach(btnAcc => {
+      const body = btnAcc.nextElementSibling;
+      if (body) body.style.display = btnAcc.classList.contains("is-open") ? "" : "none";
+
+      if (btnAcc.dataset.bound) return;
+      btnAcc.dataset.bound = "1";
+
+      btnAcc.addEventListener("click", () => {
+        btnAcc.classList.toggle("is-open");
+        const b = btnAcc.nextElementSibling;
+        if (b) b.style.display = btnAcc.classList.contains("is-open") ? "" : "none";
+      });
+    });
+
   }
 
   async function showAnalyseCompetenceDetailModal(portal, id_comp_or_code, id_service) {
