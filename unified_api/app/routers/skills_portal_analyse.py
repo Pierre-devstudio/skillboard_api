@@ -5139,6 +5139,7 @@ def get_risque_competence_detail(
                 SELECT
                     p.id_poste,
                     p.codif_poste,
+                    COALESCE(p.codif_client,'') AS codif_client,
                     p.intitule_poste,
                     p.id_service,
                     COALESCE(o.nom_service,'') AS nom_service,
@@ -5146,16 +5147,31 @@ def get_risque_competence_detail(
                     fpc.niveau_requis,
                     fpc.poids_criticite,
 
-                    COALESCE(pc.nb_porteurs,0)::int AS nb_porteurs
+                    COALESCE(pc.nb_porteurs,0)::int AS nb_porteurs,
+
+                    CASE
+                        WHEN prh.nb_titulaires_cible IS NOT NULL AND prh.nb_titulaires_cible::int > 0
+                            THEN prh.nb_titulaires_cible::int
+                        WHEN COALESCE(t.nb_titulaires, 0)::int > 0
+                            THEN COALESCE(t.nb_titulaires, 0)::int
+                        ELSE 1
+                    END AS besoin_poste
+
                 FROM public.tbl_fiche_poste_competence fpc
                 JOIN public.tbl_fiche_poste p
                   ON p.id_poste = fpc.id_poste
+
+                LEFT JOIN public.tbl_fiche_poste_param_rh prh
+                  ON prh.id_poste = p.id_poste
+
                 LEFT JOIN public.tbl_entreprise_organigramme o
                   ON o.id_ent = p.id_ent
                  AND o.id_service = p.id_service
                  AND o.archive = FALSE
+
                 JOIN public.tbl_competence c
                   ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+
                 LEFT JOIN (
                     SELECT
                         e.id_poste_actuel AS id_poste,
@@ -5172,6 +5188,20 @@ def get_risque_competence_detail(
                     GROUP BY e.id_poste_actuel
                 ) pc
                   ON pc.id_poste = p.id_poste
+
+                LEFT JOIN (
+                    SELECT
+                        e.id_poste_actuel AS id_poste,
+                        COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
+                    FROM public.tbl_effectif_client e
+                    WHERE e.id_ent = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.id_poste_actuel, '') <> ''
+                      AND {svc_filter_eff}
+                    GROUP BY e.id_poste_actuel
+                ) t
+                  ON t.id_poste = p.id_poste
+
                 WHERE
                     p.id_ent = %s
                     AND COALESCE(p.actif, TRUE) = TRUE
@@ -5186,13 +5216,24 @@ def get_risque_competence_detail(
                 LIMIT %s
                 """
 
+
                 params_postes: List[Any] = []
                 params_postes.extend(services_cte_params)
+
+                # pc subquery
                 params_postes.extend([id_ent, comp_id])
                 params_postes.extend(extra_eff_params)
-                params_postes.extend([id_ent])
+
+                # t subquery (titulaires)
+                params_postes.append(id_ent)
+                params_postes.extend(extra_eff_params)
+
+                # main
+                params_postes.append(id_ent)
                 params_postes.extend(extra_poste_params)
+
                 params_postes.extend([comp_id, criticite_min, limit_postes])
+
 
                 cur.execute(sql_postes, tuple(params_postes))
                 postes = cur.fetchall() or []
@@ -5240,6 +5281,68 @@ def get_risque_competence_detail(
 
                 cur.execute(sql_porteurs, tuple(params_porteurs))
                 porteurs = cur.fetchall() or []
+
+                                # --- Niveaux (pour le graphique besoin vs possédé)
+                def _niv_key(v: Any) -> str:
+                    s = (v or "").strip().upper()
+                    # normalisation minimaliste (Avancé/É etc.)
+                    s = (
+                        s.replace("É", "E").replace("È", "E").replace("Ê", "E").replace("Ë", "E")
+                         .replace("À", "A").replace("Â", "A").replace("Ä", "A")
+                         .replace("Î", "I").replace("Ï", "I")
+                         .replace("Ô", "O").replace("Ö", "O")
+                         .replace("Û", "U").replace("Ü", "U")
+                         .replace("Ç", "C")
+                    )
+
+                    if not s:
+                        return ""
+
+                    if "-" in s:
+                        last = s.split("-")[-1].strip()
+                        if last in ("A", "B", "C"):
+                            return last
+
+                    if s in ("A", "B", "C"):
+                        return s
+
+                    if "EXPERT" in s:
+                        return "C"
+                    if "AVANCE" in s:
+                        return "B"
+                    if "INITIAL" in s or "INIT" in s:
+                        return "A"
+
+                    return ""
+
+                besoin = {"A": 0, "B": 0, "C": 0}
+                for p in postes:
+                    k = _niv_key(p.get("niveau_requis"))
+                    if not k:
+                        continue
+                    try:
+                        w = int(p.get("besoin_poste") or 1)
+                    except Exception:
+                        w = 1
+                    if w < 1:
+                        w = 1
+                    besoin[k] += w
+
+                porteurs_niv = {"A": 0, "B": 0, "C": 0}
+                for r in porteurs:
+                    k = _niv_key(r.get("niveau_actuel"))
+                    if not k:
+                        continue
+                    porteurs_niv[k] += 1
+
+                porteurs_ge = {
+                    "A": porteurs_niv["A"] + porteurs_niv["B"] + porteurs_niv["C"],
+                    "B": porteurs_niv["B"] + porteurs_niv["C"],
+                    "C": porteurs_niv["C"],
+                }
+
+                niveaux = {"besoin": besoin, "porteurs": porteurs_niv, "porteurs_ge": porteurs_ge}
+
 
                 # --- Diagnostic DRH fiable (indépendant des LIMIT) + Indice/Priorité
                 other_ctes = f"""
@@ -5543,6 +5646,7 @@ def get_risque_competence_detail(
                             "couleur": comp.get("couleur"),
                         }
                     },
+                    "niveaux": niveaux,
                     "stats": {
                         "nb_postes_impactes": nb_postes,
                         "nb_porteurs": nb_porteurs,

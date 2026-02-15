@@ -852,6 +852,78 @@ textarea.sb-ctrl{
   background:#ffffff;
 }
 
+/* -------- HBar (besoin vs possédé) -------- */
+.sb-hbar{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:0;
+}
+
+.sb-hbar-row{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+}
+
+.sb-hbar-lbl{
+  width:70px;
+  font-weight:800;
+  color:#374151;
+  font-size:12px;
+  padding-top:2px;
+}
+
+.sb-hbar-bars{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.sb-hbar-bar{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.sb-hbar-tag{
+  width:60px;
+  font-size:12px;
+  color:#6b7280;
+}
+
+.sb-hbar-track{
+  flex:1;
+  height:10px;
+  background:#f3f4f6;
+  border:1px solid #e5e7eb;
+  border-radius:999px;
+  overflow:hidden;
+}
+
+.sb-hbar-fill{
+  height:100%;
+  border-radius:999px;
+}
+
+.sb-hbar-fill--req{
+  background: rgba(17,24,39,0.18);
+}
+
+.sb-hbar-fill--have{
+  background: var(--sb-comp);
+  opacity:.65;
+}
+
+.sb-hbar-val{
+  width:28px;
+  text-align:right;
+  font-weight:800;
+  font-size:12px;
+  color:#111827;
+}
+
 /* -------- Modal title line (badge + texte sur 1 ligne) -------- */
 .sb-modal-titleline{
   display:flex;
