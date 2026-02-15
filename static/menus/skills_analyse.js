@@ -2512,8 +2512,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </div>
 
 
-        <div class="modal-body" style="overflow:auto; flex:1; padding:14px 16px;">
-          <div class="card-sub" id="analyseCompModalSub" style="margin-top:0;"></div>
+        <div class="modal-body" style="overflow:auto; flex:1; padding:14px 16px;">          
           <div id="analyseCompModalBody" style="margin-top:12px;">
             <div class="card" style="padding:12px; margin:0;">
               <div class="card-sub" style="margin:0;">Chargement…</div>
@@ -2588,7 +2587,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       }
     }
 
-    if (s) s.innerHTML = subHtml || "";
+    if (s) {
+      const html = (subHtml || "").trim();
+      s.innerHTML = html;
+      s.style.display = html ? "" : "none";
+    }
     if (b) {
       b.innerHTML = `<div class="card" style="padding:12px; margin:0;">
         <div class="card-sub" style="margin:0;">Chargement…</div>
@@ -2783,35 +2786,35 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const badge = (txt) => `<span class="sb-badge">${escapeHtml(txt || "—")}</span>`;
 
     host.innerHTML = `
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 12px 0;">
+        ${badge(`Service : ${scope}`)}
+        ${badge(`Criticité min: ${critMin}`)}
+      </div>
+
       <div class="card" style="padding:12px; margin:0;">
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          ${badge(`Service : ${scope}`)}
-          ${badge(`Criticité min: ${critMin}`)}
-        </div>
 
-        <div class="card" style="padding:12px; margin-top:12px;">
-          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
-            <div style="flex:1; min-width:320px;">
-              <div class="card-title" style="margin:0;">Diagnostic décisionnel</div>
-              <div class="card-sub" style="margin-top:6px;">&nbsp;</div>
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:320px;">
+            <div class="card-title" style="margin:0;">Diagnostic décisionnel</div>
+            <div class="card-sub" style="margin-top:6px;">&nbsp;</div>
 
-              <div class="card-sub" style="margin-top:10px;">
-                <b>Conditions de l’analyse :</b><br>
-                • Périmètre analysé : <b>${escapeHtml(scope)}</b> (service + sous-services).<br>
-                • Criticité minimum des compétences analysées : <b>${escapeHtml(String(critMin))}</b>.<br>
-                • Postes pris en compte : postes <b>actifs</b> avec <b>poids_criticite ≥ seuil</b>.<br>
-                • Porteurs pris en compte : effectifs <b>non archivés</b> avec compétence <b>active</b>, même périmètre.<br>
-                • Indisponibilités : breaks en cours (date_debut ≤ aujourd’hui ≤ date_fin).<br>
-                • Besoin "titulaires cible" : nb_titulaires_cible si renseigné, sinon nb_titulaires constatés, sinon 1.
-              </div>
-            </div>
-
-            <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-              ${ring(score)}
-              ${priorityPill(prioLabel, score)}
+            <div class="card-sub" style="margin-top:10px;">
+              <b>Conditions de l’analyse :</b><br>
+              • Périmètre analysé : <b>${escapeHtml(scope)}</b> (service + sous-services).<br>
+              • Criticité minimum des compétences analysées : <b>${escapeHtml(String(critMin))}</b>.<br>
+              • Postes pris en compte : postes <b>actifs</b> avec <b>poids_criticite ≥ seuil</b>.<br>
+              • Porteurs pris en compte : effectifs <b>non archivés</b> avec compétence <b>active</b>, même périmètre.<br>
+              • Indisponibilités : breaks en cours (date_debut ≤ aujourd’hui ≤ date_fin).<br>
+              • Besoin "titulaires cible" : nb_titulaires_cible si renseigné, sinon nb_titulaires constatés, sinon 1.
             </div>
           </div>
+
+          <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+            ${ring(score)}
+            ${priorityPill(prioLabel, score)}
+          </div>
         </div>
+        
 
         <div class="card" style="padding:12px; margin-top:12px;">
           <div class="card-title" style="margin:0 0 4px 0;">Causes racines</div>
@@ -2838,12 +2841,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   async function showAnalyseCompetenceDetailModal(portal, id_comp_or_code, id_service) {
     const mySeq = ++_compDetailReqSeq;
 
-    openAnalyseCompetenceModal(
-      "Détail compétence",
-      `<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-         <span class="sb-badge sb-badge-accent">Chargement</span>
-       </div>`
-    );
+    openAnalyseCompetenceModal("Détail compétence", "");
 
     try {
       const data = await fetchAnalyseCompetenceDetail(portal, id_comp_or_code, id_service);
@@ -2853,15 +2851,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const titleCode = String(comp.code || "").trim();
       const titleText = String(comp.intitule || "Compétence").trim();
 
-      const scope = (data?.scope?.nom_service || "").trim() || "Tous les services";
-      const sub = `
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
-          <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(String(data?.criticite_min ?? getCriticiteMin() ?? "—"))}</span>
-        </div>
-      `;
+      openAnalyseCompetenceModal(title || "Détail compétence", "");
 
-      openAnalyseCompetenceModal({ code: titleCode, text: titleText }, sub);
       renderAnalyseCompetenceDetail(data);
 
     } catch (e) {
