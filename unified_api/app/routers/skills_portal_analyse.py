@@ -5149,20 +5149,11 @@ def get_risque_competence_detail(
 
                     COALESCE(pc.nb_porteurs,0)::int AS nb_porteurs,
 
-                    CASE
-                        WHEN prh.nb_titulaires_cible IS NOT NULL AND prh.nb_titulaires_cible::int > 0
-                            THEN prh.nb_titulaires_cible::int
-                        WHEN COALESCE(t.nb_titulaires, 0)::int > 0
-                            THEN COALESCE(t.nb_titulaires, 0)::int
-                        ELSE 1
-                    END AS besoin_poste
+                    1::int AS besoin_poste
 
                 FROM public.tbl_fiche_poste_competence fpc
                 JOIN public.tbl_fiche_poste p
                   ON p.id_poste = fpc.id_poste
-
-                LEFT JOIN public.tbl_fiche_poste_param_rh prh
-                  ON prh.id_poste = p.id_poste
 
                 LEFT JOIN public.tbl_entreprise_organigramme o
                   ON o.id_ent = p.id_ent
@@ -5189,19 +5180,6 @@ def get_risque_competence_detail(
                 ) pc
                   ON pc.id_poste = p.id_poste
 
-                LEFT JOIN (
-                    SELECT
-                        e.id_poste_actuel AS id_poste,
-                        COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
-                    FROM public.tbl_effectif_client e
-                    WHERE e.id_ent = %s
-                      AND COALESCE(e.archive, FALSE) = FALSE
-                      AND COALESCE(e.id_poste_actuel, '') <> ''
-                      AND {svc_filter_eff}
-                    GROUP BY e.id_poste_actuel
-                ) t
-                  ON t.id_poste = p.id_poste
-
                 WHERE
                     p.id_ent = %s
                     AND COALESCE(p.actif, TRUE) = TRUE
@@ -5215,25 +5193,13 @@ def get_risque_competence_detail(
                     p.intitule_poste
                 LIMIT %s
                 """
-
-
                 params_postes: List[Any] = []
                 params_postes.extend(services_cte_params)
-
-                # pc subquery
                 params_postes.extend([id_ent, comp_id])
                 params_postes.extend(extra_eff_params)
-
-                # t subquery (titulaires)
-                params_postes.append(id_ent)
-                params_postes.extend(extra_eff_params)
-
-                # main
-                params_postes.append(id_ent)
+                params_postes.extend([id_ent])
                 params_postes.extend(extra_poste_params)
-
                 params_postes.extend([comp_id, criticite_min, limit_postes])
-
 
                 cur.execute(sql_postes, tuple(params_postes))
                 postes = cur.fetchall() or []
