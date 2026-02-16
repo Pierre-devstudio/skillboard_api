@@ -2659,7 +2659,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       return `<span class="sb-badge sb-badge-niv ${cls}" title="Niveau requis">${label}</span>`;
     };
-    
+
     const critBadgeHtml = (v) => {
       const n = Number(v);
       const val = Number.isFinite(n) ? clamp(n, 0, 100) : 0;
@@ -2798,6 +2798,44 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       Math.max(0, (need.B - haveGe.B)) +
       Math.max(0, (need.C - haveGe.C));
 
+        // -------- Risque de dépendance : apparition + texte (comparaison porteurs vs besoin) --------
+    const depFmt = (n) => (typeof _fmtCnt === "function" ? _fmtCnt(n) : String(n ?? 0));
+    const depLabel = (k) => (k === "A" ? "Initial" : k === "B" ? "Avancé" : k === "C" ? "Expert" : "");
+
+    // On prend le niveau "le plus contraint" (buffer le plus faible) parmi ceux réellement requis.
+    // haveGe[k] = porteurs au niveau k ou supérieur ; need[k] = besoin au niveau k.
+    const depCandidates = ["C", "B", "A"]
+      .filter((k) => Number(need[k] || 0) > 0)
+      .map((k) => {
+        const req = Number(need[k] || 0) || 0;
+        const haveOk = Number(haveGe[k] || 0) || 0;
+        const buffer = haveOk - req;
+        return { k, req, haveOk, buffer };
+      });
+
+    depCandidates.sort((a, b) => (a.buffer - b.buffer) || (nivRank(b.k) - nivRank(a.k)));
+    const depPick = depCandidates[0] || null;
+
+    const depReq = depPick ? depPick.req : 0;
+    const depHaveOk = depPick ? depPick.haveOk : 0;
+    const depLvl = depPick ? depPick.k : "";
+    const depLvlLabel = depLabel(depLvl);
+
+    // Règle: afficher uniquement si la perte d’1 porteur crée un déficit (X - 1 < N => X <= N)
+    const showDepend = !!(depPick && depReq > 0 && depHaveOk <= depReq);
+
+    const dependanceText = (() => {
+      if (!depPick || depReq <= 0) return "";
+
+      const plural = depHaveOk > 1 ? "s" : "";
+      const base = `Cette compétence est couverte par <b>${esc(depFmt(depHaveOk))}</b> porteur${plural} (niveau <b>${esc(depLvlLabel)}</b>+) pour un besoin de <b>${esc(depFmt(depReq))}</b>.`;
+
+      if (depHaveOk <= 0) return `${base} Aucun porteur identifié: la compétence n’est pas détenue dans le périmètre.`;
+      if (depHaveOk === 1) return `${base} Si cette personne n’est plus disponible, la compétence devient indisponible.`;
+      return `${base} Si 1 porteur n’est plus disponible, la compétence devient sous-couverte.`;
+    })();
+
+
     // -------- table postes impactés (format demandé) --------
     const postesSorted = [...postes].sort((a, b) => (Number(b?.poids_criticite) || 0) - (Number(a?.poids_criticite) || 0));
 
@@ -2862,7 +2900,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     `;
 
     // Les autres accordéons (structure gardée, contenu minimal factuel)
-    const accDepend = `
+    const accDepend = showDepend ? `
       <div class="sb-acc">
         <button type="button" class="sb-btn sb-btn--soft sb-acc-head" data-target="acc_comp_dep">
           <span style="display:flex;align-items:center;gap:10px;">
@@ -2872,11 +2910,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </button>
         <div class="sb-acc-body" id="acc_comp_dep" style="display:none;">
           <div class="card-sub" style="margin:0;">
-            Porteurs identifiés : <b>${esc(String(stats?.nb_porteurs ?? porteurs.length))}</b>.
+            ${dependanceText}
           </div>
         </div>
       </div>
-    `;
+    ` : ``;
+
 
     const accIndispo = `
       <div class="sb-acc">
