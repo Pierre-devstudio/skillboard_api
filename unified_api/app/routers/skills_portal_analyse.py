@@ -2767,7 +2767,7 @@ def get_analyse_risques_detail(
                             e.id_poste_actuel AS id_poste,
                             COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
                         FROM public.tbl_effectif_client e
-                        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                        JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
                         WHERE COALESCE(e.archive, FALSE) = FALSE
                           AND COALESCE(e.id_poste_actuel, '') <> ''
                         GROUP BY e.id_poste_actuel
@@ -2857,7 +2857,7 @@ def get_analyse_risques_detail(
                         FROM req_crit rc
                         JOIN poste_info pi ON pi.id_poste = rc.id_poste
                         JOIN public.tbl_effectif_client_competence ec ON ec.id_comp = rc.id_comp
-                        JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
+                        JOIN effectifs_dispo ed ON ed.id_effectif = ec.id_effectif_client
                         JOIN public.tbl_effectif_client e ON e.id_effectif = ec.id_effectif_client
                         WHERE COALESCE(ec.archive, FALSE) = FALSE
                           AND COALESCE(ec.actif, TRUE) = TRUE
