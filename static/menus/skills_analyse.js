@@ -2661,40 +2661,60 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return `<span class="sb-crit-badge ${lvl}">${esc(String(val))}</span>`;
     };
 
-    // -------- ring (plus gros + % à côté du score, dans le ring) --------
-    const ring = (val) => {
-      const pct = clamp(Number(val) || 0, 0, 100);
-      const size = 98;
-      const inner = 74;
-      const thickness = (size - inner) / 2;
+    // -------- ring + priorité (standard : même rendu que modal poste fragile) --------
+    function scoreHue(score100) {
+      const x = clamp(Number(score100 || 0), 0, 100) / 100;
+      return Math.round(120 * (1 - x)); // 120=vert -> 0=rouge
+    }
+
+    const ring = (score100) => {
+      const s = clamp(Math.round(Number(score100 || 0)), 0, 100);
+      const size = 104;
+      const stroke = 10;
+      const r = (size - stroke) / 2;
+      const c = 2 * Math.PI * r;
+      const offset = c * (1 - s / 100);
+      const hue = scoreHue(s);
+      const fill = `hsl(${hue} 70% 45%)`;
 
       return `
-        <div style="
-          width:${size}px;height:${size}px;border-radius:999px;
-          background: conic-gradient(#d29a2a ${pct}%, #e5e7eb 0);
-          display:flex;align-items:center;justify-content:center;">
-          <div style="
-            width:${inner}px;height:${inner}px;border-radius:999px;background:#fff;
-            display:flex;align-items:center;justify-content:center;
-            border:1px solid #e5e7eb;
-            box-shadow: inset 0 0 0 ${thickness}px rgba(255,255,255,0);">
-            <div style="display:flex;align-items:baseline;gap:2px;font-weight:800;color:#111827;line-height:1;">
-              <span style="font-size:20px;">${esc(String(pct))}</span>
-              <span style="font-size:12px;font-weight:800;">%</span>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+          <div style="position:relative; width:${size}px; height:${size}px;">
+            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;">
+              <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
+              <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
+                      stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
+                      transform="rotate(-90 ${size / 2} ${size / 2})" />
+            </svg>
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+              <div style="font-weight:900; font-size:28px; line-height:1;">
+                ${s}<span style="font-size:12px; font-weight:800;">%</span>
+              </div>
             </div>
           </div>
+          <div class="card-sub" style="margin:0;">Fragilité</div>
         </div>
       `;
     };
 
-    // -------- priorité (badge sous le ring) --------
+    // 3 niveaux UNIQUEMENT : Modérée / Élevée / Critique
     const prioLabel = scoreSafe >= 75 ? "Critique" : scoreSafe >= 50 ? "Élevée" : "Modérée";
-    const prioCls   = scoreSafe >= 75 ? "sb-badge--danger" : scoreSafe >= 50 ? "sb-badge--warning" : "sb-badge--success";
 
-    const priorityPill = (label) => `
-      <div style="font-size:12px;color:#6b7280;font-weight:700;">Fragilité</div>
-      <span class="sb-badge ${prioCls}">${esc(label)}</span>
-    `;
+    const priorityPill = (label, score100) => {
+      const hue = scoreHue(score100);
+      const border = `hsl(${hue} 70% 45% / 0.55)`;
+      const bg = `hsl(${hue} 70% 45% / 0.12)`;
+      const fg = `hsl(${hue} 70% 25%)`;
+
+      return `
+        <span style="
+          display:inline-flex; align-items:center; justify-content:center;
+          padding:4px 10px; border-radius:999px; border:1px solid ${border};
+          background:${bg}; color:${fg}; font-weight:900; font-size:12px; white-space:nowrap;">
+          ${esc(label || "—")}
+        </span>
+      `;
+    };
 
     // -------- données sous-couverture (besoin vs porteurs >= niveau) --------
     const need = { A: 0, B: 0, C: 0 };
@@ -2910,7 +2930,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
           <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
             ${ring(scoreSafe)}
-            ${priorityPill(prioLabel)}
+            ${priorityPill(prioLabel, scoreSafe)}
           </div>
         </div>
       </div>
