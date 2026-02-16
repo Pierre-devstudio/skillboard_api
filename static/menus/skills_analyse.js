@@ -4168,13 +4168,13 @@ function renderDetail(mode) {
 
                   <td class="col-center" title="${escapeHtml(prio)}">${priorityPill(prioLabel, score)}</td>
 
-                  <td class="col-center">
+                  <td class="col-center risk-comp-open" style="cursor:pointer;">
                     <button type="button"
                             class="btn-secondary risk-comp-open"
                             style="padding:6px 10px; font-size:12px; line-height:1;">
                       Voir détail
                     </button>
-                  </td>
+                  </td
                 </tr>
               `;
             }).join("")}
