@@ -2969,7 +2969,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const plural = n > 1 ? "s" : "";
       const finTxt = indFinMax ? formatDateFr(indFinMax) : "—";
       const finSuffix = n > 1 ? ` (au plus tard)` : ``;
-      return `Cette compétence est indisponible chez <b>${esc(String(n))}</b> porteur${plural} aujourd’hui, jusqu’au <b>${esc(finTxt)}</b>${finSuffix}.`;
+      return `Cette compétence est indisponible chez <b>${esc(String(n))}</b> personne${plural} aujourd’hui, jusqu’au <b>${esc(finTxt)}</b>${finSuffix}.`;
     })();
 
     const indRows = indispos
