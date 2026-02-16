@@ -5131,8 +5131,12 @@ function bindOnce(portal) {
   // Click délégué global (survit aux rerender)
   // ==============================
   const analyseBody = byId("analyseDetailBody");
-  if (!analyseBody) return;
-    
+  if (!analyseBody) {
+    // si la vue n’est pas encore montée, on ne fige pas le bind
+    _bound = false;
+    return;
+  }
+
   analyseBody.addEventListener("click", async (ev) => {
     // ------------------------------
     // Tooltip "i" (Indice de fragilité) : portail hors table
@@ -5209,7 +5213,12 @@ function bindOnce(portal) {
       const compKey = (trComp.getAttribute("data-comp-key") || "").trim();
       if (!compKey) return;
 
-      showAnalyseCompetenceDetailModal(p, compKey, id_service);
+      try {
+        await showAnalyseCompetenceDetailModal(p, compKey, id_service);
+      } catch (e) {
+        if (typeof showToast === "function") showToast("Erreur ouverture détail compétence.", "error");
+        else console.error(e);
+      }
       return;
     }
 
