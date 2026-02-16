@@ -671,9 +671,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   const nivBadgeHtml = (niv) => {
     const k = String(niv || "").trim().toUpperCase();
-    if (k === "A") return `<span class="sb-badge sb-badge-niv sb-badge-niv-a">A</span>`;
-    if (k === "B") return `<span class="sb-badge sb-badge-niv sb-badge-niv-b">B</span>`;
-    if (k === "C") return `<span class="sb-badge sb-badge-niv sb-badge-niv-c">C</span>`;
+    if (k === "A") return `<span class="sb-badge sb-badge-niv sb-badge-niv-a">Initial</span>`;
+    if (k === "B") return `<span class="sb-badge sb-badge-niv sb-badge-niv-b">Avancé</span>`;
+    if (k === "C") return `<span class="sb-badge sb-badge-niv sb-badge-niv-c">Expert</span>`;
     return `<span class="sb-badge">${escapeHtml(k || "—")}</span>`;
   };
 
@@ -2804,8 +2804,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <td style="white-space:nowrap;">
             <span class="sb-badge sb-badge-ref-poste-code">${esc(code || "—")}</span>
           </td>
-          <td style="font-weight:700;">${esc(p?.intitule_poste || "")}</td>
-          <td>${esc(p?.nom_service || "")}</td>
+          <td class="sb-fs-13 sb-fw-700">${esc(p?.intitule_poste || "")}</td>
+          <td class="sb-fs-13">${esc(p?.nom_service || "")}</td>
           <td style="text-align:center;">${nivBadgeHtml(p?.niveau_requis)}</td>
           <td style="text-align:center;">${critBadgeHtml(p?.poids_criticite)}</td>
         </tr>
@@ -2835,7 +2835,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
 
           <div style="margin-top:12px;">
-            <div class="card-sub" style="margin:0 0 8px 0;">Postes impactés</div>
+            <div class="sb-block-title">Postes impactés</div>
             <table class="sb-table" style="margin:0;">
               <thead>
                 <tr>

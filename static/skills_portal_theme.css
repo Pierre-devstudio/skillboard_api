@@ -118,6 +118,9 @@
 .sb-muted{ color: var(--sb-gray-500); }
 .sb-nowrap{ white-space: nowrap; }
 .sb-ellipsis{ white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width:0; }
+.sb-block-title{ margin:0 0 8px 0; font-size: var(--sb-fs-14); font-weight:800; color: var(--sb-gray-900); }
+.sb-fs-13{ font-size: var(--sb-fs-13); }
+.sb-fw-700{ font-weight:700; }
 .col-center{ text-align:center !important; }
 .sb-disabled{
   opacity: 0.55;
