@@ -2495,45 +2495,60 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     let modal = byId("modalAnalyseCompetence");
     if (modal) return modal;
 
-    modal = document.createElement("div");
-    modal.id = "modalAnalyseCompetence";
-    modal.className = "sb-modal-overlay";
-    
-
-    modal.innerHTML = `
-      <div class="sb-modal">
-        <div class="sb-modal-header">
-          <div class="sb-modal-titleline sb-ref-titleline" id="analyseCompModalTitleLine">
-            <span class="sb-badge sb-badge-ref-comp-code" id="analyseCompModalTitleCode">—</span>
-            <span class="sb-title-text sb-ref-title-text" id="analyseCompModalTitleText">Détail compétence</span>
+    const html = `
+      <div class="modal" id="modalAnalyseCompetence" aria-hidden="true">
+        <div class="modal-card" style="max-width:1120px; width:min(1120px, 96vw); max-height:92vh; display:flex; flex-direction:column;">
+          <div class="modal-header">
+            <div id="analyseCompModalTitleLine" class="modal-title" style="display:flex; gap:8px; align-items:center; min-width:0;">
+              <span class="sb-badge sb-badge-ref-comp-code" id="analyseCompModalTitleCode" style="display:none;"></span>
+              <span id="analyseCompModalTitleText" style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                Détail compétence
+              </span>
+            </div>
+            <button type="button" class="modal-x" id="analyseCompModalCloseBtn" aria-label="Fermer">×</button>
           </div>
-          <button type="button" class="sb-modal-close" id="analyseCompModalCloseBtn" aria-label="Fermer">×</button>
-        </div>
 
-        <div class="sb-modal-body">
-          <!-- Sub = badges Service/Criticité : ICI (dans le body), pas sous le titre -->
-          <div class="card-sub" id="analyseCompModalSub" style="margin-top:0;"></div>
-          <div id="analyseCompModalBody"></div>
-        </div>
+          <div class="modal-body" style="overflow:auto; flex:1; padding:14px 16px;">
+            <div class="card-sub" id="analyseCompModalSub" style="margin-top:0;"></div>
+            <div id="analyseCompModalBody" style="margin-top:12px;"></div>
+          </div>
 
-        <div class="sb-modal-footer">
-          <button type="button" class="sb-btn" id="analyseCompModalCloseBtn2">Fermer</button>
+          <div class="modal-footer">
+            <button type="button" class="sb-btn sb-btn--soft" id="analyseCompModalCloseBtn2">Fermer</button>
+          </div>
         </div>
       </div>
     `;
 
-    document.body.appendChild(modal);
+    document.body.insertAdjacentHTML("beforeend", html);
+    modal = byId("modalAnalyseCompetence");
 
-    const btn1 = byId("analyseCompModalCloseBtn");
-    const btn2 = byId("analyseCompModalCloseBtn2");
-    if (btn1) btn1.addEventListener("click", closeAnalyseCompetenceModal);
-    if (btn2) btn2.addEventListener("click", closeAnalyseCompetenceModal);
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) closeAnalyseCompetenceModal();
-    });
+    if (modal && modal.getAttribute("data-bound") !== "1") {
+      modal.setAttribute("data-bound", "1");
+
+      const btn1 = byId("analyseCompModalCloseBtn");
+      const btn2 = byId("analyseCompModalCloseBtn2");
+
+      if (btn1) btn1.addEventListener("click", closeAnalyseCompetenceModal);
+      if (btn2) btn2.addEventListener("click", closeAnalyseCompetenceModal);
+
+      // clic fond
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeAnalyseCompetenceModal();
+      });
+
+      // ESC
+      document.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape") return;
+        const m = byId("modalAnalyseCompetence");
+        if (m && m.classList.contains("show")) closeAnalyseCompetenceModal();
+      });
+    }
 
     return modal;
   }
+
+
 
 
   function openAnalyseCompetenceModal(title, subHtml) {
