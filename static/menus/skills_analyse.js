@@ -2745,29 +2745,47 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       haveGe.C = have.C;
     }
 
-    const maxBar = Math.max(1, need.A, need.B, need.C, haveGe.A, haveGe.B, haveGe.C);
+    const _fmtCnt = (n) => {
+      const x = Number(n);
+      if (!Number.isFinite(x)) return "0";
+      if (Number.isInteger(x)) return String(x);
+      // 1 décimale max, sans trailing .0
+      return String(Math.round(x * 10) / 10).replace(/\.0$/, "");
+    };
 
-    const hbarRow = (label, reqVal, gotVal) => {
-      const wReq = Math.round((clamp(reqVal, 0, maxBar) / maxBar) * 100);
-      const wGot = Math.round((clamp(gotVal, 0, maxBar) / maxBar) * 100);
+    const _coverState = (reqVal, gotVal) => {
+      const r = Number(reqVal) || 0;
+      const g = Number(gotVal) || 0;
+      const d = g - r;
+      if (d >= 0) return "ok";
+      if (d <= -2) return "bad";
+      return "warn"; // -1 (ou déficit léger)
+    };
+
+    const coverRow = (label, reqVal, gotVal) => {
+      const r = Math.max(0, Number(reqVal) || 0);
+      const g = Math.max(0, Number(gotVal) || 0);
+
+      // besoin = échelle : barre fixe, fill = possédé / requis
+      const ratio = r > 0 ? Math.min(g / r, 1) : 1; // requis=0 => plein
+      const wGot = Math.round(clamp(ratio, 0, 1) * 100);
+
+      // couleurs selon écart
+      const state = _coverState(r, g);
+      const fillCls = state === "ok" ? "is-ok" : state === "bad" ? "is-bad" : "is-warn";
+      const badgeCls = state === "ok" ? "sb-badge--success" : state === "bad" ? "sb-badge--danger" : "sb-badge--warning";
+
       return `
-        <div class="sb-hbar-row">
-          <div class="sb-hbar-lbl">${esc(label)}</div>
-          <div class="sb-hbar-bars">
-            <div class="sb-hbar-bar">
-              <div class="sb-hbar-tag">Requis</div>
-              <div class="sb-hbar-track"><div class="sb-hbar-fill sb-hbar-fill--req" style="width:${wReq}%"></div></div>
-              <div class="sb-hbar-val">${esc(String(reqVal))}</div>
-            </div>
-            <div class="sb-hbar-bar">
-              <div class="sb-hbar-tag">Possédé</div>
-              <div class="sb-hbar-track"><div class="sb-hbar-fill sb-hbar-fill--have" style="width:${wGot}%"></div></div>
-              <div class="sb-hbar-val">${esc(String(gotVal))}</div>
-            </div>
+        <div class="sb-coverbar-row">
+          <div class="sb-coverbar-lbl">${esc(label)}</div>
+          <div class="sb-coverbar-track">
+            <div class="sb-coverbar-fill ${fillCls}" style="width:${wGot}%"></div>
           </div>
+          <span class="sb-badge ${badgeCls} sb-coverbar-badge">${esc(_fmtCnt(g))}/${esc(_fmtCnt(r))}</span>
         </div>
       `;
     };
+
 
     const gapTotal =
       Math.max(0, (need.A - haveGe.A)) +
@@ -2806,17 +2824,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </button>
         <div class="sb-acc-body" id="acc_comp_sous" style="display:block;">
           <div style="display:flex; gap:16px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap;">
-            <div style="flex:1; min-width:280px;">
-              <div class="card-sub" style="margin:0;">
-                La fragilité vient d’un manque de porteurs au niveau requis.
-              </div>
-            </div>
 
             <div style="width:min(460px,100%);">
-              <div class="sb-hbar">
-                ${hbarRow("Initial", need.A, haveGe.A)}
-                ${hbarRow("Avancé", need.B, haveGe.B)}
-                ${hbarRow("Expert", need.C, haveGe.C)}
+              <div class="sb-coverbar">
+                ${coverRow("Initial", need.A, haveGe.A)}
+                ${coverRow("Avancé", need.B, haveGe.B)}
+                ${coverRow("Expert", need.C, haveGe.C)}
               </div>
             </div>
           </div>

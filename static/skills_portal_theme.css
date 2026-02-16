@@ -924,6 +924,52 @@ textarea.sb-ctrl{
   color:#111827;
 }
 
+/* -------- Coverage bar (possédé / requis) -------- */
+.sb-coverbar{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:0;
+}
+
+.sb-coverbar-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.sb-coverbar-lbl{
+  width:70px;
+  font-weight:800;
+  color:#374151;
+  font-size:12px;
+}
+
+.sb-coverbar-track{
+  flex:1;
+  height:12px;
+  background: var(--sb-gray-100);
+  border:1px solid var(--sb-gray-200);
+  border-radius:999px;
+  overflow:hidden;
+}
+
+.sb-coverbar-fill{
+  height:100%;
+  border-radius:999px;
+}
+
+.sb-coverbar-fill.is-ok{   background: var(--sb-success); }
+.sb-coverbar-fill.is-warn{ background: var(--sb-warning); }
+.sb-coverbar-fill.is-bad{  background: var(--sb-danger); }
+
+.sb-coverbar-badge{
+  min-width:56px;
+  justify-content:center;
+  text-align:center;
+}
+
+
 /* -------- Modal title line (badge + texte sur 1 ligne) -------- */
 .sb-modal-titleline{
   display:flex;
