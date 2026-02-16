@@ -2917,7 +2917,78 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     ` : ``;
 
 
-    const accIndispo = `
+    // -------- Risque d’indisponibilité (simple + conditionnel) --------
+    const isIndispo = (r) =>
+      !!(r && (r.is_indispo === true || r.is_indispo === 1 || r.is_indispo === "t" || r.date_fin_indispo));
+
+    const indispos = porteurs.filter(isIndispo);
+
+    // Couverture "disponible" par niveau (on retire les indispos du jour)
+    const haveAvail = { A: 0, B: 0, C: 0 };
+    porteurs.forEach((r) => {
+      if (isIndispo(r)) return;
+      const k = nivKey(r?.niveau_actuel);
+      if (!k) return;
+      haveAvail[k] += 1;
+    });
+    const haveAvailGe = {
+      A: haveAvail.A + haveAvail.B + haveAvail.C,
+      B: haveAvail.B + haveAvail.C,
+      C: haveAvail.C,
+    };
+
+    // Niveau le plus contraint réellement requis
+    const indCandidates = ["C", "B", "A"]
+      .filter((k) => Number(need?.[k] || 0) > 0)
+      .map((k) => {
+        const req = Number(need[k] || 0) || 0;
+        const haveOk = Number(haveAvailGe[k] || 0) || 0;
+        const gap = haveOk - req;
+        return { k, req, haveOk, gap };
+      });
+
+    indCandidates.sort((a, b) => (a.gap - b.gap) || (nivRank(b.k) - nivRank(a.k)));
+    const indPick = indCandidates[0] || null;
+    const gapAfter = indPick ? indPick.gap : 999;
+
+    // Afficher uniquement si risque réel lié aux indispos
+    const showIndispo = indispos.length > 0 && indPick && gapAfter <= 0;
+
+    const indRiskLabel = gapAfter <= -2 ? "Critique" : gapAfter === -1 ? "Élevée" : "Modérée";
+    const indRiskCls = gapAfter <= -2 ? "sb-badge--danger" : gapAfter === -1 ? "sb-badge--warning" : "sb-badge--success";
+
+    const indFinMax = indispos.reduce((acc, r) => {
+      const s = (r?.date_fin_indispo || "").toString().trim();
+      if (!s) return acc;
+      if (!acc) return s;
+      return s > acc ? s : acc; // YYYY-MM-DD compare OK
+    }, "");
+
+    const indPhrase = (() => {
+      const n = indispos.length;
+      const plural = n > 1 ? "s" : "";
+      const finTxt = indFinMax ? formatDateFr(indFinMax) : "—";
+      const finSuffix = n > 1 ? ` (au plus tard)` : ``;
+      return `Cette compétence est indisponible chez <b>${esc(String(n))}</b> porteur${plural} aujourd’hui, jusqu’au <b>${esc(finTxt)}</b>${finSuffix}.`;
+    })();
+
+    const indRows = indispos
+      .slice()
+      .sort((a, b) => String(a?.date_fin_indispo || "").localeCompare(String(b?.date_fin_indispo || "")))
+      .map((r) => {
+        const name = `${(r?.prenom_effectif || "").toString().trim()} ${(r?.nom_effectif || "").toString().trim()}`.trim() || "—";
+        const fin = formatDateFr((r?.date_fin_indispo || "").toString());
+        return `
+          <tr>
+            <td>${esc(name)}</td>
+            <td style="text-align:center;">${nivBadgeHtml(r?.niveau_actuel)}</td>
+            <td style="text-align:center;">${esc(fin)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const accIndispo = showIndispo ? `
       <div class="sb-acc">
         <button type="button" class="sb-btn sb-btn--soft sb-acc-head" data-target="acc_comp_ind">
           <span style="display:flex;align-items:center;gap:10px;">
@@ -2926,12 +2997,31 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <span class="sb-acc-chevron">▾</span>
         </button>
         <div class="sb-acc-body" id="acc_comp_ind" style="display:none;">
-          <div class="card-sub" style="margin:0;">
-            Porteurs disponibles aujourd’hui : <b>${esc(String(stats?.nb_porteurs_dispo ?? "—"))}</b>.
+          <div class="card-sub" style="margin:0 0 8px 0;">
+            ${indPhrase}
           </div>
+
+          <div style="display:flex;align-items:center;gap:10px;margin:0 0 10px 0;">
+            <div class="card-sub" style="margin:0;">Risque</div>
+            <span class="sb-badge ${indRiskCls}">${esc(indRiskLabel)}</span>
+          </div>
+
+          <table class="sb-table" style="margin:0;">
+            <thead>
+              <tr>
+                <th>Porteur</th>
+                <th style="width:130px; text-align:center;">Niveau</th>
+                <th style="width:140px; text-align:center;">Fin</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${indRows || `<tr><td colspan="3" style="text-align:center; opacity:.75;">Aucune indisponibilité active</td></tr>`}
+            </tbody>
+          </table>
         </div>
       </div>
-    `;
+    ` : ``;
+
 
     const accGap = `
       <div class="sb-acc">

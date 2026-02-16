@@ -5213,6 +5213,9 @@ def get_risque_competence_detail(
                     e.nom_effectif,
                     ec.niveau_actuel,
 
+                    CASE WHEN br.date_fin_indispo IS NULL THEN FALSE ELSE TRUE END AS is_indispo,
+                    br.date_fin_indispo,
+
                     e.id_service,
                     COALESCE(o.nom_service,'') AS nom_service,
 
@@ -5228,6 +5231,17 @@ def get_risque_competence_detail(
                  AND o.archive = FALSE
                 LEFT JOIN public.tbl_fiche_poste p
                   ON p.id_poste = e.id_poste_actuel
+                LEFT JOIN (
+                    SELECT
+                        id_effectif,
+                        MAX(date_fin) AS date_fin_indispo
+                    FROM public.tbl_effectif_client_break
+                    WHERE archive = FALSE
+                      AND date_debut <= CURRENT_DATE
+                      AND date_fin >= CURRENT_DATE
+                    GROUP BY id_effectif
+                ) br
+                  ON br.id_effectif = e.id_effectif
                 WHERE
                     e.id_ent = %s
                     AND COALESCE(e.archive,FALSE) = FALSE
