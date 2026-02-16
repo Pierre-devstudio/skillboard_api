@@ -2828,7 +2828,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       if (!depPick || depReq <= 0) return "";
 
       const plural = depHaveOk > 1 ? "s" : "";
-      const base = `Cette compétence est couverte par <b>${esc(depFmt(depHaveOk))}</b> porteur${plural} (niveau <b>${esc(depLvlLabel)}</b>+) pour un besoin de <b>${esc(depFmt(depReq))}</b>.`;
+      const base = `Cette compétence est couverte par <b>${esc(depFmt(depHaveOk))}</b> personne${plural} (niveau <b>${esc(depLvlLabel)}</b>) pour un besoin de <b>${esc(depFmt(depReq))}</b>.`;
 
       if (depHaveOk <= 0) return `${base} Aucun porteur identifié: la compétence n’est pas détenue dans le périmètre.`;
       if (depHaveOk === 1) return `${base} Si cette personne n’est plus disponible, la compétence devient indisponible.`;
