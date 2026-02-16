@@ -2498,7 +2498,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     modal = document.createElement("div");
     modal.id = "modalAnalyseCompetence";
     modal.className = "sb-modal-overlay";
-    modal.style.display = "none";
+    
 
     modal.innerHTML = `
       <div class="sb-modal">
@@ -2580,7 +2580,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     modal.setAttribute("aria-hidden", "false");
     document.body.classList.add("modal-open");
 
-    const mb = modal.querySelector(".modal-body");
+    const mb = modal.querySelector(".sb-modal-body");
     if (mb) mb.scrollTop = 0;
   }
 
