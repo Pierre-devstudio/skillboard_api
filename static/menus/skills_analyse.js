@@ -2650,10 +2650,16 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const nivBadgeHtml = (raw) => {
       const k = nivKey(raw);
       if (!k) return `<span class="sb-badge sb-badge-niv">${esc(raw || "—")}</span>`;
-      const mod = k === "A" ? "sb-badge-niv--a" : k === "B" ? "sb-badge-niv--b" : "sb-badge-niv--c";
-      return `<span class="sb-badge sb-badge-niv ${mod}" title="Niveau requis">${k}</span>`;
-    };
 
+      // classes EXISTANTES dans le CSS: sb-badge-niv-a / -b / -c (pas --a)
+      const cls = k === "A" ? "sb-badge-niv-a" : k === "B" ? "sb-badge-niv-b" : "sb-badge-niv-c";
+
+      // libellés métier
+      const label = k === "A" ? "Initial" : k === "B" ? "Avancé" : "Expert";
+
+      return `<span class="sb-badge sb-badge-niv ${cls}" title="Niveau requis">${label}</span>`;
+    };
+    
     const critBadgeHtml = (v) => {
       const n = Number(v);
       const val = Number.isFinite(n) ? clamp(n, 0, 100) : 0;
