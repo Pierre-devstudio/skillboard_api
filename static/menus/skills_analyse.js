@@ -2980,9 +2980,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         const fin = formatDateFr((r?.date_fin_indispo || "").toString());
         return `
           <tr>
-            <td>${esc(name)}</td>
+            <td class="sb-fs-13">${esc(name)}</td>
             <td style="text-align:center;">${nivBadgeHtml(r?.niveau_actuel)}</td>
-            <td style="text-align:center;">${esc(fin)}</td>
+            <td class="sb-fs-13" style="text-align:center;">${esc(fin)}</td>
           </tr>
         `;
       })
@@ -3009,7 +3009,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <table class="sb-table" style="margin:0;">
             <thead>
               <tr>
-                <th>Porteur</th>
+                <th>Effectif</th>
                 <th style="width:130px; text-align:center;">Niveau</th>
                 <th style="width:140px; text-align:center;">Fin</th>
               </tr>
