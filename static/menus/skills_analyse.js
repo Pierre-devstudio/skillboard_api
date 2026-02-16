@@ -2688,8 +2688,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     };
 
     // -------- priorité (badge sous le ring) --------
-    const prioLabel = scoreSafe >= 75 ? "Élevée" : scoreSafe >= 50 ? "Moyenne" : "Faible";
-    const prioCls = scoreSafe >= 75 ? "sb-badge--danger" : scoreSafe >= 50 ? "sb-badge--warning" : "sb-badge--success";
+    const prioLabel = scoreSafe >= 75 ? "Critique" : scoreSafe >= 50 ? "Élevée" : "Modérée";
+    const prioCls   = scoreSafe >= 75 ? "sb-badge--danger" : scoreSafe >= 50 ? "sb-badge--warning" : "sb-badge--success";
 
     const priorityPill = (label) => `
       <div style="font-size:12px;color:#6b7280;font-weight:700;">Fragilité</div>
