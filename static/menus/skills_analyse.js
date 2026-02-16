@@ -669,17 +669,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   const compCodeBadge = (code) =>
     `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>`;
 
-  const nivBadgeHtml = (raw) => {
-    const k = nivKey(raw);
-    if (!k) return `<span class="sb-badge sb-badge-niv">${esc(raw || "—")}</span>`;
-
-    // classes EXISTANTES dans le CSS: sb-badge-niv-a / -b / -c (pas --a)
-    const cls = k === "A" ? "sb-badge-niv-a" : k === "B" ? "sb-badge-niv-b" : "sb-badge-niv-c";
-
-    // libellés métier
-    const label = k === "A" ? "Initial" : k === "B" ? "Avancé" : "Expert";
-
-    return `<span class="sb-badge sb-badge-niv ${cls}" title="Niveau requis">${label}</span>`;
+  const nivBadgeHtml = (niv) => {
+    const k = String(niv || "").trim().toUpperCase();
+    if (k === "A") return `<span class="sb-badge sb-badge-niv sb-badge-niv-a">Initial</span>`;
+    if (k === "B") return `<span class="sb-badge sb-badge-niv sb-badge-niv-b">Avancé</span>`;
+    if (k === "C") return `<span class="sb-badge sb-badge-niv sb-badge-niv-c">Expert</span>`;
+    return `<span class="sb-badge">${escapeHtml(k || "—")}</span>`;
   };
 
   const depSans = cDep.filter(x => Number(x?.nb_porteurs_ok || 0) <= 0);
