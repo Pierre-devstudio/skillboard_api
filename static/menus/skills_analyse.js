@@ -2858,15 +2858,15 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     // -------- Causes racines : accordéons (même principe que modal poste) --------
     const accSous = `
-      <div class="sb-acc">
-        <button type="button" class="sb-btn sb-btn--soft sb-acc-head is-open" data-target="acc_comp_sous">
+      <div class="sb-accordion">
+        <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open" data-target="acc_comp_sous">
           <span style="display:flex;align-items:center;gap:10px;">
             <span>Risque de sous-couverture</span>
             ${gapTotal > 0 ? `<span class="sb-badge sb-badge--soft">${esc(String(gapTotal))}</span>` : ``}
           </span>
           <span class="sb-acc-chevron">▾</span>
         </button>
-        <div class="sb-acc-body" id="acc_comp_sous" style="display:block;">
+        <div class="sb-acc-body">
           <div style="display:flex; gap:16px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap;">
 
             <div style="width:min(460px,100%);">
@@ -2901,14 +2901,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     // Les autres accordéons (structure gardée, contenu minimal factuel)
     const accDepend = showDepend ? `
-      <div class="sb-acc">
-        <button type="button" class="sb-btn sb-btn--soft sb-acc-head" data-target="acc_comp_dep">
+      <div class="sb-accordion">
+        <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open" data-target="acc_comp_dep">
           <span style="display:flex;align-items:center;gap:10px;">
             <span>Risque de dépendance</span>
           </span>
           <span class="sb-acc-chevron">▾</span>
         </button>
-        <div class="sb-acc-body" id="acc_comp_dep" style="display:none;">
+        <div class="sb-acc-body">
           <div class="card-sub" style="margin:0;">
             ${dependanceText}
           </div>
@@ -2989,14 +2989,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       .join("");
 
     const accIndispo = showIndispo ? `
-      <div class="sb-acc">
-        <button type="button" class="sb-btn sb-btn--soft sb-acc-head" data-target="acc_comp_ind">
+      <div class="sb-accordion">
+        <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open" data-target="acc_comp_ind">
           <span style="display:flex;align-items:center;gap:10px;">
             <span>Risque d’indisponibilité</span>
           </span>
           <span class="sb-acc-chevron">▾</span>
         </button>
-        <div class="sb-acc-body" id="acc_comp_ind" style="display:none;">
+        <div class="sb-acc-body">
           <div class="card-sub" style="margin:0 0 8px 0;">
             ${indPhrase}
           </div>
@@ -3024,14 +3024,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
 
     const accGap = `
-      <div class="sb-acc">
-        <button type="button" class="sb-btn sb-btn--soft sb-acc-head" data-target="acc_comp_gap">
+      <div class="sb-accordion">
+        <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open" data-target="acc_comp_gap">
           <span style="display:flex;align-items:center;gap:10px;">
             <span>Risque d’écart de niveau</span>
           </span>
           <span class="sb-acc-chevron">▾</span>
         </button>
-        <div class="sb-acc-body" id="acc_comp_gap" style="display:none;">
+        <div class="sb-acc-body">
           <div class="card-sub" style="margin:0;">
             Analyse basée sur les niveaux requis des postes (A/B/C) et les niveaux déclarés des porteurs.
           </div>
@@ -3040,14 +3040,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     `;
 
     const accTrans = `
-      <div class="sb-acc">
-        <button type="button" class="sb-btn sb-btn--soft sb-acc-head" data-target="acc_comp_tr">
+      <div class="sb-accordion">
+        <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open" data-target="acc_comp_tr">
           <span style="display:flex;align-items:center;gap:10px;">
             <span>Risque de transmission</span>
           </span>
           <span class="sb-acc-chevron">▾</span>
         </button>
-        <div class="sb-acc-body" id="acc_comp_tr" style="display:none;">
+        <div class="sb-acc-body">
           <div class="card-sub" style="margin:0;">
             Experts identifiés : <b>${esc(String(stats?.nb_experts ?? "—"))}</b> (dispo : <b>${esc(String(stats?.nb_experts_dispo ?? "—"))}</b>).
           </div>
@@ -3097,7 +3097,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       <div class="card" style="padding:12px; margin-top:12px;">
         <div class="card-title" style="margin-bottom:6px;">Causes racines</div>
-        <div class="sb-accordion" style="margin-top:10px;">
+        <div style="margin-top:10px;">
           ${accSous}
           ${accDepend}
           ${accIndispo}
@@ -3109,19 +3109,21 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       ${leviersHtml}
     `;
 
-    // Binding accordéons (même logique que modal poste)
-    host.querySelectorAll(".sb-acc-head").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const targetId = btn.getAttribute("data-target");
-        if (!targetId) return;
-        const body = host.querySelector("#" + CSS.escape(targetId));
-        if (!body) return;
+    // Accordéons (même logique que modal poste)
+    host.querySelectorAll(".sb-acc-head").forEach((btnAcc) => {
+      const body = btnAcc.nextElementSibling;
+      if (body) body.style.display = btnAcc.classList.contains("is-open") ? "" : "none";
 
-        const isOpen = btn.classList.contains("is-open");
-        btn.classList.toggle("is-open", !isOpen);
-        body.style.display = isOpen ? "none" : "block";
+      if (btnAcc.dataset.bound) return;
+      btnAcc.dataset.bound = "1";
+
+      btnAcc.addEventListener("click", () => {
+        btnAcc.classList.toggle("is-open");
+        const b = btnAcc.nextElementSibling;
+        if (b) b.style.display = btnAcc.classList.contains("is-open") ? "" : "none";
       });
     });
+
   }
 
 
