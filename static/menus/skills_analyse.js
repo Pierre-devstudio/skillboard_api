@@ -791,7 +791,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return `
       ${depSans.length ? `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-          <div style="font-weight:800;">Couverture nulle</div>
+          <div style="font-weight:700;">Couverture nulle</div>
           <span class="sb-badge">${escapeHtml(String(depSans.length))}</span>
         </div>
         ${renderDepTable(depSans)}
@@ -799,7 +799,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       ${depLim.length ? `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:${depSans.length ? "14px" : "0"};">
-          <div style="font-weight:800;">Couverture insuffisante</div>
+          <div style="font-weight:700;">Couverture insuffisante</div>
           <span class="sb-badge">${escapeHtml(String(depLim.length))}</span>
         </div>
         ${renderDepTable(depLim)}
@@ -930,11 +930,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     <div class="card" style="padding:12px; margin-top:12px;">
       <div class="card-title" style="margin:0 0 6px 0;">Plan de sécurisation</div>
-      <div class="card-sub" style="margin:0;">Aperçu des possibilités (sans recommandation automatique).</div>
+      <div class="card-sub" style="margin:0;">Aperçu des possibilités.</div>
 
       <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
         <div class="card ${(!canTrain ? "sb-disabled" : "")}" style="padding:12px; margin:0; flex:1; min-width:240px;">
-          <div style="font-weight:900;">Former</div>
+          <div style="font-weight:700;">Former</div>
           <div class="card-sub" style="margin:6px 0 10px 0;">
             Catalogue de formation (filtrage par compétences à venir).
           </div>
@@ -947,7 +947,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </div>
 
         <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
-          <div style="font-weight:900;">Mutualiser</div>
+          <div style="font-weight:700;">Mutualiser</div>
           <div class="card-sub" style="margin:6px 0 10px 0;">
             Ouvrir le matching poste → porteur (sécurisation par doublure / backup).
           </div>
@@ -959,7 +959,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </div>
 
         <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
-          <div style="font-weight:900;">Transférer</div>
+          <div style="font-weight:700;">Transférer</div>
           <div class="card-sub" style="margin:6px 0 10px 0;">
             Transfert de charge (poste → poste) via matching (module à venir).
           </div>
@@ -971,7 +971,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </div>
 
         <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
-          <div style="font-weight:900;">Recruter</div>
+          <div style="font-weight:700;">Recruter</div>
           <div class="card-sub" style="margin:6px 0 10px 0;">
             Ouvrir la fiche de poste pour préparation du recrutement.
           </div>
@@ -2556,6 +2556,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const tWrap = byId("analyseCompModalTitle");
     const tCode = byId("analyseCompModalTitleCode");
     const tText = byId("analyseCompModalTitleText");
+    const s = byId("analyseCompModalSub");
     const b = byId("analyseCompModalBody");
 
     let compCode = "";
@@ -2582,6 +2583,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         tCode.style.display = "none";
       }
     }
+
+    if (s) s.innerHTML = subHtml || "";
 
     if (b) {
       b.innerHTML = `<div class="card" style="padding:12px; margin:0;">
@@ -3180,11 +3183,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const planHtml = `
       <div class="card" style="padding:12px; margin-top:12px;">
         <div class="card-title" style="margin:0 0 6px 0;">Plan de sécurisation</div>
-        <div class="card-sub" style="margin:0;">Aperçu des possibilités (sans recommandation automatique).</div>
+        <div class="card-sub" style="margin:0;">Aperçu des possibilités.</div>
 
         <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
           <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
-            <div style="font-weight:900;">Former</div>
+            <div style="font-weight:700;">Former</div>
             <div class="card-sub" style="margin:6px 0 10px 0;">
               Catalogue de formation (filtrage par compétence à venir).
             </div>
@@ -3196,7 +3199,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
 
           <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
-            <div style="font-weight:900;">Mutualiser</div>
+            <div style="font-weight:700;">Mutualiser</div>
             <div class="card-sub" style="margin:6px 0 10px 0;">
               Sécuriser par doublure / backup (matching effectifs → compétence à venir).
             </div>
@@ -3208,7 +3211,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
 
           <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
-            <div style="font-weight:900;">Transférer</div>
+            <div style="font-weight:700;">Transférer</div>
             <div class="card-sub" style="margin:6px 0 10px 0;">
               Transfert / partage de savoir (module à venir).
             </div>
@@ -3298,8 +3301,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const titleCode = String(comp.code || "").trim();
       const titleText = String(comp.intitule || "Compétence").trim();
 
-      // ✅ ICI : on passe bien {code,text} (pas de variable "title" fantôme)
-      openAnalyseCompetenceModal({ code: titleCode, text: titleText });
+      const scope = String(data?.scope || "").trim() || "Tous les services";
+      const sub = `
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
+        </div>
+      `;
+      openAnalyseCompetenceModal({ code: titleCode, text: titleText }, sub);
+
 
       renderAnalyseCompetenceDetail(data);
     } catch (e) {
@@ -3651,15 +3660,15 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
     const focusLab = focusLabel(focus);
     const focusHtml = focusLab
       ? `<span class="sb-badge">Focus : ${escapeHtml(focusLab)}</span>`
-      : ``;
+    : ``;
 
     const sub = `
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
-        <span class="sb-badge sb-badge-accent">Criticité min: ${escapeHtml(String(diag?.criticite_min ?? getCriticiteMin() ?? "—"))}</span>
         ${focusHtml}
       </div>
     `;
+
 
     openAnalysePosteModal(posteIntitule, sub);
 
