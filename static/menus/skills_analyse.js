@@ -3160,8 +3160,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             <div style="height:8px;"></div>
 
             <div class="card-sub" style="margin-top:10px;">
-              <b>Conditions de l’analyse :</b><br>
-              • Périmètre analysé : <b>${esc(scope)}</b> (service + sous-services).<br>
+              <b>Conditions de l’analyse :</b><br>              
               • Criticité minimum des compétences analysées (seuil) : <b>${esc(String(critMinSafe))}</b>.<br>
               • Postes pris en compte : postes <b>actifs</b> avec <b>une criticite ≥ seuil</b>.<br>
               • Effectif pris en compte : effectifs <b>non archivés</b> avec compétence <b>active</b>, même périmètre.<br>
