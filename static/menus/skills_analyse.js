@@ -3173,13 +3173,55 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       </div>
     `;
 
-    // -------- Leviers (tu gardes ton contenu existant, ici simple fallback) --------
-    const leviersHtml = `
+    // -------- Plan de sécurisation (possibilités) --------
+    const compId = String(data?.competence?.id_comp || "").trim();
+    const compCode = String(data?.competence?.code || "").trim();
+
+    const planHtml = `
       <div class="card" style="padding:12px; margin-top:12px;">
-        <div class="card-title" style="margin-bottom:6px;">Leviers</div>
-        <div class="card-sub">Leviers proposés automatiquement à partir de la couverture, de l’exposition et des indisponibilités du jour.</div>
+        <div class="card-title" style="margin:0 0 6px 0;">Plan de sécurisation</div>
+        <div class="card-sub" style="margin:0;">Aperçu des possibilités (sans recommandation automatique).</div>
+
+        <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
+            <div style="font-weight:900;">Former</div>
+            <div class="card-sub" style="margin:6px 0 10px 0;">
+              Catalogue de formation (filtrage par compétence à venir).
+            </div>
+            <button type="button"
+                    id="btnAnalyseCompPlanFormer"
+                    class="sb-btn sb-btn--xs sb-btn--block">
+              Voir les formations
+            </button>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
+            <div style="font-weight:900;">Mutualiser</div>
+            <div class="card-sub" style="margin:6px 0 10px 0;">
+              Sécuriser par doublure / backup (matching effectifs → compétence à venir).
+            </div>
+            <button type="button"
+                    id="btnAnalyseCompPlanMutualiser"
+                    class="sb-btn sb-btn--accent sb-btn--xs sb-btn--block">
+              Ouvrir le matching
+            </button>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
+            <div style="font-weight:900;">Transférer</div>
+            <div class="card-sub" style="margin:6px 0 10px 0;">
+              Transfert / partage de savoir (module à venir).
+            </div>
+            <button type="button"
+                    id="btnAnalyseCompPlanTransferer"
+                    class="sb-btn sb-btn--accent sb-btn--xs sb-btn--block">
+              Voir les options
+            </button>
+          </div>
+        </div>
       </div>
     `;
+
 
     host.innerHTML = `
       ${diagHtml}
@@ -3195,7 +3237,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </div>
       </div>
 
-      ${leviersHtml}
+      ${planHtml}
     `;
 
     // Accordéons (même logique que modal poste)
@@ -3213,6 +3255,33 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       });
     });
 
+    // Plan de sécurisation - actions (possibilités)
+    const bCFormer = byId("btnAnalyseCompPlanFormer");
+    if (bCFormer && !bCFormer.dataset.bound) {
+      bCFormer.dataset.bound = "1";
+      bCFormer.addEventListener("click", () => {
+        if (!_portalref) return;
+        _portalref.showAlert("info", "Catalogue de formation : module en cours (bouton préparé).");
+      });
+    }
+
+    const bCMut = byId("btnAnalyseCompPlanMutualiser");
+    if (bCMut && !bCMut.dataset.bound) {
+      bCMut.dataset.bound = "1";
+      bCMut.addEventListener("click", () => {
+        if (!_portalref) return;
+        _portalref.showAlert("info", "Matching effectifs → compétence : module à venir (bouton préparé).");
+      });
+    }
+
+    const bCTrans = byId("btnAnalyseCompPlanTransferer");
+    if (bCTrans && !bCTrans.dataset.bound) {
+      bCTrans.dataset.bound = "1";
+      bCTrans.addEventListener("click", () => {
+        if (!_portalref) return;
+        _portalref.showAlert("info", "Transfert / partage de savoir : module à venir (bouton préparé).");
+      });
+    }
   }
 
 
