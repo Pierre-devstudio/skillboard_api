@@ -3023,21 +3023,107 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     ` : ``;
 
 
-    const accGap = `
+    // -------- Risque d’écart de niveau (effectifs dispo aujourd’hui) --------
+    const _isIndispoToday = (r) =>
+      !!(r && (r.is_indispo === true || r.is_indispo === 1 || r.is_indispo === "t" || r.date_fin_indispo));
+
+    // Index des effectifs dispo par poste, avec leur niveau
+    const dispoByPoste = new Map();
+    (porteurs || []).forEach((r) => {
+      if (!r?.id_poste_actuel) return;
+      if (_isIndispoToday(r)) return; // prise en compte indispo du jour
+      const pid = String(r.id_poste_actuel);
+      const k = nivKey(r?.niveau_actuel);
+      if (!k) return;
+
+      if (!dispoByPoste.has(pid)) dispoByPoste.set(pid, []);
+      dispoByPoste.get(pid).push({ id_effectif: r?.id_effectif, k });
+    });
+
+    const _ratioBadge = (haveN, needN) => {
+      const h = Math.max(0, Number(haveN) || 0);
+      const n = Math.max(0, Number(needN) || 0);
+      const gap = h - n;
+
+      const cls = gap >= 0 ? "sb-badge--success" : gap <= -2 ? "sb-badge--danger" : "sb-badge--warning";
+      return `<span class="sb-badge ${cls}">${esc(String(h))}/${esc(String(n))}</span>`;
+    };
+
+    // Postes impactés = niveau requis non atteint par les effectifs dispo (au bon niveau)
+    const gapPostes = (postes || [])
+      .map((p) => {
+        const pid = p?.id_poste ? String(p.id_poste) : "";
+        const kReq = nivKey(p?.niveau_requis);
+        if (!pid || !kReq) return null;
+
+        const needP = Number.isFinite(Number(p?.besoin_poste)) ? Math.max(0, Number(p.besoin_poste)) : 1;
+
+        // Compte effectifs dispo dans CE poste au niveau requis (>=)
+        const list = dispoByPoste.get(pid) || [];
+        const haveP = list.filter((x) => nivRank(x.k) >= nivRank(kReq)).length;
+
+        const gap = haveP - needP;
+        if (gap >= 0) return null; // pas de risque => on n’affiche pas la ligne
+
+        const code = (p?.codif_client && p.codif_client.toString().trim())
+          ? p.codif_client.toString().trim()
+          : (p?.codif_poste || "");
+
+        return {
+          code,
+          intitule_poste: p?.intitule_poste || "",
+          nom_service: p?.nom_service || "",
+          niveau_requis: p?.niveau_requis || "",
+          poids_criticite: Number(p?.poids_criticite) || 0,
+          haveP,
+          needP
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => (b.poids_criticite - a.poids_criticite) || String(a.code).localeCompare(String(b.code)));
+
+    const showGap = gapPostes.length > 0;
+
+    const gapRowsHtml = gapPostes.map((p) => `
+      <tr>
+        <td style="white-space:nowrap;">
+          <span class="sb-badge sb-badge-ref-poste-code">${esc(p.code || "—")}</span>
+        </td>
+        <td class="sb-fs-13 sb-fw-700">${esc(p.intitule_poste)}</td>
+        <td class="sb-fs-13">${esc(p.nom_service)}</td>
+        <td style="text-align:center;">${nivBadgeHtml(p.niveau_requis)}</td>
+        <td style="text-align:center;">${_ratioBadge(p.haveP, p.needP)}</td>
+      </tr>
+    `).join("");
+
+    const accGap = showGap ? `
       <div class="sb-accordion">
-        <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open" data-target="acc_comp_gap">
+        <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
           <span style="display:flex;align-items:center;gap:10px;">
             <span>Risque d’écart de niveau</span>
+            <span class="sb-badge sb-badge--soft">${esc(String(gapPostes.length))}</span>
           </span>
           <span class="sb-acc-chevron">▾</span>
         </button>
         <div class="sb-acc-body">
-          <div class="card-sub" style="margin:0;">
-            Analyse basée sur les niveaux requis des postes (A/B/C) et les niveaux déclarés des porteurs.
-          </div>
+          <table class="sb-table" style="margin:0;">
+            <thead>
+              <tr>
+                <th style="width:120px;">Poste</th>
+                <th>Titre poste</th>
+                <th style="width:160px;">Service</th>
+                <th style="width:130px; text-align:center;">Niveau requis</th>
+                <th style="width:130px; text-align:center;">Couverture</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${gapRowsHtml}
+            </tbody>
+          </table>
         </div>
       </div>
-    `;
+    ` : ``;
+
 
     const accTrans = `
       <div class="sb-accordion">
