@@ -852,7 +852,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
         ${hasDep ? `
           <div class="sb-accordion">
-            <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
+            <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
               <span style="display:flex; align-items:center; gap:8px;">
                 <span>Risque de dépendance</span>
                 <span class="sb-badge">${escapeHtml(String(cDep.length))}</span>
@@ -865,7 +865,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
         ${hasTrans ? `
           <div class="sb-accordion">
-            <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
+            <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
               <span>Risque de transmission</span>
               <span class="sb-acc-chevron">▾</span>
             </button>
@@ -875,7 +875,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
         ${hasEff ? `
           <div class="sb-accordion">
-            <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
+            <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
               <span style="display:flex; align-items:center; gap:8px;">
                 <span>Risque d’efficacité</span>
                 <span class="sb-badge">${escapeHtml(String(cEff.length))}</span>
@@ -908,8 +908,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
         <div style="flex:1; min-width:320px;">
           <div class="card-title" style="margin:0;">Diagnostic décisionnel</div>
-          <div class="card-sub" style="margin-top:6px;">${escapeHtml(fragLine)}</div>
 
+          <!-- ligne vide sous diag : demandé -->
+          <div style="height:8px;"></div>
+          
           <div class="card-sub" style="margin-top:10px;">
             <b>Conditions de l’analyse :</b><br>
             • Diplôme minimum : <b>${escapeHtml(eduTxt)}</b><br>
@@ -3160,11 +3162,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             <div class="card-sub" style="margin-top:10px;">
               <b>Conditions de l’analyse :</b><br>
               • Périmètre analysé : <b>${esc(scope)}</b> (service + sous-services).<br>
-              • Criticité minimum des compétences analysées : <b>${esc(String(critMinSafe))}</b>.<br>
-              • Postes pris en compte : postes <b>actifs</b> avec <b>poids_criticite ≥ seuil</b>.<br>
-              • Porteurs pris en compte : effectifs <b>non archivés</b> avec compétence <b>active</b>, même périmètre.<br>
-              • Indisponibilités : breaks en cours (date_debut ≤ aujourd’hui ≤ date_fin).<br>
-              • Besoin "titulaires cible" : nb_titulaires_cible si renseigné, sinon nb_titulaires constatés, sinon 1.
+              • Criticité minimum des compétences analysées (seuil) : <b>${esc(String(critMinSafe))}</b>.<br>
+              • Postes pris en compte : postes <b>actifs</b> avec <b>une criticite ≥ seuil</b>.<br>
+              • Effectif pris en compte : effectifs <b>non archivés</b> avec compétence <b>active</b>, même périmètre.<br>
+              • Indisponibilités : En cours à ce jour.<br>              
             </div>
           </div>
 
@@ -3301,13 +3302,21 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const titleCode = String(comp.code || "").trim();
       const titleText = String(comp.intitule || "Compétence").trim();
 
-      const scope = String(data?.scope || "").trim() || "Tous les services";
+      const scopeObj = data?.scope;
+      const scopeName = (scopeObj && typeof scopeObj === "object")
+        ? String(scopeObj.nom_service || scopeObj.label || scopeObj.titre || "").trim()
+        : String(scopeObj || "").trim();
+
+      const scopeLabel = scopeName || "Tous les services";
+
       const sub = `
         <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
+          <span class="sb-badge">Service : ${escapeHtml(scopeLabel)}</span>
         </div>
       `;
+
       openAnalyseCompetenceModal({ code: titleCode, text: titleText }, sub);
+
 
 
       renderAnalyseCompetenceDetail(data);
