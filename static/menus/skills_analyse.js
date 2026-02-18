@@ -2499,11 +2499,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <div class="modal" id="modalAnalyseCompetence" aria-hidden="true">
         <div class="modal-card" style="max-width:1120px; width:min(1120px, 96vw); max-height:92vh; display:flex; flex-direction:column;">
           <div class="modal-header">
-            <div id="analyseCompModalTitleLine" class="modal-title" style="display:flex; gap:8px; align-items:center; min-width:0;">
+            <div id="analyseCompModalTitle" class="sb-modal-titleline">
               <span class="sb-badge sb-badge-ref-comp-code" id="analyseCompModalTitleCode" style="display:none;"></span>
-              <span id="analyseCompModalTitleText" style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                Détail compétence
-              </span>
+              <span id="analyseCompModalTitleText" class="sb-title-text">Détail compétence</span>
             </div>
             <button type="button" class="modal-x" id="analyseCompModalCloseBtn" aria-label="Fermer">×</button>
           </div>
@@ -2514,7 +2512,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
 
           <div class="modal-footer">
-            <button type="button" class="sb-btn sb-btn--soft" id="analyseCompModalCloseBtn2">Fermer</button>
+            <button type="button" class="sb-btn" id="analyseCompModalCloseBtn2">Fermer</button>
           </div>
         </div>
       </div>
@@ -2902,7 +2900,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     // Les autres accordéons (structure gardée, contenu minimal factuel)
     const accDepend = showDepend ? `
       <div class="sb-accordion">
-        <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open" data-target="acc_comp_dep">
+        <button type="button" class="sb-acc-head sb-btn sb-btn--soft" data-target="acc_comp_dep">
           <span style="display:flex;align-items:center;gap:10px;">
             <span>Risque de dépendance</span>
           </span>
@@ -2990,7 +2988,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     const accIndispo = showIndispo ? `
       <div class="sb-accordion">
-        <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open" data-target="acc_comp_ind">
+        <button type="button" class="sb-acc-head sb-btn sb-btn--soft" data-target="acc_comp_ind">
           <span style="display:flex;align-items:center;gap:10px;">
             <span>Risque d’indisponibilité</span>
           </span>
