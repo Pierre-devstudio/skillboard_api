@@ -4797,6 +4797,17 @@ function renderDetail(mode) {
         const postesChanges = buildChanges(postesNow, postes3, "id_poste", "postes");
         const compsChanges  = buildChanges(compsNow, comps3, "id_comp", "comps");
 
+        const pctPostes = pctChange(sumPostesNow, sumPostes3);
+        const pctComps  = pctChange(sumCompsNow, sumComps3);
+
+        const evolBadge = (p) => {
+          const n = Number(p);
+          const r = Number.isFinite(n) ? Math.round(n) : 0; // cohérent avec fmtPct
+          const cls = (r < 0) ? "sb-badge--success" : (r === 0) ? "sb-badge--warning" : "sb-badge--danger";
+          return `<span class="sb-badge ${cls}">${escapeHtml(fmtPct(n))}</span>`;
+        };
+
+
         const content = `
           <div class="card" style="padding:12px; margin:0;">
             <div class="card-title" style="margin-bottom:6px;">${escapeHtml(filterLabel)}</div>
@@ -4806,35 +4817,39 @@ function renderDetail(mode) {
                 <thead>
                   <tr>
                     <th style="width:220px;">Type</th>
-                    <th class="col-center" style="width:200px;">Évolution</th>
-                    <th class="col-center" style="width:180px;">En évolution</th>
-                    <th class="col-center" style="width:160px;">Action</th>
+                    <th class="col-center" style="width:220px;">
+                      <span style="display:inline-block; line-height:1.1;">Évolution<br>du risque</span>
+                    </th>
+                    <th class="col-center" style="width:220px;">
+                      <span style="display:inline-block; line-height:1.1;">Éléments<br>en évolution</span>
+                    </th>
+                    <th class="col-center" style="width:180px;">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr class="risk-evol3m-row" data-evol-kind="postes" style="cursor:pointer;">
-                    <td><span style="font-weight:700; font-size:13px;">Postes</span></td>
+                    <td><span style="font-weight:700; font-size:13px;">Risques impactant des postes</span></td>
                     <td class="col-center">
-                      <span class="sb-badge">${escapeHtml(fmtPct(pctChange(sumPostesNow, sumPostes3)))}</span>
+                      ${evolBadge(pctPostes)}
                     </td>
                     <td class="col-center">
                       <span class="sb-badge">${escapeHtml(`${postesChanges.changed}/${postesChanges.total || 0}`)}</span>
                     </td>
                     <td class="col-center">
-                      <button type="button" class="sb-btn sb-btn--soft sb-btn--xs">Voir</button>
+                      <button type="button" class="sb-btn">Voir le détail</button>
                     </td>
                   </tr>
 
                   <tr class="risk-evol3m-row" data-evol-kind="comps" style="cursor:pointer;">
-                    <td><span style="font-weight:700; font-size:13px;">Compétences</span></td>
+                    <td><span style="font-weight:700; font-size:13px;">Risques impactant des compétences</span></td>
                     <td class="col-center">
-                      <span class="sb-badge">${escapeHtml(fmtPct(pctChange(sumCompsNow, sumComps3)))}</span>
+                      ${evolBadge(pctComps)}
                     </td>
                     <td class="col-center">
                       <span class="sb-badge">${escapeHtml(`${compsChanges.changed}/${compsChanges.total || 0}`)}</span>
                     </td>
                     <td class="col-center">
-                      <button type="button" class="sb-btn sb-btn--soft sb-btn--xs">Voir</button>
+                      <button type="button" class="sb-btn">Voir le détail</button>
                     </td>
                   </tr>
                 </tbody>
