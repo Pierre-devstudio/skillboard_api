@@ -223,6 +223,7 @@
   function clearKpis() {
     setText("kpiRiskPostes", "—");
     setText("kpiRiskCritFragiles", "—");
+    setText("kpiRiskEvol3m", "—");
 
     const a = byId("kpiRiskCritAlert");
     if (a) {
@@ -417,6 +418,7 @@
 
   const _riskDetailCache = new Map();
   let _riskDetailReqSeq = 0;
+  
 
   function buildQueryString(params) {
     const usp = new URLSearchParams();
@@ -429,14 +431,21 @@
     return qs ? `?${qs}` : "";
   }
 
-  async function fetchRisquesDetail(portal, kpiKey, id_service, limit = 50) {
+  async function fetchRisquesDetail(portal, kpiKey, id_service, limit = 50, ref_mois = 0) {
     const svc = (id_service || "").trim();
-    const key = `${svc}|${kpiKey}|${limit}`;
+    const crit = Number(getCriticiteMin());
+    const critVal = Number.isFinite(crit) ? String(crit) : "";
+    const ref = Math.max(0, Math.min(36, Number(ref_mois || 0)));
+
+    const key = `${svc}|${kpiKey}|${limit}|${critVal}|${ref}`;
+
     if (_riskDetailCache.has(key)) return _riskDetailCache.get(key);
 
     const qs = buildQueryString({
       kpi: kpiKey,
       id_service: svc || null,
+      criticite_min: critVal || null,
+      ref_mois: ref,
       limit: limit
     });
 
@@ -3735,6 +3744,65 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
   }
 }
 
+const _riskEvol3mCache = new Map(); // key: svc|crit
+let _riskEvol3mSeq = 0;
+
+function fmtPctSigned(x) {
+  const v = Number(x);
+  if (!Number.isFinite(v)) return "—";
+  const s = Math.round(v);
+  return (s > 0 ? `+${s}%` : `${s}%`);
+}
+
+function sumField(list, field) {
+  return (Array.isArray(list) ? list : []).reduce((acc, r) => acc + (Number(r?.[field] || 0) || 0), 0);
+}
+
+function evolPct(sumNow, sumFut) {
+  const a = Number(sumNow) || 0;
+  const b = Number(sumFut) || 0;
+  if (a <= 0) return 0;
+  return ((b - a) / a) * 100;
+}
+
+async function computeRiskEvolution3m(portal, id_service) {
+  const svc = (id_service || "").trim();
+  const crit = Number(getCriticiteMin());
+  const critVal = Number.isFinite(crit) ? String(crit) : "";
+  const key = `${svc}|${critVal}`;
+
+  if (_riskEvol3mCache.has(key)) return _riskEvol3mCache.get(key);
+
+  const [p0, p3, c0, c3] = await Promise.all([
+    fetchRisquesDetail(portal, "postes-fragiles", svc, 200, 0),
+    fetchRisquesDetail(portal, "postes-fragiles", svc, 200, 3),
+    fetchRisquesDetail(portal, "critiques-fragiles", svc, 200, 0),
+    fetchRisquesDetail(portal, "critiques-fragiles", svc, 200, 3),
+  ]);
+
+  const postesNow = Array.isArray(p0?.items) ? p0.items : [];
+  const postes3 = Array.isArray(p3?.items) ? p3.items : [];
+  const compsNow = Array.isArray(c0?.items) ? c0.items : [];
+  const comps3 = Array.isArray(c3?.items) ? c3.items : [];
+
+  const sumPostesNow = sumField(postesNow, "indice_fragilite");
+  const sumPostes3 = sumField(postes3, "indice_fragilite");
+  const sumCompsNow = sumField(compsNow, "priorite_score");
+  const sumComps3 = sumField(comps3, "priorite_score");
+
+  const sumNow = sumPostesNow + sumCompsNow;
+  const sum3m = sumPostes3 + sumComps3;
+
+  const data = {
+    postes: { sumNow: sumPostesNow, sum3m: sumPostes3, pct: evolPct(sumPostesNow, sumPostes3), nNow: postesNow.length, n3m: postes3.length, now: postesNow, fut: postes3 },
+    competences: { sumNow: sumCompsNow, sum3m: sumComps3, pct: evolPct(sumCompsNow, sumComps3), nNow: compsNow.length, n3m: comps3.length, now: compsNow, fut: comps3 },
+    total: { sumNow, sum3m, pct: evolPct(sumNow, sum3m) },
+  };
+
+  _riskEvol3mCache.set(key, data);
+  return data;
+}
+
 
 function renderDetail(mode) {
   const scope = getScopeLabel();
@@ -4196,6 +4264,9 @@ function renderDetail(mode) {
   } else if (rf === "critiques-fragiles") {
     filterLabel = "Compétences critiques (structurel)";
     filterSub = "Compétences critiques à sécuriser (0 ou 1 porteur en nominal).";
+  } else if (rf === "evol-3m") {
+  filterLabel = "Évolution du risque à 3 mois";
+  filterSub = "";
   }
 
   if (sub) sub.textContent = filterSub;
@@ -4597,6 +4668,202 @@ function renderDetail(mode) {
 
   (async () => {
     try {
+      if (rf === "evol-3m") {
+        const svc = (id_service || "").trim();
+
+        async function fetchAt(kpiKey, limit, refMois) {
+          const rm = Number(refMois || 0);
+          const ck = `${svc}|${kpiKey}|${limit}|${rm}`;
+          if (_riskEvol3mCache.has(ck)) return _riskEvol3mCache.get(ck);
+
+          const qs = buildQueryString({
+            kpi: kpiKey,
+            id_service: svc || null,
+            limit: limit,
+            ref_mois: rm > 0 ? rm : null
+          });
+
+          const url = `${_portalref.apiBase}/skills/analyse/risques/detail/${encodeURIComponent(_portalref.contactId)}${qs}`;
+          const data = await _portalref.apiJson(url);
+
+          syncCriticiteMinFromResponse(data);
+          _riskEvol3mCache.set(ck, data);
+          return data;
+        }
+
+        const [pNow, p3, cNow, c3] = await Promise.all([
+          fetchAt("postes-fragiles", 200, 0),
+          fetchAt("postes-fragiles", 200, 3),
+          fetchAt("critiques-fragiles", 200, 0),
+          fetchAt("critiques-fragiles", 200, 3),
+        ]);
+
+        if (mySeq !== _riskDetailReqSeq) return;
+
+        const postesNow = Array.isArray(pNow?.items) ? pNow.items : [];
+        const postes3   = Array.isArray(p3?.items) ? p3.items : [];
+        const compsNow  = Array.isArray(cNow?.items) ? cNow.items : [];
+        const comps3    = Array.isArray(c3?.items) ? c3.items : [];
+
+        const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+        function scoreOf(r) {
+          const v = (r?.indice_fragilite ?? r?.priorite_score ?? 0);
+          const n = Number(v);
+          return Number.isFinite(n) ? clamp(n, 0, 100) : 0;
+        }
+        function sumScores(list) {
+          return (Array.isArray(list) ? list : []).reduce((acc, r) => acc + scoreOf(r), 0);
+        }
+        function pctChange(sum0, sum1) {
+          const a = Number(sum0) || 0;
+          const b = Number(sum1) || 0;
+          if (a <= 0) return (b > 0) ? 100 : 0;
+          return ((b - a) / a) * 100;
+        }
+        function fmtPct(p) {
+          const n = Number(p);
+          if (!Number.isFinite(n)) return "0%";
+          const r = Math.round(n);
+          return `${r > 0 ? "+" : ""}${r}%`;
+        }
+
+        function buildChanges(nowList, futList, idField, kind) {
+          const mapNow = new Map();
+          (Array.isArray(nowList) ? nowList : []).forEach(r => {
+            const id = (r?.[idField] || "").toString().trim();
+            if (id) mapNow.set(id, r);
+          });
+
+          const mapFut = new Map();
+          (Array.isArray(futList) ? futList : []).forEach(r => {
+            const id = (r?.[idField] || "").toString().trim();
+            if (id) mapFut.set(id, r);
+          });
+
+          const ids = new Set([...mapNow.keys(), ...mapFut.keys()]);
+          const out = [];
+
+          ids.forEach(id => {
+            const a = mapNow.get(id) || null;
+            const b = mapFut.get(id) || null;
+
+            const s0 = a ? scoreOf(a) : 0;
+            const s3 = b ? scoreOf(b) : 0;
+            if (s0 === s3) return;
+
+            const base = (b || a || {});
+            if (kind === "postes") {
+              const codifClient = (base.codif_client || "").trim();
+              const codifPoste  = (base.codif_poste || "").trim();
+              const codeAffiche = codifClient !== "" ? codifClient : codifPoste;
+
+              out.push({
+                id: id,
+                code: codeAffiche || "—",
+                label: (base.intitule_poste || "").trim() || "—",
+                service: (base.nom_service || "").trim() || "—",
+                s0: s0,
+                s3: s3,
+                delta: s3 - s0
+              });
+            } else {
+              out.push({
+                id: id,
+                code: ((base.code || "").trim() || "—"),
+                label: ((base.intitule || "").trim() || "—"),
+                domaine: (base.domaine_titre_court || base.domaine_titre || "").toString().trim(),
+                domaine_couleur: base.domaine_couleur,
+                s0: s0,
+                s3: s3,
+                delta: s3 - s0
+              });
+            }
+          });
+
+          out.sort((x, y) => {
+            const d = Math.abs(y.delta) - Math.abs(x.delta);
+            if (d !== 0) return d;
+            return (x.code || "").localeCompare(y.code || "");
+          });
+
+          return { items: out, total: ids.size, changed: out.length };
+        }
+
+        const sumPostesNow = sumScores(postesNow);
+        const sumPostes3   = sumScores(postes3);
+        const sumCompsNow  = sumScores(compsNow);
+        const sumComps3    = sumScores(comps3);
+
+        const postesChanges = buildChanges(postesNow, postes3, "id_poste", "postes");
+        const compsChanges  = buildChanges(compsNow, comps3, "id_comp", "comps");
+
+        const content = `
+          <div class="card" style="padding:12px; margin:0;">
+            <div class="card-title" style="margin-bottom:6px;">${escapeHtml(filterLabel)}</div>
+
+            <div class="table-wrap" style="margin-top:10px;">
+              <table class="sb-table" id="tblRiskEvol3m">
+                <thead>
+                  <tr>
+                    <th style="width:220px;">Type</th>
+                    <th class="col-center" style="width:200px;">Évolution</th>
+                    <th class="col-center" style="width:180px;">En évolution</th>
+                    <th class="col-center" style="width:160px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr class="risk-evol3m-row" data-evol-kind="postes" style="cursor:pointer;">
+                    <td><span style="font-weight:700; font-size:13px;">Postes</span></td>
+                    <td class="col-center">
+                      <span class="sb-badge">${escapeHtml(fmtPct(pctChange(sumPostesNow, sumPostes3)))}</span>
+                    </td>
+                    <td class="col-center">
+                      <span class="sb-badge">${escapeHtml(`${postesChanges.changed}/${postesChanges.total || 0}`)}</span>
+                    </td>
+                    <td class="col-center">
+                      <button type="button" class="sb-btn sb-btn--soft sb-btn--xs">Voir</button>
+                    </td>
+                  </tr>
+
+                  <tr class="risk-evol3m-row" data-evol-kind="comps" style="cursor:pointer;">
+                    <td><span style="font-weight:700; font-size:13px;">Compétences</span></td>
+                    <td class="col-center">
+                      <span class="sb-badge">${escapeHtml(fmtPct(pctChange(sumCompsNow, sumComps3)))}</span>
+                    </td>
+                    <td class="col-center">
+                      <span class="sb-badge">${escapeHtml(`${compsChanges.changed}/${compsChanges.total || 0}`)}</span>
+                    </td>
+                    <td class="col-center">
+                      <button type="button" class="sb-btn sb-btn--soft sb-btn--xs">Voir</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+
+        body.innerHTML = `${buildResetHtml()}${content}`;
+        bindRiskResetBtn();
+
+        const rows = body.querySelectorAll("#tblRiskEvol3m .risk-evol3m-row");
+        rows.forEach((tr) => {
+          tr.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+
+            const kind = (tr.getAttribute("data-evol-kind") || "").trim();
+            if (kind === "postes") {
+              openRiskEvol3mModal("postes", postesChanges.items, { scopeLabel: scope });
+            } else if (kind === "comps") {
+              openRiskEvol3mModal("comps", compsChanges.items, { scopeLabel: scope });
+            }
+          });
+        });
+
+        return;
+      }
+
       if (rf) {
         const data = await fetchRisquesDetail(_portalref, rf, id_service, 120);
         if (mySeq !== _riskDetailReqSeq) return;
@@ -4619,6 +4886,7 @@ function renderDetail(mode) {
         bindRiskResetBtn();
         return;
       }
+
 
       const [a, b] = await Promise.all([
         fetchRisquesDetail(_portalref, "postes-fragiles", id_service, 20),
@@ -4696,6 +4964,15 @@ function renderDetail(mode) {
         }
       }
 
+      setText("kpiRiskEvol3m", "…");
+      (async () => {
+        try {
+          const evo = await computeRiskEvolution3m(portal, f.id_service);
+          setText("kpiRiskEvol3m", fmtPctSigned(evo?.total?.pct));
+        } catch (e) {
+          setText("kpiRiskEvol3m", "—");
+        }
+      })();
 
       // Matching : on laisse volontairement les KPI en "—".
       // Les KPI de tuile servent ici de boutons de vue (titulaire vs candidats), pas de compteur.
@@ -6523,6 +6800,180 @@ function bindOnce(portal) {
     window.showAnalysePrevPosteRedModal = showAnalysePrevPosteRedModal;
   }
 
+
+  function ensureRiskEvol3mModal() {
+    let modal = byId("modalRiskEvol3m");
+    if (modal) return modal;
+
+    const html = `
+      <div class="modal" id="modalRiskEvol3m" aria-hidden="true">
+        <div class="modal-card" style="max-width:980px; width:min(980px, 96vw); max-height:92vh; display:flex; flex-direction:column;">
+          <div class="modal-header">
+            <div style="font-weight:600;" id="riskEvol3mModalTitle">Évolution</div>
+            <button type="button" class="modal-x" id="btnCloseRiskEvol3mModal" aria-label="Fermer">×</button>
+          </div>
+
+          <div class="modal-body" id="riskEvol3mModalBody" style="overflow:auto; flex:1; padding:14px 16px;">
+            <div class="card" style="padding:12px; margin:0;">
+              <div class="card-sub" style="margin:0;">Chargement…</div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnRiskEvol3mModalClose">Fermer</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", html);
+    modal = byId("modalRiskEvol3m");
+
+    if (modal && modal.getAttribute("data-bound") !== "1") {
+      modal.setAttribute("data-bound", "1");
+
+      const btnX = byId("btnCloseRiskEvol3mModal");
+      const btnClose = byId("btnRiskEvol3mModalClose");
+
+      if (btnX) btnX.addEventListener("click", () => closeRiskEvol3mModal());
+      if (btnClose) btnClose.addEventListener("click", () => closeRiskEvol3mModal());
+
+      modal.addEventListener("click", (ev) => {
+        if (ev.target === modal) closeRiskEvol3mModal();
+      });
+
+      document.addEventListener("keydown", (ev) => {
+        if (ev.key === "Escape") closeRiskEvol3mModal();
+      });
+    }
+
+    return modal;
+  }
+
+  function openRiskEvol3mModal(kind, items, meta) {
+    const modal = ensureRiskEvol3mModal();
+    const titleEl = byId("riskEvol3mModalTitle");
+    const bodyEl = byId("riskEvol3mModalBody");
+    if (!modal || !bodyEl) return;
+
+    const scope = (meta?.scopeLabel || "").trim();
+    const scopeHtml = scope ? ` <span class="sb-badge">${escapeHtml(scope)}</span>` : "";
+
+    const isPostes = (kind === "postes");
+    const titleTxt = isPostes
+      ? `Postes en évolution (3 mois)${scopeHtml}`
+      : `Compétences en évolution (3 mois)${scopeHtml}`;
+
+    if (titleEl) titleEl.innerHTML = titleTxt;
+
+    const list = Array.isArray(items) ? items : [];
+    if (!list.length) {
+      bodyEl.innerHTML = `
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="card-sub" style="margin:0;">Aucune évolution détectée.</div>
+        </div>
+      `;
+    } else {
+      const deltaBadge = (d) => {
+        const n = Number(d) || 0;
+        const cls = n > 0 ? "sb-badge sb-badge--danger"
+                  : n < 0 ? "sb-badge sb-badge--success"
+                  : "sb-badge";
+        const s = Math.round(n);
+        const txt = `${s > 0 ? "+" : ""}${s}`;
+        return `<span class="${cls}">${escapeHtml(txt)}</span>`;
+      };
+
+      if (isPostes) {
+        bodyEl.innerHTML = `
+          <div class="card" style="padding:12px; margin:0;">
+            <div class="card-title" style="margin-bottom:6px;">Détail</div>
+
+            <div class="table-wrap" style="margin-top:10px;">
+              <table class="sb-table">
+                <thead>
+                  <tr>
+                    <th>Poste</th>
+                    <th style="width:180px;">Service</th>
+                    <th class="col-center" style="width:120px;">Auj.</th>
+                    <th class="col-center" style="width:120px;">+3 mois</th>
+                    <th class="col-center" style="width:110px;">Δ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${list.map(r => `
+                    <tr>
+                      <td>
+                        <div style="display:flex; gap:8px; align-items:center; min-width:0;">
+                          <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(r.code || "—")}</span>
+                          <span style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            ${escapeHtml(r.label || "—")}
+                          </span>
+                        </div>
+                      </td>
+                      <td style="font-size:13px;">${escapeHtml(r.service || "—")}</td>
+                      <td class="col-center"><span class="sb-badge">${escapeHtml(Math.round(Number(r.s0 || 0)).toString())}</span></td>
+                      <td class="col-center"><span class="sb-badge">${escapeHtml(Math.round(Number(r.s3 || 0)).toString())}</span></td>
+                      <td class="col-center">${deltaBadge(r.delta)}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      } else {
+        bodyEl.innerHTML = `
+          <div class="card" style="padding:12px; margin:0;">
+            <div class="card-title" style="margin-bottom:6px;">Détail</div>
+
+            <div class="table-wrap" style="margin-top:10px;">
+              <table class="sb-table">
+                <thead>
+                  <tr>
+                    <th>Compétence</th>
+                    <th class="col-center" style="width:120px;">Auj.</th>
+                    <th class="col-center" style="width:120px;">+3 mois</th>
+                    <th class="col-center" style="width:110px;">Δ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${list.map(r => `
+                    <tr>
+                      <td>
+                        <div style="display:flex; gap:8px; align-items:center; min-width:0;">
+                          <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(r.code || "—")}</span>
+                          <span style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                            ${escapeHtml(r.label || "—")}
+                          </span>
+                        </div>
+                      </td>
+                      <td class="col-center"><span class="sb-badge">${escapeHtml(Math.round(Number(r.s0 || 0)).toString())}</span></td>
+                      <td class="col-center"><span class="sb-badge">${escapeHtml(Math.round(Number(r.s3 || 0)).toString())}</span></td>
+                      <td class="col-center">${deltaBadge(r.delta)}</td>
+                    </tr>
+                  `).join("")}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+
+    const mb = modal.querySelector(".modal-body");
+    if (mb) mb.scrollTop = 0;
+  }
+
+  function closeRiskEvol3mModal() {
+    const modal = byId("modalRiskEvol3m");
+    if (!modal) return;
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+  }
 
   window.SkillsAnalyse = {
     onShow: async (portal) => {

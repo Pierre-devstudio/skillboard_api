@@ -2630,6 +2630,7 @@ def get_analyse_risques_detail(
     id_service: Optional[str] = Query(default=None),
     criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
     limit: int = Query(default=50),
+    ref_mois: int = Query(default=0, ge=0, le=36),
 ):
     """
     Détail Risques derrière les KPI:
@@ -2660,6 +2661,9 @@ def get_analyse_risques_detail(
                 base_cte = f"""
                 WITH
                 {cte_sql},
+                ref_date AS (
+                    SELECT (CURRENT_DATE + (%s::int * interval '1 month'))::date AS d_ref
+                ),
                 req AS (
                     SELECT DISTINCT
                         fpc.id_poste,
@@ -2689,8 +2693,8 @@ def get_analyse_risques_detail(
                         FROM public.tbl_effectif_client_break b
                         WHERE b.id_effectif = e.id_effectif
                           AND b.archive = FALSE
-                          AND b.date_debut <= CURRENT_DATE
-                          AND b.date_fin >= CURRENT_DATE
+                          AND b.date_debut <= (SELECT d_ref FROM ref_date)
+                          AND b.date_fin >= (SELECT d_ref FROM ref_date)
                       )
                 ),
                 porteurs AS (
@@ -2973,7 +2977,7 @@ def get_analyse_risques_detail(
 
                     cur.execute(
                         sql,
-                        tuple(cte_params + [criticite_min, id_ent, limit])
+                        tuple(cte_params + [ref_mois, criticite_min, id_ent, limit])
                     )
                     rows = cur.fetchall() or []
                     for r in rows:
@@ -3205,7 +3209,7 @@ def get_analyse_risques_detail(
                     LIMIT %s
                     """
 
-                    cur.execute(sql, tuple(cte_params + [criticite_min, limit]))
+                    cur.execute(sql, tuple(cte_params + [ref_mois, criticite_min, limit]))
                     rows = cur.fetchall() or []
 
                     def _clamp(v: float, lo: float, hi: float) -> float:
@@ -3342,7 +3346,7 @@ def get_analyse_risques_detail(
                         c.code
                     LIMIT %s
                     """
-                    cur.execute(sql, tuple(cte_params + [criticite_min, limit]))
+                    cur.execute(sql, tuple(cte_params + [ref_mois, criticite_min, limit]))
                     rows = cur.fetchall() or []
                     for r in rows:
                         items.append(AnalyseRisqueItem(
@@ -3398,7 +3402,7 @@ def get_analyse_risques_detail(
                         c.code
                     LIMIT %s
                     """
-                    cur.execute(sql, tuple(cte_params + [criticite_min, limit]))
+                    cur.execute(sql, tuple(cte_params + [ref_mois, criticite_min, limit]))
                     rows = cur.fetchall() or []
                     for r in rows:
                         items.append(AnalyseRisqueItem(
