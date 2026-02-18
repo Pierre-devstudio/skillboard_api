@@ -3125,9 +3125,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     ` : ``;
 
 
-    const accTrans = `
+    // -------- Risque de transmission (simple) --------
+    const nbExperts = Number(stats?.nb_experts ?? 0) || 0;
+    const showTrans = nbExperts <= 0;
+
+    const accTrans = showTrans ? `
       <div class="sb-accordion">
-        <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open" data-target="acc_comp_tr">
+        <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
           <span style="display:flex;align-items:center;gap:10px;">
             <span>Risque de transmission</span>
           </span>
@@ -3135,11 +3139,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </button>
         <div class="sb-acc-body">
           <div class="card-sub" style="margin:0;">
-            Experts identifiés : <b>${esc(String(stats?.nb_experts ?? "—"))}</b> (dispo : <b>${esc(String(stats?.nb_experts_dispo ?? "—"))}</b>).
+            Aucun <b>effectif</b> n’est au niveau <b>Expert</b> sur cette compétence.
           </div>
         </div>
       </div>
-    `;
+    ` : ``;
+
 
     // -------- DIAGNOSTIC (contenu respecté, tel que tu l’as demandé) --------
     const diagHtml = `
