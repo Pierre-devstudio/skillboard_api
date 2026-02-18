@@ -6893,51 +6893,70 @@ function bindOnce(portal) {
         const n = Number(d) || 0;
         const cls = n > 0 ? "sb-badge sb-badge--danger"
                   : n < 0 ? "sb-badge sb-badge--success"
-                  : "sb-badge";
+                  : "sb-badge sb-badge--warning";
         const s = Math.round(n);
-        const txt = `${s > 0 ? "+" : ""}${s}`;
+        const txt = `${s > 0 ? "+" : ""}${s}%`;
         return `<span class="${cls}">${escapeHtml(txt)}</span>`;
       };
 
-      if (isPostes) {
-        bodyEl.innerHTML = `
-          <div class="card" style="padding:12px; margin:0;">
-            <div class="card-title" style="margin-bottom:6px;">Détail</div>
+        if (isPostes) {
+          const causeTxt = (delta) => {
+            const d = Number(delta) || 0;
+            if (d > 0) return "Cause: indisponibilité prévue d’ici 3 mois";
+            if (d < 0) return "Cause: fin d’indisponibilité d’ici 3 mois";
+            return "Cause: stabilité";
+          };
 
-            <div class="table-wrap" style="margin-top:10px;">
-              <table class="sb-table">
-                <thead>
-                  <tr>
-                    <th>Poste</th>
-                    <th style="width:180px;">Service</th>
-                    <th class="col-center" style="width:120px;">Auj.</th>
-                    <th class="col-center" style="width:120px;">+3 mois</th>
-                    <th class="col-center" style="width:110px;">Δ</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${list.map(r => `
-                    <tr>
-                      <td>
-                        <div style="display:flex; gap:8px; align-items:center; min-width:0;">
-                          <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(r.code || "—")}</span>
-                          <span style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                            ${escapeHtml(r.label || "—")}
-                          </span>
-                        </div>
-                      </td>
-                      <td style="font-size:13px;">${escapeHtml(r.service || "—")}</td>
-                      <td class="col-center"><span class="sb-badge">${escapeHtml(Math.round(Number(r.s0 || 0)).toString())}</span></td>
-                      <td class="col-center"><span class="sb-badge">${escapeHtml(Math.round(Number(r.s3 || 0)).toString())}</span></td>
-                      <td class="col-center">${deltaBadge(r.delta)}</td>
-                    </tr>
-                  `).join("")}
-                </tbody>
-              </table>
+          bodyEl.innerHTML = `
+            <div class="card" style="padding:12px; margin:0;">
+              <div class="card-title" style="margin-bottom:6px;">Détail</div>
+
+              <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
+                ${list.map(r => `
+                  <div class="sb-evol-card"
+                      data-evol-id="${escapeHtml(String(r.id || ""))}"
+                      style="display:flex; align-items:center; justify-content:space-between; gap:12px;
+                              padding:10px 12px; border:1px solid var(--sb-gray-200); border-radius:12px;
+                              cursor:pointer;">
+                    <div style="min-width:0;">
+                      <div style="display:flex; gap:8px; align-items:center; min-width:0;">
+                        <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(r.code || "—")}</span>
+                        <span style="font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                          ${escapeHtml(r.label || "—")}
+                        </span>
+                      </div>
+
+                      <div class="sb-fs-13"
+                          style="opacity:.85; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                        ${escapeHtml(r.service || "—")} • ${escapeHtml(causeTxt(r.delta))}
+                      </div>
+                    </div>
+
+                    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                      <span class="sb-badge">${escapeHtml(String(Math.round(Number(r.s0 || 0))))}%</span>
+                      <span style="opacity:.6;">→</span>
+                      <span class="sb-badge">${escapeHtml(String(Math.round(Number(r.s3 || 0))))}%</span>
+                      ${deltaBadge(r.delta)}
+                    </div>
+                  </div>
+                `).join("")}
+              </div>
             </div>
-          </div>
-        `;
-      } else {
+          `;
+
+          // Clic => ouvrir le modal "poste fragile" (état actuel)
+          bodyEl.querySelectorAll(".sb-evol-card[data-evol-id]").forEach((el) => {
+            el.addEventListener("click", () => {
+              const id = (el.getAttribute("data-evol-id") || "").trim();
+              if (!id || !_portalref) return;
+
+              const id_service = getFilters()?.id_service || "";
+              closeRiskEvol3mModal();
+              showAnalysePosteDetailModal(_portalref, id, id_service, "");
+            });
+          });
+
+        } else {
         bodyEl.innerHTML = `
           <div class="card" style="padding:12px; margin:0;">
             <div class="card-title" style="margin-bottom:6px;">Détail</div>
