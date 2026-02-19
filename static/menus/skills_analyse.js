@@ -1557,6 +1557,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return (Math.round(n * 10) / 10).toString();
     }
 
+    // Compat: utilisé par le radar (domainRows) pour l’affichage "x / y pts"
+    function fmtScore(v) {
+      return fmtNum(v);
+    }
+
+
     function ptsBadge(v, title) {
       const t = fmtNum(v);
       if (t === "—") return "—";
@@ -1753,7 +1759,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           ${radarRows || `<tr><td colspan="5" class="col-center" style="color:#6b7280;">Aucune donnée.</td></tr>`}
         </tbody>
       </table>
-      
+
       <div class="card-sub" style="margin:10px 0 0 0; color:#6b7280;">
         Criticité = importance de la compétence pour le poste. Attendu/Atteint = barème interne d’évaluation.
       </div>
