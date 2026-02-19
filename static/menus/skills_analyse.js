@@ -1786,75 +1786,86 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       </table>
     </div>
   `;
-  host.innerHTML = `
-      <div class="card" style="padding:12px; margin:0;">
+    host.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:10px;">
 
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px;">
-          <div>
-            <div style="font-weight:700; font-size:16px;">${escapeHtml(personLabel)}</div>
-            ${!isTit ? `<div class="card-sub" style="margin:4px 0 0 0;">Poste actuel : ${escapeHtml(posteActuelLabel)}</div>` : ""}
-            <div class="card-sub" style="margin:4px 0 0 0;">Service : ${escapeHtml(svc)}</div>
-          </div>
+        <!-- BLOC 1 : Header (identité + tabs + ring) -->
+        <div class="card" style="padding:12px; margin:0;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px;">
+            <div style="min-width:0;">
+              <div style="font-weight:700; font-size:16px; line-height:1.2; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                ${escapeHtml(personLabel)}
+              </div>
 
-          <div style="display:flex; align-items:center;">
-            ${matchingRing(stats.score_pct)}
-          </div>
+              ${(!isTit ? `
+                <div class="card-sub" style="margin:6px 0 0 0;">
+                  Poste actuel : ${escapeHtml(posteActuelLabel)}
+                </div>
+              ` : ``)}
 
-        </div>
+              <div class="card-sub" style="margin:4px 0 0 0;">
+                Service : ${escapeHtml(svc)}
+              </div>
 
-        <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
-          <button type="button" id="btnMatchTabTable" class="sb-btn sb-btn--accent sb-btn--xs">Détail</button>
-          <button type="button" id="btnMatchTabRadar" class="sb-btn sb-btn--soft sb-btn--xs">Radar</button>
-        </div>
-
-
-        <div id="matchPersonTabTable" style="margin-top:12px;">
-        <div class="table-wrap" style="margin-top:12px;">
-          <table class="sb-table">
-            <thead>
-              <tr>
-                <th>Compétence</th>
-                <th class="col-center" style="width:70px;">Poids</th>
-                <th class="col-center" style="width:70px;">Requis</th>
-                <th class="col-center" style="width:80px;">Seuil</th>
-                <th class="col-center" style="width:80px;">Score</th>
-                <th class="col-center" style="width:70px;">Niv.</th>
-                <th class="col-center" style="width:110px;">Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows || `<tr><td colspan="7" class="col-center" style="color:#6b7280;">Aucune compétence requise.</td></tr>`}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-          Critiques = criticité ≥ ${escapeHtml(critMinLabel())}. Score = moyenne pondérée des compétences requises.
-        </div>
-        </div>
-
-        <div id="matchPersonTabRadar" style="display:none; margin-top:12px;">
-          <div style="margin:0 0 10px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-            <button type="button" id="btnMatchRadarViewComp" class="sb-seg sb-seg--dark is-active">Vue par compétence</button>
-            <button type="button" id="btnMatchRadarViewDomain" class="sb-seg sb-seg--dark">Vue par domaine</button>
-          </div>
-
-          <div id="matchRadarViewComp">
-            <div class="card-sub" style="margin:0 0 10px 0; color:#6b7280;">
-              Axes = top ${radarTop.length} compétences (triées par poids). Valeur = min(score / seuil, 1).
+              <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+                <button type="button" id="btnMatchTabTable" class="sb-btn sb-btn--accent sb-btn--xs">Détail</button>
+                <button type="button" id="btnMatchTabRadar" class="sb-btn sb-btn--soft sb-btn--xs">Radar</button>
+              </div>
             </div>
-            ${radarHtmlComp}
-          </div>
 
-          <div id="matchRadarViewDomain" style="display:none;">
-            <div class="card-sub" style="margin:0 0 10px 0; color:#6b7280;">
-              Axes = domaines. Valeur = % d’atteinte (somme scores / somme seuils). Le radar est cappé à 100% (le tableau peut dépasser).
+            <div style="flex:0 0 auto;">
+              ${matchingRing(stats.score_pct)}
             </div>
-            ${radarHtmlDomain}
           </div>
         </div>
+
+        <!-- BLOC 2 : Contenu (table / radar) -->
+        <div class="card" style="padding:12px; margin:0;">
+          <div id="matchPersonTabTable" style="margin-top:0;">
+            <div class="table-wrap" style="margin-top:0;">
+              <table class="sb-table">
+                <thead>
+                  <tr>
+                    <th>Compétence</th>
+                    <th class="col-center" style="width:70px;">Poids</th>
+                    <th class="col-center" style="width:70px;">Requis</th>
+                    <th class="col-center" style="width:80px;">Seuil</th>
+                    <th class="col-center" style="width:80px;">Score</th>
+                    <th class="col-center" style="width:70px;">Niv.</th>
+                    <th class="col-center" style="width:110px;">Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rows || `<tr><td colspan="7" class="col-center" style="color:#6b7280;">Aucune compétence requise.</td></tr>`}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="card-sub" style="margin:10px 0 0 0; color:#6b7280;">
+              Score = résultat du dernier audit (ou estimation), Seuil = niveau requis converti.
+            </div>
+          </div>
+
+          <div id="matchPersonTabRadar" style="margin-top:0; display:none;">
+            <!-- Radar : on garde ton HTML existant -->
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button type="button" id="btnMatchRadarViewComp" class="sb-btn sb-btn--soft sb-btn--xs">Par compétences</button>
+              <button type="button" id="btnMatchRadarViewDomain" class="sb-btn sb-btn--soft sb-btn--xs">Par domaines</button>
+            </div>
+
+            <div id="matchRadarPanelComp" style="margin-top:10px;">
+              ${radarHtmlComp}
+            </div>
+
+            <div id="matchRadarPanelDomain" style="margin-top:10px; display:none;">
+              ${radarHtmlDomain}
+            </div>
+          </div>
+        </div>
+
       </div>
     `;
+
  
     
 
