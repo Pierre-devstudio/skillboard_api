@@ -47,7 +47,8 @@
   --sb-manager: rgb(202, 174, 16);
   --sb-niv-soft: rgb(226, 114, 9);
   --sb-titulaire: rgb(9, 67, 226);
-  --sb-candidat: rgb(226, 9, 215);
+  --sb-candidat: rgb(226, 9, 117);
+ 
 
 /* Default (fallback) */
   --sb-badge-default-bg: #9ca3af;
@@ -503,6 +504,8 @@ textarea.sb-ctrl{
 }
 
 .sb-btn--init:hover{ filter: brightness(0.92); }
+
+
 
 /* -------- Badges -------- */
 .sb-badge{

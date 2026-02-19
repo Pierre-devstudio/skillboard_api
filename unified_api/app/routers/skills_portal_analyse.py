@@ -3635,7 +3635,11 @@ class AnalyseMatchingPerson(BaseModel):
     id_effectif: str
     full: str
     nom_service: str
+
     id_poste_actuel: Optional[str] = None
+    poste_actuel: Optional[Dict[str, Any]] = None
+    poste_actuel_hors_scope: bool = False
+
     is_titulaire: bool = False
 
 
@@ -4453,7 +4457,7 @@ def get_analyse_matching_poste(
                     f"""
                     WITH {cte_sql}
                     SELECT
-                        fp.id_poste, fp.codif_poste, fp.intitule_poste, fp.id_service,
+                        fp.id_poste, fp.codif_poste, fp.codif_client, fp.intitule_poste, fp.id_service,
                         COALESCE(o.nom_service, '') AS nom_service
                     FROM public.tbl_fiche_poste fp
                     JOIN postes_scope ps ON ps.id_poste = fp.id_poste
@@ -4502,6 +4506,7 @@ def get_analyse_matching_poste(
                         poste={
                             "id_poste": poste.get("id_poste"),
                             "codif_poste": poste.get("codif_poste"),
+                            "codif_client": poste.get("codif_client"),
                             "intitule_poste": poste.get("intitule_poste"),
                         },
                         scope=scope,
@@ -4662,6 +4667,7 @@ def get_analyse_matching_poste(
                     poste={
                         "id_poste": poste.get("id_poste"),
                         "codif_poste": poste.get("codif_poste"),
+                        "codif_client": poste.get("codif_client"),
                         "intitule_poste": poste.get("intitule_poste"),
                     },
                     scope=scope,
@@ -4709,7 +4715,7 @@ def get_analyse_matching_effectif_detail(
                 cur.execute(
                     f"""
                     WITH {cte_sql}
-                    SELECT fp.id_poste, fp.codif_poste, fp.intitule_poste
+                    SELECT fp.id_poste, fp.codif_poste, fp.codif_client, fp.intitule_poste
                     FROM public.tbl_fiche_poste fp
                     JOIN postes_scope ps ON ps.id_poste = fp.id_poste
                     WHERE fp.id_poste = %s
@@ -4754,6 +4760,38 @@ def get_analyse_matching_effectif_detail(
                 poste_actuel = (e.get("id_poste_actuel") or "").strip() or None
                 is_tit = bool(poste_actuel and poste_actuel == id_poste)
 
+                # --- Poste actuel (affichage dans le modal si candidat)
+                poste_actuel_obj = None
+                poste_actuel_hors_scope = False
+                if poste_actuel:
+                    cur.execute(
+                        f"""
+                        WITH {cte_sql}
+                        SELECT
+                            fp.id_poste,
+                            fp.codif_poste,
+                            fp.codif_client,
+                            fp.intitule_poste
+                        FROM public.tbl_fiche_poste fp
+                        JOIN postes_scope ps ON ps.id_poste = fp.id_poste
+                        WHERE fp.id_poste = %s
+                        LIMIT 1
+                        """,
+                        tuple(cte_params + [poste_actuel]),
+                    )
+                    pa = cur.fetchone()
+                    if pa:
+                        poste_actuel_obj = {
+                            "id_poste": pa.get("id_poste"),
+                            "codif_poste": pa.get("codif_poste"),
+                            "codif_client": pa.get("codif_client"),
+                            "intitule_poste": pa.get("intitule_poste"),
+                        }
+                    else:
+                        # On sait qu'il y a un poste actuel, mais il est hors périmètre service (anti-fuite)
+                        poste_actuel_hors_scope = True
+
+
                 # --- Compétences requises + méta compétence
                 cur.execute(
                     f"""
@@ -4784,6 +4822,7 @@ def get_analyse_matching_effectif_detail(
                         poste={
                             "id_poste": poste.get("id_poste"),
                             "codif_poste": poste.get("codif_poste"),
+                            "codif_client": poste.get("codif_client"),
                             "intitule_poste": poste.get("intitule_poste"),
                         },
                         person=AnalyseMatchingPerson(
@@ -4791,6 +4830,8 @@ def get_analyse_matching_effectif_detail(
                             full=full,
                             nom_service=(e.get("nom_service") or "").strip() or "—",
                             id_poste_actuel=poste_actuel,
+                            poste_actuel=poste_actuel_obj,
+                            poste_actuel_hors_scope=poste_actuel_hors_scope,
                             is_titulaire=is_tit,
                         ),
                         scope=scope,
@@ -4975,6 +5016,7 @@ def get_analyse_matching_effectif_detail(
                     poste={
                         "id_poste": poste.get("id_poste"),
                         "codif_poste": poste.get("codif_poste"),
+                        "codif_client": poste.get("codif_client"),
                         "intitule_poste": poste.get("intitule_poste"),
                     },
                     person=AnalyseMatchingPerson(
@@ -4982,6 +5024,8 @@ def get_analyse_matching_effectif_detail(
                         full=full,
                         nom_service=(e.get("nom_service") or "").strip() or "—",
                         id_poste_actuel=poste_actuel,
+                        poste_actuel=poste_actuel_obj,
+                        poste_actuel_hors_scope=poste_actuel_hors_scope,
                         is_titulaire=is_tit,
                     ),
                     scope=scope,

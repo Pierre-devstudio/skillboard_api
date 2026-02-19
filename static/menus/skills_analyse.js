@@ -1433,6 +1433,25 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const personLabel = person.full || "—";
     const svc = person.nom_service || "—";
     const isTit = !!person.is_titulaire;
+    // Poste actuel (utile surtout pour un candidat : la personne n'occupe pas le poste étudié)
+    const pa = person.poste_actuel || {};
+    const paCodifClient = (pa.codif_client || "").trim();
+    const paCodifPoste = (pa.codif_poste || "").trim();
+    const paCodeAffiche = (paCodifClient !== "") ? paCodifClient : paCodifPoste;
+    const paIntitule = (pa.intitule_poste || "").trim();
+
+    let posteActuelLabel = "Aucun poste";
+    const paId = (person.id_poste_actuel || "").toString().trim();
+    if (paId) {
+      if (person.poste_actuel_hors_scope) {
+        posteActuelLabel = "Hors périmètre";
+      } else if (paCodeAffiche || paIntitule) {
+        posteActuelLabel = `${paCodeAffiche ? paCodeAffiche + " — " : ""}${paIntitule || "Poste"}`;
+      } else {
+        posteActuelLabel = "Renseigné";
+      }
+    }
+
 
     function box(n, bg, title) {
       const nn = Number(n || 0);
@@ -1734,13 +1753,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   `;
   host.innerHTML = `
       <div class="card" style="padding:12px; margin:0;">
-        <div class="card-sub" style="margin:0;">
-          Poste : <b>${escapeHtml(posteLabel)}</b>
-        </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px; margin-top:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px;">
           <div>
-            <div style="font-weight:900; font-size:16px;">${escapeHtml(personLabel)} ${isTit ? '<span class="sb-badge sb-badge-accent">Titulaire</span>' : '<span class="sb-badge">Candidat</span>'}</div>
+            <div style="font-weight:700; font-size:16px;">${escapeHtml(personLabel)}</div>
+            ${!isTit ? `<div class="card-sub" style="margin:4px 0 0 0;">Poste actuel : ${escapeHtml(posteActuelLabel)}</div>` : ""}
             <div class="card-sub" style="margin:4px 0 0 0;">Service : ${escapeHtml(svc)}</div>
           </div>
 
@@ -1755,11 +1772,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
         </div>
 
-
         <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
-          <button type="button" id="btnMatchTabTable" class="sb-seg sb-seg--dark is-active">Détail</button>
-          <button type="button" id="btnMatchTabRadar" class="sb-seg sb-seg--dark">Radar</button>
+          <button type="button" id="btnMatchTabTable" class="sb-btn sb-btn--accent sb-btn--xs">Détail</button>
+          <button type="button" id="btnMatchTabRadar" class="sb-btn sb-btn--soft sb-btn--xs">Radar</button>
         </div>
+
 
         <div id="matchPersonTabTable" style="margin-top:12px;">
         <div class="table-wrap" style="margin-top:12px;">
@@ -2023,19 +2040,25 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   }
 
   function setActiveTab(which) {
-  const isRadar = (which === "radar");
-  if (tabTable) tabTable.style.display = isRadar ? "none" : "";
-  if (tabRadar) tabRadar.style.display = isRadar ? "" : "none";
+    const isRadar = (which === "radar");
+    if (tabTable) tabTable.style.display = isRadar ? "none" : "";
+    if (tabRadar) tabRadar.style.display = isRadar ? "" : "none";
 
-  if (btnTabTable) {
-    btnTabTable.classList.add("sb-seg", "sb-seg--dark");
-    btnTabTable.classList.toggle("is-active", !isRadar);
+    // Tabs: on utilise le standard sb-btn (actif = accent, inactif = soft)
+    if (btnTabTable) {
+      btnTabTable.classList.remove("sb-seg", "sb-seg--dark", "is-active");
+      btnTabTable.classList.add("sb-btn", "sb-btn--xs");
+      btnTabTable.classList.toggle("sb-btn--accent", !isRadar);
+      btnTabTable.classList.toggle("sb-btn--soft", isRadar);
+    }
+    if (btnTabRadar) {
+      btnTabRadar.classList.remove("sb-seg", "sb-seg--dark", "is-active");
+      btnTabRadar.classList.add("sb-btn", "sb-btn--xs");
+      btnTabRadar.classList.toggle("sb-btn--accent", isRadar);
+      btnTabRadar.classList.toggle("sb-btn--soft", !isRadar);
+    }
   }
-  if (btnTabRadar) {
-    btnTabRadar.classList.add("sb-seg", "sb-seg--dark");
-    btnTabRadar.classList.toggle("is-active", isRadar);
-  }
-  }
+
 
     
   // Init radar view (compétence)
