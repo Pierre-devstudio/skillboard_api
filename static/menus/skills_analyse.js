@@ -1512,168 +1512,142 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return `<span class="sb-badge sb-badge--danger">Manquante</span>`;
     }
 
-    const critLevelClass = (v) => {
-      const n = Number(v);
-      if (!Number.isFinite(n) || n <= 0) return "sb-crit-l1";
-      if (n >= 80) return "sb-crit-l5";
-      if (n >= 60) return "sb-crit-l4";
-      if (n >= 40) return "sb-crit-l3";
-      if (n >= 20) return "sb-crit-l2";
-      return "sb-crit-l1";
-    };
-
-    const critBadgeHtml = (v) => {
-      const n = Number(v);
-      if (!Number.isFinite(n) || n <= 0) return "—";
-      return `<span class="sb-crit-badge ${critLevelClass(n)}" title="Criticité">${escapeHtml(String(Math.round(n)))}</span>`;
-    };
-
-    function niveauKey(raw) {
-      const s = (raw ?? "")
-        .toString()
-        .trim()
-        .toUpperCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-      if (!s) return "";
-      if (/\bA\b/.test(s) || s.includes("INITIAL")) return "A";
-      if (/\bB\b/.test(s) || s.includes("AVANCE")) return "B";
-      if (/\bC\b/.test(s) || s.includes("EXPERT")) return "C";
-      return "";
-    }
-
-    function nivBadgeHtml(raw, title) {
-      const k = niveauKey(raw);
-      if (k === "A") return `<span class="sb-badge sb-badge-niv sb-badge-niv-a" title="${escapeHtml(title || "Niveau")}">Initial</span>`;
-      if (k === "B") return `<span class="sb-badge sb-badge-niv sb-badge-niv-b" title="${escapeHtml(title || "Niveau")}">Avancé</span>`;
-      if (k === "C") return `<span class="sb-badge sb-badge-niv sb-badge-niv-c" title="${escapeHtml(title || "Niveau")}">Expert</span>`;
-      return `<span class="sb-badge" title="${escapeHtml(title || "Niveau")}">${escapeHtml(String(raw || "—").trim() || "—")}</span>`;
-    }
-
-    function fmtNum(v) {
+    function fmtScore(v) {
       if (v === null || v === undefined || v === "") return "—";
       const n = Number(v);
       if (Number.isNaN(n)) return "—";
       return (Math.round(n * 10) / 10).toString();
     }
 
-    // Compat: utilisé par le radar (domainRows) pour l’affichage "x / y pts"
-    function fmtScore(v) {
-      return fmtNum(v);
+    // Criticité (poids) -> badge rond (violet), 5 niveaux
+    function critLevel(p) {
+      const n = Number(p);
+      if (!Number.isFinite(n)) return 1;
+      if (n >= 90) return 5;
+      if (n >= 70) return 4;
+      if (n >= 50) return 3;
+      if (n >= 30) return 2;
+      return 1;
     }
 
-
-    function ptsBadge(v, title) {
-      const t = fmtNum(v);
-      if (t === "—") return "—";
-      return `<span class="sb-badge" title="${escapeHtml(title || "")}" style="font-variant-numeric: tabular-nums;">${escapeHtml(t)}</span>`;
+    function critBadgeHtml(p) {
+      const n = Number(p);
+      const txt = Number.isFinite(n) ? String(Math.round(n)) : "—";
+      const lvl = critLevel(n);
+      return `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité (poids)">${escapeHtml(txt)}</span>`;
     }
 
-    function compCodeBadge(code) {
-      return `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>`;
+    // Niveaux A/B/C -> Initial / Avancé / Expert
+    function nivKey(v) {
+      const s = (v ?? "").toString().trim().toLowerCase();
+      if (!s) return "";
+      if (s === "a" || s.startsWith("init") || s === "1") return "A";
+      if (s === "b" || s.startsWith("avan") || s === "2") return "B";
+      if (s === "c" || s.startsWith("expe") || s === "3") return "C";
+      return "";
+    }
+
+    function nivLabel(v) {
+      const k = nivKey(v);
+      if (k === "A") return "Initial";
+      if (k === "B") return "Avancé";
+      if (k === "C") return "Expert";
+      return "—";
+    }
+
+    function nivBadgeHtml(v) {
+      const k = nivKey(v);
+      const label = nivLabel(v);
+      if (!k) return `<span class="sb-badge">—</span>`;
+      const cls = (k === "A") ? "sb-badge-niv-a" : (k === "B" ? "sb-badge-niv-b" : "sb-badge-niv-c");
+      return `<span class="sb-badge sb-badge-niv ${cls}">${escapeHtml(label)}</span>`;
     }
 
     function domainPill(it) {
-      const lab = (it?.domaine_titre_court || it?.domaine_titre || "").toString().trim();
-      if (!lab) return "";
-      const col = normalizeColor(it?.domaine_couleur) || "#9ca3af";
-      return `<span class="sb-badge-domaine" style="--dom-color:${escapeHtml(col)}">${escapeHtml(lab)}</span>`;
+      const txt = ((it?.domaine_titre_court || it?.domaine || "") ?? "").toString().trim();
+      if (!txt) return "";
+      const rawCol = it?.domaine_couleur ?? it?.domaine_color ?? it?.domaine_couleur_hex ?? it?.couleur_domaine;
+      const col = normalizeColor(rawCol);
+      const style = col ? ` style="--dom-color:${escapeHtml(col)};"` : "";
+      return `<span class="sb-badge-domaine"${style}>${escapeHtml(txt)}</span>`;
     }
 
     function renderCritDetailsRow(uid, arr) {
       const a = Array.isArray(arr) ? arr : [];
       if (!a.length) return "";
 
-      const lis = a.map(x => {
-        const nom = (x.nom || "").toString().trim();
-        const code = (x.code_critere || "").toString().trim();
+      const lis = a.map((x) => {
+        const nom = (x?.nom || "").toString().trim();
+        const code = (x?.code_critere || "").toString().trim();
         const title = (nom || code || "Critère").trim();
 
-        const n = (x.niveau === null || x.niveau === undefined) ? null : Number(x.niveau);
-        const pts = (n && !Number.isNaN(n)) ? `${n}/4` : "—";
+        const n = (x?.niveau === null || x?.niveau === undefined) ? null : Number(x.niveau);
+        const pts = (n !== null && Number.isFinite(n)) ? `${Math.round(n)}/4` : "—";
 
-        const lib = (x.libelle || "").toString().trim();
-        const extra = lib ? ` <span class="sb-crit-mini">${escapeHtml(lib)}</span>` : "";
+        const lib = (x?.libelle || "").toString().trim();
+        const extra = lib ? ` <span style="color:#6b7280;">${escapeHtml(lib)}</span>` : "";
 
-        return `<li><b>${escapeHtml(title)}</b> : <span class="sb-crit-pts">${escapeHtml(pts)}</span>${extra}</li>`;
+        return `<li><b>${escapeHtml(title)}</b> : <span style="font-weight:800;">${escapeHtml(pts)}</span>${extra}</li>`;
       }).join("");
 
       return `
-        <tr class="sb-crit-row" data-crit-row="${escapeHtml(uid)}" style="display:none;">
-          <td colspan="7">
-            <div class="sb-crit-panel">
-              <div class="sb-crit-panel-title">Critères d’évaluation</div>
-              <ul class="sb-crit-list">${lis}</ul>
+        <tr data-crit-row="${escapeHtml(uid)}" style="display:none;">
+          <td colspan="7" style="padding:0;">
+            <div style="padding:10px 12px; border-top:1px dashed #e5e7eb; background:#fbfbfb;">
+              <ul style="margin:0 0 0 18px; color:#374151; font-size:12px; line-height:1.35;">
+                ${lis}
+              </ul>
             </div>
           </td>
         </tr>
       `;
     }
 
-
-    const rows = items.map((it, idx) => {
+    // 1 ligne "compétence" + (optionnel) 1 ligne "critères" (colspan)
+    const rowsHtml = items.map((it, idx) => {
       const uid = `crit_${idx}`;
-      const hasCrit = Array.isArray(it.criteres) && it.criteres.length > 0;
+      const code = it?.code || it?.id_comp || "—";
+      const intitule = it?.intitule || "";
+      const poids = Number(it?.poids_criticite || 0);
+      const nivReq = it?.niveau_requis;
+      const attendu = fmtScore(it?.seuil);
+      const atteint = fmtScore(it?.score);
+      const nivAt = it?.niveau_atteint;
 
-      const code = it.code || it.id_comp || "—";
-      const intitule = it.intitule || "";
-
-      const criticite = it.poids_criticite;
-      const nivReq = it.niveau_requis || "—";
-      const attendu = it.seuil;
-      const atteint = it.score;
-      const nivAt = it.niveau_atteint || "—";
-
-      return `
-        <tr>
-          <td>
-            <div style="display:flex; flex-direction:column; gap:4px; min-width:0;">
-              <div class="sb-badges" style="justify-content:flex-start; flex-wrap:wrap;">
-                ${compCodeBadge(code)}
-                ${domainPill(it)}
-              </div>
-
-              <div style="font-weight:700; color:#111827; font-size:13px; line-height:1.25;">
-                ${escapeHtml(intitule || "—")}
-              </div>
-
-              ${hasCrit ? `
-                <button type="button"
-                        class="sb-crit-toggle"
-                        data-crit="${escapeHtml(uid)}"
-                        aria-expanded="false">
-                  <span class="sb-crit-chev">▸</span>
-                  <span>Voir critères</span>
-                </button>
-              ` : ``}
-            </div>
-          </td>
-
-          <td class="col-center" style="white-space:nowrap;">${critBadgeHtml(criticite)}</td>
-
-          <td class="col-center" style="white-space:nowrap;">
-            ${nivBadgeHtml(nivReq, "Niveau requis")}
-          </td>
-
-          <td class="col-center" style="white-space:nowrap;">
-            ${ptsBadge(attendu, "Référence interne (barème)")}
-          </td>
-
-          <td class="col-center" style="white-space:nowrap;">
-            ${ptsBadge(atteint, "Dernière évaluation (barème)")}
-          </td>
-
-          <td class="col-center" style="white-space:nowrap;">
-            ${nivBadgeHtml(nivAt, "Niveau atteint")}
-          </td>
-
-          <td class="col-center" style="white-space:nowrap;">
-            ${statusBadge(it.etat)}
-          </td>
-        </tr>
-        ${hasCrit ? renderCritDetailsRow(uid, it.criteres) : ``}
+      const badgesTop = `
+        <div class="sb-badges" style="flex-wrap:wrap;">
+          <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>
+          ${domainPill(it)}
+        </div>
       `;
+
+      const hasCrit = Array.isArray(it?.criteres) && it.criteres.length > 0;
+      const btnCrit = hasCrit ? `
+        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-crit-toggle="${escapeHtml(uid)}" aria-expanded="false" style="margin-top:6px;">
+          <span data-crit-caret style="margin-right:6px;">▸</span>Voir critères
+        </button>
+      ` : ``;
+
+      const mainRow = `
+        <tr>
+          <td style="vertical-align:top;">
+            ${badgesTop}
+            <div style="font-weight:700; color:#111827; margin-top:4px;">${escapeHtml(intitule)}</div>
+            ${btnCrit}
+          </td>
+          <td class="col-center">${critBadgeHtml(poids)}</td>
+          <td class="col-center">${nivBadgeHtml(nivReq)}</td>
+          <td class="col-center"><span class="sb-badge" title="Points attendus">${escapeHtml(String(attendu))}</span></td>
+          <td class="col-center"><span class="sb-badge" title="Points atteints">${escapeHtml(String(atteint))}</span></td>
+          <td class="col-center">${nivBadgeHtml(nivAt)}</td>
+          <td class="col-center">${statusBadge(it?.etat)}</td>
+        </tr>
+      `;
+
+      const critRow = renderCritDetailsRow(uid, it?.criteres);
+      return mainRow + critRow;
     }).join("");
+
 
 
 
@@ -1935,40 +1909,30 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div class="card" style="padding:12px; margin:0;">
           <div id="matchPersonTabTable" style="margin-top:0;">
             <div class="table-wrap" style="margin-top:0;">
-              <table class="sb-table sb-table--airy sb-table--hover sb-match-table">
-                <colgroup>
-                  <col style="width:56%;">
-                  <col style="width:72px;">
-                  <col style="width:110px;">
-                  <col style="width:74px;">
-                  <col style="width:74px;">
-                  <col style="width:110px;">
-                  <col style="width:120px;">
-                </colgroup>
+              <table class="sb-table">
                 <thead>
-                  <tr class="sb-th-group">
-                    <th rowspan="2">Compétence</th>
-                    <th colspan="3" class="col-center">Besoin du poste</th>
-                    <th colspan="3" class="col-center">Profil évalué</th>
+                  <tr>
+                    <th rowspan="2" style="min-width:320px;">Compétence</th>
+                    <th colspan="3" class="col-center" style="background:#f9fafb;">BESOIN DU POSTE</th>
+                    <th colspan="3" class="col-center" style="background:#f9fafb;">PROFIL ÉVALUÉ</th>
                   </tr>
-                  <tr class="sb-th-sub">
-                    <th class="col-center" style="width:86px;">Criticité</th>
-                    <th class="col-center" style="width:110px; line-height:1.05;">Niveau<br>requis</th>
-                    <th class="col-center" style="width:86px;" title="Référence interne (barème)">Attendu</th>
-
-                    <th class="col-center" style="width:86px;" title="Dernière évaluation (barème)">Atteint</th>
-                    <th class="col-center" style="width:110px; line-height:1.05;">Niveau<br>atteint</th>
+                  <tr>
+                    <th class="col-center" style="width:90px;">Criticité</th>
+                    <th class="col-center" style="width:130px;">Niveau<br>requis</th>
+                    <th class="col-center" style="width:90px;">Attendu</th>
+                    <th class="col-center" style="width:90px;">Atteint</th>
+                    <th class="col-center" style="width:140px;">Niveau<br>atteint</th>
                     <th class="col-center" style="width:120px;">Statut</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${rows || `<tr><td colspan="7" class="col-center" style="color:#6b7280;">Aucune compétence requise.</td></tr>`}
+                  ${rowsHtml || `<tr><td colspan="7" class="col-center" style="color:#6b7280;">Aucune compétence requise.</td></tr>`}
                 </tbody>
               </table>
             </div>
 
-            <div class="card-sub" style="margin:10px 0 0 0; color:#6b7280;">
-              Criticité = importance de la compétence pour le poste. Attendu/Atteint = barème interne d’évaluation.
+            <div class="card-sub" style="margin-top:10px; color:#6b7280;">
+              Criticité = poids de la compétence dans le poste. Attendu/Atteint = points (0–10). Niveaux = Initial / Avancé / Expert.
             </div>
 
             <div class="card-sub" style="margin:10px 0 0 0; color:#6b7280;">
@@ -1996,22 +1960,23 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       </div>
     `;
 
-    // Toggle critères (ligne dédiée pleine largeur)
-    host.querySelectorAll(".sb-crit-toggle").forEach(btn => {
+    // Toggle "Voir critères" (affiche une ligne dédiée sous la compétence)
+    host.querySelectorAll("[data-crit-toggle]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const uid = btn.getAttribute("data-crit") || "";
-        const row = host.querySelector(`tr.sb-crit-row[data-crit-row="${CSS.escape(uid)}"]`);
+        const uid = btn.getAttribute("data-crit-toggle");
+        if (!uid) return;
+        const row = host.querySelector(`tr[data-crit-row="${uid}"]`);
         if (!row) return;
 
-        const isOpen = row.style.display !== "none";
-        row.style.display = isOpen ? "none" : "";
-        btn.setAttribute("aria-expanded", (!isOpen).toString());
-        btn.classList.toggle("is-open", !isOpen);
+        const open = (row.style.display === "none");
+        row.style.display = open ? "" : "none";
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
 
-        const chev = btn.querySelector(".sb-crit-chev");
-        if (chev) chev.textContent = (!isOpen) ? "▾" : "▸";
+        const caret = btn.querySelector("[data-crit-caret]");
+        if (caret) caret.textContent = open ? "▾" : "▸";
       });
     });
+
 
 
  
