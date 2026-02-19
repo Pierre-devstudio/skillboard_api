@@ -46,6 +46,8 @@
   --sb-poste: rgb(209, 51, 188);
   --sb-manager: rgb(202, 174, 16);
   --sb-niv-soft: rgb(226, 114, 9);
+  --sb-titulaire: rgb(9, 67, 226);
+  --sb-candidat: rgb(226, 9, 215);
 
 /* Default (fallback) */
   --sb-badge-default-bg: #9ca3af;
@@ -528,6 +530,9 @@ textarea.sb-ctrl{
 .sb-badge--warning{ background: var(--sb-warning); border-color: var(--sb-warning); color:#fff; }
 .sb-badge--info{    background: var(--sb-info);    border-color: var(--sb-info);    color:#fff; }
 .sb-badge--violet{  background: var(--sb-violet);  border-color: var(--sb-violet);  color:#fff; }
+
+.sb-badge--titulaire{  background: var(--sb-titulaire);  border-color: var(--sb-titulaire);  color:#fff; }
+.sb-badge--candidat{  background: var(--sb-candidat);  border-color: var(--sb-candidat);  color:#fff; }
 
 /* Badge "Critère" (grille d'évaluation) */
 .sb-badge.sb-badge-critere{

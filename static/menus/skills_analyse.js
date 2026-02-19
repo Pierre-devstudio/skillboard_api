@@ -1314,9 +1314,19 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <div class="modal" id="modalMatchPerson" aria-hidden="true">
         <div class="modal-card" style="max-width:1120px; width:min(1120px, 96vw); max-height:92vh; display:flex; flex-direction:column;">
           <div class="modal-header">
-            <div style="font-weight:600;" id="matchPersonModalTitle">Détail</div>
+            <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
+              <div class="modal-title" style="display:flex; gap:8px; align-items:center; min-width:0;">
+                <span id="matchPersonModalTitle" style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Détail</span>
+                <span id="matchPersonModalTitleBadge" class="sb-badge" style="display:none;"></span>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center; min-width:0;">
+                <span id="matchPersonModalTitlePosteCode" class="sb-badge sb-badge-ref-poste-code" style="display:none;"></span>
+                <span id="matchPersonModalTitlePosteText" class="card-sub" style="margin:0; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></span>
+              </div>
+            </div>
             <button type="button" class="modal-x" id="btnCloseMatchPersonModal" aria-label="Fermer">×</button>
           </div>
+
 
           <div class="modal-body" id="matchPersonModalBody" style="overflow:auto; flex:1; padding:14px 16px;">
             <div class="card" style="padding:12px; margin:0;">
@@ -1359,10 +1369,29 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   function openMatchPersonModal(title) {
     const modal = ensureMatchPersonModal();
+
     const t = byId("matchPersonModalTitle");
+    const badgeEl = byId("matchPersonModalTitleBadge");
+    const posteCodeEl = byId("matchPersonModalTitlePosteCode");
+    const posteTextEl = byId("matchPersonModalTitlePosteText");
     const b = byId("matchPersonModalBody");
+
     if (t) t.textContent = title || "Détail";
+
+    // Reset header (sera rempli après fetch)
+    if (badgeEl) {
+      badgeEl.textContent = "";
+      badgeEl.className = "sb-badge";
+      badgeEl.style.display = "none";
+    }
+    if (posteCodeEl) {
+      posteCodeEl.textContent = "";
+      posteCodeEl.style.display = "none";
+    }
+    if (posteTextEl) posteTextEl.textContent = "";
+
     if (b) b.innerHTML = `<div class="card" style="padding:12px; margin:0;"><div class="card-sub" style="margin:0;">Chargement…</div></div>`;
+
 
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
@@ -2051,10 +2080,37 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       const poste = data?.poste || {};
       const person = data?.person || {};
-      const title = `${person.full || "Personne"} — ${poste.codif_poste ? poste.codif_poste + " — " : ""}${poste.intitule_poste || "Poste"}`.trim();
+
+      // Header: Nom + badge Titulaire/Candidat + code poste + intitulé
+      const personFull = (person.full || "Personne").toString().trim() || "Personne";
+      const isTit = !!person.is_titulaire;
+
+      const codifClient = (poste.codif_client || "").trim();
+      const codifPoste = (poste.codif_poste || "").trim();
+      const codeAffiche = (codifClient !== "") ? codifClient : codifPoste;
+
+      const posteIntitule = (poste.intitule_poste || "").trim() || "Poste";
 
       const t = byId("matchPersonModalTitle");
-      if (t) t.textContent = title;
+      const badgeEl = byId("matchPersonModalTitleBadge");
+      const posteCodeEl = byId("matchPersonModalTitlePosteCode");
+      const posteTextEl = byId("matchPersonModalTitlePosteText");
+
+      if (t) t.textContent = personFull;
+
+      if (badgeEl) {
+        badgeEl.textContent = isTit ? "Titulaire" : "Candidat";
+        badgeEl.className = isTit ? "sb-badge sb-badge--titulaire" : "sb-badge sb-badge--candidat";
+        badgeEl.style.display = "inline-flex";
+      }
+
+      if (posteCodeEl) {
+        posteCodeEl.textContent = codeAffiche || "";
+        posteCodeEl.style.display = codeAffiche ? "inline-flex" : "none";
+      }
+
+      if (posteTextEl) posteTextEl.textContent = posteIntitule;
+
 
       renderMatchPersonDetail(data);
     } catch (e) {
