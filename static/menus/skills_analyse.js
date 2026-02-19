@@ -1917,14 +1917,19 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             <div class="table-wrap" style="margin-top:0;">
               <table class="sb-table">
                 <thead>
-                  <tr>
-                    <th>Compétence</th>
-                    <th class="col-center" style="width:70px;">Poids</th>
-                    <th class="col-center" style="width:70px;">Requis</th>
-                    <th class="col-center" style="width:80px;">Seuil</th>
-                    <th class="col-center" style="width:80px;">Score</th>
-                    <th class="col-center" style="width:70px;">Niv.</th>
-                    <th class="col-center" style="width:110px;">Statut</th>
+                  <tr class="sb-th-group">
+                    <th rowspan="2">Compétence</th>
+                    <th colspan="3" class="col-center">Besoin du poste</th>
+                    <th colspan="3" class="col-center">Profil évalué</th>
+                  </tr>
+                  <tr class="sb-th-sub">
+                    <th class="col-center" style="width:86px;">Criticité</th>
+                    <th class="col-center" style="width:110px; line-height:1.05;">Niveau<br>requis</th>
+                    <th class="col-center" style="width:86px;" title="Référence interne (barème)">Attendu</th>
+
+                    <th class="col-center" style="width:86px;" title="Dernière évaluation (barème)">Atteint</th>
+                    <th class="col-center" style="width:110px; line-height:1.05;">Niveau<br>atteint</th>
+                    <th class="col-center" style="width:120px;">Statut</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1933,6 +1938,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               </table>
             </div>
 
+            <div class="card-sub" style="margin:10px 0 0 0; color:#6b7280;">
+              Criticité = importance de la compétence pour le poste. Attendu/Atteint = barème interne d’évaluation.
+            </div>
+            
             <div class="card-sub" style="margin:10px 0 0 0; color:#6b7280;">
               Score = résultat du dernier audit (ou estimation), Seuil = niveau requis converti.
             </div>
