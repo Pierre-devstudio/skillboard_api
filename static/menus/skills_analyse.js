@@ -2367,12 +2367,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     host.innerHTML = `
       <div class="card-sub" style="margin:0 0 8px 0;">
         <span>Poste :</span>
-        <span style="display:inline-flex; align-items:center; justify-content:center;
-                     padding:2px 8px; border-radius:999px;
-                     font-size:12px; font-weight:800; line-height:1.2;
-                     color:rgb(255, 255, 255);
-                     background:rgb(62, 190, 73);
-                     border:1px solid rgb(62, 190, 73);">
+        <span class="sb-badge sb-badge-ref-poste-code">
           ${escapeHtml(((poste?.codif_client || "").trim() || (poste?.codif_poste || "").trim() || "—"))}
         </span>
         <b style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
@@ -2384,7 +2379,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <table class="sb-table">
           <thead>
             <tr>
-              <th>Personne</th>
+              <th>Effectif</th>
               <th style="width:180px;">Service</th>
               <th class="col-center" style="width:110px;"
                   title="Adéquation globale au poste (synthèse des compétences requises).">Score</th>
