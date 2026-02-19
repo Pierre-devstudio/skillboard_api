@@ -596,6 +596,39 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     `;
   }
 
+    function matchingRing(score100) {
+    const s = clamp(Math.round(Number(score100 || 0)), 0, 100);
+    const size = 104;
+    const stroke = 10;
+    const r = (size - stroke) / 2;
+    const c = 2 * Math.PI * r;
+    const offset = c * (1 - s / 100);
+
+    // Inversé vs "Fragilité" : 0 = rouge, 100 = vert
+    const hue = Math.round(120 * (s / 100));
+    const fill = `hsl(${hue} 70% 45%)`;
+
+    return `
+      <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+        <div style="position:relative; width:${size}px; height:${size}px;">
+          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;">
+            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
+            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
+                    stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
+                    transform="rotate(-90 ${size / 2} ${size / 2})" />
+          </svg>
+          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+            <div style="font-weight:900; font-size:28px; line-height:1;">
+              ${s}<span style="font-size:12px; font-weight:800;">%</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-sub" style="margin:0;">Matching</div>
+      </div>
+    `;
+  }
+
+
   function priorityPill(label, score100) {
     const hue = scoreHue(score100);
     const border = `hsl(${hue} 70% 45% / 0.55)`;
@@ -1761,15 +1794,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             <div class="card-sub" style="margin:4px 0 0 0;">Service : ${escapeHtml(svc)}</div>
           </div>
 
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <span class="sb-badge sb-badge-accent" style="font-weight:900;">${escapeHtml(String(stats.score_pct || 0))}%</span>
-            <span style="display:inline-flex; gap:6px; align-items:center;">
-              ${box(stats.crit_missing, "#ef4444", "Critiques manquantes")}
-              ${box(stats.crit_under, "#f59e0b", "Critiques à renforcer")}
-              ${box(stats.nb_missing, "#ef4444", "Manquantes")}
-              ${box(stats.nb_under, "#f59e0b", "À renforcer")}
-            </span>
+          <div style="display:flex; align-items:center;">
+            ${matchingRing(stats.score_pct)}
           </div>
+
         </div>
 
         <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
