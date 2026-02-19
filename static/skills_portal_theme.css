@@ -1021,6 +1021,22 @@ textarea.sb-ctrl{
   font-size: 12px;
 }
 
+/* Modal MatchPerson — entête groupé table détail */
+#modalMatchPerson .sb-table thead tr.sb-th-group th{
+  background: color-mix(in srgb, var(--sb-gray-100) 75%, #ffffff);
+  color: var(--sb-gray-600);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .02em;
+  border-bottom: 0;
+}
+
+#modalMatchPerson .sb-table thead tr.sb-th-sub th{
+  padding-top: 8px;
+}
+
+
 /* -------- Buttons (modifiers manquants) -------- */
 .sb-btn--xs{
   height:26px;
