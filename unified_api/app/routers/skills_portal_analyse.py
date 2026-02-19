@@ -3044,7 +3044,7 @@ def get_analyse_risques_detail(
                     """
                     cur.execute(
                         sql,
-                        tuple(cte_params + [criticite_min, criticite_min, criticite_min, id_ent, limit])
+                        tuple(cte_params + [ref_mois, criticite_min, criticite_min, criticite_min, id_ent, limit])
                     )
                     rows = cur.fetchall() or []
                     for r in rows:
