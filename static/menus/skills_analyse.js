@@ -1614,6 +1614,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const rows = items.map((it, idx) => {
       const uid = `crit_${idx}`;
       const hasCrit = Array.isArray(it.criteres) && it.criteres.length > 0;
+
       const code = it.code || it.id_comp || "—";
       const intitule = it.intitule || "";
 
@@ -1645,7 +1646,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                   <span>Voir critères</span>
                 </button>
               ` : ``}
-
             </div>
           </td>
 
@@ -1671,8 +1671,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             ${statusBadge(it.etat)}
           </td>
         </tr>
+        ${hasCrit ? renderCritDetailsRow(uid, it.criteres) : ``}
       `;
     }).join("");
+
 
 
 
