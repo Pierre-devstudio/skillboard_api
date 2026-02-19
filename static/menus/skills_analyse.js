@@ -1507,14 +1507,33 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     function statusBadge(etat) {
       const s = String(etat || "").toLowerCase();
-      if (s === "ok") return `<span style="font-weight:800; color:#065f46;">OK</span>`;
-      if (s === "under") return `<span style="font-weight:800; color:#92400e;">À renforcer</span>`;
-      return `<span style="font-weight:800; color:#991b1b;">Manquante</span>`;
+      if (s === "ok") return `<span class="sb-badge sb-badge--success">OK</span>`;
+      if (s === "under") return `<span class="sb-badge sb-badge--warning">À renforcer</span>`;
+      return `<span class="sb-badge sb-badge--danger">Manquante</span>`;
     }
 
     function critMark(isCrit) {
       if (!isCrit) return "";
-      return `<span class="sb-badge" title="Compétence critique" style="margin-left:6px; border-color:#ef4444; color:#991b1b;">CRIT</span>`;
+      return `<span class="sb-badge" title="Compétence critique" style="border-color:#ef4444; color:#991b1b;">CRIT</span>`;
+    }
+
+    function compCodeBadge(code) {
+      return `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>`;
+    }
+
+    function domainPill(it) {
+      const lab = (it?.domaine_titre_court || it?.domaine_titre || "").toString().trim();
+      if (!lab) return "";
+      const col = normalizeColor(it?.domaine_couleur) || "#9ca3af";
+      return `<span class="sb-badge-domaine" style="--dom-color:${escapeHtml(col)}">${escapeHtml(lab)}</span>`;
+    }
+
+    function nivBadgeShort(raw) {
+      const k = String(raw || "").trim().toUpperCase();
+      if (k === "A") return `<span class="sb-badge sb-badge-niv sb-badge-niv-a">A</span>`;
+      if (k === "B") return `<span class="sb-badge sb-badge-niv sb-badge-niv-b">B</span>`;
+      if (k === "C") return `<span class="sb-badge sb-badge-niv sb-badge-niv-c">C</span>`;
+      return `<span class="sb-badge">${escapeHtml(k || "—")}</span>`;
     }
 
     function fmtScore(v) {
@@ -1541,9 +1560,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         return `<li><b>${escapeHtml(title)}</b> : <span style="font-weight:800;">${escapeHtml(pts)}</span>${extra}</li>`;
       }).join("");
       return `
-        <details style="margin-top:6px;">
-          <summary style="cursor:pointer; color:#6b7280; font-size:12px;">Voir critères</summary>
-          <ul style="margin:8px 0 0 18px; color:#374151; font-size:12px;">
+        <details class="sb-crit-details">
+          <summary>Voir critères</summary>
+          <ul>
             ${lis}
           </ul>
         </details>
@@ -1554,30 +1573,40 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const code = it.code || it.id_comp || "—";
       const intitule = it.intitule || "";
       const poids = Number(it.poids_criticite || 1);
+
       const niv = it.niveau_requis || "—";
       const seuil = fmtScore(it.seuil);
       const score = fmtScore(it.score);
       const nivAt = it.niveau_atteint || "—";
-      const domain = (it.domaine_titre_court || "").trim();
-      const domainBadge = domain ? `<span class="sb-badge">${escapeHtml(domain)}</span>` : "";
 
       return `
         <tr>
-          <td style="font-weight:800;">
-            ${escapeHtml(code)} ${critMark(it.is_critique)}
-            <div style="font-weight:600; color:#111827; margin-top:2px;">${escapeHtml(intitule)}</div>
-            <div style="margin-top:4px;">${domainBadge}</div>
-            ${renderCritDetails(it.criteres)}
+          <td>
+            <div style="display:flex; flex-direction:column; gap:4px; min-width:0;">
+              <div class="sb-badges" style="justify-content:flex-start; flex-wrap:wrap;">
+                ${compCodeBadge(code)}
+                ${critMark(it.is_critique)}
+                ${domainPill(it)}
+              </div>
+
+              <div style="font-weight:700; color:#111827; font-size:13px; line-height:1.25;">
+                ${escapeHtml(intitule || "—")}
+              </div>
+
+              ${renderCritDetails(it.criteres)}
+            </div>
           </td>
-          <td class="col-center">${escapeHtml(String(poids))}</td>
-          <td class="col-center">${escapeHtml(String(niv))}</td>
-          <td class="col-center">${escapeHtml(String(seuil))}</td>
-          <td class="col-center">${escapeHtml(String(score))}</td>
-          <td class="col-center">${escapeHtml(String(nivAt))}</td>
-          <td class="col-center">${statusBadge(it.etat)}</td>
+
+          <td class="col-center" style="white-space:nowrap; font-variant-numeric: tabular-nums;">${escapeHtml(String(poids))}</td>
+          <td class="col-center" style="white-space:nowrap;">${nivBadgeShort(niv)}</td>
+          <td class="col-center" style="white-space:nowrap;">${escapeHtml(String(seuil))}</td>
+          <td class="col-center" style="white-space:nowrap;">${escapeHtml(String(score))}</td>
+          <td class="col-center" style="white-space:nowrap;">${nivBadgeShort(nivAt)}</td>
+          <td class="col-center" style="white-space:nowrap;">${statusBadge(it.etat)}</td>
         </tr>
       `;
     }).join("");
+
 
 
     // ------------------------------------------------------
@@ -1658,7 +1687,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     </div>
 
     <div class="table-wrap" style="margin-top:10px;">
-      <table class="sb-table">
+      <table class="sb-table sb-table--airy sb-table--hover">
         <thead>
           <tr>
             <th>Compétence</th>

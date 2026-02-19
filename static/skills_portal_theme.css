@@ -1007,6 +1007,20 @@ textarea.sb-ctrl{
   letter-spacing: var(--sb-modal-title-letterspacing);
 }
 
+/* Modal Matching (MatchPerson) — Détail: "Voir critères" */
+#modalMatchPerson details.sb-crit-details summary{
+  cursor:pointer;
+  color: var(--sb-gray-500);
+  font-size: 12px;
+  user-select: none;
+}
+
+#modalMatchPerson details.sb-crit-details ul{
+  margin: 8px 0 0 18px;
+  color: var(--sb-gray-700);
+  font-size: 12px;
+}
+
 /* -------- Buttons (modifiers manquants) -------- */
 .sb-btn--xs{
   height:26px;
