@@ -1580,9 +1580,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return `<span class="sb-badge-domaine" style="--dom-color:${escapeHtml(col)}">${escapeHtml(lab)}</span>`;
     }
 
-    function renderCritDetails(arr) {
+    function renderCritDetailsRow(uid, arr) {
       const a = Array.isArray(arr) ? arr : [];
       if (!a.length) return "";
+
       const lis = a.map(x => {
         const nom = (x.nom || "").toString().trim();
         const code = (x.code_critere || "").toString().trim();
@@ -1592,20 +1593,27 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         const pts = (n && !Number.isNaN(n)) ? `${n}/4` : "—";
 
         const lib = (x.libelle || "").toString().trim();
-        const extra = lib ? ` <span style="color:#6b7280;">${escapeHtml(lib)}</span>` : "";
+        const extra = lib ? ` <span class="sb-crit-mini">${escapeHtml(lib)}</span>` : "";
 
-        return `<li><b>${escapeHtml(title)}</b> : <span style="font-weight:800;">${escapeHtml(pts)}</span>${extra}</li>`;
+        return `<li><b>${escapeHtml(title)}</b> : <span class="sb-crit-pts">${escapeHtml(pts)}</span>${extra}</li>`;
       }).join("");
 
       return `
-        <details class="sb-crit-details">
-          <summary>Voir critères</summary>
-          <ul>${lis}</ul>
-        </details>
+        <tr class="sb-crit-row" data-crit-row="${escapeHtml(uid)}" style="display:none;">
+          <td colspan="7">
+            <div class="sb-crit-panel">
+              <div class="sb-crit-panel-title">Critères d’évaluation</div>
+              <ul class="sb-crit-list">${lis}</ul>
+            </div>
+          </td>
+        </tr>
       `;
     }
 
-    const rows = items.map(it => {
+
+    const rows = items.map((it, idx) => {
+      const uid = `crit_${idx}`;
+      const hasCrit = Array.isArray(it.criteres) && it.criteres.length > 0;
       const code = it.code || it.id_comp || "—";
       const intitule = it.intitule || "";
 
@@ -1628,7 +1636,16 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                 ${escapeHtml(intitule || "—")}
               </div>
 
-              ${renderCritDetails(it.criteres)}
+              ${hasCrit ? `
+                <button type="button"
+                        class="sb-crit-toggle"
+                        data-crit="${escapeHtml(uid)}"
+                        aria-expanded="false">
+                  <span class="sb-crit-chev">▸</span>
+                  <span>Voir critères</span>
+                </button>
+              ` : ``}
+
             </div>
           </td>
 
@@ -1720,6 +1737,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <td class="col-center">${escapeHtml(String(pct))}%</td>
           <td class="col-center" style="font-weight:900; color:${stColor};">${escapeHtml(st)}</td>
         </tr>
+        ${renderCritDetailsRow(uid, it.criteres)}
       `;
     }).join("");
 
@@ -1915,7 +1933,16 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div class="card" style="padding:12px; margin:0;">
           <div id="matchPersonTabTable" style="margin-top:0;">
             <div class="table-wrap" style="margin-top:0;">
-              <table class="sb-table">
+              <table class="sb-table sb-table--airy sb-table--hover sb-match-table">
+                <colgroup>
+                  <col style="width:56%;">
+                  <col style="width:72px;">
+                  <col style="width:110px;">
+                  <col style="width:74px;">
+                  <col style="width:74px;">
+                  <col style="width:110px;">
+                  <col style="width:120px;">
+                </colgroup>
                 <thead>
                   <tr class="sb-th-group">
                     <th rowspan="2">Compétence</th>
@@ -1941,7 +1968,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             <div class="card-sub" style="margin:10px 0 0 0; color:#6b7280;">
               Criticité = importance de la compétence pour le poste. Attendu/Atteint = barème interne d’évaluation.
             </div>
-            
+
             <div class="card-sub" style="margin:10px 0 0 0; color:#6b7280;">
               Score = résultat du dernier audit (ou estimation), Seuil = niveau requis converti.
             </div>
@@ -1966,6 +1993,24 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       </div>
     `;
+
+    // Toggle critères (ligne dédiée pleine largeur)
+    host.querySelectorAll(".sb-crit-toggle").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const uid = btn.getAttribute("data-crit") || "";
+        const row = host.querySelector(`tr.sb-crit-row[data-crit-row="${CSS.escape(uid)}"]`);
+        if (!row) return;
+
+        const isOpen = row.style.display !== "none";
+        row.style.display = isOpen ? "none" : "";
+        btn.setAttribute("aria-expanded", (!isOpen).toString());
+        btn.classList.toggle("is-open", !isOpen);
+
+        const chev = btn.querySelector(".sb-crit-chev");
+        if (chev) chev.textContent = (!isOpen) ? "▾" : "▸";
+      });
+    });
+
 
  
     
