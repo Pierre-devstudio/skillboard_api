@@ -595,40 +595,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       </div>
     `;
   }
-
-    function matchingRing(score100) {
-    const s = clamp(Math.round(Number(score100 || 0)), 0, 100);
-    const size = 104;
-    const stroke = 10;
-    const r = (size - stroke) / 2;
-    const c = 2 * Math.PI * r;
-    const offset = c * (1 - s / 100);
-
-    // Inversé vs "Fragilité" : 0 = rouge, 100 = vert
-    const hue = Math.round(120 * (s / 100));
-    const fill = `hsl(${hue} 70% 45%)`;
-
-    return `
-      <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-        <div style="position:relative; width:${size}px; height:${size}px;">
-          <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;">
-            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
-            <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
-                    stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
-                    transform="rotate(-90 ${size / 2} ${size / 2})" />
-          </svg>
-          <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
-            <div style="font-weight:900; font-size:28px; line-height:1;">
-              ${s}<span style="font-size:12px; font-weight:800;">%</span>
-            </div>
-          </div>
-        </div>
-        <div class="card-sub" style="margin:0;">Matching</div>
-      </div>
-    `;
-  }
-
-
+ 
   function priorityPill(label, score100) {
     const hue = scoreHue(score100);
     const border = `hsl(${hue} 70% 45% / 0.55)`;
@@ -1502,6 +1469,41 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </span>
       `;
     }
+
+    function matchingRing(score100) {
+      const clampLocal = (n, min, max) => Math.max(min, Math.min(max, n));
+      const s = clampLocal(Math.round(Number(score100 || 0)), 0, 100);
+
+      const size = 104;
+      const stroke = 10;
+      const r = (size - stroke) / 2;
+      const c = 2 * Math.PI * r;
+      const offset = c * (1 - s / 100);
+
+      // Inversé vs ring "Fragilité" : 0=rouge, 100=vert
+      const hue = Math.round(120 * (s / 100));
+      const fill = `hsl(${hue} 70% 45%)`;
+
+      return `
+        <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+          <div style="position:relative; width:${size}px; height:${size}px;">
+            <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true" style="position:absolute; inset:0;">
+              <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="#e5e7eb" stroke-width="${stroke}" />
+              <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="${fill}" stroke-width="${stroke}"
+                      stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${offset}"
+                      transform="rotate(-90 ${size / 2} ${size / 2})" />
+            </svg>
+            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
+              <div style="font-weight:900; font-size:28px; line-height:1;">
+                ${s}<span style="font-size:12px; font-weight:800;">%</span>
+              </div>
+            </div>
+          </div>
+          <div class="card-sub" style="margin:0;">Matching</div>
+        </div>
+      `;
+    }
+
 
     function statusBadge(etat) {
       const s = String(etat || "").toLowerCase();
