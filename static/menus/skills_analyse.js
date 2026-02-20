@@ -1624,7 +1624,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const hasCrit = Array.isArray(it?.criteres) && it.criteres.length > 0;
       const btnCrit = hasCrit ? `
         <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-crit-toggle="${escapeHtml(uid)}" aria-expanded="false" style="margin-top:6px;">
-          <span data-crit-caret style="margin-right:6px;">▸</span>Voir critères
+          <span data-crit-caret style="margin-right:6px;">▸</span>Voir les évaluations
         </button>
       ` : ``;
 
@@ -1924,12 +1924,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             </div>
 
             <div class="card-sub" style="margin-top:10px; color:#6b7280;">
-              Criticité = poids de la compétence dans le poste. Attendu/Atteint = points (0–10). Niveaux = Initial / Avancé / Expert.
+              Criticité = poids de la compétence dans le poste.
+            </div>
+            <div class="card-sub" style="margin-top:10px; color:#6b7280;">
+              Attendu/Atteint = Note mini attendue pour atteindre le niveau / Note obtenue lors du dernier audit.
             </div>
 
-            <div class="card-sub" style="margin:10px 0 0 0; color:#6b7280;">
-              Score = résultat du dernier audit (ou estimation), Seuil = niveau requis converti.
-            </div>
           </div>
 
           <div id="matchPersonTabRadar" style="margin-top:0; display:none;">
