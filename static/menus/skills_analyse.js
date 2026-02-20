@@ -2660,17 +2660,38 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   }
 
+
+  async function fetchAnalyseMatchingPoste(portal, id_poste, id_service) {
+    const svc = (id_service || "").trim();
+
+    const qs = buildQueryString({
+      id_poste: (id_poste || "").trim(),
+      id_service: svc || null,
+      criticite_min: (typeof getCriticiteMin === "function" ? getCriticiteMin() : null),
+      limit: 300
+    });
+
+    const url = `${portal.apiBase}/skills/analyse/matching/poste/${encodeURIComponent(portal.contactId)}${qs}`;
+    const data = await portal.apiJson(url);
+
+    // garde la cohérence UI si l’API renvoie criticite_min
+    if (typeof syncCriticiteMinFromResponse === "function") {
+      syncCriticiteMinFromResponse(data);
+    }
+    return data;
+  }
+
   async function showMatchingForPoste(portal, id_poste, id_service, seqGuard) {
     const host = byId("matchResult");
     if (host) host.innerHTML = `<div class="card-sub" style="margin:0;">Chargement…</div>`;
 
-    const data = await fetchAnalysePosteDetail(portal, id_poste, id_service);
+    const data = await fetchAnalyseMatchingPoste(portal, id_poste, id_service);
     if (seqGuard && seqGuard !== _matchReqSeq) return;
 
     const poste = data?.poste || {};
+    const items = Array.isArray(data?.items) ? data.items : [];
 
-    const cands = computeCandidatesFromPosteDetail(data);
-    renderMatchingCandidates(id_poste, poste, cands, getMatchView());
+    renderMatchingCandidates(id_poste, poste, items, getMatchView());
   }
 
     // ==============================
