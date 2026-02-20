@@ -1721,7 +1721,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <tr>
         <td style="vertical-align:top;">
           ${badgesTop}
-          <div style="font-weight:800; font-size:15px; color:#111827; margin-top:4px; line-height:1.2;">
+          <div style="font-weight:600; font-size:15px; color:#111827; margin-top:4px; line-height:1.2;">
             ${escapeHtml(title || code || "—")}
           </div>
         </td>
@@ -2188,24 +2188,28 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   // Sous-onglets Radar (Compétence / Domaine)
   const btnRadarComp = byId("btnMatchRadarViewComp");
   const btnRadarDomain = byId("btnMatchRadarViewDomain");
-  const radarViewComp = byId("matchRadarViewComp");
-  const radarViewDomain = byId("matchRadarViewDomain");
+  const radarPanelComp = byId("matchRadarPanelComp");
+  const radarPanelDomain = byId("matchRadarPanelDomain");
 
   function setRadarView(which) {
-  const isDom = (which === "domain");
-  _matchRadarView = isDom ? "domain" : "comp";
+    const isDom = (which === "domain");
+    _matchRadarView = isDom ? "domain" : "comp";
 
-  if (radarViewComp) radarViewComp.style.display = isDom ? "none" : "";
-  if (radarViewDomain) radarViewDomain.style.display = isDom ? "" : "none";
+    // Panels (IDs réels du HTML)
+    if (radarPanelComp) radarPanelComp.style.display = isDom ? "none" : "";
+    if (radarPanelDomain) radarPanelDomain.style.display = isDom ? "" : "none";
 
-  if (btnRadarComp) {
-    btnRadarComp.classList.add("sb-seg", "sb-seg--dark");
-    btnRadarComp.classList.toggle("is-active", !isDom);
-  }
-  if (btnRadarDomain) {
-    btnRadarDomain.classList.add("sb-seg", "sb-seg--dark");
-    btnRadarDomain.classList.toggle("is-active", isDom);
-  }
+    // Boutons: standard sb-btn (actif = accent, inactif = soft)
+    if (btnRadarComp) {
+      btnRadarComp.classList.add("sb-btn", "sb-btn--xs");
+      btnRadarComp.classList.toggle("sb-btn--accent", !isDom);
+      btnRadarComp.classList.toggle("sb-btn--soft", isDom);
+    }
+    if (btnRadarDomain) {
+      btnRadarDomain.classList.add("sb-btn", "sb-btn--xs");
+      btnRadarDomain.classList.toggle("sb-btn--accent", isDom);
+      btnRadarDomain.classList.toggle("sb-btn--soft", !isDom);
+    }
   }
 
   function setActiveTab(which) {
