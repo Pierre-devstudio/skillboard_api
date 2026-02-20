@@ -1042,27 +1042,14 @@ textarea.sb-ctrl{
   padding-right: 10px;
 }
 
-/* Modal MatchPerson — séparation Besoin du poste / Profil évalué (ligne verticale pleine hauteur) */
-#modalMatchPerson #matchPersonTabTable .table-wrap{
-  position: relative;
-}
-
-#modalMatchPerson #matchPersonTabTable .table-wrap > table{
-  position: relative;
-  z-index: 1;
-}
-
-/* Cols Profil évalué = 90 + 140 + 120 = 350px -> on place la séparation à droite de "Attendu" */
-#modalMatchPerson #matchPersonTabTable .table-wrap::after{
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 350px;
-  width: 3px;
-  background: var(--sb-gray-200);
-  pointer-events: none;
-  z-index: 3;
+/* Modal MatchPerson — séparation Besoin du poste / Profil évalué (sans overlay) */
+/* - Header groupé : bord droit sur "BESOIN DU POSTE" (th #2 de la 1ère ligne thead)
+   - Header sous-colonnes : bord droit sur "Attendu" (th #3 de la 2ème ligne thead)
+   - Body : bord droit sur la colonne "Attendu" (td #4) */
+#modalMatchPerson #matchPersonTabTable table.sb-table thead tr:first-child th:nth-child(2),
+#modalMatchPerson #matchPersonTabTable table.sb-table thead tr:nth-child(2) th:nth-child(3),
+#modalMatchPerson #matchPersonTabTable table.sb-table tbody td:nth-child(4){
+  box-shadow: inset -3px 0 0 var(--sb-gray-200);
 }
 
 /* Toggle critères */
