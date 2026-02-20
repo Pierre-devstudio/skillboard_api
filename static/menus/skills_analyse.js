@@ -1713,7 +1713,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <td class="col-center">${escapeHtml(String(pct))}%</td>
           <td class="col-center" style="font-weight:900; color:${stColor};">${escapeHtml(st)}</td>
         </tr>
-        ${renderCritDetailsRow(uid, it.criteres)}
       `;
     }).join("");
 
@@ -1733,18 +1732,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     <div class="table-wrap" style="margin-top:10px;">
       <table class="sb-table sb-table--airy sb-table--hover">
         <thead>
-          <tr class="sb-th-group">
-            <th rowspan="2">Compétence</th>
-            <th colspan="3" class="col-center">Besoin du poste</th>
-            <th colspan="3" class="col-center">Profil évalué</th>
-          </tr>
           <tr class="sb-th-sub">
-            <th class="col-center" style="width:86px;">Criticité</th>
-            <th class="col-center" style="width:110px; line-height:1.05;">Niveau<br>requis</th>
-            <th class="col-center" style="width:86px;" title="Référence interne (barème)">Attendu</th>
-
-            <th class="col-center" style="width:86px;" title="Dernière évaluation (barème)">Atteint</th>
-            <th class="col-center" style="width:110px; line-height:1.05;">Niveau<br>atteint</th>
+            <th>Compétence</th>
+            <th class="col-center" style="width:90px;">Criticité</th>
+            <th class="col-center" style="width:140px;">Atteint / Attendu</th>
+            <th class="col-center" style="width:90px;">Ratio</th>
             <th class="col-center" style="width:120px;">Statut</th>
           </tr>
         </thead>
