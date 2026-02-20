@@ -1680,6 +1680,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         ratio: ratio,
         etat: et,
         statusRank: statusRank,
+        domaineHtml: domainPill(it),
       };
     }).filter(a => (a.code || a.intitule));
 
@@ -1695,26 +1696,48 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const radarEmpty = radarTop.length < 3;
 
     const radarRows = radarTop.map((a) => {
-      const label = (a.code || a.intitule || "—").trim();
-      const pct = Math.round((a.ratio || 0) * 100);
-      const scoreTxt = a.score ? String(a.score) : "—";
-      const seuilTxt = a.seuil ? String(a.seuil) : "—";
-      const st = (a.etat === "ok") ? "OK" : (a.etat === "under" ? "À renforcer" : "Manquante");
-      const stColor = (a.etat === "ok") ? "#065f46" : (a.etat === "under" ? "#92400e" : "#991b1b");
+    const code = (a.code || "").toString().trim();
+    const title = (a.intitule || "").toString().trim();
 
-      return `
-        <tr>
-          <td>
-            <div style="font-weight:900; color:#111827;">${escapeHtml(label)}</div>
-            ${a.intitule ? `<div class="card-sub" style="margin:2px 0 0 0;">${escapeHtml(a.intitule)}</div>` : ""}
-          </td>
-          <td class="col-center">${escapeHtml(String(a.poids))}</td>
-          <td class="col-center">${escapeHtml(scoreTxt)} / ${escapeHtml(seuilTxt)}</td>
-          <td class="col-center">${escapeHtml(String(pct))}%</td>
-          <td class="col-center" style="font-weight:900; color:${stColor};">${escapeHtml(st)}</td>
-        </tr>
-      `;
-    }).join("");
+    const pct = Math.round((a.ratio || 0) * 100);
+
+    const atteint = fmtScore(a.score);
+    const attendu = fmtScore(a.seuil);
+
+    const badgesTop = `
+      <div class="sb-badges" style="flex-wrap:wrap;">
+        ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ``}
+        ${a.domaineHtml || ``}
+      </div>
+    `;
+
+    const noteHtml = `
+      <span class="sb-badge" title="Note atteinte">${escapeHtml(String(atteint))}</span>
+      <span style="color:#9ca3af; font-weight:800; margin:0 6px;">/</span>
+      <span class="sb-badge" title="Note attendue">${escapeHtml(String(attendu))}</span>
+    `;
+
+    return `
+      <tr>
+        <td style="vertical-align:top;">
+          ${badgesTop}
+          <div style="font-weight:800; font-size:15px; color:#111827; margin-top:4px; line-height:1.2;">
+            ${escapeHtml(title || code || "—")}
+          </div>
+        </td>
+
+        <td class="col-center">${critBadgeHtml(a.poids)}</td>
+
+        <td class="col-center" style="white-space:nowrap;">
+          ${noteHtml}
+        </td>
+
+        <td class="col-center">${escapeHtml(String(pct))}%</td>
+
+        <td class="col-center">${statusBadge(a.etat)}</td>
+      </tr>
+    `;
+  }).join("");
 
     
   // ------------------------
@@ -1735,7 +1758,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <tr class="sb-th-sub">
             <th>Compétence</th>
             <th class="col-center" style="width:90px;">Criticité</th>
-            <th class="col-center" style="width:140px;">Atteint / Attendu</th>
+            <th class="col-center" style="width:170px; line-height:1.05;">Note atteinte<br>Note attendue</th>
             <th class="col-center" style="width:90px;">Ratio</th>
             <th class="col-center" style="width:120px;">Statut</th>
           </tr>
