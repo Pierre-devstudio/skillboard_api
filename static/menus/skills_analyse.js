@@ -4151,19 +4151,11 @@ function renderDetail(mode) {
       body.innerHTML = `
         <div class="card" style="padding:12px; margin:0;">
           <div class="card-title" style="margin-bottom:6px;">
-            Sorties &lt; ${escapeHtml(horizonLabel)}
+            Effectif sortant prévu sous ${escapeHtml(horizonLabel)}
           </div>
 
-          <div class="row" style="gap:12px; margin-top:10px; flex-wrap:wrap;">
-            <div class="card" style="padding:12px; margin:0; flex:1; min-width:200px;">
-              <div class="label">Nombre de sorties</div>
-              <div class="value">${escapeHtml(String(sorties ?? "—"))}</div>
-            </div>
-          </div>
-
-          <div class="card" style="padding:12px; margin-top:12px;">
-            <div class="card-title" style="margin-bottom:6px;">Détail</div>
-            <div id="prevSortiesDetailBox" class="card-sub" style="margin:0;">Chargement…</div>
+          <div id="prevSortiesDetailBox" style="margin-top:10px;">
+            <div class="card-sub" style="margin:0;">Chargement…</div>
           </div>
         </div>
       `;
@@ -4203,14 +4195,13 @@ function renderDetail(mode) {
             const prenom = (it.prenom_effectif || it.prenom || "").trim();
             const nom = (it.nom_effectif || it.nom || "").trim();
             const full = (it.full || `${prenom} ${nom}`.trim() || "—");
-            const fullHtml = `<span style="font-weight:700; font-size:13px;">${escapeHtml(full)}</span>`;
+            const fullHtml = `<span style="font-weight:700;">${escapeHtml(full)}</span>`;
 
             function fmtDateFR(v) {
               const s = (v || "").toString().trim();
               if (!s) return "—";
-              // attend "YYYY-MM-DD" ou "YYYY-MM-DDTHH:MM:SS"
               const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-              if (!m) return escapeHtml(s); // fallback si format inattendu
+              if (!m) return escapeHtml(s);
               return `${m[3]}-${m[2]}-${m[1]}`;
             }
 
@@ -4218,44 +4209,56 @@ function renderDetail(mode) {
             const exitTxt = fmtDateFR(exitDate);
 
             const service = (it.nom_service || it.service || "").toString().trim() || "—";
-            const poste = (it.intitule_poste || it.poste || "").toString().trim() || "—";
+            const posteTitle = (it.intitule_poste || it.poste || "").toString().trim() || "—";
 
+            // Badge code poste : codif_client si existant sinon codif_poste
+            const codifClient = (it.codif_client || "").toString().trim();
+            const codifPoste = (it.codif_poste || "").toString().trim();
+            const posteCode = codifClient || codifPoste;
+
+            const posteHtml = posteCode
+              ? `
+                <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                  <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(posteCode)}</span>
+                  <span style="min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(posteTitle)}</span>
+                </div>
+              `
+              : escapeHtml(posteTitle);
+
+            // Raison (priorité: API si dispo)
             const hdf = (it.havedatefin === true || it.havedatefin === "true" || it.havedatefin === 1);
             const motif = (it.motif_sortie || "").toString().trim();
-
-            // Raison de la sortie (tes règles)
-            const reason = hdf ? motif : "Retraite estimée";
+            const reason = (it.raison_sortie || "").toString().trim() || (hdf ? motif : "Retraite estimée");
             const reasonTxt = reason ? escapeHtml(reason) : "—";
 
             const idEff = (it.id_effectif || "").toString().trim();
             const idPoste = (it.id_poste_actuel || "").toString().trim();
 
             return `
-              <tr class="prev-sortie-row"
+              <tr class="prev-sortie-row sb-row-click"
                   data-id_effectif="${escapeHtml(idEff)}"
                   data-id_poste_actuel="${escapeHtml(idPoste)}"
                   data-exit_date="${escapeHtml(exitDate)}"
-                  data-reason="${escapeHtml(reason)}"
-                  style="cursor:pointer;">
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${fullHtml}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${exitTxt}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(poste)}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(service)}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${reasonTxt}</td>
+                  data-reason="${escapeHtml(reason)}">
+                <td>${fullHtml}</td>
+                <td>${exitTxt}</td>
+                <td>${posteHtml}</td>
+                <td>${escapeHtml(service)}</td>
+                <td>${reasonTxt}</td>
               </tr>
             `;
           }).join("");
 
           box.innerHTML = `
             <div style="overflow:auto;">
-              <table style="width:100%; border-collapse:collapse; font-size:12px;">
+              <table class="sb-table">
                 <thead>
                   <tr>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Personne</th>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Date sortie</th>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Poste</th>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Service</th>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Raison de la sortie</th>
+                    <th>Effectif sortant</th>
+                    <th style="line-height:1.05;">Date de sortie<br>prévue</th>
+                    <th>Poste</th>
+                    <th>Service</th>
+                    <th>Raison de la sortie</th>
                   </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>

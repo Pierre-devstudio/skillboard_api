@@ -917,6 +917,13 @@ class AnalysePrevisionSortieItem(BaseModel):
     exit_source: Optional[str] = None  # "date_sortie_prevue" | "retraite_estimee"
     days_left: Optional[int] = None
 
+    codif_poste: Optional[str] = None
+    codif_client: Optional[str] = None
+
+    havedatefin: Optional[bool] = None
+    motif_sortie: Optional[str] = None
+    raison_sortie: Optional[str] = None
+
 
 class AnalysePrevisionsSortiesDetailResponse(BaseModel):
     scope: ServiceScope
@@ -1014,6 +1021,8 @@ def get_analyse_previsions_sorties_detail(
                         COALESCE(o.nom_service, '') AS nom_service,
                         ee.id_poste_actuel,
                         COALESCE(p.intitule_poste, '') AS intitule_poste,
+                        COALESCE(p.codif_poste, '') AS codif_poste,
+                        COALESCE(p.codif_client, '') AS codif_client,
                         ee.exit_date,
                         ee.havedatefin,
                         ee.motif_sortie,
@@ -1058,9 +1067,11 @@ def get_analyse_previsions_sorties_detail(
                             intitule_poste=(r.get("intitule_poste") or "").strip() or None,
                             exit_date=exit_date,                            
                             days_left=int(r.get("days_left") or 0) if r.get("days_left") is not None else None,
+                            codif_poste=(r.get("codif_poste") or "").strip() or None,
+                            codif_client=(r.get("codif_client") or "").strip() or None,
                             havedatefin=bool(r.get("havedatefin")),
-                            motif_sortie=(r.get("motif_sortie") or None),
-                            raison_sortie=(r.get("raison_sortie") or None),
+                            motif_sortie=(r.get("motif_sortie") or "").strip() or None,
+                            raison_sortie=(r.get("raison_sortie") or "").strip() or None,
                         )
                     )
 
