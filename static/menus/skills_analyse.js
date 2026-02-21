@@ -1241,10 +1241,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const qs = new URLSearchParams();
     qs.set("horizon_years", String(horizonYears || 1));
     if (id_service) qs.set("id_service", String(id_service).trim());
-    const cmin = getCriticiteMin();
-    if (cmin !== null && cmin !== undefined) qs.set("criticite_min", String(cmin));
 
-    // IMPORTANT: endpoint à créer côté API (FastAPI) si pas encore fait
+    // IMPORTANT: alignement avec le reste de la page
+    const cmin = Number(getCriticiteMin());
+    if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
+
     const url = `${ctx.apiBase}/skills/analyse/previsions/critiques/detail/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
 
     const res = await fetch(url, { headers: { "Accept": "application/json" } });
@@ -1252,7 +1253,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const txt = await res.text().catch(() => "");
       throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
     }
-    return await res.json();
+
+    const data = await res.json();
+    syncCriticiteMinFromResponse(data);
+    return data;
   }
 
   async function fetchPrevisionsPostesRougesDetail(portal, horizonYears, id_service) {
@@ -4278,7 +4282,9 @@ function renderDetail(mode) {
 
     if (selectedKpi === "critiques") {
       const horizonLabel = (horizon === 1 ? "1 an" : (horizon + " ans"));
-      if (sub) {
+
+      function renderSub() {
+        if (!sub) return;
         sub.innerHTML = `
           <div>Compétences impactées à moins de ${escapeHtml(horizonLabel)} (périmètre filtré).</div>
           <div class="sb-badges" style="margin-top:6px;">
@@ -4286,6 +4292,8 @@ function renderDetail(mode) {
           </div>
         `;
       }
+
+      renderSub();
 
       body.innerHTML = `
         <div class="card" style="padding:12px; margin:0;">
@@ -4306,38 +4314,19 @@ function renderDetail(mode) {
 
         try {
           const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
-
           if (!_portalref) {
             box.textContent = "Contexte portail indisponible (_portalref manquant).";
             return;
           }
 
-          if (typeof fetchPrevisionsCritiquesDetail !== "function") {
-            box.textContent = "Détail compétences impactées non branché (fetchPrevisionsCritiquesDetail manquante).";
-            return;
-          }
-
-          function fmtDateFR(v) {
-            const s = (v || "").toString().trim();
-            if (!s) return "—";
-            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (!m) return escapeHtml(s);
-            return `${m[3]}-${m[2]}-${m[1]}`;
-          }
-
-          function renderDomainPill(it) {
-            const lab = (it?.domaine_titre_court || it?.domaine_titre || it?.id_domaine_competence || "—").toString();
-            const col = (typeof normalizeColor === "function" ? normalizeColor(it?.domaine_couleur) : null) || "#e5e7eb";
-            return `
-              <span style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; color:#374151; background:#fff;">
-                <span style="width:8px; height:8px; border-radius:999px; background:${escapeHtml(col)};"></span>
-                ${escapeHtml(lab)}
-              </span>
-            `;
-          }
-
+          box.textContent = "Chargement…";
           const data = await fetchPrevisionsCritiquesDetail(_portalref, horizon, id_service);
+
           if ((window.__sbPrevCritReqId || 0) !== reqId) return;
+
+          // badge crit min up-to-date
+          syncCriticiteMinFromResponse(data);
+          renderSub();
 
           const items = Array.isArray(data?.items) ? data.items : [];
           if (!items.length) {
@@ -4345,51 +4334,158 @@ function renderDetail(mode) {
             return;
           }
 
+          const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+          function scoreHue(score) {
+            const s = clamp(Number(score || 0), 0, 100) / 100;
+            return Math.round(120 * (1 - s)); // vert -> rouge
+          }
+
+          function scoreChip(score) {
+            const s = clamp(Math.round(Number(score || 0)), 0, 100);
+            const h = scoreHue(s);
+            const fill = `hsl(${h} 70% 45%)`;
+            return `
+              <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+                <div style="width:84px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
+                  <div style="height:100%; width:${s}%; background:${fill};"></div>
+                </div>
+                <div style="min-width:44px; text-align:right; font-weight:800;">
+                  ${s}%
+                </div>
+              </div>
+            `;
+          }
+
+          function prioFromScore(score) {
+            const s = clamp(Number(score || 0), 0, 100);
+            if (s >= 75) return "P1";
+            if (s >= 50) return "P2";
+            return "P3";
+          }
+
+          function prioLabel(prio) {
+            const p = (prio || "").toString().trim().toUpperCase();
+            if (p === "P1") return "Critique";
+            if (p === "P2") return "Élevée";
+            return "Modérée";
+          }
+
+          function priorityPill(label, score) {
+            const s = clamp(Number(score || 0), 0, 100);
+            const h = scoreHue(s);
+            const bg = `hsl(${h} 80% 92%)`;
+            const br = `hsl(${h} 70% 72%)`;
+            const tx = `hsl(${h} 70% 28%)`;
+
+            return `
+              <span style="
+                display:inline-flex; align-items:center; justify-content:center;
+                padding:4px 10px; border-radius:999px;
+                border:1px solid ${br}; background:${bg}; color:${tx};
+                font-weight:800; font-size:12px; white-space:nowrap;
+              ">
+                ${escapeHtml(label)}
+              </span>
+            `;
+          }
+
+          function deltaBadge(delta) {
+            const d = Math.round(Number(delta || 0));
+            const cls = (d > 0) ? "sb-badge--danger" : (d < 0) ? "sb-badge--success" : "sb-badge--warning";
+            const txt = (d > 0 ? `+${d}` : `${d}`) + " pts";
+            return `<span class="sb-badge ${cls}" title="Évolution vs aujourd’hui">${escapeHtml(txt)}</span>`;
+          }
+
+          // Domaine: même look que Risques (sb-badge-domaine)
+          function domPill(it) {
+            const lab = (it?.domaine_titre_court || it?.domaine_titre || it?.id_domaine_competence || "—").toString();
+            const col = normalizeColor(it?.domaine_couleur) || "#9ca3af";
+            return `
+              <span class="sb-badge-domaine" style="--dom-color:${escapeHtml(col)};" title="${escapeHtml(lab)}">
+                ${escapeHtml(lab)}
+              </span>
+            `;
+          }
+
           const rowsHtml = items.map((it) => {
             const code = (it.code || "—").toString().trim();
             const intit = (it.intitule || it.intitule_competence || "—").toString();
 
-            const compKey = (it.id_competence || it.id_comp || it.id_competence_skillboard || it.id_competence_pk || code || "").toString().trim();
+            const compKey = (it.id_comp || it.id_competence || code || "").toString().trim();
 
             const nbPostes = Number(it.nb_postes_impactes ?? it.nb_postes ?? 0);
-            const crit = Number(it.max_criticite ?? it.criticite ?? 0);
-            const now = Number(it.nb_porteurs_now ?? it.nb_porteurs ?? 0);
-            const sortants = Number(it.nb_porteurs_sortants ?? it.nb_sortants ?? 0);
 
-            const lastExit = (it.last_exit_date || it.derniere_sortie || it.exit_date || "").toString();
-            const lastExitTxt = fmtDateFR(lastExit);
+            const scoreH = Number(it.indice_fragilite_horizon ?? it.indice_horizon ?? it.indice_fragilite ?? 0);
+            const delta = Number(it.delta_fragilite ?? it.delta ?? 0);
 
-            const codeBadge = (code && code !== "—")
-              ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>`
-              : "—";
+            const prio = ((it.priorite || "") + "").trim().toUpperCase() || prioFromScore(scoreH);
+            const prioTxt = prioLabel(prio);
 
             return `
-              <tr class="prev-crit-row" data-comp-key="${escapeHtml(compKey)}" style="cursor:pointer;">
-                <td>${renderDomainPill(it)}</td>
-                <td style="white-space:nowrap;">${codeBadge}</td>
-                <td>${escapeHtml(intit)}</td>
-                <td class="col-center">${escapeHtml(String(nbPostes))}</td>
-                <td class="col-center">${crit ? escapeHtml(String(crit)) : "—"}</td>
-                <td class="col-center">${escapeHtml(String(now))}</td>
-                <td class="col-center">${escapeHtml(String(sortants))}</td>
-                <td>${lastExitTxt}</td>
+              <tr class="prev-crit-row" data-comp-key="${escapeHtml(compKey)}">
+                <td class="prev-crit-open" style="cursor:pointer;">
+                  <div style="display:flex; gap:8px; align-items:center; min-width:0;">
+                    <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>
+                    <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                      ${escapeHtml(intit)}
+                    </span>
+                  </div>
+                </td>
+
+                <td>${domPill(it)}</td>
+
+                <td class="col-center" title="Nombre de postes concernés">
+                  <span class="sb-badge sb-badge-accent">${escapeHtml(String(nbPostes))}</span>
+                </td>
+
+                <td class="col-center" title="Indice de fragilité projeté (0-100)">${scoreChip(scoreH)}</td>
+
+                <td class="col-center">${deltaBadge(delta)}</td>
+
+                <td class="col-center" title="${escapeHtml(prio)}">${priorityPill(prioTxt, scoreH)}</td>
+
+                <td class="col-center">
+                  <button type="button"
+                          class="btn-secondary prev-crit-open"
+                          style="padding:6px 10px; font-size:12px; line-height:1; cursor:pointer;">
+                    Voir détail
+                  </button>
+                </td>
               </tr>
             `;
           }).join("");
 
           box.innerHTML = `
-            <div style="overflow:auto;">
-              <table class="sb-table sb-table--hover">
+            <div class="table-wrap sb-tip-host" style="margin-top:10px;">
+              <table class="sb-table" id="tblPrevCompImpact">
                 <thead>
                   <tr>
-                    <th style="width:220px;">Domaine</th>
-                    <th style="width:110px;">Code</th>
-                    <th>Compétence</th>
-                    <th class="col-center" style="width:110px;">Postes</th>
-                    <th class="col-center" style="width:90px;">Crit.</th>
-                    <th class="col-center" style="width:120px;">Porteurs</th>
-                    <th class="col-center" style="width:120px;">Sortants</th>
-                    <th style="width:130px;">Dernière sortie</th>
+                    <th>Code – Compétence</th>
+                    <th style="width:240px;">Domaine</th>
+
+                    <th class="col-center" style="width:140px;">Postes impactés</th>
+
+                    <th class="col-center" style="width:220px;">
+                      <span class="sb-th-with-tip">
+                        <span>Indice<br>de fragilité</span>
+                        <span class="sb-iinfo"
+                              data-sbtip="fragility-index"
+                              tabindex="0"
+                              role="button"
+                              aria-label="Informations sur l'indice de fragilité">i</span>
+                      </span>
+                    </th>
+
+                    <th class="col-center" style="width:140px; line-height:1.1;">
+                      Évolution<br>(vs aujourd’hui)
+                    </th>
+
+                    <th class="col-center" style="width:130px; white-space:normal; line-height:1.1;">
+                      Priorité de<br>traitement
+                    </th>
+
+                    <th class="col-center" style="width:140px;">Action</th>
                   </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
@@ -6234,8 +6330,12 @@ function bindOnce(portal) {
     // ------------------------------
     const trPrevCrit = ev.target.closest("tr.prev-crit-row[data-comp-key]");
     if (trPrevCrit) {
+      const hit = ev.target.closest(".prev-crit-open");
+      if (!hit) return;
+
       const compKey = (trPrevCrit.getAttribute("data-comp-key") || "").trim();
       if (!compKey) return;
+
       showAnalysePrevCritModal(p, compKey, id_service);
       return;
     }

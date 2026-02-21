@@ -1102,9 +1102,16 @@ class AnalysePrevisionCritiqueImpacteeItem(BaseModel):
     nb_postes_impactes: int = 0
     max_criticite: int = 0
 
+    # conservés (utile debug / futur)
     nb_porteurs_now: int = 0
     nb_porteurs_sortants: int = 0
-    last_exit_date: Optional[str] = None  # date du "dernier porteur" (max exit_date)
+    last_exit_date: Optional[str] = None
+
+    # NOUVEAU: projection
+    indice_fragilite_horizon: int = 0          # 0..100 à horizon X ans
+    delta_fragilite: int = 0                    # indice_horizon - indice_now
+    priorite: Optional[str] = None              # "P1" | "P2" | "P3"
+    priorite_score: int = 0                     # tri = indice_horizon
 
 
 class AnalysePrevisionsCritiquesImpacteesDetailResponse(BaseModel):
@@ -1130,10 +1137,55 @@ def get_analyse_previsions_critiques_impactees_detail(
     limit: int = Query(default=200, ge=1, le=2000),
 ):
     try:
+        def _clamp(v: float, lo: float, hi: float) -> float:
+            return max(lo, min(hi, v))
+
+        def _calc_indice(B: int, P: int, Pd: int, Pe: int, Ped: int, N: int, Cmax: int, N80: int) -> int:
+            # Copie conforme de la logique "critiques-fragiles" (Risques), mais appliquée à un état projeté
+            B = B if B > 0 else 1
+
+            S_cov = _clamp(1.0 - (P / float(B)), 0.0, 1.0)
+
+            if P == 0:
+                S_dep = 1.00
+            elif P == 1:
+                S_dep = 0.80
+            elif P == 2:
+                S_dep = 0.50
+            elif P == 3:
+                S_dep = 0.25
+            else:
+                S_dep = 0.00
+
+            if Pe == 0:
+                S_exp = 1.00
+            elif Pe == 1:
+                S_exp = 0.70
+            else:
+                S_exp = 0.00
+
+            S_expo = min(1.0, N / 5.0)
+            S_sev = 0.7 * (Cmax / 100.0) + 0.3 * min(1.0, N80 / 3.0)
+
+            base = 100.0 * (
+                0.35 * S_cov
+                + 0.15 * S_dep
+                + 0.15 * S_exp
+                + 0.10 * S_expo
+                + 0.25 * S_sev
+            )
+
+            bonus = 0.0
+            if P > 0 and Pd == 0:
+                bonus += 20.0
+            if Pe > 0 and Ped == 0:
+                bonus += 10.0
+
+            return int(round(_clamp(base + bonus, 0.0, 100.0)))
+
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
-
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
                 cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
@@ -1145,6 +1197,7 @@ def get_analyse_previsions_critiques_impactees_detail(
                 effectifs_valid AS (
                     SELECT
                         e.id_effectif,
+                        e.id_poste_actuel,
                         e.date_sortie_prevue,
                         COALESCE(e.havedatefin, FALSE) AS havedatefin,
                         e.retraite_estimee::int AS retraite_annee,
@@ -1155,6 +1208,19 @@ def get_analyse_previsions_critiques_impactees_detail(
                     WHERE COALESCE(e.archive, FALSE) = FALSE
                       AND COALESCE(e.is_temp, FALSE) = FALSE
                       AND COALESCE(e.statut_actif, TRUE) = TRUE
+                ),
+
+                effectifs_dispo AS (
+                    SELECT ev.id_effectif
+                    FROM effectifs_valid ev
+                    WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM public.tbl_effectif_client_break b
+                        WHERE b.id_effectif = ev.id_effectif
+                          AND b.archive = FALSE
+                          AND b.date_debut <= CURRENT_DATE
+                          AND b.date_fin >= CURRENT_DATE
+                    )
                 ),
 
                 effectifs_exit AS (
@@ -1204,34 +1270,110 @@ def get_analyse_previsions_critiques_impactees_detail(
                 ),
 
                 req_crit AS (
-                    SELECT DISTINCT id_poste, id_comp
-                    FROM req_all
-                    WHERE poids_crit >= %s
-                ),
-
-                comps_crit AS (
-                    SELECT DISTINCT id_comp FROM req_crit
-                ),
-
-                postes_par_comp AS (
-                    SELECT
-                        ra.id_comp,
-                        COUNT(DISTINCT ra.id_poste)::int AS nb_postes_impactes,
-                        MAX(ra.poids_crit)::int AS max_criticite
+                    SELECT ra.id_poste, ra.id_comp, ra.poids_crit
                     FROM req_all ra
                     WHERE ra.poids_crit >= %s
-                    GROUP BY ra.id_comp
                 ),
 
-                porteurs_now AS (
+                titulaires AS (
+                    SELECT
+                        ev.id_poste_actuel AS id_poste,
+                        COUNT(DISTINCT ev.id_effectif)::int AS nb_titulaires
+                    FROM effectifs_valid ev
+                    WHERE COALESCE(ev.id_poste_actuel, '') <> ''
+                    GROUP BY ev.id_poste_actuel
+                ),
+
+                poste_need AS (
+                    SELECT
+                        ps.id_poste,
+                        CASE
+                            WHEN prh.nb_titulaires_cible IS NOT NULL AND prh.nb_titulaires_cible::int > 0
+                                THEN prh.nb_titulaires_cible::int
+                            WHEN COALESCE(t.nb_titulaires, 0)::int > 0
+                                THEN COALESCE(t.nb_titulaires, 0)::int
+                            ELSE 1
+                        END AS besoin_poste
+                    FROM postes_scope ps
+                    LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = ps.id_poste
+                    LEFT JOIN titulaires t ON t.id_poste = ps.id_poste
+                ),
+
+                comp_need AS (
+                    SELECT
+                        rc.id_comp,
+                        MAX(rc.poids_crit)::int AS criticite_max,
+                        COUNT(DISTINCT rc.id_poste)::int AS nb_postes_impactes,
+                        SUM(pn.besoin_poste)::int AS besoin_total,
+                        SUM(CASE WHEN rc.poids_crit >= 80 THEN 1 ELSE 0 END)::int AS nb_postes_crit_80
+                    FROM req_crit rc
+                    JOIN poste_need pn ON pn.id_poste = rc.id_poste
+                    GROUP BY rc.id_comp
+                ),
+
+                porteurs AS (
                     SELECT
                         ec.id_comp,
-                        COUNT(DISTINCT ec.id_effectif_client)::int AS nb_now
+                        COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
                     FROM public.tbl_effectif_client_competence ec
                     JOIN effectifs_valid ev ON ev.id_effectif = ec.id_effectif_client
                     WHERE COALESCE(ec.actif, TRUE) = TRUE
                       AND COALESCE(ec.archive, FALSE) = FALSE
-                      AND ec.id_comp IN (SELECT id_comp FROM comps_crit)
+                      AND ec.id_comp IN (SELECT id_comp FROM comp_need)
+                    GROUP BY ec.id_comp
+                ),
+
+                porteurs_dispo AS (
+                    SELECT
+                        ec.id_comp,
+                        COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN effectifs_dispo ed ON ed.id_effectif = ec.id_effectif_client
+                    WHERE COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND ec.id_comp IN (SELECT id_comp FROM comp_need)
+                    GROUP BY ec.id_comp
+                ),
+
+                experts AS (
+                    SELECT
+                        ec.id_comp,
+                        COUNT(DISTINCT ec.id_effectif_client)::int AS nb_experts
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN effectifs_valid ev ON ev.id_effectif = ec.id_effectif_client
+                    WHERE COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND ec.id_comp IN (SELECT id_comp FROM comp_need)
+                      AND (
+                        CASE
+                          WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
+                            THEN trim(ec.niveau_actuel)::int
+                          WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                          WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                          ELSE 0
+                        END
+                      ) >= 3
+                    GROUP BY ec.id_comp
+                ),
+
+                experts_dispo AS (
+                    SELECT
+                        ec.id_comp,
+                        COUNT(DISTINCT ec.id_effectif_client)::int AS nb_experts
+                    FROM public.tbl_effectif_client_competence ec
+                    JOIN effectifs_dispo ed ON ed.id_effectif = ec.id_effectif_client
+                    WHERE COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND ec.id_comp IN (SELECT id_comp FROM comp_need)
+                      AND (
+                        CASE
+                          WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
+                            THEN trim(ec.niveau_actuel)::int
+                          WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                          WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                          ELSE 0
+                        END
+                      ) >= 3
                     GROUP BY ec.id_comp
                 ),
 
@@ -1239,27 +1381,69 @@ def get_analyse_previsions_critiques_impactees_detail(
                     SELECT
                         ec.id_comp,
                         COUNT(DISTINCT ec.id_effectif_client)::int AS nb_leave,
-                        MAX(l.exit_date) AS last_exit_date
+                        COUNT(DISTINCT CASE WHEN ed.id_effectif IS NOT NULL THEN ec.id_effectif_client END)::int AS nb_leave_dispo,
+                        MAX(l.exit_date) AS last_exit_date,
+
+                        COUNT(DISTINCT CASE
+                          WHEN (
+                            CASE
+                              WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
+                                THEN trim(ec.niveau_actuel)::int
+                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                              ELSE 0
+                            END
+                          ) >= 3 THEN ec.id_effectif_client END
+                        )::int AS nb_experts_leave,
+
+                        COUNT(DISTINCT CASE
+                          WHEN ed.id_effectif IS NOT NULL AND (
+                            CASE
+                              WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
+                                THEN trim(ec.niveau_actuel)::int
+                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                              ELSE 0
+                            END
+                          ) >= 3 THEN ec.id_effectif_client END
+                        )::int AS nb_experts_leave_dispo
+
                     FROM leaving l
                     JOIN public.tbl_effectif_client_competence ec
                       ON ec.id_effectif_client = l.id_effectif
+                    LEFT JOIN effectifs_dispo ed ON ed.id_effectif = l.id_effectif
                     WHERE COALESCE(ec.actif, TRUE) = TRUE
                       AND COALESCE(ec.archive, FALSE) = FALSE
-                      AND ec.id_comp IN (SELECT id_comp FROM comps_crit)
+                      AND ec.id_comp IN (SELECT id_comp FROM comp_need)
                     GROUP BY ec.id_comp
                 ),
 
-                impacted AS (
+                impact AS (
                     SELECT
-                        cc.id_comp,
-                        COALESCE(pn.nb_now, 0)::int AS nb_now,
+                        cn.id_comp,
+                        cn.nb_postes_impactes,
+                        cn.criticite_max,
+                        cn.besoin_total,
+                        cn.nb_postes_crit_80,
+
+                        COALESCE(p.nb_porteurs, 0)::int AS nb_porteurs,
+                        COALESCE(pd.nb_porteurs, 0)::int AS nb_porteurs_dispo,
+                        COALESCE(ex.nb_experts, 0)::int AS nb_experts,
+                        COALESCE(exd.nb_experts, 0)::int AS nb_experts_dispo,
+
                         COALESCE(lc.nb_leave, 0)::int AS nb_leave,
+                        COALESCE(lc.nb_leave_dispo, 0)::int AS nb_leave_dispo,
+                        COALESCE(lc.nb_experts_leave, 0)::int AS nb_experts_leave,
+                        COALESCE(lc.nb_experts_leave_dispo, 0)::int AS nb_experts_leave_dispo,
                         lc.last_exit_date
-                    FROM comps_crit cc
-                    LEFT JOIN porteurs_now pn ON pn.id_comp = cc.id_comp
-                    LEFT JOIN leave_comp lc ON lc.id_comp = cc.id_comp
-                    WHERE COALESCE(pn.nb_now, 0) > 0
-                      AND (COALESCE(pn.nb_now, 0) - COALESCE(lc.nb_leave, 0)) <= 0
+                    FROM comp_need cn
+                    LEFT JOIN porteurs p ON p.id_comp = cn.id_comp
+                    LEFT JOIN porteurs_dispo pd ON pd.id_comp = cn.id_comp
+                    LEFT JOIN experts ex ON ex.id_comp = cn.id_comp
+                    LEFT JOIN experts_dispo exd ON exd.id_comp = cn.id_comp
+                    LEFT JOIN leave_comp lc ON lc.id_comp = cn.id_comp
+                    WHERE COALESCE(p.nb_porteurs, 0) > 0
+                      AND (COALESCE(p.nb_porteurs, 0) - COALESCE(lc.nb_leave, 0)) <= 0
                 )
 
                 SELECT
@@ -1269,32 +1453,80 @@ def get_analyse_previsions_critiques_impactees_detail(
                     c.domaine AS id_domaine_competence,
                     COALESCE(d.titre_court, d.titre, '') AS domaine_titre_court,
                     COALESCE(d.couleur, '') AS domaine_couleur,
-                    COALESCE(pp.nb_postes_impactes, 0)::int AS nb_postes_impactes,
-                    COALESCE(pp.max_criticite, 0)::int AS max_criticite,
-                    i.nb_now::int AS nb_porteurs_now,
+
+                    i.nb_postes_impactes::int AS nb_postes_impactes,
+                    i.criticite_max::int AS max_criticite,
+
+                    i.nb_porteurs::int AS nb_porteurs_now,
                     i.nb_leave::int AS nb_porteurs_sortants,
-                    i.last_exit_date
-                FROM impacted i
+                    i.last_exit_date,
+
+                    i.besoin_total::int AS besoin_total,
+                    i.nb_postes_crit_80::int AS nb_postes_crit_80,
+
+                    i.nb_porteurs_dispo::int AS nb_porteurs_dispo,
+                    i.nb_experts::int AS nb_experts,
+                    i.nb_experts_dispo::int AS nb_experts_dispo,
+
+                    i.nb_leave_dispo::int AS nb_leave_dispo,
+                    i.nb_experts_leave::int AS nb_experts_leave,
+                    i.nb_experts_leave_dispo::int AS nb_experts_leave_dispo
+
+                FROM impact i
                 JOIN public.tbl_competence c ON c.id_comp = i.id_comp
                 LEFT JOIN public.tbl_domaine_competence d
                   ON d.id_domaine_competence = c.domaine
                  AND COALESCE(d.masque, FALSE) = FALSE
-                LEFT JOIN postes_par_comp pp ON pp.id_comp = i.id_comp
+
                 ORDER BY
-                    COALESCE(pp.nb_postes_impactes, 0) DESC,
-                    COALESCE(pp.max_criticite, 0) DESC,
+                    i.nb_postes_impactes DESC,
+                    i.criticite_max DESC,
                     c.code
                 LIMIT %s
                 """
 
-                cur.execute(sql, tuple(cte_params + [horizon_years, criticite_min, criticite_min, limit]))
+                cur.execute(sql, tuple(cte_params + [horizon_years, criticite_min, limit]))
                 rows = cur.fetchall() or []
 
                 items: List[AnalysePrevisionCritiqueImpacteeItem] = []
+
                 for r in rows:
                     last_exit_date = r.get("last_exit_date")
                     if hasattr(last_exit_date, "isoformat"):
                         last_exit_date = last_exit_date.isoformat()
+
+                    B = int(r.get("besoin_total") or 0)
+                    P = int(r.get("nb_porteurs_now") or 0)
+                    Pd = int(r.get("nb_porteurs_dispo") or 0)
+
+                    Pe = int(r.get("nb_experts") or 0)
+                    Ped = int(r.get("nb_experts_dispo") or 0)
+
+                    N = int(r.get("nb_postes_impactes") or 0)
+                    Cmax = int(r.get("max_criticite") or 0)
+                    N80 = int(r.get("nb_postes_crit_80") or 0)
+
+                    leave = int(r.get("nb_porteurs_sortants") or 0)
+                    leave_dispo = int(r.get("nb_leave_dispo") or 0)
+                    leave_ex = int(r.get("nb_experts_leave") or 0)
+                    leave_ex_dispo = int(r.get("nb_experts_leave_dispo") or 0)
+
+                    indice_now = _calc_indice(B, P, Pd, Pe, Ped, N, Cmax, N80)
+
+                    P_h = max(P - leave, 0)
+                    Pd_h = max(Pd - leave_dispo, 0)
+                    Pe_h = max(Pe - leave_ex, 0)
+                    Ped_h = max(Ped - leave_ex_dispo, 0)
+
+                    indice_h = _calc_indice(B, P_h, Pd_h, Pe_h, Ped_h, N, Cmax, N80)
+                    delta = int(indice_h - indice_now)
+
+                    if indice_h >= 75:
+                        prio = "P1"
+                    elif indice_h >= 50:
+                        prio = "P2"
+                    else:
+                        prio = "P3"
 
                     items.append(
                         AnalysePrevisionCritiqueImpacteeItem(
@@ -1304,13 +1536,23 @@ def get_analyse_previsions_critiques_impactees_detail(
                             id_domaine_competence=r.get("id_domaine_competence"),
                             domaine_titre_court=(r.get("domaine_titre_court") or None),
                             domaine_couleur=(r.get("domaine_couleur") or None),
+
                             nb_postes_impactes=int(r.get("nb_postes_impactes") or 0),
                             max_criticite=int(r.get("max_criticite") or 0),
+
                             nb_porteurs_now=int(r.get("nb_porteurs_now") or 0),
                             nb_porteurs_sortants=int(r.get("nb_porteurs_sortants") or 0),
                             last_exit_date=last_exit_date,
+
+                            indice_fragilite_horizon=int(indice_h),
+                            delta_fragilite=int(delta),
+                            priorite=prio,
+                            priorite_score=int(indice_h),
                         )
                     )
+
+                # Tri DRH-friendly: d'abord l'horizon le plus critique
+                items.sort(key=lambda x: (-(x.priorite_score or 0), -(x.nb_postes_impactes or 0), (x.code or "")))
 
                 return AnalysePrevisionsCritiquesImpacteesDetailResponse(
                     scope=scope,
