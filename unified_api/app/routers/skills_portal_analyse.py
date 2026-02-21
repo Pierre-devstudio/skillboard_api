@@ -1957,10 +1957,51 @@ def get_analyse_previsions_postes_rouges_detail(
 ):
     """
     Détail KPI "Postes impactés" (prévisions):
-    - postes impactés à l'horizon (future_fragiles > 0)
-    - fragile = compétence critique avec nb_porteurs <= 1
+    - calcule l'indice de fragilité PROJETÉ (voie A : continuité opérationnelle)
+    - même logique que Risques/Postes fragiles, mais en retirant les sortants sous X ans
     """
     try:
+        def _clamp(v: float, lo: float, hi: float) -> float:
+            return max(lo, min(hi, v))
+
+        def _calc_indice(nb0: int, nb1: int, nr0: int, nr1: int, titulaires: int, cible: int) -> int:
+            # Voie A : poste non tenu => rupture
+            if int(titulaires or 0) <= 0:
+                return 100
+
+            c = int(cible or 1)
+            if c <= 0:
+                c = 1
+
+            ratio = float(titulaires) / float(c)
+            ratio = _clamp(ratio, 0.0, 1.0)
+
+            w0 = 0.90   # sans porteur
+            w1 = 0.65   # porteur unique
+            wr0 = 0.35  # sans relève (porteurs hors poste = 0)
+            wr1 = 0.18  # relève faible (porteurs hors poste = 1)
+
+            prod = (
+                pow(1 - w0, int(nb0 or 0))
+                * pow(1 - w1, int(nb1 or 0))
+                * pow(1 - wr0, int(nr0 or 0))
+                * pow(1 - wr1, int(nr1 or 0))
+            )
+
+            risk = 1.0 - (prod * pow(ratio, 2))
+            return int(round(_clamp(risk * 100.0, 0.0, 100.0)))
+
+        def _prio_label(score_h: int, titulaires_h: int, cible: int) -> str:
+            # priorisation pilotée par l'état projeté
+            if int(titulaires_h or 0) <= 0 and int(cible or 1) > 0:
+                return "Critique"
+            s = int(_clamp(float(score_h or 0), 0.0, 100.0))
+            if s >= 75:
+                return "Élevée"
+            if s >= 45:
+                return "Modérée"
+            return "Faible"
+
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
@@ -1979,7 +2020,6 @@ def get_analyse_previsions_postes_rouges_detail(
                         e.id_poste_actuel,
                         e.date_sortie_prevue,
                         COALESCE(e.havedatefin, FALSE) AS havedatefin,
-                        e.motif_sortie,
                         e.retraite_estimee::int AS retraite_annee,
                         COALESCE(EXTRACT(MONTH FROM e.date_entree_entreprise_effectif)::int, 6) AS m_entree,
                         COALESCE(EXTRACT(DAY FROM e.date_entree_entreprise_effectif)::int, 15) AS d_entree
@@ -2023,10 +2063,29 @@ def get_analyse_previsions_postes_rouges_detail(
                         CASE
                           WHEN ee.exit_date IS NOT NULL
                            AND ee.exit_date >= CURRENT_DATE
-                           AND ee.exit_date < (CURRENT_DATE + (%s || ' years')::interval)
+                           AND ee.exit_date < (CURRENT_DATE + (%s::int * interval '1 year'))
                           THEN TRUE ELSE FALSE
                         END AS is_sortant
                     FROM effectifs_exit ee
+                ),
+
+                titulaires_now AS (
+                    SELECT
+                        ev.id_poste_actuel AS id_poste,
+                        COUNT(DISTINCT ev.id_effectif)::int AS nb_titulaires_now
+                    FROM effectifs_valid ev
+                    WHERE COALESCE(ev.id_poste_actuel,'') <> ''
+                    GROUP BY ev.id_poste_actuel
+                ),
+
+                titulaires_horizon AS (
+                    SELECT
+                        eh.id_poste_actuel AS id_poste,
+                        COUNT(DISTINCT eh.id_effectif)::int AS nb_titulaires_horizon
+                    FROM effectifs_h eh
+                    WHERE COALESCE(eh.id_poste_actuel,'') <> ''
+                      AND COALESCE(eh.is_sortant,FALSE) = FALSE
+                    GROUP BY eh.id_poste_actuel
                 ),
 
                 req AS (
@@ -2039,9 +2098,9 @@ def get_analyse_previsions_postes_rouges_detail(
                         COALESCE(cp.niveau_requis,'')::text AS niveau_requis
                     FROM public.tbl_fiche_poste fp
                     JOIN public.tbl_fiche_poste_competence cp ON cp.id_poste = fp.id_poste
+                    JOIN postes_scope ps ON ps.id_poste = fp.id_poste
                     WHERE fp.id_ent = %s
                       AND COALESCE(fp.actif, TRUE) = TRUE
-                      AND (NULLIF(%s::text,'') IS NULL OR fp.id_service = NULLIF(%s::text,''))
                       AND COALESCE(cp.poids_criticite,0) >= %s
                 ),
 
@@ -2051,41 +2110,61 @@ def get_analyse_previsions_postes_rouges_detail(
                         r.intitule_poste,
                         r.id_service,
                         r.id_comp,
-                        r.criticite,
 
                         COUNT(DISTINCT eh.id_effectif) FILTER (
-                            WHERE
-                                ec.id_effectif_client IS NOT NULL
-                                AND COALESCE(ec.niveau_actuel,'') <> ''
-                                AND (
-                                    (r.niveau_requis = '' )
-                                    OR (r.niveau_requis = 'A' AND ec.niveau_actuel IN ('A','B','C'))
-                                    OR (r.niveau_requis = 'B' AND ec.niveau_actuel IN ('B','C'))
-                                    OR (r.niveau_requis = 'C' AND ec.niveau_actuel IN ('C'))
-                                )
+                            WHERE ec.id_effectif_client IS NOT NULL
+                              AND COALESCE(ec.niveau_actuel,'') <> ''
+                              AND (
+                                (r.niveau_requis = '' )
+                                OR (r.niveau_requis = 'A' AND ec.niveau_actuel IN ('A','B','C'))
+                                OR (r.niveau_requis = 'B' AND ec.niveau_actuel IN ('B','C'))
+                                OR (r.niveau_requis = 'C' AND ec.niveau_actuel IN ('C'))
+                              )
                         ) AS nb_now,
 
                         COUNT(DISTINCT eh.id_effectif) FILTER (
-                            WHERE
-                                ec.id_effectif_client IS NOT NULL
-                                AND COALESCE(ec.niveau_actuel,'') <> ''
-                                AND (
-                                    (r.niveau_requis = '' )
-                                    OR (r.niveau_requis = 'A' AND ec.niveau_actuel IN ('A','B','C'))
-                                    OR (r.niveau_requis = 'B' AND ec.niveau_actuel IN ('B','C'))
-                                    OR (r.niveau_requis = 'C' AND ec.niveau_actuel IN ('C'))
-                                )
-                                AND COALESCE(eh.is_sortant, FALSE) = FALSE
+                            WHERE ec.id_effectif_client IS NOT NULL
+                              AND COALESCE(ec.niveau_actuel,'') <> ''
+                              AND (
+                                (r.niveau_requis = '' )
+                                OR (r.niveau_requis = 'A' AND ec.niveau_actuel IN ('A','B','C'))
+                                OR (r.niveau_requis = 'B' AND ec.niveau_actuel IN ('B','C'))
+                                OR (r.niveau_requis = 'C' AND ec.niveau_actuel IN ('C'))
+                              )
+                              AND eh.id_poste_actuel = r.id_poste
+                        ) AS nb_now_titulaires,
+
+                        COUNT(DISTINCT eh.id_effectif) FILTER (
+                            WHERE ec.id_effectif_client IS NOT NULL
+                              AND COALESCE(ec.niveau_actuel,'') <> ''
+                              AND COALESCE(eh.is_sortant, FALSE) = FALSE
+                              AND (
+                                (r.niveau_requis = '' )
+                                OR (r.niveau_requis = 'A' AND ec.niveau_actuel IN ('A','B','C'))
+                                OR (r.niveau_requis = 'B' AND ec.niveau_actuel IN ('B','C'))
+                                OR (r.niveau_requis = 'C' AND ec.niveau_actuel IN ('C'))
+                              )
                         ) AS nb_remain,
 
-                        MIN(eh.exit_date) FILTER (WHERE COALESCE(eh.is_sortant, FALSE) = TRUE) AS next_exit_comp
+                        COUNT(DISTINCT eh.id_effectif) FILTER (
+                            WHERE ec.id_effectif_client IS NOT NULL
+                              AND COALESCE(ec.niveau_actuel,'') <> ''
+                              AND COALESCE(eh.is_sortant, FALSE) = FALSE
+                              AND (
+                                (r.niveau_requis = '' )
+                                OR (r.niveau_requis = 'A' AND ec.niveau_actuel IN ('A','B','C'))
+                                OR (r.niveau_requis = 'B' AND ec.niveau_actuel IN ('B','C'))
+                                OR (r.niveau_requis = 'C' AND ec.niveau_actuel IN ('C'))
+                              )
+                              AND eh.id_poste_actuel = r.id_poste
+                        ) AS nb_remain_titulaires
 
                     FROM req r
                     LEFT JOIN public.tbl_effectif_client_competence ec
                       ON ec.id_comp = r.id_comp
                     LEFT JOIN effectifs_h eh
                       ON eh.id_effectif = ec.id_effectif_client
-                    GROUP BY r.id_poste, r.intitule_poste, r.id_service, r.id_comp, r.criticite
+                    GROUP BY r.id_poste, r.intitule_poste, r.id_service, r.id_comp
                 ),
 
                 agg AS (
@@ -2094,26 +2173,38 @@ def get_analyse_previsions_postes_rouges_detail(
                         c.intitule_poste,
                         c.id_service,
 
-                        SUM(CASE WHEN c.nb_now <= 1 THEN 1 ELSE 0 END)::int AS now_fragiles,
                         SUM(CASE WHEN c.nb_now = 0 THEN 1 ELSE 0 END)::int AS now_sans_porteur,
                         SUM(CASE WHEN c.nb_now = 1 THEN 1 ELSE 0 END)::int AS now_porteur_unique,
 
-                        SUM(CASE WHEN c.nb_remain <= 1 THEN 1 ELSE 0 END)::int AS future_fragiles,
+                        SUM(CASE
+                              WHEN c.nb_now >= 2
+                               AND GREATEST(c.nb_now - c.nb_now_titulaires, 0) = 0
+                              THEN 1 ELSE 0
+                            END)::int AS now_sans_releve,
+
+                        SUM(CASE
+                              WHEN c.nb_now >= 2
+                               AND GREATEST(c.nb_now - c.nb_now_titulaires, 0) = 1
+                              THEN 1 ELSE 0
+                            END)::int AS now_releve_faible,
+
                         SUM(CASE WHEN c.nb_remain = 0 THEN 1 ELSE 0 END)::int AS future_sans_porteur,
                         SUM(CASE WHEN c.nb_remain = 1 THEN 1 ELSE 0 END)::int AS future_porteur_unique,
 
-                        MIN(c.next_exit_comp) AS next_exit_date
+                        SUM(CASE
+                              WHEN c.nb_remain >= 2
+                               AND GREATEST(c.nb_remain - c.nb_remain_titulaires, 0) = 0
+                              THEN 1 ELSE 0
+                            END)::int AS future_sans_releve,
+
+                        SUM(CASE
+                              WHEN c.nb_remain >= 2
+                               AND GREATEST(c.nb_remain - c.nb_remain_titulaires, 0) = 1
+                              THEN 1 ELSE 0
+                            END)::int AS future_releve_faible
+
                     FROM cov c
                     GROUP BY c.id_poste, c.intitule_poste, c.id_service
-                ),
-
-                titulaires AS (
-                    SELECT
-                        ev.id_poste_actuel AS id_poste,
-                        COUNT(DISTINCT ev.id_effectif)::int AS nb_titulaires
-                    FROM effectifs_valid ev
-                    WHERE COALESCE(ev.id_poste_actuel, '') <> ''
-                    GROUP BY ev.id_poste_actuel
                 )
 
                 SELECT
@@ -2124,41 +2215,57 @@ def get_analyse_previsions_postes_rouges_detail(
 
                     COALESCE(fp.codif_poste,'') AS codif_poste,
                     COALESCE(fp.codif_client,'') AS codif_client,
-                    COALESCE(t.nb_titulaires, 0)::int AS nb_titulaires,
+                    COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
 
-                    a.now_fragiles,
+                    COALESCE(tn.nb_titulaires_now, 0)::int AS nb_titulaires_now,
+                    COALESCE(th.nb_titulaires_horizon, 0)::int AS nb_titulaires_horizon,
+
                     a.now_sans_porteur,
                     a.now_porteur_unique,
+                    a.now_sans_releve,
+                    a.now_releve_faible,
 
-                    a.future_fragiles,
                     a.future_sans_porteur,
                     a.future_porteur_unique,
+                    a.future_sans_releve,
+                    a.future_releve_faible
 
-                    a.next_exit_date
                 FROM agg a
                 LEFT JOIN public.tbl_fiche_poste fp
                   ON fp.id_poste = a.id_poste
                  AND fp.id_ent = %s
                  AND COALESCE(fp.actif, TRUE) = TRUE
-                LEFT JOIN titulaires t ON t.id_poste = a.id_poste
+                LEFT JOIN public.tbl_fiche_poste_param_rh prh
+                  ON prh.id_poste = a.id_poste
+                LEFT JOIN titulaires_now tn ON tn.id_poste = a.id_poste
+                LEFT JOIN titulaires_horizon th ON th.id_poste = a.id_poste
                 LEFT JOIN public.tbl_entreprise_organigramme o
                   ON o.id_ent = %s
                  AND o.id_service = a.id_service
                  AND o.archive = FALSE
-                WHERE a.future_fragiles > 0
-                ORDER BY a.future_fragiles DESC, a.next_exit_date NULLS LAST, a.intitule_poste ASC
+
+                WHERE
+                  -- "impacté" = au moins une fragilité projetée (0/1 porteur ou relève)
+                  (
+                    a.future_sans_porteur > 0
+                    OR a.future_porteur_unique > 0
+                    OR a.future_sans_releve > 0
+                    OR a.future_releve_faible > 0
+                    OR COALESCE(th.nb_titulaires_horizon,0) = 0
+                  )
+
+                ORDER BY a.intitule_poste ASC
                 LIMIT %s
                 """
 
                 params = tuple(
                     cte_params
                     + [
-                        horizon_years,
-                        id_ent,
-                        scope.id_service, scope.id_service,
-                        criticite_min,
-                        id_ent,   # join fiche poste
-                        id_ent,   # join organigramme
+                        horizon_years,         # effectifs_h
+                        id_ent,                # req fp.id_ent
+                        criticite_min,         # req criticite min
+                        id_ent,                # join fiche poste
+                        id_ent,                # join organigramme
                         limit,
                     ]
                 )
@@ -2166,77 +2273,56 @@ def get_analyse_previsions_postes_rouges_detail(
                 cur.execute(sql, params)
                 rows = cur.fetchall() or []
 
-                def _fmt(d):
-                    return d.isoformat() if hasattr(d, "isoformat") else d
-
-                def _clamp(v: float, lo: float, hi: float) -> float:
-                    return max(lo, min(hi, v))
-
-                def _calc_fragilite(nb0: int, nb1: int, nbFrag: int, nbTit: int) -> int:
-                    # Même formule que le front (Risques > Postes fragiles)
-                    if nbTit == 0:
-                        return 100
-                    a = int(nb0 or 0)
-                    b = int(nb1 or 0)
-                    f = int(nbFrag or 0)
-                    n2 = max(f - a - b, 0)
-                    w0, w1, w2 = 0.85, 0.60, 0.25
-                    risk = 1.0 - ((1.0 - w0) ** a) * ((1.0 - w1) ** b) * ((1.0 - w2) ** n2)
-                    return int(round(_clamp(risk * 100.0, 0.0, 100.0)))
-
-                def _prio_label(score: int, nb0: int, nbTit: int) -> str:
-                    s = int(_clamp(score, 0, 100))
-                    if nbTit == 0:
-                        return "Critique"
-                    if int(nb0 or 0) > 0:
-                        return "Critique"
-                    if s >= 75:
-                        return "Élevée"
-                    if s >= 45:
-                        return "Modérée"
-                    return "Faible"
-
                 items = []
                 for r in rows:
-                    nbTit = int(r.get("nb_titulaires") or 0)
+                    nb0_now = int(r.get("now_sans_porteur") or 0)
+                    nb1_now = int(r.get("now_porteur_unique") or 0)
+                    nr0_now = int(r.get("now_sans_releve") or 0)
+                    nr1_now = int(r.get("now_releve_faible") or 0)
 
-                    now_frag = int(r.get("now_fragiles") or 0)
-                    now_0 = int(r.get("now_sans_porteur") or 0)
-                    now_1 = int(r.get("now_porteur_unique") or 0)
+                    nb0_h = int(r.get("future_sans_porteur") or 0)
+                    nb1_h = int(r.get("future_porteur_unique") or 0)
+                    nr0_h = int(r.get("future_sans_releve") or 0)
+                    nr1_h = int(r.get("future_releve_faible") or 0)
 
-                    fut_frag = int(r.get("future_fragiles") or 0)
-                    fut_0 = int(r.get("future_sans_porteur") or 0)
-                    fut_1 = int(r.get("future_porteur_unique") or 0)
+                    t_now = int(r.get("nb_titulaires_now") or 0)
+                    t_h = int(r.get("nb_titulaires_horizon") or 0)
+                    cible = int(r.get("nb_titulaires_cible") or 1)
 
-                    score_now = _calc_fragilite(now_0, now_1, now_frag, nbTit)
-                    score_h = _calc_fragilite(fut_0, fut_1, fut_frag, nbTit)
+                    score_now = _calc_indice(nb0_now, nb1_now, nr0_now, nr1_now, t_now, cible)
+                    score_h = _calc_indice(nb0_h, nb1_h, nr0_h, nr1_h, t_h, cible)
                     delta = int(score_h - score_now)
-                    prio = _prio_label(score_h, fut_0, nbTit)
+                    prio = _prio_label(score_h, t_h, cible)
 
                     items.append({
                         "id_poste": (r.get("id_poste") or "").strip(),
-                        "codif_poste": (r.get("codif_poste") or "").strip(),
-                        "codif_client": (r.get("codif_client") or "").strip(),
+                        "codif_poste": (r.get("codif_poste") or "").strip() or None,
+                        "codif_client": (r.get("codif_client") or "").strip() or None,
                         "intitule_poste": (r.get("intitule_poste") or "").strip() or "—",
                         "nom_service": (r.get("nom_service") or "").strip() or "—",
 
-                        "nb_titulaires": nbTit,
+                        "nb_titulaires_cible": cible,
+                        "nb_titulaires_now": t_now,
+                        "nb_titulaires_horizon": t_h,
 
-                        "now_fragiles": now_frag,
-                        "now_sans_porteur": now_0,
-                        "now_porteur_unique": now_1,
+                        "now_sans_porteur": nb0_now,
+                        "now_porteur_unique": nb1_now,
+                        "now_sans_releve": nr0_now,
+                        "now_releve_faible": nr1_now,
 
-                        "future_fragiles": fut_frag,
-                        "future_sans_porteur": fut_0,
-                        "future_porteur_unique": fut_1,
+                        "future_sans_porteur": nb0_h,
+                        "future_porteur_unique": nb1_h,
+                        "future_sans_releve": nr0_h,
+                        "future_releve_faible": nr1_h,
 
                         "indice_fragilite_now": int(score_now),
                         "indice_fragilite_horizon": int(score_h),
                         "delta_fragilite": int(delta),
                         "priorite_label": prio,
-
-                        "next_exit_date": _fmt(r.get("next_exit_date")),
                     })
+
+                # Tri: d'abord le risque projeté (puis delta)
+                items.sort(key=lambda x: (-(x.get("indice_fragilite_horizon") or 0), -(x.get("delta_fragilite") or 0), (x.get("intitule_poste") or "")))
 
                 return {
                     "scope": scope.model_dump() if hasattr(scope, "model_dump") else scope,
@@ -2283,23 +2369,26 @@ def get_analyse_previsions_postes_rouges_modal(
                 cur.execute(
                     """
                     SELECT
-                      fp.id_poste,
-                      fp.intitule_poste,
-                      fp.id_service,
-                      COALESCE(o.nom_service,'') AS nom_service
+                        fp.id_poste,
+                        fp.intitule_poste,
+                        fp.id_service,
+                        COALESCE(o.nom_service,'') AS nom_service,
+                        COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible
                     FROM public.tbl_fiche_poste fp
+                    LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = fp.id_poste
                     LEFT JOIN public.tbl_entreprise_organigramme o
-                      ON o.id_ent = fp.id_ent
-                     AND o.id_service = fp.id_service
-                     AND o.archive = FALSE
+                        ON o.id_ent = fp.id_ent
+                        AND o.id_service = fp.id_service
+                        AND o.archive = FALSE
                     WHERE fp.id_ent = %s
-                      AND fp.id_poste = %s
-                      AND COALESCE(fp.actif, TRUE) = TRUE
+                        AND fp.id_poste = %s
+                        AND COALESCE(fp.actif, TRUE) = TRUE
                     LIMIT 1
                     """,
                     (id_ent, id_poste),
                 )
                 poste_row = cur.fetchone()
+                nb_titulaires_cible = int((poste_row or {}).get("nb_titulaires_cible") or 1)
                 if not poste_row:
                     return {
                         "scope": scope.model_dump() if hasattr(scope, "model_dump") else scope,
@@ -2316,6 +2405,7 @@ def get_analyse_previsions_postes_rouges_modal(
                         "sortants": [],
                         "couverture": [],
                         "voisins": [],
+                        
                     }
 
                 # =========
@@ -2385,6 +2475,18 @@ def get_analyse_previsions_postes_rouges_modal(
                     FROM effectifs_exit ee
                 )
                 """
+
+                titulaires_sql = f"""
+                {base_cte}
+                SELECT
+                    COUNT(DISTINCT eh.id_effectif) FILTER (WHERE eh.id_poste_actuel = %s)::int AS nb_titulaires_now,
+                    COUNT(DISTINCT eh.id_effectif) FILTER (WHERE eh.id_poste_actuel = %s AND COALESCE(eh.is_sortant,FALSE)=FALSE)::int AS nb_titulaires_horizon
+                FROM effectifs_h eh
+                """
+                cur.execute(titulaires_sql, tuple(cte_params + [horizon_years, id_poste, id_poste]))
+                trow = cur.fetchone() or {}
+                nb_titulaires_now = int(trow.get("nb_titulaires_now") or 0)
+                nb_titulaires_horizon = int(trow.get("nb_titulaires_horizon") or 0)
 
                 # ======================================
                 # 1) Couverture par compétence du poste
@@ -2494,6 +2596,33 @@ def get_analyse_previsions_postes_rouges_modal(
                                 )
                         ) AS nb_remain,
 
+                        COUNT(DISTINCT eh.id_effectif) FILTER (
+                            WHERE
+                                ec.id_effectif_client IS NOT NULL
+                            AND COALESCE(ec.niveau_actuel,'') <> ''
+                            AND (
+                                (r.niveau_requis = '' )
+                                OR (r.niveau_requis = 'A' AND (...) )
+                                OR (r.niveau_requis = 'B' AND (...) )
+                                OR (r.niveau_requis = 'C' AND (...) )
+                                )
+                            AND eh.id_poste_actuel = r.id_poste
+                        ) AS nb_now_titulaires,
+
+                            COUNT(DISTINCT eh.id_effectif) FILTER (
+                            WHERE
+                                ec.id_effectif_client IS NOT NULL
+                            AND COALESCE(ec.niveau_actuel,'') <> ''
+                            AND COALESCE(eh.is_sortant, FALSE) = FALSE
+                            AND (
+                                (r.niveau_requis = '' )
+                                OR (r.niveau_requis = 'A' AND (...) )
+                                OR (r.niveau_requis = 'B' AND (...) )
+                                OR (r.niveau_requis = 'C' AND (...) )
+                                )
+                            AND eh.id_poste_actuel = r.id_poste
+                        ) AS nb_remain_titulaires,
+
                         MIN(eh.exit_date) FILTER (WHERE COALESCE(eh.is_sortant, FALSE) = TRUE) AS next_exit_comp
 
                     FROM req r
@@ -2510,6 +2639,8 @@ def get_analyse_previsions_postes_rouges_modal(
                     c.nb_now,
                     c.nb_remain,
                     c.next_exit_comp,
+                    c.nb_now_titulaires,
+                    c.nb_remain_titulaires,
 
                     comp.code,
                     comp.intitule,
@@ -2541,11 +2672,40 @@ def get_analyse_previsions_postes_rouges_modal(
                 future_sans_porteur = 0
                 future_porteur_unique = 0
                 next_exit_date = None
+                now_sans_porteur = 0
+                now_porteur_unique = 0
+                now_sans_releve = 0
+                now_releve_faible = 0
+
+                future_sans_releve = 0
+                future_releve_faible = 0
 
                 causes = []
                 for r in cov_rows:
                     nb_remain = int(r.get("nb_remain") or 0)
                     nb_now = int(r.get("nb_now") or 0)
+                    nb_now_tit = int(r.get("nb_now_titulaires") or 0)
+                    nb_remain_tit = int(r.get("nb_remain_titulaires") or 0)
+
+                    # NOW
+                    if nb_now == 0:
+                        now_sans_porteur += 1
+                    elif nb_now == 1:
+                        now_porteur_unique += 1
+                    elif nb_now >= 2:
+                        rel = max(nb_now - nb_now_tit, 0)
+                        if rel == 0:
+                            now_sans_releve += 1
+                        elif rel == 1:
+                            now_releve_faible += 1
+
+                    # HORIZON
+                    if nb_remain >= 2:
+                        relh = max(nb_remain - nb_remain_tit, 0)
+                        if relh == 0:
+                            future_sans_releve += 1
+                        elif relh == 1:
+                            future_releve_faible += 1
                     nx = r.get("next_exit_comp")
                     if hasattr(nx, "isoformat"):
                         nx = nx.isoformat()
@@ -2858,6 +3018,35 @@ def get_analyse_previsions_postes_rouges_modal(
                         "jaccard": float(r.get("jaccard") or 0),
                     })
 
+
+                def _clamp(v, lo, hi):
+                    return max(lo, min(hi, v))
+
+                def _calc_indice(nb0, nb1, nr0, nr1, titulaires, cible):
+                    if int(titulaires or 0) <= 0:
+                        return 100
+                    c = int(cible or 1)
+                    if c <= 0:
+                        c = 1
+                    ratio = _clamp(float(titulaires) / float(c), 0.0, 1.0)
+                    w0, w1, wr0, wr1 = 0.90, 0.65, 0.35, 0.18
+                    prod = (pow(1-w0, int(nb0 or 0)) * pow(1-w1, int(nb1 or 0)) * pow(1-wr0, int(nr0 or 0)) * pow(1-wr1, int(nr1 or 0)))
+                    risk = 1.0 - (prod * pow(ratio, 2))
+                    return int(round(_clamp(risk * 100.0, 0.0, 100.0)))
+
+                indice_now = _calc_indice(now_sans_porteur, now_porteur_unique, now_sans_releve, now_releve_faible, nb_titulaires_now, nb_titulaires_cible)
+                indice_h = _calc_indice(future_sans_porteur, future_porteur_unique, future_sans_releve, future_releve_faible, nb_titulaires_horizon, nb_titulaires_cible)
+                delta = int(indice_h - indice_now)
+
+                if nb_titulaires_horizon <= 0 and nb_titulaires_cible > 0:
+                    priorite_label = "Critique"
+                elif indice_h >= 75:
+                    priorite_label = "Élevée"
+                elif indice_h >= 45:
+                    priorite_label = "Modérée"
+                else:
+                    priorite_label = "Faible"
+
                 return {
                     "scope": scope.model_dump() if hasattr(scope, "model_dump") else scope,
                     "horizon_years": int(horizon_years),
@@ -2878,6 +3067,14 @@ def get_analyse_previsions_postes_rouges_modal(
                     "sortants": sortants,
                     "couverture": couverture,
                     "voisins": voisins,
+                    "nb_titulaires_now": nb_titulaires_now,
+                    "nb_titulaires_horizon": nb_titulaires_horizon,
+                    "nb_titulaires_cible": nb_titulaires_cible,
+                    "future_sans_releve": int(future_sans_releve),
+                    "future_releve_faible": int(future_releve_faible),
+                    "indice_fragilite_horizon": int(indice_h),
+                    "delta_fragilite": int(delta),
+                    "priorite_label": priorite_label,
                 }
 
     except HTTPException:
