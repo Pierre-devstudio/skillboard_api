@@ -1241,6 +1241,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const qs = new URLSearchParams();
     qs.set("horizon_years", String(horizonYears || 1));
     if (id_service) qs.set("id_service", String(id_service).trim());
+    const cmin = getCriticiteMin();
+    if (cmin !== null && cmin !== undefined) qs.set("criticite_min", String(cmin));
 
     // IMPORTANT: endpoint à créer côté API (FastAPI) si pas encore fait
     const url = `${ctx.apiBase}/skills/analyse/previsions/critiques/detail/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
@@ -4276,7 +4278,14 @@ function renderDetail(mode) {
 
     if (selectedKpi === "critiques") {
       const horizonLabel = (horizon === 1 ? "1 an" : (horizon + " ans"));
-      if (sub) sub.textContent = `Compétences impactées à moins de ${horizonLabel} (périmètre filtré).`;
+      if (sub) {
+        sub.innerHTML = `
+          <div>Compétences impactées à moins de ${escapeHtml(horizonLabel)} (périmètre filtré).</div>
+          <div class="sb-badges" style="margin-top:6px;">
+            <span class="sb-badge">Criticité min : ${escapeHtml(critMinLabel())}</span>
+          </div>
+        `;
+      }
 
       body.innerHTML = `
         <div class="card" style="padding:12px; margin:0;">
@@ -4356,31 +4365,31 @@ function renderDetail(mode) {
 
             return `
               <tr class="prev-crit-row" data-comp-key="${escapeHtml(compKey)}" style="cursor:pointer;">
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${renderDomainPill(it)}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; white-space:nowrap;">${codeBadge}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(intit)}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(nbPostes))}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${crit ? escapeHtml(String(crit)) : "—"}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(now))}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(sortants))}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${lastExitTxt}</td>
+                <td>${renderDomainPill(it)}</td>
+                <td style="white-space:nowrap;">${codeBadge}</td>
+                <td>${escapeHtml(intit)}</td>
+                <td class="col-center">${escapeHtml(String(nbPostes))}</td>
+                <td class="col-center">${crit ? escapeHtml(String(crit)) : "—"}</td>
+                <td class="col-center">${escapeHtml(String(now))}</td>
+                <td class="col-center">${escapeHtml(String(sortants))}</td>
+                <td>${lastExitTxt}</td>
               </tr>
             `;
           }).join("");
 
           box.innerHTML = `
             <div style="overflow:auto;">
-              <table style="width:100%; border-collapse:collapse; font-size:12px;">
+              <table class="sb-table sb-table--hover">
                 <thead>
                   <tr>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:220px;">Domaine</th>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:110px;">Code</th>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Compétence</th>
-                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:110px;">Postes</th>
-                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:90px;">Crit.</th>
-                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:120px;">Porteurs</th>
-                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:120px;">Sortants</th>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:130px;">Dernière sortie</th>
+                    <th style="width:220px;">Domaine</th>
+                    <th style="width:110px;">Code</th>
+                    <th>Compétence</th>
+                    <th class="col-center" style="width:110px;">Postes</th>
+                    <th class="col-center" style="width:90px;">Crit.</th>
+                    <th class="col-center" style="width:120px;">Porteurs</th>
+                    <th class="col-center" style="width:120px;">Sortants</th>
+                    <th style="width:130px;">Dernière sortie</th>
                   </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
