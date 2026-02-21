@@ -1956,15 +1956,14 @@ def get_analyse_previsions_postes_rouges_detail(
     limit: int = Query(default=200, ge=10, le=2000),
 ):
     """
-    Détail KPI "Postes rouges" (prévisions):
-    - postes qui BASCULENT en rouge à l'horizon (future_fragiles > 0 ET now_fragiles = 0)
+    Détail KPI "Postes impactés" (prévisions):
+    - postes impactés à l'horizon (future_fragiles > 0)
     - fragile = compétence critique avec nb_porteurs <= 1
     """
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
-
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
                 cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
@@ -2106,6 +2105,15 @@ def get_analyse_previsions_postes_rouges_detail(
                         MIN(c.next_exit_comp) AS next_exit_date
                     FROM cov c
                     GROUP BY c.id_poste, c.intitule_poste, c.id_service
+                ),
+
+                titulaires AS (
+                    SELECT
+                        ev.id_poste_actuel AS id_poste,
+                        COUNT(DISTINCT ev.id_effectif)::int AS nb_titulaires
+                    FROM effectifs_valid ev
+                    WHERE COALESCE(ev.id_poste_actuel, '') <> ''
+                    GROUP BY ev.id_poste_actuel
                 )
 
                 SELECT
@@ -2114,13 +2122,25 @@ def get_analyse_previsions_postes_rouges_detail(
                     a.id_service,
                     COALESCE(o.nom_service,'') AS nom_service,
 
+                    COALESCE(fp.codif_poste,'') AS codif_poste,
+                    COALESCE(fp.codif_client,'') AS codif_client,
+                    COALESCE(t.nb_titulaires, 0)::int AS nb_titulaires,
+
                     a.now_fragiles,
+                    a.now_sans_porteur,
+                    a.now_porteur_unique,
+
                     a.future_fragiles,
                     a.future_sans_porteur,
                     a.future_porteur_unique,
 
                     a.next_exit_date
                 FROM agg a
+                LEFT JOIN public.tbl_fiche_poste fp
+                  ON fp.id_poste = a.id_poste
+                 AND fp.id_ent = %s
+                 AND COALESCE(fp.actif, TRUE) = TRUE
+                LEFT JOIN titulaires t ON t.id_poste = a.id_poste
                 LEFT JOIN public.tbl_entreprise_organigramme o
                   ON o.id_ent = %s
                  AND o.id_service = a.id_service
@@ -2133,11 +2153,12 @@ def get_analyse_previsions_postes_rouges_detail(
                 params = tuple(
                     cte_params
                     + [
-                        horizon_years,                 # effectifs_h
-                        id_ent,                        # req fp.id_ent
-                        scope.id_service, scope.id_service,  # service filter
-                        criticite_min,                 # criticite min
-                        id_ent,                        # join organigramme
+                        horizon_years,
+                        id_ent,
+                        scope.id_service, scope.id_service,
+                        criticite_min,
+                        id_ent,   # join fiche poste
+                        id_ent,   # join organigramme
                         limit,
                     ]
                 )
@@ -2148,16 +2169,72 @@ def get_analyse_previsions_postes_rouges_detail(
                 def _fmt(d):
                     return d.isoformat() if hasattr(d, "isoformat") else d
 
+                def _clamp(v: float, lo: float, hi: float) -> float:
+                    return max(lo, min(hi, v))
+
+                def _calc_fragilite(nb0: int, nb1: int, nbFrag: int, nbTit: int) -> int:
+                    # Même formule que le front (Risques > Postes fragiles)
+                    if nbTit == 0:
+                        return 100
+                    a = int(nb0 or 0)
+                    b = int(nb1 or 0)
+                    f = int(nbFrag or 0)
+                    n2 = max(f - a - b, 0)
+                    w0, w1, w2 = 0.85, 0.60, 0.25
+                    risk = 1.0 - ((1.0 - w0) ** a) * ((1.0 - w1) ** b) * ((1.0 - w2) ** n2)
+                    return int(round(_clamp(risk * 100.0, 0.0, 100.0)))
+
+                def _prio_label(score: int, nb0: int, nbTit: int) -> str:
+                    s = int(_clamp(score, 0, 100))
+                    if nbTit == 0:
+                        return "Critique"
+                    if int(nb0 or 0) > 0:
+                        return "Critique"
+                    if s >= 75:
+                        return "Élevée"
+                    if s >= 45:
+                        return "Modérée"
+                    return "Faible"
+
                 items = []
                 for r in rows:
+                    nbTit = int(r.get("nb_titulaires") or 0)
+
+                    now_frag = int(r.get("now_fragiles") or 0)
+                    now_0 = int(r.get("now_sans_porteur") or 0)
+                    now_1 = int(r.get("now_porteur_unique") or 0)
+
+                    fut_frag = int(r.get("future_fragiles") or 0)
+                    fut_0 = int(r.get("future_sans_porteur") or 0)
+                    fut_1 = int(r.get("future_porteur_unique") or 0)
+
+                    score_now = _calc_fragilite(now_0, now_1, now_frag, nbTit)
+                    score_h = _calc_fragilite(fut_0, fut_1, fut_frag, nbTit)
+                    delta = int(score_h - score_now)
+                    prio = _prio_label(score_h, fut_0, nbTit)
+
                     items.append({
                         "id_poste": (r.get("id_poste") or "").strip(),
+                        "codif_poste": (r.get("codif_poste") or "").strip(),
+                        "codif_client": (r.get("codif_client") or "").strip(),
                         "intitule_poste": (r.get("intitule_poste") or "").strip() or "—",
                         "nom_service": (r.get("nom_service") or "").strip() or "—",
-                        "now_fragiles": int(r.get("now_fragiles") or 0),
-                        "future_fragiles": int(r.get("future_fragiles") or 0),
-                        "future_sans_porteur": int(r.get("future_sans_porteur") or 0),
-                        "future_porteur_unique": int(r.get("future_porteur_unique") or 0),
+
+                        "nb_titulaires": nbTit,
+
+                        "now_fragiles": now_frag,
+                        "now_sans_porteur": now_0,
+                        "now_porteur_unique": now_1,
+
+                        "future_fragiles": fut_frag,
+                        "future_sans_porteur": fut_0,
+                        "future_porteur_unique": fut_1,
+
+                        "indice_fragilite_now": int(score_now),
+                        "indice_fragilite_horizon": int(score_h),
+                        "delta_fragilite": int(delta),
+                        "priorite_label": prio,
+
                         "next_exit_date": _fmt(r.get("next_exit_date")),
                     })
 

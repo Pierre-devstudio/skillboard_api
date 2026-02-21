@@ -1263,12 +1263,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const portalCtx = getPortalContext(portal);
     if (!portalCtx.id_contact) throw new Error("id_contact introuvable côté UI.");
     if (!portalCtx.apiBase) throw new Error("apiBase introuvable côté UI.");
-    
+
     const qs = new URLSearchParams();
     qs.set("horizon_years", String(horizonYears));
     if (id_service) qs.set("id_service", String(id_service));
-    // si tu veux forcer ta criticité min côté UI:
-    // qs.set("criticite_min", "3");
+
+    // Alignement avec le reste de la page
+    const cmin = Number(getCriticiteMin());
+    if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
 
     const url = `${portalCtx.apiBase}/skills/analyse/previsions/postes-rouges/detail/${encodeURIComponent(portalCtx.id_contact)}?${qs.toString()}`;
 
@@ -1277,7 +1279,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       const txt = await res.text().catch(() => "");
       throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
     }
-    return await res.json();
+
+    const data = await res.json();
+    syncCriticiteMinFromResponse(data);
+    return data;
   }
 
   async function fetchPrevisionsPosteRougeModal(portal, id_poste, horizonYears, id_service, criticite_min) {
@@ -4503,18 +4508,25 @@ function renderDetail(mode) {
 
     if (selectedKpi === "postes-rouges") {
       const horizonLabel = (horizon === 1 ? "1 an" : (horizon + " ans"));
-      if (sub) sub.textContent = `Postes qui basculent en rouge à moins de ${horizonLabel} (périmètre filtré).`;
+
+      function renderSub() {
+        if (!sub) return;
+        sub.innerHTML = `
+          <div>Postes impactés à moins de ${escapeHtml(horizonLabel)} (périmètre filtré).</div>
+          <div class="sb-badges" style="margin-top:6px;">
+            <span class="sb-badge">Criticité min : ${escapeHtml(critMinLabel())}</span>
+          </div>
+        `;
+      }
+
+      renderSub();
 
       body.innerHTML = `
         <div class="card" style="padding:12px; margin:0;">
           <div class="card-title" style="margin-bottom:6px;">
-            Postes rouges &lt; ${escapeHtml(horizonLabel)}
+            Postes impactés sous ${escapeHtml(horizonLabel)}
           </div>
-
-          <div class="card" style="padding:12px; margin-top:12px;">
-            <div class="card-title" style="margin-bottom:6px;">Détail</div>
-            <div id="prevPostesRedDetailBox" class="card-sub" style="margin:0;">Chargement…</div>
-          </div>
+          <div id="prevPostesRedDetailBox" class="card-sub" style="margin:0; margin-top:10px;">Chargement…</div>
         </div>
       `;
 
@@ -4533,23 +4545,89 @@ function renderDetail(mode) {
             return;
           }
 
-          function fmtDateFR(v) {
-            const s = (v || "").toString().trim();
-            if (!s) return "—";
-            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-            if (!m) return escapeHtml(s);
-            return `${m[3]}-${m[2]}-${m[1]}`;
-          }
-
           box.textContent = "Chargement…";
           const data = await fetchPrevisionsPostesRougesDetail(_portalref, horizon, id_service);
 
           if ((window.__sbPrevPostesRedReqId || 0) !== reqId) return;
 
+          syncCriticiteMinFromResponse(data);
+          renderSub();
+
           const items = Array.isArray(data?.items) ? data.items : [];
           if (!items.length) {
-            box.textContent = "Aucun poste ne bascule en rouge dans l’horizon sélectionné.";
+            box.textContent = "Aucun poste impacté dans l’horizon sélectionné.";
             return;
+          }
+
+          const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+          function calcFragilityScore(nb0, nb1, nbFragiles, nbTitulaires) {
+            if (nbTitulaires === 0) return 100;
+            const a = Number(nb0 || 0);
+            const b = Number(nb1 || 0);
+            const f = Number(nbFragiles || 0);
+            const n2 = Math.max(f - a - b, 0);
+            const w0 = 0.85, w1 = 0.60, w2 = 0.25;
+            const risk = 1 - Math.pow(1 - w0, a) * Math.pow(1 - w1, b) * Math.pow(1 - w2, n2);
+            return clamp(Math.round(risk * 100), 0, 100);
+          }
+
+          function scoreHue(score) {
+            const s = clamp(Number(score || 0), 0, 100) / 100;
+            return Math.round(120 * (1 - s));
+          }
+
+          function scoreChip(score) {
+            const s = clamp(Math.round(Number(score || 0)), 0, 100);
+            const h = scoreHue(s);
+            const fill = `hsl(${h} 70% 45%)`;
+
+            return `
+              <div style="display:flex; align-items:center; justify-content:center; gap:10px;">
+                <div style="width:84px; height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden;">
+                  <div style="height:100%; width:${s}%; background:${fill};"></div>
+                </div>
+                <div style="min-width:44px; text-align:right; font-weight:800;">
+                  ${s}<span style="font-weight:700; font-size:12px;">%</span>
+                </div>
+              </div>
+            `;
+          }
+
+          function priorityLabel(score, nb0, nbTitulaires) {
+            const s = clamp(Number(score || 0), 0, 100);
+            const a = Number(nb0 || 0);
+            if (nbTitulaires === 0) return "Critique";
+            if (a > 0) return "Critique";
+            if (s >= 75) return "Élevée";
+            if (s >= 45) return "Modérée";
+            return "Faible";
+          }
+
+          function priorityPill(label, score) {
+            const s = clamp(Math.round(Number(score || 0)), 0, 100);
+            const h = scoreHue(s);
+            const bg = `hsl(${h} 70% 95%)`;
+            const br = `hsl(${h} 70% 80%)`;
+            const tx = `hsl(${h} 70% 28%)`;
+
+            return `
+              <span style="
+                display:inline-flex; align-items:center; justify-content:center;
+                padding:4px 10px; border-radius:999px;
+                border:1px solid ${br}; background:${bg}; color:${tx};
+                font-weight:800; font-size:12px; white-space:nowrap;
+              ">
+                ${escapeHtml(label)}
+              </span>
+            `;
+          }
+
+          function deltaBadge(delta) {
+            const d = Math.round(Number(delta || 0));
+            const mod = (d > 0) ? "sb-badge--danger" : (d < 0) ? "sb-badge--success" : "sb-badge--warning";
+            const txt = (d > 0 ? `+${d}` : `${d}`) + " pts";
+            return `<span class="sb-badge ${mod}" title="Évolution vs aujourd’hui">${escapeHtml(txt)}</span>`;
           }
 
           const rowsHtml = items.map(r => {
@@ -4557,56 +4635,88 @@ function renderDetail(mode) {
             const poste = (r.intitule_poste || "—").toString().trim();
             const svc = (r.nom_service || "—").toString().trim();
 
-            const f = Number(r.future_fragiles || r.nb_fragiles_future || 0);
-            const sp = Number(r.future_sans_porteur || r.nb_sans_porteur_future || 0);
-            const pu = Number(r.future_porteur_unique || r.nb_porteur_unique_future || 0);
+            const codifClient = (r.codif_client || "").toString().trim();
+            const codifPoste  = (r.codif_poste || "").toString().trim();
+            const codeAffiche = codifClient || codifPoste;
 
-            const nextExit = r.next_exit_date || "";
+            const fH  = Number(r.future_fragiles || 0);
+            const spH = Number(r.future_sans_porteur || 0);
+            const puH = Number(r.future_porteur_unique || 0);
+
+            const f0  = Number(r.now_fragiles || 0);
+            const sp0 = Number(r.now_sans_porteur || 0);
+            const pu0 = Number(r.now_porteur_unique || 0);
+
+            const nbTit = (r.nb_titulaires === null || r.nb_titulaires === undefined) ? null : Number(r.nb_titulaires);
+
+            const scoreH = (r.indice_fragilite_horizon !== null && r.indice_fragilite_horizon !== undefined)
+              ? clamp(Number(r.indice_fragilite_horizon || 0), 0, 100)
+              : calcFragilityScore(spH, puH, fH, nbTit);
+
+            const score0 = (r.indice_fragilite_now !== null && r.indice_fragilite_now !== undefined)
+              ? clamp(Number(r.indice_fragilite_now || 0), 0, 100)
+              : calcFragilityScore(sp0, pu0, f0, nbTit);
+
+            const delta = (r.delta_fragilite !== null && r.delta_fragilite !== undefined)
+              ? Number(r.delta_fragilite || 0)
+              : (scoreH - score0);
+
+            const prio = (r.priorite_label || "").toString().trim() || priorityLabel(scoreH, spH, nbTit);
 
             return `
-              <tr class="prev-red-poste-row"
-                  data-id_poste="${escapeHtml(idPoste)}"
-                  data-nom_service="${escapeHtml(svc)}"
-                  data-future_fragiles="${escapeHtml(String(f))}"
-                  data-future_sans_porteur="${escapeHtml(String(sp))}"
-                  data-future_porteur_unique="${escapeHtml(String(pu))}"
-                  data-next_exit_date="${escapeHtml(String(nextExit || ""))}"
-                  style="cursor:pointer;">
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">
-                  <span style="font-weight:800;">${escapeHtml(poste)}</span>
+              <tr class="prev-red-poste-row" data-id_poste="${escapeHtml(idPoste)}">
+                <td class="prev-red-open" style="cursor:pointer;">
+                  <div style="display:flex; gap:8px; align-items:center; min-width:0;">
+                    <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(codeAffiche || "—")}</span>
+                    <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(poste)}</span>
+                  </div>
                 </td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(svc)}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center; font-weight:900;">${escapeHtml(String(f))}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(sp))}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(pu))}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${nextExit ? fmtDateFR(nextExit) : "—"}</td>
+                <td>${escapeHtml(svc)}</td>
+                <td class="col-center" title="Indice fragilité projeté (0-100)">${scoreChip(scoreH)}</td>
+                <td class="col-center">${deltaBadge(delta)}</td>
+                <td class="col-center">${priorityPill(prio, scoreH)}</td>
+                <td class="col-center">
+                  <button type="button" class="btn-secondary prev-red-open" style="padding:6px 10px; font-size:12px; line-height:1;">Voir analyse</button>
+                </td>
               </tr>
             `;
           }).join("");
 
           box.innerHTML = `
-            <div style="overflow:auto;">
-              <table class="sb-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+            <div class="table-wrap sb-tip-host" style="margin-top:10px;">
+              <table class="sb-table" id="tblPrevPostesImpactes">
                 <thead>
                   <tr>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Poste</th>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:220px;">Service</th>
-                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:130px;">Fragiles (horizon)</th>
-                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:140px;">Sans couverture</th>
-                    <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:140px;">Couverture unique</th>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:140px;">Prochaine sortie</th>
+                    <th>Poste</th>
+                    <th style="width:180px;">Service</th>
+
+                    <th class="col-center" style="width:220px;">
+                      <span class="sb-th-with-tip">
+                        <span>Indice<br>de fragilité</span>
+                        <span class="sb-iinfo"
+                              data-sbtip="fragility-index"
+                              tabindex="0"
+                              role="button"
+                              aria-label="Informations sur l'indice de fragilité">i</span>
+                      </span>
+                    </th>
+
+                    <th class="col-center" style="width:140px; line-height:1.1;">Évolution<br>(vs aujourd’hui)</th>
+
+                    <th class="col-center" style="width:130px; white-space:normal; line-height:1.1;">
+                      Priorité de<br>traitement
+                    </th>
+
+                    <th class="col-center" style="width:140px;">Action</th>
                   </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
               </table>
-              <div class="card-sub" style="margin-top:8px;">
-                Astuce lecture: “Fragiles” = nb de compétences critiques qui tombent à 0 ou 1 personne la possédant à l’horizon.
-              </div>
             </div>
           `;
         } catch (e) {
           if ((window.__sbPrevPostesRedReqId || 0) !== reqId) return;
-          box.textContent = `Erreur chargement détail postes rouges: ${e?.message || e}`;
+          box.textContent = `Erreur chargement détail postes impactés: ${e?.message || e}`;
         }
       }, 0);
 
@@ -6220,9 +6330,11 @@ function bindOnce(portal) {
 
       const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
 
-
       // Modal dédié "Poste rouge" 
-      await showAnalysePrevPosteRedModal(portal, id_poste, id_service);
+      const fn = window["showAnalysePrevPosteRedModal"];
+      if (typeof fn === "function") {
+        await fn(portal, id_poste, id_service);
+      }
       return;
     }
 
