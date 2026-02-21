@@ -4561,14 +4561,28 @@ function renderDetail(mode) {
 
           const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
-          function calcFragilityScore(nb0, nb1, nbFragiles, nbTitulaires) {
-            if (nbTitulaires === 0) return 100;
+          function calcFragilityScore(nb0, nb1, nbR0, nbR1, nbTitulaires, nbCible) {
+            // Règle métier: poste non tenu = rupture de continuité
+            const t = Number(nbTitulaires || 0);
+            if (t <= 0) return 100;
+
+            const cible = Math.max(1, Number(nbCible || 1));
+            let ratio = t / cible;
+            ratio = clamp(ratio, 0, 1);
+
             const a = Number(nb0 || 0);
             const b = Number(nb1 || 0);
-            const f = Number(nbFragiles || 0);
-            const n2 = Math.max(f - a - b, 0);
-            const w0 = 0.85, w1 = 0.60, w2 = 0.25;
-            const risk = 1 - Math.pow(1 - w0, a) * Math.pow(1 - w1, b) * Math.pow(1 - w2, n2);
+            const r0 = Number(nbR0 || 0);
+            const r1 = Number(nbR1 || 0);
+
+            const w0 = 0.90, w1 = 0.65, wr0 = 0.35, wr1 = 0.18;
+            const prod =
+              Math.pow(1 - w0, a) *
+              Math.pow(1 - w1, b) *
+              Math.pow(1 - wr0, r0) *
+              Math.pow(1 - wr1, r1);
+
+            const risk = 1 - (prod * Math.pow(ratio, 2));
             return clamp(Math.round(risk * 100), 0, 100);
           }
 
@@ -4894,6 +4908,9 @@ function renderDetail(mode) {
               const nb0 = Number(r.nb_critiques_sans_porteur || 0);
               const nb1 = Number(r.nb_critiques_porteur_unique || 0);
               const nbF = Number(r.nb_critiques_fragiles || 0);
+              const nbR0 = Number(r.nb_critiques_sans_releve || 0);
+              const nbR1 = Number(r.nb_critiques_releve_faible || 0);
+              const nbCible = Number(r.nb_titulaires_cible || 1);
 
               const nbTit = (r.nb_titulaires === null || r.nb_titulaires === undefined)
                 ? null
@@ -4901,7 +4918,7 @@ function renderDetail(mode) {
 
               const score = (r.indice_fragilite !== null && r.indice_fragilite !== undefined)
                 ? clamp(Number(r.indice_fragilite || 0), 0, 100)
-                : calcFragilityScore(nb0, nb1, nbF, nbTit);
+                : calcFragilityScore(nb0, nb1, nbR0, nbR1, nbTit, nbCible);
               const prio  = priorityLabel(score, nb0, nbTit);
 
 

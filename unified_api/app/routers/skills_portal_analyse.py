@@ -3255,20 +3255,33 @@ def get_analyse_risques_detail(
                         pa.gap_titulaires,
 
                         CASE
-                          WHEN pa.nb_titulaires = 0 THEN 100
-                          ELSE LEAST(100, GREATEST(0,
-                            ROUND(
-                              100 * (
-                                1
-                                - POWER((1 - 0.90)::numeric, pa.nb_critiques_sans_porteur)
-                                * POWER((1 - 0.65)::numeric, pa.nb_critiques_porteur_unique)
-                                * POWER((1 - 0.35)::numeric, pa.nb_critiques_sans_releve)
-                                * POWER((1 - 0.18)::numeric, pa.nb_critiques_releve_faible)
-                                * POWER((1 - 0.30)::numeric, pa.gap_titulaires)
-                              )
-                            )
-                          ))::int
-                        END AS indice_fragilite
+                            WHEN pa.nb_titulaires = 0 THEN 100
+                            ELSE LEAST(100, GREATEST(0,
+                                ROUND(
+                                100 * (
+                                    1
+                                    - (
+                                        POWER((1 - 0.90)::numeric, pa.nb_critiques_sans_porteur)
+                                        * POWER((1 - 0.65)::numeric, pa.nb_critiques_porteur_unique)
+                                        * POWER((1 - 0.35)::numeric, pa.nb_critiques_sans_releve)
+                                        * POWER((1 - 0.18)::numeric, pa.nb_critiques_releve_faible)
+
+                                        -- Tenue du poste (Titulaires / Cible), amplifiée (ratio^2)
+                                        * POWER(
+                                            LEAST(
+                                            1::numeric,
+                                            GREATEST(
+                                                0::numeric,
+                                                (pa.nb_titulaires::numeric / NULLIF(pa.nb_titulaires_cible,0)::numeric)
+                                            )
+                                            ),
+                                            2
+                                        )
+                                    )
+                                )
+                                )
+                            ))::int
+                            END AS indice_fragilite
 
                     FROM poste_agg pa
                     JOIN public.tbl_fiche_poste fp ON fp.id_poste = pa.id_poste
@@ -4636,7 +4649,9 @@ def get_analyse_risques_poste_diagnostic(
                 nb_total_fragiles = nb0 + nb1 + nb_r0 + nb_r1
                 nb_evenements = nb_total_fragiles + (1 if gap > 0 else 0)
 
-                # Indice fragilité (0..100) : cohérent “table”
+                # Indice fragilité (0..100) : continuité opérationnelle (poste tenu + compétences critiques)
+                # - composante "compétences": non couverte / couverture unique / relève (au niveau requis)
+                # - composante "tenue du poste": ratio Titulaires / Cible (Paramétrage RH), amplifié (ratio^2)
                 if nb_titulaires <= 0:
                     score = 100
                 else:
@@ -4644,15 +4659,24 @@ def get_analyse_risques_poste_diagnostic(
                     w1 = 0.65
                     wr0 = 0.35
                     wr1 = 0.18
-                    wt = 0.30
 
-                    risk = 1 - (pow(1 - w0, nb0)
-                                * pow(1 - w1, nb1)
-                                * pow(1 - wr0, nb_r0)
-                                * pow(1 - wr1, nb_r1)
-                                * pow(1 - wt, gap))
+                    # ratio de tenue (0..1), 1 = poste tenu (titulaires >= cible)
+                    cible = int(nb_cible or 1)
+                    if cible <= 0:
+                        cible = 1
+                    ratio = float(nb_titulaires) / float(cible)
+                    if ratio < 0.0:
+                        ratio = 0.0
+                    if ratio > 1.0:
+                        ratio = 1.0
+
+                    prod = (pow(1 - w0, nb0)
+                            * pow(1 - w1, nb1)
+                            * pow(1 - wr0, nb_r0)
+                            * pow(1 - wr1, nb_r1))
+
+                    risk = 1 - (prod * pow(ratio, 2))
                     score = int(max(0, min(100, round(risk * 100))))
-
                 # Tri top 8 (ordre “gravité”)
                 order = {"NON_COUVERTE": 0, "COUV_UNIQUE": 1, "SANS_RELEVE": 2, "RELEVE_FAIBLE": 3}
                 candidates.sort(
