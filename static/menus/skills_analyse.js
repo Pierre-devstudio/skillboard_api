@@ -4276,18 +4276,15 @@ function renderDetail(mode) {
 
     if (selectedKpi === "critiques") {
       const horizonLabel = (horizon === 1 ? "1 an" : (horizon + " ans"));
-      if (sub) sub.textContent = `Compétences critiques impactées à moins de ${horizonLabel} (périmètre filtré).`;
+      if (sub) sub.textContent = `Compétences impactées à moins de ${horizonLabel} (périmètre filtré).`;
 
       body.innerHTML = `
         <div class="card" style="padding:12px; margin:0;">
           <div class="card-title" style="margin-bottom:6px;">
-            Critiques impactées &lt; ${escapeHtml(horizonLabel)}
+            Compétences impactées sous ${escapeHtml(horizonLabel)}
           </div>
 
-          <div class="card" style="padding:12px; margin-top:12px;">
-            <div class="card-title" style="margin-bottom:6px;">Détail</div>
-            <div id="prevCritDetailBox" class="card-sub" style="margin:0;">Chargement…</div>
-          </div>
+          <div id="prevCritDetailBox" class="card-sub" style="margin:0; margin-top:10px;">Chargement…</div>
         </div>
       `;
 
@@ -4301,14 +4298,13 @@ function renderDetail(mode) {
         try {
           const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
 
-
           if (!_portalref) {
             box.textContent = "Contexte portail indisponible (_portalref manquant).";
             return;
           }
 
           if (typeof fetchPrevisionsCritiquesDetail !== "function") {
-            box.textContent = "Détail critiques non branché (fetchPrevisionsCritiquesDetail manquante).";
+            box.textContent = "Détail compétences impactées non branché (fetchPrevisionsCritiquesDetail manquante).";
             return;
           }
 
@@ -4325,20 +4321,18 @@ function renderDetail(mode) {
             const col = (typeof normalizeColor === "function" ? normalizeColor(it?.domaine_couleur) : null) || "#e5e7eb";
             return `
               <span style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid #d1d5db; border-radius:999px; font-size:12px; color:#374151; background:#fff;">
-                <span style="display:inline-block; width:10px; height:10px; border-radius:999px; border:1px solid #d1d5db; background:${escapeHtml(col)};"></span>
-                <span title="${escapeHtml(lab)}">${escapeHtml(lab)}</span>
+                <span style="width:8px; height:8px; border-radius:999px; background:${escapeHtml(col)};"></span>
+                ${escapeHtml(lab)}
               </span>
             `;
           }
 
-          box.textContent = "Chargement…";
           const data = await fetchPrevisionsCritiquesDetail(_portalref, horizon, id_service);
-
           if ((window.__sbPrevCritReqId || 0) !== reqId) return;
 
           const items = Array.isArray(data?.items) ? data.items : [];
           if (!items.length) {
-            box.textContent = "Aucune compétence critique impactée dans l’horizon sélectionné.";
+            box.textContent = "Aucune compétence impactée dans l’horizon sélectionné.";
             return;
           }
 
@@ -4356,10 +4350,14 @@ function renderDetail(mode) {
             const lastExit = (it.last_exit_date || it.derniere_sortie || it.exit_date || "").toString();
             const lastExitTxt = fmtDateFR(lastExit);
 
+            const codeBadge = (code && code !== "—")
+              ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>`
+              : "—";
+
             return `
               <tr class="prev-crit-row" data-comp-key="${escapeHtml(compKey)}" style="cursor:pointer;">
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${renderDomainPill(it)}</td>
-                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; font-weight:700; white-space:nowrap;">${escapeHtml(code)}</td>
+                <td style="padding:6px 8px; border-top:1px solid #e5e7eb; white-space:nowrap;">${codeBadge}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb;">${escapeHtml(intit)}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${escapeHtml(String(nbPostes))}</td>
                 <td style="padding:6px 8px; border-top:1px solid #e5e7eb; text-align:center;">${crit ? escapeHtml(String(crit)) : "—"}</td>
@@ -4376,7 +4374,7 @@ function renderDetail(mode) {
                 <thead>
                   <tr>
                     <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:220px;">Domaine</th>
-                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:90px;">Code</th>
+                    <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:110px;">Code</th>
                     <th style="text-align:left; padding:6px 8px; border-bottom:1px solid #e5e7eb;">Compétence</th>
                     <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:110px;">Postes</th>
                     <th style="text-align:center; padding:6px 8px; border-bottom:1px solid #e5e7eb; width:90px;">Crit.</th>
@@ -4391,7 +4389,7 @@ function renderDetail(mode) {
           `;
         } catch (e) {
           if ((window.__sbPrevCritReqId || 0) !== reqId) return;
-          box.textContent = `Erreur chargement détail critiques: ${e?.message || e}`;
+          box.textContent = `Erreur chargement détail compétences impactées: ${e?.message || e}`;
         }
       }, 0);
 
