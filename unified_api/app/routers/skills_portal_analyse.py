@@ -2115,22 +2115,100 @@ def get_analyse_previsions_postes_rouges_detail(
                             WHERE ec.id_effectif_client IS NOT NULL
                               AND COALESCE(ec.niveau_actuel,'') <> ''
                               AND (
-                                (r.niveau_requis = '' )
-                                OR (r.niveau_requis = 'A' AND ec.niveau_actuel IN ('A','B','C'))
-                                OR (r.niveau_requis = 'B' AND ec.niveau_actuel IN ('B','C'))
-                                OR (r.niveau_requis = 'C' AND ec.niveau_actuel IN ('C'))
-                              )
+                                CASE
+                                    WHEN (
+                                    CASE
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
+                                        ELSE 0
+                                    END
+                                    ) > 0
+                                    THEN
+                                    (
+                                        CASE
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
+                                        ELSE 0
+                                        END
+                                    ) >= (
+                                        CASE
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
+                                        ELSE 0
+                                        END
+                                    )
+                                    ELSE
+                                    (
+                                        CASE
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
+                                        ELSE 0
+                                        END
+                                    ) > 0
+                                END
+                                )
                         ) AS nb_now,
 
                         COUNT(DISTINCT eh.id_effectif) FILTER (
                             WHERE ec.id_effectif_client IS NOT NULL
-                              AND COALESCE(ec.niveau_actuel,'') <> ''
-                              AND (
-                                (r.niveau_requis = '' )
-                                OR (r.niveau_requis = 'A' AND ec.niveau_actuel IN ('A','B','C'))
-                                OR (r.niveau_requis = 'B' AND ec.niveau_actuel IN ('B','C'))
-                                OR (r.niveau_requis = 'C' AND ec.niveau_actuel IN ('C'))
-                              )
+                            AND COALESCE(ec.niveau_actuel,'') <> ''
+                            AND (
+                            CASE
+                                WHEN (
+                                    CASE
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
+                                        ELSE 0
+                                    END
+                                    ) > 0
+                                    THEN
+                                    (
+                                        CASE
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
+                                        ELSE 0
+                                        END
+                                    ) >= (
+                                        CASE
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
+                                        ELSE 0
+                                        END
+                                    )
+                                    ELSE
+                                    (
+                                        CASE
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
+                                        ELSE 0
+                                        END
+                                    ) > 0
+                                END
+                            )
                               AND eh.id_poste_actuel = r.id_poste
                         ) AS nb_now_titulaires,
 
@@ -2139,11 +2217,50 @@ def get_analyse_previsions_postes_rouges_detail(
                               AND COALESCE(ec.niveau_actuel,'') <> ''
                               AND COALESCE(eh.is_sortant, FALSE) = FALSE
                               AND (
-                                (r.niveau_requis = '' )
-                                OR (r.niveau_requis = 'A' AND ec.niveau_actuel IN ('A','B','C'))
-                                OR (r.niveau_requis = 'B' AND ec.niveau_actuel IN ('B','C'))
-                                OR (r.niveau_requis = 'C' AND ec.niveau_actuel IN ('C'))
-                              )
+                                CASE
+                                    WHEN (
+                                    CASE
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
+                                        ELSE 0
+                                    END
+                                    ) > 0
+                                    THEN
+                                    (
+                                        CASE
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
+                                        ELSE 0
+                                        END
+                                    ) >= (
+                                        CASE
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
+                                        ELSE 0
+                                        END
+                                    )
+                                    ELSE
+                                    (
+                                        CASE
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
+                                        ELSE 0
+                                        END
+                                    ) > 0
+                                END
+                                )
                         ) AS nb_remain,
 
                         COUNT(DISTINCT eh.id_effectif) FILTER (
@@ -2615,10 +2732,49 @@ def get_analyse_previsions_postes_rouges_modal(
                             AND COALESCE(ec.niveau_actuel,'') <> ''
                             AND COALESCE(eh.is_sortant, FALSE) = FALSE
                             AND (
-                                (r.niveau_requis = '' )
-                                OR (r.niveau_requis = 'A' AND (...) )
-                                OR (r.niveau_requis = 'B' AND (...) )
-                                OR (r.niveau_requis = 'C' AND (...) )
+                                CASE
+                                    WHEN (
+                                    CASE
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
+                                        ELSE 0
+                                    END
+                                    ) > 0
+                                    THEN
+                                    (
+                                        CASE
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
+                                        ELSE 0
+                                        END
+                                    ) >= (
+                                        CASE
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
+                                        ELSE 0
+                                        END
+                                    )
+                                    ELSE
+                                    (
+                                        CASE
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
+                                        ELSE 0
+                                        END
+                                    ) > 0
+                                END
                                 )
                             AND eh.id_poste_actuel = r.id_poste
                         ) AS nb_remain_titulaires,
@@ -2760,6 +2916,51 @@ def get_analyse_previsions_postes_rouges_modal(
                             WHERE ec.id_effectif_client IS NOT NULL
                               AND COALESCE(ec.niveau_actuel,'') <> ''
                               AND COALESCE(eh.is_sortant, FALSE) = FALSE
+                              AND (
+                                CASE
+                                    WHEN (
+                                    CASE
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
+                                        ELSE 0
+                                    END
+                                    ) > 0
+                                    THEN
+                                    (
+                                        CASE
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
+                                        ELSE 0
+                                        END
+                                    ) >= (
+                                        CASE
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
+                                        ELSE 0
+                                        END
+                                    )
+                                    ELSE
+                                    (
+                                        CASE
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
+                                        ELSE 0
+                                        END
+                                    ) > 0
+                                END
+                                )
                         ) AS nb_remain
                     FROM req r
                     LEFT JOIN public.tbl_effectif_client_competence ec
@@ -2860,6 +3061,51 @@ def get_analyse_previsions_postes_rouges_modal(
                             WHERE ec.id_effectif_client IS NOT NULL
                               AND COALESCE(ec.niveau_actuel,'') <> ''
                               AND COALESCE(eh.is_sortant, FALSE) = FALSE
+                              AND (
+                                CASE
+                                    WHEN (
+                                    CASE
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
+                                        ELSE 0
+                                    END
+                                    ) > 0
+                                    THEN
+                                    (
+                                        CASE
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
+                                        ELSE 0
+                                        END
+                                    ) >= (
+                                        CASE
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
+                                        ELSE 0
+                                        END
+                                    )
+                                    ELSE
+                                    (
+                                        CASE
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
+                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
+                                        ELSE 0
+                                        END
+                                    ) > 0
+                                END
+                                )
                         ) AS nb_remain
                     FROM req r
                     LEFT JOIN public.tbl_effectif_client_competence ec
