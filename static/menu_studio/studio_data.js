@@ -6,18 +6,64 @@
   function getOwnerId() {
     const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
     if (pid) return pid;
-
-    const qid = new URL(window.location.href).searchParams.get("id");
-    return (qid || "").trim();
+    return (new URL(window.location.href).searchParams.get("id") || "").trim();
   }
 
-  function textOrDash(v) {
-    const s = (v === null || v === undefined) ? "" : String(v);
-    const t = s.trim();
-    return t ? t : "—";
+  function esc(s) {
+    return String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
   }
 
-  async function fetchData() {
+  function fmtBool(v) {
+    if (v === true) return "Oui";
+    if (v === false) return "Non";
+    return "";
+  }
+
+  function addField(container, label, value) {
+    const v = (value === null || value === undefined) ? "" : String(value).trim();
+    if (!v) return;
+    const row = document.createElement("div");
+    row.className = "card-sub";
+    row.innerHTML = `<strong>${esc(label)}</strong> : ${esc(v)}`;
+    container.appendChild(row);
+  }
+
+  function addFieldBool(container, label, value) {
+    const v = fmtBool(value);
+    if (!v) return;
+    addField(container, label, v);
+  }
+
+  function clear(el) {
+    if (!el) return;
+    while (el.firstChild) el.removeChild(el.firstChild);
+  }
+
+  function composeAdresse(d) {
+    const parts = [
+      d?.adresse_ent,
+      d?.adresse_cplt_ent,
+      [d?.cp_ent, d?.ville_ent].filter(Boolean).join(" "),
+      d?.pays_ent
+    ].map(x => (x || "").toString().trim()).filter(Boolean);
+    return parts.join(", ");
+  }
+
+  function composeAdresseContact(d) {
+    const parts = [
+      d?.adresse,
+      [d?.cp, d?.ville].filter(Boolean).join(" "),
+      d?.pays
+    ].map(x => (x || "").toString().trim()).filter(Boolean);
+    return parts.join(", ");
+  }
+
+  async function fetchVosDonnees() {
     await (window.__studioAuthReady || Promise.resolve(null));
 
     if (!window.PortalAuthCommon) return { ok: false, msg: "Auth non initialisée." };
@@ -44,39 +90,78 @@
 
   async function render() {
     const statusEl = byId("dataStatus");
-    const ownerNameEl = byId("dataOwnerName");
-    const ownerIdEl = byId("dataOwnerId");
-    const userEmailEl = byId("dataUserEmail");
-    const userPrenomEl = byId("dataUserPrenom");
-    const refTypeEl = byId("dataUserRefType");
-    const refIdEl = byId("dataUserRefId");
+    const orgEl = byId("orgFields");
+    const contactEl = byId("contactFields");
 
     if (statusEl) statusEl.textContent = "Chargement…";
+    clear(orgEl);
+    clear(contactEl);
 
-    const res = await fetchData();
-
+    const res = await fetchVosDonnees();
     if (!res.ok) {
       if (statusEl) statusEl.textContent = res.msg || "Impossible de charger les données.";
-      if (ownerNameEl) ownerNameEl.textContent = "—";
-      if (ownerIdEl) ownerIdEl.textContent = "—";
-      if (userEmailEl) userEmailEl.textContent = "—";
-      if (userPrenomEl) userPrenomEl.textContent = "—";
-      if (refTypeEl) refTypeEl.textContent = "—";
-      if (refIdEl) refIdEl.textContent = "—";
       return;
     }
 
-    const d = res.data || {};
+    const org = res.data.organisation || {};
+    const c = res.data.contact || {};
+
     if (statusEl) statusEl.textContent = "Données chargées.";
 
-    if (ownerNameEl) ownerNameEl.textContent = textOrDash(d.nom_owner);
-    if (ownerIdEl) ownerIdEl.textContent = textOrDash(d.id_owner);
+    // ---- Entreprise
+    addField(orgEl, "Nom", org.nom_ent);
+    const adrOrg = composeAdresse(org);
+    addField(orgEl, "Adresse", adrOrg);
+    addField(orgEl, "Email", org.email_ent);
+    addField(orgEl, "Téléphone", org.telephone_ent);
+    addField(orgEl, "Site web", org.site_web);
 
-    if (userEmailEl) userEmailEl.textContent = textOrDash(d.email);
-    if (userPrenomEl) userPrenomEl.textContent = textOrDash(d.prenom);
+    addField(orgEl, "SIRET", org.siret_ent);
+    addField(orgEl, "Code APE", org.code_ape_ent);
+    addField(orgEl, "TVA intracom", org.num_tva_ent);
 
-    if (refTypeEl) refTypeEl.textContent = textOrDash(d.user_ref_type);
-    if (refIdEl) refIdEl.textContent = textOrDash(d.id_user_ref);
+    addField(orgEl, "Effectif", org.effectif_ent);
+    addField(orgEl, "Date de création", org.date_creation);
+    addField(orgEl, "Référence entreprise", org.num_entreprise);
+    addField(orgEl, "Type d’entreprise", org.type_entreprise);
+    addField(orgEl, "IDCC", org.idcc);
+
+    addField(orgEl, "Groupe", org.nom_groupe);
+    addField(orgEl, "Type de groupe", org.type_groupe);
+    addFieldBool(orgEl, "Tête de groupe", org.tete_groupe);
+    addFieldBool(orgEl, "Groupe OK", org.group_ok);
+    addFieldBool(orgEl, "Contrat Skills", org.contrat_skills);
+
+    // ---- Contact
+    addField(contactEl, "Civilité", c.civilite);
+    addField(contactEl, "Prénom", c.prenom);
+    addField(contactEl, "Nom", c.nom);
+    addField(contactEl, "Email", c.email);
+    addField(contactEl, "Téléphone", c.telephone);
+
+    addField(contactEl, "Fonction", c.fonction);
+    const adrC = composeAdresseContact(c);
+    addField(contactEl, "Adresse", adrC);
+
+    addField(contactEl, "Date de naissance", c.date_naissance);
+    addField(contactEl, "Niveau d'éducation", c.niveau_education);
+    addField(contactEl, "Domaine d'éducation", c.domaine_education);
+
+    addField(contactEl, "Type de contrat", c.type_contrat);
+    addField(contactEl, "Matricule interne", c.matricule_interne);
+    addField(contactEl, "Déplacements", c.business_travel);
+    addField(contactEl, "Date d’entrée", c.date_entree);
+    addField(contactEl, "Sortie prévue", c.date_sortie_prevue);
+    addFieldBool(contactEl, "Actif", c.statut_actif);
+
+    addField(contactEl, "Motif de sortie", c.motif_sortie);
+    addFieldBool(contactEl, "Manager", c.ismanager);
+    addFieldBool(contactEl, "Formateur", c.isformateur);
+    addFieldBool(contactEl, "Temporaire", c.is_temp);
+    addField(contactEl, "Rôle temporaire", c.role_temp);
+    addField(contactEl, "Code collaborateur", c.code_effectif);
+
+    addField(contactEl, "Commentaire", c.note_commentaire);
   }
 
   render();
