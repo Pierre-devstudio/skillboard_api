@@ -76,31 +76,62 @@ def _resolve_prenom(cur, email: str, id_owner: str) -> Optional[str]:
     ref_id = (m.get("id_user_ref") or "").strip()
 
     if ref_type == "utilisateur" and ref_id:
-        cur.execute(
-            """
-            SELECT ut_prenom
-            FROM public.tbl_utilisateur
-            WHERE id_utilisateur = %s
-              AND COALESCE(archive, FALSE) = FALSE
-            LIMIT 1
-            """,
-            (ref_id,),
-        )
+        try:
+            cur.execute(
+                """
+                SELECT ut_prenom
+                FROM public.tbl_utilisateur
+                WHERE id_utilisateur = %s
+                  AND COALESCE(archive, FALSE) = FALSE
+                LIMIT 1
+                """,
+                (ref_id,),
+            )
+        except Exception as e:
+            # Fallback si la colonne archive n'existe pas / variante schéma
+            msg = str(e).lower()
+            if "archive" in msg and ("does not exist" in msg or "n'existe pas" in msg):
+                cur.execute(
+                    """
+                    SELECT ut_prenom
+                    FROM public.tbl_utilisateur
+                    WHERE id_utilisateur = %s
+                    LIMIT 1
+                    """,
+                    (ref_id,),
+                )
+            else:
+                raise
         r = cur.fetchone() or {}
         v = (r.get("ut_prenom") or "").strip()
         return v or None
 
     if ref_type == "effectif_client" and ref_id:
-        cur.execute(
-            """
-            SELECT prenom_effectif
-            FROM public.tbl_effectif_client
-            WHERE id_effectif = %s
-              AND COALESCE(archive, FALSE) = FALSE
-            LIMIT 1
-            """,
-            (ref_id,),
-        )
+        try:
+            cur.execute(
+                """
+                SELECT prenom_effectif
+                FROM public.tbl_effectif_client
+                WHERE id_effectif = %s
+                  AND COALESCE(archive, FALSE) = FALSE
+                LIMIT 1
+                """,
+                (ref_id,),
+            )
+        except Exception as e:
+            msg = str(e).lower()
+            if "archive" in msg and ("does not exist" in msg or "n'existe pas" in msg):
+                cur.execute(
+                    """
+                    SELECT prenom_effectif
+                    FROM public.tbl_effectif_client
+                    WHERE id_effectif = %s
+                    LIMIT 1
+                    """,
+                    (ref_id,),
+                )
+            else:
+                raise
         r = cur.fetchone() or {}
         v = (r.get("prenom_effectif") or "").strip()
         return v or None
@@ -118,11 +149,16 @@ def get_studio_context(id_owner: str, request: Request):
     auth = request.headers.get("Authorization", "")
     u = studio_require_user(auth)
 
-    with get_conn() as conn:
-        with conn.cursor(row_factory=dict_row) as cur:
-            oid = _require_owner_access(cur, u, id_owner)
-            ow = studio_fetch_owner(cur, oid)
-            prenom = _resolve_prenom(cur, u.get("email") or "", oid)
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                ow = studio_fetch_owner(cur, oid)
+                prenom = _resolve_prenom(cur, u.get("email") or "", oid)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/context error: {e}")
 
     return StudioContext(
         id_owner=ow.get("id_owner"),
