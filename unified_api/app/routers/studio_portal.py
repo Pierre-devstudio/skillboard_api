@@ -60,10 +60,30 @@ def studio_me_scope(request: Request):
 
             meta = u.get("user_metadata") or {}
             id_owner = (meta.get("id_owner") or "").strip()
+
+            # Fallback DB (même logique que /studio/auth/context) :
+            # si le user n'a pas id_owner dans user_metadata, on mappe via tbl_studio_user_access
+            if not id_owner:
+                email = (u.get("email") or "").strip()
+                if email:
+                    cur.execute(
+                        """
+                        SELECT id_owner
+                        FROM public.tbl_studio_user_access
+                        WHERE lower(email) = lower(%s)
+                          AND COALESCE(archive, FALSE) = FALSE
+                        LIMIT 1
+                        """,
+                        (email,),
+                    )
+                    row_map = cur.fetchone()
+                    if row_map and row_map.get("id_owner"):
+                        id_owner = row_map.get("id_owner")
+
             if not id_owner:
                 raise HTTPException(
                     status_code=403,
-                    detail="Compte non rattaché à un owner Studio (id_owner manquant dans user_metadata).",
+                    detail="Compte non rattaché à un owner Studio (id_owner introuvable).",
                 )
 
             ow = studio_fetch_owner(cur, id_owner)

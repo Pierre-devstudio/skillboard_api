@@ -14,9 +14,9 @@
     const info = byId("topbarInfo");
     const name = byId("topbarName");
 
-    if (info) info.textContent = "Studio — Dashboard";
+    if (info) info.textContent = "Chargement…";
+    if (name) name.textContent = "Studio";
 
-    // Optionnel: affiche l’email si l’API Studio répond déjà
     try {
       if (!window.PortalAuthCommon) return;
 
@@ -24,14 +24,47 @@
       const token = session?.access_token || "";
       if (!token) return;
 
-      const r = await fetch(`${API_BASE}/studio/me`, {
+      // 1) Me (email)
+      const rMe = await fetch(`${API_BASE}/studio/me`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
-      const me = await r.json().catch(() => null);
-      if (!r.ok || !me) return;
+      const me = await rMe.json().catch(() => null);
+      if (!rMe.ok || !me) return;
 
-      if (name) name.textContent = (me.email || "Studio");
-    } catch (_) {}
+      // 2) Scope (owner name)
+      let ownerName = "";
+      const rScope = await fetch(`${API_BASE}/studio/me/scope`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const scope = await rScope.json().catch(() => null);
+
+      if (rScope.ok && scope && Array.isArray(scope.owners) && scope.owners.length) {
+        const currentId =
+          (window.portal && window.portal.contactId) ||
+          (new URL(window.location.href).searchParams.get("id") || "");
+
+        if (currentId && currentId !== "__superadmin__") {
+          const found = scope.owners.find(o => (o && o.id_owner) === currentId);
+          ownerName = found ? (found.nom_owner || "") : "";
+        }
+
+        // standard: 1 owner attendu
+        if (!ownerName && scope.mode === "standard") {
+          ownerName = scope.owners[0]?.nom_owner || "";
+        }
+
+        // super_admin sans owner sélectionné
+        if (!ownerName && scope.mode === "super_admin") {
+          ownerName = "Super admin";
+        }
+      }
+
+      // Affichage demandé : email + nom owner
+      if (name) name.textContent = ownerName || "Studio";
+      if (info) info.textContent = (me.email || "");
+    } catch (_) {
+      // silencieux: topbar reste sur fallback
+    }
   }
 
   window.addEventListener("DOMContentLoaded", () => {
