@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Portail Skillboard - Studio</title>
+
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link rel="stylesheet" href="/portal_common.css" />
+  <link rel="stylesheet" href="/skills_portal_theme.css" />
+  <link rel="stylesheet" href="/studio_portal_theme.css" />
+</head>
+
+<body>
+  <div class="backdrop" id="backdrop"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="brand">Skillboard</span>
+      <span class="product-badge">Studio</span>
+    </div>
+
+    <nav class="menu">
+      <div class="menu-item active" data-view="dashboard">Dashboard</div>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" id="btnMenuToggle" aria-label="Ouvrir le menu">&#9776;</button>
+        <span id="topbarName">Studio</span>
+      </div>
+      <div class="topbar-right topbar-actions">
+        <span id="topbarInfo">Chargement…</span>
+
+        <!-- On garde la structure Skills (on l’utilisera plus tard pour le scope owner si besoin) -->
+        <select id="selSuperEnt" class="sb-topbar-select" style="display:none;">
+          <option value="">Owner…</option>
+        </select>
+
+        <button id="btnLogout" class="sb-btn-ghost" style="display:none;">Déconnexion</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <div id="alertContainer"></div>
+      <div id="viewsContainer"></div>
+    </main>
+  </div>
+
+  <script>
+    window.PORTAL_NO_AUTOINIT = true;
+    window.PORTAL_LOGIN_URL = "/studio_login.html";
+  </script>
+
+  <script src="/portal_common.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/portal_auth_common.js"></script>
+
+  <script src="/studio_portal_auth.js"></script>
+  <script src="/studio_portal.js"></script>
+
+  <script>
+    window.portal.init();
+  </script>
+</body>
+</html>

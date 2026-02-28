@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Skillboard Studio — Connexion</title>
+
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- CSS commun + thème Skills + override Studio -->
+  <link rel="stylesheet" href="/portal_common.css" />
+  <link rel="stylesheet" href="/skills_portal_theme.css" />
+  <link rel="stylesheet" href="/studio_portal_theme.css" />
+
+  <style>
+    body{
+      margin:0;
+      min-height:100vh;
+      background: #f3f4f6;
+      display:block;
+    }
+
+    .login-wrap{
+      min-height: 100vh;
+      display:flex;
+      align-items:stretch;
+      justify-content:stretch;
+      padding: 0;
+    }
+
+    .login-left{
+      flex: 0 0 520px;
+      max-width: 520px;
+      width: 520px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .login-right{
+      flex: 1;
+      min-width: 0;
+      background: url("/skills_login_hero.webp") center center / cover no-repeat;
+      position: relative;
+    }
+
+    .login-right::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: rgba(255,255,255,0.08);
+      pointer-events:none;
+    }
+
+    @media (max-width: 980px){
+      .login-right{ display:none; }
+      .login-left{
+        flex: 1;
+        max-width: none;
+        width: 100%;
+      }
+      .login-card{
+        max-width: 480px;
+      }
+    }
+
+    .login-card{
+      width: 100%;
+      max-width: 420px;
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:12px;
+      padding:18px;
+      box-shadow:0 6px 20px rgba(0,0,0,.06);
+    }
+    .login-title{
+      font-size:18px;
+      font-weight:700;
+      margin:0 0 6px 0;
+    }
+    .login-sub{
+      margin:0 0 14px 0;
+      color:#4b5563;
+      font-size:13px;
+    }
+    .login-row{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      margin-bottom:12px;
+    }
+    .login-row label{
+      font-size:12px;
+      color:#374151;
+      font-weight:600;
+    }
+    .login-row input{
+      border:1px solid #d1d5db;
+      border-radius:10px;
+      padding:10px 12px;
+      font-size:14px;
+      outline:none;
+      background:#fff;
+    }
+    .login-row input:focus{
+      border-color: var(--accent, #E6E421);
+      box-shadow: 0 0 0 3px rgba(var(--sb-accent-rgb), 0.12);
+    }
+    .login-actions{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-top:10px;
+    }
+    .btn-primary{
+      border:1px solid var(--accent, #E6E421);
+      background: var(--accent, #E6E421);
+      color:#111827; /* Studio = jaune, donc texte sombre */
+      padding:10px 14px;
+      border-radius:10px;
+      font-weight:800;
+      cursor:pointer;
+      font-size:14px;
+    }
+    .btn-primary:disabled{
+      opacity:.6;
+      cursor:not-allowed;
+    }
+    .link{
+      color: var(--accent, #E6E421);
+      text-decoration:none;
+      font-weight:700;
+      font-size:13px;
+      cursor:pointer;
+      user-select:none;
+    }
+    .hint{
+      font-size:12px;
+      color:#6b7280;
+      margin-top:10px;
+      line-height:1.35;
+    }
+    .panel{ display:none; }
+    .panel.active{ display:block; }
+    .msg{
+      margin: 10px 0 0 0;
+      font-size: 13px;
+      color:#111827;
+    }
+    .msg.error{ color:#b91c1c; }
+    .msg.success{ color:#065f46; }
+    .brand-line{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-bottom:12px;
+    }
+    .brand-name{
+      font-size:13px;
+      font-weight:800;
+      color:#111827;
+      letter-spacing:.2px;
+    }
+    .brand-module{
+      display:inline-flex;
+      align-items:center;
+      padding:6px 10px;
+      border-radius:999px;
+      background: var(--accent, #E6E421);
+      color:#111827;
+      font-size:12px;
+      font-weight:900;
+      letter-spacing:.2px;
+      box-shadow: 0 4px 12px rgba(var(--sb-accent-rgb), 0.18);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="login-wrap">
+    <div class="login-left">
+      <div class="login-card">
+        <div class="brand-line">
+          <div class="brand-name">Skillboard</div>
+          <div class="brand-module">Studio</div>
+        </div>
+
+        <div class="panel active" id="panelLogin">
+          <h1 class="login-title">Connexion</h1>
+
+          <div class="login-row">
+            <label for="loginEmail">Email</label>
+            <input id="loginEmail" type="email" autocomplete="username" placeholder="prenom.nom@entreprise.fr">
+          </div>
+
+          <div class="login-row">
+            <label for="loginPassword">Mot de passe</label>
+            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••">
+          </div>
+
+          <div class="login-actions">
+            <button class="btn-primary" id="btnLogin">Se connecter</button>
+            <span class="link" id="lnkForgot">Mot de passe oublié</span>
+          </div>
+
+          <p class="hint">
+            Skillboard est une solution propriétaire JMBCONSULTANT.
+          </p>
+        </div>
+
+        <div class="panel" id="panelForgot">
+          <h1 class="login-title">Mot de passe oublié</h1>
+          <p class="login-sub">On t’envoie un lien de réinitialisation par email.</p>
+
+          <div class="login-row">
+            <label for="resetEmail">Email</label>
+            <input id="resetEmail" type="email" autocomplete="email" placeholder="prenom.nom@entreprise.fr">
+          </div>
+
+          <div class="login-actions">
+            <button class="btn-primary" id="btnSendReset">Envoyer le lien</button>
+            <span class="link" id="lnkBack">Retour</span>
+          </div>
+
+          <p class="hint">
+            Le lien ouvre une page Studio dédiée pour choisir un nouveau mot de passe.
+          </p>
+        </div>
+
+        <div class="msg" id="msgBox"></div>
+      </div>
+    </div>
+
+    <div class="login-right" aria-hidden="true"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/portal_auth_common.js"></script>
+  <script src="/studio_login.js"></script>
+</body>
+</html>

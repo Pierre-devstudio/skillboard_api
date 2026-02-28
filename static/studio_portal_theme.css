@@ -1,0 +1,13 @@
+/* studio_portal_theme.css
+   - Override minimal du thème Skills
+   - Accent Studio : #E6E421
+   - Sidebar : #333333 (inchangé)
+*/
+
+:root{
+  --accent:#E6E421;
+  --sidebar-bg:#333333;
+
+  /* Accent RGB (pour rings / rgba cohérents) */
+  --sb-accent-rgb: 230,228,33;
+}
