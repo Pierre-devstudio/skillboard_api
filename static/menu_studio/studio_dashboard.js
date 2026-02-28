@@ -3,7 +3,17 @@
 
   function byId(id) { return document.getElementById(id); }
 
-  async function fetchMe() {
+  function getOwnerId() {
+    // Source prioritaire: portal.contactId (si déjà initialisé)
+    const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
+    if (pid) return pid;
+
+    // Fallback: querystring ?id=
+    const qid = new URL(window.location.href).searchParams.get("id");
+    return (qid || "").trim();
+  }
+
+  async function fetchContext() {
     await (window.__studioAuthReady || Promise.resolve(null));
 
     if (!window.PortalAuthCommon) return null;
@@ -12,9 +22,13 @@
     const token = session?.access_token || "";
     if (!token) return null;
 
-    const r = await fetch(`${API_BASE}/studio/me`, {
+    const idOwner = getOwnerId();
+    if (!idOwner || idOwner === "__superadmin__") return null;
+
+    const r = await fetch(`${API_BASE}/studio/context/${encodeURIComponent(idOwner)}`, {
       headers: { "Authorization": `Bearer ${token}` }
     });
+
     const data = await r.json().catch(() => null);
     if (!r.ok) return null;
     return data;
@@ -26,8 +40,8 @@
     const titleEl = byId("welcomeTitle");
     if (!titleEl) return;
 
-    const me = await fetchMe();
-    const prenom = (me?.prenom || "").toString().trim();
+    const ctx = await fetchContext();
+    const prenom = (ctx?.prenom || "").toString().trim();
 
     if (!prenom) {
       if (prenomEl) prenomEl.textContent = "";
