@@ -36,9 +36,67 @@ def healthz():
 def studio_me(request: Request):
     auth = request.headers.get("Authorization", "")
     u = studio_require_user(auth)
+
+    prenom = None
+
+    # Le front ne peut pas interroger PostgreSQL: on hydrate ici.
+    # Règle:
+    # - tbl_utilisateur: ut_prenom via id_utilisateur
+    # - tbl_effectif_client: prenom_effectif via id_effectif
+    try:
+        email = (u.get("email") or "").strip()
+        if email:
+            with get_conn() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(
+                        """
+                        SELECT user_ref_type, id_user_ref
+                        FROM public.tbl_studio_user_access
+                        WHERE lower(email) = lower(%s)
+                          AND COALESCE(archive, FALSE) = FALSE
+                        LIMIT 1
+                        """,
+                        (email,),
+                    )
+                    m = cur.fetchone() or {}
+                    ref_type = (m.get("user_ref_type") or "").strip().lower()
+                    ref_id = (m.get("id_user_ref") or "").strip()
+
+                    if ref_type == "utilisateur" and ref_id:
+                        cur.execute(
+                            """
+                            SELECT ut_prenom
+                            FROM public.tbl_utilisateur
+                            WHERE id_utilisateur = %s
+                              AND COALESCE(archive, FALSE) = FALSE
+                            LIMIT 1
+                            """,
+                            (ref_id,),
+                        )
+                        r = cur.fetchone() or {}
+                        prenom = r.get("ut_prenom")
+
+                    elif ref_type == "effectif_client" and ref_id:
+                        cur.execute(
+                            """
+                            SELECT prenom_effectif
+                            FROM public.tbl_effectif_client
+                            WHERE id_effectif = %s
+                              AND COALESCE(archive, FALSE) = FALSE
+                            LIMIT 1
+                            """,
+                            (ref_id,),
+                        )
+                        r = cur.fetchone() or {}
+                        prenom = r.get("prenom_effectif")
+    except Exception:
+        # On ne casse pas /studio/me si un mapping n'est pas encore en place
+        prenom = None
+
     return {
         "id": u.get("id"),
         "email": u.get("email"),
+        "prenom": (prenom or "").strip() or None,
         "is_super_admin": bool(u.get("is_super_admin")),
         "user_metadata": u.get("user_metadata") or {},
     }
