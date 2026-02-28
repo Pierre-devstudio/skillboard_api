@@ -2,7 +2,7 @@ import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import recueil_attentes, preparation_formation, presence_formation, presence_consultant, validation_acquis,satisfaction_formation_stagiaire, satisfaction_formation_responsable, satisfaction_formation_consultant, adaptation_formation, consultant_portal, skills_portal 
+from app.routers import recueil_attentes, preparation_formation, presence_formation, presence_consultant, validation_acquis,satisfaction_formation_stagiaire, satisfaction_formation_responsable, satisfaction_formation_consultant, adaptation_formation, consultant_portal, skills_portal,  studio_portal 
 
 app = FastAPI()
 
@@ -76,6 +76,22 @@ def get_portal_config(space: str):
             "supabase_url": supabase_url,
             "supabase_anon_key": supabase_anon,
         }
+    
+    if s == "studio":
+        supabase_url = os.getenv("STUDIO_SUPABASE_URL", "") or ""
+        supabase_anon = os.getenv("STUDIO_SUPABASE_ANON_KEY", "") or ""
+
+        if not supabase_url or not supabase_anon:
+            raise HTTPException(
+                status_code=500,
+                detail="Config Studio manquante: STUDIO_SUPABASE_URL / STUDIO_SUPABASE_ANON_KEY",
+            )
+
+        return {
+            "portal_key": "studio",
+            "supabase_url": supabase_url,
+            "supabase_anon_key": supabase_anon,
+        }
 
     raise HTTPException(status_code=404, detail="Espace portail inconnu.")
 
@@ -112,4 +128,7 @@ for route in consultant_portal.router.routes:
     app.router.routes.append(route)
 
 for route in skills_portal.router.routes:
+    app.router.routes.append(route)
+
+for route in studio_portal.router.routes:
     app.router.routes.append(route)

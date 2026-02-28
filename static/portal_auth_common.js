@@ -60,6 +60,10 @@
     _cfg.apiBase = c.apiBase || _cfg.apiBase;
     _cfg.storagePrefix = c.storagePrefix || _cfg.storagePrefix;
 
+    if (Array.isArray(c.contactIdMetaKeys) && c.contactIdMetaKeys.length) {
+      _cfg.contactIdMetaKeys = c.contactIdMetaKeys;
+    }
+
     if (!_cfg.supabaseUrl || !_cfg.supabaseAnonKey) {
       // On n'explose pas au init si tu n'as pas encore injecté les clés,
       // mais toute action Auth lèvera une erreur claire.
@@ -115,14 +119,18 @@
     return null;
   }
 
-  async function _fetchSkillsContextFromApi(accessToken) {
+  async function _fetchPortalContextFromApi(accessToken) {
     try {
       const token = (accessToken || "").trim();
       const base = (_cfg.apiBase || "").trim();
       if (!token || !base) return null;
-      if (_cfg.portalKey !== "skills") return null;
 
-      const r = await fetch(`${base}/skills/auth/context`, {
+      let path = "";
+      if (_cfg.portalKey === "skills") path = "/skills/auth/context";
+      else if (_cfg.portalKey === "studio") path = "/studio/auth/context";
+      else return null;
+
+      const r = await fetch(`${base}${path}`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
 
@@ -171,7 +179,7 @@
 
     // Pas de metadata: on demande le contexte à l'API Skillboard
     const token = data?.session?.access_token || "";
-    const ctx = await _fetchSkillsContextFromApi(token);
+    const ctx = await _fetchPortalContextFromApi(token);
 
     // Super-admin: pas besoin d'id_effectif
     if (ctx && ctx.is_super_admin) {
@@ -181,8 +189,9 @@
     }
 
     // User client: mapping DB -> id_effectif
-    if (ctx && ctx.id_effectif) {
-      contactId = String(ctx.id_effectif).trim();
+    const wantedKey = (_cfg.portalKey === "studio") ? "id_owner" : "id_effectif";
+    if (ctx && ctx[wantedKey]) {
+      contactId = String(ctx[wantedKey]).trim();
       if (contactId) {
         setContactId(contactId);
         return { user, session: data?.session || null, contactId };
@@ -190,7 +199,6 @@
     }
 
     return { user, session: data?.session || null, contactId: null };
-
 
   }
 
@@ -223,7 +231,7 @@
     // Pas de metadata: on demande le contexte à l'API Skillboard
     const session = await getSession().catch(() => null);
     const token = session?.access_token || "";
-    const ctx = await _fetchSkillsContextFromApi(token);
+    const ctx = await _fetchPortalContextFromApi(token);
 
     if (ctx && ctx.is_super_admin) {
       contactId = "__superadmin__";
@@ -231,8 +239,9 @@
       return contactId;
     }
 
-    if (ctx && ctx.id_effectif) {
-      contactId = String(ctx.id_effectif).trim();
+    const wantedKey = (_cfg.portalKey === "studio") ? "id_owner" : "id_effectif";
+    if (ctx && ctx[wantedKey]) {
+      contactId = String(ctx[wantedKey]).trim();
       if (contactId) {
         setContactId(contactId);
         return contactId;
