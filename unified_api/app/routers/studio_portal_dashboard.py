@@ -53,6 +53,19 @@ def _require_owner_access(cur, u: dict, id_owner: str):
 
     return oid
 
+def _has_column(cur, table_name: str, column_name: str, schema: str = "public") -> bool:
+    cur.execute(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = %s
+          AND table_name = %s
+          AND column_name = %s
+        LIMIT 1
+        """,
+        (schema, table_name, column_name),
+    )
+    return cur.fetchone() is not None
 
 def _resolve_prenom(cur, email: str, id_owner: str) -> Optional[str]:
     e = (email or "").strip()
@@ -76,7 +89,8 @@ def _resolve_prenom(cur, email: str, id_owner: str) -> Optional[str]:
     ref_id = (m.get("id_user_ref") or "").strip()
 
     if ref_type == "utilisateur" and ref_id:
-        try:
+        has_arch = _has_column(cur, "tbl_utilisateur", "archive")
+        if has_arch:
             cur.execute(
                 """
                 SELECT ut_prenom
@@ -87,27 +101,24 @@ def _resolve_prenom(cur, email: str, id_owner: str) -> Optional[str]:
                 """,
                 (ref_id,),
             )
-        except Exception as e:
-            # Fallback si la colonne archive n'existe pas / variante schéma
-            msg = str(e).lower()
-            if "archive" in msg and ("does not exist" in msg or "n'existe pas" in msg):
-                cur.execute(
-                    """
-                    SELECT ut_prenom
-                    FROM public.tbl_utilisateur
-                    WHERE id_utilisateur = %s
-                    LIMIT 1
-                    """,
-                    (ref_id,),
-                )
-            else:
-                raise
+        else:
+            cur.execute(
+                """
+                SELECT ut_prenom
+                FROM public.tbl_utilisateur
+                WHERE id_utilisateur = %s
+                LIMIT 1
+                """,
+                (ref_id,),
+            )
+
         r = cur.fetchone() or {}
         v = (r.get("ut_prenom") or "").strip()
         return v or None
 
     if ref_type == "effectif_client" and ref_id:
-        try:
+        has_arch = _has_column(cur, "tbl_effectif_client", "archive")
+        if has_arch:
             cur.execute(
                 """
                 SELECT prenom_effectif
@@ -118,20 +129,17 @@ def _resolve_prenom(cur, email: str, id_owner: str) -> Optional[str]:
                 """,
                 (ref_id,),
             )
-        except Exception as e:
-            msg = str(e).lower()
-            if "archive" in msg and ("does not exist" in msg or "n'existe pas" in msg):
-                cur.execute(
-                    """
-                    SELECT prenom_effectif
-                    FROM public.tbl_effectif_client
-                    WHERE id_effectif = %s
-                    LIMIT 1
-                    """,
-                    (ref_id,),
-                )
-            else:
-                raise
+        else:
+            cur.execute(
+                """
+                SELECT prenom_effectif
+                FROM public.tbl_effectif_client
+                WHERE id_effectif = %s
+                LIMIT 1
+                """,
+                (ref_id,),
+            )
+
         r = cur.fetchone() or {}
         v = (r.get("prenom_effectif") or "").strip()
         return v or None
