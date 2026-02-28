@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg.rows import dict_row
 
-from app.routers import studio_portal_auth
+from app.routers import studio_portal_auth, studio_portal_dashboard
 from app.routers.skills_portal_common import get_conn
 from app.routers.studio_portal_common import (
     studio_require_user,
@@ -148,6 +148,10 @@ def studio_me_scope(request: Request):
 
 # Injection routes auth
 for route in studio_portal_auth.router.routes:
+    app_local.router.routes.append(route)
+
+# Injection routes dashboard
+for route in studio_portal_dashboard.router.routes:
     app_local.router.routes.append(route)
 
 router = app_local
