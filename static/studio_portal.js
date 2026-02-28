@@ -5,7 +5,13 @@
   window.portal.registerMenu({
     view: "dashboard",
     htmlUrl: "/menu_studio/studio_dashboard.html"
-    // js auto-guess -> on crée un fichier vide studio_dashboard.js (voir étape 1.2)
+    // js auto-guess -> /menu_studio/studio_dashboard.js
+  });
+
+  window.portal.registerMenu({
+    view: "data",
+    htmlUrl: "/menu_studio/studio_data.html"
+    // js auto-guess -> /menu_studio/studio_data.js
   });
 
   function byId(id){ return document.getElementById(id); }
