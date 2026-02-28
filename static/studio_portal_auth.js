@@ -29,6 +29,7 @@
   }
 
   async function initAuth() {
+    // Promise globale: permet de synchroniser portal.init() + menus
     if (window.__studioAuthReady) return window.__studioAuthReady;
 
     window.__studioAuthReady = (async () => {

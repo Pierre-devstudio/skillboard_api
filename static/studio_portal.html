@@ -67,7 +67,12 @@
   <script src="/studio_portal.js"></script>
 
   <script>
-    window.portal.init();
+    (async () => {
+      try {
+        await (window.__studioAuthReady || Promise.resolve(null));
+      } catch (_) {}
+      window.portal.init();
+    })();
   </script>
 </body>
 </html>
