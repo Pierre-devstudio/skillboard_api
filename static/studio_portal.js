@@ -1,6 +1,13 @@
 (function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
+  // IMPORTANT : enregistrer les menus AVANT portal.init()
+  window.portal.registerMenu({
+    view: "dashboard",
+    htmlUrl: "/menu_studio/studio_dashboard.html"
+    // js auto-guess -> on crée un fichier vide studio_dashboard.js (voir étape 1.2)
+  });
+
   function byId(id){ return document.getElementById(id); }
 
   async function tryFillTopbar() {
@@ -9,7 +16,7 @@
 
     if (info) info.textContent = "Studio — Dashboard";
 
-    // Si on peut, on affiche l’email connecté (sans bloquer si API pas prête)
+    // Optionnel: affiche l’email si l’API Studio répond déjà
     try {
       if (!window.PortalAuthCommon) return;
 
@@ -24,18 +31,10 @@
       if (!r.ok || !me) return;
 
       if (name) name.textContent = (me.email || "Studio");
-    } catch (_) {
-      // silence: on ne flingue pas l’UI pour un détail
-    }
+    } catch (_) {}
   }
 
-  window.addEventListener("DOMContentLoaded", async () => {
-    // Menu unique: Dashboard
-    window.portal.registerMenu({
-      view: "dashboard",
-      htmlUrl: "/menu_studio/studio_dashboard.html"
-    });
-
-    await tryFillTopbar();
+  window.addEventListener("DOMContentLoaded", () => {
+    tryFillTopbar();
   });
 })();

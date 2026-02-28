@@ -11,3 +11,17 @@
   /* Accent RGB (pour rings / rgba cohérents) */
   --sb-accent-rgb: 230,228,33;
 }
+
+/* Studio: accent jaune -> texte sombre obligatoire */
+.menu-item.active{
+  color:#111827;
+}
+
+.product-badge{
+  color:#111827;
+}
+
+/* Boutons accent (si tu les utilises plus tard dans Studio) */
+.sb-btn--accent{
+  color:#111827;
+}
