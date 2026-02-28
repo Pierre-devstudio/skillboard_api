@@ -24,50 +24,38 @@
       const token = session?.access_token || "";
       if (!token) return;
 
-      // 1) Me (email)
+      // 1) Email
       const rMe = await fetch(`${API_BASE}/studio/me`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const me = await rMe.json().catch(() => null);
-      if (!rMe.ok || !me) return;
+      if (rMe.ok && me) {
+        if (info) info.textContent = (me.email || "");
+      }
 
-      // 2) Scope (owner name)
-      let ownerName = "";
+      // 2) Nom owner (scope)
       const rScope = await fetch(`${API_BASE}/studio/me/scope`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const scope = await rScope.json().catch(() => null);
 
+      let ownerName = "";
       if (rScope.ok && scope && Array.isArray(scope.owners) && scope.owners.length) {
-        const currentId =
-          (window.portal && window.portal.contactId) ||
-          (new URL(window.location.href).searchParams.get("id") || "");
-
-        if (currentId && currentId !== "__superadmin__") {
-          const found = scope.owners.find(o => (o && o.id_owner) === currentId);
-          ownerName = found ? (found.nom_owner || "") : "";
-        }
-
-        // standard: 1 owner attendu
-        if (!ownerName && scope.mode === "standard") {
-          ownerName = scope.owners[0]?.nom_owner || "";
-        }
-
-        // super_admin sans owner sélectionné
-        if (!ownerName && scope.mode === "super_admin") {
-          ownerName = "Super admin";
-        }
+        const currentId = (new URL(window.location.href).searchParams.get("id") || "").trim();
+        const found = currentId ? scope.owners.find(o => o && o.id_owner === currentId) : null;
+        ownerName = (found?.nom_owner || scope.owners[0]?.nom_owner || "").trim();
       }
 
-      // Affichage demandé : email + nom owner
       if (name) name.textContent = ownerName || "Studio";
-      if (info) info.textContent = (me.email || "");
     } catch (_) {
-      // silencieux: topbar reste sur fallback
+      // on laisse le fallback
     }
   }
 
-  window.addEventListener("DOMContentLoaded", () => {
+  window.addEventListener("DOMContentLoaded", async () => {
+    // studio_portal_auth.js initialise l’auth sur DOMContentLoaded
+    // mais on attend un tick pour éviter la course (initAuth async).
+    await new Promise(r => setTimeout(r, 0));
     tryFillTopbar();
   });
 })();

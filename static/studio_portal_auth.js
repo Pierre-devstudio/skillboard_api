@@ -46,7 +46,12 @@
   async function ensurePortalEntry() {
     // Si l'URL contient déjà ?id=..., on ne touche à rien
     const id = (getQueryParam("id") || "").trim();
-    if (id) return;
+    if (id) {
+      // Même avec ?id= présent, on doit init Supabase Auth
+      // sinon topbar / apiJson ne peuvent pas lire la session.
+      await initAuth();
+      return;
+    }
 
     // Pas de ?id=: on tente la session Supabase
     const cfg = await initAuth();
