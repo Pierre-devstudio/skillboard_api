@@ -53,9 +53,8 @@
   }
 
   window.addEventListener("DOMContentLoaded", async () => {
-    // studio_portal_auth.js initialise l’auth sur DOMContentLoaded
-    // mais on attend un tick pour éviter la course (initAuth async).
-    await new Promise(r => setTimeout(r, 0));
+    // Attendre explicitement l'init auth (pas un pari à 0ms)
+    try { await (window.__studioAuthReady || Promise.resolve(null)); } catch (_) {}
     tryFillTopbar();
   });
 })();

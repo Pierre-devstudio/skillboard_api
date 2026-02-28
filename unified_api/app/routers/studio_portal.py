@@ -61,8 +61,7 @@ def studio_me_scope(request: Request):
             meta = u.get("user_metadata") or {}
             id_owner = (meta.get("id_owner") or "").strip()
 
-            # Fallback DB (même logique que /studio/auth/context) :
-            # si le user n'a pas id_owner dans user_metadata, on mappe via tbl_studio_user_access
+            # Fallback DB: mapping email -> id_owner (tbl_studio_user_access)
             if not id_owner:
                 email = (u.get("email") or "").strip()
                 if email:
@@ -76,9 +75,9 @@ def studio_me_scope(request: Request):
                         """,
                         (email,),
                     )
-                    row_map = cur.fetchone()
-                    if row_map and row_map.get("id_owner"):
-                        id_owner = row_map.get("id_owner")
+                    row = cur.fetchone()
+                    if row and row.get("id_owner"):
+                        id_owner = row.get("id_owner")
 
             if not id_owner:
                 raise HTTPException(

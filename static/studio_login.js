@@ -81,7 +81,7 @@
         return;
       }
 
-      window.location.href = `/studio_portal.html?id=${encodeURIComponent(ownerId)}`;
+      window.location.href = `/studio/?id=${encodeURIComponent(ownerId)}`;
     } catch (e) {
       setMsg(e.message || "Connexion impossible.", "error");
     } finally {

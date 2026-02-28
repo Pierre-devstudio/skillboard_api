@@ -17,6 +17,9 @@
     return `${base}?id=${encodeURIComponent(ownerId)}`;
   }
 
+  // Promesse globale pour synchroniser l'init auth (utilisée par studio_portal.js)
+  window.__studioAuthReady = null;
+
   async function loadConfig() {
     const url = `${API_BASE}/portal/config/studio`;
     const r = await fetch(url);
@@ -26,21 +29,32 @@
   }
 
   async function initAuth() {
-    if (!window.PortalAuthCommon) return null;
+    if (window.__studioAuthReady) return window.__studioAuthReady;
 
-    const cfg = await loadConfig();
-    if (!cfg || !cfg.supabase_url || !cfg.supabase_anon_key) return null;
+    window.__studioAuthReady = (async () => {
+      if (!window.PortalAuthCommon) return null;
 
-    window.PortalAuthCommon.init({
-      supabaseUrl: cfg.supabase_url,
-      supabaseAnonKey: cfg.supabase_anon_key,
-      portalKey: "studio",
-      storagePrefix: "sb",
-      apiBase: API_BASE,
-      contactIdMetaKeys: ["id_owner"], // Studio = id_owner
-    });
+      const cfg = await loadConfig();
+      if (!cfg || !cfg.supabase_url || !cfg.supabase_anon_key) return null;
 
-    return cfg;
+      window.PortalAuthCommon.init({
+        supabaseUrl: cfg.supabase_url,
+        supabaseAnonKey: cfg.supabase_anon_key,
+        portalKey: "studio",
+        storagePrefix: "sb",
+        apiBase: API_BASE,
+        contactIdMetaKeys: ["id_owner"], // Studio = id_owner
+      });
+
+      return cfg;
+    })();
+
+    try {
+      return await window.__studioAuthReady;
+    } catch (e) {
+      window.__studioAuthReady = null;
+      throw e;
+    }
   }
 
   async function ensurePortalEntry() {
