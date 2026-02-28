@@ -13,7 +13,7 @@
   }
 
   function buildPortalUrlWithId(ownerId) {
-    const base = "/studio_portal.html";
+    const base = "/studio/";
     return `${base}?id=${encodeURIComponent(ownerId)}`;
   }
 
