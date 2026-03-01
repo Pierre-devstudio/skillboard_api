@@ -38,3 +38,130 @@
   opacity:.75;
   font-style: italic;
 }
+
+/* ======================================================
+   Studio CORE – composants réutilisables (pas “par vue”)
+   ====================================================== */
+
+/* Layout */
+.sb-layout-2col{
+  display:grid;
+  grid-template-columns: 360px 1fr;
+  gap:16px;
+}
+@media (max-width: 1100px){
+  .sb-layout-2col{ grid-template-columns: 1fr; }
+}
+.sb-stack{ display:flex; flex-direction:column; gap:16px; }
+.sb-stack--sm{ gap:10px; }
+.sb-stack--xs{ gap:8px; }
+
+/* Card header + actions */
+.sb-card-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+}
+.sb-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+
+/* Toolbar (recherche + CTA) */
+.sb-toolbar{
+  display:flex;
+  align-items:flex-end;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.sb-search{ flex:1; min-width:280px; }
+.sb-search input{ width:100%; }
+
+/* Lists */
+.sb-list{
+  margin-top:10px;
+  border:1px solid rgba(17,24,39,.08);
+  border-radius:12px;
+  overflow:hidden;
+}
+.sb-list-item{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 12px;
+  border-top:1px solid rgba(17,24,39,.06);
+}
+.sb-list-item:first-child{ border-top:none; }
+.sb-list-item--clickable{ cursor:pointer; user-select:none; }
+.sb-list-item--clickable:hover{ background: rgba(17,24,39,.03); }
+.sb-list-item.is-active{ background: rgba(var(--sb-accent-rgb), .18); }
+
+.sb-list-title{ font-weight:600; }
+.sb-list-meta{ opacity:.75; font-size:12px; }
+
+/* Row cards */
+.sb-row-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 12px;
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:12px;
+  background:#fff;
+}
+.sb-row-left{ display:flex; align-items:center; gap:10px; min-width:0; }
+.sb-row-title{
+  font-weight:600;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width: 740px;
+}
+
+/* Badges (Studio: accent jaune => texte sombre) */
+.sb-badge{
+  display:inline-flex;
+  align-items:center;
+  padding:3px 10px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:12px;
+  white-space:nowrap;
+}
+.sb-badge--accent-soft{
+  background: rgba(var(--sb-accent-rgb), .22);
+  border:1px solid rgba(var(--sb-accent-rgb), .55);
+  color:#111827;
+}
+.sb-badge--outline-accent{
+  border:1px solid rgba(var(--sb-accent-rgb), .55);
+  color:#111827;
+}
+
+/* Modal (générique Studio) */
+.sb-modal{
+  position:fixed;
+  inset:0;
+  background: rgba(0,0,0,.45);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:9999;
+}
+.sb-modal-card{
+  width:min(920px, 96vw);
+  background:#fff;
+  border-radius:16px;
+  padding:14px;
+  box-shadow: 0 18px 48px rgba(0,0,0,.25);
+}
+.sb-modal-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  padding-bottom:10px;
+  border-bottom:1px solid rgba(17,24,39,.08);
+}
+.sb-modal-body{ padding-top:12px; }
+.sb-modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:12px; }

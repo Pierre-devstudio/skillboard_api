@@ -1,0 +1,125 @@
+<section id="view-org">
+  <div class="card">
+    <div class="card-title">Votre organisation</div>
+    <div class="card-sub">Sélectionnez un service pour afficher la cartographie des postes et la fiche de poste associée.</div>
+    <div class="card-sub" id="orgStatus" style="margin-top:6px;">—</div>
+  </div>
+
+  <div class="sb-layout-2col">
+    <!-- COLONNE GAUCHE : SERVICES -->
+    <div class="card">
+      <div class="org-card-head">
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">Services</div>
+          <div class="card-sub" style="margin:0;">Cliquez sur un service.</div>
+        </div>
+        <div class="sb-actions">
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcAdd">+ Service</button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcEdit">Renommer</button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcArchive">Archiver</button>
+        </div>
+      </div>
+
+      <div class="sb-list" id="svcList"></div>
+    </div>
+
+    <!-- COLONNE DROITE : SERVICE SELECT + POSTES -->
+    <div class="sb-stack">
+      <div class="card">
+        <div class="card-title" id="svcTitle">Tous les services</div>
+        <div class="card-sub" id="svcMeta">—</div>
+      </div>
+
+      <div class="card">
+        <div class="org-card-head">
+          <div>
+            <div class="card-title" style="margin-bottom:2px;">Postes</div>
+            <div class="card-sub" style="margin:0;">Fiches de poste rattachées au service sélectionné.</div>
+          </div>
+          <div class="sb-toolbar">
+            <div class="sb-search">
+              <div class="card-sub" style="margin:0 0 4px 0;">Rechercher un poste</div>
+              <input type="text" id="posteSearch" placeholder="Code ou intitulé…" />
+            </div>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnAddFromCatalog">Ajouter depuis le catalogue</button>
+          </div>
+        </div>
+
+        <div class="sb-stack sb-stack--sm" id="posteList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : Ajouter depuis catalogue -->
+  <div class="sb-modal" id="modalCatalog" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">Ajouter depuis le catalogue</div>
+          <div class="card-sub" style="margin:0;">Sélectionnez une fiche de poste à ajouter au service courant.</div>
+        </div>
+        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnCloseCatalog">Fermer</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="sb-modal-search">
+          <input type="text" id="catalogSearch" placeholder="Rechercher (code ou intitulé) …" />
+        </div>
+        <div class="sb-stack sb-stack--xs" id="catalogList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : Service create/edit -->
+  <div class="sb-modal" id="modalService" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" id="svcModalTitle" style="margin-bottom:2px;">Service</div>
+          <div class="card-sub" id="svcModalSub" style="margin:0;">—</div>
+        </div>
+        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnCloseService">Fermer</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="row">
+          <div class="info-item" style="flex:2; min-width:260px;">
+            <div class="label">Nom du service</div>
+            <input type="text" id="svcName" />
+          </div>
+          <div class="info-item" style="flex:2; min-width:260px;">
+            <div class="label">Service parent (optionnel)</div>
+            <select id="svcParent">
+              <option value="">(Aucun)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sb-modal-actions">
+          <button type="button" class="sb-btn sb-btn--accent" id="btnSaveService">Enregistrer</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnCancelService">Annuler</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : Confirm archive -->
+  <div class="sb-modal" id="modalArchive" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">Archiver le service</div>
+          <div class="card-sub" style="margin:0;" id="archiveMsg">—</div>
+        </div>
+        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnCloseArchive">Fermer</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="sb-modal-actions">
+          <button type="button" class="sb-btn sb-btn--accent" id="btnConfirmArchive">Confirmer</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnCancelArchive">Annuler</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -14,10 +14,15 @@
     // js auto-guess -> /menu_studio/studio_data.js
   });
 
+  window.portal.registerMenu({
+    view: "organisation",
+    htmlUrl: "/menu_studio/studio_organisation.html"
+    // js auto-guess -> /menu_studio/studio_organisation.js
+  });
+
   // Placeholders (menu complet)
   const COMING_SOON = "/menu_studio/studio_coming_soon.html";
-
-  window.portal.registerMenu({ view: "organisation", htmlUrl: COMING_SOON });
+  
   window.portal.registerMenu({ view: "collaborateurs", htmlUrl: COMING_SOON });
   window.portal.registerMenu({ view: "access", htmlUrl: COMING_SOON });
   window.portal.registerMenu({ view: "partners", htmlUrl: COMING_SOON });
