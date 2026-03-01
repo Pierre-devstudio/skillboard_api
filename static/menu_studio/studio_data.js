@@ -262,7 +262,7 @@
     const patch = buildPatchFromInitial(_initialOrg, current, allowed);
 
     if (Object.keys(patch).length === 0) {
-      portal.showAlert("success", "Aucune modification à enregistrer.");
+      portal.showAlert("", "");
       setEntrepriseEditMode(false);
       return;
     }
@@ -283,7 +283,7 @@
     renderEntreprise(org);
     renderContact(ct);
 
-    portal.showAlert("success", "Informations entreprise enregistrées.");
+    portal.showAlert("", "");
     setEntrepriseEditMode(false);
   }
 
@@ -300,7 +300,7 @@
     const patch = buildPatchFromInitial(_initialContact, current, allowed);
 
     if (Object.keys(patch).length === 0) {
-      portal.showAlert("success", "Aucune modification à enregistrer.");
+      portal.showAlert("", "");
       setContactEditMode(false);
       return;
     }
@@ -319,7 +319,7 @@
     renderEntreprise(org);
     renderContact(ct);
 
-    portal.showAlert("success", "Informations du contact enregistrées.");
+    portal.showAlert("", "");
     setContactEditMode(false);
   }
 
