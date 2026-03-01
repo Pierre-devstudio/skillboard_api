@@ -5,7 +5,7 @@ from typing import Optional, Dict, Any
 import re
 
 from app.routers.skills_portal_common import get_conn
-from app.routers.studio_portal_common import studio_require_user, studio_fetch_owner
+from app.routers.studio_portal_common import studio_require_user, studio_fetch_owner, studio_require_min_role
 
 router = APIRouter()
 
@@ -481,6 +481,9 @@ def update_studio_entreprise(id_owner: str, payload: UpdateEntreprisePayload, re
 
                 # périmètre Studio (owner doit exister)
                 studio_fetch_owner(cur, oid)
+
+                # Entreprise = admin only
+                studio_require_min_role(cur, u, oid, "admin")
 
                 # validations référentiels (uniquement si champs présents)
                 if "idcc" in patch:

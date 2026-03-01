@@ -6,6 +6,11 @@
   let _initialContact = null;
   let _refOpco = null;
 
+  function isAdmin(){
+    const r = (window.__studioRoleCode || "user").toString().trim().toLowerCase();
+    return r === "admin";
+  }
+
   function getOwnerId() {
     const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
     if (pid) return pid;
@@ -342,8 +347,20 @@
     if (_bound) return;
     _bound = true;
 
+    // Entreprise: admin only (UX). L'API est déjà sécurisée en 403.
+    const btnEditEnt = document.getElementById("btnEditEntreprise");
+    const btnSaveEnt = document.getElementById("btnSaveEntreprise");
+    const btnCancelEnt = document.getElementById("btnCancelEntreprise");
+    if (!isAdmin()) {
+      if (btnEditEnt) btnEditEnt.style.display = "none";
+      if (btnSaveEnt) btnSaveEnt.style.display = "none";
+      if (btnCancelEnt) btnCancelEnt.style.display = "none";
+      document.querySelectorAll("[data-editable-ent='1']").forEach(el => el.disabled = true);
+    }
+
     document.getElementById("btnEditEntreprise").addEventListener("click", async () => {
       try {
+        if (!isAdmin()) return;
         if (!_loaded) await loadData(portal);
         portal.showAlert("", "");
         setEntrepriseEditMode(true);
