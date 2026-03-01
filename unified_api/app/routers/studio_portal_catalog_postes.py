@@ -59,15 +59,38 @@ def _safe_show(v: str) -> str:
         s = "active"
     return s
 
+def _next_pt_code(cur, oid: str, id_ent: str) -> str:
+    # Sérialise les créations pour une entreprise (évite doublons)
+    lock_key = f"poste_code:{oid}:{id_ent}"
+    cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (lock_key,))
+
+    cur.execute(
+        """
+        SELECT COALESCE(
+          MAX( (regexp_match(p.codif_poste, '^PT([0-9]{4})$'))[1]::int ),
+          0
+        ) AS max_n
+        FROM public.tbl_fiche_poste p
+        WHERE p.id_owner = %s
+          AND p.id_ent = %s
+          AND p.codif_poste ~ '^PT[0-9]{4}$'
+        """,
+        (oid, id_ent),
+    )
+    r = cur.fetchone() or {}
+    max_n = int(r.get("max_n") or -1)
+    nxt = max_n + 1
+    if nxt > 9999:
+        raise HTTPException(status_code=400, detail="Limite de numérotation atteinte (PT9999) pour cette entreprise.")
+    return f"PT{nxt:04d}"
 
 # ------------------------------------------------------
 # Models
 # ------------------------------------------------------
 class CreatePostePayload(BaseModel):
-    codif_poste: str
+    # Code interne auto (PT000..PT999) => non saisi
     codif_client: Optional[str] = None
     intitule_poste: str
-
 
 class UpdatePostePayload(BaseModel):
     codif_poste: Optional[str] = None
@@ -181,18 +204,37 @@ def studio_catalog_list_postes(
         raise HTTPException(status_code=500, detail=f"studio/catalog/postes list error: {e}")
 
 
+@router.get("/studio/catalog/postes/{id_owner}/next_code")
+def studio_catalog_next_code(id_owner: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                # V1: création “Mon entreprise” uniquement => id_ent = oid
+                code = _next_pt_code(cur, oid, oid)
+        return {"codif_poste": code}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/catalog/postes next_code error: {e}")
+    
 @router.post("/studio/catalog/postes/{id_owner}")
 def studio_catalog_create_poste(id_owner: str, payload: CreatePostePayload, request: Request):
     auth = request.headers.get("Authorization", "")
     u = studio_require_user(auth)
 
-    try:
-        cod = (payload.codif_poste or "").strip()
+    try:        
         title = (payload.intitule_poste or "").strip()
         cod_cli = (payload.codif_client or "").strip() or None
 
-        if not cod:
-            raise HTTPException(status_code=400, detail="Code interne obligatoire.")
+        
         if not title:
             raise HTTPException(status_code=400, detail="Intitulé obligatoire.")
 
@@ -203,6 +245,9 @@ def studio_catalog_create_poste(id_owner: str, payload: CreatePostePayload, requ
                 studio_require_min_role(cur, u, oid, "editor")
 
                 pid = str(uuid.uuid4())
+
+                # V1: code interne auto PT000..PT999 (par entreprise = id_ent)
+                cod = _next_pt_code(cur, oid, oid)
 
                 # V1: création dans "Mon entreprise" (id_ent = id_owner), non lié (id_service NULL)
                 cur.execute(
@@ -216,7 +261,7 @@ def studio_catalog_create_poste(id_owner: str, payload: CreatePostePayload, requ
                 )
                 conn.commit()
 
-        return {"id_poste": pid}
+        return {"id_poste": pid, "codif_poste": cod}
 
     except HTTPException:
         raise
@@ -262,11 +307,7 @@ def studio_catalog_update_poste(id_owner: str, id_poste: str, payload: UpdatePos
                 vals = []
 
                 if "codif_poste" in patch_fields:
-                    cod = (payload.codif_poste or "").strip()
-                    if not cod:
-                        raise HTTPException(status_code=400, detail="Code interne obligatoire.")
-                    cols.append("codif_poste = %s")
-                    vals.append(cod)
+                    raise HTTPException(status_code=400, detail="Le code interne est automatique et non modifiable.")
 
                 if "codif_client" in patch_fields:
                     codc = (payload.codif_client or "").strip() or None

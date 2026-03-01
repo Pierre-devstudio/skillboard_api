@@ -172,18 +172,26 @@
     renderList();
   }
 
-  function openCreate(){
+  async function openCreate(portal){
     _modalMode = "create";
     _editingId = null;
 
     byId("posteModalTitle").textContent = "Créer une fiche de poste";
     byId("posteModalSub").textContent = "Création V1: Mon entreprise (Non lié).";
 
-    byId("posteCodif").value = "";
+    byId("posteCodif").value = "…";
     byId("posteCodifClient").value = "";
     byId("posteIntitule").value = "";
 
     openModal("modalPosteEdit");
+
+    try{
+      const ownerId = getOwnerId();
+      const data = await portal.apiJson(`${portal.apiBase}/studio/catalog/postes/${encodeURIComponent(ownerId)}/next_code`);
+      byId("posteCodif").value = (data && data.codif_poste) ? String(data.codif_poste) : "PT???";
+    }catch(e){
+      byId("posteCodif").value = "PT???";
+    }
   }
 
   function openEdit(it){
@@ -201,12 +209,10 @@
   }
 
   async function save(portal){
-    const ownerId = getOwnerId();
-    const cod = (byId("posteCodif").value || "").trim();
+    const ownerId = getOwnerId();    
     const codc = (byId("posteCodifClient").value || "").trim();
     const title = (byId("posteIntitule").value || "").trim();
-
-    if (!cod) { portal.showAlert("error", "Code interne obligatoire."); return; }
+    
     if (!title) { portal.showAlert("error", "Intitulé obligatoire."); return; }
 
     if (_modalMode === "create") {
@@ -215,7 +221,7 @@
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ codif_poste: cod, codif_client: codc || null, intitule_poste: title })
+          body: JSON.stringify({ codif_client: codc || null, intitule_poste: title })
         }
       );
     } else {
@@ -265,7 +271,7 @@
       if (b) b.style.display = "none";
     }
 
-    byId("btnPosteNew").addEventListener("click", () => openCreate());
+    byId("btnPosteNew").addEventListener("click", () => openCreate(portal));
 
     byId("btnPosteClose").addEventListener("click", () => closeModal("modalPosteEdit"));
     byId("btnPosteCancel").addEventListener("click", () => closeModal("modalPosteEdit"));
