@@ -15,6 +15,8 @@ class StudioContext(BaseModel):
     nom_owner: str
     email: str
     prenom: Optional[str] = None
+    role_code: Optional[str] = None
+    role_label: Optional[str] = None
 
 
 def _require_owner_access(cur, u: dict, id_owner: str):
@@ -146,6 +148,42 @@ def _resolve_prenom(cur, email: str, id_owner: str) -> Optional[str]:
 
     return None
 
+def _role_code_to_label(code: str) -> Optional[str]:
+    c = (code or "").strip().lower()
+    if c == "admin":
+        return "Administrateur"
+    if c == "editor":
+        return "Éditeur"
+    if c == "user":
+        return "Utilisateur"
+    return None
+
+
+def _fetch_role_code(cur, email: str, id_owner: str, is_super_admin: bool) -> str:
+    if is_super_admin:
+        return "admin"
+
+    e = (email or "").strip()
+    oid = (id_owner or "").strip()
+    if not e or not oid:
+        return "user"
+
+    cur.execute(
+        """
+        SELECT role_code
+        FROM public.tbl_studio_user_access
+        WHERE lower(email) = lower(%s)
+          AND id_owner = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (e, oid),
+    )
+    r = cur.fetchone() or {}
+    rc = (r.get("role_code") or "user").strip().lower()
+    if rc not in ("admin", "editor", "user"):
+        rc = "user"
+    return rc
 
 @router.get("/studio/context/{id_owner}", response_model=StudioContext)
 def get_studio_context(id_owner: str, request: Request):
@@ -163,6 +201,9 @@ def get_studio_context(id_owner: str, request: Request):
                 oid = _require_owner_access(cur, u, id_owner)
                 ow = studio_fetch_owner(cur, oid)
                 prenom = _resolve_prenom(cur, u.get("email") or "", oid)
+
+                role_code = _fetch_role_code(cur, u.get("email") or "", oid, bool(u.get("is_super_admin")))
+                role_label = _role_code_to_label(role_code)
     except HTTPException:
         raise
     except Exception as e:
@@ -173,4 +214,6 @@ def get_studio_context(id_owner: str, request: Request):
         nom_owner=ow.get("nom_owner"),
         email=(u.get("email") or "").strip(),
         prenom=prenom,
+        role_code=role_code,
+        role_label=role_label,
     )

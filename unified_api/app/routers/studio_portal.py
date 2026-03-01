@@ -114,7 +114,11 @@ def studio_me_scope(request: Request):
     with get_conn() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
             if u.get("is_super_admin"):
-                return {"mode": "super_admin", "owners": studio_list_owners(cur)}
+                owners = studio_list_owners(cur)
+                for o in owners:
+                    o["role_code"] = "admin"
+                    o["role_label"] = "Administrateur"
+                return {"mode": "super_admin", "owners": owners}
 
             meta = u.get("user_metadata") or {}
             id_owner = (meta.get("id_owner") or "").strip()
@@ -143,7 +147,35 @@ def studio_me_scope(request: Request):
                     detail="Compte non rattaché à un owner Studio (id_owner introuvable).",
                 )
 
+            # role_code (admin/editor/user) depuis tbl_studio_user_access
+            role_code = "user"
+            email = (u.get("email") or "").strip()
+            if email and id_owner:
+                cur.execute(
+                    """
+                    SELECT role_code
+                    FROM public.tbl_studio_user_access
+                    WHERE lower(email) = lower(%s)
+                      AND id_owner = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    LIMIT 1
+                    """,
+                    (email, id_owner),
+                )
+                rr = cur.fetchone() or {}
+                rc = (rr.get("role_code") or "user").strip().lower()
+                if rc in ("admin", "editor", "user"):
+                    role_code = rc
+
+            role_label = "Utilisateur"
+            if role_code == "admin":
+                role_label = "Administrateur"
+            elif role_code == "editor":
+                role_label = "Éditeur"
+
             ow = studio_fetch_owner(cur, id_owner)
+            ow["role_code"] = role_code
+            ow["role_label"] = role_label
             return {"mode": "standard", "owners": [ow]}
 
 # Injection routes auth

@@ -26,8 +26,32 @@
     </div>
 
     <nav class="menu">
-      <div class="menu-item active" data-view="dashboard">Dashboard</div>
-      <div class="menu-item" data-view="data">Vos données</div>
+      <div class="menu-item active" data-view="dashboard" data-min-role="user">Dashboard</div>
+      <div class="menu-item" data-view="data" data-min-role="user">Vos données</div>
+
+      <div class="menu-sep"></div>
+
+      <div class="menu-item" data-view="organisation" data-min-role="admin">Votre organisation</div>
+      <div class="menu-item" data-view="collaborateurs" data-min-role="admin">Vos collaborateurs</div>
+      <div class="menu-item" data-view="access" data-min-role="admin">Droits d’accès</div>
+      <div class="menu-item" data-view="partners" data-min-role="admin">Vos partenaires</div>
+
+      <div class="menu-sep"></div>
+
+      <div class="menu-item" data-view="catalog_postes" data-min-role="editor">Catalogue fiches de poste</div>
+      <div class="menu-item" data-view="catalog_competences" data-min-role="editor">Catalogue compétences</div>
+      <div class="menu-item menu-item--soon" data-view="catalog_formations" data-min-role="admin">Catalogue formation (option)</div>
+
+      <div class="menu-sep"></div>
+
+      <div class="menu-item" data-view="clients" data-min-role="editor">Vos clients</div>
+      <div class="menu-item" data-view="pilotage_clients" data-min-role="editor">Pilotage clients</div>
+
+      <div class="menu-sep"></div>
+
+      <div class="menu-item" data-view="factures" data-min-role="admin">Vos factures</div>
+      <div class="menu-item" data-view="documents" data-min-role="admin">Vos documents</div>
+      <div class="menu-item" data-view="evolutions" data-min-role="user">Proposer une évolution</div>
     </nav>
   </aside>
 

@@ -102,6 +102,8 @@ def _role_code_to_label(code: str | None) -> str | None:
     c = (code or "").strip().lower()
     if c == "admin":
         return "Administrateur"
+    if c == "editor":
+        return "Éditeur"
     if c == "user":
         return "Utilisateur"
     return None

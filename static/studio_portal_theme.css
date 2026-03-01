@@ -25,3 +25,16 @@
 .sb-btn--accent{
   color:#111827;
 }
+
+/* Séparateurs de menu (Studio only) */
+.menu-sep{
+  height:1px;
+  margin:10px 0;
+  background: rgba(255,255,255,.15);
+}
+
+/* Entrée "option" (visuelle uniquement) */
+.menu-item--soon{
+  opacity:.75;
+  font-style: italic;
+}

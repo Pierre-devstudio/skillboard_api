@@ -14,7 +14,69 @@
     // js auto-guess -> /menu_studio/studio_data.js
   });
 
+  // Placeholders (menu complet)
+  const COMING_SOON = "/menu_studio/studio_coming_soon.html";
+
+  window.portal.registerMenu({ view: "organisation", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "collaborateurs", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "access", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "partners", htmlUrl: COMING_SOON });
+
+  window.portal.registerMenu({ view: "catalog_postes", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "catalog_competences", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "catalog_formations", htmlUrl: COMING_SOON });
+
+  window.portal.registerMenu({ view: "clients", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "pilotage_clients", htmlUrl: COMING_SOON });
+
+  window.portal.registerMenu({ view: "factures", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "documents", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "evolutions", htmlUrl: COMING_SOON });
+
   function byId(id){ return document.getElementById(id); }
+
+    function roleRank(code){
+    const c = (code || "").toString().trim().toLowerCase();
+    if (c === "admin") return 3;
+    if (c === "editor") return 2;
+    return 1; // user
+  }
+
+  function applyMenuGating(roleCode){
+    window.__studioRoleCode = (roleCode || "user").toString().trim().toLowerCase();
+
+    const myRank = roleRank(window.__studioRoleCode);
+
+    document.querySelectorAll(".menu-item[data-min-role]").forEach(el => {
+      const need = (el.dataset.minRole || "user").toString().trim().toLowerCase();
+      const ok = myRank >= roleRank(need);
+      el.style.display = ok ? "" : "none";
+    });
+
+    // Nettoyage separators: pas de séparateur seul / double
+    const menu = document.querySelector(".menu");
+    if (!menu) return;
+
+    const kids = Array.from(menu.children);
+
+    // 1) cacher les sep sans voisin visible
+    kids.forEach((el, idx) => {
+      if (!el.classList.contains("menu-sep")) return;
+
+      const prev = kids.slice(0, idx).reverse().find(x => x.style.display !== "none" && !x.classList.contains("menu-sep"));
+      const next = kids.slice(idx + 1).find(x => x.style.display !== "none" && !x.classList.contains("menu-sep"));
+
+      el.style.display = (prev && next) ? "" : "none";
+    });
+
+    // 2) cacher les doubles sep
+    let lastSepVisible = false;
+    kids.forEach(el => {
+      const isSep = el.classList.contains("menu-sep") && el.style.display !== "none";
+      if (isSep && lastSepVisible) el.style.display = "none";
+      lastSepVisible = isSep;
+    });
+  }
 
   async function tryFillTopbar() {
     const info = byId("topbarInfo");
@@ -46,13 +108,19 @@
       const scope = await rScope.json().catch(() => null);
 
       let ownerName = "";
+      let roleCode = "user";
+
       if (rScope.ok && scope && Array.isArray(scope.owners) && scope.owners.length) {
         const currentId = (new URL(window.location.href).searchParams.get("id") || "").trim();
         const found = currentId ? scope.owners.find(o => o && o.id_owner === currentId) : null;
-        ownerName = (found?.nom_owner || scope.owners[0]?.nom_owner || "").trim();
+        const cur = found || scope.owners[0] || null;
+
+        ownerName = (cur?.nom_owner || "").trim();
+        roleCode = (cur?.role_code || "user").toString().trim().toLowerCase();
       }
 
       if (name) name.textContent = ownerName || "Studio";
+      applyMenuGating(roleCode);
     } catch (_) {
       // on laisse le fallback
     }
