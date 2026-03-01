@@ -1,0 +1,106 @@
+<section id="view-catalog_postes" data-view="catalog_postes">
+  <div class="card">
+    <div class="sb-card-head">
+      <div>
+        <div class="card-title">Catalogue fiches de poste</div>
+        <div class="card-sub">Créer, modifier, archiver des fiches de poste (périmètre owner).</div>
+        <div class="card-sub" id="catPostesStatus" style="margin-top:6px;">—</div>
+      </div>
+      <div class="sb-actions">
+        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteNew">+ Fiche</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sb-toolbar">
+      <div class="sb-search">
+        <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
+        <input type="text" id="catPostesSearch" placeholder="Code ou intitulé…" />
+      </div>
+
+      <div class="info-item" style="min-width:220px;">
+        <div class="label">Afficher</div>
+        <select id="catPostesShow">
+          <option value="active">Actifs</option>
+          <option value="archived">Archivés</option>
+          <option value="all">Tout</option>
+        </select>
+      </div>
+
+      <div class="info-item" style="min-width:260px;">
+        <div class="label">Périmètre</div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="catPostesMine" checked />
+            <span>Mon entreprise</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="catPostesClients" />
+            <span>Mes clients</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="sb-stack sb-stack--sm" id="catPostesList" style="margin-top:12px;"></div>
+  </div>
+
+  <!-- MODAL : Create/Edit -->
+  <div class="sb-modal" id="modalPosteEdit" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" id="posteModalTitle" style="margin-bottom:2px;">Fiche de poste</div>
+          <div class="card-sub" id="posteModalSub" style="margin:0;">—</div>
+        </div>
+        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnPosteClose">Fermer</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:240px;">
+            <div class="label">Code interne</div>
+            <input type="text" id="posteCodif" />
+          </div>
+          <div class="info-item" style="flex:1; min-width:240px;">
+            <div class="label">Code client (option)</div>
+            <input type="text" id="posteCodifClient" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:2; min-width:260px;">
+            <div class="label">Intitulé</div>
+            <input type="text" id="posteIntitule" />
+          </div>
+        </div>
+
+        <div class="sb-modal-actions">
+          <button type="button" class="sb-btn sb-btn--accent" id="btnPosteSave">Enregistrer</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCancel">Annuler</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : Archive confirm -->
+  <div class="sb-modal" id="modalPosteArchive" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">Archiver la fiche</div>
+          <div class="card-sub" id="posteArchiveMsg" style="margin:0;">—</div>
+        </div>
+        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnPosteArchiveClose">Fermer</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="sb-modal-actions">
+          <button type="button" class="sb-btn sb-btn--accent" id="btnPosteArchiveConfirm">Confirmer</button>
+          <button type="button" class="sb-btn sb-btn--soft" id="btnPosteArchiveCancel">Annuler</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
