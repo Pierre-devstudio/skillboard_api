@@ -94,7 +94,10 @@
 .sb-list-item--clickable:hover{ background: rgba(17,24,39,.03); }
 .sb-list-item.is-active{ background: rgba(var(--sb-accent-rgb), .18); }
 
-.sb-list-title{ font-weight:600; }
+.sb-list-title{
+  font-weight:600;
+  font-size:13px;
+}
 .sb-list-meta{ opacity:.75; font-size:12px; }
 
 /* Row cards */
