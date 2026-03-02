@@ -119,6 +119,7 @@
 .sb-row-left{ display:flex; align-items:center; gap:10px; min-width:0; }
 .sb-row-title{
   font-weight:600;
+  font-size: 13px ;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
