@@ -212,7 +212,7 @@
         left.appendChild(title);
 
         const badge = document.createElement("span");
-        badge.className = "sb-badge sb-badge--poste";
+        badge.className = "sb-badge sb-badge--poste-soft";
         badge.textContent = `${p.nb_collabs || 0} collab.`;
 
         row.appendChild(left);

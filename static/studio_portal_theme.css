@@ -53,8 +53,13 @@
   .sb-layout-2col{ grid-template-columns: 1fr; }
 }
 .sb-stack{ display:flex; flex-direction:column; gap:16px; }
+.sb-stack--md{ gap:12px; }
 .sb-stack--sm{ gap:10px; }
 .sb-stack--xs{ gap:8px; }
+.sb-stack--xxs{ gap:5px; }
+
+/* Utilities spacing */
+.sb-mt-10{ margin-top:10px; }
 
 /* Card header + actions */
 .sb-card-head{
