@@ -116,12 +116,7 @@
       scope.className = "sb-badge sb-badge--outline-accent";
       scope.textContent = it.id_service ? (it.is_mine ? "Mon entreprise" : "Client") : "Catalogue";
 
-      const linkState = document.createElement("span");
-      linkState.className = "sb-badge sb-badge--outline-accent";
-      linkState.textContent = it.id_service ? "Lié" : "Non lié";
-
       right.appendChild(scope);
-      right.appendChild(linkState);
 
       if (isEditor()) {
         const btnEdit = document.createElement("button");
@@ -219,7 +214,7 @@
     _editingId = it.id_poste;
 
     byId("posteModalTitle").textContent = "Modifier la fiche de poste";
-    byId("posteModalSub").textContent = (it.is_mine ? "Mon entreprise" : "Client") + " · " + (it.id_service ? "Lié" : "Non lié");
+    byId("posteModalSub").textContent = it.id_service ? (it.is_mine ? "Mon entreprise" : "Client") : "Catalogue";
 
     byId("posteCodif").value = (it.codif_poste || "").trim();
     byId("posteCodifClient").value = (it.codif_client || "").trim();
