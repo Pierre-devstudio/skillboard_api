@@ -113,7 +113,7 @@
       right.className = "sb-actions";
 
       const scope = document.createElement("span");
-      scope.className = "sb-badge sb-badge--poste";
+      scope.className = "sb-badge sb-badge--poste-soft";
       scope.textContent = it.id_service ? (it.is_mine ? "Mon entreprise" : "Client") : "Catalogue";
 
       right.appendChild(scope);
