@@ -192,7 +192,8 @@
     _editingId = null;
 
     byId("posteModalTitle").textContent = "Créer une fiche de poste";
-    byId("posteModalSub").textContent = "Création V1: Mon entreprise (Non lié).";
+    byId("posteModalSub").textContent = "";
+    byId("posteModalSub").style.display = "none";
 
     byId("posteCodif").value = "…";
     byId("posteCodifClient").value = "";
@@ -288,14 +289,14 @@
 
     byId("btnPosteNew").addEventListener("click", () => openCreate(portal));
 
-    byId("btnPosteClose").addEventListener("click", () => closeModal("modalPosteEdit"));
+    byId("btnPosteX").addEventListener("click", () => closeModal("modalPosteEdit"));
     byId("btnPosteCancel").addEventListener("click", () => closeModal("modalPosteEdit"));
     byId("btnPosteSave").addEventListener("click", async () => {
       try { await save(portal); }
       catch (e) { portal.showAlert("error", e?.message || String(e)); }
     });
 
-    byId("btnPosteArchiveClose").addEventListener("click", () => closeModal("modalPosteArchive"));
+    byId("btnPosteArchiveX").addEventListener("click", () => closeModal("modalPosteArchive"));
     byId("btnPosteArchiveCancel").addEventListener("click", () => closeModal("modalPosteArchive"));
     byId("btnPosteArchiveConfirm").addEventListener("click", async () => {
       try { await confirmArchive(portal); }

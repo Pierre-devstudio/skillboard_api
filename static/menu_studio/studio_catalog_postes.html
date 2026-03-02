@@ -57,7 +57,7 @@
           <div class="card-title" id="posteModalTitle" style="margin-bottom:2px;">Fiche de poste</div>
           <div class="card-sub" id="posteModalSub" style="margin:0;">—</div>
         </div>
-        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnPosteClose">Fermer</button>
+        <button type="button" class="sb-modal-x" id="btnPosteX" aria-label="Fermer">×</button>
       </div>
 
       <div class="sb-modal-body">
@@ -78,12 +78,13 @@
             <input type="text" id="posteIntitule" />
           </div>
         </div>
-
-        <div class="sb-modal-actions">
-          <button type="button" class="sb-btn sb-btn--accent" id="btnPosteSave">Enregistrer</button>
-          <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCancel">Annuler</button>
-        </div>
       </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteSave">Enregistrer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCancel">Annuler</button>
+      </div>
+      
     </div>
   </div>
 
@@ -95,15 +96,17 @@
           <div class="card-title" style="margin-bottom:2px;">Archiver la fiche</div>
           <div class="card-sub" id="posteArchiveMsg" style="margin:0;">—</div>
         </div>
-        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnPosteArchiveClose">Fermer</button>
+        <button type="button" class="sb-modal-x" id="btnPosteArchiveX" aria-label="Fermer">×</button>
       </div>
 
       <div class="sb-modal-body">
-        <div class="sb-modal-actions">
-          <button type="button" class="sb-btn sb-btn--accent" id="btnPosteArchiveConfirm">Confirmer</button>
-          <button type="button" class="sb-btn sb-btn--soft" id="btnPosteArchiveCancel">Annuler</button>
-        </div>
       </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteArchiveConfirm">Confirmer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnPosteArchiveCancel">Annuler</button>
+      </div>
+      
     </div>
   </div>
 </section>
