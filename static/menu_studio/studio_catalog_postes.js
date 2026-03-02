@@ -113,7 +113,7 @@
 
       const scope = document.createElement("span");
       scope.className = "sb-badge sb-badge--outline-accent";
-      scope.textContent = it.is_mine ? "Mon entreprise" : "Client";
+      scope.textContent = it.id_service ? (it.is_mine ? "Mon entreprise" : "Client") : "Catalogue";
 
       const linkState = document.createElement("span");
       linkState.className = "sb-badge sb-badge--outline-accent";
