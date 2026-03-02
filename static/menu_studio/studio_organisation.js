@@ -201,7 +201,7 @@
         left.className = "sb-row-left";
 
         const code = document.createElement("span");
-        code.className = "sb-badge sb-badge--accent-soft";
+        code.className = "sb-badge sb-badge--poste";
         code.textContent = p.code || "—";
 
         const title = document.createElement("div");
@@ -212,7 +212,7 @@
         left.appendChild(title);
 
         const badge = document.createElement("span");
-        badge.className = "sb-badge sb-badge--outline-accent";
+        badge.className = "sb-badge sb-badge--poste";
         badge.textContent = `${p.nb_collabs || 0} collab.`;
 
         row.appendChild(left);
@@ -371,7 +371,7 @@
         left.className = "sb-row-left";
 
         const code = document.createElement("span");
-        code.className = "sb-badge sb-badge--accent-soft";
+        code.className = "sb-badge sb-badge--poste";
         code.textContent = it.code || "—";
 
         const title = document.createElement("div");

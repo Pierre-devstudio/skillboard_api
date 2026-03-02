@@ -140,6 +140,12 @@
   color:#111827;
 }
 
+.sb-badge--poste{
+  background: rgb(209, 51, 188);
+  border: 1px solid rgb(209, 51, 188);
+  color:#fff;
+}
+
 /* Modal (générique Studio) */
 .sb-modal{
   position:fixed;

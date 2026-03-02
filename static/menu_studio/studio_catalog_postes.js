@@ -99,7 +99,7 @@
       left.className = "sb-row-left";
 
       const code = document.createElement("span");
-      code.className = "sb-badge sb-badge--accent-soft";
+      code.className = "sb-badge sb-badge--poste";
       code.textContent = it.code || "—";
 
       const title = document.createElement("div");
@@ -113,7 +113,7 @@
       right.className = "sb-actions";
 
       const scope = document.createElement("span");
-      scope.className = "sb-badge sb-badge--outline-accent";
+      scope.className = "sb-badge sb-badge--poste";
       scope.textContent = it.id_service ? (it.is_mine ? "Mon entreprise" : "Client") : "Catalogue";
 
       right.appendChild(scope);
@@ -136,7 +136,7 @@
           right.appendChild(btnArch);
         } else {
           const arch = document.createElement("span");
-          arch.className = "sb-badge sb-badge--outline-accent";
+          arch.className = "sb-badge sb-badge--poste";
           arch.textContent = "Archivé";
           right.appendChild(arch);
         }
