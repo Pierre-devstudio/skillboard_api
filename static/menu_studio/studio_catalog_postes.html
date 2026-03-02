@@ -3,11 +3,10 @@
     <div class="sb-card-head">
       <div>
         <div class="card-title">Catalogue fiches de poste</div>
-        <div class="card-sub">Créer, modifier, archiver des fiches de poste (périmètre owner).</div>
-        <div class="card-sub" id="catPostesStatus" style="margin-top:6px;">—</div>
+        <div class="card-sub">Créer, modifier, archiver des fiches de poste (périmètre owner).</div>        
       </div>
       <div class="sb-actions">
-        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteNew">+ Fiche</button>
+        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteNew">Ajouter un poste</button>
       </div>
     </div>
   </div>
@@ -31,6 +30,10 @@
       <div class="info-item" style="min-width:260px;">
         <div class="label">Périmètre</div>
         <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+            <input type="checkbox" id="catPostesCatalogue" checked />
+            <span>Catalogue</span>
+          </label>
           <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
             <input type="checkbox" id="catPostesMine" checked />
             <span>Mon entreprise</span>

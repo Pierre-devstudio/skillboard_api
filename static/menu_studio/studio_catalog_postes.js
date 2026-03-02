@@ -7,6 +7,7 @@
   let _qTimer = null;
 
   let _show = "active";
+  let _catalogue = true;
   let _mine = true;
   let _clients = false;
 
@@ -168,7 +169,26 @@
       + `&clients=${_clients ? "1" : "0"}`;
 
     const data = await portal.apiJson(url);
-    _items = (data && data.items) ? data.items : [];
+    const raw = (data && data.items) ? data.items : [];
+
+    const showCat = !!_catalogue;
+    const showMine = !!_mine;
+    const showClients = !!_clients;
+
+    // Sécurité UX: au moins un filtre actif
+    if (!showCat && !showMine && !showClients) {
+      _catalogue = true;
+    }
+
+    _items = raw.filter(it => {
+      const isCat = !it.id_service; // NULL / empty => Catalogue
+      if (isCat) return !!_catalogue;
+
+      // Linked uniquement
+      if (it.is_mine) return !!_mine;
+      return !!_clients;
+    });
+
     renderList();
   }
 
@@ -300,18 +320,32 @@
       loadList(portal).catch(() => {});
     });
 
+    const cbCat = byId("catPostesCatalogue");
     const cbMine = byId("catPostesMine");
     const cbClients = byId("catPostesClients");
 
+    function ensureAtLeastOne(){
+      if (!_catalogue && !_mine && !_clients) {
+        _catalogue = true;
+        if (cbCat) cbCat.checked = true;
+      }
+    }
+
+    cbCat.addEventListener("change", () => {
+      _catalogue = !!cbCat.checked;
+      ensureAtLeastOne();
+      loadList(portal).catch(() => {});
+    });
+
     cbMine.addEventListener("change", () => {
       _mine = !!cbMine.checked;
-      if (!_mine && !_clients) { _mine = true; cbMine.checked = true; }
+      ensureAtLeastOne();
       loadList(portal).catch(() => {});
     });
 
     cbClients.addEventListener("change", () => {
       _clients = !!cbClients.checked;
-      if (!_mine && !_clients) { _mine = true; cbMine.checked = true; }
+      ensureAtLeastOne();
       loadList(portal).catch(() => {});
     });
   }
