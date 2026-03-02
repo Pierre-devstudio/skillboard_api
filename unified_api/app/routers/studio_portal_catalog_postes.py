@@ -78,7 +78,8 @@ def _next_pt_code(cur, oid: str, id_ent: str) -> str:
         (oid, id_ent),
     )
     r = cur.fetchone() or {}
-    max_n = int(r.get("max_n") or -1)
+    max_n_raw = r.get("max_n")
+    max_n = int(max_n_raw) if max_n_raw is not None else 0
     nxt = max_n + 1
     if nxt > 9999:
         raise HTTPException(status_code=400, detail="Limite de numérotation atteinte (PT9999) pour cette entreprise.")
