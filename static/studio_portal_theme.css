@@ -169,11 +169,12 @@
   align-items:flex-start;
   gap:12px;
   padding-bottom:10px;
-  border-bottom:1px solid rgba(17,24,39,08);
+  border-bottom:1px solid rgba(17,24,39,12);
 }
 
 .sb-modal-body{
   padding-top:12px;
+  padding-bottom:10px;
   flex:1 1 auto;
   min-height:0;
   overflow:auto;
@@ -184,7 +185,7 @@
   justify-content:flex-end;
   gap:10px;
   padding-top:12px;
-  border-top:1px solid rgba(17,24,39,08);
+  border-top:1px solid rgba(17,24,39,12);
 }
 
 /* compat: anciens modals avec .sb-modal-actions dans body */
