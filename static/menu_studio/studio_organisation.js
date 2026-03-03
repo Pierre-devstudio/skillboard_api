@@ -92,8 +92,7 @@
         host.appendChild(buildSvcRow(s.id_service, s.nom_service, s.depth, s.nb_postes, s.nb_collabs));
         });
 
-        // Pseudo: Non lié
-        host.appendChild(buildSvcRow("__none__", "Non lié", 0, _nonLie.nb_postes, _nonLie.nb_collabs));
+        // Pseudo "Non lié" volontairement masqué dans Studio Organisation
 
         applySvcActive();
     }

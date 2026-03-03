@@ -178,17 +178,19 @@ def studio_org_list_services(id_owner: str, request: Request):
                 cur.execute(
                     """
                     SELECT
-                      (SELECT COUNT(1)
-                       FROM public.tbl_fiche_poste p
-                       WHERE p.id_ent = %s
-                         AND COALESCE(p.actif, TRUE) = TRUE
-                      ) AS nb_postes,
-                      (SELECT COUNT(1)
-                       FROM public.tbl_effectif_client e
-                       WHERE e.id_ent = %s
-                         AND COALESCE(e.archive, FALSE) = FALSE
-                         AND COALESCE(e.statut_actif, TRUE) = TRUE
-                      ) AS nb_collabs
+                        (SELECT COUNT(1)
+                        FROM public.tbl_fiche_poste p
+                        WHERE p.id_ent = %s
+                            AND COALESCE(p.actif, TRUE) = TRUE
+                            AND p.id_service IS NOT NULL
+                        ) AS nb_postes,
+                        (SELECT COUNT(1)
+                        FROM public.tbl_effectif_client e
+                        WHERE e.id_ent = %s
+                            AND COALESCE(e.archive, FALSE) = FALSE
+                            AND COALESCE(e.statut_actif, TRUE) = TRUE
+                            AND e.id_service IS NOT NULL
+                        ) AS nb_collabs
                     """,
                     (oid, oid),
                 )
@@ -459,7 +461,10 @@ def studio_org_list_postes(id_owner: str, request: Request, service: str = "__al
 
                 if svc == "__none__":
                     where.append("p.id_service IS NULL")
-                elif svc != "__all__":
+                elif svc == "__all__":
+                    # "Tous les services" = uniquement les postes rattachés à un service
+                    where.append("p.id_service IS NOT NULL")
+                else:
                     where.append("p.id_service = %s")
                     params.append(svc)
 
