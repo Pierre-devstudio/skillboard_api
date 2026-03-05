@@ -472,29 +472,13 @@
                 body: JSON.stringify(payload),
             });
 
-            // bascule en mode edit sur le poste créé
-            const newId = (r && r.id_poste) ? String(r.id_poste) : "";
-            const newCode = (r && r.codif_poste) ? String(r.codif_poste) : "";
+            
+            // refresh + fermeture modal
+            await loadServices(portal);
+            await loadPostes(portal);
 
-            if (newId){
-                _posteDetailCache.delete(newId);
-
-                await loadServices(portal);
-                await loadPostes(portal);
-
-                openEditPosteModal(portal, {
-                    id_poste: newId,
-                    code: newCode,
-                    intitule: title,
-                    id_service: sid,
-                    nb_collabs: 0,
-                    actif: true,
-                });
-                setStatus("Poste créé.");
-            } else {
-                setStatus("Poste créé.");
-                closePosteModal();
-            }
+            setStatus("Poste créé.");
+            closePosteModal();
 
         } else {
             // update
@@ -514,6 +498,7 @@
             await loadPostes(portal);
 
             setStatus("Poste enregistré.");
+            closePosteModal();
         }
     }
 
