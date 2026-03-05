@@ -266,7 +266,7 @@
 
     async function fetchPosteDetail(portal, id_poste){
         const pid = (id_poste || "").toString().trim();
-        if (!pid) throw new Error("id_poste manquant.");
+        if (!pid) return null;
 
         if (_posteDetailCache.has(pid)) return _posteDetailCache.get(pid);
 
@@ -340,6 +340,7 @@
         (async () => {
             try{
                 const d = await fetchPosteDetail(portal, _editingPosteId);
+                if (!d) return;
 
                 byId("posteCodif").value = (d.codif_poste || "");
                 byId("posteCodifClient").value = (d.codif_client || "");
@@ -379,7 +380,11 @@
 
     function openEditPosteModal(portal, p){
         _posteModalMode = "edit";
-        _editingPosteId = (p && p.id_poste) ? String(p.id_poste) : null;
+        const pid = (p && p.id_poste) ? String(p.id_poste).trim() : "";
+        if (!pid) return;
+
+        _posteModalMode = "edit";
+        _editingPosteId = pid;
 
         const modal = byId("modalPoste");
         if (modal) modal.setAttribute("data-id-poste", _editingPosteId || "");
@@ -837,8 +842,17 @@
         });
 
         // Modal Poste: close / cancel / backdrop / tabs
-        byId("btnClosePoste")?.addEventListener("click", closePosteModal);
-        byId("btnPosteCancel")?.addEventListener("click", closePosteModal);
+        byId("btnClosePoste")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closePosteModal();
+        });
+
+        byId("btnPosteCancel")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closePosteModal();
+        });
 
         const mp = byId("modalPoste");
         if (mp && !mp._sbBound){
