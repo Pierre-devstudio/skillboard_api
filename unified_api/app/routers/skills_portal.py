@@ -14,13 +14,14 @@ from app.routers.skills_portal_common import (
 # ======================================================
 # APP LOCALE (hub)
 # ======================================================
-app_local = FastAPI(title="Skillboard - Portail Skills API")
+app_local = FastAPI(title="Novoskill - Portail Skills API")
 
 app_local.add_middleware(
     CORSMiddleware,
     allow_origins=[
         # À ajuster quand tu auras le domaine final du portail skills
         "https://skillboard.jmbconsultant.fr",
+        "https://novoskill.jmbconsultant.fr",
         "https://skills.jmbconsultant.fr",
         "https://forms.jmbconsultant.fr",
         "https://skillboard-services.onrender.com",

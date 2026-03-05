@@ -10,12 +10,13 @@ from app.routers.studio_portal_common import (
     studio_fetch_owner,
 )
 
-app_local = FastAPI(title="Skillboard - Portail Studio API")
+app_local = FastAPI(title="Novoskill - Portail Studio API")
 
 app_local.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://skillboard.jmbconsultant.fr",
+        "https://novoskill.jmbconsultant.fr",
         "https://skills.jmbconsultant.fr",
         "https://forms.jmbconsultant.fr",
         "https://skillboard-services.onrender.com",
