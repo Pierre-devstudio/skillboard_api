@@ -70,6 +70,53 @@
             .replaceAll("'", "&#39;");
     }
 
+    function rtGetHtml(id){
+        const el = byId(id);
+        if (!el) return "";
+        const tag = (el.tagName || "").toUpperCase();
+        if (tag === "TEXTAREA" || tag === "INPUT") return el.value || "";
+        return el.innerHTML || "";
+        }
+
+        function rtSetHtml(id, html){
+        const el = byId(id);
+        if (!el) return;
+        const tag = (el.tagName || "").toUpperCase();
+        if (tag === "TEXTAREA" || tag === "INPUT") el.value = html || "";
+        else el.innerHTML = html || "";
+        }
+
+        function bindRichtext(id){
+        const ed = byId(id);
+        if (!ed) return;
+
+        const wrap = ed.closest(".sb-richtext");
+        const bar = wrap ? wrap.querySelector(".sb-richtext-bar") : null;
+        if (!bar || bar._sbBound) return;
+
+        bar._sbBound = true;
+
+        // Paste propre (évite le HTML Word/Outlook)
+        ed.addEventListener("paste", (e) => {
+            try{
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData("text/plain") || "";
+            document.execCommand("insertText", false, text);
+            } catch(_){}
+        });
+
+        bar.querySelectorAll("[data-cmd]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            ed.focus();
+            const cmd = btn.getAttribute("data-cmd");
+            if (!cmd) return;
+            document.execCommand(cmd, false, null);
+            });
+        });
+        }
+
     function openModal(id){
         const el = byId(id);
         if (el) el.style.display = "flex";
@@ -330,40 +377,11 @@
 
         fillPosteServiceSelect(defaultSid);
 
-        byId("posteCodif").value = "";
+        
         byId("posteCodifClient").value = "";
         byId("posteIntitule").value = "";
         byId("posteMission").value = "";
-        byId("posteResp").value = "";
-
-        // Charge le détail (codes + mission/resp + actif)
-        (async () => {
-            try{
-                const d = await fetchPosteDetail(portal, _editingPosteId);
-                if (!d) return;
-
-                byId("posteCodif").value = (d.codif_poste || "");
-                byId("posteCodifClient").value = (d.codif_client || "");
-                byId("posteIntitule").value = (d.intitule_poste || "");
-                byId("posteMission").value = (d.mission_principale || "");
-                byId("posteResp").value = (d.responsabilites || "");
-
-                // badge code (si non déjà)
-                const badge2 = byId("posteModalBadge");
-                if (badge2){
-                    const c = (d.codif_client || "").trim() || (d.codif_poste || "").trim();
-                    if (c){ badge2.textContent = c; badge2.style.display = ""; }
-                }
-
-                setPosteModalActif(!!d.actif);
-
-                const bD = byId("btnPosteDuplicate");
-                if (bD){ bD.disabled = false; bD.style.opacity = ""; bD.title = ""; }
-
-            } catch(e){
-                portal.showAlert("error", e?.message || String(e));
-            }
-        })();
+        rtSetHtml("posteResp", "");
 
         // boutons (actions API à l'étape 2)
         const bA = byId("btnPosteArchive");
@@ -389,7 +407,8 @@
         const modal = byId("modalPoste");
         if (modal) modal.setAttribute("data-id-poste", _editingPosteId || "");
 
-        byId("posteModalTitle").textContent = "Modifier le poste";
+        byId("posteModalTitle").textContent =
+            (p && (p.intitule_poste || p.intitule)) ? String(p.intitule_poste || p.intitule) : "Poste";
         byId("posteModalSub").textContent = "Mise à jour / transfert de service / archivage.";
 
         const badge = byId("posteModalBadge");
@@ -434,11 +453,10 @@
         const ownerId = getOwnerId();
 
         const sid = (byId("posteService")?.value || "").trim();
-        const cod = (byId("posteCodif")?.value || "").trim();
         const codc = (byId("posteCodifClient")?.value || "").trim();
         const title = (byId("posteIntitule")?.value || "").trim();
         const mission = (byId("posteMission")?.value || "").trim();
-        const resp = (byId("posteResp")?.value || "").trim();
+        const resp = rtGetHtml("posteResp").trim();
 
         if (!sid){
             portal.showAlert("error", "Sélectionne un service.");
@@ -449,14 +467,8 @@
             return;
         }
 
-        if (_posteModalMode === "edit" && !cod){
-            portal.showAlert("error", "Code interne obligatoire.");
-            return;
-        }
-
         const payload = {
-            id_service: sid,
-            codif_poste: (cod || null),
+            id_service: sid,            
             codif_client: (codc || null),
             intitule_poste: title,
             mission_principale: (mission || null),
@@ -838,6 +850,8 @@
         e.stopPropagation();
         closePosteModal();
         });
+
+        bindRichtext("posteResp");
 
         const mp = byId("modalPoste");
         if (mp && !mp._sbBound){

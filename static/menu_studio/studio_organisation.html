@@ -83,7 +83,7 @@
         <div style="min-width:0; flex:1;">
           <div style="display:flex; align-items:center; gap:8px; min-width:0;">
             <span id="posteModalBadge" class="sb-badge sb-badge--poste" style="display:none;"></span>
-            <div class="card-title" id="posteModalTitle" style="margin:0;">Poste</div>
+            <div class="card-title" id="posteModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Poste</div>
           </div>
           <div class="card-sub" id="posteModalSub" style="margin:4px 0 0 0;">—</div>
 
@@ -105,10 +105,7 @@
               <div class="label">Attaché au service</div>
               <select id="posteService"></select>
             </div>
-            <div class="info-item" style="flex:1; min-width:220px;">
-              <div class="label">Code interne</div>
-              <input type="text" id="posteCodif" />
-            </div>
+
             <div class="info-item" style="flex:1; min-width:220px;">
               <div class="label">Code client</div>
               <input type="text" id="posteCodifClient" />
@@ -132,7 +129,20 @@
           <div class="row">
             <div class="info-item" style="flex:3; min-width:260px;">
               <div class="label">Responsabilités</div>
-              <textarea id="posteResp" rows="6"></textarea>
+              <div class="sb-richtext" data-rt="posteResp">
+                <div class="sb-richtext-bar">
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="bold" title="Gras"><b>G</b></button>
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="italic" title="Italique"><i>I</i></button>
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="underline" title="Souligner"><u>S</u></button>
+                  <span class="sb-richtext-sep"></span>
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="insertUnorderedList" title="Liste à puces">• Liste</button>
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="insertOrderedList" title="Liste numérotée">1. Liste</button>
+                  <span class="sb-richtext-sep"></span>
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="removeFormat" title="Nettoyer">Nettoyer</button>
+                </div>
+
+                <div class="sb-richtext-editor" id="posteResp" contenteditable="true"></div>
+              </div>
             </div>
           </div>
         </div>
