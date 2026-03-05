@@ -68,6 +68,86 @@ def _service_exists_active(cur, id_ent: str, id_service: str) -> bool:
     )
     return cur.fetchone() is not None
 
+def _norm_service_id(v: Optional[str]) -> Optional[str]:
+    s = (v or "").strip()
+    if not s or s in ("__all__", "__none__"):
+        return None
+    return s
+
+
+def _next_pt_code(cur, oid: str, id_ent: str) -> str:
+    # Sérialise les créations pour une entreprise (évite doublons)
+    lock_key = f"poste_code:{oid}:{id_ent}"
+    cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (lock_key,))
+
+    cur.execute(
+        """
+        SELECT COALESCE(
+          MAX( (regexp_match(p.codif_poste, '^PT([0-9]{4})$'))[1]::int ),
+          0
+        ) AS max_n
+        FROM public.tbl_fiche_poste p
+        WHERE p.id_owner = %s
+          AND p.id_ent = %s
+          AND p.codif_poste ~ '^PT[0-9]{4}$'
+        """,
+        (oid, id_ent),
+    )
+    r = cur.fetchone() or {}
+    max_n_raw = r.get("max_n")
+    max_n = int(max_n_raw) if max_n_raw is not None else 0
+    nxt = max_n + 1
+    if nxt > 9999:
+        raise HTTPException(status_code=400, detail="Limite de numérotation atteinte (PT9999) pour cette entreprise.")
+    return f"PT{nxt:04d}"
+
+
+def _poste_exists(cur, oid: str, id_ent: str, id_poste: str) -> bool:
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_fiche_poste
+        WHERE id_poste = %s
+          AND id_owner = %s
+          AND id_ent = %s
+        LIMIT 1
+        """,
+        (id_poste, oid, id_ent),
+    )
+    return cur.fetchone() is not None
+
+
+def _poste_code_exists(cur, oid: str, id_ent: str, codif_poste: str, exclude_poste: Optional[str] = None) -> bool:
+    code = (codif_poste or "").strip()
+    if not code:
+        return False
+
+    if exclude_poste:
+        cur.execute(
+            """
+            SELECT 1
+            FROM public.tbl_fiche_poste
+            WHERE id_owner = %s
+              AND id_ent = %s
+              AND lower(codif_poste) = lower(%s)
+              AND id_poste <> %s
+            LIMIT 1
+            """,
+            (oid, id_ent, code, exclude_poste),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT 1
+            FROM public.tbl_fiche_poste
+            WHERE id_owner = %s
+              AND id_ent = %s
+              AND lower(codif_poste) = lower(%s)
+            LIMIT 1
+            """,
+            (oid, id_ent, code),
+        )
+    return cur.fetchone() is not None
 
 # ------------------------------------------------------
 # Models
@@ -90,6 +170,31 @@ class AssignPostePayload(BaseModel):
 class DetachPostePayload(BaseModel):
     id_poste: str
 
+class CreatePosteOrgPayload(BaseModel):
+    id_service: Optional[str] = None
+    codif_poste: Optional[str] = None
+    codif_client: Optional[str] = None
+    intitule_poste: str
+    mission_principale: Optional[str] = None
+    responsabilites: Optional[str] = None
+
+
+class UpdatePosteOrgPayload(BaseModel):
+    id_service: Optional[str] = None
+    codif_poste: Optional[str] = None
+    codif_client: Optional[str] = None
+    intitule_poste: Optional[str] = None
+    mission_principale: Optional[str] = None
+    responsabilites: Optional[str] = None
+
+
+class ArchivePosteOrgPayload(BaseModel):
+    # archive=True => actif FALSE ; archive=False => actif TRUE (restauration)
+    archive: bool = True
+
+
+class DuplicatePosteOrgPayload(BaseModel):
+    id_service: Optional[str] = None
 
 # ------------------------------------------------------
 # Endpoints: Services
@@ -437,7 +542,13 @@ def studio_org_archive_service(id_owner: str, id_service: str, request: Request)
 # Endpoints: Postes (liste + catalogue + affectation)
 # ------------------------------------------------------
 @router.get("/studio/org/postes/{id_owner}")
-def studio_org_list_postes(id_owner: str, request: Request, service: str = "__all__", q: str = ""):
+def studio_org_list_postes(
+    id_owner: str,
+    request: Request,
+    service: str = "__all__",
+    q: str = "",
+    include_archived: int = 0,
+):
     """
     service:
       - "__all__" : tous les postes
@@ -456,8 +567,13 @@ def studio_org_list_postes(id_owner: str, request: Request, service: str = "__al
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
 
-                where = ["p.id_ent = %s", "COALESCE(p.actif, TRUE) = TRUE"]
-                params = [oid]
+                inc_arch = int(include_archived or 0) == 1
+
+                where = ["p.id_owner = %s", "p.id_ent = %s"]
+                params = [oid, oid]
+
+                if not inc_arch:
+                    where.append("COALESCE(p.actif, TRUE) = TRUE")
 
                 if svc == "__none__":
                     where.append("p.id_service IS NULL")
@@ -478,21 +594,22 @@ def studio_org_list_postes(id_owner: str, request: Request, service: str = "__al
                 cur.execute(
                     f"""
                     SELECT
-                      p.id_poste,
-                      p.codif_poste,
-                      p.codif_client,
-                      p.intitule_poste,
-                      p.id_service,
-                      COALESCE(cnt.nb_collabs, 0) AS nb_collabs
+                    p.id_poste,
+                    p.codif_poste,
+                    p.codif_client,
+                    p.intitule_poste,
+                    p.id_service,
+                    COALESCE(p.actif, TRUE) AS actif,
+                    COALESCE(cnt.nb_collabs, 0) AS nb_collabs
                     FROM public.tbl_fiche_poste p
                     LEFT JOIN (
-                      SELECT e.id_poste_actuel AS id_poste, COUNT(1) AS nb_collabs
-                      FROM public.tbl_effectif_client e
-                      WHERE e.id_ent = %s
+                    SELECT e.id_poste_actuel AS id_poste, COUNT(1) AS nb_collabs
+                    FROM public.tbl_effectif_client e
+                    WHERE e.id_ent = %s
                         AND COALESCE(e.archive, FALSE) = FALSE
                         AND COALESCE(e.statut_actif, TRUE) = TRUE
                         AND e.id_poste_actuel IS NOT NULL
-                      GROUP BY e.id_poste_actuel
+                    GROUP BY e.id_poste_actuel
                     ) cnt ON cnt.id_poste = p.id_poste
                     WHERE {" AND ".join(where)}
                     ORDER BY COALESCE(p.codif_client, p.codif_poste), p.intitule_poste
@@ -511,6 +628,7 @@ def studio_org_list_postes(id_owner: str, request: Request, service: str = "__al
                             "intitule": r.get("intitule_poste"),
                             "id_service": r.get("id_service"),
                             "nb_collabs": int(r.get("nb_collabs") or 0),
+                            "actif": bool(r.get("actif")),
                         }
                     )
 
@@ -521,6 +639,328 @@ def studio_org_list_postes(id_owner: str, request: Request, service: str = "__al
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/postes error: {e}")
 
+@router.get("/studio/org/poste_detail/{id_owner}/{id_poste}")
+def studio_org_poste_detail(id_owner: str, id_poste: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        pid = (id_poste or "").strip()
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_poste manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    SELECT
+                      p.id_poste,
+                      p.id_service,
+                      COALESCE(p.actif, TRUE) AS actif,
+                      p.codif_poste,
+                      p.codif_client,
+                      p.intitule_poste,
+                      p.mission_principale,
+                      p.responsabilites,
+                      p.date_maj
+                    FROM public.tbl_fiche_poste p
+                    WHERE p.id_owner = %s
+                      AND p.id_ent = %s
+                      AND p.id_poste = %s
+                    LIMIT 1
+                    """,
+                    (oid, oid, pid),
+                )
+                r = cur.fetchone()
+                if not r:
+                    raise HTTPException(status_code=404, detail="Poste introuvable.")
+
+        return {
+            "id_poste": r.get("id_poste"),
+            "id_service": r.get("id_service"),
+            "actif": bool(r.get("actif")),
+            "codif_poste": r.get("codif_poste"),
+            "codif_client": r.get("codif_client"),
+            "intitule_poste": r.get("intitule_poste"),
+            "mission_principale": r.get("mission_principale"),
+            "responsabilites": r.get("responsabilites"),
+            "date_maj": r.get("date_maj"),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/poste_detail error: {e}")
+
+
+@router.post("/studio/org/postes/{id_owner}")
+def studio_org_create_poste(id_owner: str, payload: CreatePosteOrgPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        title = (payload.intitule_poste or "").strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="Intitulé obligatoire.")
+
+        sid = _norm_service_id(payload.id_service)
+        if not sid:
+            raise HTTPException(status_code=400, detail="Service obligatoire.")
+
+        codif = (payload.codif_poste or "").strip() or None
+        cod_cli = (payload.codif_client or "").strip() or None
+        mission = (payload.mission_principale or "").strip() or None
+        resp = (payload.responsabilites or "").strip() or None
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                if not _service_exists_active(cur, oid, sid):
+                    raise HTTPException(status_code=400, detail="Service introuvable ou archivé.")
+
+                # Code interne: si non fourni => auto PTxxxx
+                if not codif:
+                    codif = _next_pt_code(cur, oid, oid)
+                else:
+                    if _poste_code_exists(cur, oid, oid, codif):
+                        raise HTTPException(status_code=400, detail="Code interne déjà utilisé.")
+
+                pid = str(uuid.uuid4())
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_fiche_poste
+                      (id_poste, id_owner, id_ent, id_service, codif_poste, codif_client, intitule_poste,
+                       mission_principale, responsabilites, actif, date_maj)
+                    VALUES
+                      (%s, %s, %s, %s, %s, %s, %s,
+                       %s, %s, TRUE, NOW())
+                    """,
+                    (pid, oid, oid, sid, codif, cod_cli, title, mission, resp),
+                )
+                conn.commit()
+
+        return {"id_poste": pid, "codif_poste": codif}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/postes create error: {e}")
+
+
+@router.post("/studio/org/postes/{id_owner}/{id_poste}")
+def studio_org_update_poste(id_owner: str, id_poste: str, payload: UpdatePosteOrgPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        pid = (id_poste or "").strip()
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_poste manquant.")
+
+        patch_fields = payload.__fields_set__ or set()
+        if not patch_fields:
+            return {"ok": True}
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                if not _poste_exists(cur, oid, oid, pid):
+                    raise HTTPException(status_code=404, detail="Poste introuvable.")
+
+                cols = []
+                vals = []
+
+                if "id_service" in patch_fields:
+                    sid = _norm_service_id(payload.id_service)
+                    if not sid:
+                        raise HTTPException(status_code=400, detail="Service obligatoire.")
+                    if not _service_exists_active(cur, oid, sid):
+                        raise HTTPException(status_code=400, detail="Service introuvable ou archivé.")
+                    cols.append("id_service = %s")
+                    vals.append(sid)
+
+                if "codif_poste" in patch_fields:
+                    cod = (payload.codif_poste or "").strip()
+                    if not cod:
+                        raise HTTPException(status_code=400, detail="Code interne obligatoire.")
+                    if _poste_code_exists(cur, oid, oid, cod, exclude_poste=pid):
+                        raise HTTPException(status_code=400, detail="Code interne déjà utilisé.")
+                    cols.append("codif_poste = %s")
+                    vals.append(cod)
+
+                if "codif_client" in patch_fields:
+                    codc = (payload.codif_client or "").strip() or None
+                    cols.append("codif_client = %s")
+                    vals.append(codc)
+
+                if "intitule_poste" in patch_fields:
+                    title = (payload.intitule_poste or "").strip()
+                    if not title:
+                        raise HTTPException(status_code=400, detail="Intitulé obligatoire.")
+                    cols.append("intitule_poste = %s")
+                    vals.append(title)
+
+                if "mission_principale" in patch_fields:
+                    mission = (payload.mission_principale or "").strip() or None
+                    cols.append("mission_principale = %s")
+                    vals.append(mission)
+
+                if "responsabilites" in patch_fields:
+                    resp = (payload.responsabilites or "").strip() or None
+                    cols.append("responsabilites = %s")
+                    vals.append(resp)
+
+                if cols:
+                    cols.append("date_maj = NOW()")
+                    vals.extend([pid, oid, oid])
+                    cur.execute(
+                        f"""
+                        UPDATE public.tbl_fiche_poste
+                        SET {", ".join(cols)}
+                        WHERE id_poste = %s
+                          AND id_owner = %s
+                          AND id_ent = %s
+                        """,
+                        tuple(vals),
+                    )
+                    conn.commit()
+
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/postes update error: {e}")
+
+
+@router.post("/studio/org/postes/{id_owner}/{id_poste}/archive")
+def studio_org_archive_poste(id_owner: str, id_poste: str, payload: ArchivePosteOrgPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        pid = (id_poste or "").strip()
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_poste manquant.")
+
+        set_actif = not bool(payload.archive)
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                if not _poste_exists(cur, oid, oid, pid):
+                    raise HTTPException(status_code=404, detail="Poste introuvable.")
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_fiche_poste
+                    SET actif = %s, date_maj = NOW()
+                    WHERE id_poste = %s
+                      AND id_owner = %s
+                      AND id_ent = %s
+                    """,
+                    (set_actif, pid, oid, oid),
+                )
+                conn.commit()
+
+        return {"ok": True, "actif": bool(set_actif)}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/postes archive error: {e}")
+
+
+@router.post("/studio/org/postes/{id_owner}/{id_poste}/duplicate")
+def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicatePosteOrgPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        pid = (id_poste or "").strip()
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_poste manquant.")
+
+        target_sid = _norm_service_id(payload.id_service) if payload else None
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    SELECT
+                      p.id_service,
+                      p.codif_client,
+                      p.intitule_poste,
+                      p.mission_principale,
+                      p.responsabilites
+                    FROM public.tbl_fiche_poste p
+                    WHERE p.id_poste = %s
+                      AND p.id_owner = %s
+                      AND p.id_ent = %s
+                    LIMIT 1
+                    """,
+                    (pid, oid, oid),
+                )
+                src = cur.fetchone()
+                if not src:
+                    raise HTTPException(status_code=404, detail="Poste introuvable.")
+
+                sid = target_sid or (src.get("id_service") or "").strip()
+                if not sid:
+                    raise HTTPException(status_code=400, detail="Service obligatoire.")
+                if not _service_exists_active(cur, oid, sid):
+                    raise HTTPException(status_code=400, detail="Service introuvable ou archivé.")
+
+                new_id = str(uuid.uuid4())
+                new_code = _next_pt_code(cur, oid, oid)
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_fiche_poste
+                      (id_poste, id_owner, id_ent, id_service, codif_poste, codif_client, intitule_poste,
+                       mission_principale, responsabilites, actif, date_maj)
+                    VALUES
+                      (%s, %s, %s, %s, %s, %s, %s,
+                       %s, %s, TRUE, NOW())
+                    """,
+                    (
+                        new_id,
+                        oid,
+                        oid,
+                        sid,
+                        new_code,
+                        src.get("codif_client"),
+                        src.get("intitule_poste"),
+                        src.get("mission_principale"),
+                        src.get("responsabilites"),
+                    ),
+                )
+                conn.commit()
+
+        return {"id_poste": new_id, "codif_poste": new_code}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/postes duplicate error: {e}")
 
 @router.get("/studio/org/postes_catalogue/{id_owner}")
 def studio_org_list_postes_catalogue(id_owner: str, request: Request, q: str = ""):

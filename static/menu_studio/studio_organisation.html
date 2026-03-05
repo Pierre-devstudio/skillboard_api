@@ -35,13 +35,19 @@
             <div class="card-title" style="margin-bottom:2px;">Postes</div>
             <div class="card-sub" style="margin:0;">Fiches de poste rattachées au service sélectionné.</div>
           </div>
-          <div class="sb-toolbar">
-            <div class="sb-search">
-              <div class="card-sub" style="margin:0 0 4px 0;">Rechercher un poste</div>
-              <input type="text" id="posteSearch" placeholder="Code ou intitulé…" />
+            <div class="sb-toolbar">
+              <div class="sb-search">
+                <div class="card-sub" style="margin:0 0 4px 0;">Rechercher un poste</div>
+                <input type="text" id="posteSearch" placeholder="Code ou intitulé…" />
+              </div>
+
+              <label class="sb-check" style="align-self:flex-end; margin:0 4px 2px 0;">
+                <input type="checkbox" id="posteShowArchived" />
+                <span>Voir les postes archivés</span>
+              </label>
+
+              <button type="button" class="sb-btn sb-btn--accent" id="btnAddFromCatalog">Ajouter un poste</button>
             </div>
-            <button type="button" class="sb-btn sb-btn--accent" id="btnAddFromCatalog">Ajouter depuis le catalogue</button>
-          </div>
         </div>
 
         <div class="sb-stack sb-stack--xxs sb-mt-10" id="posteList"></div>
@@ -66,6 +72,95 @@
         </div>
         <div class="sb-stack sb-stack--xxs sb-mt-10" id="catalogList"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL : Poste (create/edit/archive/duplicate) -->
+  <div class="sb-modal" id="modalPoste" style="display:none;">
+    <div class="sb-modal-card" data-id-poste="">
+
+      <div class="sb-modal-head">
+        <div style="min-width:0; flex:1;">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+            <span id="posteModalBadge" class="sb-badge sb-badge--poste" style="display:none;"></span>
+            <div class="card-title" id="posteModalTitle" style="margin:0;">Poste</div>
+          </div>
+          <div class="card-sub" id="posteModalSub" style="margin:4px 0 0 0;">—</div>
+
+          <div class="sb-segbar" id="posteTabbar" style="margin-top:10px;">
+            <button type="button" class="sb-btn sb-btn--soft" data-tab="def">Définition</button>
+            <button type="button" class="sb-btn sb-btn--soft" data-tab="exi">Exigences</button>
+            <button type="button" class="sb-btn sb-btn--soft" data-tab="rh">Paramétrage RH</button>
+          </div>
+        </div>
+
+        <button type="button" class="sb-modal-x" id="btnClosePoste" aria-label="Fermer">&times;</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <!-- Définition -->
+        <div class="sb-tab-panel is-active" data-panel="def">
+          <div class="row">
+            <div class="info-item" style="flex:2; min-width:260px;">
+              <div class="label">Attaché au service</div>
+              <select id="posteService"></select>
+            </div>
+            <div class="info-item" style="flex:1; min-width:220px;">
+              <div class="label">Code interne</div>
+              <input type="text" id="posteCodif" />
+            </div>
+            <div class="info-item" style="flex:1; min-width:220px;">
+              <div class="label">Code client</div>
+              <input type="text" id="posteCodifClient" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="info-item" style="flex:3; min-width:260px;">
+              <div class="label">Intitulé du poste</div>
+              <input type="text" id="posteIntitule" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="info-item" style="flex:3; min-width:260px;">
+              <div class="label">Mission principale</div>
+              <textarea id="posteMission" rows="2"></textarea>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="info-item" style="flex:3; min-width:260px;">
+              <div class="label">Responsabilités</div>
+              <textarea id="posteResp" rows="6"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Exigences -->
+        <div class="sb-tab-panel" data-panel="exi">
+          <div class="card-sub">Onglet prêt. On branche les champs Exigences à l’étape API.</div>
+        </div>
+
+        <!-- Paramétrage RH -->
+        <div class="sb-tab-panel" data-panel="rh">
+          <div class="card-sub">Onglet prêt. On branche le Paramétrage RH à l’étape API.</div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <div class="sb-actions" style="width:100%; justify-content:space-between;">
+          <div class="sb-actions">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnPosteArchive">Archiver</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnPosteDuplicate">Dupliquer</button>
+          </div>
+          <div class="sb-actions">
+            <button type="button" class="sb-btn sb-btn--accent" id="btnPosteSave">Enregistrer</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCancel">Annuler</button>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 

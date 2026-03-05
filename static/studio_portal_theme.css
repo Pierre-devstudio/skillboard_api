@@ -116,6 +116,15 @@
   border-radius:12px;
   background:#fff;
 }
+
+.sb-row-card.is-archived{
+  opacity: .55;
+}
+.sb-row-right{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
 .sb-row-left{ display:flex; align-items:center; gap:10px; min-width:0; }
 .sb-row-title{
   font-weight:600;
@@ -125,6 +134,15 @@
   text-overflow:ellipsis;
   max-width: 740px;
 }
+
+/* Tabs (CORE) */
+.sb-segbar{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.sb-tab-panel{ display:none; }
+.sb-tab-panel.is-active{ display:block; }
 
 /* Badges (Studio: accent jaune => texte sombre) */
 .sb-badge{
