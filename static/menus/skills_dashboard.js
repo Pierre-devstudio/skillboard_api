@@ -45,7 +45,7 @@
       const elTitle = byId("dashInfoTitle");
       const elText = byId("dashInfoText");
 
-      if (elTitle) elTitle.textContent = titre || "Les nouveautés dans Skillboard Insights";
+      if (elTitle) elTitle.textContent = titre || "Les nouveautés dans Novoskill Insights";
       if (elText) elText.textContent = message;
 
       banner.style.display = "";
