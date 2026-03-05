@@ -149,7 +149,55 @@
 
         <!-- Exigences -->
         <div class="sb-tab-panel" data-panel="exi">
-          <div class="card-sub">Onglet prêt. On branche les champs Exigences à l’étape API.</div>
+          <div class="card org-bloc" id="posteBlocContraintes">
+            <div class="card-title">Contraintes</div>
+
+            <div class="sb-form-grid">
+              <div class="sb-field">
+                <div class="label">Niveau d’étude minimum requis</div>
+                <select id="posteCtrEduMin"></select>
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Domaine du diplôme (NSF)</div>
+                <select id="posteCtrNsfGroupe"></select>
+              </div>
+
+              <div class="sb-field sb-span-2">
+                <label class="sb-check">
+                  <input type="checkbox" id="posteCtrNsfOblig" />
+                  <span>Correspondance du diplôme impérative</span>
+                </label>
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Mobilité</div>
+                <select id="posteCtrMobilite"></select>
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Risques physiques</div>
+                <select id="posteCtrRisquePhys"></select>
+                <div class="sb-help" id="posteCtrRisquePhysHelp" style="display:none;"></div>
+              </div>
+
+              <div class="sb-field sb-span-2">
+                <div class="label">Perspectives d’évolution</div>
+                <select id="posteCtrPerspEvol"></select>
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Niveau de contraintes</div>
+                <select id="posteCtrNivContrainte"></select>
+                <div class="sb-help" id="posteCtrNivContrainteHelp" style="display:none;"></div>
+              </div>
+
+              <div class="sb-field sb-span-2">
+                <div class="label">Détails des contraintes</div>
+                <textarea id="posteCtrDetailContrainte" class="sb-ctrl" rows="4"></textarea>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Paramétrage RH -->

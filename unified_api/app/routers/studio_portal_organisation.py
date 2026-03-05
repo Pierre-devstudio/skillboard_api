@@ -68,6 +68,22 @@ def _service_exists_active(cur, id_ent: str, id_service: str) -> bool:
     )
     return cur.fetchone() is not None
 
+def _nsf_groupe_exists_active(cur, code: str) -> bool:
+    c = (code or "").strip()
+    if not c:
+        return False
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_nsf_groupe
+        WHERE code = %s
+          AND COALESCE(masque, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (c,),
+    )
+    return cur.fetchone() is not None
+
 def _norm_service_id(v: Optional[str]) -> Optional[str]:
     s = (v or "").strip()
     if not s or s in ("__all__", "__none__"):
@@ -172,20 +188,40 @@ class DetachPostePayload(BaseModel):
 
 class CreatePosteOrgPayload(BaseModel):
     id_service: Optional[str] = None
-    codif_poste: Optional[str] = None
+    codif_poste: Optional[str] = None  # ignoré (auto)
     codif_client: Optional[str] = None
     intitule_poste: str
     mission_principale: Optional[str] = None
     responsabilites: Optional[str] = None
 
+    # Exigences > Contraintes
+    niveau_education_minimum: Optional[str] = None
+    nsf_groupe_code: Optional[str] = None
+    nsf_groupe_obligatoire: Optional[bool] = None
+    mobilite: Optional[str] = None
+    risque_physique: Optional[str] = None
+    perspectives_evolution: Optional[str] = None
+    niveau_contrainte: Optional[str] = None
+    detail_contrainte: Optional[str] = None
+
 
 class UpdatePosteOrgPayload(BaseModel):
     id_service: Optional[str] = None
-    codif_poste: Optional[str] = None
+    codif_poste: Optional[str] = None  # interdit (lock serveur)
     codif_client: Optional[str] = None
     intitule_poste: Optional[str] = None
     mission_principale: Optional[str] = None
     responsabilites: Optional[str] = None
+
+    # Exigences > Contraintes
+    niveau_education_minimum: Optional[str] = None
+    nsf_groupe_code: Optional[str] = None
+    nsf_groupe_obligatoire: Optional[bool] = None
+    mobilite: Optional[str] = None
+    risque_physique: Optional[str] = None
+    perspectives_evolution: Optional[str] = None
+    niveau_contrainte: Optional[str] = None
+    detail_contrainte: Optional[str] = None
 
 
 class ArchivePosteOrgPayload(BaseModel):
@@ -666,8 +702,23 @@ def studio_org_poste_detail(id_owner: str, id_poste: str, request: Request):
                       p.intitule_poste,
                       p.mission_principale,
                       p.responsabilites,
-                      p.date_maj
+                      p.date_maj,
+
+                      -- Contraintes
+                      p.niveau_education_minimum,
+                      p.nsf_groupe_code,
+                      COALESCE(p.nsf_groupe_obligatoire, FALSE) AS nsf_groupe_obligatoire,
+                      ng.titre AS nsf_groupe_titre,
+                      p.mobilite,
+                      p.risque_physique,
+                      p.perspectives_evolution,
+                      p.niveau_contrainte,
+                      p.detail_contrainte
+
                     FROM public.tbl_fiche_poste p
+                    LEFT JOIN public.tbl_nsf_groupe ng
+                      ON ng.code = p.nsf_groupe_code
+                     AND COALESCE(ng.masque, FALSE) = FALSE
                     WHERE p.id_owner = %s
                       AND p.id_ent = %s
                       AND p.id_poste = %s
@@ -689,6 +740,15 @@ def studio_org_poste_detail(id_owner: str, id_poste: str, request: Request):
             "mission_principale": r.get("mission_principale"),
             "responsabilites": r.get("responsabilites"),
             "date_maj": r.get("date_maj"),
+            "niveau_education_minimum": r.get("niveau_education_minimum"),
+            "nsf_groupe_code": r.get("nsf_groupe_code"),
+            "nsf_groupe_obligatoire": bool(r.get("nsf_groupe_obligatoire")),
+            "nsf_groupe_titre": r.get("nsf_groupe_titre"),
+            "mobilite": r.get("mobilite"),
+            "risque_physique": r.get("risque_physique"),
+            "perspectives_evolution": r.get("perspectives_evolution"),
+            "niveau_contrainte": r.get("niveau_contrainte"),
+            "detail_contrainte": r.get("detail_contrainte"),
         }
 
     except HTTPException:
@@ -711,10 +771,19 @@ def studio_org_create_poste(id_owner: str, payload: CreatePosteOrgPayload, reque
         if not sid:
             raise HTTPException(status_code=400, detail="Service obligatoire.")
 
-        codif = (payload.codif_poste or "").strip() or None
+        # Code interne: auto uniquement (on ignore toute saisie)
+        codif = None
         cod_cli = (payload.codif_client or "").strip() or None
         mission = (payload.mission_principale or "").strip() or None
         resp = (payload.responsabilites or "").strip() or None
+        edu_min = (payload.niveau_education_minimum or "").strip() or None
+        nsf_code = (payload.nsf_groupe_code or "").strip() or None
+        nsf_oblig = bool(payload.nsf_groupe_obligatoire) if payload.nsf_groupe_obligatoire is not None else False
+        mobilite = (payload.mobilite or "").strip() or None
+        risque = (payload.risque_physique or "").strip() or None
+        persp = (payload.perspectives_evolution or "").strip() or None
+        niv_ctr = (payload.niveau_contrainte or "").strip() or None
+        det_ctr = (payload.detail_contrainte or "").strip() or None
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -725,25 +794,52 @@ def studio_org_create_poste(id_owner: str, payload: CreatePosteOrgPayload, reque
                 if not _service_exists_active(cur, oid, sid):
                     raise HTTPException(status_code=400, detail="Service introuvable ou archivé.")
 
-                # Code interne: si non fourni => auto PTxxxx
-                if not codif:
-                    codif = _next_pt_code(cur, oid, oid)
-                else:
-                    if _poste_code_exists(cur, oid, oid, codif):
-                        raise HTTPException(status_code=400, detail="Code interne déjà utilisé.")
+                codif = _next_pt_code(cur, oid, oid)
+
+                if nsf_code and not _nsf_groupe_exists_active(cur, nsf_code):
+                    raise HTTPException(status_code=400, detail="Domaine NSF introuvable ou masqué.")
 
                 pid = str(uuid.uuid4())
 
                 cur.execute(
                     """
                     INSERT INTO public.tbl_fiche_poste
-                      (id_poste, id_owner, id_ent, id_service, codif_poste, codif_client, intitule_poste,
-                       mission_principale, responsabilites, actif, date_maj)
+                      (id_poste, id_owner, id_ent, id_service,
+                       codif_poste, codif_client, intitule_poste,
+                       mission_principale, responsabilites,
+                       actif, date_maj,
+
+                       -- Contraintes
+                       niveau_education_minimum,
+                       nsf_groupe_code,
+                       nsf_groupe_obligatoire,
+                       mobilite,
+                       risque_physique,
+                       perspectives_evolution,
+                       niveau_contrainte,
+                       detail_contrainte)
                     VALUES
-                      (%s, %s, %s, %s, %s, %s, %s,
-                       %s, %s, TRUE, NOW())
+                      (%s, %s, %s, %s,
+                       %s, %s, %s,
+                       %s, %s,
+                       TRUE, NOW(),
+
+                       %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
-                    (pid, oid, oid, sid, codif, cod_cli, title, mission, resp),
+                    (
+                        pid, oid, oid, sid,
+                        codif, cod_cli, title,
+                        mission, resp,
+
+                        edu_min,
+                        nsf_code,
+                        nsf_oblig,
+                        mobilite,
+                        risque,
+                        persp,
+                        niv_ctr,
+                        det_ctr,
+                    ),
                 )
                 conn.commit()
 
@@ -768,6 +864,9 @@ def studio_org_update_poste(id_owner: str, id_poste: str, payload: UpdatePosteOr
         patch_fields = payload.__fields_set__ or set()
         if not patch_fields:
             return {"ok": True}
+        
+        if "codif_poste" in patch_fields:
+            raise HTTPException(status_code=400, detail="Le code interne est généré automatiquement et ne peut pas être modifié.")
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -790,15 +889,6 @@ def studio_org_update_poste(id_owner: str, id_poste: str, payload: UpdatePosteOr
                     cols.append("id_service = %s")
                     vals.append(sid)
 
-                if "codif_poste" in patch_fields:
-                    cod = (payload.codif_poste or "").strip()
-                    if not cod:
-                        raise HTTPException(status_code=400, detail="Code interne obligatoire.")
-                    if _poste_code_exists(cur, oid, oid, cod, exclude_poste=pid):
-                        raise HTTPException(status_code=400, detail="Code interne déjà utilisé.")
-                    cols.append("codif_poste = %s")
-                    vals.append(cod)
-
                 if "codif_client" in patch_fields:
                     codc = (payload.codif_client or "").strip() or None
                     cols.append("codif_client = %s")
@@ -820,6 +910,48 @@ def studio_org_update_poste(id_owner: str, id_poste: str, payload: UpdatePosteOr
                     resp = (payload.responsabilites or "").strip() or None
                     cols.append("responsabilites = %s")
                     vals.append(resp)
+
+                if "niveau_education_minimum" in patch_fields:
+                    edu_min = (payload.niveau_education_minimum or "").strip() or None
+                    cols.append("niveau_education_minimum = %s")
+                    vals.append(edu_min)
+
+                if "nsf_groupe_code" in patch_fields:
+                    nsf_code = (payload.nsf_groupe_code or "").strip() or None
+                    if nsf_code and not _nsf_groupe_exists_active(cur, nsf_code):
+                        raise HTTPException(status_code=400, detail="Domaine NSF introuvable ou masqué.")
+                    cols.append("nsf_groupe_code = %s")
+                    vals.append(nsf_code)
+
+                if "nsf_groupe_obligatoire" in patch_fields:
+                    nsf_oblig = bool(payload.nsf_groupe_obligatoire) if payload.nsf_groupe_obligatoire is not None else False
+                    cols.append("nsf_groupe_obligatoire = %s")
+                    vals.append(nsf_oblig)
+
+                if "mobilite" in patch_fields:
+                    mobilite = (payload.mobilite or "").strip() or None
+                    cols.append("mobilite = %s")
+                    vals.append(mobilite)
+
+                if "risque_physique" in patch_fields:
+                    risque = (payload.risque_physique or "").strip() or None
+                    cols.append("risque_physique = %s")
+                    vals.append(risque)
+
+                if "perspectives_evolution" in patch_fields:
+                    persp = (payload.perspectives_evolution or "").strip() or None
+                    cols.append("perspectives_evolution = %s")
+                    vals.append(persp)
+
+                if "niveau_contrainte" in patch_fields:
+                    niv_ctr = (payload.niveau_contrainte or "").strip() or None
+                    cols.append("niveau_contrainte = %s")
+                    vals.append(niv_ctr)
+
+                if "detail_contrainte" in patch_fields:
+                    det_ctr = (payload.detail_contrainte or "").strip() or None
+                    cols.append("detail_contrainte = %s")
+                    vals.append(det_ctr)
 
                 if cols:
                     cols.append("date_maj = NOW()")
@@ -910,7 +1042,18 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                       p.codif_client,
                       p.intitule_poste,
                       p.mission_principale,
-                      p.responsabilites
+                      p.responsabilites,
+
+                      -- Contraintes
+                      p.niveau_education_minimum,
+                      p.nsf_groupe_code,
+                      COALESCE(p.nsf_groupe_obligatoire, FALSE) AS nsf_groupe_obligatoire,
+                      p.mobilite,
+                      p.risque_physique,
+                      p.perspectives_evolution,
+                      p.niveau_contrainte,
+                      p.detail_contrainte
+
                     FROM public.tbl_fiche_poste p
                     WHERE p.id_poste = %s
                       AND p.id_owner = %s
@@ -935,11 +1078,27 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                 cur.execute(
                     """
                     INSERT INTO public.tbl_fiche_poste
-                      (id_poste, id_owner, id_ent, id_service, codif_poste, codif_client, intitule_poste,
-                       mission_principale, responsabilites, actif, date_maj)
+                      (id_poste, id_owner, id_ent, id_service,
+                       codif_poste, codif_client, intitule_poste,
+                       mission_principale, responsabilites,
+                       actif, date_maj,
+
+                       -- Contraintes
+                       niveau_education_minimum,
+                       nsf_groupe_code,
+                       nsf_groupe_obligatoire,
+                       mobilite,
+                       risque_physique,
+                       perspectives_evolution,
+                       niveau_contrainte,
+                       detail_contrainte)
                     VALUES
-                      (%s, %s, %s, %s, %s, %s, %s,
-                       %s, %s, TRUE, NOW())
+                      (%s, %s, %s, %s,
+                       %s, %s, %s,
+                       %s, %s,
+                       TRUE, NOW(),
+
+                       %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         new_id,
@@ -951,6 +1110,15 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                         src.get("intitule_poste"),
                         src.get("mission_principale"),
                         src.get("responsabilites"),
+
+                        src.get("niveau_education_minimum"),
+                        src.get("nsf_groupe_code"),
+                        bool(src.get("nsf_groupe_obligatoire")),
+                        src.get("mobilite"),
+                        src.get("risque_physique"),
+                        src.get("perspectives_evolution"),
+                        src.get("niveau_contrainte"),
+                        src.get("detail_contrainte"),
                     ),
                 )
                 conn.commit()
@@ -1103,5 +1271,33 @@ def studio_org_detach_poste(id_owner: str, payload: DetachPostePayload, request:
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"studio/org/postes/detach error: {e}"
-)
+        raise HTTPException(status_code=500, detail=f"studio/org/postes/detach error: {e}")
+    
+@router.get("/studio/org/nsf_groupes/{id_owner}")
+def studio_org_list_nsf_groupes(id_owner: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    SELECT code, titre
+                    FROM public.tbl_nsf_groupe
+                    WHERE COALESCE(masque, FALSE) = FALSE
+                    ORDER BY titre, code
+                    """
+                )
+                rows = cur.fetchall() or []
+
+        return {"items": [{"code": r.get("code"), "titre": r.get("titre")} for r in rows]}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/nsf_groupes error: {e}")

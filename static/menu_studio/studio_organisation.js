@@ -309,6 +309,178 @@
         });
     }
 
+    // ------------------------------------------------------
+    // Poste > Exigences > Contraintes
+    // ------------------------------------------------------
+    let _posteContraintesInit = false;
+    let _nsfGroupesLoaded = false;
+    let _nsfGroupes = [];
+
+    function _fillSelect(el, items){
+    if (!el) return;
+    el.innerHTML = "";
+    (items || []).forEach(it => {
+        const opt = document.createElement("option");
+        opt.value = it.value ?? "";
+        opt.textContent = it.text ?? "";
+        el.appendChild(opt);
+    });
+    }
+
+    function _selectByValue(id, v){
+    const el = byId(id);
+    if (!el) return;
+    const val = (v ?? "").toString().trim();
+    el.value = val;
+    }
+
+    function _setChecked(id, v){
+    const el = byId(id);
+    if (!el) return;
+    el.checked = !!v;
+    }
+
+    function _setValue(id, v){
+    const el = byId(id);
+    if (!el) return;
+    el.value = (v ?? "").toString();
+    }
+
+    function initPosteContraintesSelects(){
+    if (_posteContraintesInit) return;
+    _posteContraintesInit = true;
+
+    _fillSelect(byId("posteCtrEduMin"), [
+        { value:"",  text:"—" },
+        { value:"0", text:"Aucun diplôme" },
+        { value:"3", text:"Niveau 3 : CAP, BEP" },
+        { value:"4", text:"Niveau 4 : Bac" },
+        { value:"5", text:"Niveau 5 : Bac+2 (BTS, DUT)" },
+        { value:"6", text:"Niveau 6 : Bac+3 (Licence, BUT)" },
+        { value:"7", text:"Niveau 7 : Bac+5 (Master, Ingénieur, Grandes écoles)" },
+        { value:"8", text:"Niveau 8 : Bac+8 (Doctorat)" }
+    ]);
+
+    _fillSelect(byId("posteCtrMobilite"), [
+        { value:"", text:"—" },
+        { value:"Aucune", text:"Aucune" },
+        { value:"Rare", text:"Rare" },
+        { value:"Occasionnelle", text:"Occasionnelle" },
+        { value:"Fréquente", text:"Fréquente" }
+    ]);
+
+    _fillSelect(byId("posteCtrPerspEvol"), [
+        { value:"", text:"—" },
+        { value:"Aucune", text:"Aucune" },
+        { value:"Faible", text:"Faible" },
+        { value:"Modérée", text:"Modérée" },
+        { value:"Forte", text:"Forte" },
+        { value:"Rapide", text:"Rapide" }
+    ]);
+
+    _fillSelect(byId("posteCtrRisquePhys"), [
+        { value:"", text:"—" },
+        { value:"Aucun", text:"Aucun : pas de risque identifié." },
+        { value:"Faible", text:"Faible : exposition occasionnelle, faible intensité." },
+        { value:"Modéré", text:"Modéré : exposition régulière mais maîtrisée." },
+        { value:"Élevé", text:"Élevé : risque important, pouvant générer une pathologie." },
+        { value:"Critique", text:"Critique : risque vital ou accident grave possible." }
+    ]);
+
+    _fillSelect(byId("posteCtrNivContrainte"), [
+        { value:"", text:"—" },
+        { value:"Aucune", text:"Aucune : poste standard, sans pression ni particularité." },
+        { value:"Modérée", text:"Modérée : quelques contraintes psychosociales/organisationnelles." },
+        { value:"Élevée", text:"Élevée : forte pression, conditions difficiles, grande responsabilité." },
+        { value:"Critique", text:"Critique : stress ou responsabilité vitale." }
+    ]);
+
+    const bindHelp = (selectId, helpId) => {
+        const sel = byId(selectId);
+        const help = byId(helpId);
+        if (!sel || !help) return;
+
+        const refresh = () => {
+        const opt = sel.options[sel.selectedIndex];
+        const txt = (opt?.textContent || "").trim();
+        if (txt && txt !== "—") {
+            help.textContent = txt;
+            help.style.display = "";
+            sel.title = txt;
+        } else {
+            help.textContent = "";
+            help.style.display = "none";
+            sel.title = "";
+        }
+        };
+
+        sel._sbRefreshHelp = refresh;
+        sel.addEventListener("change", refresh);
+        refresh();
+    };
+
+    bindHelp("posteCtrRisquePhys", "posteCtrRisquePhysHelp");
+    bindHelp("posteCtrNivContrainte", "posteCtrNivContrainteHelp");
+    }
+
+    async function ensureNsfGroupes(portal){
+    if (_nsfGroupesLoaded) return;
+    _nsfGroupesLoaded = true;
+
+    try{
+        const ownerId = getOwnerId();
+        const url = `${portal.apiBase}/studio/org/nsf_groupes/${encodeURIComponent(ownerId)}`;
+        const r = await portal.apiJson(url);
+        _nsfGroupes = Array.isArray(r?.items) ? r.items : (Array.isArray(r) ? r : []);
+    } catch(e){
+        // on ne bloque pas le modal pour ça
+        _nsfGroupes = [];
+    }
+    }
+
+    function fillNsfSelect(currentCode){
+    const sel = byId("posteCtrNsfGroupe");
+    if (!sel) return;
+
+    const code = (currentCode ?? "").toString().trim();
+
+    sel.innerHTML = "";
+    const opt0 = document.createElement("option");
+    opt0.value = "";
+    opt0.textContent = "—";
+    sel.appendChild(opt0);
+
+    (_nsfGroupes || []).forEach(g => {
+        const c = (g.code ?? "").toString().trim();
+        const t = (g.titre ?? "").toString().trim();
+        if (!c) return;
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = t ? `${t} (${c})` : c;
+        sel.appendChild(opt);
+    });
+
+    sel.value = code || "";
+    }
+
+    function fillPosteContraintesTab(detail){
+    initPosteContraintesSelects();
+
+    _selectByValue("posteCtrEduMin", detail?.niveau_education_minimum);
+    _setChecked("posteCtrNsfOblig", detail?.nsf_groupe_obligatoire);
+    _selectByValue("posteCtrMobilite", detail?.mobilite);
+    _selectByValue("posteCtrRisquePhys", detail?.risque_physique);
+    _selectByValue("posteCtrPerspEvol", detail?.perspectives_evolution);
+    _selectByValue("posteCtrNivContrainte", detail?.niveau_contrainte);
+    _setValue("posteCtrDetailContrainte", detail?.detail_contrainte);
+
+    const rSel = byId("posteCtrRisquePhys");
+    if (rSel && typeof rSel._sbRefreshHelp === "function") rSel._sbRefreshHelp();
+
+    const nSel = byId("posteCtrNivContrainte");
+    if (nSel && typeof nSel._sbRefreshHelp === "function") nSel._sbRefreshHelp();
+    }
+
     const _posteDetailCache = new Map(); // id_poste -> detail
 
     async function fetchPosteDetail(portal, id_poste){
@@ -392,6 +564,14 @@
         const bS = byId("btnPosteSave");
         if (bS) bS.textContent = "Créer";
 
+        fillPosteContraintesTab({});
+        (async () => {
+        try{
+            await ensureNsfGroupes(portal);
+            fillNsfSelect("");
+        } catch(_){}
+        })();
+
         setPosteTab("def");
         openModal("modalPoste");
     }
@@ -438,6 +618,43 @@
 
         setPosteTab("def");
         openModal("modalPoste");
+
+        // Charge le détail (définition + exigences/contraintes)
+        (async () => {
+        try{
+            const d = await fetchPosteDetail(portal, _editingPosteId);
+            if (!d) return;
+
+            await ensureNsfGroupes(portal);
+            fillNsfSelect(d?.nsf_groupe_code || "");
+            fillPosteContraintesTab(d);
+
+            // --- Définition (remplissage robuste: si champ supprimé, pas d'erreur)
+            const elCodCli = byId("posteCodifClient"); if (elCodCli) elCodCli.value = (d.codif_client || "");
+            const elInt = byId("posteIntitule"); if (elInt) elInt.value = (d.intitule_poste || "");
+            const elMis = byId("posteMission"); if (elMis) elMis.value = (d.mission_principale || "");
+
+            // Responsabilités: richtext si présent, sinon textarea
+            if (typeof rtSetHtml === "function") rtSetHtml("posteResp", d.responsabilites || "");
+            else { const elResp = byId("posteResp"); if (elResp) elResp.value = (d.responsabilites || ""); }
+
+            // --- Exigences > Contraintes (les fonctions seront ajoutées/existent déjà chez toi)
+            if (typeof ensureNsfGroupes === "function") {
+            await ensureNsfGroupes(portal);
+            if (typeof fillNsfSelect === "function") fillNsfSelect(d?.nsf_groupe_code || "");
+            }
+            if (typeof fillPosteContraintesTab === "function") fillPosteContraintesTab(d);
+
+            // Actif / buttons
+            if (typeof setPosteModalActif === "function") setPosteModalActif(!!d.actif);
+
+            const bD = byId("btnPosteDuplicate");
+            if (bD){ bD.disabled = false; bD.style.opacity = ""; bD.title = ""; }
+
+        } catch(e){
+            portal.showAlert("error", e?.message || String(e));
+        }
+        })();
     }
 
     function closePosteModal(){
@@ -473,6 +690,14 @@
             intitule_poste: title,
             mission_principale: (mission || null),
             responsabilites: (resp || null),
+            niveau_education_minimum: (byId("posteCtrEduMin")?.value || "").trim() || null,
+            nsf_groupe_code: (byId("posteCtrNsfGroupe")?.value || "").trim() || null,
+            nsf_groupe_obligatoire: !!byId("posteCtrNsfOblig")?.checked,
+            mobilite: (byId("posteCtrMobilite")?.value || "").trim() || null,
+            risque_physique: (byId("posteCtrRisquePhys")?.value || "").trim() || null,
+            perspectives_evolution: (byId("posteCtrPerspEvol")?.value || "").trim() || null,
+            niveau_contrainte: (byId("posteCtrNivContrainte")?.value || "").trim() || null,
+            detail_contrainte: (byId("posteCtrDetailContrainte")?.value || "").trim() || null,
         };
 
         if (_posteModalMode === "create"){
