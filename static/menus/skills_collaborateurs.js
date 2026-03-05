@@ -1681,6 +1681,14 @@
       const btnReset = byId("btnCollabReset");
       const btnOpenPlanning = byId("btnOpenIndispoPlanning");
 
+      // Filtre service: appliquer immédiatement au changement
+      if (selService) {
+        selService.addEventListener("change", () => {
+          _breakFocus = null; // on reset le focus indispo si on change de périmètre
+          refreshAll(id_contact);
+        });
+      }
+
       if (btnReset) {
         btnReset.addEventListener("click", () => {
           if (selService) selService.value = window.portal.serviceFilter.ALL_ID;
