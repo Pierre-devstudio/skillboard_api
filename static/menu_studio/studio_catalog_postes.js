@@ -153,8 +153,12 @@
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error("Owner manquant (?id=...).");
 
-    // garde-fou UX: au moins un périmètre coché
-    if (!_mine && !_clients) _mine = true;
+    // garde-fou UX : au moins un filtre actif (Catalogue / Mon entreprise / Mes clients)
+    if (!_catalogue && !_mine && !_clients) {
+      _catalogue = true;
+      const cbCat = byId("catPostesCatalogue");
+      if (cbCat) cbCat.checked = true;
+    }
 
     const url =
       `${portal.apiBase}/studio/catalog/postes/${encodeURIComponent(ownerId)}`
