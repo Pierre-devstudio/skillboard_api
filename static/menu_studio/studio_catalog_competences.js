@@ -582,6 +582,9 @@
         const contexte = (byId("compAiContexte")?.value || "").trim();
         const dom = (byId("compAiDomaine")?.value || "").trim();
 
+        let nb = parseInt((byId("compAiNbCrit")?.value || "3").trim(), 10);
+        if (![2,3,4].includes(nb)) nb = 3;
+
         if (!objectif){
             portal.showAlert("error", "Objectif obligatoire.");
             return;
@@ -598,9 +601,10 @@
             method: "POST",
             headers: { "Content-Type":"application/json" },
             body: JSON.stringify({
-                objectif: objectif,
-                contexte: contexte || null,
-                domaine_id: dom || null
+            objectif: objectif,
+            contexte: contexte || null,
+            domaine_id: dom || null,
+            nb_criteres: nb
             })
             });
 
@@ -830,6 +834,8 @@
     try{
         await ensureDomains(portal);
         fillAiDomainSelect(byId("compDomaine")?.value || "");
+        const nbSel = byId("compAiNbCrit");
+        if (nbSel) nbSel.value = "3";
         openAiModal();
     } catch(e){
         portal.showAlert("error", e?.message || String(e));

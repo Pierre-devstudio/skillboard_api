@@ -139,6 +139,7 @@ class AiDraftCompetencePayload(BaseModel):
     objectif: str
     contexte: Optional[str] = None
     domaine_id: Optional[str] = None  # si l'user veut imposer un domaine
+    nb_criteres: Optional[int] = None  # 2,3,4 (default 3)
 
 class CreateCompetencePayload(BaseModel):
     code: Optional[str] = None
@@ -182,6 +183,15 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
 
         contexte = (payload.contexte or "").strip() or None
         domaine_force = (payload.domaine_id or "").strip() or None
+
+        # Nombre de critères demandé (2/3/4) - défaut 3
+        nb = payload.nb_criteres if payload.nb_criteres is not None else 3
+        try:
+            nb = int(nb)
+        except Exception:
+            nb = 3
+        if nb not in (2, 3, 4):
+            nb = 3
 
         model = (os.getenv("OPENAI_MODEL_COMP_DRAFT") or "gpt-4o-mini").strip()
         api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
@@ -290,18 +300,23 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
             "Tu aides à concevoir une fiche compétence. "
             "Tu dois respecter STRICTEMENT le schéma JSON fourni. "
             "Les évaluations doivent être progressives, observables et actionnables. "
-            "Si l'utilisateur ne veut que 1-3 critères, laisse les critères restants vides (Nom vide + 4 Eval vides)."
+            "Tu dois produire EXACTEMENT le nombre de critères demandé. "
+            "Si le nombre demandé est inférieur à 4, tu laisses les critères restants vides "
+            "(Nom vide + 4 Eval vides). "
+            "Chaque Eval doit être une phrase courte (<=120 caractères)."
         )
 
         user = (
             f"Objectif: {objectif}\n"
             f"Contexte: {contexte or ''}\n"
-            f"Domaine imposé (si non vide): {domaine_force or ''}\n\n"
+            f"Domaine imposé (si non vide): {domaine_force or ''}\n"
+            f"Nombre de critères à produire: {nb}\n\n"
             f"Domaines disponibles (id -> titre_court):\n{dom_list_txt}\n\n"
             "Contraintes:\n"
-            "- 1 à 4 critères utilisés\n"
-            "- 4 niveaux par critère, chacun <=120 caractères\n"
-            "- Niveaux A/B/C <=230 caractères\n"
+            f"- Produis exactement {nb} critères non vides (Critere1..Critere{nb}).\n"
+            f"- Critere{nb+1}..Critere4 doivent être vides (Nom=\"\" + 4 Eval vides).\n"
+            "- 4 niveaux par critère, chacun <=120 caractères, 1 phrase actionnable.\n"
+            "- Niveaux A/B/C <=230 caractères.\n"
         )
 
         client = OpenAI(api_key=api_key)
