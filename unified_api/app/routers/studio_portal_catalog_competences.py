@@ -131,6 +131,39 @@ def _next_comp_code(cur, oid: str) -> str:
         raise HTTPException(status_code=400, detail="Limite de numérotation atteinte (CO99999).")
     return f"CO{nxt:05d}"
 
+def _level_score(txt: Optional[str]) -> int:
+    t = (txt or "").lower()
+    score = 0
+    # indices "expert"
+    for w in ("transmet", "forme", "mentor", "optimise", "anticipe", "industrialise", "pilot", "stratég"):
+        if w in t:
+            score += 3
+    # indices "autonome"
+    for w in ("autonome", "structure", "fiable", "standard", "applique", "met en oeuvre", "gère"):
+        if w in t:
+            score += 1
+    # indices "débutant"
+    for w in ("guid", "supervis", "avec aide", "assist", "simple"):
+        if w in t:
+            score -= 2
+    return score
+
+
+def _fix_abc_levels(data: dict) -> None:
+    a = data.get("niveaua") or ""
+    b = data.get("niveaub") or ""
+    c = data.get("niveauc") or ""
+    sa = _level_score(a)
+    sb = _level_score(b)
+    sc = _level_score(c)
+
+    # Si A semble plus "expert" que C, on réordonne par score croissant
+    if sa > sc:
+        levels = [("niveaua", a, sa), ("niveaub", b, sb), ("niveauc", c, sc)]
+        levels.sort(key=lambda x: x[2])  # score croissant: initial -> expert
+        data["niveaua"] = levels[0][1]
+        data["niveaub"] = levels[1][1]
+        data["niveauc"] = levels[2][1]
 
 # ------------------------------------------------------
 # Models
@@ -297,13 +330,19 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
         }
 
         sys = (
-            "Tu aides à concevoir une fiche compétence. "
+            "Tu es concepteur pédagogique et tu aides à concevoir une fiche compétence opérationnelle. "
             "Tu dois respecter STRICTEMENT le schéma JSON fourni. "
-            "Les évaluations doivent être progressives, observables et actionnables. "
+            "Règles de niveau A/B/C (IMPORTANT): "
+            "A = initial (débutant, guidé, applique des consignes simples), "
+            "B = avancé (autonome, structuré, fiable), "
+            "C = expert (maîtrise, optimise, anticipe, transmet/forme). "
+            "Les évaluations (4 niveaux par critère) doivent être progressives, observables et actionnables. "
+            "Chaque évaluation doit être courte (<=120 caractères), 1 phrase, verbe d'action + résultat observable. "
             "Tu dois produire EXACTEMENT le nombre de critères demandé. "
-            "Si le nombre demandé est inférieur à 4, tu laisses les critères restants vides "
+            "Si le nombre demandé est inférieur à 4, laisse les critères restants vides "
             "(Nom vide + 4 Eval vides). "
-            "Chaque Eval doit être une phrase courte (<=120 caractères)."
+            "Critères: ils doivent couvrir des axes DISTINCTS (pas de doublons), "
+            "ex: méthode/process, exécution/outils, qualité/contrôle, communication/traçabilité."
         )
 
         user = (
@@ -313,10 +352,12 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
             f"Nombre de critères à produire: {nb}\n\n"
             f"Domaines disponibles (id -> titre_court):\n{dom_list_txt}\n\n"
             "Contraintes:\n"
-            f"- Produis exactement {nb} critères non vides (Critere1..Critere{nb}).\n"
-            f"- Critere{nb+1}..Critere4 doivent être vides (Nom=\"\" + 4 Eval vides).\n"
-            "- 4 niveaux par critère, chacun <=120 caractères, 1 phrase actionnable.\n"
-            "- Niveaux A/B/C <=230 caractères.\n"
+            f"- Produis exactement {nb} critères NON VIDES (Critere1..Critere{nb}).\n"
+            f"- Critere{nb+1}..Critere4 doivent être VIDES (Nom=\"\" + 4 Eval vides).\n"
+            "- Chaque critère = un axe distinct (évite recouvrement).\n"
+            "- Les 4 niveaux d’un critère doivent montrer une progression claire: guidé → autonome → optimisation → expertise/transmission.\n"
+            "- Niveaux A/B/C: A initial guidé, B autonome fiable, C expert optimise/transmet.\n"
+            "- Niveaux A/B/C <=230 caractères chacun.\n"
         )
 
         client = OpenAI(api_key=api_key)
@@ -344,6 +385,7 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
             raise HTTPException(status_code=500, detail="Réponse IA vide.")
 
         data = json.loads(content)
+        _fix_abc_levels(data)
 
         # --- Domaine: priorité au domaine imposé, sinon celui proposé si valide
         dom_out = (domaine_force or (data.get("domaine_id") or "")).strip() or None
