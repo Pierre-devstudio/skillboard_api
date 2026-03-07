@@ -1,0 +1,502 @@
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
+from typing import Optional, Any
+from psycopg.rows import dict_row
+import uuid
+
+from app.routers.skills_portal_common import get_conn
+from app.routers.studio_portal_common import (
+    studio_require_user,
+    studio_fetch_owner,
+    studio_require_min_role,
+)
+
+router = APIRouter()
+
+
+# ------------------------------------------------------
+# Helpers
+# ------------------------------------------------------
+def _require_owner_access(cur, u: dict, id_owner: str) -> str:
+    oid = (id_owner or "").strip()
+    if not oid:
+        raise HTTPException(status_code=400, detail="id_owner manquant.")
+
+    if u.get("is_super_admin"):
+        return oid
+
+    meta = u.get("user_metadata") or {}
+    meta_owner = (meta.get("id_owner") or "").strip()
+    if meta_owner:
+        if meta_owner != oid:
+            raise HTTPException(status_code=403, detail="Accès refusé (owner non autorisé).")
+        return oid
+
+    email = (u.get("email") or "").strip()
+    if not email:
+        raise HTTPException(status_code=403, detail="Accès refusé (email manquant).")
+
+    cur.execute(
+        """
+        SELECT id_owner
+        FROM public.tbl_studio_user_access
+        WHERE lower(email) = lower(%s)
+          AND COALESCE(archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (email,),
+    )
+    r = cur.fetchone() or {}
+    db_owner = (r.get("id_owner") or "").strip()
+    if not db_owner or db_owner != oid:
+        raise HTTPException(status_code=403, detail="Accès refusé (owner non autorisé).")
+
+    return oid
+
+
+def _competence_exists_owner(cur, oid: str, id_comp: str) -> bool:
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_competence
+        WHERE id_comp = %s
+          AND id_owner = %s
+        LIMIT 1
+        """,
+        (id_comp, oid),
+    )
+    return cur.fetchone() is not None
+
+
+def _competence_code_exists_owner(cur, oid: str, code: str, exclude_id: Optional[str] = None) -> bool:
+    c = (code or "").strip()
+    if not c:
+        return False
+
+    if exclude_id:
+        cur.execute(
+            """
+            SELECT 1
+            FROM public.tbl_competence
+            WHERE id_owner = %s
+              AND lower(code) = lower(%s)
+              AND id_comp <> %s
+            LIMIT 1
+            """,
+            (oid, c, exclude_id),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT 1
+            FROM public.tbl_competence
+            WHERE id_owner = %s
+              AND lower(code) = lower(%s)
+            LIMIT 1
+            """,
+            (oid, c),
+        )
+    return cur.fetchone() is not None
+
+
+def _next_comp_code(cur, oid: str, prefix: str = "CP") -> str:
+    # lock transactionnel: évite 2 créations simultanées avec le même code
+    lock_key = f"comp_code:{oid}:{prefix}"
+    cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (lock_key,))
+
+    cur.execute(
+        """
+        SELECT COALESCE(
+          MAX( (regexp_match(code, %s))[1]::int ),
+          0
+        ) AS max_n
+        FROM public.tbl_competence
+        WHERE id_owner = %s
+          AND code ~ %s
+        """,
+        (f"^{prefix}([0-9]{{4}})$", oid, f"^{prefix}[0-9]{{4}}$"),
+    )
+    r = cur.fetchone() or {}
+    max_n_raw = r.get("max_n")
+    max_n = int(max_n_raw) if max_n_raw is not None else 0
+    nxt = max_n + 1
+    if nxt > 9999:
+        raise HTTPException(status_code=400, detail=f"Limite atteinte ({prefix}9999).")
+    return f"{prefix}{nxt:04d}"
+
+
+# ------------------------------------------------------
+# Models
+# ------------------------------------------------------
+class CreateCompetencePayload(BaseModel):
+    code: Optional[str] = None
+    intitule: str
+    description: Optional[str] = None
+    domaine: Optional[str] = None
+    niveaua: Optional[str] = None
+    niveaub: Optional[str] = None
+    niveauc: Optional[str] = None
+    grille_evaluation: Optional[Any] = None
+    etat: Optional[str] = None
+
+
+class UpdateCompetencePayload(BaseModel):
+    code: Optional[str] = None  # interdit (verrou serveur)
+    intitule: Optional[str] = None
+    description: Optional[str] = None
+    domaine: Optional[str] = None
+    niveaua: Optional[str] = None
+    niveaub: Optional[str] = None
+    niveauc: Optional[str] = None
+    grille_evaluation: Optional[Any] = None
+    etat: Optional[str] = None
+
+
+# ------------------------------------------------------
+# Endpoints
+# ------------------------------------------------------
+@router.get("/studio/catalog/competences/{id_owner}")
+def studio_catalog_list_competences(
+    id_owner: str,
+    request: Request,
+    q: str = "",
+    show: str = "active",  # active | archived | all
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        qq = (q or "").strip()
+        sh = (show or "active").strip().lower()
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                where = ["c.id_owner = %s"]
+                params = [oid]
+
+                if sh == "active":
+                    where.append("COALESCE(c.masque, FALSE) = FALSE")
+                elif sh == "archived":
+                    where.append("COALESCE(c.masque, FALSE) = TRUE")
+                # all => pas de filtre
+
+                if qq:
+                    like = f"%{qq}%"
+                    where.append("(c.code ILIKE %s OR c.intitule ILIKE %s OR COALESCE(c.domaine,'') ILIKE %s)")
+                    params.extend([like, like, like])
+
+                cur.execute(
+                    f"""
+                    SELECT
+                      c.id_comp,
+                      c.code,
+                      c.intitule,
+                      c.domaine,
+                      c.etat,
+                      COALESCE(c.masque, FALSE) AS masque,
+                      c.date_modification
+                    FROM public.tbl_competence c
+                    WHERE {" AND ".join(where)}
+                    ORDER BY lower(c.code), lower(c.intitule)
+                    """,
+                    tuple(params),
+                )
+                rows = cur.fetchall() or []
+
+        items = []
+        for r in rows:
+            items.append(
+                {
+                    "id_comp": r.get("id_comp"),
+                    "code": r.get("code"),
+                    "intitule": r.get("intitule"),
+                    "domaine": r.get("domaine"),
+                    "etat": r.get("etat"),
+                    "masque": bool(r.get("masque")),
+                    "date_modification": r.get("date_modification"),
+                }
+            )
+
+        return {"items": items}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/catalog/competences list error: {e}")
+
+
+@router.get("/studio/catalog/competences/{id_owner}/next_code")
+def studio_catalog_next_competence_code(id_owner: str, request: Request, prefix: str = "CP"):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        pref = (prefix or "CP").strip().upper()
+        if len(pref) > 6:
+            raise HTTPException(status_code=400, detail="Prefix trop long.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                code = _next_comp_code(cur, oid, pref)
+
+        return {"code": code}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/catalog/competences next_code error: {e}")
+
+
+@router.get("/studio/catalog/competences/{id_owner}/{id_comp}")
+def studio_catalog_competence_detail(id_owner: str, id_comp: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_comp or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_comp manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                cur.execute(
+                    """
+                    SELECT
+                      id_comp,
+                      code,
+                      intitule,
+                      description,
+                      domaine,
+                      niveaua,
+                      niveaub,
+                      niveauc,
+                      grille_evaluation,
+                      etat,
+                      COALESCE(masque, FALSE) AS masque,
+                      date_creation,
+                      date_modification
+                    FROM public.tbl_competence
+                    WHERE id_comp = %s
+                      AND id_owner = %s
+                    LIMIT 1
+                    """,
+                    (cid, oid),
+                )
+                r = cur.fetchone()
+                if not r:
+                    raise HTTPException(status_code=404, detail="Compétence introuvable.")
+
+        return {
+            "id_comp": r.get("id_comp"),
+            "code": r.get("code"),
+            "intitule": r.get("intitule"),
+            "description": r.get("description"),
+            "domaine": r.get("domaine"),
+            "niveaua": r.get("niveaua"),
+            "niveaub": r.get("niveaub"),
+            "niveauc": r.get("niveauc"),
+            "grille_evaluation": r.get("grille_evaluation"),
+            "etat": r.get("etat"),
+            "masque": bool(r.get("masque")),
+            "date_creation": r.get("date_creation"),
+            "date_modification": r.get("date_modification"),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/catalog/competences detail error: {e}")
+
+
+@router.post("/studio/catalog/competences/{id_owner}")
+def studio_catalog_create_competence(id_owner: str, payload: CreateCompetencePayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        title = (payload.intitule or "").strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="Intitulé obligatoire.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                code = (payload.code or "").strip()
+                if not code:
+                    code = _next_comp_code(cur, oid, "CP")
+                else:
+                    if _competence_code_exists_owner(cur, oid, code):
+                        raise HTTPException(status_code=400, detail="Code déjà utilisé.")
+
+                cid = str(uuid.uuid4())
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_competence
+                      (id_comp, id_owner, code, intitule, description, domaine,
+                       niveaua, niveaub, niveauc, grille_evaluation,
+                       etat, masque, date_creation, date_modification)
+                    VALUES
+                      (%s, %s, %s, %s, %s, %s,
+                       %s, %s, %s, %s,
+                       %s, FALSE, NOW(), NOW())
+                    """,
+                    (
+                        cid,
+                        oid,
+                        code,
+                        title,
+                        (payload.description or None),
+                        (payload.domaine or None),
+                        (payload.niveaua or None),
+                        (payload.niveaub or None),
+                        (payload.niveauc or None),
+                        payload.grille_evaluation,
+                        (payload.etat or "valide"),
+                    ),
+                )
+                conn.commit()
+
+        return {"id_comp": cid, "code": code}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/catalog/competences create error: {e}")
+
+
+@router.post("/studio/catalog/competences/{id_owner}/{id_comp}")
+def studio_catalog_update_competence(id_owner: str, id_comp: str, payload: UpdateCompetencePayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_comp or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_comp manquant.")
+
+        patch_fields = payload.__fields_set__ or set()
+        if not patch_fields:
+            return {"ok": True}
+
+        if "code" in patch_fields:
+            raise HTTPException(status_code=400, detail="Le code est verrouillé après création.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                if not _competence_exists_owner(cur, oid, cid):
+                    raise HTTPException(status_code=404, detail="Compétence introuvable (owner).")
+
+                cols = []
+                vals = []
+
+                if "intitule" in patch_fields:
+                    title = (payload.intitule or "").strip()
+                    if not title:
+                        raise HTTPException(status_code=400, detail="Intitulé obligatoire.")
+                    cols.append("intitule = %s")
+                    vals.append(title)
+
+                if "description" in patch_fields:
+                    cols.append("description = %s")
+                    vals.append(payload.description)
+
+                if "domaine" in patch_fields:
+                    cols.append("domaine = %s")
+                    vals.append(payload.domaine)
+
+                if "niveaua" in patch_fields:
+                    cols.append("niveaua = %s")
+                    vals.append(payload.niveaua)
+
+                if "niveaub" in patch_fields:
+                    cols.append("niveaub = %s")
+                    vals.append(payload.niveaub)
+
+                if "niveauc" in patch_fields:
+                    cols.append("niveauc = %s")
+                    vals.append(payload.niveauc)
+
+                if "grille_evaluation" in patch_fields:
+                    cols.append("grille_evaluation = %s")
+                    vals.append(payload.grille_evaluation)
+
+                if "etat" in patch_fields:
+                    cols.append("etat = %s")
+                    vals.append(payload.etat)
+
+                if cols:
+                    cols.append("date_modification = NOW()")
+                    vals.extend([cid, oid])
+                    cur.execute(
+                        f"""
+                        UPDATE public.tbl_competence
+                        SET {", ".join(cols)}
+                        WHERE id_comp = %s
+                          AND id_owner = %s
+                        """,
+                        tuple(vals),
+                    )
+                    conn.commit()
+
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/catalog/competences update error: {e}")
+
+
+@router.post("/studio/catalog/competences/{id_owner}/{id_comp}/archive")
+def studio_catalog_archive_competence(id_owner: str, id_comp: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_comp or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_comp manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_competence
+                    SET masque = TRUE, date_modification = NOW()
+                    WHERE id_comp = %s
+                      AND id_owner = %s
+                      AND COALESCE(masque, FALSE) = FALSE
+                    """,
+                    (cid, oid),
+                )
+                conn.commit()
+
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/catalog/competences archive error: {e}")

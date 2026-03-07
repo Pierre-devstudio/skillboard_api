@@ -26,6 +26,12 @@
     // js auto-guess -> /menu_studio/studio_catalog_postes.js
   });
 
+  window.portal.registerMenu({
+    view: "catalog_competences",
+    htmlUrl: "/menu_studio/studio_catalog_competences.html"
+    // js auto-guess -> /menu_studio/studio_catalog_competences.js
+  });
+
   // Placeholders (menu complet)
   const COMING_SOON = "/menu_studio/studio_coming_soon.html";
   
@@ -34,7 +40,6 @@
   window.portal.registerMenu({ view: "partners", htmlUrl: COMING_SOON });
 
   
-  window.portal.registerMenu({ view: "catalog_competences", htmlUrl: COMING_SOON });
   window.portal.registerMenu({ view: "catalog_formations", htmlUrl: COMING_SOON });
 
   window.portal.registerMenu({ view: "clients", htmlUrl: COMING_SOON });

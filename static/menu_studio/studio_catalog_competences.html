@@ -1,0 +1,133 @@
+<section id="view-catalog_competences" data-view="catalog_competences">
+  <div class="card">
+    <div class="sb-card-head">
+      <div>
+        <div class="card-title">Catalogue compétences</div>
+        <div class="card-sub">Créer, modifier, archiver des compétences (catalogue privé par owner).</div>
+      </div>
+      <div class="sb-actions">
+        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCompNew">Ajouter une compétence</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sb-toolbar">
+      <div class="sb-search">
+        <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
+        <input type="text" id="catCompsSearch" placeholder="Code, intitulé, domaine…" />
+      </div>
+
+      <div class="info-item" style="min-width:220px;">
+        <div class="label">Afficher</div>
+        <select id="catCompsShow">
+          <option value="active">Actives</option>
+          <option value="archived">Archivées</option>
+          <option value="all">Tout</option>
+        </select>
+      </div>
+
+      <div class="info-item" style="min-width:220px;">
+        <div class="label">Statut</div>
+        <div class="card-sub" id="catCompsStatus" style="margin:0;">—</div>
+      </div>
+    </div>
+
+    <div class="sb-stack sb-stack--sm" id="catCompsList" style="margin-top:12px;"></div>
+  </div>
+
+  <!-- MODAL : Create/Edit -->
+  <div class="sb-modal" id="modalCompEdit" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" id="compModalTitle" style="margin-bottom:2px;">Compétence</div>
+          <div class="card-sub" id="compModalSub" style="margin:0;">—</div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnCompX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:240px;">
+            <div class="label">Code</div>
+            <input type="text" id="compCode" />
+            <div class="card-sub" style="margin:6px 0 0 0;">Le code est verrouillé après création.</div>
+          </div>
+          <div class="info-item" style="flex:2; min-width:260px;">
+            <div class="label">Intitulé</div>
+            <input type="text" id="compIntitule" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:240px;">
+            <div class="label">Domaine</div>
+            <input type="text" id="compDomaine" placeholder="Optionnel" />
+          </div>
+          <div class="info-item" style="flex:1; min-width:240px;">
+            <div class="label">État</div>
+            <select id="compEtat">
+              <option value="valide">valide</option>
+              <option value="active">active</option>
+              <option value="à valider">à valider</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Description</div>
+            <textarea id="compDesc" rows="3"></textarea>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Niveau A</div>
+            <textarea id="compNivA" rows="2"></textarea>
+          </div>
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Niveau B</div>
+            <textarea id="compNivB" rows="2"></textarea>
+          </div>
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Niveau C</div>
+            <textarea id="compNivC" rows="2"></textarea>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Grille d’évaluation (JSON)</div>
+            <textarea id="compGrille" rows="6" style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;"></textarea>
+            <div class="card-sub" style="margin:6px 0 0 0;">Laisse vide si tu ne gères pas encore la grille.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnCompSave">Enregistrer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnCompCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : Archive confirm -->
+  <div class="sb-modal" id="modalCompArchive" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">Archiver la compétence</div>
+          <div class="card-sub" id="compArchiveMsg" style="margin:0;">—</div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnCompArchiveX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnCompArchiveConfirm">Confirmer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnCompArchiveCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+</section>
