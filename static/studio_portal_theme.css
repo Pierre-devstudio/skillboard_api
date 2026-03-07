@@ -285,6 +285,17 @@
 .sb-modal-actions{ display:flex; justify-content:flex-end; gap:10px; margin-top:12px; }
 .sb-modal-foot .sb-modal-actions{ margin-top:0; }
 
+/* Form controls: textarea doit hériter la même police que input/select */
+.sb-modal textarea{
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* Textarea un peu plus haut (standard réutilisable) */
+.sb-textarea--md{
+  min-height: 78px;
+}
+
 /* bouton X */
 .sb-modal-x{
   border:none;

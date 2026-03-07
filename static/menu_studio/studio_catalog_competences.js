@@ -466,6 +466,23 @@
       catch (e) { portal.showAlert("error", e?.message || String(e)); }
     });
 
+    function bindMaxLen(id, max){
+        const el = byId(id);
+        if (!el || el._sbMaxBound) return;
+        el._sbMaxBound = true;
+
+        el.setAttribute("maxlength", String(max));
+
+        el.addEventListener("input", () => {
+            const v = (el.value || "");
+            if (v.length > max) el.value = v.slice(0, max);
+        });
+    }
+
+    bindMaxLen("compNivA", 230);
+    bindMaxLen("compNivB", 230);
+    bindMaxLen("compNivC", 230);
+
     byId("btnCompArchiveX").addEventListener("click", () => closeModal("modalCompArchive"));
     byId("btnCompArchiveCancel").addEventListener("click", () => closeModal("modalCompArchive"));
     byId("btnCompArchiveConfirm").addEventListener("click", async () => {
