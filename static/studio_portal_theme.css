@@ -199,6 +199,25 @@
   box-shadow: 0 0 0 2px rgba(255,255,255,.75) inset;
 }
 
+/* Bouton IA (CORE) */
+.sb-btn--ai{
+  --sb-ai-bg: #2654b6;          /* background */
+  --sb-ai-fg: #ffffff;          /* texte */
+  --sb-ai-bd: #051f58;          /* border */
+  background: var(--sb-ai-bg);
+  color: var(--sb-ai-fg);
+  border-color: var(--sb-ai-bd);
+}
+
+.sb-btn--ai:hover{
+  filter: brightness(0.96);
+}
+
+.sb-btn--ai:disabled{
+  opacity: .6;
+  cursor: not-allowed;
+}
+
 /* Accordéon (CORE) */
 .sb-acc{
   border:1px solid rgba(17,24,39,.14);
