@@ -244,6 +244,15 @@
   margin-top:10px;
 }
 
+/* Titre de champ + action à droite */
+.sb-field-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin:0 0 6px 0;
+}
+
 /* Grille d’évaluation (Compétences) – standard */
 .sb-crit-editor{
   border:1px solid rgba(17,24,39,.14);
@@ -371,6 +380,11 @@
 /* Textarea un peu plus haut (standard réutilisable) */
 .sb-textarea--md{
   min-height: 78px;
+}
+
+/* Textarea niveaux A/B/C (Compétences) */
+.sb-textarea--niv{
+  min-height: 110px;
 }
 
 /* bouton X */

@@ -207,12 +207,7 @@
         t.className = "sb-acc-title";
         t.textContent = `Critère ${i+1} – ${nom}`;
 
-        const meta = document.createElement("div");
-        meta.className = "sb-acc-meta";
-        meta.textContent = "4 niveaux";
-
         head.appendChild(t);
-        head.appendChild(meta);
 
         const body = document.createElement("div");
         body.className = "sb-acc-body";
