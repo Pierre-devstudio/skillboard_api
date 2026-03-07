@@ -4,6 +4,8 @@
   let _q = "";
   let _qTimer = null;
   let _show = "active";
+  let _dom = "";          // id_domaine_competence sélectionné
+  let _itemsAll = [];     // liste brute reçue de l’API (avant filtre domaine)
 
   let _roleCode = (window.__studioRoleCode || "").toString().trim().toLowerCase();
 
@@ -81,6 +83,59 @@
     const el = byId(id);
     if (el) el.style.display = "none";
   }
+
+    function refreshDomainOptions(){
+        const sel = byId("catCompsDomain");
+        if (!sel) return;
+
+        const keep = (sel.value || "").trim();
+
+        // domaines présents dans la liste courante
+        const map = new Map(); // id -> { label, couleur }
+        (_itemsAll || []).forEach(it => {
+            const id = (it.domaine || "").toString().trim();
+            if (!id) return;
+
+            const label = (it.domaine_titre_court || it.domaine || "").toString().trim();
+            if (!label) return;
+
+            if (!map.has(id)) {
+            map.set(id, { label: label, couleur: it.domaine_couleur });
+            }
+        });
+
+        // reset options
+        sel.innerHTML = "";
+        const opt0 = document.createElement("option");
+        opt0.value = "";
+        opt0.textContent = "Tous";
+        sel.appendChild(opt0);
+
+        // tri par label
+        Array.from(map.entries())
+            .sort((a, b) => a[1].label.localeCompare(b[1].label, "fr", { sensitivity: "base" }))
+            .forEach(([id, d]) => {
+            const opt = document.createElement("option");
+            opt.value = id;
+            opt.textContent = d.label;
+            sel.appendChild(opt);
+            });
+
+        // restore selection if possible
+        if (keep && map.has(keep)) sel.value = keep;
+        else sel.value = "";
+        _dom = (sel.value || "").trim();
+        }
+
+        function applyDomainFilterAndRender(){
+        const dom = (_dom || "").trim();
+        if (!dom){
+            _items = Array.isArray(_itemsAll) ? _itemsAll.slice() : [];
+        } else {
+            _items = (_itemsAll || []).filter(it => (it.domaine || "").toString().trim() === dom);
+        }
+        renderList();
+    }
 
   function renderList(){
     const host = byId("catCompsList");
@@ -176,8 +231,10 @@
       + `&show=${encodeURIComponent(_show)}`;
 
     const data = await portal.apiJson(url);
-    _items = (data && data.items) ? data.items : [];
-    renderList();
+    _itemsAll = (data && data.items) ? data.items : [];
+
+    refreshDomainOptions();
+    applyDomainFilterAndRender();
   }
 
   async function openCreate(portal){
@@ -373,7 +430,14 @@
       _show = (sh.value || "active").trim();
       loadList(portal).catch(() => {});
     });
+
+    const domSel = byId("catCompsDomain");
+    domSel.addEventListener("change", () => {
+    _dom = (domSel.value || "").trim();
+    applyDomainFilterAndRender();
+    });
   }
+
 
   async function init(){
     try { await (window.__studioAuthReady || Promise.resolve(null)); } catch (_) {}
