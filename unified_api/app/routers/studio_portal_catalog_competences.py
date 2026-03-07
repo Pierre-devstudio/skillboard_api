@@ -259,9 +259,9 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
             "properties": {
                 "intitule": {"type": "string", "minLength": 1, "maxLength": 140},
                 "description": {"type": "string", "maxLength": 1200},
-                "niveaua": {"type": "string", "maxLength": 230},
-                "niveaub": {"type": "string", "maxLength": 230},
-                "niveauc": {"type": "string", "maxLength": 230},
+                "niveaua": {"type": "string", "minLength": 40, "maxLength": 230},
+                "niveaub": {"type": "string", "minLength": 40, "maxLength": 230},
+                "niveauc": {"type": "string", "minLength": 40, "maxLength": 230},
                 "domaine_id": {"type": ["string", "null"]},
                 "grille_evaluation": {
                     "type": "object",
@@ -336,6 +336,8 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
             "A = initial (débutant, guidé, applique des consignes simples), "
             "B = avancé (autonome, structuré, fiable), "
             "C = expert (maîtrise, optimise, anticipe, transmet/forme). "
+            "Ne mets JAMAIS un simple label type 'Initial/Avancé/Expert' dans niveaua/b/c : "
+            "rédige 1 à 2 phrases concrètes décrivant ce qui est attendu et observable. "
             "Les évaluations (4 niveaux par critère) doivent être progressives, observables et actionnables. "
             "Chaque évaluation doit être courte (<=120 caractères), 1 phrase, verbe d'action + résultat observable. "
             "Tu dois produire EXACTEMENT le nombre de critères demandé. "
@@ -385,6 +387,19 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
             raise HTTPException(status_code=500, detail="Réponse IA vide.")
 
         data = json.loads(content)
+        def _bad_level(s: str) -> bool:
+            t = (s or "").strip().lower()
+            if t in ("initial", "avancé", "avance", "expert", "débutant", "debutant"):
+                return True
+            if len(t) < 40:
+                return True
+            return False
+
+        if _bad_level(data.get("niveaua", "")) or _bad_level(data.get("niveaub", "")) or _bad_level(data.get("niveauc", "")):
+            raise HTTPException(
+                status_code=400,
+                detail="IA: niveaux A/B/C trop courts ou réduits à un label. Regénère avec plus de contexte."
+            )
         _fix_abc_levels(data)
 
         # --- Domaine: priorité au domaine imposé, sinon celui proposé si valide
