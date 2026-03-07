@@ -99,30 +99,30 @@ def _competence_code_exists_owner(cur, oid: str, code: str, exclude_id: Optional
     return cur.fetchone() is not None
 
 
-def _next_comp_code(cur, oid: str, prefix: str = "CP") -> str:
-    # lock transactionnel: évite 2 créations simultanées avec le même code
-    lock_key = f"comp_code:{oid}:{prefix}"
+def _next_comp_code(cur, oid: str) -> str:
+    # Sérialise les créations pour un owner (évite doublons)
+    lock_key = f"comp_code:{oid}:CO"
     cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (lock_key,))
 
     cur.execute(
         """
         SELECT COALESCE(
-          MAX( (regexp_match(code, %s))[1]::int ),
+          MAX( (regexp_match(code, '^CO([0-9]{5})$'))[1]::int ),
           0
         ) AS max_n
         FROM public.tbl_competence
         WHERE id_owner = %s
-          AND code ~ %s
+          AND code ~ '^CO[0-9]{5}$'
         """,
-        (f"^{prefix}([0-9]{{4}})$", oid, f"^{prefix}[0-9]{{4}}$"),
+        (oid,),
     )
     r = cur.fetchone() or {}
     max_n_raw = r.get("max_n")
     max_n = int(max_n_raw) if max_n_raw is not None else 0
     nxt = max_n + 1
-    if nxt > 9999:
-        raise HTTPException(status_code=400, detail=f"Limite atteinte ({prefix}9999).")
-    return f"{prefix}{nxt:04d}"
+    if nxt > 99999:
+        raise HTTPException(status_code=400, detail="Limite de numérotation atteinte (CO99999).")
+    return f"CO{nxt:05d}"
 
 
 # ------------------------------------------------------
@@ -252,7 +252,7 @@ def studio_catalog_next_competence_code(id_owner: str, request: Request, prefix:
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "editor")
 
-                code = _next_comp_code(cur, oid, pref)
+                code = _next_comp_code(cur, oid)
 
         return {"code": code}
 
@@ -350,12 +350,7 @@ def studio_catalog_create_competence(id_owner: str, payload: CreateCompetencePay
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "editor")
 
-                code = (payload.code or "").strip()
-                if not code:
-                    code = _next_comp_code(cur, oid, "CP")
-                else:
-                    if _competence_code_exists_owner(cur, oid, code):
-                        raise HTTPException(status_code=400, detail="Code déjà utilisé.")
+                code = _next_comp_code(cur, oid)
 
                 cid = str(uuid.uuid4())
 

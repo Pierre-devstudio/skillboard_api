@@ -237,7 +237,7 @@
     applyDomainFilterAndRender();
   }
 
-  async function openCreate(portal){
+    async function openCreate(portal){
     _modalMode = "create";
     _editingId = null;
 
@@ -249,8 +249,6 @@
     const sub = byId("compModalSub");
     if (sub){ sub.textContent = ""; sub.style.display = "none"; }
 
-    byId("compCode").readOnly = false;
-    byId("compCode").value = "…";
     byId("compIntitule").value = "";
     byId("compDomaine").value = "";
     byId("compEtat").value = "valide";
@@ -261,15 +259,7 @@
     byId("compGrille").value = "";
 
     openModal("modalCompEdit");
-
-    try{
-      const ownerId = getOwnerId();
-      const r = await portal.apiJson(`${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}/next_code`);
-      byId("compCode").value = (r && r.code) ? String(r.code) : "CP????";
-    }catch(_){
-      byId("compCode").value = "CP????";
     }
-  }
 
   async function openEdit(portal, it){
     _modalMode = "edit";
@@ -305,8 +295,6 @@
     byId("compModalTitle").textContent = String(d.intitule);
     }
 
-    byId("compCode").value = (d.code || "");
-    byId("compCode").readOnly = true;
 
     byId("compIntitule").value = (d.intitule || "");
     byId("compDomaine").value = (d.domaine || "");
@@ -321,8 +309,7 @@
 
   async function save(portal){
     const ownerId = getOwnerId();
-
-    const code = (byId("compCode").value || "").trim();
+    
     const title = (byId("compIntitule").value || "").trim();
     const dom = (byId("compDomaine").value || "").trim();
     const etat = (byId("compEtat").value || "valide").trim();
@@ -332,10 +319,7 @@
     const c = (byId("compNivC").value || "").trim();
     const grilleRaw = (byId("compGrille").value || "").trim();
 
-    if (_modalMode === "create" && !code){
-      portal.showAlert("error", "Code obligatoire.");
-      return;
-    }
+
     if (!title){
       portal.showAlert("error", "Intitulé obligatoire.");
       return;
@@ -357,7 +341,6 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            code: code,
             intitule: title,
             domaine: dom || null,
             etat: etat || null,
