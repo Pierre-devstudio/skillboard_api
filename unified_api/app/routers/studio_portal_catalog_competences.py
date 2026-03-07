@@ -192,14 +192,19 @@ def studio_catalog_list_competences(
                 cur.execute(
                     f"""
                     SELECT
-                      c.id_comp,
-                      c.code,
-                      c.intitule,
-                      c.domaine,
-                      c.etat,
-                      COALESCE(c.masque, FALSE) AS masque,
-                      c.date_modification
+                    c.id_comp,
+                    c.code,
+                    c.intitule,
+                    c.domaine,
+                    dc.titre_court AS domaine_titre_court,
+                    dc.couleur AS domaine_couleur,
+                    c.etat,
+                    COALESCE(c.masque, FALSE) AS masque,
+                    c.date_modification
                     FROM public.tbl_competence c
+                    LEFT JOIN public.tbl_domaine_competence dc
+                    ON dc.id_domaine_competence = c.domaine
+                    AND COALESCE(dc.masque, FALSE) = FALSE
                     WHERE {" AND ".join(where)}
                     ORDER BY lower(c.code), lower(c.intitule)
                     """,
@@ -218,6 +223,8 @@ def studio_catalog_list_competences(
                     "etat": r.get("etat"),
                     "masque": bool(r.get("masque")),
                     "date_modification": r.get("date_modification"),
+                    "domaine_titre_court": r.get("domaine_titre_court"),
+                    "domaine_couleur": r.get("domaine_couleur"),
                 }
             )
 
@@ -274,22 +281,27 @@ def studio_catalog_competence_detail(id_owner: str, id_comp: str, request: Reque
                 cur.execute(
                     """
                     SELECT
-                      id_comp,
-                      code,
-                      intitule,
-                      description,
-                      domaine,
-                      niveaua,
-                      niveaub,
-                      niveauc,
-                      grille_evaluation,
-                      etat,
-                      COALESCE(masque, FALSE) AS masque,
-                      date_creation,
-                      date_modification
-                    FROM public.tbl_competence
-                    WHERE id_comp = %s
-                      AND id_owner = %s
+                    c.id_comp,
+                    c.code,
+                    c.intitule,
+                    c.description,
+                    c.domaine,
+                    dc.titre_court AS domaine_titre_court,
+                    dc.couleur AS domaine_couleur,
+                    c.niveaua,
+                    c.niveaub,
+                    c.niveauc,
+                    c.grille_evaluation,
+                    c.etat,
+                    COALESCE(c.masque, FALSE) AS masque,
+                    c.date_creation,
+                    c.date_modification
+                    FROM public.tbl_competence c
+                    LEFT JOIN public.tbl_domaine_competence dc
+                    ON dc.id_domaine_competence = c.domaine
+                    AND COALESCE(dc.masque, FALSE) = FALSE
+                    WHERE c.id_comp = %s
+                    AND c.id_owner = %s
                     LIMIT 1
                     """,
                     (cid, oid),
@@ -312,6 +324,8 @@ def studio_catalog_competence_detail(id_owner: str, id_comp: str, request: Reque
             "masque": bool(r.get("masque")),
             "date_creation": r.get("date_creation"),
             "date_modification": r.get("date_modification"),
+            "domaine_titre_court": r.get("domaine_titre_court"),
+            "domaine_couleur": r.get("domaine_couleur"),
         }
 
     except HTTPException:

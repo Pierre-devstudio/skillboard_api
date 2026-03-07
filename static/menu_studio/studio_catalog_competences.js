@@ -48,6 +48,25 @@
 
   function byId(id){ return document.getElementById(id); }
 
+  function argbIntToRgbTuple(v){
+    if (v === null || v === undefined) return null;
+
+    let n;
+    if (typeof v === "number") n = v;
+    else {
+        const s = String(v).trim();
+        if (!s) return null;
+        n = parseInt(s, 10);
+        if (Number.isNaN(n)) return null;
+    }
+
+    const u = (n >>> 0);                 // unsigned 32
+    const r = (u >> 16) & 255;
+    const g = (u >> 8) & 255;
+    const b = u & 255;
+    return { r, g, b, css: `${r},${g},${b}` };
+    }
+
   function setStatus(msg){
     const el = byId("catCompsStatus");
     if (el) el.textContent = msg || "—";
@@ -85,7 +104,7 @@
       left.className = "sb-row-left";
 
       const code = document.createElement("span");
-      code.className = "sb-badge sb-badge--poste";
+      code.className = "sb-badge sb-badge--comp";
       code.textContent = it.code || "—";
 
       const title = document.createElement("div");
@@ -98,19 +117,24 @@
       const right = document.createElement("div");
       right.className = "sb-actions";
 
-      if (it.domaine){
-        const dom = document.createElement("span");
-        dom.className = "sb-badge sb-badge--poste-soft";
-        dom.textContent = it.domaine;
-        right.appendChild(dom);
-      }
+        // --- Badge Domaine (remplace UUID + active/archivé)
+        const domLabel = (it.domaine_titre_court || it.domaine || "").toString().trim();
+        if (domLabel){
+            const dom = document.createElement("span");
+            dom.className = "sb-badge sb-badge--comp-domain";
 
-      if (it.etat){
-        const st = document.createElement("span");
-        st.className = "sb-badge sb-badge--poste-soft";
-        st.textContent = it.etat;
-        right.appendChild(st);
-      }
+            const dot = document.createElement("span");
+            dot.className = "sb-dot";
+
+            const rgb = argbIntToRgbTuple(it.domaine_couleur);
+            if (rgb){
+                dom.style.setProperty("--sb-domain-rgb", rgb.css);
+            }
+
+            dom.appendChild(dot);
+            dom.appendChild(document.createTextNode(domLabel));
+            right.appendChild(dom);
+        }
 
       if (isEditor()) {
         const btnEdit = document.createElement("button");

@@ -176,6 +176,29 @@
   color: rgb(209, 51, 188);
 }
 
+.sb-badge--comp{
+  background: rgb(55, 99, 167);
+  border: 1px solid rgb(55, 99, 167);
+  color:#fff;
+}
+
+/* Badge Domaine (Compétences) – standard réutilisable */
+.sb-badge--comp-domain{
+  --sb-domain-rgb: 17,24,39;          /* fallback */
+  background: rgba(var(--sb-domain-rgb), .12);
+  border: 1px solid rgba(var(--sb-domain-rgb), .55);
+  color:#111827;
+  gap:6px;
+}
+
+.sb-badge--comp-domain .sb-dot{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  background: rgb(var(--sb-domain-rgb));
+  box-shadow: 0 0 0 2px rgba(255,255,255,.75) inset;
+}
+
 /* Richtext (CORE) */
 .sb-richtext{
   border: 1px solid rgba(17,24,39,.14);
