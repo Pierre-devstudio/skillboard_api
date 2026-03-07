@@ -199,6 +199,79 @@
   box-shadow: 0 0 0 2px rgba(255,255,255,.75) inset;
 }
 
+/* Accordéon (CORE) */
+.sb-acc{
+  border:1px solid rgba(17,24,39,.14);
+  border-radius:10px;
+  overflow:hidden;
+  background:#fff;
+}
+.sb-acc-head{
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  background: rgba(17,24,39,.03);
+  border:0;
+  cursor:pointer;
+  font: inherit;
+}
+.sb-acc-title{
+  font-weight:600;
+  text-align:left;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.sb-acc-meta{
+  font-size:12px;
+  opacity:.7;
+  white-space:nowrap;
+}
+.sb-acc-body{
+  padding:10px 12px;
+  display:none;
+}
+.sb-acc.is-open .sb-acc-body{ display:block; }
+
+.sb-acc-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:10px;
+}
+
+/* Grille d’évaluation (Compétences) – standard */
+.sb-crit-editor{
+  border:1px solid rgba(17,24,39,.14);
+  border-radius:10px;
+  padding:12px;
+  background:#fff;
+  margin:10px 0;
+}
+.sb-crit-evals{
+  display:grid;
+  gap:8px;
+}
+.sb-crit-eval-row{
+  display:grid;
+  grid-template-columns: 70px 1fr;
+  gap:10px;
+  align-items:start;
+}
+.sb-crit-eval-row .label{
+  margin-top:8px;
+  opacity:.85;
+}
+.sb-crit-eval-row textarea{
+  min-height:64px;
+  font-family: inherit;
+  font-size: inherit;
+}
+
 /* Richtext (CORE) */
 .sb-richtext{
   border: 1px solid rgba(17,24,39,.14);

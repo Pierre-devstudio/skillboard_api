@@ -104,11 +104,58 @@
         </div>
 
         <div class="row">
-          <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Grille d’évaluation (JSON)</div>
-            <textarea id="compGrille" rows="6" style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;"></textarea>
-            <div class="card-sub" style="margin:6px 0 0 0;">Laisse vide si tu ne gères pas encore la grille.</div>
-          </div>
+        <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Grille d’évaluation</div>
+
+            <div class="sb-actions" style="justify-content:flex-end; margin:6px 0 6px 0;">
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnCompAddCrit">
+                Ajouter un critère
+            </button>
+            </div>
+
+            <!-- Éditeur (ajout/modif) -->
+            <div class="sb-crit-editor" id="compCritEditor" style="display:none;">
+            <div class="card-sub" id="compCritEditorTitle" style="margin:0 0 10px 0;">Critère</div>
+
+            <div class="row">
+                <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Nom du critère</div>
+                <input type="text" id="compCritNom" />
+                </div>
+            </div>
+
+            <div class="sb-crit-evals">
+                <div class="sb-crit-eval-row">
+                <div class="label">Niveau 1</div>
+                <textarea id="compCritEval1" rows="2"></textarea>
+                </div>
+                <div class="sb-crit-eval-row">
+                <div class="label">Niveau 2</div>
+                <textarea id="compCritEval2" rows="2"></textarea>
+                </div>
+                <div class="sb-crit-eval-row">
+                <div class="label">Niveau 3</div>
+                <textarea id="compCritEval3" rows="2"></textarea>
+                </div>
+                <div class="sb-crit-eval-row">
+                <div class="label">Niveau 4</div>
+                <textarea id="compCritEval4" rows="2"></textarea>
+                </div>
+            </div>
+
+            <div class="sb-acc-actions">
+                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCompCritSave">Enregistrer</button>
+                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnCompCritCancel">Annuler</button>
+            </div>
+            </div>
+
+            <!-- Liste accordéons -->
+            <div class="sb-stack sb-stack--xs" id="compCritList"></div>
+
+            <div class="card-sub" style="margin:8px 0 0 0;">
+            1 à 4 critères. Chaque critère doit contenir 4 niveaux d’évaluation.
+            </div>
+        </div>
         </div>
       </div>
 

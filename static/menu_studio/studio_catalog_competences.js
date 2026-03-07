@@ -57,6 +57,275 @@
 
   let _archiveId = null;
 
+  // -------------------- Grille d'évaluation (Critères) --------------------
+    let _crit = null;               // Array[4] : { Nom, Eval[4] }
+    let _critEditIdx = null;        // 0..3
+
+    function emptyCrit(){
+    return { Nom:"", Eval:["","","",""] };
+    }
+
+    function resetCrit(){
+    _crit = [emptyCrit(), emptyCrit(), emptyCrit(), emptyCrit()];
+    _critEditIdx = null;
+    hideCritEditor();
+    renderCritList();
+    }
+
+    function parseGrilleObject(v){
+    if (!v) return null;
+    if (typeof v === "object") return v;
+    if (typeof v === "string"){
+        try { return JSON.parse(v); } catch(_) { return null; }
+    }
+    return null;
+    }
+
+    function loadCritFromJson(grille){
+    const g = parseGrilleObject(grille) || {};
+    _crit = [emptyCrit(), emptyCrit(), emptyCrit(), emptyCrit()];
+
+    for (let i=1;i<=4;i++){
+        const k = "Critere" + i;
+        const node = g[k] || {};
+        const nom = (node.Nom || "").toString();
+        const ev = Array.isArray(node.Eval) ? node.Eval : [];
+        _crit[i-1] = {
+        Nom: nom,
+        Eval: [
+            (ev[0] || "").toString(),
+            (ev[1] || "").toString(),
+            (ev[2] || "").toString(),
+            (ev[3] || "").toString()
+        ]
+        };
+    }
+    _critEditIdx = null;
+    hideCritEditor();
+    renderCritList();
+    }
+
+    function buildGrilleJson(){
+    // Toujours Critere1..Critere4
+    const out = {};
+    for (let i=1;i<=4;i++){
+        const c = (_crit && _crit[i-1]) ? _crit[i-1] : emptyCrit();
+        out["Critere"+i] = {
+        Nom: (c.Nom || "").toString(),
+        Eval: [
+            (c.Eval?.[0] || "").toString(),
+            (c.Eval?.[1] || "").toString(),
+            (c.Eval?.[2] || "").toString(),
+            (c.Eval?.[3] || "").toString(),
+        ]
+        };
+    }
+    return out;
+    }
+
+    function usedCritCount(){
+    if (!_crit) return 0;
+    let n = 0;
+    for (let i=0;i<4;i++){
+        const c = _crit[i];
+        if (!c) continue;
+        if ((c.Nom || "").trim()) n++;
+    }
+    return n;
+    }
+
+    function nextEmptyCritIndex(){
+    if (!_crit) return 0;
+    for (let i=0;i<4;i++){
+        const c = _crit[i];
+        const hasNom = (c?.Nom || "").trim().length > 0;
+        const hasEval = (c?.Eval || []).some(x => (x || "").trim().length > 0);
+        if (!hasNom && !hasEval) return i;
+    }
+    return -1;
+    }
+
+    function showCritEditor(idx){
+    _critEditIdx = idx;
+
+    const ed = byId("compCritEditor");
+    if (!ed) return;
+
+    const title = byId("compCritEditorTitle");
+    if (title) title.textContent = `Critère ${idx+1}`;
+
+    const c = _crit[idx] || emptyCrit();
+
+    byId("compCritNom").value = c.Nom || "";
+    byId("compCritEval1").value = c.Eval?.[0] || "";
+    byId("compCritEval2").value = c.Eval?.[1] || "";
+    byId("compCritEval3").value = c.Eval?.[2] || "";
+    byId("compCritEval4").value = c.Eval?.[3] || "";
+
+    ed.style.display = "";
+    }
+
+    function hideCritEditor(){
+    const ed = byId("compCritEditor");
+    if (ed) ed.style.display = "none";
+    _critEditIdx = null;
+    }
+
+    function renderCritList(){
+    const host = byId("compCritList");
+    const btnAdd = byId("btnCompAddCrit");
+    if (!host) return;
+
+    if (!_crit) _crit = [emptyCrit(), emptyCrit(), emptyCrit(), emptyCrit()];
+
+    host.innerHTML = "";
+
+    const used = usedCritCount();
+    if (btnAdd){
+        btnAdd.disabled = used >= 4;
+        btnAdd.style.opacity = btnAdd.disabled ? ".6" : "";
+        btnAdd.title = btnAdd.disabled ? "Maximum 4 critères." : "";
+    }
+
+    // Affiche uniquement les critères renseignés
+    for (let i=0;i<4;i++){
+        const c = _crit[i];
+        const nom = (c?.Nom || "").trim();
+        if (!nom) continue;
+
+        const acc = document.createElement("div");
+        acc.className = "sb-acc";
+
+        const head = document.createElement("button");
+        head.type = "button";
+        head.className = "sb-acc-head";
+        head.addEventListener("click", () => {
+        acc.classList.toggle("is-open");
+        });
+
+        const t = document.createElement("div");
+        t.className = "sb-acc-title";
+        t.textContent = `Critère ${i+1} – ${nom}`;
+
+        const meta = document.createElement("div");
+        meta.className = "sb-acc-meta";
+        meta.textContent = "4 niveaux";
+
+        head.appendChild(t);
+        head.appendChild(meta);
+
+        const body = document.createElement("div");
+        body.className = "sb-acc-body";
+
+        const ul = document.createElement("div");
+        ul.className = "sb-crit-evals";
+
+        const labels = ["Niveau 1","Niveau 2","Niveau 3","Niveau 4"];
+        for (let k=0;k<4;k++){
+        const row = document.createElement("div");
+        row.className = "sb-crit-eval-row";
+
+        const lab = document.createElement("div");
+        lab.className = "label";
+        lab.textContent = labels[k];
+
+        const txt = document.createElement("div");
+        txt.textContent = (c.Eval?.[k] || "").toString();
+
+        row.appendChild(lab);
+        row.appendChild(txt);
+        ul.appendChild(row);
+        }
+
+        const actions = document.createElement("div");
+        actions.className = "sb-acc-actions";
+
+        const btnEdit = document.createElement("button");
+        btnEdit.type = "button";
+        btnEdit.className = "sb-btn sb-btn--soft sb-btn--xs";
+        btnEdit.textContent = "Modifier";
+        btnEdit.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showCritEditor(i);
+        acc.classList.add("is-open");
+        });
+
+        actions.appendChild(btnEdit);
+
+        body.appendChild(ul);
+        body.appendChild(actions);
+
+        acc.appendChild(head);
+        acc.appendChild(body);
+
+        host.appendChild(acc);
+    }
+
+    // Message si rien
+    if (!host.children.length){
+        const empty = document.createElement("div");
+        empty.className = "card-sub";
+        empty.textContent = "Aucun critère. Ajoute au moins 1 critère.";
+        host.appendChild(empty);
+    }
+    }
+
+    function saveCritFromEditor(portal){
+    if (_critEditIdx === null || _critEditIdx === undefined) return;
+
+    const nom = (byId("compCritNom").value || "").trim();
+    const e1 = (byId("compCritEval1").value || "").trim();
+    const e2 = (byId("compCritEval2").value || "").trim();
+    const e3 = (byId("compCritEval3").value || "").trim();
+    const e4 = (byId("compCritEval4").value || "").trim();
+
+    if (!nom){
+        portal.showAlert("error", "Nom du critère obligatoire.");
+        return;
+    }
+    if (!e1 || !e2 || !e3 || !e4){
+        portal.showAlert("error", "Les 4 niveaux d’évaluation sont obligatoires.");
+        return;
+    }
+
+    _crit[_critEditIdx] = { Nom: nom, Eval:[e1,e2,e3,e4] };
+    hideCritEditor();
+    renderCritList();
+    }
+
+  function validateCritBeforeSave(portal){
+    if (!_crit) _crit = [emptyCrit(), emptyCrit(), emptyCrit(), emptyCrit()];
+
+    // Au moins 1 critère
+    if (usedCritCount() < 1){
+        portal.showAlert("error", "Ajoute au moins 1 critère d’évaluation.");
+        return false;
+    }
+
+    // Pas de critères partiels
+    for (let i=0;i<4;i++){
+        const c = _crit[i];
+        const nom = (c?.Nom || "").trim();
+        const ev = c?.Eval || ["","","",""];
+        const anyEval = ev.some(x => (x || "").trim().length > 0);
+
+        if (!nom && !anyEval) continue; // critère vide autorisé
+
+        if (!nom){
+        portal.showAlert("error", `Critère ${i+1} : nom obligatoire.`);
+        return false;
+        }
+        for (let k=0;k<4;k++){
+        if (!(ev[k] || "").trim()){
+            portal.showAlert("error", `Critère ${i+1} : niveau ${k+1} obligatoire.`);
+            return false;
+        }
+        }
+    }
+    return true;
+  }
+
   function roleRank(code){
     const c = (code || "").toString().trim().toLowerCase();
     if (c === "admin") return 3;
@@ -281,30 +550,32 @@
   }
 
     async function openCreate(portal){
-    _modalMode = "create";
-    _editingId = null;
+        _modalMode = "create";
+        _editingId = null;
 
-    const b = byId("compModalBadge");
-    if (b){ b.style.display = "none"; b.textContent = ""; }
+        const b = byId("compModalBadge");
+        if (b){ b.style.display = "none"; b.textContent = ""; }
 
-    byId("compModalTitle").textContent = "Créer une compétence";
+        byId("compModalTitle").textContent = "Créer une compétence";
 
-    const sub = byId("compModalSub");
-    if (sub){ sub.textContent = ""; sub.style.display = "none"; }
+        const sub = byId("compModalSub");
+        if (sub){ sub.textContent = ""; sub.style.display = "none"; }
 
-    byId("compIntitule").value = "";
-    byId("compDomaine").value = "";
-    byId("compEtat").value = "valide";
-    byId("compDesc").value = "";
-    byId("compNivA").value = "";
-    byId("compNivB").value = "";
-    byId("compNivC").value = "";
-    byId("compGrille").value = "";
+        byId("compIntitule").value = "";
+        byId("compDomaine").value = "";
+        byId("compEtat").value = "valide";
+        byId("compDesc").value = "";
+        byId("compNivA").value = "";
+        byId("compNivB").value = "";
+        byId("compNivC").value = "";
+        
 
-    await ensureDomains(portal);
-    fillDomainSelect("");
+        await ensureDomains(portal);
+        fillDomainSelect("");
 
-    openModal("modalCompEdit");
+        resetCrit();
+
+        openModal("modalCompEdit");
     }
 
   async function openEdit(portal, it){
@@ -333,6 +604,8 @@
       `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`
     );
 
+    loadCritFromJson(d.grille_evaluation);
+
     const b2 = byId("compModalBadge");
     if (b2){
     const c2 = (d && d.code) ? String(d.code) : "";
@@ -353,7 +626,7 @@
     byId("compNivB").value = (d.niveaub || "");
     byId("compNivC").value = (d.niveauc || "");
 
-    byId("compGrille").value = d.grille_evaluation ? JSON.stringify(d.grille_evaluation, null, 2) : "";
+    
   }
 
   async function save(portal){
@@ -366,7 +639,7 @@
     const a = (byId("compNivA").value || "").trim();
     const b = (byId("compNivB").value || "").trim();
     const c = (byId("compNivC").value || "").trim();
-    const grilleRaw = (byId("compGrille").value || "").trim();
+    
 
 
     if (!title){
@@ -374,14 +647,9 @@
       return;
     }
 
-    let grille = null;
-    if (grilleRaw){
-      try { grille = JSON.parse(grilleRaw); }
-      catch(e){
-        portal.showAlert("error", "JSON invalide dans la grille d’évaluation.");
-        return;
-      }
-    }
+    if (!validateCritBeforeSave(portal)) return;
+
+    const grille = buildGrilleJson();
 
     if (_modalMode === "create") {
       await portal.apiJson(
@@ -466,6 +734,22 @@
       catch (e) { portal.showAlert("error", e?.message || String(e)); }
     });
 
+    // Grille: boutons + init
+    byId("btnCompAddCrit")?.addEventListener("click", () => {
+    const idx = nextEmptyCritIndex();
+    if (idx < 0) return;
+    showCritEditor(idx);
+    });
+
+    byId("btnCompCritSave")?.addEventListener("click", () => {
+    try { saveCritFromEditor(portal); } catch(e){ portal.showAlert("error", e?.message || String(e)); }
+    });
+
+    byId("btnCompCritCancel")?.addEventListener("click", () => hideCritEditor());
+
+    // init par défaut (au cas où)
+    resetCrit();
+
     function bindMaxLen(id, max){
         const el = byId(id);
         if (!el || el._sbMaxBound) return;
@@ -482,6 +766,11 @@
     bindMaxLen("compNivA", 230);
     bindMaxLen("compNivB", 230);
     bindMaxLen("compNivC", 230);
+
+    bindMaxLen("compCritEval1", 120);
+    bindMaxLen("compCritEval2", 120);
+    bindMaxLen("compCritEval3", 120);
+    bindMaxLen("compCritEval4", 120);
 
     byId("btnCompArchiveX").addEventListener("click", () => closeModal("modalCompArchive"));
     byId("btnCompArchiveCancel").addEventListener("click", () => closeModal("modalCompArchive"));
