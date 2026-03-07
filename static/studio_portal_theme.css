@@ -255,17 +255,21 @@
 .sb-crit-evals{
   display:grid;
   gap:8px;
+  margin-top:5px;
 }
 .sb-crit-eval-row{
   display:grid;
   grid-template-columns: 70px 1fr;
   gap:10px;
-  align-items:start;
+  align-items:center;
+}
+.sb-crit-eval-row input{
+  width:100%;
 }
 .sb-crit-eval-row .label{
-  margin-top:8px;
-  opacity:.85;
+  margin-top:0;
 }
+
 .sb-crit-eval-row textarea{
   min-height:64px;
   font-family: inherit;
