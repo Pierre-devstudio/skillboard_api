@@ -316,9 +316,11 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
             max_tokens=1200,
             response_format={
                 "type": "json_schema",
-                "name": "competence_draft",
-                "schema": schema,
-                "strict": True,
+                "json_schema": {
+                    "name": "competence_draft",
+                    "schema": schema,
+                    "strict": True,
+                },
             },
         )
 
