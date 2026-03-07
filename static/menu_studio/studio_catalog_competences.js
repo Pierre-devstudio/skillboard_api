@@ -241,9 +241,13 @@
     _modalMode = "create";
     _editingId = null;
 
+    const b = byId("compModalBadge");
+    if (b){ b.style.display = "none"; b.textContent = ""; }
+
     byId("compModalTitle").textContent = "Créer une compétence";
-    byId("compModalSub").textContent = "";
-    byId("compModalSub").style.display = "none";
+
+    const sub = byId("compModalSub");
+    if (sub){ sub.textContent = ""; sub.style.display = "none"; }
 
     byId("compCode").readOnly = false;
     byId("compCode").value = "…";
@@ -271,9 +275,17 @@
     _modalMode = "edit";
     _editingId = it.id_comp;
 
-    byId("compModalTitle").textContent = it.intitule || "Modifier la compétence";
-    byId("compModalSub").textContent = it.code || "";
-    byId("compModalSub").style.display = "";
+    const b = byId("compModalBadge");
+    if (b){
+    const c = (it && it.code) ? String(it.code) : "";
+    b.textContent = c;
+    b.style.display = c ? "" : "none";
+    }
+
+    byId("compModalTitle").textContent = (it && it.intitule) ? String(it.intitule) : "Compétence";
+
+    const sub = byId("compModalSub");
+    if (sub){ sub.textContent = ""; sub.style.display = "none"; }
 
     openModal("modalCompEdit");
 
@@ -281,6 +293,17 @@
     const d = await portal.apiJson(
       `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`
     );
+
+    const b2 = byId("compModalBadge");
+    if (b2){
+    const c2 = (d && d.code) ? String(d.code) : "";
+    b2.textContent = c2;
+    b2.style.display = c2 ? "" : "none";
+    }
+
+    if (d && d.intitule){
+    byId("compModalTitle").textContent = String(d.intitule);
+    }
 
     byId("compCode").value = (d.code || "");
     byId("compCode").readOnly = true;

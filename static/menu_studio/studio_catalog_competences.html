@@ -44,8 +44,13 @@
     <div class="sb-modal-card">
       <div class="sb-modal-head">
         <div>
-          <div class="card-title" id="compModalTitle" style="margin-bottom:2px;">Compétence</div>
-          <div class="card-sub" id="compModalSub" style="margin:0;">—</div>
+            <div style="min-width:0;">
+                <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                    <span id="compModalBadge" class="sb-badge sb-badge--comp" style="display:none;"></span>
+                    <div class="card-title" id="compModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Compétence</div>
+                </div>
+                <div class="card-sub" id="compModalSub" style="margin:4px 0 0 0; display:none;"></div>
+            </div>
         </div>
         <button type="button" class="sb-modal-x" id="btnCompX" aria-label="Fermer">×</button>
       </div>
