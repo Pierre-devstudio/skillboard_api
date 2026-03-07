@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from typing import Optional, Any
 from psycopg.rows import dict_row
 import uuid
+import os
+import json
 
 from app.routers.skills_portal_common import get_conn
 from app.routers.studio_portal_common import (
@@ -10,6 +12,11 @@ from app.routers.studio_portal_common import (
     studio_fetch_owner,
     studio_require_min_role,
 )
+
+try:
+    from openai import OpenAI
+except Exception:
+    OpenAI = None
 
 router = APIRouter()
 
@@ -128,6 +135,11 @@ def _next_comp_code(cur, oid: str) -> str:
 # ------------------------------------------------------
 # Models
 # ------------------------------------------------------
+class AiDraftCompetencePayload(BaseModel):
+    objectif: str
+    contexte: Optional[str] = None
+    domaine_id: Optional[str] = None  # si l'user veut imposer un domaine
+
 class CreateCompetencePayload(BaseModel):
     code: Optional[str] = None
     intitule: str
@@ -155,6 +167,190 @@ class UpdateCompetencePayload(BaseModel):
 # ------------------------------------------------------
 # Endpoints
 # ------------------------------------------------------
+@router.post("/studio/catalog/competences/{id_owner}/ai_draft")
+def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetencePayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        if OpenAI is None:
+            raise HTTPException(status_code=500, detail="Lib OpenAI manquante (pip install openai).")
+
+        objectif = (payload.objectif or "").strip()
+        if not objectif:
+            raise HTTPException(status_code=400, detail="Objectif obligatoire.")
+
+        contexte = (payload.contexte or "").strip() or None
+        domaine_force = (payload.domaine_id or "").strip() or None
+
+        model = (os.getenv("OPENAI_MODEL_COMP_DRAFT") or "gpt-4o-mini").strip()
+        api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
+        if not api_key:
+            raise HTTPException(status_code=500, detail="OPENAI_API_KEY non configurée.")
+
+        # --- scope + domaines
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                cur.execute(
+                    """
+                    SELECT id_domaine_competence, COALESCE(titre_court, titre, id_domaine_competence) AS label
+                    FROM public.tbl_domaine_competence
+                    WHERE COALESCE(masque, FALSE) = FALSE
+                    ORDER BY COALESCE(ordre_affichage, 999999), lower(COALESCE(titre_court, titre, id_domaine_competence))
+                    """
+                )
+                dom_rows = cur.fetchall() or []
+
+        dom_map = { (r.get("id_domaine_competence") or "").strip(): (r.get("label") or "").strip() for r in dom_rows }
+        dom_list_txt = "\n".join([f"- {k} : {v}" for k, v in dom_map.items()]) if dom_map else "- (aucun domaine)"
+
+        # --- JSON Schema strict
+        schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["intitule", "description", "niveaua", "niveaub", "niveauc", "domaine_id", "grille_evaluation"],
+            "properties": {
+                "intitule": {"type": "string", "minLength": 1, "maxLength": 140},
+                "description": {"type": "string", "maxLength": 1200},
+                "niveaua": {"type": "string", "maxLength": 230},
+                "niveaub": {"type": "string", "maxLength": 230},
+                "niveauc": {"type": "string", "maxLength": 230},
+                "domaine_id": {"type": ["string", "null"]},
+                "grille_evaluation": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["Critere1", "Critere2", "Critere3", "Critere4"],
+                    "properties": {
+                        "Critere1": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["Nom", "Eval"],
+                            "properties": {
+                                "Nom": {"type": "string", "maxLength": 140},
+                                "Eval": {
+                                    "type": "array",
+                                    "minItems": 4,
+                                    "maxItems": 4,
+                                    "items": {"type": "string", "maxLength": 120}
+                                }
+                            }
+                        },
+                        "Critere2": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["Nom", "Eval"],
+                            "properties": {
+                                "Nom": {"type": "string", "maxLength": 140},
+                                "Eval": {
+                                    "type": "array",
+                                    "minItems": 4,
+                                    "maxItems": 4,
+                                    "items": {"type": "string", "maxLength": 120}
+                                }
+                            }
+                        },
+                        "Critere3": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["Nom", "Eval"],
+                            "properties": {
+                                "Nom": {"type": "string", "maxLength": 140},
+                                "Eval": {
+                                    "type": "array",
+                                    "minItems": 4,
+                                    "maxItems": 4,
+                                    "items": {"type": "string", "maxLength": 120}
+                                }
+                            }
+                        },
+                        "Critere4": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["Nom", "Eval"],
+                            "properties": {
+                                "Nom": {"type": "string", "maxLength": 140},
+                                "Eval": {
+                                    "type": "array",
+                                    "minItems": 4,
+                                    "maxItems": 4,
+                                    "items": {"type": "string", "maxLength": 120}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        sys = (
+            "Tu aides à concevoir une fiche compétence. "
+            "Tu dois respecter STRICTEMENT le schéma JSON fourni. "
+            "Les évaluations doivent être progressives, observables et actionnables. "
+            "Si l'utilisateur ne veut que 1-3 critères, laisse les critères restants vides (Nom vide + 4 Eval vides)."
+        )
+
+        user = (
+            f"Objectif: {objectif}\n"
+            f"Contexte: {contexte or ''}\n"
+            f"Domaine imposé (si non vide): {domaine_force or ''}\n\n"
+            f"Domaines disponibles (id -> titre_court):\n{dom_list_txt}\n\n"
+            "Contraintes:\n"
+            "- 1 à 4 critères utilisés\n"
+            "- 4 niveaux par critère, chacun <=120 caractères\n"
+            "- Niveaux A/B/C <=230 caractères\n"
+        )
+
+        client = OpenAI(api_key=api_key)
+
+        resp = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": sys},
+                {"role": "user", "content": user},
+            ],
+            temperature=0.3,
+            max_tokens=1200,
+            response_format={
+                "type": "json_schema",
+                "name": "competence_draft",
+                "schema": schema,
+                "strict": True,
+            },
+        )
+
+        content = (resp.choices[0].message.content or "").strip()
+        if not content:
+            raise HTTPException(status_code=500, detail="Réponse IA vide.")
+
+        data = json.loads(content)
+
+        # --- Domaine: priorité au domaine imposé, sinon celui proposé si valide
+        dom_out = (domaine_force or (data.get("domaine_id") or "")).strip() or None
+        if dom_out and dom_out not in dom_map:
+            dom_out = None
+        data["domaine_id"] = dom_out
+
+        # --- sanity: au moins 1 critère non vide
+        ge = data.get("grille_evaluation") or {}
+        used = 0
+        for k in ("Critere1", "Critere2", "Critere3", "Critere4"):
+            nm = ((ge.get(k) or {}).get("Nom") or "").strip()
+            if nm:
+                used += 1
+        if used < 1:
+            raise HTTPException(status_code=400, detail="IA: aucun critère exploitable généré (re-tente avec plus de contexte).")
+
+        return data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/catalog/competences ai_draft error: {e}")
+    
 @router.get("/studio/catalog/domaines/{id_owner}")
 def studio_catalog_list_domaines(id_owner: str, request: Request):
     auth = request.headers.get("Authorization", "")

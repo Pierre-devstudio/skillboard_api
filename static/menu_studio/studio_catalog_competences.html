@@ -159,6 +159,7 @@
       </div>
 
       <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--soft" id="btnCompAi">Concevoir avec l’IA</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnCompSave">Enregistrer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnCompCancel">Annuler</button>
       </div>
@@ -182,4 +183,52 @@
       </div>
     </div>
   </div>
+
+  <!-- MODAL : IA – brouillon fiche compétence -->
+    <div class="sb-modal" id="modalCompAi" style="display:none;">
+        <div class="sb-modal-card">
+            <div class="sb-modal-head">
+            <div>
+                <div class="card-title" style="margin:0;">Concevoir avec l’IA</div>
+                <div class="card-sub" style="margin:4px 0 0 0;">
+                L’IA propose un brouillon. Tu valides/ajustes avant d’enregistrer.
+                </div>
+            </div>
+            <button type="button" class="sb-modal-x" id="btnCompAiX" aria-label="Fermer">×</button>
+            </div>
+
+            <div class="sb-modal-body">
+            <div class="row">
+                <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Objectif de la compétence</div>
+                <textarea id="compAiObjectif" rows="3" placeholder="Ex: Analyser et structurer des données avec une aide IA"></textarea>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Contexte (optionnel)</div>
+                <textarea id="compAiContexte" rows="3" placeholder="Ex: environnement PME, outils utilisés, contexte métier..."></textarea>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Domaine (optionnel)</div>
+                <select id="compAiDomaine">
+                    <option value="">—</option>
+                </select>
+                <div class="card-sub" style="margin:6px 0 0 0;">
+                    Si tu choisis un domaine, l’IA sera contrainte de le respecter.
+                </div>
+                </div>
+            </div>
+            </div>
+
+            <div class="sb-modal-foot">
+            <button type="button" class="sb-btn sb-btn--accent" id="btnCompAiGenerate">Générer</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnCompAiCancel">Annuler</button>
+            </div>
+        </div>
+    </div>
 </section>

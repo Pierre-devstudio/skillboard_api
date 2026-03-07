@@ -21,9 +21,9 @@
         } catch(e){
             _domainItems = [];
         }
-        }
+    }
 
-        function fillDomainSelect(selectedId){
+    function fillDomainSelect(selectedId){
         const sel = byId("compDomaine");
         if (!sel) return;
 
@@ -44,6 +44,32 @@
             opt.value = id;
             opt.textContent = label;
             opt.title = (d.titre || label || "").toString();
+            sel.appendChild(opt);
+        });
+
+        sel.value = keep || "";
+    }
+    
+    function fillAiDomainSelect(selectedId){
+        const sel = byId("compAiDomaine");
+        if (!sel) return;
+
+        const keep = (selectedId ?? sel.value ?? "").toString().trim();
+
+        sel.innerHTML = "";
+        const opt0 = document.createElement("option");
+        opt0.value = "";
+        opt0.textContent = "—";
+        sel.appendChild(opt0);
+
+        (_domainItems || []).forEach(d => {
+            const id = (d.id_domaine_competence || "").toString().trim();
+            if (!id) return;
+
+            const label = (d.titre_court || d.titre || id).toString().trim();
+            const opt = document.createElement("option");
+            opt.value = id;
+            opt.textContent = label;
             sel.appendChild(opt);
         });
 
@@ -544,6 +570,65 @@
     applyDomainFilterAndRender();
   }
 
+    function openAiModal(){
+        openModal("modalCompAi");
+    }
+    function closeAiModal(){
+        closeModal("modalCompAi");
+    }
+
+    async function generateAiDraft(portal){
+        const objectif = (byId("compAiObjectif")?.value || "").trim();
+        const contexte = (byId("compAiContexte")?.value || "").trim();
+        const dom = (byId("compAiDomaine")?.value || "").trim();
+
+        if (!objectif){
+            portal.showAlert("error", "Objectif obligatoire.");
+            return;
+        }
+
+        const ownerId = getOwnerId();
+        const url = `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}/ai_draft`;
+
+        const btn = byId("btnCompAiGenerate");
+        if (btn){ btn.disabled = true; btn.style.opacity = ".6"; btn.textContent = "Génération…"; }
+
+        try{
+            const draft = await portal.apiJson(url, {
+            method: "POST",
+            headers: { "Content-Type":"application/json" },
+            body: JSON.stringify({
+                objectif: objectif,
+                contexte: contexte || null,
+                domaine_id: dom || null
+            })
+            });
+
+            // Hydratation formulaire principal
+            if (draft?.intitule) byId("compIntitule").value = String(draft.intitule);
+            if (draft?.description !== undefined) byId("compDesc").value = String(draft.description || "");
+            if (draft?.niveaua !== undefined) byId("compNivA").value = String(draft.niveaua || "");
+            if (draft?.niveaub !== undefined) byId("compNivB").value = String(draft.niveaub || "");
+            if (draft?.niveauc !== undefined) byId("compNivC").value = String(draft.niveauc || "");
+
+            // Domaine (draft.domaine_id = id_domaine_competence)
+            await ensureDomains(portal);
+            fillDomainSelect(draft?.domaine_id || "");
+
+            // Grille d'évaluation
+            if (typeof loadCritFromJson === "function"){
+            loadCritFromJson(draft?.grille_evaluation || null);
+            }
+
+            closeAiModal();
+            portal.showAlert("", ""); // silence
+        } catch(e){
+            portal.showAlert("error", e?.message || String(e));
+        } finally {
+            if (btn){ btn.disabled = false; btn.style.opacity = ""; btn.textContent = "Générer"; }
+        }
+    }
+
     async function openCreate(portal){
         _modalMode = "create";
         _editingId = null;
@@ -552,6 +637,9 @@
         if (b){ b.style.display = "none"; b.textContent = ""; }
 
         byId("compModalTitle").textContent = "Créer une compétence";
+
+        const aiBtn = byId("btnCompAi");
+        if (aiBtn) aiBtn.style.display = "";
 
         const sub = byId("compModalSub");
         if (sub){ sub.textContent = ""; sub.style.display = "none"; }
@@ -566,7 +654,13 @@
         
 
         await ensureDomains(portal);
+
+        fillAiDomainSelect(""); // prépare le select du modal IA
+        byId("compAiObjectif") && (byId("compAiObjectif").value = "");
+        byId("compAiContexte") && (byId("compAiContexte").value = "");
+
         fillDomainSelect("");
+
 
         resetCrit();
 
@@ -576,6 +670,8 @@
   async function openEdit(portal, it){
     _modalMode = "edit";
     _editingId = it.id_comp;
+    const aiBtn = byId("btnCompAi");
+    if (aiBtn) aiBtn.style.display = "none";
 
     const b = byId("compModalBadge");
     if (b){
@@ -727,6 +823,24 @@
     byId("btnCompSave").addEventListener("click", async () => {
       try { await save(portal); }
       catch (e) { portal.showAlert("error", e?.message || String(e)); }
+    });
+
+    // IA: ouverture/fermeture/génération
+    byId("btnCompAi")?.addEventListener("click", async () => {
+    try{
+        await ensureDomains(portal);
+        fillAiDomainSelect(byId("compDomaine")?.value || "");
+        openAiModal();
+    } catch(e){
+        portal.showAlert("error", e?.message || String(e));
+    }
+    });
+
+    byId("btnCompAiX")?.addEventListener("click", closeAiModal);
+    byId("btnCompAiCancel")?.addEventListener("click", closeAiModal);
+
+    byId("btnCompAiGenerate")?.addEventListener("click", async () => {
+    await generateAiDraft(portal);
     });
 
     // Grille: boutons + init
