@@ -6,6 +6,49 @@
   let _show = "active";
   let _dom = "";          // id_domaine_competence sélectionné
   let _itemsAll = [];     // liste brute reçue de l’API (avant filtre domaine)
+  let _domainsLoaded = false;
+  let _domainItems = [];
+
+    async function ensureDomains(portal){
+        if (_domainsLoaded) return;
+        _domainsLoaded = true;
+
+        try{
+            const ownerId = getOwnerId();
+            const url = `${portal.apiBase}/studio/catalog/domaines/${encodeURIComponent(ownerId)}`;
+            const r = await portal.apiJson(url);
+            _domainItems = Array.isArray(r?.items) ? r.items : [];
+        } catch(e){
+            _domainItems = [];
+        }
+        }
+
+        function fillDomainSelect(selectedId){
+        const sel = byId("compDomaine");
+        if (!sel) return;
+
+        const keep = (selectedId ?? sel.value ?? "").toString().trim();
+
+        sel.innerHTML = "";
+        const opt0 = document.createElement("option");
+        opt0.value = "";
+        opt0.textContent = "—";
+        sel.appendChild(opt0);
+
+        (_domainItems || []).forEach(d => {
+            const id = (d.id_domaine_competence || "").toString().trim();
+            if (!id) return;
+
+            const label = (d.titre_court || d.titre || id).toString().trim();
+            const opt = document.createElement("option");
+            opt.value = id;
+            opt.textContent = label;
+            opt.title = (d.titre || label || "").toString();
+            sel.appendChild(opt);
+        });
+
+        sel.value = keep || "";
+    }
 
   let _roleCode = (window.__studioRoleCode || "").toString().trim().toLowerCase();
 
@@ -258,6 +301,9 @@
     byId("compNivC").value = "";
     byId("compGrille").value = "";
 
+    await ensureDomains(portal);
+    fillDomainSelect("");
+
     openModal("modalCompEdit");
     }
 
@@ -279,6 +325,9 @@
 
     openModal("modalCompEdit");
 
+    await ensureDomains(portal);
+    fillDomainSelect((it && it.domaine) ? it.domaine : "");
+
     const ownerId = getOwnerId();
     const d = await portal.apiJson(
       `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`
@@ -297,7 +346,7 @@
 
 
     byId("compIntitule").value = (d.intitule || "");
-    byId("compDomaine").value = (d.domaine || "");
+    fillDomainSelect(d.domaine || "");
     byId("compEtat").value = (d.etat || "valide");
     byId("compDesc").value = (d.description || "");
     byId("compNivA").value = (d.niveaua || "");

@@ -155,6 +155,56 @@ class UpdateCompetencePayload(BaseModel):
 # ------------------------------------------------------
 # Endpoints
 # ------------------------------------------------------
+@router.get("/studio/catalog/domaines/{id_owner}")
+def studio_catalog_list_domaines(id_owner: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                cur.execute(
+                    """
+                    SELECT
+                      id_domaine_competence,
+                      titre,
+                      titre_court,
+                      description,
+                      ordre_affichage,
+                      couleur
+                    FROM public.tbl_domaine_competence
+                    WHERE COALESCE(masque, FALSE) = FALSE
+                    ORDER BY
+                      COALESCE(ordre_affichage, 999999),
+                      lower(COALESCE(titre_court, titre, id_domaine_competence))
+                    """
+                )
+                rows = cur.fetchall() or []
+
+        items = []
+        for r in rows:
+            items.append(
+                {
+                    "id_domaine_competence": r.get("id_domaine_competence"),
+                    "titre": r.get("titre"),
+                    "titre_court": r.get("titre_court"),
+                    "description": r.get("description"),
+                    "ordre_affichage": r.get("ordre_affichage"),
+                    "couleur": r.get("couleur"),
+                }
+            )
+
+        return {"items": items}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/catalog/domaines error: {e}")
+    
 @router.get("/studio/catalog/competences/{id_owner}")
 def studio_catalog_list_competences(
     id_owner: str,
