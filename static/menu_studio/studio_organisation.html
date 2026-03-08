@@ -198,6 +198,45 @@
               </div>
             </div>
           </div>
+
+          <div class="card org-bloc" id="posteBlocCompetences" style="margin-top:12px;">
+            <div class="org-card-head">
+              <div>
+                <div class="card-title" style="margin-bottom:2px;">Compétences</div>
+                <div class="card-sub" style="margin:0;">Compétences requises pour ce poste (niveau requis + criticité).</div>
+              </div>
+
+              <div class="sb-toolbar">
+                <div class="sb-search">
+                  <div class="card-sub" style="margin:0 0 4px 0;">Rechercher</div>
+                  <input type="text" id="posteCompSearch" placeholder="Code ou intitulé…" />
+                </div>
+
+                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteCompAdd">Ajouter</button>
+              </div>
+            </div>
+
+            <div class="table-wrap" style="margin-top:10px;">
+              <table class="sb-table" id="posteCompTable">
+                <thead>
+                  <tr>
+                    <th style="width:140px;">Domaine</th>
+                    <th style="width:90px;">Code</th>
+                    <th>Compétence</th>
+                    <th style="width:120px; text-align:center;">Niveau requis</th>
+                    <th style="width:110px; text-align:center;">Criticité</th>
+                    <th style="width:120px; text-align:center;">Ind.</th>
+                    <th style="width:160px; text-align:right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="posteCompTbody"></tbody>
+              </table>
+
+              <div class="card-sub" id="posteCompEmpty" style="margin-top:8px; display:none;">
+                Aucune compétence rattachée à ce poste.
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Paramétrage RH -->
@@ -219,6 +258,123 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- MODAL : Ajouter compétence au poste -->
+  <div class="sb-modal" id="modalPosteCompAdd" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">Ajouter une compétence</div>
+          <div class="card-sub" style="margin:0;">Catalogue propriétaire.</div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnClosePosteCompAdd" aria-label="Fermer">&times;</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="sb-toolbar">
+          <div class="sb-search">
+            <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
+            <input type="text" id="posteCompAddSearch" placeholder="Code ou intitulé…" />
+          </div>
+
+          <label class="sb-check" style="align-self:flex-end; margin:0 4px 2px 0;">
+            <input type="checkbox" id="posteCompAddShowToValidate" />
+            <span>Inclure compétences “à valider”</span>
+          </label>
+        </div>
+
+        <div class="sb-stack sb-stack--xxs sb-mt-10" id="posteCompAddList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : Éditer compétence rattachée -->
+  <div class="sb-modal" id="modalPosteCompEdit" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div style="min-width:0;">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+            <span id="posteCompEditBadge" class="sb-badge sb-badge--poste" style="display:none;"></span>
+            <span id="posteCompEditDomain" class="sb-badge sb-badge--comp-domain" style="display:none;">
+              <span class="sb-dot"></span><span id="posteCompEditDomainTxt"></span>
+            </span>
+            <div class="card-title" id="posteCompEditTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Compétence</div>
+          </div>
+          <div class="card-sub" id="posteCompEditSub" style="margin:4px 0 0 0; display:none;"></div>
+        </div>
+
+        <button type="button" class="sb-modal-x" id="btnClosePosteCompEdit" aria-label="Fermer">&times;</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:240px;">
+            <div class="label">Niveau requis</div>
+            <select id="posteCompEditNiv">
+              <option value="A">A — Initial</option>
+              <option value="B">B — Avancé</option>
+              <option value="C">C — Expert</option>
+            </select>
+          </div>
+
+          <div class="info-item" style="flex:1; min-width:240px;">
+            <div class="label">Criticité (calcul serveur)</div>
+            <div class="card-sub" id="posteCompEditCrit" style="margin:8px 0 0 0;">—</div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="card-title" style="font-size:14px;">Détail de la criticité</div>
+          <div class="card-sub" style="margin:4px 0 10px 0;">Saisie 0–10. Pondération: 20 / 50 / 30.</div>
+
+          <div class="row">
+            <div class="info-item" style="flex:1; min-width:220px;">
+              <div class="label">Fréquence d’usage (0–10)</div>
+              <input type="range" id="posteCompEditFreq" min="0" max="10" step="1" />
+              <div class="card-sub" id="posteCompEditFreqTxt" style="margin:6px 0 0 0;">—</div>
+            </div>
+
+            <div class="info-item" style="flex:1; min-width:220px;">
+              <div class="label">Impact résultat (0–10)</div>
+              <input type="range" id="posteCompEditImpact" min="0" max="10" step="1" />
+              <div class="card-sub" id="posteCompEditImpactTxt" style="margin:6px 0 0 0;">—</div>
+            </div>
+
+            <div class="info-item" style="flex:1; min-width:220px;">
+              <div class="label">Dépendance (0–10)</div>
+              <input type="range" id="posteCompEditDep" min="0" max="10" step="1" />
+              <div class="card-sub" id="posteCompEditDepTxt" style="margin:6px 0 0 0;">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <div class="card-title" style="font-size:14px;">Référentiel (lecture)</div>
+          <div class="card-sub" style="margin:4px 0 10px 0;">Niveaux de maîtrise (catalogue compétence) pour aider au choix.</div>
+
+          <div class="row">
+            <div class="info-item" style="flex:1; min-width:240px;">
+              <div class="label">A — Initial</div>
+              <div class="sb-help" id="posteCompRefA"></div>
+            </div>
+            <div class="info-item" style="flex:1; min-width:240px;">
+              <div class="label">B — Avancé</div>
+              <div class="sb-help" id="posteCompRefB"></div>
+            </div>
+            <div class="info-item" style="flex:1; min-width:240px;">
+              <div class="label">C — Expert</div>
+              <div class="sb-help" id="posteCompRefC"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCompEditSave">Enregistrer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCompEditCancel">Annuler</button>
+      </div>
     </div>
   </div>
 

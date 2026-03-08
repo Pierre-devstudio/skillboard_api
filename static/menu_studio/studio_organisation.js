@@ -1,33 +1,45 @@
 (function () {
-  let _bound = false;
-  let _loaded = false;
+    let _bound = false;
+    let _loaded = false;
 
-  let _services = [];
-  let _totaux = { nb_postes: 0, nb_collabs: 0 };
-  let _nonLie = { nb_postes: 0, nb_collabs: 0 };
+    let _services = [];
+    let _totaux = { nb_postes: 0, nb_collabs: 0 };
+    let _nonLie = { nb_postes: 0, nb_collabs: 0 };
 
-  let _selectedService = "__all__"; // "__all__", "__none__", ou id_service
-  let _selectedServiceName = "Tous les services";
+    let _selectedService = "__all__"; // "__all__", "__none__", ou id_service
+    let _selectedServiceName = "Tous les services";
 
-  let _posteSearch = "";
-  let _posteSearchTimer = null;
+    let _posteSearch = "";
+    let _posteSearchTimer = null;
 
-  let _catalogSearch = "";
-  let _catalogTimer = null;
+    let _catalogSearch = "";
+    let _catalogTimer = null;
 
-  let _serviceModalMode = "create"; // create | edit
-  let _editingServiceId = null;
-  
-  let _showArchivedPostes = false;
+    let _serviceModalMode = "create"; // create | edit
+    let _editingServiceId = null;
+    
+    let _showArchivedPostes = false;
 
-  let _posteModalMode = "create"; // create | edit
-  let _editingPosteId = null;
+    let _posteModalMode = "create"; // create | edit
+    let _editingPosteId = null;
 
-  function getOwnerId() {
-    const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
-    if (pid) return pid;
-    return (new URL(window.location.href).searchParams.get("id") || "").trim();
-  }
+    // --- Poste > Compétences (Exigences)
+    let _posteCompItems = [];
+    let _posteCompSearch = "";
+    let _posteCompSearchTimer = null;
+
+    let _posteCompAddItems = [];
+    let _posteCompAddSearch = "";
+    let _posteCompAddTimer = null;
+    let _posteCompAddIncludeToValidate = false;
+
+    let _posteCompEdit = null; // objet en cours d'édition (merge comp + assoc)
+
+    function getOwnerId() {
+        const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
+        if (pid) return pid;
+        return (new URL(window.location.href).searchParams.get("id") || "").trim();
+    }
 
     let _roleCode = (window.__studioRoleCode || "").toString().trim().toLowerCase();
 
@@ -70,23 +82,51 @@
             .replaceAll("'", "&#39;");
     }
 
+    function argbIntToRgbTuple(v){
+        if (v === null || v === undefined) return null;
+        let n;
+        if (typeof v === "number") n = v;
+        else {
+            const s = String(v).trim();
+            if (!s) return null;
+            n = parseInt(s, 10);
+            if (Number.isNaN(n)) return null;
+        }
+        const u = (n >>> 0);
+        const r = (u >> 16) & 255;
+        const g = (u >> 8) & 255;
+        const b = u & 255;
+        return { r, g, b, css: `${r},${g},${b}` };
+    }
+
+    function calcCritDisplay(fu, im, de){
+        const f = Math.max(0, Math.min(10, parseInt(fu ?? 0, 10) || 0));
+        const i = Math.max(0, Math.min(10, parseInt(im ?? 0, 10) || 0));
+        const d = Math.max(0, Math.min(10, parseInt(de ?? 0, 10) || 0));
+        const f20 = f * 2;
+        const i50 = i * 5;
+        const d30 = d * 3;
+        const total = Math.max(0, Math.min(100, f20 + i50 + d30));
+        return { f, i, d, f20, i50, d30, total };
+    }
+
     function rtGetHtml(id){
         const el = byId(id);
         if (!el) return "";
         const tag = (el.tagName || "").toUpperCase();
         if (tag === "TEXTAREA" || tag === "INPUT") return el.value || "";
         return el.innerHTML || "";
-        }
+    }
 
-        function rtSetHtml(id, html){
+    function rtSetHtml(id, html){
         const el = byId(id);
         if (!el) return;
         const tag = (el.tagName || "").toUpperCase();
         if (tag === "TEXTAREA" || tag === "INPUT") el.value = html || "";
         else el.innerHTML = html || "";
-        }
+    }
 
-        function bindRichtext(id){
+    function bindRichtext(id){
         const ed = byId(id);
         if (!ed) return;
 
@@ -115,7 +155,7 @@
             document.execCommand(cmd, false, null);
             });
         });
-        }
+    }
 
     function openModal(id){
         const el = byId(id);
@@ -439,46 +479,416 @@
     }
 
     function fillNsfSelect(currentCode){
-    const sel = byId("posteCtrNsfGroupe");
-    if (!sel) return;
+        const sel = byId("posteCtrNsfGroupe");
+        if (!sel) return;
 
-    const code = (currentCode ?? "").toString().trim();
+        const code = (currentCode ?? "").toString().trim();
 
-    sel.innerHTML = "";
-    const opt0 = document.createElement("option");
-    opt0.value = "";
-    opt0.textContent = "—";
-    sel.appendChild(opt0);
+        sel.innerHTML = "";
+        const opt0 = document.createElement("option");
+        opt0.value = "";
+        opt0.textContent = "—";
+        sel.appendChild(opt0);
 
-    (_nsfGroupes || []).forEach(g => {
-        const c = (g.code ?? "").toString().trim();
-        const t = (g.titre ?? "").toString().trim();
-        if (!c) return;
-        const opt = document.createElement("option");
-        opt.value = c;
-        opt.textContent = t ? `${t} (${c})` : c;
-        sel.appendChild(opt);
-    });
+        (_nsfGroupes || []).forEach(g => {
+            const c = (g.code ?? "").toString().trim();
+            const t = (g.titre ?? "").toString().trim();
+            if (!c) return;
+            const opt = document.createElement("option");
+            opt.value = c;
+            opt.textContent = t ? `${t} (${c})` : c;
+            sel.appendChild(opt);
+        });
 
-    sel.value = code || "";
+        sel.value = code || "";
     }
 
     function fillPosteContraintesTab(detail){
-    initPosteContraintesSelects();
+        initPosteContraintesSelects();
 
-    _selectByValue("posteCtrEduMin", detail?.niveau_education_minimum);
-    _setChecked("posteCtrNsfOblig", detail?.nsf_groupe_obligatoire);
-    _selectByValue("posteCtrMobilite", detail?.mobilite);
-    _selectByValue("posteCtrRisquePhys", detail?.risque_physique);
-    _selectByValue("posteCtrPerspEvol", detail?.perspectives_evolution);
-    _selectByValue("posteCtrNivContrainte", detail?.niveau_contrainte);
-    _setValue("posteCtrDetailContrainte", detail?.detail_contrainte);
+        _selectByValue("posteCtrEduMin", detail?.niveau_education_minimum);
+        _setChecked("posteCtrNsfOblig", detail?.nsf_groupe_obligatoire);
+        _selectByValue("posteCtrMobilite", detail?.mobilite);
+        _selectByValue("posteCtrRisquePhys", detail?.risque_physique);
+        _selectByValue("posteCtrPerspEvol", detail?.perspectives_evolution);
+        _selectByValue("posteCtrNivContrainte", detail?.niveau_contrainte);
+        _setValue("posteCtrDetailContrainte", detail?.detail_contrainte);
 
-    const rSel = byId("posteCtrRisquePhys");
-    if (rSel && typeof rSel._sbRefreshHelp === "function") rSel._sbRefreshHelp();
+        const rSel = byId("posteCtrRisquePhys");
+        if (rSel && typeof rSel._sbRefreshHelp === "function") rSel._sbRefreshHelp();
 
-    const nSel = byId("posteCtrNivContrainte");
-    if (nSel && typeof nSel._sbRefreshHelp === "function") nSel._sbRefreshHelp();
+        const nSel = byId("posteCtrNivContrainte");
+        if (nSel && typeof nSel._sbRefreshHelp === "function") nSel._sbRefreshHelp();
+    }
+
+    // ------------------------------------------------------
+    // Poste > Exigences > Compétences
+    // ------------------------------------------------------
+    async function loadPosteCompetences(portal){
+        if (!_editingPosteId) return;
+
+        const ownerId = getOwnerId();
+        const url = `${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}`;
+        const data = await portal.apiJson(url);
+        _posteCompItems = data.items || [];
+        renderPosteCompetences();
+    }
+
+    function renderPosteCompetences(){
+        const tb = byId("posteCompTbody");
+        const empty = byId("posteCompEmpty");
+        if (!tb) return;
+
+        const q = (_posteCompSearch || "").toLowerCase();
+        const items = (_posteCompItems || []).filter(it => {
+        if (!q) return true;
+        const s = `${it.code || ""} ${it.intitule || ""}`.toLowerCase();
+        return s.includes(q);
+        });
+
+        tb.innerHTML = "";
+
+        if (!items.length){
+        if (empty) empty.style.display = "";
+        return;
+        }
+        if (empty) empty.style.display = "none";
+
+        items.forEach(it => {
+        const tr = document.createElement("tr");
+
+        // Domaine badge
+        const tdDom = document.createElement("td");
+        const domLabel = (it.domaine_titre_court || it.domaine || "").toString().trim();
+        if (domLabel){
+            const b = document.createElement("span");
+            b.className = "sb-badge sb-badge--comp-domain";
+            const dot = document.createElement("span");
+            dot.className = "sb-dot";
+            const rgb = argbIntToRgbTuple(it.domaine_couleur);
+            if (rgb) b.style.setProperty("--sb-domain-rgb", rgb.css);
+            b.appendChild(dot);
+            b.appendChild(document.createTextNode(domLabel));
+            tdDom.appendChild(b);
+        } else {
+            tdDom.textContent = "—";
+        }
+
+        const tdCode = document.createElement("td");
+        tdCode.textContent = it.code || "—";
+
+        const tdTit = document.createElement("td");
+        tdTit.textContent = it.intitule || "";
+
+        const tdNiv = document.createElement("td");
+        tdNiv.style.textAlign = "center";
+        const bn = document.createElement("span");
+        bn.className = "sb-badge sb-badge--poste-soft";
+        bn.textContent = it.niveau_requis || "—";
+        tdNiv.appendChild(bn);
+
+        const tdCrit = document.createElement("td");
+        tdCrit.style.textAlign = "center";
+        tdCrit.textContent = (it.poids_criticite ?? "—");
+
+        const tdInd = document.createElement("td");
+        tdInd.style.textAlign = "center";
+        if ((it.etat || "").toLowerCase() === "à valider"){
+            const b = document.createElement("span");
+            b.className = "sb-badge sb-badge--accent-soft";
+            b.textContent = "À valider";
+            tdInd.appendChild(b);
+        } else {
+            tdInd.textContent = "—";
+        }
+
+        const tdAct = document.createElement("td");
+        tdAct.style.textAlign = "right";
+
+        if (isAdmin()){
+            const btnEdit = document.createElement("button");
+            btnEdit.type = "button";
+            btnEdit.className = "sb-btn sb-btn--soft sb-btn--xs";
+            btnEdit.textContent = "Modifier";
+            btnEdit.addEventListener("click", () => openPosteCompEditModal(it));
+            tdAct.appendChild(btnEdit);
+
+            const btnRem = document.createElement("button");
+            btnRem.type = "button";
+            btnRem.className = "sb-btn sb-btn--soft sb-btn--xs";
+            btnRem.textContent = "Retirer";
+            btnRem.style.marginLeft = "6px";
+            btnRem.addEventListener("click", async () => {
+            if (!confirm(`Retirer la compétence "${it.code || ""} – ${it.intitule || ""}" du poste ?`)) return;
+            try { await removePosteCompetence(window.portal, it.id_competence); }
+            catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
+            });
+            tdAct.appendChild(btnRem);
+        } else {
+            tdAct.textContent = "—";
+        }
+
+        tr.appendChild(tdDom);
+        tr.appendChild(tdCode);
+        tr.appendChild(tdTit);
+        tr.appendChild(tdNiv);
+        tr.appendChild(tdCrit);
+        tr.appendChild(tdInd);
+        tr.appendChild(tdAct);
+
+        tb.appendChild(tr);
+        });
+    }
+
+    function openPosteCompAddModal(){
+        if (!isAdmin()) return;
+        if (!_editingPosteId) return;
+
+        byId("posteCompAddSearch").value = "";
+        _posteCompAddSearch = "";
+        byId("posteCompAddList").innerHTML = "";
+        const cb = byId("posteCompAddShowToValidate");
+        if (cb) cb.checked = false;
+        _posteCompAddIncludeToValidate = false;
+
+        openModal("modalPosteCompAdd");
+        loadPosteCompAddList(window.portal).catch(()=>{});
+    }
+
+    async function loadPosteCompAddList(portal){
+        const ownerId = getOwnerId();
+        const url =
+        `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}` +
+        `?q=${encodeURIComponent(_posteCompAddSearch)}` +
+        `&show=active`;
+
+        const data = await portal.apiJson(url);
+        let items = data.items || [];
+
+        // Filtre etat: active/valide (toujours) + à valider si checkbox
+        items = items.filter(it => {
+        const et = (it.etat || "").toLowerCase();
+        if (et === "active" || et === "valide") return true;
+        if (_posteCompAddIncludeToValidate && et === "à valider") return true;
+        return false;
+        });
+
+        // Exclure déjà rattachées (actives)
+        const existing = new Set((_posteCompItems || []).map(x => x.id_competence));
+        items = items.filter(it => !existing.has(it.id_comp));
+
+        _posteCompAddItems = items;
+        renderPosteCompAddList();
+    }
+
+    function renderPosteCompAddList(){
+        const host = byId("posteCompAddList");
+        if (!host) return;
+        host.innerHTML = "";
+
+        const items = _posteCompAddItems || [];
+        if (!items.length){
+        const e = document.createElement("div");
+        e.className = "card-sub";
+        e.textContent = "Aucune compétence à afficher.";
+        host.appendChild(e);
+        return;
+        }
+
+        items.forEach(it => {
+        const row = document.createElement("div");
+        row.className = "sb-row-card";
+
+        const left = document.createElement("div");
+        left.className = "sb-row-left";
+
+        const code = document.createElement("span");
+        code.className = "sb-badge sb-badge--poste";
+        code.textContent = it.code || "—";
+
+        const title = document.createElement("div");
+        title.className = "sb-row-title";
+        title.textContent = it.intitule || "";
+
+        left.appendChild(code);
+        left.appendChild(title);
+
+        const right = document.createElement("div");
+        right.className = "sb-row-right";
+
+        const domLabel = (it.domaine_titre_court || it.domaine || "").toString().trim();
+        if (domLabel){
+            const b = document.createElement("span");
+            b.className = "sb-badge sb-badge--comp-domain";
+            const dot = document.createElement("span");
+            dot.className = "sb-dot";
+            const rgb = argbIntToRgbTuple(it.domaine_couleur);
+            if (rgb) b.style.setProperty("--sb-domain-rgb", rgb.css);
+            b.appendChild(dot);
+            b.appendChild(document.createTextNode(domLabel));
+            right.appendChild(b);
+        }
+
+        if ((it.etat || "").toLowerCase() === "à valider"){
+            const v = document.createElement("span");
+            v.className = "sb-badge sb-badge--accent-soft";
+            v.textContent = "À valider";
+            right.appendChild(v);
+        }
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "sb-btn sb-btn--accent sb-btn--xs";
+        btn.textContent = "Ajouter";
+        btn.addEventListener("click", () => {
+            closeModal("modalPosteCompAdd");
+            openPosteCompEditModal({
+            id_competence: it.id_comp,
+            code: it.code,
+            intitule: it.intitule,
+            etat: it.etat,
+            domaine: it.domaine,
+            domaine_titre_court: it.domaine_titre_court,
+            domaine_couleur: it.domaine_couleur,
+
+            // valeurs ref (on les charge au besoin via detail)
+            niveaua: "",
+            niveaub: "",
+            niveauc: "",
+
+            // defaults association
+            niveau_requis: "B",
+            freq_usage: 0,
+            impact_resultat: 0,
+            dependance: 0,
+            poids_criticite: null,
+            }, true);
+        });
+
+        row.appendChild(left);
+        row.appendChild(right);
+        row.appendChild(btn);
+
+        host.appendChild(row);
+        });
+    }
+
+    async function fetchCompetenceDetail(portal, id_comp){
+        const ownerId = getOwnerId();
+        const url = `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(id_comp)}`;
+        return await portal.apiJson(url);
+    }
+
+    function openPosteCompEditModal(it, isNew){
+        _posteCompEdit = { ...(it || {}) };
+        _posteCompEdit._isNew = !!isNew;
+
+        // Header badge code + titre
+        const b = byId("posteCompEditBadge");
+        const code = (_posteCompEdit.code || "").toString().trim();
+        if (b){
+        b.textContent = code;
+        b.style.display = code ? "" : "none";
+        }
+        byId("posteCompEditTitle").textContent = (_posteCompEdit.intitule || "Compétence").toString();
+
+        // Domaine badge
+        const dom = byId("posteCompEditDomain");
+        const domTxt = byId("posteCompEditDomainTxt");
+        const domLabel = (_posteCompEdit.domaine_titre_court || _posteCompEdit.domaine || "").toString().trim();
+        if (dom && domTxt){
+        if (domLabel){
+            domTxt.textContent = domLabel;
+            const rgb = argbIntToRgbTuple(_posteCompEdit.domaine_couleur);
+            if (rgb) dom.style.setProperty("--sb-domain-rgb", rgb.css);
+            dom.style.display = "";
+        } else {
+            dom.style.display = "none";
+        }
+        }
+
+        // Ref niveaux (lecture)
+        byId("posteCompRefA").textContent = (_posteCompEdit.niveaua || "—");
+        byId("posteCompRefB").textContent = (_posteCompEdit.niveaub || "—");
+        byId("posteCompRefC").textContent = (_posteCompEdit.niveauc || "—");
+
+        // Form
+        byId("posteCompEditNiv").value = (_posteCompEdit.niveau_requis || "B");
+
+        byId("posteCompEditFreq").value = String(_posteCompEdit.freq_usage ?? 0);
+        byId("posteCompEditImpact").value = String(_posteCompEdit.impact_resultat ?? 0);
+        byId("posteCompEditDep").value = String(_posteCompEdit.dependance ?? 0);
+
+        refreshPosteCompEditCritDisplay();
+
+        openModal("modalPosteCompEdit");
+
+        // Charge le détail compétence si on n'a pas les niveaux A/B/C
+        if (!_posteCompEdit.niveaua && _posteCompEdit.id_competence){
+        (async () => {
+            try{
+            const d = await fetchCompetenceDetail(window.portal, _posteCompEdit.id_competence);
+            _posteCompEdit.niveaua = d.niveaua || "";
+            _posteCompEdit.niveaub = d.niveaub || "";
+            _posteCompEdit.niveauc = d.niveauc || "";
+            byId("posteCompRefA").textContent = (_posteCompEdit.niveaua || "—");
+            byId("posteCompRefB").textContent = (_posteCompEdit.niveaub || "—");
+            byId("posteCompRefC").textContent = (_posteCompEdit.niveauc || "—");
+            } catch(_){}
+        })();
+        }
+    }
+
+    function refreshPosteCompEditCritDisplay(){
+        const fu = parseInt(byId("posteCompEditFreq").value || "0", 10) || 0;
+        const im = parseInt(byId("posteCompEditImpact").value || "0", 10) || 0;
+        const de = parseInt(byId("posteCompEditDep").value || "0", 10) || 0;
+
+        const d = calcCritDisplay(fu, im, de);
+
+        byId("posteCompEditFreqTxt").textContent = `${d.f}/10 → ${d.f20}/20`;
+        byId("posteCompEditImpactTxt").textContent = `${d.i}/10 → ${d.i50}/50`;
+        byId("posteCompEditDepTxt").textContent = `${d.d}/10 → ${d.d30}/30`;
+
+        const cur = (_posteCompEdit && _posteCompEdit.poids_criticite != null) ? _posteCompEdit.poids_criticite : "—";
+        byId("posteCompEditCrit").textContent = `Prévision: ${d.total}/100 (actuel: ${cur})`;
+    }
+
+    async function savePosteCompEdit(portal){
+        if (!_editingPosteId || !_posteCompEdit) return;
+
+        const ownerId = getOwnerId();
+
+        const niv = (byId("posteCompEditNiv").value || "B").trim().toUpperCase();
+        const fu = parseInt(byId("posteCompEditFreq").value || "0", 10) || 0;
+        const im = parseInt(byId("posteCompEditImpact").value || "0", 10) || 0;
+        const de = parseInt(byId("posteCompEditDep").value || "0", 10) || 0;
+
+        const url = `${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}`;
+        await portal.apiJson(url, {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify({
+            id_competence: _posteCompEdit.id_competence,
+            niveau_requis: niv,
+            freq_usage: fu,
+            impact_resultat: im,
+            dependance: de
+        })
+        });
+
+        closeModal("modalPosteCompEdit");
+        portal.showAlert("", "");
+        await loadPosteCompetences(portal);
+    }
+
+    async function removePosteCompetence(portal, id_comp){
+        if (!_editingPosteId) return;
+        const ownerId = getOwnerId();
+        const url = `${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}/${encodeURIComponent(id_comp)}/remove`;
+        await portal.apiJson(url, { method: "POST" });
+        portal.showAlert("", "");
+        await loadPosteCompetences(portal);
     }
 
     const _posteDetailCache = new Map(); // id_poste -> detail
@@ -628,6 +1038,7 @@
             await ensureNsfGroupes(portal);
             fillNsfSelect(d?.nsf_groupe_code || "");
             fillPosteContraintesTab(d);
+            await loadPosteCompetences(portal);
 
             // --- Définition (remplissage robuste: si champ supprimé, pas d'erreur)
             const elCodCli = byId("posteCodifClient"); if (elCodCli) elCodCli.value = (d.codif_client || "");
@@ -1022,6 +1433,15 @@
         _posteSearchTimer = setTimeout(() => loadPostes(portal).catch(() => {}), 250);
         });
 
+        const pcs = byId("posteCompSearch");
+        if (pcs){
+          pcs.addEventListener("input", () => {
+            _posteCompSearch = (pcs.value || "").trim();
+            if (_posteCompSearchTimer) clearTimeout(_posteCompSearchTimer);
+            _posteCompSearchTimer = setTimeout(() => renderPosteCompetences(), 200);
+          });
+        }
+
         const cbArch = byId("posteShowArchived");
         if (cbArch){
             cbArch.addEventListener("change", () => {
@@ -1113,6 +1533,38 @@
             try { await duplicatePosteFromModal(portal); }
             catch(e){ portal.showAlert("error", e?.message || String(e)); }
         });
+
+                byId("btnPosteCompAdd")?.addEventListener("click", () => {
+          try { openPosteCompAddModal(); }
+          catch(e){ portal.showAlert("error", e?.message || String(e)); }
+        });
+
+        // Modal Add
+        byId("btnClosePosteCompAdd")?.addEventListener("click", () => closeModal("modalPosteCompAdd"));
+        const cas = byId("posteCompAddSearch");
+        if (cas){
+          cas.addEventListener("input", () => {
+            _posteCompAddSearch = (cas.value || "").trim();
+            if (_posteCompAddTimer) clearTimeout(_posteCompAddTimer);
+            _posteCompAddTimer = setTimeout(() => loadPosteCompAddList(portal).catch(()=>{}), 250);
+          });
+        }
+        byId("posteCompAddShowToValidate")?.addEventListener("change", (e) => {
+          _posteCompAddIncludeToValidate = !!e.target.checked;
+          loadPosteCompAddList(portal).catch(()=>{});
+        });
+
+        // Modal Edit
+        byId("btnClosePosteCompEdit")?.addEventListener("click", () => closeModal("modalPosteCompEdit"));
+        byId("btnPosteCompEditCancel")?.addEventListener("click", () => closeModal("modalPosteCompEdit"));
+        byId("btnPosteCompEditSave")?.addEventListener("click", async () => {
+          try { await savePosteCompEdit(portal); }
+          catch(e){ portal.showAlert("error", e?.message || String(e)); }
+        });
+
+        byId("posteCompEditFreq")?.addEventListener("input", refreshPosteCompEditCritDisplay);
+        byId("posteCompEditImpact")?.addEventListener("input", refreshPosteCompEditCritDisplay);
+        byId("posteCompEditDep")?.addEventListener("input", refreshPosteCompEditCritDisplay);
     }
 
     async function init(){

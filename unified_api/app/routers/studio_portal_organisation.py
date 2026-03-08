@@ -165,6 +165,29 @@ def _poste_code_exists(cur, oid: str, id_ent: str, codif_poste: str, exclude_pos
         )
     return cur.fetchone() is not None
 
+def _clamp_0_10(v) -> int:
+    try:
+        n = int(v)
+    except Exception:
+        n = 0
+    if n < 0:
+        return 0
+    if n > 10:
+        return 10
+    return n
+
+
+def _calc_poids_criticite_100(freq_usage_0_10: int, impact_0_10: int, dependance_0_10: int) -> int:
+    fu = _clamp_0_10(freq_usage_0_10)   # pondération /20 => *2
+    im = _clamp_0_10(impact_0_10)       # pondération /50 => *5
+    de = _clamp_0_10(dependance_0_10)   # pondération /30 => *3
+    total = (fu * 2) + (im * 5) + (de * 3)
+    if total < 0:
+        total = 0
+    if total > 100:
+        total = 100
+    return int(total)
+
 # ------------------------------------------------------
 # Models
 # ------------------------------------------------------
@@ -231,6 +254,13 @@ class ArchivePosteOrgPayload(BaseModel):
 
 class DuplicatePosteOrgPayload(BaseModel):
     id_service: Optional[str] = None
+
+class UpsertPosteCompetencePayload(BaseModel):
+    id_competence: str
+    niveau_requis: str  # A/B/C
+    freq_usage: Optional[int] = 0        # 0..10
+    impact_resultat: Optional[int] = 0   # 0..10
+    dependance: Optional[int] = 0        # 0..10
 
 # ------------------------------------------------------
 # Endpoints: Services
@@ -1301,3 +1331,218 @@ def studio_org_list_nsf_groupes(id_owner: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/nsf_groupes error: {e}")
+    
+@router.get("/studio/org/poste_competences/{id_owner}/{id_poste}")
+def studio_org_list_poste_competences(id_owner: str, id_poste: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        pid = (id_poste or "").strip()
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_poste manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    SELECT
+                      pc.id_competence,
+                      pc.niveau_requis,
+                      pc.poids_criticite,
+                      pc.freq_usage,
+                      pc.impact_resultat,
+                      pc.dependance,
+                      pc.date_valorisation,
+
+                      c.code,
+                      c.intitule,
+                      c.etat,
+                      c.domaine,
+                      c.niveaua,
+                      c.niveaub,
+                      c.niveauc,
+
+                      dc.titre_court AS domaine_titre_court,
+                      dc.couleur AS domaine_couleur
+
+                    FROM public.tbl_fiche_poste_competence pc
+                    JOIN public.tbl_fiche_poste p
+                      ON p.id_poste = pc.id_poste
+                     AND p.id_owner = %s
+                     AND p.id_ent = %s
+                    JOIN public.tbl_competence c
+                      ON c.id_comp = pc.id_competence
+                     AND c.id_owner = %s
+                    LEFT JOIN public.tbl_domaine_competence dc
+                      ON dc.id_domaine_competence = c.domaine
+                     AND COALESCE(dc.masque, FALSE) = FALSE
+                    WHERE pc.id_poste = %s
+                      AND COALESCE(pc.masque, FALSE) = FALSE
+                    ORDER BY lower(c.code), lower(c.intitule)
+                    """,
+                    (oid, oid, oid, pid),
+                )
+                rows = cur.fetchall() or []
+
+        items = []
+        for r in rows:
+            items.append(
+                {
+                    "id_competence": r.get("id_competence"),
+                    "code": r.get("code"),
+                    "intitule": r.get("intitule"),
+                    "etat": r.get("etat"),
+                    "domaine": r.get("domaine"),
+                    "domaine_titre_court": r.get("domaine_titre_court"),
+                    "domaine_couleur": r.get("domaine_couleur"),
+
+                    "niveaua": r.get("niveaua"),
+                    "niveaub": r.get("niveaub"),
+                    "niveauc": r.get("niveauc"),
+
+                    "niveau_requis": r.get("niveau_requis"),
+                    "poids_criticite": r.get("poids_criticite"),
+                    "freq_usage": r.get("freq_usage"),
+                    "impact_resultat": r.get("impact_resultat"),
+                    "dependance": r.get("dependance"),
+                    "date_valorisation": r.get("date_valorisation"),
+                }
+            )
+
+        return {"items": items}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/poste_competences list error: {e}")
+    
+@router.post("/studio/org/poste_competences/{id_owner}/{id_poste}")
+def studio_org_upsert_poste_competence(id_owner: str, id_poste: str, payload: UpsertPosteCompetencePayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        pid = (id_poste or "").strip()
+        cid = (payload.id_competence or "").strip()
+        niv = (payload.niveau_requis or "").strip().upper()
+
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_poste manquant.")
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_competence manquant.")
+        if niv not in ("A", "B", "C"):
+            raise HTTPException(status_code=400, detail="niveau_requis invalide (A/B/C).")
+
+        fu = _clamp_0_10(payload.freq_usage or 0)
+        im = _clamp_0_10(payload.impact_resultat or 0)
+        de = _clamp_0_10(payload.dependance or 0)
+        poids = _calc_poids_criticite_100(fu, im, de)
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                # Vérifie poste
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM public.tbl_fiche_poste
+                    WHERE id_poste = %s
+                      AND id_owner = %s
+                      AND id_ent = %s
+                    LIMIT 1
+                    """,
+                    (pid, oid, oid),
+                )
+                if not cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Poste introuvable.")
+
+                # Vérifie compétence (owner uniquement, masque=false, etat accepté)
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM public.tbl_competence
+                    WHERE id_comp = %s
+                      AND id_owner = %s
+                      AND COALESCE(masque, FALSE) = FALSE
+                      AND COALESCE(etat,'') IN ('active','valide','à valider')
+                    LIMIT 1
+                    """,
+                    (cid, oid),
+                )
+                if not cur.fetchone():
+                    raise HTTPException(status_code=400, detail="Compétence non autorisée (owner/etat/masque).")
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_fiche_poste_competence
+                      (id_poste, id_competence, niveau_requis,
+                       poids_criticite, freq_usage, impact_resultat, dependance,
+                       date_valorisation, masque, date_modification)
+                    VALUES
+                      (%s, %s, %s,
+                       %s, %s, %s, %s,
+                       NOW(), FALSE, NOW())
+                    ON CONFLICT (id_poste, id_competence)
+                    DO UPDATE SET
+                      niveau_requis = EXCLUDED.niveau_requis,
+                      poids_criticite = EXCLUDED.poids_criticite,
+                      freq_usage = EXCLUDED.freq_usage,
+                      impact_resultat = EXCLUDED.impact_resultat,
+                      dependance = EXCLUDED.dependance,
+                      date_valorisation = NOW(),
+                      masque = FALSE,
+                      date_modification = NOW()
+                    """,
+                    (pid, cid, niv, poids, fu, im, de),
+                )
+                conn.commit()
+
+        return {"ok": True, "poids_criticite": poids}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/poste_competences upsert error: {e}")
+    
+@router.post("/studio/org/poste_competences/{id_owner}/{id_poste}/{id_competence}/remove")
+def studio_org_remove_poste_competence(id_owner: str, id_poste: str, id_competence: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        pid = (id_poste or "").strip()
+        cid = (id_competence or "").strip()
+        if not pid or not cid:
+            raise HTTPException(status_code=400, detail="Paramètres manquants.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_fiche_poste_competence
+                    SET masque = TRUE, date_modification = NOW()
+                    WHERE id_poste = %s
+                      AND id_competence = %s
+                    """,
+                    (pid, cid),
+                )
+                conn.commit()
+
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/poste_competences remove error: {e}")
