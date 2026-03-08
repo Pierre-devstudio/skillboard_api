@@ -279,6 +279,14 @@
             <input type="text" id="posteCompAddSearch" placeholder="Code ou intitulé…" />
           </div>
 
+          <div class="info-item" style="min-width:240px;">
+            <div class="label">Domaine</div>
+            <select id="posteCompAddDomain">
+              <option value="">Tous</option>
+              <option value="__none__">Sans domaine</option>
+            </select>
+          </div>
+
           <label class="sb-check" style="align-self:flex-end; margin:0 4px 2px 0;">
             <input type="checkbox" id="posteCompAddShowToValidate" />
             <span>Inclure compétences “à valider”</span>
@@ -296,7 +304,7 @@
       <div class="sb-modal-head">
         <div style="min-width:0;">
           <div style="display:flex; align-items:center; gap:8px; min-width:0;">
-            <span id="posteCompEditBadge" class="sb-badge sb-badge--poste" style="display:none;"></span>
+            <span id="posteCompEditBadge" class="sb-badge sb-badge--comp" style="display:none;"></span>
             <span id="posteCompEditDomain" class="sb-badge sb-badge--comp-domain" style="display:none;">
               <span class="sb-dot"></span><span id="posteCompEditDomainTxt"></span>
             </span>

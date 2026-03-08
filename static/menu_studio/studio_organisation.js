@@ -33,6 +33,9 @@
     let _posteCompAddTimer = null;
     let _posteCompAddIncludeToValidate = false;
 
+    let _posteCompAddDomain = "";
+    let _posteCompAddItemsAll = [];
+
     let _posteCompEdit = null; // objet en cours d'édition (merge comp + assoc)
 
     function getOwnerId() {
@@ -650,9 +653,53 @@
         const cb = byId("posteCompAddShowToValidate");
         if (cb) cb.checked = false;
         _posteCompAddIncludeToValidate = false;
+        byId("posteCompAddDomain")?.addEventListener("change", (e) => {
+            _posteCompAddDomain = (e.target.value || "").trim();
+            _posteCompAddItems = applyPosteCompAddDomainFilter(_posteCompAddItemsAll);
+            renderPosteCompAddList();
+        });
 
         openModal("modalPosteCompAdd");
         loadPosteCompAddList(window.portal).catch(()=>{});
+    }
+
+    function refreshPosteCompAddDomainOptions(items){
+        const sel = byId("posteCompAddDomain");
+        if (!sel) return;
+
+        const keep = (sel.value || "").trim();
+
+        const map = new Map(); // id -> label
+        (items || []).forEach(it => {
+            const id = (it.domaine || "").toString().trim() || "__none__";
+            const label = (it.domaine_titre_court || it.domaine || "").toString().trim() || "Sans domaine";
+            if (!map.has(id)) map.set(id, label);
+        });
+
+        // reset options
+        sel.innerHTML = "";
+        sel.appendChild(new Option("Tous", ""));
+        sel.appendChild(new Option("Sans domaine", "__none__"));
+
+        Array.from(map.entries())
+            .filter(([id]) => id !== "__none__")
+            .sort((a,b) => a[1].localeCompare(b[1], "fr", { sensitivity:"base" }))
+            .forEach(([id,label]) => sel.appendChild(new Option(label, id)));
+
+        // restore
+        if (keep && sel.querySelector(`option[value="${keep}"]`)) sel.value = keep;
+        else sel.value = "";
+        _posteCompAddDomain = (sel.value || "").trim();
+        }
+
+        function applyPosteCompAddDomainFilter(items){
+        const dom = (_posteCompAddDomain || "").trim();
+        if (!dom) return (items || []).slice();
+
+        if (dom === "__none__"){
+            return (items || []).filter(it => !((it.domaine || "").toString().trim()));
+        }
+        return (items || []).filter(it => ((it.domaine || "").toString().trim() === dom));
     }
 
     async function loadPosteCompAddList(portal){
@@ -677,7 +724,9 @@
         const existing = new Set((_posteCompItems || []).map(x => x.id_competence));
         items = items.filter(it => !existing.has(it.id_comp));
 
-        _posteCompAddItems = items;
+        _posteCompAddItemsAll = items;
+        refreshPosteCompAddDomainOptions(_posteCompAddItemsAll);
+        _posteCompAddItems = applyPosteCompAddDomainFilter(_posteCompAddItemsAll);
         renderPosteCompAddList();
     }
 
@@ -715,19 +764,6 @@
 
         const right = document.createElement("div");
         right.className = "sb-row-right";
-
-        const domLabel = (it.domaine_titre_court || it.domaine || "").toString().trim();
-        if (domLabel){
-            const b = document.createElement("span");
-            b.className = "sb-badge sb-badge--comp-domain";
-            const dot = document.createElement("span");
-            dot.className = "sb-dot";
-            const rgb = argbIntToRgbTuple(it.domaine_couleur);
-            if (rgb) b.style.setProperty("--sb-domain-rgb", rgb.css);
-            b.appendChild(dot);
-            b.appendChild(document.createTextNode(domLabel));
-            right.appendChild(b);
-        }
 
         if ((it.etat || "").toLowerCase() === "à valider"){
             const v = document.createElement("span");
@@ -1365,7 +1401,7 @@
         left.className = "sb-row-left";
 
         const code = document.createElement("span");
-        code.className = "sb-badge sb-badge--poste";
+        code.className = "sb-badge sb-badge--comp";
         code.textContent = it.code || "—";
 
         const title = document.createElement("div");
