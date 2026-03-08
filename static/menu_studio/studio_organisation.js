@@ -752,7 +752,7 @@
         left.className = "sb-row-left";
 
         const code = document.createElement("span");
-        code.className = "sb-badge sb-badge--poste";
+        code.className = "sb-badge sb-badge--comp";
         code.textContent = it.code || "—";
 
         const title = document.createElement("div");
