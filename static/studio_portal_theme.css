@@ -10,6 +10,12 @@
 
   /* Accent RGB (pour rings / rgba cohérents) */
   --sb-accent-rgb: 230,228,33;
+
+  --sb-violet: #7c3aed;
+  --sb-violet-rgb: 124,58,237;
+
+  --sb-violet-low: #c4b5fd;
+  --sb-violet-high: #5b21b6;
 }
 
 /* Studio: accent jaune -> texte sombre obligatoire */
@@ -134,6 +140,145 @@
   text-overflow:ellipsis;
   max-width: 740px;
 }
+
+/* =========================
+   CORE — Niveau requis (cards radios)
+   ========================= */
+
+.sb-level-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap:10px;
+  margin-top:10px;
+}
+@media (max-width: 900px){
+  .sb-level-grid{ grid-template-columns: 1fr; }
+}
+
+.sb-level-card{
+  border:1px solid rgba(17,24,39,.14);
+  border-radius:10px;
+  padding:10px;
+  background:#fff;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  cursor:pointer;
+}
+.sb-level-card.is-selected{
+  border-color: rgba(var(--sb-violet-rgb), .65);
+  box-shadow: 0 0 0 3px rgba(var(--sb-violet-rgb), .18);
+}
+.sb-level-name{
+  font-weight:700;
+  color:#111827;
+}
+.sb-level-radio{
+  display:flex;
+  justify-content:flex-start;
+  align-items:center;
+  gap:8px;
+}
+.sb-level-text{
+  font-size:12px;
+  color:#374151;
+  line-height:1.35;
+  background: rgba(17,24,39,.03);
+  border: 1px solid rgba(17,24,39,.08);
+  border-radius:8px;
+  padding:8px;
+  min-height:54px;
+}
+
+/* =========================
+   CORE — Criticité (sliders + ring)
+   ========================= */
+
+.sb-crit-grid{
+  display:grid;
+  grid-template-columns: 1fr 220px;
+  gap:16px;
+  align-items:start;
+}
+@media (max-width: 900px){
+  .sb-crit-grid{ grid-template-columns: 1fr; }
+}
+
+.sb-crit-rows{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:10px;
+}
+
+.sb-crit-row{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.sb-crit-row .label{
+  margin:0;
+}
+.sb-crit-val{
+  font-size:12px;
+  color:#6b7280;
+}
+
+/* =========================
+   CORE — Ring (style Insights, violet)
+   ========================= */
+
+.sb-ring{
+  width:220px;
+  height:220px;
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.sb-ring-svg{
+  width:100%;
+  height:100%;
+  display:block;
+}
+.sb-ring-center{
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+}
+.sb-ring-pct{
+  font-size:22px;
+  font-weight:800;
+  color:#111827;
+  line-height:1.05;
+}
+.sb-ring-sub{
+  margin-top:2px;
+  font-size:12px;
+  color:#6b7280;
+  font-weight:600;
+}
+.sb-ring-bg{
+  stroke: rgba(0,0,0,.10);
+  fill:none;
+  stroke-width: 3.6;
+}
+.sb-ring-prog{
+  stroke: var(--sb-ring-color, var(--sb-violet));
+  fill:none;
+  stroke-width: 3.6;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.sb-ring--low{ --sb-ring-color: var(--sb-violet-low); }
+.sb-ring--mid{ --sb-ring-color: var(--sb-violet); }
+.sb-ring--high{ --sb-ring-color: var(--sb-violet-high); }
 
 /* Tabs (CORE) */
 .sb-segbar{

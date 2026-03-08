@@ -113,6 +113,34 @@
         return { f, i, d, f20, i50, d30, total };
     }
 
+    function setPosteCompCritRing(score){
+        const ring = byId("posteCompCritRing");
+        const prog = byId("posteCompCritRingProg");
+        const val = byId("posteCompCritRingVal");
+        if (!ring || !prog || !val) return;
+
+        const s = Math.max(0, Math.min(100, parseInt(score ?? 0, 10) || 0));
+        val.textContent = String(s);
+        prog.setAttribute("stroke-dasharray", `${s} 100`);
+
+        ring.classList.remove("sb-ring--low","sb-ring--mid","sb-ring--high");
+        ring.classList.add(s < 35 ? "sb-ring--low" : s < 70 ? "sb-ring--mid" : "sb-ring--high");
+    }
+
+    function setPosteCompEditNiv(v){
+        const niv = (v || "B").toString().trim().toUpperCase();
+        const r = document.querySelector(`input[name="posteCompEditNiv"][value="${niv}"]`);
+        if (r) r.checked = true;
+        refreshPosteCompNivCards();
+    }
+
+    function refreshPosteCompNivCards(){
+        document.querySelectorAll("#posteCompNivGrid .sb-level-card").forEach(card => {
+            const r = card.querySelector('input[type="radio"]');
+            card.classList.toggle("is-selected", !!(r && r.checked));
+        });
+    }
+
     function rtGetHtml(id){
         const el = byId(id);
         if (!el) return "";
@@ -653,11 +681,7 @@
         const cb = byId("posteCompAddShowToValidate");
         if (cb) cb.checked = false;
         _posteCompAddIncludeToValidate = false;
-        byId("posteCompAddDomain")?.addEventListener("change", (e) => {
-            _posteCompAddDomain = (e.target.value || "").trim();
-            _posteCompAddItems = applyPosteCompAddDomainFilter(_posteCompAddItemsAll);
-            renderPosteCompAddList();
-        });
+
 
         openModal("modalPosteCompAdd");
         loadPosteCompAddList(window.portal).catch(()=>{});
@@ -849,7 +873,7 @@
         byId("posteCompRefC").textContent = (_posteCompEdit.niveauc || "—");
 
         // Form
-        byId("posteCompEditNiv").value = (_posteCompEdit.niveau_requis || "B");
+        setPosteCompEditNiv(_posteCompEdit.niveau_requis || "B");
 
         byId("posteCompEditFreq").value = String(_posteCompEdit.freq_usage ?? 0);
         byId("posteCompEditImpact").value = String(_posteCompEdit.impact_resultat ?? 0);
@@ -876,18 +900,24 @@
     }
 
     function refreshPosteCompEditCritDisplay(){
-        const fu = parseInt(byId("posteCompEditFreq").value || "0", 10) || 0;
-        const im = parseInt(byId("posteCompEditImpact").value || "0", 10) || 0;
-        const de = parseInt(byId("posteCompEditDep").value || "0", 10) || 0;
+        const fu = parseInt(byId("posteCompEditFreq")?.value || "0", 10) || 0;
+        const im = parseInt(byId("posteCompEditImpact")?.value || "0", 10) || 0;
+        const de = parseInt(byId("posteCompEditDep")?.value || "0", 10) || 0;
 
-        const d = calcCritDisplay(fu, im, de);
+        const f = Math.max(0, Math.min(10, fu));
+        const i = Math.max(0, Math.min(10, im));
+        const d = Math.max(0, Math.min(10, de));
 
-        byId("posteCompEditFreqTxt").textContent = `${d.f}/10 → ${d.f20}/20`;
-        byId("posteCompEditImpactTxt").textContent = `${d.i}/10 → ${d.i50}/50`;
-        byId("posteCompEditDepTxt").textContent = `${d.d}/10 → ${d.d30}/30`;
+        const elF = byId("posteCompEditFreqTxt");
+        const elI = byId("posteCompEditImpactTxt");
+        const elD = byId("posteCompEditDepTxt");
 
-        const cur = (_posteCompEdit && _posteCompEdit.poids_criticite != null) ? _posteCompEdit.poids_criticite : "—";
-        byId("posteCompEditCrit").textContent = `Prévision: ${d.total}/100 (actuel: ${cur})`;
+        if (elF) elF.textContent = `${f}/10`;
+        if (elI) elI.textContent = `${i}/10`;
+        if (elD) elD.textContent = `${d}/10`;
+
+        const dd = calcCritDisplay(f, i, d);
+        setPosteCompCritRing(dd.total);
     }
 
     async function savePosteCompEdit(portal){
@@ -895,7 +925,7 @@
 
         const ownerId = getOwnerId();
 
-        const niv = (byId("posteCompEditNiv").value || "B").trim().toUpperCase();
+        const niv = (document.querySelector('input[name="posteCompEditNiv"]:checked')?.value || "B").trim().toUpperCase();
         const fu = parseInt(byId("posteCompEditFreq").value || "0", 10) || 0;
         const im = parseInt(byId("posteCompEditImpact").value || "0", 10) || 0;
         const de = parseInt(byId("posteCompEditDep").value || "0", 10) || 0;
@@ -1589,6 +1619,11 @@
           _posteCompAddIncludeToValidate = !!e.target.checked;
           loadPosteCompAddList(portal).catch(()=>{});
         });
+        byId("posteCompAddDomain")?.addEventListener("change", (e) => {
+        _posteCompAddDomain = (e.target.value || "").trim();
+        _posteCompAddItems = applyPosteCompAddDomainFilter(_posteCompAddItemsAll);
+        renderPosteCompAddList();
+        });
 
         // Modal Edit
         byId("btnClosePosteCompEdit")?.addEventListener("click", () => closeModal("modalPosteCompEdit"));
@@ -1601,6 +1636,9 @@
         byId("posteCompEditFreq")?.addEventListener("input", refreshPosteCompEditCritDisplay);
         byId("posteCompEditImpact")?.addEventListener("input", refreshPosteCompEditCritDisplay);
         byId("posteCompEditDep")?.addEventListener("input", refreshPosteCompEditCritDisplay);
+        document.querySelectorAll('input[name="posteCompEditNiv"]').forEach(r => {
+            r.addEventListener("change", refreshPosteCompNivCards);
+        });
     }
 
     async function init(){

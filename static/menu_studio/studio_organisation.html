@@ -305,78 +305,100 @@
         <div style="min-width:0;">
           <div style="display:flex; align-items:center; gap:8px; min-width:0;">
             <span id="posteCompEditBadge" class="sb-badge sb-badge--comp" style="display:none;"></span>
+            <div class="card-title" id="posteCompEditTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Compétence</div>
+          </div>
+
+          <div style="margin-top:6px;">
             <span id="posteCompEditDomain" class="sb-badge sb-badge--comp-domain" style="display:none;">
               <span class="sb-dot"></span><span id="posteCompEditDomainTxt"></span>
             </span>
-            <div class="card-title" id="posteCompEditTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Compétence</div>
           </div>
-          <div class="card-sub" id="posteCompEditSub" style="margin:4px 0 0 0; display:none;"></div>
         </div>
 
         <button type="button" class="sb-modal-x" id="btnClosePosteCompEdit" aria-label="Fermer">&times;</button>
       </div>
 
       <div class="sb-modal-body">
-        <div class="row">
-          <div class="info-item" style="flex:1; min-width:240px;">
-            <div class="label">Niveau requis</div>
-            <select id="posteCompEditNiv">
-              <option value="A">A — Initial</option>
-              <option value="B">B — Avancé</option>
-              <option value="C">C — Expert</option>
-            </select>
-          </div>
 
-          <div class="info-item" style="flex:1; min-width:240px;">
-            <div class="label">Criticité (calcul serveur)</div>
-            <div class="card-sub" id="posteCompEditCrit" style="margin:8px 0 0 0;">—</div>
-          </div>
-        </div>
-
+        <!-- Header content already in sb-modal-head -->
+        <!-- Bloc Niveau requis -->
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="font-size:14px;">Détail de la criticité</div>
-          <div class="card-sub" style="margin:4px 0 10px 0;">Saisie 0–10. Pondération: 20 / 50 / 30.</div>
+          <div class="card-title" style="font-size:14px;">Niveau requis</div>
+          <div class="card-sub" style="margin:4px 0 0 0;">Sélectionnez le niveau attendu pour ce poste.</div>
 
-          <div class="row">
-            <div class="info-item" style="flex:1; min-width:220px;">
-              <div class="label">Fréquence d’usage (0–10)</div>
-              <input type="range" id="posteCompEditFreq" min="0" max="10" step="1" />
-              <div class="card-sub" id="posteCompEditFreqTxt" style="margin:6px 0 0 0;">—</div>
+          <div class="sb-level-grid" id="posteCompNivGrid">
+            <label class="sb-level-card" data-niv="A">
+              <div class="sb-level-name">Initial</div>
+              <div class="sb-level-radio">
+                <input type="radio" name="posteCompEditNiv" id="posteCompEditNivA" value="A" />
+                <span class="card-sub" style="margin:0;">Niveau A</span>
+              </div>
+              <div class="sb-level-text" id="posteCompRefA">—</div>
+            </label>
+
+            <label class="sb-level-card" data-niv="B">
+              <div class="sb-level-name">Avancé</div>
+              <div class="sb-level-radio">
+                <input type="radio" name="posteCompEditNiv" id="posteCompEditNivB" value="B" />
+                <span class="card-sub" style="margin:0;">Niveau B</span>
+              </div>
+              <div class="sb-level-text" id="posteCompRefB">—</div>
+            </label>
+
+            <label class="sb-level-card" data-niv="C">
+              <div class="sb-level-name">Expert</div>
+              <div class="sb-level-radio">
+                <input type="radio" name="posteCompEditNiv" id="posteCompEditNivC" value="C" />
+                <span class="card-sub" style="margin:0;">Niveau C</span>
+              </div>
+              <div class="sb-level-text" id="posteCompRefC">—</div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Bloc Criticité -->
+        <div class="card" style="padding:12px; margin-top:10px;">
+          <div class="card-title" style="font-size:14px;">Évaluation de la criticité</div>
+          <div class="card-sub" style="margin:4px 0 0 0;">Saisie 0–10. Pondération 20 / 50 / 30. Calcul et enregistrement serveur.</div>
+
+          <div class="sb-crit-grid">
+            <div>
+              <div class="sb-crit-rows">
+                <div class="sb-crit-row">
+                  <div class="label">Fréquence d’usage</div>
+                  <input type="range" id="posteCompEditFreq" min="0" max="10" step="1" />
+                  <div class="sb-crit-val" id="posteCompEditFreqTxt">0/10</div>
+                </div>
+
+                <div class="sb-crit-row">
+                  <div class="label">Impact résultat</div>
+                  <input type="range" id="posteCompEditImpact" min="0" max="10" step="1" />
+                  <div class="sb-crit-val" id="posteCompEditImpactTxt">0/10</div>
+                </div>
+
+                <div class="sb-crit-row">
+                  <div class="label">Dépendance</div>
+                  <input type="range" id="posteCompEditDep" min="0" max="10" step="1" />
+                  <div class="sb-crit-val" id="posteCompEditDepTxt">0/10</div>
+                </div>
+              </div>
             </div>
 
-            <div class="info-item" style="flex:1; min-width:220px;">
-              <div class="label">Impact résultat (0–10)</div>
-              <input type="range" id="posteCompEditImpact" min="0" max="10" step="1" />
-              <div class="card-sub" id="posteCompEditImpactTxt" style="margin:6px 0 0 0;">—</div>
-            </div>
-
-            <div class="info-item" style="flex:1; min-width:220px;">
-              <div class="label">Dépendance (0–10)</div>
-              <input type="range" id="posteCompEditDep" min="0" max="10" step="1" />
-              <div class="card-sub" id="posteCompEditDepTxt" style="margin:6px 0 0 0;">—</div>
+            <div class="sb-ring sb-ring--mid" id="posteCompCritRing">
+              <svg class="sb-ring-svg" viewBox="0 0 36 36">
+                <path class="sb-ring-bg"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="sb-ring-prog" id="posteCompCritRingProg" pathLength="100" stroke-dasharray="0 100"
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <div class="sb-ring-center">
+                <div class="sb-ring-pct" id="posteCompCritRingVal">0</div>
+                <div class="sb-ring-sub">/100</div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="font-size:14px;">Référentiel (lecture)</div>
-          <div class="card-sub" style="margin:4px 0 10px 0;">Niveaux de maîtrise (catalogue compétence) pour aider au choix.</div>
-
-          <div class="row">
-            <div class="info-item" style="flex:1; min-width:240px;">
-              <div class="label">A — Initial</div>
-              <div class="sb-help" id="posteCompRefA"></div>
-            </div>
-            <div class="info-item" style="flex:1; min-width:240px;">
-              <div class="label">B — Avancé</div>
-              <div class="sb-help" id="posteCompRefB"></div>
-            </div>
-            <div class="info-item" style="flex:1; min-width:240px;">
-              <div class="label">C — Expert</div>
-              <div class="sb-help" id="posteCompRefC"></div>
-            </div>
-          </div>
-        </div>
       </div>
 
       <div class="sb-modal-foot">
