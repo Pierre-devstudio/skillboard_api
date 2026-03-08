@@ -223,6 +223,10 @@
   font-size:12px;
   color:#6b7280;
 }
+/* Réduire légèrement la longueur des sliders (sans toucher au layout) */
+.sb-crit-row input[type="range"]{
+  width: 92%;
+}
 
 /* =========================
    CORE — Ring (style Insights, violet)
