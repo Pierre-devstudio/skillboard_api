@@ -2200,6 +2200,7 @@
         });
 
         bindStepButtons(byId("modalPosteCertCreate"));
+        bindStepButtons(byId("modalPosteCertEdit"));
         byId("btnClosePosteCertCreate")?.addEventListener("click", () => closePosteCertCreateModal(true));
         byId("btnPosteCertCreateCancel")?.addEventListener("click", () => closePosteCertCreateModal(true));
         byId("btnPosteCertCreateSave")?.addEventListener("click", async () => {

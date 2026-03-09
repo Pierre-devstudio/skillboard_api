@@ -564,7 +564,11 @@
           <div class="row" style="margin-top:10px;">
             <div class="info-item" style="flex:1; min-width:220px;">
               <div class="label">Validité spécifique (mois)</div>
-              <input type="number" id="posteCertEditOverride" min="1" step="1" placeholder="Laisser vide pour garder la validité catalogue" />
+              <div class="sb-stepper">
+                <button type="button" class="sb-stepper-btn" data-stepper-target="posteCertEditOverride" data-stepper-delta="-1" aria-label="Diminuer la validité spécifique">−</button>
+                <input type="number" id="posteCertEditOverride" min="1" step="1" inputmode="numeric" placeholder="Laisser vide pour garder la validité catalogue" />
+                <button type="button" class="sb-stepper-btn" data-stepper-target="posteCertEditOverride" data-stepper-delta="1" aria-label="Augmenter la validité spécifique">+</button>
+              </div>
             </div>
 
             <div class="info-item" style="flex:1; min-width:220px;">
