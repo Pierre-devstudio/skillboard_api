@@ -995,6 +995,20 @@
         return parts.join(" · ");
     }
 
+    function buildPosteCertAddMeta(it){
+        const parts = [];
+
+        const cat = (it?.categorie || "").toString().trim();
+        if (cat) parts.push(`Catégorie : ${cat}`);
+
+        parts.push(`Validité catalogue : ${formatValidityMonths(it?.duree_validite)}`);
+
+        const delai = formatValidityMonths(it?.delai_renouvellement);
+        if (delai !== "—") parts.push(`Délai de renouvellement : ${delai}`);
+
+        return parts.join(" · ");
+    }
+
     async function loadPosteCertifications(portal){
         if (!_editingPosteId) return;
 
@@ -1191,30 +1205,16 @@
 
             const wrap = document.createElement("div");
 
-            const head = document.createElement("div");
-            head.style.display = "flex";
-            head.style.alignItems = "center";
-            head.style.gap = "8px";
-
-            const cat = (it.categorie || "").toString().trim();
-            if (cat){
-                const b = document.createElement("span");
-                b.className = "sb-badge sb-badge--poste-soft";
-                b.textContent = cat;
-                head.appendChild(b);
-            }
-
             const title = document.createElement("div");
             title.className = "sb-row-title";
             title.textContent = it.nom_certification || "";
-            head.appendChild(title);
 
             const meta = document.createElement("div");
             meta.className = "card-sub";
             meta.style.margin = "4px 0 0 0";
-            meta.textContent = buildPosteCertBaseInfo(it);
+            meta.textContent = buildPosteCertAddMeta(it);
 
-            wrap.appendChild(head);
+            wrap.appendChild(title);
             wrap.appendChild(meta);
             left.appendChild(wrap);
 
@@ -1242,6 +1242,97 @@
 
             host.appendChild(row);
         });
+    }
+
+    function openPosteCertCreateModal(){
+        if (!isAdmin()) return;
+
+        closeModal("modalPosteCertAdd");
+
+        byId("posteCertCreateName").value = (_posteCertAddSearch || "").trim();
+        byId("posteCertCreateCategory").value = "";
+        byId("posteCertCreateValidity").value = "";
+        byId("posteCertCreateRenewal").value = "";
+        byId("posteCertCreateDescription").value = "";
+
+        openModal("modalPosteCertCreate");
+    }
+
+    function closePosteCertCreateModal(reopenAdd){
+        closeModal("modalPosteCertCreate");
+        if (reopenAdd) openModal("modalPosteCertAdd");
+    }
+
+    async function savePosteCertCreate(portal){
+        const ownerId = getOwnerId();
+
+        const nom = (byId("posteCertCreateName")?.value || "").trim();
+        const categorie = (byId("posteCertCreateCategory")?.value || "").trim() || null;
+        const description = (byId("posteCertCreateDescription")?.value || "").trim() || null;
+
+        if (!nom){
+            portal.showAlert("error", "Le nom de la certification est obligatoire.");
+            return;
+        }
+
+        const rawValidity = (byId("posteCertCreateValidity")?.value || "").trim();
+        const rawRenewal = (byId("posteCertCreateRenewal")?.value || "").trim();
+
+        let duree_validite = null;
+        let delai_renouvellement = null;
+
+        if (rawValidity){
+            if (!/^\d+$/.test(rawValidity)) {
+                portal.showAlert("error", "La validité catalogue doit être un entier positif.");
+                return;
+            }
+            duree_validite = parseInt(rawValidity, 10);
+            if (!Number.isFinite(duree_validite) || duree_validite <= 0){
+                portal.showAlert("error", "La validité catalogue doit être supérieure à 0.");
+                return;
+            }
+        }
+
+        if (rawRenewal){
+            if (!/^\d+$/.test(rawRenewal)) {
+                portal.showAlert("error", "Le délai de renouvellement doit être un entier positif.");
+                return;
+            }
+            delai_renouvellement = parseInt(rawRenewal, 10);
+            if (!Number.isFinite(delai_renouvellement) || delai_renouvellement <= 0){
+                portal.showAlert("error", "Le délai de renouvellement doit être supérieur à 0.");
+                return;
+            }
+        }
+
+        const url = `${portal.apiBase}/studio/org/certifications_catalogue/${encodeURIComponent(ownerId)}`;
+        const data = await portal.apiJson(url, {
+            method: "POST",
+            headers: { "Content-Type":"application/json" },
+            body: JSON.stringify({
+                nom_certification: nom,
+                categorie: categorie,
+                description: description,
+                duree_validite: duree_validite,
+                delai_renouvellement: delai_renouvellement
+            })
+        });
+
+        const it = data?.item || {};
+        closeModal("modalPosteCertCreate");
+        closeModal("modalPosteCertAdd");
+
+        openPosteCertEditModal({
+            id_certification: it.id_certification,
+            nom_certification: it.nom_certification,
+            description: it.description,
+            categorie: it.categorie,
+            duree_validite: it.duree_validite,
+            delai_renouvellement: it.delai_renouvellement,
+            validite_override: null,
+            niveau_exigence: "requis",
+            commentaire: ""
+        }, true);
     }
 
     function openPosteCertEditModal(it, isNew){
@@ -2029,7 +2120,13 @@
           catch(e){ portal.showAlert("error", e?.message || String(e)); }
         });
 
+        byId("btnPosteCertCreate")?.addEventListener("click", () => {
+          try { openPosteCertCreateModal(); }
+          catch(e){ portal.showAlert("error", e?.message || String(e)); }
+        });
+
         byId("btnClosePosteCertAdd")?.addEventListener("click", () => closeModal("modalPosteCertAdd"));
+
         const certSearch = byId("posteCertAddSearch");
         if (certSearch){
           certSearch.addEventListener("input", () => {
@@ -2043,6 +2140,13 @@
           _posteCertAddCategory = (e.target.value || "").trim();
           _posteCertAddItems = applyPosteCertAddCategoryFilter(_posteCertAddItemsAll);
           renderPosteCertAddList();
+        });
+
+        byId("btnClosePosteCertCreate")?.addEventListener("click", () => closePosteCertCreateModal(true));
+        byId("btnPosteCertCreateCancel")?.addEventListener("click", () => closePosteCertCreateModal(true));
+        byId("btnPosteCertCreateSave")?.addEventListener("click", async () => {
+          try { await savePosteCertCreate(portal); }
+          catch(e){ portal.showAlert("error", e?.message || String(e)); }
         });
 
         byId("btnClosePosteCertEdit")?.addEventListener("click", () => closeModal("modalPosteCertEdit"));

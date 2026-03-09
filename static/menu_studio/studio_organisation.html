@@ -448,7 +448,7 @@
     </div>
   </div>
 
-    <!-- MODAL : Ajouter certification au poste -->
+  <!-- MODAL : Ajouter certification au poste -->
   <div class="sb-modal" id="modalPosteCertAdd" style="display:none;">
     <div class="sb-modal-card">
       <div class="sb-modal-head">
@@ -456,7 +456,11 @@
           <div class="card-title" style="margin-bottom:2px;">Ajouter une certification</div>
           <div class="card-sub" style="margin:0;">Catalogue global des certifications.</div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnClosePosteCertAdd" aria-label="Fermer">&times;</button>
+
+        <div class="sb-actions">
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnPosteCertCreate">Créer une certification</button>
+          <button type="button" class="sb-modal-x" id="btnClosePosteCertAdd" aria-label="Fermer">&times;</button>
+        </div>
       </div>
 
       <div class="sb-modal-body">
@@ -476,6 +480,57 @@
         </div>
 
         <div class="sb-stack sb-stack--xxs sb-mt-10" id="posteCertAddList"></div>
+      </div>
+    </div>
+  </div>
+
+    <!-- MODAL : Créer une certification -->
+  <div class="sb-modal" id="modalPosteCertCreate" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">Créer une certification</div>
+          <div class="card-sub" style="margin:0;">Création dans le catalogue global des certifications.</div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnClosePosteCertCreate" aria-label="Fermer">&times;</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="row">
+          <div class="info-item" style="flex:2; min-width:260px;">
+            <div class="label">Nom de la certification</div>
+            <input type="text" id="posteCertCreateName" />
+          </div>
+
+          <div class="info-item" style="flex:1; min-width:220px;">
+            <div class="label">Catégorie</div>
+            <input type="text" id="posteCertCreateCategory" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:220px;">
+            <div class="label">Validité catalogue (mois)</div>
+            <input type="number" id="posteCertCreateValidity" min="1" step="1" />
+          </div>
+
+          <div class="info-item" style="flex:1; min-width:220px;">
+            <div class="label">Délai de renouvellement (mois)</div>
+            <input type="number" id="posteCertCreateRenewal" min="1" step="1" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Description</div>
+            <textarea id="posteCertCreateDescription" rows="4"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCertCreateSave">Créer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCertCreateCancel">Annuler</button>
       </div>
     </div>
   </div>

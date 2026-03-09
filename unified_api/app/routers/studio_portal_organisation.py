@@ -268,6 +268,13 @@ class UpsertPosteCertificationPayload(BaseModel):
     niveau_exigence: Optional[str] = "requis"
     commentaire: Optional[str] = None
 
+class CreateCertificationPayload(BaseModel):
+    nom_certification: str
+    description: Optional[str] = None
+    categorie: Optional[str] = None
+    duree_validite: Optional[int] = None
+    delai_renouvellement: Optional[int] = None
+
 # ------------------------------------------------------
 # Endpoints: Services
 # ------------------------------------------------------
@@ -1617,6 +1624,94 @@ def studio_org_list_certifications_catalogue(id_owner: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/certifications_catalogue error: {e}")
 
+@router.post("/studio/org/certifications_catalogue/{id_owner}")
+def studio_org_create_certification_catalogue(id_owner: str, payload: CreateCertificationPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        nom = (payload.nom_certification or "").strip()
+        if not nom:
+            raise HTTPException(status_code=400, detail="nom_certification obligatoire.")
+
+        categorie = (payload.categorie or "").strip() or None
+        description = (payload.description or "").strip() or None
+
+        duree_validite = payload.duree_validite
+        if duree_validite is not None:
+            try:
+                duree_validite = int(duree_validite)
+            except Exception:
+                raise HTTPException(status_code=400, detail="duree_validite invalide.")
+            if duree_validite <= 0:
+                raise HTTPException(status_code=400, detail="duree_validite doit être > 0.")
+
+        delai_renouvellement = payload.delai_renouvellement
+        if delai_renouvellement is not None:
+            try:
+                delai_renouvellement = int(delai_renouvellement)
+            except Exception:
+                raise HTTPException(status_code=400, detail="delai_renouvellement invalide.")
+            if delai_renouvellement <= 0:
+                raise HTTPException(status_code=400, detail="delai_renouvellement doit être > 0.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM public.tbl_certification
+                    WHERE lower(nom_certification) = lower(%s)
+                      AND COALESCE(masque, FALSE) = FALSE
+                    LIMIT 1
+                    """,
+                    (nom,),
+                )
+                if cur.fetchone():
+                    raise HTTPException(status_code=400, detail="Une certification active porte déjà ce nom.")
+
+                cid = str(uuid.uuid4())
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_certification
+                      (
+                        id_certification,
+                        nom_certification,
+                        description,
+                        categorie,
+                        duree_validite,
+                        date_creation,
+                        masque,
+                        delai_renouvellement
+                      )
+                    VALUES
+                      (%s, %s, %s, %s, %s, CURRENT_DATE, FALSE, %s)
+                    """,
+                    (cid, nom, description, categorie, duree_validite, delai_renouvellement),
+                )
+                conn.commit()
+
+        return {
+            "ok": True,
+            "item": {
+                "id_certification": cid,
+                "nom_certification": nom,
+                "description": description,
+                "categorie": categorie,
+                "duree_validite": duree_validite,
+                "delai_renouvellement": delai_renouvellement,
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/certifications_catalogue create error: {e}")
 
 @router.get("/studio/org/poste_certifications/{id_owner}/{id_poste}")
 def studio_org_list_poste_certifications(id_owner: str, id_poste: str, request: Request):
