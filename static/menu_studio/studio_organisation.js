@@ -1244,18 +1244,75 @@
         });
     }
 
-    function openPosteCertCreateModal(){
+    async function loadPosteCertCreateCategories(portal){
+        const ownerId = getOwnerId();
+        const url = `${portal.apiBase}/studio/org/certifications_catalogue/${encodeURIComponent(ownerId)}?q=`;
+        const data = await portal.apiJson(url);
+
+        const list = byId("posteCertCreateCategoryList");
+        if (!list) return;
+
+        const values = Array.from(
+            new Set(
+                (data.items || [])
+                    .map(it => (it.categorie || "").toString().trim())
+                    .filter(Boolean)
+            )
+        ).sort((a, b) => a.localeCompare(b, "fr", { sensitivity:"base" }));
+
+        list.innerHTML = "";
+        values.forEach(v => {
+            const opt = document.createElement("option");
+            opt.value = v;
+            list.appendChild(opt);
+        });
+    }
+
+    function bindStepButtons(host){
+        if (!host) return;
+
+        host.querySelectorAll(".sb-stepper-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const targetId = (btn.getAttribute("data-stepper-target") || "").trim();
+                const delta = parseInt(btn.getAttribute("data-stepper-delta") || "0", 10);
+                const input = byId(targetId);
+                if (!input || !Number.isFinite(delta) || !delta) return;
+
+                const min = parseInt(input.getAttribute("min") || "0", 10);
+                const step = parseInt(input.getAttribute("step") || "1", 10) || 1;
+
+                let cur = parseInt((input.value || "").trim(), 10);
+                if (!Number.isFinite(cur)) {
+                    cur = Math.max(min || step, step);
+                } else {
+                    cur += (delta * step);
+                }
+
+                if (Number.isFinite(min)) cur = Math.max(min, cur);
+
+                input.value = String(cur);
+                input.dispatchEvent(new Event("input", { bubbles:true }));
+                input.dispatchEvent(new Event("change", { bubbles:true }));
+            });
+        });
+    }
+
+    async function openPosteCertCreateModal(portal){
         if (!isAdmin()) return;
 
         closeModal("modalPosteCertAdd");
 
         byId("posteCertCreateName").value = (_posteCertAddSearch || "").trim();
-        byId("posteCertCreateCategory").value = "";
+        byId("posteCertCreateCategory").value =
+            (_posteCertAddCategory && _posteCertAddCategory !== "__none__")
+                ? _posteCertAddCategory
+                : "";
         byId("posteCertCreateValidity").value = "";
         byId("posteCertCreateRenewal").value = "";
         byId("posteCertCreateDescription").value = "";
 
         openModal("modalPosteCertCreate");
+        await loadPosteCertCreateCategories(portal);
     }
 
     function closePosteCertCreateModal(reopenAdd){
@@ -2120,8 +2177,8 @@
           catch(e){ portal.showAlert("error", e?.message || String(e)); }
         });
 
-        byId("btnPosteCertCreate")?.addEventListener("click", () => {
-          try { openPosteCertCreateModal(); }
+        byId("btnPosteCertCreate")?.addEventListener("click", async () => {
+          try { await openPosteCertCreateModal(portal); }
           catch(e){ portal.showAlert("error", e?.message || String(e)); }
         });
 
@@ -2142,6 +2199,7 @@
           renderPosteCertAddList();
         });
 
+        bindStepButtons(byId("modalPosteCertCreate"));
         byId("btnClosePosteCertCreate")?.addEventListener("click", () => closePosteCertCreateModal(true));
         byId("btnPosteCertCreateCancel")?.addEventListener("click", () => closePosteCertCreateModal(true));
         byId("btnPosteCertCreateSave")?.addEventListener("click", async () => {

@@ -484,7 +484,7 @@
     </div>
   </div>
 
-    <!-- MODAL : Créer une certification -->
+  <!-- MODAL : Créer une certification -->
   <div class="sb-modal" id="modalPosteCertCreate" style="display:none;">
     <div class="sb-modal-card">
       <div class="sb-modal-head">
@@ -504,25 +504,34 @@
 
           <div class="info-item" style="flex:1; min-width:220px;">
             <div class="label">Catégorie</div>
-            <input type="text" id="posteCertCreateCategory" />
+            <input type="text" id="posteCertCreateCategory" list="posteCertCreateCategoryList" placeholder="Choisir une catégorie existante ou en saisir une nouvelle" />
+            <datalist id="posteCertCreateCategoryList"></datalist>
           </div>
         </div>
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:220px;">
             <div class="label">Validité catalogue (mois)</div>
-            <input type="number" id="posteCertCreateValidity" min="1" step="1" />
+            <div class="sb-stepper">
+              <button type="button" class="sb-stepper-btn" data-stepper-target="posteCertCreateValidity" data-stepper-delta="-1" aria-label="Diminuer la validité">−</button>
+              <input type="number" id="posteCertCreateValidity" min="1" step="1" inputmode="numeric" />
+              <button type="button" class="sb-stepper-btn" data-stepper-target="posteCertCreateValidity" data-stepper-delta="1" aria-label="Augmenter la validité">+</button>
+            </div>
           </div>
 
           <div class="info-item" style="flex:1; min-width:220px;">
             <div class="label">Délai de renouvellement (mois)</div>
-            <input type="number" id="posteCertCreateRenewal" min="1" step="1" />
+            <div class="sb-stepper">
+              <button type="button" class="sb-stepper-btn" data-stepper-target="posteCertCreateRenewal" data-stepper-delta="-1" aria-label="Diminuer le délai de renouvellement">−</button>
+              <input type="number" id="posteCertCreateRenewal" min="1" step="1" inputmode="numeric" />
+              <button type="button" class="sb-stepper-btn" data-stepper-target="posteCertCreateRenewal" data-stepper-delta="1" aria-label="Augmenter le délai de renouvellement">+</button>
+            </div>
           </div>
         </div>
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Description</div>
+            <div class="label">Description (optionnel)</div>
             <textarea id="posteCertCreateDescription" rows="4"></textarea>
           </div>
         </div>

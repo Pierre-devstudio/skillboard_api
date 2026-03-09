@@ -229,6 +229,62 @@
 }
 
 /* =========================
+   CORE — Stepper (numeric up/down moderne)
+   ========================= */
+
+.sb-stepper{
+  display:flex;
+  align-items:stretch;
+  width:100%;
+  min-height:38px;
+  border:1px solid #e5e7eb;
+  border-radius:10px;
+  background:#f8fafc;
+  overflow:hidden;
+}
+
+.sb-stepper input{
+  flex:1;
+  border:0 !important;
+  background:transparent !important;
+  padding:8px 10px;
+  text-align:center;
+  font-family:inherit;
+  font-size:14px;
+  outline:none;
+  box-shadow:none;
+  min-width:0;
+}
+
+.sb-stepper-btn{
+  width:40px;
+  border:0;
+  background:#eef2f7;
+  color:#111827;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.sb-stepper-btn:hover:not(:disabled){
+  background:#e5e7eb;
+}
+
+.sb-stepper-btn:disabled{
+  opacity:.6;
+  cursor:default;
+}
+
+.sb-stepper input[type=number]::-webkit-outer-spin-button,
+.sb-stepper input[type=number]::-webkit-inner-spin-button{
+  -webkit-appearance:none;
+  margin:0;
+}
+
+.sb-stepper input[type=number]{
+  appearance:textfield;
+  -moz-appearance:textfield;
+}
+/* =========================
    CORE — Ring (style Insights, violet)
    ========================= */
 
