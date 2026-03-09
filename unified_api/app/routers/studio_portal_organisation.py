@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from psycopg.rows import dict_row
 import uuid
+from datetime import date as py_date
 
 from app.routers.skills_portal_common import get_conn
 from app.routers.studio_portal_common import (
@@ -90,7 +91,64 @@ def _norm_service_id(v: Optional[str]) -> Optional[str]:
         return None
     return s
 
+def _norm_rh_statut(v: Optional[str]) -> str:
+    s = (v or "").strip().lower()
+    if not s:
+        return "actif"
+    allowed = {"actif", "a_pourvoir", "gele", "temporaire", "archive"}
+    if s not in allowed:
+        raise HTTPException(status_code=400, detail="statut_poste invalide.")
+    return s
 
+
+def _norm_rh_strategie(v: Optional[str]) -> str:
+    s = (v or "").strip().lower()
+    if not s:
+        return "mixte"
+    allowed = {"interne", "externe", "mixte"}
+    if s not in allowed:
+        raise HTTPException(status_code=400, detail="strategie_pourvoi invalide.")
+    return s
+
+
+def _norm_rh_nb_titulaires(v: Optional[int]) -> int:
+    if v is None:
+        return 1
+    try:
+        n = int(v)
+    except Exception:
+        raise HTTPException(status_code=400, detail="nb_titulaires_cible invalide.")
+    if n < 1:
+        raise HTTPException(status_code=400, detail="nb_titulaires_cible doit être >= 1.")
+    return n
+
+
+def _norm_rh_criticite(v: Optional[int]) -> int:
+    if v is None:
+        return 2
+    try:
+        n = int(v)
+    except Exception:
+        raise HTTPException(status_code=400, detail="criticite_poste invalide.")
+    if n < 1 or n > 3:
+        raise HTTPException(status_code=400, detail="criticite_poste doit être compris entre 1 et 3.")
+    return n
+
+
+def _norm_iso_date(v: Optional[str]) -> Optional[py_date]:
+    s = (v or "").strip()
+    if not s:
+        return None
+    try:
+        return py_date.fromisoformat(s)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Date invalide (format attendu YYYY-MM-DD).")
+
+
+def _validate_rh_dates(date_debut_validite: Optional[py_date], date_fin_validite: Optional[py_date]) -> None:
+    if date_debut_validite and date_fin_validite and date_fin_validite < date_debut_validite:
+        raise HTTPException(status_code=400, detail="date_fin_validite doit être >= date_debut_validite.")
+    
 def _next_pt_code(cur, oid: str, id_ent: str) -> str:
     # Sérialise les créations pour une entreprise (évite doublons)
     lock_key = f"poste_code:{oid}:{id_ent}"
@@ -227,6 +285,16 @@ class CreatePosteOrgPayload(BaseModel):
     niveau_contrainte: Optional[str] = None
     detail_contrainte: Optional[str] = None
 
+    # Paramétrage RH
+    statut_poste: Optional[str] = None
+    date_debut_validite: Optional[str] = None
+    date_fin_validite: Optional[str] = None
+    nb_titulaires_cible: Optional[int] = None
+    criticite_poste: Optional[int] = None
+    strategie_pourvoi: Optional[str] = None
+    param_rh_verrouille: Optional[bool] = None
+    param_rh_commentaire: Optional[str] = None
+
 
 class UpdatePosteOrgPayload(BaseModel):
     id_service: Optional[str] = None
@@ -245,6 +313,16 @@ class UpdatePosteOrgPayload(BaseModel):
     perspectives_evolution: Optional[str] = None
     niveau_contrainte: Optional[str] = None
     detail_contrainte: Optional[str] = None
+
+    # Paramétrage RH
+    statut_poste: Optional[str] = None
+    date_debut_validite: Optional[str] = None
+    date_fin_validite: Optional[str] = None
+    nb_titulaires_cible: Optional[int] = None
+    criticite_poste: Optional[int] = None
+    strategie_pourvoi: Optional[str] = None
+    param_rh_verrouille: Optional[bool] = None
+    param_rh_commentaire: Optional[str] = None
 
 
 class ArchivePosteOrgPayload(BaseModel):
@@ -756,12 +834,26 @@ def studio_org_poste_detail(id_owner: str, id_poste: str, request: Request):
                       p.risque_physique,
                       p.perspectives_evolution,
                       p.niveau_contrainte,
-                      p.detail_contrainte
+                      p.detail_contrainte,
+
+                      -- Paramétrage RH
+                      COALESCE(pr.statut_poste, 'actif') AS statut_poste,
+                      pr.date_debut_validite,
+                      pr.date_fin_validite,
+                      COALESCE(pr.nb_titulaires_cible, 1) AS nb_titulaires_cible,
+                      COALESCE(pr.criticite_poste, 2) AS criticite_poste,
+                      COALESCE(pr.strategie_pourvoi, 'mixte') AS strategie_pourvoi,
+                      pr.param_rh_source,
+                      pr.param_rh_date_maj,
+                      COALESCE(pr.param_rh_verrouille, FALSE) AS param_rh_verrouille,
+                      pr.param_rh_commentaire
 
                     FROM public.tbl_fiche_poste p
                     LEFT JOIN public.tbl_nsf_groupe ng
                       ON ng.code = p.nsf_groupe_code
                      AND COALESCE(ng.masque, FALSE) = FALSE
+                    LEFT JOIN public.tbl_fiche_poste_param_rh pr
+                      ON pr.id_poste = p.id_poste
                     WHERE p.id_owner = %s
                       AND p.id_ent = %s
                       AND p.id_poste = %s
@@ -792,6 +884,16 @@ def studio_org_poste_detail(id_owner: str, id_poste: str, request: Request):
             "perspectives_evolution": r.get("perspectives_evolution"),
             "niveau_contrainte": r.get("niveau_contrainte"),
             "detail_contrainte": r.get("detail_contrainte"),
+            "statut_poste": r.get("statut_poste"),
+            "date_debut_validite": r.get("date_debut_validite"),
+            "date_fin_validite": r.get("date_fin_validite"),
+            "nb_titulaires_cible": int(r.get("nb_titulaires_cible") or 1),
+            "criticite_poste": int(r.get("criticite_poste") or 2),
+            "strategie_pourvoi": r.get("strategie_pourvoi"),
+            "param_rh_source": r.get("param_rh_source"),
+            "param_rh_date_maj": r.get("param_rh_date_maj"),
+            "param_rh_verrouille": bool(r.get("param_rh_verrouille")),
+            "param_rh_commentaire": r.get("param_rh_commentaire"),
         }
 
     except HTTPException:
@@ -827,6 +929,15 @@ def studio_org_create_poste(id_owner: str, payload: CreatePosteOrgPayload, reque
         persp = (payload.perspectives_evolution or "").strip() or None
         niv_ctr = (payload.niveau_contrainte or "").strip() or None
         det_ctr = (payload.detail_contrainte or "").strip() or None
+        statut_poste = _norm_rh_statut(payload.statut_poste)
+        date_debut_validite = _norm_iso_date(payload.date_debut_validite)
+        date_fin_validite = _norm_iso_date(payload.date_fin_validite)
+        _validate_rh_dates(date_debut_validite, date_fin_validite)
+        nb_titulaires_cible = _norm_rh_nb_titulaires(payload.nb_titulaires_cible)
+        criticite_poste = _norm_rh_criticite(payload.criticite_poste)
+        strategie_pourvoi = _norm_rh_strategie(payload.strategie_pourvoi)
+        param_rh_verrouille = bool(payload.param_rh_verrouille) if payload.param_rh_verrouille is not None else False
+        param_rh_commentaire = (payload.param_rh_commentaire or "").strip() or None
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -884,6 +995,50 @@ def studio_org_create_poste(id_owner: str, payload: CreatePosteOrgPayload, reque
                         det_ctr,
                     ),
                 )
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_fiche_poste_param_rh
+                      (
+                        id_poste,
+                        statut_poste,
+                        date_debut_validite,
+                        date_fin_validite,
+                        nb_titulaires_cible,
+                        criticite_poste,
+                        strategie_pourvoi,
+                        param_rh_source,
+                        param_rh_date_maj,
+                        param_rh_verrouille,
+                        param_rh_commentaire
+                      )
+                    VALUES
+                      (
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        'studio',
+                        NOW(),
+                        %s,
+                        %s
+                      )
+                    """,
+                    (
+                        pid,
+                        statut_poste,
+                        date_debut_validite,
+                        date_fin_validite,
+                        nb_titulaires_cible,
+                        criticite_poste,
+                        strategie_pourvoi,
+                        param_rh_verrouille,
+                        param_rh_commentaire,
+                    ),
+                )
+
                 conn.commit()
 
         return {"id_poste": pid, "codif_poste": codif}
@@ -910,6 +1065,17 @@ def studio_org_update_poste(id_owner: str, id_poste: str, payload: UpdatePosteOr
         
         if "codif_poste" in patch_fields:
             raise HTTPException(status_code=400, detail="Le code interne est généré automatiquement et ne peut pas être modifié.")
+        
+        rh_patch_fields = {
+            "statut_poste",
+            "date_debut_validite",
+            "date_fin_validite",
+            "nb_titulaires_cible",
+            "criticite_poste",
+            "strategie_pourvoi",
+            "param_rh_verrouille",
+            "param_rh_commentaire",
+        }
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -922,6 +1088,7 @@ def studio_org_update_poste(id_owner: str, id_poste: str, payload: UpdatePosteOr
 
                 cols = []
                 vals = []
+                need_commit = False
 
                 if "id_service" in patch_fields:
                     sid = _norm_service_id(payload.id_service)
@@ -1009,6 +1176,77 @@ def studio_org_update_poste(id_owner: str, id_poste: str, payload: UpdatePosteOr
                         """,
                         tuple(vals),
                     )
+                    need_commit = True
+
+                if patch_fields.intersection(rh_patch_fields):
+                    statut_poste = _norm_rh_statut(payload.statut_poste)
+                    date_debut_validite = _norm_iso_date(payload.date_debut_validite)
+                    date_fin_validite = _norm_iso_date(payload.date_fin_validite)
+                    _validate_rh_dates(date_debut_validite, date_fin_validite)
+                    nb_titulaires_cible = _norm_rh_nb_titulaires(payload.nb_titulaires_cible)
+                    criticite_poste = _norm_rh_criticite(payload.criticite_poste)
+                    strategie_pourvoi = _norm_rh_strategie(payload.strategie_pourvoi)
+                    param_rh_verrouille = bool(payload.param_rh_verrouille) if payload.param_rh_verrouille is not None else False
+                    param_rh_commentaire = (payload.param_rh_commentaire or "").strip() or None
+
+                    cur.execute(
+                        """
+                        INSERT INTO public.tbl_fiche_poste_param_rh
+                          (
+                            id_poste,
+                            statut_poste,
+                            date_debut_validite,
+                            date_fin_validite,
+                            nb_titulaires_cible,
+                            criticite_poste,
+                            strategie_pourvoi,
+                            param_rh_source,
+                            param_rh_date_maj,
+                            param_rh_verrouille,
+                            param_rh_commentaire
+                          )
+                        VALUES
+                          (
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            'studio',
+                            NOW(),
+                            %s,
+                            %s
+                          )
+                        ON CONFLICT (id_poste)
+                        DO UPDATE SET
+                          statut_poste = EXCLUDED.statut_poste,
+                          date_debut_validite = EXCLUDED.date_debut_validite,
+                          date_fin_validite = EXCLUDED.date_fin_validite,
+                          nb_titulaires_cible = EXCLUDED.nb_titulaires_cible,
+                          criticite_poste = EXCLUDED.criticite_poste,
+                          strategie_pourvoi = EXCLUDED.strategie_pourvoi,
+                          param_rh_source = 'studio',
+                          param_rh_date_maj = NOW(),
+                          param_rh_verrouille = EXCLUDED.param_rh_verrouille,
+                          param_rh_commentaire = EXCLUDED.param_rh_commentaire
+                        """,
+                        (
+                            pid,
+                            statut_poste,
+                            date_debut_validite,
+                            date_fin_validite,
+                            nb_titulaires_cible,
+                            criticite_poste,
+                            strategie_pourvoi,
+                            param_rh_verrouille,
+                            param_rh_commentaire,
+                        ),
+                    )
+                    need_commit = True
+
+                if need_commit:
                     conn.commit()
 
         return {"ok": True}
@@ -1095,9 +1333,21 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                       p.risque_physique,
                       p.perspectives_evolution,
                       p.niveau_contrainte,
-                      p.detail_contrainte
+                      p.detail_contrainte,
+
+                      -- Paramétrage RH
+                      COALESCE(pr.statut_poste, 'actif') AS statut_poste,
+                      pr.date_debut_validite,
+                      pr.date_fin_validite,
+                      COALESCE(pr.nb_titulaires_cible, 1) AS nb_titulaires_cible,
+                      COALESCE(pr.criticite_poste, 2) AS criticite_poste,
+                      COALESCE(pr.strategie_pourvoi, 'mixte') AS strategie_pourvoi,
+                      COALESCE(pr.param_rh_verrouille, FALSE) AS param_rh_verrouille,
+                      pr.param_rh_commentaire
 
                     FROM public.tbl_fiche_poste p
+                    LEFT JOIN public.tbl_fiche_poste_param_rh pr
+                      ON pr.id_poste = p.id_poste
                     WHERE p.id_poste = %s
                       AND p.id_owner = %s
                       AND p.id_ent = %s
@@ -1164,6 +1414,50 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                         src.get("detail_contrainte"),
                     ),
                 )
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_fiche_poste_param_rh
+                      (
+                        id_poste,
+                        statut_poste,
+                        date_debut_validite,
+                        date_fin_validite,
+                        nb_titulaires_cible,
+                        criticite_poste,
+                        strategie_pourvoi,
+                        param_rh_source,
+                        param_rh_date_maj,
+                        param_rh_verrouille,
+                        param_rh_commentaire
+                      )
+                    VALUES
+                      (
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        'studio',
+                        NOW(),
+                        %s,
+                        %s
+                      )
+                    """,
+                    (
+                        new_id,
+                        src.get("statut_poste") or "actif",
+                        src.get("date_debut_validite"),
+                        src.get("date_fin_validite"),
+                        int(src.get("nb_titulaires_cible") or 1),
+                        int(src.get("criticite_poste") or 2),
+                        src.get("strategie_pourvoi") or "mixte",
+                        bool(src.get("param_rh_verrouille")),
+                        src.get("param_rh_commentaire"),
+                    ),
+                )
+
                 conn.commit()
 
         return {"id_poste": new_id, "codif_poste": new_code}

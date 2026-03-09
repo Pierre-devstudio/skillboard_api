@@ -397,6 +397,7 @@
     // Poste > Exigences > Contraintes
     // ------------------------------------------------------
     let _posteContraintesInit = false;
+    let _posteRhInit = false;
     let _nsfGroupesLoaded = false;
     let _nsfGroupes = [];
 
@@ -563,6 +564,133 @@
 
         const nSel = byId("posteCtrNivContrainte");
         if (nSel && typeof nSel._sbRefreshHelp === "function") nSel._sbRefreshHelp();
+    }
+
+    // ------------------------------------------------------
+    // Poste > Paramétrage RH
+    // ------------------------------------------------------
+    function rhSourceLabel(v){
+        const s = (v || "").toString().trim().toLowerCase();
+        if (s === "studio") return "Studio";
+        if (s === "desktop") return "Desktop";
+        if (s === "insights") return "Insights";
+        return "—";
+    }
+
+    function formatRhDateMaj(v){
+        const s = (v || "").toString().trim();
+        if (!s) return "—";
+
+        const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+        if (m){
+            const dd = m[3];
+            const mm = m[2];
+            const yy = m[1];
+            const hh = m[4] || "";
+            const mi = m[5] || "";
+            return hh && mi ? `${dd}/${mm}/${yy} ${hh}:${mi}` : `${dd}/${mm}/${yy}`;
+        }
+
+        const d = new Date(s);
+        if (!Number.isNaN(d.getTime())){
+            return d.toLocaleString("fr-FR", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+        }
+
+        return s;
+    }
+
+    function refreshPosteRhCriticiteHelp(){
+        const sel = byId("posteRhCriticite");
+        const help = byId("posteRhCriticiteHelp");
+        if (!sel || !help) return;
+
+        const v = (sel.value || "").trim();
+        if (v === "1"){
+            help.textContent = "1 = Faible : poste peu sensible, impact limité.";
+        } else if (v === "2"){
+            help.textContent = "2 = Modérée : poste important, impact réel sur l’activité.";
+        } else if (v === "3"){
+            help.textContent = "3 = Forte : poste clé, difficile à remplacer ou à sécuriser.";
+        } else {
+            help.textContent = "";
+        }
+    }
+
+    function refreshPosteRhDateFinVisibility(){
+        const statut = (byId("posteRhStatut")?.value || "").trim().toLowerCase();
+        const wrap = byId("posteRhDateFinWrap");
+        const fin = byId("posteRhDateFin");
+        if (!wrap || !fin) return;
+
+        const show = (statut === "gele" || statut === "temporaire");
+        wrap.style.display = show ? "" : "none";
+
+        if (!show){
+            fin.value = "";
+        }
+    }
+
+    function initPosteRhTab(){
+        if (_posteRhInit) return;
+        _posteRhInit = true;
+
+        _fillSelect(byId("posteRhStatut"), [
+            { value:"actif", text:"Actif" },
+            { value:"a_pourvoir", text:"À pourvoir" },
+            { value:"gele", text:"Gelé" },
+            { value:"temporaire", text:"Temporaire" },
+            { value:"archive", text:"Archivé (RH)" }
+        ]);
+
+        _fillSelect(byId("posteRhStrategie"), [
+            { value:"interne", text:"Interne" },
+            { value:"externe", text:"Externe" },
+            { value:"mixte", text:"Mixte" }
+        ]);
+
+        _fillSelect(byId("posteRhCriticite"), [
+            { value:"1", text:"1 - Faible" },
+            { value:"2", text:"2 - Modérée" },
+            { value:"3", text:"3 - Forte" }
+        ]);
+
+        byId("posteRhStatut")?.addEventListener("change", refreshPosteRhDateFinVisibility);
+        byId("posteRhCriticite")?.addEventListener("change", refreshPosteRhCriticiteHelp);
+
+        if (typeof bindStepButtons === "function"){
+            bindStepButtons(byId("posteBlocRh"));
+        }
+
+        refreshPosteRhCriticiteHelp();
+        refreshPosteRhDateFinVisibility();
+    }
+
+    function fillPosteRhTab(detail, isCreate){
+        initPosteRhTab();
+
+        _selectByValue("posteRhStatut", detail?.statut_poste || "actif");
+        _selectByValue("posteRhStrategie", detail?.strategie_pourvoi || "mixte");
+        _setValue("posteRhDateDebut", detail?.date_debut_validite || "");
+        _setValue("posteRhDateFin", detail?.date_fin_validite || "");
+        _setValue("posteRhNbTitulaires", detail?.nb_titulaires_cible ?? 1);
+        _selectByValue("posteRhCriticite", detail?.criticite_poste ?? 2);
+        _setChecked("posteRhVerrouille", detail?.param_rh_verrouille);
+        _setValue("posteRhCommentaire", detail?.param_rh_commentaire || "");
+
+        const src = detail?.param_rh_source || (isCreate ? "studio" : "");
+        _setValue("posteRhSource", rhSourceLabel(src));
+
+        const maj = detail?.param_rh_date_maj || "";
+        _setValue("posteRhDateMaj", isCreate && !maj ? "Création à l’enregistrement" : formatRhDateMaj(maj));
+
+        refreshPosteRhCriticiteHelp();
+        refreshPosteRhDateFinVisibility();
     }
 
     // ------------------------------------------------------
@@ -1545,6 +1673,7 @@
         if (bS) bS.textContent = "Créer";
 
         fillPosteContraintesTab({});
+        fillPosteRhTab({}, true);
 
         _posteCompItems = [];
         _posteCompSearch = "";
@@ -1606,6 +1735,7 @@
 
         const bS = byId("btnPosteSave");
         if (bS) bS.textContent = "Enregistrer";
+        fillPosteRhTab({}, false);
 
         _posteCompItems = [];
         renderPosteCompetences();
@@ -1625,6 +1755,7 @@
             await ensureNsfGroupes(portal);
             fillNsfSelect(d?.nsf_groupe_code || "");
             fillPosteContraintesTab(d);
+            fillPosteRhTab(d, false);
             await loadPosteCompetences(portal);
             await loadPosteCertifications(portal);
 
@@ -1697,8 +1828,39 @@
             perspectives_evolution: (byId("posteCtrPerspEvol")?.value || "").trim() || null,
             niveau_contrainte: (byId("posteCtrNivContrainte")?.value || "").trim() || null,
             detail_contrainte: (byId("posteCtrDetailContrainte")?.value || "").trim() || null,
+            statut_poste: (byId("posteRhStatut")?.value || "actif").trim(),
+            date_debut_validite: (byId("posteRhDateDebut")?.value || "").trim() || null,
+            date_fin_validite: (byId("posteRhDateFinWrap")?.style.display === "none")
+                ? null
+                : ((byId("posteRhDateFin")?.value || "").trim() || null),
+            nb_titulaires_cible: null,
+            criticite_poste: null,
+            strategie_pourvoi: (byId("posteRhStrategie")?.value || "mixte").trim(),
+            param_rh_verrouille: !!byId("posteRhVerrouille")?.checked,
+            param_rh_commentaire: (byId("posteRhCommentaire")?.value || "").trim() || null,
         };
 
+        const rawNbTit = (byId("posteRhNbTitulaires")?.value || "").trim();
+        const nbTit = parseInt(rawNbTit || "1", 10);
+        if (!Number.isFinite(nbTit) || nbTit < 1){
+            portal.showAlert("error", "Le nombre de titulaires cible doit être supérieur ou égal à 1.");
+            return;
+        }
+        payload.nb_titulaires_cible = nbTit;
+
+        const rawCrit = (byId("posteRhCriticite")?.value || "").trim();
+        const crit = parseInt(rawCrit || "2", 10);
+        if (!Number.isFinite(crit) || crit < 1 || crit > 3){
+            portal.showAlert("error", "La criticité du poste doit être comprise entre 1 et 3.");
+            return;
+        }
+        payload.criticite_poste = crit;
+
+        if (payload.date_debut_validite && payload.date_fin_validite && payload.date_fin_validite < payload.date_debut_validite){
+            portal.showAlert("error", "La date de fin de validité doit être postérieure ou égale à la date de début.");
+            return;
+        }
+        
         if (_posteModalMode === "create"){
             // create
             const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}`;

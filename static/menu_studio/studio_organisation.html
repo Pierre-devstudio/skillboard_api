@@ -281,9 +281,76 @@
 
         <!-- Paramétrage RH -->
         <div class="sb-tab-panel" data-panel="rh">
-          <div class="card-sub">Onglet prêt. On branche le Paramétrage RH à l’étape API.</div>
+          <div class="card org-bloc" id="posteBlocRh">
+            <div class="card-title">Paramétrage RH</div>
+            <div class="card-sub" style="margin:4px 0 0 0;">
+              Paramètres métier du poste. Le verrouillage est indicatif seulement.
+            </div>
+
+            <div class="sb-form-grid" style="margin-top:10px;">
+              <div class="sb-field">
+                <div class="label">Statut du poste</div>
+                <select id="posteRhStatut"></select>
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Stratégie de pourvoi</div>
+                <select id="posteRhStrategie"></select>
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Début de validité</div>
+                <input type="date" id="posteRhDateDebut" />
+              </div>
+
+              <div class="sb-field" id="posteRhDateFinWrap">
+                <div class="label">Fin de validité</div>
+                <input type="date" id="posteRhDateFin" />
+                <div class="sb-help">Utilisée surtout pour les statuts Gelé / Temporaire.</div>
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Nb titulaires cible</div>
+                <div class="sb-stepper">
+                  <button type="button" class="sb-stepper-btn" data-stepper-target="posteRhNbTitulaires" data-stepper-delta="-1" aria-label="Diminuer le nombre de titulaires cible">−</button>
+                  <input type="number" id="posteRhNbTitulaires" min="1" step="1" inputmode="numeric" />
+                  <button type="button" class="sb-stepper-btn" data-stepper-target="posteRhNbTitulaires" data-stepper-delta="1" aria-label="Augmenter le nombre de titulaires cible">+</button>
+                </div>
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Criticité du poste</div>
+                <select id="posteRhCriticite"></select>
+                <div class="sb-help" id="posteRhCriticiteHelp"></div>
+              </div>
+
+              <div class="sb-field sb-span-2">
+                <label class="sb-check">
+                  <input type="checkbox" id="posteRhVerrouille" />
+                  <span>Paramétrage RH verrouillé (indication seulement)</span>
+                </label>
+                <div class="sb-help" style="margin-top:6px;">
+                  Cette case n’empêche pas la modification dans Studio. Elle sert à signaler qu’il vaut mieux éviter d’y retoucher.
+                </div>
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Source</div>
+                <input type="text" id="posteRhSource" readonly />
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Dernière mise à jour</div>
+                <input type="text" id="posteRhDateMaj" readonly />
+              </div>
+
+              <div class="sb-field sb-span-2">
+                <div class="label">Commentaire RH</div>
+                <textarea id="posteRhCommentaire" rows="4" placeholder="Commentaire interne sur le paramétrage RH du poste"></textarea>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
 
       <div class="sb-modal-foot">
         <div class="sb-actions" style="width:100%; justify-content:space-between;">
