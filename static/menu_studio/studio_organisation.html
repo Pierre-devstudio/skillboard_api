@@ -237,7 +237,47 @@
               </div>
             </div>
           </div>
+
+          <div class="card org-bloc" id="posteBlocCertifications" style="margin-top:10px;">
+            <div class="org-card-head">
+              <div>
+                <div class="card-title" style="margin-bottom:2px;">Certifications</div>
+                <div class="card-sub" style="margin:0;">Certifications attendues pour ce poste.</div>
+              </div>
+
+              <div class="sb-toolbar">
+                <div class="sb-search">
+                  <div class="card-sub" style="margin:0 0 4px 0;">Rechercher</div>
+                  <input type="text" id="posteCertSearch" placeholder="Nom ou catégorie…" />
+                </div>
+
+                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteCertAdd">Ajouter</button>
+              </div>
+            </div>
+
+            <div class="table-wrap" style="margin-top:10px;">
+              <table class="sb-table" id="posteCertTable">
+                <thead>
+                  <tr>
+                    <th style="width:150px;">Catégorie</th>
+                    <th>Certification</th>
+                    <th style="width:130px; text-align:center;">Validité</th>
+                    <th style="width:130px; text-align:center;">Exigence</th>
+                    <th style="width:220px;">Commentaire</th>
+                    <th style="width:160px; text-align:right;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="posteCertTbody"></tbody>
+              </table>
+
+              <div class="card-sub" id="posteCertEmpty" style="margin-top:8px; display:none;">
+                Aucune certification rattachée à ce poste.
+              </div>
+            </div>
+          </div>
         </div>
+
+        
 
         <!-- Paramétrage RH -->
         <div class="sb-tab-panel" data-panel="rh">
@@ -404,6 +444,86 @@
       <div class="sb-modal-foot">
         <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCompEditSave">Enregistrer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCompEditCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+    <!-- MODAL : Ajouter certification au poste -->
+  <div class="sb-modal" id="modalPosteCertAdd" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">Ajouter une certification</div>
+          <div class="card-sub" style="margin:0;">Catalogue global des certifications.</div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnClosePosteCertAdd" aria-label="Fermer">&times;</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="sb-toolbar">
+          <div class="sb-search">
+            <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
+            <input type="text" id="posteCertAddSearch" placeholder="Nom, description ou catégorie…" />
+          </div>
+
+          <div class="info-item" style="min-width:240px;">
+            <div class="label">Catégorie</div>
+            <select id="posteCertAddCategory">
+              <option value="">Toutes</option>
+              <option value="__none__">Sans catégorie</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="sb-stack sb-stack--xxs sb-mt-10" id="posteCertAddList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : Éditer certification rattachée -->
+  <div class="sb-modal" id="modalPosteCertEdit" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div style="min-width:0;">
+          <div class="card-title" id="posteCertEditTitle" style="margin-bottom:2px;">Certification</div>
+          <div class="card-sub" id="posteCertEditSub" style="margin:0;">—</div>
+        </div>
+
+        <button type="button" class="sb-modal-x" id="btnClosePosteCertEdit" aria-label="Fermer">&times;</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="card-title" style="font-size:14px;">Paramétrage pour le poste</div>
+          <div class="card-sub" id="posteCertEditBaseInfo" style="margin:4px 0 0 0;">—</div>
+
+          <div class="row" style="margin-top:10px;">
+            <div class="info-item" style="flex:1; min-width:220px;">
+              <div class="label">Validité spécifique (mois)</div>
+              <input type="number" id="posteCertEditOverride" min="1" step="1" placeholder="Laisser vide pour garder la validité catalogue" />
+            </div>
+
+            <div class="info-item" style="flex:1; min-width:220px;">
+              <div class="label">Niveau d’exigence</div>
+              <select id="posteCertEditLevel">
+                <option value="requis">Requis</option>
+                <option value="souhaité">Souhaité</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="info-item" style="flex:1; min-width:260px;">
+              <div class="label">Commentaire</div>
+              <textarea id="posteCertEditComment" rows="4" placeholder="Précision éventuelle pour ce poste"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCertEditSave">Enregistrer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCertEditCancel">Annuler</button>
       </div>
     </div>
   </div>

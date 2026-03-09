@@ -38,6 +38,19 @@
 
     let _posteCompEdit = null; // objet en cours d'édition (merge comp + assoc)
 
+    // --- Poste > Certifications (Exigences)
+    let _posteCertItems = [];
+    let _posteCertSearch = "";
+    let _posteCertSearchTimer = null;
+
+    let _posteCertAddItems = [];
+    let _posteCertAddItemsAll = [];
+    let _posteCertAddSearch = "";
+    let _posteCertAddTimer = null;
+    let _posteCertAddCategory = "";
+
+    let _posteCertEdit = null; // objet en cours d'édition (merge cert + assoc)
+
     function getOwnerId() {
         const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
         if (pid) return pid;
@@ -957,6 +970,349 @@
         await loadPosteCompetences(portal);
     }
 
+    function formatValidityMonths(v){
+        const n = parseInt(v ?? "", 10);
+        if (!Number.isFinite(n) || n <= 0) return "—";
+        return `${n} mois`;
+    }
+
+    function getPosteCertValidityLabel(it){
+        const ov = parseInt(it?.validite_override ?? "", 10);
+        if (Number.isFinite(ov) && ov > 0) return `${ov} mois`;
+        const base = parseInt(it?.duree_validite ?? "", 10);
+        if (Number.isFinite(base) && base > 0) return `${base} mois`;
+        return "—";
+    }
+
+    function buildPosteCertBaseInfo(it){
+        const parts = [];
+        const base = formatValidityMonths(it?.duree_validite);
+        const delai = formatValidityMonths(it?.delai_renouvellement);
+
+        parts.push(`Validité catalogue : ${base}`);
+        if (delai !== "—") parts.push(`Délai de renouvellement : ${delai}`);
+
+        return parts.join(" · ");
+    }
+
+    async function loadPosteCertifications(portal){
+        if (!_editingPosteId) return;
+
+        const ownerId = getOwnerId();
+        const url = `${portal.apiBase}/studio/org/poste_certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}`;
+        const data = await portal.apiJson(url);
+        _posteCertItems = data.items || [];
+        renderPosteCertifications();
+    }
+
+    function renderPosteCertifications(){
+        const tb = byId("posteCertTbody");
+        const empty = byId("posteCertEmpty");
+        if (!tb) return;
+
+        const q = (_posteCertSearch || "").toLowerCase();
+        const items = (_posteCertItems || []).filter(it => {
+            if (!q) return true;
+            const s = `${it.nom_certification || ""} ${it.categorie || ""} ${it.commentaire || ""}`.toLowerCase();
+            return s.includes(q);
+        });
+
+        tb.innerHTML = "";
+
+        if (!items.length){
+            if (empty) empty.style.display = "";
+            return;
+        }
+        if (empty) empty.style.display = "none";
+
+        items.forEach(it => {
+            const tr = document.createElement("tr");
+
+            const tdCat = document.createElement("td");
+            const cat = (it.categorie || "").toString().trim();
+            if (cat){
+                const b = document.createElement("span");
+                b.className = "sb-badge sb-badge--poste-soft";
+                b.textContent = cat;
+                tdCat.appendChild(b);
+            } else {
+                tdCat.textContent = "—";
+            }
+
+            const tdNom = document.createElement("td");
+            tdNom.textContent = it.nom_certification || "";
+
+            const tdVal = document.createElement("td");
+            tdVal.style.textAlign = "center";
+            tdVal.textContent = getPosteCertValidityLabel(it);
+            if (it.validite_override !== null && it.validite_override !== undefined && String(it.validite_override).trim() !== ""){
+                tdVal.title = `Validité catalogue : ${formatValidityMonths(it.duree_validite)}`;
+            }
+
+            const tdLvl = document.createElement("td");
+            tdLvl.style.textAlign = "center";
+            const bl = document.createElement("span");
+            bl.className = `sb-badge ${String(it.niveau_exigence || "").toLowerCase() === "souhaité" ? "sb-badge--poste-soft" : "sb-badge--accent-soft"}`;
+            bl.textContent = it.niveau_exigence || "—";
+            tdLvl.appendChild(bl);
+
+            const tdCom = document.createElement("td");
+            tdCom.textContent = (it.commentaire || "").trim() || "—";
+
+            const tdAct = document.createElement("td");
+            tdAct.style.textAlign = "right";
+
+            if (isAdmin()){
+                const btnEdit = document.createElement("button");
+                btnEdit.type = "button";
+                btnEdit.className = "sb-btn sb-btn--soft sb-btn--xs";
+                btnEdit.textContent = "Modifier";
+                btnEdit.addEventListener("click", () => openPosteCertEditModal(it, false));
+                tdAct.appendChild(btnEdit);
+
+                const btnRem = document.createElement("button");
+                btnRem.type = "button";
+                btnRem.className = "sb-btn sb-btn--soft sb-btn--xs";
+                btnRem.textContent = "Retirer";
+                btnRem.style.marginLeft = "6px";
+                btnRem.addEventListener("click", async () => {
+                    if (!confirm(`Retirer la certification "${it.nom_certification || ""}" du poste ?`)) return;
+                    try { await removePosteCertification(window.portal, it.id_certification); }
+                    catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
+                });
+                tdAct.appendChild(btnRem);
+            } else {
+                tdAct.textContent = "—";
+            }
+
+            tr.appendChild(tdCat);
+            tr.appendChild(tdNom);
+            tr.appendChild(tdVal);
+            tr.appendChild(tdLvl);
+            tr.appendChild(tdCom);
+            tr.appendChild(tdAct);
+
+            tb.appendChild(tr);
+        });
+    }
+
+    function openPosteCertAddModal(){
+        if (!isAdmin()) return;
+        if (!_editingPosteId) return;
+
+        byId("posteCertAddSearch").value = "";
+        _posteCertAddSearch = "";
+        _posteCertAddCategory = "";
+        byId("posteCertAddList").innerHTML = "";
+
+        const sel = byId("posteCertAddCategory");
+        if (sel) sel.value = "";
+
+        openModal("modalPosteCertAdd");
+        loadPosteCertAddList(window.portal).catch(()=>{});
+    }
+
+    function refreshPosteCertAddCategoryOptions(items){
+        const sel = byId("posteCertAddCategory");
+        if (!sel) return;
+
+        const keep = (sel.value || "").trim();
+        const map = new Map();
+
+        (items || []).forEach(it => {
+            const cat = (it.categorie || "").toString().trim() || "__none__";
+            const label = (it.categorie || "").toString().trim() || "Sans catégorie";
+            if (!map.has(cat)) map.set(cat, label);
+        });
+
+        sel.innerHTML = "";
+        sel.appendChild(new Option("Toutes", ""));
+        sel.appendChild(new Option("Sans catégorie", "__none__"));
+
+        Array.from(map.entries())
+            .filter(([id]) => id !== "__none__")
+            .sort((a,b) => a[1].localeCompare(b[1], "fr", { sensitivity:"base" }))
+            .forEach(([id, label]) => sel.appendChild(new Option(label, id)));
+
+        if (keep && sel.querySelector(`option[value="${keep}"]`)) sel.value = keep;
+        else sel.value = "";
+
+        _posteCertAddCategory = (sel.value || "").trim();
+    }
+
+    function applyPosteCertAddCategoryFilter(items){
+        const cat = (_posteCertAddCategory || "").trim();
+        if (!cat) return (items || []).slice();
+
+        if (cat === "__none__"){
+            return (items || []).filter(it => !((it.categorie || "").toString().trim()));
+        }
+        return (items || []).filter(it => ((it.categorie || "").toString().trim() === cat));
+    }
+
+    async function loadPosteCertAddList(portal){
+        const ownerId = getOwnerId();
+        const url =
+            `${portal.apiBase}/studio/org/certifications_catalogue/${encodeURIComponent(ownerId)}` +
+            `?q=${encodeURIComponent(_posteCertAddSearch)}`;
+
+        const data = await portal.apiJson(url);
+        let items = data.items || [];
+
+        const existing = new Set((_posteCertItems || []).map(x => x.id_certification));
+        items = items.filter(it => !existing.has(it.id_certification));
+
+        _posteCertAddItemsAll = items;
+        refreshPosteCertAddCategoryOptions(_posteCertAddItemsAll);
+        _posteCertAddItems = applyPosteCertAddCategoryFilter(_posteCertAddItemsAll);
+        renderPosteCertAddList();
+    }
+
+    function renderPosteCertAddList(){
+        const host = byId("posteCertAddList");
+        if (!host) return;
+        host.innerHTML = "";
+
+        const items = _posteCertAddItems || [];
+        if (!items.length){
+            const e = document.createElement("div");
+            e.className = "card-sub";
+            e.textContent = "Aucune certification à afficher.";
+            host.appendChild(e);
+            return;
+        }
+
+        items.forEach(it => {
+            const row = document.createElement("div");
+            row.className = "sb-row-card";
+
+            const left = document.createElement("div");
+            left.className = "sb-row-left";
+
+            const wrap = document.createElement("div");
+
+            const head = document.createElement("div");
+            head.style.display = "flex";
+            head.style.alignItems = "center";
+            head.style.gap = "8px";
+
+            const cat = (it.categorie || "").toString().trim();
+            if (cat){
+                const b = document.createElement("span");
+                b.className = "sb-badge sb-badge--poste-soft";
+                b.textContent = cat;
+                head.appendChild(b);
+            }
+
+            const title = document.createElement("div");
+            title.className = "sb-row-title";
+            title.textContent = it.nom_certification || "";
+            head.appendChild(title);
+
+            const meta = document.createElement("div");
+            meta.className = "card-sub";
+            meta.style.margin = "4px 0 0 0";
+            meta.textContent = buildPosteCertBaseInfo(it);
+
+            wrap.appendChild(head);
+            wrap.appendChild(meta);
+            left.appendChild(wrap);
+
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "sb-btn sb-btn--accent sb-btn--xs";
+            btn.textContent = "Ajouter";
+            btn.addEventListener("click", () => {
+                closeModal("modalPosteCertAdd");
+                openPosteCertEditModal({
+                    id_certification: it.id_certification,
+                    nom_certification: it.nom_certification,
+                    description: it.description,
+                    categorie: it.categorie,
+                    duree_validite: it.duree_validite,
+                    delai_renouvellement: it.delai_renouvellement,
+                    validite_override: null,
+                    niveau_exigence: "requis",
+                    commentaire: ""
+                }, true);
+            });
+
+            row.appendChild(left);
+            row.appendChild(btn);
+
+            host.appendChild(row);
+        });
+    }
+
+    function openPosteCertEditModal(it, isNew){
+        _posteCertEdit = { ...(it || {}) };
+        _posteCertEdit._isNew = !!isNew;
+
+        byId("posteCertEditTitle").textContent = (_posteCertEdit.nom_certification || "Certification").toString();
+
+        const cat = (_posteCertEdit.categorie || "").toString().trim();
+        byId("posteCertEditSub").textContent = cat || "Sans catégorie";
+
+        byId("posteCertEditBaseInfo").textContent = buildPosteCertBaseInfo(_posteCertEdit);
+        byId("posteCertEditOverride").value =
+            (_posteCertEdit.validite_override !== null && _posteCertEdit.validite_override !== undefined)
+                ? String(_posteCertEdit.validite_override)
+                : "";
+        byId("posteCertEditLevel").value = (_posteCertEdit.niveau_exigence || "requis");
+        byId("posteCertEditComment").value = (_posteCertEdit.commentaire || "");
+
+        openModal("modalPosteCertEdit");
+    }
+
+    async function savePosteCertEdit(portal){
+        if (!_editingPosteId || !_posteCertEdit) return;
+
+        const ownerId = getOwnerId();
+
+        const rawOverride = (byId("posteCertEditOverride")?.value || "").trim();
+        let validiteOverride = null;
+
+        if (rawOverride){
+            if (!/^\d+$/.test(rawOverride)) {
+                portal.showAlert("error", "La validité spécifique doit être un entier positif.");
+                return;
+            }
+            validiteOverride = parseInt(rawOverride, 10);
+            if (!Number.isFinite(validiteOverride) || validiteOverride <= 0){
+                portal.showAlert("error", "La validité spécifique doit être supérieure à 0.");
+                return;
+            }
+        }
+
+        const niveau = (byId("posteCertEditLevel")?.value || "requis").trim();
+        const commentaire = (byId("posteCertEditComment")?.value || "").trim() || null;
+
+        const url = `${portal.apiBase}/studio/org/poste_certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}`;
+        await portal.apiJson(url, {
+            method: "POST",
+            headers: { "Content-Type":"application/json" },
+            body: JSON.stringify({
+                id_certification: _posteCertEdit.id_certification,
+                validite_override: validiteOverride,
+                niveau_exigence: niveau,
+                commentaire: commentaire
+            })
+        });
+
+        closeModal("modalPosteCertEdit");
+        portal.showAlert("", "");
+        await loadPosteCertifications(portal);
+    }
+
+    async function removePosteCertification(portal, id_certification){
+        if (!_editingPosteId) return;
+        const ownerId = getOwnerId();
+        const url = `${portal.apiBase}/studio/org/poste_certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}/${encodeURIComponent(id_certification)}/remove`;
+        await portal.apiJson(url, { method: "POST" });
+        portal.showAlert("", "");
+        await loadPosteCertifications(portal);
+    }
+
     const _posteDetailCache = new Map(); // id_poste -> detail
 
     async function fetchPosteDetail(portal, id_poste){
@@ -1041,6 +1397,17 @@
         if (bS) bS.textContent = "Créer";
 
         fillPosteContraintesTab({});
+
+        _posteCompItems = [];
+        _posteCompSearch = "";
+        if (byId("posteCompSearch")) byId("posteCompSearch").value = "";
+        renderPosteCompetences();
+
+        _posteCertItems = [];
+        _posteCertSearch = "";
+        if (byId("posteCertSearch")) byId("posteCertSearch").value = "";
+        renderPosteCertifications();
+
         (async () => {
         try{
             await ensureNsfGroupes(portal);
@@ -1092,6 +1459,12 @@
         const bS = byId("btnPosteSave");
         if (bS) bS.textContent = "Enregistrer";
 
+        _posteCompItems = [];
+        renderPosteCompetences();
+
+        _posteCertItems = [];
+        renderPosteCertifications();
+
         setPosteTab("def");
         openModal("modalPoste");
 
@@ -1105,6 +1478,7 @@
             fillNsfSelect(d?.nsf_groupe_code || "");
             fillPosteContraintesTab(d);
             await loadPosteCompetences(portal);
+            await loadPosteCertifications(portal);
 
             // --- Définition (remplissage robuste: si champ supprimé, pas d'erreur)
             const elCodCli = byId("posteCodifClient"); if (elCodCli) elCodCli.value = (d.codif_client || "");
@@ -1508,6 +1882,15 @@
           });
         }
 
+        const pcsCert = byId("posteCertSearch");
+        if (pcsCert){
+          pcsCert.addEventListener("input", () => {
+            _posteCertSearch = (pcsCert.value || "").trim();
+            if (_posteCertSearchTimer) clearTimeout(_posteCertSearchTimer);
+            _posteCertSearchTimer = setTimeout(() => renderPosteCertifications(), 200);
+          });
+        }
+
         const cbArch = byId("posteShowArchived");
         if (cbArch){
             cbArch.addEventListener("change", () => {
@@ -1638,6 +2021,35 @@
         byId("posteCompEditDep")?.addEventListener("input", refreshPosteCompEditCritDisplay);
         document.querySelectorAll('input[name="posteCompEditNiv"]').forEach(r => {
             r.addEventListener("change", refreshPosteCompNivCards);
+        });
+
+        // Certifications
+        byId("btnPosteCertAdd")?.addEventListener("click", () => {
+          try { openPosteCertAddModal(); }
+          catch(e){ portal.showAlert("error", e?.message || String(e)); }
+        });
+
+        byId("btnClosePosteCertAdd")?.addEventListener("click", () => closeModal("modalPosteCertAdd"));
+        const certSearch = byId("posteCertAddSearch");
+        if (certSearch){
+          certSearch.addEventListener("input", () => {
+            _posteCertAddSearch = (certSearch.value || "").trim();
+            if (_posteCertAddTimer) clearTimeout(_posteCertAddTimer);
+            _posteCertAddTimer = setTimeout(() => loadPosteCertAddList(portal).catch(()=>{}), 250);
+          });
+        }
+
+        byId("posteCertAddCategory")?.addEventListener("change", (e) => {
+          _posteCertAddCategory = (e.target.value || "").trim();
+          _posteCertAddItems = applyPosteCertAddCategoryFilter(_posteCertAddItemsAll);
+          renderPosteCertAddList();
+        });
+
+        byId("btnClosePosteCertEdit")?.addEventListener("click", () => closeModal("modalPosteCertEdit"));
+        byId("btnPosteCertEditCancel")?.addEventListener("click", () => closeModal("modalPosteCertEdit"));
+        byId("btnPosteCertEditSave")?.addEventListener("click", async () => {
+          try { await savePosteCertEdit(portal); }
+          catch(e){ portal.showAlert("error", e?.message || String(e)); }
         });
     }
 

@@ -262,6 +262,12 @@ class UpsertPosteCompetencePayload(BaseModel):
     impact_resultat: Optional[int] = 0   # 0..10
     dependance: Optional[int] = 0        # 0..10
 
+class UpsertPosteCertificationPayload(BaseModel):
+    id_certification: str
+    validite_override: Optional[int] = None
+    niveau_exigence: Optional[str] = "requis"
+    commentaire: Optional[str] = None
+
 # ------------------------------------------------------
 # Endpoints: Services
 # ------------------------------------------------------
@@ -1546,3 +1552,265 @@ def studio_org_remove_poste_competence(id_owner: str, id_poste: str, id_competen
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/poste_competences remove error: {e}")
+
+
+@router.get("/studio/org/certifications_catalogue/{id_owner}")
+def studio_org_list_certifications_catalogue(id_owner: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        q = (request.query_params.get("q") or "").strip()
+        categorie = (request.query_params.get("categorie") or "").strip()
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    SELECT
+                      c.id_certification,
+                      c.nom_certification,
+                      c.description,
+                      c.categorie,
+                      c.duree_validite,
+                      c.delai_renouvellement
+                    FROM public.tbl_certification c
+                    WHERE COALESCE(c.masque, FALSE) = FALSE
+                      AND (
+                            %s = ''
+                         OR lower(c.nom_certification) LIKE '%%' || lower(%s) || '%%'
+                         OR lower(COALESCE(c.description,'')) LIKE '%%' || lower(%s) || '%%'
+                         OR lower(COALESCE(c.categorie,'')) LIKE '%%' || lower(%s) || '%%'
+                      )
+                      AND (
+                            %s = ''
+                         OR (%s = '__none__' AND COALESCE(c.categorie,'') = '')
+                         OR lower(COALESCE(c.categorie,'')) = lower(%s)
+                      )
+                    ORDER BY lower(COALESCE(c.categorie,'')), lower(c.nom_certification)
+                    """,
+                    (q, q, q, q, categorie, categorie, categorie),
+                )
+                rows = cur.fetchall() or []
+
+        items = []
+        for r in rows:
+            items.append(
+                {
+                    "id_certification": r.get("id_certification"),
+                    "nom_certification": r.get("nom_certification"),
+                    "description": r.get("description"),
+                    "categorie": r.get("categorie"),
+                    "duree_validite": r.get("duree_validite"),
+                    "delai_renouvellement": r.get("delai_renouvellement"),
+                }
+            )
+
+        return {"items": items}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/certifications_catalogue error: {e}")
+
+
+@router.get("/studio/org/poste_certifications/{id_owner}/{id_poste}")
+def studio_org_list_poste_certifications(id_owner: str, id_poste: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        pid = (id_poste or "").strip()
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_poste manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    SELECT
+                      pc.id_certification,
+                      pc.validite_override,
+                      pc.niveau_exigence,
+                      pc.commentaire,
+
+                      c.nom_certification,
+                      c.description,
+                      c.categorie,
+                      c.duree_validite,
+                      c.delai_renouvellement
+
+                    FROM public.tbl_fiche_poste_certification pc
+                    JOIN public.tbl_fiche_poste p
+                      ON p.id_poste = pc.id_poste
+                     AND p.id_owner = %s
+                     AND p.id_ent = %s
+                    JOIN public.tbl_certification c
+                      ON c.id_certification = pc.id_certification
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                    WHERE pc.id_poste = %s
+                    ORDER BY lower(COALESCE(c.categorie,'')), lower(c.nom_certification)
+                    """,
+                    (oid, oid, pid),
+                )
+                rows = cur.fetchall() or []
+
+        items = []
+        for r in rows:
+            items.append(
+                {
+                    "id_certification": r.get("id_certification"),
+                    "nom_certification": r.get("nom_certification"),
+                    "description": r.get("description"),
+                    "categorie": r.get("categorie"),
+                    "duree_validite": r.get("duree_validite"),
+                    "delai_renouvellement": r.get("delai_renouvellement"),
+                    "validite_override": r.get("validite_override"),
+                    "niveau_exigence": r.get("niveau_exigence"),
+                    "commentaire": r.get("commentaire"),
+                }
+            )
+
+        return {"items": items}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/poste_certifications list error: {e}")
+
+
+@router.post("/studio/org/poste_certifications/{id_owner}/{id_poste}")
+def studio_org_upsert_poste_certification(id_owner: str, id_poste: str, payload: UpsertPosteCertificationPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        pid = (id_poste or "").strip()
+        cid = (payload.id_certification or "").strip()
+        lvl_raw = (payload.niveau_exigence or "requis").strip().lower()
+
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_poste manquant.")
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_certification manquant.")
+
+        if lvl_raw == "requis":
+            niveau = "requis"
+        elif lvl_raw in ("souhaite", "souhaité"):
+            niveau = "souhaité"
+        else:
+            raise HTTPException(status_code=400, detail="niveau_exigence invalide (requis/souhaité).")
+
+        validite_override = payload.validite_override
+        if validite_override is not None:
+            try:
+                validite_override = int(validite_override)
+            except Exception:
+                raise HTTPException(status_code=400, detail="validite_override invalide.")
+            if validite_override <= 0:
+                raise HTTPException(status_code=400, detail="validite_override doit être > 0.")
+
+        commentaire = (payload.commentaire or "").strip() or None
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM public.tbl_fiche_poste
+                    WHERE id_poste = %s
+                      AND id_owner = %s
+                      AND id_ent = %s
+                    LIMIT 1
+                    """,
+                    (pid, oid, oid),
+                )
+                if not cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Poste introuvable.")
+
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM public.tbl_certification
+                    WHERE id_certification = %s
+                      AND COALESCE(masque, FALSE) = FALSE
+                    LIMIT 1
+                    """,
+                    (cid,),
+                )
+                if not cur.fetchone():
+                    raise HTTPException(status_code=400, detail="Certification non autorisée (masque/introuvable).")
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_fiche_poste_certification
+                      (id_poste, id_certification, validite_override, niveau_exigence, commentaire)
+                    VALUES
+                      (%s, %s, %s, %s, %s)
+                    ON CONFLICT (id_poste, id_certification)
+                    DO UPDATE SET
+                      validite_override = EXCLUDED.validite_override,
+                      niveau_exigence = EXCLUDED.niveau_exigence,
+                      commentaire = EXCLUDED.commentaire
+                    """,
+                    (pid, cid, validite_override, niveau, commentaire),
+                )
+                conn.commit()
+
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/poste_certifications upsert error: {e}")
+
+
+@router.post("/studio/org/poste_certifications/{id_owner}/{id_poste}/{id_certification}/remove")
+def studio_org_remove_poste_certification(id_owner: str, id_poste: str, id_certification: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        pid = (id_poste or "").strip()
+        cid = (id_certification or "").strip()
+        if not pid or not cid:
+            raise HTTPException(status_code=400, detail="Paramètres manquants.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    DELETE FROM public.tbl_fiche_poste_certification pc
+                    USING public.tbl_fiche_poste p
+                    WHERE pc.id_poste = p.id_poste
+                      AND p.id_owner = %s
+                      AND p.id_ent = %s
+                      AND pc.id_poste = %s
+                      AND pc.id_certification = %s
+                    """,
+                    (oid, oid, pid, cid),
+                )
+                conn.commit()
+
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/poste_certifications remove error: {e}")
