@@ -4798,22 +4798,7 @@ function renderDetail(mode) {
 
     const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
-    // Indice fragilité 0..100 (déterministe, basé sur ce qu'on a: 0 critique + 1 critique)
-    // - 0 critique => très pénalisant
-    // - 1 critique => pénalisant (dépendance)
-    function calcFragilityScore(nb0, nb1, nbFragiles, nbTitulaires) {
-      // Règle métier: poste non tenu = poste fragile prioritaire
-      if (nbTitulaires === 0) return 100;
 
-      const a = Number(nb0 || 0);            // N0 : non couvertes
-      const b = Number(nb1 || 0);            // N1 : couverture unique
-      const f = Number(nbFragiles || 0);     // total fragiles (incluant 0/1)
-      const n2 = Math.max(f - a - b, 0);     // N2 : fragiles hors 0/1
-
-      const w0 = 0.85, w1 = 0.60, w2 = 0.25;
-      const risk = 1 - Math.pow(1 - w0, a) * Math.pow(1 - w1, b) * Math.pow(1 - w2, n2);
-      return clamp(Math.round(risk * 100), 0, 100);
-    }
 
     function scoreHue(score) {
       const s = clamp(Number(score || 0), 0, 100) / 100;
@@ -4916,9 +4901,7 @@ function renderDetail(mode) {
                 ? null
                 : Number(r.nb_titulaires);
 
-              const score = (r.indice_fragilite !== null && r.indice_fragilite !== undefined)
-                ? clamp(Number(r.indice_fragilite || 0), 0, 100)
-                : calcFragilityScore(nb0, nb1, nbR0, nbR1, nbTit, nbCible);
+              const score = clamp(Number(r.indice_fragilite || 0), 0, 100);
               const prio  = priorityLabel(score, nb0, nbTit);
 
 
