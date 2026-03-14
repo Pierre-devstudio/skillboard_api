@@ -971,23 +971,48 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     `;
   })();
 
+  const transmissionScore = (() => {
+    const total = Number(cTrans?.pool_total || 0);
+    const elig = Number(cTrans?.pool_eligible || 0);
+    if (total <= 0) return 0;
+    if (elig <= 0) return 5;
+    if (elig < total) return 3;
+    return 0;
+  })();
+
+  const transmissionSharePct = (s > 0)
+    ? Math.min(100, Math.round((transmissionScore / s) * 100))
+    : 0;
+
   const transmissionBody = (() => {
     if (!hasTrans) return "";
     const raisons = Array.isArray(cTrans?.raisons) ? cTrans.raisons : [];
     const nbPot = Number(cTrans?.nb_ressources_potentielles || 0);
 
     return `
-      <div class="sb-richtext">
-        ${raisons.length ? `
+      <div class="sb-help" style="margin-top:0;">
+        Ce risque mesure les ressources potentielles identifiées dans le périmètre, mais non mobilisables immédiatement sur ce poste.
+      </div>
+
+      <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:10px;">
+        <div class="card" style="padding:10px; margin:0; min-width:220px; flex:1;">
+          <div class="label">Ressources potentielles</div>
+          <div class="value">${escapeHtml(String(nbPot))}</div>
+        </div>
+      </div>
+
+      ${raisons.length ? `
+        <div style="margin-top:12px; font-weight:700;">Freins de mobilisation immédiate</div>
+        <div class="sb-richtext" style="margin-top:6px;">
           <ul>
             ${raisons.map(x => `<li>${escapeHtml(String(x || ""))}</li>`).join("")}
           </ul>
-        ` : `<p style="margin:0;">Des ressources existent mais ne sont pas immédiatement mobilisables selon les critères.</p>`}
-
-        <p class="sb-help" style="margin:0;">
-          ${escapeHtml(String(nbPot))} ressource(s) potentielle(s) détectée(s) sous condition de mise à niveau.
-        </p>
-      </div>
+        </div>
+      ` : `
+        <div class="sb-help" style="margin-top:12px;">
+          Des ressources existent dans le périmètre, mais elles ne sont pas immédiatement mobilisables selon les critères du poste.
+        </div>
+      `}
     `;
   })();
 
@@ -1030,7 +1055,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         ${hasTrans ? `
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
-              <span>Risque de transmission</span>
+              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span>Risque de transmission</span>
+                <span class="sb-badge sb-badge--risk-share">${escapeHtml(String(transmissionSharePct))}%</span>
+              </span>
               <span class="sb-acc-chevron">▾</span>
             </button>
             <div class="sb-acc-body">${transmissionBody}</div>
