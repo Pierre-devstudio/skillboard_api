@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, Tuple
+from collections import defaultdict
 from datetime import datetime
 import json
 
@@ -285,6 +286,20 @@ def _clamp_int(v: int, lo: int, hi: int) -> int:
     return max(lo, min(hi, x))
 
 
+def _calc_fragility_score(nb0: int, nb1: int, nb_fragiles: int) -> int:
+    """
+    Copie conforme de la logique front (skills_analyse.js / calcFragilityScore)
+    => score 0..100, pondérations non couverte / unique / fragilité latente.
+    """
+    a = int(nb0 or 0)           # N0 : non couvertes
+    b = int(nb1 or 0)           # N1 : couverture unique
+    f = int(nb_fragiles or 0)   # total fragiles (incluant 0/1)
+    n2 = max(f - a - b, 0)      # N2 : fragiles hors 0/1
+
+    w0, w1, w2 = 0.85, 0.60, 0.25
+    risk = 1 - (pow(1 - w0, a) * pow(1 - w1, b) * pow(1 - w2, n2))
+    return _clamp_int(round(risk * 100), 0, 100)
+
 def _normalize_poste_statut(value: Any) -> str:
     s = (value or "").strip().lower()
     if not s:
@@ -306,56 +321,423 @@ def _is_poste_statut_excluded(value: Any) -> bool:
     return _normalize_poste_statut(value) in ("gele", "archive")
 
 
-def _calc_poste_fragilite_index(
-    nb_titulaires: Any,
-    nb_titulaires_cible: Any,
-    nb_critiques_sans_porteur: Any,
-    nb_critiques_porteur_unique: Any,
-    nb_critiques_sans_releve: Any,
-    nb_critiques_releve_faible: Any,
-) -> int:
-    nb_tit = max(int(nb_titulaires or 0), 0)
-    nb_cible = max(int(nb_titulaires_cible or 1), 1)
-    nb0 = max(int(nb_critiques_sans_porteur or 0), 0)
-    nb1 = max(int(nb_critiques_porteur_unique or 0), 0)
-    nbr0 = max(int(nb_critiques_sans_releve or 0), 0)
-    nbr1 = max(int(nb_critiques_releve_faible or 0), 0)
-    gap = max(nb_cible - nb_tit, 0)
+def _safe_int(v: Any, default: int = 0) -> int:
+    try:
+        if v is None or v == "":
+            return int(default)
+        return int(v)
+    except Exception:
+        return int(default)
 
-    if nb_tit <= 0:
-        return 100
 
-    if gap <= 0 and nb0 == 0 and nb1 == 0 and nbr0 == 0 and nbr1 == 0:
+def _education_rank(v: Any) -> int:
+    s = str(v or "").strip()
+    return int(s) if s.isdigit() else 0
+
+
+def _niveau_rank(v: Any) -> int:
+    s = str(v or "").strip().lower()
+    if s in ("a", "initial"):
+        return 1
+    if s in ("b", "avance", "avancé", "avancee", "avancée"):
+        return 2
+    if s in ("c", "expert"):
+        return 3
+    return 0
+
+
+def _score_structure_gap(gap: int) -> int:
+    g = max(int(gap or 0), 0)
+    if g <= 0:
         return 0
-
-    score = 10
-    score += 15 * gap
-    score += 35 * nb0
-    score += 8 * nb1
-    score += 5 * nbr0
-    score += 3 * nbr1
-
-    # Poste tenu + toutes les critiques couvertes par les titulaires :
-    # la faible redondance ne doit pas le faire passer en zone critique.
-    if gap <= 0 and nb0 <= 0:
-        score = min(score, 49)
-
-    return _clamp_int(score, 0, 100)
+    if g == 1:
+        return 15
+    if g == 2:
+        return 30
+    return 45
 
 
-def _calc_fragility_score(nb0: int, nb1: int, nb_fragiles: int) -> int:
+def _score_transmission(pool_total: Any, pool_eligible: Any) -> int:
+    total = max(_safe_int(pool_total, 0), 0)
+    elig = max(_safe_int(pool_eligible, 0), 0)
+    if total <= 0:
+        return 0
+    if elig <= 0:
+        return 5
+    if elig < total:
+        return 3
+    return 0
+
+
+def _employee_matches_poste_constraints(emp: Dict[str, Any], poste: Dict[str, Any]) -> bool:
+    edu_min_rank = max(_safe_int(poste.get("edu_min_rank"), 0), 0)
+    if edu_min_rank > 0 and _education_rank(emp.get("niveau_education")) < edu_min_rank:
+        return False
+
+    if bool(poste.get("nsf_domain_required") or False):
+        dom_poste = str(poste.get("nsf_domaine_titre") or "").strip().lower()
+        dom_emp = str(emp.get("domaine_education") or "").strip().lower()
+        if not dom_poste or dom_emp != dom_poste:
+            return False
+
+    return True
+
+
+def _compute_poste_fragility_record(
+    poste: Dict[str, Any],
+    comp_rows: List[Dict[str, Any]],
+    employees: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    row = dict(poste or {})
+    row["statut_poste_norm"] = _normalize_poste_statut(row.get("statut_poste"))
+    row["is_excluded"] = _is_poste_statut_excluded(row.get("statut_poste"))
+
+    nb_titulaires = max(_safe_int(row.get("nb_titulaires"), 0), 0)
+    nb_cible = max(_safe_int(row.get("nb_titulaires_cible"), 1), 1)
+    gap = max(nb_cible - nb_titulaires, 0)
+    rupture = (nb_titulaires <= 0 and nb_cible >= 1)
+    besoin_local = max(min(nb_titulaires, nb_cible), 0)
+
+    pool_total = 0
+    pool_eligible = 0
+    poste_id = str(row.get("id_poste") or "")
+    for emp in employees or []:
+        if str(emp.get("id_poste_actuel") or "") == poste_id:
+            continue
+        pool_total += 1
+        if _employee_matches_poste_constraints(emp, row):
+            pool_eligible += 1
+
+    nb_non_tenues = 0
+    nb_dep_zero = 0
+    nb_dep_one = 0
+    structure_missing_units = 0
+    efficiency_missing_units = 0
+
+    for c in comp_rows or []:
+        nb_tit_any = max(_safe_int(c.get("nb_tit_any"), 0), 0)
+        nb_tit_ok = max(_safe_int(c.get("nb_tit_ok"), 0), 0)
+        nb_ok_all = max(_safe_int(c.get("nb_ok_all"), 0), 0)
+
+        if besoin_local <= 0:
+            continue
+
+        if nb_tit_ok < besoin_local:
+            nb_non_tenues += 1
+
+        missing_presence = max(besoin_local - nb_tit_any, 0)
+        if missing_presence > 0:
+            structure_missing_units += missing_presence
+
+        covered_by_presence = min(nb_tit_any, besoin_local)
+        underlevel_missing = max(covered_by_presence - nb_tit_ok, 0)
+        if underlevel_missing > 0:
+            efficiency_missing_units += underlevel_missing
+
+        if nb_tit_ok >= besoin_local:
+            relais_ok = max(nb_ok_all - nb_tit_ok, 0)
+            if relais_ok <= 0:
+                nb_dep_zero += 1
+            elif relais_ok == 1:
+                nb_dep_one += 1
+
+    structure_score = min(45, _score_structure_gap(gap) + (15 * structure_missing_units))
+    efficacite_score = min(30, 8 * efficiency_missing_units)
+    dependance_score = min(15, (6 * nb_dep_zero) + (3 * nb_dep_one))
+    transmission_score = _score_transmission(pool_total, pool_eligible)
+
+    base_score = structure_score + efficacite_score + dependance_score
+    if rupture:
+        score = 100
+    else:
+        score = min(95, base_score + (transmission_score if base_score > 0 else 0))
+
+    row.update({
+        "nb_titulaires": nb_titulaires,
+        "nb_titulaires_cible": nb_cible,
+        "gap_titulaires": gap,
+        "pool_total": pool_total,
+        "pool_eligible": pool_eligible,
+        "nb_critiques_sans_porteur": nb_non_tenues,
+        "nb_critiques_porteur_unique": nb_dep_zero,
+        "nb_critiques_fragiles": nb_non_tenues + nb_dep_zero + nb_dep_one,
+        "nb_critiques_sans_releve": nb_dep_zero,
+        "nb_critiques_releve_faible": nb_dep_one,
+        "score_structurel": structure_score,
+        "score_efficacite": efficacite_score,
+        "score_dependance": dependance_score,
+        "score_transmission": transmission_score,
+        "base_score": base_score,
+        "indice_fragilite": int(score),
+        "is_fragile": bool(rupture or base_score > 0),
+        "rupture": rupture,
+        "besoin_local": besoin_local,
+    })
+    return row
+
+
+def _fetch_postes_fragility_records(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    criticite_min: int,
+) -> List[Dict[str, Any]]:
+    cte_sql, cte_params = _build_scope_cte(id_ent, id_service)
+
+    sql_postes = f"""
+    WITH
+    {cte_sql},
+    effectifs_dispo AS (
+        SELECT es.id_effectif
+        FROM effectifs_scope es
+        JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+          AND NOT EXISTS (
+            SELECT 1
+            FROM public.tbl_effectif_client_break b
+            WHERE b.id_effectif = e.id_effectif
+              AND b.archive = FALSE
+              AND b.date_debut <= CURRENT_DATE
+              AND b.date_fin >= CURRENT_DATE
+          )
+    ),
+    titulaires AS (
+        SELECT
+            e.id_poste_actuel AS id_poste,
+            COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
+        FROM public.tbl_effectif_client e
+        JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.id_poste_actuel, '') <> ''
+        GROUP BY e.id_poste_actuel
+    )
+    SELECT
+        fp.id_poste,
+        fp.codif_poste,
+        fp.codif_client,
+        fp.intitule_poste,
+        fp.id_service,
+        COALESCE(o.nom_service, '') AS nom_service,
+        COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
+        COALESCE(prh.statut_poste, 'actif')::text AS statut_poste,
+        CASE
+            WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$'
+                THEN trim(fp.niveau_education_minimum)::int
+            ELSE 0
+        END AS edu_min_rank,
+        (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
+        COALESCE(nd.titre, '')::text AS nsf_domaine_titre,
+        COALESCE(t.nb_titulaires, 0)::int AS nb_titulaires
+    FROM postes_scope ps
+    JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
+    LEFT JOIN public.tbl_entreprise_organigramme o
+      ON o.id_ent = %s
+     AND o.id_service = fp.id_service
+     AND o.archive = FALSE
+    LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = fp.id_poste
+    LEFT JOIN public.tbl_nsf_domaine nd ON nd.code = fp.nsf_domaine_code
+    LEFT JOIN titulaires t ON t.id_poste = fp.id_poste
     """
-    Copie conforme de la logique front (skills_analyse.js / calcFragilityScore)
-    => score 0..100, pondérations non couverte / unique / fragilité latente.
-    """
-    a = int(nb0 or 0)           # N0 : non couvertes
-    b = int(nb1 or 0)           # N1 : couverture unique
-    f = int(nb_fragiles or 0)   # total fragiles (incluant 0/1)
-    n2 = max(f - a - b, 0)      # N2 : fragiles hors 0/1
+    cur.execute(sql_postes, tuple(cte_params + [id_ent]))
+    poste_rows = cur.fetchall() or []
+    if not poste_rows:
+        return []
 
-    w0, w1, w2 = 0.85, 0.60, 0.25
-    risk = 1 - (pow(1 - w0, a) * pow(1 - w1, b) * pow(1 - w2, n2))
-    return _clamp_int(round(risk * 100), 0, 100)
+    postes_map: Dict[str, Dict[str, Any]] = {}
+    for r in poste_rows:
+        postes_map[str(r.get("id_poste") or "")] = dict(r)
+
+    sql_emps = f"""
+    WITH
+    {cte_sql},
+    effectifs_dispo AS (
+        SELECT es.id_effectif
+        FROM effectifs_scope es
+        JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+          AND NOT EXISTS (
+            SELECT 1
+            FROM public.tbl_effectif_client_break b
+            WHERE b.id_effectif = e.id_effectif
+              AND b.archive = FALSE
+              AND b.date_debut <= CURRENT_DATE
+              AND b.date_fin >= CURRENT_DATE
+          )
+    )
+    SELECT
+        e.id_effectif,
+        e.id_poste_actuel,
+        COALESCE(e.niveau_education, '') AS niveau_education,
+        COALESCE(e.domaine_education, '') AS domaine_education
+    FROM public.tbl_effectif_client e
+    JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
+    WHERE COALESCE(e.archive, FALSE) = FALSE
+    """
+    cur.execute(sql_emps, tuple(cte_params))
+    employees = [dict(r) for r in (cur.fetchall() or [])]
+
+    sql_comp = f"""
+    WITH
+    {cte_sql},
+    effectifs_dispo AS (
+        SELECT es.id_effectif
+        FROM effectifs_scope es
+        JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+          AND NOT EXISTS (
+            SELECT 1
+            FROM public.tbl_effectif_client_break b
+            WHERE b.id_effectif = e.id_effectif
+              AND b.archive = FALSE
+              AND b.date_debut <= CURRENT_DATE
+              AND b.date_fin >= CURRENT_DATE
+          )
+    ),
+    poste_info AS (
+        SELECT
+            fp.id_poste,
+            CASE
+                WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$'
+                    THEN trim(fp.niveau_education_minimum)::int
+                ELSE 0
+            END AS edu_min_rank,
+            (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
+            COALESCE(nd.titre, '')::text AS nsf_domaine_titre
+        FROM postes_scope ps
+        JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
+        LEFT JOIN public.tbl_nsf_domaine nd ON nd.code = fp.nsf_domaine_code
+    ),
+    req AS (
+        SELECT DISTINCT
+            pi.id_poste,
+            c.id_comp,
+            c.code,
+            c.intitule,
+            COALESCE(fpc.niveau_requis, '')::text AS niveau_requis,
+            COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite,
+            pi.edu_min_rank,
+            pi.nsf_domain_required,
+            pi.nsf_domaine_titre
+        FROM poste_info pi
+        JOIN public.tbl_fiche_poste_competence fpc ON fpc.id_poste = pi.id_poste
+        JOIN public.tbl_competence c
+          ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+        WHERE c.etat = 'active'
+          AND COALESCE(c.masque, FALSE) = FALSE
+          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+    ),
+    pool_all_effectifs AS (
+        SELECT
+            e.id_effectif,
+            e.id_poste_actuel,
+            COALESCE(e.niveau_education, '') AS niveau_education,
+            COALESCE(e.domaine_education, '') AS domaine_education
+        FROM public.tbl_effectif_client e
+        JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+    ),
+    ec_raw AS (
+        SELECT
+            r.id_poste,
+            r.id_comp,
+            r.code,
+            r.intitule,
+            r.poids_criticite,
+            r.niveau_requis,
+            pe.id_effectif,
+            pe.id_poste_actuel,
+            CASE upper(trim(COALESCE(r.niveau_requis, '')))
+                WHEN 'A' THEN 1
+                WHEN 'B' THEN 2
+                WHEN 'C' THEN 3
+                ELSE 0
+            END AS req_rank,
+            CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
+                WHEN 'a' THEN 1
+                WHEN 'initial' THEN 1
+                WHEN 'b' THEN 2
+                WHEN 'avance' THEN 2
+                WHEN 'avancé' THEN 2
+                WHEN 'avancee' THEN 2
+                WHEN 'avancée' THEN 2
+                WHEN 'c' THEN 3
+                WHEN 'expert' THEN 3
+                ELSE 0
+            END AS act_rank,
+            CASE
+              WHEN (
+                r.edu_min_rank = 0
+                OR (
+                  CASE
+                    WHEN trim(COALESCE(pe.niveau_education, '')) ~ '^[0-9]+$' THEN trim(pe.niveau_education)::int
+                    ELSE 0
+                  END
+                ) >= r.edu_min_rank
+              )
+              AND (
+                r.nsf_domain_required = FALSE
+                OR (
+                  lower(trim(COALESCE(pe.domaine_education, ''))) = lower(trim(COALESCE(r.nsf_domaine_titre, '')))
+                  AND COALESCE(r.nsf_domaine_titre, '') <> ''
+                )
+              )
+              THEN TRUE ELSE FALSE
+            END AS is_eligible
+        FROM req r
+        JOIN public.tbl_effectif_client_competence ec ON ec.id_comp = r.id_comp
+        JOIN pool_all_effectifs pe ON pe.id_effectif = ec.id_effectif_client
+        WHERE COALESCE(ec.actif, TRUE) = TRUE
+          AND COALESCE(ec.archive, FALSE) = FALSE
+    ),
+    ec_ok AS (
+        SELECT
+            *,
+            CASE
+                WHEN req_rank > 0 THEN (act_rank >= req_rank)
+                ELSE (act_rank > 0)
+            END AS is_ok
+        FROM ec_raw
+    )
+    SELECT
+        r.id_poste,
+        r.id_comp,
+        r.code,
+        r.intitule,
+        r.poids_criticite,
+        r.niveau_requis,
+        COUNT(DISTINCT CASE WHEN eok.id_poste_actuel = r.id_poste THEN eok.id_effectif END)::int AS nb_tit_any,
+        COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible AND eok.id_poste_actuel = r.id_poste THEN eok.id_effectif END)::int AS nb_tit_ok,
+        COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible THEN eok.id_effectif END)::int AS nb_ok_all
+    FROM req r
+    LEFT JOIN ec_ok eok ON eok.id_poste = r.id_poste AND eok.id_comp = r.id_comp
+    GROUP BY r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis
+    """
+    cur.execute(sql_comp, tuple(cte_params + [int(criticite_min)]))
+    comp_rows = cur.fetchall() or []
+    comp_by_poste: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    for r in comp_rows:
+        comp_by_poste[str(r.get("id_poste") or "")].append(dict(r))
+
+    records = []
+    for poste_id, poste in postes_map.items():
+        rec = _compute_poste_fragility_record(poste, comp_by_poste.get(poste_id, []), employees)
+        if rec.get("is_excluded"):
+            continue
+        records.append(rec)
+
+    records.sort(
+        key=lambda r: (
+            -int(r.get("indice_fragilite") or 0),
+            int(r.get("nb_titulaires") or 0),
+            -int(r.get("nb_critiques_sans_porteur") or 0),
+            -int(r.get("gap_titulaires") or 0),
+            -int(r.get("nb_critiques_porteur_unique") or 0),
+            -int(r.get("nb_critiques_sans_releve") or 0),
+            str(r.get("codif_poste") or ""),
+            str(r.get("intitule_poste") or ""),
+        )
+    )
+    return records
 
 
 def _bucket_porteurs(n: Optional[int]) -> int:
@@ -412,178 +794,13 @@ def get_analyse_summary(
 
                 cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
 
-                sql_postes_fragiles = f"""
-                WITH
-                {cte_sql},
-                req_crit AS (
-                    SELECT DISTINCT
-                        fpc.id_poste,
-                        c.id_comp,
-                        COALESCE(fpc.niveau_requis, '')::text AS niveau_requis,
-                        COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite
-                    FROM public.tbl_fiche_poste_competence fpc
-                    JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
-                    JOIN public.tbl_competence c
-                      ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
-                    WHERE c.etat = 'active'
-                      AND COALESCE(c.masque, FALSE) = FALSE
-                      AND COALESCE(fpc.poids_criticite, 0)::int >= %s
-                ),
-                effectifs_dispo AS (
-                    SELECT es.id_effectif
-                    FROM effectifs_scope es
-                    JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
-                    WHERE COALESCE(e.archive, FALSE) = FALSE
-                      AND NOT EXISTS (
-                        SELECT 1
-                        FROM public.tbl_effectif_client_break b
-                        WHERE b.id_effectif = e.id_effectif
-                          AND b.archive = FALSE
-                          AND b.date_debut <= CURRENT_DATE
-                          AND b.date_fin >= CURRENT_DATE
-                      )
-                ),
-                poste_info AS (
-                    SELECT
-                        fp.id_poste,
-                        COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
-                        COALESCE(prh.statut_poste, 'actif')::text AS statut_poste,
-                        CASE
-                            WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$'
-                                THEN trim(fp.niveau_education_minimum)::int
-                            ELSE 0
-                        END AS edu_min_rank,
-                        (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
-                        COALESCE(nd.titre, '')::text AS nsf_domaine_titre
-                    FROM public.tbl_fiche_poste fp
-                    JOIN postes_scope ps ON ps.id_poste = fp.id_poste
-                    LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = fp.id_poste
-                    LEFT JOIN public.tbl_nsf_domaine nd ON nd.code = fp.nsf_domaine_code
-                ),
-                titulaires AS (
-                    SELECT
-                        e.id_poste_actuel AS id_poste,
-                        COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
-                    FROM public.tbl_effectif_client e
-                    JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
-                    WHERE COALESCE(e.archive, FALSE) = FALSE
-                      AND COALESCE(e.id_poste_actuel, '') <> ''
-                    GROUP BY e.id_poste_actuel
-                ),
-                porteurs_poste AS (
-                    SELECT
-                        rc.id_poste,
-                        rc.id_comp,
-                        (COUNT(DISTINCT e.id_effectif) FILTER (
-                          WHERE
-                            (
-                              CASE upper(trim(COALESCE(rc.niveau_requis, '')))
-                                WHEN 'A' THEN 1 WHEN 'B' THEN 2 WHEN 'C' THEN 3 ELSE 0
-                              END
-                            ) <=
-                            (
-                              CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
-                                WHEN 'initial' THEN 1
-                                WHEN 'avancé' THEN 2 WHEN 'avance' THEN 2 WHEN 'avancee' THEN 2 WHEN 'avancée' THEN 2
-                                WHEN 'expert' THEN 3
-                                ELSE 0
-                              END
-                            )
-                            AND (
-                              NOT pi.nsf_domain_required
-                              OR (
-                                lower(trim(COALESCE(e.domaine_education, ''))) = lower(trim(COALESCE(pi.nsf_domaine_titre, '')))
-                                AND COALESCE(pi.nsf_domaine_titre, '') <> ''
-                              )
-                            )
-                            AND (
-                                pi.edu_min_rank = 0
-                                OR (
-                                    CASE
-                                    WHEN trim(COALESCE(e.niveau_education, '')) ~ '^[0-9]+$'
-                                        THEN trim(e.niveau_education)::int
-                                    ELSE 0
-                                    END
-                                ) >= pi.edu_min_rank
-                            )
-                        ))::int AS nb_porteurs_total,
-                        (COUNT(DISTINCT e.id_effectif) FILTER (
-                          WHERE
-                            (
-                              CASE upper(trim(COALESCE(rc.niveau_requis, '')))
-                                WHEN 'A' THEN 1 WHEN 'B' THEN 2 WHEN 'C' THEN 3 ELSE 0
-                              END
-                            ) <=
-                            (
-                              CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
-                                WHEN 'initial' THEN 1
-                                WHEN 'avancé' THEN 2 WHEN 'avance' THEN 2 WHEN 'avancee' THEN 2 WHEN 'avancée' THEN 2
-                                WHEN 'expert' THEN 3
-                                ELSE 0
-                              END
-                            )
-                            AND (
-                              NOT pi.nsf_domain_required
-                              OR (
-                                lower(trim(COALESCE(e.domaine_education, ''))) = lower(trim(COALESCE(pi.nsf_domaine_titre, '')))
-                                AND COALESCE(pi.nsf_domaine_titre, '') <> ''
-                              )
-                            )
-                            AND (
-                                pi.edu_min_rank = 0
-                                OR (
-                                    CASE
-                                    WHEN trim(COALESCE(e.niveau_education, '')) ~ '^[0-9]+$'
-                                        THEN trim(e.niveau_education)::int
-                                    ELSE 0
-                                    END
-                                ) >= pi.edu_min_rank
-                            )
-                            AND e.id_poste_actuel = rc.id_poste
-                        ))::int AS nb_porteurs_titulaires
-                    FROM req_crit rc
-                    JOIN poste_info pi ON pi.id_poste = rc.id_poste
-                    JOIN public.tbl_effectif_client_competence ec ON ec.id_comp = rc.id_comp
-                    JOIN effectifs_dispo ed ON ed.id_effectif = ec.id_effectif_client
-                    JOIN public.tbl_effectif_client e ON e.id_effectif = ec.id_effectif_client
-                    WHERE COALESCE(ec.archive, FALSE) = FALSE
-                      AND COALESCE(ec.actif, TRUE) = TRUE
-                    GROUP BY rc.id_poste, rc.id_comp
-                ),
-                poste_agg AS (
-                    SELECT
-                        ps.id_poste,
-                        COALESCE(t.nb_titulaires, 0)::int AS nb_titulaires,
-                        COALESCE(pi.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
-                        GREATEST(0, COALESCE(pi.nb_titulaires_cible, 1) - COALESCE(t.nb_titulaires, 0))::int AS gap_titulaires,
-                        SUM(CASE WHEN rc.id_comp IS NOT NULL AND COALESCE(pp.nb_porteurs_titulaires, 0) = 0 THEN 1 ELSE 0 END)::int AS nb_critiques_sans_porteur,
-                        SUM(CASE WHEN rc.id_comp IS NOT NULL AND COALESCE(pp.nb_porteurs_titulaires, 0) > 0 AND COALESCE(pp.nb_porteurs_total, 0) = 1 THEN 1 ELSE 0 END)::int AS nb_critiques_porteur_unique,
-                        SUM(CASE WHEN rc.id_comp IS NOT NULL AND COALESCE(pp.nb_porteurs_titulaires, 0) > 0 AND COALESCE(pp.nb_porteurs_total, 0) <= 1 THEN 1 ELSE 0 END)::int AS nb_critiques_fragiles,
-                        SUM(CASE WHEN rc.id_comp IS NOT NULL AND COALESCE(pp.nb_porteurs_titulaires, 0) > 0 AND GREATEST(COALESCE(pp.nb_porteurs_total, 0) - COALESCE(pp.nb_porteurs_titulaires, 0), 0) = 0 THEN 1 ELSE 0 END)::int AS nb_critiques_sans_releve,
-                        SUM(CASE WHEN rc.id_comp IS NOT NULL AND COALESCE(pp.nb_porteurs_titulaires, 0) > 0 AND GREATEST(COALESCE(pp.nb_porteurs_total, 0) - COALESCE(pp.nb_porteurs_titulaires, 0), 0) = 1 THEN 1 ELSE 0 END)::int AS nb_critiques_releve_faible,
-                        pi.statut_poste
-                    FROM postes_scope ps
-                    JOIN poste_info pi ON pi.id_poste = ps.id_poste
-                    LEFT JOIN req_crit rc ON rc.id_poste = ps.id_poste
-                    LEFT JOIN porteurs_poste pp ON pp.id_poste = rc.id_poste AND pp.id_comp = rc.id_comp
-                    LEFT JOIN titulaires t ON t.id_poste = ps.id_poste
-                    GROUP BY ps.id_poste, t.nb_titulaires, pi.nb_titulaires_cible, pi.statut_poste
+                postes_fragiles_records = _fetch_postes_fragility_records(
+                    cur,
+                    id_ent,
+                    scope.id_service,
+                    CRITICITE_MIN,
                 )
-                SELECT *
-                FROM poste_agg
-                WHERE lower(trim(COALESCE(statut_poste, 'actif'))) NOT IN ('gele','gelé','archive','archivé')
-                  AND (
-                    nb_titulaires = 0
-                    OR nb_critiques_sans_porteur > 0
-                    OR nb_critiques_porteur_unique > 0
-                    OR nb_critiques_sans_releve > 0
-                    OR nb_critiques_releve_faible > 0
-                    OR gap_titulaires > 0
-                  )
-                """
-                cur.execute(sql_postes_fragiles, tuple(cte_params + [CRITICITE_MIN]))
-                rk_postes = cur.fetchall() or []
-                postes_fragiles = len(rk_postes)
+                postes_fragiles = len([r for r in postes_fragiles_records if r.get("is_fragile")])
 
                 sql_risques = f"""
                 WITH
@@ -602,6 +819,7 @@ def get_analyse_summary(
                         AND COALESCE(c.masque, FALSE) = FALSE
                 ),
                 effectifs_dispo AS (
+                    -- "Aujourd'hui": on enlève les effectifs en indisponibilité en cours
                     SELECT es.id_effectif
                     FROM effectifs_scope es
                     JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
@@ -616,6 +834,7 @@ def get_analyse_summary(
                       )
                 ),
                 porteurs AS (
+                    -- Nominal (structurel): sans prendre en compte les indisponibilités
                     SELECT
                         ec.id_comp,
                         COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
@@ -627,6 +846,7 @@ def get_analyse_summary(
                     GROUP BY ec.id_comp
                 ),
                 porteurs_dispo AS (
+                    -- Aujourd'hui: porteurs dispo (exclusion des breaks en cours)
                     SELECT
                         ec.id_comp,
                         COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
@@ -636,20 +856,58 @@ def get_analyse_summary(
                       AND COALESCE(ec.archive, FALSE) = FALSE
                       AND COALESCE(ec.id_comp, '') <> ''
                     GROUP BY ec.id_comp
+                ),
+                titulaires AS (
+                    SELECT
+                        e.id_poste_actuel AS id_poste,
+                        COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
+                    FROM public.tbl_effectif_client e
+                    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                    WHERE COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.id_poste_actuel, '') <> ''
+                    GROUP BY e.id_poste_actuel
+                ),
+                poste_agg AS (
+                    SELECT
+                        ps.id_poste,
+                        SUM(CASE
+                              WHEN r.id_comp IS NOT NULL
+                               AND r.poids_criticite >= %s
+                               AND COALESCE(p.nb_porteurs, 0) <= 1
+                              THEN 1 ELSE 0
+                            END)::int AS nb_critiques_fragiles,
+                        COALESCE(t.nb_titulaires, 0)::int AS nb_titulaires
+                    FROM postes_scope ps
+                    LEFT JOIN req r ON r.id_poste = ps.id_poste
+                    LEFT JOIN porteurs p ON p.id_comp = r.id_comp
+                    LEFT JOIN titulaires t ON t.id_poste = ps.id_poste
+                    GROUP BY ps.id_poste, COALESCE(t.nb_titulaires, 0)
                 )
                 SELECT
+                    (SELECT COUNT(DISTINCT CASE
+                        WHEN (pa.nb_critiques_fragiles > 0 OR pa.nb_titulaires = 0) THEN pa.id_poste
+                        ELSE NULL
+                    END)
+                    FROM poste_agg pa)::int AS postes_fragiles,
+
+                    -- Legacy (on garde)
                     COUNT(DISTINCT CASE
                         WHEN r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 0 THEN r.id_comp
                         ELSE NULL
                     END)::int AS comp_critiques_sans_porteur,
+
                     COUNT(DISTINCT CASE
                         WHEN r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 1 THEN r.id_comp
                         ELSE NULL
                     END)::int AS comp_porteur_unique,
+
+                    -- KPI 2 (nouveau): <= 1 porteur en nominal
                     COUNT(DISTINCT CASE
                         WHEN r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) <= 1 THEN r.id_comp
                         ELSE NULL
                     END)::int AS comp_critiques_fragiles,
+
+                    -- Alerte: tombent à 0 aujourd'hui (breaks en cours)
                     COUNT(DISTINCT CASE
                         WHEN r.poids_criticite >= %s
                          AND COALESCE(p.nb_porteurs, 0) > 0
@@ -657,12 +915,15 @@ def get_analyse_summary(
                         THEN r.id_comp
                         ELSE NULL
                     END)::int AS comp_critiques_tombent_zero_auj
+
                 FROM req r
                 LEFT JOIN porteurs p ON p.id_comp = r.id_comp
                 LEFT JOIN porteurs_dispo pd ON pd.id_comp = r.id_comp
                 """
 
-                cur.execute(sql_risques, tuple(cte_params + [CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN]))
+
+
+                cur.execute(sql_risques, tuple(cte_params + [CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN]))
                 rk = cur.fetchone() or {}
 
                 comp_critiques_sans_porteur = int(rk.get("comp_critiques_sans_porteur") or 0)
@@ -2676,7 +2937,8 @@ def get_analyse_previsions_postes_rouges_modal(
                         fp.intitule_poste,
                         fp.id_service,
                         COALESCE(o.nom_service,'') AS nom_service,
-                        COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible
+                        COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
+                        COALESCE(prh.statut_poste, 'actif')::text AS statut_poste
                     FROM public.tbl_fiche_poste fp
                     LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = fp.id_poste
                     LEFT JOIN public.tbl_entreprise_organigramme o
@@ -3689,253 +3951,17 @@ def get_analyse_risques_detail(
                 # KPI: Postes fragiles
                 # ---------------------------
                 if k == "postes-fragiles":
-                    sql = base_cte + """
-                    ,
-                    poste_info AS (
-                        SELECT
-                            fp.id_poste,
-                            COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
-                            COALESCE(prh.statut_poste, 'actif')::text AS statut_poste,
-                            prh.date_debut_validite,
-                            prh.date_fin_validite,
-
-                            COALESCE(fp.niveau_education_minimum, '')::text AS niveau_education_minimum,
-
-                            -- Rang minimal: stockage numérique (ex: "3", "4", "5"...)
-                            CASE
-                                WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$'
-                                    THEN trim(fp.niveau_education_minimum)::int
-                                ELSE 0
-                                END AS edu_min_rank,
-
-
-                            -- Domaine NSF (bloquant si nsf_domaine_obligatoire OU nsf_groupe_obligatoire)
-                            (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
-                            COALESCE(nd.titre, '')::text AS nsf_domaine_titre
-
-                        FROM public.tbl_fiche_poste fp
-                        JOIN postes_scope ps ON ps.id_poste = fp.id_poste
-                        LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = fp.id_poste
-                        LEFT JOIN public.tbl_nsf_domaine nd ON nd.code = fp.nsf_domaine_code
-                    ),
-
-                    req_crit AS (
-                        SELECT *
-                        FROM req
-                        WHERE poids_criticite >= %s
-                    ),
-
-                    titulaires AS (
-                        SELECT
-                            e.id_poste_actuel AS id_poste,
-                            COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
-                        FROM public.tbl_effectif_client e
-                        JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
-                        WHERE COALESCE(e.archive, FALSE) = FALSE
-                          AND COALESCE(e.id_poste_actuel, '') <> ''
-                        GROUP BY e.id_poste_actuel
-                    ),
-
-                    porteurs_poste AS (
-                        SELECT
-                            rc.id_poste,
-                            rc.id_comp,
-
-                            (COUNT(DISTINCT e.id_effectif) FILTER (
-                              WHERE
-                                -- Compétence qualifiée (niveau actuel >= requis)
-                                (
-                                  CASE upper(trim(COALESCE(rc.niveau_requis, '')))
-                                    WHEN 'A' THEN 1 WHEN 'B' THEN 2 WHEN 'C' THEN 3 ELSE 0
-                                  END
-                                ) <=
-                                (
-                                  CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
-                                    WHEN 'initial' THEN 1
-                                    WHEN 'avancé' THEN 2 WHEN 'avance' THEN 2 WHEN 'avancee' THEN 2 WHEN 'avancée' THEN 2
-                                    WHEN 'expert' THEN 3
-                                    ELSE 0
-                                  END
-                                )
-
-                                -- NSF domaine bloquant si demandé
-                                AND (
-                                  NOT pi.nsf_domain_required
-                                  OR (
-                                    lower(trim(COALESCE(e.domaine_education, ''))) = lower(trim(COALESCE(pi.nsf_domaine_titre, '')))
-                                    AND COALESCE(pi.nsf_domaine_titre, '') <> ''
-                                  )
-                                )
-
-                                -- Niveau d'éducation minimum bloquant (stockage numérique côté effectif)
-                                AND (
-                                    pi.edu_min_rank = 0
-                                    OR (
-                                        CASE
-                                        WHEN trim(COALESCE(e.niveau_education, '')) ~ '^[0-9]+$'
-                                            THEN trim(e.niveau_education)::int
-                                        ELSE 0
-                                        END
-                                    ) >= pi.edu_min_rank
-                                )
-
-                            ))::int AS nb_porteurs_total,
-
-                            (COUNT(DISTINCT e.id_effectif) FILTER (
-                              WHERE
-                                (
-                                  CASE upper(trim(COALESCE(rc.niveau_requis, '')))
-                                    WHEN 'A' THEN 1 WHEN 'B' THEN 2 WHEN 'C' THEN 3 ELSE 0
-                                  END
-                                ) <=
-                                (
-                                  CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
-                                    WHEN 'initial' THEN 1
-                                    WHEN 'avancé' THEN 2 WHEN 'avance' THEN 2 WHEN 'avancee' THEN 2 WHEN 'avancée' THEN 2
-                                    WHEN 'expert' THEN 3
-                                    ELSE 0
-                                  END
-                                )
-                                AND (
-                                  NOT pi.nsf_domain_required
-                                  OR (
-                                    lower(trim(COALESCE(e.domaine_education, ''))) = lower(trim(COALESCE(pi.nsf_domaine_titre, '')))
-                                    AND COALESCE(pi.nsf_domaine_titre, '') <> ''
-                                  )
-                                )
-                                AND (
-                                    pi.edu_min_rank = 0
-                                    OR (
-                                        CASE
-                                        WHEN trim(COALESCE(e.niveau_education, '')) ~ '^[0-9]+$'
-                                            THEN trim(e.niveau_education)::int
-                                        ELSE 0
-                                        END
-                                    ) >= pi.edu_min_rank
-                                )
-
-                                AND e.id_poste_actuel = rc.id_poste
-                            ))::int AS nb_porteurs_titulaires
-
-                        FROM req_crit rc
-                        JOIN poste_info pi ON pi.id_poste = rc.id_poste
-                        JOIN public.tbl_effectif_client_competence ec ON ec.id_comp = rc.id_comp
-                        JOIN effectifs_dispo ed ON ed.id_effectif = ec.id_effectif_client
-                        JOIN public.tbl_effectif_client e ON e.id_effectif = ec.id_effectif_client
-                        WHERE COALESCE(ec.archive, FALSE) = FALSE
-                          AND COALESCE(ec.actif, TRUE) = TRUE
-                        GROUP BY rc.id_poste, rc.id_comp
-                    ),
-
-                    poste_agg AS (
-                        SELECT
-                            ps.id_poste,
-
-                            COALESCE(t.nb_titulaires, 0)::int AS nb_titulaires,
-                            COALESCE(pi.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
-                            GREATEST(0, COALESCE(pi.nb_titulaires_cible, 1) - COALESCE(t.nb_titulaires, 0))::int AS gap_titulaires,
-
-                            SUM(CASE WHEN rc.id_comp IS NOT NULL AND COALESCE(pp.nb_porteurs_titulaires, 0) = 0 THEN 1 ELSE 0 END)::int AS nb_critiques_sans_porteur,
-                            SUM(CASE WHEN rc.id_comp IS NOT NULL AND COALESCE(pp.nb_porteurs_titulaires, 0) > 0 AND COALESCE(pp.nb_porteurs_total, 0) = 1 THEN 1 ELSE 0 END)::int AS nb_critiques_porteur_unique,
-                            SUM(CASE WHEN rc.id_comp IS NOT NULL AND COALESCE(pp.nb_porteurs_titulaires, 0) > 0 AND COALESCE(pp.nb_porteurs_total, 0) <= 1 THEN 1 ELSE 0 END)::int AS nb_critiques_fragiles,
-
-                            SUM(CASE
-                                  WHEN rc.id_comp IS NOT NULL
-                                   AND COALESCE(pp.nb_porteurs_titulaires, 0) > 0
-                                   AND GREATEST(COALESCE(pp.nb_porteurs_total, 0) - COALESCE(pp.nb_porteurs_titulaires, 0), 0) = 0
-                                  THEN 1 ELSE 0
-                                END)::int AS nb_critiques_sans_releve,
-
-                            SUM(CASE
-                                  WHEN rc.id_comp IS NOT NULL
-                                   AND COALESCE(pp.nb_porteurs_titulaires, 0) > 0
-                                   AND GREATEST(COALESCE(pp.nb_porteurs_total, 0) - COALESCE(pp.nb_porteurs_titulaires, 0), 0) = 1
-                                  THEN 1 ELSE 0
-                                END)::int AS nb_critiques_releve_faible,
-
-                            pi.statut_poste,
-                            pi.date_debut_validite,
-                            pi.date_fin_validite
-
-                        FROM postes_scope ps
-                        JOIN poste_info pi ON pi.id_poste = ps.id_poste
-                        LEFT JOIN req_crit rc ON rc.id_poste = ps.id_poste
-                        LEFT JOIN porteurs_poste pp ON pp.id_poste = rc.id_poste AND pp.id_comp = rc.id_comp
-                        LEFT JOIN titulaires t ON t.id_poste = ps.id_poste
-                        GROUP BY ps.id_poste, t.nb_titulaires, pi.nb_titulaires_cible, pi.statut_poste, pi.date_debut_validite, pi.date_fin_validite
+                    records = _fetch_postes_fragility_records(
+                        cur,
+                        id_ent,
+                        scope.id_service,
+                        criticite_min,
                     )
-
-                    SELECT
-                        fp.id_poste,
-                        fp.codif_poste,
-                        fp.codif_client,
-                        fp.intitule_poste,
-                        fp.id_service,
-                        COALESCE(o.nom_service, '') AS nom_service,
-
-                        pa.nb_critiques_fragiles,
-                        pa.nb_critiques_sans_porteur,
-                        pa.nb_critiques_porteur_unique,
-                        pa.nb_titulaires,
-
-                        pa.nb_critiques_sans_releve,
-                        pa.nb_critiques_releve_faible,
-                        pa.nb_titulaires_cible,
-                        pa.gap_titulaires,
-
-                        0::int AS indice_fragilite
-
-                    FROM poste_agg pa
-                    JOIN public.tbl_fiche_poste fp ON fp.id_poste = pa.id_poste
-                    LEFT JOIN public.tbl_entreprise_organigramme o
-                      ON o.id_ent = %s
-                     AND o.id_service = fp.id_service
-                     AND o.archive = FALSE
-
-                    WHERE lower(trim(COALESCE(pa.statut_poste, 'actif'))) NOT IN ('gele','gelé','archive','archivé')
-                      AND (
-                        pa.nb_titulaires = 0
-                        OR pa.nb_critiques_sans_porteur > 0
-                        OR pa.nb_critiques_porteur_unique > 0
-                        OR pa.nb_critiques_sans_releve > 0
-                        OR pa.nb_critiques_releve_faible > 0
-                        OR pa.gap_titulaires > 0
-                      )
-                    """
-
-                    cur.execute(
-                        sql,
-                        tuple(cte_params + [ref_mois, criticite_min, id_ent])
-                    )
-                    rows = cur.fetchall() or []
-
-                    scored_rows = []
-                    for r in rows:
-                        row = dict(r)
-                        row["indice_fragilite"] = _calc_poste_fragilite_index(
-                            row.get("nb_titulaires"),
-                            row.get("nb_titulaires_cible"),
-                            row.get("nb_critiques_sans_porteur"),
-                            row.get("nb_critiques_porteur_unique"),
-                            row.get("nb_critiques_sans_releve"),
-                            row.get("nb_critiques_releve_faible"),
-                        )
-                        scored_rows.append(row)
-
-                    scored_rows.sort(
-                        key=lambda r: (
-                            -int(r.get("indice_fragilite") or 0),
-                            int(r.get("nb_titulaires") or 0),
-                            -int(r.get("nb_critiques_sans_porteur") or 0),
-                            -int(r.get("gap_titulaires") or 0),
-                            -int(r.get("nb_critiques_porteur_unique") or 0),
-                            -int(r.get("nb_critiques_sans_releve") or 0),
-                            str(r.get("codif_poste") or ""),
-                            str(r.get("intitule_poste") or ""),
-                        )
-                    )
-
-                    for r in scored_rows[:limit]:
+                    for r in records:
+                        if not r.get("is_fragile"):
+                            continue
+                        if len(items) >= limit:
+                            break
                         items.append(AnalyseRisqueItem(
                             id_poste=r.get("id_poste"),
                             codif_poste=r.get("codif_poste"),
@@ -3952,9 +3978,7 @@ def get_analyse_risques_detail(
                             nb_titulaires_cible=int(r.get("nb_titulaires_cible") or 1),
                             gap_titulaires=int(r.get("gap_titulaires") or 0),
                             indice_fragilite=int(r.get("indice_fragilite") or 0),
-
                         ))
-
 
                 # ---------------------------
                 # KPI: Tous les postes (scope)
@@ -4908,8 +4932,7 @@ def get_analyse_risques_poste_diagnostic(
                         COALESCE(fp.nsf_domaine_obligatoire, FALSE) AS nsf_domaine_obligatoire,
                         COALESCE(nd.titre, '') AS nsf_domaine_titre,
 
-                        COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
-                        COALESCE(prh.statut_poste, 'actif')::text AS statut_poste
+                        COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible
                     FROM postes_scope ps
                     JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
                     LEFT JOIN public.tbl_entreprise_organigramme o
@@ -5012,6 +5035,7 @@ def get_analyse_risques_poste_diagnostic(
                     JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
                     WHERE e.id_ent = %s
                       AND COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.id_poste_actuel, '') <> %s
                       AND NOT EXISTS (
                         SELECT 1
                         FROM public.tbl_effectif_client_break b
@@ -5027,6 +5051,7 @@ def get_analyse_risques_poste_diagnostic(
                         edu_min_rank, edu_min_rank,
                         dom_bloq, dom_title,
                         id_ent,
+                        id_poste,
                     ]),
                 )
                 pool = cur.fetchone() or {}
@@ -5148,6 +5173,7 @@ def get_analyse_risques_poste_diagnostic(
                             r.poids_criticite,
                             r.niveau_requis,
 
+                            COUNT(DISTINCT CASE WHEN eok.id_poste_actuel = %s THEN eok.id_effectif END)::int AS nb_tit_any,
                             COUNT(DISTINCT CASE WHEN eok.is_ok THEN eok.id_effectif END)::int AS nb_ok_all,
                             COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible THEN eok.id_effectif END)::int AS nb_ok,
 
@@ -5167,114 +5193,142 @@ def get_analyse_risques_poste_diagnostic(
                         dom_bloq, dom_title,
                         id_poste,
                         id_poste,
+                        id_poste,
                     ]),
                 )
 
                 rows = cur.fetchall() or []
 
-
                 nb0 = 0
                 nb1 = 0
                 nb_r0 = 0
                 nb_r1 = 0
+                structure_missing_units = 0
+                efficiency_missing_units = 0
 
                 candidates: list[AnalysePosteTopRisqueItem] = []
                 dep_items: list[AnalysePosteDependanceItem] = []
                 eff_items: list[AnalysePosteEfficaciteItem] = []
 
-                # Couverture minimale “dirigeant-friendly” :
-                # - au moins 2 porteurs (bus factor) même si la cible = 1
-                # - sinon, au moins la cible titulaires
-                seuil_couv = max(2, int(nb_cible or 1))
+                besoin_local = max(min(int(nb_titulaires or 0), int(nb_cible or 1)), 0)
 
                 for r in rows:
-                    n_ok_all = int(r.get("nb_ok_all") or 0)
-                    n_ok = int(r.get("nb_ok") or 0)  # AVEC contraintes (diplôme/domaine), utilisé pour l’indice
-                    n_ok_tit_all = int(r.get("nb_ok_titulaires_all") or 0)
-                    n_ok_tit = int(r.get("nb_ok_titulaires") or 0)  # AVEC contraintes
-                    n_releve = max(n_ok - n_ok_tit, 0)
+                    n_tit_any = int(r.get("nb_tit_any") or 0)
+                    n_ok = int(r.get("nb_ok") or 0)
+                    n_ok_tit = int(r.get("nb_ok_titulaires") or 0)
+                    n_relais = max(n_ok - n_ok_tit, 0)
 
-                    # --- Causes racines : Risque de dépendance (porteurs au niveau requis, dans le scope)
-                    if n_ok_all < seuil_couv:
-                        dep_items.append(
-                            AnalysePosteDependanceItem(
-                                id_comp=r.get("id_comp"),
-                                code_comp=r.get("code"),
-                                intitule=r.get("intitule"),
-                                poids_criticite=int(r.get("poids_criticite") or 0),
-                                nb_porteurs_ok=n_ok_all,
-                                seuil_couverture=seuil_couv,
-                                type_risque=("SANS_PORTEUR" if n_ok_all <= 0 else "COUVERTURE_LIMITEE"),
-                            )
-                        )
+                    missing_presence = 0
+                    underlevel_missing = 0
+                    total_missing = 0
+                    if besoin_local > 0:
+                        missing_presence = max(besoin_local - n_tit_any, 0)
+                        covered_by_presence = min(n_tit_any, besoin_local)
+                        underlevel_missing = max(covered_by_presence - n_ok_tit, 0)
+                        total_missing = max(besoin_local - n_ok_tit, 0)
 
-                    # --- Causes racines : Risque d’efficacité (titulaires en défaut vs niveau requis)
-                    if nb_titulaires > 0:
-                        nb_defaut = max(int(nb_titulaires) - n_ok_tit_all, 0)
-                        if nb_defaut > 0:
-                            eff_items.append(
-                                AnalysePosteEfficaciteItem(
-                                    id_comp=r.get("id_comp"),
-                                    code_comp=r.get("code"),
-                                    intitule=r.get("intitule"),
-                                    poids_criticite=int(r.get("poids_criticite") or 0),
-                                    niveau_requis=r.get("niveau_requis"),
-                                    nb_en_defaut=nb_defaut,
-                                    nb_titulaires=int(nb_titulaires),
-                                )
-                            )
-
-                    # --- Indice fragilité : d'abord la couverture réelle par les titulaires disponibles,
-                    # puis seulement la redondance / relève autour du poste.
-                    type_risque = "OK"
-                    reco = None
-
-                    if n_ok_tit <= 0:
-                        type_risque = "NON_COUVERTE"
-                        reco = "recruter"
+                    if total_missing > 0:
                         nb0 += 1
-                    elif n_ok == 1:
-                        type_risque = "COUV_UNIQUE"
-                        reco = "mutualiser"
-                        nb1 += 1
-                    else:
-                        if n_releve == 0:
-                            type_risque = "SANS_RELEVE"
-                            reco = "mutualiser"
-                            nb_r0 += 1
-                        elif n_releve == 1:
-                            type_risque = "RELEVE_FAIBLE"
-                            reco = "mutualiser"
-                            nb_r1 += 1
-
-                    if type_risque != "OK":
                         candidates.append(
                             AnalysePosteTopRisqueItem(
                                 id_comp=r.get("id_comp"),
                                 code_comp=r.get("code"),
                                 intitule=r.get("intitule"),
                                 poids_criticite=int(r.get("poids_criticite") or 0),
-                                type_risque=type_risque,
-                                nb_porteurs=n_ok,
-                                nb_ok=n_ok,
-                                recommandation=reco,
+                                type_risque="NON_COUVERTE",
+                                nb_porteurs=n_ok_tit,
+                                nb_ok=n_ok_tit,
+                                recommandation="former",
                             )
                         )
 
+                    if missing_presence > 0:
+                        structure_missing_units += missing_presence
+
+                    if underlevel_missing > 0:
+                        efficiency_missing_units += underlevel_missing
+
+                    if total_missing > 0:
+                        eff_items.append(
+                            AnalysePosteEfficaciteItem(
+                                id_comp=r.get("id_comp"),
+                                code_comp=r.get("code"),
+                                intitule=r.get("intitule"),
+                                poids_criticite=int(r.get("poids_criticite") or 0),
+                                niveau_requis=r.get("niveau_requis"),
+                                nb_en_defaut=total_missing,
+                                nb_titulaires=int(besoin_local),
+                            )
+                        )
+
+                    if besoin_local > 0 and n_ok_tit >= besoin_local:
+                        if n_relais <= 0:
+                            nb1 += 1
+                            nb_r0 += 1
+                            dep_items.append(
+                                AnalysePosteDependanceItem(
+                                    id_comp=r.get("id_comp"),
+                                    code_comp=r.get("code"),
+                                    intitule=r.get("intitule"),
+                                    poids_criticite=int(r.get("poids_criticite") or 0),
+                                    nb_porteurs_ok=n_relais,
+                                    seuil_couverture=2,
+                                    type_risque="SANS_RELAIS",
+                                )
+                            )
+                            candidates.append(
+                                AnalysePosteTopRisqueItem(
+                                    id_comp=r.get("id_comp"),
+                                    code_comp=r.get("code"),
+                                    intitule=r.get("intitule"),
+                                    poids_criticite=int(r.get("poids_criticite") or 0),
+                                    type_risque="SANS_RELEVE",
+                                    nb_porteurs=n_ok,
+                                    nb_ok=n_ok,
+                                    recommandation="mutualiser",
+                                )
+                            )
+                        elif n_relais == 1:
+                            nb_r1 += 1
+                            dep_items.append(
+                                AnalysePosteDependanceItem(
+                                    id_comp=r.get("id_comp"),
+                                    code_comp=r.get("code"),
+                                    intitule=r.get("intitule"),
+                                    poids_criticite=int(r.get("poids_criticite") or 0),
+                                    nb_porteurs_ok=n_relais,
+                                    seuil_couverture=2,
+                                    type_risque="RELAIS_FAIBLE",
+                                )
+                            )
+                            candidates.append(
+                                AnalysePosteTopRisqueItem(
+                                    id_comp=r.get("id_comp"),
+                                    code_comp=r.get("code"),
+                                    intitule=r.get("intitule"),
+                                    poids_criticite=int(r.get("poids_criticite") or 0),
+                                    type_risque="RELEVE_FAIBLE",
+                                    nb_porteurs=n_ok,
+                                    nb_ok=n_ok,
+                                    recommandation="mutualiser",
+                                )
+                            )
 
                 nb_total_fragiles = nb0 + nb1 + nb_r0 + nb_r1
                 nb_evenements = nb_total_fragiles + (1 if gap > 0 else 0)
 
-                score = _calc_poste_fragilite_index(
-                    nb_titulaires,
-                    nb_cible,
-                    nb0,
-                    nb1,
-                    nb_r0,
-                    nb_r1,
-                )
-                # Tri top 8 (ordre “gravité”)
-                order = {"NON_COUVERTE": 0, "COUV_UNIQUE": 1, "SANS_RELEVE": 2, "RELEVE_FAIBLE": 3}
+                structure_score = min(45, _score_structure_gap(gap) + (15 * structure_missing_units))
+                efficacite_score = min(30, 8 * efficiency_missing_units)
+                dependance_score = min(15, (6 * nb_r0) + (3 * nb_r1))
+                transmission_score = _score_transmission(pool_total, pool_eligible)
+                base_score = structure_score + efficacite_score + dependance_score
+
+                if nb_titulaires <= 0 and int(nb_cible or 1) >= 1:
+                    score = 100
+                else:
+                    score = min(95, base_score + (transmission_score if base_score > 0 else 0))
+
+                order = {"NON_COUVERTE": 0, "SANS_RELEVE": 1, "RELEVE_FAIBLE": 2}
                 candidates.sort(
                     key=lambda c: (
                         order.get(c.type_risque or "OK", 9),
@@ -5284,7 +5338,6 @@ def get_analyse_risques_poste_diagnostic(
                 )
                 top_risques = candidates[: int(limit or 8)]
 
-                 # Causes racines (pour l’accordéon du modal)
                 dep_items.sort(key=lambda x: (int(x.nb_porteurs_ok or 0), -(int(x.poids_criticite or 0)), str(x.code_comp or "")))
                 dep_items = dep_items[:12]
 

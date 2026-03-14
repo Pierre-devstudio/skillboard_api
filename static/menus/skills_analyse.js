@@ -686,8 +686,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return `<span class="sb-badge">${escapeHtml(k || "—")}</span>`;
   };
 
-  const depSans = cDep.filter(x => Number(x?.nb_porteurs_ok || 0) <= 0);
-  const depLim = cDep.filter(x => Number(x?.nb_porteurs_ok || 0) > 0);
+  const depSans = cDep.filter(x => String(x?.type_risque || "").toUpperCase() === "SANS_RELAIS");
+  const depLim = cDep.filter(x => String(x?.type_risque || "").toUpperCase() !== "SANS_RELAIS");
 
   const renderDepTable = (list) => {
     if (!list.length) return "";
@@ -699,7 +699,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               <th style="width:110px;">Code</th>
               <th>Compétence</th>
               <th class="col-center" style="width:90px;">Criticité</th>
-              <th class="col-center" style="width:140px;">Couverture</th>
+              <th class="col-center" style="width:140px;">Relais</th>
             </tr>
           </thead>
           <tbody>
@@ -739,7 +739,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               <th style="width:110px;">Code</th>
               <th>Compétence</th>
               <th class="col-center" style="width:110px;">Requis</th>
-              <th class="col-center" style="width:160px;">Niveau en défaut</th>
+              <th class="col-center" style="width:160px;">Écart au requis</th>
             </tr>
           </thead>
           <tbody>
@@ -800,7 +800,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return `
       ${depSans.length ? `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-          <div style="font-weight:700;">Couverture nulle</div>
+          <div style="font-weight:700;">Sans relais</div>
           <span class="sb-badge">${escapeHtml(String(depSans.length))}</span>
         </div>
         ${renderDepTable(depSans)}
@@ -808,7 +808,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       ${depLim.length ? `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:${depSans.length ? "14px" : "0"};">
-          <div style="font-weight:700;">Couverture insuffisante</div>
+          <div style="font-weight:700;">Relais limité</div>
           <span class="sb-badge">${escapeHtml(String(depLim.length))}</span>
         </div>
         ${renderDepTable(depLim)}
@@ -4797,8 +4797,6 @@ function renderDetail(mode) {
     if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
 
     const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
-
-
 
     function scoreHue(score) {
       const s = clamp(Number(score || 0), 0, 100) / 100;
