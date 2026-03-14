@@ -139,7 +139,6 @@
   }
 
   function getFilters() {
-    const raw = (byId("analyseServiceSelect")?.value || "").trim();
     const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
     return { id_service };
   }
@@ -219,21 +218,35 @@
     _servicesLoaded = true;
   }
 
-  function syncAnalyseServiceSelect(wantedQueryId = "") {
+  function getAnalyseServiceRawValue() {
+    const sel = byId("analyseServiceSelect");
+    return sel ? String(sel.value || "").trim() : "";
+  }
+
+  function setAnalyseServiceRawValue(rawValue = "") {
     const sel = byId("analyseServiceSelect");
     if (!sel) return;
 
-    const wanted = (wantedQueryId || "").trim();
+    const wanted = String(rawValue || "").trim();
     const opts = Array.from(sel.options || []);
 
-    const found = opts.find(o => window.portal.serviceFilter.toQueryId(o.value || "") === wanted);
-    if (found) {
-      sel.value = found.value;
+    if (wanted && opts.some(o => String(o.value || "").trim() === wanted)) {
+      sel.value = wanted;
       return;
     }
 
-    const allOpt = opts.find(o => window.portal.serviceFilter.toQueryId(o.value || "") === "");
-    sel.value = allOpt ? allOpt.value : "";
+    const allId = String(window.portal?.serviceFilter?.ALL_ID || "").trim();
+    if (allId && opts.some(o => String(o.value || "").trim() === allId)) {
+      sel.value = allId;
+      return;
+    }
+
+    if (opts.some(o => String(o.value || "").trim() === "")) {
+      sel.value = "";
+      return;
+    }
+
+    sel.selectedIndex = opts.length ? 0 : -1;
   }
 
   function clearKpis() {
@@ -5421,7 +5434,7 @@ function renderDetail(mode) {
     clearKpis();
 
     const f = getFilters();
-    localStorage.setItem(STORE_SERVICE, f.id_service || "");
+    localStorage.setItem(STORE_SERVICE, getAnalyseServiceRawValue());
 
     // On tente un endpoint summary si présent (sinon on reste en "—" sans casser l’UI)
     const usp = new URLSearchParams();
@@ -6061,17 +6074,16 @@ function bindOnce(portal) {
 
   // Filtres service / reset
   if (selService) {
-    selService.addEventListener("change", () => {
-      refreshSummary(portal);
+    selService.addEventListener("change", async () => {
+      await refreshSummary(portal);
       renderDetail(localStorage.getItem(STORE_MODE) || "risques");
     });
   }
 
   if (btnReset) {
-    btnReset.addEventListener("click", () => {
-      syncAnalyseServiceSelect("");
-      localStorage.setItem(STORE_SERVICE, "");
-      refreshSummary(portal);
+    btnReset.addEventListener("click", async () => {
+      setAnalyseServiceRawValue(window.portal?.serviceFilter?.ALL_ID || "");
+      await refreshSummary(portal);
       renderDetail(localStorage.getItem(STORE_MODE) || "risques");
     });
   }
@@ -7523,20 +7535,18 @@ function bindOnce(portal) {
           await loadServices(portal);
         }
 
-        const storedService = (localStorage.getItem(STORE_SERVICE) || "").trim();
-        syncAnalyseServiceSelect(storedService);
+        const storedServiceRaw = (localStorage.getItem(STORE_SERVICE) || "").trim();
+        setAnalyseServiceRawValue(storedServiceRaw);
+
+        await refreshSummary(portal);
 
         const storedMode = (localStorage.getItem(STORE_MODE) || "risques").trim();
         setMode(storedMode);
 
-        // Restaurer le filtre risques si on arrive (ou revient) sur Risques
         if (storedMode === "risques") {
           const rf = getRiskFilter();
           setActiveRiskKpi(rf);
-          renderDetail("risques");
         }
-
-        await refreshSummary(portal);
 
 
       } catch (e) {
