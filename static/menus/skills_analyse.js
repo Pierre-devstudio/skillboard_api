@@ -219,6 +219,22 @@
     _servicesLoaded = true;
   }
 
+  function syncAnalyseServiceSelect(wantedQueryId = "") {
+    const sel = byId("analyseServiceSelect");
+    if (!sel) return;
+
+    const wanted = (wantedQueryId || "").trim();
+    const opts = Array.from(sel.options || []);
+
+    const found = opts.find(o => window.portal.serviceFilter.toQueryId(o.value || "") === wanted);
+    if (found) {
+      sel.value = found.value;
+      return;
+    }
+
+    const allOpt = opts.find(o => window.portal.serviceFilter.toQueryId(o.value || "") === "");
+    sel.value = allOpt ? allOpt.value : "";
+  }
 
   function clearKpis() {
     setText("kpiRiskPostes", "—");
@@ -547,19 +563,18 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   const nb0 = Number(comp.nb0 || 0);
   const nbTit = Number(diag?.poste?.nb_titulaires ?? comp.nb_titulaires ?? 0);
 
-  function priorityLabel(score100, nb0, nbTit) {
+  function priorityLabel(score100) {
     const sc = clamp(Number(score100 || 0), 0, 100);
-    const t = Number(nbTit || 0);
-    const z = Number(nb0 || 0);
 
-    if (t <= 0) return "Critique";
-    if (z > 0) return "Critique";
-    if (sc >= 75) return "Élevée";
-    if (sc >= 45) return "Modérée";
+    if (sc >= 100) return "Rupture";
+    if (sc >= 80) return "Très critique";
+    if (sc >= 60) return "Critique";
+    if (sc >= 40) return "Élevée";
+    if (sc >= 20) return "Modérée";
     return "Faible";
   }
 
-  const prioLabel = priorityLabel(s, nb0, nbTit);
+  const prioLabel = priorityLabel(s);
 
   function scoreHue(score100) {
     const x = clamp(Number(score100 || 0), 0, 100) / 100;
@@ -4561,30 +4576,7 @@ function renderDetail(mode) {
 
           const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
-          function calcFragilityScore(nb0, nb1, nbR0, nbR1, nbTitulaires, nbCible) {
-            // Règle métier: poste non tenu = rupture de continuité
-            const t = Number(nbTitulaires || 0);
-            if (t <= 0) return 100;
 
-            const cible = Math.max(1, Number(nbCible || 1));
-            let ratio = t / cible;
-            ratio = clamp(ratio, 0, 1);
-
-            const a = Number(nb0 || 0);
-            const b = Number(nb1 || 0);
-            const r0 = Number(nbR0 || 0);
-            const r1 = Number(nbR1 || 0);
-
-            const w0 = 0.90, w1 = 0.65, wr0 = 0.35, wr1 = 0.18;
-            const prod =
-              Math.pow(1 - w0, a) *
-              Math.pow(1 - w1, b) *
-              Math.pow(1 - wr0, r0) *
-              Math.pow(1 - wr1, r1);
-
-            const risk = 1 - (prod * Math.pow(ratio, 2));
-            return clamp(Math.round(risk * 100), 0, 100);
-          }
 
           function scoreHue(score) {
             const s = clamp(Number(score || 0), 0, 100) / 100;
@@ -4820,14 +4812,14 @@ function renderDetail(mode) {
       `;
     }
 
-    function priorityLabel(score, nb0, nbTitulaires) {
+    function priorityLabel(score) {
       const s = clamp(Number(score || 0), 0, 100);
-      const a = Number(nb0 || 0);
 
-      if (nbTitulaires === 0) return "Critique";
-      if (a > 0) return "Critique";
-      if (s >= 75) return "Élevée";
-      if (s >= 45) return "Modérée";
+      if (s >= 100) return "Rupture";
+      if (s >= 80) return "Très critique";
+      if (s >= 60) return "Critique";
+      if (s >= 40) return "Élevée";
+      if (s >= 20) return "Modérée";
       return "Faible";
     }
 
@@ -5032,11 +5024,8 @@ function renderDetail(mode) {
               const P = Number(r.nb_porteurs || 0);
               const Pd = Number(r.nb_porteurs_dispo);
 
-              const score = (r.indice_fragilite !== null && r.indice_fragilite !== undefined)
-                ? clamp(Number(r.indice_fragilite || 0), 0, 100)
-                : 0;
-
-              const prio = ((r.priorite || "") + "").trim().toUpperCase() || prioFromScore(score);
+              const score = clamp(Number(r.indice_fragilite || 0), 0, 100);
+              const prio  = priorityLabel(score);
               const prioLabel =
                 (prio === "P1") ? "Critique" :
                 (prio === "P2") ? "Élevée"  :
@@ -6080,7 +6069,7 @@ function bindOnce(portal) {
 
   if (btnReset) {
     btnReset.addEventListener("click", () => {
-      if (selService) selService.value = window.portal.serviceFilter.ALL_ID;
+      syncAnalyseServiceSelect("");
       localStorage.setItem(STORE_SERVICE, "");
       refreshSummary(portal);
       renderDetail(localStorage.getItem(STORE_MODE) || "risques");
@@ -7532,15 +7521,10 @@ function bindOnce(portal) {
 
         if (!_servicesLoaded) {
           await loadServices(portal);
-
-          const selService = byId("analyseServiceSelect");
-          const storedService = (localStorage.getItem(STORE_SERVICE) || "").trim();
-          if (selService && storedService && Array.from(selService.options).some(o => o.value === storedService)) {
-            selService.value = storedService;
-          } else if (selService) {
-            selService.value = "";
-          }
         }
+
+        const storedService = (localStorage.getItem(STORE_SERVICE) || "").trim();
+        syncAnalyseServiceSelect(storedService);
 
         const storedMode = (localStorage.getItem(STORE_MODE) || "risques").trim();
         setMode(storedMode);
