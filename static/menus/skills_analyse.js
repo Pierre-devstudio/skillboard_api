@@ -470,11 +470,27 @@
 
   let _CRITICITE_MIN = null;
 
-  function syncCriticiteMinFromResponse(data) {
+  function syncCriticiteMinFromResponse(data, opts = {}) {
+    const {
+      commit = true,      // met à jour _CRITICITE_MIN
+      persist = true,     // écrit dans localStorage
+      refreshUi = true    // remet à jour slider + valeur affichée
+    } = opts || {};
+
     const v = Number(data?.criticite_min);
-    if (Number.isFinite(v)) {
-      _CRITICITE_MIN = Math.max(0, Math.min(100, v));
-      localStorage.setItem(STORE_CRITICITE_MIN, String(_CRITICITE_MIN));
+    if (!Number.isFinite(v)) return;
+
+    const safe = Math.max(0, Math.min(100, v));
+
+    if (commit) {
+      _CRITICITE_MIN = safe;
+    }
+
+    if (persist) {
+      localStorage.setItem(STORE_CRITICITE_MIN, String(safe));
+    }
+
+    if (refreshUi && typeof updateCriticiteMinUi === "function") {
       updateCriticiteMinUi();
     }
   }
@@ -583,7 +599,7 @@
     const url = `${portal.apiBase}/skills/analyse/risques/detail/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
 
-    syncCriticiteMinFromResponse(data);
+    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
     _riskDetailCache.set(key, data);
     return data;
   }
@@ -624,7 +640,7 @@
     const url = `${portal.apiBase}/skills/analyse/risques/poste/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
 
-    syncCriticiteMinFromResponse(data);
+    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
     _posteDetailCache.set(key, data);
     return data;
   }
@@ -652,7 +668,7 @@
     const url = `${portal.apiBase}/skills/analyse/risques/poste/diagnostic/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
 
-    syncCriticiteMinFromResponse(data);
+    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
     _posteDiagCache.set(key, data);
     return data;
   }
@@ -1262,7 +1278,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const url = `${portal.apiBase}/skills/analyse/matching/effectif/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
 
-    syncCriticiteMinFromResponse(data);
+    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
     _matchEffDetailCache.set(key, data);
     return data;
   }
@@ -1385,7 +1401,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     }
 
     const data = await res.json();
-    syncCriticiteMinFromResponse(data);
+    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
     return data;
   }
 
@@ -1411,7 +1427,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     }
 
     const data = await res.json();
-    syncCriticiteMinFromResponse(data);
+    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
     return data;
   }
 
@@ -1444,7 +1460,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
     }
       const data = await res.json();
-      syncCriticiteMinFromResponse(data);
+      syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
       return data;
   }
 
@@ -2820,7 +2836,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     // garde la cohérence UI si l’API renvoie criticite_min
     if (typeof syncCriticiteMinFromResponse === "function") {
-      syncCriticiteMinFromResponse(data);
+      syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
     }
     return data;
   }
@@ -2867,7 +2883,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const url = `${portal.apiBase}/skills/analyse/risques/competence/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
 
-    syncCriticiteMinFromResponse(data);
+    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
     _compDetailCache.set(key, data);
     return data;
   }
@@ -2909,6 +2925,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     if (!modal) return;
     modal.classList.remove("show");
     modal.setAttribute("aria-hidden", "true");
+
+    if (typeof updateCriticiteMinUi === "function") {
+      updateCriticiteMinUi();
+    }
   }
 
   // ==============================
@@ -3029,6 +3049,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     modal.classList.remove("show");
     modal.setAttribute("aria-hidden", "true");
     document.body.classList.remove("modal-open");
+    if (typeof updateCriticiteMinUi === "function") {
+    updateCriticiteMinUi();
+  }
   }
 
   function mapNiveauActuelForDisplay(raw) {
@@ -5561,6 +5584,7 @@ function renderDetail(mode) {
 
     try {
       const data = await portal.apiJson(url);
+      syncCriticiteMinFromResponse(data, { commit: true, persist: true, refreshUi: true });
 
       const t = data?.tiles || {};
 
@@ -5628,6 +5652,9 @@ function renderDetail(mode) {
     if (!m) return;
     m.classList.remove("show");
     m.setAttribute("aria-hidden", "true");
+    if (typeof updateCriticiteMinUi === "function") {
+    updateCriticiteMinUi();
+    }
   }
 
   function setAnalysePrevCritTab(tabKey) {
@@ -5978,6 +6005,9 @@ function closeAnalysePrevPosteRedModal() {
   if (!m) return;
   m.classList.remove("show");
   m.setAttribute("aria-hidden", "true");
+  if (typeof updateCriticiteMinUi === "function") {
+    updateCriticiteMinUi();
+  }
 }
 
 function setAnalysePrevPosteRedTab(key) {
