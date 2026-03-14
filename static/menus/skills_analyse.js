@@ -138,6 +138,37 @@
     setText("analyseStatus", text || "—", "—");
   }
 
+  function getAnalyseServiceRawValue() {
+    const sel = byId("analyseServiceSelect");
+    return sel ? String(sel.value || "").trim() : "";
+  }
+
+  function setAnalyseServiceRawValue(rawValue = "") {
+    const sel = byId("analyseServiceSelect");
+    if (!sel) return;
+
+    const wanted = String(rawValue || "").trim();
+    const opts = Array.from(sel.options || []);
+
+    if (wanted && opts.some(o => String(o.value || "").trim() === wanted)) {
+      sel.value = wanted;
+      return;
+    }
+
+    const allId = String(window.portal?.serviceFilter?.ALL_ID || "").trim();
+    if (allId && opts.some(o => String(o.value || "").trim() === allId)) {
+      sel.value = allId;
+      return;
+    }
+
+    if (opts.some(o => String(o.value || "").trim() === "")) {
+      sel.value = "";
+      return;
+    }
+
+    sel.selectedIndex = opts.length ? 0 : -1;
+  }
+
   function getFilters() {
     const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
     return { id_service };
@@ -440,9 +471,25 @@
     return Number.isFinite(_CRITICITE_MIN) ? _CRITICITE_MIN : null;
   }
 
+  function getCriticiteMinSafe(defv = null) {
+    const v = _CRITICITE_MIN;
+    return Number.isFinite(v) ? v : defv;
+  }
+
   function critMinLabel() {
-    const n = Number(getCriticiteMin());
+    const n = getCriticiteMinSafe(null);
     return Number.isFinite(n) ? String(n) : "—";
+  }
+
+  function priorityLabel(score100) {
+    const sc = Math.max(0, Math.min(100, Number(score100 || 0)));
+
+    if (sc >= 100) return "Rupture";
+    if (sc >= 80) return "Très critique";
+    if (sc >= 60) return "Critique";
+    if (sc >= 40) return "Élevée";
+    if (sc >= 20) return "Modérée";
+    return "Faible";
   }
 
   const _riskDetailCache = new Map();
@@ -462,7 +509,7 @@
 
   async function fetchRisquesDetail(portal, kpiKey, id_service, limit = 50, ref_mois = 0) {
     const svc = (id_service || "").trim();
-    const crit = Number(getCriticiteMin());
+    const crit = getCriticiteMinSafe(null);
     const critVal = Number.isFinite(crit) ? String(crit) : "";
     const ref = Math.max(0, Math.min(36, Number(ref_mois || 0)));
 
@@ -1271,7 +1318,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     if (id_service) qs.set("id_service", String(id_service).trim());
 
     // IMPORTANT: alignement avec le reste de la page
-    const cmin = Number(getCriticiteMin());
+    const cmin = getCriticiteMinSafe(null);
     if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
 
     const url = `${ctx.apiBase}/skills/analyse/previsions/critiques/detail/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
@@ -1297,7 +1344,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     if (id_service) qs.set("id_service", String(id_service));
 
     // Alignement avec le reste de la page
-    const cmin = Number(getCriticiteMin());
+    const cmin = getCriticiteMinSafe(null);
     if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
 
     const url = `${portalCtx.apiBase}/skills/analyse/previsions/postes-rouges/detail/${encodeURIComponent(portalCtx.id_contact)}?${qs.toString()}`;
@@ -1328,7 +1375,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const svc = (id_service || "").toString().trim();
     if (svc) qs.set("id_service", svc);
 
-    const cmin = Number(criticite_min);
+    const cmin = (criticite_min === null || criticite_min === undefined || criticite_min === "")
+      ? getCriticiteMinSafe(null)
+      : Number(criticite_min);
+
     if (Number.isFinite(cmin)) qs.set("criticite_min", String(cmin));
 
     const url = `${ctx.apiBase}/skills/analyse/previsions/postes-rouges/modal/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
@@ -4074,7 +4124,7 @@ function evolPct(sumNow, sumFut) {
 
 async function computeRiskEvolution3m(portal, id_service) {
   const svc = (id_service || "").trim();
-  const crit = Number(getCriticiteMin());
+  const crit = getCriticiteMinSafe(null);
   const critVal = Number.isFinite(crit) ? String(crit) : "";
   const key = `${svc}|${critVal}`;
 
@@ -4613,15 +4663,7 @@ function renderDetail(mode) {
             `;
           }
 
-          function priorityLabel(score, nb0, nbTitulaires) {
-            const s = clamp(Number(score || 0), 0, 100);
-            const a = Number(nb0 || 0);
-            if (nbTitulaires === 0) return "Critique";
-            if (a > 0) return "Critique";
-            if (s >= 75) return "Élevée";
-            if (s >= 45) return "Modérée";
-            return "Faible";
-          }
+
 
           function priorityPill(label, score) {
             const s = clamp(Math.round(Number(score || 0)), 0, 100);
@@ -4680,7 +4722,7 @@ function renderDetail(mode) {
               ? Number(r.delta_fragilite || 0)
               : (scoreH - score0);
 
-            const prio = (r.priorite_label || "").toString().trim() || priorityLabel(scoreH, spH, nbTit);
+            const prio = (r.priorite_label || "").toString().trim() || priorityLabel(scoreH);
 
             return `
               <tr class="prev-red-poste-row" data-id_poste="${escapeHtml(idPoste)}">
@@ -4905,7 +4947,7 @@ function renderDetail(mode) {
                 : Number(r.nb_titulaires);
 
               const score = clamp(Number(r.indice_fragilite || 0), 0, 100);
-              const prio  = priorityLabel(score, nb0, nbTit);
+              const prio  = priorityLabel(score);
 
 
               return `
