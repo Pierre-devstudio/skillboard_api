@@ -4936,64 +4936,75 @@ def get_analyse_risques_poste_diagnostic(
                                 # 1ter) Pool ressources (scope) + contraintes formation (pour “Risque de transmission”)
                 cur.execute(
                     f"""
-                    WITH {cte_sql}
+                    WITH
+                    {cte_sql},
+                    pool_scope AS (
+                        SELECT
+                          e.id_effectif,
+
+                          CASE
+                            WHEN (
+                              %s <= 0
+                              OR (
+                                CASE
+                                  WHEN COALESCE(e.niveau_education, '') ~ '^[0-9]+$' THEN e.niveau_education::int
+                                  ELSE 0
+                                END
+                              ) >= %s
+                            ) THEN TRUE ELSE FALSE
+                          END AS dipl_ok,
+
+                          CASE
+                            WHEN (
+                              %s = FALSE
+                              OR COALESCE(e.domaine_education, '') = COALESCE(%s, '')
+                            ) THEN TRUE ELSE FALSE
+                          END AS dom_ok
+
+                        FROM public.tbl_effectif_client e
+                        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
+                        WHERE e.id_ent = %s
+                          AND COALESCE(e.archive, FALSE) = FALSE
+                          AND COALESCE(e.id_poste_actuel, '') <> %s
+                          AND NOT EXISTS (
+                            SELECT 1
+                            FROM public.tbl_effectif_client_break b
+                            WHERE b.id_effectif = e.id_effectif
+                              AND b.archive = FALSE
+                              AND b.date_debut <= CURRENT_DATE
+                              AND b.date_fin >= CURRENT_DATE
+                          )
+                    )
                     SELECT
-                      COUNT(DISTINCT e.id_effectif)::int AS pool_total,
+                      COUNT(DISTINCT id_effectif)::int AS pool_total,
 
                       COUNT(DISTINCT CASE
-                        WHEN (
-                          %s <= 0
-                          OR (
-                            CASE
-                              WHEN COALESCE(e.niveau_education, '') ~ '^[0-9]+$' THEN e.niveau_education::int
-                              ELSE 0
-                            END
-                          ) >= %s
-                        ) THEN e.id_effectif
+                        WHEN dipl_ok THEN id_effectif
                       END)::int AS pool_diplome_ok,
 
                       COUNT(DISTINCT CASE
-                        WHEN (
-                          %s = FALSE
-                          OR COALESCE(e.domaine_education, '') = COALESCE(%s, '')
-                        ) THEN e.id_effectif
+                        WHEN dom_ok THEN id_effectif
                       END)::int AS pool_domaine_ok,
 
                       COUNT(DISTINCT CASE
-                        WHEN (
-                          (
-                            %s <= 0
-                            OR (
-                              CASE
-                                WHEN COALESCE(e.niveau_education, '') ~ '^[0-9]+$' THEN e.niveau_education::int
-                                ELSE 0
-                              END
-                            ) >= %s
-                          )
-                          AND (
-                            %s = FALSE
-                            OR COALESCE(e.domaine_education, '') = COALESCE(%s, '')
-                          )
-                        ) THEN e.id_effectif
-                      END)::int AS pool_eligible
+                        WHEN dipl_ok AND dom_ok THEN id_effectif
+                      END)::int AS pool_eligible,
 
-                    FROM public.tbl_effectif_client e
-                    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-                    WHERE e.id_ent = %s
-                      AND COALESCE(e.archive, FALSE) = FALSE
-                      AND COALESCE(e.id_poste_actuel, '') <> %s
-                      AND NOT EXISTS (
-                        SELECT 1
-                        FROM public.tbl_effectif_client_break b
-                        WHERE b.id_effectif = e.id_effectif
-                          AND b.archive = FALSE
-                          AND b.date_debut <= CURRENT_DATE
-                          AND b.date_fin >= CURRENT_DATE
-                      )
+                      COUNT(DISTINCT CASE
+                        WHEN dipl_ok AND NOT dom_ok THEN id_effectif
+                      END)::int AS pool_diplome_only,
+
+                      COUNT(DISTINCT CASE
+                        WHEN NOT dipl_ok AND dom_ok THEN id_effectif
+                      END)::int AS pool_domaine_only,
+
+                      COUNT(DISTINCT CASE
+                        WHEN NOT dipl_ok AND NOT dom_ok THEN id_effectif
+                      END)::int AS pool_neither
+
+                    FROM pool_scope
                     """,
                     tuple(cte_params + [
-                        edu_min_rank, edu_min_rank,
-                        dom_bloq, dom_title,
                         edu_min_rank, edu_min_rank,
                         dom_bloq, dom_title,
                         id_ent,
@@ -5005,6 +5016,10 @@ def get_analyse_risques_poste_diagnostic(
                 pool_diplome_ok = int(pool.get("pool_diplome_ok") or 0)
                 pool_domaine_ok = int(pool.get("pool_domaine_ok") or 0)
                 pool_eligible = int(pool.get("pool_eligible") or 0)
+
+                pool_diplome_only = int(pool.get("pool_diplome_only") or 0)
+                pool_domaine_only = int(pool.get("pool_domaine_only") or 0)
+                pool_neither = int(pool.get("pool_neither") or 0)
 
 
                 # 2) Agrégats par compétence (au niveau requis), avec contraintes + breaks
@@ -5300,12 +5315,37 @@ def get_analyse_risques_poste_diagnostic(
                     )
 
                 raisons = []
-                if edu_min_rank > 0 and pool_diplome_ok <= 0:
-                    raisons.append("Aucune ressource ne possède le niveau de diplôme requis.")
-                if dom_bloq and pool_domaine_ok <= 0:
-                    raisons.append("Aucune ressource n'a suivi la formation initiale requise.")
-
                 nb_pot = max(pool_total - pool_eligible, 0)
+
+                if nb_pot > 0:
+                    if edu_min_rank > 0 and dom_bloq:
+                        if pool_eligible <= 0:
+                            if pool_diplome_ok <= 0:
+                                raisons.append("Aucune ressource ne possède le niveau de diplôme requis.")
+                            if pool_domaine_ok <= 0:
+                                raisons.append("Aucune ressource n'a suivi la formation initiale requise.")
+                            if pool_diplome_ok > 0 and pool_domaine_ok > 0:
+                                raisons.append("Aucune ressource ne cumule le niveau de diplôme et la formation initiale requis.")
+
+                        if pool_diplome_only > 0:
+                            raisons.append(f"{pool_diplome_only} ressource(s) possèdent le niveau de diplôme requis mais pas la formation initiale attendue.")
+                        if pool_domaine_only > 0:
+                            raisons.append(f"{pool_domaine_only} ressource(s) possèdent la formation initiale attendue mais pas le niveau de diplôme requis.")
+                        if pool_neither > 0:
+                            raisons.append(f"{pool_neither} ressource(s) ne respectent ni le niveau de diplôme ni la formation initiale attendus.")
+
+                    elif edu_min_rank > 0:
+                        if pool_diplome_ok <= 0:
+                            raisons.append("Aucune ressource ne possède le niveau de diplôme requis.")
+                        elif pool_diplome_ok < pool_total:
+                            raisons.append(f"{pool_total - pool_diplome_ok} ressource(s) potentielles n'atteignent pas le niveau de diplôme requis.")
+
+                    elif dom_bloq:
+                        if pool_domaine_ok <= 0:
+                            raisons.append("Aucune ressource n'a suivi la formation initiale requise.")
+                        elif pool_domaine_ok < pool_total:
+                            raisons.append(f"{pool_total - pool_domaine_ok} ressource(s) potentielles ne disposent pas de la formation initiale requise.")
+
                 transmission = None
                 if raisons or nb_pot > 0:
                     transmission = AnalysePosteTransmissionCause(
