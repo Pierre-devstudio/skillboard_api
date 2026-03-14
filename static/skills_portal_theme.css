@@ -595,6 +595,24 @@ textarea.sb-ctrl{
 .sb-badge--titulaire{  background: var(--sb-titulaire);  border-color: var(--sb-titulaire);  color:#fff; }
 .sb-badge--candidat{  background: var(--sb-candidat);  border-color: var(--sb-candidat);  color:#fff; }
 
+.sb-badge--risk-share{
+  background: color-mix(in srgb, #7f1d1d 8%, #ffffff);
+  border-color: #7f1d1d;
+  color: #7f1d1d;
+}
+
+.sb-badge--dep-none{
+  background: transparent;
+  border-color: #b42318;
+  color: #b42318;
+}
+
+.sb-badge--dep-limited{
+  background: transparent;
+  border-color: #d97706;
+  color: #d97706;
+}
+
 /* Badge "Critère" (grille d'évaluation) */
 .sb-badge.sb-badge-critere{
   font-size: 11px;          /* police plus petite */

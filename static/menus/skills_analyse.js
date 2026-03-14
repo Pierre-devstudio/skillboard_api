@@ -840,14 +840,15 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     ? Math.min(100, Math.round((dependancePoints / s) * 100))
     : 0;
 
-  const dependanceImpactLabel = dependancePoints > 0
-    ? `+${dependancePoints} pts${dependanceSharePct > 0 ? ` · ${dependanceSharePct}% de la note` : ""}`
-    : "Impact nul";
-
   const depRiskLabel = (r) =>
     (String(r?.type_risque || "").toUpperCase() === "SANS_RELAIS")
       ? "Aucun renfort"
-      : "Insuffisant";
+      : "Renfort limité";
+
+  const depRiskBadgeClass = (r) =>
+    (String(r?.type_risque || "").toUpperCase() === "SANS_RELAIS")
+      ? "sb-badge--dep-none"
+      : "sb-badge--dep-limited";
 
   const renderDepTable = (list) => {
     if (!list.length) return "";
@@ -869,9 +870,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               const intit = escapeHtml(r?.intitule || "—");
               const crit = critBadgeHtml(r?.poids_criticite);
               const nb = Number(r?.nb_porteurs_ok || 0);
-              const seuil = Number(r?.seuil_couverture || 0);
-              const cov = `${nb}/${seuil || "—"}`;
               const depLabel = depRiskLabel(r);
+              const depCls = depRiskBadgeClass(r);
 
               return `
                 <tr>
@@ -881,10 +881,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                   </td>
                   <td class="col-center" style="white-space:nowrap;">${crit}</td>
                   <td class="col-center" style="white-space:nowrap;">
-                    <span class="sb-badge">${escapeHtml(cov)}</span>
+                    <span class="sb-badge">${escapeHtml(String(nb))}</span>
                   </td>
                   <td class="col-center" style="white-space:nowrap;">
-                    <span class="sb-badge">${escapeHtml(depLabel)}</span>
+                    <span class="sb-badge ${depCls}">${escapeHtml(depLabel)}</span>
                   </td>
                 </tr>
               `;
@@ -1019,7 +1019,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
               <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 <span>Risque de dépendance</span>
-                <span class="sb-badge">${escapeHtml(dependanceImpactLabel)}</span>
+                <span class="sb-badge sb-badge--risk-share">${escapeHtml(String(dependanceSharePct))}%</span>
               </span>
               <span class="sb-acc-chevron">▾</span>
             </button>
