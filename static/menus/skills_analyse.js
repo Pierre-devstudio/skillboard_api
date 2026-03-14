@@ -835,6 +835,20 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   const depSans = cDep.filter(x => String(x?.type_risque || "").toUpperCase() === "SANS_RELAIS");
   const depLim = cDep.filter(x => String(x?.type_risque || "").toUpperCase() !== "SANS_RELAIS");
 
+  const dependancePoints = Math.min(15, (depSans.length * 6) + (depLim.length * 3));
+  const dependanceSharePct = (s > 0)
+    ? Math.min(100, Math.round((dependancePoints / s) * 100))
+    : 0;
+
+  const dependanceImpactLabel = dependancePoints > 0
+    ? `+${dependancePoints} pts${dependanceSharePct > 0 ? ` · ${dependanceSharePct}% de la note` : ""}`
+    : "Impact nul";
+
+  const depRiskLabel = (r) =>
+    (String(r?.type_risque || "").toUpperCase() === "SANS_RELAIS")
+      ? "Aucun renfort"
+      : "Insuffisant";
+
   const renderDepTable = (list) => {
     if (!list.length) return "";
     return `
@@ -845,7 +859,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               <th style="width:110px;">Code</th>
               <th>Compétence</th>
               <th class="col-center" style="width:90px;">Criticité</th>
-              <th class="col-center" style="width:140px;">Relais</th>
+              <th class="col-center" style="width:150px;">Renfort immédiat</th>
+              <th class="col-center" style="width:170px;">Dépendance</th>
             </tr>
           </thead>
           <tbody>
@@ -856,6 +871,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               const nb = Number(r?.nb_porteurs_ok || 0);
               const seuil = Number(r?.seuil_couverture || 0);
               const cov = `${nb}/${seuil || "—"}`;
+              const depLabel = depRiskLabel(r);
+
               return `
                 <tr>
                   <td style="white-space:nowrap;">${compCodeBadge(code)}</td>
@@ -865,6 +882,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                   <td class="col-center" style="white-space:nowrap;">${crit}</td>
                   <td class="col-center" style="white-space:nowrap;">
                     <span class="sb-badge">${escapeHtml(cov)}</span>
+                  </td>
+                  <td class="col-center" style="white-space:nowrap;">
+                    <span class="sb-badge">${escapeHtml(depLabel)}</span>
                   </td>
                 </tr>
               `;
@@ -944,21 +964,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   const dependanceBody = (() => {
     if (!hasDep) return "";
     return `
-      ${depSans.length ? `
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-          <div style="font-weight:700;">Sans relais</div>
-          <span class="sb-badge">${escapeHtml(String(depSans.length))}</span>
-        </div>
-        ${renderDepTable(depSans)}
-      ` : ``}
-
-      ${depLim.length ? `
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:${depSans.length ? "14px" : "0"};">
-          <div style="font-weight:700;">Relais limité</div>
-          <span class="sb-badge">${escapeHtml(String(depLim.length))}</span>
-        </div>
-        ${renderDepTable(depLim)}
-      ` : ``}
+      <div class="sb-help" style="margin-top:0;">
+        Ce risque mesure les compétences pour lesquelles trop peu de personnes peuvent remplacer immédiatement le titulaire au niveau requis.
+      </div>
+      ${renderDepTable(cDep)}
     `;
   })();
 
@@ -1008,9 +1017,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         ${hasDep ? `
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
-              <span style="display:flex; align-items:center; gap:8px;">
+              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 <span>Risque de dépendance</span>
-                <span class="sb-badge">${escapeHtml(String(cDep.length))}</span>
+                <span class="sb-badge">${escapeHtml(dependanceImpactLabel)}</span>
               </span>
               <span class="sb-acc-chevron">▾</span>
             </button>
