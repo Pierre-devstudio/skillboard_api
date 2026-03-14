@@ -23,6 +23,17 @@
         </div>
 
         <div class="info-item">
+          <div class="label">Criticité minimale</div>
+          <div class="sb-filter-slider">
+            <input type="range" id="analyseCriticiteMinRange" min="0" max="100" step="5" value="70" aria-label="Criticité minimale">
+            <div class="sb-filter-slider__meta">
+              <span>Compétences analysées si criticité ≥</span>
+              <strong id="analyseCriticiteMinValue">70</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="info-item">
           <button type="button" class="sb-btn sb-btn--init sb-btn--block" id="btnAnalyseReset">
             Réinitialiser les filtres
           </button>
@@ -48,8 +59,8 @@
         <div class="tile-sub sb-tile-sub">Identifier les fragilités: criticité, couverture, dépendance, concentration.</div>
 
         <div class="mini-kpis sb-mini-kpis">
-          <div class="mini-kpi sb-mini-kpi" data-risk-kpi="postes-fragiles" role="button" tabindex="0" aria-label="Afficher les postes fragiles">
-            <div class="label">Postes fragiles</div>
+          <div class="mini-kpi sb-mini-kpi" data-risk-kpi="postes-scope" role="button" tabindex="0" aria-label="Afficher tous les postes triés par fragilité">
+            <div class="label">Indice global de fragilité</div>
             <div class="value" id="kpiRiskPostes">—</div>
           </div>
 

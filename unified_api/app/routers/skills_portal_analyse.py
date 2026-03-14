@@ -37,6 +37,7 @@ class ServiceScope(BaseModel):
 
 class AnalyseRisquesTile(BaseModel):
     postes_fragiles: int = 0
+    postes_fragilite_globale: int = 0
 
     # Legacy (toujours renvoyé pour compat)
     comp_critiques_sans_porteur: int = 0
@@ -775,6 +776,7 @@ def get_analyse_summary(
     id_contact: str,
     request: Request,
     id_service: Optional[str] = Query(default=None),
+    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
 ):
     """
     V1: summary des tuiles (Risques / Matching / Prévisions).
@@ -789,8 +791,7 @@ def get_analyse_summary(
 
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
 
-                # V1: valeurs par défaut (0) => UI propre, pas d’erreur, pas de “—”
-                CRITICITE_MIN = CRITICITE_MIN_DEFAULT  # score 0–100 : seuil "compétence critique"
+                CRITICITE_MIN = int(criticite_min)
 
                 cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
 
@@ -801,6 +802,13 @@ def get_analyse_summary(
                     CRITICITE_MIN,
                 )
                 postes_fragiles = len([r for r in postes_fragiles_records if r.get("is_fragile")])
+                if postes_fragiles_records:
+                    postes_fragilite_globale = int(round(
+                        sum(int(r.get("indice_fragilite") or 0) for r in postes_fragiles_records)
+                        / float(len(postes_fragiles_records))
+                    ))
+                else:
+                    postes_fragilite_globale = 0
 
                 sql_risques = f"""
                 WITH
@@ -1320,6 +1328,7 @@ def get_analyse_summary(
                 tiles = AnalyseSummaryTiles(
                     risques=AnalyseRisquesTile(
                         postes_fragiles=postes_fragiles,
+                        postes_fragilite_globale=postes_fragilite_globale,
                         comp_critiques_sans_porteur=comp_critiques_sans_porteur,
                         comp_bus_factor_1=comp_porteur_unique,  # UI = "Porteur unique"
                         comp_critiques_fragiles=comp_critiques_fragiles,
@@ -3866,8 +3875,9 @@ def get_analyse_risques_detail(
 
         if limit < 1:
             limit = 1
-        if limit > 200:
-            limit = 200
+        limit_max = 2000 if k in ("postes-fragiles", "postes-scope") else 200
+        if limit > limit_max:
+            limit = limit_max
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -3948,20 +3958,19 @@ def get_analyse_risques_detail(
                 items: list[AnalyseRisqueItem] = []
 
                 # ---------------------------
-                # KPI: Postes fragiles
+                # KPI: Postes (scope) / Postes fragiles
                 # ---------------------------
-                if k == "postes-fragiles":
+                if k in ("postes-fragiles", "postes-scope"):
                     records = _fetch_postes_fragility_records(
                         cur,
                         id_ent,
                         scope.id_service,
                         criticite_min,
                     )
-                    for r in records:
-                        if not r.get("is_fragile"):
-                            continue
-                        if len(items) >= limit:
-                            break
+                    if k == "postes-fragiles":
+                        records = [r for r in records if r.get("is_fragile")]
+
+                    for r in records[:limit]:
                         items.append(AnalyseRisqueItem(
                             id_poste=r.get("id_poste"),
                             codif_poste=r.get("codif_poste"),
@@ -3979,69 +3988,6 @@ def get_analyse_risques_detail(
                             gap_titulaires=int(r.get("gap_titulaires") or 0),
                             indice_fragilite=int(r.get("indice_fragilite") or 0),
                         ))
-
-                # ---------------------------
-                # KPI: Tous les postes (scope)
-                # ---------------------------
-                elif k == "postes-scope":
-                    sql = base_cte + """
-                    ,
-                    poste_agg AS (
-                        SELECT
-                            ps.id_poste,
-                            SUM(CASE WHEN r.id_comp IS NOT NULL AND r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) <= 1 THEN 1 ELSE 0 END)::int AS nb_critiques_fragiles,
-                            SUM(CASE WHEN r.id_comp IS NOT NULL AND r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 0 THEN 1 ELSE 0 END)::int AS nb_critiques_sans_porteur,
-                            SUM(CASE WHEN r.id_comp IS NOT NULL AND r.poids_criticite >= %s AND COALESCE(p.nb_porteurs, 0) = 1 THEN 1 ELSE 0 END)::int AS nb_critiques_porteur_unique
-                        FROM postes_scope ps
-                        LEFT JOIN req r ON r.id_poste = ps.id_poste
-                        LEFT JOIN porteurs p ON p.id_comp = r.id_comp
-                        GROUP BY ps.id_poste
-                    )
-                    SELECT
-                        fp.id_poste,
-                        fp.codif_poste,
-                        fp.codif_client,
-                        fp.intitule_poste,
-                        fp.id_service,
-                        COALESCE(o.nom_service, '') AS nom_service,
-                        pa.nb_critiques_fragiles,
-                        pa.nb_critiques_sans_porteur,
-                        pa.nb_critiques_porteur_unique
-                    FROM poste_agg pa
-                    JOIN public.tbl_fiche_poste fp ON fp.id_poste = pa.id_poste
-                    LEFT JOIN public.tbl_entreprise_organigramme o
-                      ON o.id_ent = %s
-                     AND o.id_service = fp.id_service
-                     AND o.archive = FALSE
-                    ORDER BY
-                        pa.nb_critiques_sans_porteur DESC,
-                        pa.nb_critiques_porteur_unique DESC,
-                        pa.nb_critiques_fragiles DESC,
-                        fp.codif_poste,
-                        fp.intitule_poste
-                    LIMIT %s
-                    """
-                    cur.execute(
-                        sql,
-                        tuple(cte_params + [ref_mois, criticite_min, criticite_min, criticite_min, id_ent, limit])
-                    )
-                    rows = cur.fetchall() or []
-                    for r in rows:
-                        items.append(AnalyseRisqueItem(
-                            id_poste=r.get("id_poste"),
-                            codif_poste=r.get("codif_poste"),
-                            codif_client=r.get("codif_client"),
-                            intitule_poste=r.get("intitule_poste"),
-                            id_service=r.get("id_service"),
-                            nom_service=r.get("nom_service"),
-                            nb_critiques_fragiles=int(r.get("nb_critiques_fragiles") or 0),
-                            nb_critiques_sans_porteur=int(r.get("nb_critiques_sans_porteur") or 0),
-                            nb_critiques_porteur_unique=int(r.get("nb_critiques_porteur_unique") or 0),
-                        ))
-
-                # ---------------------------
-                # KPI: Critiques fragiles (≤ 1 porteur en nominal)
-                # ---------------------------
                 # ---------------------------
                 # KPI: Critiques fragiles (≤ 1 porteur en nominal)
                 # ---------------------------

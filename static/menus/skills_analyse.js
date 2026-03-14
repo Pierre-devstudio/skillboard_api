@@ -19,6 +19,10 @@
   const STORE_MATCH_VIEW = "sb_analyse_match_view"; // "titulaire" | "candidats"
   const STORE_PREV_HORIZON = "sb_analyse_prev_horizon";
   const STORE_MATCH_POSTE_MODE = "sb_analyse_match_poste_mode"; // "fragiles" | "tous"
+  const STORE_CRITICITE_MIN = "sb_analyse_criticite_min";
+  const STORE_POSTES_SCOPE_EXPANDED = "sb_analyse_postes_scope_expanded";
+  const CRITICITE_MIN_DEFAULT = 70;
+  const POSTES_SCOPE_PREVIEW_LIMIT = 10;
 
 
   function byId(id) { return document.getElementById(id); }
@@ -355,10 +359,14 @@
   function getRiskFilter() {
     const v = (localStorage.getItem(STORE_RISK_FILTER) || "").trim();
 
-    // Migration legacy -> KPI unique "critiques-fragiles"
+    // Migrations legacy
     if (v === "critiques-sans-porteur" || v === "porteur-unique") {
       localStorage.setItem(STORE_RISK_FILTER, "critiques-fragiles");
       return "critiques-fragiles";
+    }
+    if (v === "postes-fragiles") {
+      localStorage.setItem(STORE_RISK_FILTER, "postes-scope");
+      return "postes-scope";
     }
     return v;
   }
@@ -464,7 +472,11 @@
 
   function syncCriticiteMinFromResponse(data) {
     const v = Number(data?.criticite_min);
-    if (Number.isFinite(v)) _CRITICITE_MIN = v;
+    if (Number.isFinite(v)) {
+      _CRITICITE_MIN = Math.max(0, Math.min(100, v));
+      localStorage.setItem(STORE_CRITICITE_MIN, String(_CRITICITE_MIN));
+      updateCriticiteMinUi();
+    }
   }
 
   function getCriticiteMin() {
@@ -492,6 +504,49 @@
     return "Faible";
   }
 
+  function updateCriticiteMinUi() {
+    const slider = byId("analyseCriticiteMinRange");
+    const value = byId("analyseCriticiteMinValue");
+    const safe = Number.isFinite(_CRITICITE_MIN) ? _CRITICITE_MIN : CRITICITE_MIN_DEFAULT;
+    if (slider) slider.value = String(safe);
+    if (value) value.textContent = String(safe);
+  }
+
+  function initCriticiteMinFromStorage() {
+    const raw = Number(localStorage.getItem(STORE_CRITICITE_MIN));
+    _CRITICITE_MIN = Number.isFinite(raw)
+      ? Math.max(0, Math.min(100, raw))
+      : CRITICITE_MIN_DEFAULT;
+    updateCriticiteMinUi();
+  }
+
+  function setCriticiteMinValue(v, persist = true) {
+    const n = Math.max(0, Math.min(100, Number(v)));
+    _CRITICITE_MIN = Number.isFinite(n) ? n : CRITICITE_MIN_DEFAULT;
+    if (persist) localStorage.setItem(STORE_CRITICITE_MIN, String(_CRITICITE_MIN));
+    updateCriticiteMinUi();
+    return _CRITICITE_MIN;
+  }
+
+  function invalidateAnalyseCaches() {
+    _riskDetailCache.clear();
+    _posteDetailCache.clear();
+    _posteDiagCache.clear();
+    _matchPostesCache.clear();
+    _matchEffDetailCache.clear();
+    _compDetailCache.clear();
+    _riskEvol3mCache.clear();
+  }
+
+  function getPostesScopeExpanded() {
+    return (localStorage.getItem(STORE_POSTES_SCOPE_EXPANDED) || "0") === "1";
+  }
+
+  function setPostesScopeExpanded(v) {
+    if (v) localStorage.setItem(STORE_POSTES_SCOPE_EXPANDED, "1");
+    else localStorage.removeItem(STORE_POSTES_SCOPE_EXPANDED);
+  }
+
   const _riskDetailCache = new Map();
   let _riskDetailReqSeq = 0;
   
@@ -509,7 +564,7 @@
 
   async function fetchRisquesDetail(portal, kpiKey, id_service, limit = 50, ref_mois = 0) {
     const svc = (id_service || "").trim();
-    const crit = getCriticiteMinSafe(null);
+    const crit = getCriticiteMinSafe(CRITICITE_MIN_DEFAULT);
     const critVal = Number.isFinite(crit) ? String(crit) : "";
     const ref = Math.max(0, Math.min(36, Number(ref_mois || 0)));
 
@@ -4795,7 +4850,7 @@ function renderDetail(mode) {
     return;
   }
 
-  const rf = getRiskFilter(); // "", "postes-fragiles", "critiques-fragiles"
+  const rf = getRiskFilter(); // "", "postes-scope", "critiques-fragiles", "evol-3m"
   if (typeof setActiveRiskKpi === "function") setActiveRiskKpi(rf);
 
   if (title) title.textContent = "Risques";
@@ -4803,9 +4858,9 @@ function renderDetail(mode) {
   let filterLabel = "Vue globale";
   let filterSub = "Priorisation des fragilités par criticité et couverture.";
 
-  if (rf === "postes-fragiles") {
-    filterLabel = "Postes fragiles";
-    filterSub = "Postes à sécuriser en priorité.";
+  if (rf === "postes-scope") {
+    filterLabel = "Postes";
+    filterSub = "Ensemble des postes actifs, triés par indice de fragilité décroissant.";
   } else if (rf === "critiques-fragiles") {
     filterLabel = "Compétences critiques (structurel)";
     filterSub = "Compétences critiques à sécuriser (0 ou 1 porteur en nominal).";
@@ -5142,30 +5197,43 @@ function renderDetail(mode) {
   }
 
 
-  const buildResetHtml = () => rf
-    ? `
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-          ${badge(filterLabel, true)}
-          ${badge("Criticité min: " + critMinLabel(), false)}
+  const canTogglePostesScope = (!rf || rf === "postes-scope");
+  const buildResetHtml = () => {
+    const leftBadges = !rf
+      ? `${badge("Vue globale", true)}${badge("Criticité min: " + critMinLabel(), false)}`
+      : `${badge(filterLabel, true)}${badge("Criticité min: " + critMinLabel(), false)}`;
+
+    if (!canTogglePostesScope && rf) {
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">${leftBadges}</div>
+          <button type="button" class="sb-btn sb-btn--init sb-btn--xs" id="btnRiskFilterReset">
+            Revenir à la vue globale
+          </button>
         </div>
+      `;
+    }
+
+    return `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">${leftBadges}</div>
         <button type="button" class="sb-btn sb-btn--init sb-btn--xs" id="btnRiskFilterReset">
-          Tout afficher
+          ${getPostesScopeExpanded() ? "Afficher seulement 10 postes" : "Afficher tous les postes"}
         </button>
       </div>
-    `
-    : `
-      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
-        ${badge("Vue globale", true)}
-        ${badge("Criticité min: " + critMinLabel(), false)}
-      </div>
     `;
+  };
 
   function bindRiskResetBtn() {
     const btnReset = byId("btnRiskFilterReset");
     if (btnReset) {
       btnReset.addEventListener("click", () => {
-        setRiskFilter("");
+        if (canTogglePostesScope) {
+          setPostesScopeExpanded(!getPostesScopeExpanded());
+        } else {
+          setRiskFilter("");
+          setPostesScopeExpanded(false);
+        }
         renderDetail("risques");
       });
     }
@@ -5199,12 +5267,15 @@ function renderDetail(mode) {
 
         async function fetchAt(kpiKey, limit, refMois) {
           const rm = Number(refMois || 0);
-          const ck = `${svc}|${kpiKey}|${limit}|${rm}`;
+          const crit = getCriticiteMinSafe(null);
+          const critVal = Number.isFinite(crit) ? String(crit) : "";
+          const ck = `${svc}|${kpiKey}|${limit}|${rm}|${critVal}`;
           if (_riskEvol3mCache.has(ck)) return _riskEvol3mCache.get(ck);
 
           const qs = buildQueryString({
             kpi: kpiKey,
             id_service: svc || null,
+            criticite_min: critVal || null,
             limit: limit,
             ref_mois: rm > 0 ? rm : null
           });
@@ -5406,7 +5477,9 @@ function renderDetail(mode) {
       }
 
       if (rf) {
-        const data = await fetchRisquesDetail(_portalref, rf, id_service, 120);
+        const postesScopeLimit = getPostesScopeExpanded() ? 2000 : POSTES_SCOPE_PREVIEW_LIMIT;
+        const detailLimit = (rf === "postes-scope") ? postesScopeLimit : 120;
+        const data = await fetchRisquesDetail(_portalref, rf, id_service, detailLimit);
         if (mySeq !== _riskDetailReqSeq) return;
 
         const items = Array.isArray(data?.items) ? data.items : [];
@@ -5419,7 +5492,7 @@ function renderDetail(mode) {
           <div class="card" style="padding:12px; margin:0;">
             <div class="card-title" style="margin-bottom:6px;">${escapeHtml(filterLabel)}</div>
             ${subHtml}
-            ${rf === "postes-fragiles" ? renderTablePostes(items) : renderTableCompetences(items)}
+            ${(rf === "postes-scope" || rf === "postes-fragiles") ? renderTablePostes(items) : renderTableCompetences(items)}
           </div>
         `;
 
@@ -5429,8 +5502,9 @@ function renderDetail(mode) {
       }
 
 
+      const postesScopeLimit = getPostesScopeExpanded() ? 2000 : POSTES_SCOPE_PREVIEW_LIMIT;
       const [a, b] = await Promise.all([
-        fetchRisquesDetail(_portalref, "postes-fragiles", id_service, 20),
+        fetchRisquesDetail(_portalref, "postes-scope", id_service, postesScopeLimit),
         fetchRisquesDetail(_portalref, "critiques-fragiles", id_service, 40),
       ]);
 
@@ -5443,7 +5517,7 @@ function renderDetail(mode) {
         ${buildResetHtml()}
 
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">Postes fragiles</div>
+          <div class="card-title" style="margin-bottom:6px;">Postes</div>
           ${renderTablePostes(itemsA)}
         </div>
 
@@ -5478,9 +5552,10 @@ function renderDetail(mode) {
     const f = getFilters();
     localStorage.setItem(STORE_SERVICE, getAnalyseServiceRawValue());
 
-    // On tente un endpoint summary si présent (sinon on reste en "—" sans casser l’UI)
     const usp = new URLSearchParams();
     if (f.id_service) usp.set("id_service", f.id_service);
+    const crit = getCriticiteMinSafe(CRITICITE_MIN_DEFAULT);
+    if (Number.isFinite(crit)) usp.set("criticite_min", String(crit));
 
     const url = `${portal.apiBase}/skills/analyse/summary/${encodeURIComponent(portal.contactId)}${usp.toString() ? "?" + usp.toString() : ""}`;
 
@@ -5490,7 +5565,8 @@ function renderDetail(mode) {
       const t = data?.tiles || {};
 
       const r = t.risques || {};
-      setText("kpiRiskPostes", r.postes_fragiles);
+      const globalFrag = Number(r.postes_fragilite_globale);
+      setText("kpiRiskPostes", Number.isFinite(globalFrag) ? `${Math.round(globalFrag)}%` : "—");
       setText("kpiRiskCritFragiles", r.comp_critiques_fragiles);
 
       const alertN = Number(r.comp_critiques_tombent_zero_auj || 0);
@@ -5515,15 +5591,11 @@ function renderDetail(mode) {
         }
       })();
 
-      // Matching : on laisse volontairement les KPI en "—".
-      // Les KPI de tuile servent ici de boutons de vue (titulaire vs candidats), pas de compteur.
-
       const p = t.previsions || {};
       applyPrevisionsKpis(p);
 
       setStatus("");
     } catch (e) {
-      // Pas d’API branchée = pas d’erreur bloquante
       setStatus("Résumé non disponible.");
     }
   }
@@ -6044,6 +6116,7 @@ function bindOnce(portal) {
     function openRiskKpi(el) {
       const key = (el?.getAttribute("data-risk-kpi") || "").trim();
       if (!key) return;
+      if (key === "postes-scope") setPostesScopeExpanded(false);
       setMode("risques");
       setRiskFilter(key);
       renderDetail("risques");
@@ -6114,9 +6187,28 @@ function bindOnce(portal) {
     });
   }
 
-  // Filtres service / reset
+  // Filtres service / criticité / reset
+  const critSlider = byId("analyseCriticiteMinRange");
+  const critValue = byId("analyseCriticiteMinValue");
+
+  if (critSlider) {
+    critSlider.addEventListener("input", () => {
+      const n = Math.max(0, Math.min(100, Number(critSlider.value || CRITICITE_MIN_DEFAULT)));
+      if (critValue) critValue.textContent = String(n);
+    });
+
+    critSlider.addEventListener("change", async () => {
+      setCriticiteMinValue(critSlider.value, true);
+      setPostesScopeExpanded(false);
+      invalidateAnalyseCaches();
+      await refreshSummary(portal);
+      renderDetail(localStorage.getItem(STORE_MODE) || "risques");
+    });
+  }
+
   if (selService) {
     selService.addEventListener("change", async () => {
+      setPostesScopeExpanded(false);
       await refreshSummary(portal);
       renderDetail(localStorage.getItem(STORE_MODE) || "risques");
     });
@@ -6124,7 +6216,11 @@ function bindOnce(portal) {
 
   if (btnReset) {
     btnReset.addEventListener("click", async () => {
-      setAnalyseServiceRawValue(window.portal?.serviceFilter?.ALL_ID || "");
+      setAnalyseServiceRawValue(window.portal.serviceFilter.ALL_ID || "");
+      setCriticiteMinValue(CRITICITE_MIN_DEFAULT, true);
+      setRiskFilter("");
+      setPostesScopeExpanded(false);
+      invalidateAnalyseCaches();
       await refreshSummary(portal);
       renderDetail(localStorage.getItem(STORE_MODE) || "risques");
     });
@@ -7577,8 +7673,9 @@ function bindOnce(portal) {
           await loadServices(portal);
         }
 
-        const storedServiceRaw = (localStorage.getItem(STORE_SERVICE) || "").trim();
-        setAnalyseServiceRawValue(storedServiceRaw);
+        const storedService = (localStorage.getItem(STORE_SERVICE) || "").trim();
+        setAnalyseServiceRawValue(storedService);
+        initCriticiteMinFromStorage();
 
         await refreshSummary(portal);
 
