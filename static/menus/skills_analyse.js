@@ -950,6 +950,22 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     ? Math.min(100, Math.round((structureScore / s) * 100))
     : 0;
 
+  const isStructureRupture = structureScore >= 100;
+  const showSecondaryRiskShare = !isStructureRupture;
+
+  const efficaciteScore = (() => {
+    if (!hasEff) return 0;
+    const raw = cEff.reduce((acc, r) => {
+      const nDef = Number(r?.nb_en_defaut || 0);
+      return acc + (Math.max(nDef, 0) * 8);
+    }, 0);
+    return Math.min(30, raw);
+  })();
+
+  const efficaciteSharePct = (s > 0)
+    ? Math.min(100, Math.round((efficaciteScore / s) * 100))
+    : 0;
+
 
   const structureBody = (() => {
     if (!hasStruct) return "";
@@ -1063,7 +1079,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
               <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 <span>Risque de dépendance</span>
-                <span class="sb-badge sb-badge--risk-share">${escapeHtml(String(dependanceSharePct))}%</span>
+                ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(dependanceSharePct))}%</span>` : ``}
               </span>
               <span class="sb-acc-chevron">▾</span>
             </button>
@@ -1071,12 +1087,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
         ` : ``}
 
+
         ${hasTrans ? `
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
               <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 <span>Risque de transmission</span>
-                <span class="sb-badge sb-badge--risk-share">${escapeHtml(String(transmissionSharePct))}%</span>
+                ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(transmissionSharePct))}%</span>` : ``}
               </span>
               <span class="sb-acc-chevron">▾</span>
             </button>
@@ -1084,18 +1101,20 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
         ` : ``}
 
+
         ${hasEff ? `
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
-              <span style="display:flex; align-items:center; gap:8px;">
+              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 <span>Risque d’efficacité</span>
-                <span class="sb-badge">${escapeHtml(String(cEff.length))}</span>
+                ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(efficaciteSharePct))}%</span>` : ``}
               </span>
               <span class="sb-acc-chevron">▾</span>
             </button>
             <div class="sb-acc-body">${efficaciteBody}</div>
           </div>
         ` : ``}
+
       `}
     </div>
   `;
