@@ -935,6 +935,22 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     `;
   };
 
+  const structureScore = (() => {
+    if (!hasStruct) return 0;
+
+    const nbT = Number(cStruct?.nb_titulaires || 0);
+    const gapT = Number(cStruct?.gap_titulaires || 0);
+    const nonTenu = (cStruct?.poste_non_tenu === true) || (nbT <= 0);
+
+    if (nonTenu) return 100;
+    return Math.min(45, Math.max(gapT, 0) * 15);
+  })();
+
+  const structureSharePct = (s > 0)
+    ? Math.min(100, Math.round((structureScore / s) * 100))
+    : 0;
+
+
   const structureBody = (() => {
     if (!hasStruct) return "";
     const nbT = Number(cStruct?.nb_titulaires || 0);
@@ -1032,7 +1048,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         ${hasStruct ? `
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
-              <span>Risque structurel</span>
+              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span>Risque structurel</span>
+                <span class="sb-badge sb-badge--risk-share">${escapeHtml(String(structureSharePct))}%</span>
+              </span>
               <span class="sb-acc-chevron">▾</span>
             </button>
             <div class="sb-acc-body">${structureBody}</div>
