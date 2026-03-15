@@ -22,7 +22,7 @@ from reportlab.platypus import (
 PDF_PAGE_SIZE = A4
 PDF_MARGIN_LEFT = 10 * mm
 PDF_MARGIN_RIGHT = 10 * mm
-PDF_MARGIN_TOP = 20 * mm
+PDF_MARGIN_TOP = 18 * mm
 PDF_MARGIN_BOTTOM = 10 * mm
 
 PDF_BRAND_RED = colors.HexColor("#c1272d")
@@ -35,6 +35,10 @@ _log = logging.getLogger("skills_pdf")
 
 LOGO_FILENAME = "Logo_novoskill_marque.png"
 
+PDF_HEADER_LINE_OFFSET = 14 * mm
+PDF_LOGO_TOP_OFFSET = 6 * mm
+PDF_LOGO_MAX_WIDTH = 52 * mm
+PDF_LOGO_MAX_HEIGHT = 8 * mm
 
 def _resolve_logo_path() -> str:
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -162,9 +166,11 @@ def _header_footer(canvas, doc):
     canvas.saveState()
 
     # Header commun : logo seul à gauche + trait fin
-    header_line_y = page_h - PDF_MARGIN_TOP
-    logo_max_width = 34 * mm
-    logo_max_height = 4.2 * mm
+    # La marge haute pilote le début du corps.
+    # Le header, lui, est positionné par ses propres constantes.
+    header_line_y = page_h - PDF_HEADER_LINE_OFFSET
+    logo_max_width = PDF_LOGO_MAX_WIDTH
+    logo_max_height = PDF_LOGO_MAX_HEIGHT
 
     logo_path = _resolve_logo_path()
     if logo_path:
@@ -182,8 +188,8 @@ def _header_footer(canvas, doc):
                     logo_w = logo_h / ratio
 
                 logo_x = left
-                logo_y = page_h - 2.8 * mm - logo_h
-
+                logo_y = page_h - PDF_LOGO_TOP_OFFSET - logo_h
+                
                 canvas.drawImage(
                     img,
                     logo_x,
