@@ -38,21 +38,17 @@ LOGO_FILENAME = "Logo_novoskill_marque.png"
 
 def _resolve_logo_path() -> str:
     base_dir = os.path.dirname(os.path.abspath(__file__))
+    logo_path = os.path.abspath(
+        os.path.join(base_dir, "..", "..", "assets", "pdf", LOGO_FILENAME)
+    )
 
-    candidates = [
-        os.path.abspath(os.path.join(base_dir, "..", "..", "static", LOGO_FILENAME)),
-        os.path.abspath(os.path.join(base_dir, "..", "static", LOGO_FILENAME)),
-        os.path.abspath(os.path.join(os.getcwd(), "static", LOGO_FILENAME)),
-    ]
-
-    for path in candidates:
-        if os.path.isfile(path):
-            return path
+    if os.path.isfile(logo_path):
+        return logo_path
 
     _log.error(
-        "Logo PDF introuvable. Fichier attendu: %s | chemins testés: %s",
+        "Logo PDF introuvable. Fichier attendu: %s | chemin testé: %s",
         LOGO_FILENAME,
-        " | ".join(candidates),
+        logo_path,
     )
     return ""
 
