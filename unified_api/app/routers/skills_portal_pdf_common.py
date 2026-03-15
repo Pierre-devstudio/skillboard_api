@@ -22,7 +22,7 @@ from reportlab.platypus import (
 PDF_PAGE_SIZE = A4
 PDF_MARGIN_LEFT = 10 * mm
 PDF_MARGIN_RIGHT = 10 * mm
-PDF_MARGIN_TOP = 14 * mm
+PDF_MARGIN_TOP = 20 * mm
 PDF_MARGIN_BOTTOM = 10 * mm
 
 PDF_BRAND_RED = colors.HexColor("#c1272d")
