@@ -1274,11 +1274,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         return;
       }
 
-      // Piste simple et non intrusive : on stocke l’id, à exploiter côté "Votre organisation".
-      localStorage.setItem("sb_org_focus_poste_id", idPoste);
-
-      if (_portalref) _portalref.showAlert("info", "Fiche de poste : ouvrez “Votre organisation” (id préparé).");
-      closeAnalysePosteModal();
+      try {
+        openAnalysePdfInBrowser(_portalref, "fiche_poste_simple", idPoste);
+        closeAnalysePosteModal();
+      } catch (e) {
+        if (_portalref) _portalref.showAlert("error", "Impossible d’ouvrir le PDF : " + errMsg(e));
+      }
     });
   }
 
@@ -1448,6 +1449,36 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       id_contact,
       apiBase: apiBaseRaw.replace(/\/$/, ""),
     };
+  }
+
+  function buildAnalysePdfUrl(portal, docKey, id_poste) {
+    const ctx = getPortalContext(portal);
+    const posteId = String(id_poste || "").trim();
+
+    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
+    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
+    if (!posteId) throw new Error("id_poste manquant.");
+
+    if (String(docKey || "") !== "fiche_poste_simple") {
+      throw new Error("Document PDF non géré.");
+    }
+
+    const qs = new URLSearchParams();
+    qs.set("id_poste", posteId);
+    qs.set("_", String(Date.now()));
+
+    return `${ctx.apiBase}/skills/pdf/fiche-poste-simple/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
+  }
+
+  function openAnalysePdfInBrowser(portal, docKey, id_poste) {
+    const url = buildAnalysePdfUrl(portal, docKey, id_poste);
+    const win = window.open(url, "_blank", "noopener");
+
+    if (!win) {
+      throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
+    }
+
+    return url;
   }
 
 

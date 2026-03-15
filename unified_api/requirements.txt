@@ -9,3 +9,4 @@ psycopg2-binary
 psycopg[binary]
 python-multipart
 openai
+reportlab
