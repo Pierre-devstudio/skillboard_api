@@ -1,3 +1,4 @@
+import logging
 import os
 from io import BytesIO
 from typing import Dict, List, Optional
@@ -30,9 +31,30 @@ PDF_MUTED = colors.HexColor("#6b7280")
 PDF_LINE = colors.HexColor("#e5e7eb")
 PDF_TITLE_BG = colors.HexColor("#fff5f5")
 
-LOGO_PATH = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "static", "Logo_novoskill_marque.png")
-)
+_log = logging.getLogger("skills_pdf")
+
+LOGO_FILENAME = "Logo_novoskill_marque.png"
+
+
+def _resolve_logo_path() -> str:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+
+    candidates = [
+        os.path.abspath(os.path.join(base_dir, "..", "..", "static", LOGO_FILENAME)),
+        os.path.abspath(os.path.join(base_dir, "..", "static", LOGO_FILENAME)),
+        os.path.abspath(os.path.join(os.getcwd(), "static", LOGO_FILENAME)),
+    ]
+
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+
+    _log.error(
+        "Logo PDF introuvable. Fichier attendu: %s | chemins testés: %s",
+        LOGO_FILENAME,
+        " | ".join(candidates),
+    )
+    return ""
 
 def build_pdf_styles() -> Dict[str, ParagraphStyle]:
     base = getSampleStyleSheet()
@@ -148,10 +170,12 @@ def _header_footer(canvas, doc):
     logo_max_width = 34 * mm
     logo_max_height = 4.2 * mm
 
-    try:
-        if os.path.exists(LOGO_PATH):
-            img = ImageReader(LOGO_PATH)
+    logo_path = _resolve_logo_path()
+    if logo_path:
+        try:
+            img = ImageReader(logo_path)
             img_w, img_h = img.getSize()
+
             if img_w and img_h:
                 ratio = float(img_h) / float(img_w)
                 logo_w = logo_max_width
@@ -163,8 +187,9 @@ def _header_footer(canvas, doc):
 
                 logo_x = left
                 logo_y = page_h - 2.8 * mm - logo_h
+
                 canvas.drawImage(
-                    LOGO_PATH,
+                    img,
                     logo_x,
                     logo_y,
                     width=logo_w,
@@ -172,8 +197,8 @@ def _header_footer(canvas, doc):
                     preserveAspectRatio=True,
                     mask="auto",
                 )
-    except Exception:
-        pass
+        except Exception as e:
+            _log.exception("Erreur chargement logo PDF (%s): %s", logo_path, e)
 
     canvas.setStrokeColor(PDF_LINE)
     canvas.setLineWidth(0.6)
