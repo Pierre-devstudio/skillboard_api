@@ -39,7 +39,7 @@ LOGO_FILENAME = "Logo_novoskill_marque.png"
 def _resolve_logo_path() -> str:
     base_dir = os.path.dirname(os.path.abspath(__file__))
     logo_path = os.path.abspath(
-        os.path.join(base_dir, "..", "..", "assets", "pdf", LOGO_FILENAME)
+        os.path.join(base_dir, "..", "assets", "pdf", LOGO_FILENAME)
     )
 
     if os.path.isfile(logo_path):
