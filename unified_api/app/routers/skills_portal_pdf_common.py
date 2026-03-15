@@ -1,3 +1,4 @@
+import os
 from io import BytesIO
 from typing import Dict, List, Optional
 
@@ -6,6 +7,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
     KeepTogether,
     PageBreak,
@@ -17,10 +19,10 @@ from reportlab.platypus import (
 )
 
 PDF_PAGE_SIZE = A4
-PDF_MARGIN_LEFT = 16 * mm
-PDF_MARGIN_RIGHT = 16 * mm
-PDF_MARGIN_TOP = 30 * mm
-PDF_MARGIN_BOTTOM = 18 * mm
+PDF_MARGIN_LEFT = 10 * mm
+PDF_MARGIN_RIGHT = 10 * mm
+PDF_MARGIN_TOP = 14 * mm
+PDF_MARGIN_BOTTOM = 10 * mm
 
 PDF_BRAND_RED = colors.HexColor("#c1272d")
 PDF_TEXT = colors.HexColor("#1f2937")
@@ -28,6 +30,9 @@ PDF_MUTED = colors.HexColor("#6b7280")
 PDF_LINE = colors.HexColor("#e5e7eb")
 PDF_TITLE_BG = colors.HexColor("#fff5f5")
 
+LOGO_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "static", "Logo_novoskill_marque.png")
+)
 
 def build_pdf_styles() -> Dict[str, ParagraphStyle]:
     base = getSampleStyleSheet()
@@ -138,25 +143,54 @@ def _header_footer(canvas, doc):
 
     canvas.saveState()
 
+    # Header commun : logo seul à gauche + trait fin
+    header_line_y = page_h - PDF_MARGIN_TOP
+    logo_max_width = 34 * mm
+    logo_max_height = 4.2 * mm
+
+    try:
+        if os.path.exists(LOGO_PATH):
+            img = ImageReader(LOGO_PATH)
+            img_w, img_h = img.getSize()
+            if img_w and img_h:
+                ratio = float(img_h) / float(img_w)
+                logo_w = logo_max_width
+                logo_h = logo_w * ratio
+
+                if logo_h > logo_max_height:
+                    logo_h = logo_max_height
+                    logo_w = logo_h / ratio
+
+                logo_x = left
+                logo_y = page_h - 2.8 * mm - logo_h
+                canvas.drawImage(
+                    LOGO_PATH,
+                    logo_x,
+                    logo_y,
+                    width=logo_w,
+                    height=logo_h,
+                    preserveAspectRatio=True,
+                    mask="auto",
+                )
+    except Exception:
+        pass
+
     canvas.setStrokeColor(PDF_LINE)
     canvas.setLineWidth(0.6)
-    canvas.line(left, page_h - 22 * mm, right, page_h - 22 * mm)
+    canvas.line(left, header_line_y, right, header_line_y)
 
-    canvas.setFillColor(PDF_BRAND_RED)
-    canvas.setFont("Helvetica-Bold", 14)
-    canvas.drawString(left, page_h - 15 * mm, "Novoskill")
-
-    canvas.setFillColor(PDF_TEXT)
-    canvas.setFont("Helvetica-Bold", 11)
-    canvas.drawRightString(right, page_h - 15 * mm, str(meta.get("doc_label") or "Document PDF"))
+    # Footer dans la marge basse de 1 cm
+    footer_line_y = PDF_MARGIN_BOTTOM
+    footer_text_y = 4 * mm
 
     canvas.setStrokeColor(PDF_LINE)
-    canvas.line(left, 13 * mm, right, 13 * mm)
+    canvas.setLineWidth(0.6)
+    canvas.line(left, footer_line_y, right, footer_line_y)
 
     canvas.setFillColor(PDF_MUTED)
     canvas.setFont("Helvetica", 8)
-    canvas.drawString(left, 8 * mm, str(meta.get("footer_left") or "Template PDF commun"))
-    canvas.drawRightString(right, 8 * mm, f"Page {canvas.getPageNumber()}")
+    canvas.drawString(left, footer_text_y, str(meta.get("footer_left") or "Template PDF commun"))
+    canvas.drawRightString(right, footer_text_y, f"Page {canvas.getPageNumber()}")
 
     canvas.restoreState()
 
