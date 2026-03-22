@@ -498,7 +498,6 @@
         });
 
         closeModal("modalCollaborateur");
-        portal.showAlert("success", _modalMode === "edit" ? "Collaborateur mis à jour." : "Collaborateur ajouté.");
         await loadGlobalStats(portal);
         await loadList(portal);
     }
@@ -513,7 +512,6 @@
     });
 
     if (_editingId === id) closeModal("modalCollaborateur");
-    portal.showAlert("success", "Collaborateur archivé.");
     await loadGlobalStats(portal);
     await loadList(portal);
   }
