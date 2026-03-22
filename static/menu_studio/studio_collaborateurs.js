@@ -28,6 +28,26 @@
       .replaceAll("'", "&#39;");
   }
 
+    function formatPhoneFr(value){
+        const digits = String(value || "").replace(/\D+/g, "").slice(0, 10);
+        return digits.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
+    }
+
+    function bindPhoneMask(input){
+        if (!input || input.dataset.phoneMaskBound === "1") return;
+        input.dataset.phoneMaskBound = "1";
+
+        const apply = () => {
+            input.value = formatPhoneFr(input.value);
+        };
+
+        input.addEventListener("input", apply);
+        input.addEventListener("blur", apply);
+        input.addEventListener("paste", () => {
+            setTimeout(apply, 0);
+        });
+    }
+
     function getErrorMessage(err){
         if (!err) return "Erreur inconnue.";
         if (typeof err === "string") return err;
@@ -357,8 +377,8 @@
       prenom: byId("collabPrenom")?.value || null,
       nom: byId("collabNom")?.value || null,
       email: byId("collabEmail")?.value || null,
-      telephone: byId("collabTel")?.value || null,
-      telephone2: byId("collabTel2")?.value || null,
+      telephone: formatPhoneFr(byId("collabTel")?.value || null),
+      telephone2: formatPhoneFr(byId("collabTel2")?.value || null),
       adresse: byId("collabAdresse")?.value || null,
       code_postal: byId("collabCodePostal")?.value || null,
       ville: byId("collabVille")?.value || null,
@@ -438,8 +458,8 @@
     if (byId("collabPrenom")) byId("collabPrenom").value = data?.prenom || "";
     if (byId("collabNom")) byId("collabNom").value = data?.nom || "";
     if (byId("collabEmail")) byId("collabEmail").value = data?.email || "";
-    if (byId("collabTel")) byId("collabTel").value = data?.telephone || "";
-    if (byId("collabTel2")) byId("collabTel2").value = data?.telephone2 || "";
+    if (byId("collabTel")) byId("collabTel").value = formatPhoneFr(data?.telephone || "");
+    if (byId("collabTel2")) byId("collabTel2").value = formatPhoneFr(data?.telephone2 || "");
     if (byId("collabAdresse")) byId("collabAdresse").value = data?.adresse || "";
     if (byId("collabCodePostal")) byId("collabCodePostal").value = data?.code_postal || "";
     if (byId("collabVille")) byId("collabVille").value = data?.ville || "";
@@ -600,6 +620,8 @@
         }
     });
 
+    bindPhoneMask(byId("collabTel"));
+    bindPhoneMask(byId("collabTel2"));
     byId("collabPoste")?.addEventListener("change", refreshServiceFromPoste);
     byId("collabTemp")?.addEventListener("change", refreshTempRoleVisibility);
     byId("collabHaveDateFin")?.addEventListener("change", refreshSortieVisibility);
