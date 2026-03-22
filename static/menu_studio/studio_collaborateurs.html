@@ -41,49 +41,49 @@
       </div>
     </div>
 
-    <div class="sb-toolbar sb-mt-10">
-        <div class="sb-search">
+    <div class="sb-toolbar sb-mt-10" style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap;">
+        <div class="sb-search" style="flex:0 0 300px; max-width:300px;">
             <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
             <input type="text" id="collabSearch" placeholder="Nom, prénom, email, code, matricule…" />
         </div>
 
-        <div style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; flex:0 0 auto;">
-            <div class="info-item" id="collabServiceField" style="min-width:220px;">
-            <div class="label">Service</div>
-            <select id="collabFilterService"></select>
-            </div>
-
-            <div class="info-item" id="collabPosteField" style="min-width:220px;">
-            <div class="label">Poste</div>
-            <select id="collabFilterPoste"></select>
-            </div>
-
-            <div class="info-item" style="width:170px; min-width:170px; flex:0 0 170px;">
+        <div class="info-item" style="width:170px; min-width:170px; flex:0 0 170px;">
             <div class="label">Statut</div>
             <select id="collabFilterActive">
-                <option value="all">Tous</option>
-                <option value="active" selected>Actifs</option>
-                <option value="inactive">Inactifs</option>
+            <option value="all">Tous</option>
+            <option value="active" selected>Actifs</option>
+            <option value="inactive">Inactifs</option>
             </select>
-            </div>
-
-            <div style="display:flex; align-items:center; gap:16px; min-height:38px; padding-bottom:2px; flex-wrap:wrap;">
-            <label class="sb-check" style="margin:0;">
-                <input type="checkbox" id="collabFilterManager" />
-                <span>Managers</span>
-            </label>
-
-            <label class="sb-check" style="margin:0;">
-                <input type="checkbox" id="collabFilterFormateur" />
-                <span>Formateurs</span>
-            </label>
-
-            <label class="sb-check" style="margin:0;">
-                <input type="checkbox" id="collabShowArchived" />
-                <span>Voir les archivés</span>
-            </label>
-            </div>
         </div>
+
+        <div style="display:flex; align-items:center; gap:16px; min-height:38px; padding-bottom:2px; flex:0 0 auto; flex-wrap:wrap;">
+            <label class="sb-check" style="margin:0;">
+            <input type="checkbox" id="collabFilterManager" />
+            <span>Managers</span>
+            </label>
+
+            <label class="sb-check" style="margin:0;">
+            <input type="checkbox" id="collabFilterFormateur" />
+            <span>Formateurs</span>
+            </label>
+
+            <label class="sb-check" style="margin:0;">
+            <input type="checkbox" id="collabShowArchived" />
+            <span>Voir les archivés</span>
+            </label>
+        </div>
+
+        <div id="collabServiceField" class="info-item" style="display:none; min-width:220px;">
+            <div class="label">Service</div>
+            <select id="collabFilterService"></select>
+        </div>
+
+        <div id="collabPosteField" class="info-item" style="display:none; min-width:220px;">
+            <div class="label">Poste</div>
+            <select id="collabFilterPoste"></select>
+        </div>
+
+        <div style="flex:1 1 auto;"></div>
     </div>
 
     <div class="sb-stack sb-stack--xxs sb-mt-10" id="collabList"></div>
