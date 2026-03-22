@@ -32,10 +32,15 @@
     // js auto-guess -> /menu_studio/studio_catalog_competences.js
   });
 
+  window.portal.registerMenu({
+    view: "collaborateurs",
+    htmlUrl: "/menu_studio/studio_collaborateurs.html"
+    // js auto-guess -> /menu_studio/studio_collaborateurs.js
+  });
+
   // Placeholders (menu complet)
   const COMING_SOON = "/menu_studio/studio_coming_soon.html";
   
-  window.portal.registerMenu({ view: "collaborateurs", htmlUrl: COMING_SOON });
   window.portal.registerMenu({ view: "access", htmlUrl: COMING_SOON });
   window.portal.registerMenu({ view: "partners", htmlUrl: COMING_SOON });
 
