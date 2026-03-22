@@ -7,7 +7,7 @@
   let _searchTimer = null;
   let _filterService = "__all__";
   let _filterPoste = "__all__";
-  let _filterActive = "all";
+  let _filterActive = "active";
   let _showArchived = false;
 
   let _modalMode = "create";
@@ -61,20 +61,12 @@
     el.innerHTML = html;
   }
 
-  function renderTop(){
-    const sub = byId("collabPageSub");
-    const badge = byId("collabSourceBadge");
-
-    if (sub) {
-      const src = (_ctx?.source_label || "").trim();
-      const name = (_ctx?.source_name || _ctx?.nom_owner || "").trim();
-      sub.textContent = src && name ? `${src} · ${name}` : (name || src || "Gestion des collaborateurs.");
+    function renderTop(){
+        const sub = byId("collabPageSub");
+        if (sub) {
+            sub.textContent = "Enregistrez, gérez et archivez vos collaborateurs.";
+        }
     }
-
-    if (badge) {
-      badge.textContent = isEntrepriseMode() ? "Client" : "Mon entreprise";
-    }
-  }
 
   function renderStats(stats){
     byId("kpiTotalVal").textContent = String(stats?.total || 0);
@@ -172,45 +164,21 @@
     empty.style.display = "none";
 
     host.innerHTML = _items.map(it => {
-      const fullName = `${it.civilite ? `${it.civilite} ` : ""}${it.prenom || ""} ${it.nom || ""}`.trim();
-      const meta = [];
+        const fullName = `${it.prenom || ""} ${it.nom || ""}`.trim() || "Collaborateur sans nom";
+        const posteActuel = isEntrepriseMode() ? (it.poste_label || "—") : "—";
+        const line = `${fullName} | ${it.email || "—"} | ${posteActuel}`;
 
-      if (it.email) meta.push(esc(it.email));
-      if (it.telephone) meta.push(esc(it.telephone));
-
-      if (isEntrepriseMode()) {
-        if (it.nom_service) meta.push(`Service : ${esc(it.nom_service)}`);
-        if (it.poste_label) meta.push(`Poste : ${esc(it.poste_label)}`);
-        if (it.type_contrat) meta.push(esc(it.type_contrat));
-        if (it.code_effectif) meta.push(`Code : ${esc(it.code_effectif)}`);
-      } else {
-        if (it.fonction) meta.push(`Fonction : ${esc(it.fonction)}`);
-      }
-
-      const badges = [];
-      badges.push(`<span class="sb-badge sb-badge--outline-accent">${it.archive ? "Archivé" : (it.actif ? "Actif" : "Inactif")}</span>`);
-      if (it.ismanager) badges.push(`<span class="sb-badge sb-badge--accent-soft">Manager</span>`);
-      if (it.isformateur) badges.push(`<span class="sb-badge sb-badge--accent-soft">Formateur</span>`);
-      if (it.is_temp) badges.push(`<span class="sb-badge sb-badge--accent-soft">Temporaire</span>`);
-      if (!isEntrepriseMode() && it.fonction) badges.push(`<span class="sb-badge sb-badge--outline-accent">${esc(it.fonction)}</span>`);
-
-      return `
-        <div class="sb-row-card ${it.archive ? "is-archived" : ""}">
-          <div class="sb-row-left">
-            <div class="sb-row-main">
-              <div class="sb-row-title">${esc(fullName || "Collaborateur sans nom")}</div>
-              <div class="sb-row-badges">${badges.join("")}</div>
-              <div class="sb-row-meta">
-                ${meta.length ? meta.map(x => `<span>${x}</span>`).join("") : `<span>—</span>`}
-              </div>
+        return `
+            <div class="sb-row-card ${it.archive ? "is-archived" : ""}">
+            <div class="sb-row-left">
+                <div class="sb-row-title">${esc(line)}</div>
             </div>
-          </div>
-          <div class="sb-row-right">
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="edit" data-id="${esc(it.id_collaborateur)}">Modifier</button>
-            ${it.archive ? "" : `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="archive" data-id="${esc(it.id_collaborateur)}">Archiver</button>`}
-          </div>
-        </div>
-      `;
+            <div class="sb-row-right">
+                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="edit" data-id="${esc(it.id_collaborateur)}">Modifier</button>
+                ${it.archive ? "" : `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="archive" data-id="${esc(it.id_collaborateur)}">Archiver</button>`}
+            </div>
+            </div>
+        `;
     }).join("");
   }
 
