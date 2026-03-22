@@ -394,6 +394,56 @@ def studio_collab_list(
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
 
+                if src["source_kind"] == "entreprise":
+                    cur.execute(
+                        """
+                        SELECT
+                        COUNT(1) AS total,
+                        COUNT(1) FILTER (
+                            WHERE COALESCE(archive, FALSE) = FALSE
+                            AND COALESCE(statut_actif, TRUE) = TRUE
+                        ) AS actifs,
+                        COUNT(1) FILTER (
+                            WHERE COALESCE(archive, FALSE) = FALSE
+                            AND COALESCE(statut_actif, TRUE) = FALSE
+                        ) AS inactifs,
+                        COUNT(1) FILTER (
+                            WHERE COALESCE(archive, FALSE) = TRUE
+                        ) AS archives
+                        FROM public.tbl_effectif_client
+                        WHERE id_ent = %s
+                        """,
+                        (oid,),
+                    )
+                    s = cur.fetchone() or {}
+                else:
+                    cur.execute(
+                        """
+                        SELECT
+                        COUNT(1) AS total,
+                        COUNT(1) FILTER (
+                            WHERE COALESCE(archive, FALSE) = FALSE
+                            AND COALESCE(actif, TRUE) = TRUE
+                        ) AS actifs,
+                        COUNT(1) FILTER (
+                            WHERE COALESCE(archive, FALSE) = FALSE
+                            AND COALESCE(actif, TRUE) = FALSE
+                        ) AS inactifs,
+                        COUNT(1) FILTER (
+                            WHERE COALESCE(archive, FALSE) = TRUE
+                        ) AS archives
+                        FROM public.tbl_utilisateur
+                        """
+                    )
+                    s = cur.fetchone() or {}
+
+                stats_global = {
+                    "total": int(s.get("total") or 0),
+                    "actifs": int(s.get("actifs") or 0),
+                    "inactifs": int(s.get("inactifs") or 0),
+                    "archives": int(s.get("archives") or 0),
+                }
+
                 items = []
 
                 if src["source_kind"] == "entreprise":
@@ -421,6 +471,10 @@ def studio_collab_list(
                         where.append("COALESCE(e.statut_actif, TRUE) = TRUE")
                     elif act == "inactive":
                         where.append("COALESCE(e.statut_actif, TRUE) = FALSE")
+                    elif act == "manager":
+                        where.append("COALESCE(e.ismanager, FALSE) = TRUE")
+                    elif act == "formateur":
+                        where.append("COALESCE(e.isformateur, FALSE) = TRUE")
 
                     if qq:
                         like = f"%{qq}%"
@@ -525,6 +579,8 @@ def studio_collab_list(
                         where.append("COALESCE(u.actif, TRUE) = TRUE")
                     elif act == "inactive":
                         where.append("COALESCE(u.actif, TRUE) = FALSE")
+                    elif act in ("manager", "formateur"):
+                        where.append("1 = 0")
 
                     if qq:
                         like = f"%{qq}%"
@@ -590,13 +646,7 @@ def studio_collab_list(
                             }
                         )
 
-        stats = {
-            "total": len(items),
-            "actifs": sum(1 for x in items if x.get("actif") and not x.get("archive")),
-            "inactifs": sum(1 for x in items if (not x.get("actif")) and not x.get("archive")),
-            "archives": sum(1 for x in items if x.get("archive")),
-        }
-        return {"items": items, "stats": stats}
+        return {"items": items, "stats": stats_global}
     except HTTPException:
         raise
     except Exception as e:

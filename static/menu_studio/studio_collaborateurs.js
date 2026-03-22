@@ -3,11 +3,15 @@
 
   let _ctx = null;
   let _items = [];
+  let _globalItems = [];
+
   let _search = "";
   let _searchTimer = null;
   let _filterService = "__all__";
   let _filterPoste = "__all__";
   let _filterActive = "active";
+  let _filterManager = false;
+  let _filterFormateur = false;
   let _showArchived = false;
 
   let _modalMode = "create";
@@ -61,12 +65,22 @@
     el.innerHTML = html;
   }
 
-    function renderTop(){
-        const sub = byId("collabPageSub");
-        if (sub) {
-            sub.textContent = "Enregistrez, gérez et archivez vos collaborateurs.";
-        }
+  function renderTop(){
+    const sub = byId("collabPageSub");
+    if (sub) {
+      sub.textContent = "Enregistrez, gérez et archivez vos collaborateurs.";
     }
+  }
+
+  function computeGlobalStats(items){
+    const arr = Array.isArray(items) ? items : [];
+    return {
+      total: arr.length,
+      actifs: arr.filter(x => !!x && !x.archive && !!x.actif).length,
+      inactifs: arr.filter(x => !!x && !x.archive && !x.actif).length,
+      archives: arr.filter(x => !!x && !!x.archive).length
+    };
+  }
 
   function renderStats(stats){
     byId("kpiTotalVal").textContent = String(stats?.total || 0);
@@ -88,6 +102,8 @@
     if (byId("collabFilterService")) byId("collabFilterService").value = _filterService;
     if (byId("collabFilterPoste")) byId("collabFilterPoste").value = _filterPoste;
     if (byId("collabFilterActive")) byId("collabFilterActive").value = _filterActive;
+    if (byId("collabFilterManager")) byId("collabFilterManager").checked = !!_filterManager;
+    if (byId("collabFilterFormateur")) byId("collabFilterFormateur").checked = !!_filterFormateur;
     if (byId("collabShowArchived")) byId("collabShowArchived").checked = !!_showArchived;
   }
 
@@ -150,6 +166,24 @@
     selService.disabled = false;
   }
 
+  function applyExtraFrontFilters(items){
+    let arr = Array.isArray(items) ? items.slice() : [];
+
+    if (_filterManager || _filterFormateur) {
+      arr = arr.filter(it => {
+        const isManager = !!it?.ismanager;
+        const isFormateur = !!it?.isformateur;
+
+        if (_filterManager && _filterFormateur) return isManager || isFormateur;
+        if (_filterManager) return isManager;
+        if (_filterFormateur) return isFormateur;
+        return true;
+      });
+    }
+
+    return arr;
+  }
+
   function renderList(){
     const host = byId("collabList");
     const empty = byId("collabEmpty");
@@ -164,22 +198,49 @@
     empty.style.display = "none";
 
     host.innerHTML = _items.map(it => {
-        const fullName = `${it.prenom || ""} ${it.nom || ""}`.trim() || "Collaborateur sans nom";
-        const posteActuel = isEntrepriseMode() ? (it.poste_label || "—") : "—";
-        const line = `${fullName} | ${it.email || "—"} | ${posteActuel}`;
+      const fullName = `${it.prenom || ""} ${it.nom || ""}`.trim() || "Collaborateur sans nom";
+      const email = it.email || "—";
+      const posteActuel = isEntrepriseMode()
+        ? (it.poste_label || "—")
+        : (it.fonction || "—");
 
-        return `
-            <div class="sb-row-card ${it.archive ? "is-archived" : ""}">
-            <div class="sb-row-left">
-                <div class="sb-row-title">${esc(line)}</div>
+      return `
+        <div class="sb-row-card ${it.archive ? "is-archived" : ""}">
+          <div class="sb-row-left" style="display:grid; grid-template-columns:minmax(180px,220px) minmax(260px,1.35fr) minmax(180px,1fr) minmax(48px,.45fr); gap:18px; align-items:center; flex:1 1 auto; min-width:0;">
+            <div class="sb-row-title">${esc(fullName)}</div>
+
+            <div style="font-size:13px; font-weight:400; color:#374151; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              ${esc(email)}
             </div>
-            <div class="sb-row-right">
-                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="edit" data-id="${esc(it.id_collaborateur)}">Modifier</button>
-                ${it.archive ? "" : `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="archive" data-id="${esc(it.id_collaborateur)}">Archiver</button>`}
+
+            <div style="font-size:13px; font-weight:400; color:#374151; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+              ${esc(posteActuel)}
             </div>
-            </div>
-        `;
+
+            <div></div>
+          </div>
+
+          <div class="sb-row-right" style="flex:0 0 auto;">
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="edit" data-id="${esc(it.id_collaborateur)}">Modifier</button>
+            ${it.archive ? "" : `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="archive" data-id="${esc(it.id_collaborateur)}">Archiver</button>`}
+          </div>
+        </div>
+      `;
     }).join("");
+  }
+
+  async function fetchList(portal, args){
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error("Owner introuvable.");
+
+    const qs = new URLSearchParams();
+    if (args.q) qs.set("q", args.q);
+    qs.set("service", args.service || "__all__");
+    qs.set("poste", args.poste || "__all__");
+    qs.set("active", args.active || "all");
+    qs.set("include_archived", args.include_archived ? "1" : "0");
+
+    return await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/list/${encodeURIComponent(ownerId)}?${qs.toString()}`);
   }
 
   async function loadContext(portal){
@@ -193,20 +254,32 @@
     toggleFormBySource();
   }
 
+  async function loadGlobalStats(portal){
+    const data = await fetchList(portal, {
+      q: "",
+      service: "__all__",
+      poste: "__all__",
+      active: "all",
+      include_archived: true
+    });
+
+    _globalItems = Array.isArray(data?.items) ? data.items : [];
+    renderStats(computeGlobalStats(_globalItems));
+  }
+
   async function loadList(portal){
-    const ownerId = getOwnerId();
-    if (!ownerId) throw new Error("Owner introuvable.");
+    const data = await fetchList(portal, {
+      q: _search,
+      service: _filterService,
+      poste: _filterPoste,
+      active: _filterActive,
+      include_archived: _showArchived
+    });
 
-    const qs = new URLSearchParams();
-    if (_search) qs.set("q", _search);
-    qs.set("service", _filterService || "__all__");
-    qs.set("poste", _filterPoste || "__all__");
-    qs.set("active", _filterActive || "all");
-    qs.set("include_archived", _showArchived ? "1" : "0");
+    let items = Array.isArray(data?.items) ? data.items : [];
+    items = applyExtraFrontFilters(items);
+    _items = items;
 
-    const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/list/${encodeURIComponent(ownerId)}?${qs.toString()}`);
-    _items = Array.isArray(data?.items) ? data.items : [];
-    renderStats(data?.stats || { total: 0, actifs: 0, inactifs: 0, archives: 0 });
     renderList();
   }
 
@@ -408,6 +481,7 @@
 
     closeModal("modalCollaborateur");
     portal.showAlert("success", _modalMode === "edit" ? "Collaborateur mis à jour." : "Collaborateur ajouté.");
+    await loadGlobalStats(portal);
     await loadList(portal);
   }
 
@@ -422,6 +496,7 @@
 
     if (_editingId === id) closeModal("modalCollaborateur");
     portal.showAlert("success", "Collaborateur archivé.");
+    await loadGlobalStats(portal);
     await loadList(portal);
   }
 
@@ -471,7 +546,17 @@
     });
 
     byId("collabFilterActive")?.addEventListener("change", (e) => {
-      _filterActive = (e.target.value || "all").trim();
+      _filterActive = (e.target.value || "active").trim();
+      loadList(portal).catch(err => portal.showAlert("error", err?.message || String(err)));
+    });
+
+    byId("collabFilterManager")?.addEventListener("change", (e) => {
+      _filterManager = !!e.target.checked;
+      loadList(portal).catch(err => portal.showAlert("error", err?.message || String(err)));
+    });
+
+    byId("collabFilterFormateur")?.addEventListener("change", (e) => {
+      _filterFormateur = !!e.target.checked;
       loadList(portal).catch(err => portal.showAlert("error", err?.message || String(err)));
     });
 
@@ -509,6 +594,7 @@
     bindOnce(portal);
     setStatus("Chargement…");
     await loadContext(portal);
+    await loadGlobalStats(portal);
     await loadList(portal);
     setStatus("—");
   }

@@ -1,17 +1,17 @@
 <section class="sb-stack sb-stack--md">
   <div class="card">
-        <div class="sb-card-head">
-            <div style="min-width:0;">
-                <div class="card-title" id="collabPageTitle" style="margin-bottom:2px;">Vos collaborateurs</div>
-                <div class="card-sub" id="collabPageSub" style="margin:0;">
-                Enregistrez, gérez et archivez vos collaborateurs.
-                </div>
-            </div>
-
-            <div class="sb-actions">
-                <button type="button" class="sb-btn sb-btn--accent" id="btnCollabAdd">Ajouter un collaborateur</button>
-            </div>
+    <div class="sb-card-head">
+      <div style="min-width:0;">
+        <div class="card-title" id="collabPageTitle" style="margin-bottom:2px;">Vos collaborateurs</div>
+        <div class="card-sub" id="collabPageSub" style="margin:0;">
+          Enregistrez, gérez et archivez vos collaborateurs.
         </div>
+      </div>
+
+      <div class="sb-actions">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnCollabAdd">Ajouter un collaborateur</button>
+      </div>
+    </div>
 
     <div class="sb-kpi-grid sb-mt-10">
       <div class="sb-kpi-card">
@@ -47,7 +47,7 @@
         <input type="text" id="collabSearch" placeholder="Nom, prénom, email, code, matricule…" />
       </div>
 
-      <div class="sb-filter-grid">
+      <div style="display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; flex:999 1 760px;">
         <div class="info-item" id="collabServiceField" style="min-width:220px;">
           <div class="label">Service</div>
           <select id="collabFilterService"></select>
@@ -58,17 +58,27 @@
           <select id="collabFilterPoste"></select>
         </div>
 
-        <div class="info-item" style="min-width:180px;">
+        <div class="info-item" style="min-width:170px;">
           <div class="label">Statut</div>
-            <select id="collabFilterActive">
-                <option value="all">Tous</option>
-                <option value="active" selected>Actifs</option>
-                <option value="inactive">Inactifs</option>
-            </select>
+          <select id="collabFilterActive">
+            <option value="all">Tous</option>
+            <option value="active" selected>Actifs</option>
+            <option value="inactive">Inactifs</option>
+          </select>
         </div>
 
-        <div class="sb-check-field">
-          <label class="sb-check" style="margin:0 4px 2px 0;">
+        <div style="display:flex; align-items:center; gap:16px; min-height:38px; padding-bottom:2px; flex-wrap:wrap;">
+          <label class="sb-check" style="margin:0;">
+            <input type="checkbox" id="collabFilterManager" />
+            <span>Managers</span>
+          </label>
+
+          <label class="sb-check" style="margin:0;">
+            <input type="checkbox" id="collabFilterFormateur" />
+            <span>Formateurs</span>
+          </label>
+
+          <label class="sb-check" style="margin:0;">
             <input type="checkbox" id="collabShowArchived" />
             <span>Voir les archivés</span>
           </label>
