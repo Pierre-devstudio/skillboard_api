@@ -28,6 +28,23 @@
       .replaceAll("'", "&#39;");
   }
 
+    function getErrorMessage(err){
+        if (!err) return "Erreur inconnue.";
+        if (typeof err === "string") return err;
+        if (typeof err.message === "string" && err.message.trim()) return err.message;
+        if (typeof err.detail === "string" && err.detail.trim()) return err.detail;
+        if (err.detail && typeof err.detail === "object") {
+            try {
+            if (Array.isArray(err.detail)) {
+                return err.detail.map(x => x?.msg || JSON.stringify(x)).join(" | ");
+            }
+            return JSON.stringify(err.detail);
+            } catch (_) {}
+        }
+        try { return JSON.stringify(err); } catch (_) {}
+        return String(err);
+    }
+
   function getOwnerId() {
     const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
     if (pid) return pid;
@@ -465,25 +482,26 @@
     openModal("modalCollaborateur");
   }
 
-  async function saveModal(portal){
-    const ownerId = getOwnerId();
-    if (!ownerId) throw new Error("Owner introuvable.");
+    async function saveModal(portal){
+        const ownerId = getOwnerId();
+        if (!ownerId) throw new Error("Owner introuvable.");
 
-    const payload = buildPayload();
-    const url = _modalMode === "edit" && _editingId
-      ? `${portal.apiBase}/studio/collaborateurs/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`
-      : `${portal.apiBase}/studio/collaborateurs/${encodeURIComponent(ownerId)}`;
+        const payload = buildPayload();
+        const url = _modalMode === "edit" && _editingId
+            ? `${portal.apiBase}/studio/collaborateurs/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`
+            : `${portal.apiBase}/studio/collaborateurs/${encodeURIComponent(ownerId)}`;
 
-    await portal.apiJson(url, {
-      method: "POST",
-      body: JSON.stringify(payload)
-    });
+        await portal.apiJson(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
 
-    closeModal("modalCollaborateur");
-    portal.showAlert("success", _modalMode === "edit" ? "Collaborateur mis à jour." : "Collaborateur ajouté.");
-    await loadGlobalStats(portal);
-    await loadList(portal);
-  }
+        closeModal("modalCollaborateur");
+        portal.showAlert("success", _modalMode === "edit" ? "Collaborateur mis à jour." : "Collaborateur ajouté.");
+        await loadGlobalStats(portal);
+        await loadList(portal);
+    }
 
   async function archiveCollaborateur(portal, id){
     const ownerId = getOwnerId();
@@ -511,9 +529,9 @@
       try {
         if (act === "edit") await openEditModal(portal, id);
         if (act === "archive") await archiveCollaborateur(portal, id);
-      } catch (err) {
-        portal.showAlert("error", err?.message || String(err));
-      }
+        } catch (err) {
+            portal.showAlert("error", getErrorMessage(err));
+        }
     });
   }
 
@@ -524,61 +542,64 @@
     bindListActions(portal);
 
     byId("btnCollabAdd")?.addEventListener("click", () => {
-      openCreateModal().catch(e => portal.showAlert("error", e?.message || String(e)));
+        openCreateModal().catch(e => portal.showAlert("error", getErrorMessage(e)));
     });
 
     byId("collabSearch")?.addEventListener("input", (e) => {
-      _search = (e.target.value || "").trim();
-      if (_searchTimer) clearTimeout(_searchTimer);
-      _searchTimer = setTimeout(() => {
-        loadList(portal).catch(err => portal.showAlert("error", err?.message || String(err)));
-      }, 250);
+        _search = (e.target.value || "").trim();
+        if (_searchTimer) clearTimeout(_searchTimer);
+        _searchTimer = setTimeout(() => {
+            loadList(portal).catch(err => portal.showAlert("error", getErrorMessage(err)));
+        }, 250);
     });
 
     byId("collabFilterService")?.addEventListener("change", (e) => {
-      _filterService = (e.target.value || "__all__").trim();
-      loadList(portal).catch(err => portal.showAlert("error", err?.message || String(err)));
+        _filterService = (e.target.value || "__all__").trim();
+        loadList(portal).catch(err => portal.showAlert("error", getErrorMessage(err)));
     });
 
     byId("collabFilterPoste")?.addEventListener("change", (e) => {
-      _filterPoste = (e.target.value || "__all__").trim();
-      loadList(portal).catch(err => portal.showAlert("error", err?.message || String(err)));
+        _filterPoste = (e.target.value || "__all__").trim();
+        loadList(portal).catch(err => portal.showAlert("error", getErrorMessage(err)));
     });
 
     byId("collabFilterActive")?.addEventListener("change", (e) => {
-      _filterActive = (e.target.value || "active").trim();
-      loadList(portal).catch(err => portal.showAlert("error", err?.message || String(err)));
+        _filterActive = (e.target.value || "active").trim();
+        loadList(portal).catch(err => portal.showAlert("error", getErrorMessage(err)));
     });
 
     byId("collabFilterManager")?.addEventListener("change", (e) => {
-      _filterManager = !!e.target.checked;
-      loadList(portal).catch(err => portal.showAlert("error", err?.message || String(err)));
+        _filterManager = !!e.target.checked;
+        loadList(portal).catch(err => portal.showAlert("error", getErrorMessage(err)));
     });
 
     byId("collabFilterFormateur")?.addEventListener("change", (e) => {
-      _filterFormateur = !!e.target.checked;
-      loadList(portal).catch(err => portal.showAlert("error", err?.message || String(err)));
+        _filterFormateur = !!e.target.checked;
+        loadList(portal).catch(err => portal.showAlert("error", getErrorMessage(err)));
     });
 
     byId("collabShowArchived")?.addEventListener("change", (e) => {
-      _showArchived = !!e.target.checked;
-      loadList(portal).catch(err => portal.showAlert("error", err?.message || String(err)));
+        _showArchived = !!e.target.checked;
+        loadList(portal).catch(err => portal.showAlert("error", getErrorMessage(err)));
     });
 
     byId("btnCloseCollaborateur")?.addEventListener("click", () => closeModal("modalCollaborateur"));
     byId("btnCollabCancel")?.addEventListener("click", () => closeModal("modalCollaborateur"));
 
     byId("btnCollabSave")?.addEventListener("click", async () => {
-      try { await saveModal(portal); }
-      catch (e) { portal.showAlert("error", e?.message || String(e)); }
+        try {
+            await saveModal(portal);
+        } catch (e) {
+            portal.showAlert("error", getErrorMessage(e));
+        }
     });
 
     byId("btnCollabArchive")?.addEventListener("click", async () => {
-      try {
-        if (_editingId) await archiveCollaborateur(portal, _editingId);
-      } catch (e) {
-        portal.showAlert("error", e?.message || String(e));
-      }
+        try {
+            if (_editingId) await archiveCollaborateur(portal, _editingId);
+        } catch (e) {
+            portal.showAlert("error", getErrorMessage(e));
+        }
     });
 
     byId("collabPoste")?.addEventListener("change", refreshServiceFromPoste);
@@ -599,10 +620,10 @@
     setStatus("—");
   }
 
-  init().catch(e => {
-    if (window.portal && window.portal.showAlert) {
-      window.portal.showAlert("error", "Erreur collaborateurs : " + (e?.message || e));
-    }
-    setStatus("Erreur de chargement.");
-  });
+    init().catch(e => {
+        if (window.portal && window.portal.showAlert) {
+            window.portal.showAlert("error", "Erreur collaborateurs : " + getErrorMessage(e));
+        }
+        setStatus("Erreur de chargement.");
+    });
 })();
