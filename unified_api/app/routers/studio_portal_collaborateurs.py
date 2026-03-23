@@ -185,43 +185,79 @@ def _build_service_options(cur, oid: str, source_kind: str) -> list:
           SELECT
             s.id_service,
             s.nom_service,
-            s.id_service_parent,
+            NULLIF(BTRIM(COALESCE(s.id_service_parent, '')), '') AS id_service_parent,
             0 AS depth,
             (s.nom_service)::text AS path
           FROM public.tbl_entreprise_organigramme s
           WHERE s.id_ent = %s
             AND COALESCE(s.archive, FALSE) = FALSE
-            AND s.id_service_parent IS NULL
+            AND (
+              NULLIF(BTRIM(COALESCE(s.id_service_parent, '')), '') IS NULL
+              OR NOT EXISTS (
+                SELECT 1
+                FROM public.tbl_entreprise_organigramme p
+                WHERE p.id_ent = s.id_ent
+                  AND p.id_service = NULLIF(BTRIM(COALESCE(s.id_service_parent, '')), '')
+                  AND COALESCE(p.archive, FALSE) = FALSE
+              )
+            )
 
           UNION ALL
 
           SELECT
             c.id_service,
             c.nom_service,
-            c.id_service_parent,
+            NULLIF(BTRIM(COALESCE(c.id_service_parent, '')), '') AS id_service_parent,
             p.depth + 1 AS depth,
             (p.path || ' > ' || c.nom_service)::text AS path
           FROM public.tbl_entreprise_organigramme c
-          JOIN svc p ON p.id_service = c.id_service_parent
+          JOIN svc p
+            ON p.id_service = NULLIF(BTRIM(COALESCE(c.id_service_parent, '')), '')
           WHERE c.id_ent = %s
             AND COALESCE(c.archive, FALSE) = FALSE
+        ),
+        svc_all AS (
+          SELECT
+            svc.id_service,
+            svc.nom_service,
+            svc.id_service_parent,
+            svc.depth,
+            svc.path
+          FROM svc
+
+          UNION
+
+          SELECT
+            s.id_service,
+            s.nom_service,
+            NULLIF(BTRIM(COALESCE(s.id_service_parent, '')), '') AS id_service_parent,
+            0 AS depth,
+            (s.nom_service)::text AS path
+          FROM public.tbl_entreprise_organigramme s
+          WHERE s.id_ent = %s
+            AND COALESCE(s.archive, FALSE) = FALSE
+            AND NOT EXISTS (
+              SELECT 1
+              FROM svc x
+              WHERE x.id_service = s.id_service
+            )
         )
         SELECT
-          svc.id_service,
-          svc.nom_service,
-          svc.id_service_parent,
-          svc.depth,
+          svc_all.id_service,
+          svc_all.nom_service,
+          svc_all.id_service_parent,
+          svc_all.depth,
           (
             SELECT COUNT(1)
             FROM public.tbl_effectif_client e
             WHERE e.id_ent = %s
               AND COALESCE(e.archive, FALSE) = FALSE
-              AND svc.id_service = e.id_service
+              AND svc_all.id_service = e.id_service
           ) AS nb_collabs
-        FROM svc
-        ORDER BY svc.path
+        FROM svc_all
+        ORDER BY svc_all.path
         """,
-        (oid, oid, oid),
+        (oid, oid, oid, oid),
     )
     rows = cur.fetchall() or []
     items = []
