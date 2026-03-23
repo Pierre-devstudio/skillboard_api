@@ -179,9 +179,6 @@ def _norm_service_from_payload(cur, oid: str, id_service: Optional[str], id_post
 
 
 def _build_service_options(cur, oid: str, source_kind: str) -> list:
-    if source_kind != "entreprise":
-        return []
-
     cur.execute(
         """
         WITH RECURSIVE svc AS (
@@ -575,6 +572,20 @@ def studio_collab_list(
                     if not inc_arch:
                         where.append("COALESCE(u.archive, FALSE) = FALSE")
 
+                    if svc not in ("", "__all__"):
+                        if svc == "__none__":
+                            where.append("p.id_service IS NULL")
+                        else:
+                            where.append("p.id_service = %s")
+                            params.append(svc)
+
+                    if pst not in ("", "__all__"):
+                        if pst == "__none__":
+                            where.append("p.id_poste IS NULL")
+                        else:
+                            where.append("p.id_poste = %s")
+                            params.append(pst)
+
                     if act == "active":
                         where.append("COALESCE(u.actif, TRUE) = TRUE")
                     elif act == "inactive":
@@ -590,11 +601,12 @@ def studio_collab_list(
                               u.ut_nom ILIKE %s
                               OR u.ut_prenom ILIKE %s
                               OR COALESCE(u.ut_mail,'') ILIKE %s
-                              OR COALESCE(u.ut_fonction,'') ILIKE %s
+                              OR COALESCE(p.intitule_poste,'') ILIKE %s
+                              OR COALESCE(p.codif_client, p.codif_poste, '') ILIKE %s
                             )
                             """
                         )
-                        params.extend([like, like, like, like])
+                        params.extend([like, like, like, like, like])
 
                     cur.execute(
                         f"""
@@ -614,16 +626,34 @@ def studio_collab_list(
                           COALESCE(u.actif, TRUE) AS actif,
                           COALESCE(u.archive, FALSE) AS archive,
                           u.ut_obs AS observations,
+                          p.id_poste AS id_poste_actuel,
+                          p.id_service,
+                          COALESCE(p.intitule_poste, '') AS intitule_poste,
+                          COALESCE(p.codif_client, p.codif_poste, '') AS code_poste,
+                          COALESCE(s.nom_service, '') AS nom_service,
                           'utilisateur' AS source_row_kind
                         FROM public.tbl_utilisateur u
+                        LEFT JOIN public.tbl_fiche_poste p
+                          ON p.id_poste = u.ut_fonction
+                         AND p.id_owner = %s
+                         AND p.id_ent = %s
+                         AND COALESCE(p.actif, TRUE) = TRUE
+                        LEFT JOIN public.tbl_entreprise_organigramme s
+                          ON s.id_service = p.id_service
+                         AND s.id_ent = %s
+                         AND COALESCE(s.archive, FALSE) = FALSE
                         WHERE {" AND ".join(where)}
                         ORDER BY lower(u.ut_nom), lower(u.ut_prenom)
                         """,
-                        tuple(params),
+                        tuple([oid, oid, oid] + params),
                     )
                     rows = cur.fetchall() or []
 
                     for r in rows:
+                        code_poste = (r.get("code_poste") or "").strip()
+                        intitule_poste = (r.get("intitule_poste") or "").strip()
+                        poste_label = (f"{code_poste} · {intitule_poste}" if code_poste else intitule_poste).strip()
+
                         items.append(
                             {
                                 "id_collaborateur": r.get("id_collaborateur"),
@@ -636,6 +666,10 @@ def studio_collab_list(
                                 "telephone": r.get("telephone"),
                                 "telephone2": r.get("telephone2"),
                                 "fonction": r.get("fonction"),
+                                "id_poste_actuel": r.get("id_poste_actuel"),
+                                "id_service": r.get("id_service"),
+                                "nom_service": r.get("nom_service"),
+                                "poste_label": poste_label,
                                 "adresse": r.get("adresse"),
                                 "code_postal": r.get("code_postal"),
                                 "ville": r.get("ville"),
@@ -775,16 +809,34 @@ def studio_collab_detail(id_owner: str, id_collaborateur: str, request: Request)
                       u.ut_pays AS pays,
                       COALESCE(u.actif, TRUE) AS actif,
                       COALESCE(u.archive, FALSE) AS archive,
-                      u.ut_obs AS observations
+                      u.ut_obs AS observations,
+                      p.id_poste AS id_poste_actuel,
+                      p.id_service,
+                      COALESCE(p.intitule_poste, '') AS intitule_poste,
+                      COALESCE(p.codif_client, p.codif_poste, '') AS code_poste,
+                      COALESCE(s.nom_service, '') AS nom_service
                     FROM public.tbl_utilisateur u
+                    LEFT JOIN public.tbl_fiche_poste p
+                      ON p.id_poste = u.ut_fonction
+                     AND p.id_owner = %s
+                     AND p.id_ent = %s
+                     AND COALESCE(p.actif, TRUE) = TRUE
+                    LEFT JOIN public.tbl_entreprise_organigramme s
+                      ON s.id_service = p.id_service
+                     AND s.id_ent = %s
+                     AND COALESCE(s.archive, FALSE) = FALSE
                     WHERE u.id_utilisateur = %s
                     LIMIT 1
                     """,
-                    (cid,),
+                    (oid, oid, oid, cid),
                 )
                 r = cur.fetchone() or {}
                 if not r:
                     raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+
+                code_poste = (r.get("code_poste") or "").strip()
+                intitule_poste = (r.get("intitule_poste") or "").strip()
+                poste_label = (f"{code_poste} · {intitule_poste}" if code_poste else intitule_poste).strip()
 
                 return {
                     "id_collaborateur": r.get("id_collaborateur"),
@@ -797,6 +849,10 @@ def studio_collab_detail(id_owner: str, id_collaborateur: str, request: Request)
                     "telephone": r.get("telephone"),
                     "telephone2": r.get("telephone2"),
                     "fonction": r.get("fonction"),
+                    "id_poste_actuel": r.get("id_poste_actuel"),
+                    "id_service": r.get("id_service"),
+                    "nom_service": r.get("nom_service"),
+                    "poste_label": poste_label,
                     "adresse": r.get("adresse"),
                     "code_postal": r.get("code_postal"),
                     "ville": r.get("ville"),
@@ -926,6 +982,10 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                     return {"ok": True, "id_collaborateur": cid}
 
                 cid = str(uuid.uuid4())
+                user_poste = _norm_text(payload.fonction)
+                if user_poste:
+                    _fetch_poste_service(cur, oid, user_poste)
+
                 cur.execute(
                     """
                     INSERT INTO public.tbl_utilisateur (
@@ -959,7 +1019,7 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                       _norm_text(payload.telephone2),
                       _norm_bool(payload.actif, True),
                       _norm_text(payload.civilite),
-                      _norm_text(payload.fonction),
+                      user_poste,
                       _norm_text(payload.adresse),
                       _norm_text(payload.code_postal),
                       _norm_text(payload.ville),
@@ -1110,6 +1170,10 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                 if not cur.fetchone():
                     raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
 
+                user_poste = _norm_text(payload.fonction)
+                if user_poste:
+                    _fetch_poste_service(cur, oid, user_poste)
+
                 cur.execute(
                     """
                     UPDATE public.tbl_utilisateur
@@ -1138,7 +1202,7 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                       _norm_text(payload.telephone2),
                       _norm_bool(payload.actif, True),
                       _norm_text(payload.civilite),
-                      _norm_text(payload.fonction),
+                      user_poste,
                       _norm_text(payload.adresse),
                       _norm_text(payload.code_postal),
                       _norm_text(payload.ville),

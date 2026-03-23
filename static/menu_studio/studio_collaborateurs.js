@@ -203,6 +203,43 @@
     selService.disabled = false;
   }
 
+  function getPosteById(idPoste){
+    const pid = String(idPoste || "").trim();
+    if (!pid) return null;
+    return (_ctx?.postes || []).find(x => (x?.id_poste || "") === pid) || null;
+  }
+
+  function getPostesByService(idService){
+    const sid = String(idService || "").trim();
+    const postes = Array.isArray(_ctx?.postes) ? _ctx.postes.slice() : [];
+    if (!sid) return postes;
+    return postes.filter(x => (x?.id_service || "") === sid);
+  }
+
+  function refreshUserPosteOptions(selectedPosteId){
+    const selService = byId("collabUserService");
+    const selPoste = byId("collabUserPoste");
+    if (!selPoste) return;
+
+    const wanted = String(selectedPosteId || "").trim();
+    const postes = getPostesByService(selService?.value || "");
+    fillSelect(selPoste, postes, "id_poste", "label", "", "Aucun poste");
+
+    if (wanted && postes.some(x => (x?.id_poste || "") === wanted)) {
+      selPoste.value = wanted;
+    }
+  }
+
+  function syncUserServiceFromPoste(){
+    const selService = byId("collabUserService");
+    const selPoste = byId("collabUserPoste");
+    if (!selService || !selPoste) return;
+
+    const poste = getPosteById(selPoste.value);
+    selService.value = poste?.id_service || "";
+    refreshUserPosteOptions(selPoste.value);
+  }
+
   function applyExtraFrontFilters(items){
     let arr = Array.isArray(items) ? items.slice() : [];
 
@@ -237,9 +274,7 @@
     host.innerHTML = _items.map(it => {
       const fullName = `${it.prenom || ""} ${it.nom || ""}`.trim() || "Collaborateur sans nom";
       const email = it.email || "—";
-      const posteActuel = isEntrepriseMode()
-        ? (it.poste_label || "—")
-        : (it.fonction || "—");
+      const posteActuel = it.poste_label || "—";
 
       return `
         <div class="sb-row-card ${it.archive ? "is-archived" : ""}">
@@ -338,7 +373,7 @@
   function clearForm(){
     [
       "collabPrenom","collabNom","collabEmail","collabTel","collabTel2","collabAdresse",
-      "collabCodePostal","collabVille","collabPays","collabFonction","collabObservations",
+      "collabCodePostal","collabVille","collabPays","collabObservations",
       "collabMatricule","collabCodeEffectif","collabBusinessTravel","collabNiveauEdu",
       "collabDomaineEdu","collabDateNaissance","collabDateEntree","collabDateDebutPoste",
       "collabDateSortie","collabMotifSortie","collabNote","collabTempRole"
@@ -350,6 +385,8 @@
     if (byId("collabCivilite")) byId("collabCivilite").value = "";
     if (byId("collabService")) byId("collabService").value = "";
     if (byId("collabPoste")) byId("collabPoste").value = "";
+    if (byId("collabUserService")) byId("collabUserService").value = "";
+    if (byId("collabUserPoste")) byId("collabUserPoste").value = "";
     if (byId("collabTypeContrat")) byId("collabTypeContrat").value = "";
 
     if (byId("collabActif")) byId("collabActif").checked = true;
@@ -361,6 +398,7 @@
     refreshTempRoleVisibility();
     refreshSortieVisibility();
     refreshServiceFromPoste();
+    refreshUserPosteOptions("");
 
     const btnArchive = byId("btnCollabArchive");
     if (btnArchive) btnArchive.style.display = "none";
@@ -384,7 +422,7 @@
       ville: byId("collabVille")?.value || null,
       pays: byId("collabPays")?.value || null,
       actif: !!byId("collabActif")?.checked,
-      fonction: byId("collabFonction")?.value || null,
+      fonction: byId("collabUserPoste")?.value || null,
       observations: byId("collabObservations")?.value || null,
 
       id_service: byId("collabService")?.value || null,
@@ -465,7 +503,11 @@
     if (byId("collabVille")) byId("collabVille").value = data?.ville || "";
     if (byId("collabPays")) byId("collabPays").value = data?.pays || "";
     if (byId("collabActif")) byId("collabActif").checked = !!data?.actif;
-    if (byId("collabFonction")) byId("collabFonction").value = data?.fonction || "";
+
+    if (byId("collabUserService")) byId("collabUserService").value = data?.id_service || "";
+    refreshUserPosteOptions(data?.id_poste_actuel || data?.fonction || "");
+    if (byId("collabUserPoste")) byId("collabUserPoste").value = data?.id_poste_actuel || data?.fonction || "";
+
     if (byId("collabObservations")) byId("collabObservations").value = data?.observations || "";
 
     if (isEntrepriseMode()) {
@@ -622,7 +664,16 @@
 
     bindPhoneMask(byId("collabTel"));
     bindPhoneMask(byId("collabTel2"));
+
     byId("collabPoste")?.addEventListener("change", refreshServiceFromPoste);
+
+    byId("collabUserService")?.addEventListener("change", () => {
+      const currentPoste = byId("collabUserPoste")?.value || "";
+      refreshUserPosteOptions(currentPoste);
+    });
+
+    byId("collabUserPoste")?.addEventListener("change", syncUserServiceFromPoste);
+
     byId("collabTemp")?.addEventListener("change", refreshTempRoleVisibility);
     byId("collabHaveDateFin")?.addEventListener("change", refreshSortieVisibility);
   }
