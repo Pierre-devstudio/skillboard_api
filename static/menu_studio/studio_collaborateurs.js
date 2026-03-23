@@ -154,6 +154,10 @@
     fillSelect(byId("collabService"), _ctx?.services || [], "id_service", "label", "", "Aucun service");
     fillSelect(byId("collabPoste"), _ctx?.postes || [], "id_poste", "label", "", "Aucun poste");
 
+    fillSelect(byId("collabUserService"), _ctx?.services || [], "id_service", "label", "", "Aucun service");
+    refreshUserPosteOptions("");
+
+
     fillSelect(byId("collabTypeContrat"), [
       { value: "", label: "—" },
       { value: "CDI", label: "CDI" },
@@ -176,7 +180,7 @@
     if (hint) {
       hint.textContent = isEntrepriseMode()
         ? "Mode client : identité, contact et rattachement RH."
-        : "Mode mon entreprise : identité et contact. Les champs RH n’existent pas dans tbl_utilisateur.";
+        : "Mode mon entreprise : identité, contact et rattachement poste/service.";
     }
   }
 
