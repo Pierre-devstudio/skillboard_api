@@ -1,6 +1,5 @@
 (function () {
   let _bound = false;
-
   let _ctx = null;
   let _items = [];
   let _globalItems = [];
@@ -16,6 +15,7 @@
 
   let _modalMode = "create";
   let _editingId = null;
+  let _tabLoaded = { skills: false, certs: false, history: false };
 
   function byId(id){ return document.getElementById(id); }
 
@@ -28,42 +28,43 @@
       .replaceAll("'", "&#39;");
   }
 
-    function formatPhoneFr(value){
-        const digits = String(value || "").replace(/\D+/g, "").slice(0, 10);
-        return digits.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
+  function formatPhoneFr(value){
+    const digits = String(value || "").replace(/\D+/g, "").slice(0, 10);
+    return digits.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
+  }
+
+  function bindPhoneMask(input){
+    if (!input || input.dataset.phoneMaskBound === "1") return;
+    input.dataset.phoneMaskBound = "1";
+
+    const apply = () => { input.value = formatPhoneFr(input.value); };
+    input.addEventListener("input", apply);
+    input.addEventListener("blur", apply);
+    input.addEventListener("paste", () => setTimeout(apply, 0));
+  }
+
+  function getErrorMessage(err){
+    if (!err) return "Erreur inconnue.";
+    if (typeof err === "string") return err;
+    if (typeof err.message === "string" && err.message.trim()) return err.message;
+    if (typeof err.detail === "string" && err.detail.trim()) return err.detail;
+    if (err.detail && typeof err.detail === "object") {
+      try {
+        if (Array.isArray(err.detail)) return err.detail.map(x => x?.msg || JSON.stringify(x)).join(" | ");
+        return JSON.stringify(err.detail);
+      } catch (_) {}
     }
+    try { return JSON.stringify(err); } catch (_) {}
+    return String(err);
+  }
 
-    function bindPhoneMask(input){
-        if (!input || input.dataset.phoneMaskBound === "1") return;
-        input.dataset.phoneMaskBound = "1";
-
-        const apply = () => {
-            input.value = formatPhoneFr(input.value);
-        };
-
-        input.addEventListener("input", apply);
-        input.addEventListener("blur", apply);
-        input.addEventListener("paste", () => {
-            setTimeout(apply, 0);
-        });
-    }
-
-    function getErrorMessage(err){
-        if (!err) return "Erreur inconnue.";
-        if (typeof err === "string") return err;
-        if (typeof err.message === "string" && err.message.trim()) return err.message;
-        if (typeof err.detail === "string" && err.detail.trim()) return err.detail;
-        if (err.detail && typeof err.detail === "object") {
-            try {
-            if (Array.isArray(err.detail)) {
-                return err.detail.map(x => x?.msg || JSON.stringify(x)).join(" | ");
-            }
-            return JSON.stringify(err.detail);
-            } catch (_) {}
-        }
-        try { return JSON.stringify(err); } catch (_) {}
-        return String(err);
-    }
+  function formatDateFR(value){
+    const s = String(value || "").trim();
+    if (!s) return "–";
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return s;
+    return d.toLocaleDateString("fr-FR");
+  }
 
   function getOwnerId() {
     const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
@@ -104,9 +105,7 @@
 
   function renderTop(){
     const sub = byId("collabPageSub");
-    if (sub) {
-      sub.textContent = "Enregistrez, gérez et archivez vos collaborateurs.";
-    }
+    if (sub) sub.textContent = "Enregistrez, gérez et archivez vos collaborateurs.";
   }
 
   function computeGlobalStats(items){
@@ -130,8 +129,8 @@
     const serviceWrap = byId("collabServiceField");
     const posteWrap = byId("collabPosteField");
 
-    if (serviceWrap) serviceWrap.style.display = isEntrepriseMode() ? "" : "none";
-    if (posteWrap) posteWrap.style.display = isEntrepriseMode() ? "" : "none";
+    if (serviceWrap) serviceWrap.style.display = "";
+    if (posteWrap) posteWrap.style.display = "";
 
     fillSelect(byId("collabFilterService"), _ctx?.services || [], "id_service", "label", "__all__", "Tous les services");
     fillSelect(byId("collabFilterPoste"), _ctx?.postes || [], "id_poste", "label", "__all__", "Tous les postes");
@@ -154,10 +153,6 @@
     fillSelect(byId("collabService"), _ctx?.services || [], "id_service", "label", "", "Aucun service");
     fillSelect(byId("collabPoste"), _ctx?.postes || [], "id_poste", "label", "", "Aucun poste");
 
-    fillSelect(byId("collabUserService"), _ctx?.services || [], "id_service", "label", "", "Aucun service");
-    refreshUserPosteOptions("");
-
-
     fillSelect(byId("collabTypeContrat"), [
       { value: "", label: "—" },
       { value: "CDI", label: "CDI" },
@@ -170,23 +165,15 @@
     ], "value", "label");
   }
 
-  function toggleFormBySource(){
-    const rhBloc = byId("collabRhBloc");
-    const userBloc = byId("collabUserBloc");
+  function setSourceHint(){
     const hint = byId("collabModalSourceHint");
-
-    if (rhBloc) rhBloc.style.display = isEntrepriseMode() ? "" : "none";
-    if (userBloc) userBloc.style.display = isEntrepriseMode() ? "none" : "";
-    if (hint) {
-      hint.textContent = isEntrepriseMode()
-        ? "Mode client : identité, contact et rattachement RH."
-        : "Mode mon entreprise : identité, contact et rattachement poste/service.";
-    }
+    if (!hint) return;
+    hint.textContent = isEntrepriseMode()
+      ? "Mode client : données collaborateur sécurisées sur l’entreprise owner."
+      : "Mode mon entreprise : tbl_utilisateur + référentiel RH unifié via id_utilisateur = id_effectif.";
   }
 
   function refreshServiceFromPoste(){
-    if (!isEntrepriseMode()) return;
-
     const selPoste = byId("collabPoste");
     const selService = byId("collabService");
     if (!selPoste || !selService) return;
@@ -207,43 +194,6 @@
     selService.disabled = false;
   }
 
-  function getPosteById(idPoste){
-    const pid = String(idPoste || "").trim();
-    if (!pid) return null;
-    return (_ctx?.postes || []).find(x => (x?.id_poste || "") === pid) || null;
-  }
-
-  function getPostesByService(idService){
-    const sid = String(idService || "").trim();
-    const postes = Array.isArray(_ctx?.postes) ? _ctx.postes.slice() : [];
-    if (!sid) return postes;
-    return postes.filter(x => (x?.id_service || "") === sid);
-  }
-
-  function refreshUserPosteOptions(selectedPosteId){
-    const selService = byId("collabUserService");
-    const selPoste = byId("collabUserPoste");
-    if (!selPoste) return;
-
-    const wanted = String(selectedPosteId || "").trim();
-    const postes = getPostesByService(selService?.value || "");
-    fillSelect(selPoste, postes, "id_poste", "label", "", "Aucun poste");
-
-    if (wanted && postes.some(x => (x?.id_poste || "") === wanted)) {
-      selPoste.value = wanted;
-    }
-  }
-
-  function syncUserServiceFromPoste(){
-    const selService = byId("collabUserService");
-    const selPoste = byId("collabUserPoste");
-    if (!selService || !selPoste) return;
-
-    const poste = getPosteById(selPoste.value);
-    selService.value = poste?.id_service || "";
-    refreshUserPosteOptions(selPoste.value);
-  }
-
   function applyExtraFrontFilters(items){
     let arr = Array.isArray(items) ? items.slice() : [];
 
@@ -251,7 +201,6 @@
       arr = arr.filter(it => {
         const isManager = !!it?.ismanager;
         const isFormateur = !!it?.isformateur;
-
         if (_filterManager && _filterFormateur) return isManager || isFormateur;
         if (_filterManager) return isManager;
         if (_filterFormateur) return isFormateur;
@@ -327,7 +276,7 @@
     renderTop();
     renderFilters();
     hydrateFormSelects();
-    toggleFormBySource();
+    setSourceHint();
   }
 
   async function loadGlobalStats(portal){
@@ -355,7 +304,6 @@
     let items = Array.isArray(data?.items) ? data.items : [];
     items = applyExtraFrontFilters(items);
     _items = items;
-
     renderList();
   }
 
@@ -377,20 +325,21 @@
   function clearForm(){
     [
       "collabPrenom","collabNom","collabEmail","collabTel","collabTel2","collabAdresse",
-      "collabCodePostal","collabVille","collabPays","collabObservations",
-      "collabMatricule","collabCodeEffectif","collabBusinessTravel","collabNiveauEdu",
-      "collabDomaineEdu","collabDateNaissance","collabDateEntree","collabDateDebutPoste",
-      "collabDateSortie","collabMotifSortie","collabNote","collabTempRole"
+      "collabCodePostal","collabVille","collabPays","collabObservations","collabMatricule",
+      "collabCodeEffectif","collabBusinessTravel","collabNiveauEdu","collabDomaineEdu",
+      "collabDateNaissance","collabDateEntree","collabDateDebutPoste","collabDateSortie",
+      "collabMotifSortie","collabNote","collabTempRole"
     ].forEach(id => {
       const el = byId(id);
       if (el) el.value = "";
     });
 
     if (byId("collabCivilite")) byId("collabCivilite").value = "";
-    if (byId("collabService")) byId("collabService").value = "";
+    if (byId("collabService")) {
+      byId("collabService").value = "";
+      byId("collabService").disabled = false;
+    }
     if (byId("collabPoste")) byId("collabPoste").value = "";
-    if (byId("collabUserService")) byId("collabUserService").value = "";
-    if (byId("collabUserPoste")) byId("collabUserPoste").value = "";
     if (byId("collabTypeContrat")) byId("collabTypeContrat").value = "";
 
     if (byId("collabActif")) byId("collabActif").checked = true;
@@ -402,7 +351,6 @@
     refreshTempRoleVisibility();
     refreshSortieVisibility();
     refreshServiceFromPoste();
-    refreshUserPosteOptions("");
 
     const btnArchive = byId("btnCollabArchive");
     if (btnArchive) btnArchive.style.display = "none";
@@ -413,8 +361,25 @@
     if (byId("collabModalSub")) byId("collabModalSub").textContent = sub || "—";
   }
 
+  function setModalBadges(data){
+    const host = byId("collabModalBadges");
+    if (!host) return;
+
+    const badges = [];
+    badges.push(data?.archive ? "Archivé" : (data?.actif ? "Actif" : "Inactif"));
+    if (data?.is_temp) badges.push("Temporaire");
+    if (data?.ismanager) badges.push("Manager");
+    if (data?.isformateur) badges.push("Formateur");
+
+    host.innerHTML = badges.map((label, idx) => {
+      const cls = idx === 0 ? "sb-badge sb-badge--accent-soft" : "sb-badge sb-badge--outline-accent";
+      return `<span class="${cls}">${esc(label)}</span>`;
+    }).join("");
+  }
+
   function buildPayload(){
-    const p = {
+    const posteId = byId("collabPoste")?.value || null;
+    return {
       civilite: byId("collabCivilite")?.value || null,
       prenom: byId("collabPrenom")?.value || null,
       nom: byId("collabNom")?.value || null,
@@ -426,11 +391,10 @@
       ville: byId("collabVille")?.value || null,
       pays: byId("collabPays")?.value || null,
       actif: !!byId("collabActif")?.checked,
-      fonction: byId("collabUserPoste")?.value || null,
+      fonction: posteId,
       observations: byId("collabObservations")?.value || null,
-
       id_service: byId("collabService")?.value || null,
-      id_poste_actuel: byId("collabPoste")?.value || null,
+      id_poste_actuel: posteId,
       type_contrat: byId("collabTypeContrat")?.value || null,
       matricule_interne: byId("collabMatricule")?.value || null,
       business_travel: byId("collabBusinessTravel")?.value || null,
@@ -449,39 +413,228 @@
       role_temp: byId("collabTempRole")?.value || null,
       code_effectif: byId("collabCodeEffectif")?.value || null
     };
+  }
 
-    if (!isEntrepriseMode()) {
-      p.id_service = null;
-      p.id_poste_actuel = null;
-      p.type_contrat = null;
-      p.matricule_interne = null;
-      p.business_travel = null;
-      p.date_naissance = null;
-      p.date_entree_entreprise = null;
-      p.date_debut_poste_actuel = null;
-      p.date_sortie_prevue = null;
-      p.niveau_education = null;
-      p.domaine_education = null;
-      p.motif_sortie = null;
-      p.note_commentaire = null;
-      p.havedatefin = false;
-      p.ismanager = false;
-      p.isformateur = false;
-      p.is_temp = false;
-      p.role_temp = null;
-      p.code_effectif = null;
+  function activateModalTab(tab){
+    document.querySelectorAll('#collabModalBody [data-tab]').forEach(btn => {
+      const isActive = (btn.getAttribute('data-tab') || '') === tab;
+      btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      if (isActive) btn.classList.add('is-active');
+      else btn.classList.remove('is-active');
+    });
+
+    document.querySelectorAll('#collabModalBody [data-panel]').forEach(panel => {
+      const isActive = (panel.getAttribute('data-panel') || '') === tab;
+      panel.classList.toggle('is-active', isActive);
+    });
+  }
+
+  function setPanelMessage(panelId, message, tone){
+    const host = byId(panelId);
+    if (!host) return;
+    const color = tone === 'error' ? ' color:#b91c1c;' : '';
+    host.innerHTML = `<div class="card-sub" style="margin:0;${color}">${esc(message)}</div>`;
+  }
+
+  function resetDetailPanels(){
+    _tabLoaded = { skills: false, certs: false, history: false };
+
+    if (_editingId) {
+      setPanelMessage('collabSkillsPanel', 'Ouvrez l’onglet pour charger les compétences.');
+      setPanelMessage('collabCertsPanel', 'Ouvrez l’onglet pour charger les certifications.');
+      setPanelMessage('collabHistoryPanel', 'Ouvrez l’onglet pour charger l’historique.');
+    } else {
+      setPanelMessage('collabSkillsPanel', 'Enregistrez d’abord le collaborateur pour accéder aux compétences.');
+      setPanelMessage('collabCertsPanel', 'Enregistrez d’abord le collaborateur pour accéder aux certifications.');
+      setPanelMessage('collabHistoryPanel', 'Enregistrez d’abord le collaborateur pour accéder à l’historique.');
+    }
+  }
+
+  function renderCompetences(data){
+    const host = byId('collabSkillsPanel');
+    if (!host) return;
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    if (!items.length) {
+      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucune compétence trouvée.</div>`;
+      return;
     }
 
-    return p;
+    const rows = items.map(x => {
+      const badges = [];
+      if (x.code) badges.push(`<span class="sb-badge sb-badge--comp">${esc(x.code)}</span>`);
+      if (x.is_required) badges.push(`<span class="sb-badge sb-badge--outline-accent">Requis</span>`);
+      if (x.domaine_titre) badges.push(`<span class="sb-badge sb-badge--comp-domain">${esc(x.domaine_titre)}</span>`);
+
+      return `
+        <tr>
+          <td>
+            <div style="font-weight:700; color:#111827;">${esc(x.intitule || '')}</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">${badges.join('')}</div>
+          </td>
+          <td style="text-align:center;">${esc(x.niveau_requis || '–')}</td>
+          <td style="text-align:center;">${esc(x.niveau_actuel || '–')}</td>
+          <td style="text-align:center;">${esc(formatDateFR(x.date_derniere_eval))}</td>
+        </tr>
+      `;
+    }).join('');
+
+    host.innerHTML = `
+      <div class="card-sub" style="margin:0 0 10px 0;">Poste actuel : <strong>${esc(data?.intitule_poste || '–')}</strong></div>
+      <div class="sb-table-wrap">
+        <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
+          <thead>
+            <tr>
+              <th>Compétence</th>
+              <th style="width:110px; text-align:center;">Niv. requis</th>
+              <th style="width:110px; text-align:center;">Niv. actuel</th>
+              <th style="width:140px; text-align:center;">Dernière éval.</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderCertifications(data){
+    const host = byId('collabCertsPanel');
+    if (!host) return;
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    if (!items.length) {
+      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucune certification trouvée.</div>`;
+      return;
+    }
+
+    const rows = items.map(x => {
+      const badges = [];
+      if (x.categorie) badges.push(`<span class="sb-badge sb-badge--outline-accent">${esc(x.categorie)}</span>`);
+      badges.push(`<span class="sb-badge sb-badge--accent-soft">${esc(x.is_required ? 'Requis' : 'Hors poste')}</span>`);
+
+      let statut = '–';
+      const s = String(x.statut_validite || '').toLowerCase();
+      if (!x.is_acquired) statut = 'Non acquis';
+      else if (s === 'valide') statut = 'Valide';
+      else if (s === 'a_renouveler') statut = 'À renouveler';
+      else if (s === 'expiree') statut = 'Expirée';
+
+      const validite = x.validite_attendue == null ? '–' : (Number(x.validite_attendue) <= 0 ? 'Permanent' : `${x.validite_attendue} mois`);
+      const jours = x.jours_restants == null ? '–' : `${x.jours_restants} j`;
+
+      return `
+        <tr>
+          <td>
+            <div style="font-weight:700; color:#111827;">${esc(x.nom_certification || '')}</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">${badges.join('')}</div>
+          </td>
+          <td style="text-align:center;">${esc(validite)}</td>
+          <td style="text-align:center;">
+            <div>${esc(statut)}</div>
+            <div class="card-sub" style="margin:6px 0 0 0;">${esc(jours)}</div>
+          </td>
+          <td style="text-align:center;">${esc(formatDateFR(x.date_obtention))}</td>
+          <td style="text-align:center;">${esc(formatDateFR(x.date_expiration || x.date_expiration_calculee))}</td>
+        </tr>
+      `;
+    }).join('');
+
+    host.innerHTML = `
+      <div class="card-sub" style="margin:0 0 10px 0;">Poste actuel : <strong>${esc(data?.intitule_poste || '–')}</strong></div>
+      <div class="sb-table-wrap">
+        <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
+          <thead>
+            <tr>
+              <th>Certification</th>
+              <th style="width:120px; text-align:center;">Validité</th>
+              <th style="width:140px; text-align:center;">État</th>
+              <th style="width:130px; text-align:center;">Obtention</th>
+              <th style="width:130px; text-align:center;">Expiration</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderHistory(data){
+    const host = byId('collabHistoryPanel');
+    if (!host) return;
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    if (!items.length) {
+      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun historique trouvé.</div>`;
+      return;
+    }
+
+    const rows = items.map(x => `
+      <tr>
+        <td style="white-space:nowrap;">${esc(x.code_action_formation || '–')}</td>
+        <td>${esc(x.titre_formation || '–')}</td>
+        <td style="text-align:center;">${esc(formatDateFR(x.date_debut_formation))}</td>
+        <td style="text-align:center;">${esc(formatDateFR(x.date_fin_formation))}</td>
+        <td style="text-align:center;">${esc(x.etat_action || '–')}</td>
+      </tr>
+    `).join('');
+
+    host.innerHTML = `
+      <div class="card-sub" style="margin:0 0 10px 0;">Formations effectuées avec JMBCONSULTANT.</div>
+      <div class="sb-table-wrap">
+        <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
+          <thead>
+            <tr>
+              <th style="width:110px;">Code</th>
+              <th>Formation</th>
+              <th style="width:120px; text-align:center;">Début</th>
+              <th style="width:120px; text-align:center;">Fin</th>
+              <th style="width:120px; text-align:center;">État</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  async function loadTabIfNeeded(portal, tab){
+    if (!_editingId || _tabLoaded[tab]) return;
+    _tabLoaded[tab] = true;
+
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
+
+    if (tab === 'skills') {
+      setPanelMessage('collabSkillsPanel', 'Chargement…');
+      const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`);
+      renderCompetences(data);
+      return;
+    }
+
+    if (tab === 'certs') {
+      setPanelMessage('collabCertsPanel', 'Chargement…');
+      const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`);
+      renderCertifications(data);
+      return;
+    }
+
+    if (tab === 'history') {
+      setPanelMessage('collabHistoryPanel', 'Chargement…');
+      const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/formations-jmb/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`);
+      renderHistory(data);
+    }
   }
 
   async function openCreateModal(){
-    _modalMode = "create";
+    _modalMode = 'create';
     _editingId = null;
     clearForm();
-    toggleFormBySource();
-    setModalHeader("Nouveau collaborateur", _ctx?.source_label || "Collaborateur");
-    openModal("modalCollaborateur");
+    setSourceHint();
+    setModalBadges({ actif: true, archive: false });
+    setModalHeader('Nouveau collaborateur', _ctx?.source_label || 'Collaborateur');
+    activateModalTab('ident');
+    resetDetailPanels();
+    openModal('modalCollaborateur');
   }
 
   async function openEditModal(portal, id){
@@ -490,112 +643,134 @@
 
     const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/detail/${encodeURIComponent(ownerId)}/${encodeURIComponent(id)}`);
 
-    _modalMode = "edit";
+    _modalMode = 'edit';
     _editingId = id;
 
     clearForm();
-    toggleFormBySource();
+    setSourceHint();
 
-    if (byId("collabCivilite")) byId("collabCivilite").value = data?.civilite || "";
-    if (byId("collabPrenom")) byId("collabPrenom").value = data?.prenom || "";
-    if (byId("collabNom")) byId("collabNom").value = data?.nom || "";
-    if (byId("collabEmail")) byId("collabEmail").value = data?.email || "";
-    if (byId("collabTel")) byId("collabTel").value = formatPhoneFr(data?.telephone || "");
-    if (byId("collabTel2")) byId("collabTel2").value = formatPhoneFr(data?.telephone2 || "");
-    if (byId("collabAdresse")) byId("collabAdresse").value = data?.adresse || "";
-    if (byId("collabCodePostal")) byId("collabCodePostal").value = data?.code_postal || "";
-    if (byId("collabVille")) byId("collabVille").value = data?.ville || "";
-    if (byId("collabPays")) byId("collabPays").value = data?.pays || "";
-    if (byId("collabActif")) byId("collabActif").checked = !!data?.actif;
-
-    if (byId("collabUserService")) byId("collabUserService").value = data?.id_service || "";
-    refreshUserPosteOptions(data?.id_poste_actuel || data?.fonction || "");
-    if (byId("collabUserPoste")) byId("collabUserPoste").value = data?.id_poste_actuel || data?.fonction || "";
-
-    if (byId("collabObservations")) byId("collabObservations").value = data?.observations || "";
-
-    if (isEntrepriseMode()) {
-      if (byId("collabService")) byId("collabService").value = data?.id_service || "";
-      if (byId("collabPoste")) byId("collabPoste").value = data?.id_poste_actuel || "";
-      if (byId("collabTypeContrat")) byId("collabTypeContrat").value = data?.type_contrat || "";
-      if (byId("collabMatricule")) byId("collabMatricule").value = data?.matricule_interne || "";
-      if (byId("collabCodeEffectif")) byId("collabCodeEffectif").value = data?.code_effectif || "";
-      if (byId("collabBusinessTravel")) byId("collabBusinessTravel").value = data?.business_travel || "";
-      if (byId("collabNiveauEdu")) byId("collabNiveauEdu").value = data?.niveau_education || "";
-      if (byId("collabDomaineEdu")) byId("collabDomaineEdu").value = data?.domaine_education || "";
-      if (byId("collabDateNaissance")) byId("collabDateNaissance").value = data?.date_naissance || "";
-      if (byId("collabDateEntree")) byId("collabDateEntree").value = data?.date_entree_entreprise || "";
-      if (byId("collabDateDebutPoste")) byId("collabDateDebutPoste").value = data?.date_debut_poste_actuel || "";
-      if (byId("collabDateSortie")) byId("collabDateSortie").value = data?.date_sortie_prevue || "";
-      if (byId("collabMotifSortie")) byId("collabMotifSortie").value = data?.motif_sortie || "";
-      if (byId("collabNote")) byId("collabNote").value = data?.note_commentaire || "";
-      if (byId("collabHaveDateFin")) byId("collabHaveDateFin").checked = !!data?.havedatefin || !!data?.date_sortie_prevue;
-      if (byId("collabManager")) byId("collabManager").checked = !!data?.ismanager;
-      if (byId("collabFormateur")) byId("collabFormateur").checked = !!data?.isformateur;
-      if (byId("collabTemp")) byId("collabTemp").checked = !!data?.is_temp;
-      if (byId("collabTempRole")) byId("collabTempRole").value = data?.role_temp || "";
-    }
+    if (byId('collabCivilite')) byId('collabCivilite').value = data?.civilite || '';
+    if (byId('collabPrenom')) byId('collabPrenom').value = data?.prenom || '';
+    if (byId('collabNom')) byId('collabNom').value = data?.nom || '';
+    if (byId('collabEmail')) byId('collabEmail').value = data?.email || '';
+    if (byId('collabTel')) byId('collabTel').value = formatPhoneFr(data?.telephone || '');
+    if (byId('collabTel2')) byId('collabTel2').value = formatPhoneFr(data?.telephone2 || '');
+    if (byId('collabAdresse')) byId('collabAdresse').value = data?.adresse || '';
+    if (byId('collabCodePostal')) byId('collabCodePostal').value = data?.code_postal || '';
+    if (byId('collabVille')) byId('collabVille').value = data?.ville || '';
+    if (byId('collabPays')) byId('collabPays').value = data?.pays || '';
+    if (byId('collabActif')) byId('collabActif').checked = !!data?.actif;
+    if (byId('collabService')) byId('collabService').value = data?.id_service || '';
+    if (byId('collabPoste')) byId('collabPoste').value = data?.id_poste_actuel || data?.fonction || '';
+    if (byId('collabTypeContrat')) byId('collabTypeContrat').value = data?.type_contrat || '';
+    if (byId('collabMatricule')) byId('collabMatricule').value = data?.matricule_interne || '';
+    if (byId('collabCodeEffectif')) byId('collabCodeEffectif').value = data?.code_effectif || '';
+    if (byId('collabBusinessTravel')) byId('collabBusinessTravel').value = data?.business_travel || '';
+    if (byId('collabNiveauEdu')) byId('collabNiveauEdu').value = data?.niveau_education || '';
+    if (byId('collabDomaineEdu')) byId('collabDomaineEdu').value = data?.domaine_education || '';
+    if (byId('collabDateNaissance')) byId('collabDateNaissance').value = data?.date_naissance || '';
+    if (byId('collabDateEntree')) byId('collabDateEntree').value = data?.date_entree_entreprise || '';
+    if (byId('collabDateDebutPoste')) byId('collabDateDebutPoste').value = data?.date_debut_poste_actuel || '';
+    if (byId('collabDateSortie')) byId('collabDateSortie').value = data?.date_sortie_prevue || '';
+    if (byId('collabMotifSortie')) byId('collabMotifSortie').value = data?.motif_sortie || '';
+    if (byId('collabObservations')) byId('collabObservations').value = data?.observations || '';
+    if (byId('collabNote')) byId('collabNote').value = data?.note_commentaire || '';
+    if (byId('collabHaveDateFin')) byId('collabHaveDateFin').checked = !!data?.havedatefin || !!data?.date_sortie_prevue;
+    if (byId('collabManager')) byId('collabManager').checked = !!data?.ismanager;
+    if (byId('collabFormateur')) byId('collabFormateur').checked = !!data?.isformateur;
+    if (byId('collabTemp')) byId('collabTemp').checked = !!data?.is_temp;
+    if (byId('collabTempRole')) byId('collabTempRole').value = data?.role_temp || '';
 
     refreshTempRoleVisibility();
     refreshSortieVisibility();
     refreshServiceFromPoste();
 
-    const btnArchive = byId("btnCollabArchive");
-    if (btnArchive) btnArchive.style.display = data?.archive ? "none" : "";
+    const btnArchive = byId('btnCollabArchive');
+    if (btnArchive) btnArchive.style.display = data?.archive ? 'none' : '';
 
-    const fullName = `${data?.prenom || ""} ${data?.nom || ""}`.trim();
-    setModalHeader(fullName || "Collaborateur", data?.archive ? "Archivé" : (data?.actif ? "Actif" : "Inactif"));
-    openModal("modalCollaborateur");
+    const fullName = `${data?.prenom || ''} ${data?.nom || ''}`.trim();
+    setModalHeader(fullName || 'Collaborateur', data?.archive ? 'Archivé' : (data?.actif ? 'Actif' : 'Inactif'));
+    setModalBadges(data || {});
+    activateModalTab('ident');
+    resetDetailPanels();
+    openModal('modalCollaborateur');
   }
 
-    async function saveModal(portal){
-        const ownerId = getOwnerId();
-        if (!ownerId) throw new Error("Owner introuvable.");
+  async function saveModal(portal){
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
 
-        const payload = buildPayload();
-        const url = _modalMode === "edit" && _editingId
-            ? `${portal.apiBase}/studio/collaborateurs/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`
-            : `${portal.apiBase}/studio/collaborateurs/${encodeURIComponent(ownerId)}`;
+    const payload = buildPayload();
+    const url = _modalMode === 'edit' && _editingId
+      ? `${portal.apiBase}/studio/collaborateurs/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`
+      : `${portal.apiBase}/studio/collaborateurs/${encodeURIComponent(ownerId)}`;
 
-        await portal.apiJson(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
+    const data = await portal.apiJson(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
 
-        closeModal("modalCollaborateur");
-        await loadGlobalStats(portal);
-        await loadList(portal);
+    if (_modalMode === 'create' && data?.id_collaborateur) {
+      _modalMode = 'edit';
+      _editingId = data.id_collaborateur;
+      setModalHeader(`${payload.prenom || ''} ${payload.nom || ''}`.trim() || 'Collaborateur', payload.actif ? 'Actif' : 'Inactif');
+      setModalBadges({ actif: !!payload.actif, archive: false, ismanager: !!payload.ismanager, isformateur: !!payload.isformateur, is_temp: !!payload.is_temp });
+      resetDetailPanels();
     }
+
+    closeModal('modalCollaborateur');
+    await loadGlobalStats(portal);
+    await loadList(portal);
+  }
 
   async function archiveCollaborateur(portal, id){
     const ownerId = getOwnerId();
     if (!ownerId || !id) return;
-    if (!window.confirm("Archiver ce collaborateur ?")) return;
+    if (!window.confirm('Archiver ce collaborateur ?')) return;
 
     await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/${encodeURIComponent(ownerId)}/${encodeURIComponent(id)}/archive`, {
-      method: "POST"
+      method: 'POST'
     });
 
-    if (_editingId === id) closeModal("modalCollaborateur");
+    if (_editingId === id) closeModal('modalCollaborateur');
     await loadGlobalStats(portal);
     await loadList(portal);
   }
 
   function bindListActions(portal){
-    byId("collabList")?.addEventListener("click", async (e) => {
-      const btn = e.target.closest("button[data-act]");
+    byId('collabList')?.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-act]');
       if (!btn) return;
 
-      const act = btn.getAttribute("data-act") || "";
-      const id = btn.getAttribute("data-id") || "";
+      const act = btn.getAttribute('data-act') || '';
+      const id = btn.getAttribute('data-id') || '';
 
       try {
-        if (act === "edit") await openEditModal(portal, id);
-        if (act === "archive") await archiveCollaborateur(portal, id);
-        } catch (err) {
-            portal.showAlert("error", getErrorMessage(err));
+        if (act === 'edit') await openEditModal(portal, id);
+        if (act === 'archive') await archiveCollaborateur(portal, id);
+      } catch (err) {
+        portal.showAlert('error', getErrorMessage(err));
+      }
+    });
+  }
+
+  function bindTabs(portal){
+    document.querySelectorAll('#collabModalBody [data-tab]').forEach(btn => {
+      if (btn.dataset.tabBound === '1') return;
+      btn.dataset.tabBound = '1';
+
+      btn.addEventListener('click', async () => {
+        const tab = btn.getAttribute('data-tab') || 'ident';
+        activateModalTab(tab);
+        if (tab === 'ident') return;
+        try {
+          await loadTabIfNeeded(portal, tab);
+        } catch (e) {
+          const panelId = tab === 'skills' ? 'collabSkillsPanel' : (tab === 'certs' ? 'collabCertsPanel' : 'collabHistoryPanel');
+          setPanelMessage(panelId, getErrorMessage(e), 'error');
         }
+      });
     });
   }
 
@@ -604,82 +779,75 @@
     _bound = true;
 
     bindListActions(portal);
+    bindTabs(portal);
 
-    byId("btnCollabAdd")?.addEventListener("click", () => {
-        openCreateModal().catch(e => portal.showAlert("error", getErrorMessage(e)));
+    byId('btnCollabAdd')?.addEventListener('click', () => {
+      openCreateModal().catch(e => portal.showAlert('error', getErrorMessage(e)));
     });
 
-    byId("collabSearch")?.addEventListener("input", (e) => {
-        _search = (e.target.value || "").trim();
-        if (_searchTimer) clearTimeout(_searchTimer);
-        _searchTimer = setTimeout(() => {
-            loadList(portal).catch(err => portal.showAlert("error", getErrorMessage(err)));
-        }, 250);
+    byId('collabSearch')?.addEventListener('input', (e) => {
+      _search = (e.target.value || '').trim();
+      if (_searchTimer) clearTimeout(_searchTimer);
+      _searchTimer = setTimeout(() => {
+        loadList(portal).catch(err => portal.showAlert('error', getErrorMessage(err)));
+      }, 250);
     });
 
-    byId("collabFilterService")?.addEventListener("change", (e) => {
-        _filterService = (e.target.value || "__all__").trim();
-        loadList(portal).catch(err => portal.showAlert("error", getErrorMessage(err)));
+    byId('collabFilterService')?.addEventListener('change', (e) => {
+      _filterService = (e.target.value || '__all__').trim();
+      loadList(portal).catch(err => portal.showAlert('error', getErrorMessage(err)));
     });
 
-    byId("collabFilterPoste")?.addEventListener("change", (e) => {
-        _filterPoste = (e.target.value || "__all__").trim();
-        loadList(portal).catch(err => portal.showAlert("error", getErrorMessage(err)));
+    byId('collabFilterPoste')?.addEventListener('change', (e) => {
+      _filterPoste = (e.target.value || '__all__').trim();
+      loadList(portal).catch(err => portal.showAlert('error', getErrorMessage(err)));
     });
 
-    byId("collabFilterActive")?.addEventListener("change", (e) => {
-        _filterActive = (e.target.value || "active").trim();
-        loadList(portal).catch(err => portal.showAlert("error", getErrorMessage(err)));
+    byId('collabFilterActive')?.addEventListener('change', (e) => {
+      _filterActive = (e.target.value || 'active').trim();
+      loadList(portal).catch(err => portal.showAlert('error', getErrorMessage(err)));
     });
 
-    byId("collabFilterManager")?.addEventListener("change", (e) => {
-        _filterManager = !!e.target.checked;
-        loadList(portal).catch(err => portal.showAlert("error", getErrorMessage(err)));
+    byId('collabFilterManager')?.addEventListener('change', (e) => {
+      _filterManager = !!e.target.checked;
+      loadList(portal).catch(err => portal.showAlert('error', getErrorMessage(err)));
     });
 
-    byId("collabFilterFormateur")?.addEventListener("change", (e) => {
-        _filterFormateur = !!e.target.checked;
-        loadList(portal).catch(err => portal.showAlert("error", getErrorMessage(err)));
+    byId('collabFilterFormateur')?.addEventListener('change', (e) => {
+      _filterFormateur = !!e.target.checked;
+      loadList(portal).catch(err => portal.showAlert('error', getErrorMessage(err)));
     });
 
-    byId("collabShowArchived")?.addEventListener("change", (e) => {
-        _showArchived = !!e.target.checked;
-        loadList(portal).catch(err => portal.showAlert("error", getErrorMessage(err)));
+    byId('collabShowArchived')?.addEventListener('change', (e) => {
+      _showArchived = !!e.target.checked;
+      loadList(portal).catch(err => portal.showAlert('error', getErrorMessage(err)));
     });
 
-    byId("btnCloseCollaborateur")?.addEventListener("click", () => closeModal("modalCollaborateur"));
-    byId("btnCollabCancel")?.addEventListener("click", () => closeModal("modalCollaborateur"));
+    byId('btnCloseCollaborateur')?.addEventListener('click', () => closeModal('modalCollaborateur'));
+    byId('btnCollabCancel')?.addEventListener('click', () => closeModal('modalCollaborateur'));
 
-    byId("btnCollabSave")?.addEventListener("click", async () => {
-        try {
-            await saveModal(portal);
-        } catch (e) {
-            portal.showAlert("error", getErrorMessage(e));
-        }
+    byId('btnCollabSave')?.addEventListener('click', async () => {
+      try {
+        await saveModal(portal);
+      } catch (e) {
+        portal.showAlert('error', getErrorMessage(e));
+      }
     });
 
-    byId("btnCollabArchive")?.addEventListener("click", async () => {
-        try {
-            if (_editingId) await archiveCollaborateur(portal, _editingId);
-        } catch (e) {
-            portal.showAlert("error", getErrorMessage(e));
-        }
+    byId('btnCollabArchive')?.addEventListener('click', async () => {
+      try {
+        if (_editingId) await archiveCollaborateur(portal, _editingId);
+      } catch (e) {
+        portal.showAlert('error', getErrorMessage(e));
+      }
     });
 
-    bindPhoneMask(byId("collabTel"));
-    bindPhoneMask(byId("collabTel2"));
+    bindPhoneMask(byId('collabTel'));
+    bindPhoneMask(byId('collabTel2'));
 
-    byId("collabPoste")?.addEventListener("change", refreshServiceFromPoste);
-
-    byId("collabUserService")?.addEventListener("change", () => {
-      const currentPoste = byId("collabUserPoste")?.value || "";
-      refreshUserPosteOptions(currentPoste);
-    });
-
-    byId("collabUserPoste")?.addEventListener("change", syncUserServiceFromPoste);
-
-    byId("collabTemp")?.addEventListener("change", refreshTempRoleVisibility);
-    byId("collabHaveDateFin")?.addEventListener("change", refreshSortieVisibility);
+    byId('collabPoste')?.addEventListener('change', refreshServiceFromPoste);
+    byId('collabTemp')?.addEventListener('change', refreshTempRoleVisibility);
+    byId('collabHaveDateFin')?.addEventListener('change', refreshSortieVisibility);
   }
 
   async function init(){
@@ -688,17 +856,17 @@
     if (!portal) return;
 
     bindOnce(portal);
-    setStatus("Chargement…");
+    setStatus('Chargement…');
     await loadContext(portal);
     await loadGlobalStats(portal);
     await loadList(portal);
-    setStatus("—");
+    setStatus('—');
   }
 
-    init().catch(e => {
-        if (window.portal && window.portal.showAlert) {
-            window.portal.showAlert("error", "Erreur collaborateurs : " + getErrorMessage(e));
-        }
-        setStatus("Erreur de chargement.");
-    });
+  init().catch(e => {
+    if (window.portal && window.portal.showAlert) {
+      window.portal.showAlert('error', 'Erreur collaborateurs : ' + getErrorMessage(e));
+    }
+    setStatus('Erreur de chargement.');
+  });
 })();

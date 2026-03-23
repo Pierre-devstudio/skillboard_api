@@ -98,210 +98,190 @@
   <div class="sb-modal-card">
     <div class="sb-modal-head">
       <div style="min-width:0; flex:1;">
-        <div class="card-title" id="collabModalTitle" style="margin:0;">Collaborateur</div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div class="card-title" id="collabModalTitle" style="margin:0;">Collaborateur</div>
+          <div class="sb-actions" id="collabModalBadges"></div>
+        </div>
         <div class="card-sub" id="collabModalSub" style="margin:4px 0 0 0;">—</div>
         <div class="card-sub sb-modal-hint" id="collabModalSourceHint">—</div>
       </div>
       <button type="button" class="sb-modal-x" id="btnCloseCollaborateur" aria-label="Fermer">&times;</button>
     </div>
 
-    <div class="sb-modal-body">
-      <div class="card" style="padding:12px; margin:0;">
-        <div class="card-title" style="font-size:14px;">Identité et contact</div>
+    <div class="sb-modal-body" id="collabModalBody">
+      <div class="sb-actions" role="tablist" aria-label="Onglets collaborateur" style="margin-bottom:12px; gap:8px;">
+        <button type="button" class="sb-btn sb-btn--soft" data-tab="ident" aria-selected="true">Identification</button>
+        <button type="button" class="sb-btn sb-btn--soft" data-tab="skills" aria-selected="false">Compétences</button>
+        <button type="button" class="sb-btn sb-btn--soft" data-tab="certs" aria-selected="false">Certifications</button>
+        <button type="button" class="sb-btn sb-btn--soft" data-tab="history" aria-selected="false">Historique</button>
+      </div>
 
-        <div class="row" style="margin-top:10px;">
-          <div class="info-item" style="flex:1; min-width:160px;">
-            <div class="label">Civilité</div>
-            <select id="collabCivilite"></select>
-          </div>
-          <div class="info-item" style="flex:1; min-width:220px;">
-            <div class="label">Prénom</div>
-            <input type="text" id="collabPrenom" />
-          </div>
-          <div class="info-item" style="flex:1; min-width:220px;">
-            <div class="label">Nom</div>
-            <input type="text" id="collabNom" />
-          </div>
-        </div>
+      <div class="sb-tab-panel is-active" data-panel="ident" role="tabpanel">
+        <div class="card" style="padding:12px; margin:0;">
+          <div class="sb-form-grid" style="margin-top:0;">
+            <div class="sb-field">
+              <div class="label">Civilité</div>
+              <select id="collabCivilite"></select>
+            </div>
+            <div class="sb-field">
+              <div class="label">Prénom</div>
+              <input type="text" id="collabPrenom" />
+            </div>
+            <div class="sb-field">
+              <div class="label">Nom</div>
+              <input type="text" id="collabNom" />
+            </div>
 
-        <div class="row">
-          <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Email</div>
-            <input type="email" id="collabEmail" />
-          </div>
-          <div class="info-item" style="flex:1; min-width:200px;">
-            <div class="label">Téléphone</div>
-            <input type="text" id="collabTel" />
-          </div>
-          <div class="info-item" style="flex:1; min-width:200px;">
-            <div class="label">Téléphone 2</div>
-            <input type="text" id="collabTel2" />
-          </div>
-        </div>
+            <div class="sb-field sb-span-2">
+              <div class="label">Adresse</div>
+              <input type="text" id="collabAdresse" />
+            </div>
+            <div class="sb-field">
+              <div class="label">Code postal</div>
+              <input type="text" id="collabCodePostal" />
+            </div>
+            <div class="sb-field">
+              <div class="label">Ville</div>
+              <input type="text" id="collabVille" />
+            </div>
+            <div class="sb-field">
+              <div class="label">Pays</div>
+              <input type="text" id="collabPays" />
+            </div>
 
-        <div class="row">
-          <div class="info-item" style="flex:2; min-width:260px;">
-            <div class="label">Adresse</div>
-            <input type="text" id="collabAdresse" />
-          </div>
-        </div>
+            <div class="sb-field">
+              <div class="label">Email</div>
+              <input type="email" id="collabEmail" />
+            </div>
+            <div class="sb-field">
+              <div class="label">Téléphone</div>
+              <input type="text" id="collabTel" />
+            </div>
+            <div class="sb-field">
+              <div class="label">Téléphone 2</div>
+              <input type="text" id="collabTel2" />
+            </div>
 
-        <div class="row">
-          <div class="info-item" style="flex:1; min-width:160px;">
-            <div class="label">Code postal</div>
-            <input type="text" id="collabCodePostal" />
-          </div>
-          <div class="info-item" style="flex:1; min-width:220px;">
-            <div class="label">Ville</div>
-            <input type="text" id="collabVille" />
-          </div>
-          <div class="info-item" style="flex:1; min-width:220px;">
-            <div class="label">Pays</div>
-            <input type="text" id="collabPays" />
-          </div>
-        </div>
+            <div class="sb-field">
+              <div class="label">Service</div>
+              <select id="collabService"></select>
+            </div>
+            <div class="sb-field">
+              <div class="label">Poste actuel</div>
+              <select id="collabPoste"></select>
+            </div>
+            <div class="sb-field">
+              <label class="sb-check" style="margin-top:28px;">
+                <input type="checkbox" id="collabActif" checked />
+                <span>Actif</span>
+              </label>
+            </div>
 
-        <div class="row">
-          <div class="info-item" style="flex:1; min-width:240px;">
-            <label class="sb-check" style="margin-top:8px;">
-              <input type="checkbox" id="collabActif" checked />
-              <span>Actif</span>
-            </label>
+            <div class="sb-field">
+              <div class="label">Code collaborateur</div>
+              <input type="text" id="collabCodeEffectif" />
+            </div>
+            <div class="sb-field">
+              <div class="label">Matricule interne</div>
+              <input type="text" id="collabMatricule" />
+            </div>
+            <div class="sb-field">
+              <div class="label">Type de contrat</div>
+              <select id="collabTypeContrat"></select>
+            </div>
+
+            <div class="sb-field">
+              <div class="label">Date d’entrée</div>
+              <input type="date" id="collabDateEntree" />
+            </div>
+            <div class="sb-field">
+              <div class="label">Début poste actuel</div>
+              <input type="date" id="collabDateDebutPoste" />
+            </div>
+            <div class="sb-field">
+              <div class="label">Date de naissance</div>
+              <input type="date" id="collabDateNaissance" />
+            </div>
+
+            <div class="sb-field">
+              <div class="label">Niveau d’éducation</div>
+              <input type="text" id="collabNiveauEdu" />
+            </div>
+            <div class="sb-field">
+              <div class="label">Domaine d’éducation</div>
+              <input type="text" id="collabDomaineEdu" />
+            </div>
+            <div class="sb-field">
+              <div class="label">Mobilité / déplacements</div>
+              <input type="text" id="collabBusinessTravel" />
+            </div>
+
+            <div class="sb-field">
+              <label class="sb-check" style="margin-top:28px;">
+                <input type="checkbox" id="collabManager" />
+                <span>Manager</span>
+              </label>
+            </div>
+            <div class="sb-field">
+              <label class="sb-check" style="margin-top:28px;">
+                <input type="checkbox" id="collabFormateur" />
+                <span>Formateur</span>
+              </label>
+            </div>
+            <div class="sb-field">
+              <label class="sb-check" style="margin-top:28px;">
+                <input type="checkbox" id="collabTemp" />
+                <span>Temporaire</span>
+              </label>
+            </div>
+
+            <div class="sb-field sb-span-2" id="collabTempRoleField" style="display:none;">
+              <div class="label">Rôle temporaire</div>
+              <input type="text" id="collabTempRole" />
+            </div>
+
+            <div class="sb-field">
+              <label class="sb-check" style="margin-top:28px;">
+                <input type="checkbox" id="collabHaveDateFin" />
+                <span>Sortie prévue</span>
+              </label>
+            </div>
+            <div class="sb-field" id="collabDateSortieField" style="display:none;">
+              <div class="label">Date de sortie prévue</div>
+              <input type="date" id="collabDateSortie" />
+            </div>
+            <div class="sb-field" id="collabMotifSortieField" style="display:none;">
+              <div class="label">Motif de sortie</div>
+              <input type="text" id="collabMotifSortie" />
+            </div>
+
+            <div class="sb-field sb-span-2">
+              <div class="label">Observations</div>
+              <textarea id="collabObservations" rows="3" class="sb-textarea--md"></textarea>
+            </div>
+            <div class="sb-field sb-span-2">
+              <div class="label">Commentaire RH</div>
+              <textarea id="collabNote" rows="4" class="sb-textarea--md"></textarea>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="card" id="collabUserBloc" style="padding:12px; margin:12px 0 0 0; display:none;">
-        <div class="card-title" style="font-size:14px;">Informations internes</div>
-
-        <div class="row" style="margin-top:10px;">
-          <div class="info-item" style="flex:1; min-width:240px;">
-            <div class="label">Service</div>
-            <select id="collabUserService"></select>
-          </div>
-          <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Poste actuel</div>
-            <select id="collabUserPoste"></select>
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Observations</div>
-            <textarea id="collabObservations" rows="4" class="sb-textarea--md"></textarea>
-          </div>
+      <div class="sb-tab-panel" data-panel="skills" role="tabpanel">
+        <div id="collabSkillsPanel" class="card" style="padding:12px; margin:0;">
+          <div class="card-sub" style="margin:0;">Enregistrez d’abord le collaborateur pour accéder aux compétences.</div>
         </div>
       </div>
 
-      <div class="card" id="collabRhBloc" style="padding:12px; margin:12px 0 0 0; display:none;">
-        <div class="card-title" style="font-size:14px;">Rattachement RH</div>
-
-        <div class="row" style="margin-top:10px;">
-          <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Poste actuel</div>
-            <select id="collabPoste"></select>
-          </div>
-          <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Service</div>
-            <select id="collabService"></select>
-          </div>
+      <div class="sb-tab-panel" data-panel="certs" role="tabpanel">
+        <div id="collabCertsPanel" class="card" style="padding:12px; margin:0;">
+          <div class="card-sub" style="margin:0;">Enregistrez d’abord le collaborateur pour accéder aux certifications.</div>
         </div>
+      </div>
 
-        <div class="row">
-          <div class="info-item" style="flex:1; min-width:180px;">
-            <div class="label">Code collaborateur</div>
-            <input type="text" id="collabCodeEffectif" />
-          </div>
-          <div class="info-item" style="flex:1; min-width:180px;">
-            <div class="label">Matricule interne</div>
-            <input type="text" id="collabMatricule" />
-          </div>
-          <div class="info-item" style="flex:1; min-width:180px;">
-            <div class="label">Type de contrat</div>
-            <select id="collabTypeContrat"></select>
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="info-item" style="flex:1; min-width:180px;">
-            <div class="label">Date d’entrée</div>
-            <input type="date" id="collabDateEntree" />
-          </div>
-          <div class="info-item" style="flex:1; min-width:180px;">
-            <div class="label">Début poste actuel</div>
-            <input type="date" id="collabDateDebutPoste" />
-          </div>
-          <div class="info-item" style="flex:1; min-width:180px;">
-            <div class="label">Date de naissance</div>
-            <input type="date" id="collabDateNaissance" />
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="info-item" style="flex:1; min-width:220px;">
-            <div class="label">Niveau d’éducation</div>
-            <input type="text" id="collabNiveauEdu" />
-          </div>
-          <div class="info-item" style="flex:1; min-width:220px;">
-            <div class="label">Domaine d’éducation</div>
-            <input type="text" id="collabDomaineEdu" />
-          </div>
-          <div class="info-item" style="flex:1; min-width:220px;">
-            <div class="label">Mobilité / déplacements</div>
-            <input type="text" id="collabBusinessTravel" />
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="info-item" style="flex:1; min-width:200px;">
-            <label class="sb-check" style="margin-top:28px;">
-              <input type="checkbox" id="collabManager" />
-              <span>Manager</span>
-            </label>
-          </div>
-          <div class="info-item" style="flex:1; min-width:200px;">
-            <label class="sb-check" style="margin-top:28px;">
-              <input type="checkbox" id="collabFormateur" />
-              <span>Formateur</span>
-            </label>
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="info-item" style="flex:1; min-width:200px;">
-            <label class="sb-check" style="margin-top:28px;">
-              <input type="checkbox" id="collabTemp" />
-              <span>Temporaire</span>
-            </label>
-          </div>
-          <div class="info-item" id="collabTempRoleField" style="flex:2; min-width:260px; display:none;">
-            <div class="label">Rôle temporaire</div>
-            <input type="text" id="collabTempRole" />
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="info-item" style="flex:1; min-width:200px;">
-            <label class="sb-check" style="margin-top:28px;">
-              <input type="checkbox" id="collabHaveDateFin" />
-              <span>Sortie prévue</span>
-            </label>
-          </div>
-          <div class="info-item" id="collabDateSortieField" style="flex:1; min-width:200px; display:none;">
-            <div class="label">Date de sortie prévue</div>
-            <input type="date" id="collabDateSortie" />
-          </div>
-          <div class="info-item" id="collabMotifSortieField" style="flex:2; min-width:260px; display:none;">
-            <div class="label">Motif de sortie</div>
-            <input type="text" id="collabMotifSortie" />
-          </div>
-        </div>
-
-        <div class="row">
-          <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Commentaire</div>
-            <textarea id="collabNote" rows="4" class="sb-textarea--md"></textarea>
-          </div>
+      <div class="sb-tab-panel" data-panel="history" role="tabpanel">
+        <div id="collabHistoryPanel" class="card" style="padding:12px; margin:0;">
+          <div class="card-sub" style="margin:0;">Enregistrez d’abord le collaborateur pour accéder à l’historique.</div>
         </div>
       </div>
     </div>
