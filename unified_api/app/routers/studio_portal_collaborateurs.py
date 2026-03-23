@@ -241,9 +241,6 @@ def _build_service_options(cur, oid: str, source_kind: str) -> list:
 
 
 def _build_poste_options(cur, oid: str, source_kind: str) -> list:
-    if source_kind != "entreprise":
-        return []
-
     cur.execute(
         """
         SELECT
