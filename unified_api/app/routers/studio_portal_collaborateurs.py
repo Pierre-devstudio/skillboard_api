@@ -615,6 +615,137 @@ class CollaborateurPayload(BaseModel):
     role_temp: Optional[str] = None
     code_effectif: Optional[str] = None
 
+class SyncPosteCompetencesPayload(BaseModel):
+    id_poste_actuel: Optional[str] = None
+
+
+def _normalize_skill_level_from_poste(value: Optional[str]) -> str:
+    s = (_norm_text(value) or "").lower()
+    s = (
+        s.replace("é", "e")
+         .replace("è", "e")
+         .replace("ê", "e")
+         .replace("ë", "e")
+         .replace("à", "a")
+         .replace("â", "a")
+         .replace("î", "i")
+         .replace("ï", "i")
+         .replace("ô", "o")
+         .replace("ö", "o")
+         .replace("û", "u")
+         .replace("ü", "u")
+    )
+
+    if s.startswith("exp"):
+        return "Expert"
+    if s.startswith("ava") or s.startswith("adv"):
+        return "Avancé"
+    return "Initial"
+
+
+def _score_for_skill_level(niveau: str) -> float:
+    if niveau == "Expert":
+        return 19.0
+    if niveau == "Avancé":
+        return 10.0
+    return 6.0
+
+
+def _get_effectif_competence_columns(cur) -> set:
+    cur.execute(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tbl_effectif_client_competence'
+        """
+    )
+    return {
+        (r.get("column_name") or "").strip()
+        for r in (cur.fetchall() or [])
+        if (r.get("column_name") or "").strip()
+    }
+
+
+def _insert_effectif_competence_row(cur, id_effectif_client: str, id_comp: str, niveau_actuel: str) -> str:
+    cols = _get_effectif_competence_columns(cur)
+
+    required = ("id_effectif_competence", "id_effectif_client", "id_comp", "niveau_actuel", "id_dernier_audit")
+    missing = [c for c in required if c not in cols]
+    if missing:
+        raise HTTPException(
+            status_code=500,
+            detail="tbl_effectif_client_competence incomplète : " + ", ".join(missing),
+        )
+
+    row_id = str(uuid.uuid4())
+    insert_cols = []
+    placeholders = []
+    params = []
+
+    def add_value(col: str, value):
+        if col in cols:
+            insert_cols.append(col)
+            placeholders.append("%s")
+            params.append(value)
+
+    def add_sql(col: str, expr: str):
+        if col in cols:
+            insert_cols.append(col)
+            placeholders.append(expr)
+
+    add_value("id_effectif_competence", row_id)
+    add_value("id_effectif_client", id_effectif_client)
+    add_value("id_comp", id_comp)
+    add_value("niveau_actuel", niveau_actuel)
+    add_value("id_dernier_audit", None)
+    add_value("actif", True)
+    add_value("archive", False)
+
+    add_sql("date_derniere_eval", "CURRENT_DATE")
+    add_sql("date_creation", "CURRENT_DATE")
+    add_sql("dernier_update", "NOW()")
+
+    cur.execute(
+        f"""
+        INSERT INTO public.tbl_effectif_client_competence (
+          {", ".join(insert_cols)}
+        ) VALUES (
+          {", ".join(placeholders)}
+        )
+        """,
+        tuple(params),
+    )
+    return row_id
+
+
+def _set_effectif_competence_last_audit(cur, id_effectif_competence: str, id_audit_competence: str, niveau_actuel: str) -> None:
+    cols = _get_effectif_competence_columns(cur)
+
+    if "id_dernier_audit" not in cols:
+        raise HTTPException(status_code=500, detail="Colonne id_dernier_audit absente de tbl_effectif_client_competence.")
+
+    set_parts = [
+        "id_dernier_audit = %s",
+        "niveau_actuel = %s",
+    ]
+    params = [id_audit_competence, niveau_actuel]
+
+    if "date_derniere_eval" in cols:
+        set_parts.append("date_derniere_eval = CURRENT_DATE")
+    if "dernier_update" in cols:
+        set_parts.append("dernier_update = NOW()")
+
+    params.append(id_effectif_competence)
+
+    cur.execute(
+        f"""
+        UPDATE public.tbl_effectif_client_competence
+        SET {", ".join(set_parts)}
+        WHERE id_effectif_competence = %s
+        """,
+        tuple(params),
+    )
 
 # ------------------------------------------------------
 # Context
@@ -1334,6 +1465,159 @@ def studio_collab_competences(id_owner: str, id_collaborateur: str, request: Req
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/competences error: {e}")
 
+@router.post("/studio/collaborateurs/competences/sync-poste/{id_owner}/{id_collaborateur}")
+def studio_collab_sync_competences_from_poste(
+    id_owner: str,
+    id_collaborateur: str,
+    payload: SyncPosteCompetencesPayload,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+
+                id_effectif_data = (scope.get("id_effectif_data") or "").strip()
+                if not id_effectif_data:
+                    raise HTTPException(status_code=400, detail="Identifiant salarié exploitable introuvable.")
+
+                id_poste = _norm_text(payload.id_poste_actuel) or _norm_text(scope.get("id_poste_actuel"))
+                if not id_poste:
+                    raise HTTPException(status_code=400, detail="Aucun poste actuel sélectionné.")
+
+                _fetch_poste_service(cur, oid, id_poste)
+
+                cur.execute(
+                    """
+                    SELECT COALESCE(intitule_poste, '') AS intitule_poste
+                    FROM public.tbl_fiche_poste
+                    WHERE id_poste = %s
+                      AND id_owner = %s
+                      AND id_ent = %s
+                      AND COALESCE(actif, TRUE) = TRUE
+                    LIMIT 1
+                    """,
+                    (id_poste, oid, oid),
+                )
+                poste_row = cur.fetchone() or {}
+                intitule_poste = (poste_row.get("intitule_poste") or "").strip() or None
+
+                cur.execute(
+                    """
+                    SELECT
+                      fpc.id_competence AS id_comp,
+                      fpc.niveau_requis
+                    FROM public.tbl_fiche_poste_competence fpc
+                    JOIN public.tbl_competence c
+                      ON c.id_comp = fpc.id_competence
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                     AND COALESCE(c.etat, 'active') = 'active'
+                    WHERE fpc.id_poste = %s
+                    ORDER BY COALESCE(fpc.poids_criticite, 0) DESC, c.intitule
+                    """,
+                    (id_poste,),
+                )
+                req_rows = cur.fetchall() or []
+
+                ecc_cols = _get_effectif_competence_columns(cur)
+                active_where = " AND COALESCE(ecc.actif, TRUE) = TRUE" if "actif" in ecc_cols else ""
+
+                cur.execute(
+                    f"""
+                    SELECT ecc.id_comp
+                    FROM public.tbl_effectif_client_competence ecc
+                    WHERE ecc.id_effectif_client = %s
+                      AND COALESCE(ecc.archive, FALSE) = FALSE
+                      {active_where}
+                    """,
+                    (id_effectif_data,),
+                )
+                existing_ids = {
+                    (r.get("id_comp") or "").strip()
+                    for r in (cur.fetchall() or [])
+                    if (r.get("id_comp") or "").strip()
+                }
+
+                inserted = 0
+                skipped_existing = 0
+
+                for r in req_rows:
+                    id_comp = (r.get("id_comp") or "").strip()
+                    if not id_comp:
+                        continue
+
+                    if id_comp in existing_ids:
+                        skipped_existing += 1
+                        continue
+
+                    niveau = _normalize_skill_level_from_poste(r.get("niveau_requis"))
+                    note = _score_for_skill_level(niveau)
+
+                    id_effectif_competence = _insert_effectif_competence_row(
+                        cur,
+                        id_effectif_data,
+                        id_comp,
+                        niveau,
+                    )
+
+                    id_audit = str(uuid.uuid4())
+                    cur.execute(
+                        """
+                        INSERT INTO public.tbl_effectif_client_audit_competence (
+                          id_audit_competence,
+                          id_effectif_competence,
+                          date_audit,
+                          methode_eval,
+                          resultat_eval
+                        ) VALUES (
+                          %s, %s, CURRENT_DATE, %s, %s
+                        )
+                        """,
+                        (
+                            id_audit,
+                            id_effectif_competence,
+                            "synchro_premier",
+                            note,
+                        ),
+                    )
+
+                    _set_effectif_competence_last_audit(
+                        cur,
+                        id_effectif_competence,
+                        id_audit,
+                        niveau,
+                    )
+
+                    existing_ids.add(id_comp)
+                    inserted += 1
+
+                conn.commit()
+
+        return {
+            "ok": True,
+            "id_collaborateur": cid,
+            "id_effectif_data": id_effectif_data,
+            "id_poste_actuel": id_poste,
+            "intitule_poste": intitule_poste,
+            "inserted": inserted,
+            "skipped_existing": skipped_existing,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/competences/sync-poste error: {e}")
 
 @router.get("/studio/collaborateurs/certifications/{id_owner}/{id_collaborateur}")
 def studio_collab_certifications(id_owner: str, id_collaborateur: str, request: Request):

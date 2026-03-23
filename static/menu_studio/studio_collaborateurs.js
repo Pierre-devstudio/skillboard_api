@@ -66,6 +66,57 @@
     return d.toLocaleDateString("fr-FR");
   }
 
+  function getCurrentPosteForSkills(){
+    const sel = byId('collabPoste');
+    const id = (sel?.value || '').trim();
+    const label = id && sel ? ((sel.options?.[sel.selectedIndex]?.textContent || '').trim()) : '';
+    return { id, label };
+  }
+
+  async function syncCompetencesFromSelectedPoste(portal){
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error("Owner introuvable.");
+
+    const poste = getCurrentPosteForSkills();
+    if (!poste.id) throw new Error("Sélectionnez un poste actuel.");
+
+    const btn = byId('btnSyncCollabSkillsFromPoste');
+    const previousText = btn ? btn.textContent : '';
+
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Import…';
+    }
+
+    try {
+      const data = await portal.apiJson(
+        `${portal.apiBase}/studio/collaborateurs/competences/sync-poste/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_poste_actuel: poste.id })
+        }
+      );
+
+      _tabLoaded.skills = false;
+      await loadTabIfNeeded(portal, 'skills');
+
+      const inserted = Number(data?.inserted || 0);
+      const skipped = Number(data?.skipped_existing || 0);
+      const msg = inserted > 0
+        ? `${inserted} compétence(s) ajoutée(s). ${skipped} déjà présente(s).`
+        : `Aucune compétence ajoutée. ${skipped} déjà présente(s).`;
+
+      if (portal.showAlert) portal.showAlert('success', msg);
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = previousText || 'Importer les compétences du poste';
+      }
+    }
+  }
+
   function getOwnerId() {
     const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
     if (pid) return pid;
@@ -450,51 +501,85 @@
     }
   }
 
-  function renderCompetences(data){
+  function renderCompetences(data, portal){
     const host = byId('collabSkillsPanel');
     if (!host) return;
-    const items = Array.isArray(data?.items) ? data.items : [];
 
-    if (!items.length) {
-      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucune compétence trouvée.</div>`;
-      return;
-    }
+    const items = Array.isArray(data?.items) ? data.items : [];
+    const poste = getCurrentPosteForSkills();
+    const canSync = !!_editingId && !!poste.id;
+    const posteLabel = poste.label || data?.intitule_poste || '–';
 
     const rows = items.map(x => {
-      const badges = [];
-      if (x.code) badges.push(`<span class="sb-badge sb-badge--comp">${esc(x.code)}</span>`);
-      if (x.is_required) badges.push(`<span class="sb-badge sb-badge--outline-accent">Requis</span>`);
-      if (x.domaine_titre) badges.push(`<span class="sb-badge sb-badge--comp-domain">${esc(x.domaine_titre)}</span>`);
+      const niveau = (x.niveau_actuel || '').trim() || '–';
+      const lastEval = formatDateFR(x.date_derniere_eval);
+      const domTitle = (x.domaine_titre || '').toString().trim() || 'Catégorie';
+      const domColor = (x.domaine_couleur || '').toString().trim();
+      const domStyle = domColor ? ` style="--dom-color:${esc(domColor)}"` : '';
 
       return `
         <tr>
           <td>
-            <div style="font-weight:700; color:#111827;">${esc(x.intitule || '')}</div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">${badges.join('')}</div>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              ${x.code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(x.code)}</span>` : ''}
+              <div class="sb-comp-title">${esc(x.intitule || '')}</div>
+            </div>
+            <div style="margin-top:6px;">
+              <span class="sb-badge sb-badge-domaine"${domStyle}>${esc(domTitle)}</span>
+            </div>
           </td>
-          <td style="text-align:center;">${esc(x.niveau_requis || '–')}</td>
-          <td style="text-align:center;">${esc(x.niveau_actuel || '–')}</td>
-          <td style="text-align:center;">${esc(formatDateFR(x.date_derniere_eval))}</td>
+          <td style="text-align:center;">${esc(niveau)}</td>
+          <td style="text-align:center;">${esc(lastEval)}</td>
         </tr>
       `;
     }).join('');
 
     host.innerHTML = `
-      <div class="card-sub" style="margin:0 0 10px 0;">Poste actuel : <strong>${esc(data?.intitule_poste || '–')}</strong></div>
-      <div class="sb-table-wrap">
-        <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
-          <thead>
-            <tr>
-              <th>Compétence</th>
-              <th style="width:110px; text-align:center;">Niv. requis</th>
-              <th style="width:110px; text-align:center;">Niv. actuel</th>
-              <th style="width:140px; text-align:center;">Dernière éval.</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:0 0 10px 0;">
+        <div class="card-sub" style="margin:0;">
+          Poste actuel : <strong>${esc(posteLabel)}</strong>
+        </div>
+        ${canSync ? `
+          <button
+            type="button"
+            class="sb-btn sb-btn--soft"
+            id="btnSyncCollabSkillsFromPoste"
+          >
+            Importer les compétences du poste
+          </button>
+        ` : ``}
       </div>
+
+      ${
+        items.length
+          ? `
+            <div class="sb-table-wrap">
+              <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
+                <thead>
+                  <tr>
+                    <th>Compétence</th>
+                    <th style="width:120px; text-align:center;">Niv. actuel</th>
+                    <th style="width:140px; text-align:center;">Dernière éval.</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          `
+          : `<div class="card-sub" style="margin:0;">Aucune compétence trouvée.</div>`
+      }
     `;
+
+    const btn = byId('btnSyncCollabSkillsFromPoste');
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        try {
+          await syncCompetencesFromSelectedPoste(portal);
+        } catch (e) {
+          if (portal.showAlert) portal.showAlert('error', getErrorMessage(e));
+        }
+      });
+    }
   }
 
   function renderCertifications(data){
@@ -607,7 +692,7 @@
     if (tab === 'skills') {
       setPanelMessage('collabSkillsPanel', 'Chargement…');
       const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`);
-      renderCompetences(data);
+      renderCompetences(data, portal);
       return;
     }
 
