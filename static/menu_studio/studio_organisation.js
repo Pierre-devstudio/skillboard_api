@@ -989,7 +989,6 @@
         }
 
         resetPosteCompAiUi();
-        openModal("modalPosteCompAi");
 
         const loading = byId("posteCompAiLoading");
         if (loading) loading.style.display = "";
@@ -1012,6 +1011,7 @@
                 missing: Array.isArray(res?.missing) ? res.missing : [],
             };
             renderPosteCompAiResults();
+            openModal("modalPosteCompAi");
         } finally {
             closeIaBusyOverlay();
             if (loading) loading.style.display = "none";
