@@ -349,22 +349,87 @@ def _normalize_ai_comp_title(title: Optional[str], description: Optional[str]) -
     return t or d
 
 
-def _normalize_eval_text(v: Optional[str], max_len: int = 120) -> str:
-    s = _clean_ai_comp_text(v, max_len)
+def _eval_fallback_text(crit_name: Optional[str], level_idx: int) -> str:
+    base = _clean_ai_comp_text(crit_name, 70).lower()
+    if not base:
+        base = "la pratique attendue"
+
+    templates = {
+        1: f"Réalise {base} sur des cas simples, avec repères et vérifications.",
+        2: f"Réalise {base} correctement dans les situations courantes.",
+        3: f"Réalise {base} de façon autonome, structurée et fiable.",
+        4: f"Réalise {base} avec maîtrise, adaptation et sécurisation du résultat.",
+    }
+    return templates.get(level_idx, templates[4])[:120]
+
+
+def _normalize_eval_text(v: Optional[str], max_len: int = 120, crit_name: Optional[str] = None, level_idx: int = 1) -> str:
+    s = _clean_ai_comp_text(v, max_len * 2)
     if not s:
-        return ""
+        return _eval_fallback_text(crit_name, level_idx)
 
     s = re.sub(r"^(la personne évaluée|la personne evaluee|la personne|l['’]évalué|l['’]evalue)\s+", "", s, flags=re.I)
     s = re.sub(r"^(est capable de|sait|peut)\s+", "", s, flags=re.I)
-    s = s.strip()
+    s = s.strip(" -–•")
 
-    if not s:
-        return ""
+    words = [w for w in re.split(r"\s+", s) if w]
+    if len(words) < 4 or len(s) < 24:
+        s = _eval_fallback_text(crit_name, level_idx)
 
     s = s[0].upper() + s[1:]
     if s[-1] not in ".!?":
         s += "."
     return s[:max_len]
+
+
+def _compact_ai_grille(ge: dict) -> dict:
+    items = []
+    seen = set()
+
+    for i in range(1, 5):
+        k = f"Critere{i}"
+        node = ge.get(k) or {"Nom": "", "Eval": ["", "", "", ""]}
+        nom = _clean_ai_comp_text(node.get("Nom"), 140)
+        raw_evals = (node.get("Eval") or ["", "", "", ""])[:4]
+
+        if not nom and not any(_clean_text(x) for x in raw_evals):
+            continue
+
+        if not nom:
+            nom = "Mise en œuvre de la compétence"
+
+        key = _norm_text_search(nom)
+        if key in seen:
+            continue
+        seen.add(key)
+
+        evals = [
+            _normalize_eval_text(raw_evals[0] if len(raw_evals) > 0 else "", 120, nom, 1),
+            _normalize_eval_text(raw_evals[1] if len(raw_evals) > 1 else "", 120, nom, 2),
+            _normalize_eval_text(raw_evals[2] if len(raw_evals) > 2 else "", 120, nom, 3),
+            _normalize_eval_text(raw_evals[3] if len(raw_evals) > 3 else "", 120, nom, 4),
+        ]
+        items.append({"Nom": nom, "Eval": evals})
+
+    if not items:
+        nom = "Mise en œuvre de la compétence"
+        items.append({
+            "Nom": nom,
+            "Eval": [
+                _eval_fallback_text(nom, 1),
+                _eval_fallback_text(nom, 2),
+                _eval_fallback_text(nom, 3),
+                _eval_fallback_text(nom, 4),
+            ]
+        })
+
+    out = {}
+    for i in range(1, 5):
+        if i <= len(items):
+            out[f"Critere{i}"] = items[i - 1]
+        else:
+            out[f"Critere{i}"] = {"Nom": "", "Eval": ["", "", "", ""]}
+    return out
 
 
 def _level_score(txt: Optional[str]) -> int:
@@ -409,26 +474,7 @@ def _normalize_ai_comp_item(item: dict) -> None:
     _fix_abc_levels(item)
 
     ge = _sanitize_grille(item.get("grille_evaluation"))
-    seen = set()
-    for i in range(1, 5):
-        k = f"Critere{i}"
-        c = ge.get(k) or {"Nom": "", "Eval": ["", "", "", ""]}
-        nom = _clean_ai_comp_text(c.get("Nom"), 140)
-        key = _norm_text_search(nom)
-
-        if key and key in seen:
-            ge[k] = {"Nom": "", "Eval": ["", "", "", ""]}
-            continue
-
-        if key:
-            seen.add(key)
-
-        ge[k] = {
-            "Nom": nom,
-            "Eval": [_normalize_eval_text(x, 120) for x in (c.get("Eval") or ["", "", "", ""])[:4]]
-        }
-
-    item["grille_evaluation"] = ge
+    item["grille_evaluation"] = _compact_ai_grille(ge)
 
 def _norm_text_search(v: Optional[str]) -> str:
     s = _clean_text(v).lower()
@@ -557,6 +603,28 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
     if not t:
         return None
 
+    def _core_phrase(v: Optional[str]) -> str:
+        s = _norm_text_search(v)
+        if not s:
+            return ""
+        parts = [p for p in s.split(" ") if p]
+        if parts and _starts_with_action_verb(parts[0]):
+            parts = parts[1:]
+        stop = {"de", "des", "du", "d", "la", "le", "les", "un", "une", "et", "en", "pour", "sur", "au", "aux"}
+        parts = [p for p in parts if p not in stop]
+        return " ".join(parts).strip()
+
+    def _token_overlap(a: Optional[str], b: Optional[str]) -> float:
+        ta = _token_set(a)
+        tb = _token_set(b)
+        if not ta or not tb:
+            return 0.0
+        inter = len(ta & tb)
+        union = len(ta | tb)
+        subset = inter / max(1, min(len(ta), len(tb)))
+        jacc = inter / max(1, union)
+        return max(jacc, subset * 0.92)
+
     terms = []
     for raw in [t] + list(search_terms or []):
         s = _clean_text(raw)
@@ -564,20 +632,11 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
             continue
         if s.lower() not in [x.lower() for x in terms]:
             terms.append(s)
-        if len(terms) >= 6:
+        if len(terms) >= 8:
             break
 
-    if not terms:
-        return None
-
-    where_parts = []
-    params = [oid]
-    for s in terms:
-        like = f"%{s}%"
-        where_parts.append("(c.intitule ILIKE %s OR c.code ILIKE %s OR COALESCE(c.description,'') ILIKE %s)")
-        params.extend([like, like, like])
-
-    sql = f"""
+    cur.execute(
+        """
         SELECT
           c.id_comp,
           c.code,
@@ -585,6 +644,10 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
           c.description,
           c.domaine,
           c.etat,
+          c.niveaua,
+          c.niveaub,
+          c.niveauc,
+          dc.titre AS domaine_titre,
           dc.titre_court AS domaine_titre_court,
           dc.couleur AS domaine_couleur
         FROM public.tbl_competence c
@@ -593,30 +656,54 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
          AND COALESCE(dc.masque, FALSE) = FALSE
         WHERE c.id_owner = %s
           AND COALESCE(c.masque, FALSE) = FALSE
-          AND ({' OR '.join(where_parts)})
         ORDER BY lower(c.intitule)
-        LIMIT 40
-    """
-    cur.execute(sql, tuple(params))
+        """,
+        (oid,),
+    )
     rows = cur.fetchall() or []
 
+    core_t = _core_phrase(t)
     best = None
     best_score = 0.0
 
     for r in rows:
-        scores = [
-            _similarity_score(t, r.get("intitule")),
-            _similarity_score(t, r.get("description")),
-        ]
+        cand_title = _clean_text(r.get("intitule"))
+        cand_desc = _clean_text(r.get("description"))
+        cand_domain = _clean_text(r.get("domaine_titre_court") or r.get("domaine_titre"))
+        cand_levels = " ".join([
+            _clean_text(r.get("niveaua")),
+            _clean_text(r.get("niveaub")),
+            _clean_text(r.get("niveauc")),
+        ]).strip()
+        combined = " ".join([cand_title, cand_desc, cand_domain, cand_levels]).strip()
+
+        score = max(
+            _similarity_score(t, cand_title),
+            _similarity_score(core_t, _core_phrase(cand_title)),
+            _similarity_score(t, combined),
+            _token_overlap(t, cand_title),
+            _token_overlap(core_t, cand_title),
+            _token_overlap(t, combined),
+        )
+
         for term in terms:
-            scores.append(_similarity_score(term, r.get("intitule")))
-            scores.append(_similarity_score(term, r.get("description")))
-        score = max(scores) if scores else 0.0
+            score = max(
+                score,
+                _similarity_score(term, cand_title),
+                _similarity_score(term, combined),
+                _token_overlap(term, cand_title),
+                _token_overlap(term, combined),
+            )
+
+        cand_core = _core_phrase(cand_title)
+        if core_t and cand_core and (core_t in cand_core or cand_core in core_t):
+            score = max(score, 0.88)
+
         if score > best_score:
             best_score = score
             best = r
 
-    return best if best_score >= 0.66 else None
+    return best if best_score >= 0.58 else None
 
 
 def _sanitize_grille(v: Any) -> dict:
@@ -954,6 +1041,27 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                         payload.responsabilites_html = row.get("responsabilites")
         if not title:
             raise HTTPException(status_code=400, detail="Intitulé du poste obligatoire pour la recherche IA.")
+        
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                cur.execute(
+                    """
+                    SELECT id_domaine_competence, titre, titre_court
+                    FROM public.tbl_domaine_competence
+                    WHERE COALESCE(masque, FALSE) = FALSE
+                    ORDER BY COALESCE(ordre_affichage, 999999), lower(COALESCE(titre_court, titre, id_domaine_competence))
+                    """
+                )
+                domain_rows = cur.fetchall() or []
+
+        domain_txt = "\n".join([
+            f"- {(r.get('titre_court') or r.get('titre') or '').strip()}"
+            for r in domain_rows
+            if (r.get('titre_court') or r.get('titre') or '').strip()
+        ]) or "- aucun domaine"
 
         schema = {
             "type": "object",
@@ -963,7 +1071,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                 "competences": {
                     "type": "array",
                     "minItems": 1,
-                    "maxItems": 10,
+                    "maxItems": 40,
                     "items": {
                         "type": "object",
                         "additionalProperties": False,
@@ -1014,6 +1122,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
             "Tu proposes uniquement des compétences utiles au poste. Pas de soft skills génériques sauf si elles sont vraiment indispensables à l'exécution. "
             "Tu évites les doublons. "
             "IMPORTANT: l'intitulé d'une compétence doit commencer par un verbe d'action à l'infinitif et être réutilisable dans un référentiel RH. "
+            "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
             "Exemples de forme attendue: 'Animer des sessions de formation', 'Piloter des indicateurs qualité', 'Administrer une infrastructure web'. "
             "Exemples interdits: thèmes nominaux, axes de travail, intitulés fourre-tout, formulations avec '&' ou '/'. "
             "La description doit être courte, propre, opérationnelle, sans URL, sans source, sans nom de site, sans citation. "
@@ -1037,6 +1146,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
             f"interactions: {(payload.ai_interactions or '').strip()}\n"
             f"contraintes complémentaires: {(payload.ai_contraintes or '').strip()}\n"
             f"contraintes fiche: niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n"
+            f"Domaines de compétences autorisés (choisir exactement dans cette liste ou vide si aucun ne convient):\n{domain_txt}\n"
             "Produis toutes les compétences nécessaires à la réalisation effective des tâches décrites pour ce poste.\n"
             "N'omets pas une compétence utile sous prétexte de concision.\n"
             "Ne crée pas de doublons ni de variantes inutiles d'une même compétence.\n"
@@ -1114,7 +1224,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                             "description": _clean_ai_comp_text(item.get("description"), 240),
                             "why_needed": _clean_ai_comp_text(item.get("why_needed"), 240),
                             "domaine_id": domaine_id,
-                            "domaine_label": _clean_ai_comp_text(domaine_label or item.get("domaine_hint"), 80),
+                            "domaine_label": _clean_ai_comp_text(domaine_label or "", 80),
                             "domaine_couleur": domaine_couleur,
                             "recommended_level": lvl,
                             "recommended_level_label": {"A": "Initial", "B": "Avancé", "C": "Expert"}.get(lvl, lvl),
