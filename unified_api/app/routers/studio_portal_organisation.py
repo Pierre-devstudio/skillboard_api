@@ -1,8 +1,13 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Any
 from psycopg.rows import dict_row
 import uuid
+import os
+import json
+import re
+import unicodedata
+from difflib import SequenceMatcher
 from datetime import date as py_date
 
 from app.routers.skills_portal_common import get_conn
@@ -11,6 +16,11 @@ from app.routers.studio_portal_common import (
     studio_fetch_owner,
     studio_require_min_role,
 )
+
+try:
+    from openai import OpenAI
+except Exception:
+    OpenAI = None
 
 router = APIRouter()
 
@@ -246,6 +256,251 @@ def _calc_poids_criticite_100(freq_usage_0_10: int, impact_0_10: int, dependance
         total = 100
     return int(total)
 
+def _next_comp_code(cur, oid: str) -> str:
+    lock_key = f"comp_code:{oid}:CO"
+    cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (lock_key,))
+
+    cur.execute(
+        """
+        SELECT COALESCE(
+          MAX( (regexp_match(code, '^CO([0-9]{5})$'))[1]::int ),
+          0
+        ) AS max_n
+        FROM public.tbl_competence
+        WHERE id_owner = %s
+          AND code ~ '^CO[0-9]{5}$'
+        """,
+        (oid,),
+    )
+    r = cur.fetchone() or {}
+    max_n_raw = r.get("max_n")
+    max_n = int(max_n_raw) if max_n_raw is not None else 0
+    nxt = max_n + 1
+    if nxt > 99999:
+        raise HTTPException(status_code=400, detail="Limite de numérotation atteinte (CO99999).")
+    return f"CO{nxt:05d}"
+
+
+def _norm_text_search(v: Optional[str]) -> str:
+    s = unicodedata.normalize("NFD", (v or "").strip().lower())
+    s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
+    s = re.sub(r"[^a-z0-9]+", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _token_set(v: Optional[str]) -> set:
+    toks = [t for t in _norm_text_search(v).split(" ") if len(t) >= 3]
+    stop = {"des", "les", "une", "pour", "avec", "dans", "sur", "aux", "par", "and", "the"}
+    return {t for t in toks if t not in stop}
+
+
+def _similarity_score(a: Optional[str], b: Optional[str]) -> float:
+    na = _norm_text_search(a)
+    nb = _norm_text_search(b)
+    if not na or not nb:
+        return 0.0
+    if na == nb:
+        return 1.0
+    ratio = SequenceMatcher(None, na, nb).ratio()
+    ta = _token_set(na)
+    tb = _token_set(nb)
+    overlap = (len(ta & tb) / max(1, len(ta | tb))) if (ta or tb) else 0.0
+    contains = 1.0 if (na in nb or nb in na) and min(len(ta), len(tb)) >= 2 else 0.0
+    return max(ratio, overlap, contains * 0.9)
+
+
+def _html_to_text(v: Optional[str]) -> str:
+    s = (v or "").strip()
+    if not s:
+        return ""
+    s = re.sub(r"<br\s*/?>", "\n", s, flags=re.I)
+    s = re.sub(r"</p>|</li>|</ol>|</ul>", "\n", s, flags=re.I)
+    s = re.sub(r"<[^>]+>", " ", s)
+    s = re.sub(r"\u00a0", " ", s)
+    s = re.sub(r"[ \t]+", " ", s)
+    s = re.sub(r"\n{3,}", "\n\n", s)
+    return s.strip()
+
+
+def _response_output_text(resp) -> str:
+    txt = (getattr(resp, "output_text", None) or "").strip()
+    if txt:
+        return txt
+
+    parts = []
+    for item in (getattr(resp, "output", None) or []):
+        if getattr(item, "type", None) != "message":
+            continue
+        for c in (getattr(item, "content", None) or []):
+            t = getattr(c, "text", None)
+            if t:
+                parts.append(t)
+            elif isinstance(c, dict) and c.get("text"):
+                parts.append(c.get("text"))
+    return "\n".join([p for p in parts if p]).strip()
+
+
+def _openai_responses_json(model: str, schema_name: str, schema: dict, system_prompt: str, user_prompt: str, use_web: bool = False) -> dict:
+    if OpenAI is None:
+        raise HTTPException(status_code=500, detail="Lib OpenAI manquante (pip install openai).")
+
+    api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY non configurée.")
+
+    client = OpenAI(api_key=api_key)
+    kwargs = {
+        "model": model,
+        "input": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "text": {
+            "format": {
+                "type": "json_schema",
+                "name": schema_name,
+                "schema": schema,
+                "strict": True,
+            }
+        },
+    }
+    if use_web:
+        kwargs["tools"] = [{"type": "web_search"}]
+        kwargs["tool_choice"] = "auto"
+
+    resp = client.responses.create(**kwargs)
+    content = _response_output_text(resp)
+    if not content:
+        raise HTTPException(status_code=500, detail="Réponse IA vide.")
+    try:
+        return json.loads(content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Réponse IA invalide (JSON): {e}")
+
+
+def _resolve_domain_id(cur, hint: Optional[str]) -> Optional[str]:
+    h = (hint or "").strip()
+    if not h:
+        return None
+    cur.execute(
+        """
+        SELECT id_domaine_competence, titre, titre_court
+        FROM public.tbl_domaine_competence
+        WHERE COALESCE(masque, FALSE) = FALSE
+        ORDER BY COALESCE(ordre_affichage, 999999), lower(COALESCE(titre_court, titre, id_domaine_competence))
+        """
+    )
+    rows = cur.fetchall() or []
+    best = None
+    best_score = 0.0
+    for r in rows:
+        for label in [r.get("titre_court"), r.get("titre"), r.get("id_domaine_competence")]:
+            score = _similarity_score(h, label)
+            if score > best_score:
+                best_score = score
+                best = r.get("id_domaine_competence")
+    return best if best_score >= 0.72 else None
+
+
+def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List[str]) -> Optional[dict]:
+    t = (title or "").strip()
+    if not t:
+        return None
+
+    terms = []
+    for raw in [t] + list(search_terms or []):
+        s = (raw or "").strip()
+        if len(s) < 3:
+            continue
+        if s.lower() not in [x.lower() for x in terms]:
+            terms.append(s)
+        if len(terms) >= 4:
+            break
+
+    if not terms:
+        return None
+
+    where_parts = []
+    params = [oid]
+    for s in terms:
+        like = f"%{s}%"
+        where_parts.append("(c.intitule ILIKE %s OR c.code ILIKE %s OR COALESCE(c.description,'') ILIKE %s)")
+        params.extend([like, like, like])
+
+    sql = f"""
+        SELECT
+          c.id_comp,
+          c.code,
+          c.intitule,
+          c.description,
+          c.domaine,
+          dc.titre_court AS domaine_titre_court,
+          dc.couleur AS domaine_couleur
+        FROM public.tbl_competence c
+        LEFT JOIN public.tbl_domaine_competence dc
+          ON dc.id_domaine_competence = c.domaine
+         AND COALESCE(dc.masque, FALSE) = FALSE
+        WHERE c.id_owner = %s
+          AND COALESCE(c.masque, FALSE) = FALSE
+          AND ({' OR '.join(where_parts)})
+        ORDER BY lower(c.intitule)
+        LIMIT 30
+    """
+    cur.execute(sql, tuple(params))
+    rows = cur.fetchall() or []
+    best = None
+    best_score = 0.0
+    for r in rows:
+        score = _similarity_score(t, r.get("intitule"))
+        if score > best_score:
+            best_score = score
+            best = r
+    return best if best_score >= 0.80 else None
+
+
+def _sanitize_grille(v: Any) -> dict:
+    ge = v if isinstance(v, dict) else {}
+    out = {}
+    for idx in range(1, 5):
+        k = f"Critere{idx}"
+        item = ge.get(k) or {}
+        nom = (item.get("Nom") or "").strip() if isinstance(item, dict) else ""
+        evals = item.get("Eval") if isinstance(item, dict) else None
+        evals = evals if isinstance(evals, list) else []
+        evals = [str(x or "").strip()[:120] for x in evals[:4]]
+        while len(evals) < 4:
+            evals.append("")
+        out[k] = {"Nom": nom[:140], "Eval": evals}
+    return out
+
+
+def _upsert_poste_comp_assoc(cur, id_poste: str, id_competence: str, niveau_requis: str, freq_usage: int, impact_resultat: int, dependance: int) -> None:
+    cur.execute(
+        """
+        INSERT INTO public.tbl_fiche_poste_competence
+          (id_poste, id_competence, niveau_requis, freq_usage, impact_resultat, dependance, poids_criticite, archive)
+        VALUES
+          (%s, %s, %s, %s, %s, %s, %s, FALSE)
+        ON CONFLICT (id_poste, id_competence)
+        DO UPDATE SET
+          niveau_requis = EXCLUDED.niveau_requis,
+          freq_usage = EXCLUDED.freq_usage,
+          impact_resultat = EXCLUDED.impact_resultat,
+          dependance = EXCLUDED.dependance,
+          poids_criticite = EXCLUDED.poids_criticite,
+          archive = FALSE
+        """,
+        (
+            id_poste,
+            id_competence,
+            (niveau_requis or "A").strip()[:1].upper() or "A",
+            _clamp_0_10(freq_usage),
+            _clamp_0_10(impact_resultat),
+            _clamp_0_10(dependance),
+            _calc_poids_criticite_100(freq_usage, impact_resultat, dependance),
+        ),
+    )
+
 # ------------------------------------------------------
 # Models
 # ------------------------------------------------------
@@ -352,6 +607,435 @@ class CreateCertificationPayload(BaseModel):
     categorie: Optional[str] = None
     duree_validite: Optional[int] = None
     delai_renouvellement: Optional[int] = None
+
+class AiPosteDraftPayload(BaseModel):
+    mode: Optional[str] = "create"
+    id_poste: Optional[str] = None
+    current_intitule_poste: Optional[str] = None
+    current_mission_principale: Optional[str] = None
+    current_responsabilites_html: Optional[str] = None
+    intitule: str
+    contexte: Optional[str] = None
+    taches: Optional[str] = None
+    outils: Optional[str] = None
+    environnement: Optional[str] = None
+    interactions: Optional[str] = None
+    contraintes: Optional[str] = None
+
+
+class AiPosteCompetenceSearchPayload(BaseModel):
+    id_poste: Optional[str] = None
+    intitule_poste: Optional[str] = None
+    mission_principale: Optional[str] = None
+    responsabilites_html: Optional[str] = None
+    ai_contexte: Optional[str] = None
+    ai_taches: Optional[str] = None
+    ai_outils: Optional[str] = None
+    ai_environnement: Optional[str] = None
+    ai_interactions: Optional[str] = None
+    ai_contraintes: Optional[str] = None
+    niveau_education_minimum: Optional[str] = None
+    nsf_groupe_code: Optional[str] = None
+    nsf_groupe_obligatoire: Optional[bool] = None
+    mobilite: Optional[str] = None
+    risque_physique: Optional[str] = None
+    perspectives_evolution: Optional[str] = None
+    niveau_contrainte: Optional[str] = None
+    detail_contrainte: Optional[str] = None
+    existing_competence_ids: Optional[List[str]] = None
+
+
+class AiPosteCompetenceCreatePayload(BaseModel):
+    id_poste: str
+    draft: dict
+
+@router.post("/studio/org/postes/{id_owner}/ai_draft")
+def studio_org_ai_draft_poste(id_owner: str, payload: AiPosteDraftPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        oid = (id_owner or "").strip()
+        title = (payload.intitule or "").strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="Intitulé obligatoire.")
+
+        model = (os.getenv("OPENAI_MODEL_POSTE_DRAFT") or "gpt-5").strip()
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, oid)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    SELECT code, titre
+                    FROM public.tbl_nsf_groupe
+                    WHERE COALESCE(masque, FALSE) = FALSE
+                    ORDER BY code
+                    """
+                )
+                nsf_rows = cur.fetchall() or []
+
+        nsf_txt = "\n".join([f"- {r.get('code')} : {r.get('titre')}" for r in nsf_rows]) or "- aucune donnée"
+        mode = (payload.mode or "create").strip().lower()
+        current_resp = _html_to_text(payload.current_responsabilites_html)
+
+        schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "required": [
+                "intitule_poste", "mission_principale", "responsabilites_html",
+                "niveau_education_minimum", "nsf_groupe_code", "nsf_groupe_obligatoire",
+                "mobilite", "risque_physique", "perspectives_evolution",
+                "niveau_contrainte", "detail_contrainte"
+            ],
+            "properties": {
+                "intitule_poste": {"type": "string", "minLength": 1, "maxLength": 180},
+                "mission_principale": {"type": "string", "maxLength": 2400},
+                "responsabilites_html": {"type": "string", "maxLength": 16000},
+                "niveau_education_minimum": {"type": "string", "maxLength": 4},
+                "nsf_groupe_code": {"type": "string", "maxLength": 12},
+                "nsf_groupe_obligatoire": {"type": "boolean"},
+                "mobilite": {"type": "string", "maxLength": 30},
+                "risque_physique": {"type": "string", "maxLength": 20},
+                "perspectives_evolution": {"type": "string", "maxLength": 20},
+                "niveau_contrainte": {"type": "string", "maxLength": 20},
+                "detail_contrainte": {"type": "string", "maxLength": 2400},
+            },
+        }
+
+        system_prompt = (
+            "Tu rédiges des fiches de poste RH opérationnelles en français. "
+            "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
+            "Tu t'appuies sur les éléments utilisateur ET sur une recherche web. "
+            "Si mode=edit, tu proposes des textes de remplacement plus propres et plus solides sans changer le métier cible. "
+            "La mission principale doit être rédigée en 1 paragraphe clair. "
+            "responsabilites_html doit être du HTML simple, propre et directement exploitable: "
+            "un <ol> contenant plusieurs <li>, chaque <li> commençant par un titre de tâche en gras, puis un <ul> d'activités rattachées. "
+            "Les contraintes doivent rester prudentes: n'invente pas un diplôme ou un domaine NSF si ce n'est pas assez clair. "
+            "Valeurs autorisées: niveau_education_minimum parmi '',0,3,4,5,6,7,8 ; mobilite parmi '',Aucune,Rare,Occasionnelle,Fréquente ; "
+            "risque_physique parmi '',Aucun,Faible,Modéré,Élevé,Critique ; perspectives_evolution parmi '',Aucune,Faible,Modérée,Forte,Rapide ; "
+            "niveau_contrainte parmi '',Aucune,Modérée,Élevée,Critique. "
+            "nsf_groupe_code doit être vide ou reprendre exactement un code fourni dans la liste NSF. "
+            "detail_contrainte doit synthétiser les contraintes concrètes du poste, sans blabla marketing."
+        )
+
+        user_prompt = (
+            f"mode={mode}\n"
+            f"intitule visé: {title}\n\n"
+            f"fiche actuelle - intitulé: {(payload.current_intitule_poste or '').strip()}\n"
+            f"fiche actuelle - mission: {(payload.current_mission_principale or '').strip()}\n"
+            f"fiche actuelle - responsabilités (texte): {current_resp}\n\n"
+            f"contexte: {(payload.contexte or '').strip()}\n"
+            f"tâches: {(payload.taches or '').strip()}\n"
+            f"outils: {(payload.outils or '').strip()}\n"
+            f"environnement: {(payload.environnement or '').strip()}\n"
+            f"interactions: {(payload.interactions or '').strip()}\n"
+            f"contraintes / vigilance: {(payload.contraintes or '').strip()}\n\n"
+            f"Liste NSF disponible (code : titre):\n{nsf_txt}\n"
+        )
+
+        data = _openai_responses_json(model, "poste_draft", schema, system_prompt, user_prompt, use_web=True)
+        data["niveau_education_minimum"] = (data.get("niveau_education_minimum") or "").strip()
+        data["nsf_groupe_code"] = (data.get("nsf_groupe_code") or "").strip()
+        allowed_edu = {"", "0", "3", "4", "5", "6", "7", "8"}
+        allowed_mob = {"", "Aucune", "Rare", "Occasionnelle", "Fréquente"}
+        allowed_risk = {"", "Aucun", "Faible", "Modéré", "Élevé", "Critique"}
+        allowed_persp = {"", "Aucune", "Faible", "Modérée", "Forte", "Rapide"}
+        allowed_ctr = {"", "Aucune", "Modérée", "Élevée", "Critique"}
+        if data["niveau_education_minimum"] not in allowed_edu:
+            data["niveau_education_minimum"] = ""
+        if (data.get("mobilite") or "") not in allowed_mob:
+            data["mobilite"] = ""
+        if (data.get("risque_physique") or "") not in allowed_risk:
+            data["risque_physique"] = ""
+        if (data.get("perspectives_evolution") or "") not in allowed_persp:
+            data["perspectives_evolution"] = ""
+        if (data.get("niveau_contrainte") or "") not in allowed_ctr:
+            data["niveau_contrainte"] = ""
+        nsf_codes = {str(r.get("code") or "").strip() for r in nsf_rows}
+        if data["nsf_groupe_code"] not in nsf_codes:
+            data["nsf_groupe_code"] = ""
+        return data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/postes ai_draft error: {e}")
+
+
+@router.post("/studio/org/postes/{id_owner}/ai_comp_search")
+def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        model = (os.getenv("OPENAI_MODEL_POSTE_COMP_SEARCH") or "gpt-5").strip()
+        existing_ids = {str(x).strip() for x in (payload.existing_competence_ids or []) if str(x).strip()}
+        title = (payload.intitule_poste or "").strip()
+        if not title and payload.id_poste:
+            with get_conn() as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    oid = _require_owner_access(cur, u, id_owner)
+                    studio_fetch_owner(cur, oid)
+                    studio_require_min_role(cur, u, oid, "admin")
+                    cur.execute(
+                        "SELECT intitule_poste, mission_principale, responsabilites FROM public.tbl_fiche_poste WHERE id_poste = %s AND id_owner = %s AND id_ent = %s LIMIT 1",
+                        (payload.id_poste, oid, oid)
+                    )
+                    row = cur.fetchone() or {}
+                    title = (row.get("intitule_poste") or "").strip()
+                    if not payload.mission_principale:
+                        payload.mission_principale = row.get("mission_principale")
+                    if not payload.responsabilites_html:
+                        payload.responsabilites_html = row.get("responsabilites")
+        if not title:
+            raise HTTPException(status_code=400, detail="Intitulé du poste obligatoire pour la recherche IA.")
+
+        schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["competences"],
+            "properties": {
+                "competences": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": [
+                            "intitule", "description", "why_needed", "search_terms", "recommended_level",
+                            "freq_usage", "impact_resultat", "dependance", "domaine_hint",
+                            "niveaua", "niveaub", "niveauc", "grille_evaluation"
+                        ],
+                        "properties": {
+                            "intitule": {"type": "string", "minLength": 1, "maxLength": 140},
+                            "description": {"type": "string", "maxLength": 1200},
+                            "why_needed": {"type": "string", "maxLength": 600},
+                            "search_terms": {"type": "array", "minItems": 1, "maxItems": 4, "items": {"type": "string", "maxLength": 80}},
+                            "recommended_level": {"type": "string", "enum": ["A", "B", "C"]},
+                            "freq_usage": {"type": "integer", "minimum": 0, "maximum": 10},
+                            "impact_resultat": {"type": "integer", "minimum": 0, "maximum": 10},
+                            "dependance": {"type": "integer", "minimum": 0, "maximum": 10},
+                            "domaine_hint": {"type": "string", "maxLength": 120},
+                            "niveaua": {"type": "string", "maxLength": 230},
+                            "niveaub": {"type": "string", "maxLength": 230},
+                            "niveauc": {"type": "string", "maxLength": 230},
+                            "grille_evaluation": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["Critere1", "Critere2", "Critere3", "Critere4"],
+                                "properties": {
+                                    **{f"Critere{i}": {
+                                        "type": "object",
+                                        "additionalProperties": False,
+                                        "required": ["Nom", "Eval"],
+                                        "properties": {
+                                            "Nom": {"type": "string", "maxLength": 140},
+                                            "Eval": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string", "maxLength": 120}}
+                                        }
+                                    } for i in range(1,5)}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        system_prompt = (
+            "Tu identifies les compétences techniques et métier nécessaires à la tenue réelle d'un poste. "
+            "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
+            "Tu t'appuies sur les informations fournies ET sur une recherche web. "
+            "Tu proposes uniquement des compétences utiles au poste. Pas de soft skills génériques sauf si elles sont vraiment indispensables à l'exécution. "
+            "Tu évites les doublons. Tu privilégies des intitulés de compétences réutilisables dans un référentiel RH. "
+            "recommended_level: A initial, B autonome fiable, C expert / référent. "
+            "Les trois scores freq_usage / impact_resultat / dependance doivent être cohérents et réalistes. "
+            "Les niveaux A/B/C doivent être rédigés et observables. La grille d'évaluation doit être exploitable."
+        )
+
+        user_prompt = (
+            f"intitulé du poste: {title}\n"
+            f"mission principale: {(payload.mission_principale or '').strip()}\n"
+            f"responsabilités: {_html_to_text(payload.responsabilites_html)}\n"
+            f"contexte: {(payload.ai_contexte or '').strip()}\n"
+            f"tâches complémentaires: {(payload.ai_taches or '').strip()}\n"
+            f"outils: {(payload.ai_outils or '').strip()}\n"
+            f"environnement: {(payload.ai_environnement or '').strip()}\n"
+            f"interactions: {(payload.ai_interactions or '').strip()}\n"
+            f"contraintes complémentaires: {(payload.ai_contraintes or '').strip()}\n"
+            f"contraintes fiche: niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n"
+            "Produis 5 à 8 compétences maximum, les plus structurantes pour réussir le poste.\n"
+        )
+
+        drafted = _openai_responses_json(model, "poste_comp_search", schema, system_prompt, user_prompt, use_web=True)
+        drafted_items = drafted.get("competences") or []
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                existing = []
+                missing = []
+                seen_ids = set()
+                seen_titles = set()
+
+                for item in drafted_items:
+                    intitule = (item.get("intitule") or "").strip()
+                    if not intitule:
+                        continue
+                    norm_title = _norm_text_search(intitule)
+                    if norm_title in seen_titles:
+                        continue
+                    seen_titles.add(norm_title)
+
+                    search_terms = [str(x or "").strip() for x in (item.get("search_terms") or []) if str(x or "").strip()]
+                    match = _find_best_existing_competence(cur, oid, intitule, search_terms)
+                    lvl = (item.get("recommended_level") or "A").strip().upper()[:1] or "A"
+                    fu = _clamp_0_10(item.get("freq_usage"))
+                    im = _clamp_0_10(item.get("impact_resultat"))
+                    de = _clamp_0_10(item.get("dependance"))
+                    poids = _calc_poids_criticite_100(fu, im, de)
+
+                    if match and str(match.get("id_comp") or "") not in existing_ids and str(match.get("id_comp") or "") not in seen_ids:
+                        seen_ids.add(str(match.get("id_comp") or ""))
+                        existing.append({
+                            "id_comp": match.get("id_comp"),
+                            "code": match.get("code"),
+                            "intitule": match.get("intitule"),
+                            "domaine_titre_court": match.get("domaine_titre_court"),
+                            "domaine_couleur": match.get("domaine_couleur"),
+                            "why_needed": (item.get("why_needed") or "").strip(),
+                            "recommended_level": lvl,
+                            "recommended_level_label": {"A": "Initial", "B": "Avancé", "C": "Expert"}.get(lvl, lvl),
+                            "freq_usage": fu,
+                            "impact_resultat": im,
+                            "dependance": de,
+                            "poids_criticite": poids,
+                        })
+                    else:
+                        domaine_id = _resolve_domain_id(cur, item.get("domaine_hint"))
+                        domaine_label = None
+                        if domaine_id:
+                            cur.execute(
+                                "SELECT COALESCE(titre_court, titre, id_domaine_competence) AS label FROM public.tbl_domaine_competence WHERE id_domaine_competence = %s LIMIT 1",
+                                (domaine_id,)
+                            )
+                            rr = cur.fetchone() or {}
+                            domaine_label = rr.get("label")
+                        missing.append({
+                            "intitule": intitule,
+                            "description": (item.get("description") or "").strip(),
+                            "why_needed": (item.get("why_needed") or "").strip(),
+                            "domaine_id": domaine_id,
+                            "domaine_label": domaine_label or (item.get("domaine_hint") or "").strip(),
+                            "recommended_level": lvl,
+                            "recommended_level_label": {"A": "Initial", "B": "Avancé", "C": "Expert"}.get(lvl, lvl),
+                            "freq_usage": fu,
+                            "impact_resultat": im,
+                            "dependance": de,
+                            "poids_criticite": poids,
+                            "niveaua": (item.get("niveaua") or "").strip(),
+                            "niveaub": (item.get("niveaub") or "").strip(),
+                            "niveauc": (item.get("niveauc") or "").strip(),
+                            "grille_evaluation": _sanitize_grille(item.get("grille_evaluation")),
+                        })
+
+        return {"existing": existing, "missing": missing}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/postes ai_comp_search error: {e}")
+
+
+@router.post("/studio/org/postes/{id_owner}/ai_comp_create")
+def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        pid = (payload.id_poste or "").strip()
+        draft = payload.draft or {}
+        title = (draft.get("intitule") or "").strip()
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_poste obligatoire.")
+        if not title:
+            raise HTTPException(status_code=400, detail="Brouillon de compétence invalide (intitulé manquant).")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                if not _poste_exists(cur, oid, oid, pid):
+                    raise HTTPException(status_code=404, detail="Poste introuvable.")
+
+                cur.execute(
+                    """
+                    SELECT id_comp, code
+                    FROM public.tbl_competence
+                    WHERE id_owner = %s
+                      AND lower(intitule) = lower(%s)
+                    LIMIT 1
+                    """,
+                    (oid, title),
+                )
+                existing = cur.fetchone() or None
+
+                if existing:
+                    cid = existing.get("id_comp")
+                    code = existing.get("code")
+                    created = False
+                else:
+                    cid = str(uuid.uuid4())
+                    code = _next_comp_code(cur, oid)
+                    cur.execute(
+                        """
+                        INSERT INTO public.tbl_competence
+                          (id_comp, id_owner, code, intitule, description, domaine, niveaua, niveaub, niveauc, grille_evaluation, etat, masque, date_creation, date_modification)
+                        VALUES
+                          (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, NOW(), NOW())
+                        """,
+                        (
+                            cid,
+                            oid,
+                            code,
+                            title,
+                            (draft.get("description") or None),
+                            (draft.get("domaine_id") or None),
+                            (draft.get("niveaua") or None),
+                            (draft.get("niveaub") or None),
+                            (draft.get("niveauc") or None),
+                            _sanitize_grille(draft.get("grille_evaluation")),
+                            "à valider",
+                        ),
+                    )
+                    created = True
+
+                _upsert_poste_comp_assoc(
+                    cur,
+                    pid,
+                    cid,
+                    (draft.get("recommended_level") or "A"),
+                    draft.get("freq_usage") or 0,
+                    draft.get("impact_resultat") or 0,
+                    draft.get("dependance") or 0,
+                )
+                conn.commit()
+
+        return {"ok": True, "created": created, "id_comp": cid, "code": code}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/postes ai_comp_create error: {e}")
 
 # ------------------------------------------------------
 # Endpoints: Services

@@ -37,6 +37,8 @@
     let _posteCompAddItemsAll = [];
 
     let _posteCompEdit = null; // objet en cours d'édition (merge comp + assoc)
+    let _posteAiDraftMeta = null;
+    let _posteCompAiResults = { existing: [], missing: [] };
 
     // --- Poste > Certifications (Exigences)
     let _posteCertItems = [];
@@ -96,6 +98,24 @@
             .replaceAll(">", "&gt;")
             .replaceAll('"', "&quot;")
             .replaceAll("'", "&#39;");
+    }
+
+    function htmlToPlainText(html){
+        const div = document.createElement("div");
+        div.innerHTML = String(html || "");
+        return (div.textContent || div.innerText || "")
+            .replace(/\u00a0/g, " ")
+            .replace(/\r/g, "")
+            .replace(/\n{3,}/g, "\n\n")
+            .trim();
+    }
+
+    function normText(v){
+        return String(v || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim();
     }
 
     function argbIntToRgbTuple(v){
@@ -691,6 +711,311 @@
 
         refreshPosteRhCriticiteHelp();
         refreshPosteRhDateFinVisibility();
+    }
+
+    function resetPosteAiModalFields(){
+        byId("posteAiIntitule") && (byId("posteAiIntitule").value = "");
+        byId("posteAiContexte") && (byId("posteAiContexte").value = "");
+        byId("posteAiTaches") && (byId("posteAiTaches").value = "");
+        byId("posteAiOutils") && (byId("posteAiOutils").value = "");
+        byId("posteAiEnvironnement") && (byId("posteAiEnvironnement").value = "");
+        byId("posteAiInteractions") && (byId("posteAiInteractions").value = "");
+        byId("posteAiContraintes") && (byId("posteAiContraintes").value = "");
+    }
+
+    function seedPosteAiModalFromCurrent(){
+        const title = (byId("posteIntitule")?.value || "").trim();
+        const mission = (byId("posteMission")?.value || "").trim();
+        const respHtml = rtGetHtml("posteResp");
+        const respTxt = htmlToPlainText(respHtml);
+        const ctr = (byId("posteCtrDetailContrainte")?.value || "").trim();
+        const pieces = [];
+        if ((byId("posteCtrMobilite")?.value || "").trim()) pieces.push(`Mobilité: ${(byId("posteCtrMobilite").value || "").trim()}`);
+        if ((byId("posteCtrRisquePhys")?.value || "").trim()) pieces.push(`Risques physiques: ${(byId("posteCtrRisquePhys").value || "").trim()}`);
+        if ((byId("posteCtrNivContrainte")?.value || "").trim()) pieces.push(`Niveau de contraintes: ${(byId("posteCtrNivContrainte").value || "").trim()}`);
+        if ((byId("posteCtrPerspEvol")?.value || "").trim()) pieces.push(`Perspectives: ${(byId("posteCtrPerspEvol").value || "").trim()}`);
+        if ((byId("posteCtrEduMin")?.value || "").trim()) pieces.push(`Niveau d'étude minimum: ${(byId("posteCtrEduMin").value || "").trim()}`);
+        const mergedCtr = [ctr, pieces.join(" | ")].filter(Boolean).join("\n");
+
+        if (byId("posteAiIntitule") && !byId("posteAiIntitule").value.trim()) byId("posteAiIntitule").value = title;
+        if (byId("posteAiContexte") && !byId("posteAiContexte").value.trim()) byId("posteAiContexte").value = mission;
+        if (byId("posteAiTaches") && !byId("posteAiTaches").value.trim()) byId("posteAiTaches").value = respTxt;
+        if (byId("posteAiContraintes") && !byId("posteAiContraintes").value.trim()) byId("posteAiContraintes").value = mergedCtr;
+    }
+
+    function openPosteAiModal(){
+        const ttl = byId("posteAiTitle");
+        const sub = byId("posteAiSub");
+        if (ttl) ttl.textContent = (_posteModalMode === "edit") ? "Proposer des textes de remplacement avec l’IA" : "Générer une fiche de poste avec l’IA";
+        if (sub) sub.textContent = (_posteModalMode === "edit")
+            ? "L’IA reformule et enrichit la fiche actuelle sans changer le métier visé."
+            : "L’IA propose un brouillon exploitable à partir de tes éléments et d’une recherche web.";
+        seedPosteAiModalFromCurrent();
+        openModal("modalPosteAi");
+    }
+
+    function closePosteAiModal(){
+        closeModal("modalPosteAi");
+    }
+
+    async function generatePosteAiDraft(portal){
+        const ownerId = getOwnerId();
+        const payload = {
+            mode: _posteModalMode || "create",
+            id_poste: _editingPosteId || null,
+            current_intitule_poste: (byId("posteIntitule")?.value || "").trim() || null,
+            current_mission_principale: (byId("posteMission")?.value || "").trim() || null,
+            current_responsabilites_html: rtGetHtml("posteResp").trim() || null,
+            intitule: (byId("posteAiIntitule")?.value || "").trim(),
+            contexte: (byId("posteAiContexte")?.value || "").trim() || null,
+            taches: (byId("posteAiTaches")?.value || "").trim() || null,
+            outils: (byId("posteAiOutils")?.value || "").trim() || null,
+            environnement: (byId("posteAiEnvironnement")?.value || "").trim() || null,
+            interactions: (byId("posteAiInteractions")?.value || "").trim() || null,
+            contraintes: (byId("posteAiContraintes")?.value || "").trim() || null,
+        };
+
+        if (!payload.intitule){
+            portal.showAlert("error", "Intitulé du poste obligatoire pour lancer la génération IA.");
+            return;
+        }
+
+        const btn = byId("btnPosteAiGenerate");
+        if (btn){ btn.disabled = true; btn.style.opacity = ".6"; btn.textContent = "Génération…"; }
+
+        try{
+            const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_draft`;
+            const draft = await portal.apiJson(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+
+            _posteAiDraftMeta = draft || null;
+            if (draft?.intitule_poste !== undefined) byId("posteIntitule").value = String(draft.intitule_poste || "");
+            if (draft?.mission_principale !== undefined) byId("posteMission").value = String(draft.mission_principale || "");
+            if (draft?.responsabilites_html !== undefined) rtSetHtml("posteResp", String(draft.responsabilites_html || ""));
+
+            await ensureNsfGroupes(portal);
+            fillNsfSelect(draft?.nsf_groupe_code || "");
+            fillPosteContraintesTab({
+                niveau_education_minimum: draft?.niveau_education_minimum || "",
+                nsf_groupe_code: draft?.nsf_groupe_code || "",
+                nsf_groupe_obligatoire: !!draft?.nsf_groupe_obligatoire,
+                mobilite: draft?.mobilite || "",
+                risque_physique: draft?.risque_physique || "",
+                perspectives_evolution: draft?.perspectives_evolution || "",
+                niveau_contrainte: draft?.niveau_contrainte || "",
+                detail_contrainte: draft?.detail_contrainte || "",
+            });
+
+            closePosteAiModal();
+            portal.showAlert("", "");
+        } catch(e){
+            portal.showAlert("error", e?.message || String(e));
+        } finally {
+            if (btn){ btn.disabled = false; btn.style.opacity = ""; btn.textContent = "Générer"; }
+        }
+    }
+
+    function resetPosteCompAiUi(){
+        _posteCompAiResults = { existing: [], missing: [] };
+        const loading = byId("posteCompAiLoading");
+        const summary = byId("posteCompAiSummary");
+        const exWrap = byId("posteCompAiExistingWrap");
+        const miWrap = byId("posteCompAiMissingWrap");
+        const exList = byId("posteCompAiExistingList");
+        const miList = byId("posteCompAiMissingList");
+        if (loading){ loading.style.display = "none"; loading.textContent = "Analyse en cours…"; }
+        if (summary){ summary.style.display = "none"; summary.textContent = ""; }
+        if (exWrap) exWrap.style.display = "none";
+        if (miWrap) miWrap.style.display = "none";
+        if (exList) exList.innerHTML = "";
+        if (miList) miList.innerHTML = "";
+    }
+
+    function buildPosteCompAiPayload(){
+        return {
+            id_poste: _editingPosteId || null,
+            intitule_poste: (byId("posteIntitule")?.value || "").trim() || null,
+            mission_principale: (byId("posteMission")?.value || "").trim() || null,
+            responsabilites_html: rtGetHtml("posteResp").trim() || null,
+            ai_contexte: (byId("posteAiContexte")?.value || "").trim() || null,
+            ai_taches: (byId("posteAiTaches")?.value || "").trim() || null,
+            ai_outils: (byId("posteAiOutils")?.value || "").trim() || null,
+            ai_environnement: (byId("posteAiEnvironnement")?.value || "").trim() || null,
+            ai_interactions: (byId("posteAiInteractions")?.value || "").trim() || null,
+            ai_contraintes: (byId("posteAiContraintes")?.value || "").trim() || null,
+            niveau_education_minimum: (byId("posteCtrEduMin")?.value || "").trim() || null,
+            nsf_groupe_code: (byId("posteCtrNsfGroupe")?.value || "").trim() || null,
+            nsf_groupe_obligatoire: !!byId("posteCtrNsfOblig")?.checked,
+            mobilite: (byId("posteCtrMobilite")?.value || "").trim() || null,
+            risque_physique: (byId("posteCtrRisquePhys")?.value || "").trim() || null,
+            perspectives_evolution: (byId("posteCtrPerspEvol")?.value || "").trim() || null,
+            niveau_contrainte: (byId("posteCtrNivContrainte")?.value || "").trim() || null,
+            detail_contrainte: (byId("posteCtrDetailContrainte")?.value || "").trim() || null,
+            existing_competence_ids: (_posteCompItems || []).map(x => x.id_competence).filter(Boolean),
+        };
+    }
+
+    function renderPosteCompAiResults(){
+        const summary = byId("posteCompAiSummary");
+        const exWrap = byId("posteCompAiExistingWrap");
+        const miWrap = byId("posteCompAiMissingWrap");
+        const exList = byId("posteCompAiExistingList");
+        const miList = byId("posteCompAiMissingList");
+        if (!summary || !exWrap || !miWrap || !exList || !miList) return;
+
+        const existing = Array.isArray(_posteCompAiResults?.existing) ? _posteCompAiResults.existing : [];
+        const missing = Array.isArray(_posteCompAiResults?.missing) ? _posteCompAiResults.missing : [];
+
+        summary.textContent = `${existing.length} compétence(s) trouvée(s) dans le référentiel, ${missing.length} à créer.`;
+        summary.style.display = "";
+
+        exList.innerHTML = "";
+        miList.innerHTML = "";
+        exWrap.style.display = existing.length ? "" : "none";
+        miWrap.style.display = missing.length ? "" : "none";
+
+        existing.forEach((it, idx) => {
+            const row = document.createElement("div");
+            row.className = "card";
+            row.style.padding = "10px 12px";
+            row.innerHTML = `
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
+                <div style="min-width:0; flex:1;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                    ${(it.code || "") ? `<span class="sb-badge sb-badge--comp">${esc(it.code)}</span>` : ""}
+                    <strong>${esc(it.intitule || "")}</strong>
+                    ${(it.domaine_titre_court || "") ? `<span class="sb-badge sb-badge--comp-domain"><span class="sb-dot"></span>${esc(it.domaine_titre_court)}</span>` : ""}
+                </div>
+                <div class="card-sub" style="margin:6px 0 0 0;">${esc(it.why_needed || "")}</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                    <span class="sb-badge sb-badge--niv sb-badge--niv-${normText(it.recommended_level || "A")}">${esc(it.recommended_level_label || it.recommended_level || "A")}</span>
+                    <span class="sb-badge">Criticité ${esc(String(it.poids_criticite ?? 0))}/100</span>
+                </div>
+                </div>
+                <div class="sb-actions" style="flex-shrink:0;">
+                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-ai-existing-add="${idx}">Ajouter</button>
+                </div>
+            </div>`;
+            exList.appendChild(row);
+        });
+
+        missing.forEach((it, idx) => {
+            const row = document.createElement("div");
+            row.className = "card";
+            row.style.padding = "10px 12px";
+            row.innerHTML = `
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
+                <div style="min-width:0; flex:1;">
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                    <strong>${esc(it.intitule || "")}</strong>
+                    ${(it.domaine_label || "") ? `<span class="sb-badge sb-badge--comp-domain"><span class="sb-dot"></span>${esc(it.domaine_label)}</span>` : ""}
+                </div>
+                <div class="card-sub" style="margin:6px 0 0 0;">${esc(it.description || "")}</div>
+                <div class="card-sub" style="margin:6px 0 0 0;">${esc(it.why_needed || "")}</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                    <span class="sb-badge sb-badge--niv sb-badge--niv-${normText(it.recommended_level || "A")}">${esc(it.recommended_level_label || it.recommended_level || "A")}</span>
+                    <span class="sb-badge">Criticité ${esc(String(it.poids_criticite ?? 0))}/100</span>
+                </div>
+                </div>
+                <div class="sb-actions" style="flex-shrink:0;">
+                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-ai-missing-create="${idx}">Créer la compétence</button>
+                </div>
+            </div>`;
+            miList.appendChild(row);
+        });
+
+        exList.querySelectorAll("[data-ai-existing-add]").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                try { await addExistingCompetenceFromAi(window.portal, parseInt(btn.getAttribute("data-ai-existing-add"), 10)); }
+                catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
+            });
+        });
+
+        miList.querySelectorAll("[data-ai-missing-create]").forEach(btn => {
+            btn.addEventListener("click", async () => {
+                try { await createMissingCompetenceFromAi(window.portal, parseInt(btn.getAttribute("data-ai-missing-create"), 10)); }
+                catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
+            });
+        });
+    }
+
+    async function openPosteCompAiModal(portal){
+        const title = (byId("posteIntitule")?.value || "").trim();
+        if (!title){
+            portal.showAlert("error", "Renseigne au moins l’intitulé du poste avant la recherche IA.");
+            return;
+        }
+
+        resetPosteCompAiUi();
+        openModal("modalPosteCompAi");
+
+        const loading = byId("posteCompAiLoading");
+        if (loading) loading.style.display = "";
+
+        try{
+            const ownerId = getOwnerId();
+            const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_search`;
+            const res = await portal.apiJson(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(buildPosteCompAiPayload()),
+            });
+            _posteCompAiResults = {
+                existing: Array.isArray(res?.existing) ? res.existing : [],
+                missing: Array.isArray(res?.missing) ? res.missing : [],
+            };
+            renderPosteCompAiResults();
+        } finally {
+            if (loading) loading.style.display = "none";
+        }
+    }
+
+    async function ensureEditingPoste(portal){
+        if (_posteModalMode === "edit" && _editingPosteId) return _editingPosteId;
+        await savePosteFromModal(portal, { keepOpen: true, silent: true, statusMessage: "Poste créé." });
+        if (!_editingPosteId) throw new Error("Le poste n’a pas pu être créé avant l’ajout des compétences.");
+        return _editingPosteId;
+    }
+
+    async function addExistingCompetenceFromAi(portal, idx){
+        const it = (_posteCompAiResults?.existing || [])[idx];
+        if (!it || !it.id_comp) return;
+        const pid = await ensureEditingPoste(portal);
+        const ownerId = getOwnerId();
+        const url = `${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}`;
+        await portal.apiJson(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                id_competence: it.id_comp,
+                niveau_requis: it.recommended_level || "A",
+                freq_usage: parseInt(it.freq_usage ?? 0, 10) || 0,
+                impact_resultat: parseInt(it.impact_resultat ?? 0, 10) || 0,
+                dependance: parseInt(it.dependance ?? 0, 10) || 0,
+            }),
+        });
+        await loadPosteCompetences(portal);
+        const btn = document.querySelector(`[data-ai-existing-add="${idx}"]`);
+        if (btn){ btn.disabled = true; btn.textContent = "Ajoutée"; }
+    }
+
+    async function createMissingCompetenceFromAi(portal, idx){
+        const it = (_posteCompAiResults?.missing || [])[idx];
+        if (!it) return;
+        const pid = await ensureEditingPoste(portal);
+        const ownerId = getOwnerId();
+        const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_create`;
+        const r = await portal.apiJson(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id_poste: pid, draft: it }),
+        });
+        await loadPosteCompetences(portal);
+        const btn = document.querySelector(`[data-ai-missing-create="${idx}"]`);
+        if (btn){ btn.disabled = true; btn.textContent = `Créée (${r?.code || "OK"})`; }
     }
 
     // ------------------------------------------------------
@@ -1662,6 +1987,9 @@
         byId("posteIntitule").value = "";
         byId("posteMission").value = "";
         rtSetHtml("posteResp", "");
+        resetPosteAiModalFields();
+        _posteAiDraftMeta = null;
+        resetPosteCompAiUi();
 
         // boutons (actions API à l'étape 2)
         const bA = byId("btnPosteArchive");
@@ -1724,6 +2052,7 @@
         }
 
         fillPosteServiceSelect((p && p.id_service) ? String(p.id_service) : "");
+        resetPosteCompAiUi();
 
         // On pré-remplit ce qu'on a déjà (le détail complet arrive à l'étape 2)
         byId("posteIntitule").value = (p && p.intitule) ? String(p.intitule) : "";
@@ -1767,6 +2096,7 @@
             // Responsabilités: richtext si présent, sinon textarea
             if (typeof rtSetHtml === "function") rtSetHtml("posteResp", d.responsabilites || "");
             else { const elResp = byId("posteResp"); if (elResp) elResp.value = (d.responsabilites || ""); }
+            seedPosteAiModalFromCurrent();
 
             // --- Exigences > Contraintes (les fonctions seront ajoutées/existent déjà chez toi)
             if (typeof ensureNsfGroupes === "function") {
@@ -1796,7 +2126,10 @@
         return (card && card.dataset.actif === "0") ? false : true;
     }
 
-    async function savePosteFromModal(portal){
+    async function savePosteFromModal(portal, options){
+        const opts = options || {};
+        const keepOpen = !!opts.keepOpen;
+        const silent = !!opts.silent;
         const ownerId = getOwnerId();
 
         const sid = (byId("posteService")?.value || "").trim();
@@ -1807,15 +2140,15 @@
 
         if (!sid){
             portal.showAlert("error", "Sélectionne un service.");
-            return;
+            return null;
         }
         if (!title){
             portal.showAlert("error", "Intitulé obligatoire.");
-            return;
+            return null;
         }
 
         const payload = {
-            id_service: sid,            
+            id_service: sid,
             codif_client: (codc || null),
             intitule_poste: title,
             mission_principale: (mission || null),
@@ -1844,7 +2177,7 @@
         const nbTit = parseInt(rawNbTit || "1", 10);
         if (!Number.isFinite(nbTit) || nbTit < 1){
             portal.showAlert("error", "Le nombre de titulaires cible doit être supérieur ou égal à 1.");
-            return;
+            return null;
         }
         payload.nb_titulaires_cible = nbTit;
 
@@ -1852,17 +2185,16 @@
         const crit = parseInt(rawCrit || "2", 10);
         if (!Number.isFinite(crit) || crit < 1 || crit > 3){
             portal.showAlert("error", "La criticité du poste doit être comprise entre 1 et 3.");
-            return;
+            return null;
         }
         payload.criticite_poste = crit;
 
         if (payload.date_debut_validite && payload.date_fin_validite && payload.date_fin_validite < payload.date_debut_validite){
             portal.showAlert("error", "La date de fin de validité doit être postérieure ou égale à la date de début.");
-            return;
+            return null;
         }
-        
+
         if (_posteModalMode === "create"){
-            // create
             const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}`;
             const r = await portal.apiJson(url, {
                 method: "POST",
@@ -1870,21 +2202,45 @@
                 body: JSON.stringify(payload),
             });
 
-            
-            // refresh + fermeture modal
             await loadServices(portal);
             await loadPostes(portal);
 
-            setStatus("Poste créé.");
+            if (keepOpen){
+                const pid = (r?.id_poste || "").toString().trim();
+                const code = (r?.codif_poste || "").toString().trim();
+                _posteModalMode = "edit";
+                _editingPosteId = pid || _editingPosteId;
+                const modal = byId("modalPoste");
+                if (modal) modal.setAttribute("data-id-poste", _editingPosteId || "");
+                byId("posteModalTitle").textContent = title || "Poste";
+                byId("posteModalSub").textContent = "Mise à jour / transfert de service / archivage.";
+                const badge = byId("posteModalBadge");
+                if (badge){
+                    badge.textContent = code || "";
+                    badge.style.display = code ? "" : "none";
+                }
+                const bA = byId("btnPosteArchive");
+                const bD = byId("btnPosteDuplicate");
+                if (bA){ bA.disabled = false; bA.style.opacity = ""; bA.title = ""; }
+                if (bD){ bD.disabled = false; bD.style.opacity = ""; bD.title = ""; }
+                const bS = byId("btnPosteSave");
+                if (bS) bS.textContent = "Enregistrer";
+                setPosteModalActif(true);
+                seedPosteAiModalFromCurrent();
+                if (!silent) setStatus(opts.statusMessage || "Poste créé.");
+                return r;
+            }
+
+            if (!silent) setStatus(opts.statusMessage || "Poste créé.");
             closePosteModal();
+            return r;
 
         } else {
-            // update
             const pid = (_editingPosteId || "").trim();
             if (!pid) throw new Error("id_poste manquant (edit).");
 
             const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}`;
-            await portal.apiJson(url, {
+            const r = await portal.apiJson(url, {
                 method: "POST",
                 headers: { "Content-Type":"application/json" },
                 body: JSON.stringify(payload),
@@ -1895,8 +2251,13 @@
             await loadServices(portal);
             await loadPostes(portal);
 
-            setStatus("Poste enregistré.");
-            closePosteModal();
+            if (!keepOpen){
+                if (!silent) setStatus(opts.statusMessage || "Poste enregistré.");
+                closePosteModal();
+            } else if (!silent) {
+                setStatus(opts.statusMessage || "Poste enregistré.");
+            }
+            return r || { ok: true };
         }
     }
 
@@ -2293,7 +2654,25 @@
             catch(e){ portal.showAlert("error", e?.message || String(e)); }
         });
 
-                byId("btnPosteCompAdd")?.addEventListener("click", () => {
+        byId("btnPosteAi")?.addEventListener("click", () => {
+            try { openPosteAiModal(); }
+            catch(e){ portal.showAlert("error", e?.message || String(e)); }
+        });
+        byId("btnPosteAiX")?.addEventListener("click", closePosteAiModal);
+        byId("btnPosteAiCancel")?.addEventListener("click", closePosteAiModal);
+        byId("btnPosteAiGenerate")?.addEventListener("click", async () => {
+            try { await generatePosteAiDraft(portal); }
+            catch(e){ portal.showAlert("error", e?.message || String(e)); }
+        });
+
+        byId("btnPosteCompAi")?.addEventListener("click", async () => {
+            try { await openPosteCompAiModal(portal); }
+            catch(e){ portal.showAlert("error", e?.message || String(e)); }
+        });
+        byId("btnPosteCompAiX")?.addEventListener("click", () => closeModal("modalPosteCompAi"));
+        byId("btnPosteCompAiClose")?.addEventListener("click", () => closeModal("modalPosteCompAi"));
+
+        byId("btnPosteCompAdd")?.addEventListener("click", () => {
           try { openPosteCompAddModal(); }
           catch(e){ portal.showAlert("error", e?.message || String(e)); }
         });

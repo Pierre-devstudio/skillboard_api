@@ -212,6 +212,7 @@
                   <input type="text" id="posteCompSearch" placeholder="Code ou intitulé…" />
                 </div>
 
+                <button type="button" class="sb-btn sb-btn--ai sb-btn--xs" id="btnPosteCompAi">Rechercher avec l’IA</button>
                 <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteCompAdd">Ajouter</button>
               </div>
             </div>
@@ -359,6 +360,7 @@
             <button type="button" class="sb-btn sb-btn--soft" id="btnPosteDuplicate">Dupliquer</button>
           </div>
           <div class="sb-actions">
+            <button type="button" class="sb-btn sb-btn--ai" id="btnPosteAi">Générer avec l’IA</button>
             <button type="button" class="sb-btn sb-btn--accent" id="btnPosteSave">Enregistrer</button>
             <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCancel">Annuler</button>
           </div>
@@ -368,6 +370,113 @@
     </div>
   </div>
 
+    <!-- MODAL : IA – brouillon fiche de poste -->
+  <div class="sb-modal" id="modalPosteAi" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" id="posteAiTitle" style="margin:0;">Générer une fiche de poste avec l’IA</div>
+          <div class="card-sub" id="posteAiSub" style="margin:4px 0 0 0;">
+            L’IA propose un brouillon exploitable à partir de tes éléments et d’une recherche web.
+          </div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnPosteAiX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Intitulé du poste</div>
+            <input type="text" id="posteAiIntitule" placeholder="Ex: Responsable paie" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Contexte du poste</div>
+            <textarea id="posteAiContexte" rows="3" placeholder="Entreprise, service, objectifs, enjeux, périmètre..."></textarea>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Tâches à réaliser</div>
+            <textarea id="posteAiTaches" rows="5" placeholder="Décris les missions, livrables, tâches quotidiennes ou périodiques..."></textarea>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Outils informatiques / logiciels</div>
+            <textarea id="posteAiOutils" rows="3" placeholder="Ex: Silae, Excel avancé, ERP, ATS, Power BI..."></textarea>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Environnement de travail</div>
+            <textarea id="posteAiEnvironnement" rows="3" placeholder="Ex: travail multi-sites, production, open space, terrain, horaires décalés..."></textarea>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Interactions clés</div>
+            <textarea id="posteAiInteractions" rows="3" placeholder="Ex: managers, clients, fournisseurs, équipes support, direction..."></textarea>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Contraintes / points de vigilance</div>
+            <textarea id="posteAiContraintes" rows="3" placeholder="Ex: confidentialité, cadence, déplacements, exigences réglementaires, risques physiques..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteAiGenerate">Générer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnPosteAiCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : IA – recherche compétences poste -->
+  <div class="sb-modal" id="modalPosteCompAi" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" style="margin:0;">Rechercher les compétences avec l’IA</div>
+          <div class="card-sub" style="margin:4px 0 0 0;">
+            Analyse du poste + recherche web + rapprochement avec ton catalogue de compétences.
+          </div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnPosteCompAiX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="card-sub" id="posteCompAiLoading" style="margin:0 0 10px 0; display:none;">Analyse en cours…</div>
+        <div class="card-sub" id="posteCompAiSummary" style="margin:0 0 10px 0; display:none;"></div>
+
+        <div class="card" id="posteCompAiExistingWrap" style="padding:12px; display:none;">
+          <div class="card-title" style="font-size:14px; margin-bottom:4px;">Compétences déjà présentes dans le référentiel</div>
+          <div class="card-sub" style="margin:0 0 10px 0;">Tu peux les rattacher directement au poste.</div>
+          <div class="sb-stack sb-stack--xs" id="posteCompAiExistingList"></div>
+        </div>
+
+        <div class="card" id="posteCompAiMissingWrap" style="padding:12px; margin-top:10px; display:none;">
+          <div class="card-title" style="font-size:14px; margin-bottom:4px;">Compétences absentes du référentiel</div>
+          <div class="card-sub" style="margin:0 0 10px 0;">Création directe dans le catalogue puis ajout au poste.</div>
+          <div class="sb-stack sb-stack--xs" id="posteCompAiMissingList"></div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCompAiClose">Fermer</button>
+      </div>
+    </div>
+  </div>
+  
   <!-- MODAL : Ajouter compétence au poste -->
   <div class="sb-modal" id="modalPosteCompAdd" style="display:none;">
     <div class="sb-modal-card">
