@@ -1278,8 +1278,8 @@
         const etat = (meta?.etat || "à valider").toString();
         const title = (byId("posteCompCreateIntitule")?.value || "").trim();
         const domainId = (byId("posteCompCreateDomaine")?.value || "").trim();
-        const domainSel = byId("posteCompCreateDomaine");
-        const domainLabel = domainSel ? (domainSel.options[domainSel.selectedIndex]?.textContent || "").trim() : "";
+        const domainMeta = getPosteCompCreateDomainMetaById(domainId);
+        const domainLabel = (domainMeta?.titre_court || domainMeta?.titre || "").toString().trim();
 
         const missing = Array.isArray(_posteCompAiResults?.missing) ? _posteCompAiResults.missing : [];
         const src = (missing[idx] || _posteCompCreateCtx.draft || {});
@@ -1295,7 +1295,7 @@
             intitule: title || (src.intitule || ""),
             domaine: domainId || (src.domaine_id || ""),
             domaine_titre_court: domainLabel || (src.domaine_label || ""),
-            domaine_couleur: null,
+            domaine_couleur: domainMeta?.couleur || src.domaine_couleur || null,
             etat: etat,
             recommended_level: (src.recommended_level || "B"),
             recommended_level_label: (src.recommended_level_label || "Avancé"),
@@ -1395,6 +1395,32 @@
         }
     }
 
+    function getPosteCompCreateDomainMetaById(id){
+        const did = String(id || "").trim();
+        if (!did) return null;
+        return (_posteCompCreateDomainItems || []).find(x => String(x?.id_domaine_competence || "").trim() === did) || null;
+    }
+
+    function buildAiCompDomainBadge(label, couleur){
+        const txt = String(label || "").trim();
+        if (!txt) return null;
+
+        const dom = document.createElement("span");
+        dom.className = "sb-badge sb-badge--comp-domain";
+
+        const dot = document.createElement("span");
+        dot.className = "sb-dot";
+
+        const rgb = argbIntToRgbTuple(couleur);
+        if (rgb){
+            dom.style.setProperty("--sb-domain-rgb", rgb.css);
+        }
+
+        dom.appendChild(dot);
+        dom.appendChild(document.createTextNode(txt));
+        return dom;
+    }
+
     function renderPosteCompAiResults(){
         const summary = byId("posteCompAiSummary");
         const exWrap = byId("posteCompAiExistingWrap");
@@ -1437,12 +1463,8 @@
             meta.style.flexWrap = "wrap";
             meta.style.margin = "6px 0 0 0";
 
-            if ((it.domaine_titre_court || "").trim()){
-                const dom = document.createElement("span");
-                dom.className = "sb-badge sb-badge--comp-domain";
-                dom.innerHTML = `<span class="sb-dot"></span>${esc(it.domaine_titre_court)}`;
-                meta.appendChild(dom);
-            }
+            const dom = buildAiCompDomainBadge(it.domaine_titre_court || "", it.domaine_couleur);
+            if (dom) meta.appendChild(dom);
 
             if (((it.etat || "").toLowerCase()) === "à valider"){
                 const et = document.createElement("span");
@@ -1480,39 +1502,71 @@
 
         missing.forEach((it, idx) => {
             const row = document.createElement("div");
-            row.className = "card";
-            row.style.padding = "12px";
+            row.className = "sb-row-card";
+            row.style.alignItems = "flex-start";
 
-            row.innerHTML = `
-              <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
-                <div style="min-width:0; flex:1;">
-                  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                    <strong>${esc(it.intitule || "")}</strong>
-                    ${(it.domaine_label || "") ? `<span class="sb-badge sb-badge--comp-domain"><span class="sb-dot"></span>${esc(it.domaine_label)}</span>` : ""}
-                  </div>
-                  ${(it.description || "") ? `<div class="card-sub" style="margin:6px 0 0 0;">${esc(it.description || "")}</div>` : ``}
-                </div>
-                <div class="sb-actions" style="display:flex; flex-direction:column; gap:8px; flex-shrink:0;">
-                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-ai-missing-create-add="${idx}">Créer et ajouter</button>
-                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-ai-missing-create-only="${idx}">Créer seulement</button>
-                </div>
-              </div>
-            `;
+            const left = document.createElement("div");
+            left.className = "sb-row-left";
+            left.style.alignItems = "flex-start";
+
+            const wrap = document.createElement("div");
+            wrap.style.minWidth = "0";
+
+            const title = document.createElement("div");
+            title.className = "sb-row-title";
+            title.textContent = (it.intitule || "");
+
+            const meta = document.createElement("div");
+            meta.style.display = "flex";
+            meta.style.gap = "8px";
+            meta.style.flexWrap = "wrap";
+            meta.style.margin = "6px 0 0 0";
+
+            const dom = buildAiCompDomainBadge(it.domaine_label || "", it.domaine_couleur);
+            if (dom) meta.appendChild(dom);
+
+            const desc = document.createElement("div");
+            desc.className = "card-sub";
+            desc.style.margin = "8px 0 0 0";
+            desc.textContent = (it.description || "");
+
+            wrap.appendChild(title);
+            if (meta.childNodes.length) wrap.appendChild(meta);
+            if ((it.description || "").trim()) wrap.appendChild(desc);
+
+            left.appendChild(wrap);
+
+            const right = document.createElement("div");
+            right.className = "sb-actions";
+            right.style.display = "flex";
+            right.style.flexDirection = "column";
+            right.style.gap = "8px";
+            right.style.flexShrink = "0";
+
+            const btnAdd = document.createElement("button");
+            btnAdd.type = "button";
+            btnAdd.className = "sb-btn sb-btn--accent sb-btn--xs";
+            btnAdd.textContent = "Créer et ajouter";
+            btnAdd.addEventListener("click", async () => {
+                try { await openPosteCompCreateModalFromAi(window.portal, idx, true); }
+                catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
+            });
+
+            const btnOnly = document.createElement("button");
+            btnOnly.type = "button";
+            btnOnly.className = "sb-btn sb-btn--soft sb-btn--xs";
+            btnOnly.textContent = "Créer seulement";
+            btnOnly.addEventListener("click", async () => {
+                try { await openPosteCompCreateModalFromAi(window.portal, idx, false); }
+                catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
+            });
+
+            right.appendChild(btnAdd);
+            right.appendChild(btnOnly);
+
+            row.appendChild(left);
+            row.appendChild(right);
             miList.appendChild(row);
-        });
-
-        miList.querySelectorAll("[data-ai-missing-create-add]").forEach(btn => {
-            btn.addEventListener("click", async () => {
-                try { await openPosteCompCreateModalFromAi(window.portal, parseInt(btn.getAttribute("data-ai-missing-create-add"), 10), true); }
-                catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
-            });
-        });
-
-        miList.querySelectorAll("[data-ai-missing-create-only]").forEach(btn => {
-            btn.addEventListener("click", async () => {
-                try { await openPosteCompCreateModalFromAi(window.portal, parseInt(btn.getAttribute("data-ai-missing-create-only"), 10), false); }
-                catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
-            });
         });
     }
 

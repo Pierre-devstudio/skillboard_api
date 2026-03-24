@@ -301,6 +301,134 @@ def _next_comp_code(cur, oid: str) -> str:
         raise HTTPException(status_code=400, detail="Limite de numérotation atteinte (CO99999).")
     return f"CO{nxt:05d}"
 
+_ACTION_VERB_HINTS = {
+    "animer", "administrer", "piloter", "conduire", "concevoir", "mettre",
+    "gérer", "gerer", "utiliser", "réaliser", "realiser", "structurer",
+    "déployer", "deployer", "définir", "definir", "coordonner", "produire",
+    "élaborer", "elaborer", "organiser", "préparer", "preparer", "présenter",
+    "presenter", "négocier", "negocier", "assurer", "contrôler", "controler",
+    "auditer", "former", "accompagner", "développer", "developper", "optimiser",
+    "exploiter", "installer", "maintenir", "paramétrer", "parametrer",
+    "configurer", "superviser", "planifier", "mesurer", "évaluer", "evaluer",
+    "vendre", "conseiller", "élaborer", "elaborer"
+}
+
+
+def _starts_with_action_verb(v: Optional[str]) -> bool:
+    n = _norm_text_search(v)
+    if not n:
+        return False
+    first = n.split(" ")[0]
+    if first in _ACTION_VERB_HINTS:
+        return True
+    return len(first) >= 3 and first.endswith(("er", "ir", "re", "oir"))
+
+
+def _extract_action_phrase(v: Optional[str], max_len: int = 140) -> str:
+    s = _clean_ai_comp_text(v, max_len * 2)
+    if not s:
+        return ""
+    s = re.sub(r"^(savoir|être capable de|etre capable de|capacité à|capacite a)\s+", "", s, flags=re.I)
+    s = re.split(r"[.;:]", s)[0]
+    s = re.split(r"\s+-\s+|,", s)[0]
+    s = s.strip(" -–•")
+    if len(s) > max_len:
+        s = s[:max_len].rsplit(" ", 1)[0].rstrip(" ,;:.")
+    return s.strip()
+
+
+def _normalize_ai_comp_title(title: Optional[str], description: Optional[str]) -> str:
+    t = _extract_action_phrase(title, 140)
+    if _starts_with_action_verb(t):
+        return t
+
+    d = _extract_action_phrase(description, 140)
+    if _starts_with_action_verb(d):
+        return d
+
+    return t or d
+
+
+def _normalize_eval_text(v: Optional[str], max_len: int = 120) -> str:
+    s = _clean_ai_comp_text(v, max_len)
+    if not s:
+        return ""
+
+    s = re.sub(r"^(la personne évaluée|la personne evaluee|la personne|l['’]évalué|l['’]evalue)\s+", "", s, flags=re.I)
+    s = re.sub(r"^(est capable de|sait|peut)\s+", "", s, flags=re.I)
+    s = s.strip()
+
+    if not s:
+        return ""
+
+    s = s[0].upper() + s[1:]
+    if s[-1] not in ".!?":
+        s += "."
+    return s[:max_len]
+
+
+def _level_score(txt: Optional[str]) -> int:
+    t = _norm_text_search(txt)
+    score = 0
+    for w in ("optimis", "anticipe", "transmet", "forme", "expert", "référent", "referent", "complexe", "ameliore", "adapte", "concoit", "pilote"):
+        if w in t:
+            score += 3
+    for w in ("autonome", "structure", "fiable", "standard", "applique", "met en oeuvre", "gere", "gère", "analyse", "coordonne", "maitrise", "maîtrise"):
+        if w in t:
+            score += 1
+    for w in ("guid", "supervis", "avec aide", "assist", "simple", "consigne", "début", "debut"):
+        if w in t:
+            score -= 2
+    return score
+
+
+def _fix_abc_levels(data: dict) -> None:
+    a = data.get("niveaua") or ""
+    b = data.get("niveaub") or ""
+    c = data.get("niveauc") or ""
+    sa = _level_score(a)
+    sb = _level_score(b)
+    sc = _level_score(c)
+
+    if sa > sc:
+        levels = [("niveaua", a, sa), ("niveaub", b, sb), ("niveauc", c, sc)]
+        levels.sort(key=lambda x: x[2])
+        data["niveaua"] = levels[0][1]
+        data["niveaub"] = levels[1][1]
+        data["niveauc"] = levels[2][1]
+
+
+def _normalize_ai_comp_item(item: dict) -> None:
+    item["intitule"] = _normalize_ai_comp_title(item.get("intitule"), item.get("description"))
+    item["description"] = _clean_ai_comp_text(item.get("description"), 240)
+    item["why_needed"] = _clean_ai_comp_text(item.get("why_needed"), 240)
+    item["niveaua"] = _clean_ai_comp_text(item.get("niveaua"), 230)
+    item["niveaub"] = _clean_ai_comp_text(item.get("niveaub"), 230)
+    item["niveauc"] = _clean_ai_comp_text(item.get("niveauc"), 230)
+
+    _fix_abc_levels(item)
+
+    ge = _sanitize_grille(item.get("grille_evaluation"))
+    seen = set()
+    for i in range(1, 5):
+        k = f"Critere{i}"
+        c = ge.get(k) or {"Nom": "", "Eval": ["", "", "", ""]}
+        nom = _clean_ai_comp_text(c.get("Nom"), 140)
+        key = _norm_text_search(nom)
+
+        if key and key in seen:
+            ge[k] = {"Nom": "", "Eval": ["", "", "", ""]}
+            continue
+
+        if key:
+            seen.add(key)
+
+        ge[k] = {
+            "Nom": nom,
+            "Eval": [_normalize_eval_text(x, 120) for x in (c.get("Eval") or ["", "", "", ""])[:4]]
+        }
+
+    item["grille_evaluation"] = ge
 
 def _norm_text_search(v: Optional[str]) -> str:
     s = _clean_text(v).lower()
@@ -884,11 +1012,19 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
             "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
             "Tu t'appuies sur les informations fournies ET sur une recherche web. "
             "Tu proposes uniquement des compétences utiles au poste. Pas de soft skills génériques sauf si elles sont vraiment indispensables à l'exécution. "
-            "Tu évites les doublons. Tu privilégies des intitulés de compétences courts, réutilisables et compatibles avec un référentiel RH. "
+            "Tu évites les doublons. "
+            "IMPORTANT: l'intitulé d'une compétence doit commencer par un verbe d'action à l'infinitif et être réutilisable dans un référentiel RH. "
+            "Exemples de forme attendue: 'Animer des sessions de formation', 'Piloter des indicateurs qualité', 'Administrer une infrastructure web'. "
+            "Exemples interdits: thèmes nominaux, axes de travail, intitulés fourre-tout, formulations avec '&' ou '/'. "
             "La description doit être courte, propre, opérationnelle, sans URL, sans source, sans nom de site, sans citation. "
-            "recommended_level: A initial, B autonome fiable, C expert / référent. "
-            "Les trois scores freq_usage / impact_resultat / dependance doivent être cohérents et réalistes. "
-            "Les niveaux A/B/C doivent être rédigés et observables. La grille d'évaluation doit être exploitable."
+            "recommended_level: A initial (guidé, applique des consignes simples), B avancé (autonome, structuré, fiable), C expert (maîtrise, optimise, transmet). "
+            "Les niveaux A/B/C doivent être rédigés en 1 à 2 phrases concrètes et observables, décrivant ce que la personne sait faire en situation réelle. "
+            "La grille d'évaluation doit être exploitable par un manager ou un formateur. "
+            "Chaque évaluation doit être courte, progressive, observable, formulée comme une pratique ou un comportement constatable. "
+            "Nombre de critères: produis entre 1 et 4 critères selon la difficulté réelle de la compétence, en visant le minimum utile. "
+            "Si la compétence est simple, 1 ou 2 critères suffisent. Si elle est plus riche, 3 critères. 4 seulement si c'est réellement nécessaire. "
+            "Laisse les critères inutiles vides (Nom vide + 4 Eval vides). "
+            "Les trois scores freq_usage / impact_resultat / dependance doivent être cohérents et réalistes."
         )
         user_prompt = (
             f"intitulé du poste: {title}\n"
@@ -901,7 +1037,15 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
             f"interactions: {(payload.ai_interactions or '').strip()}\n"
             f"contraintes complémentaires: {(payload.ai_contraintes or '').strip()}\n"
             f"contraintes fiche: niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n"
-            "Produis 5 à 8 compétences maximum, les plus structurantes pour réussir le poste.\n"
+            "Produis toutes les compétences nécessaires à la réalisation effective des tâches décrites pour ce poste.\n"
+            "N'omets pas une compétence utile sous prétexte de concision.\n"
+            "Ne crée pas de doublons ni de variantes inutiles d'une même compétence.\n"
+            "Regroupe intelligemment quand plusieurs tâches relèvent d'une même compétence transférable.\n"
+            "Rappel impératif:\n"
+            "- chaque intitulé doit commencer par un verbe d'action à l'infinitif ;\n"
+            "- la description doit rester courte ;\n"
+            "- les niveaux A/B/C doivent exprimer ce que la personne sait faire de façon observable ;\n"
+            "- la grille doit comporter entre 1 et 4 critères utiles, pas plus.\n"
         )
 
         drafted = _openai_responses_json(model, "poste_comp_search", schema, system_prompt, user_prompt, use_web=True)
@@ -919,7 +1063,9 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                 seen_titles = set()
 
                 for item in drafted_items:
-                    intitule = (item.get("intitule") or "").strip()
+                    _normalize_ai_comp_item(item)
+                    intitule = _normalize_ai_comp_title(item.get("intitule"), item.get("description"))
+                    item["intitule"] = intitule
                     if not intitule:
                         continue
                     norm_title = _norm_text_search(intitule)
@@ -954,19 +1100,22 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                     else:
                         domaine_id = _resolve_domain_id(cur, item.get("domaine_hint"))
                         domaine_label = None
+                        domaine_couleur = None
                         if domaine_id:
                             cur.execute(
-                                "SELECT COALESCE(titre_court, titre, id_domaine_competence) AS label FROM public.tbl_domaine_competence WHERE id_domaine_competence = %s LIMIT 1",
+                                "SELECT COALESCE(titre_court, titre, id_domaine_competence) AS label, couleur FROM public.tbl_domaine_competence WHERE id_domaine_competence = %s LIMIT 1",
                                 (domaine_id,)
                             )
                             rr = cur.fetchone() or {}
                             domaine_label = rr.get("label")
+                            domaine_couleur = rr.get("couleur")
                         missing.append({
-                            "intitule": _clean_ai_comp_text(intitule, 140),
+                            "intitule": _normalize_ai_comp_title(intitule, item.get("description")),
                             "description": _clean_ai_comp_text(item.get("description"), 240),
                             "why_needed": _clean_ai_comp_text(item.get("why_needed"), 240),
                             "domaine_id": domaine_id,
                             "domaine_label": _clean_ai_comp_text(domaine_label or item.get("domaine_hint"), 80),
+                            "domaine_couleur": domaine_couleur,
                             "recommended_level": lvl,
                             "recommended_level_label": {"A": "Initial", "B": "Avancé", "C": "Expert"}.get(lvl, lvl),
                             "freq_usage": fu,
