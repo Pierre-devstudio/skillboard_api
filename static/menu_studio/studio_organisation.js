@@ -39,6 +39,8 @@
     let _posteCompEdit = null; // objet en cours d'édition (merge comp + assoc)
     let _posteAiDraftMeta = null;
     let _posteCompAiResults = { existing: [], missing: [] };
+    let _iaBusyTimer = null;
+    let _iaBusyStartedAt = 0;
 
     // --- Poste > Certifications (Exigences)
     let _posteCertItems = [];
@@ -108,6 +110,37 @@
             .replace(/\r/g, "")
             .replace(/\n{3,}/g, "\n\n")
             .trim();
+    }
+
+    function openIaBusyOverlay(title, text){
+        const ov = byId("iaBusyOverlay");
+        const ttl = byId("iaBusyTitle");
+        const txt = byId("iaBusyText");
+        const sec = byId("iaBusySeconds");
+        if (!ov) return;
+
+        if (ttl) ttl.textContent = title || "Analyse IA en cours";
+        if (txt) txt.textContent = text || "Traitement en cours...";
+        if (sec) sec.textContent = "0";
+
+        _iaBusyStartedAt = Date.now();
+        if (_iaBusyTimer) clearInterval(_iaBusyTimer);
+        _iaBusyTimer = setInterval(() => {
+            const s = Math.max(0, Math.floor((Date.now() - _iaBusyStartedAt) / 1000));
+            const el = byId("iaBusySeconds");
+            if (el) el.textContent = String(s);
+        }, 250);
+
+        ov.style.display = "flex";
+    }
+
+    function closeIaBusyOverlay(){
+        if (_iaBusyTimer){
+            clearInterval(_iaBusyTimer);
+            _iaBusyTimer = null;
+        }
+        const ov = byId("iaBusyOverlay");
+        if (ov) ov.style.display = "none";
     }
 
     function normText(v){
@@ -780,10 +813,15 @@
             return;
         }
 
-        const btn = byId("btnPosteAiGenerate");
-        if (btn){ btn.disabled = true; btn.style.opacity = ".6"; btn.textContent = "Génération…"; }
+            const btn = byId("btnPosteAiGenerate");
+            if (btn){ btn.disabled = true; btn.style.opacity = ".6"; btn.textContent = "Génération…"; }
 
-        try{
+            openIaBusyOverlay(
+                "Génération IA de la fiche de poste",
+                "Recherche web, analyse du contexte métier et rédaction du brouillon..."
+            );
+
+            try{
             const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_draft`;
             const draft = await portal.apiJson(url, {
                 method: "POST",
@@ -814,6 +852,7 @@
         } catch(e){
             portal.showAlert("error", e?.message || String(e));
         } finally {
+            closeIaBusyOverlay();
             if (btn){ btn.disabled = false; btn.style.opacity = ""; btn.textContent = "Générer"; }
         }
     }
@@ -955,6 +994,11 @@
         const loading = byId("posteCompAiLoading");
         if (loading) loading.style.display = "";
 
+        openIaBusyOverlay(
+            "Recherche IA des compétences",
+            "Analyse du poste, recherche web et rapprochement avec le catalogue de compétences..."
+        );
+
         try{
             const ownerId = getOwnerId();
             const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_search`;
@@ -969,6 +1013,7 @@
             };
             renderPosteCompAiResults();
         } finally {
+            closeIaBusyOverlay();
             if (loading) loading.style.display = "none";
         }
     }
@@ -2118,6 +2163,7 @@
     }
 
     function closePosteModal(){
+        closeIaBusyOverlay();
         closeModal("modalPoste");
     }
 
