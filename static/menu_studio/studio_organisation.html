@@ -491,6 +491,132 @@
     </div>
   </div>
   
+    <!-- MODAL : Créer compétence depuis suggestion IA -->
+  <div class="sb-modal" id="modalPosteCompCreate" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div style="min-width:0;">
+            <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+              <span id="posteCompCreateBadge" class="sb-badge sb-badge--comp" style="display:none;"></span>
+              <div class="card-title" id="posteCompCreateTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Créer une compétence</div>
+            </div>
+            <div class="card-sub" id="posteCompCreateSub" style="margin:4px 0 0 0;">
+              Brouillon proposé par l’IA. Tu valides / ajustes avant création.
+            </div>
+          </div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnPosteCompCreateX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="row">
+          <div class="info-item" style="flex:2; min-width:260px;">
+            <div class="label">Intitulé</div>
+            <input type="text" id="posteCompCreateIntitule" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:240px;">
+            <div class="label">Domaine</div>
+            <select id="posteCompCreateDomaine">
+              <option value="">—</option>
+            </select>
+          </div>
+          <div class="info-item" style="flex:1; min-width:240px;">
+            <div class="label">État</div>
+            <select id="posteCompCreateEtat">
+              <option value="valide">valide</option>
+              <option value="active">active</option>
+              <option value="à valider" selected>à valider</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Description</div>
+            <textarea id="posteCompCreateDesc" rows="3" class="sb-ctrl"></textarea>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Niveau A</div>
+            <textarea id="posteCompCreateNivA" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
+          </div>
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Niveau B</div>
+            <textarea id="posteCompCreateNivB" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
+          </div>
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Niveau C</div>
+            <textarea id="posteCompCreateNivC" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="sb-field-head">
+              <div class="label" style="margin:0;">Grille d’évaluation</div>
+              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnPosteCompCreateAddCrit">
+                Ajouter un critère
+              </button>
+            </div>
+
+            <div class="sb-crit-editor" id="posteCompCreateCritEditor" style="display:none;">
+              <div class="card-sub" id="posteCompCreateCritEditorTitle" style="margin:0 0 10px 0;">Critère</div>
+
+              <div class="row">
+                <div class="info-item" style="flex:1; min-width:260px;">
+                  <div class="label">Nom du critère</div>
+                  <input type="text" id="posteCompCreateCritNom" />
+                </div>
+              </div>
+
+              <div class="sb-crit-evals">
+                <div class="sb-crit-eval-row">
+                  <div class="label">Niveau 1</div>
+                  <input type="text" id="posteCompCreateCritEval1" maxlength="120" class="sb-ctrl" />
+                </div>
+                <div class="sb-crit-eval-row">
+                  <div class="label">Niveau 2</div>
+                  <input type="text" id="posteCompCreateCritEval2" maxlength="120" class="sb-ctrl" />
+                </div>
+                <div class="sb-crit-eval-row">
+                  <div class="label">Niveau 3</div>
+                  <input type="text" id="posteCompCreateCritEval3" maxlength="120" class="sb-ctrl" />
+                </div>
+                <div class="sb-crit-eval-row">
+                  <div class="label">Niveau 4</div>
+                  <input type="text" id="posteCompCreateCritEval4" maxlength="120" class="sb-ctrl" />
+                </div>
+              </div>
+
+              <div class="sb-acc-actions">
+                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteCompCreateCritSave">Enregistrer</button>
+                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnPosteCompCreateCritCancel">Annuler</button>
+              </div>
+            </div>
+
+            <div class="sb-stack sb-stack--xs" id="posteCompCreateCritList"></div>
+
+            <div class="card-sub" style="margin:8px 0 0 0;">
+              1 à 4 critères. Chaque critère doit contenir 4 niveaux d’évaluation.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCompCreateAdd">Créer et ajouter</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCompCreateOnly">Créer seulement</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCompCreateCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+  
   <!-- MODAL : Ajouter compétence au poste -->
   <div class="sb-modal" id="modalPosteCompAdd" style="display:none;">
     <div class="sb-modal-card">

@@ -261,6 +261,22 @@ def _clean_text(v: Optional[str]) -> str:
         return ""
     return str(v).replace("\x00", "").strip()
 
+def _clean_ai_comp_text(v: Optional[str], max_len: int = 280) -> str:
+    s = _clean_text(v)
+    if not s:
+        return ""
+
+    s = re.sub(r"https?://\S+", "", s, flags=re.I)
+    s = re.sub(r"www\.\S+", "", s, flags=re.I)
+    s = re.sub(r"\[[^\]]*\]", "", s)
+    s = re.sub(r"\(([^)]*(?:utm_source|wikipedia|atlassian|source|sources?|réf\.?|reference|references)[^)]*)\)", "", s, flags=re.I)
+    s = re.sub(r"\s+", " ", s).strip(" -–•")
+    s = re.sub(r"\s+([,.;:])", r"\1", s)
+
+    if len(s) > max_len:
+        s = s[:max_len].rsplit(" ", 1)[0].rstrip(" ,;:.") + "…"
+    return s
+
 def _next_comp_code(cur, oid: str) -> str:
     lock_key = f"comp_code:{oid}:CO"
     cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (lock_key,))
@@ -420,7 +436,7 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
             continue
         if s.lower() not in [x.lower() for x in terms]:
             terms.append(s)
-        if len(terms) >= 4:
+        if len(terms) >= 6:
             break
 
     if not terms:
@@ -440,6 +456,7 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
           c.intitule,
           c.description,
           c.domaine,
+          c.etat,
           dc.titre_court AS domaine_titre_court,
           dc.couleur AS domaine_couleur
         FROM public.tbl_competence c
@@ -450,18 +467,28 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
           AND COALESCE(c.masque, FALSE) = FALSE
           AND ({' OR '.join(where_parts)})
         ORDER BY lower(c.intitule)
-        LIMIT 30
+        LIMIT 40
     """
     cur.execute(sql, tuple(params))
     rows = cur.fetchall() or []
+
     best = None
     best_score = 0.0
+
     for r in rows:
-        score = _similarity_score(t, r.get("intitule"))
+        scores = [
+            _similarity_score(t, r.get("intitule")),
+            _similarity_score(t, r.get("description")),
+        ]
+        for term in terms:
+            scores.append(_similarity_score(term, r.get("intitule")))
+            scores.append(_similarity_score(term, r.get("description")))
+        score = max(scores) if scores else 0.0
         if score > best_score:
             best_score = score
             best = r
-    return best if best_score >= 0.80 else None
+
+    return best if best_score >= 0.66 else None
 
 
 def _sanitize_grille(v: Any) -> dict:
@@ -857,12 +884,12 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
             "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
             "Tu t'appuies sur les informations fournies ET sur une recherche web. "
             "Tu proposes uniquement des compétences utiles au poste. Pas de soft skills génériques sauf si elles sont vraiment indispensables à l'exécution. "
-            "Tu évites les doublons. Tu privilégies des intitulés de compétences réutilisables dans un référentiel RH. "
+            "Tu évites les doublons. Tu privilégies des intitulés de compétences courts, réutilisables et compatibles avec un référentiel RH. "
+            "La description doit être courte, propre, opérationnelle, sans URL, sans source, sans nom de site, sans citation. "
             "recommended_level: A initial, B autonome fiable, C expert / référent. "
             "Les trois scores freq_usage / impact_resultat / dependance doivent être cohérents et réalistes. "
             "Les niveaux A/B/C doivent être rédigés et observables. La grille d'évaluation doit être exploitable."
         )
-
         user_prompt = (
             f"intitulé du poste: {title}\n"
             f"mission principale: {(payload.mission_principale or '').strip()}\n"
@@ -914,9 +941,9 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                             "id_comp": match.get("id_comp"),
                             "code": match.get("code"),
                             "intitule": match.get("intitule"),
+                            "etat": match.get("etat"),
                             "domaine_titre_court": match.get("domaine_titre_court"),
                             "domaine_couleur": match.get("domaine_couleur"),
-                            "why_needed": (item.get("why_needed") or "").strip(),
                             "recommended_level": lvl,
                             "recommended_level_label": {"A": "Initial", "B": "Avancé", "C": "Expert"}.get(lvl, lvl),
                             "freq_usage": fu,
@@ -935,20 +962,20 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                             rr = cur.fetchone() or {}
                             domaine_label = rr.get("label")
                         missing.append({
-                            "intitule": intitule,
-                            "description": (item.get("description") or "").strip(),
-                            "why_needed": (item.get("why_needed") or "").strip(),
+                            "intitule": _clean_ai_comp_text(intitule, 140),
+                            "description": _clean_ai_comp_text(item.get("description"), 240),
+                            "why_needed": _clean_ai_comp_text(item.get("why_needed"), 240),
                             "domaine_id": domaine_id,
-                            "domaine_label": domaine_label or (item.get("domaine_hint") or "").strip(),
+                            "domaine_label": _clean_ai_comp_text(domaine_label or item.get("domaine_hint"), 80),
                             "recommended_level": lvl,
                             "recommended_level_label": {"A": "Initial", "B": "Avancé", "C": "Expert"}.get(lvl, lvl),
                             "freq_usage": fu,
                             "impact_resultat": im,
                             "dependance": de,
                             "poids_criticite": poids,
-                            "niveaua": (item.get("niveaua") or "").strip(),
-                            "niveaub": (item.get("niveaub") or "").strip(),
-                            "niveauc": (item.get("niveauc") or "").strip(),
+                            "niveaua": _clean_ai_comp_text(item.get("niveaua"), 230),
+                            "niveaub": _clean_ai_comp_text(item.get("niveaub"), 230),
+                            "niveauc": _clean_ai_comp_text(item.get("niveauc"), 230),
                             "grille_evaluation": _sanitize_grille(item.get("grille_evaluation")),
                         })
 

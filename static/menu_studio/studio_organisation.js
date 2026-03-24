@@ -39,6 +39,11 @@
     let _posteCompEdit = null; // objet en cours d'édition (merge comp + assoc)
     let _posteAiDraftMeta = null;
     let _posteCompAiResults = { existing: [], missing: [] };
+    let _posteCompCreateCtx = null;
+    let _posteCompCreateDomainsLoaded = false;
+    let _posteCompCreateDomainItems = [];
+    let _posteCompCreateCrit = null;
+    let _posteCompCreateCritEditIdx = null;
     let _iaBusyTimer = null;
     let _iaBusyStartedAt = 0;
 
@@ -897,6 +902,499 @@
         };
     }
 
+    async function ensurePosteCompCreateDomains(portal){
+        if (_posteCompCreateDomainsLoaded) return;
+        _posteCompCreateDomainsLoaded = true;
+
+        try{
+            const ownerId = getOwnerId();
+            const url = `${portal.apiBase}/studio/catalog/domaines/${encodeURIComponent(ownerId)}`;
+            const r = await portal.apiJson(url);
+            _posteCompCreateDomainItems = Array.isArray(r?.items) ? r.items : [];
+        } catch(_){
+            _posteCompCreateDomainItems = [];
+        }
+    }
+
+    function fillPosteCompCreateDomainSelect(selectedId){
+        const sel = byId("posteCompCreateDomaine");
+        if (!sel) return;
+
+        const keep = (selectedId ?? sel.value ?? "").toString().trim();
+
+        sel.innerHTML = "";
+        const opt0 = document.createElement("option");
+        opt0.value = "";
+        opt0.textContent = "—";
+        sel.appendChild(opt0);
+
+        (_posteCompCreateDomainItems || []).forEach(d => {
+            const id = (d.id_domaine_competence || "").toString().trim();
+            if (!id) return;
+
+            const label = (d.titre_court || d.titre || id).toString().trim();
+            const opt = document.createElement("option");
+            opt.value = id;
+            opt.textContent = label;
+            opt.title = (d.titre || label || "").toString();
+            sel.appendChild(opt);
+        });
+
+        sel.value = keep || "";
+    }
+
+    function posteCompCreateEmptyCrit(){
+        return { Nom:"", Eval:["","","",""] };
+    }
+
+    function parsePosteCompCreateGrille(v){
+        if (!v) return null;
+        if (typeof v === "object") return v;
+        if (typeof v === "string"){
+            try { return JSON.parse(v); } catch(_) { return null; }
+        }
+        return null;
+    }
+
+    function resetPosteCompCreateCrit(){
+        _posteCompCreateCrit = [
+            posteCompCreateEmptyCrit(),
+            posteCompCreateEmptyCrit(),
+            posteCompCreateEmptyCrit(),
+            posteCompCreateEmptyCrit()
+        ];
+        _posteCompCreateCritEditIdx = null;
+        hidePosteCompCreateCritEditor();
+        renderPosteCompCreateCritList();
+    }
+
+    function loadPosteCompCreateCritFromJson(grille){
+        const g = parsePosteCompCreateGrille(grille) || {};
+        _posteCompCreateCrit = [
+            posteCompCreateEmptyCrit(),
+            posteCompCreateEmptyCrit(),
+            posteCompCreateEmptyCrit(),
+            posteCompCreateEmptyCrit()
+        ];
+
+        for (let i=1;i<=4;i++){
+            const k = "Critere" + i;
+            const node = g[k] || {};
+            const nom = (node.Nom || "").toString();
+            const ev = Array.isArray(node.Eval) ? node.Eval : [];
+            _posteCompCreateCrit[i-1] = {
+                Nom: nom,
+                Eval: [
+                    (ev[0] || "").toString(),
+                    (ev[1] || "").toString(),
+                    (ev[2] || "").toString(),
+                    (ev[3] || "").toString()
+                ]
+            };
+        }
+
+        _posteCompCreateCritEditIdx = null;
+        hidePosteCompCreateCritEditor();
+        renderPosteCompCreateCritList();
+    }
+
+    function buildPosteCompCreateGrilleJson(){
+        const out = {};
+        for (let i=1;i<=4;i++){
+            const c = (_posteCompCreateCrit && _posteCompCreateCrit[i-1]) ? _posteCompCreateCrit[i-1] : posteCompCreateEmptyCrit();
+            out["Critere"+i] = {
+                Nom: (c.Nom || "").toString(),
+                Eval: [
+                    (c.Eval?.[0] || "").toString(),
+                    (c.Eval?.[1] || "").toString(),
+                    (c.Eval?.[2] || "").toString(),
+                    (c.Eval?.[3] || "").toString(),
+                ]
+            };
+        }
+        return out;
+    }
+
+    function usedPosteCompCreateCritCount(){
+        if (!_posteCompCreateCrit) return 0;
+        let n = 0;
+        for (let i=0;i<4;i++){
+            const c = _posteCompCreateCrit[i];
+            if (!c) continue;
+            if ((c.Nom || "").trim()) n++;
+        }
+        return n;
+    }
+
+    function nextEmptyPosteCompCreateCritIndex(){
+        if (!_posteCompCreateCrit) return 0;
+        for (let i=0;i<4;i++){
+            const c = _posteCompCreateCrit[i];
+            const hasNom = (c?.Nom || "").trim().length > 0;
+            const hasEval = (c?.Eval || []).some(x => (x || "").trim().length > 0);
+            if (!hasNom && !hasEval) return i;
+        }
+        return -1;
+    }
+
+    function showPosteCompCreateCritEditor(idx){
+        _posteCompCreateCritEditIdx = idx;
+
+        const ed = byId("posteCompCreateCritEditor");
+        if (!ed) return;
+
+        const title = byId("posteCompCreateCritEditorTitle");
+        if (title) title.textContent = `Critère ${idx+1}`;
+
+        const c = _posteCompCreateCrit[idx] || posteCompCreateEmptyCrit();
+
+        byId("posteCompCreateCritNom").value = c.Nom || "";
+        byId("posteCompCreateCritEval1").value = c.Eval?.[0] || "";
+        byId("posteCompCreateCritEval2").value = c.Eval?.[1] || "";
+        byId("posteCompCreateCritEval3").value = c.Eval?.[2] || "";
+        byId("posteCompCreateCritEval4").value = c.Eval?.[3] || "";
+
+        ed.style.display = "";
+    }
+
+    function hidePosteCompCreateCritEditor(){
+        const ed = byId("posteCompCreateCritEditor");
+        if (ed) ed.style.display = "none";
+        _posteCompCreateCritEditIdx = null;
+    }
+
+    function renderPosteCompCreateCritList(){
+        const host = byId("posteCompCreateCritList");
+        const btnAdd = byId("btnPosteCompCreateAddCrit");
+        if (!host) return;
+
+        if (!_posteCompCreateCrit){
+            _posteCompCreateCrit = [
+                posteCompCreateEmptyCrit(),
+                posteCompCreateEmptyCrit(),
+                posteCompCreateEmptyCrit(),
+                posteCompCreateEmptyCrit()
+            ];
+        }
+
+        host.innerHTML = "";
+
+        const used = usedPosteCompCreateCritCount();
+        if (btnAdd){
+            btnAdd.disabled = used >= 4;
+            btnAdd.style.opacity = btnAdd.disabled ? ".6" : "";
+            btnAdd.title = btnAdd.disabled ? "Maximum 4 critères." : "";
+        }
+
+        for (let i=0;i<4;i++){
+            const c = _posteCompCreateCrit[i];
+            const nom = (c?.Nom || "").trim();
+            if (!nom) continue;
+
+            const acc = document.createElement("div");
+            acc.className = "sb-acc";
+
+            const head = document.createElement("button");
+            head.type = "button";
+            head.className = "sb-acc-head";
+            head.addEventListener("click", () => acc.classList.toggle("is-open"));
+
+            const t = document.createElement("div");
+            t.className = "sb-acc-title";
+            t.textContent = `Critère ${i+1} – ${nom}`;
+            head.appendChild(t);
+
+            const body = document.createElement("div");
+            body.className = "sb-acc-body";
+
+            const ul = document.createElement("div");
+            ul.className = "sb-crit-evals";
+
+            const labels = ["Niveau 1","Niveau 2","Niveau 3","Niveau 4"];
+            for (let k=0;k<4;k++){
+                const row = document.createElement("div");
+                row.className = "sb-crit-eval-row";
+
+                const lab = document.createElement("div");
+                lab.className = "label";
+                lab.textContent = labels[k];
+
+                const txt = document.createElement("div");
+                txt.textContent = (c.Eval?.[k] || "").toString();
+
+                row.appendChild(lab);
+                row.appendChild(txt);
+                ul.appendChild(row);
+            }
+
+            const actions = document.createElement("div");
+            actions.className = "sb-acc-actions";
+
+            const btnEdit = document.createElement("button");
+            btnEdit.type = "button";
+            btnEdit.className = "sb-btn sb-btn--soft sb-btn--xs";
+            btnEdit.textContent = "Modifier";
+            btnEdit.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showPosteCompCreateCritEditor(i);
+                acc.classList.add("is-open");
+            });
+
+            actions.appendChild(btnEdit);
+            body.appendChild(ul);
+            body.appendChild(actions);
+            acc.appendChild(head);
+            acc.appendChild(body);
+            host.appendChild(acc);
+        }
+
+        if (!host.children.length){
+            const empty = document.createElement("div");
+            empty.className = "card-sub";
+            empty.textContent = "Aucun critère. Ajoute au moins 1 critère.";
+            host.appendChild(empty);
+        }
+    }
+
+    function savePosteCompCreateCritFromEditor(portal){
+        if (_posteCompCreateCritEditIdx === null || _posteCompCreateCritEditIdx === undefined) return;
+
+        const nom = (byId("posteCompCreateCritNom").value || "").trim();
+        const e1 = (byId("posteCompCreateCritEval1").value || "").trim();
+        const e2 = (byId("posteCompCreateCritEval2").value || "").trim();
+        const e3 = (byId("posteCompCreateCritEval3").value || "").trim();
+        const e4 = (byId("posteCompCreateCritEval4").value || "").trim();
+
+        if (!nom){
+            portal.showAlert("error", "Nom du critère obligatoire.");
+            return;
+        }
+        if (!e1 || !e2 || !e3 || !e4){
+            portal.showAlert("error", "Les 4 niveaux d’évaluation sont obligatoires.");
+            return;
+        }
+
+        _posteCompCreateCrit[_posteCompCreateCritEditIdx] = { Nom: nom, Eval:[e1,e2,e3,e4] };
+        hidePosteCompCreateCritEditor();
+        renderPosteCompCreateCritList();
+    }
+
+    function validatePosteCompCreateCritBeforeSave(portal){
+        if (!_posteCompCreateCrit){
+            _posteCompCreateCrit = [
+                posteCompCreateEmptyCrit(),
+                posteCompCreateEmptyCrit(),
+                posteCompCreateEmptyCrit(),
+                posteCompCreateEmptyCrit()
+            ];
+        }
+
+        if (usedPosteCompCreateCritCount() < 1){
+            portal.showAlert("error", "Ajoute au moins 1 critère d’évaluation.");
+            return false;
+        }
+
+        for (let i=0;i<4;i++){
+            const c = _posteCompCreateCrit[i];
+            const nom = (c?.Nom || "").trim();
+            const ev = c?.Eval || ["","","",""];
+            const anyEval = ev.some(x => (x || "").trim().length > 0);
+
+            if (!nom && !anyEval) continue;
+
+            if (!nom){
+                portal.showAlert("error", `Critère ${i+1} : nom obligatoire.`);
+                return false;
+            }
+            for (let k=0;k<4;k++){
+                if (!(ev[k] || "").trim()){
+                    portal.showAlert("error", `Critère ${i+1} : niveau ${k+1} obligatoire.`);
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    function bindPosteCompCreateMaxLen(id, max){
+        const el = byId(id);
+        if (!el || el._sbMaxBound) return;
+        el._sbMaxBound = true;
+
+        el.setAttribute("maxlength", String(max));
+
+        el.addEventListener("input", () => {
+            const v = (el.value || "");
+            if (v.length > max) el.value = v.slice(0, max);
+        });
+    }
+
+    function closePosteCompCreateModal(){
+        closeModal("modalPosteCompCreate");
+        _posteCompCreateCtx = null;
+        hidePosteCompCreateCritEditor();
+    }
+
+    async function openPosteCompCreateModalFromAi(portal, idx, addAfter){
+        const it = (_posteCompAiResults?.missing || [])[idx];
+        if (!it) return;
+
+        _posteCompCreateCtx = {
+            idx: idx,
+            addAfter: !!addAfter,
+            draft: JSON.parse(JSON.stringify(it || {}))
+        };
+
+        await ensurePosteCompCreateDomains(portal);
+
+        const badge = byId("posteCompCreateBadge");
+        if (badge){
+            badge.style.display = "none";
+            badge.textContent = "";
+        }
+
+        byId("posteCompCreateTitle").textContent = "Créer une compétence";
+        byId("posteCompCreateSub").textContent = "Brouillon proposé par l’IA. Tu valides / ajustes avant création.";
+
+        byId("posteCompCreateIntitule").value = (it.intitule || "");
+        byId("posteCompCreateDesc").value = (it.description || "");
+        byId("posteCompCreateEtat").value = "à valider";
+        byId("posteCompCreateNivA").value = (it.niveaua || "");
+        byId("posteCompCreateNivB").value = (it.niveaub || "");
+        byId("posteCompCreateNivC").value = (it.niveauc || "");
+
+        fillPosteCompCreateDomainSelect(it.domaine_id || "");
+        loadPosteCompCreateCritFromJson(it.grille_evaluation || null);
+
+        openModal("modalPosteCompCreate");
+    }
+
+    function promoteMissingAiCompetenceToExisting(meta){
+        if (!_posteCompCreateCtx) return;
+
+        const idx = _posteCompCreateCtx.idx;
+        const added = !!meta?.added;
+        const etat = (meta?.etat || "à valider").toString();
+        const title = (byId("posteCompCreateIntitule")?.value || "").trim();
+        const domainId = (byId("posteCompCreateDomaine")?.value || "").trim();
+        const domainSel = byId("posteCompCreateDomaine");
+        const domainLabel = domainSel ? (domainSel.options[domainSel.selectedIndex]?.textContent || "").trim() : "";
+
+        const missing = Array.isArray(_posteCompAiResults?.missing) ? _posteCompAiResults.missing : [];
+        const src = (missing[idx] || _posteCompCreateCtx.draft || {});
+
+        if (idx >= 0 && idx < missing.length){
+            missing.splice(idx, 1);
+        }
+
+        const existing = Array.isArray(_posteCompAiResults?.existing) ? _posteCompAiResults.existing : [];
+        existing.unshift({
+            id_comp: meta?.id_comp || "",
+            code: meta?.code || "",
+            intitule: title || (src.intitule || ""),
+            domaine: domainId || (src.domaine_id || ""),
+            domaine_titre_court: domainLabel || (src.domaine_label || ""),
+            domaine_couleur: null,
+            etat: etat,
+            recommended_level: (src.recommended_level || "B"),
+            recommended_level_label: (src.recommended_level_label || "Avancé"),
+            freq_usage: parseInt(src.freq_usage ?? 0, 10) || 0,
+            impact_resultat: parseInt(src.impact_resultat ?? 0, 10) || 0,
+            dependance: parseInt(src.dependance ?? 0, 10) || 0,
+            _already_added: added
+        });
+
+        _posteCompAiResults.existing = existing;
+        _posteCompAiResults.missing = missing;
+    }
+
+    async function savePosteCompCreateModal(portal, addAfter){
+        if (!_posteCompCreateCtx) return;
+
+        const ownerId = getOwnerId();
+        const title = (byId("posteCompCreateIntitule").value || "").trim();
+        const dom = (byId("posteCompCreateDomaine").value || "").trim();
+        const etat = (byId("posteCompCreateEtat").value || "à valider").trim();
+        const desc = (byId("posteCompCreateDesc").value || "").trim();
+        const a = (byId("posteCompCreateNivA").value || "").trim();
+        const b = (byId("posteCompCreateNivB").value || "").trim();
+        const c = (byId("posteCompCreateNivC").value || "").trim();
+
+        if (!title){
+            portal.showAlert("error", "Intitulé obligatoire.");
+            return;
+        }
+
+        if (!validatePosteCompCreateCritBeforeSave(portal)) return;
+
+        const btnMain = addAfter ? byId("btnPosteCompCreateAdd") : byId("btnPosteCompCreateOnly");
+        if (btnMain){
+            btnMain.disabled = true;
+            btnMain.style.opacity = ".6";
+        }
+
+        try{
+            const grille = buildPosteCompCreateGrilleJson();
+
+            const created = await portal.apiJson(
+                `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        intitule: title,
+                        domaine: dom || null,
+                        etat: etat || null,
+                        description: desc || null,
+                        niveaua: a || null,
+                        niveaub: b || null,
+                        niveauc: c || null,
+                        grille_evaluation: grille
+                    })
+                }
+            );
+
+            if (addAfter){
+                const pid = await ensureEditingPoste(portal);
+                const draft = _posteCompCreateCtx?.draft || {};
+                await portal.apiJson(
+                    `${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type":"application/json" },
+                        body: JSON.stringify({
+                            id_competence: created.id_comp,
+                            niveau_requis: (draft.recommended_level || "B"),
+                            freq_usage: parseInt(draft.freq_usage ?? 0, 10) || 0,
+                            impact_resultat: parseInt(draft.impact_resultat ?? 0, 10) || 0,
+                            dependance: parseInt(draft.dependance ?? 0, 10) || 0
+                        })
+                    }
+                );
+                await loadPosteCompetences(portal);
+            }
+
+            promoteMissingAiCompetenceToExisting({
+                id_comp: created.id_comp,
+                code: created.code,
+                etat: etat,
+                added: !!addAfter
+            });
+            renderPosteCompAiResults();
+
+            closePosteCompCreateModal();
+            portal.showAlert("", "");
+        } catch(e){
+            portal.showAlert("error", e?.message || String(e));
+        } finally {
+            if (btnMain){
+                btnMain.disabled = false;
+                btnMain.style.opacity = "";
+            }
+        }
+    }
+
     function renderPosteCompAiResults(){
         const summary = byId("posteCompAiSummary");
         const exWrap = byId("posteCompAiExistingWrap");
@@ -918,64 +1416,101 @@
 
         existing.forEach((it, idx) => {
             const row = document.createElement("div");
-            row.className = "card";
-            row.style.padding = "10px 12px";
-            row.innerHTML = `
-            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
-                <div style="min-width:0; flex:1;">
-                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                    ${(it.code || "") ? `<span class="sb-badge sb-badge--comp">${esc(it.code)}</span>` : ""}
-                    <strong>${esc(it.intitule || "")}</strong>
-                    ${(it.domaine_titre_court || "") ? `<span class="sb-badge sb-badge--comp-domain"><span class="sb-dot"></span>${esc(it.domaine_titre_court)}</span>` : ""}
-                </div>
-                <div class="card-sub" style="margin:6px 0 0 0;">${esc(it.why_needed || "")}</div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-                    <span class="sb-badge sb-badge--niv sb-badge--niv-${normText(it.recommended_level || "A")}">${esc(it.recommended_level_label || it.recommended_level || "A")}</span>
-                    <span class="sb-badge">Criticité ${esc(String(it.poids_criticite ?? 0))}/100</span>
-                </div>
-                </div>
-                <div class="sb-actions" style="flex-shrink:0;">
-                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-ai-existing-add="${idx}">Ajouter</button>
-                </div>
-            </div>`;
+            row.className = "sb-row-card";
+
+            const left = document.createElement("div");
+            left.className = "sb-row-left";
+
+            const code = document.createElement("span");
+            code.className = "sb-badge sb-badge--comp";
+            code.textContent = (it.code || "—");
+
+            const wrap = document.createElement("div");
+
+            const title = document.createElement("div");
+            title.className = "sb-row-title";
+            title.textContent = (it.intitule || "");
+
+            const meta = document.createElement("div");
+            meta.style.display = "flex";
+            meta.style.gap = "8px";
+            meta.style.flexWrap = "wrap";
+            meta.style.margin = "6px 0 0 0";
+
+            if ((it.domaine_titre_court || "").trim()){
+                const dom = document.createElement("span");
+                dom.className = "sb-badge sb-badge--comp-domain";
+                dom.innerHTML = `<span class="sb-dot"></span>${esc(it.domaine_titre_court)}`;
+                meta.appendChild(dom);
+            }
+
+            if (((it.etat || "").toLowerCase()) === "à valider"){
+                const et = document.createElement("span");
+                et.className = "sb-badge sb-badge--accent-soft";
+                et.textContent = "À valider";
+                meta.appendChild(et);
+            }
+
+            wrap.appendChild(title);
+            wrap.appendChild(meta);
+
+            left.appendChild(code);
+            left.appendChild(wrap);
+
+            const right = document.createElement("div");
+            right.className = "sb-row-right";
+
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "sb-btn sb-btn--accent sb-btn--xs";
+            btn.textContent = it._already_added ? "Ajoutée" : "Ajouter";
+            btn.disabled = !!it._already_added;
+            btn.style.opacity = it._already_added ? ".6" : "";
+            btn.addEventListener("click", async () => {
+                if (it._already_added) return;
+                try { await addExistingCompetenceFromAi(window.portal, idx); }
+                catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
+            });
+
+            right.appendChild(btn);
+            row.appendChild(left);
+            row.appendChild(right);
             exList.appendChild(row);
         });
 
         missing.forEach((it, idx) => {
             const row = document.createElement("div");
             row.className = "card";
-            row.style.padding = "10px 12px";
+            row.style.padding = "12px";
+
             row.innerHTML = `
-            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
+              <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
                 <div style="min-width:0; flex:1;">
-                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                     <strong>${esc(it.intitule || "")}</strong>
                     ${(it.domaine_label || "") ? `<span class="sb-badge sb-badge--comp-domain"><span class="sb-dot"></span>${esc(it.domaine_label)}</span>` : ""}
+                  </div>
+                  ${(it.description || "") ? `<div class="card-sub" style="margin:6px 0 0 0;">${esc(it.description || "")}</div>` : ``}
                 </div>
-                <div class="card-sub" style="margin:6px 0 0 0;">${esc(it.description || "")}</div>
-                <div class="card-sub" style="margin:6px 0 0 0;">${esc(it.why_needed || "")}</div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-                    <span class="sb-badge sb-badge--niv sb-badge--niv-${normText(it.recommended_level || "A")}">${esc(it.recommended_level_label || it.recommended_level || "A")}</span>
-                    <span class="sb-badge">Criticité ${esc(String(it.poids_criticite ?? 0))}/100</span>
+                <div class="sb-actions" style="display:flex; flex-direction:column; gap:8px; flex-shrink:0;">
+                  <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-ai-missing-create-add="${idx}">Créer et ajouter</button>
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-ai-missing-create-only="${idx}">Créer seulement</button>
                 </div>
-                </div>
-                <div class="sb-actions" style="flex-shrink:0;">
-                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-ai-missing-create="${idx}">Créer la compétence</button>
-                </div>
-            </div>`;
+              </div>
+            `;
             miList.appendChild(row);
         });
 
-        exList.querySelectorAll("[data-ai-existing-add]").forEach(btn => {
+        miList.querySelectorAll("[data-ai-missing-create-add]").forEach(btn => {
             btn.addEventListener("click", async () => {
-                try { await addExistingCompetenceFromAi(window.portal, parseInt(btn.getAttribute("data-ai-existing-add"), 10)); }
+                try { await openPosteCompCreateModalFromAi(window.portal, parseInt(btn.getAttribute("data-ai-missing-create-add"), 10), true); }
                 catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
             });
         });
 
-        miList.querySelectorAll("[data-ai-missing-create]").forEach(btn => {
+        miList.querySelectorAll("[data-ai-missing-create-only]").forEach(btn => {
             btn.addEventListener("click", async () => {
-                try { await createMissingCompetenceFromAi(window.portal, parseInt(btn.getAttribute("data-ai-missing-create"), 10)); }
+                try { await openPosteCompCreateModalFromAi(window.portal, parseInt(btn.getAttribute("data-ai-missing-create-only"), 10), false); }
                 catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
             });
         });
@@ -1028,23 +1563,26 @@
     async function addExistingCompetenceFromAi(portal, idx){
         const it = (_posteCompAiResults?.existing || [])[idx];
         if (!it || !it.id_comp) return;
+
         const pid = await ensureEditingPoste(portal);
         const ownerId = getOwnerId();
         const url = `${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}`;
+
         await portal.apiJson(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 id_competence: it.id_comp,
-                niveau_requis: it.recommended_level || "A",
+                niveau_requis: it.recommended_level || "B",
                 freq_usage: parseInt(it.freq_usage ?? 0, 10) || 0,
                 impact_resultat: parseInt(it.impact_resultat ?? 0, 10) || 0,
                 dependance: parseInt(it.dependance ?? 0, 10) || 0,
             }),
         });
+
+        it._already_added = true;
+        renderPosteCompAiResults();
         await loadPosteCompetences(portal);
-        const btn = document.querySelector(`[data-ai-existing-add="${idx}"]`);
-        if (btn){ btn.disabled = true; btn.textContent = "Ajoutée"; }
     }
 
     async function createMissingCompetenceFromAi(portal, idx){
@@ -2164,6 +2702,7 @@
 
     function closePosteModal(){
         closeIaBusyOverlay();
+        closeModal("modalPosteCompCreate");
         closeModal("modalPoste");
     }
 
@@ -2717,6 +3256,40 @@
         });
         byId("btnPosteCompAiX")?.addEventListener("click", () => closeModal("modalPosteCompAi"));
         byId("btnPosteCompAiClose")?.addEventListener("click", () => closeModal("modalPosteCompAi"));
+
+        byId("btnPosteCompCreateX")?.addEventListener("click", () => closePosteCompCreateModal());
+        byId("btnPosteCompCreateCancel")?.addEventListener("click", () => closePosteCompCreateModal());
+
+        byId("btnPosteCompCreateAdd")?.addEventListener("click", async () => {
+            try { await savePosteCompCreateModal(portal, true); }
+            catch(e){ portal.showAlert("error", e?.message || String(e)); }
+        });
+
+        byId("btnPosteCompCreateOnly")?.addEventListener("click", async () => {
+            try { await savePosteCompCreateModal(portal, false); }
+            catch(e){ portal.showAlert("error", e?.message || String(e)); }
+        });
+
+        byId("btnPosteCompCreateAddCrit")?.addEventListener("click", () => {
+            const idx = nextEmptyPosteCompCreateCritIndex();
+            if (idx < 0) return;
+            showPosteCompCreateCritEditor(idx);
+        });
+
+        byId("btnPosteCompCreateCritSave")?.addEventListener("click", () => {
+            try { savePosteCompCreateCritFromEditor(portal); }
+            catch(e){ portal.showAlert("error", e?.message || String(e)); }
+        });
+
+        byId("btnPosteCompCreateCritCancel")?.addEventListener("click", () => hidePosteCompCreateCritEditor());
+
+        bindPosteCompCreateMaxLen("posteCompCreateNivA", 230);
+        bindPosteCompCreateMaxLen("posteCompCreateNivB", 230);
+        bindPosteCompCreateMaxLen("posteCompCreateNivC", 230);
+        bindPosteCompCreateMaxLen("posteCompCreateCritEval1", 120);
+        bindPosteCompCreateMaxLen("posteCompCreateCritEval2", 120);
+        bindPosteCompCreateMaxLen("posteCompCreateCritEval3", 120);
+        bindPosteCompCreateMaxLen("posteCompCreateCritEval4", 120);
 
         byId("btnPosteCompAdd")?.addEventListener("click", () => {
           try { openPosteCompAddModal(); }
