@@ -256,6 +256,11 @@ def _calc_poids_criticite_100(freq_usage_0_10: int, impact_0_10: int, dependance
         total = 100
     return int(total)
 
+def _clean_text(v: Optional[str]) -> str:
+    if v is None:
+        return ""
+    return str(v).replace("\x00", "").strip()
+
 def _next_comp_code(cur, oid: str) -> str:
     lock_key = f"comp_code:{oid}:CO"
     cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (lock_key,))
@@ -282,7 +287,8 @@ def _next_comp_code(cur, oid: str) -> str:
 
 
 def _norm_text_search(v: Optional[str]) -> str:
-    s = unicodedata.normalize("NFD", (v or "").strip().lower())
+    s = _clean_text(v).lower()
+    s = unicodedata.normalize("NFD", s)
     s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
     s = re.sub(r"[^a-z0-9]+", " ", s)
     return re.sub(r"\s+", " ", s).strip()
@@ -310,7 +316,7 @@ def _similarity_score(a: Optional[str], b: Optional[str]) -> float:
 
 
 def _html_to_text(v: Optional[str]) -> str:
-    s = (v or "").strip()
+    s = _clean_text(v)
     if not s:
         return ""
     s = re.sub(r"<br\s*/?>", "\n", s, flags=re.I)
@@ -403,13 +409,13 @@ def _resolve_domain_id(cur, hint: Optional[str]) -> Optional[str]:
 
 
 def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List[str]) -> Optional[dict]:
-    t = (title or "").strip()
+    t = _clean_text(title)
     if not t:
         return None
 
     terms = []
     for raw in [t] + list(search_terms or []):
-        s = (raw or "").strip()
+        s = _clean_text(raw)
         if len(s) < 3:
             continue
         if s.lower() not in [x.lower() for x in terms]:
@@ -774,7 +780,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
     try:
         model = (os.getenv("OPENAI_MODEL_POSTE_COMP_SEARCH") or "gpt-5").strip()
         existing_ids = {str(x).strip() for x in (payload.existing_competence_ids or []) if str(x).strip()}
-        title = (payload.intitule_poste or "").strip()
+        title = _clean_text(payload.intitule_poste)
         if not title and payload.id_poste:
             with get_conn() as conn:
                 with conn.cursor(row_factory=dict_row) as cur:
@@ -786,7 +792,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                         (payload.id_poste, oid, oid)
                     )
                     row = cur.fetchone() or {}
-                    title = (row.get("intitule_poste") or "").strip()
+                    title = _clean_text(row.get("intitule_poste"))
                     if not payload.mission_principale:
                         payload.mission_principale = row.get("mission_principale")
                     if not payload.responsabilites_html:
