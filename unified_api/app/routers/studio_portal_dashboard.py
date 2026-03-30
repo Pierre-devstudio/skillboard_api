@@ -24,14 +24,14 @@ def _require_owner_access(cur, u: dict, id_owner: str):
     if not oid:
         raise HTTPException(status_code=400, detail="id_owner manquant.")
 
-    # Super-admin: accès à tous les owners
     if u.get("is_super_admin"):
         return oid
 
-    # Standard: vérif accès via user_metadata OU mapping DB
     meta = u.get("user_metadata") or {}
     meta_owner = (meta.get("id_owner") or "").strip()
-    if meta_owner and meta_owner == oid:
+    if meta_owner:
+        if meta_owner != oid:
+            raise HTTPException(status_code=403, detail="Accès refusé (owner non autorisé).")
         return oid
 
     email = (u.get("email") or "").strip()
@@ -41,10 +41,12 @@ def _require_owner_access(cur, u: dict, id_owner: str):
     cur.execute(
         """
         SELECT 1
-        FROM public.tbl_studio_user_access
+        FROM public.tbl_novoskill_user_access
         WHERE lower(email) = lower(%s)
           AND id_owner = %s
+          AND console_code = 'studio'
           AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') <> 'suspendu'
         LIMIT 1
         """,
         (email, oid),
@@ -78,10 +80,12 @@ def _resolve_prenom(cur, email: str, id_owner: str) -> Optional[str]:
     cur.execute(
         """
         SELECT user_ref_type, id_user_ref
-        FROM public.tbl_studio_user_access
+        FROM public.tbl_novoskill_user_access
         WHERE lower(email) = lower(%s)
           AND id_owner = %s
+          AND console_code = 'studio'
           AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') <> 'suspendu'
         LIMIT 1
         """,
         (e, oid),
@@ -171,10 +175,12 @@ def _fetch_role_code(cur, email: str, id_owner: str, is_super_admin: bool) -> st
     cur.execute(
         """
         SELECT role_code
-        FROM public.tbl_studio_user_access
+        FROM public.tbl_novoskill_user_access
         WHERE lower(email) = lower(%s)
           AND id_owner = %s
+          AND console_code = 'studio'
           AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') <> 'suspendu'
         LIMIT 1
         """,
         (e, oid),

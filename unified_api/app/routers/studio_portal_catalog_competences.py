@@ -24,7 +24,7 @@ router = APIRouter()
 # ------------------------------------------------------
 # Helpers
 # ------------------------------------------------------
-def _require_owner_access(cur, u: dict, id_owner: str) -> str:
+def _require_owner_access(cur, u: dict, id_owner: str):
     oid = (id_owner or "").strip()
     if not oid:
         raise HTTPException(status_code=400, detail="id_owner manquant.")
@@ -45,17 +45,19 @@ def _require_owner_access(cur, u: dict, id_owner: str) -> str:
 
     cur.execute(
         """
-        SELECT id_owner
-        FROM public.tbl_studio_user_access
+        SELECT 1
+        FROM public.tbl_novoskill_user_access
         WHERE lower(email) = lower(%s)
+          AND id_owner = %s
+          AND console_code = 'studio'
           AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') <> 'suspendu'
         LIMIT 1
         """,
-        (email,),
+        (email, oid),
     )
-    r = cur.fetchone() or {}
-    db_owner = (r.get("id_owner") or "").strip()
-    if not db_owner or db_owner != oid:
+    ok = cur.fetchone()
+    if not ok:
         raise HTTPException(status_code=403, detail="Accès refusé (owner non autorisé).")
 
     return oid
