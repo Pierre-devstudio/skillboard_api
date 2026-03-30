@@ -14,6 +14,20 @@ from app.routers.studio_portal_common import (
 
 router = APIRouter()
 
+CONSOLE_DEFS = [
+    {"console_code": "studio", "label": "Studio", "icon_file": "console_studio.svg"},
+    {"console_code": "insights", "label": "Insights", "icon_file": "console_insights.svg"},
+    {"console_code": "people", "label": "People", "icon_file": "console_people.svg"},
+    {"console_code": "partner", "label": "Partner", "icon_file": "console_partner.svg"},
+    {"console_code": "learn", "label": "Learn", "icon_file": "console_learn.svg"},
+]
+
+ROLE_LABELS = {
+    "none": "Aucun accès",
+    "user": "Utilisateur",
+    "editor": "Éditeur",
+    "admin": "Administrateur",
+}
 
 # ------------------------------------------------------
 # Helpers
@@ -96,6 +110,264 @@ def _resolve_owner_source(cur, oid: str) -> dict:
 
     raise HTTPException(status_code=404, detail="Owner non rattaché à une entreprise exploitable.")
 
+def _role_label(role_code: Optional[str]) -> str:
+    return ROLE_LABELS.get((role_code or "none").strip().lower(), "Aucun accès")
+
+
+def _normalize_access_role_code(value: Optional[str]) -> str:
+    s = (value or "").strip().lower()
+    mapping = {
+        "": "none",
+        "none": "none",
+        "aucun": "none",
+        "aucun_acces": "none",
+        "aucun accès": "none",
+        "user": "user",
+        "utilisateur": "user",
+        "editor": "editor",
+        "editeur": "editor",
+        "éditeur": "editor",
+        "admin": "admin",
+        "administrateur": "admin",
+    }
+    out = mapping.get(s)
+    if out is None:
+        raise HTTPException(status_code=400, detail=f"Profil console invalide : {value}")
+    return out
+
+
+def _load_owner_console_contracts(cur, oid: str) -> dict:
+    cur.execute(
+        """
+        SELECT
+          COALESCE(studio_actif, FALSE) AS studio_actif,
+          COALESCE(insights_actif, FALSE) AS insights_actif,
+          COALESCE(people_actif, FALSE) AS people_actif,
+          COALESCE(partner_actif, FALSE) AS partner_actif,
+          COALESCE(learn_actif, FALSE) AS learn_actif
+        FROM public.tbl_novoskill_owner_commercial
+        WHERE id_owner = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        ORDER BY
+          COALESCE(date_fin, DATE '2999-12-31') DESC,
+          updated_at DESC NULLS LAST,
+          created_at DESC NULLS LAST,
+          id_owner_commercial DESC
+        LIMIT 1
+        """,
+        (oid,),
+    )
+    r = cur.fetchone() or {}
+    return {
+        "studio": bool(r.get("studio_actif")),
+        "insights": bool(r.get("insights_actif")),
+        "people": bool(r.get("people_actif")),
+        "partner": bool(r.get("partner_actif")),
+        "learn": bool(r.get("learn_actif")),
+    }
+
+
+def _build_console_items(cur, oid: str) -> list:
+    contracts = _load_owner_console_contracts(cur, oid)
+    items = []
+    for d in CONSOLE_DEFS:
+        code = d["console_code"]
+        items.append(
+            {
+                "console_code": code,
+                "label": d["label"],
+                "icon_file": d["icon_file"],
+                "contract_active": bool(contracts.get(code, False)),
+            }
+        )
+    return items
+
+
+def _default_access_ref_type(console_code: str, source_kind: str, source_row_kind: str) -> str:
+    code = (console_code or "").strip().lower()
+    if code == "studio" and source_kind == "mon_entreprise" and source_row_kind == "utilisateur":
+        return "utilisateur"
+    return "effectif_client"
+
+
+def _fetch_collaborateur_identity_for_access(cur, oid: str, source_kind: str, cid: str) -> dict:
+    if source_kind == "entreprise":
+        cur.execute(
+            """
+            SELECT
+              e.id_effectif AS id_collaborateur,
+              e.prenom_effectif AS prenom,
+              e.nom_effectif AS nom,
+              e.email_effectif AS email,
+              'effectif_client' AS source_row_kind
+            FROM public.tbl_effectif_client e
+            WHERE e.id_ent = %s
+              AND e.id_effectif = %s
+            LIMIT 1
+            """,
+            (oid, cid),
+        )
+        r = cur.fetchone() or {}
+        if not r:
+            raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+        return {
+            "id_collaborateur": r.get("id_collaborateur"),
+            "prenom": r.get("prenom"),
+            "nom": r.get("nom"),
+            "email": (r.get("email") or "").strip(),
+            "source_row_kind": r.get("source_row_kind"),
+        }
+
+    cur.execute(
+        """
+        SELECT
+          u.id_utilisateur AS id_collaborateur,
+          u.ut_prenom AS prenom,
+          u.ut_nom AS nom,
+          COALESCE(NULLIF(BTRIM(COALESCE(u.ut_mail, '')), ''), NULLIF(BTRIM(COALESCE(ec.email_effectif, '')), '')) AS email,
+          'utilisateur' AS source_row_kind
+        FROM public.tbl_utilisateur u
+        LEFT JOIN public.tbl_effectif_client ec
+          ON ec.id_ent = %s
+         AND ec.id_effectif = u.id_utilisateur
+        WHERE u.id_utilisateur = %s
+        LIMIT 1
+        """,
+        (oid, cid),
+    )
+    r = cur.fetchone() or {}
+    if not r:
+        raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+    return {
+        "id_collaborateur": r.get("id_collaborateur"),
+        "prenom": r.get("prenom"),
+        "nom": r.get("nom"),
+        "email": (r.get("email") or "").strip(),
+        "source_row_kind": r.get("source_row_kind"),
+    }
+
+
+def _fetch_access_summary_map(cur, oid: str, collaborator_ids: list) -> dict:
+    ids = [str(x).strip() for x in (collaborator_ids or []) if str(x).strip()]
+    out = {x: [] for x in ids}
+    if not ids:
+        return out
+
+    meta_map = {d["console_code"]: d for d in CONSOLE_DEFS}
+    cur.execute(
+        """
+        SELECT
+          id_user_ref,
+          console_code,
+          role_code
+        FROM public.tbl_novoskill_user_access
+        WHERE id_owner = %s
+          AND id_user_ref = ANY(%s)
+          AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') <> 'suspendu'
+        ORDER BY
+          id_user_ref,
+          updated_at DESC NULLS LAST,
+          created_at DESC NULLS LAST,
+          id_access DESC
+        """,
+        (oid, ids),
+    )
+
+    seen = set()
+    for r in (cur.fetchall() or []):
+        cid = (r.get("id_user_ref") or "").strip()
+        cc = (r.get("console_code") or "").strip().lower()
+        if not cid or not cc:
+            continue
+        key = (cid, cc)
+        if key in seen:
+            continue
+        seen.add(key)
+        meta = meta_map.get(cc, {})
+        out.setdefault(cid, []).append(
+            {
+                "console_code": cc,
+                "role_code": (r.get("role_code") or "").strip().lower(),
+                "role_label": _role_label(r.get("role_code")),
+                "label": meta.get("label") or cc,
+                "icon_file": meta.get("icon_file"),
+            }
+        )
+
+    order = {d["console_code"]: idx for idx, d in enumerate(CONSOLE_DEFS)}
+    for cid in out:
+        out[cid].sort(key=lambda x: order.get(x.get("console_code"), 999))
+    return out
+
+
+def _build_access_state_for_collaborator(cur, oid: str, source_kind: str, cid: str) -> dict:
+    ident = _fetch_collaborateur_identity_for_access(cur, oid, source_kind, cid)
+    console_items = _build_console_items(cur, oid)
+
+    cur.execute(
+        """
+        SELECT
+          console_code,
+          role_code,
+          email,
+          user_ref_type
+        FROM public.tbl_novoskill_user_access
+        WHERE id_owner = %s
+          AND id_user_ref = %s
+          AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') <> 'suspendu'
+        ORDER BY
+          updated_at DESC NULLS LAST,
+          created_at DESC NULLS LAST,
+          id_access DESC
+        """,
+        (oid, cid),
+    )
+    rows = cur.fetchall() or []
+
+    access_by_console = {}
+    summary = []
+    for r in rows:
+        cc = (r.get("console_code") or "").strip().lower()
+        if not cc or cc in access_by_console:
+            continue
+        access_by_console[cc] = r
+
+    for idx, item in enumerate(console_items):
+        cc = item["console_code"]
+        row = access_by_console.get(cc)
+        role_code = (row.get("role_code") or "").strip().lower() if row else "none"
+        role_code = role_code or "none"
+        role_label = _role_label(role_code)
+        console_items[idx] = {
+            **item,
+            "role_code": role_code,
+            "role_label": role_label,
+            "has_access": row is not None and role_code != "none",
+            "email": (row.get("email") or "").strip() if row else ident["email"],
+            "user_ref_type": (row.get("user_ref_type") or "").strip() if row else _default_access_ref_type(cc, source_kind, ident["source_row_kind"]),
+        }
+        if console_items[idx]["has_access"]:
+            summary.append(
+                {
+                    "console_code": cc,
+                    "role_code": role_code,
+                    "role_label": role_label,
+                    "label": item["label"],
+                    "icon_file": item["icon_file"],
+                }
+            )
+
+    return {
+        "id_collaborateur": cid,
+        "prenom": ident.get("prenom"),
+        "nom": ident.get("nom"),
+        "email": ident.get("email"),
+        "source_row_kind": ident.get("source_row_kind"),
+        "consoles": console_items,
+        "summary": summary,
+    }
 
 def _norm_text(v: Optional[str]) -> Optional[str]:
     s = (v or "").strip()
@@ -620,6 +892,12 @@ class CollaborateurPayload(BaseModel):
 class SyncPosteCompetencesPayload(BaseModel):
     id_poste_actuel: Optional[str] = None
 
+class CollaborateurAccessPayload(BaseModel):
+    studio: Optional[str] = None
+    insights: Optional[str] = None
+    people: Optional[str] = None
+    partner: Optional[str] = None
+    learn: Optional[str] = None
 
 def _normalize_skill_level_from_poste(value: Optional[str]) -> str:
     s = (_norm_text(value) or "").lower()
@@ -767,6 +1045,7 @@ def studio_collab_context(id_owner: str, request: Request):
                 src = _resolve_owner_source(cur, oid)
                 services = _build_service_options(cur, oid, src["source_kind"])
                 postes = _build_poste_options(cur, oid, src["source_kind"])
+                consoles = _build_console_items(cur, oid)
 
         return {
             "id_owner": oid,
@@ -776,6 +1055,7 @@ def studio_collab_context(id_owner: str, request: Request):
             "source_name": src["source_name"],
             "services": services,
             "postes": postes,
+            "consoles": consoles,
         }
     except HTTPException:
         raise
@@ -1128,6 +1408,16 @@ def studio_collab_list(
                                 "observations": r.get("observations"),
                             }
                         )
+                access_summary_map = _fetch_access_summary_map(
+                    cur,
+                    oid,
+                    [x.get("id_collaborateur") for x in items]
+                )
+                for it in items:
+                    it["access_summary"] = access_summary_map.get(
+                        (it.get("id_collaborateur") or "").strip(),
+                        []
+                    )                        
 
         return {"items": items, "stats": stats_global}
     except HTTPException:
@@ -1865,6 +2155,167 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/historique/formations-jmb error: {e}")
 
+@router.get("/studio/collaborateurs/acces/{id_owner}/{id_collaborateur}")
+def studio_collab_acces(id_owner: str, id_collaborateur: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+                data = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid)
+
+        return data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/acces detail error: {e}")
+    
+@router.post("/studio/collaborateurs/acces/{id_owner}/{id_collaborateur}")
+def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: CollaborateurAccessPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+
+        role_map = {
+            "studio": _normalize_access_role_code(payload.studio),
+            "insights": _normalize_access_role_code(payload.insights),
+            "people": _normalize_access_role_code(payload.people),
+            "partner": _normalize_access_role_code(payload.partner),
+            "learn": _normalize_access_role_code(payload.learn),
+        }
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+
+                ident = _fetch_collaborateur_identity_for_access(cur, oid, src["source_kind"], cid)
+                contracts = _load_owner_console_contracts(cur, oid)
+                email = (ident.get("email") or "").strip()
+                source_row_kind = (ident.get("source_row_kind") or "").strip()
+
+                for console in ["studio", "insights", "people", "partner", "learn"]:
+                    desired_role = role_map[console]
+
+                    if desired_role != "none" and not contracts.get(console, False):
+                        raise HTTPException(status_code=400, detail=f"La console {console} n'est pas active pour cet owner.")
+
+                    if desired_role != "none" and not email:
+                        raise HTTPException(status_code=400, detail="Renseignez et enregistrez un email avant d'ouvrir un accès console.")
+
+                    if desired_role == "none":
+                        cur.execute(
+                            """
+                            UPDATE public.tbl_novoskill_user_access
+                            SET archive = TRUE,
+                                updated_at = NOW()
+                            WHERE id_owner = %s
+                              AND id_user_ref = %s
+                              AND console_code = %s
+                              AND COALESCE(archive, FALSE) = FALSE
+                            """,
+                            (oid, cid, console),
+                        )
+                        continue
+
+                    cur.execute(
+                        """
+                        SELECT 1
+                        FROM public.tbl_novoskill_user_access
+                        WHERE lower(email) = lower(%s)
+                          AND id_owner = %s
+                          AND console_code = %s
+                          AND COALESCE(archive, FALSE) = FALSE
+                          AND COALESCE(statut_access, 'actif') <> 'suspendu'
+                          AND COALESCE(id_user_ref, '') <> %s
+                        LIMIT 1
+                        """,
+                        (email, oid, console, cid),
+                    )
+                    if cur.fetchone():
+                        raise HTTPException(status_code=400, detail=f"Un autre collaborateur utilise déjà {email} pour la console {console}.")
+
+                    user_ref_type = _default_access_ref_type(console, src["source_kind"], source_row_kind)
+
+                    cur.execute(
+                        """
+                        SELECT id_access
+                        FROM public.tbl_novoskill_user_access
+                        WHERE id_owner = %s
+                          AND id_user_ref = %s
+                          AND console_code = %s
+                        ORDER BY
+                          updated_at DESC NULLS LAST,
+                          created_at DESC NULLS LAST,
+                          id_access DESC
+                        LIMIT 1
+                        """,
+                        (oid, cid, console),
+                    )
+                    row = cur.fetchone() or {}
+                    id_access = (row.get("id_access") or "").strip()
+
+                    if id_access:
+                        cur.execute(
+                            """
+                            UPDATE public.tbl_novoskill_user_access
+                            SET email = %s,
+                                role_code = %s,
+                                archive = FALSE,
+                                user_ref_type = %s,
+                                id_user_ref = %s,
+                                console_code = %s,
+                                statut_access = 'actif',
+                                updated_at = NOW()
+                            WHERE id_access = %s
+                            """,
+                            (email, desired_role, user_ref_type, cid, console, id_access),
+                        )
+                    else:
+                        cur.execute(
+                            """
+                            INSERT INTO public.tbl_novoskill_user_access (
+                              id_access,
+                              email,
+                              id_owner,
+                              role_code,
+                              archive,
+                              created_at,
+                              user_ref_type,
+                              id_user_ref,
+                              console_code,
+                              updated_at,
+                              statut_access
+                            ) VALUES (
+                              %s, %s, %s, %s, FALSE, NOW(), %s, %s, %s, NOW(), 'actif'
+                            )
+                            """,
+                            (str(uuid.uuid4()), email, oid, desired_role, user_ref_type, cid, console),
+                        )
+
+                conn.commit()
+                data = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid)
+
+        return data
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/acces save error: {e}")
 # ------------------------------------------------------
 # Create
 # ------------------------------------------------------

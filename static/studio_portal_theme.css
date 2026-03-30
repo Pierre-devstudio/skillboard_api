@@ -766,3 +766,133 @@
   width:100%;
   flex-wrap:wrap;
 }
+
+/* ======================================================
+   Studio COLLABORATEURS – Droits consoles / icônes accès
+   ====================================================== */
+
+.sb-console-inline{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+  min-height:18px;
+}
+
+.sb-console-chip{
+  width:28px;
+  height:28px;
+  border-radius:10px;
+  border:1px solid rgba(17,24,39,.12);
+  background:#fff;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:5px;
+}
+
+.sb-console-chip img{
+  width:16px;
+  height:16px;
+  display:block;
+  object-fit:contain;
+}
+
+.sb-console-chip--muted{
+  opacity:.45;
+  background:rgba(17,24,39,.04);
+}
+
+.sb-console-dash{
+  color:#9ca3af;
+  font-size:13px;
+}
+
+.sb-access-grid{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.sb-access-row{
+  display:grid;
+  grid-template-columns: minmax(220px, 1.25fr) minmax(210px, 240px) minmax(160px, .9fr);
+  gap:12px;
+  align-items:center;
+  padding:12px;
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:12px;
+  background:#fff;
+}
+
+.sb-access-row.is-disabled{
+  background:rgba(17,24,39,.035);
+  opacity:.72;
+}
+
+@media (max-width: 900px){
+  .sb-access-row{
+    grid-template-columns:1fr;
+  }
+}
+
+.sb-access-console{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+
+.sb-access-console-icon{
+  width:34px;
+  height:34px;
+  border-radius:12px;
+  border:1px solid rgba(17,24,39,.12);
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:7px;
+  flex:0 0 auto;
+}
+
+.sb-access-console-icon img{
+  width:18px;
+  height:18px;
+  object-fit:contain;
+  display:block;
+}
+
+.sb-access-console-title{
+  font-weight:700;
+  color:#111827;
+}
+
+.sb-access-console-sub{
+  margin-top:2px;
+  font-size:12px;
+  color:#6b7280;
+}
+
+.sb-access-row select{
+  width:100%;
+}
+
+.sb-access-state{
+  font-size:12px;
+  color:#4b5563;
+  line-height:1.35;
+}
+
+.sb-access-state strong{
+  color:#111827;
+}
+
+.sb-access-note{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:12px;
+  padding:10px 12px;
+  background:rgba(17,24,39,.03);
+  font-size:13px;
+  color:#374151;
+}

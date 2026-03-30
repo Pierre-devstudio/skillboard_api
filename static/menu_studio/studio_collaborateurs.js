@@ -15,7 +15,7 @@
 
   let _modalMode = "create";
   let _editingId = null;
-  let _tabLoaded = { skills: false, certs: false, history: false };
+  let _tabLoaded = { skills: false, certs: false, history: false, rights: false };
 
   function byId(id){ return document.getElementById(id); }
 
@@ -64,6 +64,72 @@
     const d = new Date(s);
     if (Number.isNaN(d.getTime())) return s;
     return d.toLocaleDateString("fr-FR");
+  }
+
+  function getConsoleDefs(){
+    return Array.isArray(_ctx?.consoles) ? _ctx.consoles : [];
+  }
+
+  function getConsoleDef(consoleCode){
+    const code = String(consoleCode || '').trim().toLowerCase();
+    return getConsoleDefs().find(x => String(x?.console_code || '').trim().toLowerCase() === code) || null;
+  }
+
+  function getConsoleLabel(consoleCode){
+    const def = getConsoleDef(consoleCode);
+    if (def?.label) return String(def.label).trim();
+    const code = String(consoleCode || '').trim().toLowerCase();
+    if (code === 'studio') return 'Studio';
+    if (code === 'insights') return 'Insights';
+    if (code === 'people') return 'People';
+    if (code === 'partner') return 'Partner';
+    if (code === 'learn') return 'Learn';
+    return code || 'Console';
+  }
+
+  function getRoleLabel(roleCode){
+    const code = String(roleCode || '').trim().toLowerCase();
+    if (code === 'admin') return 'Administrateur';
+    if (code === 'editor') return 'Éditeur';
+    if (code === 'user') return 'Utilisateur';
+    return 'Aucun accès';
+  }
+
+  function getConsoleIconUrl(consoleCode){
+    const def = getConsoleDef(consoleCode);
+    const file = String(def?.icon_file || '').trim();
+    return file ? `/static/${file}` : '';
+  }
+
+  function renderConsoleIcons(accessSummary){
+    const items = Array.isArray(accessSummary) ? accessSummary : [];
+    if (!items.length) return '<span class="sb-console-dash">—</span>';
+
+    return `
+      <div class="sb-console-inline">
+        ${items.map(it => {
+          const label = getConsoleLabel(it?.console_code);
+          const roleLabel = getRoleLabel(it?.role_code);
+          const iconUrl = getConsoleIconUrl(it?.console_code);
+          if (!iconUrl) return '';
+          return `
+            <span class="sb-console-chip" title="${esc(label)} - ${esc(roleLabel)}">
+              <img src="${esc(iconUrl)}" alt="${esc(label)}" loading="lazy" />
+            </span>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  function buildRightsPayload(){
+    const payload = {};
+    document.querySelectorAll('#collabRightsPanel [data-console-role]').forEach(sel => {
+      const code = String(sel.getAttribute('data-console-role') || '').trim().toLowerCase();
+      if (!code) return;
+      payload[code] = String(sel.value || 'none').trim().toLowerCase();
+    });
+    return payload;
   }
 
   function getCurrentPosteForSkills(){
@@ -279,10 +345,11 @@
       const fullName = `${it.prenom || ""} ${it.nom || ""}`.trim() || "Collaborateur sans nom";
       const email = it.email || "—";
       const posteActuel = it.poste_label || "—";
+      const accessSummary = Array.isArray(it.access_summary) ? it.access_summary : [];
 
       return `
         <div class="sb-row-card ${it.archive ? "is-archived" : ""}">
-          <div class="sb-row-left" style="display:grid; grid-template-columns:minmax(180px,220px) minmax(260px,1.35fr) minmax(180px,1fr) minmax(48px,.45fr); gap:18px; align-items:center; flex:1 1 auto; min-width:0;">
+          <div class="sb-row-left" style="display:grid; grid-template-columns:minmax(180px,220px) minmax(260px,1.35fr) minmax(180px,1fr) minmax(120px,.85fr); gap:18px; align-items:center; flex:1 1 auto; min-width:0;">
             <div class="sb-row-title">${esc(fullName)}</div>
 
             <div style="font-size:13px; font-weight:400; color:#374151; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
@@ -293,7 +360,9 @@
               ${esc(posteActuel)}
             </div>
 
-            <div></div>
+            <div>
+              ${renderConsoleIcons(accessSummary)}
+            </div>
           </div>
 
           <div class="sb-row-right" style="flex:0 0 auto;">
@@ -488,16 +557,18 @@
   }
 
   function resetDetailPanels(){
-    _tabLoaded = { skills: false, certs: false, history: false };
+    _tabLoaded = { skills: false, certs: false, history: false, rights: false };
 
     if (_editingId) {
       setPanelMessage('collabSkillsPanel', 'Ouvrez l’onglet pour charger les compétences.');
       setPanelMessage('collabCertsPanel', 'Ouvrez l’onglet pour charger les certifications.');
       setPanelMessage('collabHistoryPanel', 'Ouvrez l’onglet pour charger l’historique.');
+      setPanelMessage('collabRightsPanel', 'Ouvrez l’onglet pour charger les droits d’accès.');
     } else {
       setPanelMessage('collabSkillsPanel', 'Enregistrez d’abord le collaborateur pour accéder aux compétences.');
       setPanelMessage('collabCertsPanel', 'Enregistrez d’abord le collaborateur pour accéder aux certifications.');
       setPanelMessage('collabHistoryPanel', 'Enregistrez d’abord le collaborateur pour accéder à l’historique.');
+      setPanelMessage('collabRightsPanel', 'Enregistrez d’abord le collaborateur pour gérer les droits d’accès.');
     }
   }
 
@@ -682,6 +753,101 @@
     `;
   }
 
+  function renderRights(data, portal){
+    const host = byId('collabRightsPanel');
+    if (!host) return;
+
+    const consoles = Array.isArray(data?.consoles) ? data.consoles : [];
+    const savedEmail = String(data?.email || '').trim();
+    const hasEmail = !!savedEmail;
+
+    const rows = consoles.map(item => {
+      const consoleCode = String(item?.console_code || '').trim().toLowerCase();
+      const label = getConsoleLabel(consoleCode);
+      const iconUrl = getConsoleIconUrl(consoleCode);
+      const contractActive = !!item?.contract_active;
+      const roleCode = String(item?.role_code || 'none').trim().toLowerCase() || 'none';
+      const roleLabel = getRoleLabel(roleCode);
+      const disabled = !contractActive || !hasEmail;
+
+      const stateText = contractActive
+        ? `<strong>Console active</strong><br>${hasEmail ? 'Accès gérable pour ce collaborateur.' : 'Renseignez et enregistrez un email pour ouvrir l’accès.'}`
+        : `<strong>Console non incluse</strong><br>Le contrat owner ne permet pas cette console.`;
+
+      return `
+        <div class="sb-access-row ${disabled ? 'is-disabled' : ''}">
+          <div class="sb-access-console">
+            <div class="sb-access-console-icon">
+              ${iconUrl ? `<img src="${esc(iconUrl)}" alt="${esc(label)}" loading="lazy" />` : ''}
+            </div>
+            <div style="min-width:0;">
+              <div class="sb-access-console-title">${esc(label)}</div>
+              <div class="sb-access-console-sub">Profil actuel : ${esc(roleLabel)}</div>
+            </div>
+          </div>
+
+          <div>
+            <select data-console-role="${esc(consoleCode)}" ${disabled ? 'disabled' : ''}>
+              <option value="none" ${roleCode === 'none' ? 'selected' : ''}>Aucun accès</option>
+              <option value="user" ${roleCode === 'user' ? 'selected' : ''}>Utilisateur</option>
+              <option value="editor" ${roleCode === 'editor' ? 'selected' : ''}>Éditeur</option>
+              <option value="admin" ${roleCode === 'admin' ? 'selected' : ''}>Administrateur</option>
+            </select>
+          </div>
+
+          <div class="sb-access-state">${stateText}</div>
+        </div>
+      `;
+    }).join('');
+
+    host.innerHTML = `
+      <div class="sb-stack sb-stack--sm">
+        <div class="card-sub" style="margin:0;">
+          Définissez les accès console du collaborateur. <strong>Email enregistré :</strong> ${esc(savedEmail || 'non renseigné')}
+        </div>
+
+        ${hasEmail ? '' : `<div class="sb-access-note">Aucun accès ne peut être ouvert tant que l’email n’est pas renseigné et enregistré sur le collaborateur.</div>`}
+
+        <div class="sb-access-grid">${rows}</div>
+
+        <div class="sb-actions" style="justify-content:flex-end; margin-top:4px;">
+          <button type="button" class="sb-btn sb-btn--accent" id="btnCollabSaveRights">Enregistrer les droits</button>
+        </div>
+      </div>
+    `;
+
+    const btn = byId('btnCollabSaveRights');
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        try {
+          btn.disabled = true;
+          await saveRights(portal);
+        } catch (e) {
+          portal.showAlert('error', getErrorMessage(e));
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    }
+  }
+
+  async function saveRights(portal){
+    if (!_editingId) throw new Error('Enregistrez d’abord le collaborateur.');
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
+
+    const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/acces/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildRightsPayload())
+    });
+
+    renderRights(data, portal);
+    _tabLoaded.rights = true;
+    await loadList(portal);
+    if (portal.showAlert) portal.showAlert('success', 'Droits d’accès enregistrés.');
+  }
+
   async function loadTabIfNeeded(portal, tab){
     if (!_editingId || _tabLoaded[tab]) return;
     _tabLoaded[tab] = true;
@@ -707,6 +873,13 @@
       setPanelMessage('collabHistoryPanel', 'Chargement…');
       const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/formations-jmb/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`);
       renderHistory(data);
+      return;
+    }
+
+    if (tab === 'rights') {
+      setPanelMessage('collabRightsPanel', 'Chargement…');
+      const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/acces/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`);
+      renderRights(data, portal);
     }
   }
 
@@ -852,7 +1025,11 @@
         try {
           await loadTabIfNeeded(portal, tab);
         } catch (e) {
-          const panelId = tab === 'skills' ? 'collabSkillsPanel' : (tab === 'certs' ? 'collabCertsPanel' : 'collabHistoryPanel');
+          const panelId = tab === 'skills'
+            ? 'collabSkillsPanel'
+            : (tab === 'certs'
+              ? 'collabCertsPanel'
+              : (tab === 'history' ? 'collabHistoryPanel' : 'collabRightsPanel'));
           setPanelMessage(panelId, getErrorMessage(e), 'error');
         }
       });
