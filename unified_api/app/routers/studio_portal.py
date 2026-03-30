@@ -40,10 +40,6 @@ def studio_me(request: Request):
 
     prenom = None
 
-    # Le front ne peut pas interroger PostgreSQL: on hydrate ici.
-    # Règle:
-    # - tbl_utilisateur: ut_prenom via id_utilisateur
-    # - tbl_effectif_client: prenom_effectif via id_effectif
     try:
         email = (u.get("email") or "").strip()
         if email:
@@ -52,9 +48,11 @@ def studio_me(request: Request):
                     cur.execute(
                         """
                         SELECT user_ref_type, id_user_ref
-                        FROM public.tbl_studio_user_access
+                        FROM public.tbl_novoskill_user_access
                         WHERE lower(email) = lower(%s)
+                          AND console_code = 'studio'
                           AND COALESCE(archive, FALSE) = FALSE
+                          AND COALESCE(statut_access, 'actif') <> 'suspendu'
                         LIMIT 1
                         """,
                         (email,),
@@ -91,7 +89,6 @@ def studio_me(request: Request):
                         r = cur.fetchone() or {}
                         prenom = r.get("prenom_effectif")
     except Exception:
-        # On ne casse pas /studio/me si un mapping n'est pas encore en place
         prenom = None
 
     return {
@@ -107,7 +104,7 @@ def studio_me_scope(request: Request):
     """
     Scope Studio:
     - super admin: liste de tous les owners
-    - user normal: uniquement son owner (id_owner dans user_metadata)
+    - user normal: uniquement son owner (id_owner dans user_metadata ou via mapping DB)
     """
     auth = request.headers.get("Authorization", "")
     u = studio_require_user(auth)
@@ -124,23 +121,23 @@ def studio_me_scope(request: Request):
             meta = u.get("user_metadata") or {}
             id_owner = (meta.get("id_owner") or "").strip()
 
-            # Fallback DB: mapping email -> id_owner (tbl_studio_user_access)
             if not id_owner:
                 email = (u.get("email") or "").strip()
                 if email:
                     cur.execute(
                         """
                         SELECT id_owner
-                        FROM public.tbl_studio_user_access
+                        FROM public.tbl_novoskill_user_access
                         WHERE lower(email) = lower(%s)
+                          AND console_code = 'studio'
                           AND COALESCE(archive, FALSE) = FALSE
+                          AND COALESCE(statut_access, 'actif') <> 'suspendu'
                         LIMIT 1
                         """,
                         (email,),
                     )
-                    row = cur.fetchone()
-                    if row and row.get("id_owner"):
-                        id_owner = row.get("id_owner")
+                    row = cur.fetchone() or {}
+                    id_owner = (row.get("id_owner") or "").strip()
 
             if not id_owner:
                 raise HTTPException(
@@ -148,17 +145,18 @@ def studio_me_scope(request: Request):
                     detail="Compte non rattaché à un owner Studio (id_owner introuvable).",
                 )
 
-            # role_code (admin/editor/user) depuis tbl_studio_user_access
             role_code = "user"
             email = (u.get("email") or "").strip()
             if email and id_owner:
                 cur.execute(
                     """
                     SELECT role_code
-                    FROM public.tbl_studio_user_access
+                    FROM public.tbl_novoskill_user_access
                     WHERE lower(email) = lower(%s)
                       AND id_owner = %s
+                      AND console_code = 'studio'
                       AND COALESCE(archive, FALSE) = FALSE
+                      AND COALESCE(statut_access, 'actif') <> 'suspendu'
                     LIMIT 1
                     """,
                     (email, id_owner),

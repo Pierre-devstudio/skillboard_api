@@ -72,7 +72,8 @@ def skills_me_scope(request: Request):
     """
     Retourne la liste des entreprises accessibles:
     - super admin: toutes les entreprises éligibles Skills
-    - user normal: uniquement son entreprise (via id_effectif dans user_metadata)
+    - user normal: uniquement son entreprise
+      via id_effectif dans user_metadata ou via tbl_novoskill_user_access
     """
     auth = request.headers.get("Authorization", "")
     u = skills_require_user(auth)
@@ -84,10 +85,30 @@ def skills_me_scope(request: Request):
 
             meta = u.get("user_metadata") or {}
             id_effectif = (meta.get("id_effectif") or "").strip()
+
+            if not id_effectif:
+                email = (u.get("email") or "").strip()
+                if email:
+                    cur.execute(
+                        """
+                        SELECT id_user_ref AS id_effectif
+                        FROM public.tbl_novoskill_user_access
+                        WHERE lower(email) = lower(%s)
+                          AND console_code = 'insights'
+                          AND lower(COALESCE(user_ref_type, '')) = 'effectif_client'
+                          AND COALESCE(archive, FALSE) = FALSE
+                          AND COALESCE(statut_access, 'actif') <> 'suspendu'
+                        LIMIT 1
+                        """,
+                        (email,),
+                    )
+                    row = cur.fetchone() or {}
+                    id_effectif = (row.get("id_effectif") or "").strip()
+
             if not id_effectif:
                 raise HTTPException(
                     status_code=403,
-                    detail="Compte non rattaché à un effectif Skills (id_effectif manquant dans user_metadata).",
+                    detail="Compte non rattaché à un effectif Skills (id_effectif introuvable).",
                 )
 
             _row_eff, row_ent = fetch_effectif_with_entreprise(cur, id_effectif)

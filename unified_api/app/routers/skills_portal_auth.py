@@ -63,10 +63,16 @@ def _supabase_get_user_email(access_token: str) -> str:
 def _fetch_mapping(cur, email: str):
     cur.execute(
         """
-        SELECT id_access, email, id_effectif
-        FROM public.tbl_skills_user_access
+        SELECT
+          id_access,
+          email,
+          id_user_ref AS id_effectif
+        FROM public.tbl_novoskill_user_access
         WHERE lower(email) = lower(%s)
+          AND console_code = 'insights'
+          AND lower(COALESCE(user_ref_type, '')) = 'effectif_client'
           AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') <> 'suspendu'
         LIMIT 1
         """,
         (email,),

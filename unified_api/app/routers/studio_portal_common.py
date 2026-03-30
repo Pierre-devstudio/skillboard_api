@@ -74,7 +74,7 @@ def studio_list_owners(cur) -> list:
     cur.execute(
         """
         SELECT id_owner, nom_owner
-        FROM public.tbl_studio_owner
+        FROM public.tbl_novoskill_owner
         WHERE COALESCE(archive, FALSE) = FALSE
         ORDER BY nom_owner
         """
@@ -91,7 +91,7 @@ def studio_fetch_owner(cur, id_owner: str) -> dict:
     cur.execute(
         """
         SELECT id_owner, nom_owner
-        FROM public.tbl_studio_owner
+        FROM public.tbl_novoskill_owner
         WHERE id_owner = %s
           AND COALESCE(archive, FALSE) = FALSE
         LIMIT 1
@@ -124,10 +124,12 @@ def studio_fetch_role_code(cur, email: str, id_owner: str, is_super_admin: bool)
     cur.execute(
         """
         SELECT role_code
-        FROM public.tbl_studio_user_access
+        FROM public.tbl_novoskill_user_access
         WHERE lower(email) = lower(%s)
           AND id_owner = %s
+          AND console_code = 'studio'
           AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') <> 'suspendu'
         LIMIT 1
         """,
         (e, oid),

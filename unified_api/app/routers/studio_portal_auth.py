@@ -63,9 +63,11 @@ def _fetch_mapping(cur, email: str):
     cur.execute(
         """
         SELECT id_access, email, id_owner
-        FROM public.tbl_studio_user_access
+        FROM public.tbl_novoskill_user_access
         WHERE lower(email) = lower(%s)
+          AND console_code = 'studio'
           AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') <> 'suspendu'
         LIMIT 1
         """,
         (email,),
