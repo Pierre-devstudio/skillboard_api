@@ -99,29 +99,9 @@
     const def = getConsoleDef(consoleCode);
     const file = String(def?.icon_file || '').trim();
     if (!file) return '';
-
-    const apiBase = String(window.portal?.apiBase || '').trim().replace(/\/+$/, '');
-    const candidates = [
-      `static/${file}`,
-      `/static/${file}`,
-      apiBase ? `${apiBase}/static/${file}` : ''
-    ].filter(Boolean);
-
-    return candidates[0] || '';
+    return `/${file}`;
   }
 
-  function getConsoleIconCandidates(consoleCode){
-    const def = getConsoleDef(consoleCode);
-    const file = String(def?.icon_file || '').trim();
-    if (!file) return [];
-
-    const apiBase = String(window.portal?.apiBase || '').trim().replace(/\/+$/, '');
-    return [
-      `static/${file}`,
-      `/static/${file}`,
-      apiBase ? `${apiBase}/static/${file}` : ''
-    ].filter(Boolean);
-  }
 
   function renderConsoleIcons(accessSummary){
     const items = Array.isArray(accessSummary) ? accessSummary : [];
@@ -132,33 +112,17 @@
         ${items.map(it => {
           const label = getConsoleLabel(it?.console_code);
           const roleLabel = getRoleLabel(it?.role_code);
-          const candidates = getConsoleIconCandidates(it?.console_code);
-          const firstUrl = candidates[0] || '';
+          const iconUrl = getConsoleIconUrl(it?.console_code);
 
-          if (!firstUrl) return '';
+          if (!iconUrl) return '';
 
           return `
             <span class="sb-console-chip" title="${esc(label)} - ${esc(roleLabel)}">
               <img
-                src="${esc(firstUrl)}"
+                src="${esc(iconUrl)}"
                 alt="${esc(label)}"
                 loading="lazy"
-                data-fallback-srcs="${esc(candidates.slice(1).join('|'))}"
-                onerror="
-                  (function(img){
-                    var raw = img.getAttribute('data-fallback-srcs') || '';
-                    var arr = raw ? raw.split('|').filter(Boolean) : [];
-                    if(arr.length){
-                      var next = arr.shift();
-                      img.setAttribute('data-fallback-srcs', arr.join('|'));
-                      img.src = next;
-                      return;
-                    }
-                    img.style.display='none';
-                    var p = img.parentElement;
-                    if(p){ p.classList.add('sb-console-chip--muted'); }
-                  })(this)
-                "
+                onerror="this.style.display='none'; this.parentElement && this.parentElement.classList.add('sb-console-chip--muted');"
               />
             </span>
           `;
@@ -809,8 +773,7 @@
     const rows = consoles.map(item => {
       const consoleCode = String(item?.console_code || '').trim().toLowerCase();
       const label = getConsoleLabel(consoleCode);
-      const iconCandidates = getConsoleIconCandidates(consoleCode);
-      const iconUrl = iconCandidates[0] || '';
+      const iconUrl = getConsoleIconUrl(consoleCode);
       const contractActive = !!item?.contract_active;
       const roleCode = String(item?.role_code || 'none').trim().toLowerCase() || 'none';
       const roleLabel = getRoleLabel(roleCode);
@@ -829,22 +792,7 @@
                   src="${esc(iconUrl)}"
                   alt="${esc(label)}"
                   loading="lazy"
-                  data-fallback-srcs="${esc(iconCandidates.slice(1).join('|'))}"
-                  onerror="
-                    (function(img){
-                      var raw = img.getAttribute('data-fallback-srcs') || '';
-                      var arr = raw ? raw.split('|').filter(Boolean) : [];
-                      if(arr.length){
-                        var next = arr.shift();
-                        img.setAttribute('data-fallback-srcs', arr.join('|'));
-                        img.src = next;
-                        return;
-                      }
-                      img.style.display='none';
-                      var p = img.parentElement;
-                      if(p){ p.classList.add('sb-console-chip--muted'); }
-                    })(this)
-                  "
+                  onerror="this.style.display='none'; this.parentElement && this.parentElement.classList.add('sb-console-chip--muted');"
                 />
               ` : ''}
             </div>
