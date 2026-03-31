@@ -852,17 +852,16 @@
   display:flex;
   align-items:center;
   justify-content:center;
-  padding:7px;
+  padding:3px;
   flex:0 0 auto;
 }
 
 .sb-access-console-icon img{
-  width:18px;
-  height:18px;
+  width:22px;
+  height:22px;
   object-fit:contain;
   display:block;
 }
-
 .sb-access-console-title{
   font-weight:700;
   color:#111827;
