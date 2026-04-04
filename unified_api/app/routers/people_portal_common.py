@@ -9,14 +9,10 @@ PEOPLE_SUPER_ADMIN_EMAILS = os.getenv("SKILLS_SUPER_ADMIN_EMAILS", "") or ""
 
 
 def _people_is_super_admin(email: str) -> bool:
-    e = (email or "").strip().lower()
-    if not e:
-        return False
-    raw = (PEOPLE_SUPER_ADMIN_EMAILS or "").strip()
-    if not raw:
-        return False
-    allowed = [x.strip().lower() for x in raw.split(",") if x.strip()]
-    return e in allowed
+    # People = portail salarié
+    # On neutralise le bypass super admin par email.
+    # Un utilisateur ne doit voir que les profils explicitement rattachés à son email.
+    return False
 
 
 def _people_extract_bearer_token(authorization: str) -> str:
