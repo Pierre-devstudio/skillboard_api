@@ -13,7 +13,7 @@
     }
 
     function buildPortalUrlWithId(contactId) {
-        const base = "/skills_portal.html";
+        const base = "/insights/";
         return `${base}?id=${encodeURIComponent(contactId)}`;
     }
 
@@ -42,21 +42,26 @@
         portalKey: "skills",
         storagePrefix: "sb",
         apiBase: API_BASE,
+        contactIdMetaKeys: ["id_effectif", "id_contact"],
         });
 
         return cfg;
     }
 
     async function ensurePortalEntry() {
-        // Si l'URL contient déjà ?id=..., on ne touche à rien (legacy intact)
+        // Si l'URL contient déjà ?id=..., on initialise quand même Supabase Auth
+        // sinon les appels suivants n'ont pas de session / token.
         const id = (getQueryParam("id") || "").trim();
-        if (id) return;
+        if (id) {
+        await initAuth();
+        return;
+        }
 
         // Pas de ?id=: on tente la session Supabase
         const cfg = await initAuth();
         const loginUrl = (window.PORTAL_LOGIN_URL || "/skills_login.html");
 
-        // Si config Supabase indisponible, on renvoie login (pas d'impasse)
+        // Si config Supabase indisponible, on renvoie login
         if (!cfg) {
         window.location.href = loginUrl;
         return;
@@ -73,7 +78,13 @@
         return;
         }
 
-        // ContactId (id_effectif) : on tente cache local, sinon metadata
+        const token = session?.access_token || "";
+        if (!token) {
+        window.location.href = loginUrl;
+        return;
+        }
+
+        // ContactId (id_effectif) : cache local, metadata, puis fallback backend
         let contactId = null;
         try {
         contactId = window.PortalAuthCommon.getContactId();
@@ -86,23 +97,26 @@
         }
 
         if (!contactId) {
+        try {
+            const ctx = await fetchAuthContext(token);
+            contactId = (ctx?.id_effectif || "").trim();
+        } catch (_) {}
+        }
+
+        if (!contactId) {
         // Cas super-admin: pas besoin d'id_effectif, on entre via X-Ent-Id + scope
         const me = await fetchMe();
         const isSuper = !!(me && me.is_super_admin);
 
         if (isSuper) {
-            // id_contact "dummy": en mode super-admin, il ne sert pas (X-Ent-Id pilote le scope)
             window.location.href = buildPortalUrlWithId("__superadmin__");
             return;
         }
 
-        // User standard: id_effectif obligatoire
         window.location.href = loginUrl;
         return;
         }
 
-
-        // On reste compatible 100%: on redirige vers le mode legacy ?id=...
         window.location.href = buildPortalUrlWithId(contactId);
     }
 
@@ -123,6 +137,16 @@
         localStorage.setItem("sb_skills_active_ent", (ent?.id_ent || "").toString().trim());
         localStorage.setItem("sb_skills_active_ent_label", _entLabel(ent));
         } catch (_) {}
+    }
+
+    async function fetchAuthContext(token) {
+        const r = await fetch(`${API_BASE}/skills/auth/context`, {
+        headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        const data = await r.json().catch(() => null);
+        if (!r.ok) return null;
+        return data;
     }
 
     async function fetchMe() {

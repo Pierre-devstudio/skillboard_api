@@ -45,6 +45,7 @@
       portalKey: "skills",
       storagePrefix: "sb",
       apiBase: API_BASE,
+      contactIdMetaKeys: ["id_effectif", "id_contact"],
     });
 
     return cfg;
@@ -54,6 +55,15 @@
     // Les fichiers statics sont servis à la racine dans ton portail (cf /skills_portal.js)
     // Donc la page reset sera: /skills_reset_password.html
     return `${window.location.origin}/skills_reset_password.html`;
+  }
+
+  async function fetchAuthContext(token) {
+    const r = await fetch(`${API_BASE}/skills/auth/context`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    const data = await r.json().catch(() => null);
+    if (!r.ok) return null;
+    return data;
   }
 
   async function doLogin() {
@@ -72,8 +82,16 @@
 
       const res = await window.PortalAuthCommon.signInWithPassword(email, pass);
 
-      // contactId (id_effectif) doit venir du user_metadata côté Supabase
-      const contactId = res?.contactId || window.PortalAuthCommon.getContactId();
+      let contactId = res?.contactId || window.PortalAuthCommon.getContactId();
+
+      if (!contactId) {
+        const session = await window.PortalAuthCommon.getSession().catch(() => null);
+        const token = session?.access_token || "";
+        if (token) {
+          const ctx = await fetchAuthContext(token);
+          contactId = (ctx?.id_effectif || "").trim();
+        }
+      }
 
       if (!contactId) {
         setMsg(
