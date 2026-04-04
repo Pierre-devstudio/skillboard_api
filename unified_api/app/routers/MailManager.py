@@ -430,9 +430,9 @@ def send_novoskill_access_mail(
         )
         auth_html = f"""
         <div style="margin-top:18px; border:1px solid #e5e7eb; border-radius:14px; background:#f9fafb; padding:16px 18px;">
-          <p style="margin:0 0 10px 0; color:#111827; font-weight:700;">
-            Pour finaliser votre accès, cliquez sur le lien sécurisé ci-dessous pour définir votre mot de passe.
-          </p>
+            <p style="margin:0 0 16px 0; color:#111827; font-weight:700; line-height:1.45;">
+                Pour finaliser votre accès, cliquez sur le lien sécurisé ci-dessous pour définir votre mot de passe.
+            </p>
 
           <p style="margin:0 0 12px 0;">
             <a
@@ -442,7 +442,7 @@ def send_novoskill_access_mail(
             >Définir mon mot de passe</a>
           </p>
 
-          <p style="margin:0; color:#4b5563;">
+          <p style="margin:0; color:#4b5563; line-height:1.45;">
             <strong>Identifiant :</strong> {escape((to_email or '').strip())}
           </p>
         </div>
@@ -461,12 +461,12 @@ def send_novoskill_access_mail(
         )
         auth_html = f"""
         <div style="margin-top:18px; border:1px solid #e5e7eb; border-radius:14px; background:#f9fafb; padding:16px 18px;">
-          <p style="margin:0 0 10px 0; color:#111827; font-weight:700;">
-            Pour vous connecter, utilisez vos identifiants habituels.
-          </p>
-          <p style="margin:0; color:#4b5563;">
-            <strong>Identifiant :</strong> {escape((to_email or '').strip())}
-          </p>
+            <p style="margin:0 0 16px 0; color:#111827; font-weight:700; line-height:1.45;">
+                Pour vous connecter, utilisez vos identifiants habituels.
+            </p>
+            <p style="margin:0; color:#4b5563; line-height:1.45;">
+                <strong>Identifiant :</strong> {escape((to_email or '').strip())}
+            </p>
         </div>
         """
 
@@ -493,7 +493,7 @@ def send_novoskill_access_mail(
         </div>
 
         <div style="padding:22px;">
-          <p style="margin:0 0 12px 0; font-size:16px; color:#111827;">Bonjour {safe_collab},</p>
+          <p style="margin:12px 0 12px 0; font-size:16px; color:#111827;">Bonjour {safe_collab},</p>
           <p style="margin:0 0 18px 0; color:#111827; line-height:1.5;">{intro_html}</p>
 
           <div style="border:1px solid #e5e7eb; border-radius:14px; overflow:hidden; background:#ffffff;">
