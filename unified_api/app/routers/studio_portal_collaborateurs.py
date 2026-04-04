@@ -18,7 +18,6 @@ CONSOLE_DEFS = [
     {"console_code": "studio", "label": "Studio", "icon_file": "console_studio.svg"},
     {"console_code": "insights", "label": "Insights", "icon_file": "console_insights.svg"},
     {"console_code": "people", "label": "People", "icon_file": "console_people.svg"},
-    {"console_code": "partner", "label": "Partner", "icon_file": "console_partner.svg"},
     {"console_code": "learn", "label": "Learn", "icon_file": "console_learn.svg"},
 ]
 
@@ -291,7 +290,10 @@ def _fetch_access_summary_map(cur, oid: str, collaborator_ids: list) -> dict:
         if key in seen:
             continue
         seen.add(key)
-        meta = meta_map.get(cc, {})
+        meta = meta_map.get(cc)
+        if not meta:
+            continue
+
         out.setdefault(cid, []).append(
             {
                 "console_code": cc,
