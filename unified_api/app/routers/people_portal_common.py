@@ -87,8 +87,6 @@ def people_list_profiles(cur, email: str = "", is_super_admin: bool = False) -> 
         "a.console_code = 'people'",
         "COALESCE(a.archive, FALSE) = FALSE",
         "COALESCE(a.statut_access, 'actif') <> 'suspendu'",
-        "COALESCE(a.user_ref_type, 'effectif_client') = 'effectif_client'",
-        "COALESCE(ec.archive, FALSE) = FALSE",
     ]
     params = []
 
@@ -98,25 +96,33 @@ def people_list_profiles(cur, email: str = "", is_super_admin: bool = False) -> 
         where.append("lower(a.email) = lower(%s)")
         params.append(e)
 
+    where_sql = " AND ".join(where)
+
+    # --------------------------------------------------
+    # 1) Profils People rattachés à une entreprise cliente
+    #    => source métier = tbl_effectif_client
+    # --------------------------------------------------
     cur.execute(
         f"""
-        SELECT DISTINCT ON (a.id_user_ref)
+        SELECT DISTINCT ON (a.id_owner, a.id_user_ref)
           a.id_owner,
           a.id_user_ref AS id_effectif,
           a.role_code,
-          a.email AS access_email,
-          ec.prenom_effectif,
-          ec.nom_effectif,
           COALESCE(NULLIF(BTRIM(COALESCE(ec.email_effectif, '')), ''), a.email) AS email_effectif,
+          ec.prenom_effectif AS prenom,
+          ec.nom_effectif AS nom,
           COALESCE(ent.nom_ent, '') AS nom_owner,
           COALESCE(org.nom_service, '') AS nom_service,
-          COALESCE(fp.intitule_poste, '') AS intitule_poste
+          COALESCE(fp.intitule_poste, '') AS intitule_poste,
+          'effectif_client' AS source_row_kind
         FROM public.tbl_novoskill_user_access a
+        JOIN public.tbl_entreprise ent
+          ON ent.id_ent = a.id_owner
+         AND COALESCE(ent.masque, FALSE) = FALSE
         JOIN public.tbl_effectif_client ec
-          ON ec.id_effectif = a.id_user_ref
-         AND ec.id_ent = a.id_owner
-        LEFT JOIN public.tbl_entreprise ent
-          ON ent.id_ent = ec.id_ent
+          ON ec.id_ent = a.id_owner
+         AND ec.id_effectif = a.id_user_ref
+         AND COALESCE(ec.archive, FALSE) = FALSE
         LEFT JOIN public.tbl_entreprise_organigramme org
           ON org.id_ent = ec.id_ent
          AND org.id_service = ec.id_service
@@ -126,8 +132,9 @@ def people_list_profiles(cur, email: str = "", is_super_admin: bool = False) -> 
          AND fp.id_ent = ec.id_ent
          AND fp.id_poste = ec.id_poste_actuel
          AND COALESCE(fp.actif, TRUE) = TRUE
-        WHERE {" AND ".join(where)}
+        WHERE {where_sql}
         ORDER BY
+          a.id_owner,
           a.id_user_ref,
           a.updated_at DESC NULLS LAST,
           a.created_at DESC NULLS LAST,
@@ -135,27 +142,90 @@ def people_list_profiles(cur, email: str = "", is_super_admin: bool = False) -> 
         """,
         tuple(params),
     )
+    rows_ent = cur.fetchall() or []
 
-    rows = cur.fetchall() or []
+    # --------------------------------------------------
+    # 2) Profils People rattachés à mon entreprise
+    #    => source métier = tbl_utilisateur
+    # --------------------------------------------------
+    cur.execute(
+        f"""
+        SELECT DISTINCT ON (a.id_owner, a.id_user_ref)
+          a.id_owner,
+          a.id_user_ref AS id_effectif,
+          a.role_code,
+          COALESCE(NULLIF(BTRIM(COALESCE(u.ut_mail, '')), ''), a.email) AS email_effectif,
+          u.ut_prenom AS prenom,
+          u.ut_nom AS nom,
+          COALESCE(me.nom_ent, '') AS nom_owner,
+          COALESCE(org.nom_service, '') AS nom_service,
+          COALESCE(fp.intitule_poste, '') AS intitule_poste,
+          'utilisateur' AS source_row_kind
+        FROM public.tbl_novoskill_user_access a
+        JOIN public.tbl_mon_entreprise me
+          ON me.id_mon_ent = a.id_owner
+         AND COALESCE(me.archive, FALSE) = FALSE
+        JOIN public.tbl_utilisateur u
+          ON u.id_utilisateur = a.id_user_ref
+         AND COALESCE(u.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_effectif_client ec
+          ON ec.id_ent = a.id_owner
+         AND ec.id_effectif = u.id_utilisateur
+         AND COALESCE(ec.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_entreprise_organigramme org
+          ON org.id_ent = a.id_owner
+         AND org.id_service = ec.id_service
+         AND COALESCE(org.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_fiche_poste fp
+          ON fp.id_owner = a.id_owner
+         AND fp.id_ent = a.id_owner
+         AND fp.id_poste = COALESCE(ec.id_poste_actuel, u.ut_fonction)
+         AND COALESCE(fp.actif, TRUE) = TRUE
+        WHERE {where_sql}
+        ORDER BY
+          a.id_owner,
+          a.id_user_ref,
+          a.updated_at DESC NULLS LAST,
+          a.created_at DESC NULLS LAST,
+          a.id_access DESC
+        """,
+        tuple(params),
+    )
+    rows_mon = cur.fetchall() or []
+
+    rows = list(rows_ent) + list(rows_mon)
+
     out = []
+    seen = set()
 
     for r in rows:
+        oid = (r.get("id_owner") or "").strip()
+        eid = (r.get("id_effectif") or "").strip()
+        if not oid or not eid:
+            continue
+
+        key = (oid, eid)
+        if key in seen:
+            continue
+        seen.add(key)
+
         role_code = (r.get("role_code") or "user").strip().lower()
         if role_code not in ("admin", "editor", "user"):
             role_code = "user"
 
         out.append(
             {
-                "id_owner": r.get("id_owner"),
+                "id_owner": oid,
                 "nom_owner": (r.get("nom_owner") or "").strip(),
-                "id_effectif": r.get("id_effectif"),
-                "prenom": (r.get("prenom_effectif") or "").strip(),
-                "nom": (r.get("nom_effectif") or "").strip(),
+                "id_effectif": eid,
+                "prenom": (r.get("prenom") or "").strip(),
+                "nom": (r.get("nom") or "").strip(),
                 "email": (r.get("email_effectif") or "").strip(),
                 "nom_service": (r.get("nom_service") or "").strip(),
                 "intitule_poste": (r.get("intitule_poste") or "").strip(),
                 "role_code": role_code,
                 "role_label": _role_label(role_code),
+                "source_row_kind": (r.get("source_row_kind") or "").strip(),
             }
         )
 
@@ -172,6 +242,7 @@ def people_fetch_profile(cur, id_effectif: str, email: str = "", is_super_admin:
         if (p.get("id_effectif") or "").strip() == eid:
             return p
 
+    # Fallback super admin : accès direct entreprise cliente
     if is_super_admin:
         cur.execute(
             """
@@ -179,11 +250,12 @@ def people_fetch_profile(cur, id_effectif: str, email: str = "", is_super_admin:
               ec.id_ent AS id_owner,
               COALESCE(ent.nom_ent, '') AS nom_owner,
               ec.id_effectif,
-              ec.prenom_effectif,
-              ec.nom_effectif,
+              ec.prenom_effectif AS prenom,
+              ec.nom_effectif AS nom,
               COALESCE(NULLIF(BTRIM(COALESCE(ec.email_effectif, '')), ''), '') AS email_effectif,
               COALESCE(org.nom_service, '') AS nom_service,
-              COALESCE(fp.intitule_poste, '') AS intitule_poste
+              COALESCE(fp.intitule_poste, '') AS intitule_poste,
+              'effectif_client' AS source_row_kind
             FROM public.tbl_effectif_client ec
             LEFT JOIN public.tbl_entreprise ent
               ON ent.id_ent = ec.id_ent
@@ -205,16 +277,68 @@ def people_fetch_profile(cur, id_effectif: str, email: str = "", is_super_admin:
         r = cur.fetchone() or {}
         if r:
             return {
-                "id_owner": r.get("id_owner"),
+                "id_owner": (r.get("id_owner") or "").strip(),
                 "nom_owner": (r.get("nom_owner") or "").strip(),
-                "id_effectif": r.get("id_effectif"),
-                "prenom": (r.get("prenom_effectif") or "").strip(),
-                "nom": (r.get("nom_effectif") or "").strip(),
+                "id_effectif": (r.get("id_effectif") or "").strip(),
+                "prenom": (r.get("prenom") or "").strip(),
+                "nom": (r.get("nom") or "").strip(),
                 "email": (r.get("email_effectif") or "").strip(),
                 "nom_service": (r.get("nom_service") or "").strip(),
                 "intitule_poste": (r.get("intitule_poste") or "").strip(),
                 "role_code": "admin",
                 "role_label": "Administrateur",
+                "source_row_kind": "effectif_client",
+            }
+
+        # Fallback super admin : accès direct mon entreprise / utilisateur
+        cur.execute(
+            """
+            SELECT
+              me.id_mon_ent AS id_owner,
+              COALESCE(me.nom_ent, '') AS nom_owner,
+              u.id_utilisateur AS id_effectif,
+              u.ut_prenom AS prenom,
+              u.ut_nom AS nom,
+              COALESCE(NULLIF(BTRIM(COALESCE(u.ut_mail, '')), ''), '') AS email_effectif,
+              COALESCE(org.nom_service, '') AS nom_service,
+              COALESCE(fp.intitule_poste, '') AS intitule_poste,
+              'utilisateur' AS source_row_kind
+            FROM public.tbl_utilisateur u
+            JOIN public.tbl_mon_entreprise me
+              ON COALESCE(me.archive, FALSE) = FALSE
+            LEFT JOIN public.tbl_effectif_client ec
+              ON ec.id_ent = me.id_mon_ent
+             AND ec.id_effectif = u.id_utilisateur
+             AND COALESCE(ec.archive, FALSE) = FALSE
+            LEFT JOIN public.tbl_entreprise_organigramme org
+              ON org.id_ent = me.id_mon_ent
+             AND org.id_service = ec.id_service
+             AND COALESCE(org.archive, FALSE) = FALSE
+            LEFT JOIN public.tbl_fiche_poste fp
+              ON fp.id_owner = me.id_mon_ent
+             AND fp.id_ent = me.id_mon_ent
+             AND fp.id_poste = COALESCE(ec.id_poste_actuel, u.ut_fonction)
+             AND COALESCE(fp.actif, TRUE) = TRUE
+            WHERE u.id_utilisateur = %s
+              AND COALESCE(u.archive, FALSE) = FALSE
+            LIMIT 1
+            """,
+            (eid,),
+        )
+        r = cur.fetchone() or {}
+        if r:
+            return {
+                "id_owner": (r.get("id_owner") or "").strip(),
+                "nom_owner": (r.get("nom_owner") or "").strip(),
+                "id_effectif": (r.get("id_effectif") or "").strip(),
+                "prenom": (r.get("prenom") or "").strip(),
+                "nom": (r.get("nom") or "").strip(),
+                "email": (r.get("email_effectif") or "").strip(),
+                "nom_service": (r.get("nom_service") or "").strip(),
+                "intitule_poste": (r.get("intitule_poste") or "").strip(),
+                "role_code": "admin",
+                "role_label": "Administrateur",
+                "source_row_kind": "utilisateur",
             }
 
     raise HTTPException(status_code=403, detail="Accès refusé à ce profil People.")
