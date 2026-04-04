@@ -387,22 +387,24 @@ def send_novoskill_access_mail(
             [
                 f"""
                 <tr>
-                  <td style="padding:10px 8px; border-bottom:1px solid #eef2f7; width:52px;">
+                  <td style="padding:14px 12px; border-bottom:1px solid #eef2f7; width:56px; vertical-align:top;">
                     <a href="{escape((it.get('login_url') or '').strip())}" target="_blank" style="text-decoration:none;">
-                      <img
-                        src="{escape((it.get('icon_url') or '').strip())}"
-                        alt="{escape((it.get('label') or '').strip())}"
-                        width="28"
-                        height="28"
-                        style="display:block; border:0;"
-                      />
+                      <span style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border:1px solid #dbe3ea; border-radius:10px; background:#ffffff;">
+                        <img
+                          src="{escape((it.get('icon_url') or '').strip())}"
+                          alt="{escape((it.get('label') or '').strip())}"
+                          width="24"
+                          height="24"
+                          style="display:block; border:0; width:24px; height:24px;"
+                        />
+                      </span>
                     </a>
                   </td>
-                  <td style="padding:10px 8px; border-bottom:1px solid #eef2f7;">
-                    <div style="font-weight:700; color:#111827;">{escape((it.get('label') or '').strip())}</div>
-                    <div style="font-size:13px; color:#4b5563;">Profil : {escape((it.get('role_label') or '').strip())}</div>
-                    <div style="font-size:12px; color:#6b7280; margin-top:4px;">
-                      <a href="{escape((it.get('login_url') or '').strip())}" target="_blank" style="color:#111827;">Ouvrir la connexion</a>
+                  <td style="padding:14px 12px; border-bottom:1px solid #eef2f7; vertical-align:top;">
+                    <div style="font-weight:700; font-size:18px; color:#111827; line-height:1.2;">{escape((it.get('label') or '').strip())}</div>
+                    <div style="font-size:13px; color:#4b5563; margin-top:4px;">Profil : {escape((it.get('role_label') or '').strip())}</div>
+                    <div style="font-size:13px; margin-top:8px;">
+                      <a href="{escape((it.get('login_url') or '').strip())}" target="_blank" style="color:#6d28d9; text-decoration:none; font-weight:700;">Ouvrir la connexion</a>
                     </div>
                   </td>
                 </tr>
@@ -427,21 +429,23 @@ def send_novoskill_access_mail(
             f"Identifiant : {to_email}"
         )
         auth_html = f"""
-        <p style="margin:16px 0 8px 0; color:#111827;">
-          Pour finaliser votre accès, cliquez sur le lien sécurisé ci-dessous pour définir votre mot de passe.
-        </p>
+        <div style="margin-top:18px; border:1px solid #e5e7eb; border-radius:14px; background:#f9fafb; padding:16px 18px;">
+          <p style="margin:0 0 10px 0; color:#111827; font-weight:700;">
+            Pour finaliser votre accès, cliquez sur le lien sécurisé ci-dessous pour définir votre mot de passe.
+          </p>
 
-        <p style="margin:12px 0;">
-          <a
-            href="{escape(setup_url)}"
-            target="_blank"
-            style="display:inline-block; background:#111827; color:#ffffff; text-decoration:none; padding:10px 16px; border-radius:10px; font-weight:700;"
-          >Définir mon mot de passe</a>
-        </p>
+          <p style="margin:0 0 12px 0;">
+            <a
+              href="{escape(setup_url)}"
+              target="_blank"
+              style="display:inline-block; background:#111827; color:#ffffff; text-decoration:none; padding:10px 16px; border-radius:10px; font-weight:700;"
+            >Définir mon mot de passe</a>
+          </p>
 
-        <p style="margin:0; color:#4b5563;">
-          <strong>Identifiant :</strong> {escape((to_email or '').strip())}
-        </p>
+          <p style="margin:0; color:#4b5563;">
+            <strong>Identifiant :</strong> {escape((to_email or '').strip())}
+          </p>
+        </div>
         """
     elif mode_norm == "removal":
         auth_text = "Vous ne disposez plus d’aucun accès actif aux consoles Novoskill."
@@ -456,12 +460,14 @@ def send_novoskill_access_mail(
             f"Identifiant : {to_email}"
         )
         auth_html = f"""
-        <p style="margin:16px 0 0 0; color:#111827;">
-          Pour vous connecter, utilisez vos identifiants habituels.
-        </p>
-        <p style="margin:8px 0 0 0; color:#4b5563;">
-          <strong>Identifiant :</strong> {escape((to_email or '').strip())}
-        </p>
+        <div style="margin-top:18px; border:1px solid #e5e7eb; border-radius:14px; background:#f9fafb; padding:16px 18px;">
+          <p style="margin:0 0 10px 0; color:#111827; font-weight:700;">
+            Pour vous connecter, utilisez vos identifiants habituels.
+          </p>
+          <p style="margin:0; color:#4b5563;">
+            <strong>Identifiant :</strong> {escape((to_email or '').strip())}
+          </p>
+        </div>
         """
 
     text_part = (
@@ -475,21 +481,28 @@ def send_novoskill_access_mail(
 
     html_part = f"""
     <div style="background:#f3f4f6; padding:24px; font-family:Arial, Helvetica, sans-serif; color:#111827;">
-      <div style="max-width:680px; margin:0 auto; background:#ffffff; border:1px solid #e5e7eb; border-radius:14px; overflow:hidden;">
-        <div style="padding:20px 22px; border-bottom:1px solid #eef2f7;">
-          <div style="font-size:20px; font-weight:800; color:#111827;">Novoskill</div>
-          <div style="margin-top:6px; font-size:14px; color:#4b5563;">Gestion des accès console</div>
+      <div style="max-width:680px; margin:0 auto; background:#ffffff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden;">
+
+        <div style="padding:0; background:#111827;">
+          <div style="padding:18px 22px; background:#111827;">
+            <div style="font-size:24px; font-weight:800; color:#ffffff; letter-spacing:.2px;">NOVOSKILL</div>
+            <div style="margin-top:6px; display:inline-block; background:#f3f4f6; color:#111827; border-radius:999px; padding:6px 12px; font-size:13px; font-weight:700;">
+              Gestion des accès console
+            </div>
+          </div>
         </div>
 
         <div style="padding:22px;">
-          <p style="margin:0 0 12px 0;">Bonjour {safe_collab},</p>
-          <p style="margin:0 0 16px 0; color:#111827;">{intro_html}</p>
+          <p style="margin:0 0 12px 0; font-size:16px; color:#111827;">Bonjour {safe_collab},</p>
+          <p style="margin:0 0 18px 0; color:#111827; line-height:1.5;">{intro_html}</p>
 
-          <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse; border:1px solid #eef2f7; border-radius:12px; overflow:hidden;">
-            <tbody>
-              {consoles_html}
-            </tbody>
-          </table>
+          <div style="border:1px solid #e5e7eb; border-radius:14px; overflow:hidden; background:#ffffff;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="border-collapse:collapse;">
+              <tbody>
+                {consoles_html}
+              </tbody>
+            </table>
+          </div>
 
           {auth_html}
 

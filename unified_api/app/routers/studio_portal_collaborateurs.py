@@ -50,6 +50,13 @@ CONSOLE_RESET_FILES = {
     "learn": "learn_reset_password.html",
 }
 
+EMAIL_CONSOLE_ICON_FILES = {
+    "studio": "favicon-studio-32x32.png",
+    "insights": "favicon-32x32.png",
+    "people": "favicon-people-32x32.png",
+    "learn": "favicon-learn-32x32.png",
+}
+
 # ------------------------------------------------------
 # Helpers
 # ------------------------------------------------------
@@ -553,8 +560,8 @@ def _console_reset_url(console_code: str) -> str:
     return f"{NOVOSKILL_PUBLIC_BASE_URL}/{file}"
 
 
-def _console_icon_url(icon_file: Optional[str]) -> str:
-    file = (icon_file or "").strip()
+def _console_icon_url(console_code: str) -> str:
+    file = EMAIL_CONSOLE_ICON_FILES.get((console_code or "").strip().lower(), "")
     if not file:
         return ""
     return f"{NOVOSKILL_PUBLIC_BASE_URL}/{file}"
@@ -584,7 +591,7 @@ def _build_console_mail_items(access_state: dict) -> list:
                 "label": (item.get("label") or code.title()).strip(),
                 "role_code": role,
                 "role_label": (item.get("role_label") or _role_label(role)).strip(),
-                "icon_url": _console_icon_url(item.get("icon_file")),
+                "icon_url": _console_icon_url(code),
                 "login_url": _console_login_url(code),
             }
         )
