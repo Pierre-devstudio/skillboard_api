@@ -538,14 +538,100 @@ def upload_enterprise_document_to_sharepoint(
 # ======================================================
 # Helpers SQL
 # ======================================================
+def _get_public_table_columns(cur, table_name: str) -> set:
+    cur.execute(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = %s
+        """,
+        (table_name,),
+    )
+    return {
+        (r.get("column_name") or "").strip()
+        for r in (cur.fetchall() or [])
+        if (r.get("column_name") or "").strip()
+    }
+
+
+def _fetch_mon_entreprise_normalized(cur, id_mon_ent: str) -> Optional[Dict[str, Any]]:
+    """
+    Retourne une ligne tbl_mon_entreprise normalisée au format "entreprise"
+    attendu par le portail Skills.
+    """
+    oid = (id_mon_ent or "").strip()
+    if not oid:
+        return None
+
+    cols = _get_public_table_columns(cur, "tbl_mon_entreprise")
+    if not cols:
+        return None
+
+    where = ["id_mon_ent = %s"]
+    params = [oid]
+
+    if "archive" in cols:
+        where.append("COALESCE(archive, FALSE) = FALSE")
+    if "masque" in cols:
+        where.append("COALESCE(masque, FALSE) = FALSE")
+    if "contrat_skills" in cols:
+        where.append("COALESCE(contrat_skills, TRUE) = TRUE")
+
+    cur.execute(
+        f"""
+        SELECT *
+        FROM public.tbl_mon_entreprise
+        WHERE {" AND ".join(where)}
+        LIMIT 1
+        """,
+        tuple(params),
+    )
+    r = cur.fetchone() or {}
+    if not r:
+        return None
+
+    return {
+        "id_ent": r.get("id_mon_ent") or r.get("id_ent"),
+        "nom_ent": r.get("nom_ent"),
+        "num_entreprise": r.get("num_entreprise"),
+        "adresse_ent": r.get("adresse_ent"),
+        "adresse_cplt_ent": r.get("adresse_cplt_ent"),
+        "cp_ent": r.get("cp_ent"),
+        "ville_ent": r.get("ville_ent"),
+        "pays_ent": r.get("pays_ent"),
+        "email_ent": r.get("email_ent"),
+        "telephone_ent": r.get("telephone_ent"),
+        "siret_ent": r.get("siret_ent"),
+        "code_ape_ent": r.get("code_ape_ent"),
+        "num_tva_ent": r.get("num_tva_ent"),
+        "effectif_ent": r.get("effectif_ent"),
+        "id_opco": r.get("id_opco"),
+        "date_creation": r.get("date_creation"),
+        "type_entreprise": r.get("type_entreprise"),
+        "masque": r.get("masque") if "masque" in cols else False,
+        "site_web": r.get("site_web"),
+        "idcc": r.get("idcc"),
+        "nom_groupe": r.get("nom_groupe"),
+        "type_groupe": r.get("type_groupe"),
+        "tete_groupe": r.get("tete_groupe"),
+        "group_ok": r.get("group_ok"),
+        "contrat_skills": r.get("contrat_skills") if "contrat_skills" in cols else True,
+        "source_kind": "mon_entreprise",
+    }
+
 def fetch_effectif_with_entreprise(cur, id_effectif: str):
     """
-    Récupère l'effectif (tbl_effectif_client) + entreprise associée (id_ent).
+    Récupère l'effectif (tbl_effectif_client) + entreprise associée.
+
+    Cas supportés :
+    - entreprise cliente classique : tbl_entreprise
+    - mon entreprise : tbl_mon_entreprise
 
     Validité:
     - Effectif: COALESCE(archive, FALSE) = FALSE
-    - Entreprise: COALESCE(masque, FALSE) = FALSE
-    - Contrat Skills: COALESCE(contrat_skills, FALSE) = TRUE
+    - Entreprise classique: COALESCE(masque, FALSE) = FALSE + contrat_skills = TRUE
+    - Mon entreprise: archive = FALSE (et masque / contrat_skills si colonnes présentes)
 
     Note:
     - On NE filtre PAS sur statut_actif ici : ce champ sert à exclure des analyses,
@@ -570,8 +656,33 @@ def fetch_effectif_with_entreprise(cur, id_effectif: str):
             ec.ismanager,
             ec.isformateur,
             ec.is_temp,
-            ec.role_temp,
+            ec.role_temp
+        FROM public.tbl_effectif_client ec
+        WHERE ec.id_effectif = %s
+          AND COALESCE(ec.archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (id_effectif,),
+    )
+    row_eff = cur.fetchone()
+    if row_eff is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Effectif introuvable ou archivé.",
+        )
 
+    id_ent = (row_eff.get("id_ent") or "").strip()
+    if not id_ent:
+        raise HTTPException(
+            status_code=404,
+            detail="Effectif sans entreprise rattachée.",
+        )
+
+    # 1) Cas standard : entreprise cliente
+    cur.execute(
+        """
+        SELECT
+            e.id_ent,
             e.nom_ent,
             e.num_entreprise,
             e.adresse_ent,
@@ -588,7 +699,7 @@ def fetch_effectif_with_entreprise(cur, id_effectif: str):
             e.id_opco,
             e.date_creation,
             e.type_entreprise,
-            e.masque AS masque_ent,
+            e.masque,
             e.site_web,
             e.idcc,
             e.nom_groupe,
@@ -596,67 +707,71 @@ def fetch_effectif_with_entreprise(cur, id_effectif: str):
             e.tete_groupe,
             e.group_ok,
             e.contrat_skills
-        FROM public.tbl_effectif_client ec
-        JOIN public.tbl_entreprise e ON e.id_ent = ec.id_ent
-        WHERE ec.id_effectif = %s
-          AND COALESCE(ec.archive, FALSE) = FALSE
+        FROM public.tbl_entreprise e
+        WHERE e.id_ent = %s
           AND COALESCE(e.masque, FALSE) = FALSE
           AND COALESCE(e.contrat_skills, FALSE) = TRUE
+        LIMIT 1
         """,
-        (id_effectif,),
+        (id_ent,),
     )
-    row = cur.fetchone()
+    row_ent = cur.fetchone()
 
-    if row is None:
+    if row_ent is None:
+        # 2) Fallback : mon entreprise
+        row_ent = _fetch_mon_entreprise_normalized(cur, id_ent)
+
+    if row_ent is None:
         raise HTTPException(
             status_code=404,
             detail="Effectif introuvable, archivé, ou entreprise non éligible Skills.",
         )
 
     row_effectif = {
-        "id_effectif": row.get("id_effectif"),
-        "id_ent": row.get("id_ent"),
-        "id_service": row.get("id_service"),
-        "civilite_effectif": row.get("civilite_effectif"),
-        "nom_effectif": row.get("nom_effectif"),
-        "prenom_effectif": row.get("prenom_effectif"),
-        "email_effectif": row.get("email_effectif"),
-        "telephone_effectif": row.get("telephone_effectif"),
-        "note_commentaire": row.get("note_commentaire"),
-        "date_creation": row.get("date_creation"),
-        "archive": row.get("archive"),
-        "ismanager": row.get("ismanager"),
-        "isformateur": row.get("isformateur"),
-        "is_temp": row.get("is_temp"),
-        "role_temp": row.get("role_temp"),
+        "id_effectif": row_eff.get("id_effectif"),
+        "id_ent": row_eff.get("id_ent"),
+        "id_service": row_eff.get("id_service"),
+        "civilite_effectif": row_eff.get("civilite_effectif"),
+        "nom_effectif": row_eff.get("nom_effectif"),
+        "prenom_effectif": row_eff.get("prenom_effectif"),
+        "email_effectif": row_eff.get("email_effectif"),
+        "telephone_effectif": row_eff.get("telephone_effectif"),
+        "note_commentaire": row_eff.get("note_commentaire"),
+        "date_creation": row_eff.get("date_creation"),
+        "archive": row_eff.get("archive"),
+        "ismanager": row_eff.get("ismanager"),
+        "isformateur": row_eff.get("isformateur"),
+        "is_temp": row_eff.get("is_temp"),
+        "role_temp": row_eff.get("role_temp"),
     }
 
     row_entreprise = {
-        "id_ent": row.get("id_ent"),
-        "nom_ent": row.get("nom_ent"),
-        "num_entreprise": row.get("num_entreprise"),
-        "adresse_ent": row.get("adresse_ent"),
-        "adresse_cplt_ent": row.get("adresse_cplt_ent"),
-        "cp_ent": row.get("cp_ent"),
-        "ville_ent": row.get("ville_ent"),
-        "pays_ent": row.get("pays_ent"),
-        "email_ent": row.get("email_ent"),
-        "telephone_ent": row.get("telephone_ent"),
-        "siret_ent": row.get("siret_ent"),
-        "code_ape_ent": row.get("code_ape_ent"),
-        "num_tva_ent": row.get("num_tva_ent"),
-        "effectif_ent": row.get("effectif_ent"),
-        "id_opco": row.get("id_opco"),
-        "date_creation": row.get("date_creation"),
-        "type_entreprise": row.get("type_entreprise"),
-        "masque": row.get("masque_ent"),
-        "site_web": row.get("site_web"),
-        "idcc": row.get("idcc"),
-        "nom_groupe": row.get("nom_groupe"),
-        "type_groupe": row.get("type_groupe"),
-        "tete_groupe": row.get("tete_groupe"),
-        "group_ok": row.get("group_ok"),
-        "contrat_skills": row.get("contrat_skills"),
+        "id_ent": row_ent.get("id_ent"),
+        "nom_ent": row_ent.get("nom_ent"),
+        "num_entreprise": row_ent.get("num_entreprise"),
+        "adresse_ent": row_ent.get("adresse_ent"),
+        "adresse_cplt_ent": row_ent.get("adresse_cplt_ent"),
+        "cp_ent": row_ent.get("cp_ent"),
+        "ville_ent": row_ent.get("ville_ent"),
+        "pays_ent": row_ent.get("pays_ent"),
+        "email_ent": row_ent.get("email_ent"),
+        "telephone_ent": row_ent.get("telephone_ent"),
+        "siret_ent": row_ent.get("siret_ent"),
+        "code_ape_ent": row_ent.get("code_ape_ent"),
+        "num_tva_ent": row_ent.get("num_tva_ent"),
+        "effectif_ent": row_ent.get("effectif_ent"),
+        "id_opco": row_ent.get("id_opco"),
+        "date_creation": row_ent.get("date_creation"),
+        "type_entreprise": row_ent.get("type_entreprise"),
+        "masque": row_ent.get("masque"),
+        "site_web": row_ent.get("site_web"),
+        "idcc": row_ent.get("idcc"),
+        "nom_groupe": row_ent.get("nom_groupe"),
+        "type_groupe": row_ent.get("type_groupe"),
+        "tete_groupe": row_ent.get("tete_groupe"),
+        "group_ok": row_ent.get("group_ok"),
+        "contrat_skills": row_ent.get("contrat_skills"),
+        "source_kind": row_ent.get("source_kind") or "entreprise",
     }
 
     return row_effectif, row_entreprise
