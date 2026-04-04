@@ -8,7 +8,7 @@ import uuid
 import requests
 from datetime import date as py_date
 
-from MailManager import send_novoskill_access_mail
+from app.routers.MailManager import send_novoskill_access_mail
 from app.routers.skills_portal_common import get_conn
 from app.routers.studio_portal_common import (
     STUDIO_SUPABASE_URL,
