@@ -215,11 +215,10 @@ def _default_access_ref_type(console_code: str, source_kind: str, source_row_kin
     code = (console_code or "").strip().lower()
 
     # Cas mon entreprise :
-    # les comptes internes / owner utilisent tbl_utilisateur
-    # pour Studio, People, Partner et Learn.
-    # Insights reste sur effectif_client pour préserver la logique legacy.
+    # les comptes internes / owner utilisent tbl_utilisateur.
+    # On aligne désormais aussi Insights sur cette logique.
     if source_kind == "mon_entreprise" and source_row_kind == "utilisateur":
-        if code in ("studio", "people", "partner", "learn"):
+        if code in ("studio", "insights", "people", "partner", "learn"):
             return "utilisateur"
 
     return "effectif_client"

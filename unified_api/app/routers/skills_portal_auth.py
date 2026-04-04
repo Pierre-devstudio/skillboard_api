@@ -66,13 +66,23 @@ def _fetch_mapping(cur, email: str):
         SELECT
           id_access,
           email,
-          id_user_ref AS id_effectif
+          id_user_ref AS id_effectif,
+          lower(COALESCE(user_ref_type, '')) AS user_ref_type
         FROM public.tbl_novoskill_user_access
         WHERE lower(email) = lower(%s)
           AND console_code = 'insights'
-          AND lower(COALESCE(user_ref_type, '')) = 'effectif_client'
+          AND lower(COALESCE(user_ref_type, '')) IN ('effectif_client', 'utilisateur')
           AND COALESCE(archive, FALSE) = FALSE
           AND COALESCE(statut_access, 'actif') <> 'suspendu'
+        ORDER BY
+          CASE lower(COALESCE(user_ref_type, ''))
+            WHEN 'utilisateur' THEN 0
+            WHEN 'effectif_client' THEN 1
+            ELSE 9
+          END,
+          updated_at DESC NULLS LAST,
+          created_at DESC NULLS LAST,
+          id_access DESC
         LIMIT 1
         """,
         (email,),

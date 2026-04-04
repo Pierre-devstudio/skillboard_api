@@ -95,9 +95,18 @@ def skills_me_scope(request: Request):
                         FROM public.tbl_novoskill_user_access
                         WHERE lower(email) = lower(%s)
                           AND console_code = 'insights'
-                          AND lower(COALESCE(user_ref_type, '')) = 'effectif_client'
+                          AND lower(COALESCE(user_ref_type, '')) IN ('effectif_client', 'utilisateur')
                           AND COALESCE(archive, FALSE) = FALSE
                           AND COALESCE(statut_access, 'actif') <> 'suspendu'
+                        ORDER BY
+                          CASE lower(COALESCE(user_ref_type, ''))
+                            WHEN 'utilisateur' THEN 0
+                            WHEN 'effectif_client' THEN 1
+                            ELSE 9
+                          END,
+                          updated_at DESC NULLS LAST,
+                          created_at DESC NULLS LAST,
+                          id_access DESC
                         LIMIT 1
                         """,
                         (email,),
