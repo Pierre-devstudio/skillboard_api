@@ -2,11 +2,16 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional
 from psycopg.rows import dict_row
+import os
+import secrets
 import uuid
+import requests
 from datetime import date as py_date
 
+from app.MailManager import send_novoskill_access_mail
 from app.routers.skills_portal_common import get_conn
 from app.routers.studio_portal_common import (
+    STUDIO_SUPABASE_URL,
     studio_require_user,
     studio_fetch_owner,
     studio_require_min_role,
@@ -26,6 +31,23 @@ ROLE_LABELS = {
     "user": "Utilisateur",
     "editor": "Éditeur",
     "admin": "Administrateur",
+}
+
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or ""
+NOVOSKILL_PUBLIC_BASE_URL = (os.getenv("NOVOSKILL_PUBLIC_BASE_URL") or "https://novoskill.jmbconsultant.fr").rstrip("/")
+
+CONSOLE_LOGIN_FILES = {
+    "studio": "studio_login.html",
+    "insights": "skills_login.html",
+    "people": "people_login.html",
+    "learn": "learn_login.html",
+}
+
+CONSOLE_RESET_FILES = {
+    "studio": "studio_reset_password.html",
+    "insights": "skills_reset_password.html",
+    "people": "people_reset_password.html",
+    "learn": "learn_reset_password.html",
 }
 
 # ------------------------------------------------------
@@ -377,6 +399,356 @@ def _build_access_state_for_collaborator(cur, oid: str, source_kind: str, cid: s
         "consoles": console_items,
         "summary": summary,
     }
+
+def _supabase_admin_is_configured() -> bool:
+    return bool(STUDIO_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY)
+
+
+def _supabase_admin_headers() -> dict:
+    if not _supabase_admin_is_configured():
+        raise HTTPException(status_code=500, detail="Config Supabase Admin manquante côté serveur.")
+    return {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "Content-Type": "application/json",
+    }
+
+
+def _supabase_admin_request(
+    method: str,
+    path: str,
+    payload: Optional[dict] = None,
+    params: Optional[dict] = None,
+) -> dict:
+    url = f"{STUDIO_SUPABASE_URL.rstrip('/')}{path}"
+
+    try:
+        r = requests.request(
+            method=method.upper(),
+            url=url,
+            headers=_supabase_admin_headers(),
+            params=params,
+            json=payload,
+            timeout=20,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur Supabase Admin: {e}")
+
+    if r.status_code >= 400:
+        detail = ""
+        try:
+            js = r.json() if r.content else {}
+            detail = (
+                js.get("msg")
+                or js.get("message")
+                or js.get("error_description")
+                or js.get("error")
+                or ""
+            )
+        except Exception:
+            detail = r.text or ""
+
+        status = 400 if 400 <= r.status_code < 500 else 500
+        raise HTTPException(
+            status_code=status,
+            detail=f"Erreur Supabase Admin: {detail or r.text or r.status_code}",
+        )
+
+    try:
+        return r.json() if r.content else {}
+    except Exception:
+        return {}
+
+
+def _supabase_find_user_by_email(email: Optional[str]) -> Optional[dict]:
+    target = (email or "").strip().lower()
+    if not target or not _supabase_admin_is_configured():
+        return None
+
+    page = 1
+    per_page = 1000
+
+    while page <= 20:
+        js = _supabase_admin_request(
+            "GET",
+            "/auth/v1/admin/users",
+            params={"page": page, "per_page": per_page},
+        )
+        users = js.get("users") if isinstance(js, dict) else []
+        if not isinstance(users, list):
+            users = []
+
+        for user in users:
+            if (user.get("email") or "").strip().lower() == target:
+                return user
+
+        if len(users) < per_page:
+            break
+
+        page += 1
+
+    return None
+
+
+def _supabase_create_user(email: str, password: str, user_metadata: dict) -> dict:
+    js = _supabase_admin_request(
+        "POST",
+        "/auth/v1/admin/users",
+        payload={
+            "email": email,
+            "password": password,
+            "email_confirm": True,
+            "user_metadata": user_metadata,
+        },
+    )
+    return js.get("user") if isinstance(js, dict) and isinstance(js.get("user"), dict) else js
+
+
+def _supabase_update_user(user_id: str, payload: dict) -> dict:
+    js = _supabase_admin_request(
+        "PUT",
+        f"/auth/v1/admin/users/{user_id}",
+        payload=payload,
+    )
+    return js.get("user") if isinstance(js, dict) and isinstance(js.get("user"), dict) else js
+
+
+def _supabase_generate_recovery_link(email: str, redirect_to: str) -> str:
+    js = _supabase_admin_request(
+        "POST",
+        "/auth/v1/admin/generate_link",
+        payload={
+            "type": "recovery",
+            "email": email,
+            "redirect_to": redirect_to,
+        },
+    )
+
+    props = js.get("properties") if isinstance(js, dict) and isinstance(js.get("properties"), dict) else {}
+    link = (
+        props.get("action_link")
+        or props.get("actionLink")
+        or js.get("action_link")
+        or js.get("actionLink")
+        or ""
+    )
+    return (link or "").strip()
+
+
+def _generate_random_password() -> str:
+    return secrets.token_urlsafe(24) + "Aa1!"
+
+
+def _console_login_url(console_code: str) -> str:
+    file = CONSOLE_LOGIN_FILES.get((console_code or "").strip().lower(), "")
+    if not file:
+        return ""
+    return f"{NOVOSKILL_PUBLIC_BASE_URL}/{file}"
+
+
+def _console_reset_url(console_code: str) -> str:
+    file = CONSOLE_RESET_FILES.get((console_code or "").strip().lower(), "")
+    if not file:
+        return ""
+    return f"{NOVOSKILL_PUBLIC_BASE_URL}/{file}"
+
+
+def _console_icon_url(icon_file: Optional[str]) -> str:
+    file = (icon_file or "").strip()
+    if not file:
+        return ""
+    return f"{NOVOSKILL_PUBLIC_BASE_URL}/{file}"
+
+
+def _build_active_access_map(access_state: dict) -> dict:
+    out = {}
+    for item in (access_state.get("consoles") or []):
+        code = (item.get("console_code") or "").strip().lower()
+        role = (item.get("role_code") or "none").strip().lower()
+        if code and role != "none":
+            out[code] = role
+    return out
+
+
+def _build_console_mail_items(access_state: dict) -> list:
+    items = []
+    for item in (access_state.get("consoles") or []):
+        code = (item.get("console_code") or "").strip().lower()
+        role = (item.get("role_code") or "none").strip().lower()
+        if not code or role == "none":
+            continue
+
+        items.append(
+            {
+                "console_code": code,
+                "label": (item.get("label") or code.title()).strip(),
+                "role_code": role,
+                "role_label": (item.get("role_label") or _role_label(role)).strip(),
+                "icon_url": _console_icon_url(item.get("icon_file")),
+                "login_url": _console_login_url(code),
+            }
+        )
+
+    order = {"studio": 0, "insights": 1, "people": 2, "learn": 3}
+    items.sort(key=lambda x: order.get((x.get("console_code") or "").strip().lower(), 99))
+    return items
+
+
+def _select_preferred_console_code(access_state: dict) -> str:
+    active_map = _build_active_access_map(access_state)
+    for code in ("studio", "insights", "people", "learn"):
+        if code in active_map:
+            return code
+    return "studio"
+
+
+def _merge_auth_user_metadata(
+    existing_metadata: Optional[dict],
+    id_owner: str,
+    id_effectif: str,
+    active_codes: set,
+) -> dict:
+    meta = dict(existing_metadata or {})
+
+    if "studio" in active_codes:
+        meta["id_owner"] = id_owner
+    else:
+        meta.pop("id_owner", None)
+
+    if active_codes.intersection({"insights", "people", "learn"}):
+        meta["id_effectif"] = id_effectif
+        meta["id_contact"] = id_effectif
+    else:
+        meta.pop("id_effectif", None)
+        meta.pop("id_contact", None)
+
+    meta["novoskill_console_codes"] = sorted(active_codes)
+    meta["novoskill_has_access"] = bool(active_codes)
+    return meta
+
+
+def _sync_supabase_auth_user_from_access_state(
+    id_owner: str,
+    id_effectif: str,
+    email: Optional[str],
+    after_access_state: dict,
+) -> dict:
+    active_codes = set(_build_active_access_map(after_access_state).keys())
+    target_email = (email or "").strip()
+
+    if not active_codes:
+        if not target_email or not _supabase_admin_is_configured():
+            return {"auth_user": None, "created_now": False, "setup_link": None}
+
+        user = _supabase_find_user_by_email(target_email)
+        if user and user.get("id"):
+            merged = _merge_auth_user_metadata(
+                user.get("user_metadata") if isinstance(user.get("user_metadata"), dict) else {},
+                id_owner,
+                id_effectif,
+                active_codes,
+            )
+            user = _supabase_update_user(
+                str(user.get("id")),
+                {
+                    "user_metadata": merged,
+                    "email_confirm": True,
+                },
+            )
+
+        return {"auth_user": user, "created_now": False, "setup_link": None}
+
+    if not target_email:
+        raise HTTPException(status_code=400, detail="Email collaborateur manquant pour ouvrir un accès console.")
+
+    if not _supabase_admin_is_configured():
+        raise HTTPException(status_code=500, detail="Config Supabase Admin manquante côté serveur.")
+
+    user = _supabase_find_user_by_email(target_email)
+    created_now = False
+
+    if user and user.get("id"):
+        merged = _merge_auth_user_metadata(
+            user.get("user_metadata") if isinstance(user.get("user_metadata"), dict) else {},
+            id_owner,
+            id_effectif,
+            active_codes,
+        )
+        user = _supabase_update_user(
+            str(user.get("id")),
+            {
+                "email": target_email,
+                "email_confirm": True,
+                "user_metadata": merged,
+            },
+        )
+    else:
+        created_now = True
+        merged = _merge_auth_user_metadata({}, id_owner, id_effectif, active_codes)
+        user = _supabase_create_user(
+            target_email,
+            _generate_random_password(),
+            merged,
+        )
+
+    setup_link = None
+    if created_now:
+        setup_link = _supabase_generate_recovery_link(
+            target_email,
+            _console_reset_url(_select_preferred_console_code(after_access_state)),
+        )
+        if not setup_link:
+            raise HTTPException(status_code=500, detail="Lien de définition du mot de passe introuvable.")
+
+    return {
+        "auth_user": user,
+        "created_now": created_now,
+        "setup_link": setup_link,
+    }
+
+
+def _resolve_actor_display_name(cur, u: dict, id_owner: str) -> str:
+    email = (u.get("email") or "").strip()
+    if not email:
+        return "Administrateur Novoskill"
+
+    cur.execute(
+        """
+        SELECT
+          COALESCE(NULLIF(BTRIM(COALESCE(ut_prenom, '')), ''), '') AS prenom,
+          COALESCE(NULLIF(BTRIM(COALESCE(ut_nom, '')), ''), '') AS nom
+        FROM public.tbl_utilisateur
+        WHERE lower(COALESCE(ut_mail, '')) = lower(%s)
+        ORDER BY COALESCE(archive, FALSE) ASC
+        LIMIT 1
+        """,
+        (email,),
+    )
+    r = cur.fetchone() or {}
+    full = f"{(r.get('prenom') or '').strip()} {(r.get('nom') or '').strip()}".strip()
+    if full:
+        return full
+
+    cur.execute(
+        """
+        SELECT
+          COALESCE(NULLIF(BTRIM(COALESCE(prenom_effectif, '')), ''), '') AS prenom,
+          COALESCE(NULLIF(BTRIM(COALESCE(nom_effectif, '')), ''), '') AS nom
+        FROM public.tbl_effectif_client
+        WHERE id_ent = %s
+          AND lower(COALESCE(email_effectif, '')) = lower(%s)
+        ORDER BY COALESCE(archive, FALSE) ASC
+        LIMIT 1
+        """,
+        (id_owner, email),
+    )
+    r = cur.fetchone() or {}
+    full = f"{(r.get('prenom') or '').strip()} {(r.get('nom') or '').strip()}".strip()
+    if full:
+        return full
+
+    return email
+
 
 def _norm_text(v: Optional[str]) -> Optional[str]:
     s = (v or "").strip()
@@ -2199,12 +2571,20 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
             raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
 
         role_map = {
-            "studio": _normalize_access_role_code(payload.studio),
-            "insights": _normalize_access_role_code(payload.insights),
-            "people": _normalize_access_role_code(payload.people),
-            "partner": _normalize_access_role_code(payload.partner),
-            "learn": _normalize_access_role_code(payload.learn),
+            "studio": _normalize_access_role_code(getattr(payload, "studio", None)),
+            "insights": _normalize_access_role_code(getattr(payload, "insights", None)),
+            "people": _normalize_access_role_code(getattr(payload, "people", None)),
+            "partner": _normalize_access_role_code(getattr(payload, "partner", None)),
+            "learn": _normalize_access_role_code(getattr(payload, "learn", None)),
         }
+
+        oid = ""
+        ident = {}
+        before_state = {}
+        after_state = {}
+        before_map = {}
+        after_map = {}
+        actor_name = "Administrateur Novoskill"
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -2213,10 +2593,13 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
 
+                before_state = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid)
+                before_map = _build_active_access_map(before_state)
+
                 ident = _fetch_collaborateur_identity_for_access(cur, oid, src["source_kind"], cid)
                 contracts = _load_owner_console_contracts(cur, oid)
                 email = (ident.get("email") or "").strip()
-                source_row_kind = (ident.get("source_row_kind") or "").strip()
+                actor_name = _resolve_actor_display_name(cur, u, oid)
 
                 for console in ["studio", "insights", "people", "partner", "learn"]:
                     desired_role = role_map[console]
@@ -2259,7 +2642,7 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                     if cur.fetchone():
                         raise HTTPException(status_code=400, detail=f"Un autre collaborateur utilise déjà {email} pour la console {console}.")
 
-                    user_ref_type = _default_access_ref_type(console, src["source_kind"], source_row_kind)
+                    user_ref_type = _default_access_ref_type(console, src["source_kind"], ident.get("source_row_kind") or "")
 
                     cur.execute(
                         """
@@ -2317,10 +2700,49 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                             (str(uuid.uuid4()), email, oid, desired_role, user_ref_type, cid, console),
                         )
 
-                conn.commit()
-                data = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid)
+                after_state = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid)
+                after_map = _build_active_access_map(after_state)
 
-        return data
+                conn.commit()
+
+        provisioning = {"auth_user": None, "created_now": False, "setup_link": None}
+        if before_map or after_map:
+            provisioning = _sync_supabase_auth_user_from_access_state(
+                id_owner=oid,
+                id_effectif=cid,
+                email=ident.get("email"),
+                after_access_state=after_state,
+            )
+
+        notification_mode = None
+        notification_sent = False
+
+        if before_map != after_map and (before_map or after_map):
+            if not before_map and after_map:
+                notification_mode = "first_access"
+            elif before_map and after_map:
+                notification_mode = "update"
+            elif before_map and not after_map:
+                notification_mode = "removal"
+
+            try:
+                notification_sent = send_novoskill_access_mail(
+                    to_email=(ident.get("email") or "").strip(),
+                    collaborateur_nom=f"{(ident.get('prenom') or '').strip()} {(ident.get('nom') or '').strip()}".strip(),
+                    admin_name=actor_name,
+                    mode=notification_mode,
+                    consoles=_build_console_mail_items(after_state),
+                    setup_link=provisioning.get("setup_link"),
+                )
+            except Exception as mail_err:
+                print("Erreur envoi mail accès Novoskill:", mail_err)
+                notification_sent = False
+
+        after_state["notification_mode"] = notification_mode
+        after_state["notification_sent"] = notification_sent
+        after_state["auth_user_created"] = bool(provisioning.get("created_now"))
+        return after_state
+
     except HTTPException:
         raise
     except Exception as e:
