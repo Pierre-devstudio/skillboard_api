@@ -2,7 +2,7 @@ import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import recueil_attentes, preparation_formation, presence_formation, presence_consultant, validation_acquis,satisfaction_formation_stagiaire, satisfaction_formation_responsable, satisfaction_formation_consultant, adaptation_formation, consultant_portal, skills_portal,  studio_portal 
+from app.routers import recueil_attentes, preparation_formation, presence_formation, presence_consultant, validation_acquis,satisfaction_formation_stagiaire, satisfaction_formation_responsable, satisfaction_formation_consultant, adaptation_formation, consultant_portal, skills_portal,  studio_portal, people_portal 
 
 app = FastAPI()
 
@@ -131,4 +131,7 @@ for route in skills_portal.router.routes:
     app.router.routes.append(route)
 
 for route in studio_portal.router.routes:
+    app.router.routes.append(route)
+
+for route in people_portal.router.routes:
     app.router.routes.append(route)
