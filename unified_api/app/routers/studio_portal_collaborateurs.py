@@ -185,8 +185,15 @@ def _build_console_items(cur, oid: str) -> list:
 
 def _default_access_ref_type(console_code: str, source_kind: str, source_row_kind: str) -> str:
     code = (console_code or "").strip().lower()
-    if code == "studio" and source_kind == "mon_entreprise" and source_row_kind == "utilisateur":
-        return "utilisateur"
+
+    # Cas mon entreprise :
+    # les comptes internes / owner utilisent tbl_utilisateur
+    # pour Studio, People, Partner et Learn.
+    # Insights reste sur effectif_client pour préserver la logique legacy.
+    if source_kind == "mon_entreprise" and source_row_kind == "utilisateur":
+        if code in ("studio", "people", "partner", "learn"):
+            return "utilisateur"
+
     return "effectif_client"
 
 
