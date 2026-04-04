@@ -1,0 +1,71 @@
+/* learn_portal_theme.css
+   - Thème Learn
+   - Accent Learn : #E724F3
+   - Sidebar : #333333
+*/
+
+:root{
+  --accent:#E724F3;
+  --sidebar-bg:#333333;
+  --lp-accent-rgb:231,36,243;
+}
+
+.menu-item.active{
+  color:#ffffff;
+}
+
+.product-badge{
+  display:inline-flex;
+  align-items:center;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+  background: rgba(var(--lp-accent-rgb), .22);
+  border:1px solid rgba(var(--lp-accent-rgb), .55);
+  color:#ffffff;
+}
+
+.menu-sep{
+  height:1px;
+  margin:10px 0;
+  background: rgba(255,255,255,.15);
+}
+
+.lp-card-note{
+  margin-top:8px;
+  font-size:13px;
+  color: var(--muted);
+}
+
+.lp-kpi-grid{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap:12px;
+  margin-top:12px;
+}
+
+@media (max-width: 900px){
+  .lp-kpi-grid{
+    grid-template-columns: 1fr;
+  }
+}
+
+.lp-kpi{
+  border:1px solid rgba(17,24,39,.08);
+  border-radius:10px;
+  padding:14px;
+  background:#fff;
+}
+
+.lp-kpi-title{
+  font-size:12px;
+  color:#6b7280;
+  margin-bottom:4px;
+}
+
+.lp-kpi-value{
+  font-size:15px;
+  font-weight:700;
+  color:#111827;
+}

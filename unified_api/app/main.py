@@ -2,7 +2,7 @@ import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import recueil_attentes, preparation_formation, presence_formation, presence_consultant, validation_acquis,satisfaction_formation_stagiaire, satisfaction_formation_responsable, satisfaction_formation_consultant, adaptation_formation, consultant_portal, skills_portal,  studio_portal, people_portal 
+from app.routers import recueil_attentes, preparation_formation, presence_formation, presence_consultant, validation_acquis,satisfaction_formation_stagiaire, satisfaction_formation_responsable, satisfaction_formation_consultant, adaptation_formation, consultant_portal, skills_portal,  studio_portal, people_portal, learn_portal
 
 app = FastAPI()
 
@@ -57,6 +57,22 @@ def get_portal_config(space: str):
 
         return {
             "portal_key": "people",
+            "supabase_url": supabase_url,
+            "supabase_anon_key": supabase_anon,
+        }
+    
+    if s == "learn":
+        supabase_url = os.getenv("LEARN_SUPABASE_URL", "") or os.getenv("SKILLS_SUPABASE_URL", "") or ""
+        supabase_anon = os.getenv("LEARN_SUPABASE_ANON_KEY", "") or os.getenv("SKILLS_SUPABASE_ANON_KEY", "") or ""
+
+        if not supabase_url or not supabase_anon:
+            raise HTTPException(
+                status_code=500,
+                detail="Config Learn manquante: LEARN_SUPABASE_URL / LEARN_SUPABASE_ANON_KEY (ou fallback Skills)",
+            )
+
+        return {
+            "portal_key": "learn",
             "supabase_url": supabase_url,
             "supabase_anon_key": supabase_anon,
         }
@@ -134,4 +150,7 @@ for route in studio_portal.router.routes:
     app.router.routes.append(route)
 
 for route in people_portal.router.routes:
+    app.router.routes.append(route)
+
+for route in learn_portal.router.routes:
     app.router.routes.append(route)
