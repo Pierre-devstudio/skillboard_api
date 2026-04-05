@@ -96,9 +96,25 @@
   align-items:flex-end;
   gap:12px;
   flex-wrap:wrap;
+  flex:1 1 auto;
+  min-width:0;
 }
-.sb-search{ flex:1; min-width:280px; }
-.sb-search input{ width:100%; }
+
+.sb-search{
+  flex:1 1 420px;
+  min-width:420px;
+}
+
+.sb-search input{
+  width:100%;
+  min-width:0;
+}
+
+@media (max-width: 1100px){
+  .sb-search{
+    min-width:280px;
+  }
+}
 
 /* Lists */
 .sb-list{
