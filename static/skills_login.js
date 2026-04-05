@@ -25,7 +25,9 @@
     const data = await r.json().catch(() => null);
 
     if (!r.ok) {
-      const detail = (data && (data.detail || data.message)) ? (data.detail || data.message) : (await r.text().catch(() => ""));
+      const detail = (data && (data.detail || data.message))
+        ? (data.detail || data.message)
+        : (await r.text().catch(() => ""));
       throw new Error(detail || "Impossible de charger la config du portail.");
     }
     return data;
@@ -38,7 +40,6 @@
       throw new Error("portal_auth_common.js non chargé.");
     }
 
-    // Init client Supabase avec storage isolé par portail
     window.PortalAuthCommon.init({
       supabaseUrl: cfg.supabase_url,
       supabaseAnonKey: cfg.supabase_anon_key,
@@ -52,8 +53,6 @@
   }
 
   function getRedirectUrlForReset() {
-    // Les fichiers statics sont servis à la racine dans ton portail (cf /skills_portal.js)
-    // Donc la page reset sera: /skills_reset_password.html
     return `${window.location.origin}/skills_reset_password.html`;
   }
 
@@ -82,27 +81,26 @@
 
       const res = await window.PortalAuthCommon.signInWithPassword(email, pass);
 
-      let contactId = res?.contactId || window.PortalAuthCommon.getContactId();
+      let effectifId = res?.contactId || window.PortalAuthCommon.getContactId();
 
-      if (!contactId) {
+      if (!effectifId) {
         const session = await window.PortalAuthCommon.getSession().catch(() => null);
         const token = session?.access_token || "";
         if (token) {
           const ctx = await fetchAuthContext(token);
-          contactId = (ctx?.id_effectif || "").trim();
+          effectifId = (ctx?.id_effectif || "").trim();
         }
       }
 
-      if (!contactId) {
+      if (!effectifId) {
         setMsg(
-          "Connexion OK, mais ce compte n’est pas rattaché à un effectif Skills (id_effectif manquant).",
+          "Connexion OK, mais ce compte n’est pas rattaché à un profil Insights (id_effectif manquant).",
           "error"
         );
         return;
       }
 
-      // On reste compatible 100% legacy: portail actuel = ?id=...
-      window.location.href = `/insights/?id=${encodeURIComponent(contactId)}`;
+      window.location.href = `/insights/?id=${encodeURIComponent(effectifId)}`;
     } catch (e) {
       setMsg(e.message || "Connexion impossible.", "error");
     } finally {
@@ -134,12 +132,10 @@
     }
   }
 
-  // Wiring
   window.addEventListener("DOMContentLoaded", async () => {
     try {
       await initSupabase();
 
-      // UI handlers
       byId("btnLogin")?.addEventListener("click", doLogin);
       byId("loginPassword")?.addEventListener("keydown", (ev) => {
         if (ev.key === "Enter") doLogin();

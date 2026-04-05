@@ -80,8 +80,6 @@ def _fetch_mapping(cur, email: str):
             WHEN 'effectif_client' THEN 1
             ELSE 9
           END,
-          updated_at DESC NULLS LAST,
-          created_at DESC NULLS LAST,
           id_access DESC
         LIMIT 1
         """,

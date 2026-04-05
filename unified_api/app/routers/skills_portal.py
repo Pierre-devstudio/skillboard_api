@@ -19,7 +19,6 @@ from app.routers.skills_portal_common import (
     get_conn,
     fetch_effectif_with_entreprise,
     skills_require_user,
-    skills_list_enterprises,
 )
 
 # ======================================================
@@ -70,19 +69,16 @@ def skills_me(request: Request):
 @app_local.get("/skills/me/scope")
 def skills_me_scope(request: Request):
     """
-    Retourne la liste des entreprises accessibles:
-    - super admin: toutes les entreprises éligibles Skills
-    - user normal: uniquement son entreprise
-      via id_effectif dans user_metadata ou via tbl_novoskill_user_access
+    Retourne l'entreprise de l'utilisateur connecté.
+    Flux simplifié:
+    - pas de branche super admin
+    - résolution via id_effectif en metadata ou fallback tbl_novoskill_user_access
     """
     auth = request.headers.get("Authorization", "")
     u = skills_require_user(auth)
 
     with get_conn() as conn:
         with conn.cursor(row_factory=dict_row) as cur:
-            if u.get("is_super_admin"):
-                return {"mode": "super_admin", "entreprises": skills_list_enterprises(cur)}
-
             meta = u.get("user_metadata") or {}
             id_effectif = (meta.get("id_effectif") or "").strip()
 
@@ -104,8 +100,6 @@ def skills_me_scope(request: Request):
                             WHEN 'effectif_client' THEN 1
                             ELSE 9
                           END,
-                          updated_at DESC NULLS LAST,
-                          created_at DESC NULLS LAST,
                           id_access DESC
                         LIMIT 1
                         """,
