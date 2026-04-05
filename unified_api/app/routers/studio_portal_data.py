@@ -108,6 +108,18 @@ def _role_code_to_label(code: str | None) -> str | None:
         return "Utilisateur"
     return None
 
+def _normalize_civilite(value: str | None) -> str | None:
+    s = (value or "").strip()
+    if not s:
+        return None
+
+    sl = s.lower()
+    if sl in {"m", "m."}:
+        return "M."
+    if sl in {"f", "mme", "mme.", "madame"}:
+        return "Mme"
+
+    return s
 
 def _lookup_idcc(cur, idcc: str | None) -> str | None:
     if not idcc:
@@ -358,7 +370,7 @@ def _fetch_contact(cur, oid: str, email_session: str) -> dict:
         )
         r = cur.fetchone() or {}
         return {
-            "civilite": r.get("ut_civilite"),
+            "civilite": _normalize_civilite(r.get("ut_civilite")),
             "prenom": r.get("ut_prenom"),
             "nom": r.get("ut_nom"),
             "email": (r.get("ut_mail") or email) if (r.get("ut_mail") or "").strip() else (email or None),
@@ -400,7 +412,7 @@ def _fetch_contact(cur, oid: str, email_session: str) -> dict:
         )
         r = cur.fetchone() or {}
         return {
-            "civilite": r.get("civilite_effectif"),
+            "civilite": _normalize_civilite(r.get("civilite_effectif")),
             "prenom": r.get("prenom_effectif"),
             "nom": r.get("nom_effectif"),
             "email": r.get("email_effectif") or (email or None),
@@ -479,6 +491,9 @@ def update_studio_entreprise(id_owner: str, payload: UpdateEntreprisePayload, re
     try:
         patch = _build_patch_set(payload)
 
+        if "civilite" in patch:
+            patch["civilite"] = _normalize_civilite(patch.get("civilite"))
+            
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
