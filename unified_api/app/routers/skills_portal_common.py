@@ -559,6 +559,11 @@ def _fetch_mon_entreprise_normalized(cur, id_mon_ent: str) -> Optional[Dict[str,
     """
     Retourne une ligne tbl_mon_entreprise normalisée au format "entreprise"
     attendu par le portail Skills.
+
+    IMPORTANT:
+    - pour mon entreprise, on ne filtre PAS sur contrat_skills
+    - on ne filtre PAS sur masque
+    - seul l'archivage doit bloquer
     """
     oid = (id_mon_ent or "").strip()
     if not oid:
@@ -573,10 +578,6 @@ def _fetch_mon_entreprise_normalized(cur, id_mon_ent: str) -> Optional[Dict[str,
 
     if "archive" in cols:
         where.append("COALESCE(archive, FALSE) = FALSE")
-    if "masque" in cols:
-        where.append("COALESCE(masque, FALSE) = FALSE")
-    if "contrat_skills" in cols:
-        where.append("COALESCE(contrat_skills, TRUE) = TRUE")
 
     cur.execute(
         f"""
