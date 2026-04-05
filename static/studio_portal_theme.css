@@ -76,6 +76,20 @@
 }
 .sb-actions{ display:flex; gap:8px; flex-wrap:wrap; }
 
+.org-card-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  position:relative;
+  z-index:2;
+}
+
+.org-card-head .sb-actions{
+  position:relative;
+  z-index:3;
+}
+
 /* Toolbar (recherche + CTA) */
 .sb-toolbar{
   display:flex;

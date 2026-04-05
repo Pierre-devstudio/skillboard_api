@@ -91,7 +91,18 @@
         }
     }
 
-    function byId(id){ return document.getElementById(id); }
+    function getOrganisationRoot(){
+        return document.querySelector('#view-organisation[data-view="organisation"]');
+    }
+
+    function byId(id){
+        const root = getOrganisationRoot();
+        if (root){
+            const el = root.querySelector(`#${id}`);
+            if (el) return el;
+        }
+        return document.getElementById(id);
+    }
 
     function setStatus(msg){
         const el = byId("orgStatus");
@@ -271,46 +282,6 @@
 
     function serviceMeta(nbPostes, nbCollabs){
         return `${nbPostes} poste(s) · ${nbCollabs} collaborateur(s)`;
-    }
-
-    function syncSelectedServiceContext(){
-        if (!_selectedService || _selectedService === "__all__"){
-            _selectedService = "__all__";
-            _selectedServiceName = "Tous les services";
-            return;
-        }
-
-        if (_selectedService === "__none__"){
-            _selectedServiceName = "Non lié";
-            return;
-        }
-
-        const svc = (_services || []).find(x => x.id_service === _selectedService);
-        if (!svc){
-            _selectedService = "__all__";
-            _selectedServiceName = "Tous les services";
-            return;
-        }
-
-        _selectedServiceName = svc.nom_service || "Service";
-    }
-
-    function getPosteBlockTitle(){
-        if (!_selectedService || _selectedService === "__all__"){
-            return "Tous les postes";
-        }
-
-        if (_selectedService === "__none__"){
-            return "Postes non liés";
-        }
-
-        return `Postes du service ${_selectedServiceName || ""}`.trim();
-    }
-
-    function refreshPosteBlockTitle(){
-        const el = byId("posteBlockTitle");
-        if (!el) return;
-        el.textContent = getPosteBlockTitle();
     }
 
     function syncSelectedServiceContext(){
@@ -3280,23 +3251,35 @@
         }
 
         // Service actions
-        byId("btnSvcAdd")?.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openCreateService();
-        });
+        const orgRoot = getOrganisationRoot();
+        if (orgRoot && !orgRoot._svcActionsBound){
+            orgRoot._svcActionsBound = true;
 
-        byId("btnSvcEdit")?.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openEditService();
-        });
+            orgRoot.addEventListener("click", (e) => {
+                const btnAdd = e.target.closest("#btnSvcAdd");
+                if (btnAdd){
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openCreateService();
+                    return;
+                }
 
-        byId("btnSvcArchive")?.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            openArchiveService();
-        });
+                const btnEdit = e.target.closest("#btnSvcEdit");
+                if (btnEdit){
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openEditService();
+                    return;
+                }
+
+                const btnArchive = e.target.closest("#btnSvcArchive");
+                if (btnArchive){
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openArchiveService();
+                }
+            });
+        }
 
         byId("btnCloseService").addEventListener("click", () => closeModal("modalService"));
         byId("btnCancelService").addEventListener("click", () => closeModal("modalService"));
