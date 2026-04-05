@@ -313,6 +313,46 @@
         el.textContent = getPosteBlockTitle();
     }
 
+    function syncSelectedServiceContext(){
+        if (!_selectedService || _selectedService === "__all__"){
+            _selectedService = "__all__";
+            _selectedServiceName = "Tous les services";
+            return;
+        }
+
+        if (_selectedService === "__none__"){
+            _selectedServiceName = "Non lié";
+            return;
+        }
+
+        const svc = (_services || []).find(x => x.id_service === _selectedService);
+        if (!svc){
+            _selectedService = "__all__";
+            _selectedServiceName = "Tous les services";
+            return;
+        }
+
+        _selectedServiceName = svc.nom_service || "Service";
+    }
+
+    function getPosteBlockTitle(){
+        if (!_selectedService || _selectedService === "__all__"){
+            return "Tous les postes";
+        }
+
+        if (_selectedService === "__none__"){
+            return "Postes non liés";
+        }
+
+        return `Postes du service ${_selectedServiceName || ""}`.trim();
+    }
+
+    function refreshPosteBlockTitle(){
+        const el = byId("posteBlockTitle");
+        if (!el) return;
+        el.textContent = getPosteBlockTitle();
+    }
+
     function renderServices(){
         const host = byId("svcList");
         if (!host) return;
@@ -364,7 +404,6 @@
         _selectedServiceName = name;
 
         refreshPosteBlockTitle();
-
         applySvcActive();
         updateAddButtonState();
         loadPostes(window.portal).catch(() => {});
@@ -3097,9 +3136,9 @@
         closeModal("modalArchive");
         portal.showAlert("", "");
 
-        // retour sur "Tous les services"
         _selectedService = "__all__";
         _selectedServiceName = "Tous les services";
+
         await loadServices(portal);
         await loadPostes(portal);
 
@@ -3241,9 +3280,23 @@
         }
 
         // Service actions
-        byId("btnSvcAdd").addEventListener("click", () => openCreateService());
-        byId("btnSvcEdit").addEventListener("click", () => openEditService());
-        byId("btnSvcArchive").addEventListener("click", () => openArchiveService());
+        byId("btnSvcAdd")?.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openCreateService();
+        });
+
+        byId("btnSvcEdit")?.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openEditService();
+        });
+
+        byId("btnSvcArchive")?.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openArchiveService();
+        });
 
         byId("btnCloseService").addEventListener("click", () => closeModal("modalService"));
         byId("btnCancelService").addEventListener("click", () => closeModal("modalService"));
