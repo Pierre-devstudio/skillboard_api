@@ -5,17 +5,18 @@
   </div>
 
   <div class="sb-layout-2col">
-    <!-- COLONNE GAUCHE : SERVICES -->
+<!-- COLONNE GAUCHE : SERVICES -->
     <div class="card">
       <div class="org-card-head">
-        <div>
+        <div style="width:100%;">
           <div class="card-title" style="margin-bottom:2px;">Services</div>
           <div class="card-sub" style="margin:0;">Cliquez sur un service.</div>
-        </div>
-        <div class="sb-actions">
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcAdd">+ Service</button>
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcEdit">Renommer</button>
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcArchive">Archiver</button>
+
+          <div class="sb-actions" style="margin-top:10px;">
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcAdd">+ Service</button>
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcEdit">Renommer</button>
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcArchive">Archiver</button>
+          </div>
         </div>
       </div>
 
@@ -29,7 +30,7 @@
           <div>
             <div class="card-title" id="posteBlockTitle" style="margin-bottom:2px;">Tous les postes</div>            
           </div>
-          <div class="sb-toolbar">
+          <div class="sb-toolbar" style="margin-top:10px;">
             <div class="sb-search">
               <div class="card-sub" style="margin:0 0 4px 0;">Rechercher un poste</div>
               <input type="text" id="posteSearch" placeholder="Code ou intitulé…" />
@@ -346,6 +347,7 @@
             </div>
           </div>
         </div>
+      </div>
 
       <div class="sb-modal-foot">
         <div class="sb-actions" style="width:100%; justify-content:space-between;">
