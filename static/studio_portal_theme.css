@@ -78,11 +78,22 @@
 
 .org-card-head{
   display:flex;
-  justify-content:space-between;
+  justify-content:flex-start;
   align-items:flex-start;
-  gap:20px;
+  gap:18px;
   position:relative;
   z-index:2;
+  min-width:0;
+}
+
+.org-card-head > :first-child{
+  flex:0 0 auto;
+  min-width:150px;
+}
+
+.org-card-head > .sb-toolbar{
+  flex:1 1 auto;
+  min-width:0;
 }
 
 .org-card-head .sb-actions{
@@ -96,13 +107,12 @@
   align-items:flex-end;
   gap:12px;
   flex-wrap:wrap;
-  flex:1 1 auto;
   min-width:0;
 }
 
 .sb-search{
-  flex:1 1 420px;
-  min-width:420px;
+  flex:1 1 360px;
+  min-width:360px;
 }
 
 .sb-search input{
@@ -111,6 +121,10 @@
 }
 
 @media (max-width: 1100px){
+  .org-card-head > :first-child{
+    min-width:0;
+  }
+
   .sb-search{
     min-width:280px;
   }
