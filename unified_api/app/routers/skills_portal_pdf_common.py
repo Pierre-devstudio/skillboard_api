@@ -159,7 +159,7 @@ def build_pdf_styles() -> Dict[str, ParagraphStyle]:
 def _header_footer(canvas, doc):
     meta = getattr(doc, "_ns_meta", {}) or {}
 
-    page_w, page_h = PDF_PAGE_SIZE
+    page_w, page_h = getattr(doc, "pagesize", PDF_PAGE_SIZE)
     left = PDF_MARGIN_LEFT
     right = page_w - PDF_MARGIN_RIGHT
 
@@ -222,11 +222,13 @@ def _header_footer(canvas, doc):
     canvas.restoreState()
 
 
-def build_pdf_document(story: List, meta: Optional[Dict[str, str]] = None) -> bytes:
+def build_pdf_document(story: List, meta: Optional[Dict[str, str]] = None, page_size=None) -> bytes:
     buffer = BytesIO()
+    effective_page_size = page_size or PDF_PAGE_SIZE
+
     doc = SimpleDocTemplate(
         buffer,
-        pagesize=PDF_PAGE_SIZE,
+        pagesize=effective_page_size,
         leftMargin=PDF_MARGIN_LEFT,
         rightMargin=PDF_MARGIN_RIGHT,
         topMargin=PDF_MARGIN_TOP,
@@ -235,6 +237,7 @@ def build_pdf_document(story: List, meta: Optional[Dict[str, str]] = None) -> by
         author="Novoskill",
     )
     doc._ns_meta = meta or {}
+    doc.pagesize = effective_page_size
     doc.build(story, onFirstPage=_header_footer, onLaterPages=_header_footer)
     return buffer.getvalue()
 

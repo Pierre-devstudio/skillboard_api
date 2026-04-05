@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 from typing import Optional, List, Any
 from psycopg.rows import dict_row
@@ -8,9 +8,23 @@ import json
 import re
 import unicodedata
 from difflib import SequenceMatcher
-from datetime import date as py_date
+from datetime import date as py_date, datetime
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, A3, A2, A1, A0, landscape
+from reportlab.lib.units import mm
+from reportlab.platypus import Paragraph, Table, TableStyle
 
 from app.routers.skills_portal_common import get_conn
+from app.routers.skills_portal_pdf_common import (
+    PDF_MARGIN_LEFT,
+    PDF_MARGIN_RIGHT,
+    build_pdf_document,
+    build_pdf_styles,
+    make_meta_table,
+    make_spacer,
+    make_title_block,
+)
 from app.routers.studio_portal_common import (
     studio_require_user,
     studio_fetch_owner,
@@ -80,6 +94,297 @@ def _service_exists_active(cur, id_ent: str, id_service: str) -> bool:
         (id_ent, id_service),
     )
     return cur.fetchone() is not None
+
+def _pdf_esc(v: Any) -> str:
+    return str(v or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _fetch_org_chart_data(cur, oid: str) -> dict:
+    owner = studio_fetch_owner(cur, oid) or {}
+
+    cur.execute(
+        """
+        WITH RECURSIVE svc AS (
+          SELECT
+            s.id_service,
+            s.id_ent,
+            s.nom_service,
+            s.id_service_parent,
+            COALESCE(s.archive, FALSE) AS archive,
+            0 AS depth,
+            (s.nom_service)::text AS path
+          FROM public.tbl_entreprise_organigramme s
+          WHERE s.id_ent = %s
+            AND COALESCE(s.archive, FALSE) = FALSE
+            AND s.id_service_parent IS NULL
+
+          UNION ALL
+
+          SELECT
+            c.id_service,
+            c.id_ent,
+            c.nom_service,
+            c.id_service_parent,
+            COALESCE(c.archive, FALSE) AS archive,
+            p.depth + 1 AS depth,
+            (p.path || ' > ' || c.nom_service)::text AS path
+          FROM public.tbl_entreprise_organigramme c
+          JOIN svc p ON p.id_service = c.id_service_parent
+          WHERE c.id_ent = %s
+            AND COALESCE(c.archive, FALSE) = FALSE
+        )
+        SELECT
+          svc.id_service,
+          svc.nom_service,
+          svc.id_service_parent,
+          svc.depth,
+
+          (SELECT COUNT(1)
+           FROM public.tbl_fiche_poste p
+           WHERE p.id_ent = %s
+             AND COALESCE(p.actif, TRUE) = TRUE
+             AND p.id_service = svc.id_service
+          ) AS nb_postes,
+
+          (SELECT COUNT(1)
+           FROM public.tbl_effectif_client e
+           WHERE e.id_ent = %s
+             AND COALESCE(e.archive, FALSE) = FALSE
+             AND COALESCE(e.statut_actif, TRUE) = TRUE
+             AND e.id_service = svc.id_service
+          ) AS nb_collabs
+
+        FROM svc
+        ORDER BY svc.path
+        """,
+        (oid, oid, oid, oid),
+    )
+    service_rows = cur.fetchall() or []
+
+    cur.execute(
+        """
+        SELECT
+          p.id_poste,
+          p.id_service,
+          p.codif_poste,
+          p.codif_client,
+          p.intitule_poste,
+          COALESCE(cnt.nb_collabs, 0)::int AS nb_collabs
+        FROM public.tbl_fiche_poste p
+        LEFT JOIN (
+          SELECT
+            e.id_poste_actuel AS id_poste,
+            COUNT(1)::int AS nb_collabs
+          FROM public.tbl_effectif_client e
+          WHERE e.id_ent = %s
+            AND COALESCE(e.archive, FALSE) = FALSE
+            AND COALESCE(e.statut_actif, TRUE) = TRUE
+            AND COALESCE(e.id_poste_actuel, '') <> ''
+          GROUP BY e.id_poste_actuel
+        ) cnt ON cnt.id_poste = p.id_poste
+        WHERE p.id_owner = %s
+          AND p.id_ent = %s
+          AND COALESCE(p.actif, TRUE) = TRUE
+        ORDER BY COALESCE(p.codif_client, p.codif_poste), p.intitule_poste
+        """,
+        (oid, oid, oid),
+    )
+    poste_rows = cur.fetchall() or []
+
+    nodes = {}
+    roots = []
+    total_collabs = 0
+
+    for r in service_rows:
+        sid = (r.get("id_service") or "").strip()
+        if not sid:
+            continue
+
+        node = {
+            "id_service": sid,
+            "nom_service": (r.get("nom_service") or "").strip() or "Service",
+            "id_service_parent": (r.get("id_service_parent") or "").strip() or None,
+            "depth": int(r.get("depth") or 0),
+            "nb_postes": int(r.get("nb_postes") or 0),
+            "nb_collabs": int(r.get("nb_collabs") or 0),
+            "enfants": [],
+            "postes": [],
+        }
+        nodes[sid] = node
+        total_collabs += node["nb_collabs"]
+
+    for sid, node in nodes.items():
+        parent_id = (node.get("id_service_parent") or "").strip()
+        if parent_id and parent_id in nodes:
+            nodes[parent_id]["enfants"].append(node)
+        else:
+            roots.append(node)
+
+    postes_non_lies = []
+    total_postes = 0
+    total_postes_non_lies = 0
+
+    for r in poste_rows:
+        code = (r.get("codif_client") or "").strip() or (r.get("codif_poste") or "").strip() or "—"
+        poste = {
+            "id_poste": r.get("id_poste"),
+            "id_service": (r.get("id_service") or "").strip() or None,
+            "code": code,
+            "intitule": (r.get("intitule_poste") or "").strip(),
+            "nb_collabs": int(r.get("nb_collabs") or 0),
+        }
+        total_postes += 1
+
+        sid = (r.get("id_service") or "").strip()
+        if sid and sid in nodes:
+            nodes[sid]["postes"].append(poste)
+        else:
+            postes_non_lies.append(poste)
+            total_postes_non_lies += 1
+
+    owner_name = (
+        (owner.get("nom_owner") or "").strip()
+        or (owner.get("nom_ent") or "").strip()
+        or (owner.get("email") or "").strip()
+        or "Organisation"
+    )
+
+    return {
+        "owner_name": owner_name,
+        "generated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "stats": {
+            "nb_services": len(nodes),
+            "nb_postes": total_postes,
+            "nb_postes_non_lies": total_postes_non_lies,
+            "nb_collabs": total_collabs,
+        },
+        "services": roots,
+        "postes_non_lies": postes_non_lies,
+    }
+
+
+def _org_chart_node_count(services: List[dict], postes_non_lies: Optional[List[dict]] = None) -> int:
+    total = len(postes_non_lies or [])
+    for svc in services or []:
+        total += 1
+        total += len(svc.get("postes") or [])
+        total += _org_chart_node_count(svc.get("enfants") or [], [])
+    return total
+
+
+def _org_chart_max_depth(services: List[dict], depth: int = 0) -> int:
+    max_depth = depth
+    for svc in services or []:
+        max_depth = max(max_depth, depth)
+        max_depth = max(max_depth, _org_chart_max_depth(svc.get("enfants") or [], depth + 1))
+    return max_depth
+
+
+def _pick_org_chart_page(data: dict):
+    node_count = _org_chart_node_count(data.get("services") or [], data.get("postes_non_lies") or [])
+    max_depth = _org_chart_max_depth(data.get("services") or [], 0)
+
+    if node_count <= 18 and max_depth <= 2:
+        return landscape(A4), "A4 paysage"
+    if node_count <= 40 and max_depth <= 3:
+        return landscape(A3), "A3 paysage"
+    if node_count <= 90 and max_depth <= 4:
+        return landscape(A2), "A2 paysage"
+    if node_count <= 160 and max_depth <= 5:
+        return landscape(A1), "A1 paysage"
+    return landscape(A0), "A0 paysage"
+
+
+def _build_org_service_pdf_table(node: dict, styles: dict, content_width: float, depth: int):
+    indent = min(max(depth, 0), 8) * (10 * mm)
+    title = Paragraph(_pdf_esc(node.get("nom_service") or "Service"), styles["section"])
+    meta = Paragraph(
+        f"{int(node.get('nb_postes') or 0)} poste(s) · {int(node.get('nb_collabs') or 0)} collaborateur(s)",
+        styles["small"],
+    )
+
+    table = Table([[[title, meta]]], colWidths=[content_width])
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+        ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#d1d5db")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10 + indent),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    return table
+
+
+def _build_org_poste_pdf_table(poste: dict, styles: dict, content_width: float, depth: int):
+    indent = min(max(depth, 0), 9) * (10 * mm)
+    code = _pdf_esc(poste.get("code") or "—")
+    intitule = _pdf_esc(poste.get("intitule") or "")
+    body = Paragraph(f"<b>{code}</b>&nbsp;&nbsp;&nbsp;{intitule}", styles["body"])
+    meta = Paragraph(f"{int(poste.get('nb_collabs') or 0)} collaborateur(s)", styles["small"])
+
+    table = Table([[[body, meta]]], colWidths=[content_width])
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.white),
+        ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#e5e7eb")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 16 + indent),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    return table
+
+
+def _append_org_chart_story(story: List, services: List[dict], styles: dict, content_width: float, depth: int = 0) -> None:
+    for svc in services or []:
+        story.append(_build_org_service_pdf_table(svc, styles, content_width, depth))
+        story.append(make_spacer(1.5))
+
+        for poste in (svc.get("postes") or []):
+            story.append(_build_org_poste_pdf_table(poste, styles, content_width, depth + 1))
+            story.append(make_spacer(1))
+
+        _append_org_chart_story(story, svc.get("enfants") or [], styles, content_width, depth + 1)
+
+
+def _build_org_chart_pdf_story(data: dict, page_label: str, page_size) -> List:
+    styles = build_pdf_styles()
+    stats = data.get("stats") or {}
+    page_w, _page_h = page_size
+    content_width = page_w - PDF_MARGIN_LEFT - PDF_MARGIN_RIGHT
+
+    story: List = []
+    story.extend(make_title_block(
+        "Organigramme de l'organisation",
+        f"{_pdf_esc(data.get('owner_name') or 'Organisation')} · Vue services / postes / effectifs par poste",
+        styles,
+    ))
+    story.append(make_meta_table([
+        {"label": "Services", "value": str(int(stats.get("nb_services") or 0))},
+        {"label": "Postes", "value": str(int(stats.get("nb_postes") or 0))},
+        {"label": "Collab.", "value": str(int(stats.get("nb_collabs") or 0))},
+        {"label": "Format", "value": page_label},
+    ], styles))
+    story.append(make_spacer(3))
+
+    _append_org_chart_story(story, data.get("services") or [], styles, content_width, 0)
+
+    postes_non_lies = data.get("postes_non_lies") or []
+    if postes_non_lies:
+        story.append(make_spacer(2))
+        bloc = {
+            "nom_service": "Postes non liés",
+            "nb_postes": len(postes_non_lies),
+            "nb_collabs": sum(int(x.get("nb_collabs") or 0) for x in postes_non_lies),
+        }
+        story.append(_build_org_service_pdf_table(bloc, styles, content_width, 0))
+        story.append(make_spacer(1.5))
+        for poste in postes_non_lies:
+            story.append(_build_org_poste_pdf_table(poste, styles, content_width, 1))
+            story.append(make_spacer(1))
+
+    return story
 
 def _nsf_groupe_exists_active(cur, code: str) -> bool:
     c = (code or "").strip()
@@ -1469,6 +1774,64 @@ def studio_org_list_services(id_owner: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/services error: {e}")
 
+
+@router.get("/studio/org/organigramme/{id_owner}")
+def studio_org_get_organigramme(id_owner: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                data = _fetch_org_chart_data(cur, oid)
+
+        return data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/organigramme error: {e}")
+
+
+@router.get("/studio/org/organigramme_pdf/{id_owner}")
+def studio_org_get_organigramme_pdf(id_owner: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                data = _fetch_org_chart_data(cur, oid)
+
+        page_size, page_label = _pick_org_chart_page(data)
+        story = _build_org_chart_pdf_story(data, page_label, page_size)
+        filename = f'organigramme_{(id_owner or "organisation").strip()}.pdf'
+
+        pdf_bytes = build_pdf_document(
+            story,
+            meta={
+                "title": "Organigramme de l'organisation",
+                "doc_label": "Organigramme",
+                "footer_left": "Novoskill Studio • Organigramme",
+            },
+            page_size=page_size,
+        )
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'inline; filename=\"{filename}\"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/organigramme_pdf error: {e}")
 
 @router.post("/studio/org/services/{id_owner}")
 def studio_org_create_service(id_owner: str, payload: CreateServicePayload, request: Request):

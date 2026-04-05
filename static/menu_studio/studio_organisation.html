@@ -1,8 +1,16 @@
 <section id="view-organisation" data-view="organisation">
-  <div class="card">
-    <div class="card-title">Votre organisation</div>
-    <div class="card-sub">Sélectionnez un service pour afficher la cartographie des postes et la fiche de poste associée.</div>
+<div class="card">
+  <div class="org-card-head">
+    <div>
+      <div class="card-title">Votre organisation</div>
+      <div class="card-sub">Sélectionnez un service pour afficher la cartographie des postes et la fiche de poste associée.</div>
+    </div>
+
+    <div class="sb-actions">
+      <button type="button" class="sb-btn sb-btn--soft" id="btnOpenOrgChart">Organigramme</button>
+    </div>
   </div>
+</div>
 
   <div class="sb-layout-2col">
 <!-- COLONNE GAUCHE : SERVICES -->
@@ -47,6 +55,29 @@
         </div>
 
         <div class="sb-stack sb-stack--xxs sb-mt-10" id="posteList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : Organigramme -->
+  <div class="sb-modal" id="modalOrgChart" style="display:none;">
+    <div class="sb-modal-card" style="width:min(1240px, 96vw);">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">Organigramme de l'organisation</div>
+          <div class="card-sub" style="margin:0;">Vue services → sous-services → postes, avec effectifs par poste.</div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnCloseOrgChart" aria-label="Fermer">&times;</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="card-sub" id="orgChartSummary" style="margin:0 0 12px 0;">—</div>
+        <div id="orgChartTree"></div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnOrgChartPdf">Exporter PDF</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnOrgChartClose">Fermer</button>
       </div>
     </div>
   </div>
