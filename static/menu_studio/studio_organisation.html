@@ -27,21 +27,22 @@
       <div class="card">
         <div class="org-card-head">
           <div>
-            <div class="card-title" id="posteBlockTitle" style="margin-bottom:2px;">Tous les postes</div>            
+            <div class="card-title" id="posteBlockTitle" style="margin-bottom:2px;">Tous les postes</div>
+            <div class="card-sub" style="margin:0;">Fiches de poste rattachées au service sélectionné.</div>
           </div>
-            <div class="sb-toolbar">
-              <div class="sb-search">
-                <div class="card-sub" style="margin:0 0 4px 0;">Rechercher un poste</div>
-                <input type="text" id="posteSearch" placeholder="Code ou intitulé…" />
-              </div>
-
-              <label class="sb-check" style="align-self:flex-end; margin:0 4px 2px 0;">
-                <input type="checkbox" id="posteShowArchived" />
-                <span>Voir les postes archivés</span>
-              </label>
-
-              <button type="button" class="sb-btn sb-btn--accent" id="btnAddFromCatalog">Ajouter un poste</button>
+          <div class="sb-toolbar">
+            <div class="sb-search">
+              <div class="card-sub" style="margin:0 0 4px 0;">Rechercher un poste</div>
+              <input type="text" id="posteSearch" placeholder="Code ou intitulé…" />
             </div>
+
+            <label class="sb-check" style="align-self:flex-end; margin:0 4px 2px 0;">
+              <input type="checkbox" id="posteShowArchived" />
+              <span>Voir les postes archivés</span>
+            </label>
+
+            <button type="button" class="sb-btn sb-btn--accent" id="btnAddFromCatalog">Ajouter un poste</button>
+          </div>
         </div>
 
         <div class="sb-stack sb-stack--xxs sb-mt-10" id="posteList"></div>
