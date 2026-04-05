@@ -78,22 +78,11 @@
 
 .org-card-head{
   display:flex;
-  justify-content:flex-start;
+  justify-content:space-between;
   align-items:flex-start;
-  gap:18px;
+  gap:12px;
   position:relative;
   z-index:2;
-  min-width:0;
-}
-
-.org-card-head > :first-child{
-  flex:0 0 auto;
-  min-width:150px;
-}
-
-.org-card-head > .sb-toolbar{
-  flex:1 1 auto;
-  min-width:0;
 }
 
 .org-card-head .sb-actions{
@@ -107,28 +96,9 @@
   align-items:flex-end;
   gap:12px;
   flex-wrap:wrap;
-  min-width:0;
 }
-
-.sb-search{
-  flex:1 1 360px;
-  min-width:360px;
-}
-
-.sb-search input{
-  width:100%;
-  min-width:0;
-}
-
-@media (max-width: 1100px){
-  .org-card-head > :first-child{
-    min-width:0;
-  }
-
-  .sb-search{
-    min-width:280px;
-  }
-}
+.sb-search{ flex:1; min-width:280px; }
+.sb-search input{ width:100%; }
 
 /* Lists */
 .sb-list{
