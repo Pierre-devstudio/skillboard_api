@@ -273,6 +273,46 @@
         return `${nbPostes} poste(s) · ${nbCollabs} collaborateur(s)`;
     }
 
+    function syncSelectedServiceContext(){
+        if (!_selectedService || _selectedService === "__all__"){
+            _selectedService = "__all__";
+            _selectedServiceName = "Tous les services";
+            return;
+        }
+
+        if (_selectedService === "__none__"){
+            _selectedServiceName = "Non lié";
+            return;
+        }
+
+        const svc = (_services || []).find(x => x.id_service === _selectedService);
+        if (!svc){
+            _selectedService = "__all__";
+            _selectedServiceName = "Tous les services";
+            return;
+        }
+
+        _selectedServiceName = svc.nom_service || "Service";
+    }
+
+    function getPosteBlockTitle(){
+        if (!_selectedService || _selectedService === "__all__"){
+            return "Tous les postes";
+        }
+
+        if (_selectedService === "__none__"){
+            return "Postes non liés";
+        }
+
+        return `Postes du service ${_selectedServiceName || ""}`.trim();
+    }
+
+    function refreshPosteBlockTitle(){
+        const el = byId("posteBlockTitle");
+        if (!el) return;
+        el.textContent = getPosteBlockTitle();
+    }
+
     function renderServices(){
         const host = byId("svcList");
         if (!host) return;
@@ -323,10 +363,7 @@
         _selectedService = id;
         _selectedServiceName = name;
 
-        const t = byId("svcTitle");
-        const m = byId("svcMeta");
-        if (t) t.textContent = name || "Service";
-        if (m) m.textContent = serviceMeta(nbPostes || 0, nbCollabs || 0);
+        refreshPosteBlockTitle();
 
         applySvcActive();
         updateAddButtonState();
@@ -352,18 +389,15 @@
         _nonLie = data.non_lie || { nb_postes: 0, nb_collabs: 0 };
         _services = data.services || [];
 
-        renderServices();
-
-        // sélection initiale
         if (!_loaded) {
-        const t = byId("svcTitle");
-        const m = byId("svcMeta");
-        if (t) t.textContent = "Tous les services";
-        if (m) m.textContent = serviceMeta(_totaux.nb_postes, _totaux.nb_collabs);
-        _selectedService = "__all__";
-        _selectedServiceName = "Tous les services";
-        updateAddButtonState();
+            _selectedService = "__all__";
+            _selectedServiceName = "Tous les services";
         }
+
+        syncSelectedServiceContext();
+        renderServices();
+        refreshPosteBlockTitle();
+        updateAddButtonState();
     }
 
     async function loadPostes(portal){
@@ -3069,10 +3103,7 @@
         await loadServices(portal);
         await loadPostes(portal);
 
-        const t = byId("svcTitle");
-        const m = byId("svcMeta");
-        if (t) t.textContent = "Tous les services";
-        if (m) m.textContent = serviceMeta(_totaux.nb_postes, _totaux.nb_collabs);
+        refreshPosteBlockTitle();
         updateAddButtonState();
     }
 
