@@ -204,15 +204,11 @@
           </div>
 
           <div class="card org-bloc" id="posteBlocCompetences" style="margin-top:12px;">
-            <div class="org-card-head">
-              <div>
-                <div class="card-title" style="margin-bottom:2px;">Compétences</div>
-                <div class="card-sub" style="margin:0;">Compétences requises pour ce poste (niveau requis + criticité).</div>
-              </div>
+            <div class="sb-block-head">
+              <div class="card-title" style="margin:0;">Compétences requises</div>
 
-              <div class="sb-toolbar">
-                <div class="sb-search">
-                  <div class="card-sub" style="margin:0 0 4px 0;">Rechercher</div>
+              <div class="sb-toolbar sb-toolbar--nowrap">
+                <div class="sb-search sb-search--inline">
                   <input type="text" id="posteCompSearch" placeholder="Code ou intitulé…" />
                 </div>
 
@@ -221,14 +217,14 @@
               </div>
             </div>
 
-            <div class="table-wrap" style="margin-top:10px;">
+            <div class="table-wrap" style="margin-top:14px;">
               <table class="sb-table" id="posteCompTable">
                 <thead>
                   <tr>
                     <th>Compétence</th>
                     <th style="width:150px; text-align:center;">Niveau requis</th>
                     <th style="width:120px; text-align:center;">Criticité</th>
-                    <th style="width:96px; text-align:right;">Actions</th>
+                    <th style="width:96px; text-align:center;">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="posteCompTbody"></tbody>
