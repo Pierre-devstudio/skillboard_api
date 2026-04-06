@@ -237,15 +237,11 @@
           </div>
 
           <div class="card org-bloc" id="posteBlocCertifications" style="margin-top:10px;">
-            <div class="org-card-head">
-              <div>
-                <div class="card-title" style="margin-bottom:2px;">Certifications</div>
-                <div class="card-sub" style="margin:0;">Certifications attendues pour ce poste.</div>
-              </div>
+            <div class="sb-block-head">
+              <div class="card-title" style="margin:0;">Certification/Habilitations requises</div>
 
-              <div class="sb-toolbar">
-                <div class="sb-search">
-                  <div class="card-sub" style="margin:0 0 4px 0;">Rechercher</div>
+              <div class="sb-toolbar sb-toolbar--nowrap">
+                <div class="sb-search sb-search--inline">
                   <input type="text" id="posteCertSearch" placeholder="Nom ou catégorie…" />
                 </div>
 
@@ -253,21 +249,19 @@
               </div>
             </div>
 
-            <div class="table-wrap" style="margin-top:10px;">
+            <div class="table-wrap" style="margin-top:14px;">
               <table class="sb-table" id="posteCertTable">
                 <thead>
                   <tr>
-                    <th style="width:150px;">Catégorie</th>
+                    <th style="width:170px;">Catégorie</th>
                     <th>Certification</th>
                     <th style="width:130px; text-align:center;">Validité</th>
                     <th style="width:130px; text-align:center;">Exigence</th>
-                    <th style="width:220px;">Commentaire</th>
-                    <th style="width:160px; text-align:right;">Actions</th>
+                    <th style="width:96px; text-align:center;">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="posteCertTbody"></tbody>
               </table>
-
               <div class="card-sub" id="posteCertEmpty" style="margin-top:8px; display:none;">
                 Aucune certification rattachée à ce poste.
               </div>

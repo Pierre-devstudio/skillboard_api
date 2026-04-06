@@ -2170,7 +2170,7 @@
             tb.appendChild(tr);
         });
     }
-    
+
     function openPosteCompAddModal(){
         if (!isAdmin()) return;
         if (!_editingPosteId) return;
@@ -2511,6 +2511,23 @@
         const empty = byId("posteCertEmpty");
         if (!tb) return;
 
+        const iconEdit = `
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+            </svg>
+        `;
+
+        const iconTrash = `
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14H6L5 6"/>
+                <path d="M10 11v6"/>
+                <path d="M14 11v6"/>
+                <path d="M9 6V4h6v2"/>
+            </svg>
+        `;
+
         const q = (_posteCertSearch || "").toLowerCase();
         const items = (_posteCertItems || []).filter(it => {
             if (!q) return true;
@@ -2541,7 +2558,15 @@
             }
 
             const tdNom = document.createElement("td");
-            tdNom.textContent = it.nom_certification || "";
+            const certWrap = document.createElement("div");
+            certWrap.className = "sb-comp-cell";
+
+            const title = document.createElement("div");
+            title.className = "sb-comp-cell__title";
+            title.textContent = it.nom_certification || "";
+
+            certWrap.appendChild(title);
+            tdNom.appendChild(certWrap);
 
             const tdVal = document.createElement("td");
             tdVal.style.textAlign = "center";
@@ -2557,31 +2582,36 @@
             bl.textContent = it.niveau_exigence || "—";
             tdLvl.appendChild(bl);
 
-            const tdCom = document.createElement("td");
-            tdCom.textContent = (it.commentaire || "").trim() || "—";
-
             const tdAct = document.createElement("td");
             tdAct.style.textAlign = "right";
 
             if (isAdmin()){
+                const actions = document.createElement("div");
+                actions.className = "sb-icon-actions";
+
                 const btnEdit = document.createElement("button");
                 btnEdit.type = "button";
-                btnEdit.className = "sb-btn sb-btn--soft sb-btn--xs";
-                btnEdit.textContent = "Modifier";
-                btnEdit.addEventListener("click", () => openPosteCertEditModal(it, false));
-                tdAct.appendChild(btnEdit);
+                btnEdit.className = "sb-icon-btn";
+                btnEdit.title = "Modifier";
+                btnEdit.setAttribute("aria-label", "Modifier");
+                btnEdit.innerHTML = iconEdit;
+                btnEdit.addEventListener("click", () => openPosteCertEditModal(it));
 
                 const btnRem = document.createElement("button");
                 btnRem.type = "button";
-                btnRem.className = "sb-btn sb-btn--soft sb-btn--xs";
-                btnRem.textContent = "Retirer";
-                btnRem.style.marginLeft = "6px";
+                btnRem.className = "sb-icon-btn sb-icon-btn--danger";
+                btnRem.title = "Retirer";
+                btnRem.setAttribute("aria-label", "Retirer");
+                btnRem.innerHTML = iconTrash;
                 btnRem.addEventListener("click", async () => {
                     if (!confirm(`Retirer la certification "${it.nom_certification || ""}" du poste ?`)) return;
                     try { await removePosteCertification(window.portal, it.id_certification); }
                     catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
                 });
-                tdAct.appendChild(btnRem);
+
+                actions.appendChild(btnEdit);
+                actions.appendChild(btnRem);
+                tdAct.appendChild(actions);
             } else {
                 tdAct.textContent = "—";
             }
@@ -2590,7 +2620,6 @@
             tr.appendChild(tdNom);
             tr.appendChild(tdVal);
             tr.appendChild(tdLvl);
-            tr.appendChild(tdCom);
             tr.appendChild(tdAct);
 
             tb.appendChild(tr);
