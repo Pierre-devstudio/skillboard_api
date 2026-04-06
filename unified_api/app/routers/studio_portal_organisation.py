@@ -9,21 +9,35 @@ import re
 import unicodedata
 from difflib import SequenceMatcher
 from datetime import date as py_date, datetime
+from io import BytesIO
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, A3, A2, A1, A0, landscape
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfgen import canvas
 from reportlab.platypus import Paragraph, Table, TableStyle
 
 from app.routers.skills_portal_common import get_conn
 from app.routers.skills_portal_pdf_common import (
+    PDF_HEADER_LINE_OFFSET,
+    PDF_LOGO_MAX_HEIGHT,
+    PDF_LOGO_MAX_WIDTH,
+    PDF_LOGO_TOP_OFFSET,
+    PDF_LINE,
+    PDF_MARGIN_BOTTOM,
     PDF_MARGIN_LEFT,
     PDF_MARGIN_RIGHT,
-    build_pdf_document,
-    build_pdf_styles,
-    make_meta_table,
+    PDF_MARGIN_TOP,
+    PDF_MUTED,
+    PDF_TEXT,
+    _resolve_logo_path,
     make_spacer,
+    build_pdf_styles,
     make_title_block,
+    make_meta_table,
+    build_pdf_document,
 )
 from app.routers.studio_portal_common import (
     studio_require_user,
@@ -465,7 +479,571 @@ def _norm_iso_date(v: Optional[str]) -> Optional[py_date]:
 def _validate_rh_dates(date_debut_validite: Optional[py_date], date_fin_validite: Optional[py_date]) -> None:
     if date_debut_validite and date_fin_validite and date_fin_validite < date_debut_validite:
         raise HTTPException(status_code=400, detail="date_fin_validite doit être >= date_debut_validite.")
-    
+
+ORG_BOX_WIDTH = 58 * mm
+ORG_COL_GAP = 14 * mm
+ORG_NODE_GAP = 8 * mm
+ORG_ROOT_GAP = 12 * mm
+ORG_BOX_PAD_X = 4 * mm
+ORG_BOX_PAD_Y = 4 * mm
+ORG_BOX_ROW_GAP = 1.5 * mm
+ORG_BOX_RADIUS = 3 * mm
+ORG_TITLE_SPACE = 24 * mm
+
+
+def _pdf_esc(v: Any) -> str:
+    return str(v or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _org_sort_key(v: Any) -> str:
+    return str(v or "").strip().lower()
+
+
+def _draw_org_pdf_header_footer(c: canvas.Canvas, page_size, footer_left: str) -> None:
+    page_w, page_h = page_size
+    left = PDF_MARGIN_LEFT
+    right = page_w - PDF_MARGIN_RIGHT
+
+    header_line_y = page_h - PDF_HEADER_LINE_OFFSET
+    logo_path = _resolve_logo_path()
+
+    if logo_path:
+        try:
+            img = ImageReader(logo_path)
+            img_w, img_h = img.getSize()
+
+            if img_w and img_h:
+                ratio = float(img_h) / float(img_w)
+                logo_w = PDF_LOGO_MAX_WIDTH
+                logo_h = logo_w * ratio
+
+                if logo_h > PDF_LOGO_MAX_HEIGHT:
+                    logo_h = PDF_LOGO_MAX_HEIGHT
+                    logo_w = logo_h / ratio
+
+                logo_x = left
+                logo_y = page_h - PDF_LOGO_TOP_OFFSET - logo_h
+
+                c.drawImage(
+                    img,
+                    logo_x,
+                    logo_y,
+                    width=logo_w,
+                    height=logo_h,
+                    preserveAspectRatio=True,
+                    mask="auto",
+                )
+        except Exception:
+            pass
+
+    c.setStrokeColor(PDF_LINE)
+    c.setLineWidth(0.6)
+    c.line(left, header_line_y, right, header_line_y)
+
+    footer_line_y = PDF_MARGIN_BOTTOM
+    footer_text_y = 4 * mm
+
+    c.setStrokeColor(PDF_LINE)
+    c.setLineWidth(0.6)
+    c.line(left, footer_line_y, right, footer_line_y)
+
+    c.setFillColor(PDF_MUTED)
+    c.setFont("Helvetica", 8)
+    c.drawString(left, footer_text_y, footer_left or "Novoskill Studio")
+    c.drawRightString(right, footer_text_y, "Page 1")
+
+
+def _build_org_pdf_styles() -> dict:
+    base = getSampleStyleSheet()
+
+    return {
+        "page_title": ParagraphStyle(
+            "OrgPdfPageTitle",
+            parent=base["Heading1"],
+            fontName="Helvetica-Bold",
+            fontSize=16,
+            leading=18,
+            textColor=PDF_TEXT,
+            spaceAfter=0,
+        ),
+        "page_subtitle": ParagraphStyle(
+            "OrgPdfPageSubtitle",
+            parent=base["BodyText"],
+            fontName="Helvetica",
+            fontSize=8.5,
+            leading=11,
+            textColor=PDF_MUTED,
+            spaceAfter=0,
+        ),
+        "box_title": ParagraphStyle(
+            "OrgPdfBoxTitle",
+            parent=base["BodyText"],
+            fontName="Helvetica-Bold",
+            fontSize=8.2,
+            leading=9.2,
+            textColor=PDF_TEXT,
+            spaceAfter=0,
+        ),
+        "box_meta": ParagraphStyle(
+            "OrgPdfBoxMeta",
+            parent=base["BodyText"],
+            fontName="Helvetica",
+            fontSize=6.7,
+            leading=7.6,
+            textColor=PDF_MUTED,
+            spaceAfter=0,
+        ),
+        "box_poste": ParagraphStyle(
+            "OrgPdfBoxPoste",
+            parent=base["BodyText"],
+            fontName="Helvetica",
+            fontSize=6.4,
+            leading=7.2,
+            textColor=PDF_TEXT,
+            spaceAfter=0,
+        ),
+        "empty": ParagraphStyle(
+            "OrgPdfEmpty",
+            parent=base["BodyText"],
+            fontName="Helvetica",
+            fontSize=10,
+            leading=13,
+            textColor=PDF_MUTED,
+            spaceAfter=0,
+        ),
+    }
+
+
+def _fetch_organigramme_data(cur, oid: str) -> dict:
+    owner = studio_fetch_owner(cur, oid) or {}
+
+    cur.execute(
+        """
+        WITH RECURSIVE svc AS (
+          SELECT
+            s.id_service,
+            s.id_ent,
+            s.nom_service,
+            s.id_service_parent,
+            COALESCE(s.archive, FALSE) AS archive,
+            0 AS depth,
+            (s.nom_service)::text AS path
+          FROM public.tbl_entreprise_organigramme s
+          WHERE s.id_ent = %s
+            AND COALESCE(s.archive, FALSE) = FALSE
+            AND s.id_service_parent IS NULL
+
+          UNION ALL
+
+          SELECT
+            c.id_service,
+            c.id_ent,
+            c.nom_service,
+            c.id_service_parent,
+            COALESCE(c.archive, FALSE) AS archive,
+            p.depth + 1 AS depth,
+            (p.path || ' > ' || c.nom_service)::text AS path
+          FROM public.tbl_entreprise_organigramme c
+          JOIN svc p ON p.id_service = c.id_service_parent
+          WHERE c.id_ent = %s
+            AND COALESCE(c.archive, FALSE) = FALSE
+        )
+        SELECT
+          svc.id_service,
+          svc.nom_service,
+          svc.id_service_parent,
+          svc.depth,
+          (SELECT COUNT(1)
+           FROM public.tbl_fiche_poste p
+           WHERE p.id_ent = %s
+             AND COALESCE(p.actif, TRUE) = TRUE
+             AND p.id_service = svc.id_service
+          ) AS nb_postes,
+          (SELECT COUNT(1)
+           FROM public.tbl_effectif_client e
+           WHERE e.id_ent = %s
+             AND COALESCE(e.archive, FALSE) = FALSE
+             AND COALESCE(e.statut_actif, TRUE) = TRUE
+             AND e.id_service = svc.id_service
+          ) AS nb_collabs
+        FROM svc
+        ORDER BY svc.path
+        """,
+        (oid, oid, oid, oid),
+    )
+    service_rows = cur.fetchall() or []
+
+    cur.execute(
+        """
+        SELECT COUNT(1)::int AS nb_collabs
+        FROM public.tbl_effectif_client e
+        WHERE e.id_ent = %s
+          AND COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
+        """,
+        (oid,),
+    )
+    rr_tot = cur.fetchone() or {}
+    total_collabs = int(rr_tot.get("nb_collabs") or 0)
+
+    cur.execute(
+        """
+        SELECT
+          p.id_poste,
+          p.id_service,
+          COALESCE(NULLIF(BTRIM(p.codif_client), ''), NULLIF(BTRIM(p.codif_poste), ''), '—') AS code,
+          COALESCE(p.intitule_poste, '') AS intitule_poste,
+          COALESCE(cnt.nb_collabs, 0)::int AS nb_collabs
+        FROM public.tbl_fiche_poste p
+        LEFT JOIN (
+          SELECT
+            e.id_poste_actuel AS id_poste,
+            COUNT(1)::int AS nb_collabs
+          FROM public.tbl_effectif_client e
+          WHERE e.id_ent = %s
+            AND COALESCE(e.archive, FALSE) = FALSE
+            AND COALESCE(e.statut_actif, TRUE) = TRUE
+            AND COALESCE(e.id_poste_actuel, '') <> ''
+          GROUP BY e.id_poste_actuel
+        ) cnt ON cnt.id_poste = p.id_poste
+        WHERE p.id_owner = %s
+          AND p.id_ent = %s
+          AND COALESCE(p.actif, TRUE) = TRUE
+        ORDER BY lower(COALESCE(NULLIF(BTRIM(p.codif_client), ''), NULLIF(BTRIM(p.codif_poste), ''), 'zzzz')), lower(COALESCE(p.intitule_poste, ''))
+        """,
+        (oid, oid, oid),
+    )
+    poste_rows = cur.fetchall() or []
+
+    nodes = {}
+    roots = []
+    postes_non_lies = []
+
+    for r in service_rows:
+        sid = (r.get("id_service") or "").strip()
+        if not sid:
+            continue
+
+        nodes[sid] = {
+            "id_service": sid,
+            "nom_service": (r.get("nom_service") or "").strip() or "Service",
+            "id_service_parent": (r.get("id_service_parent") or "").strip() or None,
+            "depth": int(r.get("depth") or 0),
+            "nb_postes": int(r.get("nb_postes") or 0),
+            "nb_collabs": int(r.get("nb_collabs") or 0),
+            "enfants": [],
+            "postes": [],
+        }
+
+    for sid, node in nodes.items():
+        parent_id = (node.get("id_service_parent") or "").strip()
+        if parent_id and parent_id in nodes:
+            nodes[parent_id]["enfants"].append(node)
+        else:
+            roots.append(node)
+
+    for r in poste_rows:
+        poste = {
+            "id_poste": r.get("id_poste"),
+            "id_service": (r.get("id_service") or "").strip() or None,
+            "code": (r.get("code") or "").strip() or "—",
+            "intitule": (r.get("intitule_poste") or "").strip(),
+            "nb_collabs": int(r.get("nb_collabs") or 0),
+        }
+
+        sid = (r.get("id_service") or "").strip()
+        if sid and sid in nodes:
+            nodes[sid]["postes"].append(poste)
+        else:
+            postes_non_lies.append(poste)
+
+    def _sort_tree(items: List[dict]) -> None:
+        items.sort(key=lambda x: _org_sort_key(x.get("nom_service")))
+        for item in items:
+            item["postes"] = sorted(
+                item.get("postes") or [],
+                key=lambda p: (_org_sort_key(p.get("code")), _org_sort_key(p.get("intitule"))),
+            )
+            _sort_tree(item.get("enfants") or [])
+
+    _sort_tree(roots)
+    postes_non_lies.sort(key=lambda p: (_org_sort_key(p.get("code")), _org_sort_key(p.get("intitule"))))
+
+    owner_name = (
+        (owner.get("nom_owner") or "").strip()
+        or (owner.get("nom_ent") or "").strip()
+        or (owner.get("email") or "").strip()
+        or "Organisation"
+    )
+
+    return {
+        "owner_name": owner_name,
+        "stats": {
+            "nb_services": len(nodes),
+            "nb_postes": len(poste_rows),
+            "nb_postes_non_lies": len(postes_non_lies),
+            "nb_collabs": total_collabs,
+        },
+        "services": roots,
+        "postes_non_lies": postes_non_lies,
+    }
+
+
+def _build_chart_roots(data: dict) -> List[dict]:
+    roots = list(data.get("services") or [])
+    postes_non_lies = list(data.get("postes_non_lies") or [])
+
+    if postes_non_lies:
+        roots.append({
+            "id_service": "__non_lie__",
+            "nom_service": "Postes non liés",
+            "id_service_parent": None,
+            "depth": 0,
+            "nb_postes": len(postes_non_lies),
+            "nb_collabs": sum(int(x.get("nb_collabs") or 0) for x in postes_non_lies),
+            "enfants": [],
+            "postes": postes_non_lies,
+        })
+
+    return roots
+
+
+def _prepare_org_nodes(nodes: List[dict], styles: dict, box_width: float) -> None:
+    inner_w = max(box_width - (2 * ORG_BOX_PAD_X), 20 * mm)
+
+    for node in nodes:
+        rows = []
+
+        p_title = Paragraph(_pdf_esc(node.get("nom_service") or "Service"), styles["box_title"])
+        _w, h = p_title.wrap(inner_w, 10000)
+        rows.append((p_title, h))
+
+        p_meta = Paragraph(
+            f"{int(node.get('nb_postes') or 0)} poste(s) · {int(node.get('nb_collabs') or 0)} collab.",
+            styles["box_meta"],
+        )
+        _w, h = p_meta.wrap(inner_w, 10000)
+        rows.append((p_meta, h))
+
+        for poste in (node.get("postes") or []):
+            txt = (
+                f"<b>{_pdf_esc(poste.get('code') or '—')}</b> "
+                f"{_pdf_esc(poste.get('intitule') or '')} "
+                f"<font color='#6b7280'>({int(poste.get('nb_collabs') or 0)})</font>"
+            )
+            p_poste = Paragraph(txt, styles["box_poste"])
+            _w, h = p_poste.wrap(inner_w, 10000)
+            rows.append((p_poste, h))
+
+        node["_box_rows"] = rows
+        node["_box_height"] = max(
+            16 * mm,
+            (2 * ORG_BOX_PAD_Y)
+            + sum(h for _p, h in rows)
+            + (ORG_BOX_ROW_GAP * max(len(rows) - 1, 0))
+        )
+
+        _prepare_org_nodes(node.get("enfants") or [], styles, box_width)
+
+
+def _compute_org_subtree_height(node: dict) -> float:
+    children = node.get("enfants") or []
+    child_total = 0.0
+
+    if children:
+        child_total = sum(_compute_org_subtree_height(child) for child in children)
+        child_total += ORG_NODE_GAP * max(len(children) - 1, 0)
+
+    node["_subtree_height"] = max(float(node.get("_box_height") or 0), child_total)
+    return node["_subtree_height"]
+
+
+def _layout_org_node(node: dict, depth: int, y_top: float) -> None:
+    node["_depth"] = depth
+    node["_x"] = depth * (ORG_BOX_WIDTH + ORG_COL_GAP)
+
+    children = node.get("enfants") or []
+    subtree_h = float(node.get("_subtree_height") or 0)
+
+    if children:
+        child_total = sum(float(ch.get("_subtree_height") or 0) for ch in children)
+        child_total += ORG_NODE_GAP * max(len(children) - 1, 0)
+
+        child_y_top = y_top + max((subtree_h - child_total) / 2.0, 0.0)
+        for child in children:
+            _layout_org_node(child, depth + 1, child_y_top)
+            child_y_top += float(child.get("_subtree_height") or 0) + ORG_NODE_GAP
+
+        child_centers = [float(ch.get("_y_center") or 0) for ch in children]
+        y_center = (min(child_centers) + max(child_centers)) / 2.0
+
+        half = float(node.get("_box_height") or 0) / 2.0
+        y_center = max(y_top + half, min(y_top + subtree_h - half, y_center))
+        node["_y_center"] = y_center
+    else:
+        node["_y_center"] = y_top + (subtree_h / 2.0)
+
+
+def _layout_org_roots(roots: List[dict]) -> float:
+    y_top = 0.0
+
+    for root in roots:
+        _compute_org_subtree_height(root)
+
+    for idx, root in enumerate(roots):
+        _layout_org_node(root, 0, y_top)
+        y_top += float(root.get("_subtree_height") or 0)
+        if idx < len(roots) - 1:
+            y_top += ORG_ROOT_GAP
+
+    return y_top
+
+
+def _org_max_depth(nodes: List[dict], depth: int = 0) -> int:
+    max_depth = depth
+    for node in nodes:
+        max_depth = max(max_depth, depth)
+        max_depth = max(max_depth, _org_max_depth(node.get("enfants") or [], depth + 1))
+    return max_depth
+
+
+def _pick_org_page_size(chart_width: float, chart_height: float):
+    candidates = [
+        ("A4 paysage", landscape(A4)),
+        ("A3 paysage", landscape(A3)),
+        ("A2 paysage", landscape(A2)),
+        ("A1 paysage", landscape(A1)),
+        ("A0 paysage", landscape(A0)),
+    ]
+
+    for label, size in candidates:
+        avail_w = size[0] - PDF_MARGIN_LEFT - PDF_MARGIN_RIGHT
+        avail_h = size[1] - PDF_MARGIN_TOP - PDF_MARGIN_BOTTOM - ORG_TITLE_SPACE
+        if chart_width <= avail_w and chart_height <= avail_h:
+            return size, label
+
+    return landscape(A0), "A0 paysage"
+
+
+def _draw_org_node_recursive(c: canvas.Canvas, node: dict, chart_height: float) -> None:
+    x = float(node.get("_x") or 0.0)
+    box_h = float(node.get("_box_height") or 0.0)
+    y_center = float(node.get("_y_center") or 0.0)
+    y_bottom = chart_height - (y_center + (box_h / 2.0))
+
+    for child in (node.get("enfants") or []):
+        px = x + ORG_BOX_WIDTH
+        py = chart_height - y_center
+
+        cx = float(child.get("_x") or 0.0)
+        cy = chart_height - float(child.get("_y_center") or 0.0)
+
+        mid_x = px + (ORG_COL_GAP / 2.0)
+
+        c.setStrokeColor(colors.HexColor("#cbd5e1"))
+        c.setLineWidth(0.8)
+        c.line(px, py, mid_x, py)
+        c.line(mid_x, py, mid_x, cy)
+        c.line(mid_x, cy, cx, cy)
+
+    c.setFillColor(colors.white)
+    c.setStrokeColor(colors.HexColor("#cbd5e1"))
+    c.roundRect(x, y_bottom, ORG_BOX_WIDTH, box_h, ORG_BOX_RADIUS, stroke=1, fill=1)
+
+    inner_x = x + ORG_BOX_PAD_X
+    inner_w = ORG_BOX_WIDTH - (2 * ORG_BOX_PAD_X)
+    cursor_y = y_bottom + box_h - ORG_BOX_PAD_Y
+
+    rows = node.get("_box_rows") or []
+    for idx, (para, _h_prepared) in enumerate(rows):
+        _w, h = para.wrap(inner_w, 10000)
+        para.drawOn(c, inner_x, cursor_y - h)
+        cursor_y -= h
+        if idx < len(rows) - 1:
+            cursor_y -= ORG_BOX_ROW_GAP
+
+    for child in (node.get("enfants") or []):
+        _draw_org_node_recursive(c, child, chart_height)
+
+
+def _build_organigramme_pdf(oid: str, data: dict) -> bytes:
+    roots = _build_chart_roots(data)
+    styles = _build_org_pdf_styles()
+
+    if not roots:
+        roots = []
+
+    _prepare_org_nodes(roots, styles, ORG_BOX_WIDTH)
+    chart_height = _layout_org_roots(roots) if roots else (20 * mm)
+    max_depth = _org_max_depth(roots, 0) if roots else 0
+    chart_width = ((max_depth + 1) * ORG_BOX_WIDTH) + (max_depth * ORG_COL_GAP)
+
+    page_size, page_label = _pick_org_page_size(chart_width, chart_height)
+    page_w, page_h = page_size
+
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=page_size)
+
+    _draw_org_pdf_header_footer(c, page_size, "Novoskill Studio • Organigramme")
+
+    left = PDF_MARGIN_LEFT
+    usable_w = page_w - PDF_MARGIN_LEFT - PDF_MARGIN_RIGHT
+
+    stats = data.get("stats") or {}
+    subtitle_txt = (
+        f"{_pdf_esc(data.get('owner_name') or 'Organisation')} · "
+        f"{int(stats.get('nb_services') or 0)} service(s) · "
+        f"{int(stats.get('nb_postes') or 0)} poste(s) · "
+        f"{int(stats.get('nb_collabs') or 0)} collaborateur(s) · "
+        f"{page_label}"
+    )
+
+    p_title = Paragraph("Organigramme de l'organisation", styles["page_title"])
+    p_sub = Paragraph(subtitle_txt, styles["page_subtitle"])
+
+    cursor_y = page_h - PDF_MARGIN_TOP
+    _w, h_title = p_title.wrap(usable_w, 10000)
+    p_title.drawOn(c, left, cursor_y - h_title)
+    cursor_y -= h_title + (2 * mm)
+
+    _w, h_sub = p_sub.wrap(usable_w, 10000)
+    p_sub.drawOn(c, left, cursor_y - h_sub)
+    cursor_y -= h_sub + (5 * mm)
+
+    chart_top = cursor_y
+    available_chart_h = chart_top - (PDF_MARGIN_BOTTOM + 6 * mm)
+    available_chart_w = usable_w
+
+    if roots:
+        scale = min(
+            available_chart_w / chart_width if chart_width > 0 else 1.0,
+            available_chart_h / chart_height if chart_height > 0 else 1.0,
+            1.0,
+        )
+
+        chart_draw_w = chart_width * scale
+        chart_draw_h = chart_height * scale
+
+        chart_left = left + max((available_chart_w - chart_draw_w) / 2.0, 0.0)
+        chart_bottom = chart_top - chart_draw_h
+
+        c.saveState()
+        c.translate(chart_left, chart_bottom)
+        c.scale(scale, scale)
+
+        for root in roots:
+            _draw_org_node_recursive(c, root, chart_height)
+
+        c.restoreState()
+    else:
+        p_empty = Paragraph("Aucune donnée organisationnelle active à afficher.", styles["empty"])
+        _w, h_empty = p_empty.wrap(usable_w, 10000)
+        p_empty.drawOn(c, left, cursor_y - h_empty)
+
+    c.showPage()
+    c.save()
+    return buffer.getvalue()
+
 def _next_pt_code(cur, oid: str, id_ent: str) -> str:
     # Sérialise les créations pour une entreprise (évite doublons)
     lock_key = f"poste_code:{oid}:{id_ent}"
@@ -1635,6 +2213,34 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/postes ai_comp_create error: {e}")
+
+@router.get("/studio/org/organigramme_pdf/{id_owner}")
+def studio_org_get_organigramme_pdf(id_owner: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                data = _fetch_organigramme_data(cur, oid)
+
+        pdf_bytes = _build_organigramme_pdf(oid, data)
+        filename = f'organigramme_{(id_owner or "organisation").strip()}.pdf'
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/organigramme_pdf error: {e}")
 
 # ------------------------------------------------------
 # Endpoints: Services

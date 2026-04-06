@@ -281,6 +281,73 @@
         if (el) el.style.display = "none";
     }
 
+    async function resolveStudioAccessToken(){
+        try{
+            const pac = window.PortalAuthCommon;
+            if (pac && typeof pac.getSession === "function"){
+                const s = await pac.getSession();
+                if (s && s.access_token) return String(s.access_token);
+                if (s && s.session && s.session.access_token) return String(s.session.access_token);
+                if (s && s.data && s.data.session && s.data.session.access_token) return String(s.data.session.access_token);
+            }
+        } catch(_){}
+
+        if (window.portal && window.portal.accessToken) return String(window.portal.accessToken);
+        if (window.portal && window.portal.token) return String(window.portal.token);
+
+        return "";
+    }
+
+    async function openOrgChartPdf(portal){
+        const ownerId = getOwnerId();
+        if (!ownerId) throw new Error("Owner manquant (?id=...).");
+
+        const viewer = window.open("", "_blank");
+
+        try{
+            const token = await resolveStudioAccessToken();
+            const headers = {};
+            if (token){
+                headers["Authorization"] = `Bearer ${token}`;
+            }
+
+            const resp = await fetch(
+                `${portal.apiBase}/studio/org/organigramme_pdf/${encodeURIComponent(ownerId)}`,
+                {
+                    method: "GET",
+                    headers,
+                    credentials: "same-origin",
+                }
+            );
+
+            if (!resp.ok){
+                let msg = `Erreur PDF (${resp.status})`;
+                try{
+                    const err = await resp.json();
+                    if (err && err.detail) msg = String(err.detail);
+                } catch(_){}
+                throw new Error(msg);
+            }
+
+            const blob = await resp.blob();
+            const blobUrl = URL.createObjectURL(blob);
+
+            if (viewer){
+                viewer.location = blobUrl;
+            } else {
+                window.open(blobUrl, "_blank");
+            }
+
+            setTimeout(() => {
+                try { URL.revokeObjectURL(blobUrl); } catch(_){}
+            }, 60000);
+
+        } catch (e){
+            if (viewer) viewer.close();
+            throw e;
+        }
+    }
+
     function serviceMeta(nbPostes, nbCollabs){
         return `${nbPostes} poste(s) · ${nbCollabs} collaborateur(s)`;
     }
@@ -3552,6 +3619,11 @@
                 if (e.key === "Escape" && el && el.style.display === "flex") closeOrgChartModal();
             });
         }
+
+        byId("btnOpenOrgChart")?.addEventListener("click", async () => {
+            try { await openOrgChartPdf(portal); }
+            catch (e) { portal.showAlert("error", e?.message || String(e)); }
+        });
 
         // Search postes
         const ps = byId("posteSearch");
