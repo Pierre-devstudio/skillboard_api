@@ -421,8 +421,8 @@
 /* Bouton documentaire (CORE)
    Pour les actions de consultation / ouverture de document / PDF */
 .sb-btn--doc{
-  background:#fff;
-  color:#334155;
+  background:#5c6fac9d;
+  color:#ffffff;
   border-color:#94a3b8;
   box-shadow: inset 0 0 0 1px rgba(148,163,184,.12);
 }
