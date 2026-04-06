@@ -59,6 +59,10 @@
     let _posteCertAddCategory = "";
 
     let _posteCertEdit = null; // objet en cours d'édition (merge cert + assoc)
+
+    const POSTE_IMPORT_EXTENSIONS = [".doc", ".docx", ".pdf"];
+    const POSTE_IMPORT_MAX_BYTES = 15 * 1024 * 1024;
+    let _posteImportFile = null;
     
 
     function getOwnerId() {
@@ -279,6 +283,203 @@
     function closeModal(id){
         const el = byId(id);
         if (el) el.style.display = "none";
+    }
+
+    function formatFileSize(bytes){
+        const n = parseInt(bytes || 0, 10) || 0;
+        if (n < 1024) return `${n} o`;
+        if (n < (1024 * 1024)) return `${(n / 1024).toFixed(1)} Ko`;
+        return `${(n / (1024 * 1024)).toFixed(1)} Mo`;
+    }
+
+    function getPosteImportExt(filename){
+        const s = String(filename || "").trim().toLowerCase();
+        const i = s.lastIndexOf(".");
+        return i >= 0 ? s.slice(i) : "";
+    }
+
+    function resetPosteImportState(){
+        _posteImportFile = null;
+
+        const input = byId("posteImportFileInput");
+        const card = byId("posteImportFileCard");
+        const name = byId("posteImportFileName");
+        const meta = byId("posteImportFileMeta");
+        const empty = byId("posteImportEmpty");
+        const analyze = byId("btnPosteImportAnalyze");
+        const change = byId("btnPosteImportChange");
+        const drop = byId("posteImportDropzone");
+
+        if (input) input.value = "";
+        if (card) card.style.display = "none";
+        if (name) name.textContent = "—";
+        if (meta) meta.textContent = "—";
+        if (empty) empty.textContent = "Aucun document sélectionné.";
+        if (analyze){
+            analyze.disabled = true;
+            analyze.style.opacity = ".6";
+        }
+        if (change){
+            change.disabled = true;
+            change.style.opacity = ".6";
+        }
+        if (drop) drop.classList.remove("is-drag");
+    }
+
+    function refreshPosteImportButton(){
+        const btn = byId("btnPosteImport");
+        if (!btn) return;
+        btn.style.display = (_posteModalMode === "create") ? "" : "none";
+    }
+
+    function setPosteImportFile(file){
+        if (!file) return;
+
+        const ext = getPosteImportExt(file.name || "");
+        if (!POSTE_IMPORT_EXTENSIONS.includes(ext)){
+            throw new Error("Format non supporté. Utilise un fichier .doc, .docx ou .pdf.");
+        }
+
+        if ((file.size || 0) > POSTE_IMPORT_MAX_BYTES){
+            throw new Error("Document trop volumineux. Limite : 15 Mo.");
+        }
+
+        _posteImportFile = file;
+
+        const card = byId("posteImportFileCard");
+        const name = byId("posteImportFileName");
+        const meta = byId("posteImportFileMeta");
+        const empty = byId("posteImportEmpty");
+        const analyze = byId("btnPosteImportAnalyze");
+        const change = byId("btnPosteImportChange");
+
+        if (card) card.style.display = "";
+        if (name) name.textContent = file.name || "Document";
+        if (meta) meta.textContent = `${ext.toUpperCase().replace(".", "")} · ${formatFileSize(file.size || 0)}`;
+        if (empty) empty.textContent = "Document chargé. Vérifie le fichier puis lance l’analyse.";
+        if (analyze){
+            analyze.disabled = false;
+            analyze.style.opacity = "";
+        }
+        if (change){
+            change.disabled = false;
+            change.style.opacity = "";
+        }
+    }
+
+    function openPosteImportModal(){
+        if (_posteModalMode !== "create") return;
+        resetPosteImportState();
+        openModal("modalPosteImport");
+    }
+
+    function closePosteImportModal(){
+        closeModal("modalPosteImport");
+    }
+
+    async function applyImportedPosteDraft(portal, draft){
+        _posteAiDraftMeta = draft || null;
+
+        if (draft?.intitule_poste !== undefined) byId("posteIntitule").value = String(draft.intitule_poste || "");
+        if (draft?.mission_principale !== undefined) byId("posteMission").value = String(draft.mission_principale || "");
+        if (draft?.responsabilites_html !== undefined) rtSetHtml("posteResp", String(draft.responsabilites_html || ""));
+
+        await ensureNsfGroupes(portal);
+        fillNsfSelect(draft?.nsf_groupe_code || "");
+        fillPosteContraintesTab({
+            niveau_education_minimum: draft?.niveau_education_minimum || "",
+            nsf_groupe_code: draft?.nsf_groupe_code || "",
+            nsf_groupe_obligatoire: !!draft?.nsf_groupe_obligatoire,
+            mobilite: draft?.mobilite || "",
+            risque_physique: draft?.risque_physique || "",
+            perspectives_evolution: draft?.perspectives_evolution || "",
+            niveau_contrainte: draft?.niveau_contrainte || "",
+            detail_contrainte: draft?.detail_contrainte || "",
+        });
+
+        const sub = byId("posteModalSub");
+        if (sub){
+            sub.textContent = "Brouillon importé depuis un document. Vérifie puis enregistre.";
+        }
+
+        seedPosteAiModalFromCurrent();
+        setPosteTab("def");
+    }
+
+    async function launchPosteImport(portal){
+        if (!_posteImportFile){
+            portal.showAlert("error", "Sélectionne un document avant de lancer l’analyse.");
+            return;
+        }
+
+        const ownerId = getOwnerId();
+        if (!ownerId) throw new Error("Owner manquant (?id=...).");
+
+        const btnAnalyze = byId("btnPosteImportAnalyze");
+        const btnChange = byId("btnPosteImportChange");
+
+        if (btnAnalyze){
+            btnAnalyze.disabled = true;
+            btnAnalyze.style.opacity = ".6";
+            btnAnalyze.textContent = "Analyse…";
+        }
+        if (btnChange){
+            btnChange.disabled = true;
+            btnChange.style.opacity = ".6";
+        }
+
+        openIaBusyOverlay(
+            "Lecture du document en cours",
+            "Extraction du texte, analyse de la fiche et préremplissage du poste..."
+        );
+
+        try{
+            const token = await resolveStudioAccessToken();
+            const headers = {};
+            if (token){
+                headers["Authorization"] = `Bearer ${token}`;
+            }
+
+            const fd = new FormData();
+            fd.append("file", _posteImportFile, _posteImportFile.name || "document");
+
+            const resp = await fetch(
+                `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/import_document`,
+                {
+                    method: "POST",
+                    headers,
+                    body: fd,
+                    credentials: "same-origin",
+                }
+            );
+
+            if (!resp.ok){
+                let msg = `Erreur import document (${resp.status})`;
+                try{
+                    const err = await resp.json();
+                    if (err && err.detail) msg = String(err.detail);
+                } catch(_){}
+                throw new Error(msg);
+            }
+
+            const draft = await resp.json();
+            await applyImportedPosteDraft(portal, draft);
+
+            closePosteImportModal();
+            portal.showAlert("", "");
+        } finally {
+            closeIaBusyOverlay();
+
+            if (btnAnalyze){
+                btnAnalyze.disabled = !_posteImportFile;
+                btnAnalyze.style.opacity = _posteImportFile ? "" : ".6";
+                btnAnalyze.textContent = "Lancer l’analyse";
+            }
+            if (btnChange){
+                btnChange.disabled = !_posteImportFile;
+                btnChange.style.opacity = _posteImportFile ? "" : ".6";
+            }
+        }
     }
 
     async function resolveStudioAccessToken(){
@@ -2716,6 +2917,9 @@
         _posteModalMode = "create";
         _editingPosteId = null;
 
+        refreshPosteImportButton();
+        resetPosteImportState();
+
         const modal = byId("modalPoste");
         if (modal) modal.setAttribute("data-id-poste", "");
 
@@ -2776,6 +2980,11 @@
     function openEditPosteModal(portal, p){
         _posteModalMode = "edit";
         const pid = (p && p.id_poste) ? String(p.id_poste).trim() : "";
+
+        refreshPosteImportButton();
+        resetPosteImportState();
+        closePosteImportModal();
+        
         if (!pid) return;
 
         _posteModalMode = "edit";
@@ -2869,7 +3078,9 @@
     function closePosteModal(){
         closeIaBusyOverlay();
         closeModal("modalPosteCompCreate");
+        closeModal("modalPosteImport");
         closeModal("modalPoste");
+        resetPosteImportState();
     }
 
         function getPosteModalActif(){
@@ -3432,6 +3643,91 @@
             try { await duplicatePosteFromModal(portal); }
             catch(e){ portal.showAlert("error", e?.message || String(e)); }
         });
+
+        byId("btnPosteImport")?.addEventListener("click", () => {
+            try { openPosteImportModal(); }
+            catch(e){ portal.showAlert("error", e?.message || String(e)); }
+        });
+
+        byId("btnClosePosteImport")?.addEventListener("click", () => closePosteImportModal());
+        byId("btnPosteImportCancel")?.addEventListener("click", () => closePosteImportModal());
+        byId("btnPosteImportChange")?.addEventListener("click", () => {
+            byId("posteImportFileInput")?.click();
+        });
+        byId("btnPosteImportAnalyze")?.addEventListener("click", async () => {
+            try { await launchPosteImport(portal); }
+            catch(e){ portal.showAlert("error", e?.message || String(e)); }
+        });
+
+        const posteImportInput = byId("posteImportFileInput");
+        posteImportInput?.addEventListener("change", (e) => {
+            try{
+                const file = e?.target?.files?.[0];
+                if (!file) return;
+                setPosteImportFile(file);
+            } catch(err){
+                portal.showAlert("error", err?.message || String(err));
+                resetPosteImportState();
+            }
+        });
+
+        const posteImportDrop = byId("posteImportDropzone");
+        if (posteImportDrop){
+            posteImportDrop.addEventListener("click", () => {
+                byId("posteImportFileInput")?.click();
+            });
+
+            posteImportDrop.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " "){
+                    e.preventDefault();
+                    byId("posteImportFileInput")?.click();
+                }
+            });
+
+            ["dragenter", "dragover"].forEach(evt => {
+                posteImportDrop.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    posteImportDrop.classList.add("is-drag");
+                });
+            });
+
+            ["dragleave", "dragend", "drop"].forEach(evt => {
+                posteImportDrop.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (evt !== "drop"){
+                        posteImportDrop.classList.remove("is-drag");
+                    }
+                });
+            });
+
+            posteImportDrop.addEventListener("drop", (e) => {
+                posteImportDrop.classList.remove("is-drag");
+                try{
+                    const file = e?.dataTransfer?.files?.[0];
+                    if (!file) return;
+                    setPosteImportFile(file);
+                } catch(err){
+                    portal.showAlert("error", err?.message || String(err));
+                    resetPosteImportState();
+                }
+            });
+        }
+
+        const mpi = byId("modalPosteImport");
+        if (mpi && !mpi._sbBound){
+            mpi._sbBound = true;
+
+            mpi.addEventListener("click", (e) => {
+                if (e.target === mpi) closePosteImportModal();
+            });
+
+            document.addEventListener("keydown", (e) => {
+                const el = byId("modalPosteImport");
+                if (e.key === "Escape" && el && el.style.display === "flex") closePosteImportModal();
+            });
+        }
 
         byId("btnPosteAi")?.addEventListener("click", () => {
             try { openPosteAiModal(); }

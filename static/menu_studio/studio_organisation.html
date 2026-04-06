@@ -365,6 +365,7 @@
             <button type="button" class="sb-btn sb-btn--soft" id="btnPosteDuplicate">Dupliquer</button>
           </div>
           <div class="sb-actions">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnPosteImport">Importer</button>
             <button type="button" class="sb-btn sb-btn--ai" id="btnPosteAi">Générer avec l’IA</button>
             <button type="button" class="sb-btn sb-btn--accent" id="btnPosteSave">Enregistrer</button>
             <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCancel">Annuler</button>
@@ -372,6 +373,48 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- MODAL : Import documentaire fiche de poste -->
+  <div class="sb-modal" id="modalPosteImport" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" style="margin:0;">Importer une fiche de poste</div>
+          <div class="card-sub" style="margin:4px 0 0 0;">
+            Charge un document existant (.doc, .docx, .pdf), puis valide le lancement de l’analyse.
+          </div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnClosePosteImport" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <input type="file" id="posteImportFileInput" accept=".doc,.docx,.pdf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
+
+        <div class="sb-dropzone" id="posteImportDropzone" tabindex="0">
+          <div class="sb-dropzone__title">Déposer un document ici</div>
+          <div class="sb-dropzone__sub">ou cliquer pour parcourir votre explorateur</div>
+          <div class="sb-help" style="margin-top:10px;">Formats acceptés : .doc, .docx, .pdf</div>
+        </div>
+
+        <div class="sb-file-card" id="posteImportFileCard" style="display:none; margin-top:12px;">
+          <div class="sb-file-card__main">
+            <div class="sb-file-card__name" id="posteImportFileName">—</div>
+            <div class="sb-file-card__meta" id="posteImportFileMeta">—</div>
+          </div>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnPosteImportChange">Changer</button>
+        </div>
+
+        <div class="card-sub" id="posteImportEmpty" style="margin:12px 0 0 0;">
+          Aucun document sélectionné.
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnPosteImportAnalyze" disabled>Lancer l’analyse</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnPosteImportCancel">Annuler</button>
+      </div>
     </div>
   </div>
 

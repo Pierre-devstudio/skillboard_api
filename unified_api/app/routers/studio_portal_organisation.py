@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional, List, Any
 from psycopg.rows import dict_row
@@ -7,6 +7,8 @@ import os
 import json
 import re
 import unicodedata
+import subprocess
+import tempfile
 from difflib import SequenceMatcher
 from datetime import date as py_date, datetime
 from io import BytesIO
@@ -49,6 +51,16 @@ try:
     from openai import OpenAI
 except Exception:
     OpenAI = None
+
+try:
+    from docx import Document as DocxDocument
+except Exception:
+    DocxDocument = None
+
+try:
+    from pypdf import PdfReader
+except Exception:
+    PdfReader = None
 
 router = APIRouter()
 
@@ -1634,6 +1646,136 @@ def _upsert_poste_comp_assoc(cur, id_poste: str, id_competence: str, niveau_requ
         ),
     )
 
+_POSTE_IMPORT_MAX_BYTES = 15 * 1024 * 1024
+_POSTE_IMPORT_ALLOWED_EXTS = {".doc", ".docx", ".pdf"}
+
+
+def _best_effort_decode(raw: bytes) -> str:
+    txt_utf = (raw or b"").decode("utf-8", errors="ignore").strip()
+    txt_cp = (raw or b"").decode("cp1252", errors="ignore").strip()
+    return txt_cp if len(txt_cp) > len(txt_utf) else txt_utf
+
+
+def _get_poste_import_ext(filename: Optional[str]) -> str:
+    name = _clean_text(filename).lower()
+    if "." not in name:
+        return ""
+    return "." + name.rsplit(".", 1)[1]
+
+
+def _extract_docx_text(raw: bytes) -> str:
+    if DocxDocument is None:
+        raise HTTPException(status_code=500, detail="Lecture DOCX indisponible (python-docx manquant).")
+
+    try:
+        doc = DocxDocument(BytesIO(raw))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Document DOCX illisible: {e}")
+
+    parts: List[str] = []
+
+    for p in getattr(doc, "paragraphs", []) or []:
+        txt = _clean_text(getattr(p, "text", ""))
+        if txt:
+            parts.append(txt)
+
+    for table in getattr(doc, "tables", []) or []:
+        for row in getattr(table, "rows", []) or []:
+            vals = []
+            for cell in getattr(row, "cells", []) or []:
+                txt = _clean_text(getattr(cell, "text", ""))
+                if txt:
+                    vals.append(txt)
+            if vals:
+                parts.append(" | ".join(vals))
+
+    return "\n".join(parts).strip()
+
+
+def _extract_pdf_text(raw: bytes) -> str:
+    if PdfReader is None:
+        raise HTTPException(status_code=500, detail="Lecture PDF indisponible (pypdf manquant).")
+
+    try:
+        reader = PdfReader(BytesIO(raw))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"PDF illisible: {e}")
+
+    parts: List[str] = []
+    for page in getattr(reader, "pages", []) or []:
+        try:
+            txt = _clean_text(page.extract_text() or "")
+        except Exception:
+            txt = ""
+        if txt:
+            parts.append(txt)
+
+    return "\n".join(parts).strip()
+
+
+def _extract_doc_text(raw: bytes) -> str:
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".doc") as tmp:
+            tmp.write(raw)
+            tmp_path = tmp.name
+
+        try:
+            proc = subprocess.run(
+                ["antiword", tmp_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=45,
+                check=False,
+            )
+        except FileNotFoundError:
+            raise HTTPException(status_code=500, detail="Lecture .doc indisponible (antiword manquant).")
+
+        txt = _best_effort_decode(proc.stdout or b"")
+        if txt:
+            return txt
+
+        err = _best_effort_decode(proc.stderr or b"")
+        if err:
+            raise HTTPException(status_code=400, detail=f"Document .doc illisible: {err}")
+
+        raise HTTPException(status_code=400, detail="Document .doc illisible.")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
+
+def _extract_poste_import_text(filename: Optional[str], raw: bytes) -> tuple[str, str]:
+    ext = _get_poste_import_ext(filename)
+
+    if ext not in _POSTE_IMPORT_ALLOWED_EXTS:
+        raise HTTPException(status_code=400, detail="Format non supporté. Utilise un fichier .doc, .docx ou .pdf.")
+
+    if not raw:
+        raise HTTPException(status_code=400, detail="Document vide.")
+
+    if len(raw) > _POSTE_IMPORT_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="Document trop volumineux. Limite : 15 Mo.")
+
+    if ext == ".docx":
+        text = _extract_docx_text(raw)
+    elif ext == ".pdf":
+        text = _extract_pdf_text(raw)
+    else:
+        text = _extract_doc_text(raw)
+
+    text = re.sub(r"\n{3,}", "\n\n", _clean_text(text)).strip()
+
+    if len(text) < 80:
+        if ext == ".pdf":
+            raise HTTPException(status_code=400, detail="PDF sans texte exploitable. V1 : utilise un PDF texte, un .doc ou un .docx.")
+        raise HTTPException(status_code=400, detail="Document trop pauvre ou illisible pour lancer l’analyse.")
+
+    return ext, text[:50000]
+
 # ------------------------------------------------------
 # Models
 # ------------------------------------------------------
@@ -1781,6 +1923,117 @@ class AiPosteCompetenceSearchPayload(BaseModel):
 class AiPosteCompetenceCreatePayload(BaseModel):
     id_poste: str
     draft: dict
+
+@router.post("/studio/org/postes/{id_owner}/import_document")
+def studio_org_import_poste_document(id_owner: str, request: Request, file: UploadFile = File(...)):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        oid = (id_owner or "").strip()
+        filename = _clean_text(getattr(file, "filename", "") or "document")
+        raw = file.file.read() if file and file.file else b""
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, oid)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+        ext, extracted_text = _extract_poste_import_text(filename, raw)
+
+        model = (
+            (os.getenv("OPENAI_MODEL_POSTE_IMPORT") or "").strip()
+            or (os.getenv("OPENAI_MODEL_POSTE_DRAFT") or "").strip()
+            or "gpt-5"
+        )
+
+        schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "required": [
+                "intitule_poste", "mission_principale", "responsabilites_html",
+                "niveau_education_minimum", "nsf_groupe_code", "nsf_groupe_obligatoire",
+                "mobilite", "risque_physique", "perspectives_evolution",
+                "niveau_contrainte", "detail_contrainte"
+            ],
+            "properties": {
+                "intitule_poste": {"type": "string", "minLength": 1, "maxLength": 180},
+                "mission_principale": {"type": "string", "maxLength": 2400},
+                "responsabilites_html": {"type": "string", "maxLength": 16000},
+                "niveau_education_minimum": {"type": "string", "maxLength": 4},
+                "nsf_groupe_code": {"type": "string", "maxLength": 12},
+                "nsf_groupe_obligatoire": {"type": "boolean"},
+                "mobilite": {"type": "string", "maxLength": 30},
+                "risque_physique": {"type": "string", "maxLength": 20},
+                "perspectives_evolution": {"type": "string", "maxLength": 20},
+                "niveau_contrainte": {"type": "string", "maxLength": 20},
+                "detail_contrainte": {"type": "string", "maxLength": 2400},
+            },
+        }
+
+        system_prompt = (
+            "Tu extrais et restructures une fiche de poste existante en français. "
+            "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
+            "Tu ne dois pas inventer d'information absente du document. "
+            "Si une donnée n'est pas clairement identifiable, renvoie une chaîne vide ou false. "
+            "intitule_poste doit reprendre l’intitulé le plus probable du poste décrit. "
+            "mission_principale doit être une synthèse propre et exploitable du document. "
+            "responsabilites_html doit être du HTML simple, propre, directement exploitable: "
+            "un <ol> contenant plusieurs <li>, chaque <li> commençant par un titre de responsabilité en gras, "
+            "puis un <ul> d'activités si le document le permet. "
+            "Valeurs autorisées: niveau_education_minimum parmi '',0,3,4,5,6,7,8 ; "
+            "mobilite parmi '',Aucune,Rare,Occasionnelle,Fréquente ; "
+            "risque_physique parmi '',Aucun,Faible,Modéré,Élevé,Critique ; "
+            "perspectives_evolution parmi '',Aucune,Faible,Modérée,Forte,Rapide ; "
+            "niveau_contrainte parmi '',Aucune,Modérée,Élevée,Critique. "
+            "nsf_groupe_code doit rester vide sauf si le document mentionne explicitement un code ou un élément très certain. "
+            "detail_contrainte doit reprendre les contraintes concrètes, sans blabla."
+        )
+
+        user_prompt = (
+            f"Nom du fichier : {filename}\n"
+            f"Extension : {ext}\n\n"
+            f"Contenu extrait du document :\n{extracted_text}"
+        )
+
+        data = _openai_responses_json(
+            model,
+            "poste_import_document",
+            schema,
+            system_prompt,
+            user_prompt,
+            use_web=False
+        )
+
+        data["niveau_education_minimum"] = (data.get("niveau_education_minimum") or "").strip()
+        data["nsf_groupe_code"] = (data.get("nsf_groupe_code") or "").strip()
+
+        allowed_edu = {"", "0", "3", "4", "5", "6", "7", "8"}
+        allowed_mob = {"", "Aucune", "Rare", "Occasionnelle", "Fréquente"}
+        allowed_risk = {"", "Aucun", "Faible", "Modéré", "Élevé", "Critique"}
+        allowed_persp = {"", "Aucune", "Faible", "Modérée", "Forte", "Rapide"}
+        allowed_ctr = {"", "Aucune", "Modérée", "Élevée", "Critique"}
+
+        if data["niveau_education_minimum"] not in allowed_edu:
+            data["niveau_education_minimum"] = ""
+        if (data.get("mobilite") or "") not in allowed_mob:
+            data["mobilite"] = ""
+        if (data.get("risque_physique") or "") not in allowed_risk:
+            data["risque_physique"] = ""
+        if (data.get("perspectives_evolution") or "") not in allowed_persp:
+            data["perspectives_evolution"] = ""
+        if (data.get("niveau_contrainte") or "") not in allowed_ctr:
+            data["niveau_contrainte"] = ""
+        if len(data["nsf_groupe_code"]) > 12:
+            data["nsf_groupe_code"] = ""
+
+        return data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/postes import_document error: {e}")
 
 @router.post("/studio/org/postes/{id_owner}/ai_draft")
 def studio_org_ai_draft_poste(id_owner: str, payload: AiPosteDraftPayload, request: Request):

@@ -10,3 +10,5 @@ psycopg[binary]
 python-multipart
 openai
 reportlab
+python-docx
+pypdf

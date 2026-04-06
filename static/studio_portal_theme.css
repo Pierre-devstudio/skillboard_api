@@ -509,6 +509,73 @@
   color: #6b7280;
 }
 
+/* Import documentaire (CORE) */
+.sb-dropzone{
+  border:2px dashed rgba(17,24,39,.18);
+  border-radius:14px;
+  background:#fff;
+  padding:18px;
+  text-align:center;
+  cursor:pointer;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+
+.sb-dropzone:hover,
+.sb-dropzone.is-drag{
+  border-color: rgba(var(--sb-accent-rgb), .70);
+  background: rgba(var(--sb-accent-rgb), .08);
+  box-shadow: inset 0 0 0 1px rgba(var(--sb-accent-rgb), .18);
+}
+
+.sb-dropzone:focus{
+  outline:none;
+  border-color: rgba(var(--sb-accent-rgb), .85);
+  box-shadow: 0 0 0 3px rgba(var(--sb-accent-rgb), .18);
+}
+
+.sb-dropzone__title{
+  font-size:15px;
+  font-weight:700;
+  color:#111827;
+}
+
+.sb-dropzone__sub{
+  margin-top:6px;
+  font-size:13px;
+  color:#6b7280;
+}
+
+.sb-file-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px;
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:12px;
+  background:#fff;
+}
+
+.sb-file-card__main{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+
+.sb-file-card__name{
+  font-weight:700;
+  color:#111827;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.sb-file-card__meta{
+  font-size:12px;
+  color:#6b7280;
+}
+
 @keyframes sbSpin{
   to { transform: rotate(360deg); }
 }
