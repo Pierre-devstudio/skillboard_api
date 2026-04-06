@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional, List, Any
 from psycopg.rows import dict_row
@@ -2632,65 +2632,6 @@ def studio_org_list_services(id_owner: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/services error: {e}")
-
-
-@router.get("/studio/org/organigramme/{id_owner}")
-def studio_org_get_organigramme(id_owner: str, request: Request):
-    auth = request.headers.get("Authorization", "")
-    u = studio_require_user(auth)
-
-    try:
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                oid = _require_owner_access(cur, u, id_owner)
-                data = _fetch_org_chart_data(cur, oid)
-
-        return data
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"studio/org/organigramme error: {e}")
-
-
-@router.get("/studio/org/organigramme_pdf/{id_owner}")
-def studio_org_get_organigramme_pdf(id_owner: str, request: Request):
-    auth = request.headers.get("Authorization", "")
-    u = studio_require_user(auth)
-
-    try:
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                oid = _require_owner_access(cur, u, id_owner)
-                data = _fetch_org_chart_data(cur, oid)
-
-        page_size, page_label = _pick_org_chart_page(data)
-        story = _build_org_chart_pdf_story(data, page_label, page_size)
-        filename = f'organigramme_{(id_owner or "organisation").strip()}.pdf'
-
-        pdf_bytes = build_pdf_document(
-            story,
-            meta={
-                "title": "Organigramme de l'organisation",
-                "doc_label": "Organigramme",
-                "footer_left": "Novoskill Studio • Organigramme",
-            },
-            page_size=page_size,
-        )
-
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": f'inline; filename=\"{filename}\"',
-                "Cache-Control": "no-store",
-            },
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"studio/org/organigramme_pdf error: {e}")
 
 @router.post("/studio/org/services/{id_owner}")
 def studio_org_create_service(id_owner: str, payload: CreateServicePayload, request: Request):
