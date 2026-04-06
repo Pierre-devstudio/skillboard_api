@@ -808,6 +808,11 @@
   min-height: 110px;
 }
 
+.sb-textarea--compact{
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 /* bouton X */
 .sb-modal-x{
   border:none;

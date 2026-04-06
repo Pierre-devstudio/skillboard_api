@@ -784,6 +784,11 @@
             const isOn = (p.getAttribute("data-panel") === tab);
             p.classList.toggle("is-active", isOn);
         });
+
+        const btnAi = byId("btnPosteAi");
+        if (btnAi){
+            btnAi.style.display = (tab === "def") ? "" : "none";
+        }
     }
 
     // ------------------------------------------------------
@@ -800,7 +805,10 @@
     (items || []).forEach(it => {
         const opt = document.createElement("option");
         opt.value = it.value ?? "";
-        opt.textContent = it.text ?? "";
+        opt.dataset.shortText = it.shortText ?? it.text ?? "";
+        opt.dataset.longText = it.longText ?? it.text ?? "";
+        opt.dataset.helpText = it.helpText ?? it.longText ?? it.text ?? "";
+        opt.textContent = opt.dataset.shortText || "";
         el.appendChild(opt);
     });
     }
@@ -822,6 +830,59 @@
     const el = byId(id);
     if (!el) return;
     el.value = (v ?? "").toString();
+    }
+
+    function _setSelectDisplayMode(el, mode){
+    if (!el) return;
+    Array.from(el.options || []).forEach(opt => {
+        const shortTxt = opt.dataset.shortText || opt.textContent || "";
+        const longTxt = opt.dataset.longText || shortTxt;
+        opt.textContent = (mode === "full") ? longTxt : shortTxt;
+    });
+    }
+
+    function _bindSelectShortValueDisplay(selectId, helpId){
+    const sel = byId(selectId);
+    const help = byId(helpId);
+    if (!sel || !help) return;
+
+    const applyShortAndHelp = () => {
+        _setSelectDisplayMode(sel, "short");
+
+        const opt = sel.options[sel.selectedIndex];
+        const txt = (opt?.dataset?.helpText || opt?.dataset?.longText || "").trim();
+
+        if (txt && txt !== "—"){
+            help.textContent = txt;
+            help.style.display = "";
+            sel.title = txt;
+        } else {
+            help.textContent = "";
+            help.style.display = "none";
+            sel.title = "";
+        }
+    };
+
+    if (!sel._sbShortDisplayBound){
+        sel._sbShortDisplayBound = true;
+
+        const showFull = () => _setSelectDisplayMode(sel, "full");
+
+        sel.addEventListener("mousedown", showFull);
+        sel.addEventListener("focus", showFull);
+        sel.addEventListener("click", showFull);
+
+        sel.addEventListener("change", () => {
+            setTimeout(() => applyShortAndHelp(), 0);
+        });
+
+        sel.addEventListener("blur", () => {
+            applyShortAndHelp();
+        });
+    }
+
+    sel._sbRefreshHelp = applyShortAndHelp;
+    applyShortAndHelp();
     }
 
     function initPosteContraintesSelects(){
@@ -857,48 +918,24 @@
     ]);
 
     _fillSelect(byId("posteCtrRisquePhys"), [
-        { value:"", text:"—" },
-        { value:"Aucun", text:"Aucun : pas de risque identifié." },
-        { value:"Faible", text:"Faible : exposition occasionnelle, faible intensité." },
-        { value:"Modéré", text:"Modéré : exposition régulière mais maîtrisée." },
-        { value:"Élevé", text:"Élevé : risque important, pouvant générer une pathologie." },
-        { value:"Critique", text:"Critique : risque vital ou accident grave possible." }
+        { value:"", text:"—", shortText:"—", longText:"—", helpText:"" },
+        { value:"Aucun", shortText:"Aucun", longText:"Aucun : pas de risque identifié.", helpText:"Aucun : pas de risque identifié." },
+        { value:"Faible", shortText:"Faible", longText:"Faible : exposition occasionnelle, faible intensité.", helpText:"Faible : exposition occasionnelle, faible intensité." },
+        { value:"Modéré", shortText:"Modéré", longText:"Modéré : exposition régulière mais maîtrisée.", helpText:"Modéré : exposition régulière mais maîtrisée." },
+        { value:"Élevé", shortText:"Élevé", longText:"Élevé : risque important, pouvant générer une pathologie.", helpText:"Élevé : risque important, pouvant générer une pathologie." },
+        { value:"Critique", shortText:"Critique", longText:"Critique : risque vital ou accident grave possible.", helpText:"Critique : risque vital ou accident grave possible." }
     ]);
 
     _fillSelect(byId("posteCtrNivContrainte"), [
-        { value:"", text:"—" },
-        { value:"Aucune", text:"Aucune : poste standard, sans pression ni particularité." },
-        { value:"Modérée", text:"Modérée : quelques contraintes psychosociales/organisationnelles." },
-        { value:"Élevée", text:"Élevée : forte pression, conditions difficiles, grande responsabilité." },
-        { value:"Critique", text:"Critique : stress ou responsabilité vitale." }
+        { value:"", text:"—", shortText:"—", longText:"—", helpText:"" },
+        { value:"Aucune", shortText:"Aucune", longText:"Aucune : poste standard, sans pression ni particularité.", helpText:"Aucune : poste standard, sans pression ni particularité." },
+        { value:"Modérée", shortText:"Modérée", longText:"Modérée : quelques contraintes psychosociales/organisationnelles.", helpText:"Modérée : quelques contraintes psychosociales/organisationnelles." },
+        { value:"Élevée", shortText:"Élevée", longText:"Élevée : forte pression, conditions difficiles, grande responsabilité.", helpText:"Élevée : forte pression, conditions difficiles, grande responsabilité." },
+        { value:"Critique", shortText:"Critique", longText:"Critique : stress ou responsabilité vitale.", helpText:"Critique : stress ou responsabilité vitale." }
     ]);
 
-    const bindHelp = (selectId, helpId) => {
-        const sel = byId(selectId);
-        const help = byId(helpId);
-        if (!sel || !help) return;
-
-        const refresh = () => {
-        const opt = sel.options[sel.selectedIndex];
-        const txt = (opt?.textContent || "").trim();
-        if (txt && txt !== "—") {
-            help.textContent = txt;
-            help.style.display = "";
-            sel.title = txt;
-        } else {
-            help.textContent = "";
-            help.style.display = "none";
-            sel.title = "";
-        }
-        };
-
-        sel._sbRefreshHelp = refresh;
-        sel.addEventListener("change", refresh);
-        refresh();
-    };
-
-    bindHelp("posteCtrRisquePhys", "posteCtrRisquePhysHelp");
-    bindHelp("posteCtrNivContrainte", "posteCtrNivContrainteHelp");
+    _bindSelectShortValueDisplay("posteCtrRisquePhys", "posteCtrRisquePhysHelp");
+    _bindSelectShortValueDisplay("posteCtrNivContrainte", "posteCtrNivContrainteHelp");
     }
 
     async function ensureNsfGroupes(portal){
