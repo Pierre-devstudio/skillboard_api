@@ -421,19 +421,59 @@
 /* Bouton documentaire (CORE)
    Pour les actions de consultation / ouverture de document / PDF */
 .sb-btn--doc{
-  background:#4a68ced2;
-  color:#ffffff;
-  border-color:#94a3b8;
-  box-shadow: inset 0 0 0 1px rgba(148,163,184,.12);
+  background:#eef4ff;
+  color:#28407a;
+  border-color:#9db3e8;
+  box-shadow: inset 0 0 0 1px rgba(53,92,170,.08);
 }
 
 .sb-btn--doc:hover{
-  background:#f8fafc;
-  color:#1f2937;
-  border-color:#64748b;
+  background:#e0ebff;
+  color:#1e3570;
+  border-color:#6f8fd0;
 }
 
 .sb-btn--doc:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+
+/* Bouton secondaire (CORE)
+   Pour les actions techniques utiles mais non prioritaires */
+.sb-btn--secondary{
+  background:#fff;
+  color:#334155;
+  border-color:#cbd5e1;
+  box-shadow: inset 0 0 0 1px rgba(148,163,184,.10);
+}
+
+.sb-btn--secondary:hover{
+  background:#f8fafc;
+  color:#1f2937;
+  border-color:#94a3b8;
+}
+
+.sb-btn--secondary:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+
+/* Bouton sensible (CORE)
+   Pour les actions d’archivage / retrait logique */
+.sb-btn--danger-soft{
+  background:#fff5f5;
+  color:#b42318;
+  border-color:#f1b5b0;
+  box-shadow: inset 0 0 0 1px rgba(180,35,24,.05);
+}
+
+.sb-btn--danger-soft:hover{
+  background:#feeceb;
+  color:#912018;
+  border-color:#e58f88;
+}
+
+.sb-btn--danger-soft:disabled{
   opacity:.6;
   cursor:not-allowed;
 }

@@ -332,6 +332,28 @@
         btn.style.display = (_posteModalMode === "create") ? "" : "none";
     }
 
+    function refreshPosteFooterActions(){
+        const isCreate = (_posteModalMode === "create");
+
+        const bA = byId("btnPosteArchive");
+        const bD = byId("btnPosteDuplicate");
+
+        if (bA){
+            bA.style.display = isCreate ? "none" : "";
+            bA.disabled = isCreate;
+            bA.style.opacity = isCreate ? ".6" : "";
+            bA.title = "";
+            if (isCreate) bA.textContent = "Archiver";
+        }
+
+        if (bD){
+            bD.style.display = isCreate ? "none" : "";
+            bD.disabled = isCreate;
+            bD.style.opacity = isCreate ? ".6" : "";
+            bD.title = "";
+        }
+    }
+
     function setPosteImportFile(file){
         if (!file) return;
 
@@ -2944,11 +2966,7 @@
         _posteAiDraftMeta = null;
         resetPosteCompAiUi();
 
-        // boutons (actions API à l'étape 2)
-        const bA = byId("btnPosteArchive");
-        const bD = byId("btnPosteDuplicate");
-        if (bA){ bA.disabled = true; bA.style.opacity = ".6"; bA.title = "Disponible après création."; }
-        if (bD){ bD.disabled = true; bD.style.opacity = ".6"; bD.title = "Disponible après création."; }
+        refreshPosteFooterActions();
 
         const bS = byId("btnPosteSave");
         if (bS) bS.textContent = "Créer";
@@ -3015,10 +3033,8 @@
         // On pré-remplit ce qu'on a déjà (le détail complet arrive à l'étape 2)
         byId("posteIntitule").value = (p && p.intitule) ? String(p.intitule) : "";
 
-        const bA = byId("btnPosteArchive");
-        const bD = byId("btnPosteDuplicate");
-        if (bA){ bA.disabled = true; bA.style.opacity = ".6"; bA.title = "Branchement API à l'étape 2."; }
-        if (bD){ bD.disabled = true; bD.style.opacity = ".6"; bD.title = "Branchement API à l'étape 2."; }
+        refreshPosteFooterActions();
+        setPosteModalActif((p && p.actif !== false));
 
         const bS = byId("btnPosteSave");
         if (bS) bS.textContent = "Enregistrer";
@@ -3181,10 +3197,7 @@
                     badge.textContent = code || "";
                     badge.style.display = code ? "" : "none";
                 }
-                const bA = byId("btnPosteArchive");
-                const bD = byId("btnPosteDuplicate");
-                if (bA){ bA.disabled = false; bA.style.opacity = ""; bA.title = ""; }
-                if (bD){ bD.disabled = false; bD.style.opacity = ""; bD.title = ""; }
+                refreshPosteFooterActions();
                 const bS = byId("btnPosteSave");
                 if (bS) bS.textContent = "Enregistrer";
                 setPosteModalActif(true);
