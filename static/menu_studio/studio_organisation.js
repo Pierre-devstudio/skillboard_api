@@ -2045,107 +2045,132 @@
         const empty = byId("posteCompEmpty");
         if (!tb) return;
 
+        const levelMeta = (niv) => {
+            const v = String(niv || "").trim().toUpperCase();
+            if (v === "A") return { text: "A - Initial", cls: "sb-badge--niv-a" };
+            if (v === "B") return { text: "B - Avancé", cls: "sb-badge--niv-b" };
+            if (v === "C") return { text: "C - Expert", cls: "sb-badge--niv-c" };
+            return { text: "—", cls: "" };
+        };
+
+        const critMeta = (score) => {
+            const n = parseInt(score ?? 0, 10);
+            if (Number.isNaN(n)) return { text: "—", cls: "sb-crit-badge--low" };
+            if (n >= 70) return { text: String(n), cls: "sb-crit-badge--high" };
+            if (n >= 35) return { text: String(n), cls: "sb-crit-badge--mid" };
+            return { text: String(n), cls: "sb-crit-badge--low" };
+        };
+
+        const iconEdit = `
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+            </svg>
+        `;
+
+        const iconTrash = `
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14H6L5 6"/>
+                <path d="M10 11v6"/>
+                <path d="M14 11v6"/>
+                <path d="M9 6V4h6v2"/>
+            </svg>
+        `;
+
         const q = (_posteCompSearch || "").toLowerCase();
         const items = (_posteCompItems || []).filter(it => {
-        if (!q) return true;
-        const s = `${it.code || ""} ${it.intitule || ""}`.toLowerCase();
-        return s.includes(q);
+            if (!q) return true;
+            const s = `${it.code || ""} ${it.intitule || ""}`.toLowerCase();
+            return s.includes(q);
         });
 
         tb.innerHTML = "";
 
         if (!items.length){
-        if (empty) empty.style.display = "";
-        return;
+            if (empty) empty.style.display = "";
+            return;
         }
         if (empty) empty.style.display = "none";
 
         items.forEach(it => {
-        const tr = document.createElement("tr");
+            const tr = document.createElement("tr");
 
-        // Domaine badge
-        const tdDom = document.createElement("td");
-        const domLabel = (it.domaine_titre_court || it.domaine || "").toString().trim();
-        if (domLabel){
-            const b = document.createElement("span");
-            b.className = "sb-badge sb-badge--comp-domain";
-            const dot = document.createElement("span");
-            dot.className = "sb-dot";
-            const rgb = argbIntToRgbTuple(it.domaine_couleur);
-            if (rgb) b.style.setProperty("--sb-domain-rgb", rgb.css);
-            b.appendChild(dot);
-            b.appendChild(document.createTextNode(domLabel));
-            tdDom.appendChild(b);
-        } else {
-            tdDom.textContent = "—";
-        }
+            const tdComp = document.createElement("td");
+            const compWrap = document.createElement("div");
+            compWrap.className = "sb-comp-cell";
 
-        const tdCode = document.createElement("td");
-        tdCode.textContent = it.code || "—";
+            const code = document.createElement("span");
+            code.className = "sb-badge sb-badge--comp";
+            code.textContent = it.code || "—";
 
-        const tdTit = document.createElement("td");
-        tdTit.textContent = it.intitule || "";
+            const title = document.createElement("div");
+            title.className = "sb-comp-cell__title";
+            title.textContent = it.intitule || "";
 
-        const tdNiv = document.createElement("td");
-        tdNiv.style.textAlign = "center";
-        const bn = document.createElement("span");
-        bn.className = "sb-badge sb-badge--poste-soft";
-        bn.textContent = it.niveau_requis || "—";
-        tdNiv.appendChild(bn);
+            compWrap.appendChild(code);
+            compWrap.appendChild(title);
+            tdComp.appendChild(compWrap);
 
-        const tdCrit = document.createElement("td");
-        tdCrit.style.textAlign = "center";
-        tdCrit.textContent = (it.poids_criticite ?? "—");
+            const tdNiv = document.createElement("td");
+            tdNiv.style.textAlign = "center";
+            const lvl = levelMeta(it.niveau_requis);
+            const bn = document.createElement("span");
+            bn.className = `sb-badge sb-badge--niv ${lvl.cls}`.trim();
+            bn.textContent = lvl.text;
+            tdNiv.appendChild(bn);
 
-        const tdInd = document.createElement("td");
-        tdInd.style.textAlign = "center";
-        if ((it.etat || "").toLowerCase() === "à valider"){
-            const b = document.createElement("span");
-            b.className = "sb-badge sb-badge--accent-soft";
-            b.textContent = "À valider";
-            tdInd.appendChild(b);
-        } else {
-            tdInd.textContent = "—";
-        }
+            const tdCrit = document.createElement("td");
+            tdCrit.style.textAlign = "center";
+            const crit = critMeta(it.poids_criticite);
+            const bc = document.createElement("span");
+            bc.className = `sb-badge sb-crit-badge ${crit.cls}`.trim();
+            bc.textContent = crit.text;
+            tdCrit.appendChild(bc);
 
-        const tdAct = document.createElement("td");
-        tdAct.style.textAlign = "right";
+            const tdAct = document.createElement("td");
+            tdAct.style.textAlign = "right";
 
-        if (isAdmin()){
-            const btnEdit = document.createElement("button");
-            btnEdit.type = "button";
-            btnEdit.className = "sb-btn sb-btn--soft sb-btn--xs";
-            btnEdit.textContent = "Modifier";
-            btnEdit.addEventListener("click", () => openPosteCompEditModal(it));
-            tdAct.appendChild(btnEdit);
+            if (isAdmin()){
+                const actions = document.createElement("div");
+                actions.className = "sb-icon-actions";
 
-            const btnRem = document.createElement("button");
-            btnRem.type = "button";
-            btnRem.className = "sb-btn sb-btn--soft sb-btn--xs";
-            btnRem.textContent = "Retirer";
-            btnRem.style.marginLeft = "6px";
-            btnRem.addEventListener("click", async () => {
-            if (!confirm(`Retirer la compétence "${it.code || ""} – ${it.intitule || ""}" du poste ?`)) return;
-            try { await removePosteCompetence(window.portal, it.id_competence); }
-            catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
-            });
-            tdAct.appendChild(btnRem);
-        } else {
-            tdAct.textContent = "—";
-        }
+                const btnEdit = document.createElement("button");
+                btnEdit.type = "button";
+                btnEdit.className = "sb-icon-btn";
+                btnEdit.title = "Modifier";
+                btnEdit.setAttribute("aria-label", "Modifier");
+                btnEdit.innerHTML = iconEdit;
+                btnEdit.addEventListener("click", () => openPosteCompEditModal(it));
 
-        tr.appendChild(tdDom);
-        tr.appendChild(tdCode);
-        tr.appendChild(tdTit);
-        tr.appendChild(tdNiv);
-        tr.appendChild(tdCrit);
-        tr.appendChild(tdInd);
-        tr.appendChild(tdAct);
+                const btnRem = document.createElement("button");
+                btnRem.type = "button";
+                btnRem.className = "sb-icon-btn sb-icon-btn--danger";
+                btnRem.title = "Retirer";
+                btnRem.setAttribute("aria-label", "Retirer");
+                btnRem.innerHTML = iconTrash;
+                btnRem.addEventListener("click", async () => {
+                    if (!confirm(`Retirer la compétence "${it.code || ""} – ${it.intitule || ""}" du poste ?`)) return;
+                    try { await removePosteCompetence(window.portal, it.id_competence); }
+                    catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
+                });
 
-        tb.appendChild(tr);
+                actions.appendChild(btnEdit);
+                actions.appendChild(btnRem);
+                tdAct.appendChild(actions);
+            } else {
+                tdAct.textContent = "—";
+            }
+
+            tr.appendChild(tdComp);
+            tr.appendChild(tdNiv);
+            tr.appendChild(tdCrit);
+            tr.appendChild(tdAct);
+
+            tb.appendChild(tr);
         });
     }
-
+    
     function openPosteCompAddModal(){
         if (!isAdmin()) return;
         if (!_editingPosteId) return;

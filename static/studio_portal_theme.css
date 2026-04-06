@@ -418,6 +418,120 @@
   box-shadow: 0 0 0 2px rgba(255,255,255,.75) inset;
 }
 
+/* Compétences poste : table synthétique */
+.sb-comp-cell{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+
+.sb-comp-cell__title{
+  font-size:14px;
+  font-weight:600;
+  color:#111827;
+  line-height:1.35;
+  min-width:0;
+}
+
+.sb-badge--niv{
+  min-width:88px;
+  justify-content:center;
+  padding:3px 10px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:12px;
+}
+
+.sb-badge--niv-a{
+  background:#fff7ed;
+  border:1px solid #fdba74;
+  color:#9a3412;
+}
+
+.sb-badge--niv-b{
+  background:#eef4ff;
+  border:1px solid #9db3e8;
+  color:#28407a;
+}
+
+.sb-badge--niv-c{
+  background:#f3e8ff;
+  border:1px solid #c4b5fd;
+  color:#6d28d9;
+}
+
+.sb-crit-badge{
+  min-width:48px;
+  justify-content:center;
+  padding:3px 10px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:12px;
+}
+
+.sb-crit-badge--low{
+  background:#f8fafc;
+  border:1px solid #cbd5e1;
+  color:#475569;
+}
+
+.sb-crit-badge--mid{
+  background:#fff7ed;
+  border:1px solid #fdba74;
+  color:#9a3412;
+}
+
+.sb-crit-badge--high{
+  background:#fff1f2;
+  border:1px solid #fda4af;
+  color:#be123c;
+}
+
+.sb-icon-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:6px;
+}
+
+.sb-icon-btn{
+  width:32px;
+  height:32px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid #d1d5db;
+  border-radius:10px;
+  background:#fff;
+  color:#334155;
+  cursor:pointer;
+}
+
+.sb-icon-btn:hover{
+  background:#f8fafc;
+  border-color:#94a3b8;
+  color:#111827;
+}
+
+.sb-icon-btn svg{
+  width:16px;
+  height:16px;
+  display:block;
+}
+
+.sb-icon-btn--danger{
+  background:#fff5f5;
+  border-color:#f1b5b0;
+  color:#b42318;
+}
+
+.sb-icon-btn--danger:hover{
+  background:#feeceb;
+  border-color:#e58f88;
+  color:#912018;
+}
+
 /* Bouton documentaire (CORE)
    Pour les actions de consultation / ouverture de document / PDF */
 .sb-btn--doc{
