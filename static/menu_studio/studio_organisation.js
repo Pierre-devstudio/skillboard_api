@@ -828,9 +828,17 @@
     }
 
     function _setValue(id, v){
-    const el = byId(id);
-    if (!el) return;
-    el.value = (v ?? "").toString();
+        const el = byId(id);
+        if (!el) return;
+
+        const val = (v ?? "").toString();
+        const tag = (el.tagName || "").toUpperCase();
+
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT"){
+            el.value = val;
+        } else {
+            el.textContent = val;
+        }
     }
 
     function _setSelectDisplayMode(el, mode){
