@@ -341,7 +341,7 @@
                 <textarea id="posteRhCommentaire" rows="4" placeholder="Commentaire interne sur le paramétrage RH du poste"></textarea>
               </div>
 
-              <div class="card org-bloc" id="posteBlocCcn" style="margin-top:10px;">
+              <div class="card org-bloc sb-span-2" id="posteBlocCcn" style="margin-top:10px;">
                 <div class="sb-block-head">
                   <div>
                     <div class="card-title" style="margin:0;">Cotation conventionnelle</div>
@@ -351,19 +351,19 @@
                   </div>
 
                   <div class="sb-actions">
-                    <button type="button" class="sb-btn sb-btn--doc" id="btnPosteCcnOpen">Assistant cotation conventionnel</button>
+                    <button type="button" class="sb-btn sb-btn--doc" id="btnPosteCcnOpen">Assistant cotation conventionnelle</button>
                   </div>
                 </div>
 
                 <div class="sb-form-grid" style="margin-top:10px;">
                   <div class="sb-field">
                     <div class="label">Convention détectée</div>
-                    <input type="text" id="posteCcnConvention" readonly />
+                    <input type="text" id="posteCcnConvention" class="sb-ccn-topval" readonly />
                   </div>
 
                   <div class="sb-field">
                     <div class="label">Statut</div>
-                    <input type="text" id="posteCcnStatus" readonly />
+                    <input type="text" id="posteCcnStatus" class="sb-ccn-topval" readonly />
                   </div>
 
                   <div class="sb-field">
@@ -371,9 +371,14 @@
                     <input type="text" id="posteCcnResult" readonly />
                   </div>
 
+                  <div class="sb-field">
+                    <div class="label">Catégorie retenue</div>
+                    <input type="text" id="posteCcnCategory" readonly />
+                  </div>
+
                   <div class="sb-field sb-span-2">
                     <div class="label">Synthèse</div>
-                    <textarea id="posteCcnSummary" rows="3" readonly></textarea>
+                    <textarea id="posteCcnSummary" class="sb-textarea--compact sb-ccn-text" rows="4" readonly></textarea>
                   </div>
                 </div>
               </div>
@@ -518,9 +523,9 @@
     <div class="sb-modal-card">
       <div class="sb-modal-head">
         <div>
-          <div class="card-title" style="margin:0;">Assistant cotation conventionnel</div>
+          <div class="card-title" style="margin:0;">Assistant cotation conventionnelle</div>
           <div class="card-sub" id="posteCcnModalSub" style="margin:4px 0 0 0;">
-            Proposition IA de cotation sur la base de la fiche de poste et du référentiel conventionnel.
+            Proposition IA de cotation sur la base de la fiche de poste et du référentiel conventionnel national.
           </div>
         </div>
         <button type="button" class="sb-modal-x" id="btnPosteCcnX" aria-label="Fermer">×</button>
@@ -550,7 +555,7 @@
 
           <div class="sb-field sb-span-2">
             <div class="label">Base d’analyse</div>
-            <textarea id="posteCcnModalBase" rows="3" readonly></textarea>
+            <textarea id="posteCcnModalBase" class="sb-textarea--compact sb-ccn-text" rows="3" readonly></textarea>
           </div>
         </div>
 
@@ -559,7 +564,7 @@
             <div>
               <div class="card-title" style="margin:0;">Proposition IA</div>
               <div class="card-sub" style="margin:4px 0 0 0;">
-                La proposition repose sur les 6 critères classants, les bonifications applicables et la grille de l’IDCC supporté.
+                La proposition repose sur les critères classants applicables et la grille de l’IDCC supporté.
               </div>
             </div>
 
@@ -590,16 +595,16 @@
 
           <div class="sb-field" style="margin-top:12px;">
             <div class="label">Synthèse de cotation</div>
-            <textarea id="posteCcnPropResume" rows="2" readonly></textarea>
+            <textarea id="posteCcnPropResume" class="sb-textarea--compact sb-ccn-text" rows="2" readonly></textarea>
           </div>
 
           <div class="sb-field" style="margin-top:10px;">
             <div class="label">Justification IA</div>
-            <textarea id="posteCcnPropJustification" rows="7" readonly></textarea>
+            <textarea id="posteCcnPropJustification" class="sb-textarea--compact sb-ccn-text" rows="7" readonly></textarea>
           </div>
 
           <div class="table-wrap" style="margin-top:12px;">
-            <table class="sb-table" id="posteCcnCriteriaTable">
+            <table class="sb-table sb-ccn-table" id="posteCcnCriteriaTable">
               <thead>
                 <tr>
                   <th>Critère / bonification</th>
@@ -625,7 +630,7 @@
           <div class="sb-form-grid" style="margin-top:10px;">
             <div class="sb-field">
               <div class="label">Coefficient retenu</div>
-              <input type="number" id="posteCcnFinalCoefficient" min="100" step="1" />
+              <input type="number" id="posteCcnFinalCoefficient" min="1" step="1" />
             </div>
 
             <div class="sb-field">
@@ -640,7 +645,7 @@
 
             <div class="sb-field sb-span-2">
               <div class="label">Justification retenue / commentaire RH</div>
-              <textarea id="posteCcnFinalJustification" rows="6" placeholder="Ajuste la justification ou ajoute l'arbitrage RH."></textarea>
+              <textarea id="posteCcnFinalJustification" class="sb-textarea--compact sb-ccn-text" rows="6" placeholder="Ajuste la justification ou ajoute l'arbitrage RH."></textarea>
             </div>
           </div>
         </div>

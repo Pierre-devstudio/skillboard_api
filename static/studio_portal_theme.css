@@ -1008,6 +1008,39 @@
   color:#111827;
 }
 
+/* ======================================================
+   Studio CORE – Assistant cotation conventionnelle
+   ====================================================== */
+
+.sb-ccn-topval{
+  font-size:14px;
+  font-weight:600;
+  color:#111827;
+}
+
+.sb-ccn-text{
+  font-size:13px !important;
+  line-height:1.5;
+}
+
+.sb-ccn-table th,
+.sb-ccn-table td{
+  font-size:13px;
+  line-height:1.45;
+}
+
+.sb-badge--ccn-level{
+  min-width:46px;
+  justify-content:center;
+  padding:3px 8px;
+  border-radius:999px;
+  font-weight:700;
+  font-size:12px;
+  background: var(--sb-violet);
+  border:1px solid var(--sb-violet);
+  color:#fff;
+}
+
 .sb-filter-grid{
   display:grid;
   grid-template-columns:repeat(4, minmax(160px, 1fr));

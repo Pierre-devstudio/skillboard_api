@@ -1148,6 +1148,7 @@
         _setValue("posteCcnConvention", isCreate ? "Disponible après enregistrement du poste" : "Chargement…");
         _setValue("posteCcnStatus", isCreate ? "Brouillon non enregistré" : "Chargement…");
         _setValue("posteCcnResult", "—");
+        _setValue("posteCcnCategory", "—");
         _setValue("posteCcnSummary", _posteCcnDefaultSummary(!!isCreate));
 
         _setValue("posteCcnModalConvention", "—");
@@ -1305,14 +1306,31 @@
         }
 
         empty.style.display = "none";
+
         rows.forEach(r => {
             const tr = document.createElement("tr");
-            tr.innerHTML = `
-              <td>${esc(r.libelle)}</td>
-              <td style="text-align:center;">${esc(r.niveau)}</td>
-              <td style="text-align:center;">${esc(r.points)}</td>
-              <td>${esc(r.justification || "—")}</td>
-            `;
+
+            const tdLib = document.createElement("td");
+            tdLib.textContent = r.libelle || "—";
+
+            const tdNiv = document.createElement("td");
+            tdNiv.style.textAlign = "center";
+            const badge = document.createElement("span");
+            badge.className = "sb-badge sb-badge--ccn-level";
+            badge.textContent = r.niveau || "—";
+            tdNiv.appendChild(badge);
+
+            const tdPts = document.createElement("td");
+            tdPts.style.textAlign = "center";
+            tdPts.textContent = String(r.points ?? "—");
+
+            const tdJust = document.createElement("td");
+            tdJust.textContent = r.justification || "—";
+
+            tr.appendChild(tdLib);
+            tr.appendChild(tdNiv);
+            tr.appendChild(tdPts);
+            tr.appendChild(tdJust);
             tbody.appendChild(tr);
         });
     }
@@ -1376,6 +1394,7 @@
 
         let status = "Non démarré";
         let result = "—";
+        let category = "—";
         let summary = _posteCcnDefaultSummary(false);
 
         const dossier = ctx?.dossier || null;
@@ -1389,14 +1408,17 @@
             status = "Validée";
             result = formatPosteCcnResultText(validation);
             summary = validation?.justification || proposal?.proposal?.resume_cotation || _posteCcnDefaultSummary(false);
+            category = validation?.categorie_professionnelle || proposal?.proposal?.categorie_professionnelle || "—";
         } else if (proposal && Object.keys(proposal).length){
             status = "Brouillon";
             result = formatPosteCcnResultText(proposal?.proposal || proposal);
             summary = proposal?.justification_globale || proposal?.proposal?.resume_cotation || _posteCcnDefaultSummary(false);
+            category = proposal?.proposal?.categorie_professionnelle || "—";
         }
 
         _setValue("posteCcnStatus", status);
         _setValue("posteCcnResult", result);
+        _setValue("posteCcnCategory", category);
         _setValue("posteCcnSummary", summary);
 
         fillPosteCcnProposal(proposal && Object.keys(proposal).length ? proposal : null);
@@ -1493,6 +1515,7 @@
 
             _setValue("posteCcnStatus", "Proposition non enregistrée");
             _setValue("posteCcnResult", formatPosteCcnResultText(analysis?.proposal || {}));
+            _setValue("posteCcnCategory", analysis?.proposal?.categorie_professionnelle || "—");
             _setValue(
                 "posteCcnSummary",
                 analysis?.justification_globale || analysis?.proposal?.resume_cotation || "Proposition IA prête à être revue."
