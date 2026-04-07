@@ -1792,19 +1792,58 @@ def _ensure_json_dict(v: Any) -> dict:
 
 
 def _fetch_owner_idcc(cur, oid: str) -> dict:
+    owner_id = (oid or "").strip()
+    if not owner_id:
+        return {
+            "id_ent": "",
+            "idcc": "",
+            "owner_source": "",
+        }
+
+    # 1) Cas standard : entreprise cliente
     cur.execute(
         """
-        SELECT id_ent, idcc
+        SELECT
+          id_ent,
+          idcc
         FROM public.tbl_entreprise
         WHERE id_ent = %s
         LIMIT 1
         """,
-        (oid,),
+        (owner_id,),
     )
-    row = cur.fetchone() or {}
+    row = cur.fetchone() or None
+    if row:
+        return {
+            "id_ent": (row.get("id_ent") or "").strip(),
+            "idcc": (row.get("idcc") or "").strip(),
+            "owner_source": "tbl_entreprise",
+        }
+
+    # 2) Fallback : mon entreprise
+    cur.execute(
+        """
+        SELECT
+          id_mon_ent,
+          idcc
+        FROM public.tbl_mon_entreprise
+        WHERE id_mon_ent = %s
+        LIMIT 1
+        """,
+        (owner_id,),
+    )
+    row = cur.fetchone() or None
+    if row:
+        return {
+            "id_ent": (row.get("id_mon_ent") or "").strip(),
+            "idcc": (row.get("idcc") or "").strip(),
+            "owner_source": "tbl_mon_entreprise",
+        }
+
     return {
-        "id_ent": (row.get("id_ent") or "").strip(),
-        "idcc": (row.get("idcc") or "").strip(),
+        "id_ent": "",
+        "idcc": "",
+        "owner_source": "",
     }
 
 
