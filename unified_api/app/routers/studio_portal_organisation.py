@@ -2599,6 +2599,7 @@ class AiPosteCompetenceCreatePayload(BaseModel):
 class SavePosteCcnDecisionPayload(BaseModel):
     coefficient_retenu: int
     justification_retenue: str
+    proposition_json: Optional[dict] = None
 
 @router.post("/studio/org/postes/{id_owner}/import_document")
 def studio_org_import_poste_document(id_owner: str, request: Request, file: UploadFile = File(...)):
@@ -3274,20 +3275,6 @@ def studio_org_poste_ccn_propose(id_owner: str, id_poste: str, request: Request)
                 else:
                     raise HTTPException(status_code=400, detail=f"Convention non supportée pour l’assistant (IDCC détecté : {idcc or 'aucun'}).")
 
-                _upsert_poste_ccn_dossier(
-                    cur=cur,
-                    oid=oid,
-                    pid=pid,
-                    idcc=idcc,
-                    id_referentiel_ccn=(referential.get("id_referentiel_ccn") or "").strip(),
-                    snapshot_poste_json=poste,
-                    statut_cotation="brouillon",
-                    proposition_json=analysis,
-                    validation_json={},
-                    user_email=(u.get("email") or "").strip(),
-                )
-                conn.commit()
-
         return {"ok": True, "proposition": analysis}
 
     except HTTPException:
@@ -3330,7 +3317,10 @@ def studio_org_poste_ccn_save(id_owner: str, id_poste: str, payload: SavePosteCc
                 poste = _fetch_poste_for_ccn(cur, oid, pid)
                 ref_json = referential.get("referentiel_json") or {}
 
-                proposition = dossier.get("proposition_json") if dossier else {}
+                proposition = payload.proposition_json if isinstance(payload.proposition_json, dict) else {}
+                if not proposition and dossier:
+                    proposition = dossier.get("proposition_json") or {}
+
                 criteres = proposition.get("criteres") or []
 
                 if idcc == "1516":

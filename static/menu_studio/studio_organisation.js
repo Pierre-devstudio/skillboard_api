@@ -1481,9 +1481,23 @@
 
         try{
             const res = await portal.apiJson(url, { method: "POST" });
-            fillPosteCcnProposal(res?.proposition || null);
+            const analysis = res?.proposition || null;
+
+            fillPosteCcnProposal(analysis);
             reusePosteCcnProposal();
-            await loadPosteCcnContext(portal);
+
+            if (_posteCcnContext){
+                if (!_posteCcnContext.dossier) _posteCcnContext.dossier = {};
+                _posteCcnContext.dossier.proposition_json = analysis || {};
+            }
+
+            _setValue("posteCcnStatus", "Proposition non enregistrée");
+            _setValue("posteCcnResult", formatPosteCcnResultText(analysis?.proposal || {}));
+            _setValue(
+                "posteCcnSummary",
+                analysis?.justification_globale || analysis?.proposal?.resume_cotation || "Proposition IA prête à être revue."
+            );
+
             portal.showAlert("", "");
         } finally {
             closeIaBusyOverlay();
@@ -1539,7 +1553,8 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     coefficient_retenu: coef,
-                    justification_retenue: justification
+                    justification_retenue: justification,
+                    proposition_json: _posteCcnAnalysis || _posteCcnContext?.dossier?.proposition_json || {}
                 }),
             });
             await loadPosteCcnContext(portal);
