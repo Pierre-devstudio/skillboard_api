@@ -894,62 +894,111 @@ body {
         return;
         }
 
+        const iconEdit = `
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+            </svg>
+        `;
+
+        const iconTrash = `
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14H6L5 6"/>
+                <path d="M10 11v6"/>
+                <path d="M14 11v6"/>
+                <path d="M9 6V4h6v2"/>
+            </svg>
+        `;
+
         postes.forEach(p => {
-        const row = document.createElement("div");
-        row.className = "sb-row-card";
+            const row = document.createElement("div");
+            row.className = "sb-row-card";
 
-        const left = document.createElement("div");
-        left.className = "sb-row-left";
+            const left = document.createElement("div");
+            left.className = "sb-row-left";
 
-        const code = document.createElement("span");
-        code.className = "sb-badge sb-badge--poste";
-        code.textContent = p.code || "—";
+            const code = document.createElement("span");
+            code.className = "sb-badge sb-badge--poste";
+            code.textContent = p.code || "—";
 
-        const title = document.createElement("div");
-        title.className = "sb-row-title";
-        title.textContent = p.intitule || "";
+            const title = document.createElement("div");
+            title.className = "sb-row-title";
+            title.textContent = p.intitule || "";
 
-        left.appendChild(code);
-        left.appendChild(title);
+            left.appendChild(code);
+            left.appendChild(title);
 
-        if (p.actif === false) row.classList.add("is-archived");
+            if (p.actif === false) row.classList.add("is-archived");
 
-        const right = document.createElement("div");
-        right.className = "sb-row-right";
+            const right = document.createElement("div");
+            right.className = "sb-row-right";
 
-        if (p.actif === false){
-        const arch = document.createElement("span");
-        arch.className = "sb-badge sb-badge--accent-soft";
-        arch.textContent = "ARCHIVÉ";
-        right.appendChild(arch);
-        }
+            if (p.actif === false){
+                const arch = document.createElement("span");
+                arch.className = "sb-badge sb-badge--accent-soft";
+                arch.textContent = "ARCHIVÉ";
+                right.appendChild(arch);
+            }
 
-        const badge = document.createElement("span");
-        badge.className = "sb-badge sb-badge--poste-soft";
-        badge.textContent = `${p.nb_collabs || 0} collab.`;
-        right.appendChild(badge);
+            const badge = document.createElement("span");
+            badge.className = "sb-badge sb-badge--poste-soft";
+            badge.textContent = `${p.nb_collabs || 0} collab.`;
+            right.appendChild(badge);
 
-        const pdfBtn = document.createElement("button");
-        pdfBtn.type = "button";
-        pdfBtn.className = "sb-icon-btn sb-icon-btn--doc";
-        pdfBtn.title = "Exporter pdf";
-        pdfBtn.setAttribute("aria-label", "Exporter pdf");
-        pdfBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>';
-        pdfBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            try { await openPosteFichePdf(portal, p.id_poste); }
-            catch (err) { portal.showAlert("error", err?.message || String(err)); }
-        });
-        right.appendChild(pdfBtn);
+            const actions = document.createElement("div");
+            actions.className = "sb-icon-actions";
 
-        row.appendChild(left);
-        row.appendChild(right);
+            const pdfBtn = document.createElement("button");
+            pdfBtn.type = "button";
+            pdfBtn.className = "sb-icon-btn sb-icon-btn--doc";
+            pdfBtn.title = "Exporter pdf";
+            pdfBtn.setAttribute("aria-label", "Exporter pdf");
+            pdfBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>';
+            pdfBtn.addEventListener("click", async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                try { await openPosteFichePdf(portal, p.id_poste); }
+                catch (err) { portal.showAlert("error", err?.message || String(err)); }
+            });
+            actions.appendChild(pdfBtn);
 
-        row.style.cursor = "pointer";
-        row.addEventListener("click", () => openEditPosteModal(portal, p));
+            const editBtn = document.createElement("button");
+            editBtn.type = "button";
+            editBtn.className = "sb-icon-btn";
+            editBtn.title = "Voir/Modifier";
+            editBtn.setAttribute("aria-label", "Voir/Modifier");
+            editBtn.innerHTML = iconEdit;
+            editBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openEditPosteModal(portal, p);
+            });
+            actions.appendChild(editBtn);
 
-        host.appendChild(row);
+            const archiveBtn = document.createElement("button");
+            archiveBtn.type = "button";
+            archiveBtn.className = "sb-icon-btn sb-icon-btn--danger";
+            archiveBtn.title = (p.actif === false) ? "Restaurer" : "Archiver";
+            archiveBtn.setAttribute("aria-label", (p.actif === false) ? "Restaurer" : "Archiver");
+            archiveBtn.innerHTML = iconTrash;
+            archiveBtn.addEventListener("click", async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                try { await toggleArchivePosteFromList(portal, p); }
+                catch (err) { portal.showAlert("error", err?.message || String(err)); }
+            });
+            actions.appendChild(archiveBtn);
+
+            right.appendChild(actions);
+
+            row.appendChild(left);
+            row.appendChild(right);
+
+            row.style.cursor = "pointer";
+            row.addEventListener("click", () => openEditPosteModal(portal, p));
+
+            host.appendChild(row);
         });
     }
 
@@ -3977,6 +4026,29 @@ body {
             }
             return r || { ok: true };
         }
+    }
+
+    async function toggleArchivePosteFromList(portal, poste){
+        const ownerId = getOwnerId();
+        const pid = (poste && poste.id_poste) ? String(poste.id_poste).trim() : "";
+        if (!pid) return;
+
+        const isActif = !(poste && poste.actif === false);
+        const wantArchive = isActif; // actif => archive ; archivé => restaure
+
+        const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}/archive`;
+        await portal.apiJson(url, {
+            method: "POST",
+            headers: { "Content-Type":"application/json" },
+            body: JSON.stringify({ archive: wantArchive }),
+        });
+
+        _posteDetailCache.delete(pid);
+
+        await loadServices(portal);
+        await loadPostes(portal);
+
+        setStatus(wantArchive ? "Poste archivé." : "Poste restauré.");
     }
 
     async function toggleArchivePosteFromModal(portal){
