@@ -572,6 +572,58 @@
         }
     }
 
+    async function openPosteFichePdf(portal, idPoste){
+        const ownerId = getOwnerId();
+        const pid = String(idPoste || "").trim();
+        if (!ownerId) throw new Error("Owner manquant (?id=...).");
+        if (!pid) throw new Error("Poste manquant.");
+
+        const viewer = window.open("", "_blank");
+
+        try{
+            const token = await resolveStudioAccessToken();
+            const headers = {};
+            if (token){
+                headers["Authorization"] = `Bearer ${token}`;
+            }
+
+            const resp = await fetch(
+                `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}/fiche_pdf`,
+                {
+                    method: "GET",
+                    headers,
+                    credentials: "same-origin",
+                }
+            );
+
+            if (!resp.ok){
+                let msg = `Erreur PDF (${resp.status})`;
+                try{
+                    const err = await resp.json();
+                    if (err && err.detail) msg = String(err.detail);
+                } catch(_){ }
+                throw new Error(msg);
+            }
+
+            const blob = await resp.blob();
+            const blobUrl = URL.createObjectURL(blob);
+
+            if (viewer){
+                viewer.location = blobUrl;
+            } else {
+                window.open(blobUrl, "_blank");
+            }
+
+            setTimeout(() => {
+                try { URL.revokeObjectURL(blobUrl); } catch(_){ }
+            }, 60000);
+
+        } catch (e){
+            if (viewer) viewer.close();
+            throw e;
+        }
+    }
+
     function serviceMeta(nbPostes, nbCollabs){
         return `${nbPostes} poste(s) · ${nbCollabs} collaborateur(s)`;
     }
@@ -760,6 +812,20 @@
         badge.className = "sb-badge sb-badge--poste-soft";
         badge.textContent = `${p.nb_collabs || 0} collab.`;
         right.appendChild(badge);
+
+        const pdfBtn = document.createElement("button");
+        pdfBtn.type = "button";
+        pdfBtn.className = "sb-icon-btn sb-icon-btn--doc";
+        pdfBtn.title = "Exporter pdf";
+        pdfBtn.setAttribute("aria-label", "Exporter pdf");
+        pdfBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>';
+        pdfBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            try { await openPosteFichePdf(portal, p.id_poste); }
+            catch (err) { portal.showAlert("error", err?.message || String(err)); }
+        });
+        right.appendChild(pdfBtn);
 
         row.appendChild(left);
         row.appendChild(right);

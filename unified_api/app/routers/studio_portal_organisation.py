@@ -19,7 +19,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
-from reportlab.platypus import Paragraph, Table, TableStyle
+from reportlab.platypus import Paragraph, Table, TableStyle, PageBreak
 
 from app.routers.skills_portal_common import get_conn
 from app.routers.skills_portal_pdf_common import (
@@ -39,6 +39,7 @@ from app.routers.skills_portal_pdf_common import (
     build_pdf_styles,
     make_title_block,
     make_meta_table,
+    make_section_card,
     build_pdf_document,
 )
 from app.routers.studio_portal_common import (
@@ -1920,6 +1921,7 @@ def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
           c.code,
           c.intitule,
           COALESCE(pc.niveau_requis, '') AS niveau_requis,
+          COALESCE(pc.poids_criticite, 0) AS poids_criticite,
           COALESCE(pc.freq_usage, 0) AS freq_usage,
           COALESCE(pc.impact_resultat, 0) AS impact_resultat,
           COALESCE(pc.dependance, 0) AS dependance
@@ -1940,8 +1942,13 @@ def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
         SELECT
           cert.id_certification,
           COALESCE(cert.nom_certification, '') AS nom_certification,
+          COALESCE(cert.description, '') AS description,
           COALESCE(cert.categorie, '') AS categorie,
-          pc.validite_override
+          COALESCE(cert.duree_validite, NULL) AS duree_validite,
+          COALESCE(cert.delai_renouvellement, NULL) AS delai_renouvellement,
+          COALESCE(pc.niveau_exigence, '') AS niveau_exigence,
+          pc.validite_override,
+          COALESCE(pc.commentaire, '') AS commentaire
         FROM public.tbl_fiche_poste_certification pc
         JOIN public.tbl_certification cert
           ON cert.id_certification = pc.id_certification
@@ -1978,6 +1985,7 @@ def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
                 "code": c.get("code"),
                 "intitule": c.get("intitule"),
                 "niveau_requis": c.get("niveau_requis"),
+                "poids_criticite": int(c.get("poids_criticite") or 0),
                 "freq_usage": int(c.get("freq_usage") or 0),
                 "impact_resultat": int(c.get("impact_resultat") or 0),
                 "dependance": int(c.get("dependance") or 0),
@@ -1988,15 +1996,19 @@ def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
             {
                 "id_certification": c.get("id_certification"),
                 "nom_certification": c.get("nom_certification"),
+                "description": c.get("description"),
                 "categorie": c.get("categorie"),
+                "duree_validite": c.get("duree_validite"),
+                "delai_renouvellement": c.get("delai_renouvellement"),
+                "niveau_exigence": c.get("niveau_exigence"),
                 "validite_override": c.get("validite_override"),
+                "commentaire": c.get("commentaire"),
             }
             for c in certs
         ],
         "competences_count": len(comps),
         "certifications_count": len(certs),
     }
-
 
 def _fetch_poste_ccn_dossier(cur, pid: str) -> Optional[dict]:
     cur.execute(
@@ -2101,6 +2113,264 @@ def _upsert_poste_ccn_dossier(
         ),
     )
 
+def _pdf_first_non_empty(*values) -> str:
+    for value in values:
+        s = str(value or "").strip()
+        if s:
+            return s
+    return ""
+
+
+def _pdf_split_lines(v: Optional[str]) -> List[str]:
+    txt = _html_to_text(v)
+    if not txt:
+        return []
+
+    out = []
+    for raw in txt.replace("\r", "\n").split("\n"):
+        line = re.sub(r"\s+", " ", str(raw or "")).strip(" -•\t")
+        if line:
+            out.append(line)
+    return out
+
+
+def _pdf_months_label(v: Any) -> str:
+    try:
+        n = int(v)
+    except Exception:
+        return "—"
+    return f"{n} mois" if n > 0 else "—"
+
+
+def _pdf_niveau_label(v: Optional[str]) -> str:
+    code = (v or "").strip().upper()
+    if code == "A":
+        return "A - Initial"
+    if code == "B":
+        return "B - Avancé"
+    if code == "C":
+        return "C - Expert"
+    return code or "—"
+
+
+def _pdf_exigence_label(v: Optional[str]) -> str:
+    s = (v or "").strip().lower()
+    if s == "requis":
+        return "Requis"
+    if s in ("souhaite", "souhaité"):
+        return "Souhaité"
+    return (v or "").strip() or "—"
+
+
+def _pdf_rich_table(headers: List[str], rows: List[List[str]], col_widths: List[float], styles: dict) -> Table:
+    header_style = ParagraphStyle(
+        "NsPdfTableHead",
+        parent=styles["small"],
+        fontName="Helvetica-Bold",
+        fontSize=8,
+        leading=10,
+        textColor=PDF_TEXT,
+    )
+    cell_style = ParagraphStyle(
+        "NsPdfTableCell",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=8.5,
+        leading=10.5,
+        textColor=PDF_TEXT,
+    )
+
+    data = [[Paragraph(_pdf_esc(h), header_style) for h in headers]]
+    for row in rows:
+        data.append([Paragraph(_pdf_esc(c or "—"), cell_style) for c in row])
+
+    table = Table(data, colWidths=col_widths, repeatRows=1)
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f8fafc")),
+        ("TEXTCOLOR", (0, 0), (-1, -1), PDF_TEXT),
+        ("BOX", (0, 0), (-1, -1), 0.7, PDF_LINE),
+        ("INNERGRID", (0, 0), (-1, -1), 0.7, PDF_LINE),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    return table
+
+
+def _build_poste_pdf_story(owner_name: str, poste: dict, dossier: Optional[dict], referential: Optional[dict]) -> List:
+    styles = build_pdf_styles()
+    story: List = []
+
+    code_poste = _pdf_first_non_empty(poste.get("code_poste"), poste.get("id_poste")) or "—"
+    service_label = _pdf_first_non_empty(poste.get("nom_service"), "Non lié") or "Non lié"
+
+    story.extend(make_title_block(
+        _pdf_first_non_empty(poste.get("intitule_poste"), "Fiche de poste"),
+        f"{_pdf_esc(owner_name or 'Organisation')} · Service : {_pdf_esc(service_label)}",
+        styles,
+    ))
+    story.append(make_meta_table([
+        {"label": "Entreprise", "value": owner_name or "Organisation"},
+        {"label": "Référence poste", "value": code_poste},
+        {"label": "Service", "value": service_label},
+        {"label": "Type", "value": "Fiche de poste complète"},
+    ], styles))
+    story.append(make_spacer(3))
+
+    mission_lines = _pdf_split_lines(poste.get("mission_principale")) or ["—"]
+    story.append(make_section_card("Mission principale", mission_lines, styles))
+    story.append(make_spacer(3))
+
+    resp_lines = _pdf_split_lines(poste.get("responsabilites")) or ["—"]
+    story.append(make_section_card("Responsabilités", resp_lines, styles))
+    story.append(make_spacer(3))
+
+    contraintes_lines = []
+    if poste.get("niveau_education_minimum"):
+        contraintes_lines.append(f"Niveau d’étude minimum : {poste.get('niveau_education_minimum')}")
+    if poste.get("nsf_groupe_code"):
+        nsf = poste.get("nsf_groupe_code")
+        suffix = " (obligatoire)" if poste.get("nsf_groupe_obligatoire") else ""
+        contraintes_lines.append(f"Domaine NSF : {nsf}{suffix}")
+    if poste.get("mobilite"):
+        contraintes_lines.append(f"Mobilité : {poste.get('mobilite')}")
+    if poste.get("risque_physique"):
+        contraintes_lines.append(f"Risques physiques : {poste.get('risque_physique')}")
+    if poste.get("perspectives_evolution"):
+        contraintes_lines.append(f"Perspectives d’évolution : {poste.get('perspectives_evolution')}")
+    if poste.get("niveau_contrainte"):
+        contraintes_lines.append(f"Niveau de contraintes : {poste.get('niveau_contrainte')}")
+    detail_contrainte = _html_to_text(poste.get("detail_contrainte"))
+    if detail_contrainte:
+        contraintes_lines.append(f"Détail des contraintes : {detail_contrainte}")
+    if not contraintes_lines:
+        contraintes_lines = ["—"]
+
+    story.append(make_section_card("Contraintes et spécificités", contraintes_lines, styles))
+
+    story.append(PageBreak())
+    story.extend(make_title_block(
+        "Compétences requises",
+        f"{_pdf_esc(poste.get('intitule_poste') or 'Poste')} · {len(poste.get('competences') or [])} compétence(s)",
+        styles,
+    ))
+    comp_rows = []
+    for it in poste.get("competences") or []:
+        comp_rows.append([
+            _pdf_first_non_empty(it.get("code"), "—") or "—",
+            _pdf_first_non_empty(it.get("intitule"), "—") or "—",
+            _pdf_niveau_label(it.get("niveau_requis")),
+            f"{int(it.get('poids_criticite') or 0)}/100",
+        ])
+    if not comp_rows:
+        comp_rows.append(["—", "Aucune compétence rattachée.", "—", "—"])
+    story.append(_pdf_rich_table(
+        ["Code", "Compétence", "Niveau requis", "Criticité"],
+        comp_rows,
+        [24 * mm, 94 * mm, 30 * mm, 30 * mm],
+        styles,
+    ))
+
+    story.append(PageBreak())
+    story.extend(make_title_block(
+        "Certifications / habilitations requises",
+        f"{_pdf_esc(poste.get('intitule_poste') or 'Poste')} · {len(poste.get('certifications') or [])} certification(s)",
+        styles,
+    ))
+    cert_rows = []
+    for it in poste.get("certifications") or []:
+        cert_rows.append([
+            _pdf_first_non_empty(it.get("categorie"), "—") or "—",
+            _pdf_first_non_empty(it.get("nom_certification"), "—") or "—",
+            _pdf_months_label(it.get("validite_override") or it.get("duree_validite")),
+            _pdf_exigence_label(it.get("niveau_exigence")),
+        ])
+    if not cert_rows:
+        cert_rows.append(["—", "Aucune certification rattachée.", "—", "—"])
+    story.append(_pdf_rich_table(
+        ["Catégorie", "Certification", "Validité", "Exigence"],
+        cert_rows,
+        [40 * mm, 92 * mm, 22 * mm, 24 * mm],
+        styles,
+    ))
+
+    proposition = (dossier or {}).get("proposition_json") or {}
+    validation = (dossier or {}).get("validation_json") or {}
+    has_ccn = bool(proposition or validation)
+
+    if has_ccn:
+        story.append(PageBreak())
+        convention_label = _pdf_first_non_empty(
+            (referential or {}).get("convention_label"),
+            f"IDCC {(dossier or {}).get('idcc') or ''}".strip(),
+            "Convention collective",
+        )
+        story.extend(make_title_block(
+            "Cotation conventionnelle",
+            f"{_pdf_esc(convention_label)} · Version : {_pdf_esc((referential or {}).get('version_label') or '—')}",
+            styles,
+        ))
+
+        proposal_meta = proposition.get("proposal") if isinstance(proposition.get("proposal"), dict) else {}
+        ia_lines = [
+            f"Coefficient proposé : {proposal_meta.get('coefficient') or '—'}",
+            f"Palier proposé : {proposal_meta.get('palier') or '—'}",
+            f"Catégorie proposée : {proposal_meta.get('categorie_professionnelle') or '—'}",
+            f"Points calculés : {proposition.get('total_points') or '—'}",
+        ]
+        if proposal_meta.get("resume_cotation"):
+            ia_lines.append(f"Synthèse de cotation : {proposal_meta.get('resume_cotation')}")
+        if proposition.get("justification_globale"):
+            ia_lines.append(f"Justification IA : {proposition.get('justification_globale')}")
+        if not proposition:
+            ia_lines = ["Aucune proposition IA enregistrée."]
+
+        story.append(make_section_card("Recommandation IA", ia_lines, styles))
+        story.append(make_spacer(3))
+
+        rh_lines = [
+            f"Coefficient retenu : {validation.get('coefficient') or '—'}",
+            f"Palier retenu : {validation.get('palier') or '—'}",
+            f"Catégorie retenue : {validation.get('categorie_professionnelle') or '—'}",
+        ]
+        if validation.get("justification"):
+            rh_lines.append(f"Justification RH : {validation.get('justification')}")
+        if validation.get("validated_by") or validation.get("validated_at"):
+            rh_lines.append(
+                f"Validation : {_pdf_first_non_empty(validation.get('validated_by'), '—')} · {_pdf_first_non_empty(validation.get('validated_at'), '—')}"
+            )
+        if not validation:
+            rh_lines = ["Aucune décision RH enregistrée."]
+
+        story.append(make_section_card("Décision RH", rh_lines, styles))
+
+        crit_rows = []
+        for it in proposition.get("criteres") or []:
+            crit_rows.append([
+                _pdf_first_non_empty(it.get("libelle"), it.get("code"), "Critère") or "Critère",
+                f"M{int(it.get('marche') or 0)}",
+                str(int(it.get("points") or 0)),
+                _pdf_first_non_empty(it.get("justification"), "—") or "—",
+            ])
+        for it in proposition.get("bonifications") or []:
+            crit_rows.append([
+                _pdf_first_non_empty(it.get("libelle"), it.get("code"), "Bonification") or "Bonification",
+                _pdf_first_non_empty(it.get("niveau_label"), f"M{int(it.get('marche') or 0)}") or "—",
+                str(int(it.get("points") or 0)),
+                _pdf_first_non_empty(it.get("justification"), "—") or "—",
+            ])
+        if crit_rows:
+            story.append(make_spacer(3))
+            story.append(_pdf_rich_table(
+                ["Critère / bonification", "Niveau", "Points", "Justification"],
+                crit_rows,
+                [54 * mm, 18 * mm, 18 * mm, 88 * mm],
+                styles,
+            ))
+
+    return story
 
 def _ref_1516_points_by_code(ref_json: dict, code: str, marche: int) -> tuple[int, str]:
     rows = (ref_json.get("criteres") or []) + (ref_json.get("bonifications") or [])
@@ -3171,6 +3441,58 @@ def studio_org_get_organigramme_pdf(id_owner: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/organigramme_pdf error: {e}")
+
+@router.get("/studio/org/postes/{id_owner}/{id_poste}/fiche_pdf")
+def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                owner = studio_fetch_owner(cur, oid) or {}
+
+                pid = (id_poste or "").strip()
+                if not pid:
+                    raise HTTPException(status_code=400, detail="id_poste manquant.")
+
+                poste = _fetch_poste_for_ccn(cur, oid, pid)
+                dossier = _fetch_poste_ccn_dossier(cur, pid)
+
+                owner_ctx = _fetch_owner_idcc(cur, oid)
+                idcc = (owner_ctx.get("idcc") or "").strip()
+                referential = _fetch_ccn_referential(cur, idcc) if idcc else None
+
+        owner_name = (
+            (owner.get("nom_owner") or "").strip()
+            or (owner.get("nom_ent") or "").strip()
+            or (owner.get("email") or "").strip()
+            or "Organisation"
+        )
+        pdf_bytes = build_pdf_document(
+            _build_poste_pdf_story(owner_name, poste, dossier, referential),
+            meta={
+                "title": f"Fiche de poste - {poste.get('intitule_poste') or poste.get('code_poste') or 'Poste'}",
+                "doc_label": "Fiche de poste complète",
+                "footer_left": "Novoskill Studio • Fiche de poste complète",
+            },
+        )
+        filename = f'fiche_poste_{(poste.get("code_poste") or pid or "poste").strip()}.pdf'
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/postes fiche_pdf error: {e}")
 
 @router.get("/studio/org/postes/{id_owner}/{id_poste}/ccn_context")
 def studio_org_poste_ccn_context(id_owner: str, id_poste: str, request: Request):
