@@ -2421,6 +2421,9 @@ class _PdfResponsabilitesParser(HTMLParser):
         else:
             self.outside.append(text)
 
+    def handle_data(self, data):
+        self._append_text(data)
+
     def handle_starttag(self, tag, attrs):
         t = (tag or "").lower()
 

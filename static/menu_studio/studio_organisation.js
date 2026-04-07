@@ -636,25 +636,103 @@
                 "Fiche de poste.pdf";
 
             const blob = await resp.blob();
+            const blobUrl = URL.createObjectURL(blob);
 
-            let sourceForUrl = blob;
-            try{
-                sourceForUrl = new File([blob], suggestedName, {
-                    type: blob.type || "application/pdf"
-                });
-            } catch(_){}
+            const escHtml = (v) => String(v || "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
 
-            const blobUrl = URL.createObjectURL(sourceForUrl);
+            const title = suggestedName || "Fiche de poste.pdf";
 
             if (viewer){
-                viewer.location = blobUrl;
+                viewer.document.open();
+                viewer.document.write(`<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>${escHtml(title)}</title>
+<style>
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #f5f6f8;
+}
+body {
+  display: flex;
+  flex-direction: column;
+}
+.bar {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 14px;
+  box-sizing: border-box;
+  border-bottom: 1px solid #d7dbe2;
+  background: #ffffff;
+  font: 14px/1.2 Arial, sans-serif;
+  color: #1f2937;
+}
+.bar__title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.bar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid #9db3e8;
+  background: #eef4ff;
+  color: #28407a;
+  text-decoration: none;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+.viewer {
+  flex: 1;
+  min-height: 0;
+}
+.viewer iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+</style>
+</head>
+<body>
+  <div class="bar">
+    <div class="bar__title">${escHtml(title)}</div>
+    <a class="bar__btn" href="${blobUrl}" download="${escHtml(title)}">Télécharger</a>
+  </div>
+  <div class="viewer">
+    <iframe src="${blobUrl}" title="${escHtml(title)}"></iframe>
+  </div>
+</body>
+</html>`);
+                viewer.document.close();
+
+                try{
+                    viewer.addEventListener("beforeunload", () => {
+                        try { URL.revokeObjectURL(blobUrl); } catch(_){}
+                    }, { once: true });
+                } catch(_){}
             } else {
                 window.open(blobUrl, "_blank");
+                setTimeout(() => {
+                    try { URL.revokeObjectURL(blobUrl); } catch(_){}
+                }, 60000);
             }
-
-            setTimeout(() => {
-                try { URL.revokeObjectURL(blobUrl); } catch(_){ }
-            }, 60000);
 
         } catch (e){
             if (viewer) viewer.close();
