@@ -1623,7 +1623,7 @@ def _upsert_poste_comp_assoc(cur, id_poste: str, id_competence: str, niveau_requ
     cur.execute(
         """
         INSERT INTO public.tbl_fiche_poste_competence
-          (id_poste, id_competence, niveau_requis, freq_usage, impact_resultat, dependance, poids_criticite, archive)
+          (id_poste, id_competence, niveau_requis, freq_usage, impact_resultat, dependance, poids_criticite, masque)
         VALUES
           (%s, %s, %s, %s, %s, %s, %s, FALSE)
         ON CONFLICT (id_poste, id_competence)
@@ -1633,7 +1633,7 @@ def _upsert_poste_comp_assoc(cur, id_poste: str, id_competence: str, niveau_requ
           impact_resultat = EXCLUDED.impact_resultat,
           dependance = EXCLUDED.dependance,
           poids_criticite = EXCLUDED.poids_criticite,
-          archive = FALSE
+          masque = FALSE
         """,
         (
             id_poste,
@@ -1888,7 +1888,7 @@ def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
         JOIN public.tbl_competence c
           ON c.id_comp = pc.id_competence
         WHERE pc.id_poste = %s
-          AND COALESCE(pc.archive, FALSE) = FALSE
+          AND COALESCE(pc.masque, FALSE) = FALSE
           AND COALESCE(c.masque, FALSE) = FALSE
         ORDER BY lower(COALESCE(c.intitule, ''))
         """,
