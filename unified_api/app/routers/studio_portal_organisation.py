@@ -2069,9 +2069,9 @@ def _upsert_poste_ccn_dossier(
     validation_json: Optional[dict],
     user_email: Optional[str],
 ) -> None:
-    proposition_payload = json.dumps(proposition_json or {}, ensure_ascii=False)
-    validation_payload = json.dumps(validation_json or {}, ensure_ascii=False)
-    snapshot_payload = json.dumps(snapshot_poste_json or {}, ensure_ascii=False)
+    proposition_payload = json.dumps(_json_safe_value(proposition_json or {}), ensure_ascii=False)
+    validation_payload = json.dumps(_json_safe_value(validation_json or {}), ensure_ascii=False)
+    snapshot_payload = json.dumps(_json_safe_value(snapshot_poste_json or {}), ensure_ascii=False)
 
     cur.execute(
         """
@@ -2250,6 +2250,17 @@ def _pdf_safe_filename_part(v: Any, max_len: int = 120) -> str:
     if len(s) > max_len:
         s = s[:max_len].rsplit(" ", 1)[0].strip()
     return s or "Poste"
+
+def _json_safe_value(v: Any):
+    if isinstance(v, datetime):
+        return v.isoformat()
+    if isinstance(v, py_date):
+        return v.isoformat()
+    if isinstance(v, dict):
+        return {k: _json_safe_value(val) for k, val in v.items()}
+    if isinstance(v, list):
+        return [_json_safe_value(x) for x in v]
+    return v
 
 def _resolve_owner_logo_path(owner: Optional[dict]) -> str:
     if not isinstance(owner, dict):
