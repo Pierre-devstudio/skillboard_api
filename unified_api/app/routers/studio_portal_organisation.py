@@ -2043,6 +2043,10 @@ def _upsert_poste_ccn_dossier(
     validation_json: Optional[dict],
     user_email: Optional[str],
 ) -> None:
+    proposition_payload = json.dumps(proposition_json or {}, ensure_ascii=False)
+    validation_payload = json.dumps(validation_json or {}, ensure_ascii=False)
+    snapshot_payload = json.dumps(snapshot_poste_json or {}, ensure_ascii=False)
+
     cur.execute(
         """
         INSERT INTO public.tbl_studio_poste_cotation_ccn
@@ -2065,7 +2069,7 @@ def _upsert_poste_ccn_dossier(
           )
         VALUES
           (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, NOW(), NOW()
+            %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s, %s, FALSE, NOW(), NOW()
           )
         ON CONFLICT (id_poste)
         DO UPDATE SET
@@ -2089,9 +2093,9 @@ def _upsert_poste_ccn_dossier(
             idcc,
             id_referentiel_ccn,
             statut_cotation,
-            proposition_json or {},
-            validation_json or {},
-            snapshot_poste_json or {},
+            proposition_payload,
+            validation_payload,
+            snapshot_payload,
             (user_email or "").strip() or None,
             (user_email or "").strip() or None,
         ),
