@@ -2402,13 +2402,22 @@ class _PdfResponsabilitesParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.list_stack = []
-        self.li_stack = []
+        self.current_block = None
+        self.current_item_parts = None
         self.outside = []
         self.blocks = []
 
+    def _clean_text(self, value: str) -> str:
+        txt = str(value or "")
+        txt = txt.replace("\r", "\n")
+        txt = re.sub(r"\s+", " ", txt.replace("\n", " "))
+        return txt.strip(" \t-•")
+
     def _append_text(self, text: str) -> None:
-        if self.li_stack:
-            self.li_stack[-1]["parts"].append(text)
+        if self.current_item_parts is not None:
+            self.current_item_parts.append(text)
+        elif self.current_block is not None:
+            self.current_block["title_parts"].append(text)
         else:
             self.outside.append(text)
 
@@ -2420,33 +2429,22 @@ class _PdfResponsabilitesParser(HTMLParser):
             return
 
         if t in ("ol", "ul"):
-            self.list_stack.append({
-                "tag": t,
-                "counter": 0,
-            })
+            self.list_stack.append(t)
             return
 
         if t == "li":
-            if self.list_stack:
-                top = self.list_stack[-1]
-                if top["tag"] == "ol":
-                    top["counter"] += 1
-                    marker = f"{top['counter']}."
-                else:
-                    marker = "•"
-                list_tag = top["tag"]
-                depth = len(self.list_stack)
-            else:
-                marker = "•"
-                list_tag = "ul"
-                depth = 1
+            # Bloc principal : <ol><li>...</li></ol>
+            if self.list_stack and self.list_stack[-1] == "ol" and len(self.list_stack) == 1:
+                self.current_block = {
+                    "title_parts": [],
+                    "items": [],
+                }
+                return
 
-            self.li_stack.append({
-                "depth": depth,
-                "tag": list_tag,
-                "marker": marker,
-                "parts": [],
-            })
+            # Détail : <ul><li>...</li></ul> à l'intérieur d'un bloc principal
+            if self.list_stack and self.list_stack[-1] == "ul" and len(self.list_stack) >= 2:
+                self.current_item_parts = []
+                return
 
     def handle_endtag(self, tag):
         t = (tag or "").lower()
@@ -2456,34 +2454,28 @@ class _PdfResponsabilitesParser(HTMLParser):
             return
 
         if t == "li":
-            if not self.li_stack:
+            # Fermeture d'une puce de détail
+            if self.current_item_parts is not None:
+                txt = self._clean_text("".join(self.current_item_parts))
+                if txt and self.current_block is not None:
+                    self.current_block["items"].append({
+                        "marker": "•",
+                        "text": txt,
+                    })
+                self.current_item_parts = None
                 return
 
-            node = self.li_stack.pop()
-            txt = "".join(node["parts"])
-            txt = re.sub(r"\s+", " ", txt.replace("\n", " ")).strip(" \t-•")
-            if not txt:
+            # Fermeture d'un bloc principal
+            if self.current_block is not None and self.list_stack and self.list_stack[-1] == "ol" and len(self.list_stack) == 1:
+                title = self._clean_text("".join(self.current_block.get("title_parts") or []))
+                items = self.current_block.get("items") or []
+                if title or items:
+                    self.blocks.append({
+                        "title": title,
+                        "items": items,
+                    })
+                self.current_block = None
                 return
-
-            depth = int(node.get("depth") or 1)
-            list_tag = node.get("tag") or "ul"
-            marker = node.get("marker") or "•"
-
-            if depth == 1 and list_tag == "ol":
-                self.blocks.append({
-                    "number": marker,
-                    "title": txt,
-                    "items": [],
-                })
-            elif depth == 1 and list_tag == "ul":
-                if not self.blocks:
-                    self.blocks.append({"number": "", "title": "", "items": []})
-                self.blocks[-1]["items"].append({"marker": "•", "text": txt})
-            else:
-                if not self.blocks:
-                    self.blocks.append({"number": "", "title": "", "items": []})
-                self.blocks[-1]["items"].append({"marker": "•", "text": txt})
-            return
 
         if t in ("ol", "ul"):
             if self.list_stack:
@@ -2503,7 +2495,6 @@ class _PdfResponsabilitesParser(HTMLParser):
                 if current and (current.get("title") or current.get("items")):
                     blocks.append(current)
                 current = {
-                    "number": f"{m.group(1)}.",
                     "title": m.group(2).strip(),
                     "items": [],
                 }
@@ -2512,12 +2503,12 @@ class _PdfResponsabilitesParser(HTMLParser):
             if re.match(r"^[•\-]\s+", line):
                 text = re.sub(r"^[•\-]\s+", "", line).strip()
                 if not current:
-                    current = {"number": "", "title": "", "items": []}
+                    current = {"title": "", "items": []}
                 current["items"].append({"marker": "•", "text": text})
                 continue
 
             if current is None:
-                current = {"number": "", "title": line, "items": []}
+                current = {"title": line, "items": []}
             else:
                 current["items"].append({"marker": "•", "text": line})
 
@@ -2529,15 +2520,14 @@ class _PdfResponsabilitesParser(HTMLParser):
     def get_blocks(self) -> List[dict]:
         cleaned = []
         for block in self.blocks:
-            title = re.sub(r"\s+", " ", str(block.get("title") or "")).strip()
+            title = self._clean_text(block.get("title") or "")
             items = []
             for it in block.get("items") or []:
-                txt = re.sub(r"\s+", " ", str(it.get("text") or "")).strip()
+                txt = self._clean_text(it.get("text") or "")
                 if txt:
                     items.append({"marker": "•", "text": txt})
             if title or items:
                 cleaned.append({
-                    "number": str(block.get("number") or "").strip(),
                     "title": title,
                     "items": items,
                 })
@@ -2604,7 +2594,7 @@ def _build_pdf_responsabilites_flowables(html: Optional[str], styles: dict) -> L
         parent=styles["body"],
         fontName="Helvetica",
         fontSize=8.8,
-        leading=9.5,
+        leading=9.4,
         leftIndent=14,
         firstLineIndent=-9,
         spaceAfter=0,
@@ -2629,8 +2619,7 @@ def _build_pdf_responsabilites_flowables(html: Optional[str], styles: dict) -> L
             return out
 
         for idx, line in enumerate(plain, start=1):
-            header = f"{idx}. {line}".strip()
-            out.append(Paragraph(_pdf_esc(header), block_title_style))
+            out.append(Paragraph(_pdf_esc(f"{idx}. {line}"), block_title_style))
             if idx < len(plain):
                 out.append(make_spacer(2.2))
         return out
@@ -2639,19 +2628,21 @@ def _build_pdf_responsabilites_flowables(html: Optional[str], styles: dict) -> L
         flowables = []
 
         title_txt = str(block.get("title") or "").strip()
-        if not title_txt and not (block.get("items") or []):
-            continue
-
-        header = f"{idx}. {title_txt}".strip()
-        if header and header != f"{idx}.":
-            flowables.append(Paragraph(_pdf_esc(header), block_title_style))
-
         items = block.get("items") or []
+
+        if title_txt:
+            flowables.append(
+                Paragraph(_pdf_esc(f"{idx}. {title_txt}"), block_title_style)
+            )
+
         if items:
             flowables.append(make_spacer(0.6))
             for item in items:
-                bullet_txt = f"• {str(item.get('text') or '').strip()}".strip()
-                flowables.append(Paragraph(_pdf_esc(bullet_txt), bullet_style))
+                txt = str(item.get("text") or "").strip()
+                if txt:
+                    flowables.append(
+                        Paragraph(_pdf_esc(f"• {txt}"), bullet_style)
+                    )
 
         if flowables:
             out.append(KeepTogether(flowables))
