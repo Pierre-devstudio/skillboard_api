@@ -1192,15 +1192,39 @@
     }
 
     function findPosteCcnPalierByCoefficient(coef){
+        const ref = getPosteCcnReferential() || {};
         const n = parseInt(coef ?? 0, 10);
         if (!Number.isFinite(n) || n <= 0) return null;
 
-        const items = Array.isArray(getPosteCcnReferential()?.paliers) ? getPosteCcnReferential().paliers : [];
-        for (const it of items){
-            const min = parseInt(it?.coef_min ?? 0, 10) || 0;
-            const max = (it?.coef_max === null || it?.coef_max === undefined) ? 999999 : (parseInt(it.coef_max, 10) || 999999);
-            if (n >= min && n <= max) return it;
+        const paliers = Array.isArray(ref?.paliers) ? ref.paliers : [];
+        if (paliers.length){
+            for (const it of paliers){
+                const min = parseInt(it?.coef_min ?? 0, 10) || 0;
+                const max = (it?.coef_max === null || it?.coef_max === undefined) ? 999999 : (parseInt(it.coef_max, 10) || 999999);
+                if (n >= min && n <= max){
+                    return {
+                        palier: parseInt(it?.palier ?? 0, 10) || 0,
+                        groupe: "",
+                        raw: it
+                    };
+                }
+            }
+            return null;
         }
+
+        const cmap = Array.isArray(ref?.classification_map) ? ref.classification_map : [];
+        for (const it of cmap){
+            const min = parseInt(it?.points_min ?? 0, 10) || 0;
+            const max = parseInt(it?.points_max ?? 0, 10) || 0;
+            if (n >= min && n <= max){
+                return {
+                    palier: parseInt(it?.classe ?? 0, 10) || 0,
+                    groupe: (it?.groupe || "").toString().trim().toUpperCase(),
+                    raw: it
+                };
+            }
+        }
+
         return null;
     }
 
@@ -1215,11 +1239,28 @@
     }
 
     function computePosteCcnCategory(coef, criteria){
+        const ref = getPosteCcnReferential() || {};
         const n = parseInt(coef ?? 0, 10);
         if (!Number.isFinite(n) || n <= 0) return "";
+
+        const cmap = Array.isArray(ref?.classification_map) ? ref.classification_map : [];
+        if (cmap.length){
+            const band = findPosteCcnPalierByCoefficient(n);
+            const grp = (band?.groupe || "").toString().trim().toUpperCase();
+            if (!grp) return "";
+            const cadreGroups = new Set((ref?.cadre_groups || ["F","G","H","I"]).map(x => String(x || "").trim().toUpperCase()));
+            return `Groupe ${grp} · ${cadreGroups.has(grp) ? "Cadre" : "Non-cadre"}`;
+        }
+
         if (n >= 350) return "Cadre";
         if (n >= 310 && n <= 349){
-            return countPosteCcnCadreConditions(criteria) >= 2 ? "Cadre" : "Agent de maîtrise / technicien";
+            const rows = Array.isArray(criteria) ? criteria : [];
+            const marche = (code) => parseInt((rows.find(x => String(x?.code || "").trim() === code)?.marche) ?? 0, 10) || 0;
+            let ok = 0;
+            if (marche("management") >= 3) ok += 1;
+            if (marche("ampleur_connaissances") >= 4) ok += 1;
+            if (marche("autonomie") >= 6) ok += 1;
+            return ok >= 2 ? "Cadre" : "Agent de maîtrise / technicien";
         }
         if (n >= 171) return "Agent de maîtrise / technicien";
         if (n >= 100) return "Employé";
@@ -1465,8 +1506,15 @@
         }
 
         const coef = parseInt((byId("posteCcnFinalCoefficient")?.value || "").trim(), 10);
-        if (!Number.isFinite(coef) || coef < 100){
-            portal.showAlert("error", "Le coefficient retenu doit être supérieur ou égal à 100.");
+        const ref = getPosteCcnReferential() || {};
+        const is3248 = Array.isArray(ref?.classification_map) && ref.classification_map.length > 0;
+        const minCoef = is3248 ? 6 : 100;
+
+        if (!Number.isFinite(coef) || coef < minCoef){
+            portal.showAlert("error", is3248
+                ? "La cotation retenue doit être supérieure ou égale à 6."
+                : "Le coefficient retenu doit être supérieur ou égal à 100."
+            );
             return;
         }
 

@@ -2299,6 +2299,155 @@ def _make_1516_user_prompt(poste: dict) -> str:
         + json.dumps(payload, ensure_ascii=False, indent=2)
     )
 
+def _find_3248_class_group(ref_json: dict, cotation: int) -> Optional[dict]:
+    n = int(cotation or 0)
+    for row in (ref_json.get("classification_map") or []):
+        pts_min = int(row.get("points_min") or 0)
+        pts_max = int(row.get("points_max") or 0)
+        if n >= pts_min and n <= pts_max:
+            return row
+    return None
+
+
+def _compute_3248_category(group_letter: str, ref_json: dict) -> str:
+    grp = (group_letter or "").strip().upper()
+    if not grp:
+        return ""
+    cadre_groups = {str(x).strip().upper() for x in (ref_json.get("cadre_groups") or ["F", "G", "H", "I"])}
+    statut = "Cadre" if grp in cadre_groups else "Non-cadre"
+    return f"Groupe {grp} · {statut}"
+
+
+def _build_3248_analysis(ref_json: dict, ai_data: dict) -> dict:
+    criteres = []
+    total_points = 0
+
+    for meta in (ref_json.get("criteres") or []):
+        code = (meta.get("code") or "").strip()
+        row = _ensure_json_dict(ai_data.get(code))
+        degre = int(row.get("degre") or row.get("marche") or 1)
+        degre = max(1, min(degre, 10))
+
+        criteres.append(
+            {
+                "code": code,
+                "libelle": meta.get("label"),
+                "marche": degre,
+                "points": degre,
+                "justification": _clean_text(row.get("justification")),
+            }
+        )
+        total_points += degre
+
+    band = _find_3248_class_group(ref_json, total_points) or {}
+    classe = int(band.get("classe") or 0)
+    groupe = (band.get("groupe") or "").strip().upper()
+    categorie = _compute_3248_category(groupe, ref_json)
+
+    return {
+        "proposal": {
+            "coefficient": total_points,
+            "palier": classe,
+            "categorie_professionnelle": categorie,
+            "resume_cotation": _clean_text(ai_data.get("resume_cotation")),
+            "groupe_emploi": groupe,
+            "classe_emploi": classe,
+        },
+        "total_points": total_points,
+        "criteres": criteres,
+        "bonifications": [],
+        "justification_globale": _clean_text(ai_data.get("justification_globale")),
+        "zones_de_vigilance": [
+            _clean_text(x) for x in (ai_data.get("zones_de_vigilance") or []) if _clean_text(x)
+        ][:6],
+    }
+
+
+def _make_3248_ai_schema() -> dict:
+    def crit_schema():
+        return {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["degre", "justification"],
+            "properties": {
+                "degre": {"type": "integer", "minimum": 1, "maximum": 10},
+                "justification": {"type": "string", "maxLength": 900},
+            },
+        }
+
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "complexite_activite",
+            "connaissances",
+            "autonomie",
+            "contribution",
+            "encadrement_cooperation",
+            "communication",
+            "resume_cotation",
+            "justification_globale",
+            "zones_de_vigilance",
+        ],
+        "properties": {
+            "complexite_activite": crit_schema(),
+            "connaissances": crit_schema(),
+            "autonomie": crit_schema(),
+            "contribution": crit_schema(),
+            "encadrement_cooperation": crit_schema(),
+            "communication": crit_schema(),
+            "resume_cotation": {"type": "string", "maxLength": 600},
+            "justification_globale": {"type": "string", "maxLength": 2500},
+            "zones_de_vigilance": {
+                "type": "array",
+                "items": {"type": "string", "maxLength": 300},
+                "maxItems": 6,
+            },
+        },
+    }
+
+
+def _make_3248_system_prompt(ref_json: dict) -> str:
+    return (
+        "Tu es un assistant RH spécialisé dans la cotation conventionnelle des postes. "
+        "Tu analyses uniquement la convention fournie par le référentiel JSON transmis. "
+        "Pour l'IDCC 3248 métallurgie, tu dois choisir un degré de 1 à 10 pour chacun des six critères classants. "
+        "Le nombre de points attribué à chaque critère est égal au degré retenu. "
+        "La somme des six degrés donne la cotation finale. "
+        "Cette cotation détermine ensuite une classe d'emploi et un groupe d'emploi. "
+        "Pour le critère 'connaissances', le niveau de diplôme éventuel n'est qu'un indice et ne crée aucun droit automatique ; tu raisonnes d'abord sur les connaissances réellement nécessaires à l'emploi. "
+        "Tu ne dois jamais inventer une convention, ni citer d'autres textes. "
+        "Tu rends uniquement un JSON strict conforme au schéma demandé. "
+        "Quand l'information est insuffisante, tu choisis le degré le plus plausible mais tu le signales dans la justification globale et dans les zones_de_vigilance. "
+        "Référentiel conventionnel à appliquer : "
+        + json.dumps(ref_json, ensure_ascii=False)
+    )
+
+
+def _make_3248_user_prompt(poste: dict) -> str:
+    payload = {
+        "code_poste": poste.get("code_poste"),
+        "intitule_poste": poste.get("intitule_poste"),
+        "service": poste.get("nom_service"),
+        "mission_principale": poste.get("mission_principale"),
+        "responsabilites_text": poste.get("responsabilites_text"),
+        "niveau_contrainte": poste.get("niveau_contrainte"),
+        "mobilite": poste.get("mobilite"),
+        "perspectives_evolution": poste.get("perspectives_evolution"),
+        "risque_physique": poste.get("risque_physique"),
+        "detail_contrainte": poste.get("detail_contrainte"),
+        "niveau_education_minimum": poste.get("niveau_education_minimum"),
+        "nsf_groupe_code": poste.get("nsf_groupe_code"),
+        "nsf_groupe_obligatoire": poste.get("nsf_groupe_obligatoire"),
+        "competences": poste.get("competences"),
+        "certifications": poste.get("certifications"),
+    }
+    return (
+        "Analyse ce poste selon la convention métallurgie IDCC 3248. "
+        "Attribue un degré de 1 à 10 à chacun des six critères classants. "
+        "Base-toi uniquement sur les informations ci-dessous.\n\n"
+        + json.dumps(payload, ensure_ascii=False, indent=2)
+    )
 # ------------------------------------------------------
 # Models
 # ------------------------------------------------------
@@ -3045,7 +3194,7 @@ def studio_org_poste_ccn_context(id_owner: str, id_poste: str, request: Request)
                 referential = _fetch_ccn_referential(cur, idcc) if idcc else None
                 ref_json = referential.get("referentiel_json") if referential else {}
 
-                supported = bool(referential and idcc == "1516")
+                supported = bool(referential and idcc in ("1516", "3248"))
                 support_message = ""
                 if not idcc:
                     support_message = "Aucune convention collective détectée sur l’entreprise."
@@ -3088,8 +3237,8 @@ def studio_org_poste_ccn_propose(id_owner: str, id_poste: str, request: Request)
 
                 owner_ctx = _fetch_owner_idcc(cur, oid)
                 idcc = (owner_ctx.get("idcc") or "").strip()
-                if idcc != "1516":
-                    raise HTTPException(status_code=400, detail=f"Convention non supportée pour ce POC (IDCC détecté : {idcc or 'aucun'}).")
+                if idcc not in ("1516", "3248"):
+                    raise HTTPException(status_code=400, detail=f"Convention non supportée pour l’assistant (IDCC détecté : {idcc or 'aucun'}).")
 
                 referential = _fetch_ccn_referential(cur, idcc)
                 if not referential:
@@ -3099,16 +3248,31 @@ def studio_org_poste_ccn_propose(id_owner: str, id_poste: str, request: Request)
                 poste = _fetch_poste_for_ccn(cur, oid, pid)
 
                 model = (os.getenv("OPENAI_MODEL_POSTE_CCN") or "").strip() or "gpt-5"
-                ai_data = _openai_responses_json(
-                    model=model,
-                    schema_name="poste_ccn_1516",
-                    schema=_make_1516_ai_schema(),
-                    system_prompt=_make_1516_system_prompt(ref_json),
-                    user_prompt=_make_1516_user_prompt(poste),
-                    use_web=False,
-                )
 
-                analysis = _build_1516_analysis(ref_json, ai_data)
+                if idcc == "1516":
+                    ai_data = _openai_responses_json(
+                        model=model,
+                        schema_name="poste_ccn_1516",
+                        schema=_make_1516_ai_schema(),
+                        system_prompt=_make_1516_system_prompt(ref_json),
+                        user_prompt=_make_1516_user_prompt(poste),
+                        use_web=False,
+                    )
+                    analysis = _build_1516_analysis(ref_json, ai_data)
+
+                elif idcc == "3248":
+                    ai_data = _openai_responses_json(
+                        model=model,
+                        schema_name="poste_ccn_3248",
+                        schema=_make_3248_ai_schema(),
+                        system_prompt=_make_3248_system_prompt(ref_json),
+                        user_prompt=_make_3248_user_prompt(poste),
+                        use_web=False,
+                    )
+                    analysis = _build_3248_analysis(ref_json, ai_data)
+
+                else:
+                    raise HTTPException(status_code=400, detail=f"Convention non supportée pour l’assistant (IDCC détecté : {idcc or 'aucun'}).")
 
                 _upsert_poste_ccn_dossier(
                     cur=cur,
@@ -3140,8 +3304,6 @@ def studio_org_poste_ccn_save(id_owner: str, id_poste: str, payload: SavePosteCc
     try:
         coefficient = int(payload.coefficient_retenu or 0)
         justification = _clean_text(payload.justification_retenue)
-        if coefficient < 100:
-            raise HTTPException(status_code=400, detail="Le coefficient retenu doit être >= 100.")
         if not justification:
             raise HTTPException(status_code=400, detail="La justification retenue est obligatoire.")
 
@@ -3157,8 +3319,8 @@ def studio_org_poste_ccn_save(id_owner: str, id_poste: str, payload: SavePosteCc
 
                 owner_ctx = _fetch_owner_idcc(cur, oid)
                 idcc = (owner_ctx.get("idcc") or "").strip()
-                if idcc != "1516":
-                    raise HTTPException(status_code=400, detail=f"Convention non supportée pour ce POC (IDCC détecté : {idcc or 'aucun'}).")
+                if idcc not in ("1516", "3248"):
+                    raise HTTPException(status_code=400, detail=f"Convention non supportée pour l’assistant (IDCC détecté : {idcc or 'aucun'}).")
 
                 referential = _fetch_ccn_referential(cur, idcc)
                 if not referential:
@@ -3170,18 +3332,46 @@ def studio_org_poste_ccn_save(id_owner: str, id_poste: str, payload: SavePosteCc
 
                 proposition = dossier.get("proposition_json") if dossier else {}
                 criteres = proposition.get("criteres") or []
-                palier_row = _find_1516_palier(ref_json, coefficient) or {}
-                palier = int(palier_row.get("palier") or 0)
-                categorie = _compute_1516_category(coefficient, criteres)
 
-                validation_json = {
-                    "coefficient": coefficient,
-                    "palier": palier,
-                    "categorie_professionnelle": categorie,
-                    "justification": justification,
-                    "validated_by": (u.get("email") or "").strip(),
-                    "validated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
-                }
+                if idcc == "1516":
+                    if coefficient < 100:
+                        raise HTTPException(status_code=400, detail="Le coefficient retenu doit être >= 100.")
+
+                    palier_row = _find_1516_palier(ref_json, coefficient) or {}
+                    palier = int(palier_row.get("palier") or 0)
+                    categorie = _compute_1516_category(coefficient, criteres)
+
+                    validation_json = {
+                        "coefficient": coefficient,
+                        "palier": palier,
+                        "categorie_professionnelle": categorie,
+                        "justification": justification,
+                        "validated_by": (u.get("email") or "").strip(),
+                        "validated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    }
+
+                elif idcc == "3248":
+                    if coefficient < 6:
+                        raise HTTPException(status_code=400, detail="La cotation retenue doit être >= 6.")
+
+                    band = _find_3248_class_group(ref_json, coefficient) or {}
+                    classe = int(band.get("classe") or 0)
+                    groupe = (band.get("groupe") or "").strip().upper()
+                    categorie = _compute_3248_category(groupe, ref_json)
+
+                    validation_json = {
+                        "coefficient": coefficient,
+                        "palier": classe,
+                        "categorie_professionnelle": categorie,
+                        "groupe_emploi": groupe,
+                        "classe_emploi": classe,
+                        "justification": justification,
+                        "validated_by": (u.get("email") or "").strip(),
+                        "validated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    }
+
+                else:
+                    raise HTTPException(status_code=400, detail=f"Convention non supportée pour l’assistant (IDCC détecté : {idcc or 'aucun'}).")
 
                 _upsert_poste_ccn_dossier(
                     cur=cur,
