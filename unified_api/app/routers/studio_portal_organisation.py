@@ -1776,6 +1776,486 @@ def _extract_poste_import_text(filename: Optional[str], raw: bytes) -> tuple[str
 
     return ext, text[:50000]
 
+def _ensure_json_dict(v: Any) -> dict:
+    if isinstance(v, dict):
+        return v
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return {}
+        try:
+            obj = json.loads(s)
+            return obj if isinstance(obj, dict) else {}
+        except Exception:
+            return {}
+    return {}
+
+
+def _fetch_owner_idcc(cur, oid: str) -> dict:
+    cur.execute(
+        """
+        SELECT id_ent, idcc
+        FROM public.tbl_entreprise
+        WHERE id_ent = %s
+        LIMIT 1
+        """,
+        (oid,),
+    )
+    row = cur.fetchone() or {}
+    return {
+        "id_ent": (row.get("id_ent") or "").strip(),
+        "idcc": (row.get("idcc") or "").strip(),
+    }
+
+
+def _fetch_ccn_referential(cur, idcc: str) -> Optional[dict]:
+    if not (idcc or "").strip():
+        return None
+
+    cur.execute(
+        """
+        SELECT
+          id_referentiel_ccn,
+          idcc,
+          convention_label,
+          version_label,
+          date_effet,
+          source_url,
+          referentiel_json
+        FROM public.tbl_studio_ccn_referentiel
+        WHERE idcc = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        ORDER BY COALESCE(date_effet, DATE '1900-01-01') DESC, date_maj DESC
+        LIMIT 1
+        """,
+        ((idcc or "").strip(),),
+    )
+    row = cur.fetchone() or None
+    if not row:
+        return None
+
+    row["referentiel_json"] = _ensure_json_dict(row.get("referentiel_json"))
+    return row
+
+
+def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
+    cur.execute(
+        """
+        SELECT
+          p.id_poste,
+          p.id_owner,
+          p.id_ent,
+          p.id_service,
+          COALESCE(NULLIF(BTRIM(p.codif_client), ''), NULLIF(BTRIM(p.codif_poste), ''), '—') AS code_poste,
+          COALESCE(p.intitule_poste, '') AS intitule_poste,
+          COALESCE(p.mission_principale, '') AS mission_principale,
+          COALESCE(p.responsabilites, '') AS responsabilites,
+          COALESCE(p.niveau_contrainte, '') AS niveau_contrainte,
+          COALESCE(p.mobilite, '') AS mobilite,
+          COALESCE(p.perspectives_evolution, '') AS perspectives_evolution,
+          COALESCE(p.risque_physique, '') AS risque_physique,
+          COALESCE(p.detail_contrainte, '') AS detail_contrainte,
+          COALESCE(p.niveau_education_minimum, '') AS niveau_education_minimum,
+          COALESCE(p.nsf_groupe_code, '') AS nsf_groupe_code,
+          COALESCE(p.nsf_groupe_obligatoire, FALSE) AS nsf_groupe_obligatoire,
+          COALESCE(s.nom_service, '') AS nom_service
+        FROM public.tbl_fiche_poste p
+        LEFT JOIN public.tbl_entreprise_organigramme s
+          ON s.id_service = p.id_service
+         AND s.id_ent = p.id_ent
+         AND COALESCE(s.archive, FALSE) = FALSE
+        WHERE p.id_owner = %s
+          AND p.id_poste = %s
+        LIMIT 1
+        """,
+        (oid, pid),
+    )
+    poste = cur.fetchone() or None
+    if not poste:
+        raise HTTPException(status_code=404, detail="Poste introuvable.")
+
+    cur.execute(
+        """
+        SELECT
+          c.id_comp AS id_competence,
+          c.code,
+          c.intitule,
+          COALESCE(pc.niveau_requis, '') AS niveau_requis,
+          COALESCE(pc.freq_usage, 0) AS freq_usage,
+          COALESCE(pc.impact_resultat, 0) AS impact_resultat,
+          COALESCE(pc.dependance, 0) AS dependance
+        FROM public.tbl_fiche_poste_competence pc
+        JOIN public.tbl_competence c
+          ON c.id_comp = pc.id_competence
+        WHERE pc.id_poste = %s
+          AND COALESCE(pc.archive, FALSE) = FALSE
+          AND COALESCE(c.masque, FALSE) = FALSE
+        ORDER BY lower(COALESCE(c.intitule, ''))
+        """,
+        (pid,),
+    )
+    comps = cur.fetchall() or []
+
+    cur.execute(
+        """
+        SELECT
+          cert.id_certification,
+          COALESCE(cert.nom_certification, '') AS nom_certification,
+          COALESCE(cert.categorie, '') AS categorie,
+          pc.validite_override
+        FROM public.tbl_fiche_poste_certification pc
+        JOIN public.tbl_certification cert
+          ON cert.id_certification = pc.id_certification
+        WHERE pc.id_poste = %s
+        ORDER BY lower(COALESCE(cert.nom_certification, ''))
+        """,
+        (pid,),
+    )
+    certs = cur.fetchall() or []
+
+    resp_text = _html_to_text(poste.get("responsabilites"))
+    return {
+        "id_poste": poste.get("id_poste"),
+        "id_owner": poste.get("id_owner"),
+        "id_ent": poste.get("id_ent"),
+        "id_service": poste.get("id_service"),
+        "nom_service": poste.get("nom_service"),
+        "code_poste": poste.get("code_poste"),
+        "intitule_poste": poste.get("intitule_poste"),
+        "mission_principale": poste.get("mission_principale"),
+        "responsabilites": poste.get("responsabilites"),
+        "responsabilites_text": resp_text,
+        "niveau_contrainte": poste.get("niveau_contrainte"),
+        "mobilite": poste.get("mobilite"),
+        "perspectives_evolution": poste.get("perspectives_evolution"),
+        "risque_physique": poste.get("risque_physique"),
+        "detail_contrainte": poste.get("detail_contrainte"),
+        "niveau_education_minimum": poste.get("niveau_education_minimum"),
+        "nsf_groupe_code": poste.get("nsf_groupe_code"),
+        "nsf_groupe_obligatoire": bool(poste.get("nsf_groupe_obligatoire")),
+        "competences": [
+            {
+                "id_competence": c.get("id_competence"),
+                "code": c.get("code"),
+                "intitule": c.get("intitule"),
+                "niveau_requis": c.get("niveau_requis"),
+                "freq_usage": int(c.get("freq_usage") or 0),
+                "impact_resultat": int(c.get("impact_resultat") or 0),
+                "dependance": int(c.get("dependance") or 0),
+            }
+            for c in comps
+        ],
+        "certifications": [
+            {
+                "id_certification": c.get("id_certification"),
+                "nom_certification": c.get("nom_certification"),
+                "categorie": c.get("categorie"),
+                "validite_override": c.get("validite_override"),
+            }
+            for c in certs
+        ],
+        "competences_count": len(comps),
+        "certifications_count": len(certs),
+    }
+
+
+def _fetch_poste_ccn_dossier(cur, pid: str) -> Optional[dict]:
+    cur.execute(
+        """
+        SELECT
+          id_cotation_ccn,
+          id_poste,
+          id_owner,
+          id_ent,
+          idcc,
+          id_referentiel_ccn,
+          statut_cotation,
+          proposition_json,
+          validation_json,
+          snapshot_poste_json,
+          date_creation,
+          date_maj
+        FROM public.tbl_studio_poste_cotation_ccn
+        WHERE id_poste = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (pid,),
+    )
+    row = cur.fetchone() or None
+    if not row:
+        return None
+
+    row["proposition_json"] = _ensure_json_dict(row.get("proposition_json"))
+    row["validation_json"] = _ensure_json_dict(row.get("validation_json"))
+    row["snapshot_poste_json"] = _ensure_json_dict(row.get("snapshot_poste_json"))
+    return row
+
+
+def _upsert_poste_ccn_dossier(
+    cur,
+    oid: str,
+    pid: str,
+    idcc: str,
+    id_referentiel_ccn: str,
+    snapshot_poste_json: dict,
+    statut_cotation: str,
+    proposition_json: Optional[dict],
+    validation_json: Optional[dict],
+    user_email: Optional[str],
+) -> None:
+    cur.execute(
+        """
+        INSERT INTO public.tbl_studio_poste_cotation_ccn
+          (
+            id_cotation_ccn,
+            id_poste,
+            id_owner,
+            id_ent,
+            idcc,
+            id_referentiel_ccn,
+            statut_cotation,
+            proposition_json,
+            validation_json,
+            snapshot_poste_json,
+            created_by,
+            updated_by,
+            archive,
+            date_creation,
+            date_maj
+          )
+        VALUES
+          (
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, NOW(), NOW()
+          )
+        ON CONFLICT (id_poste)
+        DO UPDATE SET
+          id_owner = EXCLUDED.id_owner,
+          id_ent = EXCLUDED.id_ent,
+          idcc = EXCLUDED.idcc,
+          id_referentiel_ccn = EXCLUDED.id_referentiel_ccn,
+          statut_cotation = EXCLUDED.statut_cotation,
+          proposition_json = EXCLUDED.proposition_json,
+          validation_json = EXCLUDED.validation_json,
+          snapshot_poste_json = EXCLUDED.snapshot_poste_json,
+          updated_by = EXCLUDED.updated_by,
+          archive = FALSE,
+          date_maj = NOW()
+        """,
+        (
+            str(uuid.uuid4()),
+            pid,
+            oid,
+            oid,
+            idcc,
+            id_referentiel_ccn,
+            statut_cotation,
+            proposition_json or {},
+            validation_json or {},
+            snapshot_poste_json or {},
+            (user_email or "").strip() or None,
+            (user_email or "").strip() or None,
+        ),
+    )
+
+
+def _ref_1516_points_by_code(ref_json: dict, code: str, marche: int) -> tuple[int, str]:
+    rows = (ref_json.get("criteres") or []) + (ref_json.get("bonifications") or [])
+    row = next((x for x in rows if (x.get("code") or "").strip() == code), None)
+    if not row:
+        return 0, ""
+
+    for lvl in (row.get("marches") or []):
+        if int(lvl.get("marche") or 0) == int(marche or 0):
+            return int(lvl.get("points") or 0), str(lvl.get("label") or "").strip()
+    return 0, ""
+
+
+def _find_1516_palier(ref_json: dict, coefficient: int) -> Optional[dict]:
+    n = int(coefficient or 0)
+    for row in (ref_json.get("paliers") or []):
+        coef_min = int(row.get("coef_min") or 0)
+        coef_max_raw = row.get("coef_max")
+        coef_max = 999999 if coef_max_raw in (None, "") else int(coef_max_raw or 0)
+        if n >= coef_min and n <= coef_max:
+            return row
+    return None
+
+
+def _compute_1516_category(coefficient: int, criteres: List[dict]) -> str:
+    n = int(coefficient or 0)
+    if n >= 350:
+        return "Cadre"
+    if 310 <= n <= 349:
+        cond = 0
+        for row in criteres or []:
+            code = (row.get("code") or "").strip()
+            marche = int(row.get("marche") or 0)
+            if code == "management" and marche >= 3:
+                cond += 1
+            elif code == "ampleur_connaissances" and marche >= 4:
+                cond += 1
+            elif code == "autonomie" and marche >= 6:
+                cond += 1
+        return "Cadre" if cond >= 2 else "Agent de maîtrise / technicien"
+    if n >= 171:
+        return "Agent de maîtrise / technicien"
+    if n >= 100:
+        return "Employé"
+    return ""
+
+
+def _build_1516_analysis(ref_json: dict, ai_data: dict) -> dict:
+    criteres = []
+    total_points = 0
+
+    for meta in (ref_json.get("criteres") or []):
+        code = (meta.get("code") or "").strip()
+        row = _ensure_json_dict(ai_data.get(code))
+        marche = int(row.get("marche") or 1)
+        max_step = max([int(x.get("marche") or 0) for x in (meta.get("marches") or [])] or [1])
+        marche = max(1, min(marche, max_step))
+        points, _label = _ref_1516_points_by_code(ref_json, code, marche)
+
+        criteres.append(
+            {
+                "code": code,
+                "libelle": meta.get("label"),
+                "marche": marche,
+                "points": points,
+                "justification": _clean_text(row.get("justification")),
+            }
+        )
+        total_points += points
+
+    bonifications = []
+    for meta in (ref_json.get("bonifications") or []):
+        code = (meta.get("code") or "").strip()
+        row = _ensure_json_dict(ai_data.get(code))
+        marche = int(row.get("marche") or 0)
+        max_step = max([int(x.get("marche") or 0) for x in (meta.get("marches") or [])] or [0])
+        marche = max(0, min(marche, max_step))
+        points, marche_label = _ref_1516_points_by_code(ref_json, code, marche)
+
+        bonifications.append(
+            {
+                "code": code,
+                "libelle": meta.get("label"),
+                "marche": marche,
+                "niveau_label": marche_label,
+                "points": points,
+                "justification": _clean_text(row.get("justification")),
+            }
+        )
+        total_points += points
+
+    palier_row = _find_1516_palier(ref_json, total_points) or {}
+    palier = int(palier_row.get("palier") or 0)
+    categorie = _compute_1516_category(total_points, criteres)
+
+    return {
+        "proposal": {
+            "coefficient": total_points,
+            "palier": palier,
+            "categorie_professionnelle": categorie,
+            "resume_cotation": _clean_text(ai_data.get("resume_cotation")),
+        },
+        "total_points": total_points,
+        "criteres": criteres,
+        "bonifications": bonifications,
+        "justification_globale": _clean_text(ai_data.get("justification_globale")),
+        "zones_de_vigilance": [
+            _clean_text(x) for x in (ai_data.get("zones_de_vigilance") or []) if _clean_text(x)
+        ][:6],
+    }
+
+
+def _make_1516_ai_schema() -> dict:
+    def crit_schema(max_marche: int, min_marche: int = 1):
+        return {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["marche", "justification"],
+            "properties": {
+                "marche": {"type": "integer", "minimum": min_marche, "maximum": max_marche},
+                "justification": {"type": "string", "maxLength": 900},
+            },
+        }
+
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "autonomie",
+            "management",
+            "relationnel",
+            "impact",
+            "ampleur_connaissances",
+            "complexite_savoir_faire",
+            "responsabilite_juridique",
+            "poste_interfilieres",
+            "resume_cotation",
+            "justification_globale",
+            "zones_de_vigilance",
+        ],
+        "properties": {
+            "autonomie": crit_schema(7),
+            "management": crit_schema(8),
+            "relationnel": crit_schema(7),
+            "impact": crit_schema(4),
+            "ampleur_connaissances": crit_schema(6),
+            "complexite_savoir_faire": crit_schema(4),
+            "responsabilite_juridique": crit_schema(2, 0),
+            "poste_interfilieres": crit_schema(2, 0),
+            "resume_cotation": {"type": "string", "maxLength": 600},
+            "justification_globale": {"type": "string", "maxLength": 2500},
+            "zones_de_vigilance": {
+                "type": "array",
+                "items": {"type": "string", "maxLength": 300},
+                "maxItems": 6,
+            },
+        },
+    }
+
+
+def _make_1516_system_prompt(ref_json: dict) -> str:
+    return (
+        "Tu es un assistant RH spécialisé dans la cotation conventionnelle des postes. "
+        "Tu analyses uniquement la convention fournie par le référentiel JSON transmis. "
+        "Tu dois choisir un niveau de marche pour chaque critère classant et chaque bonification. "
+        "Tu ne dois jamais inventer une convention, ni citer d'autres textes. "
+        "Tu rends uniquement un JSON strict conforme au schéma demandé. "
+        "Tu raisonnes de façon prudente et justifiée, en t'appuyant sur le contenu réel du poste. "
+        "Quand l'information est insuffisante, tu choisis le niveau le plus plausible mais tu le signales dans la justification globale et dans les zones_de_vigilance. "
+        "Référentiel conventionnel à appliquer : "
+        + json.dumps(ref_json, ensure_ascii=False)
+    )
+
+
+def _make_1516_user_prompt(poste: dict) -> str:
+    payload = {
+        "code_poste": poste.get("code_poste"),
+        "intitule_poste": poste.get("intitule_poste"),
+        "service": poste.get("nom_service"),
+        "mission_principale": poste.get("mission_principale"),
+        "responsabilites_text": poste.get("responsabilites_text"),
+        "niveau_contrainte": poste.get("niveau_contrainte"),
+        "mobilite": poste.get("mobilite"),
+        "perspectives_evolution": poste.get("perspectives_evolution"),
+        "risque_physique": poste.get("risque_physique"),
+        "detail_contrainte": poste.get("detail_contrainte"),
+        "niveau_education_minimum": poste.get("niveau_education_minimum"),
+        "nsf_groupe_code": poste.get("nsf_groupe_code"),
+        "nsf_groupe_obligatoire": poste.get("nsf_groupe_obligatoire"),
+        "competences": poste.get("competences"),
+        "certifications": poste.get("certifications"),
+    }
+    return (
+        "Analyse ce poste et propose une cotation conventionnelle justifiée. "
+        "Base-toi uniquement sur les informations ci-dessous.\n\n"
+        + json.dumps(payload, ensure_ascii=False, indent=2)
+    )
+
 # ------------------------------------------------------
 # Models
 # ------------------------------------------------------
@@ -1923,6 +2403,10 @@ class AiPosteCompetenceSearchPayload(BaseModel):
 class AiPosteCompetenceCreatePayload(BaseModel):
     id_poste: str
     draft: dict
+
+class SavePosteCcnDecisionPayload(BaseModel):
+    coefficient_retenu: int
+    justification_retenue: str
 
 @router.post("/studio/org/postes/{id_owner}/import_document")
 def studio_org_import_poste_document(id_owner: str, request: Request, file: UploadFile = File(...)):
@@ -2494,6 +2978,188 @@ def studio_org_get_organigramme_pdf(id_owner: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/organigramme_pdf error: {e}")
+
+@router.get("/studio/org/postes/{id_owner}/{id_poste}/ccn_context")
+def studio_org_poste_ccn_context(id_owner: str, id_poste: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+
+                pid = (id_poste or "").strip()
+                if not pid:
+                    raise HTTPException(status_code=400, detail="id_poste manquant.")
+
+                owner_ctx = _fetch_owner_idcc(cur, oid)
+                poste = _fetch_poste_for_ccn(cur, oid, pid)
+                dossier = _fetch_poste_ccn_dossier(cur, pid)
+
+                idcc = (owner_ctx.get("idcc") or "").strip()
+                referential = _fetch_ccn_referential(cur, idcc) if idcc else None
+                ref_json = referential.get("referentiel_json") if referential else {}
+
+                supported = bool(referential and idcc == "1516")
+                support_message = ""
+                if not idcc:
+                    support_message = "Aucune convention collective détectée sur l’entreprise."
+                elif not supported:
+                    support_message = f"Convention détectée (IDCC {idcc}) non encore supportée par l’assistant."
+
+        return {
+            "supported": supported,
+            "support_message": support_message,
+            "idcc": idcc,
+            "convention_label": referential.get("convention_label") if referential else "",
+            "version_label": referential.get("version_label") if referential else "",
+            "id_referentiel_ccn": referential.get("id_referentiel_ccn") if referential else "",
+            "referential": ref_json if supported else {},
+            "poste": poste,
+            "dossier": dossier or None,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/poste ccn context error: {e}")
+
+
+@router.post("/studio/org/postes/{id_owner}/{id_poste}/ccn_assistant/propose")
+def studio_org_poste_ccn_propose(id_owner: str, id_poste: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                pid = (id_poste or "").strip()
+                if not pid:
+                    raise HTTPException(status_code=400, detail="id_poste manquant.")
+
+                owner_ctx = _fetch_owner_idcc(cur, oid)
+                idcc = (owner_ctx.get("idcc") or "").strip()
+                if idcc != "1516":
+                    raise HTTPException(status_code=400, detail=f"Convention non supportée pour ce POC (IDCC détecté : {idcc or 'aucun'}).")
+
+                referential = _fetch_ccn_referential(cur, idcc)
+                if not referential:
+                    raise HTTPException(status_code=404, detail="Référentiel conventionnel introuvable.")
+
+                ref_json = referential.get("referentiel_json") or {}
+                poste = _fetch_poste_for_ccn(cur, oid, pid)
+
+                model = (os.getenv("OPENAI_MODEL_POSTE_CCN") or "").strip() or "gpt-5"
+                ai_data = _openai_responses_json(
+                    model=model,
+                    schema_name="poste_ccn_1516",
+                    schema=_make_1516_ai_schema(),
+                    system_prompt=_make_1516_system_prompt(ref_json),
+                    user_prompt=_make_1516_user_prompt(poste),
+                    use_web=False,
+                )
+
+                analysis = _build_1516_analysis(ref_json, ai_data)
+
+                _upsert_poste_ccn_dossier(
+                    cur=cur,
+                    oid=oid,
+                    pid=pid,
+                    idcc=idcc,
+                    id_referentiel_ccn=(referential.get("id_referentiel_ccn") or "").strip(),
+                    snapshot_poste_json=poste,
+                    statut_cotation="brouillon",
+                    proposition_json=analysis,
+                    validation_json={},
+                    user_email=(u.get("email") or "").strip(),
+                )
+                conn.commit()
+
+        return {"ok": True, "proposition": analysis}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/poste ccn propose error: {e}")
+
+
+@router.post("/studio/org/postes/{id_owner}/{id_poste}/ccn_assistant/save")
+def studio_org_poste_ccn_save(id_owner: str, id_poste: str, payload: SavePosteCcnDecisionPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        coefficient = int(payload.coefficient_retenu or 0)
+        justification = _clean_text(payload.justification_retenue)
+        if coefficient < 100:
+            raise HTTPException(status_code=400, detail="Le coefficient retenu doit être >= 100.")
+        if not justification:
+            raise HTTPException(status_code=400, detail="La justification retenue est obligatoire.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                pid = (id_poste or "").strip()
+                if not pid:
+                    raise HTTPException(status_code=400, detail="id_poste manquant.")
+
+                owner_ctx = _fetch_owner_idcc(cur, oid)
+                idcc = (owner_ctx.get("idcc") or "").strip()
+                if idcc != "1516":
+                    raise HTTPException(status_code=400, detail=f"Convention non supportée pour ce POC (IDCC détecté : {idcc or 'aucun'}).")
+
+                referential = _fetch_ccn_referential(cur, idcc)
+                if not referential:
+                    raise HTTPException(status_code=404, detail="Référentiel conventionnel introuvable.")
+
+                dossier = _fetch_poste_ccn_dossier(cur, pid)
+                poste = _fetch_poste_for_ccn(cur, oid, pid)
+                ref_json = referential.get("referentiel_json") or {}
+
+                proposition = dossier.get("proposition_json") if dossier else {}
+                criteres = proposition.get("criteres") or []
+                palier_row = _find_1516_palier(ref_json, coefficient) or {}
+                palier = int(palier_row.get("palier") or 0)
+                categorie = _compute_1516_category(coefficient, criteres)
+
+                validation_json = {
+                    "coefficient": coefficient,
+                    "palier": palier,
+                    "categorie_professionnelle": categorie,
+                    "justification": justification,
+                    "validated_by": (u.get("email") or "").strip(),
+                    "validated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                }
+
+                _upsert_poste_ccn_dossier(
+                    cur=cur,
+                    oid=oid,
+                    pid=pid,
+                    idcc=idcc,
+                    id_referentiel_ccn=(referential.get("id_referentiel_ccn") or "").strip(),
+                    snapshot_poste_json=poste,
+                    statut_cotation="valide",
+                    proposition_json=proposition or {},
+                    validation_json=validation_json,
+                    user_email=(u.get("email") or "").strip(),
+                )
+                conn.commit()
+
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/poste ccn save error: {e}")
 
 # ------------------------------------------------------
 # Endpoints: Services
