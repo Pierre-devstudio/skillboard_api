@@ -12,6 +12,7 @@ import tempfile
 from difflib import SequenceMatcher
 from datetime import date as py_date, datetime
 from io import BytesIO
+from html.parser import HTMLParser
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, A3, A2, A1, A0, landscape
@@ -19,7 +20,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
-from reportlab.platypus import Paragraph, Table, TableStyle, PageBreak
+from reportlab.platypus import Paragraph, Table, TableStyle, PageBreak, KeepTogether, Image
 
 from app.routers.skills_portal_common import get_conn
 from app.routers.skills_portal_pdf_common import (
@@ -1886,10 +1887,13 @@ def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
           p.id_owner,
           p.id_ent,
           p.id_service,
+          p.codif_poste,
+          p.codif_client,
           COALESCE(NULLIF(BTRIM(p.codif_client), ''), NULLIF(BTRIM(p.codif_poste), ''), '—') AS code_poste,
           COALESCE(p.intitule_poste, '') AS intitule_poste,
           COALESCE(p.mission_principale, '') AS mission_principale,
           COALESCE(p.responsabilites, '') AS responsabilites,
+          COALESCE(p.isresponsable, FALSE) AS isresponsable,
           COALESCE(p.niveau_contrainte, '') AS niveau_contrainte,
           COALESCE(p.mobilite, '') AS mobilite,
           COALESCE(p.perspectives_evolution, '') AS perspectives_evolution,
@@ -1898,12 +1902,16 @@ def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
           COALESCE(p.niveau_education_minimum, '') AS niveau_education_minimum,
           COALESCE(p.nsf_groupe_code, '') AS nsf_groupe_code,
           COALESCE(p.nsf_groupe_obligatoire, FALSE) AS nsf_groupe_obligatoire,
+          COALESCE(ng.titre, '') AS nsf_groupe_titre,
           COALESCE(s.nom_service, '') AS nom_service
         FROM public.tbl_fiche_poste p
         LEFT JOIN public.tbl_entreprise_organigramme s
           ON s.id_service = p.id_service
          AND s.id_ent = p.id_ent
          AND COALESCE(s.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_nsf_groupe ng
+          ON ng.code = p.nsf_groupe_code
+         AND COALESCE(ng.masque, FALSE) = FALSE
         WHERE p.id_owner = %s
           AND p.id_poste = %s
         LIMIT 1
@@ -1944,8 +1952,8 @@ def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
           COALESCE(cert.nom_certification, '') AS nom_certification,
           COALESCE(cert.description, '') AS description,
           COALESCE(cert.categorie, '') AS categorie,
-          COALESCE(cert.duree_validite, NULL) AS duree_validite,
-          COALESCE(cert.delai_renouvellement, NULL) AS delai_renouvellement,
+          cert.duree_validite,
+          cert.delai_renouvellement,
           COALESCE(pc.niveau_exigence, '') AS niveau_exigence,
           pc.validite_override,
           COALESCE(pc.commentaire, '') AS commentaire
@@ -1966,11 +1974,14 @@ def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
         "id_ent": poste.get("id_ent"),
         "id_service": poste.get("id_service"),
         "nom_service": poste.get("nom_service"),
+        "codif_poste": poste.get("codif_poste"),
+        "codif_client": poste.get("codif_client"),
         "code_poste": poste.get("code_poste"),
         "intitule_poste": poste.get("intitule_poste"),
         "mission_principale": poste.get("mission_principale"),
         "responsabilites": poste.get("responsabilites"),
         "responsabilites_text": resp_text,
+        "isresponsable": bool(poste.get("isresponsable")),
         "niveau_contrainte": poste.get("niveau_contrainte"),
         "mobilite": poste.get("mobilite"),
         "perspectives_evolution": poste.get("perspectives_evolution"),
@@ -1978,6 +1989,7 @@ def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
         "detail_contrainte": poste.get("detail_contrainte"),
         "niveau_education_minimum": poste.get("niveau_education_minimum"),
         "nsf_groupe_code": poste.get("nsf_groupe_code"),
+        "nsf_groupe_titre": poste.get("nsf_groupe_titre"),
         "nsf_groupe_obligatoire": bool(poste.get("nsf_groupe_obligatoire")),
         "competences": [
             {
@@ -2121,6 +2133,10 @@ def _pdf_first_non_empty(*values) -> str:
     return ""
 
 
+def _pdf_bool_oui_non(v: Any) -> str:
+    return "OUI" if bool(v) else "non"
+
+
 def _pdf_split_lines(v: Optional[str]) -> List[str]:
     txt = _html_to_text(v)
     if not txt:
@@ -2128,18 +2144,26 @@ def _pdf_split_lines(v: Optional[str]) -> List[str]:
 
     out = []
     for raw in txt.replace("\r", "\n").split("\n"):
-        line = re.sub(r"\s+", " ", str(raw or "")).strip(" -•\t")
+        line = re.sub(r"\s+", " ", str(raw or "")).strip(" \t")
         if line:
             out.append(line)
     return out
 
 
-def _pdf_months_label(v: Any) -> str:
-    try:
-        n = int(v)
-    except Exception:
-        return "—"
-    return f"{n} mois" if n > 0 else "—"
+def _pdf_niveau_education_label(v: Optional[str]) -> str:
+    s = str(v or "").strip()
+    mapping = {
+        "0": "Aucun diplôme",
+        "1": "Niveau 1",
+        "2": "Niveau 2",
+        "3": "Niveau 3 : CAP, BEP",
+        "4": "Niveau 4 : Bac",
+        "5": "Niveau 5 : Bac+2 (BTS, DUT)",
+        "6": "Niveau 6 : Bac+3 (Licence, BUT)",
+        "7": "Niveau 7 : Bac+5 (Master, Ingénieur, Grandes écoles)",
+        "8": "Niveau 8 : Bac+8 (Doctorat)",
+    }
+    return mapping.get(s, s or "—")
 
 
 def _pdf_niveau_label(v: Optional[str]) -> str:
@@ -2162,7 +2186,450 @@ def _pdf_exigence_label(v: Optional[str]) -> str:
     return (v or "").strip() or "—"
 
 
-def _pdf_rich_table(headers: List[str], rows: List[List[str]], col_widths: List[float], styles: dict) -> Table:
+def _pdf_months_label(v: Any) -> str:
+    try:
+        n = int(v)
+    except Exception:
+        return "—"
+    return f"{n} mois" if n > 0 else "—"
+
+
+def _resolve_owner_logo_path(owner: Optional[dict]) -> str:
+    if not isinstance(owner, dict):
+        return ""
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    candidate_keys = [
+        "logo_pdf_path",
+        "logo_path",
+        "logo_local_path",
+        "logo_file_path",
+    ]
+
+    for key in candidate_keys:
+        raw = str(owner.get(key) or "").strip()
+        if not raw:
+            continue
+
+        candidates = [raw]
+        if not os.path.isabs(raw):
+            candidates.append(os.path.abspath(os.path.join(base_dir, "..", raw.lstrip("/"))))
+            candidates.append(os.path.abspath(os.path.join(base_dir, raw.lstrip("/"))))
+
+        for path in candidates:
+            if os.path.isfile(path):
+                return path
+
+    return ""
+
+
+def _build_owner_logo_flowable(owner: Optional[dict], styles: dict):
+    logo_path = _resolve_owner_logo_path(owner)
+    if logo_path:
+        try:
+            img = Image(logo_path)
+            img._restrictSize(62 * mm, 22 * mm)
+            img.hAlign = "CENTER"
+            return img
+        except Exception:
+            pass
+
+    placeholder_style = ParagraphStyle(
+        "NsPdfOwnerLogoPlaceholder",
+        parent=styles["small"],
+        alignment=1,
+        fontName="Helvetica-Bold",
+        fontSize=8,
+        leading=10,
+        textColor=PDF_MUTED,
+    )
+    slot = Table(
+        [[Paragraph("Emplacement logo entreprise", placeholder_style)]],
+        colWidths=[62 * mm],
+        rowHeights=[18 * mm],
+    )
+    slot.hAlign = "CENTER"
+    slot.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.7, PDF_LINE),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+    ]))
+    return slot
+
+
+def _build_pdf_centered_titles(main_title: str, secondary_title: str, styles: dict) -> List:
+    title_style = ParagraphStyle(
+        "NsPdfCenteredMainTitle",
+        parent=styles["title"],
+        alignment=1,
+        fontSize=16,
+        leading=18,
+        spaceAfter=0,
+    )
+    secondary_style = ParagraphStyle(
+        "NsPdfCenteredSecondaryTitle",
+        parent=styles["section"],
+        alignment=1,
+        fontSize=13,
+        leading=15,
+        spaceAfter=0,
+        spaceBefore=0,
+    )
+
+    out = [Paragraph(_pdf_esc(main_title or "Fiche de poste"), title_style)]
+    if str(secondary_title or "").strip():
+        out.append(make_spacer(1))
+        out.append(Paragraph(_pdf_esc(secondary_title), secondary_style))
+    return out
+
+
+def _build_pdf_field_cell(label: str, value: str, styles: dict):
+    label_style = ParagraphStyle(
+        "NsPdfFieldLabel",
+        parent=styles["small"],
+        fontName="Helvetica-Bold",
+        fontSize=7.5,
+        leading=9,
+        textColor=PDF_MUTED,
+        spaceAfter=1,
+    )
+    value_style = ParagraphStyle(
+        "NsPdfFieldValue",
+        parent=styles["body"],
+        fontName="Helvetica-Bold",
+        fontSize=9.2,
+        leading=11,
+        textColor=PDF_TEXT,
+        spaceAfter=0,
+    )
+    return [
+        Paragraph(_pdf_esc(label), label_style),
+        Paragraph(_pdf_esc(value or "—"), value_style),
+    ]
+
+
+def _build_pdf_reference_block(poste: dict, styles: dict, content_width: float):
+    ref_code = _pdf_first_non_empty(poste.get("code_poste"), poste.get("codif_client"), poste.get("codif_poste")) or "—"
+    service_label = _pdf_first_non_empty(poste.get("nom_service"), "Non lié") or "Non lié"
+    manager_label = _pdf_bool_oui_non(poste.get("isresponsable"))
+
+    rows = [
+        [
+            _build_pdf_field_cell("Référence du poste", ref_code, styles),
+            _build_pdf_field_cell("Service de rattachement", service_label, styles),
+        ],
+        [
+            _build_pdf_field_cell("Poste de management", manager_label, styles),
+            "",
+        ],
+    ]
+
+    table = Table(rows, colWidths=[content_width / 2.0, content_width / 2.0])
+    table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 14),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    return table
+
+
+class _PdfResponsabilitesParser(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.list_stack = []
+        self.li_stack = []
+        self.outside = []
+        self.blocks = []
+
+    def _append_text(self, text: str) -> None:
+        if self.li_stack:
+            self.li_stack[-1]["parts"].append(text)
+        else:
+            self.outside.append(text)
+
+    def handle_starttag(self, tag, attrs):
+        t = (tag or "").lower()
+
+        if t == "br":
+            self._append_text("\n")
+            return
+
+        if t in ("ol", "ul"):
+            self.list_stack.append({
+                "tag": t,
+                "counter": 0,
+            })
+            return
+
+        if t == "li":
+            if self.list_stack:
+                top = self.list_stack[-1]
+                if top["tag"] == "ol":
+                    top["counter"] += 1
+                    marker = f"{top['counter']}."
+                else:
+                    marker = "•"
+                list_tag = top["tag"]
+                depth = len(self.list_stack)
+            else:
+                marker = "•"
+                list_tag = "ul"
+                depth = 1
+
+            self.li_stack.append({
+                "depth": depth,
+                "tag": list_tag,
+                "marker": marker,
+                "parts": [],
+            })
+
+    def handle_endtag(self, tag):
+        t = (tag or "").lower()
+
+        if t in ("p", "div"):
+            self._append_text("\n")
+            return
+
+        if t == "li":
+            if not self.li_stack:
+                return
+
+            node = self.li_stack.pop()
+            txt = "".join(node["parts"])
+            txt = re.sub(r"\s+", " ", txt.replace("\n", " ")).strip(" \t-•")
+            if not txt:
+                return
+
+            depth = int(node.get("depth") or 1)
+            list_tag = node.get("tag") or "ul"
+            marker = node.get("marker") or "•"
+
+            if depth == 1 and list_tag == "ol":
+                self.blocks.append({
+                    "number": marker,
+                    "title": txt,
+                    "items": [],
+                })
+            elif depth == 1 and list_tag == "ul":
+                if not self.blocks:
+                    self.blocks.append({"number": "", "title": "", "items": []})
+                self.blocks[-1]["items"].append({"marker": "•", "text": txt})
+            else:
+                if not self.blocks:
+                    self.blocks.append({"number": "", "title": "", "items": []})
+                self.blocks[-1]["items"].append({"marker": "•", "text": txt})
+            return
+
+        if t in ("ol", "ul"):
+            if self.list_stack:
+                self.list_stack.pop()
+
+    def _fallback_blocks_from_text(self, lines: List[str]) -> List[dict]:
+        blocks = []
+        current = None
+
+        for raw in lines:
+            line = re.sub(r"\s+", " ", str(raw or "")).strip()
+            if not line:
+                continue
+
+            m = re.match(r"^(\d+)[\.\)]\s+(.*)$", line)
+            if m:
+                if current and (current.get("title") or current.get("items")):
+                    blocks.append(current)
+                current = {
+                    "number": f"{m.group(1)}.",
+                    "title": m.group(2).strip(),
+                    "items": [],
+                }
+                continue
+
+            if re.match(r"^[•\-]\s+", line):
+                text = re.sub(r"^[•\-]\s+", "", line).strip()
+                if not current:
+                    current = {"number": "", "title": "", "items": []}
+                current["items"].append({"marker": "•", "text": text})
+                continue
+
+            if current is None:
+                current = {"number": "", "title": line, "items": []}
+            else:
+                current["items"].append({"marker": "•", "text": line})
+
+        if current and (current.get("title") or current.get("items")):
+            blocks.append(current)
+
+        return blocks
+
+    def get_blocks(self) -> List[dict]:
+        cleaned = []
+        for block in self.blocks:
+            title = re.sub(r"\s+", " ", str(block.get("title") or "")).strip()
+            items = []
+            for it in block.get("items") or []:
+                txt = re.sub(r"\s+", " ", str(it.get("text") or "")).strip()
+                if txt:
+                    items.append({"marker": "•", "text": txt})
+            if title or items:
+                cleaned.append({
+                    "number": str(block.get("number") or "").strip(),
+                    "title": title,
+                    "items": items,
+                })
+
+        if cleaned:
+            return cleaned
+
+        lines = _pdf_split_lines("".join(self.outside))
+        return self._fallback_blocks_from_text(lines)
+
+
+def _build_pdf_plain_block(title: str, lines: List[str], styles: dict) -> List:
+    section_style = ParagraphStyle(
+        "NsPdfPlainSectionTitle",
+        parent=styles["section"],
+        fontName="Helvetica-Bold",
+        fontSize=11,
+        leading=13,
+        spaceAfter=3,
+        spaceBefore=0,
+        textColor=PDF_TEXT,
+    )
+    body_style = ParagraphStyle(
+        "NsPdfPlainBody",
+        parent=styles["body"],
+        fontSize=9.2,
+        leading=12,
+        spaceAfter=1.4,
+        textColor=PDF_TEXT,
+    )
+
+    out = [Paragraph(_pdf_esc(title), section_style)]
+    if not lines:
+        out.append(Paragraph("—", body_style))
+        return out
+
+    for line in lines:
+        out.append(Paragraph(_pdf_esc(line), body_style))
+    return out
+
+
+def _build_pdf_responsabilites_flowables(html: Optional[str], styles: dict) -> List:
+    section_style = ParagraphStyle(
+        "NsPdfRespSectionTitle",
+        parent=styles["section"],
+        fontName="Helvetica-Bold",
+        fontSize=11,
+        leading=13,
+        spaceAfter=4,
+        spaceBefore=0,
+        textColor=PDF_TEXT,
+    )
+    block_title_style = ParagraphStyle(
+        "NsPdfRespBlockTitle",
+        parent=styles["body"],
+        fontName="Helvetica-Bold",
+        fontSize=9.2,
+        leading=10.8,
+        spaceAfter=0,
+        textColor=PDF_TEXT,
+    )
+    bullet_style = ParagraphStyle(
+        "NsPdfRespBullet",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=8.8,
+        leading=10.2,
+        leftIndent=13,
+        firstLineIndent=-9,
+        spaceAfter=0,
+        textColor=PDF_TEXT,
+    )
+
+    parser = _PdfResponsabilitesParser()
+    try:
+        parser.feed(str(html or ""))
+        parser.close()
+    except Exception:
+        pass
+
+    blocks = parser.get_blocks()
+
+    out: List = [Paragraph("Responsabilités", section_style)]
+    if not blocks:
+        plain = _pdf_split_lines(html)
+        if not plain:
+            out.append(Paragraph("—", bullet_style))
+            return out
+        for line in plain:
+            out.append(Paragraph(_pdf_esc(line), bullet_style))
+        return out
+
+    for idx, block in enumerate(blocks):
+        flowables = []
+        header = " ".join(
+            [str(block.get("number") or "").strip(), str(block.get("title") or "").strip()]
+        ).strip()
+        if header:
+            flowables.append(Paragraph(_pdf_esc(header), block_title_style))
+            if block.get("items"):
+                flowables.append(make_spacer(0.5))
+
+        items = block.get("items") or []
+        if items:
+            for item in items:
+                bullet_txt = f"• {item.get('text') or ''}".strip()
+                flowables.append(Paragraph(_pdf_esc(bullet_txt), bullet_style))
+
+        if flowables:
+            out.append(KeepTogether(flowables))
+
+        if idx < len(blocks) - 1:
+            out.append(make_spacer(2))
+
+    return out
+
+
+def _build_pdf_property_grid(entries: List[tuple], styles: dict, content_width: float, last_full: Optional[tuple] = None):
+    rows = []
+    for i in range(0, len(entries), 2):
+        left = entries[i]
+        right = entries[i + 1] if (i + 1) < len(entries) else None
+        rows.append([
+            _build_pdf_field_cell(left[0], left[1], styles),
+            _build_pdf_field_cell(right[0], right[1], styles) if right else "",
+        ])
+
+    if last_full:
+        rows.append([
+            _build_pdf_field_cell(last_full[0], last_full[1], styles),
+            "",
+        ])
+
+    table = Table(rows, colWidths=[content_width / 2.0, content_width / 2.0])
+    ts = [
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]
+    if last_full:
+        last_idx = len(rows) - 1
+        ts.append(("SPAN", (0, last_idx), (1, last_idx)))
+
+    table.setStyle(TableStyle(ts))
+    return table
+
+
+def _build_pdf_rich_table(headers: List[str], rows: List[List[str]], col_widths: List[float], styles: dict) -> Table:
     header_style = ParagraphStyle(
         "NsPdfTableHead",
         parent=styles["small"],
@@ -2176,7 +2643,7 @@ def _pdf_rich_table(headers: List[str], rows: List[List[str]], col_widths: List[
         parent=styles["body"],
         fontName="Helvetica",
         fontSize=8.5,
-        leading=10.5,
+        leading=10.4,
         textColor=PDF_TEXT,
     )
 
@@ -2199,63 +2666,92 @@ def _pdf_rich_table(headers: List[str], rows: List[List[str]], col_widths: List[
     return table
 
 
-def _build_poste_pdf_story(owner_name: str, poste: dict, dossier: Optional[dict], referential: Optional[dict]) -> List:
+def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], referential: Optional[dict]) -> List:
     styles = build_pdf_styles()
     story: List = []
 
-    code_poste = _pdf_first_non_empty(poste.get("code_poste"), poste.get("id_poste")) or "—"
+    owner_name = (
+        (owner.get("nom_owner") or "").strip()
+        or (owner.get("nom_ent") or "").strip()
+        or (owner.get("email") or "").strip()
+        or "Organisation"
+    )
+
+    content_width = A4[0] - PDF_MARGIN_LEFT - PDF_MARGIN_RIGHT
     service_label = _pdf_first_non_empty(poste.get("nom_service"), "Non lié") or "Non lié"
 
-    story.extend(make_title_block(
-        _pdf_first_non_empty(poste.get("intitule_poste"), "Fiche de poste"),
-        f"{_pdf_esc(owner_name or 'Organisation')} · Service : {_pdf_esc(service_label)}",
+    story.extend(_build_pdf_centered_titles(
+        "Fiche de poste",
+        poste.get("intitule_poste") or "",
         styles,
     ))
-    story.append(make_meta_table([
-        {"label": "Entreprise", "value": owner_name or "Organisation"},
-        {"label": "Référence poste", "value": code_poste},
-        {"label": "Service", "value": service_label},
-        {"label": "Type", "value": "Fiche de poste complète"},
-    ], styles))
+    story.append(make_spacer(2))
+    story.append(_build_owner_logo_flowable(owner, styles))
     story.append(make_spacer(3))
+    story.append(_build_pdf_reference_block(poste, styles, content_width))
+    story.append(make_spacer(1.2))
 
     mission_lines = _pdf_split_lines(poste.get("mission_principale")) or ["—"]
-    story.append(make_section_card("Mission principale", mission_lines, styles))
-    story.append(make_spacer(3))
+    story.extend(_build_pdf_plain_block("Mission principale", mission_lines, styles))
+    story.append(make_spacer(2))
 
-    resp_lines = _pdf_split_lines(poste.get("responsabilites")) or ["—"]
-    story.append(make_section_card("Responsabilités", resp_lines, styles))
-    story.append(make_spacer(3))
+    story.extend(_build_pdf_responsabilites_flowables(poste.get("responsabilites"), styles))
+    story.append(make_spacer(2))
 
-    contraintes_lines = []
-    if poste.get("niveau_education_minimum"):
-        contraintes_lines.append(f"Niveau d’étude minimum : {poste.get('niveau_education_minimum')}")
-    if poste.get("nsf_groupe_code"):
-        nsf = poste.get("nsf_groupe_code")
-        suffix = " (obligatoire)" if poste.get("nsf_groupe_obligatoire") else ""
-        contraintes_lines.append(f"Domaine NSF : {nsf}{suffix}")
+    nsf_label = _pdf_first_non_empty(poste.get("nsf_groupe_titre"), poste.get("nsf_groupe_code"))
+    if nsf_label and poste.get("nsf_groupe_obligatoire"):
+        nsf_label = f"{nsf_label} (obligatoire)"
+
+    contraintes_entries = []
+    contraintes_entries.append(("Niveau d’étude minimum", _pdf_niveau_education_label(poste.get("niveau_education_minimum"))))
+    contraintes_entries.append(("Service de rattachement", service_label))
+    if nsf_label:
+        contraintes_entries.append(("Domaine du diplôme (NSF)", nsf_label))
     if poste.get("mobilite"):
-        contraintes_lines.append(f"Mobilité : {poste.get('mobilite')}")
+        contraintes_entries.append(("Mobilité", str(poste.get("mobilite"))))
     if poste.get("risque_physique"):
-        contraintes_lines.append(f"Risques physiques : {poste.get('risque_physique')}")
+        contraintes_entries.append(("Risques physiques", str(poste.get("risque_physique"))))
     if poste.get("perspectives_evolution"):
-        contraintes_lines.append(f"Perspectives d’évolution : {poste.get('perspectives_evolution')}")
+        contraintes_entries.append(("Perspectives d’évolution", str(poste.get("perspectives_evolution"))))
     if poste.get("niveau_contrainte"):
-        contraintes_lines.append(f"Niveau de contraintes : {poste.get('niveau_contrainte')}")
-    detail_contrainte = _html_to_text(poste.get("detail_contrainte"))
-    if detail_contrainte:
-        contraintes_lines.append(f"Détail des contraintes : {detail_contrainte}")
-    if not contraintes_lines:
-        contraintes_lines = ["—"]
+        contraintes_entries.append(("Niveau de contraintes", str(poste.get("niveau_contrainte"))))
 
-    story.append(make_section_card("Contraintes et spécificités", contraintes_lines, styles))
+    detail_contrainte = _html_to_text(poste.get("detail_contrainte"))
+    detail_tuple = ("Détail des contraintes", detail_contrainte) if detail_contrainte else None
+
+    contraintes_title = ParagraphStyle(
+        "NsPdfContraintesTitle",
+        parent=styles["section"],
+        fontName="Helvetica-Bold",
+        fontSize=11,
+        leading=13,
+        spaceAfter=4,
+        spaceBefore=0,
+        textColor=PDF_TEXT,
+    )
+    story.append(Paragraph("Contraintes et spécificités", contraintes_title))
+    story.append(_build_pdf_property_grid(contraintes_entries, styles, content_width, detail_tuple))
 
     story.append(PageBreak())
-    story.extend(make_title_block(
-        "Compétences requises",
-        f"{_pdf_esc(poste.get('intitule_poste') or 'Poste')} · {len(poste.get('competences') or [])} compétence(s)",
+    story.extend(_build_pdf_centered_titles(
+        "Compétences et certifications requises",
+        "",
         styles,
     ))
+    story.append(make_spacer(2))
+
+    comp_section_title = ParagraphStyle(
+        "NsPdfCompSectionTitle",
+        parent=styles["section"],
+        fontName="Helvetica-Bold",
+        fontSize=11,
+        leading=13,
+        spaceAfter=4,
+        spaceBefore=0,
+        textColor=PDF_TEXT,
+    )
+    story.append(Paragraph("Compétences", comp_section_title))
+
     comp_rows = []
     for it in poste.get("competences") or []:
         comp_rows.append([
@@ -2266,19 +2762,17 @@ def _build_poste_pdf_story(owner_name: str, poste: dict, dossier: Optional[dict]
         ])
     if not comp_rows:
         comp_rows.append(["—", "Aucune compétence rattachée.", "—", "—"])
-    story.append(_pdf_rich_table(
+
+    story.append(_build_pdf_rich_table(
         ["Code", "Compétence", "Niveau requis", "Criticité"],
         comp_rows,
         [24 * mm, 94 * mm, 30 * mm, 30 * mm],
         styles,
     ))
 
-    story.append(PageBreak())
-    story.extend(make_title_block(
-        "Certifications / habilitations requises",
-        f"{_pdf_esc(poste.get('intitule_poste') or 'Poste')} · {len(poste.get('certifications') or [])} certification(s)",
-        styles,
-    ))
+    story.append(make_spacer(3))
+    story.append(Paragraph("Certifications", comp_section_title))
+
     cert_rows = []
     for it in poste.get("certifications") or []:
         cert_rows.append([
@@ -2289,7 +2783,8 @@ def _build_poste_pdf_story(owner_name: str, poste: dict, dossier: Optional[dict]
         ])
     if not cert_rows:
         cert_rows.append(["—", "Aucune certification rattachée.", "—", "—"])
-    story.append(_pdf_rich_table(
+
+    story.append(_build_pdf_rich_table(
         ["Catégorie", "Certification", "Validité", "Exigence"],
         cert_rows,
         [40 * mm, 92 * mm, 22 * mm, 24 * mm],
@@ -2302,16 +2797,12 @@ def _build_poste_pdf_story(owner_name: str, poste: dict, dossier: Optional[dict]
 
     if has_ccn:
         story.append(PageBreak())
-        convention_label = _pdf_first_non_empty(
-            (referential or {}).get("convention_label"),
-            f"IDCC {(dossier or {}).get('idcc') or ''}".strip(),
-            "Convention collective",
-        )
-        story.extend(make_title_block(
+        story.extend(_build_pdf_centered_titles(
             "Cotation conventionnelle",
-            f"{_pdf_esc(convention_label)} · Version : {_pdf_esc((referential or {}).get('version_label') or '—')}",
+            "",
             styles,
         ))
+        story.append(make_spacer(2))
 
         proposal_meta = proposition.get("proposal") if isinstance(proposition.get("proposal"), dict) else {}
         ia_lines = [
@@ -2327,8 +2818,8 @@ def _build_poste_pdf_story(owner_name: str, poste: dict, dossier: Optional[dict]
         if not proposition:
             ia_lines = ["Aucune proposition IA enregistrée."]
 
-        story.append(make_section_card("Recommandation IA", ia_lines, styles))
-        story.append(make_spacer(3))
+        story.extend(_build_pdf_plain_block("Recommandation IA", ia_lines, styles))
+        story.append(make_spacer(2))
 
         rh_lines = [
             f"Coefficient retenu : {validation.get('coefficient') or '—'}",
@@ -2344,7 +2835,7 @@ def _build_poste_pdf_story(owner_name: str, poste: dict, dossier: Optional[dict]
         if not validation:
             rh_lines = ["Aucune décision RH enregistrée."]
 
-        story.append(make_section_card("Décision RH", rh_lines, styles))
+        story.extend(_build_pdf_plain_block("Décision RH", rh_lines, styles))
 
         crit_rows = []
         for it in proposition.get("criteres") or []:
@@ -2361,9 +2852,10 @@ def _build_poste_pdf_story(owner_name: str, poste: dict, dossier: Optional[dict]
                 str(int(it.get("points") or 0)),
                 _pdf_first_non_empty(it.get("justification"), "—") or "—",
             ])
+
         if crit_rows:
             story.append(make_spacer(3))
-            story.append(_pdf_rich_table(
+            story.append(_build_pdf_rich_table(
                 ["Critère / bonification", "Niveau", "Points", "Justification"],
                 crit_rows,
                 [54 * mm, 18 * mm, 18 * mm, 88 * mm],
@@ -3464,14 +3956,8 @@ def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Reques
                 idcc = (owner_ctx.get("idcc") or "").strip()
                 referential = _fetch_ccn_referential(cur, idcc) if idcc else None
 
-        owner_name = (
-            (owner.get("nom_owner") or "").strip()
-            or (owner.get("nom_ent") or "").strip()
-            or (owner.get("email") or "").strip()
-            or "Organisation"
-        )
         pdf_bytes = build_pdf_document(
-            _build_poste_pdf_story(owner_name, poste, dossier, referential),
+            _build_poste_pdf_story(owner, poste, dossier, referential),
             meta={
                 "title": f"Fiche de poste - {poste.get('intitule_poste') or poste.get('code_poste') or 'Poste'}",
                 "doc_label": "Fiche de poste complète",
