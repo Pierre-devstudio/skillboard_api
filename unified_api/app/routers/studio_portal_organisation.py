@@ -1894,6 +1894,7 @@ def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
           COALESCE(p.mission_principale, '') AS mission_principale,
           COALESCE(p.responsabilites, '') AS responsabilites,
           COALESCE(p.isresponsable, FALSE) AS isresponsable,
+          p.date_maj AS poste_date_maj,
           COALESCE(p.niveau_contrainte, '') AS niveau_contrainte,
           COALESCE(p.mobilite, '') AS mobilite,
           COALESCE(p.perspectives_evolution, '') AS perspectives_evolution,
@@ -1982,6 +1983,7 @@ def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
         "responsabilites": poste.get("responsabilites"),
         "responsabilites_text": resp_text,
         "isresponsable": bool(poste.get("isresponsable")),
+        "poste_date_maj": poste.get("poste_date_maj"),
         "niveau_contrainte": poste.get("niveau_contrainte"),
         "mobilite": poste.get("mobilite"),
         "perspectives_evolution": poste.get("perspectives_evolution"),
@@ -2134,7 +2136,7 @@ def _pdf_first_non_empty(*values) -> str:
 
 
 def _pdf_bool_oui_non(v: Any) -> str:
-    return "OUI" if bool(v) else "non"
+    return "OUI" if bool(v) else "NON"
 
 
 def _pdf_split_lines(v: Optional[str]) -> List[str]:
@@ -2193,6 +2195,37 @@ def _pdf_months_label(v: Any) -> str:
         return "—"
     return f"{n} mois" if n > 0 else "—"
 
+def _pdf_format_footer_date(v: Any) -> str:
+    if v is None:
+        return ""
+
+    if isinstance(v, datetime):
+        return v.strftime("%d/%m/%Y")
+
+    s = str(v).strip()
+    if not s:
+        return ""
+
+    m = re.match(r"^(\d{4})-(\d{2})-(\d{2})", s)
+    if m:
+        return f"{m.group(3)}/{m.group(2)}/{m.group(1)}"
+
+    try:
+        d = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        return d.strftime("%d/%m/%Y")
+    except Exception:
+        return s
+
+
+def _pdf_safe_filename_part(v: Any, max_len: int = 120) -> str:
+    s = str(v or "").strip()
+    s = re.sub(r'[\\/:*?"<>|]+', " ", s)
+    s = re.sub(r"\s+", " ", s).strip(" ._-")
+    if not s:
+        return "Poste"
+    if len(s) > max_len:
+        s = s[:max_len].rsplit(" ", 1)[0].strip()
+    return s or "Poste"
 
 def _resolve_owner_logo_path(owner: Optional[dict]) -> str:
     if not isinstance(owner, dict):
@@ -2330,10 +2363,11 @@ def _build_pdf_reference_block(poste: dict, styles: dict, content_width: float):
     ]
 
     table = Table(rows, colWidths=[content_width / 2.0, content_width / 2.0])
+    table.hAlign = "LEFT"
     table.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 14),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
         ("TOPPADDING", (0, 0), (-1, -1), 0),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
     ]))
@@ -2528,7 +2562,7 @@ def _build_pdf_responsabilites_flowables(html: Optional[str], styles: dict) -> L
         fontName="Helvetica-Bold",
         fontSize=11,
         leading=13,
-        spaceAfter=4,
+        spaceAfter=5,
         spaceBefore=0,
         textColor=PDF_TEXT,
     )
@@ -2536,8 +2570,8 @@ def _build_pdf_responsabilites_flowables(html: Optional[str], styles: dict) -> L
         "NsPdfRespBlockTitle",
         parent=styles["body"],
         fontName="Helvetica-Bold",
-        fontSize=9.2,
-        leading=10.8,
+        fontSize=9.3,
+        leading=10.9,
         spaceAfter=0,
         textColor=PDF_TEXT,
     )
@@ -2546,8 +2580,8 @@ def _build_pdf_responsabilites_flowables(html: Optional[str], styles: dict) -> L
         parent=styles["body"],
         fontName="Helvetica",
         fontSize=8.8,
-        leading=10.2,
-        leftIndent=13,
+        leading=9.5,
+        leftIndent=14,
         firstLineIndent=-9,
         spaceAfter=0,
         textColor=PDF_TEXT,
@@ -2563,63 +2597,87 @@ def _build_pdf_responsabilites_flowables(html: Optional[str], styles: dict) -> L
     blocks = parser.get_blocks()
 
     out: List = [Paragraph("Responsabilités", section_style)]
+
     if not blocks:
         plain = _pdf_split_lines(html)
         if not plain:
             out.append(Paragraph("—", bullet_style))
             return out
-        for line in plain:
-            out.append(Paragraph(_pdf_esc(line), bullet_style))
+
+        for idx, line in enumerate(plain, start=1):
+            header = f"{idx}. {line}".strip()
+            out.append(Paragraph(_pdf_esc(header), block_title_style))
+            if idx < len(plain):
+                out.append(make_spacer(2.2))
         return out
 
-    for idx, block in enumerate(blocks):
+    for idx, block in enumerate(blocks, start=1):
         flowables = []
-        header = " ".join(
-            [str(block.get("number") or "").strip(), str(block.get("title") or "").strip()]
-        ).strip()
-        if header:
+
+        title_txt = str(block.get("title") or "").strip()
+        if not title_txt and not (block.get("items") or []):
+            continue
+
+        header = f"{idx}. {title_txt}".strip()
+        if header and header != f"{idx}.":
             flowables.append(Paragraph(_pdf_esc(header), block_title_style))
-            if block.get("items"):
-                flowables.append(make_spacer(0.5))
 
         items = block.get("items") or []
         if items:
+            flowables.append(make_spacer(0.6))
             for item in items:
-                bullet_txt = f"• {item.get('text') or ''}".strip()
+                bullet_txt = f"• {str(item.get('text') or '').strip()}".strip()
                 flowables.append(Paragraph(_pdf_esc(bullet_txt), bullet_style))
 
         if flowables:
             out.append(KeepTogether(flowables))
 
-        if idx < len(blocks) - 1:
-            out.append(make_spacer(2))
+        if idx < len(blocks):
+            out.append(make_spacer(2.4))
 
     return out
 
 
 def _build_pdf_property_grid(entries: List[tuple], styles: dict, content_width: float, last_full: Optional[tuple] = None):
+    cell_style = ParagraphStyle(
+        "NsPdfPropCell",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=8.8,
+        leading=10.8,
+        spaceAfter=0,
+        textColor=PDF_TEXT,
+    )
+
+    def _cell(entry: tuple):
+        label = _pdf_esc(entry[0] or "")
+        value = _pdf_esc(entry[1] or "—")
+        return Paragraph(f"<b>{label} :</b> {value}", cell_style)
+
     rows = []
     for i in range(0, len(entries), 2):
         left = entries[i]
         right = entries[i + 1] if (i + 1) < len(entries) else None
         rows.append([
-            _build_pdf_field_cell(left[0], left[1], styles),
-            _build_pdf_field_cell(right[0], right[1], styles) if right else "",
+            _cell(left),
+            _cell(right) if right else "",
         ])
 
     if last_full:
         rows.append([
-            _build_pdf_field_cell(last_full[0], last_full[1], styles),
+            _cell(last_full),
             "",
         ])
 
     table = Table(rows, colWidths=[content_width / 2.0, content_width / 2.0])
+    table.hAlign = "LEFT"
+
     ts = [
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
         ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
     ]
     if last_full:
         last_idx = len(rows) - 1
@@ -2652,6 +2710,7 @@ def _build_pdf_rich_table(headers: List[str], rows: List[List[str]], col_widths:
         data.append([Paragraph(_pdf_esc(c or "—"), cell_style) for c in row])
 
     table = Table(data, colWidths=col_widths, repeatRows=1)
+    table.hAlign = "LEFT"
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f8fafc")),
         ("TEXTCOLOR", (0, 0), (-1, -1), PDF_TEXT),
@@ -2670,15 +2729,7 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
     styles = build_pdf_styles()
     story: List = []
 
-    owner_name = (
-        (owner.get("nom_owner") or "").strip()
-        or (owner.get("nom_ent") or "").strip()
-        or (owner.get("email") or "").strip()
-        or "Organisation"
-    )
-
     content_width = A4[0] - PDF_MARGIN_LEFT - PDF_MARGIN_RIGHT
-    service_label = _pdf_first_non_empty(poste.get("nom_service"), "Non lié") or "Non lié"
 
     story.extend(_build_pdf_centered_titles(
         "Fiche de poste",
@@ -2689,14 +2740,14 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
     story.append(_build_owner_logo_flowable(owner, styles))
     story.append(make_spacer(3))
     story.append(_build_pdf_reference_block(poste, styles, content_width))
-    story.append(make_spacer(1.2))
+    story.append(make_spacer(1.8))
 
     mission_lines = _pdf_split_lines(poste.get("mission_principale")) or ["—"]
     story.extend(_build_pdf_plain_block("Mission principale", mission_lines, styles))
-    story.append(make_spacer(2))
+    story.append(make_spacer(3.4))
 
     story.extend(_build_pdf_responsabilites_flowables(poste.get("responsabilites"), styles))
-    story.append(make_spacer(2))
+    story.append(make_spacer(4))
 
     nsf_label = _pdf_first_non_empty(poste.get("nsf_groupe_titre"), poste.get("nsf_groupe_code"))
     if nsf_label and poste.get("nsf_groupe_obligatoire"):
@@ -2704,7 +2755,6 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
 
     contraintes_entries = []
     contraintes_entries.append(("Niveau d’étude minimum", _pdf_niveau_education_label(poste.get("niveau_education_minimum"))))
-    contraintes_entries.append(("Service de rattachement", service_label))
     if nsf_label:
         contraintes_entries.append(("Domaine du diplôme (NSF)", nsf_label))
     if poste.get("mobilite"):
@@ -2725,7 +2775,7 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
         fontName="Helvetica-Bold",
         fontSize=11,
         leading=13,
-        spaceAfter=4,
+        spaceAfter=5,
         spaceBefore=0,
         textColor=PDF_TEXT,
     )
@@ -2750,6 +2800,7 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
         spaceBefore=0,
         textColor=PDF_TEXT,
     )
+
     story.append(Paragraph("Compétences", comp_section_title))
 
     comp_rows = []
@@ -2770,8 +2821,8 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
         styles,
     ))
 
-    story.append(make_spacer(3))
-    story.append(Paragraph("Certifications", comp_section_title))
+    story.append(make_spacer(5))
+    story.append(Paragraph("Certifications/Habilitations", comp_section_title))
 
     cert_rows = []
     for it in poste.get("certifications") or []:
@@ -3956,15 +4007,25 @@ def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Reques
                 idcc = (owner_ctx.get("idcc") or "").strip()
                 referential = _fetch_ccn_referential(cur, idcc) if idcc else None
 
+        maj_label = _pdf_format_footer_date(poste.get("poste_date_maj"))
+        footer_parts = []
+        if maj_label:
+            footer_parts.append(f"Dernière mise à jour du poste : {maj_label}")
+        footer_parts.append("Novoskill Studio")
+        footer_parts.append("Fiche de poste complète")
+
+        ref_part = _pdf_safe_filename_part(poste.get("code_poste") or "Poste", 60)
+        title_part = _pdf_safe_filename_part(poste.get("intitule_poste") or "Poste", 120)
+        filename = f"Fiche de poste {ref_part} - {title_part}.pdf"
+
         pdf_bytes = build_pdf_document(
             _build_poste_pdf_story(owner, poste, dossier, referential),
             meta={
                 "title": f"Fiche de poste - {poste.get('intitule_poste') or poste.get('code_poste') or 'Poste'}",
                 "doc_label": "Fiche de poste complète",
-                "footer_left": "Novoskill Studio • Fiche de poste complète",
+                "footer_left": " • ".join(footer_parts),
             },
         )
-        filename = f'fiche_poste_{(poste.get("code_poste") or pid or "poste").strip()}.pdf'
 
         return Response(
             content=pdf_bytes,

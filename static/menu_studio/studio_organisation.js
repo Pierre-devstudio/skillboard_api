@@ -522,6 +522,32 @@
         return "";
     }
 
+    function getFilenameFromContentDisposition(value){
+        const raw = String(value || "").trim();
+        if (!raw) return "";
+
+        const star = raw.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+        if (star && star[1]){
+            try{
+                return decodeURIComponent(star[1]).replace(/^["']|["']$/g, "").trim();
+            } catch(_){
+                return String(star[1]).replace(/^["']|["']$/g, "").trim();
+            }
+        }
+
+        const quoted = raw.match(/filename\s*=\s*"([^"]+)"/i);
+        if (quoted && quoted[1]){
+            return String(quoted[1]).trim();
+        }
+
+        const plain = raw.match(/filename\s*=\s*([^;]+)/i);
+        if (plain && plain[1]){
+            return String(plain[1]).replace(/^["']|["']$/g, "").trim();
+        }
+
+        return "";
+    }
+
     async function openOrgChartPdf(portal){
         const ownerId = getOwnerId();
         if (!ownerId) throw new Error("Owner manquant (?id=...).");
@@ -605,8 +631,20 @@
                 throw new Error(msg);
             }
 
+            const suggestedName =
+                getFilenameFromContentDisposition(resp.headers.get("Content-Disposition")) ||
+                "Fiche de poste.pdf";
+
             const blob = await resp.blob();
-            const blobUrl = URL.createObjectURL(blob);
+
+            let sourceForUrl = blob;
+            try{
+                sourceForUrl = new File([blob], suggestedName, {
+                    type: blob.type || "application/pdf"
+                });
+            } catch(_){}
+
+            const blobUrl = URL.createObjectURL(sourceForUrl);
 
             if (viewer){
                 viewer.location = blobUrl;
