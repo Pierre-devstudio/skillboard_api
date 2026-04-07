@@ -2195,6 +2195,30 @@ def _pdf_months_label(v: Any) -> str:
         return "—"
     return f"{n} mois" if n > 0 else "—"
 
+def _pdf_latin1_safe(v: Any) -> str:
+    s = str(v or "").strip()
+    if not s:
+        return ""
+
+    repl = {
+        "\u2013": "-",   # en dash
+        "\u2014": "-",   # em dash
+        "\u2022": "-",   # bullet
+        "\u00a0": " ",   # nbsp
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u201c": '"',
+        "\u201d": '"',
+    }
+    for src, dst in repl.items():
+        s = s.replace(src, dst)
+
+    try:
+        s.encode("latin-1")
+        return s
+    except Exception:
+        return s.encode("latin-1", errors="ignore").decode("latin-1").strip()
+
 def _pdf_format_footer_date(v: Any) -> str:
     if v is None:
         return ""
@@ -4007,23 +4031,34 @@ def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Reques
                 idcc = (owner_ctx.get("idcc") or "").strip()
                 referential = _fetch_ccn_referential(cur, idcc) if idcc else None
 
-        maj_label = _pdf_format_footer_date(poste.get("poste_date_maj"))
+        ref_poste = _pdf_first_non_empty(
+            poste.get("code_poste"),
+            poste.get("codif_client"),
+            poste.get("codif_poste"),
+            pid,
+        ) or "Poste"
+
+        intitule_poste = _pdf_first_non_empty(
+            poste.get("intitule_poste"),
+            "Poste"
+        ) or "Poste"
+
+        maj_label = _pdf_format_footer_date(poste.get("poste_date_maj")) if "poste_date_maj" in poste else ""
         footer_parts = []
         if maj_label:
             footer_parts.append(f"Dernière mise à jour du poste : {maj_label}")
         footer_parts.append("Novoskill Studio")
         footer_parts.append("Fiche de poste complète")
 
-        ref_part = _pdf_safe_filename_part(poste.get("code_poste") or "Poste", 60)
-        title_part = _pdf_safe_filename_part(poste.get("intitule_poste") or "Poste", 120)
-        filename = f"Fiche de poste {ref_part} - {title_part}.pdf"
+        filename = f"Fiche de poste {ref_poste} - {intitule_poste}.pdf"
+        filename = _pdf_latin1_safe(filename)
 
         pdf_bytes = build_pdf_document(
             _build_poste_pdf_story(owner, poste, dossier, referential),
             meta={
-                "title": f"Fiche de poste - {poste.get('intitule_poste') or poste.get('code_poste') or 'Poste'}",
-                "doc_label": "Fiche de poste complète",
-                "footer_left": " • ".join(footer_parts),
+                "title": _pdf_latin1_safe(f"Fiche de poste - {intitule_poste}"),
+                "doc_label": _pdf_latin1_safe("Fiche de poste complète"),
+                "footer_left": _pdf_latin1_safe(" • ".join(footer_parts) if footer_parts else "Novoskill Studio"),
             },
         )
 
