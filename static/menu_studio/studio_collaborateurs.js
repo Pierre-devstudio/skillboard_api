@@ -16,6 +16,7 @@
   let _modalMode = "create";
   let _editingId = null;
   let _tabLoaded = { skills: false, certs: false, history: false, rights: false };
+  const COLLAB_LIST_SHOW_PDF_BTN = false;
 
   function byId(id){ return document.getElementById(id); }
 
@@ -350,6 +351,32 @@
 
     empty.style.display = "none";
 
+    const iconPdf = `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 2v6h6"/>
+        <path d="M8.5 15.5h7"/>
+        <path d="M8.5 18.5h5"/>
+      </svg>
+    `;
+
+    const iconEdit = `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20h9"/>
+        <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+      </svg>
+    `;
+
+    const iconTrash = `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6l-1 14H6L5 6"/>
+        <path d="M10 11v6"/>
+        <path d="M14 11v6"/>
+        <path d="M9 6V4h6v2"/>
+      </svg>
+    `;
+
     host.innerHTML = _items.map(it => {
       const fullName = `${it.prenom || ""} ${it.nom || ""}`.trim() || "Collaborateur sans nom";
       const email = it.email || "—";
@@ -358,7 +385,10 @@
 
       return `
         <div class="sb-row-card ${it.archive ? "is-archived" : ""}">
-          <div class="sb-row-left" style="display:grid; grid-template-columns:minmax(180px,220px) minmax(260px,1.35fr) minmax(180px,1fr) minmax(120px,.85fr); gap:18px; align-items:center; flex:1 1 auto; min-width:0;">
+          <div
+            class="sb-row-left"
+            style="display:grid; grid-template-columns:minmax(180px,220px) minmax(260px,1.35fr) minmax(220px,1fr); gap:18px; align-items:center; flex:1 1 auto; min-width:0;"
+          >
             <div class="sb-row-title">${esc(fullName)}</div>
 
             <div style="font-size:13px; font-weight:400; color:#374151; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
@@ -368,15 +398,52 @@
             <div style="font-size:13px; font-weight:400; color:#374151; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
               ${esc(posteActuel)}
             </div>
-
-            <div>
-              ${renderConsoleIcons(accessSummary)}
-            </div>
           </div>
 
-          <div class="sb-row-right" style="flex:0 0 auto;">
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="edit" data-id="${esc(it.id_collaborateur)}">Modifier</button>
-            ${it.archive ? "" : `<button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="archive" data-id="${esc(it.id_collaborateur)}">Archiver</button>`}
+          <div class="sb-row-right" style="flex:0 0 auto; gap:14px;">
+            <div style="display:flex; align-items:center; justify-content:flex-end; min-width:120px;">
+              ${renderConsoleIcons(accessSummary)}
+            </div>
+
+            <div class="sb-icon-actions">
+              <button
+                type="button"
+                class="sb-icon-btn sb-icon-btn--doc"
+                title="PDF"
+                aria-label="PDF"
+                style="display:${COLLAB_LIST_SHOW_PDF_BTN ? "inline-flex" : "none"};"
+              >
+                ${iconPdf}
+              </button>
+
+              <button
+                type="button"
+                class="sb-icon-btn"
+                data-act="edit"
+                data-id="${esc(it.id_collaborateur)}"
+                title="Voir/Modifier"
+                aria-label="Voir/Modifier"
+              >
+                ${iconEdit}
+              </button>
+
+              ${
+                it.archive
+                  ? ""
+                  : `
+                    <button
+                      type="button"
+                      class="sb-icon-btn sb-icon-btn--danger"
+                      data-act="archive"
+                      data-id="${esc(it.id_collaborateur)}"
+                      title="Archiver"
+                      aria-label="Archiver"
+                    >
+                      ${iconTrash}
+                    </button>
+                  `
+              }
+            </div>
           </div>
         </div>
       `;
