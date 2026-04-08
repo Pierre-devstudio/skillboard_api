@@ -34,6 +34,13 @@
   let _collabCompAddIncludeToValidate = false;
   let _collabCompAddDomain = "";
 
+  let _collabSkillEvalState = {
+    id_effectif_competence: "",
+    id_comp: "",
+    grille_evaluation: null,
+    last_audit: null
+  };
+
   function byId(id){ return document.getElementById(id); }
 
   function esc(s){
@@ -423,6 +430,614 @@
     closeModal('modalCollabCompAdd');
     _tabLoaded.skills = false;
     await loadTabIfNeeded(portal, 'skills');
+  }
+
+  function setCollabSkillEvalMsg(isOk, text){
+    const el = byId('collabSkillEvalSaveMsg');
+    if (!el) return;
+
+    if (!text){
+      el.style.display = 'none';
+      el.textContent = '';
+      el.style.fontWeight = '';
+      el.style.whiteSpace = '';
+      el.style.padding = '';
+      el.style.borderRadius = '';
+      el.style.border = '';
+      el.style.background = '';
+      el.style.color = '';
+      return;
+    }
+
+    el.style.display = 'inline-block';
+    el.textContent = text;
+    el.style.fontWeight = '600';
+    el.style.whiteSpace = 'nowrap';
+    el.style.padding = '6px 10px';
+    el.style.borderRadius = '10px';
+    el.style.border = '1px solid ' + (isOk ? '#0a7a2f' : '#b42318');
+    el.style.background = isOk ? 'rgba(10,122,47,.08)' : 'rgba(180,35,24,.08)';
+    el.style.color = isOk ? '#0a7a2f' : '#b42318';
+  }
+
+  function resetCollabSkillEvalModal(){
+    _collabSkillEvalState = {
+      id_effectif_competence: "",
+      id_comp: "",
+      grille_evaluation: null,
+      last_audit: null
+    };
+
+    if (byId('collabSkillEvalHint')) byId('collabSkillEvalHint').textContent = 'Chargement…';
+    if (byId('collabSkillEvalCompTitle')) byId('collabSkillEvalCompTitle').textContent = '—';
+    if (byId('collabSkillEvalCurrent')) byId('collabSkillEvalCurrent').textContent = '—';
+    if (byId('collabSkillEvalLastEval')) byId('collabSkillEvalLastEval').textContent = '—';
+    if (byId('collabSkillEvalLastAuditMeta')) byId('collabSkillEvalLastAuditMeta').textContent = '';
+
+    const domain = byId('collabSkillEvalCompDomain');
+    if (domain){
+      domain.textContent = '';
+      domain.style.display = 'none';
+      domain.style.background = '';
+      domain.style.border = '';
+      domain.style.color = '';
+      domain.style.padding = '';
+      domain.style.borderRadius = '';
+      domain.style.fontSize = '';
+      domain.style.lineHeight = '';
+    }
+
+    for (let i = 1; i <= 4; i++) {
+      const tr = document.querySelector(`#modalCollabSkillEval tr[data-crit="${i}"]`);
+      if (tr) tr.style.display = '';
+
+      const lbl = byId(`collabSkillEvalCritLabel${i}`);
+      if (lbl) lbl.textContent = '—';
+
+      const sel = byId(`collabSkillEvalCritNote${i}`);
+      if (sel){
+        sel.value = '';
+        sel.disabled = true;
+      }
+
+      const com = byId(`collabSkillEvalCritCom${i}`);
+      if (com){
+        com.value = '';
+        com.disabled = true;
+      }
+    }
+
+    if (byId('collabSkillEvalScoreRaw')) byId('collabSkillEvalScoreRaw').textContent = '—';
+    if (byId('collabSkillEvalScoreCoef')) byId('collabSkillEvalScoreCoef').textContent = '—';
+    if (byId('collabSkillEvalScore24')) byId('collabSkillEvalScore24').textContent = '—';
+    if (byId('collabSkillEvalLevel')) byId('collabSkillEvalLevel').textContent = '—';
+
+    const obs = byId('collabSkillEvalObservation');
+    if (obs){
+      obs.value = '';
+      obs.disabled = true;
+    }
+
+    const btnSave = byId('btnCollabSkillEvalSave');
+    if (btnSave) btnSave.disabled = true;
+
+    setCollabSkillEvalMsg(false, '');
+  }
+
+  function normalizeStudioColor(raw){
+    const s = String(raw || '').trim();
+    if (!s) return '';
+
+    if (s.startsWith('#') || s.startsWith('rgb') || s.startsWith('hsl')) return s;
+
+    if (/^-?\d+$/.test(s)){
+      const n = parseInt(s, 10);
+      const u = (n >>> 0);
+      const r = (u >> 16) & 255;
+      const g = (u >> 8) & 255;
+      const b = u & 255;
+      return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+    }
+
+    return s;
+  }
+
+  function pickStudioTextColor(bg){
+    const s = String(bg || '').trim();
+    if (!s.startsWith('#') || s.length !== 7) return '#111827';
+
+    const r = parseInt(s.slice(1, 3), 16);
+    const g = parseInt(s.slice(3, 5), 16);
+    const b = parseInt(s.slice(5, 7), 16);
+    const lum = (r * 299 + g * 587 + b * 114) / 1000;
+    return lum >= 160 ? '#111827' : '#fff';
+  }
+
+  function ensureCollabSkillGuidePopover(){
+    let pop = document.getElementById('collabSkillGuidePopover');
+    if (pop) return pop;
+
+    pop = document.createElement('div');
+    pop.id = 'collabSkillGuidePopover';
+    pop.className = 'card';
+    pop.style.position = 'fixed';
+    pop.style.zIndex = '10050';
+    pop.style.display = 'none';
+    pop.style.maxWidth = '460px';
+    pop.style.padding = '12px';
+    pop.style.boxShadow = '0 12px 28px rgba(0,0,0,.18)';
+    pop.style.border = '1px solid #e5e7eb';
+    pop.style.borderRadius = '12px';
+
+    pop.innerHTML = `
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+        <div style="font-weight:600;">Guide de notation</div>
+        <button type="button" class="sb-modal-x" id="btnCloseCollabSkillGuide" aria-label="Fermer">×</button>
+      </div>
+      <div class="card-sub" id="collabSkillGuideTitle" style="margin-top:6px;"></div>
+      <div id="collabSkillGuideBody" style="margin-top:10px; display:flex; flex-direction:column; gap:8px;"></div>
+    `;
+
+    document.body.appendChild(pop);
+
+    const close = () => closeCollabSkillGuidePopover();
+    document.getElementById('btnCloseCollabSkillGuide')?.addEventListener('click', close);
+
+    document.addEventListener('click', (ev) => {
+      const p = document.getElementById('collabSkillGuidePopover');
+      if (!p || p.style.display === 'none') return;
+      const t = ev.target;
+      if (p.contains(t)) return;
+      if (t && t.closest && t.closest('.collab-skill-crit-help')) return;
+      close();
+    });
+
+    window.addEventListener('resize', close);
+    window.addEventListener('scroll', close, true);
+
+    return pop;
+  }
+
+  function closeCollabSkillGuidePopover(){
+    const pop = document.getElementById('collabSkillGuidePopover');
+    if (!pop) return;
+    pop.style.display = 'none';
+  }
+
+  function openCollabSkillGuidePopover(anchorEl, critIndex, critLabel, evals, selectedNote){
+    const pop = ensureCollabSkillGuidePopover();
+    if (!pop || !anchorEl) return;
+
+    const tr = anchorEl.closest('tr');
+    const noteSelect = tr ? tr.querySelector('select[id^="collabSkillEvalCritNote"]') : null;
+
+    const title = document.getElementById('collabSkillGuideTitle');
+    if (title){
+      const lbl = String(critLabel || '').trim();
+      title.textContent = lbl ? `Critère ${critIndex} : ${lbl}` : `Critère ${critIndex}`;
+    }
+
+    const body = document.getElementById('collabSkillGuideBody');
+    if (body) body.innerHTML = '';
+
+    const arr = Array.isArray(evals) ? evals : [];
+
+    for (let i = 1; i <= 4; i++) {
+      const txt = (arr[i - 1] || '').toString().trim();
+
+      const line = document.createElement('div');
+      line.style.display = 'flex';
+      line.style.gap = '10px';
+      line.style.alignItems = 'flex-start';
+      line.style.padding = '8px 10px';
+      line.style.border = '1px solid #e5e7eb';
+      line.style.borderRadius = '10px';
+      line.style.cursor = 'pointer';
+      line.style.background = (String(selectedNote || '') === String(i)) ? 'rgba(230,228,33,.14)' : '#fff';
+
+      const badge = document.createElement('span');
+      badge.className = 'sb-badge sb-badge--accent-soft';
+      badge.textContent = String(i);
+      badge.style.minWidth = '28px';
+      badge.style.justifyContent = 'center';
+
+      const text = document.createElement('div');
+      text.style.flex = '1';
+      text.style.minWidth = '0';
+      text.textContent = txt || '—';
+
+      line.appendChild(badge);
+      line.appendChild(text);
+
+      line.addEventListener('click', () => {
+        if (noteSelect && !noteSelect.disabled) {
+          noteSelect.value = String(i);
+          noteSelect.dispatchEvent(new Event('input', { bubbles: true }));
+          noteSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        closeCollabSkillGuidePopover();
+      });
+
+      if (body) body.appendChild(line);
+    }
+
+    pop.style.display = 'block';
+    pop.style.left = '0px';
+    pop.style.top = '0px';
+
+    const r = anchorEl.getBoundingClientRect();
+    const pw = pop.offsetWidth || 360;
+    const ph = pop.offsetHeight || 220;
+    const pad = 10;
+
+    let left = r.left;
+    let top = r.bottom + 8;
+
+    if (left + pw > window.innerWidth - pad) left = window.innerWidth - pw - pad;
+    if (left < pad) left = pad;
+
+    if (top + ph > window.innerHeight - pad) {
+      top = r.top - ph - 8;
+      if (top < pad) top = pad;
+    }
+
+    pop.style.left = `${Math.round(left)}px`;
+    pop.style.top = `${Math.round(top)}px`;
+  }
+
+  function getCollabSkillEvalEnabledCriteria(){
+    const arr = [];
+    for (let i = 1; i <= 4; i++) {
+      const lbl = (byId(`collabSkillEvalCritLabel${i}`)?.textContent || '').trim();
+      const sel = byId(`collabSkillEvalCritNote${i}`);
+      const com = byId(`collabSkillEvalCritCom${i}`);
+      if (!sel) continue;
+      if (!lbl || lbl === '—') continue;
+      if (sel.disabled) continue;
+
+      arr.push({
+        idx: i,
+        code_critere: `Critere${i}`,
+        select: sel,
+        input: com
+      });
+    }
+    return arr;
+  }
+
+  function computeCollabSkillEvalScore(sum, nbCrit){
+    let coef = 1;
+    if (nbCrit === 4) coef = 1.5;
+    else if (nbCrit === 3) coef = 2;
+    else if (nbCrit === 2) coef = 3;
+    else if (nbCrit === 1) coef = 6;
+
+    return { coef, score24: Math.round((sum * coef) * 10) / 10 };
+  }
+
+  function levelFromCollabSkillEvalScore(score24){
+    if (score24 >= 6 && score24 <= 9) return 'Initial';
+    if (score24 >= 10 && score24 <= 18) return 'Avancé';
+    if (score24 >= 19 && score24 <= 24) return 'Expert';
+    return '—';
+  }
+
+  function recalcCollabSkillEvalScore(){
+    if (!_collabSkillEvalState.id_effectif_competence) return;
+
+    const enabled = getCollabSkillEvalEnabledCriteria();
+    const coefEl = byId('collabSkillEvalScoreCoef');
+    const rawEl = byId('collabSkillEvalScoreRaw');
+    const scoreEl = byId('collabSkillEvalScore24');
+    const levelEl = byId('collabSkillEvalLevel');
+
+    if (!enabled.length){
+      if (coefEl) coefEl.textContent = '—';
+      if (rawEl) rawEl.textContent = '—';
+      if (scoreEl) scoreEl.textContent = '—';
+      if (levelEl) levelEl.textContent = '—';
+      return;
+    }
+
+    let sum = 0;
+    let filled = 0;
+
+    enabled.forEach(c => {
+      const v = (c.select.value || '').trim();
+      if (!v) return;
+      const note = parseInt(v, 10);
+      if (!Number.isNaN(note)) {
+        sum += note;
+        filled += 1;
+      }
+    });
+
+    const calc = computeCollabSkillEvalScore(sum, enabled.length);
+    if (coefEl) coefEl.textContent = String(calc.coef);
+
+    if (!filled){
+      if (rawEl) rawEl.textContent = '—';
+      if (scoreEl) scoreEl.textContent = '—';
+      if (levelEl) levelEl.textContent = '—';
+      return;
+    }
+
+    if (rawEl) rawEl.textContent = String(sum);
+    if (scoreEl) scoreEl.textContent = String(calc.score24);
+
+    if (filled === enabled.length) {
+      if (levelEl) levelEl.textContent = levelFromCollabSkillEvalScore(calc.score24);
+    } else {
+      if (levelEl) levelEl.textContent = '—';
+    }
+  }
+
+  function fillCollabSkillEvalModal(data){
+    _collabSkillEvalState = {
+      id_effectif_competence: String(data?.id_effectif_competence || '').trim(),
+      id_comp: String(data?.id_comp || '').trim(),
+      grille_evaluation: data?.grille_evaluation || {},
+      last_audit: data?.last_audit || null
+    };
+
+    if (byId('collabSkillEvalHint')) {
+      byId('collabSkillEvalHint').textContent = data?.last_audit?.id_audit_competence
+        ? 'Dernier audit rechargé. Modifiez puis enregistrez si nécessaire.'
+        : 'Aucun audit existant. Renseignez l’évaluation puis enregistrez.';
+    }
+
+    const title = [
+      (data?.code || '').toString().trim(),
+      (data?.intitule || '').toString().trim()
+    ].filter(Boolean).join(' — ');
+    if (byId('collabSkillEvalCompTitle')) byId('collabSkillEvalCompTitle').textContent = title || '—';
+    if (byId('collabSkillEvalCurrent')) byId('collabSkillEvalCurrent').textContent = (data?.niveau_actuel || '—').toString().trim() || '—';
+    if (byId('collabSkillEvalLastEval')) {
+      byId('collabSkillEvalLastEval').textContent = data?.date_derniere_eval
+        ? `Dernière éval : ${formatDateFR(data.date_derniere_eval)}`
+        : 'Jamais évaluée';
+    }
+
+    if (byId('collabSkillEvalLastAuditMeta')) {
+      const parts = [];
+      if (data?.last_audit?.date_audit) parts.push(formatDateFR(data.last_audit.date_audit));
+      if (data?.last_audit?.nom_evaluateur) parts.push(data.last_audit.nom_evaluateur);
+      if (data?.last_audit?.methode_eval) parts.push(data.last_audit.methode_eval);
+      byId('collabSkillEvalLastAuditMeta').textContent = parts.join(' • ');
+    }
+
+    const domain = byId('collabSkillEvalCompDomain');
+    if (domain){
+      const label = (
+        data?.domaine_titre ||
+        data?.domaine ||
+        ''
+      ).toString().trim();
+
+      domain.textContent = label;
+      domain.style.display = label ? 'inline-block' : 'none';
+
+      domain.style.background = '';
+      domain.style.border = '';
+      domain.style.color = '';
+      domain.style.padding = '';
+      domain.style.borderRadius = '';
+      domain.style.fontSize = '';
+      domain.style.lineHeight = '';
+
+      const col = normalizeStudioColor(data?.domaine_couleur);
+      if (label && col){
+        domain.style.display = 'inline-block';
+        domain.style.padding = '3px 8px';
+        domain.style.borderRadius = '999px';
+        domain.style.border = `1px solid ${col}`;
+        domain.style.background = col;
+        domain.style.color = pickStudioTextColor(col);
+        domain.style.fontSize = '12px';
+        domain.style.lineHeight = '18px';
+      }
+    }
+
+    const grid = (data?.grille_evaluation && typeof data.grille_evaluation === 'object') ? data.grille_evaluation : {};
+    const keys = Object.keys(grid).sort((a, b) => {
+      const ma = String(a).match(/(\d+)/);
+      const mb = String(b).match(/(\d+)/);
+      return (ma ? parseInt(ma[1], 10) : 999) - (mb ? parseInt(mb[1], 10) : 999);
+    });
+
+    const savedCriteria = Array.isArray(data?.last_audit?.detail_eval?.criteres)
+      ? data.last_audit.detail_eval.criteres
+      : [];
+
+    let enabledCount = 0;
+
+    for (let i = 1; i <= 4; i++) {
+      const key = keys[i - 1];
+      const cfg = key ? (grid[key] || {}) : null;
+
+      const label = cfg ? (cfg.Nom ?? cfg.nom ?? '').toString().trim() : '';
+      const evalsRaw = cfg ? (Array.isArray(cfg.Eval || cfg.eval) ? (cfg.Eval || cfg.eval) : []) : [];
+      const evalsAll = evalsRaw.map(v => (v ?? '').toString().trim());
+      const evalsNonEmpty = evalsAll.filter(v => v.length > 0);
+
+      const enabled = !!key && (label.length > 0 || evalsNonEmpty.length > 0);
+
+      const tr = document.querySelector(`#modalCollabSkillEval tr[data-crit="${i}"]`);
+      const lbl = byId(`collabSkillEvalCritLabel${i}`);
+      const sel = byId(`collabSkillEvalCritNote${i}`);
+      const com = byId(`collabSkillEvalCritCom${i}`);
+
+      if (tr) tr.style.display = enabled ? '' : 'none';
+
+      if (!enabled){
+        if (lbl) lbl.textContent = '—';
+        if (sel){
+          sel.value = '';
+          sel.disabled = true;
+        }
+        if (com){
+          com.value = '';
+          com.disabled = true;
+        }
+        continue;
+      }
+
+      if (lbl){
+        lbl.innerHTML = '';
+
+        const txt = document.createElement('span');
+        txt.textContent = label || key || '';
+        lbl.appendChild(txt);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'collab-skill-crit-help';
+        btn.textContent = 'i';
+        btn.title = 'Guide de notation';
+        btn.setAttribute('aria-label', 'Guide de notation');
+        btn.style.marginLeft = '10px';
+        btn.style.width = '22px';
+        btn.style.height = '22px';
+        btn.style.borderRadius = '999px';
+        btn.style.border = '1px solid #d1d5db';
+        btn.style.background = '#fff';
+        btn.style.color = '#111';
+        btn.style.fontWeight = '700';
+        btn.style.fontSize = '13px';
+        btn.style.lineHeight = '20px';
+        btn.style.padding = '0';
+        btn.style.cursor = 'pointer';
+
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          openCollabSkillGuidePopover(btn, i, label, evalsAll, sel ? (sel.value || '') : '');
+        });
+
+        lbl.appendChild(btn);
+      }
+
+      if (sel) sel.disabled = false;
+      if (com) com.disabled = false;
+
+      const saved = savedCriteria.find(x => String(x?.code_critere || '').trim() === `Critere${i}`) || null;
+      if (sel) sel.value = saved?.niveau != null ? String(saved.niveau) : '';
+      if (com) com.value = (saved?.commentaire || '').toString();
+
+      enabledCount += 1;
+    }
+
+    const obs = byId('collabSkillEvalObservation');
+    if (obs){
+      obs.disabled = enabledCount === 0;
+      obs.value = (data?.last_audit?.observation || '').toString();
+    }
+
+    const btnSave = byId('btnCollabSkillEvalSave');
+    if (btnSave) btnSave.disabled = enabledCount === 0;
+
+    if (enabledCount === 0 && byId('collabSkillEvalHint')) {
+      byId('collabSkillEvalHint').textContent = 'Aucun critère d’évaluation paramétré sur cette compétence.';
+    }
+
+    recalcCollabSkillEvalScore();
+  }
+
+  async function openCollabSkillEvalModal(portal, idEffectifCompetence){
+    if (!_editingId) throw new Error('Enregistrez d’abord le collaborateur.');
+
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
+
+    const idEc = String(idEffectifCompetence || '').trim();
+    if (!idEc) throw new Error('Ligne compétence introuvable.');
+
+    resetCollabSkillEvalModal();
+    openModal('modalCollabSkillEval');
+
+    const data = await portal.apiJson(
+      `${portal.apiBase}/studio/collaborateurs/competences/evaluation/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/${encodeURIComponent(idEc)}`
+    );
+
+    fillCollabSkillEvalModal(data);
+  }
+
+  async function saveCollabSkillEval(portal){
+    if (!_editingId) throw new Error('Collaborateur introuvable.');
+    if (!_collabSkillEvalState.id_effectif_competence) throw new Error('Compétence non sélectionnée.');
+
+    const enabled = getCollabSkillEvalEnabledCriteria();
+    if (!enabled.length) throw new Error('Aucun critère actif pour cette compétence.');
+
+    let sum = 0;
+    const criteres = [];
+
+    for (const c of enabled) {
+      const raw = (c.select.value || '').trim();
+      if (!raw) throw new Error('Notes incomplètes : renseigne tous les critères.');
+
+      const note = parseInt(raw, 10);
+      if (!note || note < 1 || note > 4) throw new Error('Note invalide (1..4).');
+
+      sum += note;
+      criteres.push({
+        code_critere: c.code_critere,
+        niveau: note,
+        commentaire: (c.input?.value || '').trim() || null
+      });
+    }
+
+    const calc = computeCollabSkillEvalScore(sum, enabled.length);
+    const niveau = levelFromCollabSkillEvalScore(calc.score24);
+    if (!niveau || niveau === '—') throw new Error('Impossible de déterminer le niveau.');
+
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
+
+    const observation = (byId('collabSkillEvalObservation')?.value || '').trim();
+
+    const res = await portal.apiJson(
+      `${portal.apiBase}/studio/collaborateurs/competences/evaluation/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/save`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id_effectif_competence: _collabSkillEvalState.id_effectif_competence,
+          id_comp: _collabSkillEvalState.id_comp,
+          resultat_eval: calc.score24,
+          niveau_actuel: niveau,
+          observation: observation || null,
+          criteres,
+          methode_eval: 'Évaluation Studio'
+        })
+      }
+    );
+
+    if (byId('collabSkillEvalCurrent')) byId('collabSkillEvalCurrent').textContent = niveau;
+    if (byId('collabSkillEvalLastEval')) byId('collabSkillEvalLastEval').textContent = `Dernière éval : ${formatDateFR(res?.date_audit)}`;
+    if (byId('collabSkillEvalLastAuditMeta')) {
+      const parts = [];
+      if (res?.date_audit) parts.push(formatDateFR(res.date_audit));
+      if (res?.nom_evaluateur) parts.push(res.nom_evaluateur);
+      if (res?.methode_eval) parts.push(res.methode_eval);
+      byId('collabSkillEvalLastAuditMeta').textContent = parts.join(' • ');
+    }
+
+    _collabSkillEvalState.last_audit = {
+      id_audit_competence: res?.id_audit_competence || '',
+      date_audit: res?.date_audit || null,
+      nom_evaluateur: res?.nom_evaluateur || null,
+      methode_eval: res?.methode_eval || null,
+      observation: observation || null,
+      detail_eval: { criteres }
+    };
+
+    setCollabSkillEvalMsg(true, 'Évaluation enregistrée');
+
+    _tabLoaded.skills = false;
+    await loadTabIfNeeded(portal, 'skills');
+
+    return res;
   }
 
   function getOwnerId() {
@@ -995,9 +1610,13 @@
       const niveau = (x.niveau_actuel || '').trim() || '–';
       const lastEval = formatDateFR(x.date_derniere_eval);
       const idComp = (x.id_comp || '').toString().trim();
+      const idEffectifComp = (x.id_effectif_competence || '').toString().trim();
+      const rowAttrs = idEffectifComp
+        ? `class="sb-table-row-clickable" data-act="open-skill-eval" data-id-effectif-comp="${esc(idEffectifComp)}" tabindex="0"`
+        : '';
 
       return `
-        <tr>
+        <tr ${rowAttrs}>
           <td>
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
               ${x.code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(x.code)}</span>` : ''}
@@ -1104,13 +1723,39 @@
     }
 
     host.querySelectorAll('[data-act="remove-skill"]').forEach(btn => {
-      btn.addEventListener('click', async () => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
         try {
           btn.disabled = true;
           await removeCompetenceFromCollaborateur(portal, btn.getAttribute('data-id-comp'));
-        } catch (e) {
+        } catch (e2) {
           btn.disabled = false;
-          if (portal.showAlert) portal.showAlert('error', getErrorMessage(e));
+          if (portal.showAlert) portal.showAlert('error', getErrorMessage(e2));
+        }
+      });
+    });
+
+    host.querySelectorAll('[data-act="open-skill-eval"]').forEach(row => {
+      row.addEventListener('click', async (e) => {
+        if (e.target.closest('button')) return;
+
+        try {
+          await openCollabSkillEvalModal(portal, row.getAttribute('data-id-effectif-comp'));
+        } catch (err) {
+          if (portal.showAlert) portal.showAlert('error', getErrorMessage(err));
+        }
+      });
+
+      row.addEventListener('keydown', async (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+
+        try {
+          await openCollabSkillEvalModal(portal, row.getAttribute('data-id-effectif-comp'));
+        } catch (err) {
+          if (portal.showAlert) portal.showAlert('error', getErrorMessage(err));
         }
       });
     });
@@ -1576,6 +2221,28 @@
 
     byId('btnCloseCollabCompAdd')?.addEventListener('click', () => closeModal('modalCollabCompAdd'));
 
+    byId('btnCloseCollabSkillEval')?.addEventListener('click', () => closeModal('modalCollabSkillEval'));
+    byId('btnCollabSkillEvalCancel')?.addEventListener('click', () => closeModal('modalCollabSkillEval'));
+
+    byId('btnCollabSkillEvalSave')?.addEventListener('click', async () => {
+      try {
+        setCollabSkillEvalMsg(false, '');
+        const btn = byId('btnCollabSkillEvalSave');
+        if (btn) btn.disabled = true;
+        await saveCollabSkillEval(portal);
+      } catch (e) {
+        setCollabSkillEvalMsg(false, `Échec de l'enregistrement - ${getErrorMessage(e)}`);
+      } finally {
+        const btn = byId('btnCollabSkillEvalSave');
+        if (btn && getCollabSkillEvalEnabledCriteria().length > 0) btn.disabled = false;
+      }
+    });
+
+    for (let i = 1; i <= 4; i++) {
+      byId(`collabSkillEvalCritNote${i}`)?.addEventListener('change', recalcCollabSkillEvalScore);
+      byId(`collabSkillEvalCritNote${i}`)?.addEventListener('input', recalcCollabSkillEvalScore);
+    }
+
     const collabCompSearch = byId('collabCompAddSearch');
     if (collabCompSearch){
       collabCompSearch.addEventListener('input', () => {
@@ -1604,6 +2271,10 @@
     byId('collabPoste')?.addEventListener('change', refreshServiceFromPoste);
     byId('collabTemp')?.addEventListener('change', refreshTempRoleVisibility);
     byId('collabHaveDateFin')?.addEventListener('change', refreshSortieVisibility);
+
+    byId('modalCollabSkillEval')?.addEventListener('click', (e) => {
+      if (e.target === byId('modalCollabSkillEval')) closeModal('modalCollabSkillEval');
+    });
   }
 
   async function init(){

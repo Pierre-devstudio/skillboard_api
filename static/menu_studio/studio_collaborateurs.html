@@ -361,3 +361,148 @@
     </div>
   </div>
 </div>
+<!-- MODAL : Évaluer la compétence -->
+<div class="sb-modal" id="modalCollabSkillEval" style="display:none;">
+  <div class="sb-modal-card" style="width:min(980px, 96vw);">
+    <div class="sb-modal-head">
+      <div style="min-width:0; flex:1;">
+        <div class="card-title" style="margin:0;">Évaluer la compétence</div>
+        <div class="card-sub" id="collabSkillEvalHint" style="margin:4px 0 0 0;">
+          Chargement…
+        </div>
+      </div>
+      <button type="button" class="sb-modal-x" id="btnCloseCollabSkillEval" aria-label="Fermer">&times;</button>
+    </div>
+
+    <div class="sb-modal-body">
+      <div class="sb-grid-12" style="align-items:start;">
+        <div class="sb-field sb-col-8">
+          <div class="label"><b>Compétence</b></div>
+          <div id="collabSkillEvalCompTitle" style="font-weight:700; color:#111827;">—</div>
+          <div style="margin-top:6px;">
+            <span id="collabSkillEvalCompDomain" class="sb-badge sb-badge--comp-domain" style="display:none;"></span>
+          </div>
+        </div>
+
+        <div class="sb-field sb-col-4">
+          <div class="label"><b>Niveau actuel</b></div>
+          <div id="collabSkillEvalCurrent" style="font-weight:700; color:#111827;">—</div>
+          <div class="card-sub" id="collabSkillEvalLastEval" style="margin:4px 0 0 0;">—</div>
+          <div class="card-sub" id="collabSkillEvalLastAuditMeta" style="margin:4px 0 0 0;"></div>
+        </div>
+      </div>
+
+      <hr class="sb-sep" style="margin:14px 0;" />
+
+      <div class="card-sub" style="margin:0 0 8px 0;">
+        Notes de 1 à 4. Le calcul du score final est pondéré pour ramener sur 24.
+      </div>
+
+      <div class="sb-table-wrap">
+        <table class="sb-table sb-table--airy">
+          <thead>
+            <tr>
+              <th style="width:58%;">Critère</th>
+              <th style="width:14%;">Note</th>
+              <th style="width:28%;">Commentaire</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-crit="1">
+              <td><span id="collabSkillEvalCritLabel1">—</span></td>
+              <td>
+                <select id="collabSkillEvalCritNote1" disabled>
+                  <option value="">—</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                </select>
+              </td>
+              <td><input id="collabSkillEvalCritCom1" disabled /></td>
+            </tr>
+
+            <tr data-crit="2">
+              <td><span id="collabSkillEvalCritLabel2">—</span></td>
+              <td>
+                <select id="collabSkillEvalCritNote2" disabled>
+                  <option value="">—</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                </select>
+              </td>
+              <td><input id="collabSkillEvalCritCom2" disabled /></td>
+            </tr>
+
+            <tr data-crit="3">
+              <td><span id="collabSkillEvalCritLabel3">—</span></td>
+              <td>
+                <select id="collabSkillEvalCritNote3" disabled>
+                  <option value="">—</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                </select>
+              </td>
+              <td><input id="collabSkillEvalCritCom3" disabled /></td>
+            </tr>
+
+            <tr data-crit="4">
+              <td><span id="collabSkillEvalCritLabel4">—</span></td>
+              <td>
+                <select id="collabSkillEvalCritNote4" disabled>
+                  <option value="">—</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                </select>
+              </td>
+              <td><input id="collabSkillEvalCritCom4" disabled /></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sb-kpi-grid" style="margin-top:12px;">
+        <div class="sb-kpi-card">
+          <div class="sb-kpi-label">Somme brute</div>
+          <div class="sb-kpi-value" id="collabSkillEvalScoreRaw">—</div>
+        </div>
+
+        <div class="sb-kpi-card">
+          <div class="sb-kpi-label">Coef.</div>
+          <div class="sb-kpi-value" id="collabSkillEvalScoreCoef">—</div>
+        </div>
+
+        <div class="sb-kpi-card">
+          <div class="sb-kpi-label">Score /24</div>
+          <div class="sb-kpi-value" id="collabSkillEvalScore24">—</div>
+        </div>
+
+        <div class="sb-kpi-card">
+          <div class="sb-kpi-label">Niveau</div>
+          <div class="sb-kpi-value" id="collabSkillEvalLevel">—</div>
+        </div>
+      </div>
+
+      <div class="sb-field" style="margin-top:12px;">
+        <div class="label">Observation</div>
+        <textarea id="collabSkillEvalObservation" rows="4" class="sb-textarea--md" disabled></textarea>
+      </div>
+    </div>
+
+    <div class="sb-modal-foot">
+      <div class="sb-foot-split">
+        <div class="card-sub" id="collabSkillEvalSaveMsg" style="margin:0; display:none;"></div>
+        <div class="sb-actions">
+          <button type="button" class="sb-btn sb-btn--soft" id="btnCollabSkillEvalCancel">Annuler</button>
+          <button type="button" class="sb-btn sb-btn--accent" id="btnCollabSkillEvalSave" disabled>Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

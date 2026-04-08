@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from psycopg.rows import dict_row
 import os
 import secrets
 import uuid
 import requests
+import json
 from datetime import date as py_date
 
 from app.routers.MailManager import send_novoskill_access_mail
@@ -1285,6 +1286,21 @@ class CollaborateurCompetenceRemovePayload(BaseModel):
 class CollaborateurCompetenceAddPayload(BaseModel):
     id_comp: Optional[str] = None
 
+class CollaborateurCompetenceEvalCriterePayload(BaseModel):
+    code_critere: str
+    niveau: int
+    commentaire: Optional[str] = None
+
+
+class CollaborateurCompetenceEvalSavePayload(BaseModel):
+    id_effectif_competence: str
+    id_comp: Optional[str] = None
+    resultat_eval: float
+    niveau_actuel: str
+    observation: Optional[str] = None
+    criteres: List[CollaborateurCompetenceEvalCriterePayload]
+    methode_eval: Optional[str] = "Évaluation Studio"
+
 class CollaborateurAccessPayload(BaseModel):
     studio: Optional[str] = None
     insights: Optional[str] = None
@@ -1474,6 +1490,21 @@ def _set_effectif_competence_last_audit(cur, id_effectif_competence: str, id_aud
         """,
         tuple(params),
     )
+
+def _json_like_to_obj(value):
+    if value is None:
+        return {}
+    if isinstance(value, (dict, list)):
+        return value
+    if isinstance(value, str):
+        s = value.strip()
+        if not s:
+            return {}
+        try:
+            return json.loads(s)
+        except Exception:
+            return {}
+    return {}
 
 # ------------------------------------------------------
 # Context
@@ -2124,6 +2155,7 @@ def studio_collab_competences(id_owner: str, id_collaborateur: str, request: Req
                     ),
                     curc AS (
                         SELECT
+                            ecc.id_effectif_competence,
                             ecc.id_comp,
                             ecc.niveau_actuel,
                             ecc.date_derniere_eval,
@@ -2140,8 +2172,10 @@ def studio_collab_competences(id_owner: str, id_collaborateur: str, request: Req
                         c.domaine,
                         (req.id_comp IS NOT NULL) AS is_required,
                         req.niveau_requis,
+                        curc.id_effectif_competence,
                         curc.niveau_actuel,
                         curc.date_derniere_eval,
+                        curc.id_dernier_audit,
                         req.poids_criticite,
                         req.freq_usage,
                         req.impact_resultat,
@@ -2177,6 +2211,7 @@ def studio_collab_competences(id_owner: str, id_collaborateur: str, request: Req
             dmeta = domaine_map.get((r.get("domaine") or "").strip(), {})
             items.append(
                 {
+                    "id_effectif_competence": r.get("id_effectif_competence"),
                     "id_comp": r.get("id_comp"),
                     "code": r.get("code"),
                     "intitule": r.get("intitule"),
@@ -2187,6 +2222,7 @@ def studio_collab_competences(id_owner: str, id_collaborateur: str, request: Req
                     "niveau_requis": r.get("niveau_requis"),
                     "niveau_actuel": r.get("niveau_actuel"),
                     "date_derniere_eval": r.get("date_derniere_eval").isoformat() if r.get("date_derniere_eval") else None,
+                    "id_dernier_audit": r.get("id_dernier_audit"),
                     "poids_criticite": r.get("poids_criticite"),
                     "freq_usage": r.get("freq_usage"),
                     "impact_resultat": r.get("impact_resultat"),
@@ -2617,6 +2653,277 @@ def studio_collab_remove_competence(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/competences/remove error: {e}")
+
+@router.get("/studio/collaborateurs/competences/evaluation/{id_owner}/{id_collaborateur}/{id_effectif_competence}")
+def studio_collab_competence_evaluation_detail(
+    id_owner: str,
+    id_collaborateur: str,
+    id_effectif_competence: str,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        idec = (id_effectif_competence or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+        if not idec:
+            raise HTTPException(status_code=400, detail="id_effectif_competence manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+
+                id_effectif_data = (scope.get("id_effectif_data") or "").strip()
+                if not id_effectif_data:
+                    raise HTTPException(status_code=400, detail="Identifiant salarié exploitable introuvable.")
+
+                cur.execute(
+                    """
+                    SELECT
+                      ecc.id_effectif_competence,
+                      ecc.id_effectif_client,
+                      ecc.id_comp,
+                      ecc.niveau_actuel,
+                      ecc.date_derniere_eval,
+                      ecc.id_dernier_audit,
+                      c.code,
+                      c.intitule,
+                      c.domaine,
+                      c.grille_evaluation,
+                      a.id_audit_competence,
+                      a.date_audit,
+                      a.nom_evaluateur,
+                      a.methode_eval,
+                      a.resultat_eval,
+                      a.observation,
+                      a.detail_eval
+                    FROM public.tbl_effectif_client_competence ecc
+                    JOIN public.tbl_competence c
+                      ON c.id_comp = ecc.id_comp
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                     AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
+                    LEFT JOIN LATERAL (
+                      SELECT
+                        aa.id_audit_competence,
+                        aa.date_audit,
+                        aa.nom_evaluateur,
+                        aa.methode_eval,
+                        aa.resultat_eval,
+                        aa.observation,
+                        aa.detail_eval
+                      FROM public.tbl_effectif_client_audit_competence aa
+                      WHERE aa.id_effectif_competence = ecc.id_effectif_competence
+                      ORDER BY aa.date_audit DESC, aa.id_audit_competence DESC
+                      LIMIT 1
+                    ) a ON TRUE
+                    WHERE ecc.id_effectif_competence = %s
+                      AND ecc.id_effectif_client = %s
+                      AND COALESCE(ecc.archive, FALSE) = FALSE
+                      AND COALESCE(ecc.actif, TRUE) = TRUE
+                    LIMIT 1
+                    """,
+                    (idec, id_effectif_data),
+                )
+                row = cur.fetchone() or {}
+                if not row:
+                    raise HTTPException(status_code=404, detail="Compétence collaborateur introuvable.")
+
+                did = (row.get("domaine") or "").strip()
+                dmeta = _load_domaine_competence_map(cur, [did]).get(did, {}) if did else {}
+
+                grille = _json_like_to_obj(row.get("grille_evaluation"))
+                if not isinstance(grille, dict):
+                    grille = {}
+
+                detail_eval = _json_like_to_obj(row.get("detail_eval"))
+                if not isinstance(detail_eval, dict):
+                    detail_eval = {}
+
+        return {
+            "id_collaborateur": cid,
+            "id_effectif_competence": row.get("id_effectif_competence"),
+            "id_comp": row.get("id_comp"),
+            "code": row.get("code"),
+            "intitule": row.get("intitule"),
+            "domaine": row.get("domaine"),
+            "domaine_titre": dmeta.get("titre"),
+            "domaine_couleur": dmeta.get("couleur"),
+            "niveau_actuel": row.get("niveau_actuel"),
+            "date_derniere_eval": row.get("date_derniere_eval").isoformat() if row.get("date_derniere_eval") else None,
+            "grille_evaluation": grille,
+            "last_audit": {
+                "id_audit_competence": row.get("id_audit_competence"),
+                "date_audit": row.get("date_audit").isoformat() if row.get("date_audit") else None,
+                "nom_evaluateur": row.get("nom_evaluateur"),
+                "methode_eval": row.get("methode_eval"),
+                "resultat_eval": float(row.get("resultat_eval")) if row.get("resultat_eval") is not None else None,
+                "observation": row.get("observation"),
+                "detail_eval": detail_eval,
+            } if row.get("id_audit_competence") else None,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/competences/evaluation/detail error: {e}")
+
+@router.post("/studio/collaborateurs/competences/evaluation/{id_owner}/{id_collaborateur}/save")
+def studio_collab_competence_evaluation_save(
+    id_owner: str,
+    id_collaborateur: str,
+    payload: CollaborateurCompetenceEvalSavePayload,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+
+        if payload.niveau_actuel not in ["Initial", "Avancé", "Expert"]:
+            raise HTTPException(status_code=400, detail="niveau_actuel invalide (Initial/Avancé/Expert attendu).")
+
+        if not payload.criteres or len(payload.criteres) > 4:
+            raise HTTPException(status_code=400, detail="Liste de critères invalide.")
+
+        for c in payload.criteres:
+            if c.niveau < 1 or c.niveau > 4:
+                raise HTTPException(status_code=400, detail="Note critère invalide (1..4).")
+            if c.code_critere not in ["Critere1", "Critere2", "Critere3", "Critere4"]:
+                raise HTTPException(status_code=400, detail="code_critere invalide (Critere1..4).")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+
+                id_effectif_data = (scope.get("id_effectif_data") or "").strip()
+                if not id_effectif_data:
+                    raise HTTPException(status_code=400, detail="Identifiant salarié exploitable introuvable.")
+
+                cur.execute(
+                    """
+                    SELECT
+                      ecc.id_effectif_competence,
+                      ecc.id_effectif_client,
+                      ecc.id_comp
+                    FROM public.tbl_effectif_client_competence ecc
+                    WHERE ecc.id_effectif_competence = %s
+                      AND ecc.id_effectif_client = %s
+                      AND COALESCE(ecc.archive, FALSE) = FALSE
+                      AND COALESCE(ecc.actif, TRUE) = TRUE
+                    LIMIT 1
+                    """,
+                    (payload.id_effectif_competence, id_effectif_data),
+                )
+                row = cur.fetchone() or {}
+                if not row:
+                    raise HTTPException(status_code=404, detail="Ligne compétence salarié introuvable.")
+
+                if payload.id_comp and payload.id_comp != row.get("id_comp"):
+                    raise HTTPException(status_code=400, detail="id_comp ne correspond pas à la ligne effectif_competence.")
+
+                id_audit = str(uuid.uuid4())
+                today = py_date.today()
+
+                actor_id = (u.get("sub") or u.get("id") or "").strip() or None
+                nom_eval = _resolve_actor_display_name(cur, u, oid)
+                methode_eval = (payload.methode_eval or "Évaluation Studio").strip() or "Évaluation Studio"
+
+                detail_eval = {
+                    "criteres": [
+                        {
+                            "niveau": int(c.niveau),
+                            "code_critere": c.code_critere,
+                            **({"commentaire": (c.commentaire or "").strip()} if (c.commentaire or "").strip() else {}),
+                        }
+                        for c in payload.criteres
+                    ]
+                }
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_effectif_client_audit_competence
+                    (
+                        id_audit_competence,
+                        id_effectif_competence,
+                        date_audit,
+                        id_evaluateur,
+                        methode_eval,
+                        resultat_eval,
+                        detail_eval,
+                        observation,
+                        nametable_evaluateur,
+                        nom_evaluateur
+                    )
+                    VALUES
+                    (
+                        %s, %s, %s,
+                        %s, %s, %s,
+                        %s::jsonb, %s,
+                        %s, %s
+                    )
+                    """,
+                    (
+                        id_audit,
+                        payload.id_effectif_competence,
+                        today,
+                        actor_id,
+                        methode_eval,
+                        round(float(payload.resultat_eval), 1),
+                        json.dumps(detail_eval, ensure_ascii=False),
+                        (payload.observation or None),
+                        "tbl_utilisateur",
+                        nom_eval,
+                    ),
+                )
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client_competence
+                    SET
+                        niveau_actuel = %s,
+                        date_derniere_eval = %s,
+                        id_dernier_audit = %s
+                    WHERE id_effectif_competence = %s
+                    """,
+                    (
+                        payload.niveau_actuel,
+                        today,
+                        id_audit,
+                        payload.id_effectif_competence,
+                    ),
+                )
+
+                conn.commit()
+
+        return {
+            "ok": True,
+            "id_audit_competence": id_audit,
+            "date_audit": str(today),
+            "niveau_actuel": payload.niveau_actuel,
+            "resultat_eval": round(float(payload.resultat_eval), 1),
+            "observation": payload.observation or None,
+            "methode_eval": methode_eval,
+            "nom_evaluateur": nom_eval,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/competences/evaluation/save error: {e}")
 
 @router.get("/studio/collaborateurs/certifications/{id_owner}/{id_collaborateur}")
 def studio_collab_certifications(id_owner: str, id_collaborateur: str, request: Request):

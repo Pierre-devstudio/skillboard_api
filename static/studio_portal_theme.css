@@ -1349,6 +1349,20 @@
   }
 }
 
+/* Lignes de table cliquables (CORE) */
+.sb-table-row-clickable{
+  cursor:pointer;
+}
+
+.sb-table-row-clickable:hover{
+  background:rgba(17,24,39,.03);
+}
+
+.sb-table-row-clickable:focus-visible{
+  outline:2px solid rgba(var(--sb-accent-rgb), .45);
+  outline-offset:-2px;
+}
+
 /* ======================================================
    Studio COLLABORATEURS – Droits consoles / icônes accès
    ====================================================== */
