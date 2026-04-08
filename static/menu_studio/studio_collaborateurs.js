@@ -199,10 +199,6 @@
     return (new URL(window.location.href).searchParams.get("id") || "").trim();
   }
 
-  function isEntrepriseMode(){
-    return !!(_ctx && _ctx.source_kind === "entreprise");
-  }
-
   function setStatus(msg){
     const el = byId("collabStatus");
     if (el) el.textContent = msg || "—";
@@ -290,14 +286,6 @@
       { value: "Freelance", label: "Freelance" },
       { value: "Autre", label: "Autre" }
     ], "value", "label");
-  }
-
-  function setSourceHint(){
-    const hint = byId("collabModalSourceHint");
-    if (!hint) return;
-    hint.textContent = isEntrepriseMode()
-      ? "Mode client : données collaborateur sécurisées sur l’entreprise owner."
-      : "Mode mon entreprise : tbl_utilisateur + référentiel RH unifié via id_utilisateur = id_effectif.";
   }
 
   function refreshServiceFromPoste(){
@@ -472,7 +460,6 @@
     renderTop();
     renderFilters();
     hydrateFormSelects();
-    setSourceHint();
   }
 
   async function loadGlobalStats(portal){
@@ -552,9 +539,8 @@
     if (btnArchive) btnArchive.style.display = "none";
   }
 
-  function setModalHeader(title, sub){
+  function setModalHeader(title){
     if (byId("collabModalTitle")) byId("collabModalTitle").textContent = title || "Collaborateur";
-    if (byId("collabModalSub")) byId("collabModalSub").textContent = sub || "—";
   }
 
   function setModalBadges(data){
@@ -969,9 +955,8 @@
     _modalMode = 'create';
     _editingId = null;
     clearForm();
-    setSourceHint();
     setModalBadges({ actif: true, archive: false });
-    setModalHeader('Nouveau collaborateur', _ctx?.source_label || 'Collaborateur');
+    setModalHeader('Nouveau collaborateur');
     activateModalTab('ident');
     resetDetailPanels();
     openModal('modalCollaborateur');
@@ -987,7 +972,6 @@
     _editingId = id;
 
     clearForm();
-    setSourceHint();
 
     if (byId('collabCivilite')) byId('collabCivilite').value = data?.civilite || '';
     if (byId('collabPrenom')) byId('collabPrenom').value = data?.prenom || '';
@@ -1029,7 +1013,7 @@
     if (btnArchive) btnArchive.style.display = data?.archive ? 'none' : '';
 
     const fullName = `${data?.prenom || ''} ${data?.nom || ''}`.trim();
-    setModalHeader(fullName || 'Collaborateur', data?.archive ? 'Archivé' : (data?.actif ? 'Actif' : 'Inactif'));
+    setModalHeader(fullName || 'Collaborateur');
     setModalBadges(data || {});
     activateModalTab('ident');
     resetDetailPanels();
@@ -1054,7 +1038,7 @@
     if (_modalMode === 'create' && data?.id_collaborateur) {
       _modalMode = 'edit';
       _editingId = data.id_collaborateur;
-      setModalHeader(`${payload.prenom || ''} ${payload.nom || ''}`.trim() || 'Collaborateur', payload.actif ? 'Actif' : 'Inactif');
+      setModalHeader(`${payload.prenom || ''} ${payload.nom || ''}`.trim() || 'Collaborateur');
       setModalBadges({ actif: !!payload.actif, archive: false, ismanager: !!payload.ismanager, isformateur: !!payload.isformateur, is_temp: !!payload.is_temp });
       resetDetailPanels();
     }

@@ -95,21 +95,19 @@
 </section>
 
 <div class="sb-modal" id="modalCollaborateur" style="display:none;">
-  <div class="sb-modal-card">
+  <div class="sb-modal-card sb-collab-modal-card">
     <div class="sb-modal-head">
       <div style="min-width:0; flex:1;">
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <div class="card-title" id="collabModalTitle" style="margin:0;">Collaborateur</div>
           <div class="sb-actions" id="collabModalBadges"></div>
         </div>
-        <div class="card-sub" id="collabModalSub" style="margin:4px 0 0 0;">—</div>
-        <div class="card-sub sb-modal-hint" id="collabModalSourceHint">—</div>
       </div>
       <button type="button" class="sb-modal-x" id="btnCloseCollaborateur" aria-label="Fermer">&times;</button>
     </div>
 
-    <div class="sb-modal-body" id="collabModalBody">
-      <div class="sb-actions" role="tablist" aria-label="Onglets collaborateur" style="margin-bottom:12px; gap:8px;">
+    <div class="sb-modal-body sb-collab-modal-body" id="collabModalBody">
+      <div class="sb-actions sb-collab-tabbar" role="tablist" aria-label="Onglets collaborateur" style="margin-bottom:12px; gap:8px;">
         <button type="button" class="sb-btn sb-btn--soft" data-tab="ident" aria-selected="true">Identification</button>
         <button type="button" class="sb-btn sb-btn--soft" data-tab="skills" aria-selected="false">Compétences</button>
         <button type="button" class="sb-btn sb-btn--soft" data-tab="certs" aria-selected="false">Certifications</button>
@@ -118,19 +116,25 @@
       </div>
 
       <div class="sb-tab-panel is-active" data-panel="ident" role="tabpanel">
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="sb-form-grid" style="margin-top:0;">
-            <div class="sb-field">
-              <div class="label">Civilité</div>
-              <select id="collabCivilite"></select>
-            </div>
-            <div class="sb-field">
-              <div class="label">Prénom</div>
-              <input type="text" id="collabPrenom" />
-            </div>
-            <div class="sb-field">
-              <div class="label">Nom</div>
-              <input type="text" id="collabNom" />
+        <div class="card sb-collab-form-card" style="margin:0;">
+          <div class="sb-form-grid sb-collab-form-grid">
+            <div class="sb-field sb-span-2">
+              <div class="sb-collab-ident-inline">
+                <div class="sb-field sb-collab-ident-inline__civilite">
+                  <div class="label">Civilité</div>
+                  <select id="collabCivilite"></select>
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Prénom</div>
+                  <input type="text" id="collabPrenom" />
+                </div>
+
+                <div class="sb-field">
+                  <div class="label">Nom</div>
+                  <input type="text" id="collabNom" />
+                </div>
+              </div>
             </div>
 
             <div class="sb-field sb-span-2">
@@ -172,7 +176,7 @@
               <select id="collabPoste"></select>
             </div>
             <div class="sb-field">
-              <label class="sb-check" style="margin-top:28px;">
+              <label class="sb-check sb-collab-check">
                 <input type="checkbox" id="collabActif" checked />
                 <span>Actif</span>
               </label>
