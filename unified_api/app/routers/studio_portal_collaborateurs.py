@@ -1279,6 +1279,9 @@ class CollaborateurPayload(BaseModel):
 class SyncPosteCompetencesPayload(BaseModel):
     id_poste_actuel: Optional[str] = None
 
+class CollaborateurCompetenceRemovePayload(BaseModel):
+    id_comp: Optional[str] = None
+
 class CollaborateurCompetenceAddPayload(BaseModel):
     id_comp: Optional[str] = None
 
@@ -2475,6 +2478,110 @@ def studio_collab_add_competence(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/competences/add error: {e}")
+
+@router.post("/studio/collaborateurs/competences/{id_owner}/{id_collaborateur}/remove")
+def studio_collab_remove_competence(
+    id_owner: str,
+    id_collaborateur: str,
+    payload: CollaborateurCompetenceRemovePayload,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+
+        id_comp = _norm_text(payload.id_comp)
+        if not id_comp:
+            raise HTTPException(status_code=400, detail="id_comp manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+
+                id_effectif_data = (scope.get("id_effectif_data") or "").strip()
+                if not id_effectif_data:
+                    raise HTTPException(status_code=400, detail="Identifiant salarié exploitable introuvable.")
+
+                ecc_cols = _get_effectif_competence_columns(cur)
+                if "id_effectif_competence" not in ecc_cols:
+                    raise HTTPException(status_code=500, detail="Colonne id_effectif_competence absente de tbl_effectif_client_competence.")
+
+                archive_expr = "COALESCE(archive, FALSE)" if "archive" in ecc_cols else "FALSE"
+                actif_expr = "COALESCE(actif, TRUE)" if "actif" in ecc_cols else "TRUE"
+                order_expr = "COALESCE(dernier_update, NOW()) DESC" if "dernier_update" in ecc_cols else "id_effectif_competence DESC"
+
+                cur.execute(
+                    f"""
+                    SELECT
+                      id_effectif_competence,
+                      {archive_expr} AS archive_row,
+                      {actif_expr} AS actif_row
+                    FROM public.tbl_effectif_client_competence
+                    WHERE id_effectif_client = %s
+                      AND id_comp = %s
+                    ORDER BY
+                      {archive_expr} ASC,
+                      {actif_expr} DESC,
+                      {order_expr}
+                    LIMIT 1
+                    """,
+                    (id_effectif_data, id_comp),
+                )
+                row = cur.fetchone() or {}
+                id_effectif_competence = (row.get("id_effectif_competence") or "").strip()
+                if not id_effectif_competence:
+                    raise HTTPException(status_code=404, detail="Compétence non trouvée sur ce collaborateur.")
+
+                set_parts = []
+                params = []
+
+                if "actif" in ecc_cols:
+                    set_parts.append("actif = %s")
+                    params.append(False)
+
+                if "archive" in ecc_cols:
+                    set_parts.append("archive = %s")
+                    params.append(False)
+
+                if "dernier_update" in ecc_cols:
+                    set_parts.append("dernier_update = NOW()")
+
+                if not set_parts:
+                    raise HTTPException(status_code=500, detail="Aucun champ modifiable disponible sur tbl_effectif_client_competence.")
+
+                params.append(id_effectif_competence)
+
+                cur.execute(
+                    f"""
+                    UPDATE public.tbl_effectif_client_competence
+                    SET {", ".join(set_parts)}
+                    WHERE id_effectif_competence = %s
+                    """,
+                    tuple(params),
+                )
+
+                conn.commit()
+
+        return {
+            "ok": True,
+            "id_collaborateur": cid,
+            "id_effectif_data": id_effectif_data,
+            "id_comp": id_comp,
+            "removed": True,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/competences/remove error: {e}")
 
 @router.get("/studio/collaborateurs/certifications/{id_owner}/{id_collaborateur}")
 def studio_collab_certifications(id_owner: str, id_collaborateur: str, request: Request):

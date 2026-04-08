@@ -206,6 +206,28 @@
     }
   }
 
+  async function removeCompetenceFromCollaborateur(portal, idComp){
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
+
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error("Owner introuvable.");
+
+    const id = String(idComp || '').trim();
+    if (!id) throw new Error("Compétence introuvable.");
+
+    await portal.apiJson(
+      `${portal.apiBase}/studio/collaborateurs/competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/remove`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_comp: id })
+      }
+    );
+
+    _tabLoaded.skills = false;
+    await loadTabIfNeeded(portal, 'skills');
+  }
+
   function resetCollabCompAddState(){
     if (byId('collabCompAddSearch')) byId('collabCompAddSearch').value = '';
     if (byId('collabCompAddList')) byId('collabCompAddList').innerHTML = '';
@@ -959,9 +981,20 @@
     const canAdd = !!_editingId;
     const posteLabel = poste.label || data?.intitule_poste || '–';
 
+    const iconTrash = `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6l-1 14H6L5 6"/>
+        <path d="M10 11v6"/>
+        <path d="M14 11v6"/>
+        <path d="M9 6V4h6v2"/>
+      </svg>
+    `;
+
     const rows = items.map(x => {
       const niveau = (x.niveau_actuel || '').trim() || '–';
       const lastEval = formatDateFR(x.date_derniere_eval);
+      const idComp = (x.id_comp || '').toString().trim();
 
       return `
         <tr>
@@ -973,6 +1006,24 @@
           </td>
           <td style="text-align:center;">${esc(niveau)}</td>
           <td style="text-align:center;">${esc(lastEval)}</td>
+          <td style="width:52px; text-align:center;">
+            ${
+              idComp
+                ? `
+                  <button
+                    type="button"
+                    class="sb-icon-btn sb-icon-btn--danger"
+                    data-act="remove-skill"
+                    data-id-comp="${esc(idComp)}"
+                    title="Retirer la compétence"
+                    aria-label="Retirer la compétence"
+                  >
+                    ${iconTrash}
+                  </button>
+                `
+                : ``
+            }
+          </td>
         </tr>
       `;
     }).join('');
@@ -1003,6 +1054,7 @@
                     <th>Compétence</th>
                     <th style="width:120px; text-align:center;">Niv. actuel</th>
                     <th style="width:140px; text-align:center;">Dernière éval.</th>
+                    <th style="width:52px;"></th>
                   </tr>
                 </thead>
                 <tbody>${rows}</tbody>
@@ -1050,6 +1102,18 @@
         }
       });
     }
+
+    host.querySelectorAll('[data-act="remove-skill"]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        try {
+          btn.disabled = true;
+          await removeCompetenceFromCollaborateur(portal, btn.getAttribute('data-id-comp'));
+        } catch (e) {
+          btn.disabled = false;
+          if (portal.showAlert) portal.showAlert('error', getErrorMessage(e));
+        }
+      });
+    });
   }
 
   function renderCertifications(data){
