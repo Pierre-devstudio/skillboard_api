@@ -469,6 +469,12 @@
     };
 
     if (byId('collabSkillEvalHint')) byId('collabSkillEvalHint').textContent = 'Chargement…';
+    const codeBadge = byId('collabSkillEvalCompCode');
+    if (codeBadge){
+      codeBadge.textContent = '';
+      codeBadge.style.display = 'none';
+    }
+
     if (byId('collabSkillEvalCompTitle')) byId('collabSkillEvalCompTitle').textContent = '—';
     if (byId('collabSkillEvalCurrent')) byId('collabSkillEvalCurrent').textContent = '—';
     if (byId('collabSkillEvalLastEval')) byId('collabSkillEvalLastEval').textContent = '—';
@@ -786,12 +792,23 @@
         : 'Aucun audit existant. Renseignez l’évaluation puis enregistrez.';
     }
 
-    const title = [
-      (data?.code || '').toString().trim(),
-      (data?.intitule || '').toString().trim()
-    ].filter(Boolean).join(' — ');
-    if (byId('collabSkillEvalCompTitle')) byId('collabSkillEvalCompTitle').textContent = title || '—';
-    if (byId('collabSkillEvalCurrent')) byId('collabSkillEvalCurrent').textContent = (data?.niveau_actuel || '—').toString().trim() || '—';
+    const codeTxt = (data?.code || '').toString().trim();
+    const titleTxt = (data?.intitule || '').toString().trim();
+
+    const codeBadge = byId('collabSkillEvalCompCode');
+    if (codeBadge){
+      codeBadge.textContent = codeTxt || '';
+      codeBadge.style.display = codeTxt ? 'inline-flex' : 'none';
+    }
+
+    if (byId('collabSkillEvalCompTitle')) {
+      byId('collabSkillEvalCompTitle').textContent = titleTxt || '—';
+    }
+
+    if (byId('collabSkillEvalCurrent')) {
+      byId('collabSkillEvalCurrent').textContent = (data?.niveau_actuel || '—').toString().trim() || '—';
+    }
+
     if (byId('collabSkillEvalLastEval')) {
       byId('collabSkillEvalLastEval').textContent = data?.date_derniere_eval
         ? `Dernière éval : ${formatDateFR(data.date_derniere_eval)}`
@@ -803,7 +820,10 @@
       if (data?.last_audit?.date_audit) parts.push(formatDateFR(data.last_audit.date_audit));
       if (data?.last_audit?.nom_evaluateur) parts.push(data.last_audit.nom_evaluateur);
       if (data?.last_audit?.methode_eval) parts.push(data.last_audit.methode_eval);
-      byId('collabSkillEvalLastAuditMeta').textContent = parts.join(' • ');
+
+      byId('collabSkillEvalLastAuditMeta').textContent = parts.length
+        ? `Dernier audit : ${parts.join(' • ')}`
+        : '';
     }
 
     const domain = byId('collabSkillEvalCompDomain');

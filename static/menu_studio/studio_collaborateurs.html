@@ -375,19 +375,28 @@
     </div>
 
     <div class="sb-modal-body">
-      <div class="sb-grid-12" style="align-items:start;">
-        <div class="sb-field sb-col-8">
-          <div class="label"><b>Compétence</b></div>
-          <div id="collabSkillEvalCompTitle" style="font-weight:700; color:#111827;">—</div>
-          <div style="margin-top:6px;">
+      <div class="sb-card-head" style="align-items:flex-start; gap:16px; margin-bottom:4px;">
+        <div style="min-width:0; flex:1;">
+          <div style="display:flex; align-items:flex-start; gap:10px; min-width:0; flex-wrap:wrap;">
+            <span id="collabSkillEvalCompCode" class="sb-badge sb-badge--comp" style="display:none;"></span>
+
+            <div style="min-width:0; flex:1;">
+              <div class="label"><b>Compétence</b></div>
+              <div id="collabSkillEvalCompTitle" style="font-weight:700; color:#111827; line-height:1.35;">
+                —
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:8px;">
             <span id="collabSkillEvalCompDomain" class="sb-badge sb-badge--comp-domain" style="display:none;"></span>
           </div>
         </div>
 
-        <div class="sb-field sb-col-4">
+        <div style="flex:0 0 240px; min-width:220px;">
           <div class="label"><b>Niveau actuel</b></div>
           <div id="collabSkillEvalCurrent" style="font-weight:700; color:#111827;">—</div>
-          <div class="card-sub" id="collabSkillEvalLastEval" style="margin:4px 0 0 0;">—</div>
+          <div class="card-sub" id="collabSkillEvalLastEval" style="margin:6px 0 0 0;">—</div>
           <div class="card-sub" id="collabSkillEvalLastAuditMeta" style="margin:4px 0 0 0;"></div>
         </div>
       </div>
