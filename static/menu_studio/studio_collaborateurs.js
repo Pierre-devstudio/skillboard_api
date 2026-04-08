@@ -561,7 +561,6 @@
     renderTop();
     renderFilters();
     await hydrateFormSelects(portal);
-    setSourceHint();
   }
 
   async function loadGlobalStats(portal){
