@@ -125,8 +125,8 @@
 
             <div class="sb-form-grid sb-collab-form-grid">
               <div class="sb-field sb-span-2">
-                <div class="sb-collab-ident-inline">
-                  <div class="sb-field sb-collab-ident-inline__civilite">
+                <div class="sb-form-inline-3">
+                  <div class="sb-field sb-form-field--xs">
                     <div class="label">Civilité</div>
                     <select id="collabCivilite"></select>
                   </div>
@@ -149,7 +149,7 @@
               </div>
 
               <div class="sb-field sb-span-2">
-                <div class="sb-collab-row-zip">
+                <div class="sb-form-inline-zip">
                   <div class="sb-field">
                     <div class="label">Code postal</div>
                     <input type="text" id="collabCodePostal" />
@@ -168,7 +168,7 @@
               </div>
 
               <div class="sb-field sb-span-2">
-                <div class="sb-collab-row-2">
+                <div class="sb-form-inline-2">
                   <div class="sb-field">
                     <div class="label">Téléphone</div>
                     <input type="text" id="collabTel" />
@@ -182,7 +182,7 @@
               </div>
 
               <div class="sb-field sb-span-2">
-                <div class="sb-collab-row-email-date">
+                <div class="sb-form-inline-main-date">
                   <div class="sb-field">
                     <div class="label">Email</div>
                     <input type="email" id="collabEmail" />
@@ -209,7 +209,7 @@
 
             <div class="sb-form-grid sb-collab-form-grid">
               <div class="sb-field sb-span-2">
-                <div class="sb-collab-row-contract-date">
+                <div class="sb-form-inline-main-date">
                   <div class="sb-field">
                     <div class="label">Type de contrat</div>
                     <select id="collabTypeContrat"></select>
@@ -223,7 +223,7 @@
               </div>
 
               <div class="sb-field sb-span-2">
-                <div class="sb-collab-row-2">
+                <div class="sb-form-inline-2">
                   <div class="sb-field">
                     <div class="label">Service</div>
                     <select id="collabService"></select>
@@ -237,7 +237,7 @@
               </div>
 
               <div class="sb-field sb-span-2">
-                <div class="sb-collab-row-contract-date">
+                <div class="sb-form-inline-main-date">
                   <div class="sb-field">
                     <div class="label">Poste actuel</div>
                     <select id="collabPoste"></select>
@@ -251,7 +251,7 @@
               </div>
 
               <div class="sb-field sb-span-2">
-                <div class="sb-collab-row-checks">
+                <div class="sb-form-inline-checks">
                   <label class="sb-check sb-collab-check">
                     <input type="checkbox" id="collabFormateur" />
                     <span>Formateur</span>
@@ -271,14 +271,14 @@
                 </label>
               </div>
 
-              <div class="sb-field sb-span-2">
-                <div class="sb-collab-row-contract-date">
-                  <div class="sb-field" id="collabMotifSortieField" style="display:none;">
+              <div class="sb-field sb-span-2 sb-form-row-toggle-target is-hidden" id="collabSortieRow">
+                <div class="sb-form-inline-main-date">
+                  <div class="sb-field is-hidden" id="collabMotifSortieField">
                     <div class="label">Motif de sortie</div>
                     <input type="text" id="collabMotifSortie" />
                   </div>
 
-                  <div class="sb-field" id="collabDateSortieField" style="display:none;">
+                  <div class="sb-field is-hidden" id="collabDateSortieField">
                     <div class="label">Date de sortie prévue</div>
                     <input type="date" id="collabDateSortie" class="sb-collab-date" />
                   </div>

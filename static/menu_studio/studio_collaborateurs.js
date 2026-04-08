@@ -597,12 +597,15 @@
   }
 
   function refreshSortieVisibility(){
+    const row = byId("collabSortieRow");
     const wrapDate = byId("collabDateSortieField");
     const wrapMotif = byId("collabMotifSortieField");
     const chk = byId("collabHaveDateFin");
     const show = !!(chk && chk.checked);
-    if (wrapDate) wrapDate.style.display = show ? "" : "none";
-    if (wrapMotif) wrapMotif.style.display = show ? "" : "none";
+
+    if (row) row.classList.toggle("is-hidden", !show);
+    if (wrapDate) wrapDate.classList.toggle("is-hidden", !show);
+    if (wrapMotif) wrapMotif.classList.toggle("is-hidden", !show);
   }
 
   function clearForm(){
