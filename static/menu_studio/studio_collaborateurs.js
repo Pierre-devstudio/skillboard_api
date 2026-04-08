@@ -1057,6 +1057,8 @@
     _tabLoaded.skills = false;
     await loadTabIfNeeded(portal, 'skills');
 
+    closeModal('modalCollabSkillEval');
+
     return res;
   }
 
