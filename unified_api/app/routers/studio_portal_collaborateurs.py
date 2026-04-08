@@ -1279,6 +1279,9 @@ class CollaborateurPayload(BaseModel):
 class SyncPosteCompetencesPayload(BaseModel):
     id_poste_actuel: Optional[str] = None
 
+class CollaborateurCompetenceAddPayload(BaseModel):
+    id_comp: Optional[str] = None
+
 class CollaborateurAccessPayload(BaseModel):
     studio: Optional[str] = None
     insights: Optional[str] = None
@@ -2092,7 +2095,7 @@ def studio_collab_competences(id_owner: str, id_collaborateur: str, request: Req
                       ON curc.id_comp = c.id_comp
                     WHERE (req.id_comp IS NOT NULL OR curc.id_comp IS NOT NULL)
                       AND COALESCE(c.masque, FALSE) = FALSE
-                      AND COALESCE(c.etat, 'active') = 'active'
+                      AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
                     ORDER BY
                       (req.id_comp IS NULL) ASC,
                       COALESCE(req.poids_criticite, 0) DESC,
@@ -2297,6 +2300,181 @@ def studio_collab_sync_competences_from_poste(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/competences/sync-poste error: {e}")
+
+@router.post("/studio/collaborateurs/competences/{id_owner}/{id_collaborateur}/add")
+def studio_collab_add_competence(
+    id_owner: str,
+    id_collaborateur: str,
+    payload: CollaborateurCompetenceAddPayload,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+
+        id_comp = _norm_text(payload.id_comp)
+        if not id_comp:
+            raise HTTPException(status_code=400, detail="id_comp manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+
+                id_effectif_data = (scope.get("id_effectif_data") or "").strip()
+                if not id_effectif_data:
+                    raise HTTPException(status_code=400, detail="Identifiant salarié exploitable introuvable.")
+
+                cur.execute(
+                    """
+                    SELECT
+                      c.id_comp,
+                      c.code,
+                      c.intitule,
+                      COALESCE(c.etat, 'active') AS etat
+                    FROM public.tbl_competence c
+                    WHERE c.id_owner = %s
+                      AND c.id_comp = %s
+                      AND COALESCE(c.masque, FALSE) = FALSE
+                      AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
+                    LIMIT 1
+                    """,
+                    (oid, id_comp),
+                )
+                comp = cur.fetchone() or {}
+                if not comp:
+                    raise HTTPException(status_code=404, detail="Compétence introuvable dans le catalogue owner.")
+
+                ecc_cols = _get_effectif_competence_columns(cur)
+
+                archive_expr = "COALESCE(archive, FALSE)" if "archive" in ecc_cols else "FALSE"
+                actif_expr = "COALESCE(actif, TRUE)" if "actif" in ecc_cols else "TRUE"
+                order_expr = "COALESCE(dernier_update, NOW()) DESC" if "dernier_update" in ecc_cols else "id_effectif_competence DESC"
+
+                cur.execute(
+                    f"""
+                    SELECT
+                      id_effectif_competence,
+                      {archive_expr} AS archive_row,
+                      {actif_expr} AS actif_row
+                    FROM public.tbl_effectif_client_competence
+                    WHERE id_effectif_client = %s
+                      AND id_comp = %s
+                    ORDER BY
+                      {archive_expr} ASC,
+                      {actif_expr} DESC,
+                      {order_expr}
+                    LIMIT 1
+                    """,
+                    (id_effectif_data, id_comp),
+                )
+                existing = cur.fetchone() or {}
+
+                niveau = "Initial"
+                note = _score_for_skill_level(niveau)
+
+                if existing.get("id_effectif_competence") and not bool(existing.get("archive_row")) and bool(existing.get("actif_row")):
+                    return {
+                        "ok": True,
+                        "id_collaborateur": cid,
+                        "id_effectif_data": id_effectif_data,
+                        "id_comp": id_comp,
+                        "code": (comp.get("code") or "").strip(),
+                        "intitule": (comp.get("intitule") or "").strip(),
+                        "inserted": False,
+                        "already_exists": True,
+                        "niveau_actuel": niveau,
+                    }
+
+                if existing.get("id_effectif_competence"):
+                    id_effectif_competence = (existing.get("id_effectif_competence") or "").strip()
+
+                    set_parts = ["niveau_actuel = %s"]
+                    params = [niveau]
+
+                    if "actif" in ecc_cols:
+                        set_parts.append("actif = TRUE")
+                    if "archive" in ecc_cols:
+                        set_parts.append("archive = FALSE")
+                    if "date_derniere_eval" in ecc_cols:
+                        set_parts.append("date_derniere_eval = CURRENT_DATE")
+                    if "dernier_update" in ecc_cols:
+                        set_parts.append("dernier_update = NOW()")
+
+                    params.append(id_effectif_competence)
+
+                    cur.execute(
+                        f"""
+                        UPDATE public.tbl_effectif_client_competence
+                        SET {", ".join(set_parts)}
+                        WHERE id_effectif_competence = %s
+                        """,
+                        tuple(params),
+                    )
+                    action = "reactivated"
+                else:
+                    id_effectif_competence = _insert_effectif_competence_row(
+                        cur,
+                        id_effectif_data,
+                        id_comp,
+                        niveau,
+                    )
+                    action = "inserted"
+
+                id_audit = str(uuid.uuid4())
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_effectif_client_audit_competence (
+                      id_audit_competence,
+                      id_effectif_competence,
+                      date_audit,
+                      methode_eval,
+                      resultat_eval
+                    ) VALUES (
+                      %s, %s, CURRENT_DATE, %s, %s
+                    )
+                    """,
+                    (
+                        id_audit,
+                        id_effectif_competence,
+                        "ajout_catalogue",
+                        note,
+                    ),
+                )
+
+                _set_effectif_competence_last_audit(
+                    cur,
+                    id_effectif_competence,
+                    id_audit,
+                    niveau,
+                )
+
+                conn.commit()
+
+        return {
+            "ok": True,
+            "id_collaborateur": cid,
+            "id_effectif_data": id_effectif_data,
+            "id_comp": id_comp,
+            "code": (comp.get("code") or "").strip(),
+            "intitule": (comp.get("intitule") or "").strip(),
+            "inserted": True,
+            "already_exists": False,
+            "action": action,
+            "niveau_actuel": niveau,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/competences/add error: {e}")
 
 @router.get("/studio/collaborateurs/certifications/{id_owner}/{id_collaborateur}")
 def studio_collab_certifications(id_owner: str, id_collaborateur: str, request: Request):

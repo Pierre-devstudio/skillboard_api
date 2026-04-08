@@ -26,6 +26,14 @@
   let _nsfGroupes = [];
   let _nsfGroupesLoaded = false;
 
+  let _collabSkillItems = [];
+  let _collabCompAddItems = [];
+  let _collabCompAddItemsAll = [];
+  let _collabCompAddSearch = "";
+  let _collabCompAddTimer = null;
+  let _collabCompAddIncludeToValidate = false;
+  let _collabCompAddDomain = "";
+
   function byId(id){ return document.getElementById(id); }
 
   function esc(s){
@@ -196,6 +204,203 @@
         btn.textContent = previousText || 'Importer les compétences du poste';
       }
     }
+  }
+
+  function resetCollabCompAddState(){
+    if (byId('collabCompAddSearch')) byId('collabCompAddSearch').value = '';
+    if (byId('collabCompAddList')) byId('collabCompAddList').innerHTML = '';
+
+    const cb = byId('collabCompAddShowToValidate');
+    if (cb) cb.checked = false;
+
+    const sel = byId('collabCompAddDomain');
+    if (sel){
+      sel.innerHTML = `
+        <option value="">Tous</option>
+        <option value="__none__">Sans domaine</option>
+      `;
+      sel.value = '';
+    }
+
+    _collabCompAddSearch = '';
+    _collabCompAddItems = [];
+    _collabCompAddItemsAll = [];
+    _collabCompAddIncludeToValidate = false;
+    _collabCompAddDomain = '';
+  }
+
+  function refreshCollabCompAddDomainOptions(items){
+    const sel = byId('collabCompAddDomain');
+    if (!sel) return;
+
+    const keep = (sel.value || '').trim();
+    const map = new Map();
+
+    (items || []).forEach(it => {
+      const id = (it.domaine || '').toString().trim() || '__none__';
+      const label = (
+        it.domaine_titre_court ||
+        it.domaine_titre ||
+        it.domaine ||
+        ''
+      ).toString().trim() || 'Sans domaine';
+
+      if (!map.has(id)) map.set(id, label);
+    });
+
+    sel.innerHTML = '';
+    sel.appendChild(new Option('Tous', ''));
+    sel.appendChild(new Option('Sans domaine', '__none__'));
+
+    Array.from(map.entries())
+      .filter(([id]) => id !== '__none__')
+      .sort((a, b) => a[1].localeCompare(b[1], 'fr', { sensitivity: 'base' }))
+      .forEach(([id, label]) => sel.appendChild(new Option(label, id)));
+
+    if (keep && sel.querySelector(`option[value="${keep}"]`)) sel.value = keep;
+    else sel.value = '';
+
+    _collabCompAddDomain = (sel.value || '').trim();
+  }
+
+  function applyCollabCompAddDomainFilter(items){
+    const dom = (_collabCompAddDomain || '').trim();
+    if (!dom) return (items || []).slice();
+
+    if (dom === '__none__'){
+      return (items || []).filter(it => !((it.domaine || '').toString().trim()));
+    }
+
+    return (items || []).filter(it => ((it.domaine || '').toString().trim() === dom));
+  }
+
+  function renderCollabCompAddList(portal){
+    const host = byId('collabCompAddList');
+    if (!host) return;
+    host.innerHTML = '';
+
+    const items = _collabCompAddItems || [];
+    if (!items.length){
+      const e = document.createElement('div');
+      e.className = 'card-sub';
+      e.textContent = 'Aucune compétence à afficher.';
+      host.appendChild(e);
+      return;
+    }
+
+    items.forEach(it => {
+      const row = document.createElement('div');
+      row.className = 'sb-row-card';
+
+      const left = document.createElement('div');
+      left.className = 'sb-row-left';
+
+      const code = document.createElement('span');
+      code.className = 'sb-badge sb-badge--comp';
+      code.textContent = it.code || '—';
+
+      const title = document.createElement('div');
+      title.className = 'sb-row-title';
+      title.textContent = it.intitule || '';
+
+      left.appendChild(code);
+      left.appendChild(title);
+
+      const right = document.createElement('div');
+      right.className = 'sb-row-right';
+
+      if ((it.etat || '').toLowerCase() === 'à valider'){
+        const v = document.createElement('span');
+        v.className = 'sb-badge sb-badge--accent-soft';
+        v.textContent = 'À valider';
+        right.appendChild(v);
+      }
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'sb-btn sb-btn--accent sb-btn--xs';
+      btn.textContent = 'Ajouter';
+      btn.addEventListener('click', async () => {
+        try {
+          btn.disabled = true;
+          await addCompetenceToCollaborateur(portal, it.id_comp);
+        } catch (e) {
+          if (portal.showAlert) portal.showAlert('error', getErrorMessage(e));
+          btn.disabled = false;
+        }
+      });
+
+      row.appendChild(left);
+      row.appendChild(right);
+      row.appendChild(btn);
+
+      host.appendChild(row);
+    });
+  }
+
+  async function loadCollabCompAddList(portal){
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
+
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
+
+    const url =
+      `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}` +
+      `?q=${encodeURIComponent(_collabCompAddSearch)}` +
+      `&show=active`;
+
+    const data = await portal.apiJson(url);
+    let items = Array.isArray(data?.items) ? data.items : [];
+
+    items = items.filter(it => {
+      const et = (it.etat || '').toLowerCase();
+      if (et === 'active' || et === 'valide') return true;
+      if (_collabCompAddIncludeToValidate && et === 'à valider') return true;
+      return false;
+    });
+
+    const existing = new Set(
+      (_collabSkillItems || [])
+        .map(x => (x.id_comp || '').toString().trim())
+        .filter(Boolean)
+    );
+
+    items = items.filter(it => {
+      const idComp = (it.id_comp || '').toString().trim();
+      return idComp && !existing.has(idComp);
+    });
+
+    _collabCompAddItemsAll = items;
+    refreshCollabCompAddDomainOptions(_collabCompAddItemsAll);
+    _collabCompAddItems = applyCollabCompAddDomainFilter(_collabCompAddItemsAll);
+    renderCollabCompAddList(portal);
+  }
+
+  async function openCollabCompAddModal(portal){
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
+    resetCollabCompAddState();
+    openModal('modalCollabCompAdd');
+    await loadCollabCompAddList(portal);
+  }
+
+  async function addCompetenceToCollaborateur(portal, idComp){
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
+
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
+
+    await portal.apiJson(
+      `${portal.apiBase}/studio/collaborateurs/competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/add`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_comp: idComp })
+      }
+    );
+
+    closeModal('modalCollabCompAdd');
+    _tabLoaded.skills = false;
+    await loadTabIfNeeded(portal, 'skills');
   }
 
   function getOwnerId() {
@@ -747,13 +952,17 @@
     if (!host) return;
 
     const items = Array.isArray(data?.items) ? data.items : [];
+    _collabSkillItems = items.slice();
+
     const poste = getCurrentPosteForSkills();
     const canSync = !!_editingId && !!poste.id;
+    const canAdd = !!_editingId;
     const posteLabel = poste.label || data?.intitule_poste || '–';
 
     const rows = items.map(x => {
       const niveau = (x.niveau_actuel || '').trim() || '–';
       const lastEval = formatDateFR(x.date_derniere_eval);
+
       return `
         <tr>
           <td>
@@ -802,13 +1011,40 @@
           `
           : `<div class="card-sub" style="margin:0;">Aucune compétence trouvée.</div>`
       }
+
+      ${
+        canAdd
+          ? `
+            <div class="sb-actions" style="justify-content:flex-end; margin-top:10px;">
+              <button
+                type="button"
+                class="sb-btn sb-btn--accent sb-btn--xs"
+                id="btnCollabCompAdd"
+              >
+                Ajouter une compétence
+              </button>
+            </div>
+          `
+          : ``
+      }
     `;
 
-    const btn = byId('btnSyncCollabSkillsFromPoste');
-    if (btn) {
-      btn.addEventListener('click', async () => {
+    const btnSync = byId('btnSyncCollabSkillsFromPoste');
+    if (btnSync) {
+      btnSync.addEventListener('click', async () => {
         try {
           await syncCompetencesFromSelectedPoste(portal);
+        } catch (e) {
+          if (portal.showAlert) portal.showAlert('error', getErrorMessage(e));
+        }
+      });
+    }
+
+    const btnAdd = byId('btnCollabCompAdd');
+    if (btnAdd) {
+      btnAdd.addEventListener('click', async () => {
+        try {
+          await openCollabCompAddModal(portal);
         } catch (e) {
           if (portal.showAlert) portal.showAlert('error', getErrorMessage(e));
         }
@@ -1272,6 +1508,30 @@
       } catch (e) {
         portal.showAlert('error', getErrorMessage(e));
       }
+    });
+
+    byId('btnCloseCollabCompAdd')?.addEventListener('click', () => closeModal('modalCollabCompAdd'));
+
+    const collabCompSearch = byId('collabCompAddSearch');
+    if (collabCompSearch){
+      collabCompSearch.addEventListener('input', () => {
+        _collabCompAddSearch = (collabCompSearch.value || '').trim();
+        if (_collabCompAddTimer) clearTimeout(_collabCompAddTimer);
+        _collabCompAddTimer = setTimeout(() => {
+          loadCollabCompAddList(portal).catch(err => portal.showAlert('error', getErrorMessage(err)));
+        }, 250);
+      });
+    }
+
+    byId('collabCompAddShowToValidate')?.addEventListener('change', (e) => {
+      _collabCompAddIncludeToValidate = !!e.target.checked;
+      loadCollabCompAddList(portal).catch(err => portal.showAlert('error', getErrorMessage(err)));
+    });
+
+    byId('collabCompAddDomain')?.addEventListener('change', (e) => {
+      _collabCompAddDomain = (e.target.value || '').trim();
+      _collabCompAddItems = applyCollabCompAddDomainFilter(_collabCompAddItemsAll);
+      renderCollabCompAddList(portal);
     });
 
     bindPhoneMask(byId('collabTel'));

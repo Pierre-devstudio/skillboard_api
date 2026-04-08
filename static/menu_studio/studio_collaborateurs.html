@@ -115,7 +115,7 @@
         <button type="button" class="sb-btn sb-btn--soft" data-tab="rights" aria-selected="false">Droits</button>
       </div>
 
-<div class="sb-tab-panel is-active" data-panel="ident" role="tabpanel">
+      <div class="sb-tab-panel is-active" data-panel="ident" role="tabpanel">
         <div class="sb-stack sb-stack--xs">
 
           <div class="card sb-collab-form-card" style="margin:0;">
@@ -321,6 +321,43 @@
           <button type="button" class="sb-btn sb-btn--accent" id="btnCollabSave">Enregistrer</button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL : Ajouter compétence au collaborateur -->
+<div class="sb-modal" id="modalCollabCompAdd" style="display:none;">
+  <div class="sb-modal-card">
+    <div class="sb-modal-head">
+      <div>
+        <div class="card-title" style="margin-bottom:2px;">Ajouter une compétence</div>
+        <div class="card-sub" style="margin:0;">Catalogue propriétaire.</div>
+      </div>
+      <button type="button" class="sb-modal-x" id="btnCloseCollabCompAdd" aria-label="Fermer">&times;</button>
+    </div>
+
+    <div class="sb-modal-body">
+      <div class="sb-toolbar">
+        <div class="sb-search">
+          <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
+          <input type="text" id="collabCompAddSearch" placeholder="Code ou intitulé…" />
+        </div>
+
+        <div class="info-item" style="min-width:240px;">
+          <div class="label">Domaine</div>
+          <select id="collabCompAddDomain">
+            <option value="">Tous</option>
+            <option value="__none__">Sans domaine</option>
+          </select>
+        </div>
+
+        <label class="sb-check" style="align-self:flex-end; margin:0 4px 2px 0;">
+          <input type="checkbox" id="collabCompAddShowToValidate" />
+          <span>Inclure compétences “à valider”</span>
+        </label>
+      </div>
+
+      <div class="sb-stack sb-stack--xxs sb-mt-10" id="collabCompAddList"></div>
     </div>
   </div>
 </div>
