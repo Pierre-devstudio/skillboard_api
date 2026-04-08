@@ -1391,6 +1391,61 @@ def _insert_effectif_competence_row(cur, id_effectif_client: str, id_comp: str, 
     )
     return row_id
 
+def _insert_effectif_competence_row_empty(cur, id_effectif_client: str, id_comp: str) -> str:
+    cols = _get_effectif_competence_columns(cur)
+
+    required = ("id_effectif_competence", "id_effectif_client", "id_comp", "id_dernier_audit")
+    missing = [c for c in required if c not in cols]
+    if missing:
+        raise HTTPException(
+            status_code=500,
+            detail="tbl_effectif_client_competence incomplète : " + ", ".join(missing),
+        )
+
+    row_id = str(uuid.uuid4())
+    insert_cols = []
+    placeholders = []
+    params = []
+
+    def add_value(col: str, value):
+        if col in cols:
+            insert_cols.append(col)
+            placeholders.append("%s")
+            params.append(value)
+
+    def add_sql(col: str, expr: str):
+        if col in cols:
+            insert_cols.append(col)
+            placeholders.append(expr)
+
+    add_value("id_effectif_competence", row_id)
+    add_value("id_effectif_client", id_effectif_client)
+    add_value("id_comp", id_comp)
+    add_value("id_dernier_audit", None)
+
+    if "niveau_actuel" in cols:
+        add_value("niveau_actuel", None)
+
+    add_value("actif", True)
+    add_value("archive", False)
+
+    if "date_derniere_eval" in cols:
+        add_value("date_derniere_eval", None)
+
+    add_sql("date_creation", "CURRENT_DATE")
+    add_sql("dernier_update", "NOW()")
+
+    cur.execute(
+        f"""
+        INSERT INTO public.tbl_effectif_client_competence (
+          {", ".join(insert_cols)}
+        ) VALUES (
+          {", ".join(placeholders)}
+        )
+        """,
+        tuple(params),
+    )
+    return row_id
 
 def _set_effectif_competence_last_audit(cur, id_effectif_competence: str, id_audit_competence: str, niveau_actuel: str) -> None:
     cols = _get_effectif_competence_columns(cur)
@@ -2380,9 +2435,6 @@ def studio_collab_add_competence(
                 )
                 existing = cur.fetchone() or {}
 
-                niveau = "Initial"
-                note = _score_for_skill_level(niveau)
-
                 if existing.get("id_effectif_competence") and not bool(existing.get("archive_row")) and bool(existing.get("actif_row")):
                     return {
                         "ok": True,
@@ -2393,21 +2445,33 @@ def studio_collab_add_competence(
                         "intitule": (comp.get("intitule") or "").strip(),
                         "inserted": False,
                         "already_exists": True,
-                        "niveau_actuel": niveau,
+                        "niveau_actuel": None,
                     }
 
                 if existing.get("id_effectif_competence"):
                     id_effectif_competence = (existing.get("id_effectif_competence") or "").strip()
 
-                    set_parts = ["niveau_actuel = %s"]
-                    params = [niveau]
+                    set_parts = []
+                    params = []
+
+                    if "niveau_actuel" in ecc_cols:
+                        set_parts.append("niveau_actuel = %s")
+                        params.append(None)
+
+                    if "id_dernier_audit" in ecc_cols:
+                        set_parts.append("id_dernier_audit = %s")
+                        params.append(None)
 
                     if "actif" in ecc_cols:
                         set_parts.append("actif = TRUE")
+
                     if "archive" in ecc_cols:
                         set_parts.append("archive = FALSE")
+
                     if "date_derniere_eval" in ecc_cols:
-                        set_parts.append("date_derniere_eval = CURRENT_DATE")
+                        set_parts.append("date_derniere_eval = %s")
+                        params.append(None)
+
                     if "dernier_update" in ecc_cols:
                         set_parts.append("dernier_update = NOW()")
 
@@ -2423,41 +2487,12 @@ def studio_collab_add_competence(
                     )
                     action = "reactivated"
                 else:
-                    id_effectif_competence = _insert_effectif_competence_row(
+                    _insert_effectif_competence_row_empty(
                         cur,
                         id_effectif_data,
                         id_comp,
-                        niveau,
                     )
                     action = "inserted"
-
-                id_audit = str(uuid.uuid4())
-                cur.execute(
-                    """
-                    INSERT INTO public.tbl_effectif_client_audit_competence (
-                      id_audit_competence,
-                      id_effectif_competence,
-                      date_audit,
-                      methode_eval,
-                      resultat_eval
-                    ) VALUES (
-                      %s, %s, CURRENT_DATE, %s, %s
-                    )
-                    """,
-                    (
-                        id_audit,
-                        id_effectif_competence,
-                        "ajout_catalogue",
-                        note,
-                    ),
-                )
-
-                _set_effectif_competence_last_audit(
-                    cur,
-                    id_effectif_competence,
-                    id_audit,
-                    niveau,
-                )
 
                 conn.commit()
 
@@ -2471,7 +2506,7 @@ def studio_collab_add_competence(
             "inserted": True,
             "already_exists": False,
             "action": action,
-            "niveau_actuel": niveau,
+            "niveau_actuel": None,
         }
 
     except HTTPException:
