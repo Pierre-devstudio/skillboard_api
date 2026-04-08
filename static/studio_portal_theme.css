@@ -1113,75 +1113,78 @@
    ====================================================== */
 
 .sb-collab-modal-card{
-  padding:10px;
+  padding:12px;
 }
 
 .sb-collab-modal-card .sb-modal-head{
-  padding-bottom:6px;
+  padding-bottom:8px;
 }
 
 .sb-collab-modal-body{
-  padding-top:8px;
-  padding-bottom:6px;
+  padding-top:10px;
+  padding-bottom:8px;
 }
 
 .sb-collab-modal-card .sb-modal-foot{
-  padding-top:8px;
+  padding-top:10px;
 }
 
 .sb-collab-tabbar{
-  margin-bottom:8px !important;
-  gap:6px !important;
+  margin-bottom:10px !important;
+  gap:8px !important;
+}
+
+.sb-collab-tabbar [data-tab]{
+  border-color: rgba(var(--sb-accent-rgb), .55);
+}
+
+.sb-collab-tabbar [data-tab].is-active{
+  background: var(--accent);
+  border-color: var(--accent);
+  color:#111827;
+  box-shadow:none;
 }
 
 .sb-collab-form-card{
-  padding:8px;
+  padding:12px;
+  border:1px solid rgba(17,24,39,.08);
+  border-radius:14px;
+}
+
+.sb-collab-block-head{
+  margin:0 0 10px 0;
+  padding-bottom:8px;
+  border-bottom:1px solid rgba(17,24,39,.06);
 }
 
 .sb-collab-form-grid{
   margin-top:0;
-  gap:6px 12px;
-}
-
-.sb-collab-form-grid > *{
-  margin:0 !important;
+  gap:10px 12px;
 }
 
 .sb-collab-form-grid .label{
-  margin:0 0 3px 0;
-  line-height:1.2;
+  margin-bottom:4px;
 }
 
 .sb-collab-check{
-  margin-top:18px !important;
+  margin-top:24px !important;
 }
 
 .sb-collab-ident-inline{
   display:grid;
   grid-template-columns:92px minmax(0, 1fr) minmax(0, 1fr);
-  gap:12px;
-  align-items:start;
-}
-
-.sb-collab-ident-inline > .sb-field{
-  min-width:0;
-  margin:0 !important;
-}
-
-.sb-collab-ident-inline .label{
-  margin:0 0 3px 0;
-  line-height:1.2;
-}
-
-.sb-collab-ident-inline input,
-.sb-collab-ident-inline select{
-  width:100%;
-  min-width:0;
+  gap:10px 12px;
+  align-items:end;
 }
 
 .sb-collab-ident-inline__civilite{
   min-width:92px;
   max-width:92px;
+}
+
+.sb-collab-ident-inline__civilite select{
+  min-width:0;
+  width:100%;
 }
 
 .sb-badge--status-active{
@@ -1205,7 +1208,6 @@
 @media (max-width: 760px){
   .sb-collab-ident-inline{
     grid-template-columns:1fr;
-    gap:8px;
   }
 
   .sb-collab-ident-inline__civilite{

@@ -561,9 +561,7 @@
     if (data?.ismanager) badges.push({ label: "Manager", cls: "sb-badge sb-badge--outline-accent" });
     if (data?.isformateur) badges.push({ label: "Formateur", cls: "sb-badge sb-badge--outline-accent" });
 
-    host.innerHTML = badges.map(x => {
-      return `<span class="${x.cls}">${esc(x.label)}</span>`;
-    }).join("");
+    host.innerHTML = badges.map(x => `<span class="${x.cls}">${esc(x.label)}</span>`).join("");
   }
 
   function buildPayload(){
