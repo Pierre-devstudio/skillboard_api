@@ -18,6 +18,14 @@
   let _tabLoaded = { skills: false, certs: false, history: false, rights: false };
   const COLLAB_LIST_SHOW_PDF_BTN = false;
 
+  let _hiddenCodeEffectif = null;
+  let _hiddenBusinessTravel = null;
+  let _hiddenIsTemp = false;
+  let _hiddenTempRole = null;
+
+  let _nsfGroupes = [];
+  let _nsfGroupesLoaded = false;
+
   function byId(id){ return document.getElementById(id); }
 
   function esc(s){
@@ -266,7 +274,97 @@
     if (byId("collabShowArchived")) byId("collabShowArchived").checked = !!_showArchived;
   }
 
-  function hydrateFormSelects(){
+  function _normLoose(v){
+    return String(v || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  async function ensureCollabNsfGroupes(portal){
+    if (_nsfGroupesLoaded) return;
+    _nsfGroupesLoaded = true;
+
+    try{
+      const ownerId = getOwnerId();
+      if (!ownerId){
+        _nsfGroupes = [];
+        return;
+      }
+
+      const data = await portal.apiJson(`${portal.apiBase}/studio/org/nsf_groupes/${encodeURIComponent(ownerId)}`);
+      _nsfGroupes = Array.isArray(data?.items) ? data.items : [];
+    } catch(_){
+      _nsfGroupes = [];
+    }
+  }
+
+  function fillCollabEducationSelects(){
+    fillSelect(byId("collabNiveauEdu"), [
+      { value: "", label: "—" },
+      { value: "0", label: "Aucun diplôme" },
+      { value: "3", label: "Niveau 3 : CAP, BEP" },
+      { value: "4", label: "Niveau 4 : Bac" },
+      { value: "5", label: "Niveau 5 : Bac+2 (BTS, DUT)" },
+      { value: "6", label: "Niveau 6 : Bac+3 (Licence, BUT)" },
+      { value: "7", label: "Niveau 7 : Bac+5 (Master, Ingénieur, Grandes écoles)" },
+      { value: "8", label: "Niveau 8 : Bac+8 (Doctorat)" }
+    ], "value", "label");
+
+    const items = (_nsfGroupes || []).map(x => {
+      const code = String(x?.code || "").trim();
+      const titre = String(x?.titre || "").trim();
+      return {
+        value: code,
+        label: (titre && code) ? `${titre} (${code})` : (titre || code),
+        titre
+      };
+    });
+
+    fillSelect(byId("collabDomaineEdu"), items, "value", "label", "", "—");
+
+    const sel = byId("collabDomaineEdu");
+    if (sel){
+      Array.from(sel.options || []).forEach((opt, idx) => {
+        if (idx === 0) return;
+        const item = items[idx - 1] || {};
+        opt.dataset.code = item.value || "";
+        opt.dataset.titre = item.titre || "";
+      });
+    }
+  }
+
+  function setSelectValueLoose(id, value){
+    const el = byId(id);
+    if (!el) return;
+
+    const raw = String(value || "").trim();
+    if (!raw){
+      el.value = "";
+      return;
+    }
+
+    const opts = Array.from(el.options || []);
+    const direct = opts.find(opt => String(opt.value || "").trim() === raw);
+    if (direct){
+      el.value = direct.value;
+      return;
+    }
+
+    const n = _normLoose(raw);
+    const loose = opts.find(opt => {
+      const ov = _normLoose(opt.value || "");
+      const ot = _normLoose(opt.textContent || "");
+      const oc = _normLoose(opt.dataset.code || "");
+      const od = _normLoose(opt.dataset.titre || "");
+      return ov === n || ot === n || oc === n || od === n || ot.includes(n) || od.includes(n);
+    });
+
+    el.value = loose ? loose.value : "";
+  }
+
+  async function hydrateFormSelects(portal){
     fillSelect(byId("collabCivilite"), [
       { value: "M.", label: "M." },
       { value: "Mme", label: "Mme" },
@@ -286,6 +384,9 @@
       { value: "Freelance", label: "Freelance" },
       { value: "Autre", label: "Autre" }
     ], "value", "label");
+
+    await ensureCollabNsfGroupes(portal);
+    fillCollabEducationSelects();
   }
 
   function refreshServiceFromPoste(){
@@ -459,7 +560,8 @@
     _ctx = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/context/${encodeURIComponent(ownerId)}`);
     renderTop();
     renderFilters();
-    hydrateFormSelects();
+    await hydrateFormSelects(portal);
+    setSourceHint();
   }
 
   async function loadGlobalStats(portal){
@@ -492,8 +594,7 @@
 
   function refreshTempRoleVisibility(){
     const wrap = byId("collabTempRoleField");
-    const chk = byId("collabTemp");
-    if (wrap) wrap.style.display = chk && chk.checked ? "" : "none";
+    if (wrap) wrap.style.display = "none";
   }
 
   function refreshSortieVisibility(){
@@ -509,13 +610,17 @@
     [
       "collabPrenom","collabNom","collabEmail","collabTel","collabTel2","collabAdresse",
       "collabCodePostal","collabVille","collabPays","collabObservations","collabMatricule",
-      "collabCodeEffectif","collabBusinessTravel","collabNiveauEdu","collabDomaineEdu",
-      "collabDateNaissance","collabDateEntree","collabDateDebutPoste","collabDateSortie",
-      "collabMotifSortie","collabNote","collabTempRole"
+      "collabNiveauEdu","collabDomaineEdu","collabDateNaissance","collabDateEntree",
+      "collabDateDebutPoste","collabDateSortie","collabMotifSortie","collabNote"
     ].forEach(id => {
       const el = byId(id);
       if (el) el.value = "";
     });
+
+    _hiddenCodeEffectif = null;
+    _hiddenBusinessTravel = null;
+    _hiddenIsTemp = false;
+    _hiddenTempRole = null;
 
     if (byId("collabCivilite")) byId("collabCivilite").value = "";
     if (byId("collabService")) {
@@ -524,11 +629,12 @@
     }
     if (byId("collabPoste")) byId("collabPoste").value = "";
     if (byId("collabTypeContrat")) byId("collabTypeContrat").value = "";
+    if (byId("collabNiveauEdu")) byId("collabNiveauEdu").value = "";
+    if (byId("collabDomaineEdu")) byId("collabDomaineEdu").value = "";
 
     if (byId("collabActif")) byId("collabActif").checked = true;
     if (byId("collabManager")) byId("collabManager").checked = false;
     if (byId("collabFormateur")) byId("collabFormateur").checked = false;
-    if (byId("collabTemp")) byId("collabTemp").checked = false;
     if (byId("collabHaveDateFin")) byId("collabHaveDateFin").checked = false;
 
     refreshTempRoleVisibility();
@@ -557,7 +663,6 @@
       badges.push({ label: "Inactif", cls: "sb-badge sb-badge--status-inactive" });
     }
 
-    if (data?.is_temp) badges.push({ label: "Temporaire", cls: "sb-badge sb-badge--outline-accent" });
     if (data?.ismanager) badges.push({ label: "Manager", cls: "sb-badge sb-badge--outline-accent" });
     if (data?.isformateur) badges.push({ label: "Formateur", cls: "sb-badge sb-badge--outline-accent" });
 
@@ -566,6 +671,7 @@
 
   function buildPayload(){
     const posteId = byId("collabPoste")?.value || null;
+
     return {
       civilite: byId("collabCivilite")?.value || null,
       prenom: byId("collabPrenom")?.value || null,
@@ -584,7 +690,7 @@
       id_poste_actuel: posteId,
       type_contrat: byId("collabTypeContrat")?.value || null,
       matricule_interne: byId("collabMatricule")?.value || null,
-      business_travel: byId("collabBusinessTravel")?.value || null,
+      business_travel: _hiddenBusinessTravel,
       date_naissance: byId("collabDateNaissance")?.value || null,
       date_entree_entreprise: byId("collabDateEntree")?.value || null,
       date_debut_poste_actuel: byId("collabDateDebutPoste")?.value || null,
@@ -596,9 +702,9 @@
       havedatefin: !!byId("collabHaveDateFin")?.checked,
       ismanager: !!byId("collabManager")?.checked,
       isformateur: !!byId("collabFormateur")?.checked,
-      is_temp: !!byId("collabTemp")?.checked,
-      role_temp: byId("collabTempRole")?.value || null,
-      code_effectif: byId("collabCodeEffectif")?.value || null
+      is_temp: _hiddenIsTemp,
+      role_temp: _hiddenTempRole,
+      code_effectif: _hiddenCodeEffectif
     };
   }
 
@@ -993,10 +1099,15 @@
     if (byId('collabPoste')) byId('collabPoste').value = data?.id_poste_actuel || data?.fonction || '';
     if (byId('collabTypeContrat')) byId('collabTypeContrat').value = data?.type_contrat || '';
     if (byId('collabMatricule')) byId('collabMatricule').value = data?.matricule_interne || '';
-    if (byId('collabCodeEffectif')) byId('collabCodeEffectif').value = data?.code_effectif || '';
-    if (byId('collabBusinessTravel')) byId('collabBusinessTravel').value = data?.business_travel || '';
-    if (byId('collabNiveauEdu')) byId('collabNiveauEdu').value = data?.niveau_education || '';
-    if (byId('collabDomaineEdu')) byId('collabDomaineEdu').value = data?.domaine_education || '';
+
+    _hiddenCodeEffectif = data?.code_effectif || null;
+    _hiddenBusinessTravel = data?.business_travel || null;
+    _hiddenIsTemp = !!data?.is_temp;
+    _hiddenTempRole = data?.role_temp || null;
+
+    setSelectValueLoose('collabNiveauEdu', data?.niveau_education || '');
+    setSelectValueLoose('collabDomaineEdu', data?.domaine_education || '');
+
     if (byId('collabDateNaissance')) byId('collabDateNaissance').value = data?.date_naissance || '';
     if (byId('collabDateEntree')) byId('collabDateEntree').value = data?.date_entree_entreprise || '';
     if (byId('collabDateDebutPoste')) byId('collabDateDebutPoste').value = data?.date_debut_poste_actuel || '';
@@ -1007,8 +1118,6 @@
     if (byId('collabHaveDateFin')) byId('collabHaveDateFin').checked = !!data?.havedatefin || !!data?.date_sortie_prevue;
     if (byId('collabManager')) byId('collabManager').checked = !!data?.ismanager;
     if (byId('collabFormateur')) byId('collabFormateur').checked = !!data?.isformateur;
-    if (byId('collabTemp')) byId('collabTemp').checked = !!data?.is_temp;
-    if (byId('collabTempRole')) byId('collabTempRole').value = data?.role_temp || '';
 
     refreshTempRoleVisibility();
     refreshSortieVisibility();

@@ -115,7 +115,7 @@
         <button type="button" class="sb-btn sb-btn--soft" data-tab="rights" aria-selected="false">Droits</button>
       </div>
 
-      <div class="sb-tab-panel is-active" data-panel="ident" role="tabpanel">
+<div class="sb-tab-panel is-active" data-panel="ident" role="tabpanel">
         <div class="sb-stack sb-stack--sm">
 
           <div class="card sb-collab-form-card" style="margin:0;">
@@ -143,119 +143,146 @@
                 </div>
               </div>
 
-              <div class="sb-field">
-                <div class="label">Email</div>
-                <input type="email" id="collabEmail" />
-              </div>
-              <div class="sb-field">
-                <div class="label">Téléphone</div>
-                <input type="text" id="collabTel" />
-              </div>
-              <div class="sb-field">
-                <div class="label">Téléphone 2</div>
-                <input type="text" id="collabTel2" />
-              </div>
-
               <div class="sb-field sb-span-2">
                 <div class="label">Adresse</div>
                 <input type="text" id="collabAdresse" />
               </div>
-              <div class="sb-field">
-                <div class="label">Code postal</div>
-                <input type="text" id="collabCodePostal" />
-              </div>
-              <div class="sb-field">
-                <div class="label">Ville</div>
-                <input type="text" id="collabVille" />
-              </div>
-              <div class="sb-field">
-                <div class="label">Pays</div>
-                <input type="text" id="collabPays" />
+
+              <div class="sb-field sb-span-2">
+                <div class="sb-collab-row-zip">
+                  <div class="sb-field">
+                    <div class="label">Code postal</div>
+                    <input type="text" id="collabCodePostal" />
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Ville</div>
+                    <input type="text" id="collabVille" />
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Pays</div>
+                    <input type="text" id="collabPays" />
+                  </div>
+                </div>
               </div>
 
-              <div class="sb-field">
-                <div class="label">Date de naissance</div>
-                <input type="date" id="collabDateNaissance" />
+              <div class="sb-field sb-span-2">
+                <div class="sb-collab-row-2">
+                  <div class="sb-field">
+                    <div class="label">Téléphone</div>
+                    <input type="text" id="collabTel" />
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Téléphone 2</div>
+                    <input type="text" id="collabTel2" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="sb-field sb-span-2">
+                <div class="sb-collab-row-email-date">
+                  <div class="sb-field">
+                    <div class="label">Email</div>
+                    <input type="email" id="collabEmail" />
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Date de naissance</div>
+                    <input type="date" id="collabDateNaissance" class="sb-collab-date" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
           <div class="card sb-collab-form-card" style="margin:0;">
-            <div class="sb-collab-block-head">
+            <div class="sb-collab-block-head sb-collab-block-head--split">
               <div class="card-title" style="margin:0;">Informations contrat</div>
+
+              <label class="sb-check sb-collab-head-check">
+                <input type="checkbox" id="collabActif" checked />
+                <span>Actif</span>
+              </label>
             </div>
 
             <div class="sb-form-grid sb-collab-form-grid">
-              <div class="sb-field">
-                <div class="label">Service</div>
-                <select id="collabService"></select>
-              </div>
-              <div class="sb-field">
-                <div class="label">Poste actuel</div>
-                <select id="collabPoste"></select>
-              </div>
-              <div class="sb-field">
-                <label class="sb-check sb-collab-check">
-                  <input type="checkbox" id="collabActif" checked />
-                  <span>Actif</span>
-                </label>
+              <div class="sb-field sb-span-2">
+                <div class="sb-collab-row-contract-date">
+                  <div class="sb-field">
+                    <div class="label">Type de contrat</div>
+                    <select id="collabTypeContrat"></select>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Date d’entrée</div>
+                    <input type="date" id="collabDateEntree" class="sb-collab-date" />
+                  </div>
+                </div>
               </div>
 
-              <div class="sb-field">
-                <div class="label">Matricule interne</div>
-                <input type="text" id="collabMatricule" />
-              </div>
-              <div class="sb-field">
-                <div class="label">Type de contrat</div>
-                <select id="collabTypeContrat"></select>
+              <div class="sb-field sb-span-2">
+                <div class="sb-collab-row-2">
+                  <div class="sb-field">
+                    <div class="label">Service</div>
+                    <select id="collabService"></select>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Matricule interne</div>
+                    <input type="text" id="collabMatricule" />
+                  </div>
+                </div>
               </div>
 
-              <div class="sb-field">
-                <div class="label">Date d’entrée</div>
-                <input type="date" id="collabDateEntree" />
-              </div>
-              <div class="sb-field">
-                <div class="label">Début poste actuel</div>
-                <input type="date" id="collabDateDebutPoste" />
+              <div class="sb-field sb-span-2">
+                <div class="sb-collab-row-contract-date">
+                  <div class="sb-field">
+                    <div class="label">Poste actuel</div>
+                    <select id="collabPoste"></select>
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Début poste actuel</div>
+                    <input type="date" id="collabDateDebutPoste" class="sb-collab-date" />
+                  </div>
+                </div>
               </div>
 
-              <div class="sb-field">
-                <label class="sb-check sb-collab-check">
-                  <input type="checkbox" id="collabManager" />
-                  <span>Manager</span>
-                </label>
-              </div>
-              <div class="sb-field">
-                <label class="sb-check sb-collab-check">
-                  <input type="checkbox" id="collabFormateur" />
-                  <span>Formateur</span>
-                </label>
-              </div>
-              <div class="sb-field">
-                <label class="sb-check sb-collab-check">
-                  <input type="checkbox" id="collabTemp" />
-                  <span>Temporaire</span>
-                </label>
+              <div class="sb-field sb-span-2">
+                <div class="sb-collab-row-checks">
+                  <label class="sb-check sb-collab-check">
+                    <input type="checkbox" id="collabFormateur" />
+                    <span>Formateur</span>
+                  </label>
+
+                  <label class="sb-check sb-collab-check">
+                    <input type="checkbox" id="collabManager" />
+                    <span>Manager</span>
+                  </label>
+                </div>
               </div>
 
-              <div class="sb-field sb-span-2" id="collabTempRoleField" style="display:none;">
-                <div class="label">Rôle temporaire</div>
-                <input type="text" id="collabTempRole" />
-              </div>
-
-              <div class="sb-field">
+              <div class="sb-field sb-span-2">
                 <label class="sb-check sb-collab-check">
                   <input type="checkbox" id="collabHaveDateFin" />
                   <span>Sortie prévue</span>
                 </label>
               </div>
-              <div class="sb-field" id="collabDateSortieField" style="display:none;">
-                <div class="label">Date de sortie prévue</div>
-                <input type="date" id="collabDateSortie" />
-              </div>
-              <div class="sb-field" id="collabMotifSortieField" style="display:none;">
-                <div class="label">Motif de sortie</div>
-                <input type="text" id="collabMotifSortie" />
+
+              <div class="sb-field sb-span-2">
+                <div class="sb-collab-row-contract-date">
+                  <div class="sb-field" id="collabMotifSortieField" style="display:none;">
+                    <div class="label">Motif de sortie</div>
+                    <input type="text" id="collabMotifSortie" />
+                  </div>
+
+                  <div class="sb-field" id="collabDateSortieField" style="display:none;">
+                    <div class="label">Date de sortie prévue</div>
+                    <input type="date" id="collabDateSortie" class="sb-collab-date" />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -268,21 +295,19 @@
             <div class="sb-form-grid sb-collab-form-grid">
               <div class="sb-field">
                 <div class="label">Niveau d’éducation</div>
-                <input type="text" id="collabNiveauEdu" />
+                <select id="collabNiveauEdu"></select>
               </div>
+
               <div class="sb-field">
                 <div class="label">Domaine d’éducation</div>
-                <input type="text" id="collabDomaineEdu" />
-              </div>
-              <div class="sb-field">
-                <div class="label">Mobilité / déplacements</div>
-                <input type="text" id="collabBusinessTravel" />
+                <select id="collabDomaineEdu"></select>
               </div>
 
               <div class="sb-field sb-span-2">
                 <div class="label">Observations</div>
                 <textarea id="collabObservations" rows="3" class="sb-textarea--md"></textarea>
               </div>
+
               <div class="sb-field sb-span-2">
                 <div class="label">Commentaire RH</div>
                 <textarea id="collabNote" rows="4" class="sb-textarea--md"></textarea>

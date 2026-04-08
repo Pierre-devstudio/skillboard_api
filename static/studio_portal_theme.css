@@ -1109,7 +1109,7 @@
 
 
 /* ======================================================
-   Studio COLLABORATEURS – Modal collaborateur
+   Studio CORE – Formulaires structurés / dates / badges statut / onglets actifs
    ====================================================== */
 
 .sb-collab-modal-card{
@@ -1157,8 +1157,20 @@
   border-bottom:1px solid rgba(17,24,39,.06);
 }
 
+.sb-collab-block-head--split{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.sb-collab-head-check{
+  margin:0 !important;
+}
+
 .sb-collab-form-grid{
-  margin-top:0;
+  margin-top:0 !important;
   gap:10px 12px;
 }
 
@@ -1167,14 +1179,27 @@
 }
 
 .sb-collab-check{
-  margin-top:24px !important;
+  margin-top:0 !important;
+}
+
+.sb-collab-ident-inline,
+.sb-form-row-zip,
+.sb-form-row-2,
+.sb-form-row-email-date,
+.sb-form-row-contract-date,
+.sb-form-row-checks,
+.sb-collab-row-zip,
+.sb-collab-row-2,
+.sb-collab-row-email-date,
+.sb-collab-row-contract-date,
+.sb-collab-row-checks{
+  display:grid;
+  gap:10px 12px;
+  align-items:start;
 }
 
 .sb-collab-ident-inline{
-  display:grid;
   grid-template-columns:92px minmax(0, 1fr) minmax(0, 1fr);
-  gap:10px 12px;
-  align-items:end;
 }
 
 .sb-collab-ident-inline__civilite{
@@ -1183,8 +1208,61 @@
 }
 
 .sb-collab-ident-inline__civilite select{
-  min-width:0;
   width:100%;
+  min-width:0;
+}
+
+.sb-form-row-zip,
+.sb-collab-row-zip{
+  grid-template-columns:120px minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.sb-form-row-2,
+.sb-form-row-checks,
+.sb-collab-row-2,
+.sb-collab-row-checks{
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+}
+
+.sb-form-row-email-date,
+.sb-form-row-contract-date,
+.sb-collab-row-email-date,
+.sb-collab-row-contract-date{
+  grid-template-columns:minmax(0, 1fr) 220px;
+}
+
+.sb-collab-ident-inline > .sb-field,
+.sb-form-row-zip > .sb-field,
+.sb-form-row-2 > .sb-field,
+.sb-form-row-email-date > .sb-field,
+.sb-form-row-contract-date > .sb-field,
+.sb-form-row-checks > .sb-field,
+.sb-collab-row-zip > .sb-field,
+.sb-collab-row-2 > .sb-field,
+.sb-collab-row-email-date > .sb-field,
+.sb-collab-row-contract-date > .sb-field,
+.sb-collab-row-checks > .sb-field{
+  min-width:0;
+}
+
+.sb-date,
+.sb-collab-date{
+  appearance:none;
+  -webkit-appearance:none;
+  min-height:38px;
+  padding:8px 12px;
+  border:1px solid #d1d5db;
+  border-radius:10px;
+  background:#f8fafc;
+  color:#111827;
+  font:inherit;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
+}
+
+.sb-date::-webkit-calendar-picker-indicator,
+.sb-collab-date::-webkit-calendar-picker-indicator{
+  cursor:pointer;
+  opacity:.9;
 }
 
 .sb-badge--status-active{
@@ -1206,17 +1284,23 @@
 }
 
 @media (max-width: 760px){
-  .sb-collab-ident-inline{
+  .sb-collab-ident-inline,
+  .sb-form-row-zip,
+  .sb-form-row-2,
+  .sb-form-row-email-date,
+  .sb-form-row-contract-date,
+  .sb-form-row-checks,
+  .sb-collab-row-zip,
+  .sb-collab-row-2,
+  .sb-collab-row-email-date,
+  .sb-collab-row-contract-date,
+  .sb-collab-row-checks{
     grid-template-columns:1fr;
   }
 
   .sb-collab-ident-inline__civilite{
     min-width:0;
     max-width:none;
-  }
-
-  .sb-collab-check{
-    margin-top:8px !important;
   }
 }
 
