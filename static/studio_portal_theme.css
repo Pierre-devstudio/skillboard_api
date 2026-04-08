@@ -1146,14 +1146,14 @@
 }
 
 .sb-collab-form-card{
-  padding:12px;
+  padding:10px;
   border:1px solid rgba(17,24,39,.08);
   border-radius:14px;
 }
 
 .sb-collab-block-head{
-  margin:0 0 10px 0;
-  padding-bottom:8px;
+  margin:0 0 8px 0;
+  padding-bottom:6px;
   border-bottom:1px solid rgba(17,24,39,.06);
 }
 
@@ -1171,11 +1171,11 @@
 
 .sb-collab-form-grid{
   margin-top:0 !important;
-  gap:10px 12px;
+  gap:8px 12px;
 }
 
 .sb-collab-form-grid .label{
-  margin-bottom:4px;
+  margin-bottom:3px;
 }
 
 .sb-collab-check{
@@ -1194,8 +1194,8 @@
 .sb-collab-row-contract-date,
 .sb-collab-row-checks{
   display:grid;
-  gap:10px 12px;
-  align-items:start;
+  gap:8px 12px;
+  align-items:end;
 }
 
 .sb-collab-ident-inline{
@@ -1228,7 +1228,7 @@
 .sb-form-row-contract-date,
 .sb-collab-row-email-date,
 .sb-collab-row-contract-date{
-  grid-template-columns:minmax(0, 1fr) 220px;
+  grid-template-columns:minmax(0, 1fr) 170px;
 }
 
 .sb-collab-ident-inline > .sb-field,
@@ -1249,20 +1249,37 @@
 .sb-collab-date{
   appearance:none;
   -webkit-appearance:none;
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
   min-height:38px;
-  padding:8px 12px;
+  height:38px;
+  padding:8px 10px;
   border:1px solid #d1d5db;
   border-radius:10px;
   background:#f8fafc;
   color:#111827;
   font:inherit;
+  line-height:1.2;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
 }
 
 .sb-date::-webkit-calendar-picker-indicator,
 .sb-collab-date::-webkit-calendar-picker-indicator{
   cursor:pointer;
-  opacity:.9;
+  opacity:.72;
+  margin-left:6px;
+}
+
+.sb-date::-webkit-datetime-edit,
+.sb-collab-date::-webkit-datetime-edit{
+  padding:0;
+  color:#111827;
+}
+
+.sb-date::-webkit-date-and-time-value,
+.sb-collab-date::-webkit-date-and-time-value{
+  text-align:left;
 }
 
 .sb-badge--status-active{
