@@ -548,14 +548,21 @@
     if (!host) return;
 
     const badges = [];
-    badges.push(data?.archive ? "Archivé" : (data?.actif ? "Actif" : "Inactif"));
-    if (data?.is_temp) badges.push("Temporaire");
-    if (data?.ismanager) badges.push("Manager");
-    if (data?.isformateur) badges.push("Formateur");
 
-    host.innerHTML = badges.map((label, idx) => {
-      const cls = idx === 0 ? "sb-badge sb-badge--accent-soft" : "sb-badge sb-badge--outline-accent";
-      return `<span class="${cls}">${esc(label)}</span>`;
+    if (data?.archive) {
+      badges.push({ label: "Archivé", cls: "sb-badge sb-badge--status-archive" });
+    } else if (data?.actif) {
+      badges.push({ label: "Actif", cls: "sb-badge sb-badge--status-active" });
+    } else {
+      badges.push({ label: "Inactif", cls: "sb-badge sb-badge--status-inactive" });
+    }
+
+    if (data?.is_temp) badges.push({ label: "Temporaire", cls: "sb-badge sb-badge--outline-accent" });
+    if (data?.ismanager) badges.push({ label: "Manager", cls: "sb-badge sb-badge--outline-accent" });
+    if (data?.isformateur) badges.push({ label: "Formateur", cls: "sb-badge sb-badge--outline-accent" });
+
+    host.innerHTML = badges.map(x => {
+      return `<span class="${x.cls}">${esc(x.label)}</span>`;
     }).join("");
   }
 

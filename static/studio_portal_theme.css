@@ -1113,49 +1113,70 @@
    ====================================================== */
 
 .sb-collab-modal-card{
-  padding:12px;
+  padding:10px;
 }
 
 .sb-collab-modal-card .sb-modal-head{
-  padding-bottom:8px;
+  padding-bottom:6px;
 }
 
 .sb-collab-modal-body{
-  padding-top:10px;
-  padding-bottom:8px;
+  padding-top:8px;
+  padding-bottom:6px;
 }
 
 .sb-collab-modal-card .sb-modal-foot{
-  padding-top:10px;
+  padding-top:8px;
 }
 
 .sb-collab-tabbar{
-  margin-bottom:10px !important;
+  margin-bottom:8px !important;
   gap:6px !important;
 }
 
 .sb-collab-form-card{
-  padding:10px;
+  padding:8px;
 }
 
 .sb-collab-form-grid{
   margin-top:0;
-  gap:10px 12px;
+  gap:6px 12px;
+}
+
+.sb-collab-form-grid > *{
+  margin:0 !important;
 }
 
 .sb-collab-form-grid .label{
-  margin-bottom:4px;
+  margin:0 0 3px 0;
+  line-height:1.2;
 }
 
 .sb-collab-check{
-  margin-top:22px !important;
+  margin-top:18px !important;
 }
 
 .sb-collab-ident-inline{
   display:grid;
   grid-template-columns:92px minmax(0, 1fr) minmax(0, 1fr);
-  gap:10px 12px;
-  align-items:end;
+  gap:12px;
+  align-items:start;
+}
+
+.sb-collab-ident-inline > .sb-field{
+  min-width:0;
+  margin:0 !important;
+}
+
+.sb-collab-ident-inline .label{
+  margin:0 0 3px 0;
+  line-height:1.2;
+}
+
+.sb-collab-ident-inline input,
+.sb-collab-ident-inline select{
+  width:100%;
+  min-width:0;
 }
 
 .sb-collab-ident-inline__civilite{
@@ -1163,19 +1184,37 @@
   max-width:92px;
 }
 
-.sb-collab-ident-inline__civilite select{
-  min-width:0;
-  width:100%;
+.sb-badge--status-active{
+  background:#16a34a;
+  border:1px solid #16a34a;
+  color:#fff;
+}
+
+.sb-badge--status-inactive{
+  background:#f8fafc;
+  border:1px solid #cbd5e1;
+  color:#475569;
+}
+
+.sb-badge--status-archive{
+  background:#fff1f2;
+  border:1px solid #fda4af;
+  color:#be123c;
 }
 
 @media (max-width: 760px){
   .sb-collab-ident-inline{
     grid-template-columns:1fr;
+    gap:8px;
   }
 
   .sb-collab-ident-inline__civilite{
     min-width:0;
     max-width:none;
+  }
+
+  .sb-collab-check{
+    margin-top:8px !important;
   }
 }
 
