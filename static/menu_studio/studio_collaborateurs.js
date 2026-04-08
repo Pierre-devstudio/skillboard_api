@@ -597,13 +597,11 @@
   }
 
   function refreshSortieVisibility(){
-    const row = byId("collabSortieRow");
     const wrapDate = byId("collabDateSortieField");
     const wrapMotif = byId("collabMotifSortieField");
     const chk = byId("collabHaveDateFin");
     const show = !!(chk && chk.checked);
 
-    if (row) row.classList.toggle("is-hidden", !show);
     if (wrapDate) wrapDate.classList.toggle("is-hidden", !show);
     if (wrapMotif) wrapMotif.classList.toggle("is-hidden", !show);
   }

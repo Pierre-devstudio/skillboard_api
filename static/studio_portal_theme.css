@@ -1175,40 +1175,7 @@
 }
 
 .sb-collab-form-grid .label{
-  margin:0;
-  min-height:18px;
-  line-height:18px;
-}
-
-.sb-collab-form-grid .sb-field{
-  display:flex;
-  flex-direction:column;
-  gap:3px;
-  min-width:0;
-}
-
-.sb-collab-form-grid .sb-field > input:not([type="checkbox"]):not([type="radio"]),
-.sb-collab-form-grid .sb-field > select,
-.sb-collab-form-grid .sb-field > textarea{
-  width:100%;
-  min-width:0;
-  box-sizing:border-box;
-  min-height:38px;
-  height:38px;
-  padding:8px 10px;
-  border:1px solid #d1d5db;
-  border-radius:10px;
-  background:#f8fafc;
-  color:#111827;
-  font:inherit;
-  line-height:1.2;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
-}
-
-.sb-collab-form-grid .sb-field > textarea{
-  height:auto;
-  min-height:78px;
-  resize:vertical;
+  margin-bottom:3px;
 }
 
 .sb-collab-check{
@@ -1219,90 +1186,61 @@
   display:none !important;
 }
 
-
-/* Grilles de formulaire standard réutilisables */
-.sb-form-inline-3,
-.sb-form-inline-zip,
-.sb-form-inline-2,
-.sb-form-inline-main-date,
-.sb-form-inline-checks,
-
-/* Alias conservés pour compatibilité */
-.sb-collab-ident-inline,
-.sb-form-row-zip,
-.sb-form-row-2,
-.sb-form-row-email-date,
-.sb-form-row-contract-date,
-.sb-form-row-checks,
-.sb-collab-row-zip,
-.sb-collab-row-2,
-.sb-collab-row-email-date,
-.sb-collab-row-contract-date,
-.sb-collab-row-checks{
+/* Grille formulaire standard réutilisable */
+.sb-grid-12{
   display:grid;
+  grid-template-columns:repeat(12, minmax(0, 1fr));
   gap:8px 12px;
   align-items:end;
 }
 
-.sb-form-inline-3,
-.sb-collab-ident-inline{
-  grid-template-columns:92px minmax(0, 1fr) minmax(0, 1fr);
-}
-
-.sb-form-field--xs,
-.sb-collab-ident-inline__civilite{
-  min-width:92px;
-  max-width:92px;
-}
-
-.sb-form-field--xs select,
-.sb-collab-ident-inline__civilite select{
-  width:100%;
+.sb-grid-12 > .sb-field,
+.sb-grid-12 > div,
+.sb-grid-12 > label{
   min-width:0;
 }
 
-.sb-form-inline-zip,
-.sb-form-row-zip,
-.sb-collab-row-zip{
-  grid-template-columns:120px minmax(0, 1fr) minmax(0, 1fr);
-}
+.sb-col-12{ grid-column:span 12; }
+.sb-col-9{ grid-column:span 9; }
+.sb-col-6{ grid-column:span 6; }
+.sb-col-5{ grid-column:span 5; }
+.sb-col-3{ grid-column:span 3; }
+.sb-col-2{ grid-column:span 2; }
 
-.sb-form-inline-2,
-.sb-form-inline-checks,
-.sb-form-row-2,
-.sb-form-row-checks,
-.sb-collab-row-2,
-.sb-collab-row-checks{
-  grid-template-columns:repeat(2, minmax(0, 1fr));
-}
-
-.sb-form-inline-main-date,
-.sb-form-row-email-date,
-.sb-form-row-contract-date,
-.sb-collab-row-email-date,
-.sb-collab-row-contract-date{
-  grid-template-columns:minmax(0, 1fr) 170px;
-}
-
-.sb-form-inline-3 > .sb-field,
-.sb-form-inline-zip > .sb-field,
-.sb-form-inline-2 > .sb-field,
-.sb-form-inline-main-date > .sb-field,
-.sb-form-inline-checks > .sb-field,
-
-/* Alias conservés pour compatibilité */
-.sb-collab-ident-inline > .sb-field,
-.sb-form-row-zip > .sb-field,
-.sb-form-row-2 > .sb-field,
-.sb-form-row-email-date > .sb-field,
-.sb-form-row-contract-date > .sb-field,
-.sb-form-row-checks > .sb-field,
-.sb-collab-row-zip > .sb-field,
-.sb-collab-row-2 > .sb-field,
-.sb-collab-row-email-date > .sb-field,
-.sb-collab-row-contract-date > .sb-field,
-.sb-collab-row-checks > .sb-field{
+.sb-col-12 > input,
+.sb-col-12 > select,
+.sb-col-12 > textarea,
+.sb-col-9 > input,
+.sb-col-9 > select,
+.sb-col-9 > textarea,
+.sb-col-6 > input,
+.sb-col-6 > select,
+.sb-col-6 > textarea,
+.sb-col-5 > input,
+.sb-col-5 > select,
+.sb-col-5 > textarea,
+.sb-col-3 > input,
+.sb-col-3 > select,
+.sb-col-3 > textarea,
+.sb-col-2 > input,
+.sb-col-2 > select,
+.sb-col-2 > textarea{
   min-width:0;
+}
+
+@media (max-width: 760px){
+  .sb-grid-12{
+    grid-template-columns:1fr;
+  }
+
+  .sb-col-12,
+  .sb-col-9,
+  .sb-col-6,
+  .sb-col-5,
+  .sb-col-3,
+  .sb-col-2{
+    grid-column:span 1;
+  }
 }
 
 .sb-date,
