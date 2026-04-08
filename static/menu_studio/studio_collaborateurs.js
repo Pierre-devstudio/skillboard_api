@@ -188,11 +188,8 @@
 
       const inserted = Number(data?.inserted || 0);
       const skipped = Number(data?.skipped_existing || 0);
-      const msg = inserted > 0
-        ? `${inserted} compétence(s) ajoutée(s). ${skipped} déjà présente(s).`
-        : `Aucune compétence ajoutée. ${skipped} déjà présente(s).`;
-
-      if (portal.showAlert) portal.showAlert('success', msg);
+      void inserted;
+      void skipped;
     } finally {
       if (btn) {
         btn.disabled = false;
@@ -757,19 +754,12 @@
     const rows = items.map(x => {
       const niveau = (x.niveau_actuel || '').trim() || '–';
       const lastEval = formatDateFR(x.date_derniere_eval);
-      const domTitle = (x.domaine_titre || '').toString().trim() || 'Catégorie';
-      const domColor = (x.domaine_couleur || '').toString().trim();
-      const domStyle = domColor ? ` style="--dom-color:${esc(domColor)}"` : '';
-
       return `
         <tr>
           <td>
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
               ${x.code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(x.code)}</span>` : ''}
               <div class="sb-comp-title">${esc(x.intitule || '')}</div>
-            </div>
-            <div style="margin-top:6px;">
-              <span class="sb-badge sb-badge-domaine"${domStyle}>${esc(domTitle)}</span>
             </div>
           </td>
           <td style="text-align:center;">${esc(niveau)}</td>
@@ -786,7 +776,7 @@
         ${canSync ? `
           <button
             type="button"
-            class="sb-btn sb-btn--soft"
+            class="sb-btn sb-btn--poste-soft"
             id="btnSyncCollabSkillsFromPoste"
           >
             Importer les compétences du poste
