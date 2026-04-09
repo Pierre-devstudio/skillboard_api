@@ -373,13 +373,15 @@
         const btnSave = byId("btnFicheSave");
 
         if (btnEdit) {
-            btnEdit.hidden = _ficheEditMode;
+            btnEdit.classList.toggle("is-hidden", _ficheEditMode);
         }
+
         if (btnCancel) {
-            btnCancel.hidden = !_ficheEditMode;
+            btnCancel.classList.toggle("is-hidden", !_ficheEditMode);
         }
+
         if (btnSave) {
-            btnSave.hidden = !_ficheEditMode;
+            btnSave.classList.toggle("is-hidden", !_ficheEditMode);
         }
 
         syncGroupFieldsState();
@@ -497,6 +499,7 @@
     bindNavigation();
     bindFicheActions();
     renderLinks();
+    setFicheEditMode(false);
 
     try {
       await loadData();
