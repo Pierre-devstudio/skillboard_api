@@ -39,31 +39,14 @@ a{
   grid-template-columns:280px minmax(0,1fr);
 }
 
-.cs-sidebar{
-  background:var(--cs-sidebar);
-  color:var(--cs-sidebar-text);
-  padding:20px 16px;
+.cs-sidebar-frame{
+  min-height:100vh;
   display:flex;
   flex-direction:column;
-  gap:16px;
-  border-right:1px solid rgba(255,255,255,.08);
-}
-
-.cs-brand-kicker{
-  font-size:12px;
-  font-weight:700;
-  opacity:.75;
-  text-transform:uppercase;
-  letter-spacing:.04em;
-}
-
-.cs-brand-title{
-  margin-top:4px;
-  font-size:22px;
-  font-weight:800;
 }
 
 .cs-client-mini{
+  margin:16px 14px 8px 14px;
   padding:12px;
   border:1px solid rgba(255,255,255,.10);
   border-radius:12px;
@@ -72,38 +55,14 @@ a{
   line-height:1.4;
 }
 
-.cs-nav{
+.cs-client-menu{
   display:flex;
   flex-direction:column;
-  gap:8px;
+  margin-top:4px;
 }
 
-.cs-nav-btn{
-  width:100%;
-  text-align:left;
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:12px;
-  background:rgba(255,255,255,.04);
-  color:#fff;
-  padding:11px 12px;
-  cursor:pointer;
-  transition:background .15s ease, border-color .15s ease, color .15s ease;
-}
-
-.cs-nav-btn:hover{
-  background:rgba(255,255,255,.09);
-  border-color:rgba(255,255,255,.16);
-}
-
-.cs-nav-btn.is-active{
-  background:rgba(var(--cs-accent-rgb), .22);
-  border-color:rgba(var(--cs-accent-rgb), .50);
-  color:#fff;
-  font-weight:700;
-}
-
-.cs-sidebar-foot{
-  margin-top:auto;
+.cs-client-menu a.menu-item{
+  text-decoration:none;
 }
 
 .cs-main{
@@ -147,42 +106,7 @@ a{
   justify-content:flex-end;
 }
 
-.cs-btn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-height:40px;
-  padding:0 14px;
-  border:1px solid #cbd5e1;
-  border-radius:10px;
-  background:#fff;
-  color:#334155;
-  cursor:pointer;
-  white-space:nowrap;
-}
-
-.cs-btn:hover{
-  background:#f8fafc;
-  border-color:#94a3b8;
-  color:#111827;
-}
-
-.cs-btn--secondary{
-  background:#fff;
-}
-
-.cs-btn--side{
-  width:100%;
-  background:rgba(255,255,255,.06);
-  color:#fff;
-  border-color:rgba(255,255,255,.12);
-}
-
-.cs-btn--side:hover{
-  background:rgba(255,255,255,.11);
-  border-color:rgba(255,255,255,.18);
-  color:#fff;
-}
+/* boutons topbar : on réutilise désormais les classes standard studio (.sb-btn ...) */
 
 .cs-message{
   margin-bottom:14px;
@@ -368,7 +292,7 @@ a{
     grid-template-columns:1fr;
   }
 
-  .cs-sidebar{
+  .cs-sidebar-frame{
     border-right:none;
     border-bottom:1px solid rgba(255,255,255,.08);
   }

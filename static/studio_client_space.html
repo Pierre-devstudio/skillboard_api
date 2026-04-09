@@ -4,31 +4,35 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Novoskill Studio - Espace client</title>
+
+  <link rel="stylesheet" href="/portal_common.css" />
+  <link rel="stylesheet" href="/skills_portal_theme.css" />
+  <link rel="stylesheet" href="/studio_portal_theme.css" />
   <link rel="stylesheet" href="/studio_client_space.css" />
 </head>
 <body>
   <div class="cs-shell">
-    <aside class="cs-sidebar">
-      <div class="cs-brand">
-        <div class="cs-brand-kicker">Novoskill Studio</div>
-        <div class="cs-brand-title">Espace client</div>
+    <aside class="sidebar cs-sidebar-frame">
+      <div class="sidebar-header">
+        <span class="brand">Novoskill</span>
+        <span class="product-badge">Espace client</span>
       </div>
 
       <div class="cs-client-mini" id="csClientMini">Chargement…</div>
 
-      <nav class="cs-nav">
-        <button type="button" class="cs-nav-btn is-active" data-section="dashboard">Tableau de bord</button>
-        <button type="button" class="cs-nav-btn" data-section="identification">Identification</button>
-        <button type="button" class="cs-nav-btn" data-section="collaborateurs">Collaborateurs</button>
-        <button type="button" class="cs-nav-btn" data-section="postes">Postes</button>
-        <button type="button" class="cs-nav-btn" data-section="competences">Compétences</button>
-        <button type="button" class="cs-nav-btn" data-section="certifications">Certifications</button>
-        <button type="button" class="cs-nav-btn" data-section="evaluations">Évaluations</button>
-      </nav>
+      <nav class="menu cs-client-menu">
+        <div class="menu-item active" data-section="dashboard">Tableau de bord</div>
+        <div class="menu-item" data-section="identification">Identification</div>
+        <div class="menu-item" data-section="collaborateurs">Collaborateurs</div>
+        <div class="menu-item" data-section="postes">Postes</div>
+        <div class="menu-item" data-section="competences">Compétences</div>
+        <div class="menu-item" data-section="certifications">Certifications</div>
+        <div class="menu-item" data-section="evaluations">Évaluations</div>
 
-      <div class="cs-sidebar-foot">
-        <a class="cs-btn cs-btn--side" id="btnOpenPortfolioSide" href="#">Portefeuille clients</a>
-      </div>
+        <div class="menu-sep"></div>
+
+        <a class="menu-item" id="btnOpenPortfolioSide" href="#">Portefeuille clients</a>
+      </nav>
     </aside>
 
     <main class="cs-main">
@@ -39,8 +43,8 @@
           <div class="cs-sub" id="csClientSub">Initialisation du contexte client…</div>
         </div>
         <div class="cs-topbar-actions">
-          <a class="cs-btn cs-btn--secondary" id="btnOpenPortfolioTop" href="#">Ouvrir le portefeuille Studio</a>
-          <button type="button" class="cs-btn cs-btn--secondary" id="btnCloseTab">Fermer l’onglet</button>
+          <a class="sb-btn sb-btn--secondary" id="btnOpenPortfolioTop" href="#">Ouvrir le portefeuille Studio</a>
+          <button type="button" class="sb-btn sb-btn--secondary" id="btnCloseTab">Fermer l’onglet</button>
         </div>
       </header>
 

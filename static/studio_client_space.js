@@ -115,8 +115,8 @@
   }
 
   function setSection(name){
-    document.querySelectorAll(".cs-nav-btn[data-section]").forEach(btn => {
-      btn.classList.toggle("is-active", btn.dataset.section === name);
+    document.querySelectorAll(".menu-item[data-section]").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.section === name);
     });
 
     document.querySelectorAll(".cs-section[data-section]").forEach(sec => {
@@ -125,7 +125,7 @@
   }
 
   function bindNavigation(){
-    document.querySelectorAll(".cs-nav-btn[data-section]").forEach(btn => {
+    document.querySelectorAll(".menu-item[data-section]").forEach(btn => {
       btn.addEventListener("click", () => setSection(btn.dataset.section || "dashboard"));
     });
 
