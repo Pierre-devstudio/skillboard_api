@@ -38,6 +38,12 @@
     // js auto-guess -> /menu_studio/studio_collaborateurs.js
   });
 
+  window.portal.registerMenu({
+    view: "clients",
+    htmlUrl: "/menu_studio/studio_clients.html"
+    // js auto-guess -> /menu_studio/studio_clients.js
+  });
+
   // Placeholders (menu complet)
   const COMING_SOON = "/menu_studio/studio_coming_soon.html";
   
@@ -47,7 +53,6 @@
   
   window.portal.registerMenu({ view: "catalog_formations", htmlUrl: COMING_SOON });
 
-  window.portal.registerMenu({ view: "clients", htmlUrl: COMING_SOON });
   window.portal.registerMenu({ view: "pilotage_clients", htmlUrl: COMING_SOON });
 
   window.portal.registerMenu({ view: "factures", htmlUrl: COMING_SOON });

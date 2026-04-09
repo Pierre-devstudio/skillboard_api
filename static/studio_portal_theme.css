@@ -1491,3 +1491,41 @@
   font-size:13px;
   color:#374151;
 }
+
+/* États vides / lecture guidée (CORE) */
+.sb-empty-state{
+  border:1px dashed rgba(17,24,39,.14);
+  border-radius:14px;
+  background:rgba(17,24,39,.025);
+  padding:18px;
+}
+
+.sb-empty-state__title{
+  font-size:15px;
+  font-weight:700;
+  color:#111827;
+}
+
+.sb-empty-state__text{
+  margin-top:6px;
+  font-size:13px;
+  line-height:1.45;
+  color:#6b7280;
+}
+
+/* Checkbox / switch simple (CORE) */
+.sb-checkline{
+  min-height:38px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  border:1px solid #d1d5db;
+  border-radius:10px;
+  background:#f8fafc;
+  padding:8px 10px;
+  color:#111827;
+}
+
+.sb-checkline input{
+  margin:0;
+}
