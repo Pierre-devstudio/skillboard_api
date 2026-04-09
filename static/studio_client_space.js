@@ -360,20 +360,30 @@
     }
   }
 
-  function setFicheEditMode(enabled){
-    _ficheEditMode = !!enabled;
+    function setFicheEditMode(enabled){
+        _ficheEditMode = !!enabled;
 
-    const controls = document.querySelectorAll(".cs-form-ctrl, #ficheGroupOk, #ficheTeteGroupe");
-    controls.forEach(el => {
-      el.disabled = !_ficheEditMode;
-    });
+        const controls = document.querySelectorAll(".cs-form-ctrl, #ficheGroupOk, #ficheTeteGroupe");
+        controls.forEach(el => {
+            el.disabled = !_ficheEditMode;
+        });
 
-    if (byId("btnFicheEdit")) byId("btnFicheEdit").hidden = _ficheEditMode;
-    if (byId("btnFicheCancel")) byId("btnFicheCancel").hidden = !_ficheEditMode;
-    if (byId("btnFicheSave")) byId("btnFicheSave").hidden = !_ficheEditMode;
+        const btnEdit = byId("btnFicheEdit");
+        const btnCancel = byId("btnFicheCancel");
+        const btnSave = byId("btnFicheSave");
 
-    syncGroupFieldsState();
-  }
+        if (btnEdit) {
+            btnEdit.hidden = _ficheEditMode;
+        }
+        if (btnCancel) {
+            btnCancel.hidden = !_ficheEditMode;
+        }
+        if (btnSave) {
+            btnSave.hidden = !_ficheEditMode;
+        }
+
+        syncGroupFieldsState();
+    }
 
   async function saveFiche(){
     if (_ficheSaving) return;
