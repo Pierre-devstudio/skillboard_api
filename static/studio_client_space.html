@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Novoskill Studio - Espace client</title>
+  <title>Novoskill Studio - Espace de gestion</title>
 
   <link rel="icon" href="/favicon-studio.ico" sizes="any">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-studio-32x32.png">
@@ -23,19 +23,17 @@
           <span class="brand">Novoskill</span>
           <span class="product-badge">Studio</span>
         </div>
-        <div class="cs-subproduct-label">Espace client</div>
+        <div class="cs-subproduct-label">Espace de gestion</div>
       </div>
 
       <div class="cs-client-mini" id="csClientMini">Chargement…</div>
 
       <nav class="menu cs-client-menu">
-        <div class="menu-item active" data-section="dashboard">Tableau de bord</div>
-        <div class="menu-item" data-section="identification">Identification</div>
+        <div class="menu-item active" data-section="dashboard">Dashboard</div>
+        <div class="menu-item" data-section="fiche" id="navCompanySheetLabel">Fiche entreprise</div>
+        <div class="menu-item" data-section="organisation">Organisation</div>
         <div class="menu-item" data-section="collaborateurs">Collaborateurs</div>
-        <div class="menu-item" data-section="postes">Postes</div>
-        <div class="menu-item" data-section="competences">Compétences</div>
-        <div class="menu-item" data-section="certifications">Certifications</div>
-        <div class="menu-item" data-section="evaluations">Évaluations</div>
+        <div class="menu-item" data-section="evaluations">Évaluation des compétences</div>
 
         <div class="menu-sep"></div>
 
@@ -46,7 +44,7 @@
     <main class="cs-main">
       <header class="cs-topbar">
         <div>
-          <div class="cs-kicker">Espace client</div>
+          <div class="cs-kicker">Espace de gestion</div>
           <h1 class="cs-title" id="csClientTitle">Chargement…</h1>
           <div class="cs-sub" id="csClientSub">Initialisation du contexte client…</div>
         </div>
@@ -156,10 +154,11 @@
         </div>
       </section>
 
-      <section class="cs-section" data-section="identification">
+      <section class="cs-section" data-section="fiche">
         <div class="cs-grid cs-grid--2">
           <div class="cs-card">
-            <div class="cs-card-title">Identité entreprise</div>
+            <div class="cs-card-title" id="sectionCompanySheetTitle">Fiche entreprise</div>
+            <div class="cs-card-sub" id="sectionCompanySheetSub">Informations générales, administratives et de rattachement de l’entreprise.</div>
             <div class="cs-facts">
               <div class="cs-fact">
                 <div class="cs-fact-label">Nom entreprise</div>
@@ -287,35 +286,23 @@
       <section class="cs-section" data-section="collaborateurs">
         <div class="cs-card cs-placeholder">
           <div class="cs-card-title">Collaborateurs</div>
-          <div class="cs-placeholder-text">Cette rubrique accueillera la gestion du personnel client, les accès, les droits, les compétences et les certifications associées.</div>
+          <div class="cs-placeholder-text">Cette rubrique accueillera la gestion des collaborateurs, des accès, des compétences et des certifications, dans la logique de la page Studio “Vos collaborateurs”.</div>
         </div>
       </section>
 
-      <section class="cs-section" data-section="postes">
+      <section class="cs-section" data-section="organisation">
         <div class="cs-card cs-placeholder">
-          <div class="cs-card-title">Postes</div>
-          <div class="cs-placeholder-text">Cette rubrique accueillera le catalogue des postes du client.</div>
+          <div class="cs-card-title">Organisation</div>
+          <div class="cs-placeholder-text">Cette rubrique accueillera la structure du client, ses services et ses postes, dans la logique de la page Studio “Votre organisation”.</div>
         </div>
       </section>
 
-      <section class="cs-section" data-section="competences">
-        <div class="cs-card cs-placeholder">
-          <div class="cs-card-title">Compétences</div>
-          <div class="cs-placeholder-text">Cette rubrique accueillera les compétences gérées dans le périmètre du client.</div>
-        </div>
-      </section>
 
-      <section class="cs-section" data-section="certifications">
-        <div class="cs-card cs-placeholder">
-          <div class="cs-card-title">Certifications</div>
-          <div class="cs-placeholder-text">Cette rubrique accueillera les certifications et habilitations liées au client.</div>
-        </div>
-      </section>
 
       <section class="cs-section" data-section="evaluations">
         <div class="cs-card cs-placeholder">
-          <div class="cs-card-title">Évaluations</div>
-          <div class="cs-placeholder-text">Cette rubrique accueillera les évaluations de compétences du client.</div>
+          <div class="cs-card-title">Évaluation des compétences</div>
+          <div class="cs-placeholder-text">Cette rubrique accueillera les entretiens et évaluations de compétences du client.</div>
         </div>
       </section>
     </main>

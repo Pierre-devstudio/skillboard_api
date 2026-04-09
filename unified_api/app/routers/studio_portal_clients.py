@@ -382,6 +382,13 @@ def _fetch_client_detail(cur, id_owner: str, id_ent: str) -> dict:
             e.tete_groupe,
             e.group_ok,
             e.id_owner_gestionnaire,
+            COALESCE((
+                SELECT o.type_owner
+                FROM public.tbl_novoskill_owner o
+                WHERE o.id_owner = e.id_ent
+                  AND COALESCE(o.archive, FALSE) = FALSE
+                LIMIT 1
+            ), 'entreprise') AS owner_type_client,
             EXISTS (
                 SELECT 1
                 FROM public.tbl_novoskill_owner o
@@ -462,6 +469,7 @@ def _fetch_client_detail(cur, id_owner: str, id_ent: str) -> dict:
         "tete_groupe": bool(r.get("tete_groupe")),
         "group_ok": bool(r.get("group_ok")),
         "id_owner_gestionnaire": r.get("id_owner_gestionnaire"),
+        "owner_type_client": (r.get("owner_type_client") or "entreprise"),
         "has_owner_scope": bool(r.get("has_owner_scope")),
         "studio_actif": bool(r.get("studio_actif")),
         "gestion_acces_studio_autorisee": bool(r.get("gestion_acces_studio_autorisee")),

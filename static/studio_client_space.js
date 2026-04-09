@@ -150,6 +150,28 @@
     if (top) top.href = url;
   }
 
+    function getCompanySheetLabel(){
+        const t = (_detail?.owner_type_client || "entreprise").toString().trim().toLowerCase();
+        return t === "site" ? "Fiche site" : "Fiche entreprise";
+    }
+
+    function renderDynamicLabels(){
+        const label = getCompanySheetLabel();
+
+        const navLabel = byId("navCompanySheetLabel");
+        if (navLabel) navLabel.textContent = label;
+
+        const sectionTitle = byId("sectionCompanySheetTitle");
+        if (sectionTitle) sectionTitle.textContent = label;
+
+        const sectionSub = byId("sectionCompanySheetSub");
+        if (sectionSub) {
+        sectionSub.textContent = label === "Fiche site"
+            ? "Informations générales, administratives et de rattachement du site."
+            : "Informations générales, administratives et de rattachement de l’entreprise.";
+        }
+    }
+
   function renderHeader(){
     byId("csClientMini").textContent = _detail?.nom_ent || "Client";
     byId("csClientTitle").textContent = _detail?.nom_ent || "Client";
@@ -261,6 +283,7 @@
     _context = context || {};
 
     renderLinks();
+    renderDynamicLabels();
     renderHeader();
     renderDashboard();
     renderIdentification();
