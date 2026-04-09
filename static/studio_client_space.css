@@ -49,19 +49,19 @@ a{
   margin:16px 0 8px 0;
   width:100%;
   padding:12px 14px;
-  border:1px solid rgba(var(--cs-accent-rgb), .70);
-  border-radius:12px;
-  background:rgba(255,255,255,.06);
-  font-size:14px;
+  border:1px solid rgba(var(--cs-accent-rgb), .78);
+  border-radius:14px;
+  background:rgba(255,255,255,.05);
+  font-size:15px;
   font-weight:600;
-  line-height:1.4;
+  line-height:1.35;
 }
 
 .cs-sidebar-header{
   display:flex;
   flex-direction:column;
   align-items:flex-start;
-  gap:10px;
+  gap:8px;
 }
 
 .cs-brand-row{
@@ -70,18 +70,12 @@ a{
   gap:10px;
 }
 
-.cs-subproduct-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  min-height:30px;
-  padding:0 12px;
-  border:1px solid rgba(255,255,255,.70);
-  border-radius:999px;
-  background:transparent;
-  color:#fff;
+.cs-subproduct-label{
+  color:rgba(255,255,255,.88);
   font-size:13px;
   font-weight:700;
+  line-height:1.2;
+  letter-spacing:.01em;
 }
 
 .cs-client-menu{
