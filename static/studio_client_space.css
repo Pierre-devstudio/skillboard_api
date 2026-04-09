@@ -337,6 +337,10 @@ a{
     grid-template-columns:1fr;
   }
 
+  .cs-grid--2cols{
+    grid-template-columns:1fr;
+  }
+
   .cs-kpi-grid{
     grid-template-columns:repeat(2, minmax(0,1fr));
   }
@@ -371,8 +375,19 @@ a{
   min-height:0;
 }
 
-.cs-grid--top{
+.cs-grid--2cols{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0,1fr));
+  gap:14px;
+  margin-top:14px;
   align-items:start;
+}
+
+.cs-col-stack{
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  min-width:0;
 }
 
 .cs-section-toolbar{
