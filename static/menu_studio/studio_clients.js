@@ -46,25 +46,37 @@
     el.textContent = msg || "—";
   }
 
-  function setValueOrEmpty(id, value){
-    const el = byId(id);
-    if (!el) return;
-    el.value = value ?? "";
-  }
+    function setValueOrEmpty(id, value){
+        const el = byId(id);
+        if (!el) return;
+        el.value = value ?? "";
+    }
 
-  function getOwnerId(){
-    const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
-    if (pid) return pid;
-    return (new URL(window.location.href).searchParams.get("id") || "").trim();
-  }
+    function getOwnerId(){
+        const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
+        if (pid) return pid;
+        return (new URL(window.location.href).searchParams.get("id") || "").trim();
+    }
 
-  function formatDateFr(value){
-    const v = (value || "").toString().trim();
-    if (!v) return "";
-    const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!m) return v;
-    return `${m[3]}/${m[2]}/${m[1]}`;
-  }
+    function buildClientSpaceUrl(idEnt){
+        const ownerId = getOwnerId();
+        if (!ownerId || !idEnt) return "";
+        return `/studio_client_space.html?id=${encodeURIComponent(ownerId)}&client=${encodeURIComponent(idEnt)}`;
+    }
+
+    function openClientSpace(idEnt){
+        const url = buildClientSpaceUrl(idEnt);
+        if (!url) return;
+        window.open(url, "_blank", "noopener");
+    }
+
+    function formatDateFr(value){
+        const v = (value || "").toString().trim();
+        if (!v) return "";
+        const m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (!m) return v;
+        return `${m[3]}/${m[2]}/${m[1]}`;
+    }
 
   function formatPhoneInput(input){
     if (!input) return;
@@ -492,6 +504,7 @@
       if (!row) return;
       try {
         portal.showAlert("", "");
+        openClientSpace(row.dataset.id);
         await selectClient(portal, row.dataset.id, true);
       } catch (e) {
         portal.showAlert("error", e.message || String(e));

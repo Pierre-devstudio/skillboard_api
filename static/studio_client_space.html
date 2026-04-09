@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Novoskill Studio - Espace client</title>
+  <link rel="stylesheet" href="/studio_client_space.css" />
+</head>
+<body>
+  <div class="cs-shell">
+    <aside class="cs-sidebar">
+      <div class="cs-brand">
+        <div class="cs-brand-kicker">Novoskill Studio</div>
+        <div class="cs-brand-title">Espace client</div>
+      </div>
+
+      <div class="cs-client-mini" id="csClientMini">Chargement…</div>
+
+      <nav class="cs-nav">
+        <button type="button" class="cs-nav-btn is-active" data-section="dashboard">Tableau de bord</button>
+        <button type="button" class="cs-nav-btn" data-section="identification">Identification</button>
+        <button type="button" class="cs-nav-btn" data-section="collaborateurs">Collaborateurs</button>
+        <button type="button" class="cs-nav-btn" data-section="postes">Postes</button>
+        <button type="button" class="cs-nav-btn" data-section="competences">Compétences</button>
+        <button type="button" class="cs-nav-btn" data-section="certifications">Certifications</button>
+        <button type="button" class="cs-nav-btn" data-section="evaluations">Évaluations</button>
+      </nav>
+
+      <div class="cs-sidebar-foot">
+        <a class="cs-btn cs-btn--side" id="btnOpenPortfolioSide" href="#">Portefeuille clients</a>
+      </div>
+    </aside>
+
+    <main class="cs-main">
+      <header class="cs-topbar">
+        <div>
+          <div class="cs-kicker">Espace client</div>
+          <h1 class="cs-title" id="csClientTitle">Chargement…</h1>
+          <div class="cs-sub" id="csClientSub">Initialisation du contexte client…</div>
+        </div>
+        <div class="cs-topbar-actions">
+          <a class="cs-btn cs-btn--secondary" id="btnOpenPortfolioTop" href="#">Ouvrir le portefeuille Studio</a>
+          <button type="button" class="cs-btn cs-btn--secondary" id="btnCloseTab">Fermer l’onglet</button>
+        </div>
+      </header>
+
+      <div class="cs-message" id="csMessage" style="display:none;"></div>
+
+      <section class="cs-section is-active" data-section="dashboard">
+        <div class="cs-card">
+          <div class="cs-card-head">
+            <div>
+              <div class="cs-card-title">Vue d’ensemble</div>
+              <div class="cs-card-sub">Lecture rapide du client actuellement ouvert dans cet onglet.</div>
+            </div>
+          </div>
+
+          <div class="cs-badges" id="csClientBadges"></div>
+
+          <div class="cs-kpi-grid">
+            <div class="cs-kpi">
+              <div class="cs-kpi-label">Studio actif</div>
+              <div class="cs-kpi-value" id="dashStudioActif">—</div>
+            </div>
+            <div class="cs-kpi">
+              <div class="cs-kpi-label">Délégation Studio</div>
+              <div class="cs-kpi-value" id="dashDelegationStudio">—</div>
+            </div>
+            <div class="cs-kpi">
+              <div class="cs-kpi-label">Structure groupe</div>
+              <div class="cs-kpi-value" id="dashGroupOk">—</div>
+            </div>
+            <div class="cs-kpi">
+              <div class="cs-kpi-label">Parents liés</div>
+              <div class="cs-kpi-value" id="dashParents">—</div>
+            </div>
+            <div class="cs-kpi">
+              <div class="cs-kpi-label">Enfants liés</div>
+              <div class="cs-kpi-value" id="dashChildren">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cs-grid cs-grid--2">
+          <div class="cs-card">
+            <div class="cs-card-title">Synthèse entreprise</div>
+            <div class="cs-facts">
+              <div class="cs-fact">
+                <div class="cs-fact-label">Nom entreprise</div>
+                <div class="cs-fact-value" id="sumNomEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Ville</div>
+                <div class="cs-fact-value" id="sumVilleEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Pays</div>
+                <div class="cs-fact-value" id="sumPaysEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Effectif déclaré</div>
+                <div class="cs-fact-value" id="sumEffectifEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">SIRET</div>
+                <div class="cs-fact-value" id="sumSiretEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">N° entreprise</div>
+                <div class="cs-fact-value" id="sumNumEntreprise">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="cs-card">
+            <div class="cs-card-title">Références</div>
+            <div class="cs-facts">
+              <div class="cs-fact">
+                <div class="cs-fact-label">IDCC</div>
+                <div class="cs-fact-value" id="sumIdcc">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Libellé IDCC</div>
+                <div class="cs-fact-value" id="sumIdccLibelle">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Code APE</div>
+                <div class="cs-fact-value" id="sumCodeApe">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Intitulé APE</div>
+                <div class="cs-fact-value" id="sumCodeApeIntitule">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">OPCO</div>
+                <div class="cs-fact-value" id="sumOpcoNom">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Owner gestionnaire</div>
+                <div class="cs-fact-value" id="sumOwnerNom">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cs-section" data-section="identification">
+        <div class="cs-grid cs-grid--2">
+          <div class="cs-card">
+            <div class="cs-card-title">Identité entreprise</div>
+            <div class="cs-facts">
+              <div class="cs-fact">
+                <div class="cs-fact-label">Nom entreprise</div>
+                <div class="cs-fact-value" id="idNomEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">SIRET</div>
+                <div class="cs-fact-value" id="idSiretEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">N° entreprise</div>
+                <div class="cs-fact-value" id="idNumEntreprise">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Date de création</div>
+                <div class="cs-fact-value" id="idDateCreation">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Effectif déclaré</div>
+                <div class="cs-fact-value" id="idEffectifEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">N° TVA</div>
+                <div class="cs-fact-value" id="idNumTvaEnt">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="cs-card">
+            <div class="cs-card-title">Coordonnées</div>
+            <div class="cs-facts">
+              <div class="cs-fact cs-fact--full">
+                <div class="cs-fact-label">Adresse</div>
+                <div class="cs-fact-value" id="idAdresseEnt">—</div>
+              </div>
+              <div class="cs-fact cs-fact--full">
+                <div class="cs-fact-label">Complément</div>
+                <div class="cs-fact-value" id="idAdresseCpltEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Code postal</div>
+                <div class="cs-fact-value" id="idCpEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Ville</div>
+                <div class="cs-fact-value" id="idVilleEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Pays</div>
+                <div class="cs-fact-value" id="idPaysEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Téléphone</div>
+                <div class="cs-fact-value" id="idTelephoneEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Email</div>
+                <div class="cs-fact-value" id="idEmailEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Site web</div>
+                <div class="cs-fact-value" id="idSiteWeb">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="cs-card">
+            <div class="cs-card-title">Références administratives</div>
+            <div class="cs-facts">
+              <div class="cs-fact">
+                <div class="cs-fact-label">IDCC</div>
+                <div class="cs-fact-value" id="idIdcc">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Libellé IDCC</div>
+                <div class="cs-fact-value" id="idIdccLibelle">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Code APE</div>
+                <div class="cs-fact-value" id="idCodeApeEnt">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Intitulé APE</div>
+                <div class="cs-fact-value" id="idCodeApeIntitule">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">OPCO</div>
+                <div class="cs-fact-value" id="idOpcoNom">—</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="cs-card">
+            <div class="cs-card-title">Structure groupe / réseau</div>
+            <div class="cs-facts">
+              <div class="cs-fact">
+                <div class="cs-fact-label">Entreprise en groupe</div>
+                <div class="cs-fact-value" id="idGroupOk">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Tête de groupe</div>
+                <div class="cs-fact-value" id="idTeteGroupe">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Nom du groupe</div>
+                <div class="cs-fact-value" id="idNomGroupe">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Type de groupe</div>
+                <div class="cs-fact-value" id="idTypeGroupe">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Parents liés</div>
+                <div class="cs-fact-value" id="idNbParents">—</div>
+              </div>
+              <div class="cs-fact">
+                <div class="cs-fact-label">Enfants liés</div>
+                <div class="cs-fact-value" id="idNbChildren">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="cs-section" data-section="collaborateurs">
+        <div class="cs-card cs-placeholder">
+          <div class="cs-card-title">Collaborateurs</div>
+          <div class="cs-placeholder-text">Cette rubrique accueillera la gestion du personnel client, les accès, les droits, les compétences et les certifications associées.</div>
+        </div>
+      </section>
+
+      <section class="cs-section" data-section="postes">
+        <div class="cs-card cs-placeholder">
+          <div class="cs-card-title">Postes</div>
+          <div class="cs-placeholder-text">Cette rubrique accueillera le catalogue des postes du client.</div>
+        </div>
+      </section>
+
+      <section class="cs-section" data-section="competences">
+        <div class="cs-card cs-placeholder">
+          <div class="cs-card-title">Compétences</div>
+          <div class="cs-placeholder-text">Cette rubrique accueillera les compétences gérées dans le périmètre du client.</div>
+        </div>
+      </section>
+
+      <section class="cs-section" data-section="certifications">
+        <div class="cs-card cs-placeholder">
+          <div class="cs-card-title">Certifications</div>
+          <div class="cs-placeholder-text">Cette rubrique accueillera les certifications et habilitations liées au client.</div>
+        </div>
+      </section>
+
+      <section class="cs-section" data-section="evaluations">
+        <div class="cs-card cs-placeholder">
+          <div class="cs-card-title">Évaluations</div>
+          <div class="cs-placeholder-text">Cette rubrique accueillera les évaluations de compétences du client.</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- IMPORTANT :
+       si le src réel de portal_auth_common.js diffère dans ton projet,
+       remplace uniquement cette ligne par le même include que dans tes pages Studio existantes. -->
+  <script src="/portal_auth_common.js"></script>
+  <script src="/studio_portal_auth.js"></script>
+  <script src="/studio_client_space.js"></script>
+</body>
+</html>
