@@ -155,128 +155,136 @@
       </section>
 
       <section class="cs-section" data-section="fiche">
-        <div class="cs-grid cs-grid--2">
+        <div class="cs-section-toolbar cs-section-toolbar--end">
+          <button type="button" class="sb-btn sb-btn--secondary" id="btnFicheEdit">Modifier</button>
+          <button type="button" class="sb-btn sb-btn--secondary" id="btnFicheCancel" hidden>Annuler</button>
+          <button type="button" class="sb-btn sb-btn--accent" id="btnFicheSave" hidden>Enregistrer</button>
+        </div>
+
+        <div class="cs-grid cs-grid--2 cs-grid--top">
           <div class="cs-card">
             <div class="cs-card-title" id="sectionCompanySheetTitle">Fiche entreprise</div>
             <div class="cs-card-sub" id="sectionCompanySheetSub">Informations générales, administratives et de rattachement de l’entreprise.</div>
-            <div class="cs-facts">
-              <div class="cs-fact">
-                <div class="cs-fact-label">Nom entreprise</div>
-                <div class="cs-fact-value" id="idNomEnt">—</div>
+
+            <div class="sb-form-grid cs-form-grid">
+              <div class="sb-field sb-span-2">
+                <label class="sb-label" for="ficheNomEnt">Nom entreprise</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheNomEnt" disabled />
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">SIRET</div>
-                <div class="cs-fact-value" id="idSiretEnt">—</div>
+              <div class="sb-field">
+                <label class="sb-label" for="ficheSiretEnt">SIRET</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheSiretEnt" disabled />
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">N° entreprise</div>
-                <div class="cs-fact-value" id="idNumEntreprise">—</div>
+              <div class="sb-field">
+                <label class="sb-label" for="ficheNumEntreprise">N° entreprise</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheNumEntreprise" disabled />
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Date de création</div>
-                <div class="cs-fact-value" id="idDateCreation">—</div>
+              <div class="sb-field">
+                <label class="sb-label" for="ficheDateCreation">Date de création</label>
+                <input type="date" class="sb-date cs-form-ctrl" id="ficheDateCreation" disabled />
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Effectif déclaré</div>
-                <div class="cs-fact-value" id="idEffectifEnt">—</div>
+              <div class="sb-field">
+                <label class="sb-label" for="ficheEffectifEnt">Effectif déclaré</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheEffectifEnt" disabled />
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">N° TVA</div>
-                <div class="cs-fact-value" id="idNumTvaEnt">—</div>
+              <div class="sb-field sb-span-2">
+                <label class="sb-label" for="ficheNumTvaEnt">N° TVA</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheNumTvaEnt" disabled />
               </div>
             </div>
           </div>
 
           <div class="cs-card">
             <div class="cs-card-title">Coordonnées</div>
-            <div class="cs-facts">
-              <div class="cs-fact cs-fact--full">
-                <div class="cs-fact-label">Adresse</div>
-                <div class="cs-fact-value" id="idAdresseEnt">—</div>
+
+            <div class="sb-form-grid cs-form-grid">
+              <div class="sb-field sb-span-2">
+                <label class="sb-label" for="ficheAdresseEnt">Adresse</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheAdresseEnt" disabled />
               </div>
-              <div class="cs-fact cs-fact--full">
-                <div class="cs-fact-label">Complément</div>
-                <div class="cs-fact-value" id="idAdresseCpltEnt">—</div>
+              <div class="sb-field sb-span-2">
+                <label class="sb-label" for="ficheAdresseCpltEnt">Complément</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheAdresseCpltEnt" disabled />
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Code postal</div>
-                <div class="cs-fact-value" id="idCpEnt">—</div>
+              <div class="sb-field">
+                <label class="sb-label" for="ficheCpEnt">Code postal</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheCpEnt" disabled />
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Ville</div>
-                <div class="cs-fact-value" id="idVilleEnt">—</div>
+              <div class="sb-field">
+                <label class="sb-label" for="ficheVilleEnt">Ville</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheVilleEnt" disabled />
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Pays</div>
-                <div class="cs-fact-value" id="idPaysEnt">—</div>
+              <div class="sb-field">
+                <label class="sb-label" for="fichePaysEnt">Pays</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="fichePaysEnt" disabled />
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Téléphone</div>
-                <div class="cs-fact-value" id="idTelephoneEnt">—</div>
+              <div class="sb-field">
+                <label class="sb-label" for="ficheTelephoneEnt">Téléphone</label>
+                <input type="tel" class="sb-ctrl cs-form-ctrl" id="ficheTelephoneEnt" disabled />
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Email</div>
-                <div class="cs-fact-value" id="idEmailEnt">—</div>
+              <div class="sb-field">
+                <label class="sb-label" for="ficheEmailEnt">Email</label>
+                <input type="email" class="sb-ctrl cs-form-ctrl" id="ficheEmailEnt" disabled />
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Site web</div>
-                <div class="cs-fact-value" id="idSiteWeb">—</div>
+              <div class="sb-field">
+                <label class="sb-label" for="ficheSiteWeb">Site web</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheSiteWeb" disabled />
               </div>
             </div>
           </div>
 
           <div class="cs-card">
             <div class="cs-card-title">Références administratives</div>
-            <div class="cs-facts">
-              <div class="cs-fact">
-                <div class="cs-fact-label">IDCC</div>
-                <div class="cs-fact-value" id="idIdcc">—</div>
+
+            <div class="sb-form-grid cs-form-grid">
+              <div class="sb-field">
+                <label class="sb-label" for="ficheIdcc">IDCC</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheIdcc" disabled />
+                <div class="sb-help" id="ficheIdccHelp">—</div>
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Libellé IDCC</div>
-                <div class="cs-fact-value" id="idIdccLibelle">—</div>
+              <div class="sb-field">
+                <label class="sb-label" for="ficheCodeApeEnt">Code APE</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheCodeApeEnt" disabled />
+                <div class="sb-help" id="ficheCodeApeHelp">—</div>
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Code APE</div>
-                <div class="cs-fact-value" id="idCodeApeEnt">—</div>
-              </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Intitulé APE</div>
-                <div class="cs-fact-value" id="idCodeApeIntitule">—</div>
-              </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">OPCO</div>
-                <div class="cs-fact-value" id="idOpcoNom">—</div>
+              <div class="sb-field sb-span-2">
+                <label class="sb-label" for="ficheIdOpco">OPCO</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheIdOpco" disabled />
+                <div class="sb-help" id="ficheOpcoHelp">—</div>
               </div>
             </div>
           </div>
 
           <div class="cs-card">
             <div class="cs-card-title">Structure groupe / réseau</div>
-            <div class="cs-facts">
-              <div class="cs-fact">
-                <div class="cs-fact-label">Entreprise en groupe</div>
-                <div class="cs-fact-value" id="idGroupOk">—</div>
+
+            <div class="sb-form-grid cs-form-grid">
+              <label class="sb-check sb-span-2">
+                <input type="checkbox" id="ficheGroupOk" disabled />
+                <span>Entreprise en groupe</span>
+              </label>
+
+              <label class="sb-check sb-span-2">
+                <input type="checkbox" id="ficheTeteGroupe" disabled />
+                <span>Tête de groupe</span>
+              </label>
+
+              <div class="sb-field">
+                <label class="sb-label" for="ficheNomGroupe">Nom du groupe</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheNomGroupe" disabled />
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Tête de groupe</div>
-                <div class="cs-fact-value" id="idTeteGroupe">—</div>
+              <div class="sb-field">
+                <label class="sb-label" for="ficheTypeGroupe">Type de groupe</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheTypeGroupe" disabled />
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Nom du groupe</div>
-                <div class="cs-fact-value" id="idNomGroupe">—</div>
+
+              <div class="sb-field">
+                <label class="sb-label">Parents liés</label>
+                <div class="cs-read-value" id="idNbParents">—</div>
               </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Type de groupe</div>
-                <div class="cs-fact-value" id="idTypeGroupe">—</div>
-              </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Parents liés</div>
-                <div class="cs-fact-value" id="idNbParents">—</div>
-              </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Enfants liés</div>
-                <div class="cs-fact-value" id="idNbChildren">—</div>
+              <div class="sb-field">
+                <label class="sb-label">Enfants liés</label>
+                <div class="cs-read-value" id="idNbChildren">—</div>
               </div>
             </div>
           </div>

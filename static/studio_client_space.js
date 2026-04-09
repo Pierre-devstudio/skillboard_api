@@ -5,6 +5,8 @@
   let _summary = null;
   let _ownerFeatures = null;
   let _context = null;
+  let _ficheEditMode = false;
+  let _ficheSaving = false;
 
   function byId(id){ return document.getElementById(id); }
 
@@ -24,6 +26,14 @@
     return `${m[3]}/${m[2]}/${m[1]}`;
   }
 
+  function formatDateInput(value){
+    const v = (value || "").toString().trim();
+    if (!v) return "";
+    const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    return v;
+  }
+
   function yesNo(value){
     return value ? "Oui" : "Non";
   }
@@ -33,20 +43,60 @@
     return v || "—";
   }
 
+  function inputValue(id){
+    const el = byId(id);
+    if (!el) return "";
+    return (el.value || "").toString().trim();
+  }
+
   function setText(id, value){
     const el = byId(id);
     if (!el) return;
     el.textContent = textOrDash(value);
   }
 
-  function setMessage(message){
+  function setInputValue(id, value){
+    const el = byId(id);
+    if (!el) return;
+    el.value = (value ?? "").toString();
+  }
+
+  function setDateValue(id, value){
+    const el = byId(id);
+    if (!el) return;
+    el.value = formatDateInput(value);
+  }
+
+  function setCheckboxValue(id, value){
+    const el = byId(id);
+    if (!el) return;
+    el.checked = !!value;
+  }
+
+  function setHelp(id, value){
+    const el = byId(id);
+    if (!el) return;
+    el.textContent = textOrDash(value);
+  }
+
+  function setMessage(message, kind){
     const box = byId("csMessage");
     if (!box) return;
+
+    box.classList.remove("is-success", "is-error");
+
     if (!message) {
       box.style.display = "none";
       box.textContent = "";
       return;
     }
+
+    if (kind === "success") {
+      box.classList.add("is-success");
+    } else {
+      box.classList.add("is-error");
+    }
+
     box.style.display = "block";
     box.textContent = message;
   }
@@ -150,27 +200,27 @@
     if (top) top.href = url;
   }
 
-    function getCompanySheetLabel(){
-        const t = (_detail?.owner_type_client || "entreprise").toString().trim().toLowerCase();
-        return t === "site" ? "Fiche site" : "Fiche entreprise";
+  function getCompanySheetLabel(){
+    const t = (_detail?.owner_type_client || "entreprise").toString().trim().toLowerCase();
+    return t === "site" ? "Fiche site" : "Fiche entreprise";
+  }
+
+  function renderDynamicLabels(){
+    const label = getCompanySheetLabel();
+
+    const navLabel = byId("navCompanySheetLabel");
+    if (navLabel) navLabel.textContent = label;
+
+    const sectionTitle = byId("sectionCompanySheetTitle");
+    if (sectionTitle) sectionTitle.textContent = label;
+
+    const sectionSub = byId("sectionCompanySheetSub");
+    if (sectionSub) {
+      sectionSub.textContent = label === "Fiche site"
+        ? "Informations générales, administratives et de rattachement du site."
+        : "Informations générales, administratives et de rattachement de l’entreprise.";
     }
-
-    function renderDynamicLabels(){
-        const label = getCompanySheetLabel();
-
-        const navLabel = byId("navCompanySheetLabel");
-        if (navLabel) navLabel.textContent = label;
-
-        const sectionTitle = byId("sectionCompanySheetTitle");
-        if (sectionTitle) sectionTitle.textContent = label;
-
-        const sectionSub = byId("sectionCompanySheetSub");
-        if (sectionSub) {
-        sectionSub.textContent = label === "Fiche site"
-            ? "Informations générales, administratives et de rattachement du site."
-            : "Informations générales, administratives et de rattachement de l’entreprise.";
-        }
-    }
+  }
 
   function renderHeader(){
     byId("csClientMini").textContent = _detail?.nom_ent || "Client";
@@ -227,34 +277,176 @@
   }
 
   function renderIdentification(){
-    setText("idNomEnt", _detail?.nom_ent);
-    setText("idSiretEnt", _detail?.siret_ent);
-    setText("idNumEntreprise", _detail?.num_entreprise);
-    setText("idDateCreation", formatDateFr(_detail?.date_creation));
-    setText("idEffectifEnt", _detail?.effectif_ent);
-    setText("idNumTvaEnt", _detail?.num_tva_ent);
+    setInputValue("ficheNomEnt", _detail?.nom_ent);
+    setInputValue("ficheSiretEnt", _detail?.siret_ent);
+    setInputValue("ficheNumEntreprise", _detail?.num_entreprise);
+    setDateValue("ficheDateCreation", _detail?.date_creation);
+    setInputValue("ficheEffectifEnt", _detail?.effectif_ent);
+    setInputValue("ficheNumTvaEnt", _detail?.num_tva_ent);
 
-    setText("idAdresseEnt", _detail?.adresse_ent);
-    setText("idAdresseCpltEnt", _detail?.adresse_cplt_ent);
-    setText("idCpEnt", _detail?.cp_ent);
-    setText("idVilleEnt", _detail?.ville_ent);
-    setText("idPaysEnt", _detail?.pays_ent);
-    setText("idTelephoneEnt", _detail?.telephone_ent);
-    setText("idEmailEnt", _detail?.email_ent);
-    setText("idSiteWeb", _detail?.site_web);
+    setInputValue("ficheAdresseEnt", _detail?.adresse_ent);
+    setInputValue("ficheAdresseCpltEnt", _detail?.adresse_cplt_ent);
+    setInputValue("ficheCpEnt", _detail?.cp_ent);
+    setInputValue("ficheVilleEnt", _detail?.ville_ent);
+    setInputValue("fichePaysEnt", _detail?.pays_ent);
+    setInputValue("ficheTelephoneEnt", _detail?.telephone_ent);
+    setInputValue("ficheEmailEnt", _detail?.email_ent);
+    setInputValue("ficheSiteWeb", _detail?.site_web);
 
-    setText("idIdcc", _detail?.idcc);
-    setText("idIdccLibelle", _detail?.idcc_libelle);
-    setText("idCodeApeEnt", _detail?.code_ape_ent);
-    setText("idCodeApeIntitule", _detail?.code_ape_intitule);
-    setText("idOpcoNom", _detail?.opco_nom);
+    setInputValue("ficheIdcc", _detail?.idcc);
+    setHelp("ficheIdccHelp", _detail?.idcc_libelle);
+    setInputValue("ficheCodeApeEnt", _detail?.code_ape_ent);
+    setHelp("ficheCodeApeHelp", _detail?.code_ape_intitule);
+    setInputValue("ficheIdOpco", _detail?.id_opco);
+    setHelp("ficheOpcoHelp", _detail?.opco_nom);
 
-    setText("idGroupOk", yesNo(_detail?.group_ok));
-    setText("idTeteGroupe", yesNo(_detail?.tete_groupe));
-    setText("idNomGroupe", _detail?.nom_groupe);
-    setText("idTypeGroupe", _detail?.type_groupe);
+    setCheckboxValue("ficheGroupOk", _detail?.group_ok);
+    setCheckboxValue("ficheTeteGroupe", _detail?.tete_groupe);
+    setInputValue("ficheNomGroupe", _detail?.nom_groupe);
+    setInputValue("ficheTypeGroupe", _detail?.type_groupe);
+
     setText("idNbParents", _detail?.nb_entites_parents);
     setText("idNbChildren", _detail?.nb_entites_enfants);
+
+    syncGroupFieldsState();
+  }
+
+  function readFichePayload(){
+    return {
+      nom_ent: inputValue("ficheNomEnt"),
+      siret_ent: inputValue("ficheSiretEnt"),
+      num_entreprise: inputValue("ficheNumEntreprise"),
+      date_creation: inputValue("ficheDateCreation") || null,
+      effectif_ent: inputValue("ficheEffectifEnt"),
+      num_tva_ent: inputValue("ficheNumTvaEnt"),
+
+      adresse_ent: inputValue("ficheAdresseEnt"),
+      adresse_cplt_ent: inputValue("ficheAdresseCpltEnt"),
+      cp_ent: inputValue("ficheCpEnt"),
+      ville_ent: inputValue("ficheVilleEnt"),
+      pays_ent: inputValue("fichePaysEnt"),
+      telephone_ent: inputValue("ficheTelephoneEnt"),
+      email_ent: inputValue("ficheEmailEnt"),
+      site_web: inputValue("ficheSiteWeb"),
+
+      idcc: inputValue("ficheIdcc"),
+      code_ape_ent: inputValue("ficheCodeApeEnt"),
+      id_opco: inputValue("ficheIdOpco"),
+
+      group_ok: !!byId("ficheGroupOk")?.checked,
+      tete_groupe: !!byId("ficheTeteGroupe")?.checked,
+      nom_groupe: inputValue("ficheNomGroupe"),
+      type_groupe: inputValue("ficheTypeGroupe"),
+    };
+  }
+
+  function syncGroupFieldsState(){
+    const isGroup = !!byId("ficheGroupOk")?.checked;
+    const tete = byId("ficheTeteGroupe");
+    const nom = byId("ficheNomGroupe");
+    const type = byId("ficheTypeGroupe");
+
+    if (tete) {
+      tete.disabled = !_ficheEditMode || !isGroup;
+      if (!isGroup) tete.checked = false;
+    }
+    if (nom) {
+      nom.disabled = !_ficheEditMode || !isGroup;
+      if (!isGroup) nom.value = "";
+    }
+    if (type) {
+      type.disabled = !_ficheEditMode || !isGroup;
+      if (!isGroup) type.value = "";
+    }
+  }
+
+  function setFicheEditMode(enabled){
+    _ficheEditMode = !!enabled;
+
+    const controls = document.querySelectorAll(".cs-form-ctrl, #ficheGroupOk, #ficheTeteGroupe");
+    controls.forEach(el => {
+      el.disabled = !_ficheEditMode;
+    });
+
+    if (byId("btnFicheEdit")) byId("btnFicheEdit").hidden = _ficheEditMode;
+    if (byId("btnFicheCancel")) byId("btnFicheCancel").hidden = !_ficheEditMode;
+    if (byId("btnFicheSave")) byId("btnFicheSave").hidden = !_ficheEditMode;
+
+    syncGroupFieldsState();
+  }
+
+  async function saveFiche(){
+    if (_ficheSaving) return;
+
+    const ownerId = getOwnerId();
+    const clientId = getClientId();
+    const btnSave = byId("btnFicheSave");
+    const btnCancel = byId("btnFicheCancel");
+    const btnEdit = byId("btnFicheEdit");
+
+    try {
+      _ficheSaving = true;
+      if (btnSave) {
+        btnSave.disabled = true;
+        btnSave.textContent = "Enregistrement...";
+      }
+      if (btnCancel) btnCancel.disabled = true;
+      if (btnEdit) btnEdit.disabled = true;
+
+      const token = await ensureAuthReady();
+      if (!token) return;
+
+      const payload = readFichePayload();
+      const updated = await apiJson(
+        `${API_BASE}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}`,
+        token,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      _detail = updated || {};
+      renderDynamicLabels();
+      renderHeader();
+      renderDashboard();
+      renderIdentification();
+      setFicheEditMode(false);
+      setMessage("Fiche enregistrée.", "success");
+    } catch (e) {
+      setMessage(e.message || "Erreur lors de l’enregistrement de la fiche.");
+    } finally {
+      _ficheSaving = false;
+      if (btnSave) {
+        btnSave.disabled = false;
+        btnSave.textContent = "Enregistrer";
+      }
+      if (btnCancel) btnCancel.disabled = false;
+      if (btnEdit) btnEdit.disabled = false;
+    }
+  }
+
+  function bindFicheActions(){
+    byId("btnFicheEdit")?.addEventListener("click", () => {
+      setMessage("");
+      renderIdentification();
+      setFicheEditMode(true);
+    });
+
+    byId("btnFicheCancel")?.addEventListener("click", () => {
+      setMessage("");
+      renderIdentification();
+      setFicheEditMode(false);
+    });
+
+    byId("btnFicheSave")?.addEventListener("click", async () => {
+      await saveFiche();
+    });
+
+    byId("ficheGroupOk")?.addEventListener("change", syncGroupFieldsState);
   }
 
   async function loadData(){
@@ -287,12 +479,15 @@
     renderHeader();
     renderDashboard();
     renderIdentification();
+    setFicheEditMode(false);
     setSection("dashboard");
   }
 
   window.addEventListener("DOMContentLoaded", async () => {
     bindNavigation();
+    bindFicheActions();
     renderLinks();
+
     try {
       await loadData();
       setMessage("");
