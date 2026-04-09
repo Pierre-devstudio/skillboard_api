@@ -46,19 +46,49 @@ a{
 }
 
 .cs-client-mini{
-  margin:16px 14px 8px 14px;
-  padding:12px;
-  border:1px solid rgba(255,255,255,.10);
+  margin:16px 0 8px 0;
+  width:100%;
+  padding:12px 14px;
+  border:1px solid rgba(var(--cs-accent-rgb), .70);
   border-radius:12px;
   background:rgba(255,255,255,.06);
-  font-size:13px;
+  font-size:14px;
+  font-weight:600;
   line-height:1.4;
+}
+
+.cs-sidebar-header{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:10px;
+}
+
+.cs-brand-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.cs-subproduct-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:30px;
+  padding:0 12px;
+  border:1px solid rgba(255,255,255,.70);
+  border-radius:999px;
+  background:transparent;
+  color:#fff;
+  font-size:13px;
+  font-weight:700;
 }
 
 .cs-client-menu{
   display:flex;
   flex-direction:column;
   margin-top:4px;
+  width:100%;
 }
 
 .cs-client-menu a.menu-item{
