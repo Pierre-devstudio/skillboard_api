@@ -51,18 +51,49 @@
     box.textContent = message;
   }
 
+  let _authInitPromise = null;
+
   async function ensureAuthReady(){
-    try { await (window.__studioAuthReady || Promise.resolve(null)); } catch (_) {}
-    if (!window.PortalAuthCommon) {
-      throw new Error("PortalAuthCommon non disponible.");
+    if (_authInitPromise) {
+      return await _authInitPromise;
     }
 
-    const session = await window.PortalAuthCommon.getSession().catch(() => null);
-    if (!session?.access_token) {
-      window.location.href = "/studio_login.html";
-      return null;
+    _authInitPromise = (async () => {
+      if (!window.PortalAuthCommon) {
+        throw new Error("portal_auth_common.js non chargé.");
+      }
+
+      const r = await fetch(`${API_BASE}/portal/config/studio`);
+      const cfg = await r.json().catch(() => null);
+
+      if (!r.ok || !cfg?.supabase_url || !cfg?.supabase_anon_key) {
+        throw new Error("Impossible de charger la configuration Studio.");
+      }
+
+      window.PortalAuthCommon.init({
+        supabaseUrl: cfg.supabase_url,
+        supabaseAnonKey: cfg.supabase_anon_key,
+        portalKey: "studio",
+        storagePrefix: "sb",
+        apiBase: API_BASE,
+        contactIdMetaKeys: ["id_owner"],
+      });
+
+      const session = await window.PortalAuthCommon.getSession().catch(() => null);
+      if (!session?.access_token) {
+        window.location.href = "/studio_login.html";
+        return null;
+      }
+
+      return session.access_token;
+    })();
+
+    try {
+      return await _authInitPromise;
+    } catch (e) {
+      _authInitPromise = null;
+      throw e;
     }
-    return session.access_token;
   }
 
   async function apiJson(url, token, options){
