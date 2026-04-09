@@ -170,76 +170,73 @@
     }
   }
 
-  function renderOwnerCapability(){
-    const el = byId("clientsOwnerCapability");
-    if (!el) return;
-    if (_ownerFeatures.gestion_acces_studio_autorisee) {
-      el.textContent = `Votre owner peut déléguer des accès Studio. Quota déclaré : ${_ownerFeatures.nb_acces_studio_max || 0}.`;
-      return;
-    }
-    if (_ownerFeatures.studio_actif) {
-      el.textContent = "Votre owner utilise Studio, mais la gestion déléguée des accès Studio n’est pas autorisée sur ce périmètre.";
-      return;
-    }
-    el.textContent = "Studio n’est pas déclaré comme actif côté capacité owner. La fiche client reste gérable, ce qui est déjà pas mal.";
-  }
-
-  function renderKpis(summary){
-    byId("clientsKpiTotal").textContent = String(summary?.total_clients || 0);
-    byId("clientsKpiGroup").textContent = String(summary?.nb_groupes || 0);
-    byId("clientsKpiOwner").textContent = String(summary?.nb_owner_scope || 0);
-    byId("clientsKpiStudioDelegue").textContent = String(summary?.nb_studio_delegue || 0);
-  }
-
-  function buildListBadges(item){
-    const out = [];
-    out.push(`<span class="sb-badge sb-badge--accent-soft">Client</span>`);
-    if (item.group_ok) out.push(`<span class="sb-badge sb-badge--outline-accent">${esc(item.type_groupe || "Groupe")}</span>`);
-    if (item.tete_groupe) out.push(`<span class="sb-badge sb-badge--status-active">Tête de groupe</span>`);
-    if (item.has_owner_scope) out.push(`<span class="sb-badge sb-badge--outline-accent">Owner Studio</span>`);
-    if (item.gestion_acces_studio_autorisee) out.push(`<span class="sb-badge sb-badge--status-active">Délégation Studio</span>`);
-    else if (item.studio_actif) out.push(`<span class="sb-badge sb-badge--status-inactive">Studio actif</span>`);
-    return out.join("");
-  }
-
-  function renderList(){
-    const box = byId("clientsList");
-    const q = (byId("clientsSearch")?.value || "").trim().toLowerCase();
-    if (!box) return;
-
-    const rows = (_items || []).filter(it => {
-      if (!q) return true;
-      const hay = [it.nom_ent, it.ville_ent, it.pays_ent, it.nom_groupe, it.type_groupe, it.email_ent]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      return hay.includes(q);
-    });
-
-    if (!rows.length) {
-      box.innerHTML = `
-        <div class="sb-empty-state">
-          <div class="sb-empty-state__title">Aucun client trouvé</div>
-          <div class="sb-empty-state__text">Ajuste la recherche ou crée une fiche client. Il faut bien commencer quelque part.</div>
-        </div>
-      `;
-      return;
+    function renderOwnerCapability(){
+        const el = byId("clientsOwnerCapability");
+        if (!el) return;
+        if (_ownerFeatures.gestion_acces_studio_autorisee) {
+        el.textContent = `Votre owner peut déléguer des accès Studio. Quota déclaré : ${_ownerFeatures.nb_acces_studio_max || 0}.`;
+        return;
+        }
+        if (_ownerFeatures.studio_actif) {
+        el.textContent = "Votre owner utilise Studio, mais la gestion déléguée des accès Studio n’est pas autorisée sur ce périmètre.";
+        return;
+        }
+        el.textContent = "Studio n’est pas déclaré comme actif côté capacité owner. La fiche client reste gérable, ce qui est déjà pas mal.";
     }
 
-    box.innerHTML = rows.map(it => `
-      <div class="sb-list-item sb-list-item--clickable ${it.id_ent === _selectedId ? "is-active" : ""}" data-id="${esc(it.id_ent)}">
-        <div class="sb-row-main">
-          <div class="sb-list-title">${esc(it.nom_ent || "Entreprise sans nom")}</div>
-          <div class="sb-row-badges">${buildListBadges(it)}</div>
-          <div class="sb-row-meta">
-            <span>${esc(it.ville_ent || "Ville non renseignée")}</span>
-            ${it.pays_ent ? `<span>${esc(it.pays_ent)}</span>` : ""}
-            ${it.nom_groupe ? `<span>${esc(it.nom_groupe)}</span>` : ""}
-          </div>
-        </div>
-      </div>
-    `).join("");
-  }
+    function renderKpis(summary){
+        byId("clientsKpiTotal").textContent = String(summary?.total_clients || 0);
+        byId("clientsKpiGroup").textContent = String(summary?.nb_groupes || 0);
+        byId("clientsKpiOwner").textContent = String(summary?.nb_studio_actif || 0);
+        byId("clientsKpiStudioDelegue").textContent = String(summary?.nb_studio_delegue || 0);
+    }
+
+    function buildListBadges(item){
+    if (!item?.studio_actif) return "";
+    return `<span class="sb-badge sb-badge--status-active">Studio actif</span>`;
+    }
+
+    function renderList(){
+        const box = byId("clientsList");
+        const q = (byId("clientsSearch")?.value || "").trim().toLowerCase();
+        if (!box) return;
+
+        const rows = (_items || []).filter(it => {
+        if (!q) return true;
+        const hay = [it.nom_ent, it.ville_ent, it.pays_ent, it.nom_groupe, it.type_groupe, it.email_ent]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+        return hay.includes(q);
+        });
+
+        if (!rows.length) {
+        box.innerHTML = `
+            <div class="sb-empty-state">
+            <div class="sb-empty-state__title">Aucun client trouvé</div>
+            <div class="sb-empty-state__text">Ajuste la recherche ou crée une fiche client. Il faut bien commencer quelque part.</div>
+            </div>
+        `;
+        return;
+        }
+
+        box.innerHTML = rows.map(it => {
+            const badgesHtml = buildListBadges(it);
+            return `
+            <div class="sb-list-item sb-list-item--clickable ${it.id_ent === _selectedId ? "is-active" : ""}" data-id="${esc(it.id_ent)}">
+                <div class="sb-row-main">
+                <div class="sb-list-title">${esc(it.nom_ent || "Entreprise sans nom")}</div>
+                ${badgesHtml ? `<div class="sb-row-badges">${badgesHtml}</div>` : ""}
+                <div class="sb-row-meta">
+                    <span>${esc(it.ville_ent || "Ville non renseignée")}</span>
+                    ${it.pays_ent ? `<span>${esc(it.pays_ent)}</span>` : ""}
+                    ${it.nom_groupe ? `<span>${esc(it.nom_groupe)}</span>` : ""}
+                </div>
+                </div>
+            </div>
+            `;
+            }).join("");
+    }
 
   function hideDetail(){
     const empty = byId("clientDetailEmpty");
@@ -252,57 +249,56 @@
     byId("clientDetailSub").textContent = "Sélectionnez une entreprise cliente pour afficher sa fiche.";
   }
 
-  function renderDetail(detail){
-    const empty = byId("clientDetailEmpty");
-    const panel = byId("clientDetailPanel");
-    const actions = byId("clientDetailActions");
-    if (empty) empty.style.display = "none";
-    if (panel) panel.style.display = "block";
-    if (actions) actions.style.display = canManage() ? "flex" : "none";
+    function renderDetail(detail){
+        const empty = byId("clientDetailEmpty");
+        const panel = byId("clientDetailPanel");
+        const actions = byId("clientDetailActions");
+        if (empty) empty.style.display = "none";
+        if (panel) panel.style.display = "block";
+        if (actions) actions.style.display = canManage() ? "flex" : "none";
 
-    byId("clientDetailTitle").textContent = detail.nom_ent || "Détail client";
-    byId("clientDetailSub").textContent = detail.id_ent || "";
+        byId("clientDetailTitle").textContent = detail.nom_ent || "Détail client";
+        byId("clientDetailSub").textContent = detail.id_ent || "";
 
-    const badges = [];
-    badges.push(`<span class="sb-badge sb-badge--accent-soft">Client</span>`);
-    if (detail.group_ok) badges.push(`<span class="sb-badge sb-badge--outline-accent">${esc(detail.type_groupe || "Groupe")}</span>`);
-    if (detail.tete_groupe) badges.push(`<span class="sb-badge sb-badge--status-active">Tête de groupe</span>`);
-    if (detail.has_owner_scope) badges.push(`<span class="sb-badge sb-badge--outline-accent">Owner Studio créé</span>`);
-    else badges.push(`<span class="sb-badge sb-badge--status-inactive">Pas d’owner Studio</span>`);
-    if (detail.gestion_acces_studio_autorisee) badges.push(`<span class="sb-badge sb-badge--status-active">Gestion accès Studio autorisée</span>`);
-    else if (detail.studio_actif) badges.push(`<span class="sb-badge sb-badge--status-inactive">Studio actif sans délégation</span>`);
-    byId("clientDetailBadges").innerHTML = badges.join("");
+        const badges = [];
+            if (detail.studio_actif) {
+            badges.push(`<span class="sb-badge sb-badge--status-active">Studio actif</span>`);
+            }
 
-    setValueOrEmpty("det_nom_ent", detail.nom_ent);
-    setValueOrEmpty("det_siret_ent", detail.siret_ent);
-    setValueOrEmpty("det_num_entreprise", detail.num_entreprise);
-    setValueOrEmpty("det_date_creation", formatDateFr(detail.date_creation));
-    setValueOrEmpty("det_effectif_ent", detail.effectif_ent);
-    setValueOrEmpty("det_idcc", detail.idcc);
-    setValueOrEmpty("det_code_ape_ent", detail.code_ape_ent);
-    setValueOrEmpty("det_adresse_ent", detail.adresse_ent);
-    setValueOrEmpty("det_adresse_cplt_ent", detail.adresse_cplt_ent);
-    setValueOrEmpty("det_cp_ent", detail.cp_ent);
-    setValueOrEmpty("det_ville_ent", detail.ville_ent);
-    setValueOrEmpty("det_pays_ent", detail.pays_ent);
-    setValueOrEmpty("det_telephone_ent", detail.telephone_ent);
-    setValueOrEmpty("det_email_ent", detail.email_ent);
-    setValueOrEmpty("det_site_web", detail.site_web);
-    setValueOrEmpty("det_num_tva_ent", detail.num_tva_ent);
-    setValueOrEmpty("det_idcc_libelle", detail.idcc_libelle);
-    setValueOrEmpty("det_code_ape_intitule", detail.code_ape_intitule);
-    setValueOrEmpty("det_opco_nom", detail.opco_nom);
-    setValueOrEmpty("det_nom_groupe", detail.nom_groupe);
-    setValueOrEmpty("det_type_groupe", detail.type_groupe);
-    setValueOrEmpty("det_group_ok", boolText(detail.group_ok));
-    setValueOrEmpty("det_tete_groupe", boolText(detail.tete_groupe));
-    setValueOrEmpty("det_nb_entites_parents", detail.nb_entites_parents);
-    setValueOrEmpty("det_nb_entites_enfants", detail.nb_entites_enfants);
-    setValueOrEmpty("det_has_owner_scope", boolText(detail.has_owner_scope));
-    setValueOrEmpty("det_studio_actif", boolText(detail.studio_actif));
-    setValueOrEmpty("det_gestion_acces_studio_autorisee", boolText(detail.gestion_acces_studio_autorisee));
-    setValueOrEmpty("det_nb_acces_studio_max", detail.nb_acces_studio_max);
-  }
+            const badgesHost = byId("clientDetailBadges");
+            badgesHost.innerHTML = badges.join("");
+            badgesHost.style.display = badges.length ? "flex" : "none";
+
+        setValueOrEmpty("det_nom_ent", detail.nom_ent);
+        setValueOrEmpty("det_siret_ent", detail.siret_ent);
+        setValueOrEmpty("det_num_entreprise", detail.num_entreprise);
+        setValueOrEmpty("det_date_creation", formatDateFr(detail.date_creation));
+        setValueOrEmpty("det_effectif_ent", detail.effectif_ent);
+        setValueOrEmpty("det_idcc", detail.idcc);
+        setValueOrEmpty("det_code_ape_ent", detail.code_ape_ent);
+        setValueOrEmpty("det_adresse_ent", detail.adresse_ent);
+        setValueOrEmpty("det_adresse_cplt_ent", detail.adresse_cplt_ent);
+        setValueOrEmpty("det_cp_ent", detail.cp_ent);
+        setValueOrEmpty("det_ville_ent", detail.ville_ent);
+        setValueOrEmpty("det_pays_ent", detail.pays_ent);
+        setValueOrEmpty("det_telephone_ent", detail.telephone_ent);
+        setValueOrEmpty("det_email_ent", detail.email_ent);
+        setValueOrEmpty("det_site_web", detail.site_web);
+        setValueOrEmpty("det_num_tva_ent", detail.num_tva_ent);
+        setValueOrEmpty("det_idcc_libelle", detail.idcc_libelle);
+        setValueOrEmpty("det_code_ape_intitule", detail.code_ape_intitule);
+        setValueOrEmpty("det_opco_nom", detail.opco_nom);
+        setValueOrEmpty("det_nom_groupe", detail.nom_groupe);
+        setValueOrEmpty("det_type_groupe", detail.type_groupe);
+        setValueOrEmpty("det_group_ok", boolText(detail.group_ok));
+        setValueOrEmpty("det_tete_groupe", boolText(detail.tete_groupe));
+        setValueOrEmpty("det_nb_entites_parents", detail.nb_entites_parents);
+        setValueOrEmpty("det_nb_entites_enfants", detail.nb_entites_enfants);
+        setValueOrEmpty("det_has_owner_scope", boolText(detail.has_owner_scope));
+        setValueOrEmpty("det_studio_actif", boolText(detail.studio_actif));
+        setValueOrEmpty("det_gestion_acces_studio_autorisee", boolText(detail.gestion_acces_studio_autorisee));
+        setValueOrEmpty("det_nb_acces_studio_max", detail.nb_acces_studio_max);
+    }
 
   async function loadList(portal, preferredId){
     setStatus("Chargement…");
