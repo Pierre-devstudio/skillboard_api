@@ -35,14 +35,20 @@ a{
 
 .cs-shell{
   min-height:100vh;
+  height:100vh;
+  width:100%;
+  min-width:0;
+  flex:1 1 auto;
   display:grid;
   grid-template-columns:280px minmax(0,1fr);
 }
 
 .cs-sidebar-frame{
   min-height:100vh;
+  height:100vh;
   display:flex;
   flex-direction:column;
+  overflow:auto;
 }
 
 .cs-client-mini{
@@ -91,7 +97,10 @@ a{
 
 .cs-main{
   min-width:0;
+  min-height:0;
+  height:100vh;
   padding:24px;
+  overflow:auto;
 }
 
 .cs-topbar{
@@ -380,14 +389,13 @@ a{
   grid-template-columns:repeat(2, minmax(0,1fr));
   gap:14px;
   margin-top:14px;
-  align-items:start;
+  align-items:stretch;
 }
 
-.cs-col-stack{
+.cs-grid--2cols > .cs-card{
+  height:100%;
   display:flex;
   flex-direction:column;
-  gap:14px;
-  min-width:0;
 }
 
 .cs-section-toolbar{
@@ -432,7 +440,10 @@ a{
 
 @media (max-width: 980px){
   .cs-shell{
-    height:100vh;
+    height:auto;
+    min-height:100vh;
+    width:100%;
+    grid-template-columns:1fr;
     grid-template-rows:auto minmax(0,1fr);
   }
 
@@ -444,6 +455,28 @@ a{
 
   .cs-main{
     height:auto;
+    min-height:0;
     overflow:auto;
+    padding:18px;
+  }
+
+  .cs-topbar{
+    flex-direction:column;
+  }
+
+  .cs-topbar-actions{
+    justify-content:flex-start;
+  }
+
+  .cs-grid--2{
+    grid-template-columns:1fr;
+  }
+
+  .cs-grid--2cols{
+    grid-template-columns:1fr;
+  }
+
+  .cs-kpi-grid{
+    grid-template-columns:repeat(2, minmax(0,1fr));
   }
 }
