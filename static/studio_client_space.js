@@ -79,22 +79,14 @@
     el.textContent = textOrDash(value);
   }
 
-  function setMessage(message, kind){
+  function setMessage(message){
     const box = byId("csMessage");
     if (!box) return;
-
-    box.classList.remove("is-success", "is-error");
 
     if (!message) {
       box.style.display = "none";
       box.textContent = "";
       return;
-    }
-
-    if (kind === "success") {
-      box.classList.add("is-success");
-    } else {
-      box.classList.add("is-error");
     }
 
     box.style.display = "block";
@@ -427,7 +419,7 @@
       renderDashboard();
       renderIdentification();
       setFicheEditMode(false);
-      setMessage("Fiche enregistrée.", "success");
+      setMessage("");
     } catch (e) {
       setMessage(e.message || "Erreur lors de l’enregistrement de la fiche.");
     } finally {
