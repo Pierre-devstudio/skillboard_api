@@ -189,11 +189,11 @@ function syncLinkedStructuresVisibility(){
   const nbChildren = toInt(_detail?.nb_entites_enfants);
 
   if (parentsWrap) {
-    parentsWrap.classList.toggle("is-hidden", nbParents <= 0);
+    parentsWrap.style.display = nbParents > 0 ? "" : "none";
   }
 
   if (childrenWrap) {
-    childrenWrap.classList.toggle("is-hidden", nbChildren <= 0);
+    childrenWrap.style.display = nbChildren > 0 ? "" : "none";
   }
 }
 
