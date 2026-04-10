@@ -428,6 +428,9 @@ a{
   color:var(--cs-text);
 }
 
+.cs-form-ctrl--upper{
+  text-transform: uppercase;
+}
 
 @media (max-width: 980px){
   .cs-shell{

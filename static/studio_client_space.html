@@ -218,11 +218,27 @@
               </div>
               <div class="sb-field">
                 <label class="sb-label" for="ficheCpEnt">Code postal</label>
-                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheCpEnt" disabled />
+                <input
+                  type="text"
+                  class="sb-ctrl cs-form-ctrl"
+                  id="ficheCpEnt"
+                  list="ficheCpEntList"
+                  inputmode="numeric"
+                  maxlength="5"
+                  autocomplete="off"
+                  disabled
+                />
               </div>
               <div class="sb-field">
                 <label class="sb-label" for="ficheVilleEnt">Ville</label>
-                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheVilleEnt" disabled />
+                <input
+                  type="text"
+                  class="sb-ctrl cs-form-ctrl cs-form-ctrl--upper"
+                  id="ficheVilleEnt"
+                  list="ficheVilleEntList"
+                  autocomplete="off"
+                  disabled
+                />
               </div>
               <div class="sb-field">
                 <label class="sb-label" for="fichePaysEnt">Pays</label>
@@ -240,6 +256,9 @@
                 <label class="sb-label" for="ficheSiteWeb">Site web</label>
                 <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheSiteWeb" disabled />
               </div>
+
+              <datalist id="ficheCpEntList"></datalist>
+              <datalist id="ficheVilleEntList"></datalist>
             </div>
           </div>
 
