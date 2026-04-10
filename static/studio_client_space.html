@@ -373,11 +373,228 @@
       </section>
 
       <section class="cs-section" data-section="organisation">
-        <div class="cs-card cs-placeholder">
+        <div class="cs-card cs-placeholder is-hidden" id="orgNoStructuresCard">
           <div class="cs-card-title">Organisation</div>
-          <div class="cs-placeholder-text">Cette rubrique accueillera la structure du client, ses services et ses postes, dans la logique de la page Studio “Votre organisation”.</div>
+          <div class="cs-placeholder-text">Ce profil structurel ne prévoit pas de structures rattachées. L’organisation de ce périmètre se gère directement dans ce niveau.</div>
+        </div>
+
+        <div class="cs-card is-hidden" id="orgStructuresCard">
+          <div class="cs-org-head">
+            <div>
+              <div class="cs-card-title">Structures rattachées</div>
+            </div>
+
+            <div class="cs-org-head-actions">
+              <div class="cs-org-mini-kpis">
+                <div class="cs-org-mini-kpi">
+                  <div class="cs-org-mini-kpi-label">Entreprises liées</div>
+                  <div class="cs-org-mini-kpi-value" id="orgKpiEntreprises">0</div>
+                </div>
+                <div class="cs-org-mini-kpi">
+                  <div class="cs-org-mini-kpi-label">Sites liés</div>
+                  <div class="cs-org-mini-kpi-value" id="orgKpiSites">0</div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                class="sb-btn sb-btn--secondary cs-org-toggle"
+                id="btnOrgToggle"
+                aria-label="Réduire ou afficher le bloc structures rattachées"
+                title="Réduire / afficher"
+              >▴▴</button>
+            </div>
+          </div>
+
+          <div class="cs-org-body" id="orgStructuresBody">
+            <div class="cs-section-toolbar cs-section-toolbar--end">
+              <button type="button" class="sb-btn sb-btn--secondary is-hidden" id="btnOrgAddEntreprise">Attacher une entreprise</button>
+              <button type="button" class="sb-btn sb-btn--secondary is-hidden" id="btnOrgAddSite">Attacher un site</button>
+            </div>
+
+            <div class="sb-empty-state is-hidden" id="orgStructuresEmpty">
+              <div class="sb-empty-state__title">Aucune structure rattachée</div>
+              <div class="sb-empty-state__text">Ajoute ici les entreprises ou sites rattachés à ce périmètre pour leur donner leur propre espace de gestion.</div>
+            </div>
+
+            <div class="table-wrap is-hidden" id="orgStructuresTableWrap">
+              <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
+                <thead>
+                  <tr>
+                    <th>Structure</th>
+                    <th>Profil structurel</th>
+                    <th>Ville</th>
+                    <th class="col-center">Owner Studio</th>
+                    <th class="col-center">Ouvrir</th>
+                  </tr>
+                </thead>
+                <tbody id="orgStructuresTbody"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </section>
+
+      <div class="modal" id="modalOrgStructure">
+        <div class="modal-card cs-org-modal-card">
+          <div class="modal-header">
+            <div>
+              <div class="cs-card-title" id="orgModalTitle">Attacher une structure</div>
+              <div class="cs-card-sub" id="orgModalSub">Création d’une structure rattachée avec son propre espace de gestion.</div>
+            </div>
+            <button type="button" class="modal-x" id="btnOrgModalClose" aria-label="Fermer">×</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="cs-grid cs-grid--2cols cs-org-modal-grid">
+              <div class="cs-card">
+                <div class="cs-card-title">Fiche structure</div>
+
+                <div class="sb-form-grid cs-form-grid">
+                  <div class="sb-field sb-span-2">
+                    <label class="sb-label" for="orgCreateNomEnt">Nom structure</label>
+                    <input type="text" class="sb-ctrl" id="orgCreateNomEnt" />
+                  </div>
+                  <div class="sb-field">
+                    <label class="sb-label" for="orgCreateSiretEnt">SIRET</label>
+                    <input type="text" class="sb-ctrl" id="orgCreateSiretEnt" />
+                  </div>
+                  <div class="sb-field">
+                    <label class="sb-label" for="orgCreateDateCreation">Date de création</label>
+                    <input type="date" class="sb-date" id="orgCreateDateCreation" />
+                  </div>
+                  <div class="sb-field">
+                    <label class="sb-label" for="orgCreateEffectifEnt">Effectif déclaré</label>
+                    <select class="sb-select" id="orgCreateEffectifEnt">
+                      <option value="-">-</option>
+                      <option value="1 à 9">1 à 9</option>
+                      <option value="10 à 19">10 à 19</option>
+                      <option value="20 à 49">20 à 49</option>
+                      <option value="50 à 99">50 à 99</option>
+                      <option value="100 à 199">100 à 199</option>
+                      <option value="200 à 499">200 à 499</option>
+                      <option value="500 à 999">500 à 999</option>
+                      <option value="1000 et +">1000 et +</option>
+                    </select>
+                  </div>
+                  <div class="sb-field">
+                    <label class="sb-label" for="orgCreateNumTvaEnt">N° TVA</label>
+                    <input type="text" class="sb-ctrl" id="orgCreateNumTvaEnt" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="cs-card">
+                <div class="cs-card-title">Coordonnées</div>
+
+                <div class="sb-form-grid cs-form-grid">
+                  <div class="sb-field sb-span-2">
+                    <label class="sb-label" for="orgCreateAdresseEnt">Adresse</label>
+                    <input type="text" class="sb-ctrl" id="orgCreateAdresseEnt" />
+                  </div>
+                  <div class="sb-field sb-span-2">
+                    <label class="sb-label" for="orgCreateAdresseCpltEnt">Complément</label>
+                    <input type="text" class="sb-ctrl" id="orgCreateAdresseCpltEnt" />
+                  </div>
+                  <div class="sb-field">
+                    <label class="sb-label" for="orgCreateCpEnt">Code postal</label>
+                    <input type="text" class="sb-ctrl" id="orgCreateCpEnt" />
+                  </div>
+                  <div class="sb-field">
+                    <label class="sb-label" for="orgCreateVilleEnt">Ville</label>
+                    <input type="text" class="sb-ctrl cs-form-ctrl--upper" id="orgCreateVilleEnt" />
+                  </div>
+                  <div class="sb-field">
+                    <label class="sb-label" for="orgCreatePaysEnt">Pays</label>
+                    <input type="text" class="sb-ctrl" id="orgCreatePaysEnt" />
+                  </div>
+                  <div class="sb-field">
+                    <label class="sb-label" for="orgCreateTelephoneEnt">Téléphone</label>
+                    <input type="tel" class="sb-ctrl" id="orgCreateTelephoneEnt" placeholder="00 00 00 00 00" />
+                  </div>
+                  <div class="sb-field">
+                    <label class="sb-label" for="orgCreateEmailEnt">Email</label>
+                    <input type="email" class="sb-ctrl" id="orgCreateEmailEnt" />
+                  </div>
+                  <div class="sb-field">
+                    <label class="sb-label" for="orgCreateSiteWeb">Site web</label>
+                    <input type="text" class="sb-ctrl" id="orgCreateSiteWeb" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="cs-card">
+                <div class="cs-card-title">Références administratives</div>
+
+                <div class="sb-form-grid cs-form-grid">
+                  <div class="sb-field">
+                    <label class="sb-label" for="orgCreateIdcc">IDCC</label>
+                    <input type="text" class="sb-ctrl" id="orgCreateIdcc" />
+                  </div>
+                  <div class="sb-field">
+                    <label class="sb-label" for="orgCreateCodeApeEnt">Code APE</label>
+                    <input type="text" class="sb-ctrl" id="orgCreateCodeApeEnt" placeholder="00.00" />
+                  </div>
+                  <div class="sb-field">
+                    <label class="sb-label" for="orgCreateIdOpco">OPCO</label>
+                    <select class="sb-select" id="orgCreateIdOpco">
+                      <option value="">-</option>
+                    </select>
+                  </div>
+                  <div class="sb-field">
+                    <label class="sb-label">Site web OPCO</label>
+                    <div class="cs-read-value">
+                      <a
+                        id="orgCreateOpcoSiteLink"
+                        class="cs-inline-link is-hidden"
+                        href="#"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >Ouvrir le site</a>
+                      <span id="orgCreateOpcoSiteEmpty">—</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="cs-card">
+                <div class="cs-card-title">Profil structurel</div>
+
+                <div class="sb-form-grid cs-form-grid">
+                  <div class="sb-field sb-span-2">
+                    <label class="sb-label" for="orgCreateProfilStructurel">Profil structurel</label>
+                    <select class="sb-select" id="orgCreateProfilStructurel"></select>
+                  </div>
+
+                  <label class="sb-check sb-span-2 js-org-create-group-field">
+                    <input type="checkbox" id="orgCreateGroupOk" />
+                    <span>Entreprise en groupe</span>
+                  </label>
+
+                  <label class="sb-check sb-span-2 js-org-create-group-field">
+                    <input type="checkbox" id="orgCreateTeteGroupe" />
+                    <span>Tête de groupe</span>
+                  </label>
+
+                  <div class="sb-field js-org-create-group-field">
+                    <label class="sb-label" for="orgCreateNomGroupe">Nom du groupe</label>
+                    <input type="text" class="sb-ctrl" id="orgCreateNomGroupe" />
+                  </div>
+                  <div class="sb-field js-org-create-group-field">
+                    <label class="sb-label" for="orgCreateTypeGroupe">Type de groupe</label>
+                    <input type="text" class="sb-ctrl" id="orgCreateTypeGroupe" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="sb-btn sb-btn--secondary" id="btnOrgModalCancel">Annuler</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnOrgModalSave">Enregistrer</button>
+          </div>
+        </div>
+      </div>
 
       <section class="cs-section" data-section="evaluations">
         <div class="cs-card cs-placeholder">

@@ -6,6 +6,9 @@
   let _ownerFeatures = null;
   let _context = null;
   let _opcoOptions = [];
+  let _orgItems = [];
+  let _orgCollapsed = false;
+  let _orgCreateKind = "";
   let _ficheEditMode = false;
   let _ficheSaving = false;
 
@@ -32,6 +35,42 @@
   function isHoldingProfil(value){
     const v = normalizeProfilStructurel(value);
     return v === "holding_multi_entreprise" || v === "holding_multi_entreprise_multi_site";
+  }
+
+  function normalizeStructureType(value){
+    const v = (value || "").toString().trim().toLowerCase();
+    return v === "site" ? "site" : "entreprise";
+  }
+
+  function formatProfilStructurelLabel(value){
+    const v = normalizeProfilStructurel(value);
+    if (v === "site_unique") return "Site unique";
+    if (v === "multi_site") return "Multi-site";
+    if (v === "holding_multi_entreprise") return "Holding multi-entreprise";
+    if (v === "holding_multi_entreprise_multi_site") return "Holding multi-entreprise + multi-site";
+    return "—";
+  }
+
+  function getOrganisationCapabilities(){
+    const profil = normalizeProfilStructurel(_detail?.profil_structurel);
+
+    return {
+      profil,
+      hideBlock: profil === "site_unique",
+      canAddSite: profil === "multi_site" || profil === "holding_multi_entreprise_multi_site",
+      canAddEntreprise: profil === "holding_multi_entreprise" || profil === "holding_multi_entreprise_multi_site",
+    };
+  }
+
+  function buildStructureSpaceUrl(idEnt){
+    const url = new URL(window.location.href);
+    url.searchParams.set("client", idEnt);
+    return url.toString();
+  }
+
+  function openStructureSpace(idEnt){
+    if (!idEnt) return;
+    window.location.href = buildStructureSpaceUrl(idEnt);
   }
 
   function renderOpcoOptions(){
@@ -456,6 +495,259 @@ function bindPostalAssist(){
     el.textContent = textOrDash(value);
   }
 
+  function renderOrgCreateOpcoOptions(selectedId){
+    const select = byId("orgCreateIdOpco");
+    if (!select) return;
+
+    const selected = (selectedId || "").toString().trim();
+    const options = ['<option value="">-</option>'];
+
+    (_opcoOptions || []).forEach(item => {
+      const id = (item?.id_opco || "").toString().trim();
+      const nom = (item?.nom_opco || "").toString().trim();
+      if (!id || !nom) return;
+
+      const isSelected = id === selected ? ' selected' : '';
+      options.push(`<option value="${id.replace(/"/g, "&quot;")}"${isSelected}>${nom}</option>`);
+    });
+
+    select.innerHTML = options.join("");
+  }
+
+  function updateOrgCreateOpcoSiteLink(){
+    const select = byId("orgCreateIdOpco");
+    const link = byId("orgCreateOpcoSiteLink");
+    const empty = byId("orgCreateOpcoSiteEmpty");
+    if (!select || !link || !empty) return;
+
+    const selected = (select.value || "").toString().trim();
+    const found = (_opcoOptions || []).find(x => (x?.id_opco || "").toString().trim() === selected);
+    const url = normalizeWebUrl(found?.site_web || "");
+
+    if (!url) {
+      link.href = "#";
+      link.classList.add("is-hidden");
+      empty.classList.remove("is-hidden");
+      return;
+    }
+
+    link.href = url;
+    link.classList.remove("is-hidden");
+    empty.classList.add("is-hidden");
+  }
+
+  function renderOrgCreateProfilOptions(kind){
+    const select = byId("orgCreateProfilStructurel");
+    if (!select) return;
+
+    let options = [];
+
+    if (kind === "site") {
+      options = [
+        ['site_unique', 'Site unique'],
+        ['multi_site', 'Multi-site'],
+      ];
+    } else {
+      options = [
+        ['site_unique', 'Site unique'],
+        ['multi_site', 'Multi-site'],
+        ['holding_multi_entreprise', 'Holding multi-entreprise'],
+        ['holding_multi_entreprise_multi_site', 'Holding multi-entreprise + multi-site'],
+      ];
+    }
+
+    select.innerHTML = options.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
+  }
+
+  function syncOrgCreateProfileUi(){
+    const profil = normalizeProfilStructurel(inputValue("orgCreateProfilStructurel"));
+    const showGroupFields = isHoldingProfil(profil);
+
+    document.querySelectorAll(".js-org-create-group-field").forEach(el => {
+      el.classList.toggle("is-hidden", !showGroupFields);
+    });
+
+    const groupOk = byId("orgCreateGroupOk");
+    const tete = byId("orgCreateTeteGroupe");
+    const nom = byId("orgCreateNomGroupe");
+    const type = byId("orgCreateTypeGroupe");
+
+    if (!showGroupFields) {
+      if (groupOk) groupOk.checked = false;
+      if (tete) tete.checked = false;
+      if (nom) nom.value = "";
+      if (type) type.value = "";
+      return;
+    }
+
+    const isGroup = !!groupOk?.checked;
+
+    if (tete) {
+      tete.disabled = !isGroup;
+      if (!isGroup) tete.checked = false;
+    }
+    if (nom) {
+      nom.disabled = !isGroup;
+      if (!isGroup) nom.value = "";
+    }
+    if (type) {
+      type.disabled = !isGroup;
+      if (!isGroup) type.value = "";
+    }
+  }
+
+  function resetOrgCreateForm(kind){
+    _orgCreateKind = kind;
+
+    setInputValue("orgCreateNomEnt", "");
+    setInputValue("orgCreateSiretEnt", "");
+    setDateValue("orgCreateDateCreation", "");
+    setInputValue("orgCreateEffectifEnt", "-");
+    setInputValue("orgCreateNumTvaEnt", "");
+
+    setInputValue("orgCreateAdresseEnt", "");
+    setInputValue("orgCreateAdresseCpltEnt", "");
+    setInputValue("orgCreateCpEnt", "");
+    setInputValue("orgCreateVilleEnt", "");
+    setInputValue("orgCreatePaysEnt", "");
+    setInputValue("orgCreateTelephoneEnt", "");
+    setInputValue("orgCreateEmailEnt", "");
+    setInputValue("orgCreateSiteWeb", "");
+
+    setInputValue("orgCreateIdcc", "");
+    setInputValue("orgCreateCodeApeEnt", "");
+    renderOrgCreateOpcoOptions("");
+    updateOrgCreateOpcoSiteLink();
+
+    renderOrgCreateProfilOptions(kind);
+    setCheckboxValue("orgCreateGroupOk", false);
+    setCheckboxValue("orgCreateTeteGroupe", false);
+    setInputValue("orgCreateNomGroupe", "");
+    setInputValue("orgCreateTypeGroupe", "");
+
+    syncOrgCreateProfileUi();
+
+    const title = byId("orgModalTitle");
+    const sub = byId("orgModalSub");
+    if (title) title.textContent = kind === "site" ? "Attacher un site" : "Attacher une entreprise";
+    if (sub) sub.textContent = kind === "site"
+      ? "Création d’un site rattaché avec son propre espace de gestion."
+      : "Création d’une entreprise rattachée avec son propre espace de gestion.";
+  }
+
+  function openOrgCreateModal(kind){
+    resetOrgCreateForm(kind);
+    byId("modalOrgStructure")?.classList.add("show");
+  }
+
+  function closeOrgCreateModal(){
+    byId("modalOrgStructure")?.classList.remove("show");
+  }
+
+  function readOrgCreatePayload(){
+    return {
+      type_structure: _orgCreateKind,
+      nom_ent: inputValue("orgCreateNomEnt"),
+      siret_ent: inputValue("orgCreateSiretEnt"),
+      date_creation: inputValue("orgCreateDateCreation") || null,
+      effectif_ent: inputValue("orgCreateEffectifEnt"),
+      num_tva_ent: inputValue("orgCreateNumTvaEnt"),
+
+      adresse_ent: inputValue("orgCreateAdresseEnt"),
+      adresse_cplt_ent: inputValue("orgCreateAdresseCpltEnt"),
+      cp_ent: inputValue("orgCreateCpEnt"),
+      ville_ent: normalizeCity(inputValue("orgCreateVilleEnt")),
+      pays_ent: inputValue("orgCreatePaysEnt"),
+      telephone_ent: formatPhoneFr(inputValue("orgCreateTelephoneEnt")),
+      email_ent: inputValue("orgCreateEmailEnt"),
+      site_web: inputValue("orgCreateSiteWeb"),
+
+      idcc: inputValue("orgCreateIdcc"),
+      code_ape_ent: normalizeApeCode(inputValue("orgCreateCodeApeEnt")),
+      id_opco: inputValue("orgCreateIdOpco"),
+
+      profil_structurel: normalizeProfilStructurel(inputValue("orgCreateProfilStructurel")),
+      group_ok: !!byId("orgCreateGroupOk")?.checked,
+      tete_groupe: !!byId("orgCreateTeteGroupe")?.checked,
+      nom_groupe: inputValue("orgCreateNomGroupe"),
+      type_groupe: inputValue("orgCreateTypeGroupe"),
+    };
+  }
+
+  async function saveOrgCreateStructure(){
+    const ownerId = getOwnerId();
+    const clientId = getClientId();
+    const token = await ensureAuthReady();
+    if (!token) return;
+
+    const btnSave = byId("btnOrgModalSave");
+
+    try {
+      if (btnSave) {
+        btnSave.disabled = true;
+        btnSave.textContent = "Enregistrement...";
+      }
+
+      await apiJson(
+        `${API_BASE}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}/structures`,
+        token,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(readOrgCreatePayload())
+        }
+      );
+
+      closeOrgCreateModal();
+      await loadOrganisationData();
+    } catch (e) {
+      setMessage(e.message || "Erreur lors de la création de la structure rattachée.");
+    } finally {
+      if (btnSave) {
+        btnSave.disabled = false;
+        btnSave.textContent = "Enregistrer";
+      }
+    }
+  }
+
+  function bindOrgCreateMasks(){
+    const phone = byId("orgCreateTelephoneEnt");
+    const ape = byId("orgCreateCodeApeEnt");
+    const ville = byId("orgCreateVilleEnt");
+    const opco = byId("orgCreateIdOpco");
+
+    if (phone && phone.dataset.bound !== "1") {
+      phone.dataset.bound = "1";
+      const applyPhone = () => { phone.value = formatPhoneFr(phone.value); };
+      phone.addEventListener("input", applyPhone);
+      phone.addEventListener("change", applyPhone);
+      phone.addEventListener("blur", applyPhone);
+    }
+
+    if (ape && ape.dataset.bound !== "1") {
+      ape.dataset.bound = "1";
+      const applyApe = () => { ape.value = normalizeApeCode(ape.value); };
+      ape.addEventListener("input", applyApe);
+      ape.addEventListener("change", applyApe);
+      ape.addEventListener("blur", applyApe);
+    }
+
+    if (ville && ville.dataset.bound !== "1") {
+      ville.dataset.bound = "1";
+      const applyVille = () => { ville.value = normalizeCity(ville.value); };
+      ville.addEventListener("input", applyVille);
+      ville.addEventListener("change", applyVille);
+      ville.addEventListener("blur", applyVille);
+    }
+
+    if (opco && opco.dataset.bound !== "1") {
+      opco.dataset.bound = "1";
+      opco.addEventListener("change", updateOrgCreateOpcoSiteLink);
+    }
+  }
+
   function setMessage(message){
     const box = byId("csMessage");
     if (!box) return;
@@ -589,6 +881,129 @@ function bindPostalAssist(){
         ? "Informations générales, administratives et de rattachement du site."
         : "Informations générales, administratives et de rattachement de l’entreprise.";
     }
+  }
+
+  function renderOrganisationRows(){
+    const tbody = byId("orgStructuresTbody");
+    const tableWrap = byId("orgStructuresTableWrap");
+    const empty = byId("orgStructuresEmpty");
+    if (!tbody || !tableWrap || !empty) return;
+
+    const entreprises = _orgItems.filter(x => normalizeStructureType(x.type_entreprise) === "entreprise");
+    const sites = _orgItems.filter(x => normalizeStructureType(x.type_entreprise) === "site");
+
+    if (!_orgItems.length) {
+      tbody.innerHTML = "";
+      tableWrap.classList.add("is-hidden");
+      empty.classList.remove("is-hidden");
+      return;
+    }
+
+    tableWrap.classList.remove("is-hidden");
+    empty.classList.add("is-hidden");
+
+    const rows = [];
+
+    function pushGroup(title){
+      rows.push(`
+        <tr class="cs-org-group-row">
+          <td colspan="5">${title}</td>
+        </tr>
+      `);
+    }
+
+    function pushItem(item){
+      const structureType = normalizeStructureType(item.type_entreprise);
+      const typeLabel = structureType === "site" ? "Site rattaché" : "Entreprise rattachée";
+      const badgeClass = structureType === "site" ? "cs-org-badge--site" : "cs-org-badge--entreprise";
+      const ownerLabel = item.has_owner_scope ? "Oui" : "Non";
+      const ownerClass = item.has_owner_scope ? "sb-badge sb-badge--success cs-org-owner" : "sb-badge cs-org-owner";
+
+      rows.push(`
+        <tr class="sb-table-row-clickable cs-org-row" data-id-ent="${item.id_ent}" data-structure-type="${structureType}">
+          <td>
+            <div class="cs-org-struct-cell">
+              <span class="sb-badge cs-org-badge ${badgeClass}">${structureType === "site" ? "Site" : "Entreprise"}</span>
+              <div class="cs-org-struct-main">
+                <div class="cs-org-struct-name">${textOrDash(item.nom_ent)}</div>
+                <div class="cs-org-struct-sub">${typeLabel}</div>
+              </div>
+            </div>
+          </td>
+          <td>${textOrDash(formatProfilStructurelLabel(item.profil_structurel))}</td>
+          <td>${textOrDash(item.ville_ent)}</td>
+          <td class="col-center"><span class="${ownerClass}">${ownerLabel}</span></td>
+          <td class="col-center">
+            <button type="button" class="sb-btn sb-btn--secondary sb-btn--xs" data-open-structure="${item.id_ent}">Ouvrir</button>
+          </td>
+        </tr>
+      `);
+    }
+
+    if (entreprises.length) {
+      pushGroup("Entreprises rattachées");
+      entreprises.forEach(pushItem);
+    }
+
+    if (sites.length) {
+      pushGroup("Sites rattachés");
+      sites.forEach(pushItem);
+    }
+
+    tbody.innerHTML = rows.join("");
+  }
+
+  function renderOrganisationSection(){
+    const caps = getOrganisationCapabilities();
+
+    const noCard = byId("orgNoStructuresCard");
+    const blockCard = byId("orgStructuresCard");
+    const body = byId("orgStructuresBody");
+    const btnSite = byId("btnOrgAddSite");
+    const btnEnt = byId("btnOrgAddEntreprise");
+    const btnToggle = byId("btnOrgToggle");
+
+    if (noCard) noCard.classList.toggle("is-hidden", !caps.hideBlock);
+    if (blockCard) blockCard.classList.toggle("is-hidden", caps.hideBlock);
+
+    if (caps.hideBlock) return;
+
+    const nbEntreprises = _orgItems.filter(x => normalizeStructureType(x.type_entreprise) === "entreprise").length;
+    const nbSites = _orgItems.filter(x => normalizeStructureType(x.type_entreprise) === "site").length;
+
+    setText("orgKpiEntreprises", nbEntreprises);
+    setText("orgKpiSites", nbSites);
+
+    if (btnSite) btnSite.classList.toggle("is-hidden", !caps.canAddSite);
+    if (btnEnt) btnEnt.classList.toggle("is-hidden", !caps.canAddEntreprise);
+
+    if (body) body.classList.toggle("is-hidden", _orgCollapsed);
+    if (btnToggle) btnToggle.textContent = _orgCollapsed ? "▾▾" : "▴▴";
+
+    renderOrganisationRows();
+  }
+
+  async function loadOrganisationData(){
+    const caps = getOrganisationCapabilities();
+
+    if (caps.hideBlock) {
+      _orgItems = [];
+      renderOrganisationSection();
+      return;
+    }
+
+    const ownerId = getOwnerId();
+    const clientId = getClientId();
+    const token = await ensureAuthReady();
+    if (!token) return;
+
+    const data = await apiJson(
+      `${API_BASE}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}/structures`,
+      token
+    );
+
+    _orgItems = Array.isArray(data?.items) ? data.items : [];
+    renderOrganisationSection();
   }
 
   function renderHeader(){
@@ -831,6 +1246,7 @@ function bindPostalAssist(){
       renderHeader();
       renderDashboard();
       renderIdentification();
+      await loadOrganisationData();
       setFicheEditMode(false);
       setMessage("");
     } catch (e) {
@@ -844,6 +1260,46 @@ function bindPostalAssist(){
       if (btnCancel) btnCancel.disabled = false;
       if (btnEdit) btnEdit.disabled = false;
     }
+  }
+
+  function bindOrganisationActions(){
+    byId("btnOrgToggle")?.addEventListener("click", () => {
+      _orgCollapsed = !_orgCollapsed;
+      renderOrganisationSection();
+    });
+
+    byId("btnOrgAddSite")?.addEventListener("click", () => {
+      setMessage("");
+      openOrgCreateModal("site");
+    });
+
+    byId("btnOrgAddEntreprise")?.addEventListener("click", () => {
+      setMessage("");
+      openOrgCreateModal("entreprise");
+    });
+
+    byId("btnOrgModalClose")?.addEventListener("click", closeOrgCreateModal);
+    byId("btnOrgModalCancel")?.addEventListener("click", closeOrgCreateModal);
+    byId("btnOrgModalSave")?.addEventListener("click", async () => {
+      await saveOrgCreateStructure();
+    });
+
+    byId("orgCreateProfilStructurel")?.addEventListener("change", syncOrgCreateProfileUi);
+    byId("orgCreateGroupOk")?.addEventListener("change", syncOrgCreateProfileUi);
+
+    byId("orgStructuresTbody")?.addEventListener("click", (e) => {
+      const openBtn = e.target.closest("[data-open-structure]");
+      if (openBtn) {
+        e.stopPropagation();
+        openStructureSpace(openBtn.getAttribute("data-open-structure"));
+        return;
+      }
+
+      const row = e.target.closest("tr[data-id-ent]");
+      if (row) {
+        openStructureSpace(row.getAttribute("data-id-ent"));
+      }
+    });
   }
 
   function bindFicheActions(){
@@ -899,6 +1355,7 @@ function bindPostalAssist(){
     renderHeader();
     renderDashboard();
     renderIdentification();
+    await loadOrganisationData();
     setFicheEditMode(false);
     setSection("dashboard");
   }
@@ -910,6 +1367,7 @@ function bindPostalAssist(){
     bindPhoneMask();
     bindApeMask();
     bindOpcoSelect();
+    bindOrgCreateMasks();
     renderLinks();
     setFicheEditMode(false);
 

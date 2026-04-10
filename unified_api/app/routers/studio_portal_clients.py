@@ -34,6 +34,22 @@ def _normalize_profil_structurel(value: Any) -> Optional[str]:
 def _is_holding_profile(value: Optional[str]) -> bool:
     return value in ("holding_multi_entreprise", "holding_multi_entreprise_multi_site")
 
+ALLOWED_TYPES_STRUCTURE = {
+    "site",
+    "entreprise",
+}
+
+
+def _normalize_type_structure(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    v = str(value).strip().lower()
+    if not v:
+        return None
+    if v not in ALLOWED_TYPES_STRUCTURE:
+        raise HTTPException(status_code=400, detail="Type de structure invalide.")
+    return v
+
 class ClientPayload(BaseModel):
     nom_ent: Optional[str] = None
     adresse_ent: Optional[str] = None
@@ -57,7 +73,7 @@ class ClientPayload(BaseModel):
     tete_groupe: Optional[bool] = None
     group_ok: Optional[bool] = None
     profil_structurel: Optional[str] = None
-
+    type_structure: Optional[str] = None
 
 def _build_patch_set(payload) -> Dict[str, Any]:
     fields = payload.__fields_set__ or set()
@@ -242,13 +258,12 @@ def _lookup_opco(cur, id_opco: Optional[str]) -> Optional[str]:
     return _normalize_text(r.get("nom_opco"))
 
 
-def _client_exists_for_owner(cur, id_owner: str, id_ent: str, include_masked: bool = False) -> bool:
+def _structure_exists_for_owner(cur, id_owner: str, id_ent: str, include_masked: bool = False) -> bool:
     sql = """
         SELECT 1
         FROM public.tbl_entreprise
         WHERE id_ent = %s
           AND id_owner_gestionnaire = %s
-          AND type_entreprise = 'Client'
     """
     params = [id_ent, id_owner]
     if not include_masked:
@@ -405,13 +420,16 @@ def _fetch_client_detail(cur, id_owner: str, id_ent: str) -> dict:
             e.group_ok,
             e.id_owner_gestionnaire,
             e.profil_structurel,
-            COALESCE((
-                SELECT o.type_owner
-                FROM public.tbl_novoskill_owner o
-                WHERE o.id_owner = e.id_ent
-                  AND COALESCE(o.archive, FALSE) = FALSE
-                LIMIT 1
-            ), 'entreprise') AS owner_type_client,
+            CASE
+                WHEN lower(COALESCE(e.type_entreprise, '')) = 'site' THEN 'site'
+                ELSE COALESCE((
+                    SELECT o.type_owner
+                    FROM public.tbl_novoskill_owner o
+                    WHERE o.id_owner = e.id_ent
+                      AND COALESCE(o.archive, FALSE) = FALSE
+                    LIMIT 1
+                ), 'entreprise')
+            END AS owner_type_client,
             EXISTS (
                 SELECT 1
                 FROM public.tbl_novoskill_owner o
@@ -454,7 +472,6 @@ def _fetch_client_detail(cur, id_owner: str, id_ent: str) -> dict:
         FROM public.tbl_entreprise e
         WHERE e.id_ent = %s
           AND e.id_owner_gestionnaire = %s
-          AND e.type_entreprise = 'Client'
           AND COALESCE(e.masque, FALSE) = FALSE
         LIMIT 1
         """,
@@ -462,7 +479,7 @@ def _fetch_client_detail(cur, id_owner: str, id_ent: str) -> dict:
     )
     r = cur.fetchone()
     if not r:
-        raise HTTPException(status_code=404, detail="Client introuvable.")
+        raise HTTPException(status_code=404, detail="Structure introuvable.")
 
     return {
         "id_ent": r.get("id_ent"),
@@ -684,8 +701,8 @@ def update_studio_client(id_owner: str, id_ent: str, payload: ClientPayload, req
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "editor")
 
-                if not _client_exists_for_owner(cur, oid, id_ent):
-                    raise HTTPException(status_code=404, detail="Client introuvable.")
+                if not _structure_exists_for_owner(cur, oid, id_ent):
+                    raise HTTPException(status_code=404, detail="Structure introuvable.")
 
                 _validate_idcc_exists(cur, _normalize_text(patch.get("idcc")))
                 _validate_ape_exists(cur, _normalize_text(patch.get("code_ape_ent")))
@@ -724,7 +741,6 @@ def update_studio_client(id_owner: str, id_ent: str, payload: ClientPayload, req
                         SET {", ".join(cols)}
                         WHERE id_ent = %s
                           AND id_owner_gestionnaire = %s
-                          AND type_entreprise = 'Client'
                           AND COALESCE(masque, FALSE) = FALSE
                         """,
                         tuple(vals),
@@ -750,8 +766,8 @@ def archive_studio_client(id_owner: str, id_ent: str, request: Request):
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "editor")
 
-                if not _client_exists_for_owner(cur, oid, id_ent):
-                    raise HTTPException(status_code=404, detail="Client introuvable.")
+                if not _structure_exists_for_owner(cur, oid, id_ent):
+                    raise HTTPException(status_code=404, detail="Structure introuvable.")
 
                 cur.execute(
                     """
@@ -759,7 +775,6 @@ def archive_studio_client(id_owner: str, id_ent: str, request: Request):
                     SET masque = TRUE
                     WHERE id_ent = %s
                       AND id_owner_gestionnaire = %s
-                      AND type_entreprise = 'Client'
                       AND COALESCE(masque, FALSE) = FALSE
                     """,
                     (id_ent, oid),
@@ -770,7 +785,202 @@ def archive_studio_client(id_owner: str, id_ent: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/clients/archive error: {e}")
-    
+
+@router.get("/studio/clients/{id_owner}/{id_ent}/structures")
+def get_studio_child_structures(id_owner: str, id_ent: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                if not _structure_exists_for_owner(cur, oid, id_ent):
+                    raise HTTPException(status_code=404, detail="Structure introuvable.")
+
+                cur.execute(
+                    """
+                    SELECT
+                        e.id_ent,
+                        e.nom_ent,
+                        e.ville_ent,
+                        e.type_entreprise,
+                        e.profil_structurel,
+                        EXISTS (
+                            SELECT 1
+                            FROM public.tbl_novoskill_owner o
+                            WHERE o.id_owner = e.id_ent
+                              AND COALESCE(o.archive, FALSE) = FALSE
+                        ) AS has_owner_scope
+                    FROM public.tbl_entreprise_liaison l
+                    JOIN public.tbl_entreprise e
+                      ON e.id_ent = l.id_ent_enfant
+                    WHERE l.id_ent_parent = %s
+                      AND e.id_owner_gestionnaire = %s
+                      AND COALESCE(l.archive, FALSE) = FALSE
+                      AND COALESCE(e.masque, FALSE) = FALSE
+                    ORDER BY
+                      CASE
+                        WHEN lower(COALESCE(e.type_entreprise, '')) = 'entreprise' THEN 0
+                        WHEN lower(COALESCE(e.type_entreprise, '')) = 'site' THEN 1
+                        ELSE 2
+                      END,
+                      lower(e.nom_ent),
+                      e.id_ent
+                    """,
+                    (id_ent, oid),
+                )
+                rows = cur.fetchall() or []
+
+                items = []
+                for r in rows:
+                    items.append(
+                        {
+                            "id_ent": r.get("id_ent"),
+                            "nom_ent": r.get("nom_ent"),
+                            "ville_ent": r.get("ville_ent"),
+                            "type_entreprise": r.get("type_entreprise"),
+                            "profil_structurel": r.get("profil_structurel"),
+                            "has_owner_scope": bool(r.get("has_owner_scope")),
+                        }
+                    )
+
+                return {"items": items}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/structures error: {e}")
+
+
+@router.post("/studio/clients/{id_owner}/{id_ent}/structures")
+def create_studio_child_structure(id_owner: str, id_ent: str, payload: ClientPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        patch = _build_patch_set(payload)
+
+        nom_ent = _normalize_text(patch.get("nom_ent"))
+        if not nom_ent:
+            raise HTTPException(status_code=400, detail="Le nom de la structure est obligatoire.")
+
+        type_structure = _normalize_type_structure(patch.get("type_structure"))
+        profil_structurel = _normalize_profil_structurel(patch.get("profil_structurel"))
+
+        if type_structure == "site" and profil_structurel not in ("site_unique", "multi_site"):
+            raise HTTPException(status_code=400, detail="Un site ne peut pas avoir ce profil structurel.")
+
+        group_ok = _normalize_bool(patch.get("group_ok"))
+        tete_groupe = _normalize_bool(patch.get("tete_groupe")) if group_ok else False
+
+        if not _is_holding_profile(profil_structurel):
+            group_ok = False
+            tete_groupe = False
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                if not _structure_exists_for_owner(cur, oid, id_ent):
+                    raise HTTPException(status_code=404, detail="Structure parente introuvable.")
+
+                _validate_idcc_exists(cur, _normalize_text(patch.get("idcc")))
+                _validate_ape_exists(cur, _normalize_text(patch.get("code_ape_ent")))
+                _validate_opco_exists(cur, _normalize_text(patch.get("id_opco")))
+
+                new_id = str(uuid4())
+                type_entreprise = "Site" if type_structure == "site" else "Entreprise"
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_entreprise (
+                        id_ent,
+                        nom_ent,
+                        adresse_ent,
+                        adresse_cplt_ent,
+                        cp_ent,
+                        ville_ent,
+                        pays_ent,
+                        email_ent,
+                        telephone_ent,
+                        siret_ent,
+                        code_ape_ent,
+                        num_tva_ent,
+                        effectif_ent,
+                        id_opco,
+                        date_creation,
+                        num_entreprise,
+                        type_entreprise,
+                        masque,
+                        site_web,
+                        idcc,
+                        nom_groupe,
+                        type_groupe,
+                        tete_groupe,
+                        group_ok,
+                        profil_structurel,
+                        id_owner_gestionnaire
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, FALSE, %s, %s,
+                        %s, %s, %s, %s, %s, %s
+                    )
+                    """,
+                    (
+                        new_id,
+                        nom_ent,
+                        _normalize_text(patch.get("adresse_ent")),
+                        _normalize_text(patch.get("adresse_cplt_ent")),
+                        _normalize_text(patch.get("cp_ent")),
+                        _normalize_text(patch.get("ville_ent")),
+                        _normalize_text(patch.get("pays_ent")),
+                        _normalize_text(patch.get("email_ent")),
+                        _normalize_text(patch.get("telephone_ent")),
+                        _normalize_text(patch.get("siret_ent")),
+                        _normalize_text(patch.get("code_ape_ent")),
+                        _normalize_text(patch.get("num_tva_ent")),
+                        _normalize_text(patch.get("effectif_ent")),
+                        _normalize_text(patch.get("id_opco")),
+                        patch.get("date_creation"),
+                        None,
+                        type_entreprise,
+                        _normalize_text(patch.get("site_web")),
+                        _normalize_text(patch.get("idcc")),
+                        _normalize_text(patch.get("nom_groupe")) if group_ok else None,
+                        _normalize_text(patch.get("type_groupe")) if group_ok else None,
+                        tete_groupe,
+                        group_ok,
+                        profil_structurel,
+                        oid,
+                    ),
+                )
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_entreprise_liaison (
+                        id_ent_parent,
+                        id_ent_enfant,
+                        archive
+                    ) VALUES (%s, %s, FALSE)
+                    """,
+                    (id_ent, new_id),
+                )
+
+                conn.commit()
+                return _fetch_client_detail(cur, oid, new_id)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/structures/create error: {e}")
+
 @router.get("/studio/referentiels/codes-postaux/{id_owner}")
 def get_studio_postal_codes(id_owner: str, request: Request, code_postal: Optional[str] = None, ville: Optional[str] = None, limit: int = 20):
     auth = request.headers.get("Authorization", "")
