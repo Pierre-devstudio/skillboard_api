@@ -1116,10 +1116,11 @@ def create_studio_child_structure(id_owner: str, id_ent: str, payload: ClientPay
                     INSERT INTO public.tbl_entreprise_liaison (
                         id_ent_parent,
                         id_ent_enfant,
+                        type_liaison,
                         archive
-                    ) VALUES (%s, %s, FALSE)
+                    ) VALUES (%s, %s, %s, FALSE)
                     """,
-                    (id_ent, new_id),
+                    (id_ent, new_id, "rattachement_structurel"),
                 )
 
                 conn.commit()
