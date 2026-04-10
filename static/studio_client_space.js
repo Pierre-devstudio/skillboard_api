@@ -176,100 +176,121 @@
     return v || "—";
   }
 
-function inputValue(id){
-  const el = byId(id);
-  if (!el) return "";
-  return (el.value || "").toString().trim();
+  function toInt(value){
+  const n = parseInt(value, 10);
+  return Number.isFinite(n) ? n : 0;
 }
 
-function normalizePostalCode(value){
-  return (value || "").toString().replace(/\D+/g, "").slice(0, 5);
+function syncLinkedStructuresVisibility(){
+  const parentsWrap = byId("wrapNbParents");
+  const childrenWrap = byId("wrapNbChildren");
+
+  const nbParents = toInt(_detail?.nb_entites_parents);
+  const nbChildren = toInt(_detail?.nb_entites_enfants);
+
+  if (parentsWrap) {
+    parentsWrap.classList.toggle("is-hidden", nbParents <= 0);
+  }
+
+  if (childrenWrap) {
+    childrenWrap.classList.toggle("is-hidden", nbChildren <= 0);
+  }
 }
 
-function normalizeCity(value){
-  return (value || "").toString().trim().toUpperCase();
-}
+  function inputValue(id){
+    const el = byId(id);
+    if (!el) return "";
+    return (el.value || "").toString().trim();
+  }
 
-function clearPostalDatalists(){
-  const cpList = byId("ficheCpEntList");
-  const cityList = byId("ficheVilleEntList");
-  if (cpList) cpList.innerHTML = "";
-  if (cityList) cityList.innerHTML = "";
-}
+  function normalizePostalCode(value){
+    return (value || "").toString().replace(/\D+/g, "").slice(0, 5);
+  }
 
-function setDatalistOptions(listId, items, valueKey, labelKey){
-  const list = byId(listId);
-  if (!list) return;
+  function normalizeCity(value){
+    return (value || "").toString().trim().toUpperCase();
+  }
 
-  list.innerHTML = "";
-  const seen = new Set();
+  function clearPostalDatalists(){
+    const cpList = byId("ficheCpEntList");
+    const cityList = byId("ficheVilleEntList");
+    if (cpList) cpList.innerHTML = "";
+    if (cityList) cityList.innerHTML = "";
+  }
 
-  (items || []).forEach(item => {
-    const value = (item?.[valueKey] || "").toString().trim();
-    const label = (item?.[labelKey] || "").toString().trim();
+  function setDatalistOptions(listId, items, valueKey, labelKey){
+    const list = byId(listId);
+    if (!list) return;
 
-    if (!value || seen.has(value)) return;
-    seen.add(value);
+    list.innerHTML = "";
+    const seen = new Set();
 
-    const opt = document.createElement("option");
-    opt.value = value;
-    if (label && label !== value) {
-      opt.label = label;
-    }
-    list.appendChild(opt);
-  });
-}
+    (items || []).forEach(item => {
+      const value = (item?.[valueKey] || "").toString().trim();
+      const label = (item?.[labelKey] || "").toString().trim();
 
-async function fetchPostalRows(params){
-  const ownerId = getOwnerId();
-  if (!ownerId) return [];
+      if (!value || seen.has(value)) return;
+      seen.add(value);
 
-  const token = await ensureAuthReady();
-  if (!token) return [];
+      const opt = document.createElement("option");
+      opt.value = value;
+      if (label && label !== value) {
+        opt.label = label;
+      }
+      list.appendChild(opt);
+    });
+  }
 
-  const qs = new URLSearchParams();
-  if (params?.code_postal) qs.set("code_postal", params.code_postal);
-  if (params?.ville) qs.set("ville", params.ville);
-  qs.set("limit", String(params?.limit || 20));
+  async function fetchPostalRows(params){
+    const ownerId = getOwnerId();
+    if (!ownerId) return [];
 
-  const data = await apiJson(
-    `${API_BASE}/studio/referentiels/codes-postaux/${encodeURIComponent(ownerId)}?${qs.toString()}`,
-    token
-  );
+    const token = await ensureAuthReady();
+    if (!token) return [];
 
-  return Array.isArray(data?.items) ? data.items : [];
-}
+    const qs = new URLSearchParams();
+    if (params?.code_postal) qs.set("code_postal", params.code_postal);
+    if (params?.ville) qs.set("ville", params.ville);
+    qs.set("limit", String(params?.limit || 20));
 
-function applyPostalRowsFromCode(cpValue, rows){
-  const cpEl = byId("ficheCpEnt");
-  const cityEl = byId("ficheVilleEnt");
-  if (!cpEl || !cityEl) return;
+    const data = await apiJson(
+      `${API_BASE}/studio/referentiels/codes-postaux/${encodeURIComponent(ownerId)}?${qs.toString()}`,
+      token
+    );
 
-  const exactRows = (rows || []).filter(r => ((r.code_postal || "").toString().trim() === cpValue));
-  const cityRows = exactRows.length ? exactRows : rows;
+    return Array.isArray(data?.items) ? data.items : [];
+  }
 
-  setDatalistOptions("ficheCpEntList", rows, "code_postal", "ville");
-  setDatalistOptions("ficheVilleEntList", cityRows, "ville", "code_postal");
+  function applyPostalRowsFromCode(cpValue, rows){
+    const cpEl = byId("ficheCpEnt");
+    const cityEl = byId("ficheVilleEnt");
+    if (!cpEl || !cityEl) return;
 
-  const villes = [...new Set(
-    (cityRows || [])
-      .map(r => normalizeCity(r.ville))
-      .filter(Boolean)
-  )];
+    const exactRows = (rows || []).filter(r => ((r.code_postal || "").toString().trim() === cpValue));
+    const cityRows = exactRows.length ? exactRows : rows;
 
-  if (cpValue.length === 5) {
-    if (villes.length === 1) {
-      cityEl.value = villes[0];
-    } else if (villes.length > 1) {
-      const current = normalizeCity(cityEl.value);
-      if (!current || !villes.includes(current)) {
-        cityEl.value = "";
-      } else {
-        cityEl.value = current;
+    setDatalistOptions("ficheCpEntList", rows, "code_postal", "ville");
+    setDatalistOptions("ficheVilleEntList", cityRows, "ville", "code_postal");
+
+    const villes = [...new Set(
+      (cityRows || [])
+        .map(r => normalizeCity(r.ville))
+        .filter(Boolean)
+    )];
+
+    if (cpValue.length === 5) {
+      if (villes.length === 1) {
+        cityEl.value = villes[0];
+      } else if (villes.length > 1) {
+        const current = normalizeCity(cityEl.value);
+        if (!current || !villes.includes(current)) {
+          cityEl.value = "";
+        } else {
+          cityEl.value = current;
+        }
       }
     }
   }
-}
 
 function applyPostalRowsFromCity(cityValue, rows){
   const cpEl = byId("ficheCpEnt");
@@ -658,6 +679,7 @@ function bindPostalAssist(){
     setText("idNbParents", _detail?.nb_entites_parents);
     setText("idNbChildren", _detail?.nb_entites_enfants);
 
+    syncLinkedStructuresVisibility();
     syncStructureProfileUi();
     queuePostalLookupFromCurrentValues();
   }
