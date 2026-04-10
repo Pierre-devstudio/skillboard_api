@@ -4,6 +4,10 @@ from psycopg.rows import dict_row
 from typing import Optional, Dict, Any
 from uuid import uuid4
 import re
+import json
+from urllib.parse import urlencode
+from urllib.request import Request as UrlRequest, urlopen
+from urllib.error import HTTPError, URLError
 
 from app.routers.skills_portal_common import get_conn
 from app.routers.studio_portal_common import studio_require_user, studio_fetch_owner, studio_require_min_role
@@ -96,6 +100,151 @@ def _normalize_bool(value: Any) -> bool:
     v = str(value).strip().lower()
     return v in ("1", "true", "vrai", "yes", "oui", "on")
 
+def _normalize_digits(value: Any) -> str:
+    return re.sub(r"\D+", "", str(value or ""))
+
+
+def _map_public_effectif(value: Any) -> Optional[str]:
+    v = str(value or "").strip()
+    if not v or v == "NN":
+        return None
+
+    mapping = {
+        "00": None,
+        "01": "1 à 9",
+        "02": "1 à 9",
+        "03": "1 à 9",
+        "11": "10 à 19",
+        "12": "20 à 49",
+        "21": "50 à 99",
+        "22": "100 à 199",
+        "31": "200 à 499",
+        "32": "200 à 499",
+        "41": "500 à 999",
+        "42": "1000 et +",
+        "51": "1000 et +",
+        "52": "1000 et +",
+        "53": "1000 et +",
+    }
+    return mapping.get(v)
+
+
+def _clean_public_text(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    v = str(value).strip()
+    if not v:
+        return None
+    return re.sub(r"\s+", " ", v)
+
+
+def _choose_public_search_result(results: list, query: str) -> Optional[dict]:
+    if not results:
+        return None
+
+    digits = _normalize_digits(query)
+    if digits:
+        if len(digits) == 14:
+            for item in results:
+                siege = item.get("siege") or {}
+                if _normalize_digits(siege.get("siret")) == digits:
+                    return item
+                for etab in item.get("matching_etablissements") or []:
+                    if _normalize_digits(etab.get("siret")) == digits:
+                        return item
+        elif len(digits) == 9:
+            for item in results:
+                if _normalize_digits(item.get("siren")) == digits:
+                    return item
+
+    return results[0]
+
+
+def _map_public_company_result(item: dict, query: str) -> dict:
+    siege = item.get("siege") or {}
+    matching = item.get("matching_etablissements") or []
+    digits = _normalize_digits(query)
+    selected_etab = siege
+
+    if len(digits) == 14:
+        for etab in matching:
+            if _normalize_digits(etab.get("siret")) == digits:
+                selected_etab = etab
+                break
+        else:
+            if _normalize_digits(siege.get("siret")) == digits:
+                selected_etab = siege
+    elif matching:
+        selected_etab = matching[0]
+
+    idcc_list = []
+    complements = item.get("complements") or {}
+    for src in (selected_etab, siege, complements):
+        values = src.get("liste_idcc") or []
+        if isinstance(values, list):
+            for val in values:
+                v = _clean_public_text(val)
+                if v and v not in idcc_list:
+                    idcc_list.append(v)
+
+    cp = _clean_public_text(selected_etab.get("code_postal"))
+    pays = _clean_public_text(selected_etab.get("libelle_pays_etranger"))
+    if not pays and cp:
+        pays = "France"
+
+    return {
+        "source": "annuaire_entreprises",
+        "query": _clean_public_text(query),
+        "nom_ent": _clean_public_text(item.get("nom_complet") or item.get("nom_raison_sociale")),
+        "siren": _clean_public_text(item.get("siren")),
+        "siret_ent": _clean_public_text(selected_etab.get("siret") or siege.get("siret")),
+        "date_creation": _clean_public_text(item.get("date_creation") or selected_etab.get("date_creation")),
+        "code_ape_ent": _clean_public_text((item.get("activite_principale") or selected_etab.get("activite_principale") or "")[:5]),
+        "effectif_ent": _map_public_effectif(item.get("tranche_effectif_salarie")),
+        "adresse_ent": _clean_public_text(selected_etab.get("adresse")),
+        "adresse_cplt_ent": _clean_public_text(selected_etab.get("complement_adresse")),
+        "cp_ent": cp,
+        "ville_ent": _clean_public_text(selected_etab.get("libelle_commune") or selected_etab.get("libelle_commune_etranger")),
+        "pays_ent": pays,
+        "idcc": idcc_list[0] if idcc_list else None,
+    }
+
+
+def _fetch_public_company_data(query: str) -> dict:
+    q = _clean_public_text(query)
+    if not q:
+        raise HTTPException(status_code=400, detail="Saisissez un SIRET, un SIREN ou un nom de structure.")
+
+    params = {
+        "q": q,
+        "per_page": 5,
+        "page": 1,
+    }
+    url = f"https://recherche-entreprises.api.gouv.fr/search?{urlencode(params)}"
+    headers = {
+        "Accept": "application/json",
+        "User-Agent": "NovoskillStudio/1.0 (+https://novoskill.fr)",
+    }
+
+    try:
+        req = UrlRequest(url, headers=headers, method="GET")
+        with urlopen(req, timeout=12) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+    except HTTPError as e:
+        if e.code == 429:
+            raise HTTPException(status_code=503, detail="Service public temporairement saturé. Réessaie dans quelques secondes.")
+        raise HTTPException(status_code=502, detail=f"Erreur API publique ({e.code}).")
+    except URLError:
+        raise HTTPException(status_code=502, detail="Impossible de joindre l’API publique des entreprises.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Recherche entreprise publique impossible: {e}")
+
+    results = payload.get("results") or []
+    item = _choose_public_search_result(results, q)
+    if not item:
+        raise HTTPException(status_code=404, detail="Aucune structure trouvée via l’API publique.")
+
+    return _map_public_company_result(item, q)
 
 def _require_owner_access(cur, u: dict, id_owner: str) -> str:
     oid = (id_owner or "").strip()
@@ -1059,7 +1208,37 @@ def get_studio_postal_codes(id_owner: str, request: Request, code_postal: Option
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/referentiels/codes-postaux error: {e}")
-    
+
+@router.get("/studio/referentiels/entreprises-publiques/{id_owner}")
+def get_studio_public_company(id_owner: str, request: Request, q: str):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                item = _fetch_public_company_data(q)
+
+                idcc = _normalize_text(item.get("idcc"))
+                code_ape = _normalize_text(item.get("code_ape_ent"))
+
+                return {
+                    "item": {
+                        **item,
+                        "idcc_libelle": _lookup_idcc(cur, idcc),
+                        "code_ape_intitule": _lookup_ape(cur, code_ape),
+                    }
+                }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/referentiels/entreprises-publiques error: {e}")
+
 @router.get("/studio/referentiels/opco/{id_owner}")
 def get_studio_referentiel_opco(id_owner: str, request: Request):
     auth = request.headers.get("Authorization", "")

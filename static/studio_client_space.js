@@ -11,6 +11,7 @@
   let _orgCreateKind = "";
   let _ficheEditMode = false;
   let _ficheSaving = false;
+  let _publicLookupLoading = false;
 
   function byId(id){ return document.getElementById(id); }
 
@@ -159,6 +160,134 @@
 
   function normalizePhoneFr(value){
     return (value || "").toString().replace(/\D+/g, "").slice(0, 10);
+  }
+
+  function normalizeSiretSiren(value){
+    return (value || "").toString().replace(/\D+/g, "").slice(0, 14);
+  }
+
+  function setInputValueIfPresent(id, value){
+    const el = byId(id);
+    const v = (value ?? "").toString().trim();
+    if (!el || !v) return;
+    el.value = v;
+  }
+
+  function buildPublicLookupQuery(mode){
+    if (mode === "org_create") {
+      const siret = normalizeSiretSiren(inputValue("orgCreateSiretEnt"));
+      if (siret.length === 14 || siret.length === 9) return siret;
+      return inputValue("orgCreateNomEnt");
+    }
+
+    const siret = normalizeSiretSiren(inputValue("ficheSiretEnt"));
+    if (siret.length === 14 || siret.length === 9) return siret;
+    return inputValue("ficheNomEnt");
+  }
+
+  async function fetchPublicCompanyData(query){
+    const ownerId = getOwnerId();
+    const token = await ensureAuthReady();
+    if (!token) return null;
+
+    const qs = new URLSearchParams();
+    qs.set("q", query);
+
+    const data = await apiJson(
+      `${API_BASE}/studio/referentiels/entreprises-publiques/${encodeURIComponent(ownerId)}?${qs.toString()}`,
+      token
+    );
+
+    return data?.item || null;
+  }
+
+  function applyPublicCompanyToFiche(item){
+    if (!item) return;
+
+    setInputValueIfPresent("ficheNomEnt", item.nom_ent);
+    setInputValueIfPresent("ficheSiretEnt", item.siret_ent);
+    setDateValue("ficheDateCreation", item.date_creation);
+    if (item.effectif_ent) setInputValue("ficheEffectifEnt", item.effectif_ent);
+
+    setInputValueIfPresent("ficheAdresseEnt", item.adresse_ent);
+    setInputValueIfPresent("ficheAdresseCpltEnt", item.adresse_cplt_ent);
+    setInputValueIfPresent("ficheCpEnt", item.cp_ent);
+    setInputValueIfPresent("ficheVilleEnt", item.ville_ent);
+    setInputValueIfPresent("fichePaysEnt", item.pays_ent);
+
+    setInputValueIfPresent("ficheIdcc", item.idcc);
+    setHelp("ficheIdccHelp", item.idcc_libelle);
+    setInputValueIfPresent("ficheCodeApeEnt", normalizeApeCode(item.code_ape_ent));
+    setHelp("ficheCodeApeHelp", item.code_ape_intitule);
+
+    queuePostalLookupFromCurrentValues();
+  }
+
+  function applyPublicCompanyToOrgCreate(item){
+    if (!item) return;
+
+    setInputValueIfPresent("orgCreateNomEnt", item.nom_ent);
+    setInputValueIfPresent("orgCreateSiretEnt", item.siret_ent);
+    setDateValue("orgCreateDateCreation", item.date_creation);
+    if (item.effectif_ent) setInputValue("orgCreateEffectifEnt", item.effectif_ent);
+
+    setInputValueIfPresent("orgCreateAdresseEnt", item.adresse_ent);
+    setInputValueIfPresent("orgCreateAdresseCpltEnt", item.adresse_cplt_ent);
+    setInputValueIfPresent("orgCreateCpEnt", item.cp_ent);
+    setInputValueIfPresent("orgCreateVilleEnt", item.ville_ent);
+    setInputValueIfPresent("orgCreatePaysEnt", item.pays_ent);
+
+    setInputValueIfPresent("orgCreateIdcc", item.idcc);
+    setHelp("orgCreateIdccHelp", item.idcc_libelle);
+    setInputValueIfPresent("orgCreateCodeApeEnt", normalizeApeCode(item.code_ape_ent));
+    setHelp("orgCreateCodeApeHelp", item.code_ape_intitule);
+  }
+
+  async function loadPublicCompanyIntoForm(mode){
+    if (_publicLookupLoading) return;
+
+    const query = buildPublicLookupQuery(mode);
+    if (!query) {
+      setMessage("Renseigne au moins un SIRET, un SIREN ou un nom avant de charger les données officielles.");
+      return;
+    }
+
+    const btn = mode === "org_create" ? byId("btnOrgLoadPublicData") : byId("btnFicheLoadPublicData");
+    const initialText = btn?.textContent || "Charger les données officielles";
+
+    try {
+      _publicLookupLoading = true;
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Chargement...";
+      }
+
+      const item = await fetchPublicCompanyData(query);
+      if (!item) {
+        throw new Error("Aucune donnée publique récupérable.");
+      }
+
+      if (mode === "org_create") {
+        applyPublicCompanyToOrgCreate(item);
+      } else {
+        applyPublicCompanyToFiche(item);
+      }
+
+      setMessage("");
+    } catch (e) {
+      setMessage(e.message || "Impossible de charger les données officielles.");
+    } finally {
+      _publicLookupLoading = false;
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = initialText;
+      }
+    }
+  }
+
+  function formatPhoneFr(value){
+    const digits = normalizePhoneFr(value);
+    return digits.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
   }
 
   function formatPhoneFr(value){
@@ -615,7 +744,9 @@ function bindPostalAssist(){
     setInputValue("orgCreateSiteWeb", "");
 
     setInputValue("orgCreateIdcc", "");
+    setHelp("orgCreateIdccHelp", "");
     setInputValue("orgCreateCodeApeEnt", "");
+    setHelp("orgCreateCodeApeHelp", "");
     renderOrgCreateOpcoOptions("");
     updateOrgCreateOpcoSiteLink();
 
@@ -1182,32 +1313,37 @@ function bindPostalAssist(){
     }
   }
 
-    function setFicheEditMode(enabled){
-        _ficheEditMode = !!enabled;
+  function setFicheEditMode(enabled){
+      _ficheEditMode = !!enabled;
 
-        const controls = document.querySelectorAll(".cs-form-ctrl, #ficheGroupOk, #ficheTeteGroupe");
-        controls.forEach(el => {
-            el.disabled = !_ficheEditMode;
-        });
+      const controls = document.querySelectorAll(".cs-form-ctrl, #ficheGroupOk, #ficheTeteGroupe");
+      controls.forEach(el => {
+          el.disabled = !_ficheEditMode;
+      });
 
-        const btnEdit = byId("btnFicheEdit");
-        const btnCancel = byId("btnFicheCancel");
-        const btnSave = byId("btnFicheSave");
+      const btnEdit = byId("btnFicheEdit");
+      const btnCancel = byId("btnFicheCancel");
+      const btnSave = byId("btnFicheSave");
+      const btnLoadPublicData = byId("btnFicheLoadPublicData");
 
-        if (btnEdit) {
-            btnEdit.classList.toggle("is-hidden", _ficheEditMode);
-        }
+      if (btnEdit) {
+          btnEdit.classList.toggle("is-hidden", _ficheEditMode);
+      }
 
-        if (btnCancel) {
-            btnCancel.classList.toggle("is-hidden", !_ficheEditMode);
-        }
+      if (btnCancel) {
+          btnCancel.classList.toggle("is-hidden", !_ficheEditMode);
+      }
 
-        if (btnSave) {
-            btnSave.classList.toggle("is-hidden", !_ficheEditMode);
-        }
+      if (btnSave) {
+          btnSave.classList.toggle("is-hidden", !_ficheEditMode);
+      }
 
-        syncStructureProfileUi();
-    }
+      if (btnLoadPublicData) {
+          btnLoadPublicData.classList.toggle("is-hidden", !_ficheEditMode);
+      }
+
+      syncStructureProfileUi();
+  }
 
   async function saveFiche(){
     if (_ficheSaving) return;
@@ -1286,6 +1422,10 @@ function bindPostalAssist(){
       await saveOrgCreateStructure();
     });
 
+    byId("btnOrgLoadPublicData")?.addEventListener("click", async () => {
+      await loadPublicCompanyIntoForm("org_create");
+    });
+
     byId("orgCreateProfilStructurel")?.addEventListener("change", syncOrgCreateProfileUi);
     byId("orgCreateGroupOk")?.addEventListener("change", syncOrgCreateProfileUi);
 
@@ -1319,6 +1459,10 @@ function bindPostalAssist(){
 
     byId("btnFicheSave")?.addEventListener("click", async () => {
       await saveFiche();
+    });
+
+    byId("btnFicheLoadPublicData")?.addEventListener("click", async () => {
+      await loadPublicCompanyIntoForm("fiche");
     });
 
     byId("ficheProfilStructurel")?.addEventListener("change", syncStructureProfileUi);

@@ -157,10 +157,10 @@
       <section class="cs-section" data-section="fiche">
         <div class="cs-section-toolbar cs-section-toolbar--end">
         <button type="button" class="sb-btn sb-btn--accent" id="btnFicheEdit">Modifier</button>
+        <button type="button" class="sb-btn sb-btn--secondary is-hidden" id="btnFicheLoadPublicData">Charger les données officielles</button>
         <button type="button" class="sb-btn sb-btn--secondary is-hidden" id="btnFicheCancel">Annuler</button>
         <button type="button" class="sb-btn sb-btn--accent is-hidden" id="btnFicheSave">Enregistrer</button>
         </div>
-
         <div class="cs-grid cs-grid--2cols">
           <div class="cs-card">
             <div class="cs-card-title" id="sectionCompanySheetTitle">Fiche entreprise</div>
@@ -446,7 +446,10 @@
           <div class="modal-body">
             <div class="cs-grid cs-grid--2cols cs-org-modal-grid">
               <div class="cs-card">
-                <div class="cs-card-title">Fiche structure</div>
+                <div class="cs-card-head">
+                  <div class="cs-card-title">Fiche structure</div>
+                  <button type="button" class="sb-btn sb-btn--secondary sb-btn--xs" id="btnOrgLoadPublicData">Charger les données officielles</button>
+                </div>
 
                 <div class="sb-form-grid cs-form-grid">
                   <div class="sb-field sb-span-2">
@@ -528,10 +531,12 @@
                   <div class="sb-field">
                     <label class="sb-label" for="orgCreateIdcc">IDCC</label>
                     <input type="text" class="sb-ctrl" id="orgCreateIdcc" />
+                    <div class="sb-help" id="orgCreateIdccHelp">—</div>
                   </div>
                   <div class="sb-field">
                     <label class="sb-label" for="orgCreateCodeApeEnt">Code APE</label>
                     <input type="text" class="sb-ctrl" id="orgCreateCodeApeEnt" placeholder="00.00" />
+                    <div class="sb-help" id="orgCreateCodeApeHelp">—</div>
                   </div>
                   <div class="sb-field">
                     <label class="sb-label" for="orgCreateIdOpco">OPCO</label>
