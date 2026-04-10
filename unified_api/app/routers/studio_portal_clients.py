@@ -628,8 +628,14 @@ def update_studio_client(id_owner: str, id_ent: str, payload: ClientPayload, req
 
         if "group_ok" in patch:
             patch["group_ok"] = _normalize_bool(patch.get("group_ok"))
+
         if "tete_groupe" in patch:
             patch["tete_groupe"] = _normalize_bool(patch.get("tete_groupe"))
+
+        if patch.get("group_ok") is False:
+            patch["nom_groupe"] = None
+            patch["type_groupe"] = None
+            patch["tete_groupe"] = False
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -652,7 +658,6 @@ def update_studio_client(id_owner: str, id_ent: str, payload: ClientPayload, req
                 }
                 cols = []
                 vals = []
-                group_ok_final = None
 
                 for k, v in patch.items():
                     if k not in allowed:
@@ -667,16 +672,6 @@ def update_studio_client(id_owner: str, id_ent: str, payload: ClientPayload, req
 
                     cols.append(f"{k} = %s")
                     vals.append(vv)
-                    if k == "group_ok":
-                        group_ok_final = bool(vv)
-
-                if group_ok_final is False:
-                    cols.extend([
-                        "nom_groupe = %s",
-                        "type_groupe = %s",
-                        "tete_groupe = %s",
-                    ])
-                    vals.extend([None, None, False])
 
                 if cols:
                     vals.extend([id_ent, oid])
