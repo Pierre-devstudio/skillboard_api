@@ -12,6 +12,27 @@ router = APIRouter()
 
 RE_APE = re.compile(r"^\d{2}\.\d{2}$")
 
+ALLOWED_PROFILS_STRUCTURELS = {
+    "site_unique",
+    "multi_site",
+    "holding_multi_entreprise",
+    "holding_multi_entreprise_multi_site",
+}
+
+
+def _normalize_profil_structurel(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    v = str(value).strip().lower()
+    if not v:
+        return None
+    if v not in ALLOWED_PROFILS_STRUCTURELS:
+        raise HTTPException(status_code=400, detail="Profil structurel invalide.")
+    return v
+
+
+def _is_holding_profile(value: Optional[str]) -> bool:
+    return value in ("holding_multi_entreprise", "holding_multi_entreprise_multi_site")
 
 class ClientPayload(BaseModel):
     nom_ent: Optional[str] = None
@@ -35,6 +56,7 @@ class ClientPayload(BaseModel):
     type_groupe: Optional[str] = None
     tete_groupe: Optional[bool] = None
     group_ok: Optional[bool] = None
+    profil_structurel: Optional[str] = None
 
 
 def _build_patch_set(payload) -> Dict[str, Any]:
@@ -382,6 +404,7 @@ def _fetch_client_detail(cur, id_owner: str, id_ent: str) -> dict:
             e.tete_groupe,
             e.group_ok,
             e.id_owner_gestionnaire,
+            e.profil_structurel,
             COALESCE((
                 SELECT o.type_owner
                 FROM public.tbl_novoskill_owner o
@@ -469,6 +492,7 @@ def _fetch_client_detail(cur, id_owner: str, id_ent: str) -> dict:
         "tete_groupe": bool(r.get("tete_groupe")),
         "group_ok": bool(r.get("group_ok")),
         "id_owner_gestionnaire": r.get("id_owner_gestionnaire"),
+        "profil_structurel": r.get("profil_structurel"),
         "owner_type_client": (r.get("owner_type_client") or "entreprise"),
         "has_owner_scope": bool(r.get("has_owner_scope")),
         "studio_actif": bool(r.get("studio_actif")),
@@ -533,6 +557,11 @@ def create_studio_client(id_owner: str, payload: ClientPayload, request: Request
 
         group_ok = _normalize_bool(patch.get("group_ok"))
         tete_groupe = _normalize_bool(patch.get("tete_groupe")) if group_ok else False
+        profil_structurel = _normalize_profil_structurel(patch.get("profil_structurel"))
+
+        if not _is_holding_profile(profil_structurel):
+            group_ok = False
+            tete_groupe = False
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -572,12 +601,13 @@ def create_studio_client(id_owner: str, payload: ClientPayload, request: Request
                         type_groupe,
                         tete_groupe,
                         group_ok,
+                        profil_structurel,
                         id_owner_gestionnaire
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s,
                         %s, %s, %s, %s, %s, %s, %s,
                         %s, %s, 'Client', FALSE, %s, %s,
-                        %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s
                     )
                     """,
                     (
@@ -603,6 +633,7 @@ def create_studio_client(id_owner: str, payload: ClientPayload, request: Request
                         _normalize_text(patch.get("type_groupe")) if group_ok else None,
                         tete_groupe,
                         group_ok,
+                        profil_structurel,
                         oid,
                     ),
                 )
@@ -632,7 +663,17 @@ def update_studio_client(id_owner: str, id_ent: str, payload: ClientPayload, req
         if "tete_groupe" in patch:
             patch["tete_groupe"] = _normalize_bool(patch.get("tete_groupe"))
 
-        if patch.get("group_ok") is False:
+        if "profil_structurel" in patch:
+            patch["profil_structurel"] = _normalize_profil_structurel(patch.get("profil_structurel"))
+
+        profil_structurel_final = patch.get("profil_structurel")
+
+        if profil_structurel_final is not None and not _is_holding_profile(profil_structurel_final):
+            patch["group_ok"] = False
+            patch["nom_groupe"] = None
+            patch["type_groupe"] = None
+            patch["tete_groupe"] = False
+        elif patch.get("group_ok") is False:
             patch["nom_groupe"] = None
             patch["type_groupe"] = None
             patch["tete_groupe"] = False
@@ -654,7 +695,7 @@ def update_studio_client(id_owner: str, id_ent: str, payload: ClientPayload, req
                     "nom_ent", "adresse_ent", "adresse_cplt_ent", "cp_ent", "ville_ent", "pays_ent",
                     "email_ent", "telephone_ent", "site_web", "siret_ent", "code_ape_ent", "num_tva_ent",
                     "effectif_ent", "id_opco", "date_creation", "num_entreprise", "idcc",
-                    "nom_groupe", "type_groupe", "tete_groupe", "group_ok"
+                    "nom_groupe", "type_groupe", "tete_groupe", "group_ok", "profil_structurel"
                 }
                 cols = []
                 vals = []
@@ -667,6 +708,8 @@ def update_studio_client(id_owner: str, id_ent: str, payload: ClientPayload, req
                         vv = _normalize_bool(v)
                     elif k == "date_creation":
                         vv = v
+                    elif k == "profil_structurel":
+                        vv = _normalize_profil_structurel(v)
                     else:
                         vv = _normalize_text(v)
 

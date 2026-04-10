@@ -24,6 +24,16 @@
     return `https://${v}`;
   }
 
+  function normalizeProfilStructurel(value){
+    const v = (value || "").toString().trim().toLowerCase();
+    return v || "";
+  }
+
+  function isHoldingProfil(value){
+    const v = normalizeProfilStructurel(value);
+    return v === "holding_multi_entreprise" || v === "holding_multi_entreprise_multi_site";
+  }
+
   function renderOpcoOptions(){
     const select = byId("ficheIdOpco");
     if (!select) return;
@@ -639,6 +649,7 @@ function bindPostalAssist(){
     renderOpcoOptions();
     updateOpcoSiteLink();
 
+    setInputValue("ficheProfilStructurel", normalizeProfilStructurel(_detail?.profil_structurel));
     setCheckboxValue("ficheGroupOk", _detail?.group_ok);
     setCheckboxValue("ficheTeteGroupe", _detail?.tete_groupe);
     setInputValue("ficheNomGroupe", _detail?.nom_groupe);
@@ -647,7 +658,7 @@ function bindPostalAssist(){
     setText("idNbParents", _detail?.nb_entites_parents);
     setText("idNbChildren", _detail?.nb_entites_enfants);
 
-    syncGroupFieldsState();
+    syncStructureProfileUi();
     queuePostalLookupFromCurrentValues();
   }
 
@@ -672,6 +683,7 @@ function bindPostalAssist(){
       code_ape_ent: normalizeApeCode(inputValue("ficheCodeApeEnt")),
       id_opco: inputValue("ficheIdOpco"),
 
+      profil_structurel: normalizeProfilStructurel(inputValue("ficheProfilStructurel")),
       group_ok: !!byId("ficheGroupOk")?.checked,
       tete_groupe: !!byId("ficheTeteGroupe")?.checked,
       nom_groupe: inputValue("ficheNomGroupe"),
@@ -679,12 +691,44 @@ function bindPostalAssist(){
     };
   }
 
-  function syncGroupFieldsState(){
-    const isGroup = !!byId("ficheGroupOk")?.checked;
+  function syncStructureProfileUi(){
+    const profil = normalizeProfilStructurel(inputValue("ficheProfilStructurel"));
+    const showGroupFields = isHoldingProfil(profil);
+
+    document.querySelectorAll(".js-struct-group-field").forEach(el => {
+      el.classList.toggle("is-hidden", !showGroupFields);
+    });
+
+    const groupOk = byId("ficheGroupOk");
     const tete = byId("ficheTeteGroupe");
     const nom = byId("ficheNomGroupe");
     const type = byId("ficheTypeGroupe");
 
+    if (!showGroupFields) {
+      if (groupOk) {
+        groupOk.checked = false;
+        groupOk.disabled = true;
+      }
+      if (tete) {
+        tete.checked = false;
+        tete.disabled = true;
+      }
+      if (nom) {
+        nom.value = "";
+        nom.disabled = true;
+      }
+      if (type) {
+        type.value = "";
+        type.disabled = true;
+      }
+      return;
+    }
+
+    const isGroup = !!groupOk?.checked;
+
+    if (groupOk) {
+      groupOk.disabled = !_ficheEditMode;
+    }
     if (tete) {
       tete.disabled = !_ficheEditMode || !isGroup;
       if (!isGroup) tete.checked = false;
@@ -723,7 +767,7 @@ function bindPostalAssist(){
             btnSave.classList.toggle("is-hidden", !_ficheEditMode);
         }
 
-        syncGroupFieldsState();
+        syncStructureProfileUi();
     }
 
   async function saveFiche(){
@@ -797,7 +841,8 @@ function bindPostalAssist(){
       await saveFiche();
     });
 
-    byId("ficheGroupOk")?.addEventListener("change", syncGroupFieldsState);
+    byId("ficheProfilStructurel")?.addEventListener("change", syncStructureProfileUi);
+    byId("ficheGroupOk")?.addEventListener("change", syncStructureProfileUi);
   }
 
   async function loadData(){

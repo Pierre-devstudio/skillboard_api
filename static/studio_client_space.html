@@ -319,26 +319,18 @@
           </div>
 
           <div class="cs-card">
-            <div class="cs-card-title">Structure groupe / réseau</div>
+            <div class="cs-card-title">Profil structurel</div>
 
             <div class="sb-form-grid cs-form-grid">
-              <label class="sb-check sb-span-2">
-                <input type="checkbox" id="ficheGroupOk" disabled />
-                <span>Entreprise en groupe</span>
-              </label>
-
-              <label class="sb-check sb-span-2">
-                <input type="checkbox" id="ficheTeteGroupe" disabled />
-                <span>Tête de groupe</span>
-              </label>
-
-              <div class="sb-field">
-                <label class="sb-label" for="ficheNomGroupe">Nom du groupe</label>
-                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheNomGroupe" disabled />
-              </div>
-              <div class="sb-field">
-                <label class="sb-label" for="ficheTypeGroupe">Type de groupe</label>
-                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheTypeGroupe" disabled />
+              <div class="sb-field sb-span-2">
+                <label class="sb-label" for="ficheProfilStructurel">Profil structurel</label>
+                <select class="sb-select cs-form-ctrl" id="ficheProfilStructurel" disabled>
+                  <option value="">-</option>
+                  <option value="site_unique">Site unique</option>
+                  <option value="multi_site">Multi-site</option>
+                  <option value="holding_multi_entreprise">Holding multi-entreprise</option>
+                  <option value="holding_multi_entreprise_multi_site">Holding multi-entreprise + multi-site</option>
+                </select>
               </div>
 
               <div class="sb-field">
@@ -348,6 +340,25 @@
               <div class="sb-field">
                 <label class="sb-label">Enfants liés</label>
                 <div class="cs-read-value" id="idNbChildren">—</div>
+              </div>
+
+              <label class="sb-check sb-span-2 js-struct-group-field">
+                <input type="checkbox" id="ficheGroupOk" disabled />
+                <span>Entreprise en groupe</span>
+              </label>
+
+              <label class="sb-check sb-span-2 js-struct-group-field">
+                <input type="checkbox" id="ficheTeteGroupe" disabled />
+                <span>Tête de groupe</span>
+              </label>
+
+              <div class="sb-field js-struct-group-field">
+                <label class="sb-label" for="ficheNomGroupe">Nom du groupe</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheNomGroupe" disabled />
+              </div>
+              <div class="sb-field js-struct-group-field">
+                <label class="sb-label" for="ficheTypeGroupe">Type de groupe</label>
+                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheTypeGroupe" disabled />
               </div>
             </div>
           </div>
