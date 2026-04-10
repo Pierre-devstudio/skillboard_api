@@ -10,6 +10,31 @@
 
   function byId(id){ return document.getElementById(id); }
 
+  function normalizePhoneFr(value){
+    return (value || "").toString().replace(/\D+/g, "").slice(0, 10);
+  }
+
+  function formatPhoneFr(value){
+    const digits = normalizePhoneFr(value);
+    return digits.replace(/(\d{2})(?=\d)/g, "$1 ").trim();
+  }
+
+  function bindPhoneMask(){
+    const telEl = byId("ficheTelephoneEnt");
+    if (!telEl) return;
+    if (telEl.dataset.phoneBound === "1") return;
+
+    telEl.dataset.phoneBound = "1";
+
+    const applyMask = () => {
+      telEl.value = formatPhoneFr(telEl.value);
+    };
+
+    telEl.addEventListener("input", applyMask);
+    telEl.addEventListener("change", applyMask);
+    telEl.addEventListener("blur", applyMask);
+  }
+
   function getOwnerId(){
     return (new URL(window.location.href).searchParams.get("id") || "").trim();
   }
@@ -504,7 +529,7 @@ function bindPostalAssist(){
     setInputValue("ficheCpEnt", normalizePostalCode(_detail?.cp_ent));
     setInputValue("ficheVilleEnt", normalizeCity(_detail?.ville_ent));
     setInputValue("fichePaysEnt", _detail?.pays_ent);
-    setInputValue("ficheTelephoneEnt", _detail?.telephone_ent);
+    setInputValue("ficheTelephoneEnt", formatPhoneFr(_detail?.telephone_ent));
     setInputValue("ficheEmailEnt", _detail?.email_ent);
     setInputValue("ficheSiteWeb", _detail?.site_web);
 
@@ -540,7 +565,7 @@ function bindPostalAssist(){
       cp_ent: inputValue("ficheCpEnt"),
       ville_ent: inputValue("ficheVilleEnt"),
       pays_ent: inputValue("fichePaysEnt"),
-      telephone_ent: inputValue("ficheTelephoneEnt"),
+      telephone_ent: formatPhoneFr(inputValue("ficheTelephoneEnt")),
       email_ent: inputValue("ficheEmailEnt"),
       site_web: inputValue("ficheSiteWeb"),
 
@@ -714,6 +739,7 @@ function bindPostalAssist(){
     bindNavigation();
     bindFicheActions();
     bindPostalAssist();
+    bindPhoneMask();
     renderLinks();
     setFicheEditMode(false);
 
