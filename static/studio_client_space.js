@@ -246,13 +246,23 @@
   async function loadPublicCompanyIntoForm(mode){
     if (_publicLookupLoading) return;
 
+    const isOrgCreate = mode === "org_create";
     const query = buildPublicLookupQuery(mode);
+
+    if (isOrgCreate) {
+      setOrgModalInlineError("");
+    }
+
     if (!query) {
-      setMessage("Renseigne au moins un SIRET, un SIREN ou un nom avant de charger les données officielles.");
+      if (isOrgCreate) {
+        setOrgModalInlineError("Renseigne au moins un SIRET, un SIREN ou un nom avant de charger les données officielles.");
+      } else {
+        setMessage("Renseigne au moins un SIRET, un SIREN ou un nom avant de charger les données officielles.");
+      }
       return;
     }
 
-    const btn = mode === "org_create" ? byId("btnOrgLoadPublicData") : byId("btnFicheLoadPublicData");
+    const btn = isOrgCreate ? byId("btnOrgLoadPublicData") : byId("btnFicheLoadPublicData");
     const initialText = btn?.textContent || "Charger les données officielles";
 
     try {
@@ -267,15 +277,19 @@
         throw new Error("Aucune donnée publique récupérable.");
       }
 
-      if (mode === "org_create") {
+      if (isOrgCreate) {
         applyPublicCompanyToOrgCreate(item);
+        setOrgModalInlineError("");
       } else {
         applyPublicCompanyToFiche(item);
+        setMessage("");
       }
-
-      setMessage("");
     } catch (e) {
-      setMessage(e.message || "Impossible de charger les données officielles.");
+      if (isOrgCreate) {
+        setOrgModalInlineError(e.message || "Impossible de charger les données officielles.");
+      } else {
+        setMessage(e.message || "Impossible de charger les données officielles.");
+      }
     } finally {
       _publicLookupLoading = false;
       if (btn) {
@@ -727,6 +741,7 @@ function bindPostalAssist(){
 
   function resetOrgCreateForm(kind){
     _orgCreateKind = kind;
+    setOrgModalInlineError("");
 
     setInputValue("orgCreateNomEnt", "");
     setInputValue("orgCreateSiretEnt", "");
@@ -768,10 +783,12 @@ function bindPostalAssist(){
 
   function openOrgCreateModal(kind){
     resetOrgCreateForm(kind);
+    setOrgModalInlineError("");
     byId("modalOrgStructure")?.classList.add("show");
   }
 
   function closeOrgCreateModal(){
+    setOrgModalInlineError("");
     byId("modalOrgStructure")?.classList.remove("show");
   }
 
@@ -891,6 +908,20 @@ function bindPostalAssist(){
 
     box.style.display = "block";
     box.textContent = message;
+  }
+
+  function setOrgModalInlineError(message){
+    const el = byId("orgModalInlineError");
+    if (!el) return;
+
+    if (!message) {
+      el.textContent = "";
+      el.classList.add("is-hidden");
+      return;
+    }
+
+    el.textContent = message;
+    el.classList.remove("is-hidden");
   }
 
   let _authInitPromise = null;
