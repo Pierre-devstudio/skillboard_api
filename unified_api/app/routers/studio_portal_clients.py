@@ -1045,6 +1045,7 @@ def create_studio_child_structure(id_owner: str, id_ent: str, payload: ClientPay
 
                 new_id = str(uuid4())
                 type_entreprise = "Site" if type_structure == "site" else "Entreprise"
+                type_liaison = "site" if type_structure == "site" else "filiale"
 
                 cur.execute(
                     """
@@ -1120,7 +1121,7 @@ def create_studio_child_structure(id_owner: str, id_ent: str, payload: ClientPay
                         archive
                     ) VALUES (%s, %s, %s, FALSE)
                     """,
-                    (id_ent, new_id, "rattachement_structurel"),
+                    (id_ent, new_id, type_liaison),
                 )
 
                 conn.commit()
