@@ -164,7 +164,7 @@
         <div class="cs-grid cs-grid--2cols">
           <div class="cs-card">
             <div class="cs-card-title" id="sectionCompanySheetTitle">Fiche entreprise</div>
-            <div class="cs-card-sub" id="sectionCompanySheetSub">Informations générales, administratives et de rattachement de l’entreprise.</div>
+            <div class="cs-card-sub is-hidden" id="sectionCompanySheetSub"></div>
 
             <div class="sb-form-grid cs-form-grid">
               <div class="sb-field sb-span-2">
@@ -177,7 +177,7 @@
               </div>
               <div class="sb-field">
                 <label class="sb-label" for="ficheNumEntreprise">N° entreprise</label>
-                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheNumEntreprise" disabled />
+                <input type="text" class="sb-ctrl" id="ficheNumEntreprise" disabled />
               </div>
               <div class="sb-field">
                 <label class="sb-label" for="ficheDateCreation">Date de création</label>
@@ -185,7 +185,17 @@
               </div>
               <div class="sb-field">
                 <label class="sb-label" for="ficheEffectifEnt">Effectif déclaré</label>
-                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheEffectifEnt" disabled />
+                <select class="sb-select cs-form-ctrl" id="ficheEffectifEnt" disabled>
+                  <option value="-">-</option>
+                  <option value="1 à 9">1 à 9</option>
+                  <option value="10 à 19">10 à 19</option>
+                  <option value="20 à 49">20 à 49</option>
+                  <option value="50 à 99">50 à 99</option>
+                  <option value="100 à 199">100 à 199</option>
+                  <option value="200 à 499">200 à 499</option>
+                  <option value="500 à 999">500 à 999</option>
+                  <option value="1000 et +">1000 et +</option>
+                </select>
               </div>
               <div class="sb-field sb-span-2">
                 <label class="sb-label" for="ficheNumTvaEnt">N° TVA</label>

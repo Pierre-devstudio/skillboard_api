@@ -307,7 +307,6 @@
     return {
       nom_ent: inputValue("ficheNomEnt"),
       siret_ent: inputValue("ficheSiretEnt"),
-      num_entreprise: inputValue("ficheNumEntreprise"),
       date_creation: inputValue("ficheDateCreation") || null,
       effectif_ent: inputValue("ficheEffectifEnt"),
       num_tva_ent: inputValue("ficheNumTvaEnt"),
