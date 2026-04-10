@@ -956,17 +956,19 @@ function bindPostalAssist(){
   function renderOrganisationSection(){
     const caps = getOrganisationCapabilities();
 
-    const noCard = byId("orgNoStructuresCard");
     const blockCard = byId("orgStructuresCard");
     const body = byId("orgStructuresBody");
     const btnSite = byId("btnOrgAddSite");
     const btnEnt = byId("btnOrgAddEntreprise");
     const btnToggle = byId("btnOrgToggle");
 
-    if (noCard) noCard.classList.toggle("is-hidden", !caps.hideBlock);
-    if (blockCard) blockCard.classList.toggle("is-hidden", caps.hideBlock);
+    if (blockCard) {
+      blockCard.classList.toggle("is-hidden", caps.hideBlock);
+    }
 
-    if (caps.hideBlock) return;
+    if (caps.hideBlock) {
+      return;
+    }
 
     const nbEntreprises = _orgItems.filter(x => normalizeStructureType(x.type_entreprise) === "entreprise").length;
     const nbSites = _orgItems.filter(x => normalizeStructureType(x.type_entreprise) === "site").length;
@@ -978,7 +980,7 @@ function bindPostalAssist(){
     if (btnEnt) btnEnt.classList.toggle("is-hidden", !caps.canAddEntreprise);
 
     if (body) body.classList.toggle("is-hidden", _orgCollapsed);
-    if (btnToggle) btnToggle.textContent = _orgCollapsed ? "▾▾" : "▴▴";
+    if (btnToggle) btnToggle.classList.toggle("is-collapsed", _orgCollapsed);
 
     renderOrganisationRows();
   }
@@ -1363,6 +1365,7 @@ function bindPostalAssist(){
   window.addEventListener("DOMContentLoaded", async () => {
     bindNavigation();
     bindFicheActions();
+    bindOrganisationActions();
     bindPostalAssist();
     bindPhoneMask();
     bindApeMask();

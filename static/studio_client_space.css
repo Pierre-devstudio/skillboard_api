@@ -517,23 +517,44 @@ a{
 .cs-org-mini-kpi-label{
   font-size:12px;
   color:var(--cs-muted);
+  font-weight:500;
 }
 
 .cs-org-mini-kpi-value{
   margin-top:4px;
-  font-size:18px;
-  font-weight:800;
+  font-size:15px;
+  font-weight:600;
   color:var(--cs-text);
 }
 
 .cs-org-toggle{
-  min-width:44px;
-  padding:0 10px;
-  font-weight:800;
+  width:36px;
+  min-width:36px;
+  height:36px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
 }
 
 .cs-org-body{
   margin-top:14px;
+}
+
+.cs-org-toggle-icon{
+  width:10px;
+  height:10px;
+  display:inline-block;
+  border-right:1.8px solid currentColor;
+  border-bottom:1.8px solid currentColor;
+  transform:rotate(-135deg);
+  transition:transform .18s ease;
+  margin-top:2px;
+}
+
+.cs-org-toggle.is-collapsed .cs-org-toggle-icon{
+  transform:rotate(45deg);
+  margin-top:-2px;
 }
 
 .cs-org-group-row td{
@@ -541,7 +562,7 @@ a{
   background:#f8fafc !important;
   color:#111827;
   font-size:12px;
-  font-weight:800;
+  font-weight:600;
   text-transform:uppercase;
   letter-spacing:.02em;
   border-bottom:1px solid #e5e7eb;
@@ -564,7 +585,7 @@ a{
 
 .cs-org-struct-name{
   font-size:14px;
-  font-weight:700;
+  font-weight:600;
   color:#111827;
   line-height:1.25;
 }
@@ -597,6 +618,10 @@ a{
   align-items:center;
   justify-content:center;
   min-width:58px;
+}
+
+#orgStructuresCard .cs-card-title{
+  font-weight:600;
 }
 
 .cs-org-modal-card{

@@ -373,10 +373,6 @@
       </section>
 
       <section class="cs-section" data-section="organisation">
-        <div class="cs-card cs-placeholder is-hidden" id="orgNoStructuresCard">
-          <div class="cs-card-title">Organisation</div>
-          <div class="cs-placeholder-text">Ce profil structurel ne prévoit pas de structures rattachées. L’organisation de ce périmètre se gère directement dans ce niveau.</div>
-        </div>
 
         <div class="cs-card is-hidden" id="orgStructuresCard">
           <div class="cs-org-head">
@@ -402,7 +398,9 @@
                 id="btnOrgToggle"
                 aria-label="Réduire ou afficher le bloc structures rattachées"
                 title="Réduire / afficher"
-              >▴▴</button>
+              >
+                <span class="cs-org-toggle-icon" aria-hidden="true"></span>
+              </button>
             </div>
           </div>
 
