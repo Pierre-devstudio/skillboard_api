@@ -5,10 +5,108 @@
   let _summary = null;
   let _ownerFeatures = null;
   let _context = null;
+  let _opcoOptions = [];
   let _ficheEditMode = false;
   let _ficheSaving = false;
 
   function byId(id){ return document.getElementById(id); }
+
+  function normalizeApeCode(value){
+    const digits = (value || "").toString().replace(/\D+/g, "").slice(0, 4);
+    if (digits.length <= 2) return digits;
+    return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  }
+
+  function normalizeWebUrl(value){
+    const v = (value || "").toString().trim();
+    if (!v) return "";
+    if (/^https?:\/\//i.test(v)) return v;
+    return `https://${v}`;
+  }
+
+  function renderOpcoOptions(){
+    const select = byId("ficheIdOpco");
+    if (!select) return;
+
+    const selected = (_detail?.id_opco || "").toString().trim();
+    const options = ['<option value="">-</option>'];
+
+    (_opcoOptions || []).forEach(item => {
+      const id = (item?.id_opco || "").toString().trim();
+      const nom = (item?.nom_opco || "").toString().trim();
+      if (!id || !nom) return;
+
+      const isSelected = id === selected ? ' selected' : '';
+      options.push(`<option value="${id.replace(/"/g, "&quot;")}"${isSelected}>${nom}</option>`);
+    });
+
+    select.innerHTML = options.join("");
+  }
+
+  function updateOpcoSiteLink(){
+    const select = byId("ficheIdOpco");
+    const link = byId("ficheOpcoSiteLink");
+    const empty = byId("ficheOpcoSiteEmpty");
+    if (!select || !link || !empty) return;
+
+    const selected = (select.value || "").toString().trim();
+    const found = (_opcoOptions || []).find(x => (x?.id_opco || "").toString().trim() === selected);
+    const url = normalizeWebUrl(found?.site_web || "");
+
+    if (!url) {
+      link.href = "#";
+      link.classList.add("is-hidden");
+      empty.classList.remove("is-hidden");
+      return;
+    }
+
+    link.href = url;
+    link.classList.remove("is-hidden");
+    empty.classList.add("is-hidden");
+  }
+
+  async function loadOpcoOptions(){
+    const ownerId = getOwnerId();
+    if (!ownerId) return [];
+
+    const token = await ensureAuthReady();
+    if (!token) return [];
+
+    const data = await apiJson(
+      `${API_BASE}/studio/referentiels/opco/${encodeURIComponent(ownerId)}`,
+      token
+    );
+
+    return Array.isArray(data?.items) ? data.items : [];
+  }
+
+  function bindApeMask(){
+    const apeEl = byId("ficheCodeApeEnt");
+    if (!apeEl) return;
+    if (apeEl.dataset.apeBound === "1") return;
+
+    apeEl.dataset.apeBound = "1";
+
+    const applyMask = () => {
+      apeEl.value = normalizeApeCode(apeEl.value);
+    };
+
+    apeEl.addEventListener("input", applyMask);
+    apeEl.addEventListener("change", applyMask);
+    apeEl.addEventListener("blur", applyMask);
+  }
+
+  function bindOpcoSelect(){
+    const select = byId("ficheIdOpco");
+    if (!select) return;
+    if (select.dataset.opcoBound === "1") return;
+
+    select.dataset.opcoBound = "1";
+
+    select.addEventListener("change", () => {
+      updateOpcoSiteLink();
+    });
+  }
 
   function normalizePhoneFr(value){
     return (value || "").toString().replace(/\D+/g, "").slice(0, 10);
@@ -535,10 +633,11 @@ function bindPostalAssist(){
 
     setInputValue("ficheIdcc", _detail?.idcc);
     setHelp("ficheIdccHelp", _detail?.idcc_libelle);
-    setInputValue("ficheCodeApeEnt", _detail?.code_ape_ent);
+    setInputValue("ficheCodeApeEnt", normalizeApeCode(_detail?.code_ape_ent));
     setHelp("ficheCodeApeHelp", _detail?.code_ape_intitule);
-    setInputValue("ficheIdOpco", _detail?.id_opco);
-    setHelp("ficheOpcoHelp", _detail?.opco_nom);
+
+    renderOpcoOptions();
+    updateOpcoSiteLink();
 
     setCheckboxValue("ficheGroupOk", _detail?.group_ok);
     setCheckboxValue("ficheTeteGroupe", _detail?.tete_groupe);
@@ -570,7 +669,7 @@ function bindPostalAssist(){
       site_web: inputValue("ficheSiteWeb"),
 
       idcc: inputValue("ficheIdcc"),
-      code_ape_ent: inputValue("ficheCodeApeEnt"),
+      code_ape_ent: normalizeApeCode(inputValue("ficheCodeApeEnt")),
       id_opco: inputValue("ficheIdOpco"),
 
       group_ok: !!byId("ficheGroupOk")?.checked,
@@ -715,16 +814,18 @@ function bindPostalAssist(){
     const token = await ensureAuthReady();
     if (!token) return;
 
-    const [detail, clientsData, context] = await Promise.all([
+    const [detail, clientsData, context, opcoItems] = await Promise.all([
       apiJson(`${API_BASE}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}`, token),
       apiJson(`${API_BASE}/studio/clients/${encodeURIComponent(ownerId)}`, token),
       apiJson(`${API_BASE}/studio/context/${encodeURIComponent(ownerId)}`, token),
+      loadOpcoOptions(),
     ]);
 
     _detail = detail || {};
     _summary = clientsData?.summary || {};
     _ownerFeatures = clientsData?.owner_features || {};
     _context = context || {};
+    _opcoOptions = Array.isArray(opcoItems) ? opcoItems : [];
 
     renderLinks();
     renderDynamicLabels();
@@ -740,6 +841,8 @@ function bindPostalAssist(){
     bindFicheActions();
     bindPostalAssist();
     bindPhoneMask();
+    bindApeMask();
+    bindOpcoSelect();
     renderLinks();
     setFicheEditMode(false);
 

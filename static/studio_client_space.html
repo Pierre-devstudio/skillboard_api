@@ -282,13 +282,38 @@
               </div>
               <div class="sb-field">
                 <label class="sb-label" for="ficheCodeApeEnt">Code APE</label>
-                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheCodeApeEnt" disabled />
+                <input
+                  type="text"
+                  class="sb-ctrl cs-form-ctrl"
+                  id="ficheCodeApeEnt"
+                  inputmode="numeric"
+                  maxlength="5"
+                  placeholder="00.00"
+                  autocomplete="off"
+                  disabled
+                />
                 <div class="sb-help" id="ficheCodeApeHelp">—</div>
               </div>
-              <div class="sb-field sb-span-2">
+
+              <div class="sb-field">
                 <label class="sb-label" for="ficheIdOpco">OPCO</label>
-                <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheIdOpco" disabled />
-                <div class="sb-help" id="ficheOpcoHelp">—</div>
+                <select class="sb-select cs-form-ctrl" id="ficheIdOpco" disabled>
+                  <option value="">-</option>
+                </select>
+              </div>
+
+              <div class="sb-field">
+                <label class="sb-label">Site web OPCO</label>
+                <div class="cs-read-value">
+                  <a
+                    id="ficheOpcoSiteLink"
+                    class="cs-inline-link is-hidden"
+                    href="#"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >Ouvrir le site</a>
+                  <span id="ficheOpcoSiteEmpty">—</span>
+                </div>
               </div>
             </div>
           </div>

@@ -806,3 +806,45 @@ def get_studio_postal_codes(id_owner: str, request: Request, code_postal: Option
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/referentiels/codes-postaux error: {e}")
+    
+@router.get("/studio/referentiels/opco/{id_owner}")
+def get_studio_referentiel_opco(id_owner: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                cur.execute(
+                    """
+                    SELECT
+                        id_opco,
+                        nom_opco,
+                        site_web
+                    FROM public.tbl_opco
+                    WHERE COALESCE(masque, FALSE) = FALSE
+                    ORDER BY lower(nom_opco), id_opco
+                    """
+                )
+                rows = cur.fetchall() or []
+
+                items = []
+                for r in rows:
+                    items.append(
+                        {
+                            "id_opco": (r.get("id_opco") or "").strip(),
+                            "nom_opco": (r.get("nom_opco") or "").strip(),
+                            "site_web": (r.get("site_web") or "").strip(),
+                        }
+                    )
+
+                return {"items": items}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/referentiels/opco error: {e}")

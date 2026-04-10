@@ -432,6 +432,16 @@ a{
   text-transform: uppercase;
 }
 
+.cs-inline-link{
+  color:#1d4ed8;
+  text-decoration:none;
+  font-weight:700;
+}
+
+.cs-inline-link:hover{
+  text-decoration:underline;
+}
+
 @media (max-width: 980px){
   .cs-shell{
     height:auto;
