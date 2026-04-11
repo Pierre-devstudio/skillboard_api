@@ -67,9 +67,33 @@
     let _posteCcnAnalysis = null;   
 
     function getOwnerId() {
+        const forced = (window.__orgScopeOwnerId || "").toString().trim();
+        if (forced) return forced;
+
         const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
         if (pid) return pid;
         return (new URL(window.location.href).searchParams.get("id") || "").trim();
+    }
+
+    function getScopeEntId(){
+        const forced = (window.__orgScopeEntId || "").toString().trim();
+        if (forced) return forced;
+        return getOwnerId();
+    }
+
+    function appendOrgScope(url){
+        const raw = String(url || "");
+        if (!raw) return raw;
+
+        const u = new URL(raw, window.location.origin);
+        const ownerId = getOwnerId();
+        const entId = getScopeEntId();
+
+        if (!entId || entId === ownerId) return u.toString();
+        if (u.searchParams.has("id_ent")) return u.toString();
+
+        u.searchParams.set("id_ent", entId);
+        return u.toString();
     }
 
     let _roleCode = (window.__studioRoleCode || "").toString().trim().toLowerCase();
@@ -467,7 +491,7 @@
             fd.append("file", _posteImportFile, _posteImportFile.name || "document");
 
             const resp = await fetch(
-                `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/import_document`,
+                appendOrgScope(`${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/import_document`),
                 {
                     method: "POST",
                     headers,
@@ -562,7 +586,7 @@
             }
 
             const resp = await fetch(
-                `${portal.apiBase}/studio/org/organigramme_pdf/${encodeURIComponent(ownerId)}`,
+                appendOrgScope(`${portal.apiBase}/studio/org/organigramme_pdf/${encodeURIComponent(ownerId)}`),
                 {
                     method: "GET",
                     headers,
@@ -614,7 +638,7 @@
             }
 
             const resp = await fetch(
-                `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}/fiche_pdf`,
+                appendOrgScope(`${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}/fiche_pdf`),
                 {
                     method: "GET",
                     headers,

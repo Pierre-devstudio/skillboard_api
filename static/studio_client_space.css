@@ -632,6 +632,14 @@ a{
   margin-top:0;
 }
 
+#orgWorkspaceMount:empty{
+  min-height:120px;
+}
+
+#orgWorkspaceMount .card:first-child{
+  margin-top:0;
+}
+
 @media (max-width: 980px){
   .cs-org-head{
     flex-direction:column;

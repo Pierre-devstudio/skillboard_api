@@ -995,6 +995,83 @@ function bindPostalAssist(){
     return data;
   }
 
+  function appendOrgScopeToUrl(rawUrl){
+    const url = new URL(rawUrl, window.location.origin);
+    const clientId = getClientId();
+    const ownerId = getOwnerId();
+
+    if (!clientId || !ownerId) return url.toString();
+    if (!url.pathname.startsWith("/studio/org/")) return url.toString();
+    if (url.searchParams.has("id_ent")) return url.toString();
+    if (clientId === ownerId) return url.toString();
+
+    url.searchParams.set("id_ent", clientId);
+    return url.toString();
+  }
+
+  function ensureOrganisationPortalBridge(){
+    window.__orgScopeOwnerId = getOwnerId();
+    window.__orgScopeEntId = getClientId();
+
+    window.__studioAuthReady = Promise.resolve(true);
+
+    const existing = window.portal || {};
+
+    window.portal = Object.assign({}, existing, {
+      apiBase: API_BASE,
+      contactId: getOwnerId(),
+      async apiJson(url, options){
+        const token = await ensureAuthReady();
+        if (!token) throw new Error("Session Studio introuvable.");
+
+        const scopedUrl = appendOrgScopeToUrl(url);
+        const opts = Object.assign({}, options || {});
+        opts.headers = Object.assign({}, opts.headers || {}, {
+          "Authorization": `Bearer ${token}`
+        });
+
+        const r = await fetch(scopedUrl, opts);
+        const data = await r.json().catch(() => null);
+
+        if (!r.ok) {
+          const detail = data && (data.detail || data.message)
+            ? (data.detail || data.message)
+            : `Erreur HTTP ${r.status}`;
+          throw new Error(detail);
+        }
+        return data;
+      },
+      showAlert(type, message){
+        if (!message) {
+          setMessage("");
+          return;
+        }
+        setMessage(message);
+      }
+    });
+  }
+
+  async function loadOrganisationWorkspace(){
+    const mount = byId("orgWorkspaceMount");
+    if (!mount) return;
+    if (mount.dataset.loaded === "1") return;
+
+    const r = await fetch("/studio_organisation.html", { cache: "no-store" });
+    const html = await r.text();
+
+    const wrapper = document.createElement("div");
+    wrapper.innerHTML = html;
+
+    const root = wrapper.querySelector('#view-organisation[data-view="organisation"]');
+    if (!root) throw new Error("Bloc Organisation partagé introuvable.");
+
+    mount.innerHTML = "";
+    mount.appendChild(root);
+    mount.dataset.loaded = "1";
+
+    ensureOrganisationPortalBridge();
+  }
+
   function setSection(name){
     document.querySelectorAll(".menu-item[data-section]").forEach(btn => {
       btn.classList.toggle("active", btn.dataset.section === name);
@@ -2018,6 +2095,7 @@ function bindPostalAssist(){
     renderDashboard();
     renderIdentification();
     await loadOrganisationData();
+    await loadOrganisationWorkspace();
     setFicheEditMode(false);
     setSection("dashboard");
   }

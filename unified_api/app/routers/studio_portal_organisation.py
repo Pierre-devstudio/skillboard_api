@@ -109,6 +109,50 @@ def _require_owner_access(cur, u: dict, id_owner: str):
     return oid
 
 
+
+
+def _resolve_org_scope_ent(cur, oid: str, request: Request) -> str:
+    scope_ent = (request.query_params.get("id_ent") or "").strip()
+    if not scope_ent:
+        return oid
+
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_entreprise
+        WHERE id_ent = %s
+          AND id_owner_gestionnaire = %s
+          AND COALESCE(masque, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (scope_ent, oid),
+    )
+    if cur.fetchone() is None:
+        raise HTTPException(status_code=404, detail="Structure de scope introuvable.")
+    return scope_ent
+
+
+def _resolve_poste_ent(cur, oid: str, id_poste: str) -> str:
+    pid = (id_poste or "").strip()
+    if not pid:
+        raise HTTPException(status_code=400, detail="id_poste manquant.")
+
+    cur.execute(
+        """
+        SELECT id_ent
+        FROM public.tbl_fiche_poste
+        WHERE id_poste = %s
+          AND id_owner = %s
+        LIMIT 1
+        """,
+        (pid, oid),
+    )
+    row = cur.fetchone() or {}
+    ent = (row.get("id_ent") or "").strip()
+    if not ent:
+        raise HTTPException(status_code=404, detail="Poste introuvable.")
+    return ent
+
 def _service_exists_active(cur, id_ent: str, id_service: str) -> bool:
     cur.execute(
         """
@@ -628,8 +672,20 @@ def _build_org_pdf_styles() -> dict:
     }
 
 
-def _fetch_organigramme_data(cur, oid: str) -> dict:
+def _fetch_organigramme_data(cur, oid: str, id_ent: str) -> dict:
     owner = studio_fetch_owner(cur, oid) or {}
+
+    cur.execute(
+        """
+        SELECT nom_ent
+        FROM public.tbl_entreprise
+        WHERE id_ent = %s
+          AND id_owner_gestionnaire = %s
+        LIMIT 1
+        """,
+        (id_ent, oid),
+    )
+    ent_row = cur.fetchone() or {}
 
     cur.execute(
         """
@@ -683,7 +739,7 @@ def _fetch_organigramme_data(cur, oid: str) -> dict:
         FROM svc
         ORDER BY svc.path
         """,
-        (oid, oid, oid, oid),
+        (id_ent, id_ent, id_ent, id_ent),
     )
     service_rows = cur.fetchall() or []
 
@@ -695,7 +751,7 @@ def _fetch_organigramme_data(cur, oid: str) -> dict:
           AND COALESCE(e.archive, FALSE) = FALSE
           AND COALESCE(e.statut_actif, TRUE) = TRUE
         """,
-        (oid,),
+        (id_ent,),
     )
     rr_tot = cur.fetchone() or {}
     total_collabs = int(rr_tot.get("nb_collabs") or 0)
@@ -725,7 +781,7 @@ def _fetch_organigramme_data(cur, oid: str) -> dict:
           AND COALESCE(p.actif, TRUE) = TRUE
         ORDER BY lower(COALESCE(NULLIF(BTRIM(p.codif_client), ''), NULLIF(BTRIM(p.codif_poste), ''), 'zzzz')), lower(COALESCE(p.intitule_poste, ''))
         """,
-        (oid, oid, oid),
+        (id_ent, oid, id_ent),
     )
     poste_rows = cur.fetchall() or []
 
@@ -784,7 +840,8 @@ def _fetch_organigramme_data(cur, oid: str) -> dict:
     postes_non_lies.sort(key=lambda p: (_org_sort_key(p.get("code")), _org_sort_key(p.get("intitule"))))
 
     owner_name = (
-        (owner.get("nom_owner") or "").strip()
+        (ent_row.get("nom_ent") or "").strip()
+        or (owner.get("nom_owner") or "").strip()
         or (owner.get("nom_ent") or "").strip()
         or (owner.get("email") or "").strip()
         or "Organisation"
@@ -3680,15 +3737,30 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
         model = (os.getenv("OPENAI_MODEL_POSTE_COMP_SEARCH") or "gpt-5").strip()
         existing_ids = {str(x).strip() for x in (payload.existing_competence_ids or []) if str(x).strip()}
         title = _clean_text(payload.intitule_poste)
+
         if not title and payload.id_poste:
             with get_conn() as conn:
                 with conn.cursor(row_factory=dict_row) as cur:
                     oid = _require_owner_access(cur, u, id_owner)
                     studio_fetch_owner(cur, oid)
                     studio_require_min_role(cur, u, oid, "admin")
+
+                    scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                    poste_ent = _resolve_poste_ent(cur, oid, payload.id_poste)
+
+                    if poste_ent != scope_ent:
+                        raise HTTPException(status_code=404, detail="Poste introuvable pour cette structure.")
+
                     cur.execute(
-                        "SELECT intitule_poste, mission_principale, responsabilites FROM public.tbl_fiche_poste WHERE id_poste = %s AND id_owner = %s AND id_ent = %s LIMIT 1",
-                        (payload.id_poste, oid, oid)
+                        """
+                        SELECT intitule_poste, mission_principale, responsabilites
+                        FROM public.tbl_fiche_poste
+                        WHERE id_poste = %s
+                          AND id_owner = %s
+                          AND id_ent = %s
+                        LIMIT 1
+                        """,
+                        (payload.id_poste, oid, poste_ent),
                     )
                     row = cur.fetchone() or {}
                     title = _clean_text(row.get("intitule_poste"))
@@ -3696,14 +3768,16 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                         payload.mission_principale = row.get("mission_principale")
                     if not payload.responsabilites_html:
                         payload.responsabilites_html = row.get("responsabilites")
+
         if not title:
             raise HTTPException(status_code=400, detail="Intitulé du poste obligatoire pour la recherche IA.")
-        
+
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
+
                 cur.execute(
                     """
                     SELECT id_domaine_competence, titre, titre_court
@@ -3763,7 +3837,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                                             "Nom": {"type": "string", "maxLength": 140},
                                             "Eval": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string", "maxLength": 120}}
                                         }
-                                    } for i in range(1,5)}
+                                    } for i in range(1, 5)}
                                 }
                             }
                         }
@@ -3792,6 +3866,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
             "Laisse les critères inutiles vides (Nom vide + 4 Eval vides). "
             "Les trois scores freq_usage / impact_resultat / dependance doivent être cohérents et réalistes."
         )
+
         user_prompt = (
             f"intitulé du poste: {title}\n"
             f"mission principale: {(payload.mission_principale or '').strip()}\n"
@@ -3902,7 +3977,6 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/postes ai_comp_search error: {e}")
 
-
 @router.post("/studio/org/postes/{id_owner}/ai_comp_create")
 def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePayload, request: Request):
     auth = request.headers.get("Authorization", "")
@@ -3923,7 +3997,13 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
 
-                if not _poste_exists(cur, oid, oid, pid):
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                poste_ent = _resolve_poste_ent(cur, oid, pid)
+
+                if poste_ent != scope_ent:
+                    raise HTTPException(status_code=404, detail="Poste introuvable pour cette structure.")
+
+                if not _poste_exists(cur, oid, poste_ent, pid):
                     raise HTTPException(status_code=404, detail="Poste introuvable.")
 
                 cur.execute(
@@ -3995,10 +4075,13 @@ def studio_org_get_organigramme_pdf(id_owner: str, request: Request):
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
-                data = _fetch_organigramme_data(cur, oid)
+                studio_fetch_owner(cur, oid)
 
-        pdf_bytes = _build_organigramme_pdf(oid, data)
-        filename = f'organigramme_{(id_owner or "organisation").strip()}.pdf'
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                data = _fetch_organigramme_data(cur, oid, scope_ent)
+
+        pdf_bytes = _build_organigramme_pdf(scope_ent, data)
+        filename = f'organigramme_{(scope_ent or "organisation").strip()}.pdf'
 
         return Response(
             content=pdf_bytes,
@@ -4309,6 +4392,8 @@ def studio_org_list_services(id_owner: str, request: Request):
                 # owner Studio doit exister (périmètre)
                 studio_fetch_owner(cur, oid)
 
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+
                 # Services (arbre)
                 cur.execute(
                     """
@@ -4339,7 +4424,6 @@ def studio_org_list_services(id_owner: str, request: Request):
                       svc.id_service_parent,
                       svc.depth,
 
-                      -- nb postes actifs dans le service
                       (SELECT COUNT(1)
                        FROM public.tbl_fiche_poste p
                        WHERE p.id_ent = %s
@@ -4347,7 +4431,6 @@ def studio_org_list_services(id_owner: str, request: Request):
                          AND p.id_service = svc.id_service
                       ) AS nb_postes,
 
-                      -- nb collaborateurs actifs dans le service
                       (SELECT COUNT(1)
                        FROM public.tbl_effectif_client e
                        WHERE e.id_ent = %s
@@ -4359,7 +4442,7 @@ def studio_org_list_services(id_owner: str, request: Request):
                     FROM svc
                     ORDER BY svc.path
                     """,
-                    (oid, oid, oid, oid),
+                    (scope_ent, scope_ent, scope_ent, scope_ent),
                 )
                 rows = cur.fetchall() or []
 
@@ -4376,47 +4459,48 @@ def studio_org_list_services(id_owner: str, request: Request):
                         }
                     )
 
-                # Totaux (Tous les services)
                 cur.execute(
                     """
                     SELECT
-                        (SELECT COUNT(1)
-                        FROM public.tbl_fiche_poste p
-                        WHERE p.id_ent = %s
-                            AND COALESCE(p.actif, TRUE) = TRUE
-                            AND p.id_service IS NOT NULL
-                        ) AS nb_postes,
-                        (SELECT COUNT(1)
-                        FROM public.tbl_effectif_client e
-                        WHERE e.id_ent = %s
+                      COUNT(1) FILTER (WHERE COALESCE(p.actif, TRUE) = TRUE) AS nb_postes,
+                      COUNT(1) FILTER (
+                        WHERE EXISTS (
+                          SELECT 1
+                          FROM public.tbl_effectif_client e
+                          WHERE e.id_poste_actuel = p.id_poste
+                            AND e.id_ent = %s
                             AND COALESCE(e.archive, FALSE) = FALSE
                             AND COALESCE(e.statut_actif, TRUE) = TRUE
-                            AND e.id_service IS NOT NULL
-                        ) AS nb_collabs
+                        )
+                      ) AS nb_collabs
+                    FROM public.tbl_fiche_poste p
+                    WHERE p.id_owner = %s
+                      AND p.id_ent = %s
                     """,
-                    (oid, oid),
+                    (scope_ent, oid, scope_ent),
                 )
                 tot = cur.fetchone() or {}
 
-                # Totaux (Non lié)
                 cur.execute(
                     """
                     SELECT
-                      (SELECT COUNT(1)
-                       FROM public.tbl_fiche_poste p
-                       WHERE p.id_ent = %s
-                         AND COALESCE(p.actif, TRUE) = TRUE
-                         AND p.id_service IS NULL
-                      ) AS nb_postes,
-                      (SELECT COUNT(1)
-                       FROM public.tbl_effectif_client e
-                       WHERE e.id_ent = %s
-                         AND COALESCE(e.archive, FALSE) = FALSE
-                         AND COALESCE(e.statut_actif, TRUE) = TRUE
-                         AND e.id_service IS NULL
+                      COUNT(1) FILTER (WHERE COALESCE(p.actif, TRUE) = TRUE) AS nb_postes,
+                      COUNT(1) FILTER (
+                        WHERE EXISTS (
+                          SELECT 1
+                          FROM public.tbl_effectif_client e
+                          WHERE e.id_poste_actuel = p.id_poste
+                            AND e.id_ent = %s
+                            AND COALESCE(e.archive, FALSE) = FALSE
+                            AND COALESCE(e.statut_actif, TRUE) = TRUE
+                        )
                       ) AS nb_collabs
+                    FROM public.tbl_fiche_poste p
+                    WHERE p.id_owner = %s
+                      AND p.id_ent = %s
+                      AND p.id_service IS NULL
                     """,
-                    (oid, oid),
+                    (scope_ent, oid, scope_ent),
                 )
                 none = cur.fetchone() or {}
 
@@ -4447,11 +4531,11 @@ def studio_org_create_service(id_owner: str, payload: CreateServicePayload, requ
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-
-                # admin only
                 studio_require_min_role(cur, u, oid, "admin")
 
-                if parent and not _service_exists_active(cur, oid, parent):
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+
+                if parent and not _service_exists_active(cur, scope_ent, parent):
                     raise HTTPException(status_code=400, detail="Service parent introuvable ou archivé.")
 
                 sid = str(uuid.uuid4())
@@ -4463,7 +4547,7 @@ def studio_org_create_service(id_owner: str, payload: CreateServicePayload, requ
                     VALUES
                       (%s, %s, %s, %s, FALSE, CURRENT_DATE)
                     """,
-                    (sid, oid, nom, parent),
+                    (sid, scope_ent, nom, parent),
                 )
                 conn.commit()
 
@@ -4473,7 +4557,6 @@ def studio_org_create_service(id_owner: str, payload: CreateServicePayload, requ
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/services create error: {e}")
-
 
 @router.post("/studio/org/services/{id_owner}/{id_service}")
 def studio_org_update_service(id_owner: str, id_service: str, payload: UpdateServicePayload, request: Request):
@@ -4493,11 +4576,11 @@ def studio_org_update_service(id_owner: str, id_service: str, payload: UpdateSer
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-
-                # admin only
                 studio_require_min_role(cur, u, oid, "admin")
 
-                if not _service_exists_active(cur, oid, sid):
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+
+                if not _service_exists_active(cur, scope_ent, sid):
                     raise HTTPException(status_code=404, detail="Service introuvable ou archivé.")
 
                 cols = []
@@ -4514,19 +4597,20 @@ def studio_org_update_service(id_owner: str, id_service: str, payload: UpdateSer
                     parent = (payload.id_service_parent or "").strip() or None
                     if parent == sid:
                         raise HTTPException(status_code=400, detail="Un service ne peut pas être son propre parent.")
-                    if parent and not _service_exists_active(cur, oid, parent):
+                    if parent and not _service_exists_active(cur, scope_ent, parent):
                         raise HTTPException(status_code=400, detail="Service parent introuvable ou archivé.")
 
-                    # anti-cycle simple : si le parent est un descendant du service
                     if parent:
                         cur.execute(
                             """
                             WITH RECURSIVE up AS (
                               SELECT id_service, id_service_parent
                               FROM public.tbl_entreprise_organigramme
-                              WHERE id_ent = %s AND id_service = %s
+                              WHERE id_ent = %s
+                                AND id_service = %s
 
                               UNION ALL
+
                               SELECT e.id_service, e.id_service_parent
                               FROM public.tbl_entreprise_organigramme e
                               JOIN up u ON u.id_service_parent = e.id_service
@@ -4537,7 +4621,7 @@ def studio_org_update_service(id_owner: str, id_service: str, payload: UpdateSer
                             WHERE id_service = %s
                             LIMIT 1
                             """,
-                            (oid, parent, oid, sid),
+                            (scope_ent, parent, scope_ent, sid),
                         )
                         if cur.fetchone():
                             raise HTTPException(status_code=400, detail="Cycle détecté dans l’organigramme.")
@@ -4546,7 +4630,7 @@ def studio_org_update_service(id_owner: str, id_service: str, payload: UpdateSer
                     vals.append(parent)
 
                 if cols:
-                    vals.extend([oid, sid])
+                    vals.extend([scope_ent, sid])
                     cur.execute(
                         f"""
                         UPDATE public.tbl_entreprise_organigramme
@@ -4565,7 +4649,7 @@ def studio_org_update_service(id_owner: str, id_service: str, payload: UpdateSer
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/services update error: {e}")
-
+    
 
 @router.post("/studio/org/services/{id_owner}/{id_service}/archive")
 def studio_org_archive_service(id_owner: str, id_service: str, request: Request):
@@ -4581,14 +4665,13 @@ def studio_org_archive_service(id_owner: str, id_service: str, request: Request)
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-
-                # admin only
                 studio_require_min_role(cur, u, oid, "admin")
 
-                if not _service_exists_active(cur, oid, sid):
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+
+                if not _service_exists_active(cur, scope_ent, sid):
                     raise HTTPException(status_code=404, detail="Service introuvable ou déjà archivé.")
 
-                # Archiver service
                 cur.execute(
                     """
                     UPDATE public.tbl_entreprise_organigramme
@@ -4597,10 +4680,9 @@ def studio_org_archive_service(id_owner: str, id_service: str, request: Request)
                       AND id_service = %s
                       AND COALESCE(archive, FALSE) = FALSE
                     """,
-                    (oid, sid),
+                    (scope_ent, sid),
                 )
 
-                # Détacher les postes rattachés (=> "Non lié")
                 cur.execute(
                     """
                     UPDATE public.tbl_fiche_poste
@@ -4609,10 +4691,9 @@ def studio_org_archive_service(id_owner: str, id_service: str, request: Request)
                       AND id_service = %s
                       AND COALESCE(actif, TRUE) = TRUE
                     """,
-                    (oid, sid),
+                    (scope_ent, sid),
                 )
 
-                # Détacher les collaborateurs rattachés (=> "Non lié")
                 cur.execute(
                     """
                     UPDATE public.tbl_effectif_client
@@ -4621,7 +4702,7 @@ def studio_org_archive_service(id_owner: str, id_service: str, request: Request)
                       AND id_service = %s
                       AND COALESCE(archive, FALSE) = FALSE
                     """,
-                    (oid, sid),
+                    (scope_ent, sid),
                 )
 
                 conn.commit()
@@ -4645,12 +4726,6 @@ def studio_org_list_postes(
     q: str = "",
     include_archived: int = 0,
 ):
-    """
-    service:
-      - "__all__" : tous les postes
-      - "__none__": postes non liés (id_service IS NULL)
-      - "<uuid>"  : postes rattachés au service
-    """
     auth = request.headers.get("Authorization", "")
     u = studio_require_user(auth)
 
@@ -4663,10 +4738,11 @@ def studio_org_list_postes(
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
 
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
                 inc_arch = int(include_archived or 0) == 1
 
                 where = ["p.id_owner = %s", "p.id_ent = %s"]
-                params = [oid, oid]
+                params = [oid, scope_ent]
 
                 if not inc_arch:
                     where.append("COALESCE(p.actif, TRUE) = TRUE")
@@ -4674,7 +4750,6 @@ def studio_org_list_postes(
                 if svc == "__none__":
                     where.append("p.id_service IS NULL")
                 elif svc == "__all__":
-                    # "Tous les services" = uniquement les postes rattachés à un service
                     where.append("p.id_service IS NOT NULL")
                 else:
                     where.append("p.id_service = %s")
@@ -4690,27 +4765,27 @@ def studio_org_list_postes(
                 cur.execute(
                     f"""
                     SELECT
-                    p.id_poste,
-                    p.codif_poste,
-                    p.codif_client,
-                    p.intitule_poste,
-                    p.id_service,
-                    COALESCE(p.actif, TRUE) AS actif,
-                    COALESCE(cnt.nb_collabs, 0) AS nb_collabs
+                      p.id_poste,
+                      p.codif_poste,
+                      p.codif_client,
+                      p.intitule_poste,
+                      p.id_service,
+                      COALESCE(p.actif, TRUE) AS actif,
+                      COALESCE(cnt.nb_collabs, 0) AS nb_collabs
                     FROM public.tbl_fiche_poste p
                     LEFT JOIN (
-                    SELECT e.id_poste_actuel AS id_poste, COUNT(1) AS nb_collabs
-                    FROM public.tbl_effectif_client e
-                    WHERE e.id_ent = %s
+                      SELECT e.id_poste_actuel AS id_poste, COUNT(1) AS nb_collabs
+                      FROM public.tbl_effectif_client e
+                      WHERE e.id_ent = %s
                         AND COALESCE(e.archive, FALSE) = FALSE
                         AND COALESCE(e.statut_actif, TRUE) = TRUE
                         AND e.id_poste_actuel IS NOT NULL
-                    GROUP BY e.id_poste_actuel
+                      GROUP BY e.id_poste_actuel
                     ) cnt ON cnt.id_poste = p.id_poste
                     WHERE {" AND ".join(where)}
                     ORDER BY COALESCE(p.codif_client, p.codif_poste), p.intitule_poste
                     """,
-                    tuple([oid] + params),
+                    tuple([scope_ent] + params),
                 )
                 rows = cur.fetchall() or []
 
@@ -4751,6 +4826,12 @@ def studio_org_poste_detail(id_owner: str, id_poste: str, request: Request):
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
 
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                poste_ent = _resolve_poste_ent(cur, oid, pid)
+
+                if poste_ent != scope_ent:
+                    raise HTTPException(status_code=404, detail="Poste introuvable pour cette structure.")
+
                 cur.execute(
                     """
                     SELECT
@@ -4764,7 +4845,6 @@ def studio_org_poste_detail(id_owner: str, id_poste: str, request: Request):
                       p.responsabilites,
                       p.date_maj,
 
-                      -- Contraintes
                       p.niveau_education_minimum,
                       p.nsf_groupe_code,
                       COALESCE(p.nsf_groupe_obligatoire, FALSE) AS nsf_groupe_obligatoire,
@@ -4775,7 +4855,6 @@ def studio_org_poste_detail(id_owner: str, id_poste: str, request: Request):
                       p.niveau_contrainte,
                       p.detail_contrainte,
 
-                      -- Paramétrage RH
                       COALESCE(pr.statut_poste, 'actif') AS statut_poste,
                       pr.date_debut_validite,
                       pr.date_fin_validite,
@@ -4786,7 +4865,6 @@ def studio_org_poste_detail(id_owner: str, id_poste: str, request: Request):
                       pr.param_rh_date_maj,
                       COALESCE(pr.param_rh_verrouille, FALSE) AS param_rh_verrouille,
                       pr.param_rh_commentaire
-
                     FROM public.tbl_fiche_poste p
                     LEFT JOIN public.tbl_nsf_groupe ng
                       ON ng.code = p.nsf_groupe_code
@@ -4798,7 +4876,7 @@ def studio_org_poste_detail(id_owner: str, id_poste: str, request: Request):
                       AND p.id_poste = %s
                     LIMIT 1
                     """,
-                    (oid, oid, pid),
+                    (oid, poste_ent, pid),
                 )
                 r = cur.fetchone()
                 if not r:
@@ -4855,7 +4933,6 @@ def studio_org_create_poste(id_owner: str, payload: CreatePosteOrgPayload, reque
         if not sid:
             raise HTTPException(status_code=400, detail="Service obligatoire.")
 
-        # Code interne: auto uniquement (on ignore toute saisie)
         codif = None
         cod_cli = (payload.codif_client or "").strip() or None
         mission = (payload.mission_principale or "").strip() or None
@@ -4884,10 +4961,12 @@ def studio_org_create_poste(id_owner: str, payload: CreatePosteOrgPayload, reque
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
 
-                if not _service_exists_active(cur, oid, sid):
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+
+                if not _service_exists_active(cur, scope_ent, sid):
                     raise HTTPException(status_code=400, detail="Service introuvable ou archivé.")
 
-                codif = _next_pt_code(cur, oid, oid)
+                codif = _next_pt_code(cur, oid, scope_ent)
 
                 if nsf_code and not _nsf_groupe_exists_active(cur, nsf_code):
                     raise HTTPException(status_code=400, detail="Domaine NSF introuvable ou masqué.")
@@ -4901,8 +4980,6 @@ def studio_org_create_poste(id_owner: str, payload: CreatePosteOrgPayload, reque
                        codif_poste, codif_client, intitule_poste,
                        mission_principale, responsabilites,
                        actif, date_maj,
-
-                       -- Contraintes
                        niveau_education_minimum,
                        nsf_groupe_code,
                        nsf_groupe_obligatoire,
@@ -4916,14 +4993,12 @@ def studio_org_create_poste(id_owner: str, payload: CreatePosteOrgPayload, reque
                        %s, %s, %s,
                        %s, %s,
                        TRUE, NOW(),
-
                        %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
-                        pid, oid, oid, sid,
+                        pid, oid, scope_ent, sid,
                         codif, cod_cli, title,
                         mission, resp,
-
                         edu_min,
                         nsf_code,
                         nsf_oblig,
@@ -4987,7 +5062,6 @@ def studio_org_create_poste(id_owner: str, payload: CreatePosteOrgPayload, reque
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/postes create error: {e}")
 
-
 @router.post("/studio/org/postes/{id_owner}/{id_poste}")
 def studio_org_update_poste(id_owner: str, id_poste: str, payload: UpdatePosteOrgPayload, request: Request):
     auth = request.headers.get("Authorization", "")
@@ -5001,10 +5075,10 @@ def studio_org_update_poste(id_owner: str, id_poste: str, payload: UpdatePosteOr
         patch_fields = payload.__fields_set__ or set()
         if not patch_fields:
             return {"ok": True}
-        
+
         if "codif_poste" in patch_fields:
             raise HTTPException(status_code=400, detail="Le code interne est généré automatiquement et ne peut pas être modifié.")
-        
+
         rh_patch_fields = {
             "statut_poste",
             "date_debut_validite",
@@ -5022,7 +5096,13 @@ def studio_org_update_poste(id_owner: str, id_poste: str, payload: UpdatePosteOr
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
 
-                if not _poste_exists(cur, oid, oid, pid):
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                poste_ent = _resolve_poste_ent(cur, oid, pid)
+
+                if poste_ent != scope_ent:
+                    raise HTTPException(status_code=404, detail="Poste introuvable pour cette structure.")
+
+                if not _poste_exists(cur, oid, poste_ent, pid):
                     raise HTTPException(status_code=404, detail="Poste introuvable.")
 
                 cols = []
@@ -5033,7 +5113,7 @@ def studio_org_update_poste(id_owner: str, id_poste: str, payload: UpdatePosteOr
                     sid = _norm_service_id(payload.id_service)
                     if not sid:
                         raise HTTPException(status_code=400, detail="Service obligatoire.")
-                    if not _service_exists_active(cur, oid, sid):
+                    if not _service_exists_active(cur, poste_ent, sid):
                         raise HTTPException(status_code=400, detail="Service introuvable ou archivé.")
                     cols.append("id_service = %s")
                     vals.append(sid)
@@ -5104,7 +5184,7 @@ def studio_org_update_poste(id_owner: str, id_poste: str, payload: UpdatePosteOr
 
                 if cols:
                     cols.append("date_maj = NOW()")
-                    vals.extend([pid, oid, oid])
+                    vals.extend([pid, oid, poste_ent])
                     cur.execute(
                         f"""
                         UPDATE public.tbl_fiche_poste
@@ -5214,7 +5294,13 @@ def studio_org_archive_poste(id_owner: str, id_poste: str, payload: ArchivePoste
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
 
-                if not _poste_exists(cur, oid, oid, pid):
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                poste_ent = _resolve_poste_ent(cur, oid, pid)
+
+                if poste_ent != scope_ent:
+                    raise HTTPException(status_code=404, detail="Poste introuvable pour cette structure.")
+
+                if not _poste_exists(cur, oid, poste_ent, pid):
                     raise HTTPException(status_code=404, detail="Poste introuvable.")
 
                 cur.execute(
@@ -5225,7 +5311,7 @@ def studio_org_archive_poste(id_owner: str, id_poste: str, payload: ArchivePoste
                       AND id_owner = %s
                       AND id_ent = %s
                     """,
-                    (set_actif, pid, oid, oid),
+                    (set_actif, pid, oid, poste_ent),
                 )
                 conn.commit()
 
@@ -5255,6 +5341,12 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
 
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                poste_ent = _resolve_poste_ent(cur, oid, pid)
+
+                if poste_ent != scope_ent:
+                    raise HTTPException(status_code=404, detail="Poste introuvable pour cette structure.")
+
                 cur.execute(
                     """
                     SELECT
@@ -5264,7 +5356,6 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                       p.mission_principale,
                       p.responsabilites,
 
-                      -- Contraintes
                       p.niveau_education_minimum,
                       p.nsf_groupe_code,
                       COALESCE(p.nsf_groupe_obligatoire, FALSE) AS nsf_groupe_obligatoire,
@@ -5274,7 +5365,6 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                       p.niveau_contrainte,
                       p.detail_contrainte,
 
-                      -- Paramétrage RH
                       COALESCE(pr.statut_poste, 'actif') AS statut_poste,
                       pr.date_debut_validite,
                       pr.date_fin_validite,
@@ -5283,7 +5373,6 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                       COALESCE(pr.strategie_pourvoi, 'mixte') AS strategie_pourvoi,
                       COALESCE(pr.param_rh_verrouille, FALSE) AS param_rh_verrouille,
                       pr.param_rh_commentaire
-
                     FROM public.tbl_fiche_poste p
                     LEFT JOIN public.tbl_fiche_poste_param_rh pr
                       ON pr.id_poste = p.id_poste
@@ -5292,7 +5381,7 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                       AND p.id_ent = %s
                     LIMIT 1
                     """,
-                    (pid, oid, oid),
+                    (pid, oid, poste_ent),
                 )
                 src = cur.fetchone()
                 if not src:
@@ -5301,11 +5390,11 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                 sid = target_sid or (src.get("id_service") or "").strip()
                 if not sid:
                     raise HTTPException(status_code=400, detail="Service obligatoire.")
-                if not _service_exists_active(cur, oid, sid):
+                if not _service_exists_active(cur, poste_ent, sid):
                     raise HTTPException(status_code=400, detail="Service introuvable ou archivé.")
 
                 new_id = str(uuid.uuid4())
-                new_code = _next_pt_code(cur, oid, oid)
+                new_code = _next_pt_code(cur, oid, poste_ent)
 
                 cur.execute(
                     """
@@ -5314,8 +5403,6 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                        codif_poste, codif_client, intitule_poste,
                        mission_principale, responsabilites,
                        actif, date_maj,
-
-                       -- Contraintes
                        niveau_education_minimum,
                        nsf_groupe_code,
                        nsf_groupe_obligatoire,
@@ -5329,20 +5416,18 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                        %s, %s, %s,
                        %s, %s,
                        TRUE, NOW(),
-
                        %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         new_id,
                         oid,
-                        oid,
+                        poste_ent,
                         sid,
                         new_code,
                         src.get("codif_client"),
                         src.get("intitule_poste"),
                         src.get("mission_principale"),
                         src.get("responsabilites"),
-
                         src.get("niveau_education_minimum"),
                         src.get("nsf_groupe_code"),
                         bool(src.get("nsf_groupe_obligatoire")),
@@ -5353,6 +5438,7 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                         src.get("detail_contrainte"),
                     ),
                 )
+
                 cur.execute(
                     """
                     INSERT INTO public.tbl_fiche_poste_param_rh
@@ -5405,12 +5491,10 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/postes duplicate error: {e}")
+    
 
 @router.get("/studio/org/postes_catalogue/{id_owner}")
 def studio_org_list_postes_catalogue(id_owner: str, request: Request, q: str = ""):
-    """
-    Catalogue V1 = postes existants non liés (id_service IS NULL).
-    """
     auth = request.headers.get("Authorization", "")
     u = studio_require_user(auth)
 
@@ -5422,8 +5506,10 @@ def studio_org_list_postes_catalogue(id_owner: str, request: Request, q: str = "
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
 
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+
                 where = ["p.id_ent = %s", "COALESCE(p.actif, TRUE) = TRUE", "p.id_service IS NULL"]
-                params = [oid]
+                params = [scope_ent]
 
                 if qq:
                     where.append(
@@ -5471,11 +5557,11 @@ def studio_org_assign_poste(id_owner: str, payload: AssignPostePayload, request:
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-
-                # admin only (page organisation admin-only)
                 studio_require_min_role(cur, u, oid, "admin")
 
-                if not _service_exists_active(cur, oid, sid):
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+
+                if not _service_exists_active(cur, scope_ent, sid):
                     raise HTTPException(status_code=400, detail="Service introuvable ou archivé.")
 
                 cur.execute(
@@ -5487,7 +5573,7 @@ def studio_org_assign_poste(id_owner: str, payload: AssignPostePayload, request:
                       AND COALESCE(actif, TRUE) = TRUE
                     LIMIT 1
                     """,
-                    (pid, oid),
+                    (pid, scope_ent),
                 )
                 if cur.fetchone() is None:
                     raise HTTPException(status_code=404, detail="Poste introuvable ou inactif.")
@@ -5500,7 +5586,7 @@ def studio_org_assign_poste(id_owner: str, payload: AssignPostePayload, request:
                       AND id_ent = %s
                       AND COALESCE(actif, TRUE) = TRUE
                     """,
-                    (sid, pid, oid),
+                    (sid, pid, scope_ent),
                 )
                 conn.commit()
 
@@ -5526,9 +5612,9 @@ def studio_org_detach_poste(id_owner: str, payload: DetachPostePayload, request:
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-
-                # admin only
                 studio_require_min_role(cur, u, oid, "admin")
+
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
 
                 cur.execute(
                     """
@@ -5538,7 +5624,7 @@ def studio_org_detach_poste(id_owner: str, payload: DetachPostePayload, request:
                       AND id_ent = %s
                       AND COALESCE(actif, TRUE) = TRUE
                     """,
-                    (pid, oid),
+                    (pid, scope_ent),
                 )
                 conn.commit()
 
