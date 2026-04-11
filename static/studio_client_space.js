@@ -6718,33 +6718,42 @@ body {
             });
         }
 
-        byId("btnCloseService").addEventListener("click", () => closeModal("modalService"));
-        byId("btnCancelService").addEventListener("click", () => closeModal("modalService"));
-        byId("btnSaveService").addEventListener("click", async () => {
-        try { await saveService(portal); }
-        catch (e) { portal.showAlert("error", e?.message || String(e)); }
+        const bindIf = (id, eventName, handler) => {
+            const el = byId(id);
+            if (el) el.addEventListener(eventName, handler);
+        };
+
+        bindIf("btnCloseService", "click", () => closeModal("modalService"));
+        bindIf("btnCancelService", "click", () => closeModal("modalService"));
+        bindIf("btnSaveService", "click", async () => {
+            try { await saveService(portal); }
+            catch (e) { portal.showAlert("error", e?.message || String(e)); }
         });
 
-        byId("btnCloseArchive").addEventListener("click", () => closeModal("modalArchive"));
-        byId("btnCancelArchive").addEventListener("click", () => closeModal("modalArchive"));
-        byId("btnConfirmArchive").addEventListener("click", async () => {
-        try { await confirmArchiveService(portal); }
-        catch (e) { portal.showAlert("error", e?.message || String(e)); }
+        bindIf("btnCloseArchive", "click", () => closeModal("modalArchive"));
+        bindIf("btnCancelArchive", "click", () => closeModal("modalArchive"));
+        bindIf("btnConfirmArchive", "click", async () => {
+            try { await confirmArchiveService(portal); }
+            catch (e) { portal.showAlert("error", e?.message || String(e)); }
         });
 
         // Catalogue modal
-        byId("btnAddFromCatalog").addEventListener("click", () => {
+        bindIf("btnAddFromCatalog", "click", () => {
             try { openCreatePosteModal(portal); }
             catch (e) { portal.showAlert("error", e?.message || String(e)); }
         });
 
-        byId("btnCloseCatalog").addEventListener("click", () => closeModal("modalCatalog"));
+        bindIf("btnCloseCatalog", "click", () => closeModal("modalCatalog"));
+        bindIf("btnCatalogCancel", "click", () => closeModal("modalCatalog"));
+
         const cs = byId("catalogSearch");
-        cs.addEventListener("input", () => {
-        _catalogSearch = (cs.value || "").trim();
-        if (_catalogTimer) clearTimeout(_catalogTimer);
-        _catalogTimer = setTimeout(() => loadCatalog(portal).catch(() => {}), 250);
-        });
+        if (cs){
+            cs.addEventListener("input", () => {
+                _catalogSearch = (cs.value || "").trim();
+                if (_catalogTimer) clearTimeout(_catalogTimer);
+                _catalogTimer = setTimeout(() => loadCatalog(portal).catch(() => {}), 250);
+            });
+        }
 
         // Modal Poste: close / cancel / backdrop / tabs
         byId("btnClosePoste")?.addEventListener("click", (e) => {

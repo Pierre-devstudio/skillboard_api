@@ -690,66 +690,1103 @@
                   <div class="card-title" style="margin-bottom:2px;">Ajouter depuis le catalogue</div>
                   <div class="card-sub" style="margin:0;">Sélectionnez une fiche de poste à ajouter au service courant.</div>
                 </div>
-                <button type="button" class="sb-icon-btn" id="btnCloseCatalog" aria-label="Fermer">✕</button>
+                <button type="button" class="sb-modal-x" id="btnCloseCatalog" aria-label="Fermer">&times;</button>
+              </div>
+
+              <div class="sb-modal-body">
+                <div class="sb-modal-search">
+                  <input type="text" id="catalogSearch" placeholder="Rechercher (code ou intitulé) …" />
+                </div>
+                <div class="sb-stack sb-stack--xxs sb-mt-10" id="catalogList"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL : Poste (create/edit/archive/duplicate) -->
+          <div class="sb-modal" id="modalPoste" style="display:none;">
+            <div class="sb-modal-card" data-id-poste="">
+
+              <div class="sb-modal-head">
+                <div style="min-width:0; flex:1;">
+                  <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                    <span id="posteModalBadge" class="sb-badge sb-badge--poste" style="display:none;"></span>
+                    <div class="card-title" id="posteModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Poste</div>
+                  </div>
+                  <div class="card-sub" id="posteModalSub" style="margin:4px 0 0 0;">—</div>
+
+                  <div class="sb-segbar" id="posteTabbar" style="margin-top:10px;">
+                    <button type="button" class="sb-btn sb-btn--soft" data-tab="def">Définition</button>
+                    <button type="button" class="sb-btn sb-btn--soft" data-tab="exi">Exigences</button>
+                    <button type="button" class="sb-btn sb-btn--soft" data-tab="rh">Paramétrage RH</button>
+                  </div>
+                </div>
+
+                <button type="button" class="sb-modal-x" id="btnClosePoste" aria-label="Fermer">&times;</button>
+              </div>
+
+              <div class="sb-modal-body">
+                <!-- Définition -->
+                <div class="sb-tab-panel is-active" data-panel="def">
+                  <div class="row">
+                    <div class="info-item" style="flex:2; min-width:260px;">
+                      <div class="label">Attaché au service</div>
+                      <select id="posteService"></select>
+                    </div>
+
+                    <div class="info-item" style="flex:1; min-width:220px;">
+                      <div class="label">Code client</div>
+                      <input type="text" id="posteCodifClient" />
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="info-item" style="flex:3; min-width:260px;">
+                      <div class="label">Intitulé du poste</div>
+                      <input type="text" id="posteIntitule" />
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="info-item" style="flex:3; min-width:260px;">
+                      <div class="label">Mission principale</div>
+                      <textarea id="posteMission" rows="2"></textarea>
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="info-item" style="flex:3; min-width:260px;">
+                      <div class="label">Responsabilités</div>
+                      <div class="sb-richtext" data-rt="posteResp">
+                        <div class="sb-richtext-bar">
+                          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="bold" title="Gras"><b>G</b></button>
+                          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="italic" title="Italique"><i>I</i></button>
+                          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="underline" title="Souligner"><u>S</u></button>
+                          <span class="sb-richtext-sep"></span>
+                          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="insertUnorderedList" title="Liste à puces">• Liste</button>
+                          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="insertOrderedList" title="Liste numérotée">1. Liste</button>
+                          <span class="sb-richtext-sep"></span>
+                          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="removeFormat" title="Nettoyer">Nettoyer</button>
+                        </div>
+
+                        <div class="sb-richtext-editor" id="posteResp" contenteditable="true"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Exigences -->
+                <div class="sb-tab-panel" data-panel="exi">
+                  <div class="card org-bloc" id="posteBlocContraintes">
+                    <div class="card-title">Contraintes</div>
+
+                    <div class="sb-form-grid">
+                      <div class="sb-field">
+                        <div class="label">Niveau d’étude minimum requis</div>
+                        <select id="posteCtrEduMin"></select>
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="label">Domaine du diplôme (NSF)</div>
+                        <select id="posteCtrNsfGroupe"></select>
+                      </div>
+
+                      <div class="sb-field sb-span-2">
+                        <label class="sb-check">
+                          <input type="checkbox" id="posteCtrNsfOblig" />
+                          <span>Correspondance du diplôme impérative</span>
+                        </label>
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="label">Mobilité</div>
+                        <select id="posteCtrMobilite"></select>
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="label">Risques physiques</div>
+                        <select id="posteCtrRisquePhys"></select>
+                        <div class="sb-help" id="posteCtrRisquePhysHelp" style="display:none;"></div>
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="label">Perspectives d’évolution</div>
+                        <select id="posteCtrPerspEvol"></select>
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="label">Niveau de contraintes</div>
+                        <select id="posteCtrNivContrainte"></select>
+                        <div class="sb-help" id="posteCtrNivContrainteHelp" style="display:none;"></div>
+                      </div>
+
+                      <div class="sb-field sb-span-2">
+                        <div class="label">Détails des contraintes</div>
+                        <textarea id="posteCtrDetailContrainte" class="sb-ctrl sb-textarea--compact" rows="4"></textarea>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="card org-bloc" id="posteBlocCompetences" style="margin-top:12px;">
+                    <div class="sb-block-head">
+                      <div class="card-title" style="margin:0;">Compétences requises</div>
+
+                      <div class="sb-toolbar sb-toolbar--nowrap">
+                        <div class="sb-search sb-search--inline">
+                          <input type="text" id="posteCompSearch" placeholder="Code ou intitulé…" />
+                        </div>
+
+                        <button type="button" class="sb-btn sb-btn--ai sb-btn--xs" id="btnPosteCompAi">Rechercher avec l’IA</button>
+                        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteCompAdd">Ajouter</button>
+                      </div>
+                    </div>
+
+                    <div class="table-wrap" style="margin-top:14px;">
+                      <table class="sb-table" id="posteCompTable">
+                        <thead>
+                          <tr>
+                            <th>Compétence</th>
+                            <th style="width:150px; text-align:center;">Niveau requis</th>
+                            <th style="width:120px; text-align:center;">Criticité</th>
+                            <th style="width:96px; text-align:center;">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody id="posteCompTbody"></tbody>
+                      </table>
+
+                      <div class="card-sub" id="posteCompEmpty" style="margin-top:8px; display:none;">
+                        Aucune compétence rattachée à ce poste.
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="card org-bloc" id="posteBlocCertifications" style="margin-top:10px;">
+                    <div class="sb-block-head">
+                      <div class="card-title" style="margin:0;">Certification/Habilitations requises</div>
+
+                      <div class="sb-toolbar sb-toolbar--nowrap">
+                        <div class="sb-search sb-search--inline">
+                          <input type="text" id="posteCertSearch" placeholder="Nom ou catégorie…" />
+                        </div>
+
+                        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteCertAdd">Ajouter</button>
+                      </div>
+                    </div>
+
+                    <div class="table-wrap" style="margin-top:14px;">
+                      <table class="sb-table" id="posteCertTable">
+                        <thead>
+                          <tr>
+                            <th style="width:170px;">Catégorie</th>
+                            <th>Certification</th>
+                            <th style="width:130px; text-align:center;">Validité</th>
+                            <th style="width:130px; text-align:center;">Exigence</th>
+                            <th style="width:96px; text-align:center;">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody id="posteCertTbody"></tbody>
+                      </table>
+                      <div class="card-sub" id="posteCertEmpty" style="margin-top:8px; display:none;">
+                        Aucune certification rattachée à ce poste.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                
+
+                <!-- Paramétrage RH -->
+                <div class="sb-tab-panel" data-panel="rh">
+                  <div class="card org-bloc" id="posteBlocRh">
+                    <div class="card-title">Paramétrage RH</div>
+                    <div class="card-sub" style="margin:4px 0 0 0;">
+                      Paramètres métier du poste. Le verrouillage est indicatif seulement.
+                    </div>
+
+                    <div class="sb-form-grid" style="margin-top:10px;">
+                      <div class="sb-field">
+                        <div class="label">Statut du poste</div>
+                        <select id="posteRhStatut"></select>
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="label">Stratégie de pourvoi</div>
+                        <select id="posteRhStrategie"></select>
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="label">Début de validité</div>
+                        <input type="date" id="posteRhDateDebut" class="sb-date" />
+                      </div>
+
+                      <div class="sb-field" id="posteRhDateFinWrap">
+                        <div class="label">Fin de validité</div>
+                        <input type="date" id="posteRhDateFin" class="sb-date" />
+                        <div class="sb-help">Utilisée surtout pour les statuts Gelé / Temporaire.</div>
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="label">Nb titulaires cible</div>
+                        <div class="sb-stepper">
+                          <button type="button" class="sb-stepper-btn" data-stepper-target="posteRhNbTitulaires" data-stepper-delta="-1" aria-label="Diminuer le nombre de titulaires cible">−</button>
+                          <input type="number" id="posteRhNbTitulaires" min="1" step="1" inputmode="numeric" />
+                          <button type="button" class="sb-stepper-btn" data-stepper-target="posteRhNbTitulaires" data-stepper-delta="1" aria-label="Augmenter le nombre de titulaires cible">+</button>
+                        </div>
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="label">Criticité du poste</div>
+                        <select id="posteRhCriticite"></select>
+                        <div class="sb-help" id="posteRhCriticiteHelp"></div>
+                      </div>
+
+                      <div class="sb-field sb-span-2">
+                        <label class="sb-check">
+                          <input type="checkbox" id="posteRhVerrouille" />
+                          <span>Paramétrage RH verrouillé (indication seulement)</span>
+                        </label>
+                        <div class="sb-help" style="margin-top:6px;">
+                          Cette case n’empêche pas la modification dans Studio. Elle sert à signaler qu’il vaut mieux éviter d’y retoucher.
+                        </div>
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="label">Source</div>
+                        <input type="text" id="posteRhSource" readonly />
+                      </div>
+
+                      <div class="sb-field">
+                        <div class="label">Dernière mise à jour</div>
+                        <input type="text" id="posteRhDateMaj" readonly />
+                      </div>
+
+                      <div class="sb-field sb-span-2">
+                        <div class="label">Commentaire RH</div>
+                        <textarea id="posteRhCommentaire" rows="4" placeholder="Commentaire interne sur le paramétrage RH du poste"></textarea>
+                      </div>
+
+                      <div class="card org-bloc sb-span-2" id="posteBlocCcn" style="margin-top:10px;">
+                        <div class="sb-block-head">
+                          <div>
+                            <div class="card-title" style="margin:0;">Cotation conventionnelle</div>
+                            <div class="card-sub" id="posteCcnSub" style="margin:4px 0 0 0;">
+                              Assistant dédié à la cotation de l’emploi selon la convention collective détectée.
+                            </div>
+                          </div>
+
+                          <div class="sb-actions">
+                            <button type="button" class="sb-btn sb-btn--doc" id="btnPosteCcnOpen">Assistant cotation conventionnelle</button>
+                          </div>
+                        </div>
+
+                        <div class="sb-form-grid" style="margin-top:10px;">
+                          <div class="sb-field">
+                            <div class="label">Convention détectée</div>
+                            <input type="text" id="posteCcnConvention" readonly />
+                          </div>
+
+                          <div class="sb-field">
+                            <div class="label">Statut</div>
+                            <input type="text" id="posteCcnStatus" class="sb-ccn-topval" readonly />
+                          </div>
+
+                          <div class="sb-field">
+                            <div class="label">Coefficient / palier retenu</div>
+                            <input type="text" id="posteCcnResult" readonly />
+                          </div>
+
+                          <div class="sb-field">
+                            <div class="label">Catégorie retenue</div>
+                            <input type="text" id="posteCcnCategory" readonly />
+                          </div>
+
+                          <div class="sb-field sb-span-2">
+                            <div class="label">Synthèse</div>
+                            <textarea id="posteCcnSummary" class="sb-textarea--compact sb-ccn-text" rows="4" readonly></textarea>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sb-modal-foot">
+                <div class="sb-actions" style="width:100%; justify-content:space-between;">
+                  <div class="sb-actions">
+                    <button type="button" class="sb-btn sb-btn--danger-soft" id="btnPosteArchive">Archiver</button>
+                    <button type="button" class="sb-btn sb-btn--secondary" id="btnPosteDuplicate">Dupliquer</button>
+                  </div>
+                  <div class="sb-actions">
+                    <button type="button" class="sb-btn sb-btn--doc" id="btnPosteImport">Importer</button>
+                    <button type="button" class="sb-btn sb-btn--ai" id="btnPosteAi">Générer avec l’IA</button>
+                    <button type="button" class="sb-btn sb-btn--accent" id="btnPosteSave">Enregistrer</button>
+                    <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCancel">Annuler</button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- MODAL : Import documentaire fiche de poste -->
+          <div class="sb-modal" id="modalPosteImport" style="display:none;">
+            <div class="sb-modal-card">
+              <div class="sb-modal-head">
+                <div>
+                  <div class="card-title" style="margin:0;">Importer une fiche de poste</div>
+                  <div class="card-sub" style="margin:4px 0 0 0;">
+                    Charge un document existant (.doc, .docx, .pdf), puis valide le lancement de l’analyse.
+                  </div>
+                </div>
+                <button type="button" class="sb-modal-x" id="btnClosePosteImport" aria-label="Fermer">×</button>
+              </div>
+
+              <div class="sb-modal-body">
+                <input type="file" id="posteImportFileInput" accept=".doc,.docx,.pdf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden />
+
+                <div class="sb-dropzone" id="posteImportDropzone" tabindex="0">
+                  <div class="sb-dropzone__title">Déposer un document ici</div>
+                  <div class="sb-dropzone__sub">ou cliquer pour parcourir votre explorateur</div>
+                  <div class="sb-help" style="margin-top:10px;">Formats acceptés : .doc, .docx, .pdf</div>
+                </div>
+
+                <div class="sb-file-card" id="posteImportFileCard" style="display:none; margin-top:12px;">
+                  <div class="sb-file-card__main">
+                    <div class="sb-file-card__name" id="posteImportFileName">—</div>
+                    <div class="sb-file-card__meta" id="posteImportFileMeta">—</div>
+                  </div>
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnPosteImportChange">Changer</button>
+                </div>
+
+                <div class="card-sub" id="posteImportEmpty" style="margin:12px 0 0 0;">
+                  Aucun document sélectionné.
+                </div>
+              </div>
+
+              <div class="sb-modal-foot">
+                <button type="button" class="sb-btn sb-btn--doc" id="btnPosteImportAnalyze" disabled>Lancer l’analyse</button>
+                <button type="button" class="sb-btn sb-btn--soft" id="btnPosteImportCancel">Annuler</button>
+              </div>
+            </div>
+          </div>
+
+            <!-- MODAL : IA – brouillon fiche de poste -->
+          <div class="sb-modal" id="modalPosteAi" style="display:none;">
+            <div class="sb-modal-card">
+              <div class="sb-modal-head">
+                <div>
+                  <div class="card-title" id="posteAiTitle" style="margin:0;">Générer une fiche de poste avec l’IA</div>
+                  <div class="card-sub" id="posteAiSub" style="margin:4px 0 0 0;">
+                    L’IA propose un brouillon exploitable à partir de tes éléments et d’une recherche web.
+                  </div>
+                </div>
+                <button type="button" class="sb-modal-x" id="btnPosteAiX" aria-label="Fermer">×</button>
+              </div>
+
+              <div class="sb-modal-body">
+                <div class="row">
+                  <div class="info-item" style="flex:1; min-width:260px;">
+                    <div class="label">Intitulé du poste</div>
+                    <input type="text" id="posteAiIntitule" placeholder="Ex: Responsable paie" />
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="info-item" style="flex:1; min-width:260px;">
+                    <div class="label">Contexte du poste</div>
+                    <textarea id="posteAiContexte" rows="3" placeholder="Entreprise, service, objectifs, enjeux, périmètre..."></textarea>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="info-item" style="flex:1; min-width:260px;">
+                    <div class="label">Tâches à réaliser</div>
+                    <textarea id="posteAiTaches" rows="5" placeholder="Décris les missions, livrables, tâches quotidiennes ou périodiques..."></textarea>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="info-item" style="flex:1; min-width:260px;">
+                    <div class="label">Outils informatiques / logiciels</div>
+                    <textarea id="posteAiOutils" rows="3" placeholder="Ex: Silae, Excel avancé, ERP, ATS, Power BI..."></textarea>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="info-item" style="flex:1; min-width:260px;">
+                    <div class="label">Environnement de travail</div>
+                    <textarea id="posteAiEnvironnement" rows="3" placeholder="Ex: travail multi-sites, production, open space, terrain, horaires décalés..."></textarea>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="info-item" style="flex:1; min-width:260px;">
+                    <div class="label">Interactions clés</div>
+                    <textarea id="posteAiInteractions" rows="3" placeholder="Ex: managers, clients, fournisseurs, équipes support, direction..."></textarea>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="info-item" style="flex:1; min-width:260px;">
+                    <div class="label">Contraintes / points de vigilance</div>
+                    <textarea id="posteAiContraintes" rows="3" placeholder="Ex: confidentialité, cadence, déplacements, exigences réglementaires, risques physiques..."></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sb-modal-foot">
+                <button type="button" class="sb-btn sb-btn--accent" id="btnPosteAiGenerate">Générer</button>
+                <button type="button" class="sb-btn sb-btn--soft" id="btnPosteAiCancel">Annuler</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL : Assistant cotation conventionnel -->
+          <div class="sb-modal" id="modalPosteCcn" style="display:none;">
+            <div class="sb-modal-card">
+              <div class="sb-modal-head">
+                <div>
+                  <div class="card-title" style="margin:0;">Assistant cotation conventionnelle</div>
+                  <div class="card-sub" id="posteCcnModalSub" style="margin:4px 0 0 0;">
+                    Proposition IA de cotation sur la base de la fiche de poste et du référentiel conventionnel national.
+                  </div>
+                </div>
+                <button type="button" class="sb-modal-x" id="btnPosteCcnX" aria-label="Fermer">×</button>
+              </div>
+
+              <div class="sb-modal-body">
+                <div class="sb-form-grid">
+                  <div class="sb-field">
+                    <div class="label">Convention</div>
+                    <input type="text" id="posteCcnModalConvention" readonly />
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Version référentiel</div>
+                    <input type="text" id="posteCcnModalVersion" readonly />
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Poste</div>
+                    <input type="text" id="posteCcnModalPoste" readonly />
+                  </div>
+
+                  <div class="sb-field">
+                    <div class="label">Service</div>
+                    <input type="text" id="posteCcnModalService" readonly />
+                  </div>
+
+                  <div class="sb-field sb-span-2">
+                    <div class="label">Base d’analyse</div>
+                    <textarea id="posteCcnModalBase" class="sb-textarea--compact sb-ccn-text" rows="3" readonly></textarea>
+                  </div>
+                </div>
+
+                <div class="card org-bloc" style="margin-top:12px;">
+                  <div class="sb-block-head">
+                    <div>
+                      <div class="card-title" style="margin:0;">Proposition IA</div>
+                      <div class="card-sub" style="margin:4px 0 0 0;">
+                        La proposition repose sur les critères classants applicables et la grille de l’IDCC supporté.
+                      </div>
+                    </div>
+
+                    <div class="sb-actions">
+                      <button type="button" class="sb-btn sb-btn--ai" id="btnPosteCcnAnalyze">Lancer l’analyse</button>
+                      <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCcnReuse">Reprendre la proposition IA</button>
+                    </div>
+                  </div>
+
+                  <div class="sb-kpi-grid" style="margin-top:12px;">
+                    <div class="sb-kpi-card">
+                      <div class="sb-kpi-label">Coefficient proposé</div>
+                      <div class="sb-kpi-value" id="posteCcnPropCoeff">—</div>
+                    </div>
+                    <div class="sb-kpi-card">
+                      <div class="sb-kpi-label">Palier proposé</div>
+                      <div class="sb-kpi-value" id="posteCcnPropPalier">—</div>
+                    </div>
+                    <div class="sb-kpi-card">
+                      <div class="sb-kpi-label">Catégorie proposée</div>
+                      <div class="sb-kpi-value" id="posteCcnPropCategorie">—</div>
+                    </div>
+                    <div class="sb-kpi-card">
+                      <div class="sb-kpi-label">Points calculés</div>
+                      <div class="sb-kpi-value" id="posteCcnPropPoints">—</div>
+                    </div>
+                  </div>
+
+                  <div class="sb-field" style="margin-top:12px;">
+                    <div class="label">Synthèse de cotation</div>
+                    <textarea id="posteCcnPropResume" class="sb-textarea--compact sb-ccn-text" rows="2" readonly></textarea>
+                  </div>
+
+                  <div class="sb-field" style="margin-top:10px;">
+                    <div class="label">Justification IA</div>
+                    <textarea id="posteCcnPropJustification" class="sb-textarea--compact sb-ccn-text" rows="7" readonly></textarea>
+                  </div>
+
+                  <div class="table-wrap" style="margin-top:12px;">
+                    <table class="sb-table sb-ccn-table" id="posteCcnCriteriaTable">
+                      <thead>
+                        <tr>
+                          <th>Critère / bonification</th>
+                          <th style="width:90px; text-align:center;">Niveau</th>
+                          <th style="width:90px; text-align:center;">Points</th>
+                          <th>Justification</th>
+                        </tr>
+                      </thead>
+                      <tbody id="posteCcnCriteriaTbody"></tbody>
+                    </table>
+                    <div class="card-sub" id="posteCcnCriteriaEmpty" style="margin-top:8px;">
+                      Aucune analyse réalisée pour le moment.
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card org-bloc" style="margin-top:12px;">
+                  <div class="card-title" style="margin:0;">Décision RH</div>
+                  <div class="card-sub" style="margin:4px 0 0 0;">
+                    La cotation retenue peut être ajustée avant enregistrement.
+                  </div>
+
+                  <div class="sb-form-grid" style="margin-top:10px;">
+                    <div class="sb-field">
+                      <div class="label">Coefficient retenu</div>
+                      <input type="number" id="posteCcnFinalCoefficient" min="1" step="1" />
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="label">Palier retenu</div>
+                      <input type="text" id="posteCcnFinalPalier" readonly />
+                    </div>
+
+                    <div class="sb-field">
+                      <div class="label">Catégorie retenue</div>
+                      <input type="text" id="posteCcnFinalCategorie" readonly />
+                    </div>
+
+                    <div class="sb-field sb-span-2">
+                      <div class="label">Justification retenue / commentaire RH</div>
+                      <textarea id="posteCcnFinalJustification" class="sb-textarea--compact sb-ccn-text" rows="6" placeholder="Ajuste la justification ou ajoute l'arbitrage RH."></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sb-modal-foot">
+                <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCcnSave">Enregistrer la cotation</button>
+                <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCcnCancel">Fermer</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL : IA – recherche compétences poste -->
+          <div class="sb-modal" id="modalPosteCompAi" style="display:none;">
+            <div class="sb-modal-card">
+              <div class="sb-modal-head">
+                <div>
+                  <div class="card-title" style="margin:0;">Rechercher les compétences avec l’IA</div>
+                  <div class="card-sub" style="margin:4px 0 0 0;">
+                    Analyse du poste + recherche web + rapprochement avec ton catalogue de compétences.
+                  </div>
+                </div>
+                <button type="button" class="sb-modal-x" id="btnPosteCompAiX" aria-label="Fermer">×</button>
+              </div>
+
+              <div class="sb-modal-body">
+                <div class="card-sub" id="posteCompAiLoading" style="margin:0 0 10px 0; display:none;">Analyse en cours…</div>
+                <div class="card-sub" id="posteCompAiSummary" style="margin:0 0 10px 0; display:none;"></div>
+
+                <div class="card" id="posteCompAiExistingWrap" style="padding:12px; display:none;">
+                  <div class="card-title" style="font-size:14px; margin:8px 0 4px 0;">Compétences déjà présentes dans le référentiel</div>
+                  <div class="card-sub" style="margin:0 0 10px 0;">Tu peux les rattacher directement au poste.</div>
+                  <div class="sb-stack sb-stack--xs" id="posteCompAiExistingList"></div>
+                </div>
+
+                <div class="card" id="posteCompAiMissingWrap" style="padding:12px; margin-top:10px; display:none;">
+                  <div class="card-title" style="font-size:14px; margin:8px 0 4px 0;">Compétences absentes du référentiel</div>
+                  <div class="card-sub" style="margin:0 0 10px 0;">Création directe dans le catalogue puis ajout au poste.</div>
+                  <div class="sb-stack sb-stack--xs" id="posteCompAiMissingList"></div>
+                </div>
+              </div>
+
+              <div class="sb-modal-foot">
+                <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCompAiClose">Fermer</button>
+              </div>
+            </div>
+          </div>
+
+            <!-- OVERLAY : Traitement IA -->
+          <div class="sb-ia-overlay" id="iaBusyOverlay" style="display:none;">
+            <div class="sb-ia-overlay__box">
+              <div class="sb-ia-spinner" aria-hidden="true"></div>
+              <div class="sb-ia-overlay__title" id="iaBusyTitle">Analyse IA en cours</div>
+              <div class="sb-ia-overlay__text" id="iaBusyText">
+                Recherche web, structuration des données et rapprochement du référentiel...
+              </div>
+              <div class="sb-ia-overlay__timer">
+                Temps écoulé : <span id="iaBusySeconds">0</span> s
+              </div>
+            </div>
+          </div>
+          
+            <!-- MODAL : Créer compétence depuis suggestion IA -->
+          <div class="sb-modal" id="modalPosteCompCreate" style="display:none;">
+            <div class="sb-modal-card">
+              <div class="sb-modal-head">
+                <div>
+                  <div style="min-width:0;">
+                    <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                      <span id="posteCompCreateBadge" class="sb-badge sb-badge--comp" style="display:none;"></span>
+                      <div class="card-title" id="posteCompCreateTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Créer une compétence</div>
+                    </div>
+                    <div class="card-sub" id="posteCompCreateSub" style="margin:4px 0 0 0;">
+                      Brouillon proposé par l’IA. Tu valides / ajustes avant création.
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="sb-modal-x" id="btnPosteCompCreateX" aria-label="Fermer">×</button>
+              </div>
+
+              <div class="sb-modal-body">
+                <div class="row">
+                  <div class="info-item" style="flex:2; min-width:260px;">
+                    <div class="label">Intitulé</div>
+                    <input type="text" id="posteCompCreateIntitule" />
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="info-item" style="flex:1; min-width:240px;">
+                    <div class="label">Domaine</div>
+                    <select id="posteCompCreateDomaine">
+                      <option value="">—</option>
+                    </select>
+                  </div>
+                  <div class="info-item" style="flex:1; min-width:240px;">
+                    <div class="label">État</div>
+                    <select id="posteCompCreateEtat">
+                      <option value="valide">valide</option>
+                      <option value="active">active</option>
+                      <option value="à valider" selected>à valider</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="info-item" style="flex:1; min-width:260px;">
+                    <div class="label">Description</div>
+                    <textarea id="posteCompCreateDesc" rows="3" class="sb-ctrl"></textarea>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="info-item" style="flex:1; min-width:260px;">
+                    <div class="label">Niveau A</div>
+                    <textarea id="posteCompCreateNivA" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
+                  </div>
+                  <div class="info-item" style="flex:1; min-width:260px;">
+                    <div class="label">Niveau B</div>
+                    <textarea id="posteCompCreateNivB" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
+                  </div>
+                  <div class="info-item" style="flex:1; min-width:260px;">
+                    <div class="label">Niveau C</div>
+                    <textarea id="posteCompCreateNivC" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="info-item" style="flex:1; min-width:260px;">
+                    <div class="sb-field-head">
+                      <div class="label" style="margin:0;">Grille d’évaluation</div>
+                      <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnPosteCompCreateAddCrit">
+                        Ajouter un critère
+                      </button>
+                    </div>
+
+                    <div class="sb-crit-editor" id="posteCompCreateCritEditor" style="display:none;">
+                      <div class="card-sub" id="posteCompCreateCritEditorTitle" style="margin:0 0 10px 0;">Critère</div>
+
+                      <div class="row">
+                        <div class="info-item" style="flex:1; min-width:260px;">
+                          <div class="label">Nom du critère</div>
+                          <input type="text" id="posteCompCreateCritNom" />
+                        </div>
+                      </div>
+
+                      <div class="sb-crit-evals">
+                        <div class="sb-crit-eval-row">
+                          <div class="label">Niveau 1</div>
+                          <input type="text" id="posteCompCreateCritEval1" maxlength="120" class="sb-ctrl" />
+                        </div>
+                        <div class="sb-crit-eval-row">
+                          <div class="label">Niveau 2</div>
+                          <input type="text" id="posteCompCreateCritEval2" maxlength="120" class="sb-ctrl" />
+                        </div>
+                        <div class="sb-crit-eval-row">
+                          <div class="label">Niveau 3</div>
+                          <input type="text" id="posteCompCreateCritEval3" maxlength="120" class="sb-ctrl" />
+                        </div>
+                        <div class="sb-crit-eval-row">
+                          <div class="label">Niveau 4</div>
+                          <input type="text" id="posteCompCreateCritEval4" maxlength="120" class="sb-ctrl" />
+                        </div>
+                      </div>
+
+                      <div class="sb-acc-actions">
+                        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteCompCreateCritSave">Enregistrer</button>
+                        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnPosteCompCreateCritCancel">Annuler</button>
+                      </div>
+                    </div>
+
+                    <div class="sb-stack sb-stack--xs" id="posteCompCreateCritList"></div>
+
+                    <div class="card-sub" style="margin:8px 0 0 0;">
+                      1 à 4 critères. Chaque critère doit contenir 4 niveaux d’évaluation.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sb-modal-foot">
+                <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCompCreateAdd">Créer et ajouter</button>
+                <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCompCreateOnly">Créer seulement</button>
+                <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCompCreateCancel">Annuler</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL : Ajouter compétence au poste -->
+          <div class="sb-modal" id="modalPosteCompAdd" style="display:none;">
+            <div class="sb-modal-card">
+              <div class="sb-modal-head">
+                <div>
+                  <div class="card-title" style="margin-bottom:2px;">Ajouter une compétence</div>
+                  <div class="card-sub" style="margin:0;">Catalogue propriétaire.</div>
+                </div>
+                <button type="button" class="sb-modal-x" id="btnClosePosteCompAdd" aria-label="Fermer">&times;</button>
               </div>
 
               <div class="sb-modal-body">
                 <div class="sb-toolbar">
                   <div class="sb-search">
                     <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
-                    <input type="text" id="catalogSearch" placeholder="Code ou intitulé…" />
+                    <input type="text" id="posteCompAddSearch" placeholder="Code ou intitulé…" />
                   </div>
-                </div>
-                <div class="sb-stack sb-stack--xxs sb-mt-10" id="catalogList"></div>
-              </div>
 
-              <div class="sb-modal-foot">
-                <button type="button" class="sb-btn sb-btn--secondary" id="btnCatalogCancel">Annuler</button>
+                  <div class="info-item" style="min-width:240px;">
+                    <div class="label">Domaine</div>
+                    <select id="posteCompAddDomain">
+                      <option value="">Tous</option>
+                      <option value="__none__">Sans domaine</option>
+                    </select>
+                  </div>
+
+                  <label class="sb-check" style="align-self:flex-end; margin:0 4px 2px 0;">
+                    <input type="checkbox" id="posteCompAddShowToValidate" />
+                    <span>Inclure compétences “à valider”</span>
+                  </label>
+                </div>
+
+                <div class="sb-stack sb-stack--xxs sb-mt-10" id="posteCompAddList"></div>
               </div>
             </div>
           </div>
 
-          <div class="sb-modal" id="modalSvc" style="display:none;">
+          <!-- MODAL : Éditer compétence rattachée -->
+          <div class="sb-modal" id="modalPosteCompEdit" style="display:none;">
+            <div class="sb-modal-card">
+              <div class="sb-modal-head">
+                <div style="min-width:0;">
+                  <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+                    <span id="posteCompEditBadge" class="sb-badge sb-badge--comp" style="display:none;"></span>
+                    <div class="card-title" id="posteCompEditTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Compétence</div>
+                  </div>
+
+                  <div style="margin-top:6px;">
+                    <span id="posteCompEditDomain" class="sb-badge sb-badge--comp-domain" style="display:none;">
+                      <span class="sb-dot"></span><span id="posteCompEditDomainTxt"></span>
+                    </span>
+                  </div>
+                </div>
+
+                <button type="button" class="sb-modal-x" id="btnClosePosteCompEdit" aria-label="Fermer">&times;</button>
+              </div>
+
+              <div class="sb-modal-body">
+
+                <!-- Header content already in sb-modal-head -->
+                <!-- Bloc Niveau requis -->
+                <div class="card" style="padding:12px; margin:0;">
+                  <div class="card-title" style="font-size:14px;">Niveau requis</div>
+                  <div class="card-sub" style="margin:4px 0 0 0;">Sélectionnez le niveau attendu pour ce poste.</div>
+
+                  <div class="sb-level-grid" id="posteCompNivGrid">
+                    <label class="sb-level-card" data-niv="A">
+                      <div class="sb-level-name">Initial</div>
+                      <div class="sb-level-radio">
+                        <input type="radio" name="posteCompEditNiv" id="posteCompEditNivA" value="A" />
+                        <span class="card-sub" style="margin:0;">Niveau A</span>
+                      </div>
+                      <div class="sb-level-text" id="posteCompRefA">—</div>
+                    </label>
+
+                    <label class="sb-level-card" data-niv="B">
+                      <div class="sb-level-name">Avancé</div>
+                      <div class="sb-level-radio">
+                        <input type="radio" name="posteCompEditNiv" id="posteCompEditNivB" value="B" />
+                        <span class="card-sub" style="margin:0;">Niveau B</span>
+                      </div>
+                      <div class="sb-level-text" id="posteCompRefB">—</div>
+                    </label>
+
+                    <label class="sb-level-card" data-niv="C">
+                      <div class="sb-level-name">Expert</div>
+                      <div class="sb-level-radio">
+                        <input type="radio" name="posteCompEditNiv" id="posteCompEditNivC" value="C" />
+                        <span class="card-sub" style="margin:0;">Niveau C</span>
+                      </div>
+                      <div class="sb-level-text" id="posteCompRefC">—</div>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Bloc Criticité -->
+                <div class="card" style="padding:12px; margin-top:10px;">
+                  <div class="card-title" style="font-size:14px;">Évaluation de la criticité</div>
+                  <div class="card-sub" style="margin:4px 0 0 0;">Saisie 0–10. Pondération 20 / 50 / 30. Calcul et enregistrement serveur.</div>
+
+                  <div class="sb-crit-grid">
+                    <div>
+                      <div class="sb-crit-rows">
+                        <div class="sb-crit-row">
+                          <div class="label">Fréquence d’usage</div>
+                          <input type="range" id="posteCompEditFreq" min="0" max="10" step="1" />
+                          <div class="sb-crit-val" id="posteCompEditFreqTxt">0/10</div>
+                        </div>
+
+                        <div class="sb-crit-row">
+                          <div class="label">Impact résultat</div>
+                          <input type="range" id="posteCompEditImpact" min="0" max="10" step="1" />
+                          <div class="sb-crit-val" id="posteCompEditImpactTxt">0/10</div>
+                        </div>
+
+                        <div class="sb-crit-row">
+                          <div class="label">Dépendance</div>
+                          <input type="range" id="posteCompEditDep" min="0" max="10" step="1" />
+                          <div class="sb-crit-val" id="posteCompEditDepTxt">0/10</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="sb-ring sb-ring--mid" id="posteCompCritRing">
+                      <svg class="sb-ring-svg" viewBox="0 0 36 36">
+                        <path class="sb-ring-bg"
+                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path class="sb-ring-prog" id="posteCompCritRingProg" pathLength="100" stroke-dasharray="0 100"
+                              d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                      </svg>
+                      <div class="sb-ring-center">
+                        <div class="sb-ring-pct" id="posteCompCritRingVal">0</div>
+                        <div class="sb-ring-sub">/100</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="sb-modal-foot">
+                <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCompEditSave">Enregistrer</button>
+                <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCompEditCancel">Annuler</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL : Ajouter certification au poste -->
+          <div class="sb-modal" id="modalPosteCertAdd" style="display:none;">
+            <div class="sb-modal-card">
+              <div class="sb-modal-head">
+                <div>
+                  <div class="card-title" style="margin-bottom:2px;">Ajouter une certification</div>
+                  <div class="card-sub" style="margin:0;">Catalogue global des certifications.</div>
+                </div>
+
+                <div class="sb-actions">
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnPosteCertCreate">Créer une certification</button>
+                  <button type="button" class="sb-modal-x" id="btnClosePosteCertAdd" aria-label="Fermer">&times;</button>
+                </div>
+              </div>
+
+              <div class="sb-modal-body">
+                <div class="sb-toolbar">
+                  <div class="sb-search">
+                    <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
+                    <input type="text" id="posteCertAddSearch" placeholder="Nom, description ou catégorie…" />
+                  </div>
+
+                  <div class="info-item" style="min-width:240px;">
+                    <div class="label">Catégorie</div>
+                    <select id="posteCertAddCategory">
+                      <option value="">Toutes</option>
+                      <option value="__none__">Sans catégorie</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="sb-stack sb-stack--xxs sb-mt-10" id="posteCertAddList"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL : Créer une certification -->
+          <div class="sb-modal" id="modalPosteCertCreate" style="display:none;">
+            <div class="sb-modal-card">
+              <div class="sb-modal-head">
+                <div>
+                  <div class="card-title" style="margin-bottom:2px;">Créer une certification</div>
+                  <div class="card-sub" style="margin:0;">Création dans le catalogue global des certifications.</div>
+                </div>
+                <button type="button" class="sb-modal-x" id="btnClosePosteCertCreate" aria-label="Fermer">&times;</button>
+              </div>
+
+              <div class="sb-modal-body">
+                <div class="row">
+                  <div class="info-item" style="flex:2; min-width:260px;">
+                    <div class="label">Nom de la certification</div>
+                    <input type="text" id="posteCertCreateName" />
+                  </div>
+
+                  <div class="info-item" style="flex:1; min-width:220px;">
+                    <div class="label">Catégorie</div>
+                    <input type="text" id="posteCertCreateCategory" list="posteCertCreateCategoryList" placeholder="Choisir une catégorie existante ou en saisir une nouvelle" />
+                    <datalist id="posteCertCreateCategoryList"></datalist>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="info-item" style="flex:1; min-width:220px;">
+                    <div class="label">Validité catalogue (mois)</div>
+                    <div class="sb-stepper">
+                      <button type="button" class="sb-stepper-btn" data-stepper-target="posteCertCreateValidity" data-stepper-delta="-1" aria-label="Diminuer la validité">−</button>
+                      <input type="number" id="posteCertCreateValidity" min="1" step="1" inputmode="numeric" />
+                      <button type="button" class="sb-stepper-btn" data-stepper-target="posteCertCreateValidity" data-stepper-delta="1" aria-label="Augmenter la validité">+</button>
+                    </div>
+                  </div>
+
+                  <div class="info-item" style="flex:1; min-width:220px;">
+                    <div class="label">Délai de renouvellement (mois)</div>
+                    <div class="sb-stepper">
+                      <button type="button" class="sb-stepper-btn" data-stepper-target="posteCertCreateRenewal" data-stepper-delta="-1" aria-label="Diminuer le délai de renouvellement">−</button>
+                      <input type="number" id="posteCertCreateRenewal" min="1" step="1" inputmode="numeric" />
+                      <button type="button" class="sb-stepper-btn" data-stepper-target="posteCertCreateRenewal" data-stepper-delta="1" aria-label="Augmenter le délai de renouvellement">+</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="info-item" style="flex:1; min-width:260px;">
+                    <div class="label">Description (optionnel)</div>
+                    <textarea id="posteCertCreateDescription" rows="4"></textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sb-modal-foot">
+                <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCertCreateSave">Créer</button>
+                <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCertCreateCancel">Annuler</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL : Éditer certification rattachée -->
+          <div class="sb-modal" id="modalPosteCertEdit" style="display:none;">
+            <div class="sb-modal-card">
+              <div class="sb-modal-head">
+                <div style="min-width:0;">
+                  <div class="card-title" id="posteCertEditTitle" style="margin-bottom:2px;">Certification</div>
+                  <div class="card-sub" id="posteCertEditSub" style="margin:0;">—</div>
+                </div>
+
+                <button type="button" class="sb-modal-x" id="btnClosePosteCertEdit" aria-label="Fermer">&times;</button>
+              </div>
+
+              <div class="sb-modal-body">
+                <div class="card" style="padding:12px; margin:0;">
+                  <div class="card-title" style="font-size:14px;">Paramétrage pour le poste</div>
+                  <div class="card-sub" id="posteCertEditBaseInfo" style="margin:4px 0 0 0;">—</div>
+
+                  <div class="row" style="margin-top:10px;">
+                    <div class="info-item" style="flex:1; min-width:220px;">
+                      <div class="label">Validité spécifique (mois)</div>
+                      <div class="sb-stepper">
+                        <button type="button" class="sb-stepper-btn" data-stepper-target="posteCertEditOverride" data-stepper-delta="-1" aria-label="Diminuer la validité spécifique">−</button>
+                        <input type="number" id="posteCertEditOverride" min="1" step="1" inputmode="numeric" placeholder="Laisser vide pour garder la validité catalogue" />
+                        <button type="button" class="sb-stepper-btn" data-stepper-target="posteCertEditOverride" data-stepper-delta="1" aria-label="Augmenter la validité spécifique">+</button>
+                      </div>
+                    </div>
+
+                    <div class="info-item" style="flex:1; min-width:220px;">
+                      <div class="label">Niveau d’exigence</div>
+                      <select id="posteCertEditLevel">
+                        <option value="requis">Requis</option>
+                        <option value="souhaité">Souhaité</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <div class="info-item" style="flex:1; min-width:260px;">
+                      <div class="label">Commentaire</div>
+                      <textarea id="posteCertEditComment" rows="4" placeholder="Précision éventuelle pour ce poste"></textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sb-modal-foot">
+                <button type="button" class="sb-btn sb-btn--accent" id="btnPosteCertEditSave">Enregistrer</button>
+                <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCertEditCancel">Annuler</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- MODAL : Service create/edit -->
+          <div class="sb-modal" id="modalService" style="display:none;">
             <div class="sb-modal-card">
               <div class="sb-modal-head">
                 <div>
                   <div class="card-title" id="svcModalTitle" style="margin-bottom:2px;">Service</div>
-                  <div class="card-sub" style="margin:0;">Création ou modification d’un service.</div>
+                  <div class="card-sub" id="svcModalSub" style="margin:0;">—</div>
                 </div>
-                <button type="button" class="sb-icon-btn" id="btnCloseSvc" aria-label="Fermer">✕</button>
+                <button type="button" class="sb-modal-x" id="btnCloseService" aria-label="Fermer">&times;</button>
               </div>
 
               <div class="sb-modal-body">
-                <div class="sb-form-grid">
-                  <div class="sb-field sb-span-2">
-                    <label class="sb-label" for="svcNom">Nom du service</label>
-                    <input type="text" class="sb-ctrl" id="svcNom" />
+                <div class="row">
+                  <div class="info-item" style="flex:2; min-width:260px;">
+                    <div class="label">Nom du service</div>
+                    <input type="text" id="svcName" />
                   </div>
-                  <div class="sb-field sb-span-2">
-                    <label class="sb-label" for="svcParent">Service parent</label>
-                    <select class="sb-select" id="svcParent"></select>
+                  <div class="info-item" style="flex:2; min-width:260px;">
+                    <div class="label">Service parent (optionnel)</div>
+                    <select id="svcParent">
+                      <option value="">(Aucun)</option>
+                    </select>
                   </div>
                 </div>
-              </div>
 
-              <div class="sb-modal-foot">
-                <button type="button" class="sb-btn sb-btn--secondary" id="btnSvcCancel">Annuler</button>
-                <button type="button" class="sb-btn sb-btn--accent" id="btnSvcSave">Enregistrer</button>
+                <div class="sb-modal-actions">
+                  <button type="button" class="sb-btn sb-btn--accent" id="btnSaveService">Enregistrer</button>
+                  <button type="button" class="sb-btn sb-btn--soft" id="btnCancelService">Annuler</button>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="sb-modal" id="modalPosteCreate" style="display:none;"></div>
-          <div class="sb-modal" id="modalPosteEdit" style="display:none;"></div>
-          <div class="sb-modal" id="modalPosteCompCreate" style="display:none;"></div>
-          <div class="sb-modal" id="modalPosteCompEdit" style="display:none;"></div>
-          <div class="sb-modal" id="modalPosteCertCreate" style="display:none;"></div>
-          <div class="sb-modal" id="modalPosteCertEdit" style="display:none;"></div>
-          <div class="sb-modal" id="modalImportPoste" style="display:none;"></div>
-          <div class="sb-modal" id="modalPosteIa" style="display:none;"></div>
-          <div class="sb-modal" id="modalPosteDuplicate" style="display:none;"></div>
-
-          <div class="sb-ia-overlay" id="iaBusyOverlay" style="display:none;">
+          <!-- MODAL : Confirm archive -->
+          <div class="sb-modal" id="modalArchive" style="display:none;">
             <div class="sb-ia-overlay__card">
               <div class="sb-ia-overlay__title" id="iaBusyTitle">Analyse IA en cours</div>
               <div class="sb-ia-overlay__text" id="iaBusyText">Traitement en cours…</div>
