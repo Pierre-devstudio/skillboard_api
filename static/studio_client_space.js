@@ -2321,11 +2321,30 @@ function bindPostalAssist(){
 
     function byId(id){
         const root = getOrganisationRoot();
+
+        const aliases = {
+            modalService: ["modalService", "modalSvc"],
+            btnCloseService: ["btnCloseService", "btnCloseSvc"],
+            btnCancelService: ["btnCancelService", "btnSvcCancel"],
+            btnSaveService: ["btnSaveService", "btnSvcSave"],
+            svcName: ["svcName", "svcNom"]
+        };
+
+        const candidates = aliases[id] || [id];
+
         if (root){
-            const el = root.querySelector(`#${id}`);
+            for (const candidate of candidates){
+                const el = root.querySelector(`#${candidate}`);
+                if (el) return el;
+            }
+        }
+
+        for (const candidate of candidates){
+            const el = document.getElementById(candidate);
             if (el) return el;
         }
-        return document.getElementById(id);
+
+        return null;
     }
 
     function setStatus(msg, isError = false){
