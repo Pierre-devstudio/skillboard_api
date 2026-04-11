@@ -1051,25 +1051,89 @@ function bindPostalAssist(){
     });
   }
 
+  let _orgWorkspaceScriptPromise = null;
+
+  function ensureOrganisationScriptLoaded(){
+    const alreadyLoaded = document.querySelector('script[data-studio-org-script="1"][data-loaded="1"]');
+    if (alreadyLoaded) {
+      return Promise.resolve();
+    }
+
+    if (_orgWorkspaceScriptPromise) {
+      return _orgWorkspaceScriptPromise;
+    }
+
+    _orgWorkspaceScriptPromise = new Promise((resolve, reject) => {
+      let script = document.querySelector('script[data-studio-org-script="1"]');
+
+      const onLoad = () => {
+        if (script) script.dataset.loaded = "1";
+        cleanup();
+        resolve();
+      };
+
+      const onError = () => {
+        cleanup();
+        _orgWorkspaceScriptPromise = null;
+        reject(new Error("Impossible de charger studio_organisation.js."));
+      };
+
+      const cleanup = () => {
+        if (!script) return;
+        script.removeEventListener("load", onLoad);
+        script.removeEventListener("error", onError);
+      };
+
+      if (!script) {
+        script = document.createElement("script");
+        script.src = "/studio_organisation.js";
+        script.dataset.studioOrgScript = "1";
+        document.body.appendChild(script);
+      }
+
+      if (script.dataset.loaded === "1") {
+        cleanup();
+        resolve();
+        return;
+      }
+
+      script.addEventListener("load", onLoad, { once: true });
+      script.addEventListener("error", onError, { once: true });
+    });
+
+    return _orgWorkspaceScriptPromise;
+  }
+
   async function loadOrganisationWorkspace(){
     const mount = byId("orgWorkspaceMount");
     if (!mount) return;
     if (mount.dataset.loaded === "1") return;
 
     const r = await fetch("/studio_organisation.html", { cache: "no-store" });
-    const html = await r.text();
+    if (!r.ok) {
+      throw new Error(`Impossible de charger studio_organisation.html (HTTP ${r.status}).`);
+    }
 
+    const html = await r.text();
     const wrapper = document.createElement("div");
     wrapper.innerHTML = html;
 
-    const root = wrapper.querySelector('#view-organisation[data-view="organisation"]');
-    if (!root) throw new Error("Bloc Organisation partagé introuvable.");
+    const root =
+      wrapper.querySelector('#view-organisation[data-view="organisation"]') ||
+      wrapper.querySelector("#view-organisation") ||
+      wrapper.querySelector('[data-view="organisation"]');
+
+    if (!root) {
+      throw new Error("Bloc Organisation partagé introuvable dans studio_organisation.html.");
+    }
 
     mount.innerHTML = "";
     mount.appendChild(root);
-    mount.dataset.loaded = "1";
 
     ensureOrganisationPortalBridge();
+    await ensureOrganisationScriptLoaded();
+
+    mount.dataset.loaded = "1";
   }
 
   function setSection(name){
