@@ -50,6 +50,7 @@
         </div>
         <div class="cs-topbar-actions">
           <a class="sb-btn sb-btn--secondary" id="btnOpenPortfolioTop" href="#">Ouvrir le portefeuille Studio</a>
+          <button type="button" class="sb-btn sb-btn--secondary" id="btnOrgHistory">Historique</button>
           <button type="button" class="sb-btn sb-btn--secondary" id="btnCloseTab">Fermer l’onglet</button>
         </div>
       </header>
@@ -589,6 +590,31 @@
           <div class="modal-footer">
             <button type="button" class="sb-btn sb-btn--secondary" id="btnOrgModalCancel">Annuler</button>
             <button type="button" class="sb-btn sb-btn--accent" id="btnOrgModalSave">Enregistrer</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal" id="modalOrgHistory">
+        <div class="modal-card cs-org-history-card">
+          <div class="modal-header">
+            <div>
+              <div class="cs-card-title">Historique des structures retirées</div>
+              <div class="cs-card-sub">Réactive une structure archivée dans le périmètre courant, ou transforme-la en client direct sans perdre les données existantes.</div>
+            </div>
+            <button type="button" class="modal-x" id="btnOrgHistoryClose" aria-label="Fermer">×</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="sb-empty-state is-hidden" id="orgHistoryEmpty">
+              <div class="sb-empty-state__title">Aucune structure archivée</div>
+              <div class="sb-empty-state__text">Aucune structure retirée n’est disponible dans l’historique pour ce périmètre.</div>
+            </div>
+
+            <div class="cs-history-list" id="orgHistoryList"></div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="sb-btn sb-btn--secondary" id="btnOrgHistoryCancel">Fermer</button>
           </div>
         </div>
       </div>

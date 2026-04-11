@@ -11,6 +11,7 @@
   let _orgCreateKind = "";
   let _orgCreateParentId = "";
   let _orgExpandedIds = new Set();
+  let _orgHistoryItems = [];
   let _ficheEditMode = false;
   let _ficheSaving = false;
   let _publicLookupLoading = false;
@@ -1009,6 +1010,16 @@ function bindPostalAssist(){
       btn.addEventListener("click", () => setSection(btn.dataset.section || "dashboard"));
     });
 
+    byId("btnOrgHistory")?.addEventListener("click", async () => {
+      try {
+        setMessage("");
+        setSection("organisation");
+        await openOrgHistoryModal();
+      } catch (e) {
+        setMessage(e.message || "Erreur lors du chargement de l’historique.");
+      }
+    });
+
     byId("btnCloseTab")?.addEventListener("click", () => {
       window.close();
       setTimeout(() => {
@@ -1449,7 +1460,7 @@ function bindPostalAssist(){
 
     if (!ownerId || !pId || !cId) return;
 
-    const confirmed = window.confirm("Retirer cette structure du rattachement actuel ?");
+    const confirmed = window.confirm("Retirer cette structure va archiver toute sa branche dans le périmètre actif. Continuer ?");
     if (!confirmed) return;
 
     const token = await ensureAuthReady();
@@ -1462,6 +1473,112 @@ function bindPostalAssist(){
     );
 
     await loadOrganisationData();
+  }
+
+  function renderOrgHistoryRows(){
+    const host = byId("orgHistoryList");
+    const empty = byId("orgHistoryEmpty");
+    if (!host || !empty) return;
+
+    if (!_orgHistoryItems.length) {
+      host.innerHTML = "";
+      empty.classList.remove("is-hidden");
+      return;
+    }
+
+    empty.classList.add("is-hidden");
+
+    host.innerHTML = _orgHistoryItems.map(item => {
+      const structureType = normalizeStructureType(item?.type_entreprise);
+      const badgeClass = structureType === "site" ? "cs-org-badge--site" : "cs-org-badge--entreprise";
+      const ville = textOrDash(item?.ville_ent);
+      const profil = formatProfilStructurelLabel(item?.profil_structurel);
+      const parent = textOrDash(item?.previous_parent_name);
+      const descendants = parseInt(item?.nb_descendants, 10) || 0;
+      const childLabel = descendants > 0 ? ` • ${descendants} descendant(s)` : "";
+
+      return `
+        <div class="cs-history-row">
+          <div class="cs-history-main">
+            <span class="sb-badge cs-org-badge ${badgeClass}">${structureType === "site" ? "Site" : "Entreprise"}</span>
+            <div class="cs-history-text">
+              <div class="cs-history-title">${escHtml(textOrDash(item?.nom_ent))}</div>
+              <div class="cs-history-sub">${escHtml(profil)}${ville !== "—" ? ` • ${escHtml(ville)}` : ""} • Ancien parent : ${escHtml(parent)}${childLabel}</div>
+            </div>
+          </div>
+
+          <div class="cs-history-actions">
+            <button type="button" class="sb-btn sb-btn--secondary sb-btn--xs" data-org-restore-id="${escHtml(item.id_ent)}">Réactiver ici</button>
+            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" data-org-promote-id="${escHtml(item.id_ent)}">Client direct</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  async function loadOrgHistoryData(){
+    const ownerId = getOwnerId();
+    const clientId = getClientId();
+    const token = await ensureAuthReady();
+    if (!token) return;
+
+    const data = await apiJson(
+      `${API_BASE}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}/structures/history`,
+      token
+    );
+
+    _orgHistoryItems = Array.isArray(data?.items) ? data.items : [];
+    renderOrgHistoryRows();
+  }
+
+  async function restoreOrgStructureHere(idEnt){
+    const ownerId = getOwnerId();
+    const clientId = getClientId();
+    const id = (idEnt || "").toString().trim();
+    if (!ownerId || !clientId || !id) return;
+
+    const token = await ensureAuthReady();
+    if (!token) return;
+
+    await apiJson(
+      `${API_BASE}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}/structures/${encodeURIComponent(id)}/restore_here`,
+      token,
+      { method: "POST" }
+    );
+
+    await loadOrganisationData();
+    await loadOrgHistoryData();
+  }
+
+  async function promoteOrgStructureDirect(idEnt){
+    const ownerId = getOwnerId();
+    const clientId = getClientId();
+    const id = (idEnt || "").toString().trim();
+    if (!ownerId || !clientId || !id) return;
+
+    const confirmed = window.confirm("Réactiver cette structure comme client direct dans le portefeuille Studio ?");
+    if (!confirmed) return;
+
+    const token = await ensureAuthReady();
+    if (!token) return;
+
+    await apiJson(
+      `${API_BASE}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}/structures/${encodeURIComponent(id)}/promote_direct`,
+      token,
+      { method: "POST" }
+    );
+
+    await loadOrganisationData();
+    await loadOrgHistoryData();
+  }
+
+  async function openOrgHistoryModal(){
+    await loadOrgHistoryData();
+    byId("modalOrgHistory")?.classList.add("show");
+  }
+
+  function closeOrgHistoryModal(){
+    byId("modalOrgHistory")?.classList.remove("show");
   }
 
   function renderHeader(){
@@ -1747,6 +1864,9 @@ function bindPostalAssist(){
       await saveOrgCreateStructure();
     });
 
+    byId("btnOrgHistoryClose")?.addEventListener("click", closeOrgHistoryModal);
+    byId("btnOrgHistoryCancel")?.addEventListener("click", closeOrgHistoryModal);
+
     byId("orgCreateProfilStructurel")?.addEventListener("change", syncOrgCreateProfileUi);
     byId("orgCreateGroupOk")?.addEventListener("change", syncOrgCreateProfileUi);
 
@@ -1806,6 +1926,35 @@ function bindPostalAssist(){
           setMessage("");
         } catch (err) {
           setMessage(err?.message || "Erreur lors du retrait du rattachement.");
+        }
+      }
+    });
+
+    byId("orgHistoryList")?.addEventListener("click", async (e) => {
+      const restoreBtn = e.target.closest("[data-org-restore-id]");
+      if (restoreBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+          await restoreOrgStructureHere((restoreBtn.getAttribute("data-org-restore-id") || "").trim());
+          setMessage("");
+        } catch (err) {
+          setMessage(err?.message || "Erreur lors de la réactivation.");
+        }
+        return;
+      }
+
+      const promoteBtn = e.target.closest("[data-org-promote-id]");
+      if (promoteBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+          await promoteOrgStructureDirect((promoteBtn.getAttribute("data-org-promote-id") || "").trim());
+          setMessage("");
+        } catch (err) {
+          setMessage(err?.message || "Erreur lors du passage en client direct.");
         }
       }
     });

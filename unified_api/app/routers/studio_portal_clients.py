@@ -421,6 +421,36 @@ def _structure_exists_for_owner(cur, id_owner: str, id_ent: str, include_masked:
     cur.execute(sql, tuple(params))
     return cur.fetchone() is not None
 
+def _fetch_structure_subtree_ids(cur, id_owner: str, root_id: str, archive_state: Optional[bool] = None) -> list:
+    archive_filter = ""
+    if archive_state is True:
+        archive_filter = " AND COALESCE(l.archive, FALSE) = TRUE "
+    elif archive_state is False:
+        archive_filter = " AND COALESCE(l.archive, FALSE) = FALSE "
+
+    cur.execute(
+        f"""
+        WITH RECURSIVE subtree AS (
+            SELECT %s::text AS id_ent
+
+            UNION ALL
+
+            SELECT l.id_ent_enfant
+            FROM public.tbl_entreprise_liaison l
+            JOIN subtree s
+              ON s.id_ent = l.id_ent_parent
+            JOIN public.tbl_entreprise e
+              ON e.id_ent = l.id_ent_enfant
+            WHERE e.id_owner_gestionnaire = %s
+              {archive_filter}
+        )
+        SELECT DISTINCT id_ent
+        FROM subtree
+        """,
+        (root_id, id_owner),
+    )
+    rows = cur.fetchall() or []
+    return [str((r.get("id_ent") or "")).strip() for r in rows if (r.get("id_ent") or "").strip()]
 
 def _fetch_clients_summary(cur, id_owner: str) -> dict:
     cur.execute(
@@ -1067,25 +1097,41 @@ def detach_studio_child_structure(id_owner: str, id_ent: str, id_child: str, req
                 if not _structure_exists_for_owner(cur, oid, id_child):
                     raise HTTPException(status_code=404, detail="Structure enfant introuvable.")
 
+                branch_ids = _fetch_structure_subtree_ids(cur, oid, id_child, archive_state=False)
+                if not branch_ids:
+                    branch_ids = [id_child]
+
                 cur.execute(
                     """
                     UPDATE public.tbl_entreprise_liaison
                     SET archive = TRUE
-                    WHERE id_ent_parent = %s
-                      AND id_ent_enfant = %s
-                      AND COALESCE(archive, FALSE) = FALSE
+                    WHERE COALESCE(archive, FALSE) = FALSE
+                      AND (
+                        (id_ent_parent = %s AND id_ent_enfant = %s)
+                        OR
+                        (id_ent_parent = ANY(%s) AND id_ent_enfant = ANY(%s))
+                      )
                     """,
-                    (id_ent, id_child),
+                    (id_ent, id_child, branch_ids, branch_ids),
                 )
 
-                if cur.rowcount <= 0:
-                    raise HTTPException(status_code=404, detail="Liaison introuvable ou déjà retirée.")
+                cur.execute(
+                    """
+                    UPDATE public.tbl_entreprise
+                    SET masque = TRUE
+                    WHERE id_owner_gestionnaire = %s
+                      AND id_ent = ANY(%s)
+                      AND COALESCE(masque, FALSE) = FALSE
+                    """,
+                    (oid, branch_ids),
+                )
 
                 conn.commit()
                 return {
                     "ok": True,
                     "id_ent_parent": id_ent,
                     "id_ent_enfant": id_child,
+                    "nb_structures_archivees": len(branch_ids),
                 }
 
     except HTTPException:
@@ -1093,6 +1139,280 @@ def detach_studio_child_structure(id_owner: str, id_ent: str, id_child: str, req
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/clients/structures/detach error: {e}")
 
+@router.get("/studio/clients/{id_owner}/{id_ent}/structures/history")
+def get_studio_child_structures_history(id_owner: str, id_ent: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                if not _structure_exists_for_owner(cur, oid, id_ent):
+                    raise HTTPException(status_code=404, detail="Structure courante introuvable.")
+
+                cur.execute(
+                    """
+                    SELECT
+                        e.id_ent,
+                        e.nom_ent,
+                        e.ville_ent,
+                        e.type_entreprise,
+                        e.profil_structurel,
+                        EXISTS (
+                            SELECT 1
+                            FROM public.tbl_novoskill_owner o
+                            WHERE o.id_owner = e.id_ent
+                              AND COALESCE(o.archive, FALSE) = FALSE
+                        ) AS has_owner_scope,
+                        (
+                            SELECT p.nom_ent
+                            FROM public.tbl_entreprise_liaison l
+                            JOIN public.tbl_entreprise p
+                              ON p.id_ent = l.id_ent_parent
+                            WHERE l.id_ent_enfant = e.id_ent
+                              AND COALESCE(l.archive, FALSE) = TRUE
+                              AND p.id_owner_gestionnaire = %s
+                            ORDER BY p.nom_ent
+                            LIMIT 1
+                        ) AS previous_parent_name
+                    FROM public.tbl_entreprise e
+                    WHERE e.id_owner_gestionnaire = %s
+                      AND COALESCE(e.masque, FALSE) = TRUE
+                      AND lower(COALESCE(e.type_entreprise, '')) IN ('client', 'entreprise', 'site')
+                      AND NOT EXISTS (
+                        SELECT 1
+                        FROM public.tbl_entreprise_liaison lp
+                        JOIN public.tbl_entreprise pe
+                          ON pe.id_ent = lp.id_ent_parent
+                        WHERE lp.id_ent_enfant = e.id_ent
+                          AND COALESCE(lp.archive, FALSE) = TRUE
+                          AND pe.id_owner_gestionnaire = %s
+                          AND COALESCE(pe.masque, FALSE) = TRUE
+                      )
+                    ORDER BY lower(e.nom_ent), e.id_ent
+                    """,
+                    (oid, oid, oid),
+                )
+                rows = cur.fetchall() or []
+
+                items = []
+                for r in rows:
+                    subtree_ids = _fetch_structure_subtree_ids(cur, oid, r.get("id_ent"), archive_state=None)
+                    items.append(
+                        {
+                            "id_ent": r.get("id_ent"),
+                            "nom_ent": r.get("nom_ent"),
+                            "ville_ent": r.get("ville_ent"),
+                            "type_entreprise": r.get("type_entreprise"),
+                            "profil_structurel": r.get("profil_structurel"),
+                            "has_owner_scope": bool(r.get("has_owner_scope")),
+                            "previous_parent_name": r.get("previous_parent_name"),
+                            "nb_descendants": max(0, len(subtree_ids) - 1),
+                        }
+                    )
+
+                return {"items": items}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/structures/history error: {e}")
+
+
+@router.post("/studio/clients/{id_owner}/{id_ent}/structures/{id_child}/restore_here")
+def restore_studio_child_structure_here(id_owner: str, id_ent: str, id_child: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                if not _structure_exists_for_owner(cur, oid, id_ent):
+                    raise HTTPException(status_code=404, detail="Structure de rattachement introuvable.")
+
+                if not _structure_exists_for_owner(cur, oid, id_child, include_masked=True):
+                    raise HTTPException(status_code=404, detail="Structure à réactiver introuvable.")
+
+                cur.execute(
+                    """
+                    SELECT lower(COALESCE(type_entreprise, '')) AS type_entreprise
+                    FROM public.tbl_entreprise
+                    WHERE id_ent = %s
+                      AND id_owner_gestionnaire = %s
+                    LIMIT 1
+                    """,
+                    (id_child, oid),
+                )
+                child_row = cur.fetchone() or {}
+                child_type = (child_row.get("type_entreprise") or "").strip().lower()
+                if not child_type:
+                    raise HTTPException(status_code=404, detail="Structure à réactiver introuvable.")
+
+                branch_ids = _fetch_structure_subtree_ids(cur, oid, id_child, archive_state=None)
+                if not branch_ids:
+                    branch_ids = [id_child]
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_entreprise
+                    SET masque = FALSE
+                    WHERE id_owner_gestionnaire = %s
+                      AND id_ent = ANY(%s)
+                    """,
+                    (oid, branch_ids),
+                )
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_entreprise_liaison
+                    SET archive = FALSE
+                    WHERE id_ent_parent = ANY(%s)
+                      AND id_ent_enfant = ANY(%s)
+                    """,
+                    (branch_ids, branch_ids),
+                )
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_entreprise_liaison
+                    SET archive = TRUE
+                    WHERE id_ent_enfant = %s
+                      AND id_ent_parent <> %s
+                    """,
+                    (id_child, id_ent),
+                )
+
+                if child_type == "site":
+                    cur.execute(
+                        """
+                        UPDATE public.tbl_entreprise
+                        SET type_entreprise = 'Site'
+                        WHERE id_ent = %s
+                          AND id_owner_gestionnaire = %s
+                        """,
+                        (id_child, oid),
+                    )
+                    type_liaison = "site"
+                else:
+                    cur.execute(
+                        """
+                        UPDATE public.tbl_entreprise
+                        SET type_entreprise = 'Entreprise'
+                        WHERE id_ent = %s
+                          AND id_owner_gestionnaire = %s
+                        """,
+                        (id_child, oid),
+                    )
+                    type_liaison = "filiale"
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_entreprise_liaison
+                    SET archive = FALSE,
+                        type_liaison = %s
+                    WHERE id_ent_parent = %s
+                      AND id_ent_enfant = %s
+                    """,
+                    (type_liaison, id_ent, id_child),
+                )
+
+                if cur.rowcount <= 0:
+                    cur.execute(
+                        """
+                        INSERT INTO public.tbl_entreprise_liaison (
+                            id_ent_parent,
+                            id_ent_enfant,
+                            type_liaison,
+                            archive
+                        ) VALUES (%s, %s, %s, FALSE)
+                        """,
+                        (id_ent, id_child, type_liaison),
+                    )
+
+                conn.commit()
+                return {"ok": True, "id_ent_parent": id_ent, "id_ent_enfant": id_child}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/structures/restore_here error: {e}")
+
+@router.post("/studio/clients/{id_owner}/{id_ent}/structures/{id_child}/promote_direct")
+def promote_studio_child_structure_direct(id_owner: str, id_ent: str, id_child: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                if not _structure_exists_for_owner(cur, oid, id_ent):
+                    raise HTTPException(status_code=404, detail="Structure courante introuvable.")
+
+                if not _structure_exists_for_owner(cur, oid, id_child, include_masked=True):
+                    raise HTTPException(status_code=404, detail="Structure à réactiver introuvable.")
+
+                branch_ids = _fetch_structure_subtree_ids(cur, oid, id_child, archive_state=None)
+                if not branch_ids:
+                    branch_ids = [id_child]
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_entreprise
+                    SET masque = FALSE
+                    WHERE id_owner_gestionnaire = %s
+                      AND id_ent = ANY(%s)
+                    """,
+                    (oid, branch_ids),
+                )
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_entreprise_liaison
+                    SET archive = FALSE
+                    WHERE id_ent_parent = ANY(%s)
+                      AND id_ent_enfant = ANY(%s)
+                    """,
+                    (branch_ids, branch_ids),
+                )
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_entreprise_liaison
+                    SET archive = TRUE
+                    WHERE id_ent_enfant = %s
+                    """,
+                    (id_child,),
+                )
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_entreprise
+                    SET type_entreprise = 'Client'
+                    WHERE id_ent = %s
+                      AND id_owner_gestionnaire = %s
+                    """,
+                    (id_child, oid),
+                )
+
+                conn.commit()
+                return {"ok": True, "id_ent": id_child}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/structures/promote_direct error: {e}")
 
 @router.post("/studio/clients/{id_owner}/{id_ent}/structures")
 def create_studio_child_structure(id_owner: str, id_ent: str, payload: ClientPayload, request: Request):

@@ -748,6 +748,59 @@ a{
   line-height:1.35;
 }
 
+.cs-org-history-card{
+  width:min(980px, calc(100vw - 24px));
+}
+
+.cs-history-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.cs-history-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px;
+  border:1px solid var(--cs-border-soft);
+  border-radius:14px;
+  background:#fff;
+}
+
+.cs-history-main{
+  min-width:0;
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+}
+
+.cs-history-text{
+  min-width:0;
+}
+
+.cs-history-title{
+  font-size:14px;
+  font-weight:600;
+  color:#111827;
+  line-height:1.25;
+}
+
+.cs-history-sub{
+  margin-top:3px;
+  font-size:12px;
+  color:#6b7280;
+  line-height:1.35;
+}
+
+.cs-history-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
 @media (max-width: 980px){
   .cs-org-node-line{
     grid-template-columns:36px minmax(0,1fr);
@@ -757,6 +810,15 @@ a{
     grid-column:2;
     justify-content:space-between;
     flex-wrap:wrap;
+  }
+
+  .cs-history-row{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+
+  .cs-history-actions{
+    width:100%;
   }
 }
 
