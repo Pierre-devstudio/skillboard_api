@@ -1054,55 +1054,64 @@ function bindPostalAssist(){
     });
   }
 
-  function ensureOrganisationScriptLoaded(){
+  async function ensureOrganisationScriptLoaded(){
     if (typeof window.__studioOrganisationInit === "function") {
-      return Promise.resolve();
+      return;
     }
 
-    const existingScripts = Array.from(document.scripts || []).map(s => s.src || "");
-    const hasStaticInclude = existingScripts.some(src => src.includes("/studio_organisation.js"));
+    const url = `/studio_organisation.js?v=${Date.now()}`;
 
-    return new Promise((resolve, reject) => {
-      const startedAt = Date.now();
-      const maxWaitMs = 5000;
+    let resp;
+    let source = "";
+    let contentType = "";
 
-      let injected = document.querySelector('script[data-studio-org-reload="1"]');
+    try {
+      resp = await fetch(url, { cache: "no-store" });
+      contentType = (resp.headers.get("content-type") || "").toLowerCase();
+      source = await resp.text();
+    } catch (e) {
+      throw new Error(`Impossible de fetch /studio_organisation.js : ${e?.message || e}`);
+    }
 
-      const finishError = (message) => {
-        reject(new Error(
-          `${message} | static_include=${hasStaticInclude ? "oui" : "non"}`
-        ));
-      };
+    const hasSignature = source.includes("__studioOrganisationInit");
+    const looksLikeHtml =
+      contentType.includes("text/html") ||
+      /^\s*<!doctype html/i.test(source) ||
+      /^\s*<html/i.test(source);
 
-      const checkReady = () => {
-        if (typeof window.__studioOrganisationInit === "function") {
-          resolve();
-          return;
-        }
+    if (!resp.ok) {
+      throw new Error(
+        `Chargement asset KO: status=${resp.status} | type=${contentType || "-"}`
+      );
+    }
 
-        if ((Date.now() - startedAt) >= maxWaitMs) {
-          finishError("studio_organisation.js non exécute ou globale absente");
-          return;
-        }
+    if (looksLikeHtml) {
+      throw new Error(
+        `Le serveur renvoie du HTML au lieu du JS pour /studio_organisation.js | status=${resp.status} | type=${contentType || "-"}`
+      );
+    }
 
-        window.setTimeout(checkReady, 25);
-      };
+    if (!hasSignature) {
+      const preview = source.slice(0, 140).replace(/\s+/g, " ").trim();
+      throw new Error(
+        `Le contenu servi pour /studio_organisation.js ne contient pas __studioOrganisationInit | status=${resp.status} | type=${contentType || "-"} | preview=${preview || "-"}`
+      );
+    }
 
-      if (!injected) {
-        injected = document.createElement("script");
-        injected.src = `/studio_organisation.js?v=${Date.now()}`;
-        injected.async = false;
-        injected.dataset.studioOrgReload = "1";
+    const prior = document.querySelector('script[data-org-inline-loader="1"]');
+    if (!prior) {
+      const inline = document.createElement("script");
+      inline.type = "text/javascript";
+      inline.dataset.orgInlineLoader = "1";
+      inline.text = `${source}\n//# sourceURL=studio_organisation.inline.js`;
+      document.body.appendChild(inline);
+    }
 
-        injected.addEventListener("error", () => {
-          finishError("Impossible de charger /studio_organisation.js");
-        }, { once: true });
-
-        document.body.appendChild(injected);
-      }
-
-      checkReady();
-    });
+    if (typeof window.__studioOrganisationInit !== "function") {
+      throw new Error(
+        `studio_organisation.js chargé mais globale absente après injection | status=${resp.status} | type=${contentType || "-"}`
+      );
+    }
   }
 
   async function loadOrganisationWorkspace(){
