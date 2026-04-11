@@ -4752,10 +4752,14 @@ body {
         });
     }
 
-    async function init(){
+    async function init(force = false){
         try { await (window.__studioAuthReady || Promise.resolve(null)); } catch (_) {}
+
         const portal = window.portal;
-        if (!portal) return;
+        const root = getOrganisationRoot();
+
+        if (!portal || !root) return;
+        if (_loaded && !force) return;
 
         await ensureRole(portal);
         bindOnce(portal);
@@ -4768,8 +4772,21 @@ body {
         setStatus("—");
     }
 
-    init().catch(e => {
-        if (window.portal && window.portal.showAlert) window.portal.showAlert("error", "Erreur organisation : " + (e?.message || e));
-        setStatus("Erreur de chargement.");
-    });
+    window.__studioOrganisationInit = async function(options){
+        const force = !!(options && options.force);
+        try {
+            await init(force);
+        } catch (e) {
+            if (window.portal && window.portal.showAlert) {
+                window.portal.showAlert("error", "Erreur organisation : " + (e?.message || e));
+            }
+            setStatus("Erreur de chargement.");
+            throw e;
+        }
+    };
+
+    if (getOrganisationRoot() && window.portal) {
+        window.__studioOrganisationInit().catch(() => {});
+    }
+
 })();
