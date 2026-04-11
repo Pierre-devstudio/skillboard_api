@@ -1051,40 +1051,84 @@ function bindPostalAssist(){
     });
   }
 
+  function ensureOrganisationScriptLoaded(){
+    if (typeof window.__studioOrganisationInit === "function") {
+      return Promise.resolve();
+    }
+
+    if (_orgWorkspaceScriptPromise) {
+      return _orgWorkspaceScriptPromise;
+    }
+
+    _orgWorkspaceScriptPromise = new Promise((resolve, reject) => {
+      let script = document.querySelector('script[data-studio-org-script="1"]');
+
+      const cleanup = () => {
+        if (!script) return;
+        script.removeEventListener("load", onLoad);
+        script.removeEventListener("error", onError);
+      };
+
+      const onLoad = () => {
+        cleanup();
+        if (typeof window.__studioOrganisationInit === "function") {
+          resolve();
+          return;
+        }
+        _orgWorkspaceScriptPromise = null;
+        reject(new Error("Initialisation Organisation introuvable."));
+      };
+
+      const onError = () => {
+        cleanup();
+        _orgWorkspaceScriptPromise = null;
+        reject(new Error("Impossible de charger studio_organisation.js."));
+      };
+
+      if (!script) {
+        script = document.createElement("script");
+        script.src = "/studio_organisation.js";
+        script.dataset.studioOrgScript = "1";
+        document.body.appendChild(script);
+      }
+
+      script.addEventListener("load", onLoad, { once: true });
+      script.addEventListener("error", onError, { once: true });
+    });
+
+    return _orgWorkspaceScriptPromise;
+  }
+
   async function loadOrganisationWorkspace(){
     const mount = byId("orgWorkspaceMount");
     if (!mount) return;
 
     ensureOrganisationPortalBridge();
 
-    const orgInit = window.__studioOrganisationInit;
-
-    if (mount.dataset.loaded === "1") {
-      if (typeof orgInit === "function") {
-        await orgInit({ force: true });
+    if (mount.dataset.loaded !== "1") {
+      const tpl = byId("tplOrgWorkspace");
+      if (!tpl || !tpl.content) {
+        throw new Error("Template Organisation introuvable.");
       }
-      return;
+
+      const root = tpl.content.querySelector('#view-organisation[data-view="organisation"]');
+      if (!root) {
+        throw new Error("Bloc Organisation partagé introuvable.");
+      }
+
+      mount.innerHTML = "";
+      mount.appendChild(root.cloneNode(true));
+      mount.dataset.loaded = "1";
     }
 
-    const tpl = byId("tplOrgWorkspace");
-    if (!tpl || !tpl.content) {
-      throw new Error("Template Organisation introuvable.");
-    }
+    await ensureOrganisationScriptLoaded();
 
-    const root = tpl.content.querySelector('#view-organisation[data-view="organisation"]');
-    if (!root) {
-      throw new Error("Bloc Organisation partagé introuvable.");
-    }
-
-    mount.innerHTML = "";
-    mount.appendChild(root.cloneNode(true));
-    mount.dataset.loaded = "1";
-
-    if (typeof orgInit === "function") {
-      await orgInit({ force: true });
-    } else {
+    const orgInit = window.__studioOrganisationInit;
+    if (typeof orgInit !== "function") {
       throw new Error("Initialisation Organisation introuvable.");
     }
+
+    await orgInit({ force: true });
   }
 
   function setSection(name){
