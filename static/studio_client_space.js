@@ -1109,29 +1109,25 @@ function bindPostalAssist(){
     if (!mount) return;
     if (mount.dataset.loaded === "1") return;
 
-    const r = await fetch("/studio_organisation.html", { cache: "no-store" });
-    if (!r.ok) {
-      throw new Error(`Impossible de charger studio_organisation.html (HTTP ${r.status}).`);
+    const tpl = byId("tplOrgWorkspace");
+    if (!tpl || !tpl.content) {
+      throw new Error("Template Organisation introuvable.");
     }
 
-    const html = await r.text();
-    const wrapper = document.createElement("div");
-    wrapper.innerHTML = html;
-
-    const root =
-      wrapper.querySelector('#view-organisation[data-view="organisation"]') ||
-      wrapper.querySelector("#view-organisation") ||
-      wrapper.querySelector('[data-view="organisation"]');
-
+    const root = tpl.content.querySelector('#view-organisation[data-view="organisation"]');
     if (!root) {
-      throw new Error("Bloc Organisation partagé introuvable dans studio_organisation.html.");
+      throw new Error("Bloc Organisation partagé introuvable.");
     }
 
     mount.innerHTML = "";
-    mount.appendChild(root);
+    mount.appendChild(root.cloneNode(true));
 
     ensureOrganisationPortalBridge();
-    await ensureOrganisationScriptLoaded();
+
+    const orgInit = window.__studioOrganisationInit;
+    if (typeof orgInit === "function") {
+      await orgInit();
+    }
 
     mount.dataset.loaded = "1";
   }

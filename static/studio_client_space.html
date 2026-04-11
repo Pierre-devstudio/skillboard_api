@@ -623,6 +623,144 @@
         </div>
       </div>
 
+      <template id="tplOrgWorkspace">
+        <section id="view-organisation" data-view="organisation">
+          <div class="card">
+            <div class="org-card-head">
+              <div>
+                <div class="card-title">Votre organisation</div>
+                <div class="card-sub">Sélectionnez un service pour afficher la cartographie des postes et la fiche de poste associée.</div>
+              </div>
+
+              <div class="sb-actions">
+                <button type="button" class="sb-btn sb-btn--doc" id="btnOpenOrgChart">Organigramme</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="sb-layout-2col">
+            <div class="card">
+              <div class="org-card-head">
+                <div style="width:100%;">
+                  <div class="card-title" style="margin-bottom:2px;">Services</div>
+                  <div class="card-sub" style="margin:0;">Cliquez sur un service.</div>
+
+                  <div class="sb-actions" style="margin-top:10px;">
+                    <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcAdd">+ Service</button>
+                    <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcEdit">Renommer</button>
+                    <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnSvcArchive">Archiver</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sb-list" id="svcList"></div>
+            </div>
+
+            <div class="sb-stack sb-stack--md">
+              <div class="card">
+                <div class="org-card-head">
+                  <div style="width:100%;">
+                    <div class="card-title" id="posteBlockTitle" style="margin-bottom:2px;">Tous les postes</div>
+
+                    <div class="sb-toolbar" style="margin-top:10px;">
+                      <div class="sb-search">
+                        <div class="card-sub" style="margin:0 0 4px 0;">Rechercher un poste</div>
+                        <input type="text" id="posteSearch" placeholder="Code ou intitulé…" />
+                      </div>
+
+                      <label class="sb-check" style="align-self:flex-end; margin:0 4px 2px 0;">
+                        <input type="checkbox" id="posteShowArchived" />
+                        <span>Voir les postes archivés</span>
+                      </label>
+
+                      <button type="button" class="sb-btn sb-btn--accent" id="btnAddFromCatalog">Ajouter un poste</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="sb-stack sb-stack--xxs sb-mt-10" id="posteList"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sb-modal" id="modalCatalog" style="display:none;">
+            <div class="sb-modal-card">
+              <div class="sb-modal-head">
+                <div>
+                  <div class="card-title" style="margin-bottom:2px;">Ajouter depuis le catalogue</div>
+                  <div class="card-sub" style="margin:0;">Sélectionnez une fiche de poste à ajouter au service courant.</div>
+                </div>
+                <button type="button" class="sb-icon-btn" id="btnCloseCatalog" aria-label="Fermer">✕</button>
+              </div>
+
+              <div class="sb-modal-body">
+                <div class="sb-toolbar">
+                  <div class="sb-search">
+                    <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
+                    <input type="text" id="catalogSearch" placeholder="Code ou intitulé…" />
+                  </div>
+                </div>
+                <div class="sb-stack sb-stack--xxs sb-mt-10" id="catalogList"></div>
+              </div>
+
+              <div class="sb-modal-foot">
+                <button type="button" class="sb-btn sb-btn--secondary" id="btnCatalogCancel">Annuler</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="sb-modal" id="modalSvc" style="display:none;">
+            <div class="sb-modal-card">
+              <div class="sb-modal-head">
+                <div>
+                  <div class="card-title" id="svcModalTitle" style="margin-bottom:2px;">Service</div>
+                  <div class="card-sub" style="margin:0;">Création ou modification d’un service.</div>
+                </div>
+                <button type="button" class="sb-icon-btn" id="btnCloseSvc" aria-label="Fermer">✕</button>
+              </div>
+
+              <div class="sb-modal-body">
+                <div class="sb-form-grid">
+                  <div class="sb-field sb-span-2">
+                    <label class="sb-label" for="svcNom">Nom du service</label>
+                    <input type="text" class="sb-ctrl" id="svcNom" />
+                  </div>
+                  <div class="sb-field sb-span-2">
+                    <label class="sb-label" for="svcParent">Service parent</label>
+                    <select class="sb-select" id="svcParent"></select>
+                  </div>
+                </div>
+              </div>
+
+              <div class="sb-modal-foot">
+                <button type="button" class="sb-btn sb-btn--secondary" id="btnSvcCancel">Annuler</button>
+                <button type="button" class="sb-btn sb-btn--accent" id="btnSvcSave">Enregistrer</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="sb-modal" id="modalPosteCreate" style="display:none;"></div>
+          <div class="sb-modal" id="modalPosteEdit" style="display:none;"></div>
+          <div class="sb-modal" id="modalPosteCompCreate" style="display:none;"></div>
+          <div class="sb-modal" id="modalPosteCompEdit" style="display:none;"></div>
+          <div class="sb-modal" id="modalPosteCertCreate" style="display:none;"></div>
+          <div class="sb-modal" id="modalPosteCertEdit" style="display:none;"></div>
+          <div class="sb-modal" id="modalImportPoste" style="display:none;"></div>
+          <div class="sb-modal" id="modalPosteIa" style="display:none;"></div>
+          <div class="sb-modal" id="modalPosteDuplicate" style="display:none;"></div>
+
+          <div class="sb-ia-overlay" id="iaBusyOverlay" style="display:none;">
+            <div class="sb-ia-overlay__card">
+              <div class="sb-ia-overlay__title" id="iaBusyTitle">Analyse IA en cours</div>
+              <div class="sb-ia-overlay__text" id="iaBusyText">Traitement en cours…</div>
+              <div class="sb-ia-overlay__time"><span id="iaBusySeconds">0</span> s</div>
+            </div>
+          </div>
+
+          <div id="orgStatus" style="display:none;">—</div>
+        </section>
+      </template>
+
       <section class="cs-section" data-section="evaluations">
         <div class="cs-card cs-placeholder">
           <div class="cs-card-title">Évaluation des compétences</div>
@@ -638,5 +776,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/portal_auth_common.js"></script>
   <script src="/studio_client_space.js"></script>
+  <script src="/studio_organisation.js"></script>
 </body>
 </html>
