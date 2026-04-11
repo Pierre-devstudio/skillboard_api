@@ -15,6 +15,9 @@
   let _ficheEditMode = false;
   let _ficheSaving = false;
   let _publicLookupLoading = false;
+  let _orgWorkspaceReady = false;
+  let _orgWorkspaceLoadingPromise = null;
+  let _orgWorkspaceScriptPromise = null;
 
   function byId(id){ return document.getElementById(id); }
 
@@ -1056,18 +1059,47 @@ function bindPostalAssist(){
       return Promise.resolve();
     }
 
-    return new Promise((resolve, reject) => {
+    if (_orgWorkspaceScriptPromise) {
+      return _orgWorkspaceScriptPromise;
+    }
+
+    _orgWorkspaceScriptPromise = new Promise((resolve, reject) => {
       const startedAt = Date.now();
-      const maxWaitMs = 4000;
+      const maxWaitMs = 5000;
+      let settled = false;
+
+      const finishOk = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+
+      const finishError = (message) => {
+        if (settled) return;
+        settled = true;
+        _orgWorkspaceScriptPromise = null;
+        reject(new Error(message));
+      };
+
+      let retryScript = document.querySelector('script[data-studio-org-retry="1"]');
+      if (!retryScript) {
+        retryScript = document.createElement("script");
+        retryScript.src = "/studio_organisation.js?v=20260411-01";
+        retryScript.dataset.studioOrgRetry = "1";
+        retryScript.addEventListener("error", () => {
+          finishError("Impossible de charger studio_organisation.js.");
+        }, { once: true });
+        document.body.appendChild(retryScript);
+      }
 
       const checkReady = () => {
         if (typeof window.__studioOrganisationInit === "function") {
-          resolve();
+          finishOk();
           return;
         }
 
         if ((Date.now() - startedAt) >= maxWaitMs) {
-          reject(new Error("Initialisation Organisation introuvable."));
+          finishError("Initialisation Organisation introuvable.");
           return;
         }
 
@@ -1076,32 +1108,64 @@ function bindPostalAssist(){
 
       checkReady();
     });
+
+    return _orgWorkspaceScriptPromise;
   }
 
-  async function loadOrganisationWorkspace(){
+  async function loadOrganisationWorkspace(options){
+    const silent = !!(options && options.silent);
     const mount = byId("orgWorkspaceMount");
     if (!mount) return;
 
-    ensureOrganisationPortalBridge();
+    if (_orgWorkspaceReady) return;
 
-    if (mount.dataset.loaded !== "1") {
-      const tpl = byId("tplOrgWorkspace");
-      if (!tpl || !tpl.content) {
-        throw new Error("Template Organisation introuvable.");
+    if (_orgWorkspaceLoadingPromise) {
+      if (silent) {
+        try {
+          await _orgWorkspaceLoadingPromise;
+        } catch (_) {}
+        return;
       }
-
-      const root = tpl.content.querySelector('#view-organisation[data-view="organisation"]');
-      if (!root) {
-        throw new Error("Bloc Organisation partagé introuvable.");
-      }
-
-      mount.innerHTML = "";
-      mount.appendChild(root.cloneNode(true));
-      mount.dataset.loaded = "1";
+      return _orgWorkspaceLoadingPromise;
     }
 
-    await ensureOrganisationScriptLoaded();
-    await window.__studioOrganisationInit({ force: true });
+    _orgWorkspaceLoadingPromise = (async () => {
+      ensureOrganisationPortalBridge();
+
+      if (mount.dataset.loaded !== "1") {
+        const tpl = byId("tplOrgWorkspace");
+        if (!tpl || !tpl.content) {
+          throw new Error("Template Organisation introuvable.");
+        }
+
+        const root = tpl.content.querySelector('#view-organisation[data-view="organisation"]');
+        if (!root) {
+          throw new Error("Bloc Organisation partagé introuvable.");
+        }
+
+        mount.innerHTML = "";
+        mount.appendChild(root.cloneNode(true));
+        mount.dataset.loaded = "1";
+      }
+
+      await ensureOrganisationScriptLoaded();
+
+      if (typeof window.__studioOrganisationInit !== "function") {
+        throw new Error("Initialisation Organisation introuvable.");
+      }
+
+      await window.__studioOrganisationInit({ force: true });
+      _orgWorkspaceReady = true;
+    })();
+
+    try {
+      await _orgWorkspaceLoadingPromise;
+    } catch (e) {
+      _orgWorkspaceReady = false;
+      if (!silent) throw e;
+    } finally {
+      _orgWorkspaceLoadingPromise = null;
+    }
   }
 
   function setSection(name){
@@ -1116,13 +1180,26 @@ function bindPostalAssist(){
 
   function bindNavigation(){
     document.querySelectorAll(".menu-item[data-section]").forEach(btn => {
-      btn.addEventListener("click", () => setSection(btn.dataset.section || "dashboard"));
+      btn.addEventListener("click", async () => {
+        const section = btn.dataset.section || "dashboard";
+        setMessage("");
+        setSection(section);
+
+        if (section !== "organisation") return;
+
+        try {
+          await loadOrganisationWorkspace();
+        } catch (e) {
+          setMessage(e.message || "Erreur lors du chargement de l’organisation.");
+        }
+      });
     });
 
     byId("btnOrgHistory")?.addEventListener("click", async () => {
       try {
         setMessage("");
         setSection("organisation");
+        await loadOrganisationWorkspace();
         await openOrgHistoryModal();
       } catch (e) {
         setMessage(e.message || "Erreur lors du chargement de l’historique.");
@@ -2127,9 +2204,10 @@ function bindPostalAssist(){
     renderDashboard();
     renderIdentification();
     await loadOrganisationData();
-    await loadOrganisationWorkspace();
     setFicheEditMode(false);
     setSection("dashboard");
+
+    loadOrganisationWorkspace({ silent: true }).catch(() => {});
   }
 
   window.addEventListener("DOMContentLoaded", async () => {

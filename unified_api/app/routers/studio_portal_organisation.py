@@ -4749,9 +4749,7 @@ def studio_org_list_postes(
 
                 if svc == "__none__":
                     where.append("p.id_service IS NULL")
-                elif svc == "__all__":
-                    where.append("p.id_service IS NOT NULL")
-                else:
+                elif svc != "__all__":
                     where.append("p.id_service = %s")
                     params.append(svc)
 
