@@ -952,8 +952,41 @@ def get_studio_child_structures(id_owner: str, id_ent: str, request: Request):
 
                 cur.execute(
                     """
+                    WITH RECURSIVE tree AS (
+                        SELECT
+                            l.id_ent_parent,
+                            l.id_ent_enfant,
+                            l.type_liaison,
+                            1 AS depth
+                        FROM public.tbl_entreprise_liaison l
+                        JOIN public.tbl_entreprise e
+                          ON e.id_ent = l.id_ent_enfant
+                        WHERE l.id_ent_parent = %s
+                          AND e.id_owner_gestionnaire = %s
+                          AND COALESCE(l.archive, FALSE) = FALSE
+                          AND COALESCE(e.masque, FALSE) = FALSE
+
+                        UNION ALL
+
+                        SELECT
+                            l.id_ent_parent,
+                            l.id_ent_enfant,
+                            l.type_liaison,
+                            t.depth + 1 AS depth
+                        FROM public.tbl_entreprise_liaison l
+                        JOIN public.tbl_entreprise e
+                          ON e.id_ent = l.id_ent_enfant
+                        JOIN tree t
+                          ON t.id_ent_enfant = l.id_ent_parent
+                        WHERE e.id_owner_gestionnaire = %s
+                          AND COALESCE(l.archive, FALSE) = FALSE
+                          AND COALESCE(e.masque, FALSE) = FALSE
+                    )
                     SELECT
-                        e.id_ent,
+                        t.id_ent_parent,
+                        t.id_ent_enfant AS id_ent,
+                        t.type_liaison,
+                        t.depth,
                         e.nom_ent,
                         e.ville_ent,
                         e.type_entreprise,
@@ -963,15 +996,22 @@ def get_studio_child_structures(id_owner: str, id_ent: str, request: Request):
                             FROM public.tbl_novoskill_owner o
                             WHERE o.id_owner = e.id_ent
                               AND COALESCE(o.archive, FALSE) = FALSE
-                        ) AS has_owner_scope
-                    FROM public.tbl_entreprise_liaison l
+                        ) AS has_owner_scope,
+                        EXISTS (
+                            SELECT 1
+                            FROM public.tbl_entreprise_liaison l2
+                            JOIN public.tbl_entreprise e2
+                              ON e2.id_ent = l2.id_ent_enfant
+                            WHERE l2.id_ent_parent = e.id_ent
+                              AND e2.id_owner_gestionnaire = %s
+                              AND COALESCE(l2.archive, FALSE) = FALSE
+                              AND COALESCE(e2.masque, FALSE) = FALSE
+                        ) AS has_children
+                    FROM tree t
                     JOIN public.tbl_entreprise e
-                      ON e.id_ent = l.id_ent_enfant
-                    WHERE l.id_ent_parent = %s
-                      AND e.id_owner_gestionnaire = %s
-                      AND COALESCE(l.archive, FALSE) = FALSE
-                      AND COALESCE(e.masque, FALSE) = FALSE
+                      ON e.id_ent = t.id_ent_enfant
                     ORDER BY
+                      t.depth,
                       CASE
                         WHEN lower(COALESCE(e.type_entreprise, '')) = 'entreprise' THEN 0
                         WHEN lower(COALESCE(e.type_entreprise, '')) = 'site' THEN 1
@@ -980,7 +1020,7 @@ def get_studio_child_structures(id_owner: str, id_ent: str, request: Request):
                       lower(e.nom_ent),
                       e.id_ent
                     """,
-                    (id_ent, oid),
+                    (id_ent, oid, oid, oid),
                 )
                 rows = cur.fetchall() or []
 
@@ -988,12 +1028,16 @@ def get_studio_child_structures(id_owner: str, id_ent: str, request: Request):
                 for r in rows:
                     items.append(
                         {
+                            "id_ent_parent": r.get("id_ent_parent"),
                             "id_ent": r.get("id_ent"),
                             "nom_ent": r.get("nom_ent"),
                             "ville_ent": r.get("ville_ent"),
                             "type_entreprise": r.get("type_entreprise"),
                             "profil_structurel": r.get("profil_structurel"),
+                            "type_liaison": r.get("type_liaison"),
+                            "depth": int(r.get("depth") or 0),
                             "has_owner_scope": bool(r.get("has_owner_scope")),
+                            "has_children": bool(r.get("has_children")),
                         }
                     )
 
@@ -1003,6 +1047,51 @@ def get_studio_child_structures(id_owner: str, id_ent: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/clients/structures error: {e}")
+
+
+@router.post("/studio/clients/{id_owner}/{id_ent}/structures/{id_child}/detach")
+def detach_studio_child_structure(id_owner: str, id_ent: str, id_child: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                if not _structure_exists_for_owner(cur, oid, id_ent):
+                    raise HTTPException(status_code=404, detail="Structure parente introuvable.")
+
+                if not _structure_exists_for_owner(cur, oid, id_child):
+                    raise HTTPException(status_code=404, detail="Structure enfant introuvable.")
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_entreprise_liaison
+                    SET archive = TRUE
+                    WHERE id_ent_parent = %s
+                      AND id_ent_enfant = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    """,
+                    (id_ent, id_child),
+                )
+
+                if cur.rowcount <= 0:
+                    raise HTTPException(status_code=404, detail="Liaison introuvable ou déjà retirée.")
+
+                conn.commit()
+                return {
+                    "ok": True,
+                    "id_ent_parent": id_ent,
+                    "id_ent_enfant": id_child,
+                }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/structures/detach error: {e}")
 
 
 @router.post("/studio/clients/{id_owner}/{id_ent}/structures")

@@ -9,6 +9,8 @@
   let _orgItems = [];
   let _orgCollapsed = false;
   let _orgCreateKind = "";
+  let _orgCreateParentId = "";
+  let _orgExpandedIds = new Set();
   let _ficheEditMode = false;
   let _ficheSaving = false;
   let _publicLookupLoading = false;
@@ -781,14 +783,14 @@ function bindPostalAssist(){
       : "Création d’une entreprise rattachée avec son propre espace de gestion.";
   }
 
-  function openOrgCreateModal(kind){
+  function openOrgCreateModal(kind, parentId){
+    _orgCreateParentId = (parentId || getClientId() || "").trim();
     resetOrgCreateForm(kind);
-    setOrgModalInlineError("");
     byId("modalOrgStructure")?.classList.add("show");
   }
 
   function closeOrgCreateModal(){
-    setOrgModalInlineError("");
+    _orgCreateParentId = "";
     byId("modalOrgStructure")?.classList.remove("show");
   }
 
@@ -824,9 +826,13 @@ function bindPostalAssist(){
 
   async function saveOrgCreateStructure(){
     const ownerId = getOwnerId();
-    const clientId = getClientId();
+    const parentId = (_orgCreateParentId || getClientId() || "").trim();
     const token = await ensureAuthReady();
     if (!token) return;
+    if (!parentId) {
+      setMessage("Parent de rattachement introuvable.");
+      return;
+    }
 
     const btnSave = byId("btnOrgModalSave");
 
@@ -837,7 +843,7 @@ function bindPostalAssist(){
       }
 
       await apiJson(
-        `${API_BASE}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}/structures`,
+        `${API_BASE}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(parentId)}/structures`,
         token,
         {
           method: "POST",
@@ -848,6 +854,7 @@ function bindPostalAssist(){
         }
       );
 
+      _orgExpandedIds.add(parentId);
       closeOrgCreateModal();
       await loadOrganisationData();
     } catch (e) {
@@ -1115,6 +1122,270 @@ function bindPostalAssist(){
     tbody.innerHTML = rows.join("");
   }
 
+  function getOrganisationCapabilitiesForProfil(profil){
+    const p = normalizeProfilStructurel(profil);
+
+    return {
+      profil: p,
+      hideBlock: p === "site_unique",
+      canAddSite: p === "multi_site" || p === "holding_multi_entreprise_multi_site",
+      canAddEntreprise: p === "holding_multi_entreprise" || p === "holding_multi_entreprise_multi_site",
+    };
+  }
+
+  function getOrganisationCapabilitiesForItem(item){
+    return getOrganisationCapabilitiesForProfil(item?.profil_structurel);
+  }
+
+  function escHtml(value){
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function sortOrganisationNodes(a, b){
+    const typeA = normalizeStructureType(a?.type_entreprise);
+    const typeB = normalizeStructureType(b?.type_entreprise);
+
+    if (typeA !== typeB) {
+      return typeA === "entreprise" ? -1 : 1;
+    }
+
+    return (a?.nom_ent || "").localeCompare((b?.nom_ent || ""), "fr", { sensitivity: "base" });
+  }
+
+  function buildOrganisationTree(items){
+    const nodeMap = new Map();
+
+    (items || []).forEach(raw => {
+      const id = (raw?.id_ent || "").toString().trim();
+      if (!id) return;
+
+      nodeMap.set(id, {
+        ...raw,
+        id_ent: id,
+        id_ent_parent: (raw?.id_ent_parent || "").toString().trim(),
+        depth: parseInt(raw?.depth, 10) || 1,
+        children: [],
+      });
+    });
+
+    const roots = [];
+
+    nodeMap.forEach(node => {
+      const parent = nodeMap.get(node.id_ent_parent);
+      if (parent) {
+        parent.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+
+    const walk = (nodes) => {
+      nodes.sort(sortOrganisationNodes);
+      nodes.forEach(node => walk(node.children));
+    };
+
+    walk(roots);
+    return roots;
+  }
+
+  function ensureDefaultOrgExpandedIds(items){
+    if (_orgExpandedIds.size > 0) return;
+
+    (items || []).forEach(item => {
+      const depth = parseInt(item?.depth, 10) || 0;
+      if (depth === 1 && !!item?.has_children) {
+        _orgExpandedIds.add((item.id_ent || "").toString().trim());
+      }
+    });
+  }
+
+  function getOrgToggleSvg(){
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 6 15 12 9 18"></polyline>
+      </svg>
+    `;
+  }
+
+  function getOrgPlusSvg(){
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 5v14"></path>
+        <path d="M5 12h14"></path>
+      </svg>
+    `;
+  }
+
+  function getOrgPencilSvg(){
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20h9"></path>
+        <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
+      </svg>
+    `;
+  }
+
+  function getOrgTrashSvg(){
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6l-1 14H6L5 6"></path>
+        <path d="M10 11v6"></path>
+        <path d="M14 11v6"></path>
+        <path d="M9 6V4h6v2"></path>
+      </svg>
+    `;
+  }
+
+  function renderOrganisationNode(node){
+    const id = (node?.id_ent || "").toString().trim();
+    const parentId = (node?.id_ent_parent || "").toString().trim();
+    const structureType = normalizeStructureType(node?.type_entreprise);
+    const badgeClass = structureType === "site" ? "cs-org-badge--site" : "cs-org-badge--entreprise";
+    const ownerLabel = node?.has_owner_scope ? "Oui" : "Non";
+    const ownerClass = node?.has_owner_scope ? "sb-badge sb-badge--success cs-org-owner" : "sb-badge cs-org-owner";
+    const caps = getOrganisationCapabilitiesForItem(node);
+
+    const children = Array.isArray(node?.children) ? node.children : [];
+    const hasChildren = children.length > 0;
+    const expanded = hasChildren && _orgExpandedIds.has(id);
+
+    const ville = textOrDash(node?.ville_ent);
+    const profil = formatProfilStructurelLabel(node?.profil_structurel);
+    const countLabel = hasChildren ? ` • ${children.length} rattachement(s)` : "";
+
+    const toggleHtml = hasChildren
+      ? `
+        <button
+          type="button"
+          class="sb-btn sb-btn--secondary cs-org-node-toggle${expanded ? " is-open" : ""}"
+          data-org-toggle="${escHtml(id)}"
+          title="${expanded ? "Réduire" : "Afficher"}"
+          aria-label="${expanded ? "Réduire" : "Afficher"}"
+        >
+          ${getOrgToggleSvg()}
+        </button>
+      `
+      : `<span class="cs-org-node-toggle-placeholder"></span>`;
+
+    const actions = [];
+
+    if (caps.canAddEntreprise) {
+      actions.push(`
+        <button
+          type="button"
+          class="sb-icon-btn"
+          data-org-add-kind="entreprise"
+          data-parent-id="${escHtml(id)}"
+          title="Attacher une entreprise"
+          aria-label="Attacher une entreprise"
+        >
+          ${getOrgPlusSvg()}
+        </button>
+      `);
+    }
+
+    if (caps.canAddSite) {
+      actions.push(`
+        <button
+          type="button"
+          class="sb-icon-btn"
+          data-org-add-kind="site"
+          data-parent-id="${escHtml(id)}"
+          title="Attacher un site"
+          aria-label="Attacher un site"
+        >
+          ${getOrgPlusSvg()}
+        </button>
+      `);
+    }
+
+    actions.push(`
+      <button
+        type="button"
+        class="sb-icon-btn"
+        data-org-edit-id="${escHtml(id)}"
+        title="Éditer la structure"
+        aria-label="Éditer la structure"
+      >
+        ${getOrgPencilSvg()}
+      </button>
+    `);
+
+    actions.push(`
+      <button
+        type="button"
+        class="sb-icon-btn sb-icon-btn--danger"
+        data-org-detach-id="${escHtml(id)}"
+        data-parent-id="${escHtml(parentId)}"
+        title="Retirer du rattachement"
+        aria-label="Retirer du rattachement"
+      >
+        ${getOrgTrashSvg()}
+      </button>
+    `);
+
+    const childrenHtml = hasChildren
+      ? `
+        <div class="cs-org-children${expanded ? "" : " is-hidden"}" data-org-children="${escHtml(id)}">
+          ${children.map(renderOrganisationNode).join("")}
+        </div>
+      `
+      : "";
+
+    return `
+      <div class="cs-org-node cs-org-node--${structureType}" data-id-ent="${escHtml(id)}">
+        <div class="cs-org-node-line" data-depth="${Math.max(1, parseInt(node?.depth, 10) || 1)}">
+          ${toggleHtml}
+
+          <div class="cs-org-node-main">
+            <div class="cs-org-struct-cell">
+              <span class="sb-badge cs-org-badge ${badgeClass}">${structureType === "site" ? "Site" : "Entreprise"}</span>
+              <div class="cs-org-struct-main">
+                <div class="cs-org-struct-name">${escHtml(textOrDash(node?.nom_ent))}</div>
+                <div class="cs-org-struct-sub">${escHtml(profil)}${ville !== "—" ? ` • ${escHtml(ville)}` : ""}${countLabel}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="cs-org-node-right">
+            <span class="${ownerClass}">${ownerLabel}</span>
+            <div class="sb-icon-actions">
+              ${actions.join("")}
+            </div>
+          </div>
+        </div>
+
+        ${childrenHtml}
+      </div>
+    `;
+  }
+
+  function renderOrganisationRows(){
+    const host = byId("orgStructuresTree");
+    const wrap = byId("orgStructuresTreeWrap");
+    const empty = byId("orgStructuresEmpty");
+    if (!host || !wrap || !empty) return;
+
+    if (!_orgItems.length) {
+      host.innerHTML = "";
+      wrap.classList.add("is-hidden");
+      empty.classList.remove("is-hidden");
+      return;
+    }
+
+    const roots = buildOrganisationTree(_orgItems);
+
+    wrap.classList.remove("is-hidden");
+    empty.classList.add("is-hidden");
+    host.innerHTML = roots.map(renderOrganisationNode).join("");
+  }
+
   function renderOrganisationSection(){
     const caps = getOrganisationCapabilities();
 
@@ -1167,7 +1438,30 @@ function bindPostalAssist(){
     );
 
     _orgItems = Array.isArray(data?.items) ? data.items : [];
+    ensureDefaultOrgExpandedIds(_orgItems);
     renderOrganisationSection();
+  }
+
+  async function detachOrgStructure(parentId, childId){
+    const ownerId = getOwnerId();
+    const pId = (parentId || "").toString().trim();
+    const cId = (childId || "").toString().trim();
+
+    if (!ownerId || !pId || !cId) return;
+
+    const confirmed = window.confirm("Retirer cette structure du rattachement actuel ?");
+    if (!confirmed) return;
+
+    const token = await ensureAuthReady();
+    if (!token) return;
+
+    await apiJson(
+      `${API_BASE}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(pId)}/structures/${encodeURIComponent(cId)}/detach`,
+      token,
+      { method: "POST" }
+    );
+
+    await loadOrganisationData();
   }
 
   function renderHeader(){
@@ -1439,12 +1733,12 @@ function bindPostalAssist(){
 
     byId("btnOrgAddSite")?.addEventListener("click", () => {
       setMessage("");
-      openOrgCreateModal("site");
+      openOrgCreateModal("site", getClientId());
     });
 
     byId("btnOrgAddEntreprise")?.addEventListener("click", () => {
       setMessage("");
-      openOrgCreateModal("entreprise");
+      openOrgCreateModal("entreprise", getClientId());
     });
 
     byId("btnOrgModalClose")?.addEventListener("click", closeOrgCreateModal);
@@ -1453,24 +1747,66 @@ function bindPostalAssist(){
       await saveOrgCreateStructure();
     });
 
-    byId("btnOrgLoadPublicData")?.addEventListener("click", async () => {
-      await loadPublicCompanyIntoForm("org_create");
-    });
-
     byId("orgCreateProfilStructurel")?.addEventListener("change", syncOrgCreateProfileUi);
     byId("orgCreateGroupOk")?.addEventListener("change", syncOrgCreateProfileUi);
 
-    byId("orgStructuresTbody")?.addEventListener("click", (e) => {
-      const openBtn = e.target.closest("[data-open-structure]");
-      if (openBtn) {
+    byId("orgStructuresTree")?.addEventListener("click", async (e) => {
+      const toggleBtn = e.target.closest("[data-org-toggle]");
+      if (toggleBtn) {
+        e.preventDefault();
         e.stopPropagation();
-        openStructureSpace(openBtn.getAttribute("data-open-structure"));
+
+        const id = (toggleBtn.getAttribute("data-org-toggle") || "").trim();
+        if (!id) return;
+
+        if (_orgExpandedIds.has(id)) _orgExpandedIds.delete(id);
+        else _orgExpandedIds.add(id);
+
+        renderOrganisationRows();
         return;
       }
 
-      const row = e.target.closest("tr[data-id-ent]");
-      if (row) {
-        openStructureSpace(row.getAttribute("data-id-ent"));
+      const addBtn = e.target.closest("[data-org-add-kind]");
+      if (addBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const kind = (addBtn.getAttribute("data-org-add-kind") || "").trim();
+        const parentId = (addBtn.getAttribute("data-parent-id") || "").trim();
+        if (!kind || !parentId) return;
+
+        setMessage("");
+        openOrgCreateModal(kind, parentId);
+        return;
+      }
+
+      const editBtn = e.target.closest("[data-org-edit-id]");
+      if (editBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const id = (editBtn.getAttribute("data-org-edit-id") || "").trim();
+        if (!id) return;
+
+        openStructureSpace(id);
+        return;
+      }
+
+      const detachBtn = e.target.closest("[data-org-detach-id]");
+      if (detachBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const id = (detachBtn.getAttribute("data-org-detach-id") || "").trim();
+        const parentId = (detachBtn.getAttribute("data-parent-id") || "").trim();
+        if (!id || !parentId) return;
+
+        try {
+          await detachOrgStructure(parentId, id);
+          setMessage("");
+        } catch (err) {
+          setMessage(err?.message || "Erreur lors du retrait du rattachement.");
+        }
       }
     });
   }
