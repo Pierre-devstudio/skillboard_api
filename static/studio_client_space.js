@@ -1056,47 +1056,7 @@ function bindPostalAssist(){
       return Promise.resolve();
     }
 
-    if (_orgWorkspaceScriptPromise) {
-      return _orgWorkspaceScriptPromise;
-    }
-
-    _orgWorkspaceScriptPromise = new Promise((resolve, reject) => {
-      let script = document.querySelector('script[data-studio-org-script="1"]');
-
-      const cleanup = () => {
-        if (!script) return;
-        script.removeEventListener("load", onLoad);
-        script.removeEventListener("error", onError);
-      };
-
-      const onLoad = () => {
-        cleanup();
-        if (typeof window.__studioOrganisationInit === "function") {
-          resolve();
-          return;
-        }
-        _orgWorkspaceScriptPromise = null;
-        reject(new Error("Initialisation Organisation introuvable."));
-      };
-
-      const onError = () => {
-        cleanup();
-        _orgWorkspaceScriptPromise = null;
-        reject(new Error("Impossible de charger studio_organisation.js."));
-      };
-
-      if (!script) {
-        script = document.createElement("script");
-        script.src = "/studio_organisation.js";
-        script.dataset.studioOrgScript = "1";
-        document.body.appendChild(script);
-      }
-
-      script.addEventListener("load", onLoad, { once: true });
-      script.addEventListener("error", onError, { once: true });
-    });
-
-    return _orgWorkspaceScriptPromise;
+    return Promise.reject(new Error("Initialisation Organisation introuvable."));
   }
 
   async function loadOrganisationWorkspace(){
@@ -1122,13 +1082,7 @@ function bindPostalAssist(){
     }
 
     await ensureOrganisationScriptLoaded();
-
-    const orgInit = window.__studioOrganisationInit;
-    if (typeof orgInit !== "function") {
-      throw new Error("Initialisation Organisation introuvable.");
-    }
-
-    await orgInit({ force: true });
+    await window.__studioOrganisationInit({ force: true });
   }
 
   function setSection(name){
