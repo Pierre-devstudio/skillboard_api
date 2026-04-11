@@ -1059,57 +1059,50 @@ function bindPostalAssist(){
       return Promise.resolve();
     }
 
-    if (_orgWorkspaceScriptPromise) {
-      return _orgWorkspaceScriptPromise;
-    }
+    const existingScripts = Array.from(document.scripts || []).map(s => s.src || "");
+    const hasStaticInclude = existingScripts.some(src => src.includes("/studio_organisation.js"));
 
-    _orgWorkspaceScriptPromise = new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       const startedAt = Date.now();
       const maxWaitMs = 5000;
-      let settled = false;
 
-      const finishOk = () => {
-        if (settled) return;
-        settled = true;
-        resolve();
-      };
+      let injected = document.querySelector('script[data-studio-org-reload="1"]');
 
       const finishError = (message) => {
-        if (settled) return;
-        settled = true;
-        _orgWorkspaceScriptPromise = null;
-        reject(new Error(message));
+        reject(new Error(
+          `${message} | static_include=${hasStaticInclude ? "oui" : "non"}`
+        ));
       };
-
-      let retryScript = document.querySelector('script[data-studio-org-retry="1"]');
-      if (!retryScript) {
-        retryScript = document.createElement("script");
-        retryScript.src = "/studio_organisation.js?v=20260411-01";
-        retryScript.dataset.studioOrgRetry = "1";
-        retryScript.addEventListener("error", () => {
-          finishError("Impossible de charger studio_organisation.js.");
-        }, { once: true });
-        document.body.appendChild(retryScript);
-      }
 
       const checkReady = () => {
         if (typeof window.__studioOrganisationInit === "function") {
-          finishOk();
+          resolve();
           return;
         }
 
         if ((Date.now() - startedAt) >= maxWaitMs) {
-          finishError("Initialisation Organisation introuvable.");
+          finishError("studio_organisation.js non exécute ou globale absente");
           return;
         }
 
         window.setTimeout(checkReady, 25);
       };
 
+      if (!injected) {
+        injected = document.createElement("script");
+        injected.src = `/studio_organisation.js?v=${Date.now()}`;
+        injected.async = false;
+        injected.dataset.studioOrgReload = "1";
+
+        injected.addEventListener("error", () => {
+          finishError("Impossible de charger /studio_organisation.js");
+        }, { once: true });
+
+        document.body.appendChild(injected);
+      }
+
       checkReady();
     });
-
-    return _orgWorkspaceScriptPromise;
   }
 
   async function loadOrganisationWorkspace(){
