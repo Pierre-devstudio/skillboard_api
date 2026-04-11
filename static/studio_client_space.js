@@ -1056,7 +1056,26 @@ function bindPostalAssist(){
       return Promise.resolve();
     }
 
-    return Promise.reject(new Error("Initialisation Organisation introuvable."));
+    return new Promise((resolve, reject) => {
+      const startedAt = Date.now();
+      const maxWaitMs = 4000;
+
+      const checkReady = () => {
+        if (typeof window.__studioOrganisationInit === "function") {
+          resolve();
+          return;
+        }
+
+        if ((Date.now() - startedAt) >= maxWaitMs) {
+          reject(new Error("Initialisation Organisation introuvable."));
+          return;
+        }
+
+        window.setTimeout(checkReady, 25);
+      };
+
+      checkReady();
+    });
   }
 
   async function loadOrganisationWorkspace(){
