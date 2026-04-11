@@ -1112,24 +1112,24 @@ function bindPostalAssist(){
     return _orgWorkspaceScriptPromise;
   }
 
-  async function loadOrganisationWorkspace(options){
-    const silent = !!(options && options.silent);
+  async function loadOrganisationWorkspace(){
     const mount = byId("orgWorkspaceMount");
-    if (!mount) return;
+    const ownerId = getOwnerId();
+    const clientId = getClientId();
 
-    if (_orgWorkspaceReady) return;
+    try {
+      console.info("[OrgWorkspace] start", {
+        ownerId,
+        clientId,
+        hasMount: !!mount,
+        hasTemplate: !!byId("tplOrgWorkspace"),
+        initType: typeof window.__studioOrganisationInit
+      });
 
-    if (_orgWorkspaceLoadingPromise) {
-      if (silent) {
-        try {
-          await _orgWorkspaceLoadingPromise;
-        } catch (_) {}
-        return;
+      if (!mount) {
+        throw new Error("orgWorkspaceMount introuvable.");
       }
-      return _orgWorkspaceLoadingPromise;
-    }
 
-    _orgWorkspaceLoadingPromise = (async () => {
       ensureOrganisationPortalBridge();
 
       if (mount.dataset.loaded !== "1") {
@@ -1155,16 +1155,25 @@ function bindPostalAssist(){
       }
 
       await window.__studioOrganisationInit({ force: true });
-      _orgWorkspaceReady = true;
-    })();
 
-    try {
-      await _orgWorkspaceLoadingPromise;
+      console.info("[OrgWorkspace] done", {
+        ownerId,
+        clientId,
+        initType: typeof window.__studioOrganisationInit
+      });
     } catch (e) {
-      _orgWorkspaceReady = false;
-      if (!silent) throw e;
-    } finally {
-      _orgWorkspaceLoadingPromise = null;
+      console.error("[OrgWorkspace] error", {
+        ownerId,
+        clientId,
+        hasMount: !!mount,
+        hasTemplate: !!byId("tplOrgWorkspace"),
+        initType: typeof window.__studioOrganisationInit,
+        message: e?.message || String(e)
+      }, e);
+
+      throw new Error(
+        `Organisation workspace: ${e?.message || e} | owner=${ownerId || "-"} | client=${clientId || "-"} | init=${typeof window.__studioOrganisationInit}`
+      );
     }
   }
 
@@ -1182,12 +1191,14 @@ function bindPostalAssist(){
     document.querySelectorAll(".menu-item[data-section]").forEach(btn => {
       btn.addEventListener("click", async () => {
         const section = btn.dataset.section || "dashboard";
-        setMessage("");
         setSection(section);
 
-        if (section !== "organisation") return;
+        if (section !== "organisation") {
+          return;
+        }
 
         try {
+          setMessage("");
           await loadOrganisationWorkspace();
         } catch (e) {
           setMessage(e.message || "Erreur lors du chargement de l’organisation.");

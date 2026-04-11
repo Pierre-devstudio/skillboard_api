@@ -134,9 +134,59 @@
         return document.getElementById(id);
     }
 
-    function setStatus(msg){
+    function setStatus(msg, isError = false){
         const el = byId("orgStatus");
-        if (el) el.textContent = msg || "—";
+        if (!el) return;
+
+        const text = String(msg || "").trim();
+        if (!text || text === "—") {
+            el.textContent = "";
+            el.style.display = "none";
+            return;
+        }
+
+        el.textContent = text;
+        el.style.display = "";
+        el.style.background = isError ? "#fff1f2" : "#f8fafc";
+        el.style.borderColor = isError ? "#fecaca" : "#e5e7eb";
+        el.style.color = isError ? "#991b1b" : "#334155";
+    }
+
+    function formatOrgDiag(step, extra){
+        const payload = Object.assign({
+            step,
+            ownerId: getOwnerId(),
+            scopeEntId: getScopeEntId(),
+            selectedService: _selectedService || "__all__"
+        }, extra || {});
+
+        const parts = [
+            `étape=${payload.step}`,
+            `owner=${payload.ownerId || "-"}`,
+            `scope=${payload.scopeEntId || "-"}`,
+            `service=${payload.selectedService || "-"}`
+        ];
+
+        if (payload.url) parts.push(`url=${payload.url}`);
+        if (payload.nbServices !== undefined) parts.push(`nbServices=${payload.nbServices}`);
+        if (payload.nbPostes !== undefined) parts.push(`nbPostes=${payload.nbPostes}`);
+        if (payload.nbPostesNonLies !== undefined) parts.push(`nbPostesNonLies=${payload.nbPostesNonLies}`);
+        if (payload.message) parts.push(`message=${payload.message}`);
+
+        return parts.join(" | ");
+    }
+
+    function traceOrg(step, extra){
+        const line = formatOrgDiag(step, extra);
+        console.info("[Organisation]", line, extra || {});
+        setStatus(line, false);
+    }
+
+    function traceOrgError(step, error, extra){
+        const message = error?.message || String(error);
+        const line = formatOrgDiag(step, Object.assign({}, extra || {}, { message }));
+        console.error("[Organisation]", line, error);
+        setStatus(line, true);
     }
 
     function esc(s){
@@ -878,20 +928,36 @@ body {
         const ownerId = getOwnerId();
         if (!ownerId) throw new Error("Owner manquant (?id=...).");
 
-        const data = await portal.apiJson(`${portal.apiBase}/studio/org/services/${encodeURIComponent(ownerId)}`);
-        _totaux = data.totaux || { nb_postes: 0, nb_collabs: 0 };
-        _nonLie = data.non_lie || { nb_postes: 0, nb_collabs: 0 };
-        _services = data.services || [];
+        const url = `${portal.apiBase}/studio/org/services/${encodeURIComponent(ownerId)}`;
+        traceOrg("services:start", { url });
 
-        if (!_loaded) {
-            _selectedService = "__all__";
-            _selectedServiceName = "Tous les services";
+        try {
+            const data = await portal.apiJson(url);
+
+            _totaux = data.totaux || { nb_postes: 0, nb_collabs: 0 };
+            _nonLie = data.non_lie || { nb_postes: 0, nb_collabs: 0 };
+            _services = data.services || [];
+
+            if (!_loaded) {
+                _selectedService = "__all__";
+                _selectedServiceName = "Tous les services";
+            }
+
+            syncSelectedServiceContext();
+            renderServices();
+            refreshPosteBlockTitle();
+            updateAddButtonState();
+
+            traceOrg("services:ok", {
+                url,
+                nbServices: _services.length,
+                nbPostes: _totaux.nb_postes || 0,
+                nbPostesNonLies: _nonLie.nb_postes || 0
+            });
+        } catch (e) {
+            traceOrgError("services:error", e, { url });
+            throw e;
         }
-
-        syncSelectedServiceContext();
-        renderServices();
-        refreshPosteBlockTitle();
-        updateAddButtonState();
     }
 
     async function loadPostes(portal){
@@ -903,127 +969,149 @@ body {
             `?service=${encodeURIComponent(_selectedService)}` +
             `&q=${encodeURIComponent(_posteSearch)}` +
             `&include_archived=${_showArchivedPostes ? "1" : "0"}`;
-        const data = await portal.apiJson(url);
 
-        const host = byId("posteList");
-        if (!host) return;
-        host.innerHTML = "";
+        traceOrg("postes:start", { url });
 
-        const postes = data.postes || [];
-        if (!postes.length) {
-        const empty = document.createElement("div");
-        empty.className = "card-sub";
-        empty.textContent = "Aucun poste à afficher.";
-        host.appendChild(empty);
-        return;
-        }
+        try {
+            const data = await portal.apiJson(url);
 
-        const iconEdit = `
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 20h9"/>
-                <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
-            </svg>
-        `;
-
-        const iconTrash = `
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6l-1 14H6L5 6"/>
-                <path d="M10 11v6"/>
-                <path d="M14 11v6"/>
-                <path d="M9 6V4h6v2"/>
-            </svg>
-        `;
-
-        postes.forEach(p => {
-            const row = document.createElement("div");
-            row.className = "sb-row-card";
-
-            const left = document.createElement("div");
-            left.className = "sb-row-left";
-
-            const code = document.createElement("span");
-            code.className = "sb-badge sb-badge--poste";
-            code.textContent = p.code || "—";
-
-            const title = document.createElement("div");
-            title.className = "sb-row-title";
-            title.textContent = p.intitule || "";
-
-            left.appendChild(code);
-            left.appendChild(title);
-
-            if (p.actif === false) row.classList.add("is-archived");
-
-            const right = document.createElement("div");
-            right.className = "sb-row-right";
-
-            if (p.actif === false){
-                const arch = document.createElement("span");
-                arch.className = "sb-badge sb-badge--accent-soft";
-                arch.textContent = "ARCHIVÉ";
-                right.appendChild(arch);
+            const host = byId("posteList");
+            if (!host) {
+                traceOrg("postes:no-host", { url });
+                return;
             }
 
-            const badge = document.createElement("span");
-            badge.className = "sb-badge sb-badge--poste-soft";
-            badge.textContent = `${p.nb_collabs || 0} collab.`;
-            right.appendChild(badge);
+            host.innerHTML = "";
 
-            const actions = document.createElement("div");
-            actions.className = "sb-icon-actions";
+            const postes = data.postes || [];
+            if (!postes.length) {
+                const empty = document.createElement("div");
+                empty.className = "card-sub";
+                empty.textContent = "Aucun poste à afficher.";
+                host.appendChild(empty);
 
-            const pdfBtn = document.createElement("button");
-            pdfBtn.type = "button";
-            pdfBtn.className = "sb-icon-btn sb-icon-btn--doc";
-            pdfBtn.title = "Exporter pdf";
-            pdfBtn.setAttribute("aria-label", "Exporter pdf");
-            pdfBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>';
-            pdfBtn.addEventListener("click", async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                try { await openPosteFichePdf(portal, p.id_poste); }
-                catch (err) { portal.showAlert("error", err?.message || String(err)); }
+                traceOrg("postes:empty", {
+                    url,
+                    nbPostes: 0
+                });
+                return;
+            }
+
+            const iconEdit = `
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 20h9"/>
+                    <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+                </svg>
+            `;
+
+            const iconTrash = `
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6l-1 14H6L5 6"/>
+                    <path d="M10 11v6"/>
+                    <path d="M14 11v6"/>
+                    <path d="M9 6V4h6v2"/>
+                </svg>
+            `;
+
+            postes.forEach(p => {
+                const row = document.createElement("div");
+                row.className = "sb-row-card";
+
+                const left = document.createElement("div");
+                left.className = "sb-row-left";
+
+                const code = document.createElement("span");
+                code.className = "sb-badge sb-badge--poste";
+                code.textContent = p.code || "—";
+
+                const title = document.createElement("div");
+                title.className = "sb-row-title";
+                title.textContent = p.intitule || "";
+
+                left.appendChild(code);
+                left.appendChild(title);
+
+                if (p.actif === false) row.classList.add("is-archived");
+
+                const right = document.createElement("div");
+                right.className = "sb-row-right";
+
+                if (p.actif === false){
+                    const arch = document.createElement("span");
+                    arch.className = "sb-badge sb-badge--accent-soft";
+                    arch.textContent = "ARCHIVÉ";
+                    right.appendChild(arch);
+                }
+
+                const badge = document.createElement("span");
+                badge.className = "sb-badge sb-badge--poste-soft";
+                badge.textContent = `${p.nb_collabs || 0} collab.`;
+                right.appendChild(badge);
+
+                const actions = document.createElement("div");
+                actions.className = "sb-icon-actions";
+
+                const pdfBtn = document.createElement("button");
+                pdfBtn.type = "button";
+                pdfBtn.className = "sb-icon-btn sb-icon-btn--doc";
+                pdfBtn.title = "Exporter pdf";
+                pdfBtn.setAttribute("aria-label", "Exporter pdf");
+                pdfBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>';
+                pdfBtn.addEventListener("click", async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try { await openPosteFichePdf(portal, p.id_poste); }
+                    catch (err) { portal.showAlert("error", err?.message || String(err)); }
+                });
+                actions.appendChild(pdfBtn);
+
+                const editBtn = document.createElement("button");
+                editBtn.type = "button";
+                editBtn.className = "sb-icon-btn";
+                editBtn.title = "Voir/Modifier";
+                editBtn.setAttribute("aria-label", "Voir/Modifier");
+                editBtn.innerHTML = iconEdit;
+                editBtn.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openEditPosteModal(portal, p);
+                });
+                actions.appendChild(editBtn);
+
+                const archiveBtn = document.createElement("button");
+                archiveBtn.type = "button";
+                archiveBtn.className = "sb-icon-btn sb-icon-btn--danger";
+                archiveBtn.title = (p.actif === false) ? "Restaurer" : "Archiver";
+                archiveBtn.setAttribute("aria-label", (p.actif === false) ? "Restaurer" : "Archiver");
+                archiveBtn.innerHTML = iconTrash;
+                archiveBtn.addEventListener("click", async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try { await toggleArchivePosteFromList(portal, p); }
+                    catch (err) { portal.showAlert("error", err?.message || String(err)); }
+                });
+                actions.appendChild(archiveBtn);
+
+                right.appendChild(actions);
+
+                row.appendChild(left);
+                row.appendChild(right);
+
+                row.style.cursor = "pointer";
+                row.addEventListener("click", () => openEditPosteModal(portal, p));
+
+                host.appendChild(row);
             });
-            actions.appendChild(pdfBtn);
 
-            const editBtn = document.createElement("button");
-            editBtn.type = "button";
-            editBtn.className = "sb-icon-btn";
-            editBtn.title = "Voir/Modifier";
-            editBtn.setAttribute("aria-label", "Voir/Modifier");
-            editBtn.innerHTML = iconEdit;
-            editBtn.addEventListener("click", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                openEditPosteModal(portal, p);
+            traceOrg("postes:ok", {
+                url,
+                nbPostes: postes.length
             });
-            actions.appendChild(editBtn);
-
-            const archiveBtn = document.createElement("button");
-            archiveBtn.type = "button";
-            archiveBtn.className = "sb-icon-btn sb-icon-btn--danger";
-            archiveBtn.title = (p.actif === false) ? "Restaurer" : "Archiver";
-            archiveBtn.setAttribute("aria-label", (p.actif === false) ? "Restaurer" : "Archiver");
-            archiveBtn.innerHTML = iconTrash;
-            archiveBtn.addEventListener("click", async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                try { await toggleArchivePosteFromList(portal, p); }
-                catch (err) { portal.showAlert("error", err?.message || String(err)); }
-            });
-            actions.appendChild(archiveBtn);
-
-            right.appendChild(actions);
-
-            row.appendChild(left);
-            row.appendChild(right);
-
-            row.style.cursor = "pointer";
-            row.addEventListener("click", () => openEditPosteModal(portal, p));
-
-            host.appendChild(row);
-        });
+        } catch (e) {
+            traceOrgError("postes:error", e, { url });
+            throw e;
+        }
     }
 
     function setPosteTab(tab){
@@ -4758,18 +4846,44 @@ body {
         const portal = window.portal;
         const root = getOrganisationRoot();
 
-        if (!portal || !root) return;
-        if (_loaded && !force) return;
+        traceOrg("init:start", {
+            force: !!force,
+            hasPortal: !!portal,
+            hasRoot: !!root
+        });
+
+        if (!portal || !root) {
+            traceOrg("init:skip", {
+                force: !!force,
+                hasPortal: !!portal,
+                hasRoot: !!root
+            });
+            return;
+        }
+
+        if (_loaded && !force) {
+            traceOrg("init:cached", {
+                nbServices: (_services || []).length,
+                nbPostes: (_totaux?.nb_postes || 0)
+            });
+            return;
+        }
 
         await ensureRole(portal);
+        traceOrg("init:role", { role: _roleCode || "user" });
+
         bindOnce(portal);
 
-        setStatus("Chargement…");
         await loadServices(portal);
         await loadPostes(portal);
 
         _loaded = true;
-        setStatus("—");
+
+        traceOrg("init:done", {
+            nbServices: (_services || []).length,
+            nbPostes: (_totaux?.nb_postes || 0),
+            nbPostesNonLies: (_nonLie?.nb_postes || 0)
+        });
     }
 
     window.__studioOrganisationInit = async function(options){
