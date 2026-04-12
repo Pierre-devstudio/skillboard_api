@@ -468,58 +468,122 @@
   min-width:0;
 }
 
-.sb-badge--niv{
+/* ======================================================
+   Badges Niveau requis / Criticité
+   Alignement visuel sur Insights
+   - Niveau requis : pill contour orange, fond transparent
+   - Criticité : rond violet, fond transparent
+   ====================================================== */
+
+/* Base commune niveau requis
+   Compat :
+   - classes Studio actuelles : .sb-badge--niv / -a / -b / -c
+   - alias éventuels Insights : .sb-badge-niv / -a / -b / -c
+*/
+.sb-badge.sb-badge--niv,
+.sb-badge.sb-badge-niv{
   min-width:88px;
-  justify-content:center;
-  padding:3px 10px;
+  height:22px;
+  padding:0 10px;
   border-radius:999px;
-  font-weight:700;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:transparent;
+  font-weight:600;
   font-size:12px;
+  line-height:1;
+  box-sizing:border-box;
 }
 
-.sb-badge--niv-a{
-  background:#fff7ed;
-  border:1px solid #fdba74;
-  color:#9a3412;
+/* Orange progressif comme Insights */
+.sb-badge.sb-badge--niv-a,
+.sb-badge.sb-badge-niv-a{
+  border-color: color-mix(in srgb, rgb(226, 114, 9) 55%, transparent);
+  color: color-mix(in srgb, rgb(226, 114, 9) 55%, transparent);
 }
 
-.sb-badge--niv-b{
-  background:#eef4ff;
-  border:1px solid #9db3e8;
-  color:#28407a;
+.sb-badge.sb-badge--niv-b,
+.sb-badge.sb-badge-niv-b{
+  border-color: color-mix(in srgb, rgb(226, 114, 9) 85%, transparent);
+  color: color-mix(in srgb, rgb(226, 114, 9) 85%, transparent);
 }
 
-.sb-badge--niv-c{
-  background:#f3e8ff;
-  border:1px solid #c4b5fd;
-  color:#6d28d9;
+.sb-badge.sb-badge--niv-c,
+.sb-badge.sb-badge-niv-c{
+  border-color: rgb(226, 114, 9);
+  color: rgb(226, 114, 9);
 }
 
+/* Base commune criticité
+   Compat :
+   - classes Studio actuelles : .sb-crit-badge + --low / --mid / --high
+   - alias éventuels Insights : .sb-crit-l1 à .sb-crit-l5
+*/
+.sb-badge.sb-crit-badge,
 .sb-crit-badge{
-  min-width:48px;
+  --crit-violet: 124,58,237;
+  display:inline-flex;
+  align-items:center;
   justify-content:center;
-  padding:3px 10px;
+  width:28px;
+  min-width:28px;
+  height:28px;
+  padding:0;
   border-radius:999px;
-  font-weight:700;
   font-size:12px;
+  font-weight:700;
+  line-height:1;
+  background:transparent;
+  border:2px solid rgba(var(--crit-violet), 0.45);
+  color:rgba(var(--crit-violet), 0.85);
+  box-sizing:border-box;
+  user-select:none;
 }
 
-.sb-crit-badge--low{
-  background:#f8fafc;
-  border:1px solid #cbd5e1;
-  color:#475569;
+/* Mapping Studio actuel -> rendu Insights */
+.sb-badge.sb-crit-badge.sb-crit-badge--low,
+.sb-crit-badge.sb-crit-badge--low{
+  border-color: rgba(124,58,237, 0.40);
+  color: rgba(124,58,237, 0.68);
 }
 
-.sb-crit-badge--mid{
-  background:#fff7ed;
-  border:1px solid #fdba74;
-  color:#9a3412;
+.sb-badge.sb-crit-badge.sb-crit-badge--mid,
+.sb-crit-badge.sb-crit-badge--mid{
+  border-color: rgba(124,58,237, 0.55);
+  color: rgba(124,58,237, 0.78);
 }
 
-.sb-crit-badge--high{
-  background:#fff1f2;
-  border:1px solid #fda4af;
-  color:#be123c;
+.sb-badge.sb-crit-badge.sb-crit-badge--high,
+.sb-crit-badge.sb-crit-badge--high{
+  border-color: rgba(124,58,237, 0.92);
+  color: rgba(124,58,237, 1);
+}
+
+/* Aliases Insights si un rendu futur les utilise directement */
+.sb-crit-l1{
+  border-color: rgba(124,58,237, 0.25);
+  color: rgba(124,58,237, 0.55);
+}
+
+.sb-crit-l2{
+  border-color: rgba(124,58,237, 0.40);
+  color: rgba(124,58,237, 0.68);
+}
+
+.sb-crit-l3{
+  border-color: rgba(124,58,237, 0.55);
+  color: rgba(124,58,237, 0.78);
+}
+
+.sb-crit-l4{
+  border-color: rgba(124,58,237, 0.72);
+  color: rgba(124,58,237, 0.88);
+}
+
+.sb-crit-l5{
+  border-color: rgba(124,58,237, 0.92);
+  color: rgba(124,58,237, 1);
 }
 
 .sb-icon-actions{
