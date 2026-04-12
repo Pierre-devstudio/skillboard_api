@@ -7,7 +7,14 @@
   let _refOpco = null;
   let _modalMode = "create";
   let _modalClientId = null;
-  let _ownerFeatures = { studio_actif: false, gestion_acces_studio_autorisee: false, nb_acces_studio_max: 0 };
+  let _ownerFeatures = {
+    studio_actif: false,
+    gestion_acces_studio_autorisee: false,
+    nb_acces_studio_max: 0,
+    owner_type: "",
+    owner_profil_structurel: ""
+  };
+  let _showAllRows = false;
   let _workspaceRefreshPending = false;
   let _workspaceRefreshBusy = false;
 
@@ -208,6 +215,37 @@
         byId("clientsKpiStudioDelegue").textContent = String(summary?.nb_studio_delegue || 0);
     }
 
+  function isOwnerMultiSite(){
+    const ownerProfil = (_ownerFeatures?.owner_profil_structurel || "").toString().trim().toLowerCase();
+    const ownerType = (_ownerFeatures?.owner_type || "").toString().trim().toLowerCase();
+    return ownerProfil === "multi_site" || ownerType === "multi_site";
+  }
+
+  function getClientsLabelPlural(){
+    return isOwnerMultiSite() ? "site(s)" : "client(s)";
+  }
+
+  function renderSectionTitle(){
+    const el = byId("clientsSectionTitle");
+    if (!el) return;
+    el.textContent = isOwnerMultiSite() ? "Liste des sites" : "Carnet client";
+  }
+
+  function refreshToggleAllButton(totalFiltered){
+    const btn = byId("btnClientsToggleAll");
+    if (!btn) return;
+
+    if ((totalFiltered || 0) <= 10){
+      _showAllRows = false;
+      btn.style.display = "none";
+      btn.textContent = "Afficher tout";
+      return;
+    }
+
+    btn.style.display = "";
+    btn.textContent = _showAllRows ? "Réduire" : "Afficher tout";
+  }
+
   function getProfilStructInfo(value){
     const v = (value || "").toString().trim().toLowerCase();
 
@@ -279,26 +317,54 @@
     const body = byId("clientsTableBody");
     const empty = byId("clientsEmpty");
     const q = (byId("clientsSearch")?.value || "").trim().toLowerCase();
+    const profilFilter = (byId("clientsFilterProfil")?.value || "").trim().toLowerCase();
+    const studioFilter = (byId("clientsFilterStudio")?.value || "").trim().toLowerCase();
 
     if (!body || !empty) return;
 
-    const rows = (_items || []).filter(it => {
-      if (!q) return true;
+    let rows = (_items || []).filter(it => {
+      if (q) {
+        const hay = [
+          it.nom_ent,
+          it.cp_ent,
+          it.ville_ent,
+          it.nom_groupe,
+          it.type_groupe,
+          it.email_ent
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
 
-      const hay = [
-        it.nom_ent,
-        it.cp_ent,
-        it.ville_ent,
-        it.nom_groupe,
-        it.type_groupe,
-        it.email_ent
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
 
-      return hay.includes(q);
+      const profil = (it.profil_structurel || "").toString().trim().toLowerCase();
+      if (profilFilter) {
+        if (profilFilter === "__none__") {
+          if (profil) return false;
+        } else if (profil !== profilFilter) {
+          return false;
+        }
+      }
+
+      if (studioFilter === "on" && !it.studio_actif) return false;
+      if (studioFilter === "off" && !!it.studio_actif) return false;
+
+      return true;
     });
+
+    const totalFiltered = rows.length;
+    refreshToggleAllButton(totalFiltered);
+
+    const status = byId("clientsStatus");
+    if (status) {
+      const label = getClientsLabelPlural();
+      status.textContent =
+        totalFiltered === (_items || []).length
+          ? `${totalFiltered} ${label}`
+          : `${totalFiltered} / ${(_items || []).length} ${label}`;
+    }
 
     if (!rows.length) {
       body.innerHTML = "";
@@ -308,9 +374,12 @@
 
     empty.classList.add("is-hidden");
 
+    if (!_showAllRows) {
+      rows = rows.slice(0, 10);
+    }
+
     body.innerHTML = rows.map(it => {
       const profile = getProfilStructInfo(it.profil_structurel);
-      const studio = getStudioOwnerInfo(it);
       const active = it.id_ent === _selectedId ? " is-active" : "";
 
       return `
@@ -328,24 +397,23 @@
             ></span>
           </td>
           <td style="text-align:center;">
-            ${
-              studio.active
-                ? `
-                  <span
-                    class="sb-client-studio-flag sb-client-studio-flag--on"
-                    title="${esc(studio.title)}"
-                    aria-label="${esc(studio.title)}"
-                  >
-                    <img src="/favicon-studio-32x32.png" alt="" />
-                  </span>
-                `
-                : `
-                  <span
-                    class="sb-client-studio-flag sb-client-studio-flag--off"
-                    title="${esc(studio.title)}"
-                    aria-label="${esc(studio.title)}"
-                  >—</span>
-                `
+            ${it.studio_actif
+              ? `
+                <span
+                  class="sb-client-studio-flag sb-client-studio-flag--on"
+                  title="Abonnement Novoskill Studio actif"
+                  aria-label="Abonnement Novoskill Studio actif"
+                >
+                  <img src="/favicon-studio-32x32.png" alt="" />
+                </span>
+              `
+              : `
+                <span
+                  class="sb-client-studio-flag sb-client-studio-flag--off"
+                  title="Pas d’abonnement Novoskill Studio"
+                  aria-label="Pas d’abonnement Novoskill Studio"
+                >—</span>
+              `
             }
           </td>
           <td style="text-align:center;">
@@ -448,16 +516,17 @@
 
     renderOwnerCapability();
     renderKpis(data.summary || {});
+    renderSectionTitle();
 
     _selectedId = (preferredId && _items.some(x => x.id_ent === preferredId))
       ? preferredId
       : ((_selectedId && _items.some(x => x.id_ent === _selectedId)) ? _selectedId : null);
 
     _selectedDetail = null;
+    _showAllRows = false;
     renderList();
 
     _loaded = true;
-    setStatus(`${_items.length} client(s)`);
   }
 
   function clearModalHints(){
@@ -606,7 +675,19 @@
       if (btnCreate) btnCreate.style.display = "none";
     }
 
-    byId("clientsSearch")?.addEventListener("input", renderList);
+    const rerenderFromStart = () => {
+      _showAllRows = false;
+      renderList();
+    };
+
+    byId("clientsSearch")?.addEventListener("input", rerenderFromStart);
+    byId("clientsFilterProfil")?.addEventListener("change", rerenderFromStart);
+    byId("clientsFilterStudio")?.addEventListener("change", rerenderFromStart);
+
+    byId("btnClientsToggleAll")?.addEventListener("click", () => {
+      _showAllRows = !_showAllRows;
+      renderList();
+    });
 
     byId("clientsTableBody")?.addEventListener("click", async (ev) => {
       const actionBtn = ev.target.closest("[data-action]");
@@ -683,19 +764,6 @@
       tel.addEventListener("input", () => formatPhoneInput(tel));
       tel.addEventListener("blur", () => formatPhoneInput(tel));
     }
-
-    window.addEventListener("focus", () => {
-      refreshListOnReturn(portal).catch((e) => {
-        portal.showAlert("error", e.message || String(e));
-      });
-    });
-
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState !== "visible") return;
-      refreshListOnReturn(portal).catch((e) => {
-        portal.showAlert("error", e.message || String(e));
-      });
-    });
   }
 
   (async () => {

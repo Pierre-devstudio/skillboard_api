@@ -340,12 +340,20 @@ def _fetch_owner_feature_flags(cur, id_owner: str) -> dict:
     cur.execute(
         """
         SELECT
-            studio_actif,
-            gestion_acces_studio_autorisee,
-            nb_acces_studio_max
-        FROM public.tbl_novoskill_owner_commercial
-        WHERE id_owner = %s
-          AND COALESCE(archive, FALSE) = FALSE
+            COALESCE(oc.studio_actif, FALSE) AS studio_actif,
+            COALESCE(oc.gestion_acces_studio_autorisee, FALSE) AS gestion_acces_studio_autorisee,
+            COALESCE(oc.nb_acces_studio_max, 0) AS nb_acces_studio_max,
+            COALESCE(o.type_owner, '') AS owner_type,
+            COALESCE(e.profil_structurel, '') AS owner_profil_structurel
+        FROM public.tbl_novoskill_owner o
+        LEFT JOIN public.tbl_novoskill_owner_commercial oc
+          ON oc.id_owner = o.id_owner
+         AND COALESCE(oc.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_entreprise e
+          ON e.id_ent = o.id_owner
+         AND COALESCE(e.masque, FALSE) = FALSE
+        WHERE o.id_owner = %s
+          AND COALESCE(o.archive, FALSE) = FALSE
         LIMIT 1
         """,
         (id_owner,),
@@ -355,6 +363,8 @@ def _fetch_owner_feature_flags(cur, id_owner: str) -> dict:
         "studio_actif": bool(r.get("studio_actif")),
         "gestion_acces_studio_autorisee": bool(r.get("gestion_acces_studio_autorisee")),
         "nb_acces_studio_max": int(r.get("nb_acces_studio_max") or 0),
+        "owner_type": (r.get("owner_type") or "").strip().lower(),
+        "owner_profil_structurel": (r.get("owner_profil_structurel") or "").strip().lower(),
     }
 
 

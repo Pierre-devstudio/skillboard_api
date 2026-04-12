@@ -35,16 +35,39 @@
     <div class="sb-block-head">
       <div class="sb-card-head">
         <div>
-          <div class="card-title">Carnet client</div>
-          <div class="card-sub">Clients rattachés à l’owner Studio courant.</div>
+          <div class="card-title" id="clientsSectionTitle">Carnet client</div>
         </div>
-        <div class="card-sub" id="clientsStatus">—</div>
+        <div class="sb-client-head-actions">
+          <div class="card-sub" id="clientsStatus">—</div>
+          <button type="button" class="sb-btn sb-btn--secondary sb-btn--xs" id="btnClientsToggleAll" style="display:none;">Afficher tout</button>
+        </div>
       </div>
 
       <div class="sb-toolbar sb-toolbar--nowrap">
         <div class="sb-search sb-search--inline">
           <div class="label">Rechercher</div>
           <input type="text" id="clientsSearch" placeholder="Nom, code postal, ville, groupe…" />
+        </div>
+
+        <div class="sb-client-filter">
+          <div class="label">Profil</div>
+          <select id="clientsFilterProfil">
+            <option value="">Tous</option>
+            <option value="site_unique">Site unique</option>
+            <option value="multi_site">Multi-site</option>
+            <option value="holding_multi_entreprise">Holding multi-entreprise</option>
+            <option value="holding_multi_entreprise_multi_site">Holding multi-entreprise + multi-site</option>
+            <option value="__none__">Non renseigné</option>
+          </select>
+        </div>
+
+        <div class="sb-client-filter">
+          <div class="label">Abo Studio</div>
+          <select id="clientsFilterStudio">
+            <option value="">Tous</option>
+            <option value="on">Oui</option>
+            <option value="off">Non</option>
+          </select>
         </div>
       </div>
     </div>
@@ -64,9 +87,18 @@
         <tbody id="clientsTableBody"></tbody>
       </table>
 
+      <div class="sb-client-legend">
+        <span class="sb-client-legend__label">Légende profil :</span>
+        <span class="sb-client-legend__item"><span class="sb-client-profile-dot sb-client-profile-dot--site-unique"></span> Site unique</span>
+        <span class="sb-client-legend__item"><span class="sb-client-profile-dot sb-client-profile-dot--multi-site"></span> Multi-site</span>
+        <span class="sb-client-legend__item"><span class="sb-client-profile-dot sb-client-profile-dot--holding"></span> Holding multi-entreprise</span>
+        <span class="sb-client-legend__item"><span class="sb-client-profile-dot sb-client-profile-dot--holding-multi-site"></span> Holding multi-entreprise + multi-site</span>
+        <span class="sb-client-legend__item"><span class="sb-client-profile-dot sb-client-profile-dot--unknown"></span> Non renseigné</span>
+      </div>
+
       <div class="sb-empty-state sb-mt-10 is-hidden" id="clientsEmpty">
-        <div class="sb-empty-state__title">Aucun client trouvé</div>
-        <div class="sb-empty-state__text">Ajuste la recherche ou crée une fiche client.</div>
+        <div class="sb-empty-state__title">Aucun élément trouvé</div>
+        <div class="sb-empty-state__text">Ajuste la recherche ou les filtres, ou crée une fiche.</div>
       </div>
     </div>
   </div>
