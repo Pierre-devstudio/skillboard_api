@@ -2846,7 +2846,30 @@ body {
         const ownerId = getOwnerId();
         const url = `${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}`;
         const data = await portal.apiJson(url);
-        _posteCompItems = data.items || [];
+
+        const items = Array.isArray(data?.items) ? data.items.slice() : [];
+
+        items.sort((a, b) => {
+            const critA = Number.isFinite(parseInt(a?.poids_criticite ?? "", 10))
+                ? parseInt(a.poids_criticite, 10)
+                : 9999;
+            const critB = Number.isFinite(parseInt(b?.poids_criticite ?? "", 10))
+                ? parseInt(b.poids_criticite, 10)
+                : 9999;
+
+            if (critA !== critB) return critA - critB;
+
+            const intA = (a?.intitule || "").toString().trim();
+            const intB = (b?.intitule || "").toString().trim();
+            const cmpInt = intA.localeCompare(intB, "fr", { sensitivity: "base" });
+            if (cmpInt !== 0) return cmpInt;
+
+            const codeA = (a?.code || "").toString().trim();
+            const codeB = (b?.code || "").toString().trim();
+            return codeA.localeCompare(codeB, "fr", { sensitivity: "base" });
+        });
+
+        _posteCompItems = items;
         renderPosteCompetences();
     }
 
