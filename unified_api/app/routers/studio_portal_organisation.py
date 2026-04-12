@@ -5678,27 +5678,32 @@ def studio_org_list_poste_competences(id_owner: str, id_poste: str, request: Req
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
 
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                poste_ent = _resolve_poste_ent(cur, oid, pid)
+                if poste_ent != scope_ent:
+                    raise HTTPException(status_code=404, detail="Poste introuvable dans le périmètre courant.")
+
                 cur.execute(
                     """
                     SELECT
                       pc.id_competence,
+                      c.code,
+                      c.intitule,
+                      c.etat,
+                      c.domaine,
+                      dc.titre_court AS domaine_titre_court,
+                      dc.couleur AS domaine_couleur,
+
+                      c.niveaua,
+                      c.niveaub,
+                      c.niveauc,
+
                       pc.niveau_requis,
                       pc.poids_criticite,
                       pc.freq_usage,
                       pc.impact_resultat,
                       pc.dependance,
-                      pc.date_valorisation,
-
-                      c.code,
-                      c.intitule,
-                      c.etat,
-                      c.domaine,
-                      c.niveaua,
-                      c.niveaub,
-                      c.niveauc,
-
-                      dc.titre_court AS domaine_titre_court,
-                      dc.couleur AS domaine_couleur
+                      pc.date_valorisation
 
                     FROM public.tbl_fiche_poste_competence pc
                     JOIN public.tbl_fiche_poste p
@@ -5708,6 +5713,7 @@ def studio_org_list_poste_competences(id_owner: str, id_poste: str, request: Req
                     JOIN public.tbl_competence c
                       ON c.id_comp = pc.id_competence
                      AND c.id_owner = %s
+                     AND COALESCE(c.masque, FALSE) = FALSE
                     LEFT JOIN public.tbl_domaine_competence dc
                       ON dc.id_domaine_competence = c.domaine
                      AND COALESCE(dc.masque, FALSE) = FALSE
@@ -5715,7 +5721,7 @@ def studio_org_list_poste_competences(id_owner: str, id_poste: str, request: Req
                       AND COALESCE(pc.masque, FALSE) = FALSE
                     ORDER BY lower(c.code), lower(c.intitule)
                     """,
-                    (oid, oid, oid, pid),
+                    (oid, scope_ent, oid, pid),
                 )
                 rows = cur.fetchall() or []
 
@@ -5730,11 +5736,9 @@ def studio_org_list_poste_competences(id_owner: str, id_poste: str, request: Req
                     "domaine": r.get("domaine"),
                     "domaine_titre_court": r.get("domaine_titre_court"),
                     "domaine_couleur": r.get("domaine_couleur"),
-
                     "niveaua": r.get("niveaua"),
                     "niveaub": r.get("niveaub"),
                     "niveauc": r.get("niveauc"),
-
                     "niveau_requis": r.get("niveau_requis"),
                     "poids_criticite": r.get("poids_criticite"),
                     "freq_usage": r.get("freq_usage"),
@@ -5779,7 +5783,11 @@ def studio_org_upsert_poste_competence(id_owner: str, id_poste: str, payload: Up
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
 
-                # Vérifie poste
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                poste_ent = _resolve_poste_ent(cur, oid, pid)
+                if poste_ent != scope_ent:
+                    raise HTTPException(status_code=404, detail="Poste introuvable dans le périmètre courant.")
+
                 cur.execute(
                     """
                     SELECT 1
@@ -5789,12 +5797,11 @@ def studio_org_upsert_poste_competence(id_owner: str, id_poste: str, payload: Up
                       AND id_ent = %s
                     LIMIT 1
                     """,
-                    (pid, oid, oid),
+                    (pid, oid, scope_ent),
                 )
                 if not cur.fetchone():
                     raise HTTPException(status_code=404, detail="Poste introuvable.")
 
-                # Vérifie compétence (owner uniquement, masque=false, etat accepté)
                 cur.execute(
                     """
                     SELECT 1
@@ -5858,6 +5865,25 @@ def studio_org_remove_poste_competence(id_owner: str, id_poste: str, id_competen
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
+
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                poste_ent = _resolve_poste_ent(cur, oid, pid)
+                if poste_ent != scope_ent:
+                    raise HTTPException(status_code=404, detail="Poste introuvable dans le périmètre courant.")
+
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM public.tbl_fiche_poste
+                    WHERE id_poste = %s
+                      AND id_owner = %s
+                      AND id_ent = %s
+                    LIMIT 1
+                    """,
+                    (pid, oid, scope_ent),
+                )
+                if not cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Poste introuvable.")
 
                 cur.execute(
                     """
@@ -6046,6 +6072,11 @@ def studio_org_list_poste_certifications(id_owner: str, id_poste: str, request: 
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
 
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                poste_ent = _resolve_poste_ent(cur, oid, pid)
+                if poste_ent != scope_ent:
+                    raise HTTPException(status_code=404, detail="Poste introuvable dans le périmètre courant.")
+
                 cur.execute(
                     """
                     SELECT
@@ -6071,7 +6102,7 @@ def studio_org_list_poste_certifications(id_owner: str, id_poste: str, request: 
                     WHERE pc.id_poste = %s
                     ORDER BY lower(COALESCE(c.categorie,'')), lower(c.nom_certification)
                     """,
-                    (oid, oid, pid),
+                    (oid, scope_ent, pid),
                 )
                 rows = cur.fetchall() or []
 
@@ -6138,6 +6169,11 @@ def studio_org_upsert_poste_certification(id_owner: str, id_poste: str, payload:
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
 
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                poste_ent = _resolve_poste_ent(cur, oid, pid)
+                if poste_ent != scope_ent:
+                    raise HTTPException(status_code=404, detail="Poste introuvable dans le périmètre courant.")
+
                 cur.execute(
                     """
                     SELECT 1
@@ -6147,7 +6183,7 @@ def studio_org_upsert_poste_certification(id_owner: str, id_poste: str, payload:
                       AND id_ent = %s
                     LIMIT 1
                     """,
-                    (pid, oid, oid),
+                    (pid, oid, scope_ent),
                 )
                 if not cur.fetchone():
                     raise HTTPException(status_code=404, detail="Poste introuvable.")
@@ -6206,6 +6242,11 @@ def studio_org_remove_poste_certification(id_owner: str, id_poste: str, id_certi
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
 
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                poste_ent = _resolve_poste_ent(cur, oid, pid)
+                if poste_ent != scope_ent:
+                    raise HTTPException(status_code=404, detail="Poste introuvable dans le périmètre courant.")
+
                 cur.execute(
                     """
                     DELETE FROM public.tbl_fiche_poste_certification pc
@@ -6216,7 +6257,7 @@ def studio_org_remove_poste_certification(id_owner: str, id_poste: str, id_certi
                       AND pc.id_poste = %s
                       AND pc.id_certification = %s
                     """,
-                    (oid, oid, pid, cid),
+                    (oid, scope_ent, pid, cid),
                 )
                 conn.commit()
 
