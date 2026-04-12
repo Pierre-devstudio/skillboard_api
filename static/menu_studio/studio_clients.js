@@ -17,6 +17,9 @@
   let _showAllRows = false;
   let _workspaceRefreshPending = false;
   let _workspaceRefreshBusy = false;
+  let _commercialOffers = [];
+  let _commercialClientId = null;
+  let _commercialHasRights = false;
 
   function byId(id){ return document.getElementById(id); }
 
@@ -313,6 +316,16 @@
     `;
   }
 
+  function getCommercialIconSvg(){
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+        <path d="M7 9h10"></path>
+        <path d="M7 13h4"></path>
+      </svg>
+    `;
+  }
+
   function renderList(){
     const body = byId("clientsTableBody");
     const empty = byId("clientsEmpty");
@@ -380,6 +393,7 @@
 
     body.innerHTML = rows.map(it => {
       const profile = getProfilStructInfo(it.profil_structurel);
+      const studio = getStudioOwnerInfo(it);
       const active = it.id_ent === _selectedId ? " is-active" : "";
 
       return `
@@ -397,12 +411,12 @@
             ></span>
           </td>
           <td style="text-align:center;">
-            ${it.studio_actif
+            ${studio.active
               ? `
                 <span
                   class="sb-client-studio-flag sb-client-studio-flag--on"
-                  title="Abonnement Novoskill Studio actif"
-                  aria-label="Abonnement Novoskill Studio actif"
+                  title="${esc(studio.title)}"
+                  aria-label="${esc(studio.title)}"
                 >
                   <img src="/favicon-studio-32x32.png" alt="" />
                 </span>
@@ -410,8 +424,8 @@
               : `
                 <span
                   class="sb-client-studio-flag sb-client-studio-flag--off"
-                  title="Pas d’abonnement Novoskill Studio"
-                  aria-label="Pas d’abonnement Novoskill Studio"
+                  title="${esc(studio.title)}"
+                  aria-label="${esc(studio.title)}"
                 >—</span>
               `
             }
@@ -427,6 +441,17 @@
                 aria-label="PDF"
               >
                 ${getPdfIconSvg()}
+              </button>
+
+              <button
+                type="button"
+                class="sb-icon-btn"
+                data-action="commercial"
+                data-id="${esc(it.id_ent)}"
+                title="Abonnement et droits"
+                aria-label="Abonnement et droits"
+              >
+                ${getCommercialIconSvg()}
               </button>
 
               <button
@@ -527,6 +552,237 @@
     renderList();
 
     _loaded = true;
+  }
+
+    async function loadCommercialOffers(portal){
+    if (Array.isArray(_commercialOffers) && _commercialOffers.length) return _commercialOffers;
+    const ownerId = getOwnerId();
+    const data = await portal.apiJson(`${portal.apiBase}/studio/offers/${encodeURIComponent(ownerId)}`);
+    _commercialOffers = Array.isArray(data?.items) ? data.items : [];
+    return _commercialOffers;
+  }
+
+  function closeCommercialModal(){
+    const modal = byId("clientCommercialModal");
+    if (modal) modal.style.display = "none";
+  }
+
+  function setCheckboxValue(id, value){
+    const el = byId(id);
+    if (!el) return;
+    el.checked = !!value;
+  }
+
+  function getCheckboxValue(id){
+    return !!byId(id)?.checked;
+  }
+
+  function setNumberValue(id, value){
+    const el = byId(id);
+    if (!el) return;
+    el.value = (value == null ? 0 : value);
+  }
+
+  function getNumberValue(id){
+    const raw = (byId(id)?.value || "").toString().trim();
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  }
+
+  function mapOfferQuotaValue(raw, defaultUnlimited){
+    if (raw == null || raw === "") return defaultUnlimited ? 999999 : 0;
+    const n = parseInt(raw, 10);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  }
+
+  function renderCommercialOfferOptions(selectedCode){
+    const sel = byId("frmCommercialOfferCode");
+    if (!sel) return;
+
+    sel.innerHTML = `<option value="">(Sélectionner une offre)</option>`;
+    (_commercialOffers || []).forEach(it => {
+      const opt = document.createElement("option");
+      opt.value = it.offer_code || "";
+      opt.textContent = it.offer_label || it.offer_code || "";
+      sel.appendChild(opt);
+    });
+
+    sel.value = selectedCode || "";
+  }
+
+  function syncCommercialStudioDelegation(){
+    const studio = byId("frmCommercialStudioActif");
+    const deleg = byId("frmCommercialGestionStudio");
+    if (!studio || !deleg) return;
+
+    if (!studio.checked) {
+      deleg.checked = false;
+      deleg.disabled = true;
+      return;
+    }
+    deleg.disabled = false;
+  }
+
+  function fillCommercialForm(data){
+    renderCommercialOfferOptions(data?.offer_code || "");
+    setValueOrEmpty("frmCommercialStatut", data?.statut_commercial || "actif");
+    setValueOrEmpty("frmCommercialDateDebut", data?.date_debut);
+    setValueOrEmpty("frmCommercialDateFin", data?.date_fin);
+
+    setCheckboxValue("frmCommercialStudioActif", data?.studio_actif);
+    setCheckboxValue("frmCommercialInsightsActif", data?.insights_actif);
+    setCheckboxValue("frmCommercialPeopleActif", data?.people_actif);
+    setCheckboxValue("frmCommercialPartnerActif", data?.partner_actif);
+    setCheckboxValue("frmCommercialLearnActif", data?.learn_actif);
+    setCheckboxValue("frmCommercialGestionStudio", data?.gestion_acces_studio_autorisee);
+
+    setNumberValue("frmCommercialNbStudio", data?.nb_acces_studio_max);
+    setNumberValue("frmCommercialNbInsights", data?.nb_acces_insights_max);
+    setNumberValue("frmCommercialNbPeople", data?.nb_acces_people_max);
+    setNumberValue("frmCommercialNbPartner", data?.nb_acces_partner_max);
+    setNumberValue("frmCommercialNbLearn", data?.nb_acces_learn_max);
+    setNumberValue("frmCommercialNbClients", data?.nb_clients_max);
+    setNumberValue("frmCommercialNbSites", data?.nb_sites_max);
+
+    setValueOrEmpty("frmCommercialCommentaire", data?.commentaire);
+
+    syncCommercialStudioDelegation();
+
+    _commercialHasRights = !!data?.exists;
+    const btnArchive = byId("btnClientCommercialArchive");
+    if (btnArchive) btnArchive.style.display = _commercialHasRights ? "" : "none";
+  }
+
+  function applySelectedOfferToForm(){
+    const code = (byId("frmCommercialOfferCode")?.value || "").trim();
+    const offer = (_commercialOffers || []).find(x => (x.offer_code || "") === code);
+    if (!offer) return;
+
+    setCheckboxValue("frmCommercialStudioActif", offer.studio_actif);
+    setCheckboxValue("frmCommercialInsightsActif", offer.insights_actif);
+    setCheckboxValue("frmCommercialPeopleActif", offer.people_actif);
+    setCheckboxValue("frmCommercialPartnerActif", offer.partner_actif);
+    setCheckboxValue("frmCommercialLearnActif", offer.learn_actif);
+    setCheckboxValue("frmCommercialGestionStudio", offer.gestion_acces_studio_autorisee);
+
+    setNumberValue("frmCommercialNbStudio", mapOfferQuotaValue(offer.nb_acces_studio_max, !!offer.studio_actif));
+    setNumberValue("frmCommercialNbInsights", mapOfferQuotaValue(offer.nb_acces_insights_max, !!offer.insights_actif));
+    setNumberValue("frmCommercialNbPeople", mapOfferQuotaValue(offer.nb_acces_people_max, !!offer.people_actif));
+    setNumberValue("frmCommercialNbPartner", mapOfferQuotaValue(offer.nb_acces_partner_max, !!offer.partner_actif));
+    setNumberValue("frmCommercialNbLearn", mapOfferQuotaValue(offer.nb_acces_learn_max, !!offer.learn_actif));
+    setNumberValue("frmCommercialNbClients", mapOfferQuotaValue(offer.nb_clients_max, false));
+    setNumberValue("frmCommercialNbSites", mapOfferQuotaValue(offer.nb_sites_max, false));
+
+    syncCommercialStudioDelegation();
+  }
+
+  async function openCommercialModal(portal, idEnt){
+    const id = (idEnt || "").toString().trim();
+    if (!id) return;
+
+    const item = (_items || []).find(x => x.id_ent === id) || {};
+    _commercialClientId = id;
+
+    const [offers, detail] = await Promise.all([
+      loadCommercialOffers(portal),
+      portal.apiJson(`${portal.apiBase}/studio/clients/${encodeURIComponent(getOwnerId())}/${encodeURIComponent(id)}/commercial`)
+    ]);
+
+    _commercialOffers = Array.isArray(offers) ? offers : [];
+
+    if (byId("clientCommercialModalTitle")) {
+      byId("clientCommercialModalTitle").textContent = "Abonnement et droits";
+    }
+    if (byId("clientCommercialModalSub")) {
+      byId("clientCommercialModalSub").textContent = item?.nom_ent
+        ? `Paramétrage commercial de ${item.nom_ent}.`
+        : "Paramétrage commercial du client sélectionné.";
+    }
+
+    fillCommercialForm(detail || {});
+    if (byId("clientCommercialModal")) {
+      byId("clientCommercialModal").style.display = "flex";
+    }
+  }
+
+  function collectCommercialPayload(){
+    return {
+      offer_code: normalizeValue(byId("frmCommercialOfferCode")?.value),
+      statut_commercial: normalizeValue(byId("frmCommercialStatut")?.value) || "actif",
+      date_debut: normalizeValue(byId("frmCommercialDateDebut")?.value),
+      date_fin: normalizeValue(byId("frmCommercialDateFin")?.value),
+
+      studio_actif: getCheckboxValue("frmCommercialStudioActif"),
+      insights_actif: getCheckboxValue("frmCommercialInsightsActif"),
+      people_actif: getCheckboxValue("frmCommercialPeopleActif"),
+      partner_actif: getCheckboxValue("frmCommercialPartnerActif"),
+      learn_actif: getCheckboxValue("frmCommercialLearnActif"),
+
+      nb_acces_studio_max: getNumberValue("frmCommercialNbStudio"),
+      nb_acces_insights_max: getNumberValue("frmCommercialNbInsights"),
+      nb_acces_people_max: getNumberValue("frmCommercialNbPeople"),
+      nb_acces_partner_max: getNumberValue("frmCommercialNbPartner"),
+      nb_acces_learn_max: getNumberValue("frmCommercialNbLearn"),
+
+      nb_clients_max: getNumberValue("frmCommercialNbClients"),
+      nb_sites_max: getNumberValue("frmCommercialNbSites"),
+
+      commentaire: normalizeValue(byId("frmCommercialCommentaire")?.value),
+      gestion_acces_studio_autorisee: getCheckboxValue("frmCommercialGestionStudio"),
+    };
+  }
+
+  async function saveCommercialModal(portal){
+    if (!_commercialClientId) return;
+
+    const payload = collectCommercialPayload();
+    if (!payload.offer_code) {
+      portal.showAlert("error", "Sélectionne une offre commerciale.");
+      return;
+    }
+
+    const btn = byId("btnClientCommercialSave");
+    if (btn) btn.disabled = true;
+
+    try {
+      await portal.apiJson(
+        `${portal.apiBase}/studio/clients/${encodeURIComponent(getOwnerId())}/${encodeURIComponent(_commercialClientId)}/commercial`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      closeCommercialModal();
+      await loadList(portal, _commercialClientId);
+      portal.showAlert("", "");
+    } catch (e) {
+      portal.showAlert("error", e.message || String(e));
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function archiveCommercialRights(portal){
+    if (!_commercialClientId) return;
+
+    const item = (_items || []).find(x => x.id_ent === _commercialClientId) || {};
+    const nom = item?.nom_ent || "ce client";
+    const ok = window.confirm(`Retirer les droits et l’abonnement actifs de "${nom}" ?`);
+    if (!ok) return;
+
+    await portal.apiJson(
+      `${portal.apiBase}/studio/clients/${encodeURIComponent(getOwnerId())}/${encodeURIComponent(_commercialClientId)}/commercial/archive`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      }
+    );
+
+    closeCommercialModal();
+    await loadList(portal, _commercialClientId);
   }
 
   function clearModalHints(){
@@ -706,6 +962,11 @@
             return;
           }
 
+          if (actionBtn.dataset.action === "commercial") {
+            await openCommercialModal(portal, id);
+            return;
+          }
+
           if (actionBtn.dataset.action === "edit") {
             openClientWorkspace(id);
             return;
@@ -744,6 +1005,22 @@
     byId("btnClientModalCancel")?.addEventListener("click", closeModal);
     byId("btnClientModalSave")?.addEventListener("click", async () => { await saveModal(portal); });
 
+    byId("btnClientCommercialClose")?.addEventListener("click", closeCommercialModal);
+    byId("btnClientCommercialCancel")?.addEventListener("click", closeCommercialModal);
+    byId("btnClientCommercialSave")?.addEventListener("click", async () => {
+      await saveCommercialModal(portal);
+    });
+    byId("btnClientCommercialArchive")?.addEventListener("click", async () => {
+      try {
+        portal.showAlert("", "");
+        await archiveCommercialRights(portal);
+      } catch (e) {
+        portal.showAlert("error", e.message || String(e));
+      }
+    });
+    byId("btnCommercialApplyOffer")?.addEventListener("click", applySelectedOfferToForm);
+    byId("frmCommercialStudioActif")?.addEventListener("change", syncCommercialStudioDelegation);
+
     byId("frm_group_ok")?.addEventListener("change", syncGroupFields);
     byId("frm_tete_groupe")?.addEventListener("change", syncGroupFields);
     byId("frm_id_opco")?.addEventListener("change", setOpcoHintFromCurrent);
@@ -764,6 +1041,19 @@
       tel.addEventListener("input", () => formatPhoneInput(tel));
       tel.addEventListener("blur", () => formatPhoneInput(tel));
     }
+
+    window.addEventListener("focus", () => {
+      refreshListOnReturn(portal).catch((e) => {
+        portal.showAlert("error", e.message || String(e));
+      });
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      refreshListOnReturn(portal).catch((e) => {
+        portal.showAlert("error", e.message || String(e));
+      });
+    });
   }
 
   (async () => {

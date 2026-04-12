@@ -8,6 +8,7 @@ import json
 from urllib.parse import urlencode
 from urllib.request import Request as UrlRequest, urlopen
 from urllib.error import HTTPError, URLError
+from datetime import date
 
 from app.routers.skills_portal_common import get_conn
 from app.routers.studio_portal_common import studio_require_user, studio_fetch_owner, studio_require_min_role
@@ -78,6 +79,30 @@ class ClientPayload(BaseModel):
     group_ok: Optional[bool] = None
     profil_structurel: Optional[str] = None
     type_structure: Optional[str] = None
+
+class CommercialPayload(BaseModel):
+    offer_code: Optional[str] = None
+    statut_commercial: Optional[str] = None
+    date_debut: Optional[str] = None
+    date_fin: Optional[str] = None
+
+    studio_actif: Optional[bool] = None
+    insights_actif: Optional[bool] = None
+    people_actif: Optional[bool] = None
+    partner_actif: Optional[bool] = None
+    learn_actif: Optional[bool] = None
+
+    nb_acces_studio_max: Optional[int] = None
+    nb_acces_insights_max: Optional[int] = None
+    nb_acces_people_max: Optional[int] = None
+    nb_acces_partner_max: Optional[int] = None
+    nb_acces_learn_max: Optional[int] = None
+
+    nb_clients_max: Optional[int] = None
+    nb_sites_max: Optional[int] = None
+
+    commentaire: Optional[str] = None
+    gestion_acces_studio_autorisee: Optional[bool] = None
 
 def _build_patch_set(payload) -> Dict[str, Any]:
     fields = payload.__fields_set__ or set()
@@ -416,6 +441,241 @@ def _lookup_opco(cur, id_opco: Optional[str]) -> Optional[str]:
     r = cur.fetchone() or {}
     return _normalize_text(r.get("nom_opco"))
 
+def _normalize_statut_commercial(value: Any) -> str:
+    v = str(value or "actif").strip().lower()
+    if v not in ("actif", "suspendu", "test"):
+        raise HTTPException(status_code=400, detail="Statut commercial invalide.")
+    return v
+
+
+def _normalize_quota(value: Any) -> int:
+    if value is None or str(value).strip() == "":
+        return 0
+    try:
+        iv = int(value)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Quota invalide.")
+    if iv < 0:
+        raise HTTPException(status_code=400, detail="Quota invalide.")
+    return iv
+
+
+def _fetch_offer_catalog(cur) -> list:
+    cur.execute(
+        """
+        SELECT
+            offer_code,
+            offer_label,
+            segment_code,
+            offer_family,
+            palier_code,
+            palier_label,
+            ia_incluse,
+            studio_actif,
+            insights_actif,
+            people_actif,
+            partner_actif,
+            learn_actif,
+            gestion_acces_studio_autorisee,
+            nb_acces_studio_max,
+            nb_acces_insights_max,
+            nb_acces_people_max,
+            nb_acces_partner_max,
+            nb_acces_learn_max,
+            nb_clients_max,
+            nb_sites_max,
+            nb_collaborateurs_couverts_max,
+            commentaire,
+            ordre_affichage
+        FROM public.tbl_novoskill_offer_catalog
+        WHERE COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_catalogue, 'actif') = 'actif'
+        ORDER BY
+            segment_code,
+            ordre_affichage,
+            lower(offer_label),
+            offer_code
+        """
+    )
+    rows = cur.fetchall() or []
+    items = []
+    for r in rows:
+        items.append(
+            {
+                "offer_code": r.get("offer_code"),
+                "offer_label": r.get("offer_label"),
+                "segment_code": r.get("segment_code"),
+                "offer_family": r.get("offer_family"),
+                "palier_code": r.get("palier_code"),
+                "palier_label": r.get("palier_label"),
+                "ia_incluse": bool(r.get("ia_incluse")),
+                "studio_actif": bool(r.get("studio_actif")),
+                "insights_actif": bool(r.get("insights_actif")),
+                "people_actif": bool(r.get("people_actif")),
+                "partner_actif": bool(r.get("partner_actif")),
+                "learn_actif": bool(r.get("learn_actif")),
+                "gestion_acces_studio_autorisee": bool(r.get("gestion_acces_studio_autorisee")),
+                "nb_acces_studio_max": r.get("nb_acces_studio_max"),
+                "nb_acces_insights_max": r.get("nb_acces_insights_max"),
+                "nb_acces_people_max": r.get("nb_acces_people_max"),
+                "nb_acces_partner_max": r.get("nb_acces_partner_max"),
+                "nb_acces_learn_max": r.get("nb_acces_learn_max"),
+                "nb_clients_max": r.get("nb_clients_max"),
+                "nb_sites_max": r.get("nb_sites_max"),
+                "nb_collaborateurs_couverts_max": r.get("nb_collaborateurs_couverts_max"),
+                "commentaire": r.get("commentaire"),
+                "ordre_affichage": int(r.get("ordre_affichage") or 0),
+            }
+        )
+    return items
+
+
+def _ensure_offer_exists(cur, offer_code: str) -> None:
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_novoskill_offer_catalog
+        WHERE offer_code = %s
+          AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_catalogue, 'actif') = 'actif'
+        LIMIT 1
+        """,
+        (offer_code,),
+    )
+    if cur.fetchone() is None:
+        raise HTTPException(status_code=400, detail="Offre commerciale introuvable ou archivée.")
+
+
+def _ensure_client_owner_scope(cur, id_ent: str) -> None:
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_novoskill_owner
+        WHERE id_owner = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (id_ent,),
+    )
+    if cur.fetchone() is not None:
+        return
+
+    cur.execute(
+        """
+        SELECT lower(COALESCE(type_entreprise, '')) AS type_entreprise
+        FROM public.tbl_entreprise
+        WHERE id_ent = %s
+        LIMIT 1
+        """,
+        (id_ent,),
+    )
+    src = cur.fetchone() or {}
+    ent_type = (src.get("type_entreprise") or "").strip().lower()
+    if not ent_type:
+        raise HTTPException(status_code=404, detail="Structure introuvable.")
+
+    owner_type = "site" if ent_type == "site" else "entreprise"
+
+    cur.execute(
+        """
+        INSERT INTO public.tbl_novoskill_owner (
+            id_owner,
+            type_owner,
+            archive
+        ) VALUES (%s, %s, FALSE)
+        ON CONFLICT (id_owner)
+        DO UPDATE SET
+            type_owner = EXCLUDED.type_owner,
+            archive = FALSE
+        """,
+        (id_ent, owner_type),
+    )
+
+
+def _fetch_client_commercial(cur, id_ent: str) -> dict:
+    cur.execute(
+        """
+        SELECT
+            id_owner_commercial,
+            id_owner,
+            offer_code,
+            archive,
+            created_at,
+            updated_at,
+            statut_commercial,
+            date_debut,
+            date_fin,
+            studio_actif,
+            insights_actif,
+            people_actif,
+            partner_actif,
+            learn_actif,
+            nb_acces_studio_max,
+            nb_acces_insights_max,
+            nb_acces_people_max,
+            nb_acces_partner_max,
+            nb_acces_learn_max,
+            nb_clients_max,
+            nb_sites_max,
+            commentaire,
+            gestion_acces_studio_autorisee
+        FROM public.tbl_novoskill_owner_commercial
+        WHERE id_owner = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        ORDER BY created_at DESC, id_owner_commercial DESC
+        LIMIT 1
+        """,
+        (id_ent,),
+    )
+    r = cur.fetchone()
+    if not r:
+        return {
+            "exists": False,
+            "id_owner_commercial": None,
+            "id_owner": id_ent,
+            "offer_code": "",
+            "statut_commercial": "actif",
+            "date_debut": date.today().isoformat(),
+            "date_fin": None,
+            "studio_actif": False,
+            "insights_actif": False,
+            "people_actif": False,
+            "partner_actif": False,
+            "learn_actif": False,
+            "nb_acces_studio_max": 0,
+            "nb_acces_insights_max": 0,
+            "nb_acces_people_max": 0,
+            "nb_acces_partner_max": 0,
+            "nb_acces_learn_max": 0,
+            "nb_clients_max": 0,
+            "nb_sites_max": 0,
+            "commentaire": None,
+            "gestion_acces_studio_autorisee": False,
+        }
+
+    return {
+        "exists": True,
+        "id_owner_commercial": r.get("id_owner_commercial"),
+        "id_owner": r.get("id_owner"),
+        "offer_code": r.get("offer_code") or "",
+        "statut_commercial": r.get("statut_commercial") or "actif",
+        "date_debut": r.get("date_debut").isoformat() if r.get("date_debut") else None,
+        "date_fin": r.get("date_fin").isoformat() if r.get("date_fin") else None,
+        "studio_actif": bool(r.get("studio_actif")),
+        "insights_actif": bool(r.get("insights_actif")),
+        "people_actif": bool(r.get("people_actif")),
+        "partner_actif": bool(r.get("partner_actif")),
+        "learn_actif": bool(r.get("learn_actif")),
+        "nb_acces_studio_max": int(r.get("nb_acces_studio_max") or 0),
+        "nb_acces_insights_max": int(r.get("nb_acces_insights_max") or 0),
+        "nb_acces_people_max": int(r.get("nb_acces_people_max") or 0),
+        "nb_acces_partner_max": int(r.get("nb_acces_partner_max") or 0),
+        "nb_acces_learn_max": int(r.get("nb_acces_learn_max") or 0),
+        "nb_clients_max": int(r.get("nb_clients_max") or 0),
+        "nb_sites_max": int(r.get("nb_sites_max") or 0),
+        "commentaire": r.get("commentaire"),
+        "gestion_acces_studio_autorisee": bool(r.get("gestion_acces_studio_autorisee")),
+    }
 
 def _structure_exists_for_owner(cur, id_owner: str, id_ent: str, include_masked: bool = False) -> bool:
     sql = """
@@ -753,6 +1013,255 @@ def get_studio_client_detail(id_owner: str, id_ent: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/clients/detail error: {e}")
 
+
+@router.get("/studio/offers/{id_owner}")
+def get_studio_offer_catalog(id_owner: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+                return {"items": _fetch_offer_catalog(cur)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/offers error: {e}")
+
+
+@router.get("/studio/clients/{id_owner}/{id_ent}/commercial")
+def get_studio_client_commercial(id_owner: str, id_ent: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                if not _structure_exists_for_owner(cur, oid, id_ent, include_masked=True):
+                    raise HTTPException(status_code=404, detail="Structure introuvable.")
+
+                detail = _fetch_client_commercial(cur, id_ent)
+                return detail
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/commercial/detail error: {e}")
+
+
+@router.post("/studio/clients/{id_owner}/{id_ent}/commercial")
+def upsert_studio_client_commercial(id_owner: str, id_ent: str, payload: CommercialPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                if not _structure_exists_for_owner(cur, oid, id_ent, include_masked=True):
+                    raise HTTPException(status_code=404, detail="Structure introuvable.")
+
+                offer_code = _normalize_text(payload.offer_code)
+                if not offer_code:
+                    raise HTTPException(status_code=400, detail="Offre obligatoire.")
+
+                _ensure_offer_exists(cur, offer_code)
+                _ensure_client_owner_scope(cur, id_ent)
+
+                statut_commercial = _normalize_statut_commercial(payload.statut_commercial)
+                date_debut = payload.date_debut or date.today().isoformat()
+                date_fin = payload.date_fin or None
+
+                studio_actif = bool(payload.studio_actif)
+                insights_actif = bool(payload.insights_actif)
+                people_actif = bool(payload.people_actif)
+                partner_actif = bool(payload.partner_actif)
+                learn_actif = bool(payload.learn_actif)
+
+                gestion_acces_studio_autorisee = bool(payload.gestion_acces_studio_autorisee)
+                if gestion_acces_studio_autorisee and not studio_actif:
+                    raise HTTPException(status_code=400, detail="La délégation Studio nécessite Studio actif.")
+
+                nb_acces_studio_max = _normalize_quota(payload.nb_acces_studio_max)
+                nb_acces_insights_max = _normalize_quota(payload.nb_acces_insights_max)
+                nb_acces_people_max = _normalize_quota(payload.nb_acces_people_max)
+                nb_acces_partner_max = _normalize_quota(payload.nb_acces_partner_max)
+                nb_acces_learn_max = _normalize_quota(payload.nb_acces_learn_max)
+                nb_clients_max = _normalize_quota(payload.nb_clients_max)
+                nb_sites_max = _normalize_quota(payload.nb_sites_max)
+                commentaire = _normalize_text(payload.commentaire)
+
+                cur.execute(
+                    """
+                    SELECT id_owner_commercial
+                    FROM public.tbl_novoskill_owner_commercial
+                    WHERE id_owner = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    ORDER BY created_at DESC, id_owner_commercial DESC
+                    LIMIT 1
+                    """,
+                    (id_ent,),
+                )
+                existing = cur.fetchone() or {}
+
+                if existing.get("id_owner_commercial"):
+                    cur.execute(
+                        """
+                        UPDATE public.tbl_novoskill_owner_commercial
+                        SET
+                            offer_code = %s,
+                            updated_at = NOW(),
+                            statut_commercial = %s,
+                            date_debut = %s,
+                            date_fin = %s,
+                            studio_actif = %s,
+                            insights_actif = %s,
+                            people_actif = %s,
+                            partner_actif = %s,
+                            learn_actif = %s,
+                            nb_acces_studio_max = %s,
+                            nb_acces_insights_max = %s,
+                            nb_acces_people_max = %s,
+                            nb_acces_partner_max = %s,
+                            nb_acces_learn_max = %s,
+                            nb_clients_max = %s,
+                            nb_sites_max = %s,
+                            commentaire = %s,
+                            gestion_acces_studio_autorisee = %s,
+                            archive = FALSE
+                        WHERE id_owner_commercial = %s
+                        """,
+                        (
+                            offer_code,
+                            statut_commercial,
+                            date_debut,
+                            date_fin,
+                            studio_actif,
+                            insights_actif,
+                            people_actif,
+                            partner_actif,
+                            learn_actif,
+                            nb_acces_studio_max,
+                            nb_acces_insights_max,
+                            nb_acces_people_max,
+                            nb_acces_partner_max,
+                            nb_acces_learn_max,
+                            nb_clients_max,
+                            nb_sites_max,
+                            commentaire,
+                            gestion_acces_studio_autorisee,
+                            existing.get("id_owner_commercial"),
+                        ),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        INSERT INTO public.tbl_novoskill_owner_commercial (
+                            id_owner_commercial,
+                            id_owner,
+                            offer_code,
+                            archive,
+                            created_at,
+                            updated_at,
+                            statut_commercial,
+                            date_debut,
+                            date_fin,
+                            studio_actif,
+                            insights_actif,
+                            people_actif,
+                            partner_actif,
+                            learn_actif,
+                            nb_acces_studio_max,
+                            nb_acces_insights_max,
+                            nb_acces_people_max,
+                            nb_acces_partner_max,
+                            nb_acces_learn_max,
+                            nb_clients_max,
+                            nb_sites_max,
+                            commentaire,
+                            gestion_acces_studio_autorisee
+                        ) VALUES (
+                            %s, %s, %s, FALSE, NOW(), NOW(), %s, %s, %s,
+                            %s, %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s,
+                            %s, %s, %s, %s
+                        )
+                        """,
+                        (
+                            str(uuid4()),
+                            id_ent,
+                            offer_code,
+                            statut_commercial,
+                            date_debut,
+                            date_fin,
+                            studio_actif,
+                            insights_actif,
+                            people_actif,
+                            partner_actif,
+                            learn_actif,
+                            nb_acces_studio_max,
+                            nb_acces_insights_max,
+                            nb_acces_people_max,
+                            nb_acces_partner_max,
+                            nb_acces_learn_max,
+                            nb_clients_max,
+                            nb_sites_max,
+                            commentaire,
+                            gestion_acces_studio_autorisee,
+                        ),
+                    )
+
+                conn.commit()
+                return _fetch_client_commercial(cur, id_ent)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/commercial/upsert error: {e}")
+
+
+@router.post("/studio/clients/{id_owner}/{id_ent}/commercial/archive")
+def archive_studio_client_commercial(id_owner: str, id_ent: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                if not _structure_exists_for_owner(cur, oid, id_ent, include_masked=True):
+                    raise HTTPException(status_code=404, detail="Structure introuvable.")
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_novoskill_owner_commercial
+                    SET archive = TRUE,
+                        updated_at = NOW()
+                    WHERE id_owner = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    """,
+                    (id_ent,),
+                )
+                conn.commit()
+                return {"ok": True, "id_owner": id_ent}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/commercial/archive error: {e}")
 
 @router.post("/studio/clients/{id_owner}")
 def create_studio_client(id_owner: str, payload: ClientPayload, request: Request):

@@ -81,7 +81,7 @@
             <th>Ville</th>
             <th style="width:90px; text-align:center;">Profil</th>
             <th style="width:96px; text-align:center;">Abo. Studio</th>
-            <th style="width:140px; text-align:center;">Actions</th>
+            <th style="width:184px; text-align:center;">Actions</th>
           </tr>
         </thead>
         <tbody id="clientsTableBody"></tbody>
@@ -224,6 +224,154 @@
       <div class="sb-modal-foot">
         <button type="button" class="sb-btn sb-btn--secondary" id="btnClientModalCancel">Annuler</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnClientModalSave">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sb-modal" id="clientcommercialmodal" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" id="clientcommercialmodaltitle">abonnement et droits</div>
+          <div class="card-sub" id="clientcommercialmodalsub">paramétrage commercial du client sélectionné.</div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnclientcommercialclose" aria-label="fermer">×</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="sb-stack sb-stack--sm">
+
+          <div class="card">
+            <div class="sb-field-head">
+              <div class="card-title" style="font-size:15px; margin:0;">offre et statut</div>
+              <button type="button" class="sb-btn sb-btn--secondary" id="btncommercialapplyoffer">appliquer l’offre</button>
+            </div>
+
+            <div class="sb-grid-12 sb-mt-10">
+              <div class="sb-col-6">
+                <div class="label">offre *</div>
+                <select id="frmcommercialoffercode"></select>
+              </div>
+              <div class="sb-col-3">
+                <div class="label">statut commercial</div>
+                <select id="frmcommercialstatut">
+                  <option value="actif">actif</option>
+                  <option value="suspendu">suspendu</option>
+                  <option value="test">test</option>
+                </select>
+              </div>
+              <div class="sb-col-3"></div>
+
+              <div class="sb-col-3">
+                <div class="label">date début</div>
+                <input type="date" class="sb-date" id="frmcommercialdatedebut" />
+              </div>
+              <div class="sb-col-3">
+                <div class="label">date fin</div>
+                <input type="date" class="sb-date" id="frmcommercialdatefin" />
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="font-size:15px;">consoles actives</div>
+
+            <div class="sb-grid-12 sb-mt-10">
+              <div class="sb-col-3">
+                <label class="sb-checkline">
+                  <input type="checkbox" id="frmcommercialstudioactif" />
+                  <span>studio</span>
+                </label>
+              </div>
+              <div class="sb-col-3">
+                <label class="sb-checkline">
+                  <input type="checkbox" id="frmcommercialinsightsactif" />
+                  <span>insights</span>
+                </label>
+              </div>
+              <div class="sb-col-3">
+                <label class="sb-checkline">
+                  <input type="checkbox" id="frmcommercialpeopleactif" />
+                  <span>people</span>
+                </label>
+              </div>
+              <div class="sb-col-3">
+                <label class="sb-checkline">
+                  <input type="checkbox" id="frmcommercialpartneractif" />
+                  <span>partner</span>
+                </label>
+              </div>
+              <div class="sb-col-3">
+                <label class="sb-checkline">
+                  <input type="checkbox" id="frmcommerciallearnactif" />
+                  <span>learn</span>
+                </label>
+              </div>
+              <div class="sb-col-6">
+                <label class="sb-checkline">
+                  <input type="checkbox" id="frmcommercialgestionstudio" />
+                  <span>délégation des accès studio autorisée</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="font-size:15px;">quotas</div>
+
+            <div class="sb-grid-12 sb-mt-10">
+              <div class="sb-col-3">
+                <div class="label">accès studio</div>
+                <input type="number" min="0" id="frmcommercialnbstudio" />
+              </div>
+              <div class="sb-col-3">
+                <div class="label">accès insights</div>
+                <input type="number" min="0" id="frmcommercialnbinsights" />
+              </div>
+              <div class="sb-col-3">
+                <div class="label">accès people</div>
+                <input type="number" min="0" id="frmcommercialnbpeople" />
+              </div>
+              <div class="sb-col-3">
+                <div class="label">accès partner</div>
+                <input type="number" min="0" id="frmcommercialnbpartner" />
+              </div>
+              <div class="sb-col-3">
+                <div class="label">accès learn</div>
+                <input type="number" min="0" id="frmcommercialnblearn" />
+              </div>
+              <div class="sb-col-3">
+                <div class="label">nb clients max</div>
+                <input type="number" min="0" id="frmcommercialnbclients" />
+              </div>
+              <div class="sb-col-3">
+                <div class="label">nb sites max</div>
+                <input type="number" min="0" id="frmcommercialnbsites" />
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title" style="font-size:15px;">commentaire</div>
+
+            <div class="sb-grid-12 sb-mt-10">
+              <div class="sb-col-12">
+                <textarea id="frmcommercialcommentaire" class="sb-textarea--md" placeholder="commentaire commercial, exception, historique court…"></textarea>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <div class="sb-foot-split">
+          <button type="button" class="sb-btn sb-btn--danger-soft" id="btnclientcommercialarchive">retirer les droits</button>
+          <div class="sb-actions">
+            <button type="button" class="sb-btn sb-btn--secondary" id="btnclientcommercialcancel">annuler</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnclientcommercialsave">enregistrer</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>

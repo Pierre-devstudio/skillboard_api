@@ -1642,6 +1642,21 @@
   justify-content:center;
 }
 
+#clientCommercialModal .card{
+  border:1px solid rgba(17,24,39,.08);
+  border-radius:14px;
+}
+
+#clientCommercialModal .card-title{
+  margin:0;
+}
+
+#clientCommercialModal textarea{
+  width:100%;
+  min-height:88px;
+  resize:vertical;
+}
+
 .sb-client-profile-dot{
   width:14px;
   height:14px;
