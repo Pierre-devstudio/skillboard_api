@@ -8,6 +8,8 @@
   let _modalMode = "create";
   let _modalClientId = null;
   let _ownerFeatures = { studio_actif: false, gestion_acces_studio_autorisee: false, nb_acces_studio_max: 0 };
+  let _workspaceRefreshPending = false;
+  let _workspaceRefreshBusy = false;
 
   function byId(id){ return document.getElementById(id); }
 
@@ -185,15 +187,18 @@
     function renderOwnerCapability(){
         const el = byId("clientsOwnerCapability");
         if (!el) return;
+
         if (_ownerFeatures.gestion_acces_studio_autorisee) {
-        el.textContent = `Votre owner peut déléguer des accès Studio. Quota déclaré : ${_ownerFeatures.nb_acces_studio_max || 0}.`;
-        return;
+            el.textContent = `Votre abonnement permet de déléguer des accès Studio. Quota déclaré : ${_ownerFeatures.nb_acces_studio_max || 0}.`;
+            return;
         }
+
         if (_ownerFeatures.studio_actif) {
-        el.textContent = "Votre owner utilise Studio, mais la gestion déléguée des accès Studio n’est pas autorisée sur ce périmètre.";
-        return;
+            el.textContent = "L’abonnement Studio est actif sur votre périmètre, mais la délégation des accès Studio n’est pas autorisée.";
+            return;
         }
-        el.textContent = "Studio n’est pas déclaré comme actif côté capacité owner. La fiche client reste gérable, ce qui est déjà pas mal.";
+
+        el.textContent = "L’abonnement Studio n’est pas actif sur votre périmètre. La gestion du portefeuille client reste disponible.";
     }
 
     function renderKpis(summary){
@@ -223,29 +228,18 @@
   }
 
   function getStudioOwnerInfo(item){
-    const hasOwnerScope = !!item?.has_owner_scope;
     const studioActif = !!item?.studio_actif;
-
-    if (!hasOwnerScope) {
-      return {
-        text: "—",
-        cls: "sb-client-studio-flag--off",
-        title: "Pas d’owner Studio"
-      };
-    }
 
     if (studioActif) {
       return {
-        text: "S",
-        cls: "sb-client-studio-flag--on",
-        title: "Owner Studio actif"
+        active: true,
+        title: "Abonnement Novoskill Studio actif"
       };
     }
 
     return {
-      text: "S",
-      cls: "sb-client-studio-flag--idle",
-      title: "Owner Studio déclaré"
+      active: false,
+      title: "Pas d’abonnement Novoskill Studio"
     };
   }
 
@@ -334,11 +328,25 @@
             ></span>
           </td>
           <td style="text-align:center;">
-            <span
-              class="sb-client-studio-flag ${studio.cls}"
-              title="${esc(studio.title)}"
-              aria-label="${esc(studio.title)}"
-            >${esc(studio.text)}</span>
+            ${
+              studio.active
+                ? `
+                  <span
+                    class="sb-client-studio-flag sb-client-studio-flag--on"
+                    title="${esc(studio.title)}"
+                    aria-label="${esc(studio.title)}"
+                  >
+                    <img src="/favicon-studio-32x32.png" alt="" />
+                  </span>
+                `
+                : `
+                  <span
+                    class="sb-client-studio-flag sb-client-studio-flag--off"
+                    title="${esc(studio.title)}"
+                    aria-label="${esc(studio.title)}"
+                  >—</span>
+                `
+            }
           </td>
           <td style="text-align:center;">
             <div class="sb-icon-actions sb-client-actions">
@@ -386,8 +394,23 @@
     if (!id) return;
 
     _selectedId = id;
+    _workspaceRefreshPending = true;
     renderList();
     openClientSpace(id);
+  }
+
+  async function refreshListOnReturn(portal){
+    if (!_loaded) return;
+    if (!_workspaceRefreshPending) return;
+    if (_workspaceRefreshBusy) return;
+
+    _workspaceRefreshBusy = true;
+    try {
+      await loadList(portal, _selectedId || null);
+    } finally {
+      _workspaceRefreshBusy = false;
+      _workspaceRefreshPending = false;
+    }
   }
 
   async function archiveClient(portal, idEnt){
@@ -660,6 +683,19 @@
       tel.addEventListener("input", () => formatPhoneInput(tel));
       tel.addEventListener("blur", () => formatPhoneInput(tel));
     }
+
+    window.addEventListener("focus", () => {
+      refreshListOnReturn(portal).catch((e) => {
+        portal.showAlert("error", e.message || String(e));
+      });
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      refreshListOnReturn(portal).catch((e) => {
+        portal.showAlert("error", e.message || String(e));
+      });
+    });
   }
 
   (async () => {
