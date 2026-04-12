@@ -203,114 +203,216 @@
         byId("clientsKpiStudioDelegue").textContent = String(summary?.nb_studio_delegue || 0);
     }
 
-    function buildListBadges(item){
-    if (!item?.studio_actif) return "";
-    return `<span class="sb-badge sb-badge--status-active">Studio actif</span>`;
+  function getProfilStructInfo(value){
+    const v = (value || "").toString().trim().toLowerCase();
+
+    if (v === "site_unique") {
+      return { label: "Site unique", cls: "sb-client-profile-dot--site-unique" };
+    }
+    if (v === "multi_site") {
+      return { label: "Multi-site", cls: "sb-client-profile-dot--multi-site" };
+    }
+    if (v === "holding_multi_entreprise") {
+      return { label: "Holding multi-entreprise", cls: "sb-client-profile-dot--holding" };
+    }
+    if (v === "holding_multi_entreprise_multi_site") {
+      return { label: "Holding multi-entreprise + multi-site", cls: "sb-client-profile-dot--holding-multi-site" };
     }
 
-    function renderList(){
-        const box = byId("clientsList");
-        const q = (byId("clientsSearch")?.value || "").trim().toLowerCase();
-        if (!box) return;
-
-        const rows = (_items || []).filter(it => {
-        if (!q) return true;
-        const hay = [it.nom_ent, it.ville_ent, it.pays_ent, it.nom_groupe, it.type_groupe, it.email_ent]
-            .filter(Boolean)
-            .join(" ")
-            .toLowerCase();
-        return hay.includes(q);
-        });
-
-        if (!rows.length) {
-        box.innerHTML = `
-            <div class="sb-empty-state">
-            <div class="sb-empty-state__title">Aucun client trouvé</div>
-            <div class="sb-empty-state__text">Ajuste la recherche ou crée une fiche client. Il faut bien commencer quelque part.</div>
-            </div>
-        `;
-        return;
-        }
-
-        box.innerHTML = rows.map(it => {
-            const badgesHtml = buildListBadges(it);
-            return `
-            <div class="sb-list-item sb-list-item--clickable ${it.id_ent === _selectedId ? "is-active" : ""}" data-id="${esc(it.id_ent)}">
-                <div class="sb-row-main">
-                <div class="sb-list-title">${esc(it.nom_ent || "Entreprise sans nom")}</div>
-                ${badgesHtml ? `<div class="sb-row-badges">${badgesHtml}</div>` : ""}
-                <div class="sb-row-meta">
-                    <span>${esc(it.ville_ent || "Ville non renseignée")}</span>
-                    ${it.pays_ent ? `<span>${esc(it.pays_ent)}</span>` : ""}
-                    ${it.nom_groupe ? `<span>${esc(it.nom_groupe)}</span>` : ""}
-                </div>
-                </div>
-            </div>
-            `;
-            }).join("");
-    }
-
-  function hideDetail(){
-    const empty = byId("clientDetailEmpty");
-    const panel = byId("clientDetailPanel");
-    const actions = byId("clientDetailActions");
-    if (empty) empty.style.display = "block";
-    if (panel) panel.style.display = "none";
-    if (actions) actions.style.display = "none";
-    byId("clientDetailTitle").textContent = "Détail client";
-    byId("clientDetailSub").textContent = "Sélectionnez une entreprise cliente pour afficher sa fiche.";
+    return { label: "Profil non renseigné", cls: "sb-client-profile-dot--unknown" };
   }
 
-    function renderDetail(detail){
-        const empty = byId("clientDetailEmpty");
-        const panel = byId("clientDetailPanel");
-        const actions = byId("clientDetailActions");
-        if (empty) empty.style.display = "none";
-        if (panel) panel.style.display = "block";
-        if (actions) actions.style.display = canManage() ? "flex" : "none";
+  function getStudioOwnerInfo(item){
+    const hasOwnerScope = !!item?.has_owner_scope;
+    const studioActif = !!item?.studio_actif;
 
-        byId("clientDetailTitle").textContent = detail.nom_ent || "Détail client";
-        byId("clientDetailSub").textContent = detail.id_ent || "";
-
-        const badges = [];
-            if (detail.studio_actif) {
-            badges.push(`<span class="sb-badge sb-badge--status-active">Studio actif</span>`);
-            }
-
-            const badgesHost = byId("clientDetailBadges");
-            badgesHost.innerHTML = badges.join("");
-            badgesHost.style.display = badges.length ? "flex" : "none";
-
-        setValueOrEmpty("det_nom_ent", detail.nom_ent);
-        setValueOrEmpty("det_siret_ent", detail.siret_ent);
-        setValueOrEmpty("det_num_entreprise", detail.num_entreprise);
-        setValueOrEmpty("det_date_creation", formatDateFr(detail.date_creation));
-        setValueOrEmpty("det_effectif_ent", detail.effectif_ent);
-        setValueOrEmpty("det_idcc", detail.idcc);
-        setValueOrEmpty("det_code_ape_ent", detail.code_ape_ent);
-        setValueOrEmpty("det_adresse_ent", detail.adresse_ent);
-        setValueOrEmpty("det_adresse_cplt_ent", detail.adresse_cplt_ent);
-        setValueOrEmpty("det_cp_ent", detail.cp_ent);
-        setValueOrEmpty("det_ville_ent", detail.ville_ent);
-        setValueOrEmpty("det_pays_ent", detail.pays_ent);
-        setValueOrEmpty("det_telephone_ent", detail.telephone_ent);
-        setValueOrEmpty("det_email_ent", detail.email_ent);
-        setValueOrEmpty("det_site_web", detail.site_web);
-        setValueOrEmpty("det_num_tva_ent", detail.num_tva_ent);
-        setValueOrEmpty("det_idcc_libelle", detail.idcc_libelle);
-        setValueOrEmpty("det_code_ape_intitule", detail.code_ape_intitule);
-        setValueOrEmpty("det_opco_nom", detail.opco_nom);
-        setValueOrEmpty("det_nom_groupe", detail.nom_groupe);
-        setValueOrEmpty("det_type_groupe", detail.type_groupe);
-        setValueOrEmpty("det_group_ok", boolText(detail.group_ok));
-        setValueOrEmpty("det_tete_groupe", boolText(detail.tete_groupe));
-        setValueOrEmpty("det_nb_entites_parents", detail.nb_entites_parents);
-        setValueOrEmpty("det_nb_entites_enfants", detail.nb_entites_enfants);
-        setValueOrEmpty("det_has_owner_scope", boolText(detail.has_owner_scope));
-        setValueOrEmpty("det_studio_actif", boolText(detail.studio_actif));
-        setValueOrEmpty("det_gestion_acces_studio_autorisee", boolText(detail.gestion_acces_studio_autorisee));
-        setValueOrEmpty("det_nb_acces_studio_max", detail.nb_acces_studio_max);
+    if (!hasOwnerScope) {
+      return {
+        text: "—",
+        cls: "sb-client-studio-flag--off",
+        title: "Pas d’owner Studio"
+      };
     }
+
+    if (studioActif) {
+      return {
+        text: "S",
+        cls: "sb-client-studio-flag--on",
+        title: "Owner Studio actif"
+      };
+    }
+
+    return {
+      text: "S",
+      cls: "sb-client-studio-flag--idle",
+      title: "Owner Studio déclaré"
+    };
+  }
+
+  function getPdfIconSvg(){
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"></path>
+        <path d="M14 2v6h6"></path>
+        <path d="M8.5 15.5h7"></path>
+        <path d="M8.5 18.5h5"></path>
+      </svg>
+    `;
+  }
+
+  function getPencilIconSvg(){
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20h9"></path>
+        <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path>
+      </svg>
+    `;
+  }
+
+  function getTrashIconSvg(){
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6l-1 14H6L5 6"></path>
+        <path d="M10 11v6"></path>
+        <path d="M14 11v6"></path>
+        <path d="M9 6V4h6v2"></path>
+      </svg>
+    `;
+  }
+
+  function renderList(){
+    const body = byId("clientsTableBody");
+    const empty = byId("clientsEmpty");
+    const q = (byId("clientsSearch")?.value || "").trim().toLowerCase();
+
+    if (!body || !empty) return;
+
+    const rows = (_items || []).filter(it => {
+      if (!q) return true;
+
+      const hay = [
+        it.nom_ent,
+        it.cp_ent,
+        it.ville_ent,
+        it.nom_groupe,
+        it.type_groupe,
+        it.email_ent
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return hay.includes(q);
+    });
+
+    if (!rows.length) {
+      body.innerHTML = "";
+      empty.classList.remove("is-hidden");
+      return;
+    }
+
+    empty.classList.add("is-hidden");
+
+    body.innerHTML = rows.map(it => {
+      const profile = getProfilStructInfo(it.profil_structurel);
+      const studio = getStudioOwnerInfo(it);
+      const active = it.id_ent === _selectedId ? " is-active" : "";
+
+      return `
+        <tr class="sb-table-row-clickable sb-client-row${active}" data-id="${esc(it.id_ent)}">
+          <td>
+            <div class="sb-client-table-name">${esc(it.nom_ent || "Entreprise sans nom")}</div>
+          </td>
+          <td>${esc(it.cp_ent || "—")}</td>
+          <td>${esc(it.ville_ent || "—")}</td>
+          <td style="text-align:center;">
+            <span
+              class="sb-client-profile-dot ${profile.cls}"
+              title="${esc(profile.label)}"
+              aria-label="${esc(profile.label)}"
+            ></span>
+          </td>
+          <td style="text-align:center;">
+            <span
+              class="sb-client-studio-flag ${studio.cls}"
+              title="${esc(studio.title)}"
+              aria-label="${esc(studio.title)}"
+            >${esc(studio.text)}</span>
+          </td>
+          <td style="text-align:center;">
+            <div class="sb-icon-actions sb-client-actions">
+              <button
+                type="button"
+                class="sb-icon-btn sb-icon-btn--doc is-hidden"
+                data-action="pdf"
+                data-id="${esc(it.id_ent)}"
+                title="PDF"
+                aria-label="PDF"
+              >
+                ${getPdfIconSvg()}
+              </button>
+
+              <button
+                type="button"
+                class="sb-icon-btn"
+                data-action="edit"
+                data-id="${esc(it.id_ent)}"
+                title="Ouvrir l’espace de gestion"
+                aria-label="Ouvrir l’espace de gestion"
+              >
+                ${getPencilIconSvg()}
+              </button>
+
+              <button
+                type="button"
+                class="sb-icon-btn sb-icon-btn--danger"
+                data-action="archive"
+                data-id="${esc(it.id_ent)}"
+                title="Archiver"
+                aria-label="Archiver"
+              >
+                ${getTrashIconSvg()}
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function openClientWorkspace(idEnt){
+    const id = (idEnt || "").toString().trim();
+    if (!id) return;
+
+    _selectedId = id;
+    renderList();
+    openClientSpace(id);
+  }
+
+  async function archiveClient(portal, idEnt){
+    const id = (idEnt || "").toString().trim();
+    if (!id) return;
+
+    const item = (_items || []).find(x => x.id_ent === id);
+    const nom = item?.nom_ent || "ce client";
+
+    const ok = window.confirm(`Archiver le client "${nom}" ?`);
+    if (!ok) return;
+
+    const ownerId = getOwnerId();
+    await portal.apiJson(`${portal.apiBase}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(id)}/archive`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+
+    const nextId = (_items.find(x => x.id_ent !== id) || {}).id_ent || null;
+    _selectedId = nextId || null;
+    _selectedDetail = null;
+
+    await loadList(portal, _selectedId);
+  }
 
   async function loadList(portal, preferredId){
     setStatus("Chargement…");
@@ -323,28 +425,16 @@
 
     renderOwnerCapability();
     renderKpis(data.summary || {});
-    renderList();
 
-    const targetId = preferredId || _selectedId || (_items[0] && _items[0].id_ent) || null;
-    if (targetId && _items.some(x => x.id_ent === targetId)) {
-      await selectClient(portal, targetId, false);
-    } else {
-      _selectedId = null;
-      _selectedDetail = null;
-      hideDetail();
-    }
+    _selectedId = (preferredId && _items.some(x => x.id_ent === preferredId))
+      ? preferredId
+      : ((_selectedId && _items.some(x => x.id_ent === _selectedId)) ? _selectedId : null);
+
+    _selectedDetail = null;
+    renderList();
 
     _loaded = true;
     setStatus(`${_items.length} client(s)`);
-  }
-
-  async function selectClient(portal, idEnt, rerenderList){
-    const ownerId = getOwnerId();
-    if (!ownerId || !idEnt) return;
-    _selectedId = idEnt;
-    if (rerenderList !== false) renderList();
-    _selectedDetail = await portal.apiJson(`${portal.apiBase}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(idEnt)}`);
-    renderDetail(_selectedDetail);
   }
 
   function clearModalHints(){
@@ -488,24 +578,50 @@
     _bound = true;
 
     const btnCreate = byId("btnClientCreate");
-    const btnEdit = byId("btnClientEdit");
-    const btnArchive = byId("btnClientArchive");
 
     if (!canManage()) {
       if (btnCreate) btnCreate.style.display = "none";
-      if (btnEdit) btnEdit.style.display = "none";
-      if (btnArchive) btnArchive.style.display = "none";
     }
 
     byId("clientsSearch")?.addEventListener("input", renderList);
 
-    byId("clientsList")?.addEventListener("click", async (ev) => {
-      const row = ev.target.closest("[data-id]");
+    byId("clientsTableBody")?.addEventListener("click", async (ev) => {
+      const actionBtn = ev.target.closest("[data-action]");
+      if (actionBtn) {
+        ev.preventDefault();
+        ev.stopPropagation();
+
+        const id = (actionBtn.dataset.id || "").trim();
+        if (!id) return;
+
+        try {
+          portal.showAlert("", "");
+
+          if (actionBtn.dataset.action === "archive") {
+            await archiveClient(portal, id);
+            return;
+          }
+
+          if (actionBtn.dataset.action === "edit") {
+            openClientWorkspace(id);
+            return;
+          }
+
+          if (actionBtn.dataset.action === "pdf") {
+            return;
+          }
+        } catch (e) {
+          portal.showAlert("error", e.message || String(e));
+        }
+        return;
+      }
+
+      const row = ev.target.closest("tr[data-id]");
       if (!row) return;
+
       try {
         portal.showAlert("", "");
-        openClientSpace(row.dataset.id);
-        await selectClient(portal, row.dataset.id, true);
+        openClientWorkspace(row.dataset.id);
       } catch (e) {
         portal.showAlert("error", e.message || String(e));
       }
@@ -515,25 +631,6 @@
       try {
         portal.showAlert("", "");
         await openModal(portal, "create", null);
-      } catch (e) {
-        portal.showAlert("error", e.message || String(e));
-      }
-    });
-
-    btnEdit?.addEventListener("click", async () => {
-      if (!_selectedDetail) return;
-      try {
-        portal.showAlert("", "");
-        await openModal(portal, "edit", _selectedDetail);
-      } catch (e) {
-        portal.showAlert("error", e.message || String(e));
-      }
-    });
-
-    btnArchive?.addEventListener("click", async () => {
-      try {
-        portal.showAlert("", "");
-        await archiveSelected(portal);
       } catch (e) {
         portal.showAlert("error", e.message || String(e));
       }
@@ -577,7 +674,10 @@
     } catch (e) {
       if (portal.showAlert) portal.showAlert("error", "Erreur de chargement : " + (e.message || e));
       setStatus("Erreur de chargement.");
-      hideDetail();
+      const body = byId("clientsTableBody");
+      const empty = byId("clientsEmpty");
+      if (body) body.innerHTML = "";
+      if (empty) empty.classList.remove("is-hidden");
     }
   })();
 })();

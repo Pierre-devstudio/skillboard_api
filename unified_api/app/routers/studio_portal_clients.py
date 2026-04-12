@@ -509,6 +509,7 @@ def _fetch_clients_list(cur, id_owner: str) -> list:
         SELECT
             e.id_ent,
             e.nom_ent,
+            e.cp_ent,
             e.ville_ent,
             e.pays_ent,
             e.email_ent,
@@ -518,6 +519,7 @@ def _fetch_clients_list(cur, id_owner: str) -> list:
             e.type_groupe,
             e.group_ok,
             e.tete_groupe,
+            e.profil_structurel,
             EXISTS (
                 SELECT 1
                 FROM public.tbl_novoskill_owner o
@@ -553,6 +555,7 @@ def _fetch_clients_list(cur, id_owner: str) -> list:
             {
                 "id_ent": r.get("id_ent"),
                 "nom_ent": r.get("nom_ent"),
+                "cp_ent": r.get("cp_ent"),
                 "ville_ent": r.get("ville_ent"),
                 "pays_ent": r.get("pays_ent"),
                 "email_ent": r.get("email_ent"),
@@ -562,6 +565,7 @@ def _fetch_clients_list(cur, id_owner: str) -> list:
                 "type_groupe": r.get("type_groupe"),
                 "group_ok": bool(r.get("group_ok")),
                 "tete_groupe": bool(r.get("tete_groupe")),
+                "profil_structurel": r.get("profil_structurel"),
                 "has_owner_scope": bool(r.get("has_owner_scope")),
                 "studio_actif": bool(r.get("studio_actif")),
                 "gestion_acces_studio_autorisee": bool(r.get("gestion_acces_studio_autorisee")),

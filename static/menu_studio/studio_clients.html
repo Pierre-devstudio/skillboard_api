@@ -31,176 +31,42 @@
     </div>
   </div>
 
-  <div class="sb-layout-2col sb-mt-10">
-    <div class="sb-stack">
-      <div class="card">
-        <div class="sb-block-head">
-          <div class="sb-card-head">
-            <div>
-              <div class="card-title">Carnet client</div>
-              <div class="card-sub">Clients rattachés à l’owner Studio courant.</div>
-            </div>
-            <div class="card-sub" id="clientsStatus">—</div>
-          </div>
-          <div class="sb-toolbar sb-toolbar--nowrap">
-            <div class="sb-search sb-search--inline">
-              <div class="label">Rechercher</div>
-              <input type="text" id="clientsSearch" placeholder="Nom, ville, groupe…" />
-            </div>
-          </div>
+  <div class="card sb-mt-10">
+    <div class="sb-block-head">
+      <div class="sb-card-head">
+        <div>
+          <div class="card-title">Carnet client</div>
+          <div class="card-sub">Clients rattachés à l’owner Studio courant.</div>
         </div>
-        <div id="clientsList" class="sb-list sb-mt-10"></div>
+        <div class="card-sub" id="clientsStatus">—</div>
+      </div>
+
+      <div class="sb-toolbar sb-toolbar--nowrap">
+        <div class="sb-search sb-search--inline">
+          <div class="label">Rechercher</div>
+          <input type="text" id="clientsSearch" placeholder="Nom, code postal, ville, groupe…" />
+        </div>
       </div>
     </div>
 
-    <div class="sb-stack">
-      <div class="card">
-        <div class="sb-card-head">
-          <div>
-            <div class="card-title" id="clientDetailTitle">Détail client</div>
-            <div class="card-sub" id="clientDetailSub">Sélectionnez une entreprise cliente pour afficher sa fiche.</div>
-          </div>
-          <div class="sb-actions" id="clientDetailActions" style="display:none;">
-            <button type="button" class="sb-btn sb-btn--secondary" id="btnClientEdit">Modifier</button>
-            <button type="button" class="sb-btn sb-btn--danger-soft" id="btnClientArchive">Archiver</button>
-          </div>
-        </div>
+    <div class="table-wrap sb-mt-10">
+      <table class="sb-table sb-client-table">
+        <thead>
+          <tr>
+            <th>Entreprise</th>
+            <th style="width:120px;">Code postal</th>
+            <th>Ville</th>
+            <th style="width:90px; text-align:center;">Profil</th>
+            <th style="width:90px; text-align:center;">Studio</th>
+            <th style="width:140px; text-align:center;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="clientsTableBody"></tbody>
+      </table>
 
-        <div id="clientDetailEmpty" class="sb-empty-state sb-mt-10">
-          <div class="sb-empty-state__title">Aucun client sélectionné</div>
-          <div class="sb-empty-state__text">Choisissez une entreprise dans la liste de gauche pour consulter ou modifier sa fiche.</div>
-        </div>
-
-        <div id="clientDetailPanel" style="display:none;">
-          <div class="sb-row-badges sb-mt-10" id="clientDetailBadges"></div>
-
-          <div class="sb-grid-12 sb-mt-10">
-            <div class="sb-col-6">
-              <div class="label">Nom entreprise</div>
-              <input type="text" id="det_nom_ent" disabled />
-            </div>
-            <div class="sb-col-3">
-              <div class="label">SIRET</div>
-              <input type="text" id="det_siret_ent" disabled />
-            </div>
-            <div class="sb-col-3">
-              <div class="label">N° entreprise</div>
-              <input type="text" id="det_num_entreprise" disabled />
-            </div>
-
-            <div class="sb-col-3">
-              <div class="label">Date de création</div>
-              <input type="text" id="det_date_creation" disabled />
-            </div>
-            <div class="sb-col-3">
-              <div class="label">Effectif</div>
-              <input type="text" id="det_effectif_ent" disabled />
-            </div>
-            <div class="sb-col-3">
-              <div class="label">IDCC</div>
-              <input type="text" id="det_idcc" disabled />
-            </div>
-            <div class="sb-col-3">
-              <div class="label">Code APE</div>
-              <input type="text" id="det_code_ape_ent" disabled />
-            </div>
-
-            <div class="sb-col-12">
-              <div class="label">Adresse (ligne 1)</div>
-              <input type="text" id="det_adresse_ent" disabled />
-            </div>
-            <div class="sb-col-12">
-              <div class="label">Adresse (complément)</div>
-              <input type="text" id="det_adresse_cplt_ent" disabled />
-            </div>
-
-            <div class="sb-col-3">
-              <div class="label">Code postal</div>
-              <input type="text" id="det_cp_ent" disabled />
-            </div>
-            <div class="sb-col-5">
-              <div class="label">Ville</div>
-              <input type="text" id="det_ville_ent" disabled />
-            </div>
-            <div class="sb-col-4">
-              <div class="label">Pays</div>
-              <input type="text" id="det_pays_ent" disabled />
-            </div>
-
-            <div class="sb-col-4">
-              <div class="label">Téléphone</div>
-              <input type="text" id="det_telephone_ent" disabled />
-            </div>
-            <div class="sb-col-4">
-              <div class="label">Email</div>
-              <input type="text" id="det_email_ent" disabled />
-            </div>
-            <div class="sb-col-4">
-              <div class="label">Site web</div>
-              <input type="text" id="det_site_web" disabled />
-            </div>
-
-            <div class="sb-col-4">
-              <div class="label">N° TVA</div>
-              <input type="text" id="det_num_tva_ent" disabled />
-            </div>
-            <div class="sb-col-4">
-              <div class="label">Libellé IDCC</div>
-              <input type="text" id="det_idcc_libelle" disabled />
-            </div>
-            <div class="sb-col-4">
-              <div class="label">Intitulé APE</div>
-              <input type="text" id="det_code_ape_intitule" disabled />
-            </div>
-
-            <div class="sb-col-4">
-              <div class="label">OPCO</div>
-              <input type="text" id="det_opco_nom" disabled />
-            </div>
-            <div class="sb-col-4">
-              <div class="label">Nom du groupe / réseau</div>
-              <input type="text" id="det_nom_groupe" disabled />
-            </div>
-            <div class="sb-col-4">
-              <div class="label">Type de groupe</div>
-              <input type="text" id="det_type_groupe" disabled />
-            </div>
-
-            <div class="sb-col-3">
-              <div class="label">Entreprise en groupe</div>
-              <input type="text" id="det_group_ok" disabled />
-            </div>
-            <div class="sb-col-3">
-              <div class="label">Tête de groupe</div>
-              <input type="text" id="det_tete_groupe" disabled />
-            </div>
-            <div class="sb-col-3">
-              <div class="label">Parents liés</div>
-              <input type="text" id="det_nb_entites_parents" disabled />
-            </div>
-            <div class="sb-col-3">
-              <div class="label">Enfants liés</div>
-              <input type="text" id="det_nb_entites_enfants" disabled />
-            </div>
-
-            <div class="sb-col-3">
-              <div class="label">Abo. Novoskill</div>
-              <input type="text" id="det_has_owner_scope" disabled />
-            </div>
-            <div class="sb-col-3">
-              <div class="label">Studio actif</div>
-              <input type="text" id="det_studio_actif" disabled />
-            </div>
-            <div class="sb-col-3">
-              <div class="label">Délégation Studio</div>
-              <input type="text" id="det_gestion_acces_studio_autorisee" disabled />
-            </div>
-            <div class="sb-col-3">
-              <div class="label">Quota accès Studio</div>
-              <input type="text" id="det_nb_acces_studio_max" disabled />
-            </div>
-          </div>
-        </div>
+      <div class="sb-empty-state sb-mt-10 is-hidden" id="clientsEmpty">
+        <div class="sb-empty-state__title">Aucun client trouvé</div>
+        <div class="sb-empty-state__text">Ajuste la recherche ou crée une fiche client.</div>
       </div>
     </div>
   </div>

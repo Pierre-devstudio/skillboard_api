@@ -1593,3 +1593,82 @@
 .sb-checkline input{
   margin:0;
 }
+
+/* ======================================================
+   Studio CLIENTS – table portefeuille
+   ====================================================== */
+
+.sb-client-table .sb-client-row.is-active td{
+  background: rgba(var(--sb-accent-rgb), .14);
+}
+
+.sb-client-table-name{
+  font-weight:600;
+  color:#111827;
+  line-height:1.35;
+}
+
+.sb-client-actions{
+  justify-content:center;
+}
+
+.sb-client-profile-dot{
+  width:14px;
+  height:14px;
+  border-radius:999px;
+  display:inline-block;
+  border:1px solid rgba(17,24,39,.14);
+  vertical-align:middle;
+}
+
+.sb-client-profile-dot--site-unique{
+  background:#94a3b8;
+}
+
+.sb-client-profile-dot--multi-site{
+  background:#f59e0b;
+}
+
+.sb-client-profile-dot--holding{
+  background:#7c3aed;
+}
+
+.sb-client-profile-dot--holding-multi-site{
+  background:#db2777;
+}
+
+.sb-client-profile-dot--unknown{
+  background:#e5e7eb;
+}
+
+.sb-client-studio-flag{
+  width:24px;
+  min-width:24px;
+  height:24px;
+  border-radius:8px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:11px;
+  font-weight:800;
+  line-height:1;
+  box-sizing:border-box;
+}
+
+.sb-client-studio-flag--on{
+  background:rgba(var(--sb-accent-rgb), .9);
+  border:1px solid rgba(var(--sb-accent-rgb), 1);
+  color:#111827;
+}
+
+.sb-client-studio-flag--idle{
+  background:#fff;
+  border:1px solid rgba(var(--sb-accent-rgb), .75);
+  color:#111827;
+}
+
+.sb-client-studio-flag--off{
+  background:#f8fafc;
+  border:1px solid #cbd5e1;
+  color:#94a3b8;
+}
