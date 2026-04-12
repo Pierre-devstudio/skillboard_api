@@ -326,6 +326,20 @@
     `;
   }
 
+  function adjustStepperInput(targetId, delta){
+    const input = byId(targetId);
+    if (!input) return;
+
+    const current = parseInt((input.value || "").toString().trim(), 10);
+    const safeCurrent = Number.isFinite(current) ? current : 0;
+    const safeDelta = parseInt(delta, 10);
+
+    const next = Math.max(0, safeCurrent + (Number.isFinite(safeDelta) ? safeDelta : 0));
+    input.value = String(next);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
   function renderList(){
     const body = byId("clientsTableBody");
     const empty = byId("clientsEmpty");
@@ -1018,8 +1032,20 @@
         portal.showAlert("error", e.message || String(e));
       }
     });
+
     byId("btnCommercialApplyOffer")?.addEventListener("click", applySelectedOfferToForm);
+    byId("frmCommercialOfferCode")?.addEventListener("change", applySelectedOfferToForm);
     byId("frmCommercialStudioActif")?.addEventListener("change", syncCommercialStudioDelegation);
+
+    byId("clientCommercialModal")?.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-stepper-target]");
+      if (!btn) return;
+      ev.preventDefault();
+      const targetId = (btn.dataset.stepperTarget || "").trim();
+      const delta = btn.dataset.stepperDelta;
+      if (!targetId) return;
+      adjustStepperInput(targetId, delta);
+    });
 
     byId("frm_group_ok")?.addEventListener("change", syncGroupFields);
     byId("frm_tete_groupe")?.addEventListener("change", syncGroupFields);
