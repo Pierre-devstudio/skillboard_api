@@ -1602,7 +1602,13 @@
   background: rgba(var(--sb-accent-rgb), .14);
 }
 
+.sb-client-table td{
+  font-size:13px;
+  line-height:1.35;
+}
+
 .sb-client-table-name{
+  font-size:13px;
   font-weight:600;
   color:#111827;
   line-height:1.35;
