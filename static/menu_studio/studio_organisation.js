@@ -2852,12 +2852,12 @@ body {
         items.sort((a, b) => {
             const critA = Number.isFinite(parseInt(a?.poids_criticite ?? "", 10))
                 ? parseInt(a.poids_criticite, 10)
-                : 9999;
+                : -1;
             const critB = Number.isFinite(parseInt(b?.poids_criticite ?? "", 10))
                 ? parseInt(b.poids_criticite, 10)
-                : 9999;
+                : -1;
 
-            if (critA !== critB) return critA - critB;
+            if (critA !== critB) return critB - critA;
 
             const intA = (a?.intitule || "").toString().trim();
             const intB = (b?.intitule || "").toString().trim();
@@ -2872,7 +2872,7 @@ body {
         _posteCompItems = items;
         renderPosteCompetences();
     }
-
+    
     function renderPosteCompetences(){
         const tb = byId("posteCompTbody");
         const empty = byId("posteCompEmpty");
