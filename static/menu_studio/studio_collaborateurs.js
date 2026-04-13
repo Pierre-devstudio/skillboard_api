@@ -68,6 +68,224 @@
     input.addEventListener("paste", () => setTimeout(apply, 0));
   }
 
+    function normalizeCollabPostalCode(value){
+    return (value || "").toString().replace(/\D+/g, "").slice(0, 5);
+  }
+
+  function normalizeCollabCity(value){
+    return (value || "").toString().trim().toUpperCase();
+  }
+
+  function clearCollabPostalDatalists(){
+    const cpList = byId("collabCodePostalList");
+    const cityList = byId("collabVilleList");
+    if (cpList) cpList.innerHTML = "";
+    if (cityList) cityList.innerHTML = "";
+  }
+
+  function setCollabDatalistOptions(listId, items, valueKey, labelKey){
+    const list = byId(listId);
+    if (!list) return;
+
+    list.innerHTML = "";
+    const seen = new Set();
+
+    (items || []).forEach(item => {
+      const value = (item?.[valueKey] || "").toString().trim();
+      const label = (item?.[labelKey] || "").toString().trim();
+
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+
+      const opt = document.createElement("option");
+      opt.value = value;
+      if (label && label !== value) {
+        opt.label = label;
+      }
+      list.appendChild(opt);
+    });
+  }
+
+  async function fetchCollabPostalRows(portal, params){
+    const ownerId = getOwnerId();
+    if (!ownerId) return [];
+
+    const qs = new URLSearchParams();
+    if (params?.code_postal) qs.set("code_postal", params.code_postal);
+    if (params?.ville) qs.set("ville", params.ville);
+    qs.set("limit", String(params?.limit || 20));
+
+    const data = await portal.apiJson(
+      `${portal.apiBase}/studio/collaborateurs/referentiels/codes-postaux/${encodeURIComponent(ownerId)}?${qs.toString()}`
+    );
+
+    return Array.isArray(data?.items) ? data.items : [];
+  }
+
+  function applyCollabPostalRowsFromCode(cpValue, rows){
+    const cpEl = byId("collabCodePostal");
+    const cityEl = byId("collabVille");
+    if (!cpEl || !cityEl) return;
+
+    const exactRows = (rows || []).filter(r => ((r.code_postal || "").toString().trim() === cpValue));
+    const cityRows = exactRows.length ? exactRows : rows;
+
+    setCollabDatalistOptions("collabCodePostalList", rows, "code_postal", "ville");
+    setCollabDatalistOptions("collabVilleList", cityRows, "ville", "code_postal");
+
+    const villes = [...new Set(
+      (cityRows || [])
+        .map(r => normalizeCollabCity(r.ville))
+        .filter(Boolean)
+    )];
+
+    if (cpValue.length === 5) {
+      if (villes.length === 1) {
+        cityEl.value = villes[0];
+      } else if (villes.length > 1) {
+        const current = normalizeCollabCity(cityEl.value);
+        if (!current || !villes.includes(current)) {
+          cityEl.value = "";
+        } else {
+          cityEl.value = current;
+        }
+      }
+    }
+  }
+
+  function applyCollabPostalRowsFromCity(cityValue, rows){
+    const cpEl = byId("collabCodePostal");
+    const cityEl = byId("collabVille");
+    if (!cpEl || !cityEl) return;
+
+    cityEl.value = cityValue;
+
+    const exactRows = (rows || []).filter(r => normalizeCollabCity(r.ville) === cityValue);
+    const cpRows = exactRows.length ? exactRows : rows;
+
+    setCollabDatalistOptions("collabVilleList", rows, "ville", "code_postal");
+    setCollabDatalistOptions("collabCodePostalList", cpRows, "code_postal", "ville");
+
+    const cps = [...new Set(
+      (cpRows || [])
+        .map(r => normalizeCollabPostalCode(r.code_postal))
+        .filter(Boolean)
+    )];
+
+    if (cps.length === 1) {
+      cpEl.value = cps[0];
+    } else if (cps.length > 1) {
+      const current = normalizeCollabPostalCode(cpEl.value);
+      if (!current || !cps.includes(current)) {
+        cpEl.value = "";
+      } else {
+        cpEl.value = current;
+      }
+    }
+  }
+
+  let _collabPostalAssistTimer = null;
+  let _collabPostalAssistSeq = 0;
+
+  function scheduleCollabPostalLookup(portal, source){
+    clearTimeout(_collabPostalAssistTimer);
+
+    _collabPostalAssistTimer = setTimeout(async () => {
+      const seq = ++_collabPostalAssistSeq;
+
+      const cpEl = byId("collabCodePostal");
+      const cityEl = byId("collabVille");
+      if (!cpEl || !cityEl) return;
+
+      cpEl.value = normalizeCollabPostalCode(cpEl.value);
+      cityEl.value = normalizeCollabCity(cityEl.value);
+
+      const cpValue = cpEl.value;
+      const cityValue = cityEl.value;
+
+      try {
+        if (source === "cp") {
+          if (!cpValue) {
+            clearCollabPostalDatalists();
+            return;
+          }
+
+          const rows = await fetchCollabPostalRows(portal, { code_postal: cpValue, limit: 20 });
+          if (seq !== _collabPostalAssistSeq) return;
+
+          applyCollabPostalRowsFromCode(cpValue, rows);
+          return;
+        }
+
+        if (!cityValue || cityValue.length < 2) {
+          clearCollabPostalDatalists();
+          return;
+        }
+
+        const rows = await fetchCollabPostalRows(portal, { ville: cityValue, limit: 20 });
+        if (seq !== _collabPostalAssistSeq) return;
+
+        applyCollabPostalRowsFromCity(cityValue, rows);
+      } catch (_) {
+      }
+    }, 180);
+  }
+
+  function bindCollabPostalAssist(portal){
+    const cpEl = byId("collabCodePostal");
+    const cityEl = byId("collabVille");
+    if (!cpEl || !cityEl) return;
+    if (cpEl.dataset.postalBound === "1") return;
+
+    cpEl.dataset.postalBound = "1";
+    cityEl.dataset.postalBound = "1";
+
+    cpEl.addEventListener("input", () => {
+      cpEl.value = normalizeCollabPostalCode(cpEl.value);
+      scheduleCollabPostalLookup(portal, "cp");
+    });
+
+    cpEl.addEventListener("change", () => {
+      cpEl.value = normalizeCollabPostalCode(cpEl.value);
+      scheduleCollabPostalLookup(portal, "cp");
+    });
+
+    cityEl.addEventListener("input", () => {
+      cityEl.value = normalizeCollabCity(cityEl.value);
+      scheduleCollabPostalLookup(portal, "ville");
+    });
+
+    cityEl.addEventListener("change", () => {
+      cityEl.value = normalizeCollabCity(cityEl.value);
+      scheduleCollabPostalLookup(portal, "ville");
+    });
+
+    cityEl.addEventListener("blur", () => {
+      cityEl.value = normalizeCollabCity(cityEl.value);
+    });
+  }
+
+  function queueCollabPostalLookupFromCurrentValues(portal){
+    const cpEl = byId("collabCodePostal");
+    const cityEl = byId("collabVille");
+    if (!cpEl || !cityEl) return;
+
+    cpEl.value = normalizeCollabPostalCode(cpEl.value);
+    cityEl.value = normalizeCollabCity(cityEl.value);
+
+    if (cpEl.value) {
+      scheduleCollabPostalLookup(portal, "cp");
+      return;
+    }
+
+    if (cityEl.value) {
+      scheduleCollabPostalLookup(portal, "ville");
+      return;
+    }
+
+    clearCollabPostalDatalists();
+  }
+
   function getErrorMessage(err){
     if (!err) return "Erreur inconnue.";
     if (typeof err === "string") return err;
@@ -1605,6 +1823,10 @@
     if (byId("collabNiveauEdu")) byId("collabNiveauEdu").value = "";
     if (byId("collabDomaineEdu")) byId("collabDomaineEdu").value = "";
 
+    if (byId("collabCodePostal")) byId("collabCodePostal").value = "";
+    if (byId("collabVille")) byId("collabVille").value = "";
+    clearCollabPostalDatalists();
+
     if (byId("collabActif")) byId("collabActif").checked = true;
     if (byId("collabManager")) byId("collabManager").checked = false;
     if (byId("collabFormateur")) byId("collabFormateur").checked = false;
@@ -1653,8 +1875,8 @@
       telephone: formatPhoneFr(byId("collabTel")?.value || null),
       telephone2: formatPhoneFr(byId("collabTel2")?.value || null),
       adresse: byId("collabAdresse")?.value || null,
-      code_postal: byId("collabCodePostal")?.value || null,
-      ville: byId("collabVille")?.value || null,
+      code_postal: normalizeCollabPostalCode(byId("collabCodePostal")?.value || null) || null,
+      ville: normalizeCollabCity(byId("collabVille")?.value || null) || null,
       pays: byId("collabPays")?.value || null,
       actif: !!byId("collabActif")?.checked,
       fonction: posteId,
@@ -2184,8 +2406,8 @@
     if (byId('collabTel')) byId('collabTel').value = formatPhoneFr(data?.telephone || '');
     if (byId('collabTel2')) byId('collabTel2').value = formatPhoneFr(data?.telephone2 || '');
     if (byId('collabAdresse')) byId('collabAdresse').value = data?.adresse || '';
-    if (byId('collabCodePostal')) byId('collabCodePostal').value = data?.code_postal || '';
-    if (byId('collabVille')) byId('collabVille').value = data?.ville || '';
+    if (byId('collabCodePostal')) byId('collabCodePostal').value = normalizeCollabPostalCode(data?.code_postal || '');
+    if (byId('collabVille')) byId('collabVille').value = normalizeCollabCity(data?.ville || '');
     if (byId('collabPays')) byId('collabPays').value = data?.pays || '';
     if (byId('collabActif')) byId('collabActif').checked = !!data?.actif;
     if (byId('collabService')) byId('collabService').value = data?.id_service || '';
@@ -2215,6 +2437,7 @@
     refreshTempRoleVisibility();
     refreshSortieVisibility();
     refreshServiceFromPoste();
+    queueCollabPostalLookupFromCurrentValues(portal);
 
     const btnArchive = byId('btnCollabArchive');
     if (btnArchive) btnArchive.style.display = data?.archive ? 'none' : '';
@@ -2484,16 +2707,19 @@
       renderCollabCompAddList(portal);
     });
 
-    byId('collabPoste')?.addEventListener('change', refreshServiceFromPoste);
-    byId('collabHaveDateFin')?.addEventListener('change', refreshSortieVisibility);
-
     bindPhoneMask(byId('collabTel'));
     bindPhoneMask(byId('collabTel2'));
+    bindCollabPostalAssist(portal);
 
-    refreshBulkSendButton();
-    refreshModalSendButton();
+    byId('collabPoste')?.addEventListener('change', refreshServiceFromPoste);
+    byId('collabTemp')?.addEventListener('change', refreshTempRoleVisibility);
+    byId('collabHaveDateFin')?.addEventListener('change', refreshSortieVisibility);
+
+    byId('modalCollabSkillEval')?.addEventListener('click', (e) => {
+      if (e.target === byId('modalCollabSkillEval')) closeModal('modalCollabSkillEval');
+    });
   }
-
+  
   async function init(){
     try { await (window.__studioAuthReady || Promise.resolve(null)); } catch (_) {}
     const portal = window.portal;

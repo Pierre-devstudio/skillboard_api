@@ -148,18 +148,33 @@
 
               <div class="sb-field sb-col-2">
                 <div class="label">Code postal</div>
-                <input type="text" id="collabCodePostal" />
+                <input
+                  type="text"
+                  id="collabCodePostal"
+                  list="collabCodePostalList"
+                  inputmode="numeric"
+                  maxlength="5"
+                  autocomplete="off"
+                />
               </div>
 
               <div class="sb-field sb-col-5">
                 <div class="label">Ville</div>
-                <input type="text" id="collabVille" />
+                <input
+                  type="text"
+                  id="collabVille"
+                  list="collabVilleList"
+                  autocomplete="off"
+                />
               </div>
 
               <div class="sb-field sb-col-5">
                 <div class="label">Pays</div>
                 <input type="text" id="collabPays" />
               </div>
+
+              <datalist id="collabCodePostalList"></datalist>
+              <datalist id="collabVilleList"></datalist>
 
               <div class="sb-field sb-col-6">
                 <div class="label">Téléphone</div>

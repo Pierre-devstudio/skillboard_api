@@ -3627,7 +3627,86 @@ def studio_collab_send_access_mail_bulk(id_owner: str, payload: CollaborateurAcc
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/acces/send-bulk error: {e}")
-    
+
+@router.get("/studio/collaborateurs/referentiels/codes-postaux/{id_owner}")
+def studio_collab_postal_codes(id_owner: str, request: Request, code_postal: Optional[str] = None, ville: Optional[str] = None, limit: int = 20):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "editor")
+
+                cp = "".join(ch for ch in str(code_postal or "").strip() if ch.isdigit())[:5]
+                city = _norm_text(ville)
+                city = city.upper() if city else None
+
+                try:
+                    limit_val = int(limit or 20)
+                except Exception:
+                    limit_val = 20
+
+                limit_val = max(1, min(limit_val, 50))
+
+                if not cp and not city:
+                    return {"items": []}
+
+                if city and not cp and len(city) < 2:
+                    return {"items": []}
+
+                sql = """
+                    SELECT DISTINCT
+                        TRIM(code_postal) AS code_postal,
+                        UPPER(TRIM(ville)) AS ville,
+                        TRIM(code_insee) AS code_insee
+                    FROM public.tbl_code_postal
+                    WHERE COALESCE(TRIM(code_postal), '') <> ''
+                      AND COALESCE(TRIM(ville), '') <> ''
+                """
+                params = []
+
+                if cp and city:
+                    sql += """
+                      AND TRIM(code_postal) = %s
+                      AND UPPER(TRIM(ville)) = %s
+                    """
+                    params.extend([cp, city])
+                elif cp:
+                    sql += " AND TRIM(code_postal) LIKE %s"
+                    params.append(f"{cp}%")
+                else:
+                    sql += " AND UPPER(TRIM(ville)) LIKE %s"
+                    params.append(f"{city}%")
+
+                sql += """
+                    ORDER BY code_postal, ville
+                    LIMIT %s
+                """
+                params.append(limit_val)
+
+                cur.execute(sql, tuple(params))
+                rows = cur.fetchall() or []
+
+                items = []
+                for r in rows:
+                    items.append(
+                        {
+                            "code_postal": (r.get("code_postal") or "").strip(),
+                            "ville": (r.get("ville") or "").strip().upper(),
+                            "code_insee": (r.get("code_insee") or "").strip(),
+                        }
+                    )
+
+                return {"items": items}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/referentiels/codes-postaux error: {e}")
+
 # ------------------------------------------------------
 # Create
 # ------------------------------------------------------
