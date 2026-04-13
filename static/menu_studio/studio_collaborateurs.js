@@ -1117,6 +1117,39 @@
     byId("kpiArchivesVal").textContent = String(stats?.archives || 0);
   }
 
+  function formatLicenseAvailability(item){
+    if (item?.is_unlimited) return 'Illimité';
+    const available = Number(item?.available_access ?? 0);
+    const max = Number(item?.max_access ?? 0);
+    return `${Math.max(available, 0)} / ${Math.max(max, 0)}`;
+  }
+
+  function renderLicenseKpis(){
+    const host = byId('collabLicenseKpis');
+    if (!host) return;
+
+    const items = Array.isArray(_ctx?.quota_summary) ? _ctx.quota_summary : [];
+    const activeItems = items.filter(x => !!x?.contract_active);
+
+    if (!activeItems.length){
+      host.innerHTML = '';
+      host.style.display = 'none';
+      return;
+    }
+
+    host.style.display = '';
+
+    host.innerHTML = activeItems.map(it => `
+      <div class="sb-kpi-card">
+        <div class="sb-kpi-label">Licences ${esc(it?.label || it?.console_code || 'Console')}</div>
+        <div class="sb-kpi-value">${esc(formatLicenseAvailability(it))}</div>
+        <div class="sb-license-kpi-sub">
+          Utilisées : ${esc(String(Number(it?.used_access ?? 0)))}${it?.is_unlimited ? '' : ` / ${esc(String(Number(it?.max_access ?? 0)))}`}
+        </div>
+      </div>
+    `).join('');
+  }
+
   function renderFilters(){
     const serviceWrap = byId("collabServiceField");
     const posteWrap = byId("collabPosteField");
@@ -1421,6 +1454,7 @@
     _ctx = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/context/${encodeURIComponent(ownerId)}`);
     renderTop();
     renderFilters();
+    renderLicenseKpis();
     await hydrateFormSelects(portal);
   }
 
@@ -1898,11 +1932,31 @@
       const contractActive = !!item?.contract_active;
       const roleCode = String(item?.role_code || 'none').trim().toLowerCase() || 'none';
       const roleLabel = getRoleLabel(roleCode);
-      const disabled = !contractActive || !hasEmail;
+      const hasAccess = !!item?.has_access;
+      const isUnlimited = !!item?.is_unlimited;
+      const maxAccess = Number(item?.max_access ?? 0);
+      const usedAccess = Number(item?.used_access ?? 0);
+      const availableAccess = Number(item?.available_access ?? 0);
 
-      const stateText = contractActive
-        ? `<strong>Console active</strong><br>${hasEmail ? 'Accès gérable pour ce collaborateur.' : 'Renseignez et enregistrez un email pour ouvrir l’accès.'}`
-        : `<strong>Console non incluse</strong><br>Le contrat owner ne permet pas cette console.`;
+      const quotaLabel = contractActive
+        ? (isUnlimited ? 'Licence disponible : Illimité' : `Licence disponible : ${Math.max(availableAccess, 0)} / ${Math.max(maxAccess, 0)}`)
+        : 'Licence non incluse dans l’abonnement';
+
+      const quotaBlocked = contractActive && hasEmail && !isUnlimited && !hasAccess && availableAccess <= 0;
+      const disabled = (!contractActive && !hasAccess) || (!hasEmail && !hasAccess) || quotaBlocked;
+
+      let stateText = '';
+      if (!contractActive) {
+        stateText = `<strong>Console non incluse</strong><br>Le contrat owner ne permet pas cette console.`;
+      } else if (!hasEmail && !hasAccess) {
+        stateText = `<strong>Email manquant</strong><br>Renseignez et enregistrez un email pour ouvrir l’accès.`;
+      } else if (quotaBlocked) {
+        stateText = `<strong>Quota atteint</strong><br>Aucune licence supplémentaire disponible pour cette console.`;
+      } else if (hasAccess && !isUnlimited && availableAccess <= 0) {
+        stateText = `<strong>Quota atteint</strong><br>Ce collaborateur a déjà une licence sur cette console. Vous pouvez conserver ou retirer cet accès.`;
+      } else {
+        stateText = `<strong>Console active</strong><br>${hasEmail || hasAccess ? 'Accès gérable pour ce collaborateur.' : 'Renseignez et enregistrez un email pour ouvrir l’accès.'}`;
+      }
 
       return `
         <div class="sb-access-row ${disabled ? 'is-disabled' : ''}">
@@ -1920,6 +1974,7 @@
             <div style="min-width:0;">
               <div class="sb-access-console-title">${esc(label)}</div>
               <div class="sb-access-console-sub">Profil actuel : ${esc(roleLabel)}</div>
+              <div class="sb-access-console-license">${esc(quotaLabel)}</div>
             </div>
           </div>
 
@@ -1943,32 +1998,20 @@
           Définissez les accès console du collaborateur. <strong>Email enregistré :</strong> ${esc(savedEmail || 'non renseigné')}
         </div>
 
+        <div class="sb-access-note">
+          Les droits sont enregistrés avec le bouton <strong>Enregistrer</strong> du modal.
+        </div>
+
         ${hasEmail ? '' : `<div class="sb-access-note">Aucun accès ne peut être ouvert tant que l’email n’est pas renseigné et enregistré sur le collaborateur.</div>`}
 
         <div class="sb-access-grid">${rows}</div>
-
-        <div class="sb-actions" style="justify-content:flex-end; margin-top:4px;">
-          <button type="button" class="sb-btn sb-btn--accent" id="btnCollabSaveRights">Enregistrer les droits</button>
-        </div>
       </div>
     `;
-
-    const btn = byId('btnCollabSaveRights');
-    if (btn) {
-      btn.addEventListener('click', async () => {
-        try {
-          btn.disabled = true;
-          await saveRights(portal);
-        } catch (e) {
-          portal.showAlert('error', getErrorMessage(e));
-        } finally {
-          btn.disabled = false;
-        }
-      });
-    }
   }
 
-  async function saveRights(portal){
+  async function saveRights(portal, options){
+    const opts = options || {};
+
     if (!_editingId) throw new Error('Enregistrez d’abord le collaborateur.');
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error('Owner introuvable.');
@@ -1979,9 +2022,21 @@
       body: JSON.stringify(buildRightsPayload())
     });
 
-    renderRights(data, portal);
+    if (!opts.skipRender) {
+      renderRights(data, portal);
+    }
+
     _tabLoaded.rights = true;
-    await loadList(portal);    
+
+    if (opts.refreshContext !== false) {
+      await loadContext(portal);
+    }
+
+    if (opts.refreshList !== false) {
+      await loadList(portal);
+    }
+
+    return data;
   }
 
   async function loadTabIfNeeded(portal, tab){
@@ -2110,11 +2165,27 @@
       _modalMode = 'edit';
       _editingId = data.id_collaborateur;
       setModalHeader(`${payload.prenom || ''} ${payload.nom || ''}`.trim() || 'Collaborateur');
-      setModalBadges({ actif: !!payload.actif, archive: false, ismanager: !!payload.ismanager, isformateur: !!payload.isformateur, is_temp: !!payload.is_temp });
+      setModalBadges({
+        actif: !!payload.actif,
+        archive: false,
+        ismanager: !!payload.ismanager,
+        isformateur: !!payload.isformateur,
+        is_temp: !!payload.is_temp
+      });
       resetDetailPanels();
     }
 
+    const rightsLoaded = _tabLoaded.rights && !!document.querySelector('#collabRightsPanel [data-console-role]');
+    if (rightsLoaded && _editingId) {
+      await saveRights(portal, {
+        skipRender: true,
+        refreshContext: false,
+        refreshList: false
+      });
+    }
+
     closeModal('modalCollaborateur');
+    await loadContext(portal);
     await loadGlobalStats(portal);
     await loadList(portal);
   }

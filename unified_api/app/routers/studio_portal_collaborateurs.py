@@ -165,15 +165,30 @@ def _normalize_access_role_code(value: Optional[str]) -> str:
     return out
 
 
+def _is_unlimited_access_quota(value) -> bool:
+    if value is None:
+        return True
+    try:
+        return int(value) >= 999999
+    except Exception:
+        return False
+
+
 def _load_owner_console_contracts(cur, oid: str) -> dict:
     cur.execute(
         """
         SELECT
+          COALESCE(offer_code, '') AS offer_code,
           COALESCE(studio_actif, FALSE) AS studio_actif,
           COALESCE(insights_actif, FALSE) AS insights_actif,
           COALESCE(people_actif, FALSE) AS people_actif,
           COALESCE(partner_actif, FALSE) AS partner_actif,
-          COALESCE(learn_actif, FALSE) AS learn_actif
+          COALESCE(learn_actif, FALSE) AS learn_actif,
+          COALESCE(nb_acces_studio_max, 0) AS nb_acces_studio_max,
+          COALESCE(nb_acces_insights_max, 0) AS nb_acces_insights_max,
+          COALESCE(nb_acces_people_max, 0) AS nb_acces_people_max,
+          COALESCE(nb_acces_partner_max, 0) AS nb_acces_partner_max,
+          COALESCE(nb_acces_learn_max, 0) AS nb_acces_learn_max
         FROM public.tbl_novoskill_owner_commercial
         WHERE id_owner = %s
           AND COALESCE(archive, FALSE) = FALSE
@@ -187,26 +202,87 @@ def _load_owner_console_contracts(cur, oid: str) -> dict:
         (oid,),
     )
     r = cur.fetchone() or {}
+
+    quotas = {
+        "studio": int(r.get("nb_acces_studio_max") or 0),
+        "insights": int(r.get("nb_acces_insights_max") or 0),
+        "people": int(r.get("nb_acces_people_max") or 0),
+        "partner": int(r.get("nb_acces_partner_max") or 0),
+        "learn": int(r.get("nb_acces_learn_max") or 0),
+    }
+
+    unlimited = {
+        code: _is_unlimited_access_quota(val)
+        for code, val in quotas.items()
+    }
+
     return {
+        "offer_code": (r.get("offer_code") or "").strip(),
         "studio": bool(r.get("studio_actif")),
         "insights": bool(r.get("insights_actif")),
         "people": bool(r.get("people_actif")),
         "partner": bool(r.get("partner_actif")),
         "learn": bool(r.get("learn_actif")),
+        "quotas": quotas,
+        "unlimited": unlimited,
     }
+
+
+def _count_owner_access_usage(cur, oid: str) -> dict:
+    out = {
+        "studio": 0,
+        "insights": 0,
+        "people": 0,
+        "partner": 0,
+        "learn": 0,
+    }
+
+    cur.execute(
+        """
+        SELECT
+          lower(COALESCE(console_code, '')) AS console_code,
+          COUNT(DISTINCT id_user_ref) AS used_access
+        FROM public.tbl_novoskill_user_access
+        WHERE id_owner = %s
+          AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') <> 'suspendu'
+          AND COALESCE(role_code, 'none') <> 'none'
+        GROUP BY lower(COALESCE(console_code, ''))
+        """,
+        (oid,),
+    )
+
+    for r in (cur.fetchall() or []):
+        code = (r.get("console_code") or "").strip().lower()
+        if code in out:
+            out[code] = int(r.get("used_access") or 0)
+
+    return out
 
 
 def _build_console_items(cur, oid: str) -> list:
     contracts = _load_owner_console_contracts(cur, oid)
+    usage_map = _count_owner_access_usage(cur, oid)
+
     items = []
     for d in CONSOLE_DEFS:
         code = d["console_code"]
+        max_access = int((contracts.get("quotas") or {}).get(code) or 0)
+        is_unlimited = bool((contracts.get("unlimited") or {}).get(code))
+        used_access = int((usage_map or {}).get(code) or 0)
+        available_access = 999999 if is_unlimited else max(max_access - used_access, 0)
+
         items.append(
             {
                 "console_code": code,
                 "label": d["label"],
                 "icon_file": d["icon_file"],
                 "contract_active": bool(contracts.get(code, False)),
+                "max_access": max_access,
+                "used_access": used_access,
+                "available_access": available_access,
+                "is_unlimited": is_unlimited,
+                "offer_code": contracts.get("offer_code") or "",
             }
         )
     return items
@@ -1526,6 +1602,23 @@ def studio_collab_context(id_owner: str, request: Request):
                 postes = _build_poste_options(cur, oid, src["source_kind"])
                 consoles = _build_console_items(cur, oid)
 
+                quota_summary = []
+                for item in consoles:
+                    if not item.get("contract_active"):
+                        continue
+                    quota_summary.append(
+                        {
+                            "console_code": item.get("console_code"),
+                            "label": item.get("label"),
+                            "contract_active": bool(item.get("contract_active")),
+                            "max_access": int(item.get("max_access") or 0),
+                            "used_access": int(item.get("used_access") or 0),
+                            "available_access": int(item.get("available_access") or 0),
+                            "is_unlimited": bool(item.get("is_unlimited")),
+                            "offer_code": item.get("offer_code") or "",
+                        }
+                    )
+
         return {
             "id_owner": oid,
             "nom_owner": owner.get("nom_owner"),
@@ -1535,6 +1628,7 @@ def studio_collab_context(id_owner: str, request: Request):
             "services": services,
             "postes": postes,
             "consoles": consoles,
+            "quota_summary": quota_summary,
         }
     except HTTPException:
         raise
@@ -3217,7 +3311,6 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
         after_state = {}
         before_map = {}
         after_map = {}
-        actor_name = "Administrateur Novoskill"
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -3231,51 +3324,31 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
 
                 ident = _fetch_collaborateur_identity_for_access(cur, oid, src["source_kind"], cid)
                 contracts = _load_owner_console_contracts(cur, oid)
+                usage_map = _count_owner_access_usage(cur, oid)
                 email = (ident.get("email") or "").strip()
-                actor_name = _resolve_actor_display_name(cur, u, oid)
 
                 for console in ["studio", "insights", "people", "partner", "learn"]:
                     desired_role = role_map[console]
+                    already_has_access = console in before_map
 
                     if desired_role != "none" and not contracts.get(console, False):
                         raise HTTPException(status_code=400, detail=f"La console {console} n'est pas active pour cet owner.")
 
                     if desired_role != "none" and not email:
-                        raise HTTPException(status_code=400, detail="Renseignez et enregistrez un email avant d'ouvrir un accès console.")
+                        raise HTTPException(status_code=400, detail="Email collaborateur manquant pour ouvrir un accès console.")
 
-                    if desired_role == "none":
-                        cur.execute(
-                            """
-                            UPDATE public.tbl_novoskill_user_access
-                            SET archive = TRUE,
-                                updated_at = NOW()
-                            WHERE id_owner = %s
-                              AND id_user_ref = %s
-                              AND console_code = %s
-                              AND COALESCE(archive, FALSE) = FALSE
-                            """,
-                            (oid, cid, console),
-                        )
-                        continue
+                    quota_max = int(((contracts.get("quotas") or {}).get(console) or 0))
+                    quota_unlimited = bool((contracts.get("unlimited") or {}).get(console))
+                    used_count = int((usage_map or {}).get(console) or 0)
 
-                    cur.execute(
-                        """
-                        SELECT 1
-                        FROM public.tbl_novoskill_user_access
-                        WHERE lower(email) = lower(%s)
-                          AND id_owner = %s
-                          AND console_code = %s
-                          AND COALESCE(archive, FALSE) = FALSE
-                          AND COALESCE(statut_access, 'actif') <> 'suspendu'
-                          AND COALESCE(id_user_ref, '') <> %s
-                        LIMIT 1
-                        """,
-                        (email, oid, console, cid),
-                    )
-                    if cur.fetchone():
-                        raise HTTPException(status_code=400, detail=f"Un autre collaborateur utilise déjà {email} pour la console {console}.")
+                    if desired_role != "none" and not already_has_access and not quota_unlimited:
+                        if quota_max <= 0 or used_count >= quota_max:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Quota atteint pour {console}. Aucune licence supplémentaire disponible."
+                            )
 
-                    user_ref_type = _default_access_ref_type(console, src["source_kind"], ident.get("source_row_kind") or "")
+                    user_ref_type = _default_access_ref_type(console, src["source_kind"], ident["source_row_kind"])
 
                     cur.execute(
                         """
@@ -3284,16 +3357,27 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                         WHERE id_owner = %s
                           AND id_user_ref = %s
                           AND console_code = %s
-                        ORDER BY
-                          updated_at DESC NULLS LAST,
-                          created_at DESC NULLS LAST,
-                          id_access DESC
+                        ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST, id_access DESC
                         LIMIT 1
                         """,
                         (oid, cid, console),
                     )
                     row = cur.fetchone() or {}
                     id_access = (row.get("id_access") or "").strip()
+
+                    if desired_role == "none":
+                        if id_access:
+                            cur.execute(
+                                """
+                                UPDATE public.tbl_novoskill_user_access
+                                SET archive = TRUE,
+                                    statut_access = 'suspendu',
+                                    updated_at = NOW()
+                                WHERE id_access = %s
+                                """,
+                                (id_access,),
+                            )
+                        continue
 
                     if id_access:
                         cur.execute(
@@ -3347,32 +3431,8 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                 after_access_state=after_state,
             )
 
-        notification_mode = None
-        notification_sent = False
-
-        if before_map != after_map and (before_map or after_map):
-            if not before_map and after_map:
-                notification_mode = "first_access"
-            elif before_map and after_map:
-                notification_mode = "update"
-            elif before_map and not after_map:
-                notification_mode = "removal"
-
-            try:
-                notification_sent = send_novoskill_access_mail(
-                    to_email=(ident.get("email") or "").strip(),
-                    collaborateur_nom=f"{(ident.get('prenom') or '').strip()} {(ident.get('nom') or '').strip()}".strip(),
-                    admin_name=actor_name,
-                    mode=notification_mode,
-                    consoles=_build_console_mail_items(after_state),
-                    setup_link=provisioning.get("setup_link"),
-                )
-            except Exception as mail_err:
-                print("Erreur envoi mail accès Novoskill:", mail_err)
-                notification_sent = False
-
-        after_state["notification_mode"] = notification_mode
-        after_state["notification_sent"] = notification_sent
+        after_state["notification_mode"] = None
+        after_state["notification_sent"] = False
         after_state["auth_user_created"] = bool(provisioning.get("created_now"))
         return after_state
 

@@ -1533,6 +1533,18 @@
   color:#6b7280;
 }
 
+.sb-access-console-license{
+  margin-top:3px;
+  font-size:12px;
+  color:#475569;
+}
+
+.sb-license-kpi-sub{
+  margin-top:4px;
+  font-size:12px;
+  color:#6b7280;
+}
+
 .sb-access-row select{
   width:100%;
 }
