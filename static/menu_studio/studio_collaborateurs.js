@@ -12,6 +12,7 @@
   let _filterManager = false;
   let _filterFormateur = false;
   let _showArchived = false;
+  let _bulkSendSelectedIds = new Set();
 
   let _modalMode = "create";
   let _editingId = null;
@@ -1127,27 +1128,88 @@
   function renderLicenseKpis(){
     const host = byId('collabLicenseKpis');
     if (!host) return;
+    host.innerHTML = '';
+    host.style.display = 'none';
+  }
 
-    const items = Array.isArray(_ctx?.quota_summary) ? _ctx.quota_summary : [];
-    const activeItems = items.filter(x => !!x?.contract_active);
+    function purgeBulkSendSelection(){
+    const allowed = new Set(
+      [...(Array.isArray(_globalItems) ? _globalItems : []), ...(Array.isArray(_items) ? _items : [])]
+        .map(x => String(x?.id_collaborateur || '').trim())
+        .filter(Boolean)
+    );
 
-    if (!activeItems.length){
-      host.innerHTML = '';
-      host.style.display = 'none';
-      return;
-    }
+    Array.from(_bulkSendSelectedIds).forEach(id => {
+      if (!allowed.has(id)) _bulkSendSelectedIds.delete(id);
+    });
 
-    host.style.display = '';
+    refreshBulkSendButton();
+  }
 
-    host.innerHTML = activeItems.map(it => `
-      <div class="sb-kpi-card">
-        <div class="sb-kpi-label">Licences ${esc(it?.label || it?.console_code || 'Console')}</div>
-        <div class="sb-kpi-value">${esc(formatLicenseAvailability(it))}</div>
-        <div class="sb-license-kpi-sub">
-          Utilisées : ${esc(String(Number(it?.used_access ?? 0)))}${it?.is_unlimited ? '' : ` / ${esc(String(Number(it?.max_access ?? 0)))}`}
-        </div>
-      </div>
-    `).join('');
+  function refreshBulkSendButton(){
+    const btn = byId('btnCollabSendBulk');
+    if (!btn) return;
+
+    const count = _bulkSendSelectedIds.size;
+    btn.disabled = count === 0;
+    btn.textContent = count > 0 ? `Envoyer les accès (${count})` : 'Envoyer les accès';
+  }
+
+  function refreshModalSendButton(){
+    const btn = byId('btnCollabSendOne');
+    if (!btn) return;
+    btn.style.display = _editingId ? '' : 'none';
+  }
+
+  async function sendSingleAccessMail(portal, collaboratorId){
+    const ownerId = getOwnerId();
+    const cid = String(collaboratorId || '').trim();
+    if (!ownerId || !cid) throw new Error("Collaborateur introuvable.");
+
+    const data = await portal.apiJson(
+      `${portal.apiBase}/studio/collaborateurs/acces/send/${encodeURIComponent(ownerId)}/${encodeURIComponent(cid)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+
+    const target = (data?.email || '').trim() || 'le collaborateur';
+    portal.showAlert('', `Mail d’accès envoyé à ${target}.`);
+    return data;
+  }
+
+  async function sendBulkAccessMails(portal){
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error("Owner introuvable.");
+
+    const ids = Array.from(_bulkSendSelectedIds).map(x => String(x || '').trim()).filter(Boolean);
+    if (!ids.length) return;
+
+    if (!window.confirm(`Envoyer les accès à ${ids.length} collaborateur(s) sélectionné(s) ?`)) return;
+
+    const data = await portal.apiJson(
+      `${portal.apiBase}/studio/collaborateurs/acces/send-bulk/${encodeURIComponent(ownerId)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids_collaborateurs: ids })
+      }
+    );
+
+    _bulkSendSelectedIds.clear();
+    refreshBulkSendButton();
+
+    const sent = Number(data?.sent_count || 0);
+    const skipped = Number(data?.skipped_count || 0);
+    const errors = Number(data?.error_count || 0);
+
+    let msg = `${sent} mail(s) envoyé(s).`;
+    if (skipped > 0) msg += ` ${skipped} ignoré(s).`;
+    if (errors > 0) msg += ` ${errors} en erreur.`;
+
+    portal.showAlert('', msg);
+    return data;
   }
 
   function renderFilters(){
@@ -1329,6 +1391,7 @@
     if (!_items.length) {
       host.innerHTML = "";
       empty.style.display = "block";
+      refreshBulkSendButton();
       return;
     }
 
@@ -1361,17 +1424,23 @@
     `;
 
     host.innerHTML = _items.map(it => {
+      const cid = String(it.id_collaborateur || '').trim();
       const fullName = `${it.prenom || ""} ${it.nom || ""}`.trim() || "Collaborateur sans nom";
       const email = it.email || "—";
       const posteActuel = it.poste_label || "—";
       const accessSummary = Array.isArray(it.access_summary) ? it.access_summary : [];
+      const selectedForSend = _bulkSendSelectedIds.has(cid);
 
       return `
-        <div class="sb-row-card ${it.archive ? "is-archived" : ""}">
+        <div class="sb-row-card ${it.archive ? "is-archived" : ""} ${selectedForSend ? "is-selected-send" : ""}">
           <div
             class="sb-row-left"
-            style="display:grid; grid-template-columns:minmax(180px,220px) minmax(260px,1.35fr) minmax(220px,1fr); gap:18px; align-items:center; flex:1 1 auto; min-width:0;"
+            style="display:grid; grid-template-columns:34px minmax(180px,220px) minmax(260px,1.35fr) minmax(220px,1fr); gap:18px; align-items:center; flex:1 1 auto; min-width:0;"
           >
+            <label class="sb-collab-send-check" title="Sélectionner pour l’envoi des accès">
+              <input type="checkbox" data-select-collab="${esc(cid)}" ${selectedForSend ? 'checked' : ''} />
+            </label>
+
             <div class="sb-row-title">${esc(fullName)}</div>
 
             <div style="font-size:13px; font-weight:400; color:#374151; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
@@ -1403,7 +1472,7 @@
                 type="button"
                 class="sb-icon-btn"
                 data-act="edit"
-                data-id="${esc(it.id_collaborateur)}"
+                data-id="${esc(cid)}"
                 title="Voir/Modifier"
                 aria-label="Voir/Modifier"
               >
@@ -1418,7 +1487,7 @@
                       type="button"
                       class="sb-icon-btn sb-icon-btn--danger"
                       data-act="archive"
-                      data-id="${esc(it.id_collaborateur)}"
+                      data-id="${esc(cid)}"
                       title="Archiver"
                       aria-label="Archiver"
                     >
@@ -1431,6 +1500,8 @@
         </div>
       `;
     }).join("");
+
+    refreshBulkSendButton();
   }
 
   async function fetchList(portal, args){
@@ -1469,6 +1540,7 @@
 
     _globalItems = Array.isArray(data?.items) ? data.items : [];
     renderStats(computeGlobalStats(_globalItems));
+    purgeBulkSendSelection();
   }
 
   async function loadList(portal){
@@ -1483,6 +1555,7 @@
     let items = Array.isArray(data?.items) ? data.items : [];
     items = applyExtraFrontFilters(items);
     _items = items;
+    purgeBulkSendSelection();
     renderList();
   }
 
@@ -2082,6 +2155,7 @@
     setModalHeader('Nouveau collaborateur');
     activateModalTab('ident');
     resetDetailPanels();
+    refreshModalSendButton();
     openModal('modalCollaborateur');
   }
 
@@ -2143,10 +2217,13 @@
     setModalBadges(data || {});
     activateModalTab('ident');
     resetDetailPanels();
+    refreshModalSendButton();
     openModal('modalCollaborateur');
   }
 
-  async function saveModal(portal){
+  async function saveModal(portal, options){
+    const opts = options || {};
+
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error('Owner introuvable.');
 
@@ -2178,16 +2255,23 @@
     const rightsLoaded = _tabLoaded.rights && !!document.querySelector('#collabRightsPanel [data-console-role]');
     if (rightsLoaded && _editingId) {
       await saveRights(portal, {
-        skipRender: true,
+        skipRender: !opts.keepOpen,
         refreshContext: false,
         refreshList: false
       });
     }
 
-    closeModal('modalCollaborateur');
     await loadContext(portal);
     await loadGlobalStats(portal);
     await loadList(portal);
+
+    if (!opts.keepOpen) {
+      closeModal('modalCollaborateur');
+    } else {
+      refreshModalSendButton();
+    }
+
+    return _editingId || data?.id_collaborateur || null;
   }
 
   async function archiveCollaborateur(portal, id){
@@ -2205,7 +2289,25 @@
   }
 
   function bindListActions(portal){
-    byId('collabList')?.addEventListener('click', async (e) => {
+    const host = byId('collabList');
+
+    host?.addEventListener('change', (e) => {
+      const cb = e.target.closest('input[data-select-collab]');
+      if (!cb) return;
+
+      const cid = String(cb.getAttribute('data-select-collab') || '').trim();
+      if (!cid) return;
+
+      if (cb.checked) _bulkSendSelectedIds.add(cid);
+      else _bulkSendSelectedIds.delete(cid);
+
+      refreshBulkSendButton();
+      renderList();
+    });
+
+    host?.addEventListener('click', async (e) => {
+      if (e.target.closest('input[data-select-collab]')) return;
+
       const btn = e.target.closest('button[data-act]');
       if (!btn) return;
 
@@ -2255,6 +2357,14 @@
       openCreateModal().catch(e => portal.showAlert('error', getErrorMessage(e)));
     });
 
+    byId('btnCollabSendBulk')?.addEventListener('click', async () => {
+      try {
+        await sendBulkAccessMails(portal);
+      } catch (e) {
+        portal.showAlert('error', getErrorMessage(e));
+      }
+    });
+
     byId('collabSearch')?.addEventListener('input', (e) => {
       _search = (e.target.value || '').trim();
       if (_searchTimer) clearTimeout(_searchTimer);
@@ -2299,6 +2409,15 @@
     byId('btnCollabSave')?.addEventListener('click', async () => {
       try {
         await saveModal(portal);
+      } catch (e) {
+        portal.showAlert('error', getErrorMessage(e));
+      }
+    });
+
+    byId('btnCollabSendOne')?.addEventListener('click', async () => {
+      try {
+        const cid = await saveModal(portal, { keepOpen: true });
+        await sendSingleAccessMail(portal, cid || _editingId);
       } catch (e) {
         portal.showAlert('error', getErrorMessage(e));
       }
@@ -2358,16 +2477,14 @@
       renderCollabCompAddList(portal);
     });
 
+    byId('collabPoste')?.addEventListener('change', refreshServiceFromPoste);
+    byId('collabHaveDateFin')?.addEventListener('change', refreshSortieVisibility);
+
     bindPhoneMask(byId('collabTel'));
     bindPhoneMask(byId('collabTel2'));
 
-    byId('collabPoste')?.addEventListener('change', refreshServiceFromPoste);
-    byId('collabTemp')?.addEventListener('change', refreshTempRoleVisibility);
-    byId('collabHaveDateFin')?.addEventListener('change', refreshSortieVisibility);
-
-    byId('modalCollabSkillEval')?.addEventListener('click', (e) => {
-      if (e.target === byId('modalCollabSkillEval')) closeModal('modalCollabSkillEval');
-    });
+    refreshBulkSendButton();
+    refreshModalSendButton();
   }
 
   async function init(){

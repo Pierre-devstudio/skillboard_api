@@ -832,6 +832,90 @@ def _resolve_actor_display_name(cur, u: dict, id_owner: str) -> str:
 
     return email
 
+def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind: str, id_collaborateur: str) -> dict:
+    cid = (id_collaborateur or "").strip()
+    if not cid:
+        return {
+            "ok": False,
+            "reason": "missing_id",
+            "detail": "Collaborateur manquant.",
+            "id_collaborateur": cid,
+        }
+
+    ident = _fetch_collaborateur_identity_for_access(cur, id_owner, source_kind, cid)
+    email = (ident.get("email") or "").strip()
+    collaborateur_nom = f"{(ident.get('prenom') or '').strip()} {(ident.get('nom') or '').strip()}".strip()
+
+    if not email:
+        return {
+            "ok": False,
+            "reason": "missing_email",
+            "detail": "Email collaborateur manquant.",
+            "id_collaborateur": cid,
+            "email": "",
+            "collaborateur_nom": collaborateur_nom,
+        }
+
+    access_state = _build_access_state_for_collaborator(cur, id_owner, source_kind, cid)
+    active_map = _build_active_access_map(access_state)
+
+    if not active_map:
+        return {
+            "ok": False,
+            "reason": "no_access",
+            "detail": "Aucun accès actif à notifier.",
+            "id_collaborateur": cid,
+            "email": email,
+            "collaborateur_nom": collaborateur_nom,
+        }
+
+    provisioning = _sync_supabase_auth_user_from_access_state(
+        id_owner=id_owner,
+        id_effectif=cid,
+        email=email,
+        after_access_state=access_state,
+    )
+
+    actor_name = _resolve_actor_display_name(cur, u, id_owner)
+    notification_mode = "first_access" if provisioning.get("created_now") else "update"
+
+    try:
+        notification_sent = send_novoskill_access_mail(
+            to_email=email,
+            collaborateur_nom=collaborateur_nom,
+            admin_name=actor_name,
+            mode=notification_mode,
+            consoles=_build_console_mail_items(access_state),
+            setup_link=provisioning.get("setup_link"),
+        )
+    except Exception as mail_err:
+        return {
+            "ok": False,
+            "reason": "send_failed",
+            "detail": str(mail_err),
+            "id_collaborateur": cid,
+            "email": email,
+            "collaborateur_nom": collaborateur_nom,
+        }
+
+    if not notification_sent:
+        return {
+            "ok": False,
+            "reason": "send_failed",
+            "detail": "Le mail d'accès n'a pas pu être envoyé.",
+            "id_collaborateur": cid,
+            "email": email,
+            "collaborateur_nom": collaborateur_nom,
+        }
+
+    access_state["ok"] = True
+    access_state["id_collaborateur"] = cid
+    access_state["email"] = email
+    access_state["collaborateur_nom"] = collaborateur_nom
+    access_state["notification_mode"] = notification_mode
+    access_state["notification_sent"] = True
+    access_state["auth_user_created"] = bool(provisioning.get("created_now"))
+    return access_state
 
 def _norm_text(v: Optional[str]) -> Optional[str]:
     s = (v or "").strip()
@@ -1383,6 +1467,10 @@ class CollaborateurAccessPayload(BaseModel):
     people: Optional[str] = None
     partner: Optional[str] = None
     learn: Optional[str] = None
+
+
+class CollaborateurAccessBulkSendPayload(BaseModel):
+    ids_collaborateurs: List[str] = []
 
 def _normalize_skill_level_from_poste(value: Optional[str]) -> str:
     s = (_norm_text(value) or "").lower()
@@ -3440,6 +3528,106 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/acces save error: {e}")
+    
+@router.post("/studio/collaborateurs/acces/send/{id_owner}/{id_collaborateur}")
+def studio_collab_send_access_mail(id_owner: str, id_collaborateur: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+
+                result = _send_access_mail_for_collaborateur(cur, u, oid, src["source_kind"], cid)
+
+        if result.get("ok"):
+            return result
+
+        reason = (result.get("reason") or "").strip().lower()
+        detail = result.get("detail") or "Échec de l'envoi."
+
+        if reason in ("missing_email", "no_access", "missing_id"):
+            raise HTTPException(status_code=400, detail=detail)
+
+        raise HTTPException(status_code=500, detail=detail)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/acces/send error: {e}")
+
+
+@router.post("/studio/collaborateurs/acces/send-bulk/{id_owner}")
+def studio_collab_send_access_mail_bulk(id_owner: str, payload: CollaborateurAccessBulkSendPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        ids = []
+        for raw in (payload.ids_collaborateurs or []):
+            cid = str(raw or "").strip()
+            if cid and cid not in ids:
+                ids.append(cid)
+
+        if not ids:
+            raise HTTPException(status_code=400, detail="Aucun collaborateur sélectionné.")
+
+        results = []
+        sent_count = 0
+        skipped_count = 0
+        error_count = 0
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+
+                for cid in ids:
+                    try:
+                        result = _send_access_mail_for_collaborateur(cur, u, oid, src["source_kind"], cid)
+                        if result.get("ok"):
+                            sent_count += 1
+                        else:
+                            reason = (result.get("reason") or "").strip().lower()
+                            if reason in ("missing_email", "no_access", "missing_id"):
+                                skipped_count += 1
+                            else:
+                                error_count += 1
+                        results.append(result)
+                    except Exception as e:
+                        error_count += 1
+                        results.append(
+                            {
+                                "ok": False,
+                                "reason": "send_failed",
+                                "detail": str(e),
+                                "id_collaborateur": cid,
+                            }
+                        )
+
+        return {
+            "ok": True,
+            "sent_count": sent_count,
+            "skipped_count": skipped_count,
+            "error_count": error_count,
+            "results": results,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/acces/send-bulk error: {e}")
+    
 # ------------------------------------------------------
 # Create
 # ------------------------------------------------------
