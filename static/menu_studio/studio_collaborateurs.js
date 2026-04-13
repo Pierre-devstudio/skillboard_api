@@ -1189,7 +1189,7 @@
     if (!window.confirm(`Envoyer les accès à ${ids.length} collaborateur(s) sélectionné(s) ?`)) return;
 
     const data = await portal.apiJson(
-      `${portal.apiBase}/studio/collaborateurs/acces/send-bulk/${encodeURIComponent(ownerId)}`,
+      `${portal.apiBase}/studio/collaborateurs/acces-bulk/send/${encodeURIComponent(ownerId)}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

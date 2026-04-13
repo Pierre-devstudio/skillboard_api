@@ -3565,7 +3565,7 @@ def studio_collab_send_access_mail(id_owner: str, id_collaborateur: str, request
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/acces/send error: {e}")
 
 
-@router.post("/studio/collaborateurs/acces/send-bulk/{id_owner}")
+@router.post("/studio/collaborateurs/acces-bulk/send/{id_owner}")
 def studio_collab_send_access_mail_bulk(id_owner: str, payload: CollaborateurAccessBulkSendPayload, request: Request):
     auth = request.headers.get("Authorization", "")
     u = studio_require_user(auth)
