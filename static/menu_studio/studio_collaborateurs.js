@@ -1377,7 +1377,7 @@
     const btn = byId('btnCollabSendOne');
     if (!btn) return;
 
-    const activeTabBtn = document.querySelector('#collabModalBody [data-tab].is-active');
+    const activeTabBtn = document.querySelector('#modalCollaborateur [data-tab].is-active');
     const activeTab = (activeTabBtn?.getAttribute('data-tab') || '').trim();
 
     const show = !!_editingId && activeTab === 'rights';
@@ -1922,7 +1922,7 @@
   }
 
   function activateModalTab(tab){
-    document.querySelectorAll('#collabModalBody [data-tab]').forEach(btn => {
+    document.querySelectorAll('#modalCollaborateur [data-tab]').forEach(btn => {
       const isActive = (btn.getAttribute('data-tab') || '') === tab;
       btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
       if (isActive) btn.classList.add('is-active');
@@ -1934,7 +1934,9 @@
       panel.classList.toggle('is-active', isActive);
     });
 
-    refreshModalSendButton();
+    if (typeof refreshModalSendButton === 'function') {
+      refreshModalSendButton();
+    }
   }
 
   function setPanelMessage(panelId, message, tone){
@@ -2575,7 +2577,7 @@
   }
 
   function bindTabs(portal){
-    document.querySelectorAll('#collabModalBody [data-tab]').forEach(btn => {
+    document.querySelectorAll('#modalCollaborateur [data-tab]').forEach(btn => {
       if (btn.dataset.tabBound === '1') return;
       btn.dataset.tabBound = '1';
 
@@ -2583,6 +2585,7 @@
         const tab = btn.getAttribute('data-tab') || 'ident';
         activateModalTab(tab);
         if (tab === 'ident') return;
+
         try {
           await loadTabIfNeeded(portal, tab);
         } catch (e) {

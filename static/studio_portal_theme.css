@@ -1225,8 +1225,29 @@
   padding-bottom:8px;
 }
 
+.sb-collab-modal-head{
+  display:flex;
+  align-items:stretch;
+}
+
+.sb-collab-modal-head-main{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  min-width:0;
+  width:100%;
+}
+
+.sb-collab-modal-head-top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  min-width:0;
+}
+
 .sb-collab-modal-body{
-  padding-top:10px;
+  padding-top:4px;
   padding-bottom:8px;
 }
 
@@ -1235,8 +1256,9 @@
 }
 
 .sb-collab-tabbar{
-  margin-bottom:10px !important;
+  margin:0 !important;
   gap:8px !important;
+  flex-wrap:wrap;
 }
 
 .sb-collab-tabbar [data-tab]{

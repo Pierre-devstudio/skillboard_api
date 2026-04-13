@@ -98,24 +98,29 @@
 
 <div class="sb-modal" id="modalCollaborateur" style="display:none;">
   <div class="sb-modal-card sb-collab-modal-card">
-    <div class="sb-modal-head">
-      <div style="min-width:0; flex:1;">
-        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-          <div class="card-title" id="collabModalTitle" style="margin:0;">Collaborateur</div>
-          <div class="sb-actions" id="collabModalBadges"></div>
+    <div class="sb-modal-head sb-collab-modal-head">
+      <div class="sb-collab-modal-head-main">
+        <div class="sb-collab-modal-head-top">
+          <div style="min-width:0; flex:1;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <div class="card-title" id="collabModalTitle" style="margin:0;">Collaborateur</div>
+              <div class="sb-actions" id="collabModalBadges"></div>
+            </div>
+          </div>
+          <button type="button" class="sb-modal-x" id="btnCloseCollaborateur" aria-label="Fermer">&times;</button>
+        </div>
+
+        <div class="sb-actions sb-collab-tabbar" role="tablist" aria-label="Onglets collaborateur">
+          <button type="button" class="sb-btn sb-btn--soft" data-tab="ident" aria-selected="true">Identification</button>
+          <button type="button" class="sb-btn sb-btn--soft" data-tab="skills" aria-selected="false">Compétences</button>
+          <button type="button" class="sb-btn sb-btn--soft" data-tab="certs" aria-selected="false">Certifications</button>
+          <button type="button" class="sb-btn sb-btn--soft" data-tab="history" aria-selected="false">Historique</button>
+          <button type="button" class="sb-btn sb-btn--soft" data-tab="rights" aria-selected="false">Droits</button>
         </div>
       </div>
-      <button type="button" class="sb-modal-x" id="btnCloseCollaborateur" aria-label="Fermer">&times;</button>
     </div>
 
     <div class="sb-modal-body sb-collab-modal-body" id="collabModalBody">
-      <div class="sb-actions sb-collab-tabbar" role="tablist" aria-label="Onglets collaborateur" style="margin-bottom:12px; gap:8px;">
-        <button type="button" class="sb-btn sb-btn--soft" data-tab="ident" aria-selected="true">Identification</button>
-        <button type="button" class="sb-btn sb-btn--soft" data-tab="skills" aria-selected="false">Compétences</button>
-        <button type="button" class="sb-btn sb-btn--soft" data-tab="certs" aria-selected="false">Certifications</button>
-        <button type="button" class="sb-btn sb-btn--soft" data-tab="history" aria-selected="false">Historique</button>
-        <button type="button" class="sb-btn sb-btn--soft" data-tab="rights" aria-selected="false">Droits</button>
-      </div>
 
       <div class="sb-tab-panel is-active" data-panel="ident" role="tabpanel">
         <div class="sb-stack sb-stack--xs">
