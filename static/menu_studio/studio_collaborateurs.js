@@ -1158,7 +1158,12 @@
   function refreshModalSendButton(){
     const btn = byId('btnCollabSendOne');
     if (!btn) return;
-    btn.style.display = _editingId ? '' : 'none';
+
+    const activeTabBtn = document.querySelector('#collabModalBody [data-tab].is-active');
+    const activeTab = (activeTabBtn?.getAttribute('data-tab') || '').trim();
+
+    const show = !!_editingId && activeTab === 'rights';
+    btn.style.display = show ? '' : 'none';
   }
 
   async function sendSingleAccessMail(portal, collaboratorId){
@@ -1688,6 +1693,8 @@
       const isActive = (panel.getAttribute('data-panel') || '') === tab;
       panel.classList.toggle('is-active', isActive);
     });
+
+    refreshModalSendButton();
   }
 
   function setPanelMessage(panelId, message, tone){
