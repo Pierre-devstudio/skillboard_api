@@ -1876,8 +1876,8 @@
       badges.push({ label: "Inactif", cls: "sb-badge sb-badge--status-inactive" });
     }
 
-    if (data?.ismanager) badges.push({ label: "Manager", cls: "sb-badge sb-badge--outline-accent" });
-    if (data?.isformateur) badges.push({ label: "Formateur", cls: "sb-badge sb-badge--outline-accent" });
+    if (data?.ismanager) badges.push({ label: "Manager", cls: "sb-badge sb-badge-manager" });
+    if (data?.isformateur) badges.push({ label: "Formateur", cls: "sb-badge sb-badge--formateur" });
 
     host.innerHTML = badges.map(x => `<span class="${x.cls}">${esc(x.label)}</span>`).join("");
   }
