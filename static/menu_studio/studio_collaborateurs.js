@@ -1787,14 +1787,34 @@
     if (wrap) wrap.style.display = "none";
   }
 
+  function setCollabRetraiteEstimee(value){
+    const chk = byId("collabHaveDateFin");
+    if (!chk) return;
+
+    const n = parseInt(value, 10);
+    chk.dataset.retraiteEstimee = (Number.isFinite(n) && n > 1900) ? String(n) : "";
+    refreshSortieVisibility();
+  }
+
   function refreshSortieVisibility(){
     const wrapDate = byId("collabDateSortieField");
     const wrapMotif = byId("collabMotifSortieField");
     const chk = byId("collabHaveDateFin");
+    const label = byId("collabHaveDateFinLabel");
+
     const show = !!(chk && chk.checked);
 
     if (wrapDate) wrapDate.classList.toggle("is-hidden", !show);
     if (wrapMotif) wrapMotif.classList.toggle("is-hidden", !show);
+
+    if (label){
+      const retraite = (chk?.dataset?.retraiteEstimee || "").trim();
+      if (show || !retraite){
+        label.textContent = "Sortie prévue";
+      } else {
+        label.textContent = `Sortie prévue (retraite estimée : ${retraite})`;
+      }
+    }
   }
 
   function clearForm(){
@@ -1823,14 +1843,12 @@
     if (byId("collabNiveauEdu")) byId("collabNiveauEdu").value = "";
     if (byId("collabDomaineEdu")) byId("collabDomaineEdu").value = "";
 
-    if (byId("collabCodePostal")) byId("collabCodePostal").value = "";
-    if (byId("collabVille")) byId("collabVille").value = "";
-    clearCollabPostalDatalists();
-
     if (byId("collabActif")) byId("collabActif").checked = true;
     if (byId("collabManager")) byId("collabManager").checked = false;
     if (byId("collabFormateur")) byId("collabFormateur").checked = false;
     if (byId("collabHaveDateFin")) byId("collabHaveDateFin").checked = false;
+
+    setCollabRetraiteEstimee(null);
 
     refreshTempRoleVisibility();
     refreshSortieVisibility();
@@ -2406,8 +2424,8 @@
     if (byId('collabTel')) byId('collabTel').value = formatPhoneFr(data?.telephone || '');
     if (byId('collabTel2')) byId('collabTel2').value = formatPhoneFr(data?.telephone2 || '');
     if (byId('collabAdresse')) byId('collabAdresse').value = data?.adresse || '';
-    if (byId('collabCodePostal')) byId('collabCodePostal').value = normalizeCollabPostalCode(data?.code_postal || '');
-    if (byId('collabVille')) byId('collabVille').value = normalizeCollabCity(data?.ville || '');
+    if (byId('collabCodePostal')) byId('collabCodePostal').value = data?.code_postal || '';
+    if (byId('collabVille')) byId('collabVille').value = data?.ville || '';
     if (byId('collabPays')) byId('collabPays').value = data?.pays || '';
     if (byId('collabActif')) byId('collabActif').checked = !!data?.actif;
     if (byId('collabService')) byId('collabService').value = data?.id_service || '';
@@ -2434,10 +2452,11 @@
     if (byId('collabManager')) byId('collabManager').checked = !!data?.ismanager;
     if (byId('collabFormateur')) byId('collabFormateur').checked = !!data?.isformateur;
 
+    setCollabRetraiteEstimee(data?.retraite_estimee ?? null);
+
     refreshTempRoleVisibility();
     refreshSortieVisibility();
     refreshServiceFromPoste();
-    queueCollabPostalLookupFromCurrentValues(portal);
 
     const btnArchive = byId('btnCollabArchive');
     if (btnArchive) btnArchive.style.display = data?.archive ? 'none' : '';
@@ -2467,6 +2486,8 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+
+    setCollabRetraiteEstimee(data?.retraite_estimee ?? null);
 
     if (_modalMode === 'create' && data?.id_collaborateur) {
       _modalMode = 'edit';
@@ -2719,7 +2740,7 @@
       if (e.target === byId('modalCollabSkillEval')) closeModal('modalCollabSkillEval');
     });
   }
-  
+
   async function init(){
     try { await (window.__studioAuthReady || Promise.resolve(null)); } catch (_) {}
     const portal = window.portal;

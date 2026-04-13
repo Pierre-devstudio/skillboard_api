@@ -7,6 +7,7 @@ import secrets
 import uuid
 import requests
 import json
+import re
 from datetime import date as py_date
 
 from app.routers.MailManager import send_novoskill_access_mail
@@ -1256,6 +1257,147 @@ def _get_collab_scope(cur, oid: str, source_kind: str, cid: str) -> dict:
     }
 
 
+def _days_in_month(year: int, month: int) -> int:
+    if month == 2:
+        is_leap = (year % 4 == 0) and ((year % 100 != 0) or (year % 400 == 0))
+        return 29 if is_leap else 28
+    if month in (1, 3, 5, 7, 8, 10, 12):
+        return 31
+    return 30
+
+
+def _add_years_months(base_date, years: int = 0, months: int = 0):
+    total_month = (base_date.month - 1) + int(months)
+    year = base_date.year + int(years) + (total_month // 12)
+    month = (total_month % 12) + 1
+    day = min(base_date.day, _days_in_month(year, month))
+    return base_date.__class__(year, month, day)
+
+
+def _retirement_rule_from_birth_date(date_naissance) -> dict:
+    """
+    Règle de calcul 2026 - approximation volontaire pour Novoskill.
+
+    Base métier retenue :
+    - âge légal progressif selon la génération,
+    - durée d’assurance requise (en trimestres) selon la génération,
+    - borne max à 67 ans pour le taux plein automatique.
+
+    Cette table devra être revue si la réglementation évolue à nouveau.
+    Source métier utilisée au moment du développement :
+    règles officielles France 2026 (Info Retraite / Service-Public).
+    """
+    ymd = (date_naissance.year, date_naissance.month, date_naissance.day)
+
+    if ymd < (1958, 1, 1):
+        return {"age_years": 62, "age_months": 0, "required_trimesters": 166}
+
+    if ymd <= (1960, 12, 31):
+        return {"age_years": 62, "age_months": 0, "required_trimesters": 167}
+
+    if ymd <= (1961, 8, 31):
+        return {"age_years": 62, "age_months": 0, "required_trimesters": 168}
+
+    if ymd <= (1961, 12, 31):
+        return {"age_years": 62, "age_months": 3, "required_trimesters": 169}
+
+    if ymd <= (1962, 12, 31):
+        return {"age_years": 62, "age_months": 6, "required_trimesters": 169}
+
+    if ymd <= (1965, 3, 31):
+        return {"age_years": 62, "age_months": 9, "required_trimesters": 170}
+
+    if ymd <= (1965, 12, 31):
+        return {"age_years": 63, "age_months": 0, "required_trimesters": 171}
+
+    if ymd <= (1966, 12, 31):
+        return {"age_years": 63, "age_months": 3, "required_trimesters": 172}
+
+    if ymd <= (1967, 12, 31):
+        return {"age_years": 63, "age_months": 6, "required_trimesters": 172}
+
+    if ymd <= (1968, 12, 31):
+        return {"age_years": 63, "age_months": 9, "required_trimesters": 172}
+
+    return {"age_years": 64, "age_months": 0, "required_trimesters": 172}
+
+
+def _estimated_work_start_age_from_education(niveau_education: Optional[str]) -> int:
+    """
+    Approximation Novoskill :
+    on déduit un âge probable d’entrée dans la vie active à partir
+    du niveau d’études déclaré.
+
+    Cette règle n’est PAS une simulation retraite officielle.
+    Elle sert uniquement à alimenter le champ "retraite_estimee"
+    de façon cohérente pour les analyses Insights.
+
+    Mapping retenu :
+    - niveaux 0 / 3 / 4 : 18 ans
+    - niveau 5 : 20 ans
+    - niveau 6 : 21 ans
+    - niveau 7 : 23 ans
+    - niveau 8 : 26 ans
+    - défaut : 18 ans
+    """
+    raw = _norm_text(niveau_education) or ""
+    m = re.search(r"(\d+)", raw)
+    if not m:
+        return 18
+
+    level = int(m.group(1))
+    if level >= 8:
+        return 26
+    if level == 7:
+        return 23
+    if level == 6:
+        return 21
+    if level == 5:
+        return 20
+    return 18
+
+
+def _compute_retraite_estimee(date_naissance, niveau_education: Optional[str]) -> Optional[int]:
+    """
+    Calcule une année estimée de départ en retraite.
+
+    Logique retenue :
+    1. on calcule la date d’atteinte de l’âge légal,
+    2. on calcule une date théorique d’atteinte de la durée d’assurance requise,
+       à partir d’un âge d’entrée dans la vie active approximé par le niveau d’études,
+    3. on retient la date la plus tardive des deux,
+    4. on borne à 67 ans maximum (taux plein automatique).
+
+    Le champ stocké étant un INT4 "année", on ne conserve que l’année.
+    """
+    if not date_naissance:
+        return None
+
+    rule = _retirement_rule_from_birth_date(date_naissance)
+
+    legal_date = _add_years_months(
+        date_naissance,
+        years=rule["age_years"],
+        months=rule["age_months"],
+    )
+
+    auto_full_rate_date = _add_years_months(date_naissance, years=67, months=0)
+
+    work_start_age = _estimated_work_start_age_from_education(niveau_education)
+    work_start_date = _add_years_months(date_naissance, years=work_start_age, months=0)
+
+    quarters_date = _add_years_months(
+        work_start_date,
+        years=0,
+        months=rule["required_trimesters"] * 3,
+    )
+
+    estimated_date = quarters_date if quarters_date > legal_date else legal_date
+    if estimated_date > auto_full_rate_date:
+        estimated_date = auto_full_rate_date
+
+    return int(estimated_date.year)
+
 def _upsert_effectif_mirror_for_utilisateur(cur, oid: str, cid: str, payload) -> None:
     id_poste = _norm_text(payload.id_poste_actuel) or _norm_text(payload.fonction)
     id_service = _norm_service_from_payload(cur, oid, payload.id_service, id_poste)
@@ -1264,6 +1406,13 @@ def _upsert_effectif_mirror_for_utilisateur(cur, oid: str, cid: str, payload) ->
     date_entree = _norm_iso_date(payload.date_entree_entreprise)
     date_debut_poste = _norm_iso_date(payload.date_debut_poste_actuel)
     date_sortie = _norm_iso_date(payload.date_sortie_prevue)
+
+    # Calcul approximatif de l’année de retraite estimée.
+    # Voir les helpers ci-dessus pour la règle détaillée et les hypothèses retenues.
+    retraite_estimee = _compute_retraite_estimee(
+        date_naissance,
+        _norm_text(payload.niveau_education),
+    )
 
     cur.execute(
         """
@@ -1289,6 +1438,7 @@ def _upsert_effectif_mirror_for_utilisateur(cur, oid: str, cid: str, payload) ->
         _norm_text(payload.ville),
         _norm_text(payload.pays),
         date_naissance,
+        retraite_estimee,
         _norm_text(payload.niveau_education),
         _norm_text(payload.domaine_education),
         id_poste,
@@ -1326,6 +1476,7 @@ def _upsert_effectif_mirror_for_utilisateur(cur, oid: str, cid: str, payload) ->
               ville_effectif = %s,
               pays_effectif = %s,
               date_naissance_effectif = %s,
+              retraite_estimee = %s,
               niveau_education = %s,
               domaine_education = %s,
               id_poste_actuel = %s,
@@ -1370,6 +1521,7 @@ def _upsert_effectif_mirror_for_utilisateur(cur, oid: str, cid: str, payload) ->
           ville_effectif,
           pays_effectif,
           date_naissance_effectif,
+          retraite_estimee,
           niveau_education,
           domaine_education,
           id_poste_actuel,
@@ -1395,7 +1547,7 @@ def _upsert_effectif_mirror_for_utilisateur(cur, oid: str, cid: str, payload) ->
         ) VALUES (
           %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
           %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-          %s, %s, %s, %s, %s, FALSE, CURRENT_DATE, NOW(), %s, %s,
+          %s, %s, %s, %s, %s, %s, FALSE, CURRENT_DATE, NOW(), %s, %s,
           %s, %s, %s, %s, %s
         )
         """,
@@ -2123,6 +2275,7 @@ def studio_collab_detail(id_owner: str, id_collaborateur: str, request: Request)
                           e.ville_effectif AS ville,
                           e.pays_effectif AS pays,
                           e.date_naissance_effectif AS date_naissance,
+                          e.retraite_estimee,
                           e.niveau_education,
                           e.domaine_education,
                           e.id_poste_actuel,
@@ -2170,6 +2323,7 @@ def studio_collab_detail(id_owner: str, id_collaborateur: str, request: Request)
                         "ville": r.get("ville"),
                         "pays": r.get("pays"),
                         "date_naissance": r.get("date_naissance").isoformat() if r.get("date_naissance") else None,
+                        "retraite_estimee": r.get("retraite_estimee"),
                         "niveau_education": r.get("niveau_education"),
                         "domaine_education": r.get("domaine_education"),
                         "id_service": r.get("id_service"),
@@ -2190,6 +2344,7 @@ def studio_collab_detail(id_owner: str, id_collaborateur: str, request: Request)
                         "is_temp": bool(r.get("is_temp")),
                         "role_temp": r.get("role_temp"),
                         "code_effectif": r.get("code_effectif"),
+                        "observations": r.get("observations"),
                     }
 
                 cur.execute(
@@ -2202,33 +2357,34 @@ def studio_collab_detail(id_owner: str, id_collaborateur: str, request: Request)
                       u.ut_mail AS email,
                       u.ut_tel AS telephone,
                       u.ut_tel2 AS telephone2,
-                      u.ut_fonction AS fonction,
                       u.ut_adresse AS adresse,
                       u.ut_cp AS code_postal,
                       u.ut_ville AS ville,
                       u.ut_pays AS pays,
-                      COALESCE(u.actif, TRUE) AS actif,
-                      COALESCE(u.archive, FALSE) AS archive,
-                      u.ut_obs AS observations,
                       ec.date_naissance_effectif AS date_naissance,
+                      ec.retraite_estimee,
                       ec.niveau_education,
                       ec.domaine_education,
-                      COALESCE(ec.id_poste_actuel, p.id_poste) AS id_poste_actuel,
+                      COALESCE(ec.id_poste_actuel, u.ut_fonction) AS id_poste_actuel,
                       ec.type_contrat,
                       ec.matricule_interne,
-                      COALESCE(ec.id_service, p.id_service) AS id_service,
+                      ec.id_service,
                       ec.business_travel,
                       ec.date_entree_entreprise_effectif AS date_entree_entreprise,
                       ec.date_sortie_prevue,
+                      COALESCE(u.actif, TRUE) AS actif,
                       ec.motif_sortie,
                       ec.note_commentaire,
+                      COALESCE(u.archive, FALSE) AS archive,
                       COALESCE(ec.havedatefin, FALSE) AS havedatefin,
                       COALESCE(ec.ismanager, FALSE) AS ismanager,
                       ec.date_debut_poste_actuel,
+                      ec.type_obtention,
                       COALESCE(ec.isformateur, FALSE) AS isformateur,
                       COALESCE(ec.is_temp, FALSE) AS is_temp,
                       ec.role_temp,
                       ec.code_effectif,
+                      u.ut_obs AS observations,
                       COALESCE(p.intitule_poste, '') AS intitule_poste,
                       COALESCE(p.codif_client, p.codif_poste, '') AS code_poste,
                       COALESCE(s.nom_service, '') AS nom_service
@@ -2268,7 +2424,7 @@ def studio_collab_detail(id_owner: str, id_collaborateur: str, request: Request)
                     "email": r.get("email"),
                     "telephone": r.get("telephone"),
                     "telephone2": r.get("telephone2"),
-                    "fonction": r.get("fonction"),
+                    "fonction": r.get("id_poste_actuel"),
                     "id_poste_actuel": r.get("id_poste_actuel"),
                     "id_service": r.get("id_service"),
                     "nom_service": r.get("nom_service"),
@@ -2278,6 +2434,7 @@ def studio_collab_detail(id_owner: str, id_collaborateur: str, request: Request)
                     "ville": r.get("ville"),
                     "pays": r.get("pays"),
                     "date_naissance": r.get("date_naissance").isoformat() if r.get("date_naissance") else None,
+                    "retraite_estimee": r.get("retraite_estimee"),
                     "niveau_education": r.get("niveau_education"),
                     "domaine_education": r.get("domaine_education"),
                     "type_contrat": r.get("type_contrat"),
@@ -3728,12 +3885,20 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
 
+                date_naissance = _norm_iso_date(payload.date_naissance)
+                date_entree = _norm_iso_date(payload.date_entree_entreprise)
+                date_debut_poste = _norm_iso_date(payload.date_debut_poste_actuel)
+                date_sortie = _norm_iso_date(payload.date_sortie_prevue)
+
+                # Calcul approximatif de l’année de retraite estimée.
+                # Voir les helpers ci-dessus pour la règle détaillée et les hypothèses retenues.
+                retraite_estimee = _compute_retraite_estimee(
+                    date_naissance,
+                    _norm_text(payload.niveau_education),
+                )
+
                 if src["source_kind"] == "entreprise":
                     cid = str(uuid.uuid4())
-                    date_naissance = _norm_iso_date(payload.date_naissance)
-                    date_entree = _norm_iso_date(payload.date_entree_entreprise)
-                    date_debut_poste = _norm_iso_date(payload.date_debut_poste_actuel)
-                    date_sortie = _norm_iso_date(payload.date_sortie_prevue)
                     id_poste = _norm_text(payload.id_poste_actuel)
                     id_service = _norm_service_from_payload(cur, oid, payload.id_service, id_poste)
 
@@ -3753,6 +3918,7 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                           ville_effectif,
                           pays_effectif,
                           date_naissance_effectif,
+                          retraite_estimee,
                           niveau_education,
                           domaine_education,
                           id_poste_actuel,
@@ -3778,7 +3944,7 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                         ) VALUES (
                           %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                           %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                          %s, %s, %s, %s, %s, FALSE, CURRENT_DATE, NOW(), %s, %s,
+                          %s, %s, %s, %s, %s, %s, FALSE, CURRENT_DATE, NOW(), %s, %s,
                           %s, %s, %s, %s, %s
                         )
                         """,
@@ -3796,6 +3962,7 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                           _norm_text(payload.ville),
                           _norm_text(payload.pays),
                           date_naissance,
+                          retraite_estimee,
                           _norm_text(payload.niveau_education),
                           _norm_text(payload.domaine_education),
                           id_poste,
@@ -3818,7 +3985,11 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                         ),
                     )
                     conn.commit()
-                    return {"ok": True, "id_collaborateur": cid}
+                    return {
+                        "ok": True,
+                        "id_collaborateur": cid,
+                        "retraite_estimee": retraite_estimee,
+                    }
 
                 cid = str(uuid.uuid4())
                 user_poste = _norm_text(payload.id_poste_actuel) or _norm_text(payload.fonction)
@@ -3866,9 +4037,15 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                       _norm_text(payload.observations),
                     ),
                 )
+
                 _upsert_effectif_mirror_for_utilisateur(cur, oid, cid, payload)
                 conn.commit()
-                return {"ok": True, "id_collaborateur": cid}
+
+                return {
+                    "ok": True,
+                    "id_collaborateur": cid,
+                    "retraite_estimee": retraite_estimee,
+                }
 
     except HTTPException:
         raise
@@ -3901,6 +4078,18 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
 
+                date_naissance = _norm_iso_date(payload.date_naissance)
+                date_entree = _norm_iso_date(payload.date_entree_entreprise)
+                date_debut_poste = _norm_iso_date(payload.date_debut_poste_actuel)
+                date_sortie = _norm_iso_date(payload.date_sortie_prevue)
+
+                # Calcul approximatif de l’année de retraite estimée.
+                # Voir les helpers ci-dessus pour la règle détaillée et les hypothèses retenues.
+                retraite_estimee = _compute_retraite_estimee(
+                    date_naissance,
+                    _norm_text(payload.niveau_education),
+                )
+
                 if src["source_kind"] == "entreprise":
                     cur.execute(
                         """
@@ -3915,10 +4104,6 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                     if not cur.fetchone():
                         raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
 
-                    date_naissance = _norm_iso_date(payload.date_naissance)
-                    date_entree = _norm_iso_date(payload.date_entree_entreprise)
-                    date_debut_poste = _norm_iso_date(payload.date_debut_poste_actuel)
-                    date_sortie = _norm_iso_date(payload.date_sortie_prevue)
                     id_poste = _norm_text(payload.id_poste_actuel)
                     id_service = _norm_service_from_payload(cur, oid, payload.id_service, id_poste)
 
@@ -3937,6 +4122,7 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                           ville_effectif = %s,
                           pays_effectif = %s,
                           date_naissance_effectif = %s,
+                          retraite_estimee = %s,
                           niveau_education = %s,
                           domaine_education = %s,
                           id_poste_actuel = %s,
@@ -3972,6 +4158,7 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                           _norm_text(payload.ville),
                           _norm_text(payload.pays),
                           date_naissance,
+                          retraite_estimee,
                           _norm_text(payload.niveau_education),
                           _norm_text(payload.domaine_education),
                           id_poste,
@@ -3996,7 +4183,11 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                         ),
                     )
                     conn.commit()
-                    return {"ok": True, "id_collaborateur": cid}
+                    return {
+                        "ok": True,
+                        "id_collaborateur": cid,
+                        "retraite_estimee": retraite_estimee,
+                    }
 
                 cur.execute(
                     """
@@ -4051,9 +4242,15 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                       cid,
                     ),
                 )
+
                 _upsert_effectif_mirror_for_utilisateur(cur, oid, cid, payload)
                 conn.commit()
-                return {"ok": True, "id_collaborateur": cid}
+
+                return {
+                    "ok": True,
+                    "id_collaborateur": cid,
+                    "retraite_estimee": retraite_estimee,
+                }
 
     except HTTPException:
         raise
