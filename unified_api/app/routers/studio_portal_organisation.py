@@ -1347,54 +1347,194 @@ def _normalize_ai_comp_title(title: Optional[str], description: Optional[str]) -
     return t or d
 
 
-def _eval_fallback_text(crit_name: Optional[str], level_idx: int) -> str:
-    base = _clean_ai_comp_text(crit_name, 70).lower()
-    if not base:
-        base = "la pratique attendue"
+def _skill_focus_phrase(skill_title: Optional[str], fallback: str = "la pratique attendue") -> str:
+    raw = _clean_ai_comp_text(skill_title, 160)
+    if not raw:
+        return fallback
+
+    parts = [p for p in re.split(r"\s+", raw) if p]
+    if parts and _starts_with_action_verb(parts[0]):
+        parts = parts[1:]
+
+    focus = " ".join(parts).strip(" -–•")
+    return focus or fallback
+
+
+def _build_ai_comp_description(title: Optional[str], description: Optional[str], why_needed: Optional[str], max_len: int = 320) -> str:
+    desc = _clean_ai_comp_text(description, max_len * 2)
+    why = _clean_ai_comp_text(why_needed, max_len * 2)
+    action = _normalize_ai_comp_title(title, description) or _extract_action_phrase(title, 120) or "Mettre en œuvre la compétence"
+
+    if desc:
+        desc = re.sub(r"\s*;\s*", ". ", desc)
+        desc = re.sub(r"\s{2,}", " ", desc).strip(" -–•")
+        if desc and desc[-1] not in ".!?":
+            desc += "."
+
+    if not desc or len(desc.split()) < 9 or len(desc) < 65:
+        desc = ""
+
+    if desc and why and _similarity_score(desc, why) < 0.72 and len(desc) <= (max_len - 90):
+        why_low = why[0].lower() + why[1:] if why else ""
+        if why_low.endswith("."):
+            why_low = why_low[:-1]
+        if why_low:
+            desc = f"{desc} Cette compétence vise à {why_low}."
+
+    if not desc:
+        if why:
+            why_low = why[0].lower() + why[1:] if why else ""
+            if why_low.endswith("."):
+                why_low = why_low[:-1]
+            desc = f"{action}. Cette compétence vise à {why_low}."
+        else:
+            desc = (
+                f"{action}. Cette compétence permet de sécuriser la réalisation attendue, "
+                "de fiabiliser les livrables et de traiter les écarts sur le périmètre du poste."
+            )
+
+    return _clean_ai_comp_text(desc, max_len)
+
+
+def _level_fallback_text(skill_title: Optional[str], level_idx: int, max_len: int = 280) -> str:
+    focus = _skill_focus_phrase(skill_title)
 
     templates = {
-        1: f"Réalise {base} sur des cas simples, avec repères et vérifications.",
-        2: f"Réalise {base} correctement dans les situations courantes.",
-        3: f"Réalise {base} de façon autonome, structurée et fiable.",
-        4: f"Réalise {base} avec maîtrise, adaptation et sécurisation du résultat.",
+        1: f"Réalise {focus} sur un périmètre simple, avec trame, repères de contrôle et validation des points sensibles.",
+        2: f"Réalise {focus} en autonomie sur les situations courantes, tient à jour les éléments attendus et signale les écarts utiles.",
+        3: f"Pilote {focus} sur son périmètre, structure la démarche, sécurise les livrables et améliore les pratiques dans la durée.",
     }
-    return templates.get(level_idx, templates[4])[:120]
+    return _clean_ai_comp_text(templates.get(level_idx, templates[3]), max_len)
 
 
-def _normalize_eval_text(v: Optional[str], max_len: int = 120, crit_name: Optional[str] = None, level_idx: int = 1) -> str:
+def _normalize_ai_level_text(v: Optional[str], skill_title: Optional[str], level_idx: int, max_len: int = 280) -> str:
     s = _clean_ai_comp_text(v, max_len * 2)
-    if not s:
-        return _eval_fallback_text(crit_name, level_idx)
+    if s:
+        s = re.sub(r"\s*;\s*", ". ", s)
+        s = re.sub(r"\s{2,}", " ", s).strip(" -–•")
+        if s and s[-1] not in ".!?":
+            s += "."
 
-    s = re.sub(r"^(la personne évaluée|la personne evaluee|la personne|l['’]évalué|l['’]evalue)\s+", "", s, flags=re.I)
-    s = re.sub(r"^(est capable de|sait|peut)\s+", "", s, flags=re.I)
-    s = s.strip(" -–•")
+    words = [w for w in re.split(r"\s+", s) if w] if s else []
+    if not s or len(words) < 9 or len(s) < 70:
+        s = _level_fallback_text(skill_title, level_idx, max_len)
 
-    words = [w for w in re.split(r"\s+", s) if w]
-    if len(words) < 4 or len(s) < 24:
-        s = _eval_fallback_text(crit_name, level_idx)
+    return _clean_ai_comp_text(s, max_len)
 
-    s = s[0].upper() + s[1:]
+
+def _default_ai_criteria_names(skill_title: Optional[str], description: Optional[str], target_count: int = 3) -> List[str]:
+    t = _norm_text_search(f"{skill_title or ''} {description or ''}")
+
+    if any(x in t for x in ("qualit", "audit", "conformit", "rnq", "preuve", "procedure")):
+        names = [
+            "Structuration du système et des preuves",
+            "Pilotage des audits et traitement des écarts",
+            "Fiabilisation et amélioration continue",
+        ]
+    elif any(x in t for x in ("formation", "pedagog", "session", "animation", "face a face", "apprenant")):
+        names = [
+            "Préparation de l'action de formation",
+            "Animation adaptée au public et aux objectifs",
+            "Évaluation, ajustement et amélioration du dispositif",
+        ]
+    elif any(x in t for x in ("maintenance", "infrastructure", "reseau", "systeme", "incident", "intervention", "support technique")):
+        names = [
+            "Préparation et sécurisation des interventions",
+            "Réalisation technique et continuité de service",
+            "Contrôle, fiabilisation et amélioration",
+        ]
+    elif any(x in t for x in ("pilot", "manager", "indicateur", "tableau de bord", "reporting", "plan d action", "coordination")):
+        names = [
+            "Structuration et pilotage du dispositif",
+            "Coordination et maîtrise opérationnelle",
+            "Contrôle, arbitrage et amélioration",
+        ]
+    else:
+        names = [
+            "Préparation et structuration de l'activité",
+            "Réalisation et maîtrise opérationnelle",
+            "Contrôle, fiabilisation et amélioration",
+        ]
+
+    return names[:max(1, min(target_count, len(names)))]
+
+
+def _eval_fallback_text(crit_name: Optional[str], level_idx: int, skill_title: Optional[str] = None, max_len: int = 160) -> str:
+    base = _clean_ai_comp_text(crit_name, 100) or _skill_focus_phrase(skill_title)
+    base = base[0].lower() + base[1:] if base else "la pratique attendue"
+
+    templates = {
+        1: f"Réalise {base} sur des cas simples, avec trame, repères de contrôle et validation des points sensibles.",
+        2: f"Réalise {base} en autonomie sur les situations courantes, tient à jour les éléments attendus et signale les écarts utiles.",
+        3: f"Pilote {base} de façon autonome, structure la démarche, sécurise le résultat et traite les écarts avec méthode.",
+        4: f"Optimise {base} sur son périmètre, arbitre les situations complexes et diffuse les bonnes pratiques.",
+    }
+    return _clean_ai_comp_text(templates.get(level_idx, templates[4]), max_len)
+
+
+def _normalize_eval_text(
+    v: Optional[str],
+    max_len: int = 160,
+    crit_name: Optional[str] = None,
+    level_idx: int = 1,
+    skill_title: Optional[str] = None,
+) -> str:
+    s = _clean_ai_comp_text(v, max_len * 2)
+    if s:
+        s = re.sub(r"^(la personne évaluée|la personne evaluee|la personne|l['’]évalué|l['’]evalue)\s+", "", s, flags=re.I)
+        s = re.sub(r"^(est capable de|sait|peut)\s+", "", s, flags=re.I)
+        s = re.sub(r"\s*;\s*", ". ", s)
+        s = re.sub(r"\s{2,}", " ", s).strip(" -–•")
+        if s and s[-1] not in ".!?":
+            s += "."
+
+    words = [w for w in re.split(r"\s+", s) if w] if s else []
+    if not s or len(words) < 8 or len(s) < 55:
+        s = _eval_fallback_text(crit_name, level_idx, skill_title, max_len)
+
+    s = s[0].upper() + s[1:] if s else _eval_fallback_text(crit_name, level_idx, skill_title, max_len)
     if s[-1] not in ".!?":
         s += "."
-    return s[:max_len]
+    return _clean_ai_comp_text(s, max_len)
 
 
-def _compact_ai_grille(ge: dict) -> dict:
+def _compact_ai_grille(
+    ge: dict,
+    skill_title: Optional[str] = None,
+    skill_desc: Optional[str] = None,
+    freq_usage: int = 0,
+    impact_resultat: int = 0,
+    dependance: int = 0,
+) -> dict:
     items = []
     seen = set()
+
+    fu = _clamp_0_10(freq_usage)
+    im = _clamp_0_10(impact_resultat)
+    de = _clamp_0_10(dependance)
+    total = fu + im + de
+    peak = max(fu, im, de)
+
+    if peak >= 7 or total >= 18:
+        target_count = 3
+    elif peak >= 5 or total >= 12:
+        target_count = 2
+    else:
+        target_count = 1
+
+    defaults = _default_ai_criteria_names(skill_title, skill_desc, target_count)
 
     for i in range(1, 5):
         k = f"Critere{i}"
         node = ge.get(k) or {"Nom": "", "Eval": ["", "", "", ""]}
-        nom = _clean_ai_comp_text(node.get("Nom"), 140)
+        nom = _clean_ai_comp_text(node.get("Nom"), 160)
         raw_evals = (node.get("Eval") or ["", "", "", ""])[:4]
 
         if not nom and not any(_clean_text(x) for x in raw_evals):
             continue
 
         if not nom:
-            nom = "Mise en œuvre de la compétence"
+            nom = defaults[min(len(items), len(defaults) - 1)] if defaults else "Mise en œuvre de la compétence"
 
         key = _norm_text_search(nom)
         if key in seen:
@@ -1402,22 +1542,39 @@ def _compact_ai_grille(ge: dict) -> dict:
         seen.add(key)
 
         evals = [
-            _normalize_eval_text(raw_evals[0] if len(raw_evals) > 0 else "", 120, nom, 1),
-            _normalize_eval_text(raw_evals[1] if len(raw_evals) > 1 else "", 120, nom, 2),
-            _normalize_eval_text(raw_evals[2] if len(raw_evals) > 2 else "", 120, nom, 3),
-            _normalize_eval_text(raw_evals[3] if len(raw_evals) > 3 else "", 120, nom, 4),
+            _normalize_eval_text(raw_evals[0] if len(raw_evals) > 0 else "", 160, nom, 1, skill_title),
+            _normalize_eval_text(raw_evals[1] if len(raw_evals) > 1 else "", 160, nom, 2, skill_title),
+            _normalize_eval_text(raw_evals[2] if len(raw_evals) > 2 else "", 160, nom, 3, skill_title),
+            _normalize_eval_text(raw_evals[3] if len(raw_evals) > 3 else "", 160, nom, 4, skill_title),
         ]
         items.append({"Nom": nom, "Eval": evals})
 
-    if not items:
-        nom = "Mise en œuvre de la compétence"
+    for nom in defaults:
+        if len(items) >= target_count:
+            break
+        key = _norm_text_search(nom)
+        if key in seen:
+            continue
+        seen.add(key)
         items.append({
             "Nom": nom,
             "Eval": [
-                _eval_fallback_text(nom, 1),
-                _eval_fallback_text(nom, 2),
-                _eval_fallback_text(nom, 3),
-                _eval_fallback_text(nom, 4),
+                _eval_fallback_text(nom, 1, skill_title, 160),
+                _eval_fallback_text(nom, 2, skill_title, 160),
+                _eval_fallback_text(nom, 3, skill_title, 160),
+                _eval_fallback_text(nom, 4, skill_title, 160),
+            ]
+        })
+
+    if not items:
+        nom = (defaults[0] if defaults else "Mise en œuvre de la compétence")
+        items.append({
+            "Nom": nom,
+            "Eval": [
+                _eval_fallback_text(nom, 1, skill_title, 160),
+                _eval_fallback_text(nom, 2, skill_title, 160),
+                _eval_fallback_text(nom, 3, skill_title, 160),
+                _eval_fallback_text(nom, 4, skill_title, 160),
             ]
         })
 
@@ -1429,6 +1586,26 @@ def _compact_ai_grille(ge: dict) -> dict:
             out[f"Critere{i}"] = {"Nom": "", "Eval": ["", "", "", ""]}
     return out
 
+
+def _normalize_ai_comp_item(item: dict) -> None:
+    item["intitule"] = _normalize_ai_comp_title(item.get("intitule"), item.get("description"))
+    item["description"] = _build_ai_comp_description(item.get("intitule"), item.get("description"), item.get("why_needed"), 320)
+    item["why_needed"] = _clean_ai_comp_text(item.get("why_needed"), 320)
+    item["niveaua"] = _normalize_ai_level_text(item.get("niveaua"), item.get("intitule"), 1, 280)
+    item["niveaub"] = _normalize_ai_level_text(item.get("niveaub"), item.get("intitule"), 2, 280)
+    item["niveauc"] = _normalize_ai_level_text(item.get("niveauc"), item.get("intitule"), 3, 280)
+
+    _fix_abc_levels(item)
+
+    ge = _sanitize_grille(item.get("grille_evaluation"))
+    item["grille_evaluation"] = _compact_ai_grille(
+        ge,
+        item.get("intitule"),
+        item.get("description"),
+        item.get("freq_usage"),
+        item.get("impact_resultat"),
+        item.get("dependance"),
+    )
 
 def _level_score(txt: Optional[str]) -> int:
     t = _norm_text_search(txt)
@@ -1459,20 +1636,6 @@ def _fix_abc_levels(data: dict) -> None:
         data["niveaua"] = levels[0][1]
         data["niveaub"] = levels[1][1]
         data["niveauc"] = levels[2][1]
-
-
-def _normalize_ai_comp_item(item: dict) -> None:
-    item["intitule"] = _normalize_ai_comp_title(item.get("intitule"), item.get("description"))
-    item["description"] = _clean_ai_comp_text(item.get("description"), 240)
-    item["why_needed"] = _clean_ai_comp_text(item.get("why_needed"), 240)
-    item["niveaua"] = _clean_ai_comp_text(item.get("niveaua"), 230)
-    item["niveaub"] = _clean_ai_comp_text(item.get("niveaub"), 230)
-    item["niveauc"] = _clean_ai_comp_text(item.get("niveauc"), 230)
-
-    _fix_abc_levels(item)
-
-    ge = _sanitize_grille(item.get("grille_evaluation"))
-    item["grille_evaluation"] = _compact_ai_grille(ge)
 
 def _norm_text_search(v: Optional[str]) -> str:
     s = _clean_text(v).lower()
@@ -1850,10 +2013,10 @@ def _sanitize_grille(v: Any) -> dict:
         nom = (item.get("Nom") or "").strip() if isinstance(item, dict) else ""
         evals = item.get("Eval") if isinstance(item, dict) else None
         evals = evals if isinstance(evals, list) else []
-        evals = [str(x or "").strip()[:120] for x in evals[:4]]
+        evals = [str(x or "").strip()[:160] for x in evals[:4]]
         while len(evals) < 4:
             evals.append("")
-        out[k] = {"Nom": nom[:140], "Eval": evals}
+        out[k] = {"Nom": nom[:160], "Eval": evals}
     return out
 
 
@@ -4000,9 +4163,9 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                             "impact_resultat": {"type": "integer", "minimum": 0, "maximum": 10},
                             "dependance": {"type": "integer", "minimum": 0, "maximum": 10},
                             "domaine_hint": {"type": "string", "maxLength": 120},
-                            "niveaua": {"type": "string", "maxLength": 230},
-                            "niveaub": {"type": "string", "maxLength": 230},
-                            "niveauc": {"type": "string", "maxLength": 230},
+                            "niveaua": {"type": "string", "maxLength": 280},
+                            "niveaub": {"type": "string", "maxLength": 280},
+                            "niveauc": {"type": "string", "maxLength": 280},
                             "grille_evaluation": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -4013,8 +4176,8 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                                         "additionalProperties": False,
                                         "required": ["Nom", "Eval"],
                                         "properties": {
-                                            "Nom": {"type": "string", "maxLength": 140},
-                                            "Eval": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string", "maxLength": 120}}
+                                            "Nom": {"type": "string", "maxLength": 160},
+                                            "Eval": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string", "maxLength": 160}}
                                         }
                                     } for i in range(1, 5)}
                                 }
@@ -4037,15 +4200,16 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
             "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
             "Exemples de forme attendue: 'Animer des sessions de formation', 'Piloter des indicateurs qualité', 'Administrer une infrastructure web'. "
             "Exemples interdits: thèmes nominaux, axes de travail, intitulés fourre-tout, formulations avec '&' ou '/'. "
-            "Tu exclus les micro-tâches et gestes de support comme l'accueil téléphonique, le standard, la prise de messages, le secrétariat courant, le classement ou le courrier, SAUF si le poste est explicitement centré dessus. "
-            "La description doit être courte, propre, opérationnelle, sans URL, sans source, sans nom de site, sans citation. "
+            "La description doit faire 1 à 2 phrases complètes, en français professionnel, sans style télégraphique. "
+            "Elle doit préciser le périmètre de la compétence, ce qu'elle permet de produire, sécuriser ou améliorer, et sa finalité métier. "
             "recommended_level: A initial (guidé, applique des consignes simples), B avancé (autonome, structuré, fiable), C expert (maîtrise, optimise, transmet). "
-            "Les niveaux A/B/C doivent être rédigés en 1 à 2 phrases concrètes et observables, décrivant ce que la personne sait faire en situation réelle. "
+            "Les niveaux A/B/C doivent être réellement différenciants, concrets et observables. "
+            "Le niveau C doit décrire une maîtrise permettant de sécuriser le résultat, traiter les situations complexes, améliorer la méthode et transmettre les bonnes pratiques si pertinent. "
             "La grille d'évaluation doit être exploitable par un manager ou un formateur. "
-            "Chaque évaluation doit être courte, progressive, observable, formulée comme une pratique ou un comportement constatable. "
-            "Nombre de critères: produis entre 1 et 4 critères selon la difficulté réelle de la compétence, en visant le minimum utile. "
-            "Si la compétence est simple, 1 ou 2 critères suffisent. Si elle est plus riche, 3 critères. 4 seulement si c'est réellement nécessaire. "
-            "Laisse les critères inutiles vides (Nom vide + 4 Eval vides). "
+            "Dans la majorité des cas, produis 2 ou 3 critères d'évaluation. 1 seul critère uniquement si la compétence est vraiment simple. 4 seulement si c'est indispensable. "
+            "Les critères doivent être nommés comme des dimensions observables de la compétence, pas comme des étiquettes vagues ou trop larges. "
+            "Exemples de critères à éviter: 'Réalisation', 'Amélioration continue', 'Divers'. "
+            "Chaque niveau d'évaluation doit être une phrase métier concrète, progressive et observable, avec assez de matière pour permettre une évaluation réelle. "
             "Les trois scores freq_usage / impact_resultat / dependance doivent être cohérents et réalistes."
         )
 
@@ -4061,18 +4225,22 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
             f"contraintes complémentaires: {(payload.ai_contraintes or '').strip()}\n"
             f"contraintes fiche: niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n"
             f"Domaines de compétences autorisés (choisir exactement dans cette liste ou vide si aucun ne convient):\n{domain_txt}\n"
-            "Ne cherche pas l'exhaustivité.\n"
             "Vise un référentiel resserré de compétences structurantes.\n"
             "Retiens seulement les compétences qui conditionnent réellement la tenue du poste, l'autonomie, la qualité du résultat, le management, la coordination ou la continuité d'activité.\n"
             "Exclus les tâches périphériques, ponctuelles, contextuelles, administratives ou d'intendance locale.\n"
             "Préfère 6 à 12 compétences coeur de poste plutôt qu'une liste longue.\n"
+            "Ne compacte pas excessivement la fiche compétence.\n"
+            "La description doit être exploitable dans un référentiel RH, pas une note télégraphique.\n"
+            "Les critères doivent décrire des dimensions d'évaluation utiles, précises et observables.\n"
+            "Les niveaux A/B/C et les niveaux 1 à 4 de la grille doivent contenir de la matière métier, sans bavardage inutile.\n"
             "Ne crée pas de doublons ni de variantes inutiles d'une même compétence.\n"
             "Regroupe intelligemment quand plusieurs tâches relèvent d'une même compétence transférable.\n"
             "Rappel impératif:\n"
             "- chaque intitulé doit commencer par un verbe d'action à l'infinitif ;\n"
-            "- la description doit rester courte ;\n"
+            "- la description doit être rédigée en 1 à 2 phrases complètes ;\n"
             "- les niveaux A/B/C doivent exprimer ce que la personne sait faire de façon observable ;\n"
-            "- la grille doit comporter entre 1 et 4 critères utiles, pas plus.\n"
+            "- la grille doit comporter le plus souvent 2 ou 3 critères utiles ;\n"
+            "- les critères et évaluations doivent rester concrets, métier et réutilisables en entretien.\n"
         )
 
         drafted = _openai_responses_json(model, "poste_comp_search", schema, system_prompt, user_prompt, use_web=True)
@@ -4140,9 +4308,9 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                             domaine_label = rr.get("label")
                             domaine_couleur = rr.get("couleur")
                         missing.append({
-                            "intitule": _normalize_ai_comp_title(intitule, item.get("description")),
-                            "description": _clean_ai_comp_text(item.get("description"), 240),
-                            "why_needed": _clean_ai_comp_text(item.get("why_needed"), 240),
+                            "intitule": intitule,
+                            "description": _clean_ai_comp_text(item.get("description"), 320),
+                            "why_needed": _clean_ai_comp_text(item.get("why_needed"), 320),
                             "domaine_id": domaine_id,
                             "domaine_label": _clean_ai_comp_text(domaine_label or "", 80),
                             "domaine_couleur": domaine_couleur,
@@ -4152,9 +4320,9 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                             "impact_resultat": im,
                             "dependance": de,
                             "poids_criticite": poids,
-                            "niveaua": _clean_ai_comp_text(item.get("niveaua"), 230),
-                            "niveaub": _clean_ai_comp_text(item.get("niveaub"), 230),
-                            "niveauc": _clean_ai_comp_text(item.get("niveauc"), 230),
+                            "niveaua": _clean_ai_comp_text(item.get("niveaua"), 280),
+                            "niveaub": _clean_ai_comp_text(item.get("niveaub"), 280),
+                            "niveauc": _clean_ai_comp_text(item.get("niveauc"), 280),
                             "grille_evaluation": _sanitize_grille(item.get("grille_evaluation")),
                         })
 
@@ -4172,7 +4340,9 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
 
     try:
         pid = (payload.id_poste or "").strip()
-        draft = payload.draft or {}
+        draft = dict(payload.draft or {})
+        if draft:
+            _normalize_ai_comp_item(draft)
         title = (draft.get("intitule") or "").strip()
         if not pid:
             raise HTTPException(status_code=400, detail="id_poste obligatoire.")
