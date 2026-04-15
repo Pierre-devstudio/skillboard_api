@@ -3938,7 +3938,7 @@ body {
 
         byId("posteModalTitle").textContent =
             (p && (p.intitule_poste || p.intitule)) ? String(p.intitule_poste || p.intitule) : "Poste";
-        byId("posteModalSub").textContent = "Mise à jour / transfert de service / archivage.";
+        byId("posteModalSub").textContent = "";
 
         const badge = byId("posteModalBadge");
         const code = (p && p.code) ? String(p.code).trim() : "";
@@ -4118,7 +4118,7 @@ body {
                 const modal = byId("modalPoste");
                 if (modal) modal.setAttribute("data-id-poste", _editingPosteId || "");
                 byId("posteModalTitle").textContent = title || "Poste";
-                byId("posteModalSub").textContent = "Mise à jour / transfert de service / archivage.";
+                byId("posteModalSub").textContent = "";
                 const badge = byId("posteModalBadge");
                 if (badge){
                     badge.textContent = code || "";
