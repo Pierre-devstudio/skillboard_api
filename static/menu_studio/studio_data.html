@@ -18,7 +18,33 @@
       </div>
     </div>
 
+    <input type="file" id="entLogoFileInput" accept=".png,.jpg,.jpeg,image/png,image/jpeg" hidden />
+
     <div class="row" style="margin-top:14px;">
+      <div class="info-item" style="flex:1 1 100%;">
+        <div class="label">Logo</div>
+
+        <div class="sb-logo-card">
+          <div class="sb-logo-preview" id="entLogoPreview">
+            <img id="entLogoImg" alt="Logo entreprise" style="display:none;" />
+            <div class="sb-help" id="entLogoEmpty">Aucun logo enregistré.</div>
+          </div>
+
+          <div class="sb-logo-meta">
+            <div class="card-sub" id="entLogoMeta" style="margin:0;">
+              Le logo enregistré sera réutilisé automatiquement dans les sorties PDF Studio.
+            </div>
+
+            <div class="sb-actions">
+              <button type="button" class="sb-btn sb-btn--doc" id="btnUploadLogo">Importer votre logo</button>
+              <button type="button" class="sb-btn sb-btn--danger-soft" id="btnRemoveLogo">Retirer le logo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
       <div class="info-item" style="min-width:260px;">
         <div class="label">Nom entreprise</div>
         <input type="text" id="ent_nom_ent" disabled />

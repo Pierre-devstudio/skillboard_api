@@ -167,6 +167,27 @@ def _service_exists_active(cur, id_ent: str, id_service: str) -> bool:
     )
     return cur.fetchone() is not None
 
+def _fetch_owner_logo_bytes(cur, oid: str) -> Optional[bytes]:
+    cur.execute(
+        """
+        SELECT logo_bytes
+        FROM public.tbl_studio_owner_logo
+        WHERE id_owner = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        ORDER BY date_maj DESC, date_creation DESC
+        LIMIT 1
+        """,
+        (oid,),
+    )
+    row = cur.fetchone() or {}
+    raw = row.get("logo_bytes")
+    if raw is None:
+        return None
+    try:
+        return bytes(raw)
+    except Exception:
+        return raw
+
 def _pdf_esc(v: Any) -> str:
     return str(v or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
@@ -557,17 +578,30 @@ def _org_sort_key(v: Any) -> str:
     return str(v or "").strip().lower()
 
 
-def _draw_org_pdf_header_footer(c: canvas.Canvas, page_size, footer_left: str) -> None:
+def _draw_org_pdf_header_footer(c: canvas.Canvas, page_size, footer_left: str, logo_bytes: Optional[bytes] = None) -> None:
     page_w, page_h = page_size
     left = PDF_MARGIN_LEFT
     right = page_w - PDF_MARGIN_RIGHT
 
     header_line_y = page_h - PDF_HEADER_LINE_OFFSET
-    logo_path = _resolve_logo_path()
 
-    if logo_path:
+    img = None
+    if logo_bytes:
         try:
-            img = ImageReader(logo_path)
+            img = ImageReader(BytesIO(logo_bytes))
+        except Exception:
+            img = None
+
+    if img is None:
+        logo_path = _resolve_logo_path()
+        if logo_path:
+            try:
+                img = ImageReader(logo_path)
+            except Exception:
+                img = None
+
+    if img is not None:
+        try:
             img_w, img_h = img.getSize()
 
             if img_w and img_h:
@@ -1037,7 +1071,7 @@ def _draw_org_node_recursive(c: canvas.Canvas, node: dict, chart_height: float) 
         _draw_org_node_recursive(c, child, chart_height)
 
 
-def _build_organigramme_pdf(oid: str, data: dict) -> bytes:
+def _build_organigramme_pdf(oid: str, data: dict, logo_bytes: Optional[bytes] = None) -> bytes:
     roots = _build_chart_roots(data)
     styles = _build_org_pdf_styles()
 
@@ -1055,7 +1089,7 @@ def _build_organigramme_pdf(oid: str, data: dict) -> bytes:
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=page_size)
 
-    _draw_org_pdf_header_footer(c, page_size, "Novoskill Studio • Organigramme")
+    _draw_org_pdf_header_footer(c, page_size, "Novoskill Studio • Organigramme", logo_bytes)
 
     left = PDF_MARGIN_LEFT
     usable_w = page_w - PDF_MARGIN_LEFT - PDF_MARGIN_RIGHT
@@ -4079,8 +4113,9 @@ def studio_org_get_organigramme_pdf(id_owner: str, request: Request):
 
                 scope_ent = _resolve_org_scope_ent(cur, oid, request)
                 data = _fetch_organigramme_data(cur, oid, scope_ent)
+                logo_bytes = _fetch_owner_logo_bytes(cur, oid)
 
-        pdf_bytes = _build_organigramme_pdf(scope_ent, data)
+        pdf_bytes = _build_organigramme_pdf(scope_ent, data, logo_bytes)
         filename = f'organigramme_{(scope_ent or "organisation").strip()}.pdf'
 
         return Response(

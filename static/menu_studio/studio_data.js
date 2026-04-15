@@ -17,6 +17,171 @@
     return (new URL(window.location.href).searchParams.get("id") || "").trim();
   }
 
+  function formatBytes(bytes) {
+    const n = parseInt(bytes || 0, 10) || 0;
+    if (n < 1024) return `${n} o`;
+    if (n < (1024 * 1024)) return `${(n / 1024).toFixed(1)} Ko`;
+    return `${(n / (1024 * 1024)).toFixed(1)} Mo`;
+  }
+
+  async function resolveStudioAccessToken() {
+    try {
+      const pac = window.PortalAuthCommon;
+      if (pac && typeof pac.getSession === "function") {
+        const s = await pac.getSession();
+        if (s && s.access_token) return String(s.access_token);
+        if (s && s.session && s.session.access_token) return String(s.session.access_token);
+        if (s && s.data && s.data.session && s.data.session.access_token) return String(s.data.session.access_token);
+      }
+    } catch (_) {}
+
+    if (window.portal && window.portal.accessToken) return String(window.portal.accessToken);
+    if (window.portal && window.portal.token) return String(window.portal.token);
+
+    return "";
+  }
+
+  function buildOwnerLogoUrl(logoMeta) {
+    const portal = window.portal;
+    const ownerId = getOwnerId();
+    if (!portal || !ownerId || !logoMeta || !logoMeta.has_logo) return "";
+    const stamp = encodeURIComponent(logoMeta.date_maj || Date.now());
+    return `${portal.apiBase}/studio/data/logo/${encodeURIComponent(ownerId)}?v=${stamp}`;
+  }
+
+  function renderEntrepriseLogo(logoMeta) {
+    const img = document.getElementById("entLogoImg");
+    const empty = document.getElementById("entLogoEmpty");
+    const meta = document.getElementById("entLogoMeta");
+    const btnUpload = document.getElementById("btnUploadLogo");
+    const btnRemove = document.getElementById("btnRemoveLogo");
+
+    const hasLogo = !!(logoMeta && logoMeta.has_logo);
+
+    if (hasLogo) {
+      const url = buildOwnerLogoUrl(logoMeta);
+
+      if (img) {
+        img.src = url;
+        img.style.display = "";
+      }
+      if (empty) {
+        empty.textContent = "";
+        empty.style.display = "none";
+      }
+      if (meta) {
+        const mime = String(logoMeta.mime_type || "").replace("image/", "").toUpperCase();
+        const parts = [];
+        if (logoMeta.filename) parts.push(logoMeta.filename);
+        if (mime) parts.push(mime);
+        if (logoMeta.size_bytes) parts.push(formatBytes(logoMeta.size_bytes));
+        meta.textContent = parts.join(" · ") || "Logo actif.";
+      }
+    } else {
+      if (img) {
+        img.removeAttribute("src");
+        img.style.display = "none";
+      }
+      if (empty) {
+        empty.textContent = "Aucun logo enregistré.";
+        empty.style.display = "";
+      }
+      if (meta) {
+        meta.textContent = "Le logo enregistré sera réutilisé automatiquement dans les sorties PDF Studio.";
+      }
+    }
+
+    const admin = isAdmin();
+    if (btnUpload) btnUpload.style.display = admin ? "inline-flex" : "none";
+    if (btnRemove) btnRemove.style.display = (admin && hasLogo) ? "inline-flex" : "none";
+  }
+
+  async function uploadEntrepriseLogo(portal, file) {
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error("Owner manquant (?id=...).");
+    if (!file) return;
+
+    const name = String(file.name || "").toLowerCase();
+    if (!/\.(png|jpg|jpeg)$/.test(name)) {
+      throw new Error("Format logo non supporté. Utilise un fichier PNG ou JPG.");
+    }
+
+    if ((file.size || 0) > (2 * 1024 * 1024)) {
+      throw new Error("Logo trop volumineux. Limite : 2 Mo.");
+    }
+
+    setStatus("Import du logo…");
+    portal.showAlert("", "");
+
+    try {
+      const token = await resolveStudioAccessToken();
+      const headers = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const fd = new FormData();
+      fd.append("file", file, file.name || "logo");
+
+      const resp = await fetch(
+        `${portal.apiBase}/studio/data/logo/${encodeURIComponent(ownerId)}`,
+        {
+          method: "POST",
+          headers,
+          body: fd,
+          credentials: "same-origin",
+        }
+      );
+
+      if (!resp.ok) {
+        let msg = `Erreur logo (${resp.status})`;
+        try {
+          const err = await resp.json();
+          if (err && err.detail) msg = String(err.detail);
+        } catch (_) {}
+        throw new Error(msg);
+      }
+
+      await loadData(portal);
+    } finally {
+      setStatus("—");
+    }
+  }
+
+  async function archiveEntrepriseLogo(portal) {
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error("Owner manquant (?id=...).");
+
+    setStatus("Retrait du logo…");
+    portal.showAlert("", "");
+
+    try {
+      const token = await resolveStudioAccessToken();
+      const headers = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const resp = await fetch(
+        `${portal.apiBase}/studio/data/logo/${encodeURIComponent(ownerId)}/archive`,
+        {
+          method: "POST",
+          headers,
+          credentials: "same-origin",
+        }
+      );
+
+      if (!resp.ok) {
+        let msg = `Erreur retrait logo (${resp.status})`;
+        try {
+          const err = await resp.json();
+          if (err && err.detail) msg = String(err.detail);
+        } catch (_) {}
+        throw new Error(msg);
+      }
+
+      await loadData(portal);
+    } finally {
+      setStatus("—");
+    }
+  }
+
   function setStatus(msg) {
     const el = document.getElementById("dataStatus");
     if (!el) return;
@@ -169,6 +334,7 @@
     setTextOrDash("idccHint", org.idcc_libelle || "—", false);
 
     setTextOrDash("opcoHint", org.opco_nom || "—", false);
+    renderEntrepriseLogo(org.logo || { has_logo: false });
   }
 
   function renderContact(ct) {
@@ -351,10 +517,15 @@
     const btnEditEnt = document.getElementById("btnEditEntreprise");
     const btnSaveEnt = document.getElementById("btnSaveEntreprise");
     const btnCancelEnt = document.getElementById("btnCancelEntreprise");
+    const btnUploadLogo = document.getElementById("btnUploadLogo");
+    const btnRemoveLogo = document.getElementById("btnRemoveLogo");
+    const inputLogo = document.getElementById("entLogoFileInput");
     if (!isAdmin()) {
       if (btnEditEnt) btnEditEnt.style.display = "none";
       if (btnSaveEnt) btnSaveEnt.style.display = "none";
       if (btnCancelEnt) btnCancelEnt.style.display = "none";
+      if (btnUploadLogo) btnUploadLogo.style.display = "none";
+      if (btnRemoveLogo) btnRemoveLogo.style.display = "none";
       document.querySelectorAll("[data-editable-ent='1']").forEach(el => el.disabled = true);
     }
 
@@ -370,6 +541,36 @@
     });
 
     document.getElementById("btnCancelEntreprise").addEventListener("click", () => cancelEntreprise(portal));
+        if (btnUploadLogo && inputLogo) {
+      btnUploadLogo.addEventListener("click", () => {
+        if (!isAdmin()) return;
+        inputLogo.click();
+      });
+
+      inputLogo.addEventListener("change", async (e) => {
+        const file = e && e.target && e.target.files ? e.target.files[0] : null;
+        try {
+          if (!isAdmin()) return;
+          if (!file) return;
+          await uploadEntrepriseLogo(portal, file);
+        } catch (err) {
+          portal.showAlert("error", err.message || String(err));
+        } finally {
+          inputLogo.value = "";
+        }
+      });
+    }
+
+    if (btnRemoveLogo) {
+      btnRemoveLogo.addEventListener("click", async () => {
+        try {
+          if (!isAdmin()) return;
+          await archiveEntrepriseLogo(portal);
+        } catch (err) {
+          portal.showAlert("error", err.message || String(err));
+        }
+      });
+    }
     document.getElementById("btnSaveEntreprise").addEventListener("click", async () => {
       try { await saveEntreprise(portal); }
       catch (e) { portal.showAlert("error", "Erreur enregistrement entreprise : " + (e.message || e)); }

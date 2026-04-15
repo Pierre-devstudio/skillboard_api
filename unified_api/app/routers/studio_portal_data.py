@@ -1,8 +1,11 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File
+from fastapi.responses import Response
 from psycopg.rows import dict_row
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
+import os
 import re
+import uuid
 
 from app.routers.skills_portal_common import get_conn
 from app.routers.studio_portal_common import studio_require_user, studio_fetch_owner, studio_require_min_role
@@ -11,6 +14,113 @@ router = APIRouter()
 
 RE_APE = re.compile(r"^\d{2}\.\d{2}$")
 
+LOGO_MAX_BYTES = 2 * 1024 * 1024
+LOGO_ALLOWED_EXTS = {".png", ".jpg", ".jpeg"}
+
+
+def _clean_text(v: Any) -> str:
+    return str(v or "").strip()
+
+
+def _logo_ext(filename: Optional[str]) -> str:
+    return os.path.splitext(_clean_text(filename).lower())[1]
+
+
+def _sniff_logo_mime(raw: bytes) -> str:
+    if raw.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if raw[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    return ""
+
+
+def _validate_logo_upload(filename: Optional[str], content_type: Optional[str], raw: bytes) -> str:
+    ext = _logo_ext(filename)
+
+    if ext not in LOGO_ALLOWED_EXTS:
+        raise HTTPException(status_code=400, detail="Format logo non supporté. Utilise un fichier PNG ou JPG.")
+
+    if not raw:
+        raise HTTPException(status_code=400, detail="Fichier logo vide.")
+
+    if len(raw) > LOGO_MAX_BYTES:
+        raise HTTPException(status_code=400, detail="Logo trop volumineux. Limite : 2 Mo.")
+
+    sniff = _sniff_logo_mime(raw)
+    if not sniff:
+        raise HTTPException(status_code=400, detail="Image logo invalide. Utilise un PNG ou un JPG.")
+
+    if ext == ".png" and sniff != "image/png":
+        raise HTTPException(status_code=400, detail="Extension .png incohérente avec le fichier envoyé.")
+
+    if ext in {".jpg", ".jpeg"} and sniff != "image/jpeg":
+        raise HTTPException(status_code=400, detail="Extension .jpg/.jpeg incohérente avec le fichier envoyé.")
+
+    declared = _clean_text(content_type).lower()
+    if declared == "image/jpg":
+        declared = "image/jpeg"
+
+    if declared and declared not in {"image/png", "image/jpeg", "application/octet-stream"}:
+        raise HTTPException(status_code=400, detail="Type MIME logo non supporté. Utilise un PNG ou un JPG.")
+
+    return sniff
+
+
+def _fetch_owner_logo_row(cur, oid: str) -> dict | None:
+    cur.execute(
+        """
+        SELECT
+            id_logo,
+            filename_original,
+            mime_type,
+            logo_bytes,
+            taille_bytes,
+            date_maj
+        FROM public.tbl_studio_owner_logo
+        WHERE id_owner = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        ORDER BY date_maj DESC, date_creation DESC
+        LIMIT 1
+        """,
+        (oid,),
+    )
+    return cur.fetchone() or None
+
+
+def _fetch_owner_logo_meta(cur, oid: str) -> dict:
+    row = _fetch_owner_logo_row(cur, oid)
+    if not row:
+        return {
+            "has_logo": False,
+            "filename": None,
+            "mime_type": None,
+            "size_bytes": 0,
+            "date_maj": None,
+        }
+
+    dt = row.get("date_maj")
+    return {
+        "has_logo": True,
+        "filename": row.get("filename_original"),
+        "mime_type": row.get("mime_type"),
+        "size_bytes": int(row.get("taille_bytes") or 0),
+        "date_maj": dt.isoformat() if dt else None,
+    }
+
+
+def _fetch_owner_logo_bytes(cur, oid: str) -> bytes | None:
+    row = _fetch_owner_logo_row(cur, oid)
+    if not row:
+        return None
+
+    raw = row.get("logo_bytes")
+    if raw is None:
+        return None
+
+    try:
+        return bytes(raw)
+    except Exception:
+        return raw
 
 class UpdateEntreprisePayload(BaseModel):
     adresse_ent: Optional[str] = None
@@ -474,6 +584,7 @@ def get_studio_vos_donnees(id_owner: str, request: Request):
                 studio_fetch_owner(cur, oid)
 
                 org = _fetch_org(cur, oid)
+                org["logo"] = _fetch_owner_logo_meta(cur, oid)
                 contact = _fetch_contact(cur, oid, (u.get("email") or "").strip())
 
         return {"organisation": org, "contact": contact}
@@ -581,6 +692,7 @@ def update_studio_entreprise(id_owner: str, payload: UpdateEntreprisePayload, re
                         conn.commit()
 
                 org = _fetch_org(cur, oid)
+                org["logo"] = _fetch_owner_logo_meta(cur, oid)
                 ct = _fetch_contact(cur, oid, (u.get("email") or "").strip())
 
         return {"organisation": org, "contact": ct}
@@ -707,6 +819,7 @@ def update_studio_contact(id_owner: str, payload: UpdateContactPayload, request:
                         raise HTTPException(status_code=400, detail="Type de rattachement contact inconnu.")
 
                 org = _fetch_org(cur, oid)
+                org["logo"] = _fetch_owner_logo_meta(cur, oid)
                 ct = _fetch_contact(cur, oid, email)
 
         return {"organisation": org, "contact": ct}
@@ -715,7 +828,138 @@ def update_studio_contact(id_owner: str, payload: UpdateContactPayload, request:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/data/contact error: {e}")
-    
+
+
+@router.get("/studio/data/logo/{id_owner}")
+def get_studio_owner_logo(id_owner: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+
+                row = _fetch_owner_logo_row(cur, oid)
+                if not row:
+                    raise HTTPException(status_code=404, detail="Aucun logo enregistré.")
+
+                raw = _fetch_owner_logo_bytes(cur, oid)
+                if not raw:
+                    raise HTTPException(status_code=404, detail="Aucun logo enregistré.")
+
+                filename = _clean_text(row.get("filename_original")) or "logo.png"
+                mime_type = _clean_text(row.get("mime_type")) or "application/octet-stream"
+
+        return Response(
+            content=raw,
+            media_type=mime_type,
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/data/logo GET error: {e}")
+
+
+@router.post("/studio/data/logo/{id_owner}")
+def upload_studio_owner_logo(id_owner: str, request: Request, file: UploadFile = File(...)):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        oid = (id_owner or "").strip()
+        filename = _clean_text(getattr(file, "filename", "") or "logo")
+        content_type = _clean_text(getattr(file, "content_type", ""))
+        raw = file.file.read() if file and file.file else b""
+
+        mime_type = _validate_logo_upload(filename, content_type, raw)
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, oid)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_studio_owner_logo
+                    SET archive = TRUE,
+                        date_maj = NOW()
+                    WHERE id_owner = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    """,
+                    (oid,),
+                )
+
+                id_logo = str(uuid.uuid4())
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_studio_owner_logo
+                        (id_logo, id_owner, filename_original, mime_type, logo_bytes, taille_bytes, date_creation, date_maj, archive)
+                    VALUES
+                        (%s, %s, %s, %s, %s, %s, NOW(), NOW(), FALSE)
+                    """,
+                    (
+                        id_logo,
+                        oid,
+                        filename or None,
+                        mime_type,
+                        raw,
+                        len(raw),
+                    ),
+                )
+
+                conn.commit()
+                logo = _fetch_owner_logo_meta(cur, oid)
+
+        return {"ok": True, "logo": logo}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/data/logo POST error: {e}")
+
+
+@router.post("/studio/data/logo/{id_owner}/archive")
+def archive_studio_owner_logo(id_owner: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_studio_owner_logo
+                    SET archive = TRUE,
+                        date_maj = NOW()
+                    WHERE id_owner = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    """,
+                    (oid,),
+                )
+                conn.commit()
+
+                logo = _fetch_owner_logo_meta(cur, oid)
+
+        return {"ok": True, "logo": logo}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/data/logo archive error: {e}")
+       
 # ======================================================
 # Référentiels Studio (nécessaires pour la page "Vos données")
 # ======================================================
