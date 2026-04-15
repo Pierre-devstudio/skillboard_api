@@ -1096,6 +1096,11 @@ def _build_organigramme_pdf(oid: str, data: dict, logo_bytes: Optional[bytes] = 
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=page_size)
 
+    pdf_title = f"Organigramme - {data.get('owner_name') or 'Organisation'}"
+    c.setTitle(pdf_title)
+    c.setAuthor("Novoskill")
+    c.setSubject("Organigramme")
+
     _draw_org_pdf_header_footer(c, page_size, "Novoskill Studio • Organigramme", logo_bytes)
 
     left = PDF_MARGIN_LEFT
