@@ -1,7 +1,7 @@
 import logging
 import os
 from io import BytesIO
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
@@ -55,6 +55,23 @@ def _resolve_logo_path() -> str:
         logo_path,
     )
     return ""
+
+def _resolve_pdf_logo_image(meta: Optional[Dict[str, Any]]):
+    raw = (meta or {}).get("logo_bytes")
+    if raw:
+        try:
+            return ImageReader(BytesIO(bytes(raw)))
+        except Exception as e:
+            _log.exception("Erreur chargement logo owner PDF: %s", e)
+
+    logo_path = _resolve_logo_path()
+    if logo_path:
+        try:
+            return ImageReader(logo_path)
+        except Exception as e:
+            _log.exception("Erreur chargement logo PDF (%s): %s", logo_path, e)
+
+    return None
 
 def build_pdf_styles() -> Dict[str, ParagraphStyle]:
     base = getSampleStyleSheet()
@@ -172,10 +189,9 @@ def _header_footer(canvas, doc):
     logo_max_width = PDF_LOGO_MAX_WIDTH
     logo_max_height = PDF_LOGO_MAX_HEIGHT
 
-    logo_path = _resolve_logo_path()
-    if logo_path:
+    img = _resolve_pdf_logo_image(meta)
+    if img is not None:
         try:
-            img = ImageReader(logo_path)
             img_w, img_h = img.getSize()
 
             if img_w and img_h:
@@ -189,7 +205,7 @@ def _header_footer(canvas, doc):
 
                 logo_x = left
                 logo_y = page_h - PDF_LOGO_TOP_OFFSET - logo_h
-                
+
                 canvas.drawImage(
                     img,
                     logo_x,
@@ -200,7 +216,7 @@ def _header_footer(canvas, doc):
                     mask="auto",
                 )
         except Exception as e:
-            _log.exception("Erreur chargement logo PDF (%s): %s", logo_path, e)
+            _log.exception("Erreur dessin logo PDF: %s", e)
 
     canvas.setStrokeColor(PDF_LINE)
     canvas.setLineWidth(0.6)
@@ -222,7 +238,7 @@ def _header_footer(canvas, doc):
     canvas.restoreState()
 
 
-def build_pdf_document(story: List, meta: Optional[Dict[str, str]] = None, page_size=None) -> bytes:
+def build_pdf_document(story: List, meta: Optional[Dict[str, Any]] = None, page_size=None) -> bytes:
     buffer = BytesIO()
     effective_page_size = page_size or PDF_PAGE_SIZE
 

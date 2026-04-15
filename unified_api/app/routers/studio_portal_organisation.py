@@ -4149,6 +4149,7 @@ def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Reques
 
                 poste = _fetch_poste_for_ccn(cur, oid, pid)
                 dossier = _fetch_poste_ccn_dossier(cur, pid)
+                logo_bytes = _fetch_owner_logo_bytes(cur, oid)
 
                 owner_ctx = _fetch_owner_idcc(cur, oid)
                 idcc = (owner_ctx.get("idcc") or "").strip()
@@ -4182,6 +4183,7 @@ def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Reques
                 "title": _pdf_latin1_safe(f"Fiche de poste - {intitule_poste}"),
                 "doc_label": _pdf_latin1_safe("Fiche de poste complète"),
                 "footer_left": _pdf_latin1_safe(" • ".join(footer_parts) if footer_parts else "Novoskill Studio"),
+                "logo_bytes": logo_bytes,
             },
         )
 
