@@ -1503,6 +1503,116 @@ def _similarity_score(a: Optional[str], b: Optional[str]) -> float:
     return max(ratio, overlap, contains * 0.9)
 
 
+def _token_set_folded(v: Optional[str]) -> set:
+    toks = [t for t in _norm_text_search(v).split(" ") if len(t) >= 3]
+    stop = {
+        "des", "les", "une", "pour", "avec", "dans", "sur", "aux", "par", "and", "the",
+        "de", "du", "la", "le", "un", "en", "au", "a"
+    }
+
+    out = set()
+    for tok in toks:
+        if tok in stop:
+            continue
+
+        base = tok
+        if len(base) >= 5:
+            if base.endswith("aux"):
+                base = base[:-3] + "al"
+            elif base.endswith("eaux"):
+                base = base[:-1]
+            elif base.endswith("s") and not base.endswith(("ss", "us", "is")):
+                base = base[:-1]
+            elif base.endswith("x") and not base.endswith("ux"):
+                base = base[:-1]
+
+        out.add(base)
+
+    return out
+
+
+def _canonical_comp_key(v: Optional[str]) -> str:
+    toks = sorted(_token_set_folded(v))
+    return " ".join(toks).strip()
+
+
+def _contains_any_expr(text: Optional[str], expressions: set[str]) -> bool:
+    t = _norm_text_search(text)
+    if not t:
+        return False
+    return any(expr in t for expr in expressions)
+
+
+def _is_support_or_admin_poste(title: Optional[str]) -> bool:
+    hints = {
+        "assistant", "assistante", "secretaire", "secretariat", "administratif",
+        "gestionnaire administratif", "office manager", "charge d accueil",
+        "hote d accueil", "hotesse d accueil", "standardiste", "back office", "adv"
+    }
+    return _contains_any_expr(title, hints)
+
+
+def _is_strategic_poste(title: Optional[str]) -> bool:
+    hints = {
+        "directeur", "directrice", "responsable", "manager", "chef de projet",
+        "ingenieur", "consultant", "expert", "architecte", "lead", "referent",
+        "gerant", "gérant"
+    }
+    return _contains_any_expr(title, hints)
+
+
+def _should_keep_ai_comp_for_poste(poste_title: Optional[str], item: dict) -> bool:
+    comp_title = _clean_text(item.get("intitule") or item.get("description"))
+    if not comp_title:
+        return False
+
+    fu = _clamp_0_10(item.get("freq_usage"))
+    im = _clamp_0_10(item.get("impact_resultat"))
+    de = _clamp_0_10(item.get("dependance"))
+
+    if max(fu, im, de) <= 2:
+        return False
+
+    if (fu + im + de) <= 8 and max(im, de) <= 3:
+        return False
+
+    core_key = _canonical_comp_key(comp_title)
+    if not core_key:
+        return False
+
+    peripheral_exprs = {
+        "standard telephonique",
+        "accueil telephonique",
+        "accueil physique",
+        "prise de message",
+        "prise de rendez vous",
+        "orienter les appel",
+        "reception des appel",
+        "gestion du courrier",
+        "tri du courrier",
+        "classement de document",
+        "archivage de document",
+        "photocopie",
+        "scanner des document",
+        "numerisation de document",
+        "gestion des fourniture",
+        "reservation de salle",
+        "accueil des visiteur",
+        "secretariat courant",
+    }
+
+    is_peripheral = _contains_any_expr(comp_title, peripheral_exprs)
+    is_support_role = _is_support_or_admin_poste(poste_title)
+    is_strategic_role = _is_strategic_poste(poste_title)
+
+    if is_peripheral and is_strategic_role:
+        return False
+
+    if is_peripheral and not is_support_role and max(im, de) <= 6:
+        return False
+
+    return True
+
 def _html_to_text(v: Optional[str]) -> str:
     s = _clean_text(v)
     if not s:
@@ -1613,15 +1723,30 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
         return " ".join(parts).strip()
 
     def _token_overlap(a: Optional[str], b: Optional[str]) -> float:
-        ta = _token_set(a)
-        tb = _token_set(b)
+        ta = _token_set_folded(a)
+        tb = _token_set_folded(b)
         if not ta or not tb:
             return 0.0
         inter = len(ta & tb)
         union = len(ta | tb)
         subset = inter / max(1, min(len(ta), len(tb)))
         jacc = inter / max(1, union)
-        return max(jacc, subset * 0.92)
+        return max(jacc, subset * 0.96)
+
+    def _subset_boost(a: Optional[str], b: Optional[str]) -> float:
+        ta = _token_set_folded(a)
+        tb = _token_set_folded(b)
+        if not ta or not tb:
+            return 0.0
+        inter = len(ta & tb)
+        smallest = max(1, min(len(ta), len(tb)))
+        ratio = inter / smallest
+
+        if inter >= 2 and ratio >= 1.0:
+            return 1.0
+        if inter >= 2 and ratio >= 0.80:
+            return 0.92
+        return 0.0
 
     terms = []
     for raw in [t] + list(search_terms or []):
@@ -1661,6 +1786,8 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
     rows = cur.fetchall() or []
 
     core_t = _core_phrase(t)
+    title_key = _canonical_comp_key(core_t or t)
+
     best = None
     best_score = 0.0
 
@@ -1675,13 +1802,19 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
         ]).strip()
         combined = " ".join([cand_title, cand_desc, cand_domain, cand_levels]).strip()
 
+        cand_core = _core_phrase(cand_title)
+        cand_key = _canonical_comp_key(cand_core or cand_title)
+
         score = max(
             _similarity_score(t, cand_title),
-            _similarity_score(core_t, _core_phrase(cand_title)),
+            _similarity_score(core_t, cand_core),
             _similarity_score(t, combined),
             _token_overlap(t, cand_title),
             _token_overlap(core_t, cand_title),
             _token_overlap(t, combined),
+            _subset_boost(t, cand_title),
+            _subset_boost(core_t, cand_core),
+            1.0 if title_key and cand_key and title_key == cand_key else 0.0,
         )
 
         for term in terms:
@@ -1691,17 +1824,21 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
                 _similarity_score(term, combined),
                 _token_overlap(term, cand_title),
                 _token_overlap(term, combined),
+                _subset_boost(term, cand_title),
+                _subset_boost(term, combined),
             )
 
-        cand_core = _core_phrase(cand_title)
         if core_t and cand_core and (core_t in cand_core or cand_core in core_t):
-            score = max(score, 0.88)
+            score = max(score, 0.91)
+
+        if title_key and cand_key and (title_key in cand_key or cand_key in title_key):
+            score = max(score, 0.94)
 
         if score > best_score:
             best_score = score
             best = r
 
-    return best if best_score >= 0.58 else None
+    return best if best_score >= 0.66 else None
 
 
 def _sanitize_grille(v: Any) -> dict:
@@ -3889,15 +4026,18 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
         }
 
         system_prompt = (
-            "Tu identifies les compétences techniques et métier nécessaires à la tenue réelle d'un poste. "
+            "Tu identifies uniquement les compétences techniques et métier STRUCTURANTES nécessaires à la tenue réelle d'un poste. "
             "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
             "Tu t'appuies sur les informations fournies ET sur une recherche web. "
-            "Tu proposes uniquement des compétences utiles au poste. Pas de soft skills génériques sauf si elles sont vraiment indispensables à l'exécution. "
+            "Tu proposes uniquement des compétences coeur de poste ou de support réellement structurantes. "
+            "Tu n'inclus pas les tâches périphériques, locales, administratives occasionnelles, de convenance ou de faible portée métier. "
+            "Pas de soft skills génériques sauf si elles sont vraiment indispensables à l'exécution. "
             "Tu évites les doublons. "
             "IMPORTANT: l'intitulé d'une compétence doit commencer par un verbe d'action à l'infinitif et être réutilisable dans un référentiel RH. "
             "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
             "Exemples de forme attendue: 'Animer des sessions de formation', 'Piloter des indicateurs qualité', 'Administrer une infrastructure web'. "
             "Exemples interdits: thèmes nominaux, axes de travail, intitulés fourre-tout, formulations avec '&' ou '/'. "
+            "Tu exclus les micro-tâches et gestes de support comme l'accueil téléphonique, le standard, la prise de messages, le secrétariat courant, le classement ou le courrier, SAUF si le poste est explicitement centré dessus. "
             "La description doit être courte, propre, opérationnelle, sans URL, sans source, sans nom de site, sans citation. "
             "recommended_level: A initial (guidé, applique des consignes simples), B avancé (autonome, structuré, fiable), C expert (maîtrise, optimise, transmet). "
             "Les niveaux A/B/C doivent être rédigés en 1 à 2 phrases concrètes et observables, décrivant ce que la personne sait faire en situation réelle. "
@@ -3921,8 +4061,11 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
             f"contraintes complémentaires: {(payload.ai_contraintes or '').strip()}\n"
             f"contraintes fiche: niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n"
             f"Domaines de compétences autorisés (choisir exactement dans cette liste ou vide si aucun ne convient):\n{domain_txt}\n"
-            "Produis toutes les compétences nécessaires à la réalisation effective des tâches décrites pour ce poste.\n"
-            "N'omets pas une compétence utile sous prétexte de concision.\n"
+            "Ne cherche pas l'exhaustivité.\n"
+            "Vise un référentiel resserré de compétences structurantes.\n"
+            "Retiens seulement les compétences qui conditionnent réellement la tenue du poste, l'autonomie, la qualité du résultat, le management, la coordination ou la continuité d'activité.\n"
+            "Exclus les tâches périphériques, ponctuelles, contextuelles, administratives ou d'intendance locale.\n"
+            "Préfère 6 à 12 compétences coeur de poste plutôt qu'une liste longue.\n"
             "Ne crée pas de doublons ni de variantes inutiles d'une même compétence.\n"
             "Regroupe intelligemment quand plusieurs tâches relèvent d'une même compétence transférable.\n"
             "Rappel impératif:\n"
@@ -3952,10 +4095,13 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                     item["intitule"] = intitule
                     if not intitule:
                         continue
-                    norm_title = _norm_text_search(intitule)
-                    if norm_title in seen_titles:
+                    if not _should_keep_ai_comp_for_poste(title, item):
                         continue
-                    seen_titles.add(norm_title)
+
+                    canon_title = _canonical_comp_key(intitule) or _norm_text_search(intitule)
+                    if canon_title in seen_titles:
+                        continue
+                    seen_titles.add(canon_title)
 
                     search_terms = [str(x or "").strip() for x in (item.get("search_terms") or []) if str(x or "").strip()]
                     match = _find_best_existing_competence(cur, oid, intitule, search_terms)
@@ -4048,17 +4194,11 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
                 if not _poste_exists(cur, oid, poste_ent, pid):
                     raise HTTPException(status_code=404, detail="Poste introuvable.")
 
-                cur.execute(
-                    """
-                    SELECT id_comp, code
-                    FROM public.tbl_competence
-                    WHERE id_owner = %s
-                      AND lower(intitule) = lower(%s)
-                    LIMIT 1
-                    """,
-                    (oid, title),
-                )
-                existing = cur.fetchone() or None
+                search_terms = [
+                    str(draft.get("description") or "").strip(),
+                    str(draft.get("why_needed") or "").strip(),
+                ]
+                existing = _find_best_existing_competence(cur, oid, title, search_terms)
 
                 if existing:
                     cid = existing.get("id_comp")
