@@ -1003,6 +1003,13 @@ def _layout_org_roots(roots: List[dict]) -> float:
 
     return y_top
 
+def _format_pdf_publication_date_fr(dt: Optional[datetime] = None) -> str:
+    months = [
+        "janvier", "février", "mars", "avril", "mai", "juin",
+        "juillet", "août", "septembre", "octobre", "novembre", "décembre"
+    ]
+    d = dt or datetime.now()
+    return f"{d.day:02d} {months[d.month - 1]} {d.year:04d}"
 
 def _org_max_depth(nodes: List[dict], depth: int = 0) -> int:
     max_depth = depth
@@ -1094,13 +1101,9 @@ def _build_organigramme_pdf(oid: str, data: dict, logo_bytes: Optional[bytes] = 
     left = PDF_MARGIN_LEFT
     usable_w = page_w - PDF_MARGIN_LEFT - PDF_MARGIN_RIGHT
 
-    stats = data.get("stats") or {}
     subtitle_txt = (
         f"{_pdf_esc(data.get('owner_name') or 'Organisation')} · "
-        f"{int(stats.get('nb_services') or 0)} service(s) · "
-        f"{int(stats.get('nb_postes') or 0)} poste(s) · "
-        f"{int(stats.get('nb_collabs') or 0)} collaborateur(s) · "
-        f"{page_label}"
+        f"Date de publication : {_format_pdf_publication_date_fr()}"
     )
 
     p_title = Paragraph("Organigramme de l'organisation", styles["page_title"])
