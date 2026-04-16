@@ -2565,6 +2565,40 @@ body {
 
         await ensurePosteCompCreateDomains(portal);
 
+        let prepared = JSON.parse(JSON.stringify(it || {}));
+
+        openIaBusyOverlay(
+            "Préparation de la compétence",
+            "Enrichissement de la fiche compétence et structuration de la grille d’évaluation..."
+        );
+
+        try{
+            const ownerId = getOwnerId();
+            const pid = (_posteModalMode === "edit" && _editingPosteId) ? _editingPosteId : null;
+
+            const res = await portal.apiJson(
+                `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_prepare`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        id_poste: pid,
+                        draft: prepared
+                    })
+                }
+            );
+
+            if (res && res.draft && typeof res.draft === "object"){
+                prepared = res.draft;
+            }
+        } catch (e){
+            console.warn("[PosteCompCreate][prepare]", e);
+        } finally {
+            closeIaBusyOverlay();
+        }
+
+        _posteCompCreateCtx.draft = JSON.parse(JSON.stringify(prepared || {}));
+
         const badge = byId("posteCompCreateBadge");
         if (badge){
             badge.style.display = "none";
@@ -2574,15 +2608,15 @@ body {
         byId("posteCompCreateTitle").textContent = "Créer une compétence";
         byId("posteCompCreateSub").textContent = "Brouillon proposé par l’IA. Tu valides / ajustes avant création.";
 
-        byId("posteCompCreateIntitule").value = (it.intitule || "");
-        byId("posteCompCreateDesc").value = (it.description || "");
+        byId("posteCompCreateIntitule").value = (prepared.intitule || "");
+        byId("posteCompCreateDesc").value = (prepared.description || "");
         byId("posteCompCreateEtat").value = "à valider";
-        byId("posteCompCreateNivA").value = (it.niveaua || "");
-        byId("posteCompCreateNivB").value = (it.niveaub || "");
-        byId("posteCompCreateNivC").value = (it.niveauc || "");
+        byId("posteCompCreateNivA").value = (prepared.niveaua || "");
+        byId("posteCompCreateNivB").value = (prepared.niveaub || "");
+        byId("posteCompCreateNivC").value = (prepared.niveauc || "");
 
-        fillPosteCompCreateDomainSelect(it.domaine_id || "");
-        loadPosteCompCreateCritFromJson(it.grille_evaluation || null);
+        fillPosteCompCreateDomainSelect(prepared.domaine_id || "");
+        loadPosteCompCreateCritFromJson(prepared.grille_evaluation || null);
 
         openModal("modalPosteCompCreate");
     }
@@ -2798,16 +2832,14 @@ body {
             code.textContent = (it.code || "—");
 
             const wrap = document.createElement("div");
+            wrap.className = "sb-ai-existing-text";
 
             const title = document.createElement("div");
             title.className = "sb-row-title";
             title.textContent = (it.intitule || "");
 
             const meta = document.createElement("div");
-            meta.style.display = "flex";
-            meta.style.gap = "8px";
-            meta.style.flexWrap = "wrap";
-            meta.style.margin = "6px 0 0 0";
+            meta.className = "sb-ai-meta sb-ai-meta--center";
 
             const dom = buildAiCompDomainBadge(it.domaine_titre_court || "", it.domaine_couleur);
             if (dom) meta.appendChild(dom);
@@ -2892,30 +2924,19 @@ body {
             const right = document.createElement("div");
             right.className = "sb-actions";
             right.style.display = "flex";
-            right.style.flexDirection = "column";
-            right.style.gap = "8px";
+            right.style.alignItems = "center";
             right.style.flexShrink = "0";
 
-            const btnAdd = document.createElement("button");
-            btnAdd.type = "button";
-            btnAdd.className = "sb-btn sb-btn--accent sb-btn--xs";
-            btnAdd.textContent = "Créer et ajouter";
-            btnAdd.addEventListener("click", async () => {
-                try { await openPosteCompCreateModalFromAi(window.portal, idx, true); }
-                catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
-            });
-
-            const btnOnly = document.createElement("button");
-            btnOnly.type = "button";
-            btnOnly.className = "sb-btn sb-btn--soft sb-btn--xs";
-            btnOnly.textContent = "Créer seulement";
-            btnOnly.addEventListener("click", async () => {
+            const btnCreate = document.createElement("button");
+            btnCreate.type = "button";
+            btnCreate.className = "sb-btn sb-btn--accent sb-btn--xs";
+            btnCreate.textContent = "Créer";
+            btnCreate.addEventListener("click", async () => {
                 try { await openPosteCompCreateModalFromAi(window.portal, idx, false); }
                 catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
             });
 
-            right.appendChild(btnAdd);
-            right.appendChild(btnOnly);
+            right.appendChild(btnCreate);
 
             row.appendChild(left);
             row.appendChild(right);

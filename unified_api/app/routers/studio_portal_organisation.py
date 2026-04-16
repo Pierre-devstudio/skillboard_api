@@ -1503,6 +1503,8 @@ def _compact_ai_grille(
     freq_usage: int = 0,
     impact_resultat: int = 0,
     dependance: int = 0,
+    skill_title: Optional[str] = None,
+    skill_description: Optional[str] = None,
 ) -> dict:
     items = []
     seen = set()
@@ -1525,44 +1527,43 @@ def _compact_ai_grille(
         seen.add(key)
 
         evals = [
-            _normalize_eval_text(raw_evals[0] if len(raw_evals) > 0 else "", 120, nom, 1),
-            _normalize_eval_text(raw_evals[1] if len(raw_evals) > 1 else "", 120, nom, 2),
-            _normalize_eval_text(raw_evals[2] if len(raw_evals) > 2 else "", 120, nom, 3),
-            _normalize_eval_text(raw_evals[3] if len(raw_evals) > 3 else "", 120, nom, 4),
+            _normalize_eval_text(raw_evals[0] if len(raw_evals) > 0 else "", 120, nom, 1, skill_title),
+            _normalize_eval_text(raw_evals[1] if len(raw_evals) > 1 else "", 120, nom, 2, skill_title),
+            _normalize_eval_text(raw_evals[2] if len(raw_evals) > 2 else "", 120, nom, 3, skill_title),
+            _normalize_eval_text(raw_evals[3] if len(raw_evals) > 3 else "", 120, nom, 4, skill_title),
         ]
         items.append({"Nom": nom, "Eval": evals})
 
-    if not items:
-        nom = "Mise en œuvre de la compétence"
-        items.append({
-            "Nom": nom,
-            "Eval": [
-                _eval_fallback_text(nom, 1),
-                _eval_fallback_text(nom, 2),
-                _eval_fallback_text(nom, 3),
-                _eval_fallback_text(nom, 4),
-            ]
-        })
-
-    # On conserve un maximum technique de 4 critères,
-    # mais on compacte par défaut à 1-3 selon la portée réelle de la compétence.
     fu = _clamp_0_10(freq_usage)
     im = _clamp_0_10(impact_resultat)
     de = _clamp_0_10(dependance)
     score_total = fu + im + de
     score_max = max(fu, im, de)
 
-    if len(items) > 1:
-        if score_total <= 8 and score_max <= 4:
-            target_count = 1
-        elif score_total <= 18 and score_max <= 7:
-            target_count = 2
-        elif score_total <= 24:
-            target_count = 3
-        else:
-            target_count = min(4, len(items))
+    if score_total <= 10 and score_max <= 4:
+        target_count = 2
+    elif score_total <= 24:
+        target_count = 3
+    else:
+        target_count = 4
 
-        items = items[:max(1, min(target_count, len(items)))]
+    all_generic = (not items) or all(_is_generic_criterion_name(x.get("Nom")) for x in items)
+
+    if all_generic or len(items) < 2:
+        names = _default_ai_criteria_names(skill_title, skill_description, target_count)
+        items = []
+        for nom in names:
+            items.append({
+                "Nom": nom,
+                "Eval": [
+                    _eval_fallback_text(nom, 1, skill_title),
+                    _eval_fallback_text(nom, 2, skill_title),
+                    _eval_fallback_text(nom, 3, skill_title),
+                    _eval_fallback_text(nom, 4, skill_title),
+                ]
+            })
+    else:
+        items = items[:max(2, min(target_count, len(items)))]
 
     out = {}
     for i in range(1, 5):
@@ -1757,6 +1758,86 @@ def _should_keep_ai_comp_for_poste(poste_title: Optional[str], item: dict) -> bo
         return False
 
     if is_peripheral and not is_support_role and max(im, de) <= 6:
+        return False
+
+    return True
+
+def _build_poste_context_text_for_matching(payload: Any, title: str) -> str:
+    parts = [
+        _clean_text(title),
+        _clean_text(getattr(payload, "mission_principale", None)),
+        _html_to_text(getattr(payload, "responsabilites_html", None)),
+        _clean_text(getattr(payload, "ai_contexte", None)),
+        _clean_text(getattr(payload, "ai_taches", None)),
+        _clean_text(getattr(payload, "ai_outils", None)),
+        _clean_text(getattr(payload, "ai_environnement", None)),
+        _clean_text(getattr(payload, "ai_interactions", None)),
+        _clean_text(getattr(payload, "ai_contraintes", None)),
+        _clean_text(getattr(payload, "mobilite", None)),
+        _clean_text(getattr(payload, "risque_physique", None)),
+        _clean_text(getattr(payload, "perspectives_evolution", None)),
+        _clean_text(getattr(payload, "niveau_contrainte", None)),
+        _clean_text(getattr(payload, "detail_contrainte", None)),
+    ]
+    return " ".join([p for p in parts if p]).strip()
+
+
+def _is_generic_business_token(tok: str) -> bool:
+    generic = {
+        "gestion", "pilotage", "qualite", "qualitee", "organisation", "process", "processus",
+        "analyse", "suivi", "controle", "coordination", "animation", "realisation",
+        "maitrise", "autonomie", "communication", "service", "operationnel", "technique",
+        "numerique", "donnee", "donnees", "decision", "relationnel", "interne", "externe",
+        "client", "formation", "conseil", "projet", "tableau", "bord", "support"
+    }
+    return tok in generic
+
+
+def _is_existing_competence_contextually_plausible(match_row: Optional[dict], context_text: str) -> bool:
+    if not match_row:
+        return False
+
+    ctx_norm = _norm_text_search(context_text)
+    if not ctx_norm:
+        return True
+
+    cand_text = " ".join([
+        _clean_text(match_row.get("intitule")),
+        _clean_text(match_row.get("description")),
+        _clean_text(match_row.get("domaine_titre_court") or match_row.get("domaine_titre")),
+    ]).strip()
+    cand_norm = _norm_text_search(cand_text)
+
+    hard_specialized_exprs = {
+        "qualibail",
+        "bailleur social",
+        "bailleurs sociaux",
+        "motorisation",
+        "raccorder electriquement",
+        "fermeture de l habitat",
+        "produits de fermeture",
+        "habilitation electrique",
+    }
+
+    for expr in hard_specialized_exprs:
+        if expr in cand_norm and expr not in ctx_norm:
+            return False
+
+    ctx_tokens = _token_set_folded(ctx_norm)
+    cand_tokens = _token_set_folded(cand_norm)
+    overlap = len(ctx_tokens & cand_tokens)
+
+    specific_missing = [
+        tok for tok in cand_tokens
+        if len(tok) >= 6
+        and not _is_generic_business_token(tok)
+        and tok not in ctx_tokens
+    ]
+
+    if overlap == 0 and len(specific_missing) >= 2:
+        return False
+
+    if overlap <= 1 and len(specific_missing) >= 3:
         return False
 
     return True
@@ -2267,6 +2348,26 @@ def _normalize_ai_comp_search_item(item: dict) -> None:
     )
 
 
+def _is_generic_criterion_name(v: Optional[str]) -> bool:
+    n = _norm_text_search(v)
+    if not n:
+        return True
+
+    generic = {
+        "mise en oeuvre de la competence",
+        "mise en œuvre de la competence",
+        "mise en oeuvre",
+        "mise en œuvre",
+        "application de la competence",
+        "application",
+        "maitrise de la competence",
+        "maitrise",
+        "realisation de la competence",
+        "realisation",
+    }
+    return n in generic
+
+
 def _draft_needs_ai_enrichment(draft: dict) -> bool:
     desc = _clean_text(draft.get("description"))
     if len(desc.split()) < 9:
@@ -2280,15 +2381,28 @@ def _draft_needs_ai_enrichment(draft: dict) -> bool:
         return True
 
     ge = _sanitize_grille(draft.get("grille_evaluation"))
-    filled_crit = 0
+    usable_crit = 0
+    generic_crit = 0
+
     for i in range(1, 5):
         node = ge.get(f"Critere{i}") or {}
         nom = _clean_text(node.get("Nom"))
         evals = [x for x in (node.get("Eval") or []) if _clean_text(x)]
-        if nom or evals:
-            filled_crit += 1
 
-    return filled_crit == 0
+        if not nom and not evals:
+            continue
+
+        usable_crit += 1
+        if _is_generic_criterion_name(nom):
+            generic_crit += 1
+
+    if usable_crit < 2:
+        return True
+
+    if generic_crit >= usable_crit:
+        return True
+
+    return False
 
 
 def _merge_ai_comp_draft(base: dict, enriched: dict) -> dict:
@@ -2378,6 +2492,10 @@ def _enrich_ai_comp_draft(model: str, draft: dict, domain_rows: List[dict]) -> d
         "Tu rédiges une description professionnelle, concrète et réutilisable. "
         "Tu produis des niveaux A/B/C vraiment observables et différenciants. "
         "Tu produis une grille d'évaluation exploitable en entretien, avec 2 ou 3 critères dans la majorité des cas, 4 seulement si indispensable. "
+        "Pour structurer la grille, appuie-toi sur une progression de type taxonomie de Bloom adaptée au monde professionnel : "
+        "comprendre / analyser, appliquer / réaliser, piloter / évaluer / améliorer selon la nature de la compétence. "
+        "Évite absolument un critère générique du type 'Mise en œuvre de la compétence'. "
+        "Les critères doivent couvrir des dimensions distinctes et observables, pas reformuler la même chose. "
         "Tu restes sobre, précis, métier, sans jargon inutile, sans web search et sans élargir artificiellement la compétence."
     )
 
@@ -2390,6 +2508,8 @@ def _enrich_ai_comp_draft(model: str, draft: dict, domain_rows: List[dict]) -> d
         f"criticité: freq_usage={_clamp_0_10(draft.get('freq_usage'))}, impact_resultat={_clamp_0_10(draft.get('impact_resultat'))}, dependance={_clamp_0_10(draft.get('dependance'))}\n"
         "Rédige uniquement la fiche détaillée de cette compétence déjà validée dans son périmètre.\n"
         "Ne crée pas une nouvelle compétence, ne change pas son intitulé, ne l'élargis pas artificiellement.\n"
+        "La grille d'évaluation doit être directement exploitable en entretien professionnel.\n"
+        "Évite les intitulés de critères vagues ou génériques.\n"
     )
 
     enriched = _openai_responses_json(
@@ -4238,6 +4358,10 @@ class AiPosteCompetenceCreatePayload(BaseModel):
     draft: dict
     add_to_poste: Optional[bool] = True
 
+class AiPosteCompetencePreparePayload(BaseModel):
+    id_poste: Optional[str] = None
+    draft: dict
+
 class SavePosteCcnDecisionPayload(BaseModel):
     coefficient_retenu: int
     justification_retenue: str
@@ -4586,6 +4710,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 catalog_rows = _load_owner_comp_catalog_rows(cur, oid)
+        poste_context_text = _build_poste_context_text_for_matching(payload, title)
 
         def _collect_results(candidate_items: List[dict], allow_relaxed_filter: bool = False) -> tuple[list, list]:
             existing = []
@@ -4621,6 +4746,8 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
 
                 search_terms = [str(x or "").strip() for x in (item.get("search_terms") or []) if str(x or "").strip()]
                 match = _find_best_existing_competence_in_rows(catalog_rows, intitule, search_terms)
+                if match and not _is_existing_competence_contextually_plausible(match, poste_context_text):
+                    match = None
 
                 lvl = (item.get("recommended_level") or "A").strip().upper()[:1] or "A"
                 poids = _calc_poids_criticite_100(fu, im, de)
@@ -4719,6 +4846,62 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/postes ai_comp_search error: {e}")
 
+@router.post("/studio/org/postes/{id_owner}/ai_comp_prepare")
+def studio_org_ai_comp_prepare(id_owner: str, payload: AiPosteCompetencePreparePayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        draft = dict(payload.draft or {})
+        title = _clean_text(draft.get("intitule"))
+        if not title:
+            raise HTTPException(status_code=400, detail="Brouillon de compétence invalide (intitulé manquant).")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    SELECT id_domaine_competence, titre, titre_court, couleur
+                    FROM public.tbl_domaine_competence
+                    WHERE COALESCE(masque, FALSE) = FALSE
+                    ORDER BY COALESCE(ordre_affichage, 999999), lower(COALESCE(titre_court, titre, id_domaine_competence))
+                    """
+                )
+                domain_rows = cur.fetchall() or []
+
+        _normalize_ai_comp_item(draft)
+
+        if _draft_needs_ai_enrichment(draft):
+            model = (
+                (os.getenv("OPENAI_MODEL_POSTE_COMP_CREATE") or "").strip()
+                or (os.getenv("OPENAI_MODEL_POSTE_COMP_SEARCH") or "").strip()
+                or "gpt-5"
+            )
+            draft = _enrich_ai_comp_draft(model, draft, domain_rows)
+            _normalize_ai_comp_item(draft)
+
+        draft["grille_evaluation"] = _compact_ai_grille(
+            _sanitize_grille(draft.get("grille_evaluation")),
+            draft.get("freq_usage"),
+            draft.get("impact_resultat"),
+            draft.get("dependance"),
+            draft.get("intitule"),
+            draft.get("description"),
+        )
+
+        return {
+            "ok": True,
+            "draft": draft,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/postes ai_comp_prepare error: {e}")
 
 @router.post("/studio/org/postes/{id_owner}/ai_comp_create")
 def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePayload, request: Request):
@@ -4821,6 +5004,8 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
                                 draft.get("freq_usage"),
                                 draft.get("impact_resultat"),
                                 draft.get("dependance"),
+                                draft.get("intitule"),
+                                draft.get("description"),
                             )
                             grille_json = json.dumps(grille_obj, ensure_ascii=False)
 

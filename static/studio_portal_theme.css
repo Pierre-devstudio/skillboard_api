@@ -498,6 +498,23 @@
   white-space:nowrap;
 }
 
+.sb-ai-meta{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+  margin:6px 0 0 0;
+}
+
+.sb-ai-meta--center{
+  justify-content:center;
+}
+
+.sb-ai-existing-text{
+  flex:1 1 auto;
+  min-width:0;
+}
+
 /* Compétences poste : table synthétique */
 .sb-comp-cell{
   display:flex;
