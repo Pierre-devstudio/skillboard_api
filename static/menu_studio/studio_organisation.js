@@ -2822,7 +2822,7 @@ body {
 
         existing.forEach((it, idx) => {
             const row = document.createElement("div");
-            row.className = "sb-row-card";
+            row.className = "sb-row-card sb-ai-existing-row";
 
             const left = document.createElement("div");
             left.className = "sb-row-left";
@@ -2832,24 +2832,21 @@ body {
             code.textContent = (it.code || "—");
 
             const wrap = document.createElement("div");
-            wrap.className = "sb-ai-existing-text";
+            wrap.style.minWidth = "0";
 
             const title = document.createElement("div");
             title.className = "sb-row-title";
             title.textContent = (it.intitule || "");
 
             const meta = document.createElement("div");
-            meta.className = "sb-ai-meta sb-ai-meta--center";
+            meta.style.display = "flex";
+            meta.style.gap = "8px";
+            meta.style.flexWrap = "wrap";
+            meta.style.alignItems = "center";
+            meta.style.margin = "6px 0 0 0";
 
             const dom = buildAiCompDomainBadge(it.domaine_titre_court || "", it.domaine_couleur);
             if (dom) meta.appendChild(dom);
-
-            const matchBadge = buildAiMatchBadge(it.match_label || "", it.match_score);
-            if (matchBadge) meta.appendChild(matchBadge);
-
-            if (it.match_score !== undefined && it.match_score !== null){
-                meta.appendChild(buildAiMatchScoreText(it.match_score));
-            }
 
             if (((it.etat || "").toLowerCase()) === "à valider"){
                 const et = document.createElement("span");
@@ -2864,8 +2861,18 @@ body {
             left.appendChild(code);
             left.appendChild(wrap);
 
+            const matchCol = document.createElement("div");
+            matchCol.className = "sb-ai-existing-match";
+
+            const matchBadge = buildAiMatchBadge(it.match_label || "", it.match_score);
+            if (matchBadge) matchCol.appendChild(matchBadge);
+
+            if (it.match_score !== undefined && it.match_score !== null){
+                matchCol.appendChild(buildAiMatchScoreText(it.match_score));
+            }
+
             const right = document.createElement("div");
-            right.className = "sb-row-right";
+            right.className = "sb-row-right sb-ai-existing-actions";
 
             const btn = document.createElement("button");
             btn.type = "button";
@@ -2880,7 +2887,9 @@ body {
             });
 
             right.appendChild(btn);
+
             row.appendChild(left);
+            row.appendChild(matchCol);
             row.appendChild(right);
             exList.appendChild(row);
         });

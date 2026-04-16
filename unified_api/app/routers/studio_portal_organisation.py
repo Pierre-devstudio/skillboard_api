@@ -2175,6 +2175,78 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
     rows = _load_owner_comp_catalog_rows(cur, oid)
     return _find_best_existing_competence_in_rows(rows, title, search_terms)
 
+_MATCH_CONTEXT_STOP = {
+    "gestion", "pilotage", "coordination", "analyse", "mise", "oeuvre",
+    "realisation", "suivi", "qualite", "resultat", "activite", "poste",
+    "metier", "competence", "operationnel", "technique", "projet",
+    "process", "processus", "support", "organisation", "service", "services"
+}
+
+
+def _build_match_context_text(*parts: Any) -> str:
+    out = []
+    for p in parts:
+        s = _clean_text(p)
+        if s:
+            out.append(s)
+    return "\n".join(out)
+
+
+def _match_context_term_set(v: Optional[str]) -> set:
+    toks = _token_set_folded(v)
+    action_verbs = {_norm_text_search(x) for x in _ACTION_VERB_HINTS}
+    return {
+        t for t in toks
+        if len(t) >= 4
+        and t not in _MATCH_CONTEXT_STOP
+        and t not in action_verbs
+    }
+
+
+def _catalog_match_is_contextual(match: Optional[dict], item: dict, poste_context_text: str) -> bool:
+    if not match:
+        return False
+
+    try:
+        score = max(0.0, min(1.0, float(match.get("_match_score") or 0.0)))
+    except Exception:
+        score = 0.0
+
+    item_title_key = _canonical_comp_key(item.get("intitule"))
+    match_title_key = _canonical_comp_key(match.get("intitule"))
+    if item_title_key and match_title_key and item_title_key == match_title_key:
+        return True
+
+    if score >= 0.985:
+        return True
+
+    ctx_terms = _match_context_term_set(poste_context_text)
+    item_terms = _match_context_term_set(" ".join([
+        _clean_text(item.get("intitule")),
+        _clean_text(item.get("description")),
+        _clean_text(item.get("why_needed")),
+        " ".join([_clean_text(x) for x in (item.get("search_terms") or [])]),
+        _clean_text(item.get("domaine_hint")),
+    ]).strip())
+
+    cand_terms = _match_context_term_set(" ".join([
+        _clean_text(match.get("intitule")),
+        _clean_text(match.get("description")),
+        _clean_text(match.get("domaine_titre_court") or match.get("domaine_titre")),
+    ]).strip())
+
+    if not cand_terms:
+        return True
+
+    missing_terms = [t for t in cand_terms if t not in ctx_terms and t not in item_terms]
+
+    if len(missing_terms) >= 2 and score < 0.995:
+        return False
+
+    if len(missing_terms) >= 1 and score < 0.94:
+        return False
+
+    return True
 
 def _resolve_domain_id_from_rows(domain_rows: List[dict], hint: Optional[str]) -> Optional[str]:
     h = _clean_text(hint)
@@ -4710,7 +4782,18 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 catalog_rows = _load_owner_comp_catalog_rows(cur, oid)
-        poste_context_text = _build_poste_context_text_for_matching(payload, title)
+                poste_context_text = _build_match_context_text(
+                    title,
+                    payload.mission_principale,
+                    _html_to_text(payload.responsabilites_html),
+                    payload.ai_contexte,
+                    payload.ai_taches,
+                    payload.ai_outils,
+                    payload.ai_environnement,
+                    payload.ai_interactions,
+                    payload.ai_contraintes,
+                    payload.detail_contrainte,
+        )
 
         def _collect_results(candidate_items: List[dict], allow_relaxed_filter: bool = False) -> tuple[list, list]:
             existing = []
@@ -4746,7 +4829,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
 
                 search_terms = [str(x or "").strip() for x in (item.get("search_terms") or []) if str(x or "").strip()]
                 match = _find_best_existing_competence_in_rows(catalog_rows, intitule, search_terms)
-                if match and not _is_existing_competence_contextually_plausible(match, poste_context_text):
+                if match and not _catalog_match_is_contextual(match, item, poste_context_text):
                     match = None
 
                 lvl = (item.get("recommended_level") or "A").strip().upper()[:1] or "A"
