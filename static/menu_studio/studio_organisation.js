@@ -579,6 +579,46 @@
         }
     }
 
+    async function apiJsonWithTimeout(portal, url, options, timeoutMs){
+        const ms = Math.max(1000, parseInt(timeoutMs ?? 90000, 10) || 90000);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), ms);
+
+        try{
+            const token = await resolveStudioAccessToken();
+            const headers = Object.assign({}, options?.headers || {});
+            if (token && !headers["Authorization"]){
+                headers["Authorization"] = `Bearer ${token}`;
+            }
+
+            const resp = await fetch(url, {
+                method: options?.method || "GET",
+                headers,
+                body: options?.body,
+                credentials: "same-origin",
+                signal: controller.signal,
+            });
+
+            if (!resp.ok){
+                let msg = `Erreur API (${resp.status})`;
+                try{
+                    const err = await resp.json();
+                    if (err && err.detail) msg = String(err.detail);
+                } catch(_){}
+                throw new Error(msg);
+            }
+
+            return await resp.json();
+        } catch (e){
+            if (e?.name === "AbortError"){
+                throw new Error(`La recherche IA dépasse ${Math.floor(ms / 1000)} secondes. Traitement interrompu.`);
+            }
+            throw e;
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
     async function resolveStudioAccessToken(){
         try{
             const pac = window.PortalAuthCommon;
@@ -2625,7 +2665,7 @@ body {
         _posteCompAiResults.existing = existing;
         _posteCompAiResults.missing = missing;
     }
-    
+
     async function savePosteCompCreateModal(portal, addAfter){
         if (!_posteCompCreateCtx) return;
 
@@ -2902,11 +2942,18 @@ body {
         try{
             const ownerId = getOwnerId();
             const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_search`;
-            const res = await portal.apiJson(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(buildPosteCompAiPayload()),
-            });
+
+            const res = await apiJsonWithTimeout(
+                portal,
+                url,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(buildPosteCompAiPayload()),
+                },
+                90000
+            );
+
             _posteCompAiResults = {
                 existing: Array.isArray(res?.existing) ? res.existing : [],
                 missing: Array.isArray(res?.missing) ? res.missing : [],

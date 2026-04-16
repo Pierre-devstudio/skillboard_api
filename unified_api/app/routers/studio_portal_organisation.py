@@ -1800,7 +1800,19 @@ def _openai_responses_json(model: str, schema_name: str, schema: dict, system_pr
     if not api_key:
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY non configurée.")
 
-    client = OpenAI(api_key=api_key)
+    try:
+        timeout_seconds = int((os.getenv("OPENAI_TIMEOUT_SECONDS") or "120").strip() or "120")
+    except Exception:
+        timeout_seconds = 120
+
+    if timeout_seconds < 30:
+        timeout_seconds = 30
+
+    client = OpenAI(
+        api_key=api_key,
+        timeout=timeout_seconds,
+    )
+
     kwargs = {
         "model": model,
         "input": [
@@ -1820,7 +1832,20 @@ def _openai_responses_json(model: str, schema_name: str, schema: dict, system_pr
         kwargs["tools"] = [{"type": "web_search"}]
         kwargs["tool_choice"] = "auto"
 
-    resp = client.responses.create(**kwargs)
+    try:
+        resp = client.responses.create(**kwargs)
+    except Exception as e:
+        msg = str(e or "").strip()
+        low = msg.lower()
+
+        if "timeout" in low or "timed out" in low or "deadline" in low:
+            raise HTTPException(
+                status_code=504,
+                detail=f"Le traitement IA a dépassé {timeout_seconds} secondes. Relance la recherche."
+            )
+
+        raise HTTPException(status_code=502, detail=f"Erreur appel IA : {msg or e}")
+
     content = _response_output_text(resp)
     if not content:
         raise HTTPException(status_code=500, detail="Réponse IA vide.")
