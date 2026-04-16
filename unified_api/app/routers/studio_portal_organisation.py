@@ -1400,9 +1400,9 @@ def _level_fallback_text(skill_title: Optional[str], level_idx: int, max_len: in
     focus = _skill_focus_phrase(skill_title)
 
     templates = {
-        1: f"Elle réalise {focus} sur des situations simples, avec repères, vérification et ajustements limités.",
-        2: f"Elle réalise {focus} de façon autonome sur les situations courantes et ajuste sa pratique si nécessaire.",
-        3: f"Elle maîtrise {focus} sur les situations complexes, sécurise le résultat et transmet ses repères.",
+        1: f"Maîtrise partielle de {focus} sur des situations simples, avec besoin de repères et de vérification.",
+        2: f"Maîtrise autonome de {focus} sur les situations courantes, avec ajustements adaptés au contexte.",
+        3: f"Maîtrise experte de {focus}, y compris sur les situations complexes, avec sécurisation et transmission des pratiques.",
     }
     return _clean_ai_comp_text(templates.get(level_idx, templates[3]), max_len)
 
@@ -1479,10 +1479,10 @@ def _eval_fallback_text(crit_name: Optional[str], level_idx: int, skill_title: O
     base = base[0].lower() + base[1:] if base else "la dimension attendue"
 
     templates = {
-        1: f"Elle traite {base} de façon partielle, avec repères limités et besoin d'appui régulier.",
-        2: f"Elle traite {base} sur les situations courantes, avec une pratique correcte mais encore inégale.",
-        3: f"Elle traite {base} de façon fiable, ajuste sa pratique et répond aux besoins de la situation.",
-        4: f"Elle maîtrise {base} avec finesse, anticipe les écarts et adapte sa réponse avec pertinence.",
+        1: f"Prend en charge {base} de façon incomplète ou peu adaptée.",
+        2: f"Prend en charge {base} sur les cas courants, avec une maîtrise encore irrégulière.",
+        3: f"Prend en charge {base} de façon fiable et adaptée au besoin.",
+        4: f"Prend en charge {base} avec finesse, anticipe et améliore la réponse apportée.",
     }
     return _clean_ai_comp_text(templates.get(level_idx, templates[4]), max_len)
 
@@ -1533,9 +1533,6 @@ def _compact_ai_grille(
         if not nom and not any(_clean_text(x) for x in raw_evals):
             continue
 
-        if not nom:
-            nom = "Évaluation de la compétence"
-
         key = _norm_text_search(nom)
         if key in seen:
             continue
@@ -1547,35 +1544,32 @@ def _compact_ai_grille(
             _normalize_eval_text(raw_evals[2] if len(raw_evals) > 2 else "", 120, nom, 3, skill_title),
             _normalize_eval_text(raw_evals[3] if len(raw_evals) > 3 else "", 120, nom, 4, skill_title),
         ]
+
         items.append({"Nom": nom, "Eval": evals})
 
     fu = _clamp_0_10(freq_usage)
     im = _clamp_0_10(impact_resultat)
     de = _clamp_0_10(dependance)
     score_total = fu + im + de
-    score_max = max(fu, im, de)
 
-    complex_skill = any(x in _norm_text_search(f"{skill_title or ''} {skill_description or ''}") for x in (
-        "management", "manager", "pilotage", "strategie", "analyse", "diagnostic",
-        "arbitrage", "audit", "indicateur", "tableau de bord", "coordination"
+    complexity_text = _norm_text_search(f"{skill_title or ''} {skill_description or ''}")
+    is_complex = any(x in complexity_text for x in (
+        "management", "manager", "pilotage", "strategie", "stratégie",
+        "analyse", "analytique", "diagnostic", "arbitrage", "audit",
+        "indicateur", "tableau de bord", "coordination", "gouvernance"
     ))
 
-    if complex_skill:
-        if score_total >= 18 or score_max >= 7:
-            target_count = 4
-        else:
-            target_count = 3
+    if is_complex:
+        target_count = 4 if score_total >= 18 else 3
     else:
-        if score_total <= 8 and score_max <= 4:
+        if score_total <= 8:
             target_count = 1
-        elif score_total <= 18 and score_max <= 7:
+        elif score_total <= 18:
             target_count = 2
         else:
             target_count = 3
 
-    all_generic = (not items) or all(_is_generic_criterion_name(x.get("Nom")) for x in items)
-
-    if all_generic or len(items) < 1:
+    if not items:
         names = _default_ai_criteria_names(skill_title, skill_description, target_count)
         items = []
         for nom in names:
@@ -1998,6 +1992,7 @@ def _load_owner_comp_catalog_rows(cur, oid: str) -> List[dict]:
           c.niveaua,
           c.niveaub,
           c.niveauc,
+          c.grille_evaluation,
           dc.titre AS domaine_titre,
           dc.titre_court AS domaine_titre_court,
           dc.couleur AS domaine_couleur
@@ -2200,6 +2195,73 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
     rows = _load_owner_comp_catalog_rows(cur, oid)
     return _find_best_existing_competence_in_rows(rows, title, search_terms)
 
+def _build_ai_comp_style_examples(rows: List[dict], draft: dict, limit: int = 3) -> str:
+    title = _clean_text(draft.get("intitule"))
+    desc = _clean_text(draft.get("description")) or _clean_text(draft.get("why_needed"))
+    domain_id = _clean_text(draft.get("domaine_id"))
+
+    scored = []
+    seen = set()
+
+    for r in rows or []:
+        intitule = _clean_text(r.get("intitule"))
+        if not intitule:
+            continue
+
+        key = _canonical_comp_key(intitule)
+        if key and key == _canonical_comp_key(title):
+            continue
+        if key in seen:
+            continue
+        seen.add(key)
+
+        score = (_similarity_score(title, intitule) * 1.45)
+        score += (_similarity_score(desc, r.get("description")) * 0.85)
+
+        if domain_id and _clean_text(r.get("domaine")) == domain_id:
+            score += 0.35
+
+        if score < 0.42:
+            continue
+
+        scored.append((score, r))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    picked = [r for _score, r in scored[:max(1, limit)]]
+
+    blocks = []
+    for idx, r in enumerate(picked, 1):
+        ge = _sanitize_grille(r.get("grille_evaluation"))
+        crit_lines = []
+
+        for i in range(1, 5):
+            node = ge.get(f"Critere{i}") or {}
+            nom = _clean_text(node.get("Nom"))
+            evals = [_clean_text(x) for x in (node.get("Eval") or ["", "", "", ""])[:4]]
+
+            if not nom and not any(evals):
+                continue
+
+            crit_lines.append(
+                f"- {nom}\n"
+                f"  1. {evals[0]}\n"
+                f"  2. {evals[1]}\n"
+                f"  3. {evals[2]}\n"
+                f"  4. {evals[3]}"
+            )
+
+        blocks.append(
+            f"EXEMPLE {idx}\n"
+            f"Intitulé : {_clean_text(r.get('intitule'))}\n"
+            f"Description : {_clean_text(r.get('description'))}\n"
+            f"Niveau A : {_clean_text(r.get('niveaua'))}\n"
+            f"Niveau B : {_clean_text(r.get('niveaub'))}\n"
+            f"Niveau C : {_clean_text(r.get('niveauc'))}\n"
+            f"Critères :\n" + ("\n".join(crit_lines) if crit_lines else "- aucun critère exploitable")
+        )
+
+    return "\n\n".join(blocks).strip()
+
 _MATCH_CONTEXT_STOP = {
     "gestion", "pilotage", "coordination", "analyse", "mise", "oeuvre",
     "realisation", "suivi", "qualite", "resultat", "activite", "poste",
@@ -2242,9 +2304,6 @@ def _catalog_match_is_contextual(match: Optional[dict], item: dict, poste_contex
     if item_title_key and match_title_key and item_title_key == match_title_key:
         return True
 
-    if score >= 0.985:
-        return True
-
     ctx_terms = _match_context_term_set(poste_context_text)
     item_terms = _match_context_term_set(" ".join([
         _clean_text(item.get("intitule")),
@@ -2262,6 +2321,29 @@ def _catalog_match_is_contextual(match: Optional[dict], item: dict, poste_contex
 
     if not cand_terms:
         return True
+
+    hard_specialized_exprs = {
+        "qualibail",
+        "bailleur social",
+        "bailleurs sociaux",
+        "motorisation",
+        "raccorder electriquement",
+        "fermeture de l habitat",
+        "produits de fermeture",
+        "habilitation electrique",
+        "prodevis",
+    }
+
+    cand_norm = _norm_text_search(" ".join([
+        _clean_text(match.get("intitule")),
+        _clean_text(match.get("description")),
+        _clean_text(match.get("domaine_titre_court") or match.get("domaine_titre")),
+    ]).strip())
+    ctx_norm = _norm_text_search(poste_context_text)
+
+    for expr in hard_specialized_exprs:
+        if expr in cand_norm and expr not in ctx_norm:
+            return False
 
     missing_terms = [t for t in cand_terms if t not in ctx_terms and t not in item_terms]
 
@@ -2467,7 +2549,7 @@ def _is_generic_criterion_name(v: Optional[str]) -> bool:
 
 def _draft_needs_ai_enrichment(draft: dict) -> bool:
     desc = _clean_text(draft.get("description"))
-    if len(desc.split()) < 9:
+    if len(desc.split()) < 12:
         return True
 
     if not _clean_text(draft.get("niveaua")):
@@ -2493,7 +2575,7 @@ def _draft_needs_ai_enrichment(draft: dict) -> bool:
         if _is_generic_criterion_name(nom):
             generic_crit += 1
 
-    if usable_crit < 2:
+    if usable_crit == 0:
         return True
 
     if generic_crit >= usable_crit:
@@ -2506,37 +2588,29 @@ def _merge_ai_comp_draft(base: dict, enriched: dict) -> dict:
     out = dict(base or {})
     src = dict(enriched or {})
 
-    cur_desc = _clean_text(out.get("description"))
-    if len(cur_desc.split()) < 9 and _clean_text(src.get("description")):
+    if _clean_text(src.get("description")):
         out["description"] = src.get("description")
 
     for key in ("niveaua", "niveaub", "niveauc"):
-        cur_txt = _clean_text(out.get(key))
-        if len(cur_txt.split()) < 8 and _clean_text(src.get(key)):
+        if _clean_text(src.get(key)):
             out[key] = src.get(key)
 
-    cur_ge = _sanitize_grille(out.get("grille_evaluation"))
     src_ge = _sanitize_grille(src.get("grille_evaluation"))
-
-    cur_filled = 0
-    src_filled = 0
+    has_src = False
 
     for i in range(1, 5):
-        cur_node = cur_ge.get(f"Critere{i}") or {}
-        src_node = src_ge.get(f"Critere{i}") or {}
+        node = src_ge.get(f"Critere{i}") or {}
+        if _clean_text(node.get("Nom")) or any(_clean_text(x) for x in (node.get("Eval") or [])):
+            has_src = True
+            break
 
-        if _clean_text(cur_node.get("Nom")) or any(_clean_text(x) for x in (cur_node.get("Eval") or [])):
-            cur_filled += 1
-        if _clean_text(src_node.get("Nom")) or any(_clean_text(x) for x in (src_node.get("Eval") or [])):
-            src_filled += 1
-
-    if src_filled > cur_filled:
+    if has_src:
         out["grille_evaluation"] = src_ge
 
     return out
 
 
-def _enrich_ai_comp_draft(model: str, draft: dict, domain_rows: List[dict]) -> dict:
+def _enrich_ai_comp_draft(model: str, draft: dict, domain_rows: List[dict], style_examples_txt: str = "") -> dict:
     title = _clean_text(draft.get("intitule"))
     if not title:
         return dict(draft or {})
@@ -2555,6 +2629,32 @@ def _enrich_ai_comp_draft(model: str, draft: dict, domain_rows: List[dict]) -> d
                 current_domain_label = _clean_text(r.get("titre_court") or r.get("titre"))
                 break
 
+    intent_txt = " ".join([
+        _clean_text(draft.get("description")),
+        _clean_text(draft.get("why_needed")),
+        " ".join([_clean_text(x) for x in (draft.get("search_terms") or [])]),
+    ]).strip()
+
+    complexity_text = _norm_text_search(" ".join([title, intent_txt, current_domain_label]))
+    is_complex = any(x in complexity_text for x in (
+        "management", "manager", "pilotage", "strategie", "stratégie",
+        "analyse", "analytique", "diagnostic", "arbitrage", "audit",
+        "indicateur", "tableau de bord", "coordination", "gouvernance"
+    ))
+
+    score_total = (
+        _clamp_0_10(draft.get("freq_usage")) +
+        _clamp_0_10(draft.get("impact_resultat")) +
+        _clamp_0_10(draft.get("dependance"))
+    )
+
+    if is_complex:
+        target_count_text = "3 ou 4 critères"
+    elif score_total <= 10:
+        target_count_text = "1 ou 2 critères"
+    else:
+        target_count_text = "2 ou 3 critères"
+
     schema = {
         "type": "object",
         "additionalProperties": False,
@@ -2569,64 +2669,75 @@ def _enrich_ai_comp_draft(model: str, draft: dict, domain_rows: List[dict]) -> d
                 "additionalProperties": False,
                 "required": ["Critere1", "Critere2", "Critere3", "Critere4"],
                 "properties": {
-                    **{f"Critere{i}": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "required": ["Nom", "Eval"],
-                        "properties": {
-                            "Nom": {"type": "string", "maxLength": 160},
-                            "Eval": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string", "maxLength": 120}}
-                        }
-                    } for i in range(1, 5)}
+                    **{
+                        f"Critere{i}": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["Nom", "Eval"],
+                            "properties": {
+                                "Nom": {"type": "string", "maxLength": 160},
+                                "Eval": {
+                                    "type": "array",
+                                    "minItems": 4,
+                                    "maxItems": 4,
+                                    "items": {"type": "string", "maxLength": 120}
+                                }
+                            }
+                        } for i in range(1, 5)
+                    }
                 }
             }
         }
     }
 
     system_prompt = (
-        "Tu enrichis UNE compétence déjà retenue pour un référentiel RH. "
-        "Tu ne modifies pas le périmètre métier de la compétence. "
-        "Tu rédiges dans le style d'un référentiel métier opérationnel, pédagogique et humain. "
-        "Tu évites absolument les formulations génériques, mécaniques ou répétitives. "
-        "Tu ne produis jamais de phrases du type 'Réalise la réalisation', 'Pilote la mise en oeuvre' ou équivalent. "
-        "Les critères doivent être spécifiques à la compétence, courts, observables et utiles à l'évaluation. "
-        "Les niveaux 1 à 4 doivent décrire ce que la personne fait réellement pour obtenir la note. "
-        "Les niveaux A/B/C doivent synthétiser un niveau de maîtrise propre à la compétence, pas un gabarit abstrait. "
+        "Tu génères la fiche détaillée d'une compétence pour un référentiel RH interne. "
+        "Tu renvoies uniquement un JSON strict conforme au schéma fourni. "
+        "Tu rédiges en français, dans un style métier concret, précis, pédagogique et humain. "
+        "Tu évites absolument les formulations génériques, interchangeables, mécaniques ou scolaires. "
+        "Tu n'utilises pas de trames du type 'Préparation et cadrage de l'activité', "
+        "'Réalisation de l'activité', 'Contrôle et ajustement du résultat' sauf si cela correspond réellement au métier décrit. "
+        "Tu t'inspires du style des exemples fournis, sans recopier leur contenu. "
         "Règles impératives : "
-        "niveauA, niveauB, niveauC à la troisième personne du présent de l'indicatif, 230 caractères maximum chacun. "
-        "Chaque Eval à la troisième personne du présent de l'indicatif, 120 caractères maximum. "
+        "niveauA, niveauB, niveauC rédigés à la troisième personne du présent de l'indicatif, 230 caractères maximum. "
+        "Chaque Eval rédigé à la troisième personne du présent de l'indicatif, 120 caractères maximum. "
+        "Tu n'es pas obligée de commencer chaque phrase par 'Elle'. "
+        "Les critères doivent être spécifiques à la compétence, distincts entre eux, observables et évaluables. "
+        "Les niveaux 1 à 4 doivent montrer une vraie progression, sans répétition mécanique. "
         "Réserve 4 critères aux compétences managériales, analytiques ou complexes. "
-        "Pour les autres compétences, produis entre 1 et 3 critères. "
-        "Tu peux t'inspirer d'une progression de type Bloom, mais sans jamais écrire un contenu académique ou générique. "
-        "Tu restes très concret, métier, et centré sur l'observable."
+        "Pour les autres, produis entre 1 et 3 critères et laisse les critères non utilisés avec des valeurs vides. "
+        "La description doit être explicite, utile et centrée sur la finalité réelle de la compétence."
     )
 
     user_prompt = (
-        f"compétence retenue: {title}\n"
-        f"description actuelle: {_clean_text(draft.get('description'))}\n"
-        f"domaine actuel: {current_domain_label}\n"
-        f"domaine autorisés:\n{domain_txt}\n"
-        f"niveau recommandé: {_clean_text(draft.get('recommended_level'))}\n"
-        f"criticité: freq_usage={_clamp_0_10(draft.get('freq_usage'))}, impact_resultat={_clamp_0_10(draft.get('impact_resultat'))}, dependance={_clamp_0_10(draft.get('dependance'))}\n"
-        "Style attendu, inspiré du référentiel existant :\n"
-        "- critères courts, précis, observables, par exemple : 'Écoute et compréhension des besoins', 'Qualité du suivi individuel', 'Pertinence des conseils donnés'.\n"
-        "- niveaux 1 à 4 concrets et progressifs, par exemple : 'Écoute limitée, ne repère pas les besoins individuels.', 'Écoute active, identifie les besoins spécifiques des apprenants.', 'Analyse fine des besoins et propose des solutions adaptées à chacun.'\n"
-        "- niveaux A/B/C synthétiques et spécifiques à la compétence, par exemple : 'Apporte un accompagnement ponctuel et générique.', 'Fournit un accompagnement personnalisé et régulier.', 'Conçoit et transmet des méthodes d'accompagnement individualisé, avec impact durable.'\n"
-        "Rédige uniquement la fiche détaillée de cette compétence déjà validée dans son périmètre.\n"
-        "Ne crée pas une nouvelle compétence, ne change pas son intitulé, ne l'élargis pas artificiellement.\n"
-        "N'utilise pas de phrases génériques interchangeables d'une compétence à l'autre.\n"
+        f"Compétence à détailler : {title}\n"
+        f"Description actuelle : {_clean_text(draft.get('description'))}\n"
+        f"Pourquoi cette compétence est utile : {_clean_text(draft.get('why_needed'))}\n"
+        f"Domaine actuel : {current_domain_label or 'non défini'}\n"
+        f"Domaines autorisés :\n{domain_txt}\n"
+        f"Nombre de critères attendu : {target_count_text}\n"
+        "Règles de rédaction :\n"
+        "- niveauA, niveauB, niveauC : ce que peut faire le possesseur de la compétence.\n"
+        "- Eval : ce que doit savoir faire la personne pour obtenir la note.\n"
+        "- Toujours rédiger dans un langage métier concret et observable.\n"
+        "- Ne pas utiliser de critères flous ou passe-partout.\n"
+        "- Ne pas réutiliser la même phrase en changeant juste deux mots d'un niveau à l'autre.\n"
+        "- Ne pas écrire des phrases absurdes du type 'traite préparation et cadrage'.\n\n"
+        f"Exemples de style issus du référentiel existant :\n{style_examples_txt or 'Aucun exemple exploitable disponible.'}\n"
     )
 
     enriched = _openai_responses_json(
         model,
-        "poste_comp_create_enrich",
+        "competence_draft_enrichment",
         schema,
         system_prompt,
         user_prompt,
         use_web=False,
     )
 
-    return _merge_ai_comp_draft(draft, enriched or {})
+    out = _merge_ai_comp_draft(draft, enriched)
+    out["intitule"] = title
+    return out
 
 
 def _sanitize_grille(v: Any) -> dict:
@@ -4876,7 +4987,14 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                         match_score = max(0.0, min(1.0, float(match.get("_match_score") or 0.0)))
                     except Exception:
                         match_score = 0.0
-                    match_percent = int(round(match_score * 100))
+                    title_key_item = _canonical_comp_key(intitule)
+                    title_key_match = _canonical_comp_key(match.get("intitule") if match else "")
+                    exact_like_match = bool(title_key_item and title_key_match and title_key_item == title_key_match)
+
+                    if exact_like_match and match_score >= 0.995:
+                        match_percent = 100
+                    else:
+                        match_percent = min(99, max(0, int(match_score * 100)))
                     match_label = "Recommandé" if match_score >= 0.82 else "Proposé"
 
                 match_id = str(match.get("id_comp") or "") if match else ""
@@ -4988,6 +5106,7 @@ def studio_org_ai_comp_prepare(id_owner: str, payload: AiPosteCompetencePrepareP
                     """
                 )
                 domain_rows = cur.fetchall() or []
+                catalog_rows = _load_owner_comp_catalog_rows(cur, oid)
 
         _normalize_ai_comp_item(draft)
 
@@ -4997,7 +5116,8 @@ def studio_org_ai_comp_prepare(id_owner: str, payload: AiPosteCompetencePrepareP
                 or (os.getenv("OPENAI_MODEL_POSTE_COMP_SEARCH") or "").strip()
                 or "gpt-5"
             )
-            draft = _enrich_ai_comp_draft(model, draft, domain_rows)
+            style_examples_txt = _build_ai_comp_style_examples(catalog_rows, draft, 3)
+            draft = _enrich_ai_comp_draft(model, draft, domain_rows, style_examples_txt)
             _normalize_ai_comp_item(draft)
 
         draft["grille_evaluation"] = _compact_ai_grille(
