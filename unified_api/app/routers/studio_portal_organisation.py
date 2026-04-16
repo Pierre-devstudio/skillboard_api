@@ -2177,6 +2177,229 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
     rows = _load_owner_comp_catalog_rows(cur, oid)
     return _find_best_existing_competence_in_rows(rows, title, search_terms)
 
+def _serialize_comp_grille_for_match(grille: Any) -> str:
+    ge = _sanitize_grille(grille)
+    blocks = []
+
+    for i in range(1, 5):
+        node = ge.get(f"Critere{i}") or {}
+        nom = _clean_text(node.get("Nom"))
+        evals = [_clean_text(x) for x in (node.get("Eval") or ["", "", "", ""])[:4]]
+
+        if not nom and not any(evals):
+            continue
+
+        lines = [f"Critère {i} : {nom or '—'}"]
+        for idx, ev in enumerate(evals, 1):
+            if ev:
+                lines.append(f"{idx}. {ev}")
+        blocks.append("\n".join(lines))
+
+    return "\n\n".join(blocks).strip()
+
+
+def _build_catalog_candidate_text(row: dict) -> str:
+    parts = [
+        _clean_text(row.get("intitule")),
+        _clean_text(row.get("description")),
+        _clean_text(row.get("domaine_titre_court") or row.get("domaine_titre")),
+        _clean_text(row.get("niveaua")),
+        _clean_text(row.get("niveaub")),
+        _clean_text(row.get("niveauc")),
+        _serialize_comp_grille_for_match(row.get("grille_evaluation")),
+    ]
+    return "\n".join([p for p in parts if p]).strip()
+
+
+def _build_existing_competence_shortlist(rows: List[dict], item: dict, poste_context_text: str, limit: int = 5) -> List[dict]:
+    wanted_title = _clean_text(item.get("intitule"))
+    wanted_domain = _clean_text(item.get("domaine_hint"))
+    wanted_terms = " ".join([_clean_text(x) for x in (item.get("search_terms") or []) if _clean_text(x)])
+
+    wanted_full = "\n".join([
+        wanted_title,
+        _clean_text(item.get("description")),
+        _clean_text(item.get("why_needed")),
+        wanted_terms,
+        _clean_text(item.get("niveaua")),
+        _clean_text(item.get("niveaub")),
+        _clean_text(item.get("niveauc")),
+        _serialize_comp_grille_for_match(item.get("grille_evaluation")),
+    ]).strip()
+
+    scored = []
+    seen = set()
+
+    for r in rows or []:
+        rid = _clean_text(r.get("id_comp"))
+        if not rid or rid in seen:
+            continue
+        seen.add(rid)
+
+        if not _is_existing_competence_contextually_plausible(r, poste_context_text):
+            continue
+
+        cand_title = _clean_text(r.get("intitule"))
+        cand_text = _build_catalog_candidate_text(r)
+
+        title_score = _similarity_score(wanted_title, cand_title)
+        full_score = _similarity_score(wanted_full, cand_text)
+        terms_score = _similarity_score(wanted_terms, cand_text)
+
+        score = (title_score * 0.48) + (full_score * 0.40) + (terms_score * 0.12)
+
+        wanted_key = _canonical_comp_key(wanted_title)
+        cand_key = _canonical_comp_key(cand_title)
+        if wanted_key and cand_key and wanted_key == cand_key:
+            score = max(score, 0.96)
+
+        if wanted_domain:
+            cand_domain = _norm_text_search(" ".join([
+                _clean_text(r.get("domaine_titre_court")),
+                _clean_text(r.get("domaine_titre")),
+            ]))
+            if _norm_text_search(wanted_domain) and _norm_text_search(wanted_domain) in cand_domain:
+                score += 0.05
+
+        if score < 0.34:
+            continue
+
+        row = dict(r)
+        row["_shortlist_score"] = round(float(score), 4)
+        scored.append(row)
+
+    scored.sort(key=lambda x: float(x.get("_shortlist_score") or 0.0), reverse=True)
+    return scored[:max(1, limit)]
+
+
+def _map_ai_match_confidence(confidence: Optional[str]) -> tuple[float, int, str]:
+    c = _clean_text(confidence).lower()
+
+    if c == "high":
+        return 0.93, 93, "Recommandé"
+    if c == "medium":
+        return 0.81, 81, "Proposé"
+    if c == "low":
+        return 0.69, 69, "Proposé"
+    return 0.0, 0, ""
+
+
+def _ai_pick_existing_competence_match(
+    model: str,
+    item: dict,
+    poste_context_text: str,
+    candidates: List[dict],
+) -> dict:
+    if not candidates:
+        return {
+            "decision": "new",
+            "selected_id_comp": None,
+            "confidence": "none",
+            "reason": "Aucun candidat exploitable."
+        }
+
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["decision", "selected_id_comp", "confidence", "reason"],
+        "properties": {
+            "decision": {"type": "string", "enum": ["match", "new"]},
+            "selected_id_comp": {"type": ["string", "null"]},
+            "confidence": {"type": "string", "enum": ["high", "medium", "low", "none"]},
+            "reason": {"type": "string", "maxLength": 240},
+        },
+    }
+
+    proposed = "\n".join([
+        f"Intitulé : {_clean_text(item.get('intitule'))}",
+        f"Description : {_clean_text(item.get('description'))}",
+        f"Pourquoi utile : {_clean_text(item.get('why_needed'))}",
+        f"Domaine pressenti : {_clean_text(item.get('domaine_hint'))}",
+        f"Niveau recommandé : {_clean_text(item.get('recommended_level'))}",
+        f"Search terms : {', '.join([_clean_text(x) for x in (item.get('search_terms') or []) if _clean_text(x)])}",
+        f"Niveau A : {_clean_text(item.get('niveaua'))}",
+        f"Niveau B : {_clean_text(item.get('niveaub'))}",
+        f"Niveau C : {_clean_text(item.get('niveauc'))}",
+        f"Grille :\n{_serialize_comp_grille_for_match(item.get('grille_evaluation'))}",
+    ]).strip()
+
+    cand_blocks = []
+    for idx, c in enumerate(candidates, 1):
+        cand_blocks.append(
+            "\n".join([
+                f"CANDIDAT {idx}",
+                f"id_comp : {_clean_text(c.get('id_comp'))}",
+                f"code : {_clean_text(c.get('code'))}",
+                f"intitulé : {_clean_text(c.get('intitule'))}",
+                f"domaine : {_clean_text(c.get('domaine_titre_court') or c.get('domaine_titre'))}",
+                f"description : {_clean_text(c.get('description'))}",
+                f"niveau A : {_clean_text(c.get('niveaua'))}",
+                f"niveau B : {_clean_text(c.get('niveaub'))}",
+                f"niveau C : {_clean_text(c.get('niveauc'))}",
+                f"grille :\n{_serialize_comp_grille_for_match(c.get('grille_evaluation'))}",
+            ])
+        )
+
+    system_prompt = (
+        "Tu arbitres une correspondance entre une compétence nécessaire à un poste et des fiches compétences déjà présentes dans un catalogue RH. "
+        "Tu dois choisir un match uniquement si c'est bien la MÊME compétence en substance. "
+        "Tu ne te bases pas seulement sur les mots de l’intitulé. "
+        "Tu compares le contenu complet : description, niveaux A/B/C, grille d'évaluation, périmètre métier, contexte du poste. "
+        "Si les candidats sont seulement proches lexicalement, sectoriellement voisins, ou trop spécifiques à un autre univers métier, tu réponds 'new'. "
+        "Tu renvoies uniquement un JSON strict conforme au schéma."
+    )
+
+    user_prompt = (
+        f"CONTEXTE POSTE\n{poste_context_text}\n\n"
+        f"COMPÉTENCE À COUVRIR\n{proposed}\n\n"
+        f"CANDIDATS CATALOGUE\n\n" + "\n\n".join(cand_blocks)
+    )
+
+    out = _openai_responses_json(
+        model,
+        "poste_comp_match_existing",
+        schema,
+        system_prompt,
+        user_prompt,
+        use_web=False,
+    )
+
+    decision = _clean_text(out.get("decision")).lower()
+    selected_id = _clean_text(out.get("selected_id_comp")) or None
+    confidence = _clean_text(out.get("confidence")).lower() or "none"
+
+    if decision != "match":
+        return {
+            "decision": "new",
+            "selected_id_comp": None,
+            "confidence": confidence if confidence in {"low", "none"} else "none",
+            "reason": _clean_ai_comp_text(out.get("reason"), 240),
+        }
+
+    if not selected_id:
+        return {
+            "decision": "new",
+            "selected_id_comp": None,
+            "confidence": "none",
+            "reason": "Aucun identifiant catalogue retenu.",
+        }
+
+    allowed_ids = {_clean_text(x.get("id_comp")) for x in candidates if _clean_text(x.get("id_comp"))}
+    if selected_id not in allowed_ids:
+        return {
+            "decision": "new",
+            "selected_id_comp": None,
+            "confidence": "none",
+            "reason": "Sélection IA hors shortlist.",
+        }
+
+    return {
+        "decision": "match",
+        "selected_id_comp": selected_id,
+        "confidence": confidence if confidence in {"high", "medium", "low"} else "medium",
+        "reason": _clean_ai_comp_text(out.get("reason"), 240),
+    }
+
 def _infer_poste_comp_nb_criteres(draft: dict, poste_context: str = "") -> int:
     txt = _norm_text_search(" ".join([
         _clean_text(draft.get("intitule")),
@@ -2443,71 +2666,6 @@ def _match_context_term_set(v: Optional[str]) -> set:
         and t not in action_verbs
     }
 
-
-def _catalog_match_is_contextual(match: Optional[dict], item: dict, poste_context_text: str) -> bool:
-    if not match:
-        return False
-
-    try:
-        score = max(0.0, min(1.0, float(match.get("_match_score") or 0.0)))
-    except Exception:
-        score = 0.0
-
-    item_title_key = _canonical_comp_key(item.get("intitule"))
-    match_title_key = _canonical_comp_key(match.get("intitule"))
-    if item_title_key and match_title_key and item_title_key == match_title_key:
-        return True
-
-    ctx_terms = _match_context_term_set(poste_context_text)
-    item_terms = _match_context_term_set(" ".join([
-        _clean_text(item.get("intitule")),
-        _clean_text(item.get("description")),
-        _clean_text(item.get("why_needed")),
-        " ".join([_clean_text(x) for x in (item.get("search_terms") or [])]),
-        _clean_text(item.get("domaine_hint")),
-    ]).strip())
-
-    cand_terms = _match_context_term_set(" ".join([
-        _clean_text(match.get("intitule")),
-        _clean_text(match.get("description")),
-        _clean_text(match.get("domaine_titre_court") or match.get("domaine_titre")),
-    ]).strip())
-
-    if not cand_terms:
-        return True
-
-    hard_specialized_exprs = {
-        "qualibail",
-        "bailleur social",
-        "bailleurs sociaux",
-        "motorisation",
-        "raccorder electriquement",
-        "fermeture de l habitat",
-        "produits de fermeture",
-        "habilitation electrique",
-        "prodevis",
-    }
-
-    cand_norm = _norm_text_search(" ".join([
-        _clean_text(match.get("intitule")),
-        _clean_text(match.get("description")),
-        _clean_text(match.get("domaine_titre_court") or match.get("domaine_titre")),
-    ]).strip())
-    ctx_norm = _norm_text_search(poste_context_text)
-
-    for expr in hard_specialized_exprs:
-        if expr in cand_norm and expr not in ctx_norm:
-            return False
-
-    missing_terms = [t for t in cand_terms if t not in ctx_terms and t not in item_terms]
-
-    if len(missing_terms) >= 2 and score < 0.995:
-        return False
-
-    if len(missing_terms) >= 1 and score < 0.94:
-        return False
-
-    return True
 
 def _resolve_domain_id_from_rows(domain_rows: List[dict], hint: Optional[str]) -> Optional[str]:
     h = _clean_text(hint)
@@ -4877,7 +5035,12 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                     payload.ai_interactions,
                     payload.ai_contraintes,
                     payload.detail_contrainte,
-        )
+                )
+                match_model = (
+                    (os.getenv("OPENAI_MODEL_POSTE_COMP_MATCH") or "").strip()
+                    or (os.getenv("OPENAI_MODEL_POSTE_COMP_SEARCH") or "").strip()
+                    or "gpt-5"
+                )
 
         def _collect_results(candidate_items: List[dict], allow_relaxed_filter: bool = False) -> tuple[list, list]:
             existing = []
@@ -4912,30 +5075,40 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                 seen_titles.add(canon_title)
 
                 search_terms = [str(x or "").strip() for x in (item.get("search_terms") or []) if str(x or "").strip()]
-                match = _find_best_existing_competence_in_rows(catalog_rows, intitule, search_terms)
-                if match and not _catalog_match_is_contextual(match, item, poste_context_text):
-                    match = None
 
-                lvl = (item.get("recommended_level") or "A").strip().upper()[:1] or "A"
-                poids = _calc_poids_criticite_100(fu, im, de)
+                shortlist = _build_existing_competence_shortlist(
+                    catalog_rows,
+                    item,
+                    poste_context_text,
+                    5,
+                )
 
+                match = None
                 match_score = 0.0
                 match_percent = 0
                 match_label = ""
-                if match:
-                    try:
-                        match_score = max(0.0, min(1.0, float(match.get("_match_score") or 0.0)))
-                    except Exception:
-                        match_score = 0.0
-                    title_key_item = _canonical_comp_key(intitule)
-                    title_key_match = _canonical_comp_key(match.get("intitule") if match else "")
-                    exact_like_match = bool(title_key_item and title_key_match and title_key_item == title_key_match)
 
-                    if exact_like_match and match_score >= 0.995:
-                        match_percent = 100
-                    else:
-                        match_percent = min(99, max(0, int(match_score * 100)))
-                    match_label = "Recommandé" if match_score >= 0.82 else "Proposé"
+                if shortlist:
+                    ai_pick = _ai_pick_existing_competence_match(
+                        match_model,
+                        item,
+                        poste_context_text,
+                        shortlist,
+                    )
+
+                    picked_id = _clean_text(ai_pick.get("selected_id_comp"))
+                    if ai_pick.get("decision") == "match" and picked_id:
+                        match = next(
+                            (r for r in shortlist if _clean_text(r.get("id_comp")) == picked_id),
+                            None
+                        )
+                        if match:
+                            match_score, match_percent, match_label = _map_ai_match_confidence(
+                                ai_pick.get("confidence")
+                            )
+
+                lvl = (item.get("recommended_level") or "A").strip().upper()[:1] or "A"
+                poids = _calc_poids_criticite_100(fu, im, de)
 
                 match_id = str(match.get("id_comp") or "") if match else ""
                 if match_id and match_id in existing_ids:

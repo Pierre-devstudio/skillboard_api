@@ -2787,13 +2787,17 @@ body {
         return badge;
     }
 
-    function buildAiMatchScoreText(score){
+    function buildAiMatchScoreText(score, providedPercent){
         const n = normalizeAiMatchScore(score);
+
+        let pct = Number.isFinite(Number(providedPercent))
+            ? Math.max(0, Math.min(99, parseInt(providedPercent, 10) || 0))
+            : Math.max(0, Math.min(99, Math.round(n * 100)));
 
         const el = document.createElement("span");
         el.className = "sb-ai-match-score";
-        el.textContent = `${Math.round(n * 100)} %`;
-        el.title = `Score de rapprochement interne : ${Math.round(n * 100)} %`;
+        el.textContent = `${pct} %`;
+        el.title = `Score de rapprochement interne : ${pct} %`;
         return el;
     }
 
@@ -2868,7 +2872,7 @@ body {
             if (matchBadge) matchCol.appendChild(matchBadge);
 
             if (it.match_score !== undefined && it.match_score !== null){
-                matchCol.appendChild(buildAiMatchScoreText(it.match_score));
+                matchCol.appendChild(buildAiMatchScoreText(it.match_score, it.match_percent));
             }
 
             const right = document.createElement("div");
