@@ -1594,24 +1594,6 @@ def _compact_ai_grille(
 
     return out
 
-def _normalize_ai_comp_item(item: dict) -> None:
-    item["intitule"] = _normalize_ai_comp_title(item.get("intitule"), item.get("description"))
-    item["description"] = _clean_ai_comp_text(item.get("description"), 240)
-    item["why_needed"] = _clean_ai_comp_text(item.get("why_needed"), 240)
-    item["niveaua"] = _clean_ai_comp_text(item.get("niveaua"), 230)
-    item["niveaub"] = _clean_ai_comp_text(item.get("niveaub"), 230)
-    item["niveauc"] = _clean_ai_comp_text(item.get("niveauc"), 230)
-
-    _fix_abc_levels(item)
-
-    ge = _sanitize_grille(item.get("grille_evaluation"))
-    item["grille_evaluation"] = _compact_ai_grille(
-        ge,
-        item.get("freq_usage"),
-        item.get("impact_resultat"),
-        item.get("dependance"),
-    )
-
 def _level_score(txt: Optional[str]) -> int:
     t = _norm_text_search(txt)
     score = 0
@@ -2195,72 +2177,244 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
     rows = _load_owner_comp_catalog_rows(cur, oid)
     return _find_best_existing_competence_in_rows(rows, title, search_terms)
 
-def _build_ai_comp_style_examples(rows: List[dict], draft: dict, limit: int = 3) -> str:
+def _infer_poste_comp_nb_criteres(draft: dict, poste_context: str = "") -> int:
+    txt = _norm_text_search(" ".join([
+        _clean_text(draft.get("intitule")),
+        _clean_text(draft.get("description")),
+        _clean_text(draft.get("why_needed")),
+        poste_context,
+    ]))
+
+    if any(x in txt for x in (
+        "management", "manager", "pilotage", "strategie", "stratégie",
+        "analyse", "analytique", "diagnostic", "arbitrage", "audit",
+        "indicateur", "tableau de bord", "coordination", "gouvernance",
+        "direction", "responsable", "encadrement"
+    )):
+        return 4
+
+    if any(x in txt for x in (
+        "qualite", "qualité", "ingenierie", "ingénierie", "architecture",
+        "conception", "optimisation", "conformite", "conformité",
+        "fiabilisation", "amelioration", "amélioration", "parametrage",
+        "paramétrage", "structuration"
+    )):
+        return 3
+
+    return 2
+
+
+def _build_poste_comp_prepare_context(poste_row: Optional[dict], draft: dict) -> str:
+    parts = []
+
+    if poste_row:
+        parts.append(f"Poste : {_clean_text(poste_row.get('intitule_poste'))}")
+        parts.append(f"Mission principale : {_clean_text(poste_row.get('mission_principale'))}")
+        parts.append(f"Responsabilités : {_html_to_text(poste_row.get('responsabilites'))}")
+        parts.append(f"Mobilité : {_clean_text(poste_row.get('mobilite'))}")
+        parts.append(f"Niveau de contrainte : {_clean_text(poste_row.get('niveau_contrainte'))}")
+        parts.append(f"Détail contrainte : {_clean_text(poste_row.get('detail_contrainte'))}")
+        parts.append(f"Risque physique : {_clean_text(poste_row.get('risque_physique'))}")
+        parts.append(f"Perspectives d'évolution : {_clean_text(poste_row.get('perspectives_evolution'))}")
+
+    why_needed = _clean_text(draft.get("why_needed"))
+    if why_needed:
+        parts.append(f"Pourquoi cette compétence est nécessaire : {why_needed}")
+
+    desc = _clean_text(draft.get("description"))
+    if desc:
+        parts.append(f"Description courte actuelle : {desc}")
+
+    search_terms = [str(x or "").strip() for x in (draft.get("search_terms") or []) if str(x or "").strip()]
+    if search_terms:
+        parts.append("Mots-clés utiles : " + ", ".join(search_terms[:6]))
+
+    return "\n".join([p for p in parts if p]).strip()
+
+
+def _ai_draft_poste_comp_from_catalog_logic(
+    model: str,
+    draft: dict,
+    domain_rows: List[dict],
+    poste_context: str,
+    nb_criteres: int,
+) -> dict:
     title = _clean_text(draft.get("intitule"))
-    desc = _clean_text(draft.get("description")) or _clean_text(draft.get("why_needed"))
-    domain_id = _clean_text(draft.get("domaine_id"))
+    if not title:
+        raise HTTPException(status_code=400, detail="Intitulé de compétence manquant.")
 
-    scored = []
-    seen = set()
+    dom_map = {
+        _clean_text(r.get("id_domaine_competence")): _clean_text(r.get("titre_court") or r.get("titre"))
+        for r in (domain_rows or [])
+        if _clean_text(r.get("id_domaine_competence"))
+    }
+    dom_list_txt = "\n".join([f"- {k} : {v}" for k, v in dom_map.items()]) if dom_map else "- (aucun domaine)"
+    domaine_force = _clean_text(draft.get("domaine_id")) or None
 
-    for r in rows or []:
-        intitule = _clean_text(r.get("intitule"))
-        if not intitule:
-            continue
+    nb = 3
+    try:
+        nb = int(nb_criteres)
+    except Exception:
+        nb = 3
+    if nb not in (2, 3, 4):
+        nb = 3
 
-        key = _canonical_comp_key(intitule)
-        if key and key == _canonical_comp_key(title):
-            continue
-        if key in seen:
-            continue
-        seen.add(key)
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["intitule", "description", "niveaua", "niveaub", "niveauc", "domaine_id", "grille_evaluation"],
+        "properties": {
+            "intitule": {"type": "string", "minLength": 1, "maxLength": 140},
+            "description": {"type": "string", "maxLength": 1200},
+            "niveaua": {"type": "string", "minLength": 40, "maxLength": 230},
+            "niveaub": {"type": "string", "minLength": 40, "maxLength": 230},
+            "niveauc": {"type": "string", "minLength": 40, "maxLength": 230},
+            "domaine_id": {"type": ["string", "null"]},
+            "grille_evaluation": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["Critere1", "Critere2", "Critere3", "Critere4"],
+                "properties": {
+                    "Critere1": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["Nom", "Eval"],
+                        "properties": {
+                            "Nom": {"type": "string", "maxLength": 140},
+                            "Eval": {
+                                "type": "array",
+                                "minItems": 4,
+                                "maxItems": 4,
+                                "items": {"type": "string", "maxLength": 120}
+                            }
+                        }
+                    },
+                    "Critere2": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["Nom", "Eval"],
+                        "properties": {
+                            "Nom": {"type": "string", "maxLength": 140},
+                            "Eval": {
+                                "type": "array",
+                                "minItems": 4,
+                                "maxItems": 4,
+                                "items": {"type": "string", "maxLength": 120}
+                            }
+                        }
+                    },
+                    "Critere3": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["Nom", "Eval"],
+                        "properties": {
+                            "Nom": {"type": "string", "maxLength": 140},
+                            "Eval": {
+                                "type": "array",
+                                "minItems": 4,
+                                "maxItems": 4,
+                                "items": {"type": "string", "maxLength": 120}
+                            }
+                        }
+                    },
+                    "Critere4": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["Nom", "Eval"],
+                        "properties": {
+                            "Nom": {"type": "string", "maxLength": 140},
+                            "Eval": {
+                                "type": "array",
+                                "minItems": 4,
+                                "maxItems": 4,
+                                "items": {"type": "string", "maxLength": 120}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
-        score = (_similarity_score(title, intitule) * 1.45)
-        score += (_similarity_score(desc, r.get("description")) * 0.85)
+    system_prompt = (
+        "Tu es concepteur pédagogique et tu aides à concevoir une fiche compétence opérationnelle. "
+        "Tu dois respecter STRICTEMENT le schéma JSON fourni. "
+        "Règles de niveau A/B/C (IMPORTANT): "
+        "A = initial (débutant, guidé, applique des consignes simples), "
+        "B = avancé (autonome, structuré, fiable), "
+        "C = expert (maîtrise, optimise, anticipe, transmet/forme). "
+        "Ne mets JAMAIS un simple label type 'Initial/Avancé/Expert' dans niveaua/b/c : "
+        "rédige 1 à 2 phrases concrètes décrivant ce qui est attendu et observable. "
+        "Les évaluations (4 niveaux par critère) doivent être progressives, observables et actionnables. "
+        "Chaque évaluation doit être courte (<=120 caractères), 1 phrase, verbe d'action + résultat observable. "
+        "Tu dois produire EXACTEMENT le nombre de critères demandé. "
+        "Si le nombre demandé est inférieur à 4, laisse les critères restants vides "
+        "(Nom vide + 4 Eval vides). "
+        "Critères: ils doivent couvrir des axes DISTINCTS, spécifiques à la compétence, sans doublons ni formulations génériques. "
+        "La description doit être plus rédigée, explicite et utile à un RH ou à un manager."
+    )
 
-        if domain_id and _clean_text(r.get("domaine")) == domain_id:
-            score += 0.35
+    user_prompt = (
+        f"Objectif: {title}\n"
+        f"Contexte: {poste_context}\n"
+        f"Domaine imposé (si non vide): {domaine_force or ''}\n"
+        f"Nombre de critères à produire: {nb}\n\n"
+        f"Domaines disponibles (id -> titre_court):\n{dom_list_txt}\n\n"
+        "Contraintes:\n"
+        f"- Produis exactement {nb} critères NON VIDES (Critere1..Critere{nb}).\n"
+        f"- Critere{nb+1}..Critere4 doivent être VIDES (Nom=\"\" + 4 Eval vides).\n"
+        "- Chaque critère = un axe distinct et réellement évaluable.\n"
+        "- Les 4 niveaux d’un critère doivent montrer une progression claire et concrète.\n"
+        "- Niveaux A/B/C: A initial guidé, B autonome fiable, C expert optimise/transmet.\n"
+        "- Niveaux A/B/C <=230 caractères chacun.\n"
+        "- Eval <=120 caractères.\n"
+        "- Ne fais pas de phrases robotiques ou mécaniques.\n"
+    )
 
-        if score < 0.42:
-            continue
+    data = _openai_responses_json(
+        model,
+        "competence_draft",
+        schema,
+        system_prompt,
+        user_prompt,
+        use_web=False,
+    )
 
-        scored.append((score, r))
+    def _bad_level(s: str) -> bool:
+        t = (s or "").strip().lower()
+        if t in ("initial", "avancé", "avance", "expert", "débutant", "debutant"):
+            return True
+        if len(t) < 40:
+            return True
+        return False
 
-    scored.sort(key=lambda x: x[0], reverse=True)
-    picked = [r for _score, r in scored[:max(1, limit)]]
-
-    blocks = []
-    for idx, r in enumerate(picked, 1):
-        ge = _sanitize_grille(r.get("grille_evaluation"))
-        crit_lines = []
-
-        for i in range(1, 5):
-            node = ge.get(f"Critere{i}") or {}
-            nom = _clean_text(node.get("Nom"))
-            evals = [_clean_text(x) for x in (node.get("Eval") or ["", "", "", ""])[:4]]
-
-            if not nom and not any(evals):
-                continue
-
-            crit_lines.append(
-                f"- {nom}\n"
-                f"  1. {evals[0]}\n"
-                f"  2. {evals[1]}\n"
-                f"  3. {evals[2]}\n"
-                f"  4. {evals[3]}"
-            )
-
-        blocks.append(
-            f"EXEMPLE {idx}\n"
-            f"Intitulé : {_clean_text(r.get('intitule'))}\n"
-            f"Description : {_clean_text(r.get('description'))}\n"
-            f"Niveau A : {_clean_text(r.get('niveaua'))}\n"
-            f"Niveau B : {_clean_text(r.get('niveaub'))}\n"
-            f"Niveau C : {_clean_text(r.get('niveauc'))}\n"
-            f"Critères :\n" + ("\n".join(crit_lines) if crit_lines else "- aucun critère exploitable")
+    if _bad_level(data.get("niveaua", "")) or _bad_level(data.get("niveaub", "")) or _bad_level(data.get("niveauc", "")):
+        raise HTTPException(
+            status_code=400,
+            detail="IA: niveaux A/B/C trop courts ou réduits à un label. Relance avec plus de contexte."
         )
 
-    return "\n\n".join(blocks).strip()
+    _fix_abc_levels(data)
+
+    dom_out = (domaine_force or _clean_text(data.get("domaine_id"))).strip() or None
+    if dom_out and dom_out not in dom_map:
+        dom_out = None
+    data["domaine_id"] = dom_out
+
+    ge = _sanitize_grille(data.get("grille_evaluation"))
+    used = 0
+    for k in ("Critere1", "Critere2", "Critere3", "Critere4"):
+        nm = _clean_text((ge.get(k) or {}).get("Nom"))
+        if nm:
+            used += 1
+    if used < 1:
+        raise HTTPException(status_code=400, detail="IA: aucun critère exploitable généré.")
+
+    data["grille_evaluation"] = ge
+    data["intitule"] = title
+    return data
+
+
 
 _MATCH_CONTEXT_STOP = {
     "gestion", "pilotage", "coordination", "analyse", "mise", "oeuvre",
@@ -2525,220 +2679,6 @@ def _normalize_ai_comp_search_item(item: dict) -> None:
         im,
         de,
     )
-
-
-def _is_generic_criterion_name(v: Optional[str]) -> bool:
-    n = _norm_text_search(v)
-    if not n:
-        return True
-
-    generic = {
-        "mise en oeuvre de la competence",
-        "mise en œuvre de la competence",
-        "mise en oeuvre",
-        "mise en œuvre",
-        "application de la competence",
-        "application",
-        "maitrise de la competence",
-        "maitrise",
-        "realisation de la competence",
-        "realisation",
-    }
-    return n in generic
-
-
-def _draft_needs_ai_enrichment(draft: dict) -> bool:
-    desc = _clean_text(draft.get("description"))
-    if len(desc.split()) < 12:
-        return True
-
-    if not _clean_text(draft.get("niveaua")):
-        return True
-    if not _clean_text(draft.get("niveaub")):
-        return True
-    if not _clean_text(draft.get("niveauc")):
-        return True
-
-    ge = _sanitize_grille(draft.get("grille_evaluation"))
-    usable_crit = 0
-    generic_crit = 0
-
-    for i in range(1, 5):
-        node = ge.get(f"Critere{i}") or {}
-        nom = _clean_text(node.get("Nom"))
-        evals = [x for x in (node.get("Eval") or []) if _clean_text(x)]
-
-        if not nom and not evals:
-            continue
-
-        usable_crit += 1
-        if _is_generic_criterion_name(nom):
-            generic_crit += 1
-
-    if usable_crit == 0:
-        return True
-
-    if generic_crit >= usable_crit:
-        return True
-
-    return False
-
-
-def _merge_ai_comp_draft(base: dict, enriched: dict) -> dict:
-    out = dict(base or {})
-    src = dict(enriched or {})
-
-    if _clean_text(src.get("description")):
-        out["description"] = src.get("description")
-
-    for key in ("niveaua", "niveaub", "niveauc"):
-        if _clean_text(src.get(key)):
-            out[key] = src.get(key)
-
-    src_ge = _sanitize_grille(src.get("grille_evaluation"))
-    has_src = False
-
-    for i in range(1, 5):
-        node = src_ge.get(f"Critere{i}") or {}
-        if _clean_text(node.get("Nom")) or any(_clean_text(x) for x in (node.get("Eval") or [])):
-            has_src = True
-            break
-
-    if has_src:
-        out["grille_evaluation"] = src_ge
-
-    return out
-
-
-def _enrich_ai_comp_draft(model: str, draft: dict, domain_rows: List[dict], style_examples_txt: str = "") -> dict:
-    title = _clean_text(draft.get("intitule"))
-    if not title:
-        return dict(draft or {})
-
-    domain_txt = "\n".join([
-        f"- {(r.get('titre_court') or r.get('titre') or '').strip()}"
-        for r in (domain_rows or [])
-        if (r.get("titre_court") or r.get("titre") or "").strip()
-    ]) or "- aucun domaine"
-
-    current_domain_label = ""
-    current_domain_id = _clean_text(draft.get("domaine_id"))
-    if current_domain_id:
-        for r in (domain_rows or []):
-            if _clean_text(r.get("id_domaine_competence")) == current_domain_id:
-                current_domain_label = _clean_text(r.get("titre_court") or r.get("titre"))
-                break
-
-    intent_txt = " ".join([
-        _clean_text(draft.get("description")),
-        _clean_text(draft.get("why_needed")),
-        " ".join([_clean_text(x) for x in (draft.get("search_terms") or [])]),
-    ]).strip()
-
-    complexity_text = _norm_text_search(" ".join([title, intent_txt, current_domain_label]))
-    is_complex = any(x in complexity_text for x in (
-        "management", "manager", "pilotage", "strategie", "stratégie",
-        "analyse", "analytique", "diagnostic", "arbitrage", "audit",
-        "indicateur", "tableau de bord", "coordination", "gouvernance"
-    ))
-
-    score_total = (
-        _clamp_0_10(draft.get("freq_usage")) +
-        _clamp_0_10(draft.get("impact_resultat")) +
-        _clamp_0_10(draft.get("dependance"))
-    )
-
-    if is_complex:
-        target_count_text = "3 ou 4 critères"
-    elif score_total <= 10:
-        target_count_text = "1 ou 2 critères"
-    else:
-        target_count_text = "2 ou 3 critères"
-
-    schema = {
-        "type": "object",
-        "additionalProperties": False,
-        "required": ["description", "niveaua", "niveaub", "niveauc", "grille_evaluation"],
-        "properties": {
-            "description": {"type": "string", "maxLength": 600},
-            "niveaua": {"type": "string", "maxLength": 230},
-            "niveaub": {"type": "string", "maxLength": 230},
-            "niveauc": {"type": "string", "maxLength": 230},
-            "grille_evaluation": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["Critere1", "Critere2", "Critere3", "Critere4"],
-                "properties": {
-                    **{
-                        f"Critere{i}": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "required": ["Nom", "Eval"],
-                            "properties": {
-                                "Nom": {"type": "string", "maxLength": 160},
-                                "Eval": {
-                                    "type": "array",
-                                    "minItems": 4,
-                                    "maxItems": 4,
-                                    "items": {"type": "string", "maxLength": 120}
-                                }
-                            }
-                        } for i in range(1, 5)
-                    }
-                }
-            }
-        }
-    }
-
-    system_prompt = (
-        "Tu génères la fiche détaillée d'une compétence pour un référentiel RH interne. "
-        "Tu renvoies uniquement un JSON strict conforme au schéma fourni. "
-        "Tu rédiges en français, dans un style métier concret, précis, pédagogique et humain. "
-        "Tu évites absolument les formulations génériques, interchangeables, mécaniques ou scolaires. "
-        "Tu n'utilises pas de trames du type 'Préparation et cadrage de l'activité', "
-        "'Réalisation de l'activité', 'Contrôle et ajustement du résultat' sauf si cela correspond réellement au métier décrit. "
-        "Tu t'inspires du style des exemples fournis, sans recopier leur contenu. "
-        "Règles impératives : "
-        "niveauA, niveauB, niveauC rédigés à la troisième personne du présent de l'indicatif, 230 caractères maximum. "
-        "Chaque Eval rédigé à la troisième personne du présent de l'indicatif, 120 caractères maximum. "
-        "Tu n'es pas obligée de commencer chaque phrase par 'Elle'. "
-        "Les critères doivent être spécifiques à la compétence, distincts entre eux, observables et évaluables. "
-        "Les niveaux 1 à 4 doivent montrer une vraie progression, sans répétition mécanique. "
-        "Réserve 4 critères aux compétences managériales, analytiques ou complexes. "
-        "Pour les autres, produis entre 1 et 3 critères et laisse les critères non utilisés avec des valeurs vides. "
-        "La description doit être explicite, utile et centrée sur la finalité réelle de la compétence."
-    )
-
-    user_prompt = (
-        f"Compétence à détailler : {title}\n"
-        f"Description actuelle : {_clean_text(draft.get('description'))}\n"
-        f"Pourquoi cette compétence est utile : {_clean_text(draft.get('why_needed'))}\n"
-        f"Domaine actuel : {current_domain_label or 'non défini'}\n"
-        f"Domaines autorisés :\n{domain_txt}\n"
-        f"Nombre de critères attendu : {target_count_text}\n"
-        "Règles de rédaction :\n"
-        "- niveauA, niveauB, niveauC : ce que peut faire le possesseur de la compétence.\n"
-        "- Eval : ce que doit savoir faire la personne pour obtenir la note.\n"
-        "- Toujours rédiger dans un langage métier concret et observable.\n"
-        "- Ne pas utiliser de critères flous ou passe-partout.\n"
-        "- Ne pas réutiliser la même phrase en changeant juste deux mots d'un niveau à l'autre.\n"
-        "- Ne pas écrire des phrases absurdes du type 'traite préparation et cadrage'.\n\n"
-        f"Exemples de style issus du référentiel existant :\n{style_examples_txt or 'Aucun exemple exploitable disponible.'}\n"
-    )
-
-    enriched = _openai_responses_json(
-        model,
-        "competence_draft_enrichment",
-        schema,
-        system_prompt,
-        user_prompt,
-        use_web=False,
-    )
-
-    out = _merge_ai_comp_draft(draft, enriched)
-    out["intitule"] = title
-    return out
-
 
 def _sanitize_grille(v: Any) -> dict:
     ge = v if isinstance(v, dict) else {}
@@ -5091,6 +5031,8 @@ def studio_org_ai_comp_prepare(id_owner: str, payload: AiPosteCompetencePrepareP
         if not title:
             raise HTTPException(status_code=400, detail="Brouillon de compétence invalide (intitulé manquant).")
 
+        poste_row = None
+
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
@@ -5106,32 +5048,67 @@ def studio_org_ai_comp_prepare(id_owner: str, payload: AiPosteCompetencePrepareP
                     """
                 )
                 domain_rows = cur.fetchall() or []
-                catalog_rows = _load_owner_comp_catalog_rows(cur, oid)
 
-        _normalize_ai_comp_item(draft)
+                pid = (payload.id_poste or "").strip()
+                if pid:
+                    scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                    poste_ent = _resolve_poste_ent(cur, oid, pid)
+                    if poste_ent != scope_ent:
+                        raise HTTPException(status_code=404, detail="Poste introuvable pour cette structure.")
 
-        if _draft_needs_ai_enrichment(draft):
-            model = (
-                (os.getenv("OPENAI_MODEL_POSTE_COMP_CREATE") or "").strip()
-                or (os.getenv("OPENAI_MODEL_POSTE_COMP_SEARCH") or "").strip()
-                or "gpt-5"
-            )
-            style_examples_txt = _build_ai_comp_style_examples(catalog_rows, draft, 3)
-            draft = _enrich_ai_comp_draft(model, draft, domain_rows, style_examples_txt)
-            _normalize_ai_comp_item(draft)
+                    cur.execute(
+                        """
+                        SELECT
+                          id_poste,
+                          intitule_poste,
+                          mission_principale,
+                          responsabilites,
+                          mobilite,
+                          niveau_contrainte,
+                          detail_contrainte,
+                          risque_physique,
+                          perspectives_evolution
+                        FROM public.tbl_fiche_poste
+                        WHERE id_poste = %s
+                          AND id_owner = %s
+                          AND id_ent = %s
+                        LIMIT 1
+                        """,
+                        (pid, oid, poste_ent),
+                    )
+                    poste_row = cur.fetchone() or None
 
-        draft["grille_evaluation"] = _compact_ai_grille(
-            _sanitize_grille(draft.get("grille_evaluation")),
-            draft.get("freq_usage"),
-            draft.get("impact_resultat"),
-            draft.get("dependance"),
-            draft.get("intitule"),
-            draft.get("description"),
+        model = (
+            (os.getenv("OPENAI_MODEL_POSTE_COMP_CREATE") or "").strip()
+            or "gpt-5"
         )
+
+        poste_context = _build_poste_comp_prepare_context(poste_row, draft)
+        nb_criteres = _infer_poste_comp_nb_criteres(draft, poste_context)
+
+        prepared = _ai_draft_poste_comp_from_catalog_logic(
+            model=model,
+            draft=draft,
+            domain_rows=domain_rows,
+            poste_context=poste_context,
+            nb_criteres=nb_criteres,
+        )
+
+        prepared["why_needed"] = _clean_ai_comp_text(draft.get("why_needed"), 320)
+        prepared["recommended_level"] = _clean_text(draft.get("recommended_level")) or "B"
+        prepared["freq_usage"] = _clamp_0_10(draft.get("freq_usage"))
+        prepared["impact_resultat"] = _clamp_0_10(draft.get("impact_resultat"))
+        prepared["dependance"] = _clamp_0_10(draft.get("dependance"))
+        prepared["search_terms"] = [
+            str(x or "").strip()
+            for x in (draft.get("search_terms") or [])
+            if str(x or "").strip()
+        ][:4]
+        prepared["etat"] = _clean_text(draft.get("etat")) or "à valider"
 
         return {
             "ok": True,
-            "draft": draft,
+            "draft": prepared,
         }
 
     except HTTPException:
@@ -5148,12 +5125,28 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
         add_to_poste = bool(payload.add_to_poste if payload.add_to_poste is not None else True)
         pid = (payload.id_poste or "").strip()
         draft = dict(payload.draft or {})
-        title = (draft.get("intitule") or "").strip()
+        title = _clean_text(draft.get("intitule"))
 
         if add_to_poste and not pid:
             raise HTTPException(status_code=400, detail="id_poste obligatoire.")
         if not title:
             raise HTTPException(status_code=400, detail="Brouillon de compétence invalide (intitulé manquant).")
+
+        data = {
+            "intitule": title,
+            "description": _clean_ai_comp_text(draft.get("description"), 1200),
+            "domaine_id": _clean_text(draft.get("domaine_id")) or None,
+            "niveaua": _clean_ai_comp_text(draft.get("niveaua"), 230),
+            "niveaub": _clean_ai_comp_text(draft.get("niveaub"), 230),
+            "niveauc": _clean_ai_comp_text(draft.get("niveauc"), 230),
+            "grille_evaluation": _sanitize_grille(draft.get("grille_evaluation")),
+            "etat": _clean_text(draft.get("etat")) or "à valider",
+            "recommended_level": _clean_text(draft.get("recommended_level")) or "A",
+            "freq_usage": _clamp_0_10(draft.get("freq_usage")),
+            "impact_resultat": _clamp_0_10(draft.get("impact_resultat")),
+            "dependance": _clamp_0_10(draft.get("dependance")),
+        }
+        _fix_abc_levels(data)
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -5171,112 +5164,61 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
                     if not _poste_exists(cur, oid, poste_ent, pid):
                         raise HTTPException(status_code=404, detail="Poste introuvable.")
 
-                search_terms = [
-                    str(x or "").strip()
-                    for x in (draft.get("search_terms") or [])
-                    if str(x or "").strip()
-                ]
-                match = _find_best_existing_competence(cur, oid, title, search_terms)
+                # Doublon strict uniquement. Pas de rematch fuzzy ici.
+                cur.execute(
+                    """
+                    SELECT id_comp, code
+                    FROM public.tbl_competence
+                    WHERE id_owner = %s
+                      AND lower(intitule) = lower(%s)
+                    LIMIT 1
+                    """,
+                    (oid, data["intitule"]),
+                )
+                existing = cur.fetchone() or None
 
-                if match:
-                    cid = match.get("id_comp")
-                    code = match.get("code")
+                if existing:
+                    cid = existing.get("id_comp")
+                    code = existing.get("code")
                     created = False
                 else:
-                    if _draft_needs_ai_enrichment(draft):
-                        cur.execute(
-                            """
-                            SELECT id_domaine_competence, titre, titre_court, couleur
-                            FROM public.tbl_domaine_competence
-                            WHERE COALESCE(masque, FALSE) = FALSE
-                            ORDER BY COALESCE(ordre_affichage, 999999), lower(COALESCE(titre_court, titre, id_domaine_competence))
-                            """
-                        )
-                        domain_rows = cur.fetchall() or []
-                        enrich_model = (
-                            (os.getenv("OPENAI_MODEL_POSTE_COMP_CREATE") or "").strip()
-                            or (os.getenv("OPENAI_MODEL_POSTE_COMP_SEARCH") or "").strip()
-                            or "gpt-5"
-                        )
-                        draft = _enrich_ai_comp_draft(enrich_model, draft, domain_rows)
+                    cid = str(uuid.uuid4())
+                    code = _next_comp_code(cur, oid)
 
-                    _normalize_ai_comp_item(draft)
-                    title = (draft.get("intitule") or title).strip()
+                    grille_json = json.dumps(data["grille_evaluation"], ensure_ascii=False)
 
-                    search_terms = [
-                        str(x or "").strip()
-                        for x in (draft.get("search_terms") or [])
-                        if str(x or "").strip()
-                    ]
-                    match_after = _find_best_existing_competence(cur, oid, title, search_terms)
-
-                    if match_after:
-                        cid = match_after.get("id_comp")
-                        code = match_after.get("code")
-                        created = False
-                    else:
-                        cur.execute(
-                            """
-                            SELECT id_comp, code
-                            FROM public.tbl_competence
-                            WHERE id_owner = %s
-                              AND lower(intitule) = lower(%s)
-                            LIMIT 1
-                            """,
-                            (oid, title),
-                        )
-                        existing = cur.fetchone() or None
-
-                        if existing:
-                            cid = existing.get("id_comp")
-                            code = existing.get("code")
-                            created = False
-                        else:
-                            cid = str(uuid.uuid4())
-                            code = _next_comp_code(cur, oid)
-
-                            grille_obj = _compact_ai_grille(
-                                _sanitize_grille(draft.get("grille_evaluation")),
-                                draft.get("freq_usage"),
-                                draft.get("impact_resultat"),
-                                draft.get("dependance"),
-                                draft.get("intitule"),
-                                draft.get("description"),
-                            )
-                            grille_json = json.dumps(grille_obj, ensure_ascii=False)
-
-                            cur.execute(
-                                """
-                                INSERT INTO public.tbl_competence
-                                  (id_comp, id_owner, code, intitule, description, domaine, niveaua, niveaub, niveauc, grille_evaluation, etat, masque, date_creation, date_modification)
-                                VALUES
-                                  (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, NOW(), NOW())
-                                """,
-                                (
-                                    cid,
-                                    oid,
-                                    code,
-                                    title,
-                                    (draft.get("description") or None),
-                                    (draft.get("domaine_id") or None),
-                                    (draft.get("niveaua") or None),
-                                    (draft.get("niveaub") or None),
-                                    (draft.get("niveauc") or None),
-                                    grille_json,
-                                    (draft.get("etat") or "à valider"),
-                                ),
-                            )
-                            created = True
+                    cur.execute(
+                        """
+                        INSERT INTO public.tbl_competence
+                          (id_comp, id_owner, code, intitule, description, domaine, niveaua, niveaub, niveauc, grille_evaluation, etat, masque, date_creation, date_modification)
+                        VALUES
+                          (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, NOW(), NOW())
+                        """,
+                        (
+                            cid,
+                            oid,
+                            code,
+                            data["intitule"],
+                            (data["description"] or None),
+                            (data["domaine_id"] or None),
+                            (data["niveaua"] or None),
+                            (data["niveaub"] or None),
+                            (data["niveauc"] or None),
+                            grille_json,
+                            data["etat"],
+                        ),
+                    )
+                    created = True
 
                 if add_to_poste:
                     _upsert_poste_comp_assoc(
                         cur,
                         pid,
                         cid,
-                        (draft.get("recommended_level") or "A"),
-                        draft.get("freq_usage") or 0,
-                        draft.get("impact_resultat") or 0,
-                        draft.get("dependance") or 0,
+                        data["recommended_level"],
+                        data["freq_usage"],
+                        data["impact_resultat"],
+                        data["dependance"],
                     )
 
                 conn.commit()
