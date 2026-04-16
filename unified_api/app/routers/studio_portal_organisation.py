@@ -1396,18 +1396,18 @@ def _build_ai_comp_description(title: Optional[str], description: Optional[str],
     return _clean_ai_comp_text(desc, max_len)
 
 
-def _level_fallback_text(skill_title: Optional[str], level_idx: int, max_len: int = 280) -> str:
+def _level_fallback_text(skill_title: Optional[str], level_idx: int, max_len: int = 230) -> str:
     focus = _skill_focus_phrase(skill_title)
 
     templates = {
-        1: f"Réalise {focus} sur un périmètre simple, avec trame, repères de contrôle et validation des points sensibles.",
-        2: f"Réalise {focus} en autonomie sur les situations courantes, tient à jour les éléments attendus et signale les écarts utiles.",
-        3: f"Pilote {focus} sur son périmètre, structure la démarche, sécurise les livrables et améliore les pratiques dans la durée.",
+        1: f"Elle réalise {focus} sur des situations simples, avec repères, vérification et ajustements limités.",
+        2: f"Elle réalise {focus} de façon autonome sur les situations courantes et ajuste sa pratique si nécessaire.",
+        3: f"Elle maîtrise {focus} sur les situations complexes, sécurise le résultat et transmet ses repères.",
     }
     return _clean_ai_comp_text(templates.get(level_idx, templates[3]), max_len)
 
 
-def _normalize_ai_level_text(v: Optional[str], skill_title: Optional[str], level_idx: int, max_len: int = 280) -> str:
+def _normalize_ai_level_text(v: Optional[str], skill_title: Optional[str], level_idx: int, max_len: int = 230) -> str:
     s = _clean_ai_comp_text(v, max_len * 2)
     if s:
         s = re.sub(r"\s*;\s*", ". ", s)
@@ -1416,8 +1416,12 @@ def _normalize_ai_level_text(v: Optional[str], skill_title: Optional[str], level
             s += "."
 
     words = [w for w in re.split(r"\s+", s) if w] if s else []
-    if not s or len(words) < 9 or len(s) < 70:
+    if not s or len(words) < 8 or len(s) < 55:
         s = _level_fallback_text(skill_title, level_idx, max_len)
+
+    s = s[0].upper() + s[1:] if s else _level_fallback_text(skill_title, level_idx, max_len)
+    if s[-1] not in ".!?":
+        s += "."
 
     return _clean_ai_comp_text(s, max_len)
 
@@ -1427,54 +1431,65 @@ def _default_ai_criteria_names(skill_title: Optional[str], description: Optional
 
     if any(x in t for x in ("qualit", "audit", "conformit", "rnq", "preuve", "procedure")):
         names = [
-            "Structuration du système et des preuves",
-            "Pilotage des audits et traitement des écarts",
+            "Structuration du dispositif qualité",
+            "Traitement des écarts et conformité",
             "Fiabilisation et amélioration continue",
+            "Animation de la démarche qualité",
         ]
     elif any(x in t for x in ("formation", "pedagog", "session", "animation", "face a face", "apprenant")):
         names = [
-            "Préparation de l'action de formation",
-            "Animation adaptée au public et aux objectifs",
-            "Évaluation, ajustement et amélioration du dispositif",
+            "Prise en compte du public et des besoins",
+            "Conception ou adaptation des supports",
+            "Animation et ajustement de la séquence",
+            "Évaluation et progression des apprenants",
         ]
-    elif any(x in t for x in ("maintenance", "infrastructure", "reseau", "systeme", "incident", "intervention", "support technique")):
+    elif any(x in t for x in ("infrastructure", "cloud", "reseau", "systeme", "incident", "devops", "deploiement", "deployment", "automatisation")):
         names = [
-            "Préparation et sécurisation des interventions",
-            "Réalisation technique et continuité de service",
-            "Contrôle, fiabilisation et amélioration",
+            "Préparation et structuration du dispositif",
+            "Mise en œuvre technique",
+            "Sécurisation et fiabilité du résultat",
+            "Optimisation et amélioration continue",
         ]
-    elif any(x in t for x in ("pilot", "manager", "indicateur", "tableau de bord", "reporting", "plan d action", "coordination")):
+    elif any(x in t for x in ("ia", "intelligence artificielle", "prompt", "contenu", "communication", "script", "mail", "relance")):
         names = [
-            "Structuration et pilotage du dispositif",
-            "Coordination et maîtrise opérationnelle",
-            "Contrôle, arbitrage et amélioration",
+            "Paramétrage de la demande ou du cadre",
+            "Production du résultat attendu",
+            "Ajustement selon le contexte ou le destinataire",
+            "Vérification et amélioration du rendu",
+        ]
+    elif any(x in t for x in ("pilot", "manager", "management", "indicateur", "tableau de bord", "reporting", "analyse", "diagnostic", "arbitrage", "strategie")):
+        names = [
+            "Analyse et structuration du sujet",
+            "Pilotage opérationnel",
+            "Arbitrage et prise de décision",
+            "Suivi des résultats et amélioration",
         ]
     else:
         names = [
-            "Préparation et structuration de l'activité",
-            "Réalisation et maîtrise opérationnelle",
-            "Contrôle, fiabilisation et amélioration",
+            "Préparation et cadrage de l'activité",
+            "Réalisation de l'activité",
+            "Contrôle et ajustement du résultat",
         ]
 
     return names[:max(1, min(target_count, len(names)))]
 
 
-def _eval_fallback_text(crit_name: Optional[str], level_idx: int, skill_title: Optional[str] = None, max_len: int = 160) -> str:
+def _eval_fallback_text(crit_name: Optional[str], level_idx: int, skill_title: Optional[str] = None, max_len: int = 120) -> str:
     base = _clean_ai_comp_text(crit_name, 100) or _skill_focus_phrase(skill_title)
-    base = base[0].lower() + base[1:] if base else "la pratique attendue"
+    base = base[0].lower() + base[1:] if base else "la dimension attendue"
 
     templates = {
-        1: f"Réalise {base} sur des cas simples, avec trame, repères de contrôle et validation des points sensibles.",
-        2: f"Réalise {base} en autonomie sur les situations courantes, tient à jour les éléments attendus et signale les écarts utiles.",
-        3: f"Pilote {base} de façon autonome, structure la démarche, sécurise le résultat et traite les écarts avec méthode.",
-        4: f"Optimise {base} sur son périmètre, arbitre les situations complexes et diffuse les bonnes pratiques.",
+        1: f"Elle traite {base} de façon partielle, avec repères limités et besoin d'appui régulier.",
+        2: f"Elle traite {base} sur les situations courantes, avec une pratique correcte mais encore inégale.",
+        3: f"Elle traite {base} de façon fiable, ajuste sa pratique et répond aux besoins de la situation.",
+        4: f"Elle maîtrise {base} avec finesse, anticipe les écarts et adapte sa réponse avec pertinence.",
     }
     return _clean_ai_comp_text(templates.get(level_idx, templates[4]), max_len)
 
 
 def _normalize_eval_text(
     v: Optional[str],
-    max_len: int = 160,
+    max_len: int = 120,
     crit_name: Optional[str] = None,
     level_idx: int = 1,
     skill_title: Optional[str] = None,
@@ -1482,19 +1497,19 @@ def _normalize_eval_text(
     s = _clean_ai_comp_text(v, max_len * 2)
     if s:
         s = re.sub(r"^(la personne évaluée|la personne evaluee|la personne|l['’]évalué|l['’]evalue)\s+", "", s, flags=re.I)
-        s = re.sub(r"^(est capable de|sait|peut)\s+", "", s, flags=re.I)
         s = re.sub(r"\s*;\s*", ". ", s)
         s = re.sub(r"\s{2,}", " ", s).strip(" -–•")
         if s and s[-1] not in ".!?":
             s += "."
 
     words = [w for w in re.split(r"\s+", s) if w] if s else []
-    if not s or len(words) < 8 or len(s) < 55:
+    if not s or len(words) < 7 or len(s) < 45:
         s = _eval_fallback_text(crit_name, level_idx, skill_title, max_len)
 
     s = s[0].upper() + s[1:] if s else _eval_fallback_text(crit_name, level_idx, skill_title, max_len)
     if s[-1] not in ".!?":
         s += "."
+
     return _clean_ai_comp_text(s, max_len)
 
 
@@ -1519,7 +1534,7 @@ def _compact_ai_grille(
             continue
 
         if not nom:
-            nom = "Mise en œuvre de la compétence"
+            nom = "Évaluation de la compétence"
 
         key = _norm_text_search(nom)
         if key in seen:
@@ -1540,30 +1555,41 @@ def _compact_ai_grille(
     score_total = fu + im + de
     score_max = max(fu, im, de)
 
-    if score_total <= 10 and score_max <= 4:
-        target_count = 2
-    elif score_total <= 24:
-        target_count = 3
+    complex_skill = any(x in _norm_text_search(f"{skill_title or ''} {skill_description or ''}") for x in (
+        "management", "manager", "pilotage", "strategie", "analyse", "diagnostic",
+        "arbitrage", "audit", "indicateur", "tableau de bord", "coordination"
+    ))
+
+    if complex_skill:
+        if score_total >= 18 or score_max >= 7:
+            target_count = 4
+        else:
+            target_count = 3
     else:
-        target_count = 4
+        if score_total <= 8 and score_max <= 4:
+            target_count = 1
+        elif score_total <= 18 and score_max <= 7:
+            target_count = 2
+        else:
+            target_count = 3
 
     all_generic = (not items) or all(_is_generic_criterion_name(x.get("Nom")) for x in items)
 
-    if all_generic or len(items) < 2:
+    if all_generic or len(items) < 1:
         names = _default_ai_criteria_names(skill_title, skill_description, target_count)
         items = []
         for nom in names:
             items.append({
                 "Nom": nom,
                 "Eval": [
-                    _eval_fallback_text(nom, 1, skill_title),
-                    _eval_fallback_text(nom, 2, skill_title),
-                    _eval_fallback_text(nom, 3, skill_title),
-                    _eval_fallback_text(nom, 4, skill_title),
+                    _eval_fallback_text(nom, 1, skill_title, 120),
+                    _eval_fallback_text(nom, 2, skill_title, 120),
+                    _eval_fallback_text(nom, 3, skill_title, 120),
+                    _eval_fallback_text(nom, 4, skill_title, 120),
                 ]
             })
     else:
-        items = items[:max(2, min(target_count, len(items)))]
+        items = items[:max(1, min(target_count, len(items)))]
 
     out = {}
     for i in range(1, 5):
@@ -1573,7 +1599,6 @@ def _compact_ai_grille(
             out[f"Critere{i}"] = {"Nom": "", "Eval": ["", "", "", ""]}
 
     return out
-
 
 def _normalize_ai_comp_item(item: dict) -> None:
     item["intitule"] = _normalize_ai_comp_title(item.get("intitule"), item.get("description"))
@@ -2406,9 +2431,9 @@ def _normalize_ai_comp_search_item(item: dict) -> None:
         item.get("search_terms") or [],
     )
 
-    item["niveaua"] = _normalize_ai_level_text(item.get("niveaua"), item.get("intitule"), 1, 280)
-    item["niveaub"] = _normalize_ai_level_text(item.get("niveaub"), item.get("intitule"), 2, 280)
-    item["niveauc"] = _normalize_ai_level_text(item.get("niveauc"), item.get("intitule"), 3, 280)
+    item["niveaua"] = _normalize_ai_level_text(item.get("niveaua"), item.get("intitule"), 1, 230)
+    item["niveaub"] = _normalize_ai_level_text(item.get("niveaub"), item.get("intitule"), 2, 230)
+    item["niveauc"] = _normalize_ai_level_text(item.get("niveauc"), item.get("intitule"), 3, 230)
     _fix_abc_levels(item)
 
     ge = _sanitize_grille(item.get("grille_evaluation"))
@@ -2536,9 +2561,9 @@ def _enrich_ai_comp_draft(model: str, draft: dict, domain_rows: List[dict]) -> d
         "required": ["description", "niveaua", "niveaub", "niveauc", "grille_evaluation"],
         "properties": {
             "description": {"type": "string", "maxLength": 600},
-            "niveaua": {"type": "string", "maxLength": 280},
-            "niveaub": {"type": "string", "maxLength": 280},
-            "niveauc": {"type": "string", "maxLength": 280},
+            "niveaua": {"type": "string", "maxLength": 230},
+            "niveaub": {"type": "string", "maxLength": 230},
+            "niveauc": {"type": "string", "maxLength": 230},
             "grille_evaluation": {
                 "type": "object",
                 "additionalProperties": False,
@@ -2550,7 +2575,7 @@ def _enrich_ai_comp_draft(model: str, draft: dict, domain_rows: List[dict]) -> d
                         "required": ["Nom", "Eval"],
                         "properties": {
                             "Nom": {"type": "string", "maxLength": 160},
-                            "Eval": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string", "maxLength": 160}}
+                            "Eval": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string", "maxLength": 120}}
                         }
                     } for i in range(1, 5)}
                 }
@@ -2561,14 +2586,19 @@ def _enrich_ai_comp_draft(model: str, draft: dict, domain_rows: List[dict]) -> d
     system_prompt = (
         "Tu enrichis UNE compétence déjà retenue pour un référentiel RH. "
         "Tu ne modifies pas le périmètre métier de la compétence. "
-        "Tu rédiges une description professionnelle, concrète et réutilisable. "
-        "Tu produis des niveaux A/B/C vraiment observables et différenciants. "
-        "Tu produis une grille d'évaluation exploitable en entretien, avec 2 ou 3 critères dans la majorité des cas, 4 seulement si indispensable. "
-        "Pour structurer la grille, appuie-toi sur une progression de type taxonomie de Bloom adaptée au monde professionnel : "
-        "comprendre / analyser, appliquer / réaliser, piloter / évaluer / améliorer selon la nature de la compétence. "
-        "Évite absolument un critère générique du type 'Mise en œuvre de la compétence'. "
-        "Les critères doivent couvrir des dimensions distinctes et observables, pas reformuler la même chose. "
-        "Tu restes sobre, précis, métier, sans jargon inutile, sans web search et sans élargir artificiellement la compétence."
+        "Tu rédiges dans le style d'un référentiel métier opérationnel, pédagogique et humain. "
+        "Tu évites absolument les formulations génériques, mécaniques ou répétitives. "
+        "Tu ne produis jamais de phrases du type 'Réalise la réalisation', 'Pilote la mise en oeuvre' ou équivalent. "
+        "Les critères doivent être spécifiques à la compétence, courts, observables et utiles à l'évaluation. "
+        "Les niveaux 1 à 4 doivent décrire ce que la personne fait réellement pour obtenir la note. "
+        "Les niveaux A/B/C doivent synthétiser un niveau de maîtrise propre à la compétence, pas un gabarit abstrait. "
+        "Règles impératives : "
+        "niveauA, niveauB, niveauC à la troisième personne du présent de l'indicatif, 230 caractères maximum chacun. "
+        "Chaque Eval à la troisième personne du présent de l'indicatif, 120 caractères maximum. "
+        "Réserve 4 critères aux compétences managériales, analytiques ou complexes. "
+        "Pour les autres compétences, produis entre 1 et 3 critères. "
+        "Tu peux t'inspirer d'une progression de type Bloom, mais sans jamais écrire un contenu académique ou générique. "
+        "Tu restes très concret, métier, et centré sur l'observable."
     )
 
     user_prompt = (
@@ -2578,10 +2608,13 @@ def _enrich_ai_comp_draft(model: str, draft: dict, domain_rows: List[dict]) -> d
         f"domaine autorisés:\n{domain_txt}\n"
         f"niveau recommandé: {_clean_text(draft.get('recommended_level'))}\n"
         f"criticité: freq_usage={_clamp_0_10(draft.get('freq_usage'))}, impact_resultat={_clamp_0_10(draft.get('impact_resultat'))}, dependance={_clamp_0_10(draft.get('dependance'))}\n"
+        "Style attendu, inspiré du référentiel existant :\n"
+        "- critères courts, précis, observables, par exemple : 'Écoute et compréhension des besoins', 'Qualité du suivi individuel', 'Pertinence des conseils donnés'.\n"
+        "- niveaux 1 à 4 concrets et progressifs, par exemple : 'Écoute limitée, ne repère pas les besoins individuels.', 'Écoute active, identifie les besoins spécifiques des apprenants.', 'Analyse fine des besoins et propose des solutions adaptées à chacun.'\n"
+        "- niveaux A/B/C synthétiques et spécifiques à la compétence, par exemple : 'Apporte un accompagnement ponctuel et générique.', 'Fournit un accompagnement personnalisé et régulier.', 'Conçoit et transmet des méthodes d'accompagnement individualisé, avec impact durable.'\n"
         "Rédige uniquement la fiche détaillée de cette compétence déjà validée dans son périmètre.\n"
         "Ne crée pas une nouvelle compétence, ne change pas son intitulé, ne l'élargis pas artificiellement.\n"
-        "La grille d'évaluation doit être directement exploitable en entretien professionnel.\n"
-        "Évite les intitulés de critères vagues ou génériques.\n"
+        "N'utilise pas de phrases génériques interchangeables d'une compétence à l'autre.\n"
     )
 
     enriched = _openai_responses_json(

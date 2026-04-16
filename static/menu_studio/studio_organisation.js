@@ -2938,7 +2938,7 @@ body {
 
             const btnCreate = document.createElement("button");
             btnCreate.type = "button";
-            btnCreate.className = "sb-btn sb-btn--accent sb-btn--xs";
+            btnCreate.className = "sb-btn sb-btn--ai sb-btn--xs";
             btnCreate.textContent = "Créer";
             btnCreate.addEventListener("click", async () => {
                 try { await openPosteCompCreateModalFromAi(window.portal, idx, false); }
