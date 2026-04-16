@@ -2040,36 +2040,79 @@ def _resolve_domain_id_from_rows(domain_rows: List[dict], hint: Optional[str]) -
 
 
 def _should_use_web_for_ai_comp_search(payload: Any, title: str) -> bool:
-    blocks = [
-        payload.mission_principale,
-        _html_to_text(payload.responsabilites_html),
-        payload.ai_contexte,
-        payload.ai_taches,
-        payload.ai_outils,
-        payload.ai_environnement,
-        payload.ai_interactions,
-        payload.ai_contraintes,
-        payload.detail_contrainte,
-    ]
-
-    cleaned = [_clean_text(x) for x in blocks if _clean_text(x)]
-    filled_count = len(cleaned)
-    total_chars = sum(len(x) for x in cleaned)
-
-    title_norm = _norm_text_search(title)
-    generic_hints = {
-        "directeur", "responsable", "assistant", "chef de projet", "manager",
-        "ingenieur", "consultant", "technicien", "charge de mission", "coordinateur"
-    }
-    generic_title = any(h in title_norm for h in generic_hints) or len(_token_set_folded(title)) <= 2
-
-    if total_chars < 220:
-        return True
-    if filled_count < 3:
-        return True
-    if generic_title and total_chars < 650:
-        return True
+    # La recherche IA des compétences doit rester rapide, déterministe
+    # et centrée sur le contenu réel du poste + le référentiel interne.
+    # On désactive donc volontairement la recherche web sur cette étape.
     return False
+
+
+def _build_ai_comp_search_prompts(payload: Any, title: str, domain_txt: str, fallback_mode: bool = False) -> tuple[str, str]:
+    if not fallback_mode:
+        system_prompt = (
+            "Tu identifies les compétences techniques et métier STRUCTURANTES nécessaires à la tenue réelle d'un poste. "
+            "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
+            "Tu réalises ici une RECHERCHE INITIALE RAPIDE de compétences. "
+            "Tu proposes uniquement des compétences coeur de poste ou de support réellement structurantes. "
+            "Tu n'inclus pas les tâches périphériques, locales, administratives occasionnelles, de convenance ou de faible portée métier. "
+            "Pas de soft skills génériques sauf si elles sont vraiment indispensables à l'exécution. "
+            "Tu évites les doublons. "
+            "IMPORTANT: l'intitulé d'une compétence doit commencer par un verbe d'action à l'infinitif et être réutilisable dans un référentiel RH. "
+            "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
+            "La description doit rester courte et utile à la décision, en une phrase simple. "
+            "Ne produis PAS la fiche compétence complète à ce stade: pas de niveaux A/B/C détaillés, pas de grille d'évaluation détaillée. "
+            "Tu peux proposer autant de compétences que nécessaire tant qu'elles sont réellement structurantes et non redondantes."
+        )
+
+        user_prompt = (
+            f"intitulé du poste: {title}\n"
+            f"mission principale: {(payload.mission_principale or '').strip()}\n"
+            f"responsabilités: {_html_to_text(payload.responsabilites_html)}\n"
+            f"contexte: {(payload.ai_contexte or '').strip()}\n"
+            f"tâches complémentaires: {(payload.ai_taches or '').strip()}\n"
+            f"outils: {(payload.ai_outils or '').strip()}\n"
+            f"environnement: {(payload.ai_environnement or '').strip()}\n"
+            f"interactions: {(payload.ai_interactions or '').strip()}\n"
+            f"contraintes complémentaires: {(payload.ai_contraintes or '').strip()}\n"
+            f"contraintes fiche: niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n"
+            f"Domaines de compétences autorisés (choisir exactement dans cette liste ou vide si aucun ne convient):\n{domain_txt}\n"
+            "Retiens seulement les compétences qui conditionnent réellement la tenue du poste, l'autonomie, la qualité du résultat, le management, la coordination ou la continuité d'activité.\n"
+            "Exclus les tâches périphériques, ponctuelles, contextuelles, administratives ou d'intendance locale.\n"
+            "Ne crée pas de doublons ni de variantes inutiles d'une même compétence.\n"
+            "Regroupe intelligemment quand plusieurs tâches relèvent d'une même compétence transférable.\n"
+            "Fais une recherche initiale rapide et exploitable: description courte, search_terms utiles, scores réalistes, niveau recommandé pertinent.\n"
+        )
+        return system_prompt, user_prompt
+
+    system_prompt = (
+        "Tu identifies les compétences réellement requises pour EXECUTER le poste au quotidien. "
+        "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
+        "La première passe a été jugée trop pauvre ou non exploitable: tu repars donc de façon plus concrète et plus directe. "
+        "Tu proposes d'abord les compétences coeur de poste, puis les compétences de coordination ou de sécurisation si elles conditionnent le résultat. "
+        "Tu exclus les micro-tâches de convenance, l'intendance locale, l'accueil standard, le courrier, le classement, les formulations vagues et les soft skills génériques. "
+        "Chaque compétence doit être actionnable, transférable et exprimée avec un verbe d'action à l'infinitif. "
+        "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
+        "La description doit rester courte, concrète et utile à la décision. "
+        "Tu peux proposer autant de compétences que nécessaire tant qu'elles sont réellement structurantes et non redondantes."
+    )
+
+    user_prompt = (
+        f"intitulé du poste: {title}\n"
+        f"mission principale: {(payload.mission_principale or '').strip()}\n"
+        f"responsabilités: {_html_to_text(payload.responsabilites_html)}\n"
+        f"contexte: {(payload.ai_contexte or '').strip()}\n"
+        f"tâches complémentaires: {(payload.ai_taches or '').strip()}\n"
+        f"outils: {(payload.ai_outils or '').strip()}\n"
+        f"environnement: {(payload.ai_environnement or '').strip()}\n"
+        f"interactions: {(payload.ai_interactions or '').strip()}\n"
+        f"contraintes complémentaires: {(payload.ai_contraintes or '').strip()}\n"
+        f"contraintes fiche: niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n"
+        f"Domaines de compétences autorisés (choisir exactement dans cette liste ou vide si aucun ne convient):\n{domain_txt}\n"
+        "Consigne renforcée: sors une liste exploitable de compétences nécessaires à l'exécution réelle du poste, même si les informations fournies sont incomplètes.\n"
+        "Priorise les compétences coeur de poste, les compétences de pilotage opérationnel, de maîtrise technique, de coordination et de continuité d'activité.\n"
+        "Évite les variantes proches, les doublons et les intitulés flous.\n"
+        "En cas d'incertitude, préfère une compétence métier large et transférable plutôt qu'une micro-tâche locale.\n"
+    )
+    return system_prompt, user_prompt
 
 
 def _build_search_terms_from_item(title: str, description: Optional[str], provided: Any) -> List[str]:
@@ -4447,50 +4490,6 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
             }
         }
 
-        system_prompt = (
-            "Tu identifies les compétences techniques et métier STRUCTURANTES nécessaires à la tenue réelle d'un poste. "
-            "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
-            "Tu réalises ici une RECHERCHE INITIALE RAPIDE de compétences. "
-            "Tu proposes uniquement des compétences coeur de poste ou de support réellement structurantes. "
-            "Tu n'inclus pas les tâches périphériques, locales, administratives occasionnelles, de convenance ou de faible portée métier. "
-            "Pas de soft skills génériques sauf si elles sont vraiment indispensables à l'exécution. "
-            "Tu évites les doublons. "
-            "IMPORTANT: l'intitulé d'une compétence doit commencer par un verbe d'action à l'infinitif et être réutilisable dans un référentiel RH. "
-            "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
-            "La description doit rester courte et utile à la décision, en une phrase simple. "
-            "Ne produis PAS la fiche compétence complète à ce stade: pas de niveaux A/B/C détaillés, pas de grille d'évaluation détaillée. "
-            "Tu peux proposer autant de compétences que nécessaire tant qu'elles sont réellement structurantes et non redondantes."
-        )
-
-        user_prompt = (
-            f"intitulé du poste: {title}\n"
-            f"mission principale: {(payload.mission_principale or '').strip()}\n"
-            f"responsabilités: {_html_to_text(payload.responsabilites_html)}\n"
-            f"contexte: {(payload.ai_contexte or '').strip()}\n"
-            f"tâches complémentaires: {(payload.ai_taches or '').strip()}\n"
-            f"outils: {(payload.ai_outils or '').strip()}\n"
-            f"environnement: {(payload.ai_environnement or '').strip()}\n"
-            f"interactions: {(payload.ai_interactions or '').strip()}\n"
-            f"contraintes complémentaires: {(payload.ai_contraintes or '').strip()}\n"
-            f"contraintes fiche: niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n"
-            f"Domaines de compétences autorisés (choisir exactement dans cette liste ou vide si aucun ne convient):\n{domain_txt}\n"
-            "Retiens seulement les compétences qui conditionnent réellement la tenue du poste, l'autonomie, la qualité du résultat, le management, la coordination ou la continuité d'activité.\n"
-            "Exclus les tâches périphériques, ponctuelles, contextuelles, administratives ou d'intendance locale.\n"
-            "Ne crée pas de doublons ni de variantes inutiles d'une même compétence.\n"
-            "Regroupe intelligemment quand plusieurs tâches relèvent d'une même compétence transférable.\n"
-            "Fais une recherche initiale rapide et exploitable: description courte, search_terms utiles, scores réalistes, niveau recommandé pertinent.\n"
-        )
-
-        drafted = _openai_responses_json(
-            model,
-            "poste_comp_search",
-            schema,
-            system_prompt,
-            user_prompt,
-            use_web=_should_use_web_for_ai_comp_search(payload, title),
-        )
-        drafted_items = drafted.get("competences") or []
-
         domain_by_id = {
             _clean_text(r.get("id_domaine_competence")): r
             for r in (domain_rows or [])
@@ -4502,87 +4501,120 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-
                 catalog_rows = _load_owner_comp_catalog_rows(cur, oid)
 
-                existing = []
-                missing = []
-                seen_ids = set()
-                seen_titles = set()
+        def _collect_results(candidate_items: List[dict], allow_relaxed_filter: bool = False) -> tuple[list, list]:
+            existing = []
+            missing = []
+            seen_ids = set()
+            seen_titles = set()
 
-                for raw_item in drafted_items:
-                    item = dict(raw_item or {})
-                    _normalize_ai_comp_search_item(item)
+            for raw_item in candidate_items or []:
+                item = dict(raw_item or {})
+                _normalize_ai_comp_search_item(item)
 
-                    intitule = _clean_text(item.get("intitule"))
-                    if not intitule:
-                        continue
+                intitule = _clean_text(item.get("intitule"))
+                if not intitule:
+                    continue
 
-                    if not _should_keep_ai_comp_for_poste(title, item):
-                        continue
+                fu = _clamp_0_10(item.get("freq_usage"))
+                im = _clamp_0_10(item.get("impact_resultat"))
+                de = _clamp_0_10(item.get("dependance"))
 
-                    canon_title = _canonical_comp_key(intitule) or _norm_text_search(intitule)
-                    if canon_title in seen_titles:
-                        continue
-                    seen_titles.add(canon_title)
+                keep = _should_keep_ai_comp_for_poste(title, item)
+                if not keep and allow_relaxed_filter:
+                    # Fallback : on reste sélectif, mais on évite qu'une passe IA
+                    # un peu prudente vide totalement le résultat.
+                    keep = (max(fu, im, de) >= 4) or ((fu + im + de) >= 10)
 
-                    search_terms = [str(x or "").strip() for x in (item.get("search_terms") or []) if str(x or "").strip()]
-                    match = _find_best_existing_competence_in_rows(catalog_rows, intitule, search_terms)
+                if not keep:
+                    continue
 
-                    lvl = (item.get("recommended_level") or "A").strip().upper()[:1] or "A"
-                    fu = _clamp_0_10(item.get("freq_usage"))
-                    im = _clamp_0_10(item.get("impact_resultat"))
-                    de = _clamp_0_10(item.get("dependance"))
-                    poids = _calc_poids_criticite_100(fu, im, de)
+                canon_title = _canonical_comp_key(intitule) or _norm_text_search(intitule)
+                if canon_title in seen_titles:
+                    continue
+                seen_titles.add(canon_title)
 
-                    match_id = str(match.get("id_comp") or "") if match else ""
+                search_terms = [str(x or "").strip() for x in (item.get("search_terms") or []) if str(x or "").strip()]
+                match = _find_best_existing_competence_in_rows(catalog_rows, intitule, search_terms)
 
-                    if match_id and match_id in existing_ids:
-                        continue
+                lvl = (item.get("recommended_level") or "A").strip().upper()[:1] or "A"
+                poids = _calc_poids_criticite_100(fu, im, de)
 
-                    if match and match_id not in seen_ids:
-                        seen_ids.add(match_id)
-                        existing.append({
-                            "id_comp": match.get("id_comp"),
-                            "code": match.get("code"),
-                            "intitule": match.get("intitule"),
-                            "etat": match.get("etat"),
-                            "domaine_titre_court": match.get("domaine_titre_court"),
-                            "domaine_couleur": match.get("domaine_couleur"),
-                            "recommended_level": lvl,
-                            "recommended_level_label": {"A": "Initial", "B": "Avancé", "C": "Expert"}.get(lvl, lvl),
-                            "freq_usage": fu,
-                            "impact_resultat": im,
-                            "dependance": de,
-                            "poids_criticite": poids,
-                        })
-                    else:
-                        domaine_id = _resolve_domain_id_from_rows(domain_rows, item.get("domaine_hint"))
-                        dom_meta = domain_by_id.get(_clean_text(domaine_id)) if domaine_id else None
-                        domaine_label = _clean_text((dom_meta or {}).get("titre_court") or (dom_meta or {}).get("titre") or "")
-                        domaine_couleur = (dom_meta or {}).get("couleur")
+                match_id = str(match.get("id_comp") or "") if match else ""
+                if match_id and match_id in existing_ids:
+                    continue
 
-                        missing.append({
-                            "intitule": intitule,
-                            "description": _clean_ai_comp_text(item.get("description"), 320),
-                            "why_needed": _clean_ai_comp_text(item.get("why_needed"), 320),
-                            "domaine_id": domaine_id,
-                            "domaine_label": _clean_ai_comp_text(domaine_label or "", 80),
-                            "domaine_couleur": domaine_couleur,
-                            "recommended_level": lvl,
-                            "recommended_level_label": {"A": "Initial", "B": "Avancé", "C": "Expert"}.get(lvl, lvl),
-                            "freq_usage": fu,
-                            "impact_resultat": im,
-                            "dependance": de,
-                            "poids_criticite": poids,
-                            "search_terms": search_terms,
-                            "niveaua": _clean_ai_comp_text(item.get("niveaua"), 280),
-                            "niveaub": _clean_ai_comp_text(item.get("niveaub"), 280),
-                            "niveauc": _clean_ai_comp_text(item.get("niveauc"), 280),
-                            "grille_evaluation": _sanitize_grille(item.get("grille_evaluation")),
-                        })
+                if match and match_id not in seen_ids:
+                    seen_ids.add(match_id)
+                    existing.append({
+                        "id_comp": match.get("id_comp"),
+                        "code": match.get("code"),
+                        "intitule": match.get("intitule"),
+                        "etat": match.get("etat"),
+                        "domaine_titre_court": match.get("domaine_titre_court"),
+                        "domaine_couleur": match.get("domaine_couleur"),
+                        "recommended_level": lvl,
+                        "recommended_level_label": {"A": "Initial", "B": "Avancé", "C": "Expert"}.get(lvl, lvl),
+                        "freq_usage": fu,
+                        "impact_resultat": im,
+                        "dependance": de,
+                        "poids_criticite": poids,
+                    })
+                else:
+                    domaine_id = _resolve_domain_id_from_rows(domain_rows, item.get("domaine_hint"))
+                    dom_meta = domain_by_id.get(_clean_text(domaine_id)) if domaine_id else None
+                    domaine_label = _clean_text((dom_meta or {}).get("titre_court") or (dom_meta or {}).get("titre") or "")
+                    domaine_couleur = (dom_meta or {}).get("couleur")
 
-        return {"existing": existing, "missing": missing}
+                    missing.append({
+                        "intitule": intitule,
+                        "description": _clean_ai_comp_text(item.get("description"), 320),
+                        "why_needed": _clean_ai_comp_text(item.get("why_needed"), 320),
+                        "domaine_id": domaine_id,
+                        "domaine_label": _clean_ai_comp_text(domaine_label or "", 80),
+                        "domaine_couleur": domaine_couleur,
+                        "recommended_level": lvl,
+                        "recommended_level_label": {"A": "Initial", "B": "Avancé", "C": "Expert"}.get(lvl, lvl),
+                        "freq_usage": fu,
+                        "impact_resultat": im,
+                        "dependance": de,
+                        "poids_criticite": poids,
+                        "search_terms": search_terms,
+                        "niveaua": _clean_ai_comp_text(item.get("niveaua"), 280),
+                        "niveaub": _clean_ai_comp_text(item.get("niveaub"), 280),
+                        "niveauc": _clean_ai_comp_text(item.get("niveauc"), 280),
+                        "grille_evaluation": _sanitize_grille(item.get("grille_evaluation")),
+                    })
+
+            return existing, missing
+
+        for pass_idx in range(2):
+            system_prompt, user_prompt = _build_ai_comp_search_prompts(
+                payload,
+                title,
+                domain_txt,
+                fallback_mode=(pass_idx == 1),
+            )
+
+            drafted = _openai_responses_json(
+                model,
+                "poste_comp_search",
+                schema,
+                system_prompt,
+                user_prompt,
+                use_web=False,
+            )
+            drafted_items = drafted.get("competences") or []
+
+            existing, missing = _collect_results(
+                drafted_items,
+                allow_relaxed_filter=(pass_idx == 1),
+            )
+            if existing or missing:
+                return {"existing": existing, "missing": missing}
+
+        return {"existing": [], "missing": []}
 
     except HTTPException:
         raise

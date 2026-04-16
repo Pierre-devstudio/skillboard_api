@@ -579,46 +579,6 @@
         }
     }
 
-    async function apiJsonWithTimeout(portal, url, options, timeoutMs){
-        const ms = Math.max(1000, parseInt(timeoutMs ?? 90000, 10) || 90000);
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), ms);
-
-        try{
-            const token = await resolveStudioAccessToken();
-            const headers = Object.assign({}, options?.headers || {});
-            if (token && !headers["Authorization"]){
-                headers["Authorization"] = `Bearer ${token}`;
-            }
-
-            const resp = await fetch(url, {
-                method: options?.method || "GET",
-                headers,
-                body: options?.body,
-                credentials: "same-origin",
-                signal: controller.signal,
-            });
-
-            if (!resp.ok){
-                let msg = `Erreur API (${resp.status})`;
-                try{
-                    const err = await resp.json();
-                    if (err && err.detail) msg = String(err.detail);
-                } catch(_){}
-                throw new Error(msg);
-            }
-
-            return await resp.json();
-        } catch (e){
-            if (e?.name === "AbortError"){
-                throw new Error(`La recherche IA dépasse ${Math.floor(ms / 1000)} secondes. Traitement interrompu.`);
-            }
-            throw e;
-        } finally {
-            clearTimeout(timer);
-        }
-    }
-
     async function resolveStudioAccessToken(){
         try{
             const pac = window.PortalAuthCommon;
@@ -2784,7 +2744,11 @@ body {
         const existing = Array.isArray(_posteCompAiResults?.existing) ? _posteCompAiResults.existing : [];
         const missing = Array.isArray(_posteCompAiResults?.missing) ? _posteCompAiResults.missing : [];
 
-        summary.textContent = `${existing.length} compétence(s) trouvée(s) dans le référentiel, ${missing.length} à créer.`;
+        if (!existing.length && !missing.length){
+            summary.textContent = "Aucune compétence structurante exploitable n’a été retenue pour ce poste avec les éléments fournis.";
+        } else {
+            summary.textContent = `${existing.length} compétence(s) trouvée(s) dans le référentiel, ${missing.length} à créer.`;
+        }
         summary.style.display = "";
 
         exList.innerHTML = "";
@@ -2936,23 +2900,18 @@ body {
 
         openIaBusyOverlay(
             "Recherche IA des compétences",
-            "Analyse du poste, recherche web et rapprochement avec le catalogue de compétences..."
+            "Analyse du poste et rapprochement avec le catalogue de compétences..."
         );
 
         try{
             const ownerId = getOwnerId();
             const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_search`;
 
-            const res = await apiJsonWithTimeout(
-                portal,
-                url,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(buildPosteCompAiPayload()),
-                },
-                90000
-            );
+            const res = await portal.apiJson(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(buildPosteCompAiPayload()),
+            });
 
             _posteCompAiResults = {
                 existing: Array.isArray(res?.existing) ? res.existing : [],
@@ -2965,7 +2924,7 @@ body {
             if (loading) loading.style.display = "none";
         }
     }
-
+    
     async function ensureEditingPoste(portal){
         if (_posteModalMode === "edit" && _editingPosteId) return _editingPosteId;
         await savePosteFromModal(portal, { keepOpen: true, silent: true, statusMessage: "Poste créé." });
