@@ -1500,8 +1500,6 @@ def _normalize_eval_text(
 
 def _compact_ai_grille(
     ge: dict,
-    skill_title: Optional[str] = None,
-    skill_desc: Optional[str] = None,
     freq_usage: int = 0,
     impact_resultat: int = 0,
     dependance: int = 0,
@@ -1509,32 +1507,17 @@ def _compact_ai_grille(
     items = []
     seen = set()
 
-    fu = _clamp_0_10(freq_usage)
-    im = _clamp_0_10(impact_resultat)
-    de = _clamp_0_10(dependance)
-    total = fu + im + de
-    peak = max(fu, im, de)
-
-    if peak >= 7 or total >= 18:
-        target_count = 3
-    elif peak >= 5 or total >= 12:
-        target_count = 2
-    else:
-        target_count = 1
-
-    defaults = _default_ai_criteria_names(skill_title, skill_desc, target_count)
-
     for i in range(1, 5):
         k = f"Critere{i}"
         node = ge.get(k) or {"Nom": "", "Eval": ["", "", "", ""]}
-        nom = _clean_ai_comp_text(node.get("Nom"), 160)
+        nom = _clean_ai_comp_text(node.get("Nom"), 140)
         raw_evals = (node.get("Eval") or ["", "", "", ""])[:4]
 
         if not nom and not any(_clean_text(x) for x in raw_evals):
             continue
 
         if not nom:
-            nom = defaults[min(len(items), len(defaults) - 1)] if defaults else "Mise en œuvre de la compétence"
+            nom = "Mise en œuvre de la compétence"
 
         key = _norm_text_search(nom)
         if key in seen:
@@ -1542,41 +1525,44 @@ def _compact_ai_grille(
         seen.add(key)
 
         evals = [
-            _normalize_eval_text(raw_evals[0] if len(raw_evals) > 0 else "", 160, nom, 1, skill_title),
-            _normalize_eval_text(raw_evals[1] if len(raw_evals) > 1 else "", 160, nom, 2, skill_title),
-            _normalize_eval_text(raw_evals[2] if len(raw_evals) > 2 else "", 160, nom, 3, skill_title),
-            _normalize_eval_text(raw_evals[3] if len(raw_evals) > 3 else "", 160, nom, 4, skill_title),
+            _normalize_eval_text(raw_evals[0] if len(raw_evals) > 0 else "", 120, nom, 1),
+            _normalize_eval_text(raw_evals[1] if len(raw_evals) > 1 else "", 120, nom, 2),
+            _normalize_eval_text(raw_evals[2] if len(raw_evals) > 2 else "", 120, nom, 3),
+            _normalize_eval_text(raw_evals[3] if len(raw_evals) > 3 else "", 120, nom, 4),
         ]
         items.append({"Nom": nom, "Eval": evals})
 
-    for nom in defaults:
-        if len(items) >= target_count:
-            break
-        key = _norm_text_search(nom)
-        if key in seen:
-            continue
-        seen.add(key)
+    if not items:
+        nom = "Mise en œuvre de la compétence"
         items.append({
             "Nom": nom,
             "Eval": [
-                _eval_fallback_text(nom, 1, skill_title, 160),
-                _eval_fallback_text(nom, 2, skill_title, 160),
-                _eval_fallback_text(nom, 3, skill_title, 160),
-                _eval_fallback_text(nom, 4, skill_title, 160),
+                _eval_fallback_text(nom, 1),
+                _eval_fallback_text(nom, 2),
+                _eval_fallback_text(nom, 3),
+                _eval_fallback_text(nom, 4),
             ]
         })
 
-    if not items:
-        nom = (defaults[0] if defaults else "Mise en œuvre de la compétence")
-        items.append({
-            "Nom": nom,
-            "Eval": [
-                _eval_fallback_text(nom, 1, skill_title, 160),
-                _eval_fallback_text(nom, 2, skill_title, 160),
-                _eval_fallback_text(nom, 3, skill_title, 160),
-                _eval_fallback_text(nom, 4, skill_title, 160),
-            ]
-        })
+    # On conserve un maximum technique de 4 critères,
+    # mais on compacte par défaut à 1-3 selon la portée réelle de la compétence.
+    fu = _clamp_0_10(freq_usage)
+    im = _clamp_0_10(impact_resultat)
+    de = _clamp_0_10(dependance)
+    score_total = fu + im + de
+    score_max = max(fu, im, de)
+
+    if len(items) > 1:
+        if score_total <= 8 and score_max <= 4:
+            target_count = 1
+        elif score_total <= 18 and score_max <= 7:
+            target_count = 2
+        elif score_total <= 24:
+            target_count = 3
+        else:
+            target_count = min(4, len(items))
+
+        items = items[:max(1, min(target_count, len(items)))]
 
     out = {}
     for i in range(1, 5):
@@ -1584,24 +1570,23 @@ def _compact_ai_grille(
             out[f"Critere{i}"] = items[i - 1]
         else:
             out[f"Critere{i}"] = {"Nom": "", "Eval": ["", "", "", ""]}
+
     return out
 
 
 def _normalize_ai_comp_item(item: dict) -> None:
     item["intitule"] = _normalize_ai_comp_title(item.get("intitule"), item.get("description"))
-    item["description"] = _build_ai_comp_description(item.get("intitule"), item.get("description"), item.get("why_needed"), 320)
-    item["why_needed"] = _clean_ai_comp_text(item.get("why_needed"), 320)
-    item["niveaua"] = _normalize_ai_level_text(item.get("niveaua"), item.get("intitule"), 1, 280)
-    item["niveaub"] = _normalize_ai_level_text(item.get("niveaub"), item.get("intitule"), 2, 280)
-    item["niveauc"] = _normalize_ai_level_text(item.get("niveauc"), item.get("intitule"), 3, 280)
+    item["description"] = _clean_ai_comp_text(item.get("description"), 240)
+    item["why_needed"] = _clean_ai_comp_text(item.get("why_needed"), 240)
+    item["niveaua"] = _clean_ai_comp_text(item.get("niveaua"), 230)
+    item["niveaub"] = _clean_ai_comp_text(item.get("niveaub"), 230)
+    item["niveauc"] = _clean_ai_comp_text(item.get("niveauc"), 230)
 
     _fix_abc_levels(item)
 
     ge = _sanitize_grille(item.get("grille_evaluation"))
     item["grille_evaluation"] = _compact_ai_grille(
         ge,
-        item.get("intitule"),
-        item.get("description"),
         item.get("freq_usage"),
         item.get("impact_resultat"),
         item.get("dependance"),
@@ -3834,8 +3819,9 @@ class AiPosteCompetenceSearchPayload(BaseModel):
 
 
 class AiPosteCompetenceCreatePayload(BaseModel):
-    id_poste: str
+    id_poste: Optional[str] = None
     draft: dict
+    add_to_poste: Optional[bool] = True
 
 class SavePosteCcnDecisionPayload(BaseModel):
     coefficient_retenu: int
@@ -4339,12 +4325,12 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
     u = studio_require_user(auth)
 
     try:
+        add_to_poste = bool(payload.add_to_poste if payload.add_to_poste is not None else True)
         pid = (payload.id_poste or "").strip()
-        draft = dict(payload.draft or {})
-        if draft:
-            _normalize_ai_comp_item(draft)
+        draft = payload.draft or {}
         title = (draft.get("intitule") or "").strip()
-        if not pid:
+
+        if add_to_poste and not pid:
             raise HTTPException(status_code=400, detail="id_poste obligatoire.")
         if not title:
             raise HTTPException(status_code=400, detail="Brouillon de compétence invalide (intitulé manquant).")
@@ -4355,63 +4341,99 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
 
-                scope_ent = _resolve_org_scope_ent(cur, oid, request)
-                poste_ent = _resolve_poste_ent(cur, oid, pid)
+                if add_to_poste:
+                    scope_ent = _resolve_org_scope_ent(cur, oid, request)
+                    poste_ent = _resolve_poste_ent(cur, oid, pid)
 
-                if poste_ent != scope_ent:
-                    raise HTTPException(status_code=404, detail="Poste introuvable pour cette structure.")
+                    if poste_ent != scope_ent:
+                        raise HTTPException(status_code=404, detail="Poste introuvable pour cette structure.")
 
-                if not _poste_exists(cur, oid, poste_ent, pid):
-                    raise HTTPException(status_code=404, detail="Poste introuvable.")
+                    if not _poste_exists(cur, oid, poste_ent, pid):
+                        raise HTTPException(status_code=404, detail="Poste introuvable.")
 
                 search_terms = [
-                    str(draft.get("description") or "").strip(),
-                    str(draft.get("why_needed") or "").strip(),
+                    str(x or "").strip()
+                    for x in (draft.get("search_terms") or [])
+                    if str(x or "").strip()
                 ]
-                existing = _find_best_existing_competence(cur, oid, title, search_terms)
+                match = _find_best_existing_competence(cur, oid, title, search_terms)
 
-                if existing:
-                    cid = existing.get("id_comp")
-                    code = existing.get("code")
+                if match:
+                    cid = match.get("id_comp")
+                    code = match.get("code")
                     created = False
                 else:
-                    cid = str(uuid.uuid4())
-                    code = _next_comp_code(cur, oid)
                     cur.execute(
                         """
-                        INSERT INTO public.tbl_competence
-                          (id_comp, id_owner, code, intitule, description, domaine, niveaua, niveaub, niveauc, grille_evaluation, etat, masque, date_creation, date_modification)
-                        VALUES
-                          (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, NOW(), NOW())
+                        SELECT id_comp, code
+                        FROM public.tbl_competence
+                        WHERE id_owner = %s
+                          AND lower(intitule) = lower(%s)
+                        LIMIT 1
                         """,
-                        (
-                            cid,
-                            oid,
-                            code,
-                            title,
-                            (draft.get("description") or None),
-                            (draft.get("domaine_id") or None),
-                            (draft.get("niveaua") or None),
-                            (draft.get("niveaub") or None),
-                            (draft.get("niveauc") or None),
-                            _sanitize_grille(draft.get("grille_evaluation")),
-                            "à valider",
-                        ),
+                        (oid, title),
                     )
-                    created = True
+                    existing = cur.fetchone() or None
 
-                _upsert_poste_comp_assoc(
-                    cur,
-                    pid,
-                    cid,
-                    (draft.get("recommended_level") or "A"),
-                    draft.get("freq_usage") or 0,
-                    draft.get("impact_resultat") or 0,
-                    draft.get("dependance") or 0,
-                )
+                    if existing:
+                        cid = existing.get("id_comp")
+                        code = existing.get("code")
+                        created = False
+                    else:
+                        cid = str(uuid.uuid4())
+                        code = _next_comp_code(cur, oid)
+
+                        grille_obj = _compact_ai_grille(
+                            _sanitize_grille(draft.get("grille_evaluation")),
+                            draft.get("freq_usage"),
+                            draft.get("impact_resultat"),
+                            draft.get("dependance"),
+                        )
+                        grille_json = json.dumps(grille_obj, ensure_ascii=False)
+
+                        cur.execute(
+                            """
+                            INSERT INTO public.tbl_competence
+                              (id_comp, id_owner, code, intitule, description, domaine, niveaua, niveaub, niveauc, grille_evaluation, etat, masque, date_creation, date_modification)
+                            VALUES
+                              (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, NOW(), NOW())
+                            """,
+                            (
+                                cid,
+                                oid,
+                                code,
+                                title,
+                                (draft.get("description") or None),
+                                (draft.get("domaine_id") or None),
+                                (draft.get("niveaua") or None),
+                                (draft.get("niveaub") or None),
+                                (draft.get("niveauc") or None),
+                                grille_json,
+                                (draft.get("etat") or "à valider"),
+                            ),
+                        )
+                        created = True
+
+                if add_to_poste:
+                    _upsert_poste_comp_assoc(
+                        cur,
+                        pid,
+                        cid,
+                        (draft.get("recommended_level") or "A"),
+                        draft.get("freq_usage") or 0,
+                        draft.get("impact_resultat") or 0,
+                        draft.get("dependance") or 0,
+                    )
+
                 conn.commit()
 
-        return {"ok": True, "created": created, "id_comp": cid, "code": code}
+        return {
+            "ok": True,
+            "created": created,
+            "added_to_poste": add_to_poste,
+            "id_comp": cid,
+            "code": code,
+        }
 
     except HTTPException:
         raise

@@ -2235,6 +2235,7 @@ body {
             posteCompCreateEmptyCrit(),
             posteCompCreateEmptyCrit()
         ];
+        reorderPosteCompCreateCrit();
         _posteCompCreateCritEditIdx = null;
         hidePosteCompCreateCritEditor();
         renderPosteCompCreateCritList();
@@ -2265,6 +2266,7 @@ body {
             };
         }
 
+        reorderPosteCompCreateCrit();
         _posteCompCreateCritEditIdx = null;
         hidePosteCompCreateCritEditor();
         renderPosteCompCreateCritList();
@@ -2285,6 +2287,27 @@ body {
             };
         }
         return out;
+    }
+
+    function reorderPosteCompCreateCrit(){
+        if (!Array.isArray(_posteCompCreateCrit)) return;
+
+        const filled = [];
+        const empty = [];
+
+        for (let i = 0; i < _posteCompCreateCrit.length; i++){
+            const c = _posteCompCreateCrit[i] || posteCompCreateEmptyCrit();
+            const hasNom = (c.Nom || "").trim().length > 0;
+            const hasEval = Array.isArray(c.Eval) && c.Eval.some(x => (x || "").trim().length > 0);
+
+            if (hasNom || hasEval) filled.push(c);
+            else empty.push(posteCompCreateEmptyCrit());
+        }
+
+        _posteCompCreateCrit = [...filled, ...empty].slice(0, 4);
+        while (_posteCompCreateCrit.length < 4){
+            _posteCompCreateCrit.push(posteCompCreateEmptyCrit());
+        }
     }
 
     function usedPosteCompCreateCritCount(){
@@ -2355,7 +2378,14 @@ body {
         if (btnAdd){
             btnAdd.disabled = used >= 4;
             btnAdd.style.opacity = btnAdd.disabled ? ".6" : "";
-            btnAdd.title = btnAdd.disabled ? "Maximum 4 critères." : "";
+
+            if (used >= 4){
+                btnAdd.title = "Maximum 4 critères.";
+            } else if (used >= 3){
+                btnAdd.title = "4e critère seulement si nécessaire.";
+            } else {
+                btnAdd.title = "1 à 3 critères suffisent dans la plupart des cas.";
+            }
         }
 
         for (let i=0;i<4;i++){
@@ -2399,26 +2429,40 @@ body {
                 ul.appendChild(row);
             }
 
-            const actions = document.createElement("div");
-            actions.className = "sb-acc-actions";
+                const actions = document.createElement("div");
+                actions.className = "sb-acc-actions";
 
-            const btnEdit = document.createElement("button");
-            btnEdit.type = "button";
-            btnEdit.className = "sb-btn sb-btn--soft sb-btn--xs";
-            btnEdit.textContent = "Modifier";
-            btnEdit.addEventListener("click", (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                showPosteCompCreateCritEditor(i);
-                acc.classList.add("is-open");
-            });
+                const btnEdit = document.createElement("button");
+                btnEdit.type = "button";
+                btnEdit.className = "sb-btn sb-btn--soft sb-btn--xs";
+                btnEdit.textContent = "Modifier";
+                btnEdit.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showPosteCompCreateCritEditor(i);
+                    acc.classList.add("is-open");
+                });
 
-            actions.appendChild(btnEdit);
-            body.appendChild(ul);
-            body.appendChild(actions);
-            acc.appendChild(head);
-            acc.appendChild(body);
-            host.appendChild(acc);
+                const btnDelete = document.createElement("button");
+                btnDelete.type = "button";
+                btnDelete.className = "sb-btn sb-btn--soft sb-btn--xs";
+                btnDelete.textContent = "Supprimer";
+                btnDelete.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    _posteCompCreateCrit[i] = posteCompCreateEmptyCrit();
+                    reorderPosteCompCreateCrit();
+                    hidePosteCompCreateCritEditor();
+                    renderPosteCompCreateCritList();
+                });
+
+                actions.appendChild(btnEdit);
+                actions.appendChild(btnDelete);
+                body.appendChild(ul);
+                body.appendChild(actions);
+                acc.appendChild(head);
+                acc.appendChild(body);
+                host.appendChild(acc);
         }
 
         if (!host.children.length){
@@ -2448,6 +2492,7 @@ body {
         }
 
         _posteCompCreateCrit[_posteCompCreateCritEditIdx] = { Nom: nom, Eval:[e1,e2,e3,e4] };
+        reorderPosteCompCreateCrit();
         hidePosteCompCreateCritEditor();
         renderPosteCompCreateCritList();
     }
@@ -2580,7 +2625,7 @@ body {
         _posteCompAiResults.existing = existing;
         _posteCompAiResults.missing = missing;
     }
-
+    
     async function savePosteCompCreateModal(portal, addAfter){
         if (!_posteCompCreateCtx) return;
 
@@ -2608,42 +2653,37 @@ body {
 
         try{
             const grille = buildPosteCompCreateGrilleJson();
+            const draftSrc = _posteCompCreateCtx?.draft || {};
+            const pid = addAfter ? await ensureEditingPoste(portal) : (_editingPosteId || null);
 
             const created = await portal.apiJson(
-                `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}`,
+                `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_create`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        intitule: title,
-                        domaine: dom || null,
-                        etat: etat || null,
-                        description: desc || null,
-                        niveaua: a || null,
-                        niveaub: b || null,
-                        niveauc: c || null,
-                        grille_evaluation: grille
+                        id_poste: pid,
+                        add_to_poste: !!addAfter,
+                        draft: {
+                            intitule: title,
+                            description: desc || null,
+                            domaine_id: dom || null,
+                            etat: etat || null,
+                            niveaua: a || null,
+                            niveaub: b || null,
+                            niveauc: c || null,
+                            grille_evaluation: grille,
+                            recommended_level: (draftSrc.recommended_level || "B"),
+                            freq_usage: parseInt(draftSrc.freq_usage ?? 0, 10) || 0,
+                            impact_resultat: parseInt(draftSrc.impact_resultat ?? 0, 10) || 0,
+                            dependance: parseInt(draftSrc.dependance ?? 0, 10) || 0,
+                            search_terms: Array.isArray(draftSrc.search_terms) ? draftSrc.search_terms : []
+                        }
                     })
                 }
             );
 
             if (addAfter){
-                const pid = await ensureEditingPoste(portal);
-                const draft = _posteCompCreateCtx?.draft || {};
-                await portal.apiJson(
-                    `${portal.apiBase}/studio/org/poste_competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}`,
-                    {
-                        method: "POST",
-                        headers: { "Content-Type":"application/json" },
-                        body: JSON.stringify({
-                            id_competence: created.id_comp,
-                            niveau_requis: (draft.recommended_level || "B"),
-                            freq_usage: parseInt(draft.freq_usage ?? 0, 10) || 0,
-                            impact_resultat: parseInt(draft.impact_resultat ?? 0, 10) || 0,
-                            dependance: parseInt(draft.dependance ?? 0, 10) || 0
-                        })
-                    }
-                );
                 await loadPosteCompetences(portal);
             }
 
