@@ -1879,7 +1879,36 @@ def _resolve_domain_id(cur, hint: Optional[str]) -> Optional[str]:
     return best if best_score >= 0.72 else None
 
 
-def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List[str]) -> Optional[dict]:
+def _load_owner_comp_catalog_rows(cur, oid: str) -> List[dict]:
+    cur.execute(
+        """
+        SELECT
+          c.id_comp,
+          c.code,
+          c.intitule,
+          c.description,
+          c.domaine,
+          c.etat,
+          c.niveaua,
+          c.niveaub,
+          c.niveauc,
+          dc.titre AS domaine_titre,
+          dc.titre_court AS domaine_titre_court,
+          dc.couleur AS domaine_couleur
+        FROM public.tbl_competence c
+        LEFT JOIN public.tbl_domaine_competence dc
+          ON dc.id_domaine_competence = c.domaine
+         AND COALESCE(dc.masque, FALSE) = FALSE
+        WHERE c.id_owner = %s
+          AND COALESCE(c.masque, FALSE) = FALSE
+        ORDER BY lower(c.intitule)
+        """,
+        (oid,),
+    )
+    return cur.fetchall() or []
+
+
+def _find_best_existing_competence_in_rows(rows: List[dict], title: str, search_terms: List[str]) -> Optional[dict]:
     t = _clean_text(title)
     if not t:
         return None
@@ -1931,40 +1960,13 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
         if len(terms) >= 8:
             break
 
-    cur.execute(
-        """
-        SELECT
-          c.id_comp,
-          c.code,
-          c.intitule,
-          c.description,
-          c.domaine,
-          c.etat,
-          c.niveaua,
-          c.niveaub,
-          c.niveauc,
-          dc.titre AS domaine_titre,
-          dc.titre_court AS domaine_titre_court,
-          dc.couleur AS domaine_couleur
-        FROM public.tbl_competence c
-        LEFT JOIN public.tbl_domaine_competence dc
-          ON dc.id_domaine_competence = c.domaine
-         AND COALESCE(dc.masque, FALSE) = FALSE
-        WHERE c.id_owner = %s
-          AND COALESCE(c.masque, FALSE) = FALSE
-        ORDER BY lower(c.intitule)
-        """,
-        (oid,),
-    )
-    rows = cur.fetchall() or []
-
     core_t = _core_phrase(t)
     title_key = _canonical_comp_key(core_t or t)
 
     best = None
     best_score = 0.0
 
-    for r in rows:
+    for r in rows or []:
         cand_title = _clean_text(r.get("intitule"))
         cand_desc = _clean_text(r.get("description"))
         cand_domain = _clean_text(r.get("domaine_titre_court") or r.get("domaine_titre"))
@@ -2012,6 +2014,267 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
             best = r
 
     return best if best_score >= 0.66 else None
+
+
+def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List[str]) -> Optional[dict]:
+    rows = _load_owner_comp_catalog_rows(cur, oid)
+    return _find_best_existing_competence_in_rows(rows, title, search_terms)
+
+
+def _resolve_domain_id_from_rows(domain_rows: List[dict], hint: Optional[str]) -> Optional[str]:
+    h = _clean_text(hint)
+    if not h:
+        return None
+
+    best_id = None
+    best_score = 0.0
+
+    for r in domain_rows or []:
+        for label in [r.get("titre_court"), r.get("titre"), r.get("id_domaine_competence")]:
+            score = _similarity_score(h, label)
+            if score > best_score:
+                best_score = score
+                best_id = r.get("id_domaine_competence")
+
+    return best_id if best_score >= 0.72 else None
+
+
+def _should_use_web_for_ai_comp_search(payload: Any, title: str) -> bool:
+    blocks = [
+        payload.mission_principale,
+        _html_to_text(payload.responsabilites_html),
+        payload.ai_contexte,
+        payload.ai_taches,
+        payload.ai_outils,
+        payload.ai_environnement,
+        payload.ai_interactions,
+        payload.ai_contraintes,
+        payload.detail_contrainte,
+    ]
+
+    cleaned = [_clean_text(x) for x in blocks if _clean_text(x)]
+    filled_count = len(cleaned)
+    total_chars = sum(len(x) for x in cleaned)
+
+    title_norm = _norm_text_search(title)
+    generic_hints = {
+        "directeur", "responsable", "assistant", "chef de projet", "manager",
+        "ingenieur", "consultant", "technicien", "charge de mission", "coordinateur"
+    }
+    generic_title = any(h in title_norm for h in generic_hints) or len(_token_set_folded(title)) <= 2
+
+    if total_chars < 220:
+        return True
+    if filled_count < 3:
+        return True
+    if generic_title and total_chars < 650:
+        return True
+    return False
+
+
+def _build_search_terms_from_item(title: str, description: Optional[str], provided: Any) -> List[str]:
+    terms = []
+
+    for raw in (provided or []):
+        s = _clean_text(raw)
+        if len(s) >= 3 and s.lower() not in [x.lower() for x in terms]:
+            terms.append(s)
+
+    for raw in [title, description]:
+        s = _clean_text(raw)
+        if len(s) >= 3 and s.lower() not in [x.lower() for x in terms]:
+            terms.append(s)
+
+    if not terms and title:
+        terms = [title]
+
+    return terms[:4]
+
+
+def _normalize_ai_comp_search_item(item: dict) -> None:
+    item["intitule"] = _normalize_ai_comp_title(item.get("intitule"), item.get("description"))
+    item["description"] = _build_ai_comp_description(
+        item.get("intitule"),
+        item.get("description"),
+        item.get("why_needed"),
+        240,
+    )
+    item["why_needed"] = _clean_ai_comp_text(item.get("why_needed"), 240)
+
+    fu = _clamp_0_10(item.get("freq_usage"))
+    im = _clamp_0_10(item.get("impact_resultat"))
+    de = _clamp_0_10(item.get("dependance"))
+    item["freq_usage"] = fu
+    item["impact_resultat"] = im
+    item["dependance"] = de
+
+    lvl = (item.get("recommended_level") or "").strip().upper()[:1]
+    if lvl not in {"A", "B", "C"}:
+        total = fu + im + de
+        if total >= 21 or max(fu, im, de) >= 8:
+            lvl = "C"
+        elif total >= 12 or max(fu, im, de) >= 5:
+            lvl = "B"
+        else:
+            lvl = "A"
+    item["recommended_level"] = lvl
+
+    item["domaine_hint"] = _clean_ai_comp_text(item.get("domaine_hint"), 120)
+    item["search_terms"] = _build_search_terms_from_item(
+        item.get("intitule") or "",
+        item.get("description") or "",
+        item.get("search_terms") or [],
+    )
+
+    item["niveaua"] = _normalize_ai_level_text(item.get("niveaua"), item.get("intitule"), 1, 280)
+    item["niveaub"] = _normalize_ai_level_text(item.get("niveaub"), item.get("intitule"), 2, 280)
+    item["niveauc"] = _normalize_ai_level_text(item.get("niveauc"), item.get("intitule"), 3, 280)
+    _fix_abc_levels(item)
+
+    ge = _sanitize_grille(item.get("grille_evaluation"))
+    item["grille_evaluation"] = _compact_ai_grille(
+        ge,
+        fu,
+        im,
+        de,
+    )
+
+
+def _draft_needs_ai_enrichment(draft: dict) -> bool:
+    desc = _clean_text(draft.get("description"))
+    if len(desc.split()) < 9:
+        return True
+
+    if not _clean_text(draft.get("niveaua")):
+        return True
+    if not _clean_text(draft.get("niveaub")):
+        return True
+    if not _clean_text(draft.get("niveauc")):
+        return True
+
+    ge = _sanitize_grille(draft.get("grille_evaluation"))
+    filled_crit = 0
+    for i in range(1, 5):
+        node = ge.get(f"Critere{i}") or {}
+        nom = _clean_text(node.get("Nom"))
+        evals = [x for x in (node.get("Eval") or []) if _clean_text(x)]
+        if nom or evals:
+            filled_crit += 1
+
+    return filled_crit == 0
+
+
+def _merge_ai_comp_draft(base: dict, enriched: dict) -> dict:
+    out = dict(base or {})
+    src = dict(enriched or {})
+
+    cur_desc = _clean_text(out.get("description"))
+    if len(cur_desc.split()) < 9 and _clean_text(src.get("description")):
+        out["description"] = src.get("description")
+
+    for key in ("niveaua", "niveaub", "niveauc"):
+        cur_txt = _clean_text(out.get(key))
+        if len(cur_txt.split()) < 8 and _clean_text(src.get(key)):
+            out[key] = src.get(key)
+
+    cur_ge = _sanitize_grille(out.get("grille_evaluation"))
+    src_ge = _sanitize_grille(src.get("grille_evaluation"))
+
+    cur_filled = 0
+    src_filled = 0
+
+    for i in range(1, 5):
+        cur_node = cur_ge.get(f"Critere{i}") or {}
+        src_node = src_ge.get(f"Critere{i}") or {}
+
+        if _clean_text(cur_node.get("Nom")) or any(_clean_text(x) for x in (cur_node.get("Eval") or [])):
+            cur_filled += 1
+        if _clean_text(src_node.get("Nom")) or any(_clean_text(x) for x in (src_node.get("Eval") or [])):
+            src_filled += 1
+
+    if src_filled > cur_filled:
+        out["grille_evaluation"] = src_ge
+
+    return out
+
+
+def _enrich_ai_comp_draft(model: str, draft: dict, domain_rows: List[dict]) -> dict:
+    title = _clean_text(draft.get("intitule"))
+    if not title:
+        return dict(draft or {})
+
+    domain_txt = "\n".join([
+        f"- {(r.get('titre_court') or r.get('titre') or '').strip()}"
+        for r in (domain_rows or [])
+        if (r.get("titre_court") or r.get("titre") or "").strip()
+    ]) or "- aucun domaine"
+
+    current_domain_label = ""
+    current_domain_id = _clean_text(draft.get("domaine_id"))
+    if current_domain_id:
+        for r in (domain_rows or []):
+            if _clean_text(r.get("id_domaine_competence")) == current_domain_id:
+                current_domain_label = _clean_text(r.get("titre_court") or r.get("titre"))
+                break
+
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["description", "niveaua", "niveaub", "niveauc", "grille_evaluation"],
+        "properties": {
+            "description": {"type": "string", "maxLength": 600},
+            "niveaua": {"type": "string", "maxLength": 280},
+            "niveaub": {"type": "string", "maxLength": 280},
+            "niveauc": {"type": "string", "maxLength": 280},
+            "grille_evaluation": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["Critere1", "Critere2", "Critere3", "Critere4"],
+                "properties": {
+                    **{f"Critere{i}": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["Nom", "Eval"],
+                        "properties": {
+                            "Nom": {"type": "string", "maxLength": 160},
+                            "Eval": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string", "maxLength": 160}}
+                        }
+                    } for i in range(1, 5)}
+                }
+            }
+        }
+    }
+
+    system_prompt = (
+        "Tu enrichis UNE compétence déjà retenue pour un référentiel RH. "
+        "Tu ne modifies pas le périmètre métier de la compétence. "
+        "Tu rédiges une description professionnelle, concrète et réutilisable. "
+        "Tu produis des niveaux A/B/C vraiment observables et différenciants. "
+        "Tu produis une grille d'évaluation exploitable en entretien, avec 2 ou 3 critères dans la majorité des cas, 4 seulement si indispensable. "
+        "Tu restes sobre, précis, métier, sans jargon inutile, sans web search et sans élargir artificiellement la compétence."
+    )
+
+    user_prompt = (
+        f"compétence retenue: {title}\n"
+        f"description actuelle: {_clean_text(draft.get('description'))}\n"
+        f"domaine actuel: {current_domain_label}\n"
+        f"domaine autorisés:\n{domain_txt}\n"
+        f"niveau recommandé: {_clean_text(draft.get('recommended_level'))}\n"
+        f"criticité: freq_usage={_clamp_0_10(draft.get('freq_usage'))}, impact_resultat={_clamp_0_10(draft.get('impact_resultat'))}, dependance={_clamp_0_10(draft.get('dependance'))}\n"
+        "Rédige uniquement la fiche détaillée de cette compétence déjà validée dans son périmètre.\n"
+        "Ne crée pas une nouvelle compétence, ne change pas son intitulé, ne l'élargis pas artificiellement.\n"
+    )
+
+    enriched = _openai_responses_json(
+        model,
+        "poste_comp_create_enrich",
+        schema,
+        system_prompt,
+        user_prompt,
+        use_web=False,
+    )
+
+    return _merge_ai_comp_draft(draft, enriched or {})
 
 
 def _sanitize_grille(v: Any) -> dict:
@@ -4133,7 +4396,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
 
                 cur.execute(
                     """
-                    SELECT id_domaine_competence, titre, titre_court
+                    SELECT id_domaine_competence, titre, titre_court, couleur
                     FROM public.tbl_domaine_competence
                     WHERE COALESCE(masque, FALSE) = FALSE
                     ORDER BY COALESCE(ordre_affichage, 999999), lower(COALESCE(titre_court, titre, id_domaine_competence))
@@ -4144,7 +4407,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
         domain_txt = "\n".join([
             f"- {(r.get('titre_court') or r.get('titre') or '').strip()}"
             for r in domain_rows
-            if (r.get('titre_court') or r.get('titre') or '').strip()
+            if (r.get("titre_court") or r.get("titre") or "").strip()
         ]) or "- aucun domaine"
 
         schema = {
@@ -4160,39 +4423,24 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                         "type": "object",
                         "additionalProperties": False,
                         "required": [
-                            "intitule", "description", "why_needed", "search_terms", "recommended_level",
-                            "freq_usage", "impact_resultat", "dependance", "domaine_hint",
-                            "niveaua", "niveaub", "niveauc", "grille_evaluation"
+                            "intitule",
+                            "description",
+                            "search_terms",
+                            "recommended_level",
+                            "freq_usage",
+                            "impact_resultat",
+                            "dependance",
+                            "domaine_hint"
                         ],
                         "properties": {
                             "intitule": {"type": "string", "minLength": 1, "maxLength": 140},
-                            "description": {"type": "string", "maxLength": 1200},
-                            "why_needed": {"type": "string", "maxLength": 600},
+                            "description": {"type": "string", "maxLength": 260},
                             "search_terms": {"type": "array", "minItems": 1, "maxItems": 4, "items": {"type": "string", "maxLength": 80}},
                             "recommended_level": {"type": "string", "enum": ["A", "B", "C"]},
                             "freq_usage": {"type": "integer", "minimum": 0, "maximum": 10},
                             "impact_resultat": {"type": "integer", "minimum": 0, "maximum": 10},
                             "dependance": {"type": "integer", "minimum": 0, "maximum": 10},
-                            "domaine_hint": {"type": "string", "maxLength": 120},
-                            "niveaua": {"type": "string", "maxLength": 280},
-                            "niveaub": {"type": "string", "maxLength": 280},
-                            "niveauc": {"type": "string", "maxLength": 280},
-                            "grille_evaluation": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": ["Critere1", "Critere2", "Critere3", "Critere4"],
-                                "properties": {
-                                    **{f"Critere{i}": {
-                                        "type": "object",
-                                        "additionalProperties": False,
-                                        "required": ["Nom", "Eval"],
-                                        "properties": {
-                                            "Nom": {"type": "string", "maxLength": 160},
-                                            "Eval": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"type": "string", "maxLength": 160}}
-                                        }
-                                    } for i in range(1, 5)}
-                                }
-                            }
+                            "domaine_hint": {"type": "string", "maxLength": 120}
                         }
                     }
                 }
@@ -4200,28 +4448,18 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
         }
 
         system_prompt = (
-            "Tu identifies uniquement les compétences techniques et métier STRUCTURANTES nécessaires à la tenue réelle d'un poste. "
+            "Tu identifies les compétences techniques et métier STRUCTURANTES nécessaires à la tenue réelle d'un poste. "
             "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
-            "Tu t'appuies sur les informations fournies ET sur une recherche web. "
+            "Tu réalises ici une RECHERCHE INITIALE RAPIDE de compétences. "
             "Tu proposes uniquement des compétences coeur de poste ou de support réellement structurantes. "
             "Tu n'inclus pas les tâches périphériques, locales, administratives occasionnelles, de convenance ou de faible portée métier. "
             "Pas de soft skills génériques sauf si elles sont vraiment indispensables à l'exécution. "
             "Tu évites les doublons. "
             "IMPORTANT: l'intitulé d'une compétence doit commencer par un verbe d'action à l'infinitif et être réutilisable dans un référentiel RH. "
             "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
-            "Exemples de forme attendue: 'Animer des sessions de formation', 'Piloter des indicateurs qualité', 'Administrer une infrastructure web'. "
-            "Exemples interdits: thèmes nominaux, axes de travail, intitulés fourre-tout, formulations avec '&' ou '/'. "
-            "La description doit faire 1 à 2 phrases complètes, en français professionnel, sans style télégraphique. "
-            "Elle doit préciser le périmètre de la compétence, ce qu'elle permet de produire, sécuriser ou améliorer, et sa finalité métier. "
-            "recommended_level: A initial (guidé, applique des consignes simples), B avancé (autonome, structuré, fiable), C expert (maîtrise, optimise, transmet). "
-            "Les niveaux A/B/C doivent être réellement différenciants, concrets et observables. "
-            "Le niveau C doit décrire une maîtrise permettant de sécuriser le résultat, traiter les situations complexes, améliorer la méthode et transmettre les bonnes pratiques si pertinent. "
-            "La grille d'évaluation doit être exploitable par un manager ou un formateur. "
-            "Dans la majorité des cas, produis 2 ou 3 critères d'évaluation. 1 seul critère uniquement si la compétence est vraiment simple. 4 seulement si c'est indispensable. "
-            "Les critères doivent être nommés comme des dimensions observables de la compétence, pas comme des étiquettes vagues ou trop larges. "
-            "Exemples de critères à éviter: 'Réalisation', 'Amélioration continue', 'Divers'. "
-            "Chaque niveau d'évaluation doit être une phrase métier concrète, progressive et observable, avec assez de matière pour permettre une évaluation réelle. "
-            "Les trois scores freq_usage / impact_resultat / dependance doivent être cohérents et réalistes."
+            "La description doit rester courte et utile à la décision, en une phrase simple. "
+            "Ne produis PAS la fiche compétence complète à ce stade: pas de niveaux A/B/C détaillés, pas de grille d'évaluation détaillée. "
+            "Tu peux proposer autant de compétences que nécessaire tant qu'elles sont réellement structurantes et non redondantes."
         )
 
         user_prompt = (
@@ -4236,26 +4474,28 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
             f"contraintes complémentaires: {(payload.ai_contraintes or '').strip()}\n"
             f"contraintes fiche: niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n"
             f"Domaines de compétences autorisés (choisir exactement dans cette liste ou vide si aucun ne convient):\n{domain_txt}\n"
-            "Vise un référentiel resserré de compétences structurantes.\n"
             "Retiens seulement les compétences qui conditionnent réellement la tenue du poste, l'autonomie, la qualité du résultat, le management, la coordination ou la continuité d'activité.\n"
             "Exclus les tâches périphériques, ponctuelles, contextuelles, administratives ou d'intendance locale.\n"
-            "Préfère 6 à 12 compétences coeur de poste plutôt qu'une liste longue.\n"
-            "Ne compacte pas excessivement la fiche compétence.\n"
-            "La description doit être exploitable dans un référentiel RH, pas une note télégraphique.\n"
-            "Les critères doivent décrire des dimensions d'évaluation utiles, précises et observables.\n"
-            "Les niveaux A/B/C et les niveaux 1 à 4 de la grille doivent contenir de la matière métier, sans bavardage inutile.\n"
             "Ne crée pas de doublons ni de variantes inutiles d'une même compétence.\n"
             "Regroupe intelligemment quand plusieurs tâches relèvent d'une même compétence transférable.\n"
-            "Rappel impératif:\n"
-            "- chaque intitulé doit commencer par un verbe d'action à l'infinitif ;\n"
-            "- la description doit être rédigée en 1 à 2 phrases complètes ;\n"
-            "- les niveaux A/B/C doivent exprimer ce que la personne sait faire de façon observable ;\n"
-            "- la grille doit comporter le plus souvent 2 ou 3 critères utiles ;\n"
-            "- les critères et évaluations doivent rester concrets, métier et réutilisables en entretien.\n"
+            "Fais une recherche initiale rapide et exploitable: description courte, search_terms utiles, scores réalistes, niveau recommandé pertinent.\n"
         )
 
-        drafted = _openai_responses_json(model, "poste_comp_search", schema, system_prompt, user_prompt, use_web=True)
+        drafted = _openai_responses_json(
+            model,
+            "poste_comp_search",
+            schema,
+            system_prompt,
+            user_prompt,
+            use_web=_should_use_web_for_ai_comp_search(payload, title),
+        )
         drafted_items = drafted.get("competences") or []
+
+        domain_by_id = {
+            _clean_text(r.get("id_domaine_competence")): r
+            for r in (domain_rows or [])
+            if _clean_text(r.get("id_domaine_competence"))
+        }
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -4263,17 +4503,21 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
 
+                catalog_rows = _load_owner_comp_catalog_rows(cur, oid)
+
                 existing = []
                 missing = []
                 seen_ids = set()
                 seen_titles = set()
 
-                for item in drafted_items:
-                    _normalize_ai_comp_item(item)
-                    intitule = _normalize_ai_comp_title(item.get("intitule"), item.get("description"))
-                    item["intitule"] = intitule
+                for raw_item in drafted_items:
+                    item = dict(raw_item or {})
+                    _normalize_ai_comp_search_item(item)
+
+                    intitule = _clean_text(item.get("intitule"))
                     if not intitule:
                         continue
+
                     if not _should_keep_ai_comp_for_poste(title, item):
                         continue
 
@@ -4283,15 +4527,21 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                     seen_titles.add(canon_title)
 
                     search_terms = [str(x or "").strip() for x in (item.get("search_terms") or []) if str(x or "").strip()]
-                    match = _find_best_existing_competence(cur, oid, intitule, search_terms)
+                    match = _find_best_existing_competence_in_rows(catalog_rows, intitule, search_terms)
+
                     lvl = (item.get("recommended_level") or "A").strip().upper()[:1] or "A"
                     fu = _clamp_0_10(item.get("freq_usage"))
                     im = _clamp_0_10(item.get("impact_resultat"))
                     de = _clamp_0_10(item.get("dependance"))
                     poids = _calc_poids_criticite_100(fu, im, de)
 
-                    if match and str(match.get("id_comp") or "") not in existing_ids and str(match.get("id_comp") or "") not in seen_ids:
-                        seen_ids.add(str(match.get("id_comp") or ""))
+                    match_id = str(match.get("id_comp") or "") if match else ""
+
+                    if match_id and match_id in existing_ids:
+                        continue
+
+                    if match and match_id not in seen_ids:
+                        seen_ids.add(match_id)
                         existing.append({
                             "id_comp": match.get("id_comp"),
                             "code": match.get("code"),
@@ -4307,17 +4557,11 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                             "poids_criticite": poids,
                         })
                     else:
-                        domaine_id = _resolve_domain_id(cur, item.get("domaine_hint"))
-                        domaine_label = None
-                        domaine_couleur = None
-                        if domaine_id:
-                            cur.execute(
-                                "SELECT COALESCE(titre_court, titre, id_domaine_competence) AS label, couleur FROM public.tbl_domaine_competence WHERE id_domaine_competence = %s LIMIT 1",
-                                (domaine_id,)
-                            )
-                            rr = cur.fetchone() or {}
-                            domaine_label = rr.get("label")
-                            domaine_couleur = rr.get("couleur")
+                        domaine_id = _resolve_domain_id_from_rows(domain_rows, item.get("domaine_hint"))
+                        dom_meta = domain_by_id.get(_clean_text(domaine_id)) if domaine_id else None
+                        domaine_label = _clean_text((dom_meta or {}).get("titre_court") or (dom_meta or {}).get("titre") or "")
+                        domaine_couleur = (dom_meta or {}).get("couleur")
+
                         missing.append({
                             "intitule": intitule,
                             "description": _clean_ai_comp_text(item.get("description"), 320),
@@ -4331,6 +4575,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                             "impact_resultat": im,
                             "dependance": de,
                             "poids_criticite": poids,
+                            "search_terms": search_terms,
                             "niveaua": _clean_ai_comp_text(item.get("niveaua"), 280),
                             "niveaub": _clean_ai_comp_text(item.get("niveaub"), 280),
                             "niveauc": _clean_ai_comp_text(item.get("niveauc"), 280),
@@ -4344,6 +4589,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/postes ai_comp_search error: {e}")
 
+
 @router.post("/studio/org/postes/{id_owner}/ai_comp_create")
 def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePayload, request: Request):
     auth = request.headers.get("Authorization", "")
@@ -4352,7 +4598,7 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
     try:
         add_to_poste = bool(payload.add_to_poste if payload.add_to_poste is not None else True)
         pid = (payload.id_poste or "").strip()
-        draft = payload.draft or {}
+        draft = dict(payload.draft or {})
         title = (draft.get("intitule") or "").strip()
 
         if add_to_poste and not pid:
@@ -4388,56 +4634,88 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
                     code = match.get("code")
                     created = False
                 else:
-                    cur.execute(
-                        """
-                        SELECT id_comp, code
-                        FROM public.tbl_competence
-                        WHERE id_owner = %s
-                          AND lower(intitule) = lower(%s)
-                        LIMIT 1
-                        """,
-                        (oid, title),
-                    )
-                    existing = cur.fetchone() or None
-
-                    if existing:
-                        cid = existing.get("id_comp")
-                        code = existing.get("code")
-                        created = False
-                    else:
-                        cid = str(uuid.uuid4())
-                        code = _next_comp_code(cur, oid)
-
-                        grille_obj = _compact_ai_grille(
-                            _sanitize_grille(draft.get("grille_evaluation")),
-                            draft.get("freq_usage"),
-                            draft.get("impact_resultat"),
-                            draft.get("dependance"),
-                        )
-                        grille_json = json.dumps(grille_obj, ensure_ascii=False)
-
+                    if _draft_needs_ai_enrichment(draft):
                         cur.execute(
                             """
-                            INSERT INTO public.tbl_competence
-                              (id_comp, id_owner, code, intitule, description, domaine, niveaua, niveaub, niveauc, grille_evaluation, etat, masque, date_creation, date_modification)
-                            VALUES
-                              (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, NOW(), NOW())
-                            """,
-                            (
-                                cid,
-                                oid,
-                                code,
-                                title,
-                                (draft.get("description") or None),
-                                (draft.get("domaine_id") or None),
-                                (draft.get("niveaua") or None),
-                                (draft.get("niveaub") or None),
-                                (draft.get("niveauc") or None),
-                                grille_json,
-                                (draft.get("etat") or "à valider"),
-                            ),
+                            SELECT id_domaine_competence, titre, titre_court, couleur
+                            FROM public.tbl_domaine_competence
+                            WHERE COALESCE(masque, FALSE) = FALSE
+                            ORDER BY COALESCE(ordre_affichage, 999999), lower(COALESCE(titre_court, titre, id_domaine_competence))
+                            """
                         )
-                        created = True
+                        domain_rows = cur.fetchall() or []
+                        enrich_model = (
+                            (os.getenv("OPENAI_MODEL_POSTE_COMP_CREATE") or "").strip()
+                            or (os.getenv("OPENAI_MODEL_POSTE_COMP_SEARCH") or "").strip()
+                            or "gpt-5"
+                        )
+                        draft = _enrich_ai_comp_draft(enrich_model, draft, domain_rows)
+
+                    _normalize_ai_comp_item(draft)
+                    title = (draft.get("intitule") or title).strip()
+
+                    search_terms = [
+                        str(x or "").strip()
+                        for x in (draft.get("search_terms") or [])
+                        if str(x or "").strip()
+                    ]
+                    match_after = _find_best_existing_competence(cur, oid, title, search_terms)
+
+                    if match_after:
+                        cid = match_after.get("id_comp")
+                        code = match_after.get("code")
+                        created = False
+                    else:
+                        cur.execute(
+                            """
+                            SELECT id_comp, code
+                            FROM public.tbl_competence
+                            WHERE id_owner = %s
+                              AND lower(intitule) = lower(%s)
+                            LIMIT 1
+                            """,
+                            (oid, title),
+                        )
+                        existing = cur.fetchone() or None
+
+                        if existing:
+                            cid = existing.get("id_comp")
+                            code = existing.get("code")
+                            created = False
+                        else:
+                            cid = str(uuid.uuid4())
+                            code = _next_comp_code(cur, oid)
+
+                            grille_obj = _compact_ai_grille(
+                                _sanitize_grille(draft.get("grille_evaluation")),
+                                draft.get("freq_usage"),
+                                draft.get("impact_resultat"),
+                                draft.get("dependance"),
+                            )
+                            grille_json = json.dumps(grille_obj, ensure_ascii=False)
+
+                            cur.execute(
+                                """
+                                INSERT INTO public.tbl_competence
+                                  (id_comp, id_owner, code, intitule, description, domaine, niveaua, niveaub, niveauc, grille_evaluation, etat, masque, date_creation, date_modification)
+                                VALUES
+                                  (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, NOW(), NOW())
+                                """,
+                                (
+                                    cid,
+                                    oid,
+                                    code,
+                                    title,
+                                    (draft.get("description") or None),
+                                    (draft.get("domaine_id") or None),
+                                    (draft.get("niveaua") or None),
+                                    (draft.get("niveaub") or None),
+                                    (draft.get("niveauc") or None),
+                                    grille_json,
+                                    (draft.get("etat") or "à valider"),
+                                ),
+                            )
+                            created = True
 
                 if add_to_poste:
                     _upsert_poste_comp_assoc(
@@ -4464,6 +4742,7 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/postes ai_comp_create error: {e}")
+
 
 @router.get("/studio/org/organigramme_pdf/{id_owner}")
 def studio_org_get_organigramme_pdf(id_owner: str, request: Request):
