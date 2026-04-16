@@ -2733,6 +2733,36 @@ body {
         return dom;
     }
 
+    function normalizeAiMatchScore(v){
+        const n = Number(v);
+        if (!Number.isFinite(n)) return 0;
+        return Math.max(0, Math.min(1, n));
+    }
+
+    function buildAiMatchBadge(label, score){
+        const txt = String(label || "").trim();
+        if (!txt) return null;
+
+        const n = normalizeAiMatchScore(score);
+        const isRecommended = n >= 0.82;
+
+        const badge = document.createElement("span");
+        badge.className = `sb-badge sb-badge--ai-match ${isRecommended ? "sb-badge--ai-match-recommended" : "sb-badge--ai-match-proposed"}`;
+        badge.textContent = txt;
+        badge.title = `Score de rapprochement : ${Math.round(n * 100)} %`;
+        return badge;
+    }
+
+    function buildAiMatchScoreText(score){
+        const n = normalizeAiMatchScore(score);
+
+        const el = document.createElement("span");
+        el.className = "sb-ai-match-score";
+        el.textContent = `${Math.round(n * 100)} %`;
+        el.title = `Score de rapprochement interne : ${Math.round(n * 100)} %`;
+        return el;
+    }
+
     function renderPosteCompAiResults(){
         const summary = byId("posteCompAiSummary");
         const exWrap = byId("posteCompAiExistingWrap");
@@ -2781,6 +2811,13 @@ body {
 
             const dom = buildAiCompDomainBadge(it.domaine_titre_court || "", it.domaine_couleur);
             if (dom) meta.appendChild(dom);
+
+            const matchBadge = buildAiMatchBadge(it.match_label || "", it.match_score);
+            if (matchBadge) meta.appendChild(matchBadge);
+
+            if (it.match_score !== undefined && it.match_score !== null){
+                meta.appendChild(buildAiMatchScoreText(it.match_score));
+            }
 
             if (((it.etat || "").toLowerCase()) === "à valider"){
                 const et = document.createElement("span");

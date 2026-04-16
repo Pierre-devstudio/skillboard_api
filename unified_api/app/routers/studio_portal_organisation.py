@@ -1913,12 +1913,14 @@ def _find_best_existing_competence_in_rows(rows: List[dict], title: str, search_
     if not t:
         return None
 
+    action_verbs = {_norm_text_search(x) for x in _ACTION_VERB_HINTS}
+
     def _core_phrase(v: Optional[str]) -> str:
         s = _norm_text_search(v)
         if not s:
             return ""
         parts = [p for p in s.split(" ") if p]
-        if parts and _starts_with_action_verb(parts[0]):
+        if parts and parts[0] in action_verbs:
             parts = parts[1:]
         stop = {"de", "des", "du", "d", "la", "le", "les", "un", "une", "et", "en", "pour", "sur", "au", "aux"}
         parts = [p for p in parts if p not in stop]
@@ -1950,6 +1952,51 @@ def _find_best_existing_competence_in_rows(rows: List[dict], title: str, search_
             return 0.92
         return 0.0
 
+    def _business_terms(v: Optional[str]) -> set:
+        s = _norm_text_search(v)
+        if not s:
+            return set()
+
+        stop = {
+            "de", "des", "du", "d", "la", "le", "les", "un", "une", "et", "en", "pour", "sur", "au", "aux",
+            "competence", "competences", "maitrise", "maitriser", "mise", "oeuvre", "mettre",
+            "gestion", "gerer", "gérer", "realiser", "réaliser", "assurer", "piloter", "utiliser"
+        }
+
+        kept = []
+        for tok in s.split(" "):
+            if len(tok) < 3:
+                continue
+            if tok in stop:
+                continue
+            if tok in action_verbs:
+                continue
+            kept.append(tok)
+
+        return _token_set_folded(" ".join(kept))
+
+    def _business_overlap(a: Optional[str], b: Optional[str]) -> float:
+        ta = _business_terms(a)
+        tb = _business_terms(b)
+        if not ta or not tb:
+            return 0.0
+        inter = len(ta & tb)
+        union = len(ta | tb)
+        subset = inter / max(1, min(len(ta), len(tb)))
+        jacc = inter / max(1, union)
+        return max(jacc, subset * 0.98)
+
+    def _phrase_bonus(a: Optional[str], b: Optional[str]) -> float:
+        na = _norm_text_search(a)
+        nb = _norm_text_search(b)
+        if not na or not nb:
+            return 0.0
+        if na == nb:
+            return 1.0
+        if na in nb or nb in na:
+            return 0.93
+        return 0.0
+
     terms = []
     for raw in [t] + list(search_terms or []):
         s = _clean_text(raw)
@@ -1962,6 +2009,8 @@ def _find_best_existing_competence_in_rows(rows: List[dict], title: str, search_
 
     core_t = _core_phrase(t)
     title_key = _canonical_comp_key(core_t or t)
+    input_terms_agg = " ".join(terms).strip()
+    input_business = _business_terms(" ".join([t] + terms))
 
     best = None
     best_score = 0.0
@@ -1980,6 +2029,12 @@ def _find_best_existing_competence_in_rows(rows: List[dict], title: str, search_
         cand_core = _core_phrase(cand_title)
         cand_key = _canonical_comp_key(cand_core or cand_title)
 
+        cand_business_title = _business_terms(cand_title)
+        cand_business_all = _business_terms(" ".join([cand_title, cand_desc, cand_domain]))
+
+        shared_title_terms = len(input_business & cand_business_title) if input_business and cand_business_title else 0
+        shared_all_terms = len(input_business & cand_business_all) if input_business and cand_business_all else 0
+
         score = max(
             _similarity_score(t, cand_title),
             _similarity_score(core_t, cand_core),
@@ -1989,6 +2044,10 @@ def _find_best_existing_competence_in_rows(rows: List[dict], title: str, search_
             _token_overlap(t, combined),
             _subset_boost(t, cand_title),
             _subset_boost(core_t, cand_core),
+            _business_overlap(t, cand_title),
+            _business_overlap(t, cand_desc),
+            _business_overlap(input_terms_agg, combined),
+            _phrase_bonus(t, cand_title),
             1.0 if title_key and cand_key and title_key == cand_key else 0.0,
         )
 
@@ -2001,7 +2060,17 @@ def _find_best_existing_competence_in_rows(rows: List[dict], title: str, search_
                 _token_overlap(term, combined),
                 _subset_boost(term, cand_title),
                 _subset_boost(term, combined),
+                _business_overlap(term, cand_title),
+                _business_overlap(term, cand_desc),
+                _business_overlap(term, cand_domain),
+                _phrase_bonus(term, cand_title),
             )
+
+        if shared_title_terms >= 2:
+            score = max(score, 0.82)
+
+        if shared_all_terms >= 3:
+            score = max(score, 0.86)
 
         if core_t and cand_core and (core_t in cand_core or cand_core in core_t):
             score = max(score, 0.91)
@@ -2013,7 +2082,12 @@ def _find_best_existing_competence_in_rows(rows: List[dict], title: str, search_
             best_score = score
             best = r
 
-    return best if best_score >= 0.66 else None
+    if not best or best_score < 0.66:
+        return None
+
+    out = dict(best)
+    out["_match_score"] = round(float(best_score), 4)
+    return out
 
 
 def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List[str]) -> Optional[dict]:
@@ -2057,8 +2131,13 @@ def _build_ai_comp_search_prompts(payload: Any, title: str, domain_txt: str, fal
             "Pas de soft skills génériques sauf si elles sont vraiment indispensables à l'exécution. "
             "Tu évites les doublons. "
             "IMPORTANT: l'intitulé d'une compétence doit commencer par un verbe d'action à l'infinitif et être réutilisable dans un référentiel RH. "
+            "Formule chaque compétence comme une capacité métier transférable, stable et compréhensible hors du contexte local de l'entreprise. "
+            "Quand plusieurs formulations sont possibles, privilégie la formulation de référentiel la plus générique utile, pas la micro-tâche locale. "
+            "N'utilise pas un logiciel seul comme intitulé de compétence, sauf si la maîtrise de cet outil constitue réellement un coeur de poste. "
             "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
             "La description doit rester courte et utile à la décision, en une phrase simple. "
+            "Les search_terms doivent aider le rapprochement avec un référentiel de compétences existant : "
+            "prévois 2 à 4 formulations courtes orientées métier, avec si utile un objet métier, un livrable, une variante terminologique courante ou un outil structurant. "
             "Ne produis PAS la fiche compétence complète à ce stade: pas de niveaux A/B/C détaillés, pas de grille d'évaluation détaillée. "
             "Tu peux proposer autant de compétences que nécessaire tant qu'elles sont réellement structurantes et non redondantes."
         )
@@ -2079,6 +2158,9 @@ def _build_ai_comp_search_prompts(payload: Any, title: str, domain_txt: str, fal
             "Exclus les tâches périphériques, ponctuelles, contextuelles, administratives ou d'intendance locale.\n"
             "Ne crée pas de doublons ni de variantes inutiles d'une même compétence.\n"
             "Regroupe intelligemment quand plusieurs tâches relèvent d'une même compétence transférable.\n"
+            "Pour faciliter le matching avec le référentiel existant, emploie un vocabulaire de compétence métier et non une simple reformulation de phrase de fiche de poste.\n"
+            "Les search_terms doivent contenir des points d'entrée lexicaux utiles pour un catalogue RH : formulation canonique, objet métier principal, éventuelle variante métier connue, éventuellement outil ou livrable structurant.\n"
+            "Évite les search_terms trop vagues, les phrases longues, les formulations locales ou trop contextuelles.\n"
             "Fais une recherche initiale rapide et exploitable: description courte, search_terms utiles, scores réalistes, niveau recommandé pertinent.\n"
         )
         return system_prompt, user_prompt
@@ -2092,6 +2174,7 @@ def _build_ai_comp_search_prompts(payload: Any, title: str, domain_txt: str, fal
         "Chaque compétence doit être actionnable, transférable et exprimée avec un verbe d'action à l'infinitif. "
         "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
         "La description doit rester courte, concrète et utile à la décision. "
+        "Les search_terms doivent rester orientés matching de référentiel : formulation canonique, objet métier, livrable, variante métier, outil structurant éventuel. "
         "Tu peux proposer autant de compétences que nécessaire tant qu'elles sont réellement structurantes et non redondantes."
     )
 
@@ -2111,6 +2194,7 @@ def _build_ai_comp_search_prompts(payload: Any, title: str, domain_txt: str, fal
         "Priorise les compétences coeur de poste, les compétences de pilotage opérationnel, de maîtrise technique, de coordination et de continuité d'activité.\n"
         "Évite les variantes proches, les doublons et les intitulés flous.\n"
         "En cas d'incertitude, préfère une compétence métier large et transférable plutôt qu'une micro-tâche locale.\n"
+        "Les search_terms doivent aider le rapprochement avec un catalogue RH existant.\n"
     )
     return system_prompt, user_prompt
 
@@ -4541,6 +4625,17 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                 lvl = (item.get("recommended_level") or "A").strip().upper()[:1] or "A"
                 poids = _calc_poids_criticite_100(fu, im, de)
 
+                match_score = 0.0
+                match_percent = 0
+                match_label = ""
+                if match:
+                    try:
+                        match_score = max(0.0, min(1.0, float(match.get("_match_score") or 0.0)))
+                    except Exception:
+                        match_score = 0.0
+                    match_percent = int(round(match_score * 100))
+                    match_label = "Recommandé" if match_score >= 0.82 else "Proposé"
+
                 match_id = str(match.get("id_comp") or "") if match else ""
                 if match_id and match_id in existing_ids:
                     continue
@@ -4560,6 +4655,9 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                         "impact_resultat": im,
                         "dependance": de,
                         "poids_criticite": poids,
+                        "match_score": round(match_score, 4),
+                        "match_percent": match_percent,
+                        "match_label": match_label,
                     })
                 else:
                     domaine_id = _resolve_domain_id_from_rows(domain_rows, item.get("domaine_hint"))
