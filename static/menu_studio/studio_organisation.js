@@ -2777,11 +2777,21 @@ body {
         const txt = String(label || "").trim();
         if (!txt) return null;
 
+        const norm = txt.toLowerCase();
+        let variant = "sb-badge--ai-match-proposed";
+
+        if (norm === "recommandé" || norm === "recommande"){
+            variant = "sb-badge--ai-match-recommended";
+        } else if (norm === "à vérifier" || norm === "a verifier"){
+            variant = "sb-badge--ai-match-review";
+        } else if (norm === "proposé" || norm === "propose"){
+            variant = "sb-badge--ai-match-proposed";
+        }
+
         const n = normalizeAiMatchScore(score);
-        const isRecommended = n >= 0.82;
 
         const badge = document.createElement("span");
-        badge.className = `sb-badge sb-badge--ai-match ${isRecommended ? "sb-badge--ai-match-recommended" : "sb-badge--ai-match-proposed"}`;
+        badge.className = `sb-badge sb-badge--ai-match ${variant}`;
         badge.textContent = txt;
         badge.title = `Score de rapprochement : ${Math.round(n * 100)} %`;
         return badge;
@@ -2854,8 +2864,8 @@ body {
 
             if (((it.etat || "").toLowerCase()) === "à valider"){
                 const et = document.createElement("span");
-                et.className = "sb-badge sb-badge--accent-soft";
-                et.textContent = "À valider";
+                et.className = "sb-badge sb-badge--draft";
+                et.textContent = "Brouillon";
                 meta.appendChild(et);
             }
 
