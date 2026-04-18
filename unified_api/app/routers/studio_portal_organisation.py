@@ -2177,6 +2177,14 @@ def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List
     rows = _load_owner_comp_catalog_rows(cur, oid)
     return _find_best_existing_competence_in_rows(rows, title, search_terms)
 
+def _serialize_comp_levels_for_match(row: dict) -> str:
+    return " ".join([
+        _clean_text(row.get("niveaua")),
+        _clean_text(row.get("niveaub")),
+        _clean_text(row.get("niveauc")),
+    ]).strip()
+
+
 def _serialize_comp_grille_for_match(grille: Any) -> str:
     ge = _sanitize_grille(grille)
     blocks = []
@@ -2189,13 +2197,106 @@ def _serialize_comp_grille_for_match(grille: Any) -> str:
         if not nom and not any(evals):
             continue
 
-        lines = [f"Critère {i} : {nom or '—'}"]
-        for idx, ev in enumerate(evals, 1):
+        parts = []
+        if nom:
+            parts.append(nom)
+        for ev in evals:
             if ev:
-                lines.append(f"{idx}. {ev}")
-        blocks.append("\n".join(lines))
+                parts.append(ev)
 
-    return "\n\n".join(blocks).strip()
+        txt = " | ".join([p for p in parts if p]).strip()
+        if txt:
+            blocks.append(txt)
+
+    return "\n".join(blocks).strip()
+
+
+def _compute_existing_match_indicator(match_row: dict, item: dict, poste_context_text: str) -> tuple[float, int, str]:
+    wanted_title = _clean_text(item.get("intitule"))
+    wanted_desc = _clean_text(item.get("description"))
+    wanted_terms = " ".join([_clean_text(x) for x in (item.get("search_terms") or []) if _clean_text(x)])
+    wanted_levels = " ".join([
+        _clean_text(item.get("niveaua")),
+        _clean_text(item.get("niveaub")),
+        _clean_text(item.get("niveauc")),
+    ]).strip()
+    wanted_grille = _serialize_comp_grille_for_match(item.get("grille_evaluation"))
+    wanted_domain = _clean_text(item.get("domaine_hint"))
+
+    wanted_full = "\n".join([
+        wanted_title,
+        wanted_desc,
+        wanted_terms,
+        wanted_levels,
+        wanted_grille,
+    ]).strip()
+
+    cand_title = _clean_text(match_row.get("intitule"))
+    cand_desc = _clean_text(match_row.get("description"))
+    cand_domain = _clean_text(match_row.get("domaine_titre_court") or match_row.get("domaine_titre"))
+    cand_levels = _serialize_comp_levels_for_match(match_row)
+    cand_grille = _serialize_comp_grille_for_match(match_row.get("grille_evaluation"))
+
+    cand_full = "\n".join([
+        cand_title,
+        cand_desc,
+        cand_domain,
+        cand_levels,
+        cand_grille,
+    ]).strip()
+
+    title_score = _similarity_score(wanted_title, cand_title)
+    desc_score = max(
+        _similarity_score(wanted_desc, cand_desc),
+        _similarity_score(wanted_terms, cand_desc),
+        _similarity_score(wanted_terms, cand_title),
+    )
+    full_score = _similarity_score(wanted_full, cand_full)
+    level_score = _similarity_score(wanted_levels, cand_levels) if (wanted_levels or cand_levels) else 0.0
+    grille_score = _similarity_score(wanted_grille, cand_grille) if (wanted_grille or cand_grille) else 0.0
+
+    wanted_key = _canonical_comp_key(wanted_title)
+    cand_key = _canonical_comp_key(cand_title)
+    if wanted_key and cand_key and wanted_key == cand_key:
+        title_score = max(title_score, 0.96)
+
+    ctx_tokens = _token_set_folded(poste_context_text)
+    cand_tokens = _token_set_folded(" ".join([cand_title, cand_desc, cand_domain, cand_levels]))
+    overlap_count = len(ctx_tokens & cand_tokens) if ctx_tokens and cand_tokens else 0
+    overlap_ratio = (overlap_count / max(1, min(len(ctx_tokens), len(cand_tokens)))) if ctx_tokens and cand_tokens else 0.0
+
+    score = (
+        (title_score * 0.36)
+        + (full_score * 0.30)
+        + (desc_score * 0.14)
+        + (level_score * 0.10)
+        + (grille_score * 0.10)
+    )
+
+    if overlap_count >= 3:
+        score += 0.04 + min(0.04, overlap_ratio * 0.04)
+    elif overlap_count == 2:
+        score += 0.02
+    elif overlap_count == 0:
+        score -= 0.05
+
+    if wanted_domain:
+        cand_domain_norm = _norm_text_search(cand_domain)
+        wanted_domain_norm = _norm_text_search(wanted_domain)
+        if wanted_domain_norm and wanted_domain_norm in cand_domain_norm:
+            score += 0.03
+
+    score = max(0.51, min(0.98, score))
+    percent = max(51, min(98, int(round(score * 100))))
+
+    if score >= 0.84:
+        label = "Recommandé"
+    elif score >= 0.68:
+        label = "Proposé"
+    else:
+        label = "À vérifier"
+
+    return round(score, 4), percent, label
 
 
 def _build_catalog_candidate_text(row: dict) -> str:
@@ -2361,16 +2462,34 @@ def _build_existing_competence_shortlist(rows: List[dict], item: dict, poste_con
     return scored[:max(1, limit)]
 
 
-def _map_ai_match_confidence(confidence: Optional[str]) -> tuple[float, int, str]:
+def _map_ai_match_confidence(confidence: Optional[str], base_score: float = 0.0) -> tuple[float, int, str]:
     c = _clean_text(confidence).lower()
+    score = max(0.0, min(1.0, float(base_score or 0.0)))
 
     if c == "high":
-        return 0.93, 93, "Recommandé"
-    if c == "medium":
-        return 0.81, 81, "Proposé"
-    if c == "low":
-        return 0.69, 69, "Proposé"
-    return 0.0, 0, ""
+        score = max(score, 0.84)
+        score = min(0.97, score + 0.05)
+    elif c == "medium":
+        score = max(score, 0.70)
+        score = min(0.89, score + 0.02)
+    elif c == "low":
+        score = max(score, 0.58)
+        score = min(0.76, score + 0.01)
+    else:
+        score = max(score, 0.0)
+
+    percent = max(0, min(98, int(round(score * 100))))
+
+    if score >= 0.84:
+        label = "Recommandé"
+    elif score >= 0.68:
+        label = "Proposé"
+    elif score > 0:
+        label = "À vérifier"
+    else:
+        label = ""
+
+    return round(score, 4), percent, label
 
 
 def _ai_pick_existing_competence_match(
@@ -5193,11 +5312,12 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                 match_score = 0.0
                 match_percent = 0
                 match_label = ""
-
                 if match:
-                    match_score = 0.95
-                    match_percent = 95
-                    match_label = "Recommandé"
+                    match_score, match_percent, match_label = _compute_existing_match_indicator(
+                        match,
+                        item,
+                        poste_context_text,
+                    )
 
                 lvl = (item.get("recommended_level") or "A").strip().upper()[:1] or "A"
                 poids = _calc_poids_criticite_100(fu, im, de)
