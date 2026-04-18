@@ -2300,7 +2300,7 @@ def _compute_existing_match_indicator(match_row: dict, item: dict, poste_context
 
     if score >= 0.78:
         label = "Recommandé"
-    elif score >= 0.64:
+    elif score >= 0.60:
         label = "Proposé"
     else:
         label = "À vérifier"
@@ -2491,7 +2491,7 @@ def _map_ai_match_confidence(confidence: Optional[str], base_score: float = 0.0)
 
     if score >= 0.78:
         label = "Recommandé"
-    elif score >= 0.64:
+    elif score >= 0.60:
         label = "Proposé"
     elif score > 0:
         label = "À vérifier"
