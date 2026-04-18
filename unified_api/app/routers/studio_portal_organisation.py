@@ -2258,27 +2258,35 @@ def _compute_existing_match_indicator(match_row: dict, item: dict, poste_context
     wanted_key = _canonical_comp_key(wanted_title)
     cand_key = _canonical_comp_key(cand_title)
     if wanted_key and cand_key and wanted_key == cand_key:
-        title_score = max(title_score, 0.96)
+        title_score = max(title_score, 0.97)
 
     ctx_tokens = _token_set_folded(poste_context_text)
     cand_tokens = _token_set_folded(" ".join([cand_title, cand_desc, cand_domain, cand_levels]))
     overlap_count = len(ctx_tokens & cand_tokens) if ctx_tokens and cand_tokens else 0
     overlap_ratio = (overlap_count / max(1, min(len(ctx_tokens), len(cand_tokens)))) if ctx_tokens and cand_tokens else 0.0
 
+    # Calibration un peu plus réaliste :
+    # - on valorise davantage le fond métier (full/desc/grille)
+    # - on baisse le poids trop “sec” du seul intitulé
+    # - on arrête de trop punir les formulations génériques
     score = (
-        (title_score * 0.36)
-        + (full_score * 0.30)
-        + (desc_score * 0.14)
+        (title_score * 0.28)
+        + (full_score * 0.32)
+        + (desc_score * 0.18)
         + (level_score * 0.10)
-        + (grille_score * 0.10)
+        + (grille_score * 0.12)
     )
 
-    if overlap_count >= 3:
-        score += 0.04 + min(0.04, overlap_ratio * 0.04)
+    if overlap_count >= 4:
+        score += 0.08 + min(0.03, overlap_ratio * 0.03)
+    elif overlap_count == 3:
+        score += 0.06
     elif overlap_count == 2:
-        score += 0.02
-    elif overlap_count == 0:
-        score -= 0.05
+        score += 0.04
+    elif overlap_count == 1:
+        score += 0.015
+    else:
+        score -= 0.015
 
     if wanted_domain:
         cand_domain_norm = _norm_text_search(cand_domain)
@@ -2286,12 +2294,13 @@ def _compute_existing_match_indicator(match_row: dict, item: dict, poste_context
         if wanted_domain_norm and wanted_domain_norm in cand_domain_norm:
             score += 0.03
 
-    score = max(0.51, min(0.98, score))
-    percent = max(51, min(98, int(round(score * 100))))
+    # On remonte le plancher et on garde un plafond crédible.
+    score = max(0.58, min(0.96, score))
+    percent = max(58, min(96, int(round(score * 100))))
 
-    if score >= 0.84:
+    if score >= 0.78:
         label = "Recommandé"
-    elif score >= 0.68:
+    elif score >= 0.64:
         label = "Proposé"
     else:
         label = "À vérifier"
@@ -2467,22 +2476,22 @@ def _map_ai_match_confidence(confidence: Optional[str], base_score: float = 0.0)
     score = max(0.0, min(1.0, float(base_score or 0.0)))
 
     if c == "high":
-        score = max(score, 0.84)
-        score = min(0.97, score + 0.05)
+        score = max(score, 0.80)
+        score = min(0.96, score + 0.06)
     elif c == "medium":
-        score = max(score, 0.70)
-        score = min(0.89, score + 0.02)
+        score = max(score, 0.68)
+        score = min(0.88, score + 0.03)
     elif c == "low":
-        score = max(score, 0.58)
-        score = min(0.76, score + 0.01)
+        score = max(score, 0.60)
+        score = min(0.76, score + 0.02)
     else:
         score = max(score, 0.0)
 
-    percent = max(0, min(98, int(round(score * 100))))
+    percent = max(0, min(96, int(round(score * 100))))
 
-    if score >= 0.84:
+    if score >= 0.78:
         label = "Recommandé"
-    elif score >= 0.68:
+    elif score >= 0.64:
         label = "Proposé"
     elif score > 0:
         label = "À vérifier"

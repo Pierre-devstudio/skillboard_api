@@ -2971,7 +2971,9 @@ body {
 
         openIaBusyOverlay(
             "Recherche IA des compétences",
-            "Analyse du poste et rapprochement avec le catalogue de compétences..."
+            "Analyse du poste et rapprochement avec le catalogue de compétences...",
+            "Cette opération peut prendre quelques minutes",
+            "Appuyez sur Échap pour annuler"
         );
 
         try{
