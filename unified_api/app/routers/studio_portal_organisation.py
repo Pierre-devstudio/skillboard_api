@@ -2210,6 +2210,108 @@ def _build_catalog_candidate_text(row: dict) -> str:
     ]
     return "\n".join([p for p in parts if p]).strip()
 
+def _build_catalog_seed_shortlist(rows: List[dict], poste_title: str, poste_context_text: str, limit: int = 40) -> List[dict]:
+    wanted = "\n".join([_clean_text(poste_title), _clean_text(poste_context_text)]).strip()
+    context_terms = _match_context_term_set(wanted)
+    scored = []
+    seen = set()
+
+    for r in rows or []:
+        rid = _clean_text(r.get("id_comp"))
+        if not rid or rid in seen:
+            continue
+        seen.add(rid)
+
+        if not _is_existing_competence_contextually_plausible(r, poste_context_text):
+            continue
+
+        cand_title = _clean_text(r.get("intitule"))
+        cand_text = _build_catalog_candidate_text(r)
+        cand_terms = _match_context_term_set(cand_text)
+
+        title_score = _similarity_score(poste_title, cand_title)
+        full_score = _similarity_score(wanted, cand_text)
+        title_full_score = _similarity_score(wanted, cand_title)
+
+        overlap_count = len(context_terms & cand_terms) if context_terms and cand_terms else 0
+        overlap_ratio = (overlap_count / max(1, min(len(context_terms), len(cand_terms)))) if context_terms and cand_terms else 0.0
+
+        score = max(
+            title_score,
+            (title_score * 0.62) + (full_score * 0.38),
+            (title_full_score * 0.45) + (full_score * 0.55),
+        )
+
+        if overlap_count >= 2:
+            score = max(score, 0.72 + min(0.18, overlap_ratio * 0.18))
+        elif overlap_count == 1 and full_score >= 0.42:
+            score = max(score, 0.54)
+
+        if cand_title and _canonical_comp_key(cand_title) == _canonical_comp_key(poste_title):
+            score = max(score, 0.97)
+
+        if score < 0.28:
+            continue
+
+        row = dict(r)
+        row["_seed_score"] = round(float(score), 4)
+        scored.append(row)
+
+    scored.sort(key=lambda x: float(x.get("_seed_score") or 0.0), reverse=True)
+    return scored[:max(1, limit)]
+
+
+def _build_catalog_seed_prompt_text(rows: List[dict], limit: int = 40) -> str:
+    blocks = []
+    for idx, r in enumerate((rows or [])[:max(1, limit)], 1):
+        blocks.append(
+            "\n".join([
+                f"CANDIDAT {idx}",
+                f"existing_id_comp: {_clean_text(r.get('id_comp'))}",
+                f"existing_code: {_clean_text(r.get('code'))}",
+                f"intitule: {_clean_text(r.get('intitule'))}",
+                f"domaine: {_clean_text(r.get('domaine_titre_court') or r.get('domaine_titre'))}",
+                f"description: {_clean_ai_comp_text(r.get('description'), 260)}",
+            ])
+        )
+    return "\n\n".join(blocks).strip()
+
+
+def _resolve_catalog_match_from_ai_hint(
+    rows: List[dict],
+    item: dict,
+    poste_context_text: str,
+    shortlist_rows: Optional[List[dict]] = None,
+) -> Optional[dict]:
+    hint_id = _clean_text(item.get("existing_id_comp"))
+    hint_code = _clean_text(item.get("existing_code")).upper()
+    if not hint_id and not hint_code:
+        return None
+
+    allowed_ids = {
+        _clean_text(r.get("id_comp"))
+        for r in (shortlist_rows or [])
+        if _clean_text(r.get("id_comp"))
+    }
+
+    for r in rows or []:
+        rid = _clean_text(r.get("id_comp"))
+        rcode = _clean_text(r.get("code")).upper()
+
+        if hint_id and rid != hint_id:
+            continue
+        if hint_code and rcode != hint_code:
+            continue
+        if allowed_ids and rid not in allowed_ids:
+            continue
+        if not _is_existing_competence_contextually_plausible(r, poste_context_text):
+            return None
+
+        out = dict(r)
+        out["_match_score"] = 0.95
+        return out
+
+    return None
 
 def _build_existing_competence_shortlist(rows: List[dict], item: dict, poste_context_text: str, limit: int = 5) -> List[dict]:
     wanted_title = _clean_text(item.get("intitule"))
@@ -2705,43 +2807,39 @@ def _should_use_web_for_ai_comp_search(payload: Any, title: str) -> bool:
     return False
 
 
-def _build_ai_comp_search_prompts(payload: Any, title: str, domain_txt: str, fallback_mode: bool = False) -> tuple[str, str]:
+def _build_ai_comp_search_prompts(
+    payload: Any,
+    title: str,
+    domain_txt: str,
+    catalog_hint_txt: str = "",
+    fallback_mode: bool = False,
+) -> tuple[str, str]:
+    catalog_block = catalog_hint_txt or "Aucune compétence catalogue présélectionnée."
+
     if not fallback_mode:
         system_prompt = (
-            "Tu es concepteur pédagogique, et gestionnaire des compétences"
             "Tu identifies les compétences techniques et métier STRUCTURANTES nécessaires à la tenue réelle d'un poste. "
             "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
             "Tu réalises ici une RECHERCHE INITIALE RAPIDE de compétences. "
-            "Tu proposes uniquement des compétences cœur de poste ou de support réellement structurantes. "
+            "Tu proposes uniquement des compétences coeur de poste ou de support réellement structurantes. "
             "Tu n'inclus pas les tâches périphériques, locales, administratives occasionnelles, de convenance ou de faible portée métier. "
             "Pas de soft skills génériques sauf si elles sont vraiment indispensables à l'exécution. "
             "Tu évites les doublons. "
-            "IMPORTANT : par défaut, tu cherches à produire des compétences RÉUTILISABLES dans d'autres entreprises ou sur d'autres postes. "
-            "Quand un même besoin mélange un noyau de compétence réutilisable et une mise en œuvre spécifique à l'entreprise, au produit, au process interne, au marché ou à l'offre locale, "
-            "tu SCINDES en plusieurs compétences au lieu de produire une compétence fourre-tout. "
-            "Tu préfères donc deux compétences propres plutôt qu'une seule compétence hybride. "
-            "IMPORTANT : l'intitulé d'une compétence doit commencer par un verbe d'action à l'infinitif et être réutilisable dans un référentiel RH. "
-            "Si la compétence est réellement spécifique à l'entreprise, le titre doit l'assumer explicitement pour éviter un faux matching ultérieur dans le catalogue. "
-            "Tu n'utilises donc pas un titre générique pour une compétence dont le contenu est local, interne ou propre à une offre donnée. "
-            "Formule chaque compétence comme une capacité métier transférable, stable et compréhensible hors du contexte local de l'entreprise, sauf quand tu assumes explicitement une compétence spécifique. "
+            "IMPORTANT: l'intitulé d'une compétence doit commencer par un verbe d'action à l'infinitif et être réutilisable dans un référentiel RH. "
+            "Formule chaque compétence comme une capacité métier transférable, stable et compréhensible hors du contexte local de l'entreprise. "
             "Quand plusieurs formulations sont possibles, privilégie la formulation de référentiel la plus générique utile, pas la micro-tâche locale. "
             "Tu es conscient que réutiliser des compétences déjà présentes dans le catalogue est un point important, car de cette manière tu optimises la gestion des compétences. "
-"Sans baisser ton niveau d'exigence, tu comprends qu'une partie de ton travail est de retrouver les bonnes compétences déjà présentes dans le catalogue, compatibles avec le poste en cours d'analyse. "
-            "IMPORTANT POUR LE MATCHING : si le poste relève d'une famille métier identifiable, commence par faire ressortir les compétences socle génériques de cette famille, "
-            "celles qu'un référentiel transverse a de fortes chances de contenir déjà. "
-            "Avant de proposer une formulation trop contextualisée, demande-toi s'il existe une formulation plus canonique, plus générique et plus réutilisable. "
-            "Par exemple, pour un poste de formateur, consultant formateur ou responsable pédagogique, pense d'abord aux compétences socle du métier : "
-            "animer des actions de formation, évaluer les acquis, adapter les contenus et supports, accompagner les apprenants, ajuster la pédagogie au public. "
-            "De manière générale, quand une compétence décrite dans le poste correspond probablement à une compétence métier générique déjà connue dans un référentiel, "
-            "privilégie cette compétence générique plutôt qu'une reformulation locale du besoin. "
-            "N'utilise pas un logiciel seul comme intitulé de compétence, sauf si la maîtrise de cet outil constitue réellement un cœur de poste. "
+            "Sans baisser ton niveau d'exigence, tu comprends qu'une partie de ton travail est de retrouver les bonnes compétences déjà présentes dans le catalogue, compatibles avec le poste en cours d'analyse. "
+            "Une partie importante de ton travail consiste donc à reconnaître les compétences socle déjà présentes dans le référentiel avant de proposer une création. "
+            "Quand le poste relève d'une famille métier identifiable, fais d'abord ressortir les compétences génériques et canoniques de cette famille, surtout si elles existent déjà dans le catalogue. "
             "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
-            "La description doit rester courte mais signifiante : elle doit faire comprendre le rôle réel de la compétence lorsqu'on la possède, ce qu'elle permet de réaliser, sécuriser, piloter, améliorer ou obtenir, "
-            "quel que soit l'environnement. Elle ne doit pas recopier ni paraphraser le descriptif du poste. "
-            "Les search_terms doivent aider le rapprochement avec un référentiel de compétences existant. "
-            "Prévois 2 à 4 formulations courtes orientées matching catalogue : formulation canonique probable, objet métier principal, livrable structurant, variante terminologique utile si nécessaire. "
-            "Les search_terms doivent maximiser les chances de retrouver une compétence déjà présente dans un catalogue RH transverse. "
-            "Ne produis PAS la fiche compétence complète à ce stade : pas de niveaux A/B/C détaillés, pas de grille d'évaluation détaillée. "
+            "La description doit rester courte, utile et centrée sur le rôle réel de la compétence quand on la possède. Elle ne doit pas paraphraser le descriptif du poste. "
+            "Les search_terms doivent aider le rapprochement avec un référentiel de compétences existant: "
+            "prévois 2 à 4 formulations courtes orientées métier, avec si utile une formulation canonique de référentiel, un objet métier, un livrable ou une variante terminologique utile. "
+            "IMPORTANT CATALOGUE: on te fournit une shortlist de compétences déjà présentes dans le catalogue. "
+            "Avant de proposer une compétence à créer, vérifie si l'une des compétences déjà présentes couvre suffisamment le besoin. "
+            "Si oui, réutilise-la en renseignant existing_id_comp et existing_code. "
+            "Ne produis PAS la fiche compétence complète à ce stade: pas de niveaux A/B/C détaillés, pas de grille d'évaluation détaillée. "
             "Tu peux proposer autant de compétences que nécessaire tant qu'elles sont réellement structurantes et non redondantes."
         )
 
@@ -2756,44 +2854,36 @@ def _build_ai_comp_search_prompts(payload: Any, title: str, domain_txt: str, fal
             f"interactions: {(payload.ai_interactions or '').strip()}\n"
             f"contraintes complémentaires: {(payload.ai_contraintes or '').strip()}\n"
             f"contraintes fiche: niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n"
-            f"Domaines de compétences autorisés (choisir exactement dans cette liste ou vide si aucun ne convient):\n{domain_txt}\n"
+            f"Domaines de compétences autorisés (choisir exactement dans cette liste ou vide si aucun ne convient):\n{domain_txt}\n\n"
+            f"Shortlist extraite du catalogue existant (à réutiliser si compatible):\n{catalog_block}\n\n"
             "Retiens seulement les compétences qui conditionnent réellement la tenue du poste, l'autonomie, la qualité du résultat, le management, la coordination ou la continuité d'activité.\n"
             "Exclus les tâches périphériques, ponctuelles, contextuelles, administratives ou d'intendance locale.\n"
             "Ne crée pas de doublons ni de variantes inutiles d'une même compétence.\n"
             "Regroupe intelligemment quand plusieurs tâches relèvent d'une même compétence transférable.\n"
-            "Si une partie du besoin est générique et qu'une autre dépend clairement du contexte interne, du produit, de l'offre, du secteur visé ou d'un fonctionnement propre à l'entreprise, sépare-les.\n"
-            "Cherche en priorité des compétences réutilisables dans un catalogue transverse.\n"
-            "Si tu proposes malgré tout une compétence spécifique à l'entreprise, rends cette spécificité explicite dès l'intitulé.\n"
-            "Quand le poste appartient à une famille métier identifiable, fais d'abord ressortir les compétences socle génériques de ce métier avant les variantes locales.\n"
-            "Si une compétence du poste peut raisonnablement correspondre à une compétence déjà présente dans un référentiel générique, privilégie cette formulation canonique.\n"
-            "Les search_terms doivent inclure la formulation canonique la plus probable dans un catalogue de compétences, même si le poste l'exprime autrement.\n"
-            "La description doit expliquer le rôle réel de la compétence et ce qu'elle rend possible, pas raconter le poste ni recopier ses missions.\n"
             "Pour faciliter le matching avec le référentiel existant, emploie un vocabulaire de compétence métier et non une simple reformulation de phrase de fiche de poste.\n"
-            "Les search_terms doivent contenir des points d'entrée lexicaux utiles pour un catalogue RH : formulation canonique, objet métier principal, éventuelle variante métier connue, éventuellement outil ou livrable structurant.\n"
+            "Si une compétence générique du métier existe déjà dans la shortlist catalogue, préfère cette compétence existante à une reformulation locale.\n"
+            "Pour un poste incluant de la formation, pense d'abord aux compétences socle de formateur déjà présentes dans le catalogue avant de proposer une création.\n"
+            "Les search_terms doivent contenir des points d'entrée lexicaux utiles pour un catalogue RH: formulation canonique, objet métier principal, éventuelle variante métier connue, éventuellement outil ou livrable structurant.\n"
             "Évite les search_terms trop vagues, les phrases longues, les formulations locales ou trop contextuelles.\n"
-            "Fais une recherche initiale rapide et exploitable : description courte mais utile, search_terms pertinents, niveau recommandé réaliste.\n"
+            "Si tu réutilises une compétence déjà présente dans la shortlist, renseigne existing_id_comp et existing_code avec les valeurs exactes fournies.\n"
+            "Fais une recherche initiale rapide et exploitable: description courte, search_terms utiles, scores réalistes, niveau recommandé pertinent.\n"
         )
         return system_prompt, user_prompt
 
     system_prompt = (
         "Tu identifies les compétences réellement requises pour EXECUTER le poste au quotidien. "
         "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
-        "La première passe a été jugée trop pauvre ou non exploitable : tu repars donc de façon plus concrète et plus directe. "
-        "Tu proposes d'abord les compétences cœur de poste, puis les compétences de coordination ou de sécurisation si elles conditionnent le résultat. "
+        "La première passe a été jugée trop pauvre ou non exploitable: tu repars donc de façon plus concrète et plus directe. "
+        "Tu proposes d'abord les compétences coeur de poste, puis les compétences de coordination ou de sécurisation si elles conditionnent le résultat. "
         "Tu exclus les micro-tâches de convenance, l'intendance locale, l'accueil standard, le courrier, le classement, les formulations vagues et les soft skills génériques. "
         "Chaque compétence doit être actionnable, transférable et exprimée avec un verbe d'action à l'infinitif. "
-        "Par défaut, tu privilégies les compétences réutilisables dans un référentiel transverse. "
-        "Si un besoin mélange une compétence réutilisable et un usage spécifique à l'entreprise, tu les sépares. "
-        "Si une compétence est réellement spécifique à l'entreprise, le titre doit l'assumer explicitement. "
         "Tu es conscient que réutiliser des compétences déjà présentes dans le catalogue est un point important, car de cette manière tu optimises la gestion des compétences. "
-"Sans baisser ton niveau d'exigence, tu comprends qu'une partie de ton travail est de retrouver les bonnes compétences déjà présentes dans le catalogue, compatibles avec le poste en cours d'analyse. "
-        "IMPORTANT POUR LE MATCHING : si le poste relève d'une famille métier identifiable, commence par faire ressortir les compétences socle génériques de cette famille, "
-        "celles qu'un référentiel transverse a de fortes chances de contenir déjà. "
-        "Avant de proposer une formulation trop contextualisée, cherche d'abord la formulation canonique la plus probable dans un catalogue RH. "
-        "Quand une compétence du poste correspond probablement à une compétence métier générique déjà connue dans un référentiel, privilégie cette compétence générique plutôt qu'une reformulation locale du besoin. "
+        "Sans baisser ton niveau d'exigence, tu comprends qu'une partie de ton travail est de retrouver les bonnes compétences déjà présentes dans le catalogue, compatibles avec le poste en cours d'analyse. "
+        "Avant de créer, vérifie d'abord si une compétence existante de la shortlist catalogue couvre déjà le besoin. "
         "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
-        "La description doit rester courte, concrète et utile à la décision : elle doit expliquer le rôle réel de la compétence et ce qu'elle permet de faire ou d'obtenir, sans recopier le descriptif du poste. "
-        "Les search_terms doivent rester orientés matching de référentiel : formulation canonique, objet métier, livrable, variante métier, outil structurant éventuel. "
+        "La description doit rester courte, concrète et utile à la décision. Elle doit expliquer le rôle réel de la compétence et non recopier le poste. "
+        "Les search_terms doivent rester orientés matching de référentiel: formulation canonique, objet métier, livrable, variante métier, outil structurant éventuel. "
+        "Si tu réutilises une compétence existante, renseigne existing_id_comp et existing_code avec les valeurs exactes fournies. "
         "Tu peux proposer autant de compétences que nécessaire tant qu'elles sont réellement structurantes et non redondantes."
     )
 
@@ -2808,16 +2898,14 @@ def _build_ai_comp_search_prompts(payload: Any, title: str, domain_txt: str, fal
         f"interactions: {(payload.ai_interactions or '').strip()}\n"
         f"contraintes complémentaires: {(payload.ai_contraintes or '').strip()}\n"
         f"contraintes fiche: niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n"
-        f"Domaines de compétences autorisés (choisir exactement dans cette liste ou vide si aucun ne convient):\n{domain_txt}\n"
-        "Consigne renforcée : sors une liste exploitable de compétences nécessaires à l'exécution réelle du poste, même si les informations fournies sont incomplètes.\n"
-        "Priorise les compétences cœur de poste, les compétences de pilotage opérationnel, de maîtrise technique, de coordination et de continuité d'activité.\n"
+        f"Domaines de compétences autorisés (choisir exactement dans cette liste ou vide si aucun ne convient):\n{domain_txt}\n\n"
+        f"Shortlist extraite du catalogue existant (à réutiliser si compatible):\n{catalog_block}\n\n"
+        "Consigne renforcée: sors une liste exploitable de compétences nécessaires à l'exécution réelle du poste, même si les informations fournies sont incomplètes.\n"
+        "Priorise les compétences coeur de poste, les compétences de pilotage opérationnel, de maîtrise technique, de coordination et de continuité d'activité.\n"
         "Évite les variantes proches, les doublons et les intitulés flous.\n"
-        "Si un besoin mélange un cœur de compétence réutilisable et une déclinaison spécifique à l'entreprise, sépare-les.\n"
-        "Privilégie toujours une compétence transverse quand elle existe. Si la compétence est spécifique à l'entreprise, rends cette spécificité explicite dès le titre.\n"
-        "Quand le poste appartient à une famille métier identifiable, fais remonter d'abord les compétences socle génériques de cette famille avant les variantes locales.\n"
-        "Si une compétence du poste peut raisonnablement correspondre à une compétence déjà présente dans un référentiel générique, privilégie cette formulation canonique.\n"
-        "Les search_terms doivent aider le rapprochement avec un catalogue RH existant et inclure la formulation canonique la plus probable.\n"
-        "La description doit expliquer le rôle réel de la compétence et sa portée utile, pas décrire le poste ni recopier ses missions.\n"
+        "En cas d'incertitude, préfère une compétence métier large et transférable plutôt qu'une micro-tâche locale.\n"
+        "Si une compétence de la shortlist catalogue couvre déjà le besoin, réutilise-la et renseigne existing_id_comp et existing_code.\n"
+        "Les search_terms doivent aider le rapprochement avec un catalogue RH existant.\n"
     )
     return system_prompt, user_prompt
 
@@ -4967,6 +5055,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
 
     try:
         model = (os.getenv("OPENAI_MODEL_POSTE_COMP_SEARCH") or "gpt-5").strip()
+        match_model = ((os.getenv("OPENAI_MODEL_POSTE_COMP_MATCH") or "").strip() or model)
         existing_ids = {str(x).strip() for x in (payload.existing_competence_ids or []) if str(x).strip()}
         title = _clean_text(payload.intitule_poste)
 
@@ -5004,6 +5093,19 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
         if not title:
             raise HTTPException(status_code=400, detail="Intitulé du poste obligatoire pour la recherche IA.")
 
+        poste_context_text = _build_match_context_text(
+            title,
+            payload.mission_principale,
+            _html_to_text(payload.responsabilites_html),
+            payload.ai_contexte,
+            payload.ai_taches,
+            payload.ai_outils,
+            payload.ai_environnement,
+            payload.ai_interactions,
+            payload.ai_contraintes,
+            payload.detail_contrainte,
+        )
+
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
@@ -5019,12 +5121,16 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                     """
                 )
                 domain_rows = cur.fetchall() or []
+                catalog_rows = _load_owner_comp_catalog_rows(cur, oid)
 
         domain_txt = "\n".join([
             f"- {(r.get('titre_court') or r.get('titre') or '').strip()}"
             for r in domain_rows
             if (r.get("titre_court") or r.get("titre") or "").strip()
         ]) or "- aucun domaine"
+
+        catalog_seed_rows = _build_catalog_seed_shortlist(catalog_rows, title, poste_context_text, 40)
+        catalog_hint_txt = _build_catalog_seed_prompt_text(catalog_seed_rows, 40)
 
         schema = {
             "type": "object",
@@ -5056,7 +5162,9 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                             "freq_usage": {"type": "integer", "minimum": 0, "maximum": 10},
                             "impact_resultat": {"type": "integer", "minimum": 0, "maximum": 10},
                             "dependance": {"type": "integer", "minimum": 0, "maximum": 10},
-                            "domaine_hint": {"type": "string", "maxLength": 120}
+                            "domaine_hint": {"type": "string", "maxLength": 120},
+                            "existing_id_comp": {"type": ["string", "null"], "maxLength": 80},
+                            "existing_code": {"type": ["string", "null"], "maxLength": 20}
                         }
                     }
                 }
@@ -5068,30 +5176,6 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
             for r in (domain_rows or [])
             if _clean_text(r.get("id_domaine_competence"))
         }
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                oid = _require_owner_access(cur, u, id_owner)
-                studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "admin")
-                catalog_rows = _load_owner_comp_catalog_rows(cur, oid)
-                poste_context_text = _build_match_context_text(
-                    title,
-                    payload.mission_principale,
-                    _html_to_text(payload.responsabilites_html),
-                    payload.ai_contexte,
-                    payload.ai_taches,
-                    payload.ai_outils,
-                    payload.ai_environnement,
-                    payload.ai_interactions,
-                    payload.ai_contraintes,
-                    payload.detail_contrainte,
-                )
-                match_model = (
-                    (os.getenv("OPENAI_MODEL_POSTE_COMP_MATCH") or "").strip()
-                    or (os.getenv("OPENAI_MODEL_POSTE_COMP_SEARCH") or "").strip()
-                    or "gpt-5"
-                )
 
         def _collect_results(candidate_items: List[dict], allow_relaxed_filter: bool = False) -> tuple[list, list]:
             existing = []
@@ -5113,10 +5197,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
 
                 keep = _should_keep_ai_comp_for_poste(title, item)
                 if not keep and allow_relaxed_filter:
-                    # Fallback : on reste sélectif, mais on évite qu'une passe IA
-                    # un peu prudente vide totalement le résultat.
                     keep = (max(fu, im, de) >= 4) or ((fu + im + de) >= 10)
-
                 if not keep:
                     continue
 
@@ -5126,27 +5207,24 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                 seen_titles.add(canon_title)
 
                 search_terms = [str(x or "").strip() for x in (item.get("search_terms") or []) if str(x or "").strip()]
+                shortlist = _build_existing_competence_shortlist(catalog_rows, item, poste_context_text, 7)
 
-                shortlist = _build_existing_competence_shortlist(
-                    catalog_rows,
-                    item,
-                    poste_context_text,
-                    5,
-                )
-
-                match = None
+                match = _resolve_catalog_match_from_ai_hint(catalog_rows, item, poste_context_text, shortlist)
                 match_score = 0.0
                 match_percent = 0
                 match_label = ""
 
-                if shortlist:
+                if match:
+                    match_score = 0.95
+                    match_percent = 95
+                    match_label = "Recommandé"
+                elif shortlist:
                     ai_pick = _ai_pick_existing_competence_match(
                         match_model,
                         item,
                         poste_context_text,
                         shortlist,
                     )
-
                     picked_id = _clean_text(ai_pick.get("selected_id_comp"))
                     if ai_pick.get("decision") == "match" and picked_id:
                         match = next(
@@ -5217,6 +5295,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                 payload,
                 title,
                 domain_txt,
+                catalog_hint_txt,
                 fallback_mode=(pass_idx == 1),
             )
 
@@ -5226,7 +5305,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                 schema,
                 system_prompt,
                 user_prompt,
-                use_web=False,
+                use_web=_should_use_web_for_ai_comp_search(payload, title),
             )
             drafted_items = drafted.get("competences") or []
 
