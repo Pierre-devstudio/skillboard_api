@@ -2562,7 +2562,16 @@ def _ai_draft_poste_comp_from_catalog_logic(
     system_prompt = (
         "Tu es concepteur pédagogique et tu aides à concevoir une fiche compétence opérationnelle. "
         "Tu dois respecter STRICTEMENT le schéma JSON fourni. "
-        "Règles de niveau A/B/C (IMPORTANT): "
+        "Tu rédiges librement, sans utiliser de trame figée ni de catégories passe-partout. "
+        "Tu laisses le contenu émerger de la compétence et du contexte, au lieu de plaquer une structure générique. "
+        "Tu commences par déterminer si la compétence doit être réutilisable dans d'autres entreprises ou si elle est réellement spécifique à l'entreprise actuelle. "
+        "Règle fondamentale : "
+        "si la compétence est réutilisable, le titre, la description, les niveaux A/B/C et la grille d'évaluation doivent rester totalement transverses, sans référence à un produit, une offre, un process interne, un marché cible ou une organisation locale. "
+        "Si la compétence est réellement spécifique à l'entreprise, le titre doit rendre cette spécificité explicite. "
+        "Tu n'utilises jamais un titre générique pour une compétence dont le contenu est spécifique. "
+        "La description ne doit pas paraphraser le poste. "
+        "Elle doit expliquer le rôle réel de la compétence quand on la possède, ce qu'elle permet de réaliser, sécuriser, améliorer, piloter ou obtenir, quel que soit l'environnement, sauf si la compétence est explicitement spécifique. "
+        "Règles de niveau A/B/C : "
         "A = initial (débutant, guidé, applique des consignes simples), "
         "B = avancé (autonome, structuré, fiable), "
         "C = expert (maîtrise, optimise, anticipe, transmet/forme). "
@@ -2573,8 +2582,8 @@ def _ai_draft_poste_comp_from_catalog_logic(
         "Tu dois produire EXACTEMENT le nombre de critères demandé. "
         "Si le nombre demandé est inférieur à 4, laisse les critères restants vides "
         "(Nom vide + 4 Eval vides). "
-        "Critères: ils doivent couvrir des axes DISTINCTS, spécifiques à la compétence, sans doublons ni formulations génériques. "
-        "La description doit être plus rédigée, explicite et utile à un RH ou à un manager."
+        "Les critères doivent couvrir des axes distincts, spécifiques à la compétence, sans doublons ni formulations génériques. "
+        "Tu évites les formulations floues, les reprises du descriptif du poste, les références internes inutiles et les compétences fourre-tout."
     )
 
     user_prompt = (
@@ -2591,7 +2600,11 @@ def _ai_draft_poste_comp_from_catalog_logic(
         "- Niveaux A/B/C: A initial guidé, B autonome fiable, C expert optimise/transmet.\n"
         "- Niveaux A/B/C <=230 caractères chacun.\n"
         "- Eval <=120 caractères.\n"
-        "- Ne fais pas de phrases robotiques ou mécaniques.\n"
+        "- N'utilise pas de formulations mécaniques ni de sous-phrases répétées d'un niveau à l'autre.\n"
+        "- Si la compétence est réutilisable, garde un contenu totalement transverse.\n"
+        "- Si la compétence dépend d'un contexte interne, d'une offre, d'un process ou d'un environnement propre à l'entreprise, rends cette spécificité explicite dans le titre.\n"
+        "- La description doit faire comprendre à quoi sert réellement cette compétence lorsqu'on la possède, et non décrire le poste.\n"
+        "- Si un intitulé semble trop générique pour un contenu spécifique, corrige en rendant le titre explicite.\n"
     )
 
     data = _openai_responses_json(
@@ -2695,6 +2708,7 @@ def _should_use_web_for_ai_comp_search(payload: Any, title: str) -> bool:
 def _build_ai_comp_search_prompts(payload: Any, title: str, domain_txt: str, fallback_mode: bool = False) -> tuple[str, str]:
     if not fallback_mode:
         system_prompt = (
+            "Tu es concepteur pédagogique"
             "Tu identifies les compétences techniques et métier STRUCTURANTES nécessaires à la tenue réelle d'un poste. "
             "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
             "Tu réalises ici une RECHERCHE INITIALE RAPIDE de compétences. "
@@ -2702,15 +2716,22 @@ def _build_ai_comp_search_prompts(payload: Any, title: str, domain_txt: str, fal
             "Tu n'inclus pas les tâches périphériques, locales, administratives occasionnelles, de convenance ou de faible portée métier. "
             "Pas de soft skills génériques sauf si elles sont vraiment indispensables à l'exécution. "
             "Tu évites les doublons. "
-            "IMPORTANT: l'intitulé d'une compétence doit commencer par un verbe d'action à l'infinitif et être réutilisable dans un référentiel RH. "
-            "Formule chaque compétence comme une capacité métier transférable, stable et compréhensible hors du contexte local de l'entreprise. "
+            "IMPORTANT : par défaut, tu cherches à produire des compétences RÉUTILISABLES dans d'autres entreprises ou sur d'autres postes. "
+            "Quand un même besoin mélange un noyau de compétence réutilisable et une mise en œuvre spécifique à l'entreprise, au produit, au process interne, au marché ou à l'offre locale, "
+            "tu SCINDES en plusieurs compétences au lieu de produire une compétence fourre-tout. "
+            "Tu préfères donc deux compétences propres plutôt qu'une seule compétence hybride. "
+            "IMPORTANT : l'intitulé d'une compétence doit commencer par un verbe d'action à l'infinitif et être réutilisable dans un référentiel RH. "
+            "Si la compétence est réellement spécifique à l'entreprise, le titre doit l'assumer explicitement pour éviter un faux matching ultérieur dans le catalogue. "
+            "Tu n'utilises donc pas un titre générique pour une compétence dont le contenu est local, interne ou propre à une offre donnée. "
+            "Formule chaque compétence comme une capacité métier transférable, stable et compréhensible hors du contexte local de l'entreprise, sauf quand tu assumes explicitement une compétence spécifique. "
             "Quand plusieurs formulations sont possibles, privilégie la formulation de référentiel la plus générique utile, pas la micro-tâche locale. "
             "N'utilise pas un logiciel seul comme intitulé de compétence, sauf si la maîtrise de cet outil constitue réellement un coeur de poste. "
             "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
-            "La description doit rester courte et utile à la décision, en une phrase simple. "
+            "La description doit rester courte mais signifiante : elle doit faire comprendre le rôle réel de la compétence lorsqu'on la possède, ce qu'elle permet de réaliser, sécuriser, piloter, améliorer ou obtenir, "
+            "quel que soit l'environnement. Elle ne doit pas recopier ni paraphraser le descriptif du poste. "
             "Les search_terms doivent aider le rapprochement avec un référentiel de compétences existant : "
             "prévois 2 à 4 formulations courtes orientées métier, avec si utile un objet métier, un livrable, une variante terminologique courante ou un outil structurant. "
-            "Ne produis PAS la fiche compétence complète à ce stade: pas de niveaux A/B/C détaillés, pas de grille d'évaluation détaillée. "
+            "Ne produis PAS la fiche compétence complète à ce stade : pas de niveaux A/B/C détaillés, pas de grille d'évaluation détaillée. "
             "Tu peux proposer autant de compétences que nécessaire tant qu'elles sont réellement structurantes et non redondantes."
         )
 
@@ -2730,22 +2751,29 @@ def _build_ai_comp_search_prompts(payload: Any, title: str, domain_txt: str, fal
             "Exclus les tâches périphériques, ponctuelles, contextuelles, administratives ou d'intendance locale.\n"
             "Ne crée pas de doublons ni de variantes inutiles d'une même compétence.\n"
             "Regroupe intelligemment quand plusieurs tâches relèvent d'une même compétence transférable.\n"
+            "Si une partie du besoin est générique et qu'une autre dépend clairement du contexte interne, du produit, de l'offre, du secteur visé ou d'un fonctionnement propre à l'entreprise, sépare-les.\n"
+            "Cherche en priorité des compétences réutilisables dans un catalogue transverse.\n"
+            "Si tu proposes malgré tout une compétence spécifique à l'entreprise, rends cette spécificité explicite dès l'intitulé.\n"
+            "La description doit expliquer le rôle réel de la compétence et ce qu'elle rend possible, pas raconter le poste ni recopier ses missions.\n"
             "Pour faciliter le matching avec le référentiel existant, emploie un vocabulaire de compétence métier et non une simple reformulation de phrase de fiche de poste.\n"
             "Les search_terms doivent contenir des points d'entrée lexicaux utiles pour un catalogue RH : formulation canonique, objet métier principal, éventuelle variante métier connue, éventuellement outil ou livrable structurant.\n"
             "Évite les search_terms trop vagues, les phrases longues, les formulations locales ou trop contextuelles.\n"
-            "Fais une recherche initiale rapide et exploitable: description courte, search_terms utiles, scores réalistes, niveau recommandé pertinent.\n"
+            "Fais une recherche initiale rapide et exploitable : description courte mais utile, search_terms pertinents, niveau recommandé réaliste.\n"
         )
         return system_prompt, user_prompt
 
     system_prompt = (
         "Tu identifies les compétences réellement requises pour EXECUTER le poste au quotidien. "
         "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
-        "La première passe a été jugée trop pauvre ou non exploitable: tu repars donc de façon plus concrète et plus directe. "
+        "La première passe a été jugée trop pauvre ou non exploitable : tu repars donc de façon plus concrète et plus directe. "
         "Tu proposes d'abord les compétences coeur de poste, puis les compétences de coordination ou de sécurisation si elles conditionnent le résultat. "
         "Tu exclus les micro-tâches de convenance, l'intendance locale, l'accueil standard, le courrier, le classement, les formulations vagues et les soft skills génériques. "
         "Chaque compétence doit être actionnable, transférable et exprimée avec un verbe d'action à l'infinitif. "
+        "Par défaut, tu privilégies les compétences réutilisables dans un référentiel transverse. "
+        "Si un besoin mélange une compétence réutilisable et un usage spécifique à l'entreprise, tu les sépares. "
+        "Si une compétence est réellement spécifique à l'entreprise, le titre doit l'assumer explicitement. "
         "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
-        "La description doit rester courte, concrète et utile à la décision. "
+        "La description doit rester courte, concrète et utile à la décision : elle doit expliquer le rôle réel de la compétence et ce qu'elle permet de faire ou d'obtenir, sans recopier le descriptif du poste. "
         "Les search_terms doivent rester orientés matching de référentiel : formulation canonique, objet métier, livrable, variante métier, outil structurant éventuel. "
         "Tu peux proposer autant de compétences que nécessaire tant qu'elles sont réellement structurantes et non redondantes."
     )
@@ -2762,10 +2790,12 @@ def _build_ai_comp_search_prompts(payload: Any, title: str, domain_txt: str, fal
         f"contraintes complémentaires: {(payload.ai_contraintes or '').strip()}\n"
         f"contraintes fiche: niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n"
         f"Domaines de compétences autorisés (choisir exactement dans cette liste ou vide si aucun ne convient):\n{domain_txt}\n"
-        "Consigne renforcée: sors une liste exploitable de compétences nécessaires à l'exécution réelle du poste, même si les informations fournies sont incomplètes.\n"
+        "Consigne renforcée : sors une liste exploitable de compétences nécessaires à l'exécution réelle du poste, même si les informations fournies sont incomplètes.\n"
         "Priorise les compétences coeur de poste, les compétences de pilotage opérationnel, de maîtrise technique, de coordination et de continuité d'activité.\n"
         "Évite les variantes proches, les doublons et les intitulés flous.\n"
-        "En cas d'incertitude, préfère une compétence métier large et transférable plutôt qu'une micro-tâche locale.\n"
+        "Si un besoin mélange un coeur de compétence réutilisable et une déclinaison spécifique à l'entreprise, sépare-les.\n"
+        "Privilégie toujours une compétence transverse quand elle existe. Si la compétence est spécifique à l'entreprise, rends cette spécificité explicite dès le titre.\n"
+        "La description doit expliquer le rôle réel de la compétence et sa portée utile, pas décrire le poste ni recopier ses missions.\n"
         "Les search_terms doivent aider le rapprochement avec un catalogue RH existant.\n"
     )
     return system_prompt, user_prompt
