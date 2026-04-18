@@ -5152,7 +5152,9 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                             "freq_usage",
                             "impact_resultat",
                             "dependance",
-                            "domaine_hint"
+                            "domaine_hint",
+                            "existing_id_comp",
+                            "existing_code"
                         ],
                         "properties": {
                             "intitule": {"type": "string", "minLength": 1, "maxLength": 140},
