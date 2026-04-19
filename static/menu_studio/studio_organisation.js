@@ -2071,6 +2071,7 @@ body {
                 }),
             });
             await loadPosteCcnContext(portal);
+            closePosteCcnModal();
             portal.showAlert("", "");
         } finally {
             if (btn){
