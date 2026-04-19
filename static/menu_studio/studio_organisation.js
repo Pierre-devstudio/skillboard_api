@@ -4846,8 +4846,15 @@ body {
         }
 
         byId("btnPosteSave")?.addEventListener("click", async () => {
-            try { await savePosteFromModal(portal); }
-            catch(e){ portal.showAlert("error", e?.message || String(e)); }
+            try {
+                await savePosteFromModal(portal, {
+                    keepOpen: true,
+                    statusMessage: "Poste enregistré."
+                });
+            }
+            catch(e){
+                portal.showAlert("error", e?.message || String(e));
+            }
         });
 
         byId("btnPosteArchive")?.addEventListener("click", async () => {
