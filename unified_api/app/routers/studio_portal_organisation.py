@@ -2683,6 +2683,9 @@ def _ai_draft_poste_comp_from_catalog_logic(
     if not title:
         raise HTTPException(status_code=400, detail="Intitulé de compétence manquant.")
 
+    current_desc = _clean_ai_comp_text(draft.get("description"), 1200)
+    why_needed = _clean_ai_comp_text(draft.get("why_needed"), 500)
+
     dom_map = {
         _clean_text(r.get("id_domaine_competence")): _clean_text(r.get("titre_court") or r.get("titre"))
         for r in (domain_rows or [])
@@ -2691,85 +2694,82 @@ def _ai_draft_poste_comp_from_catalog_logic(
     dom_list_txt = "\n".join([f"- {k} : {v}" for k, v in dom_map.items()]) if dom_map else "- (aucun domaine)"
     domaine_force = _clean_text(draft.get("domaine_id")) or None
 
-    nb = 3
+    score_total = (
+        _clamp_0_10(draft.get("freq_usage")) +
+        _clamp_0_10(draft.get("impact_resultat")) +
+        _clamp_0_10(draft.get("dependance"))
+    )
+
+    complexity_text = _norm_text_search(" ".join([
+        title,
+        current_desc,
+        why_needed,
+        poste_context,
+    ]))
+    is_complex = any(x in complexity_text for x in (
+        "management", "manager", "pilotage", "strategie", "stratégie",
+        "analyse", "analytique", "diagnostic", "arbitrage", "audit",
+        "indicateur", "tableau de bord", "coordination", "gouvernance",
+        "encadrement", "direction", "responsable"
+    )) or score_total >= 22
+
     try:
         nb = int(nb_criteres)
     except Exception:
-        nb = 3
-    if nb not in (2, 3, 4):
-        nb = 3
+        nb = 4 if is_complex else 3
+
+    if nb < 1:
+        nb = 1
+    if nb > 4:
+        nb = 4
+
+    style_examples_txt = (
+        "EXEMPLE 1\n"
+        "Intitulé : Générer avec l’intelligence artificielle des supports de communication adaptés.\n"
+        "Description : compétence formulée par sa finalité métier, sans paraphrase du poste.\n"
+        "Critères : Produire un support de communication avec l’IA ; Adapter le message au destinataire et au contexte ; Vérifier et améliorer la qualité du contenu produit par l’IA.\n"
+        "Niveaux A/B/C : phrases courtes, concrètes, progressives, du type « Sait générer… », « Sait personnaliser… », « Conçoit… transmet… ».\n\n"
+
+        "EXEMPLE 2\n"
+        "Intitulé : Construire un tableau de bord numérique assisté par IA pour faciliter le suivi et l’aide à la décision.\n"
+        "Critères : Définir les informations pertinentes à suivre ; Utiliser l’IA pour générer ou organiser un tableau de bord ; Vérifier la lisibilité et l’utilité du tableau produit.\n"
+        "Progression attendue : sélectionner / identifier / structurer / concevoir, puis valider un outil exploitable.\n\n"
+
+        "EXEMPLE 3\n"
+        "Intitulé : Créer un workflow personnalisé intégrant outils numériques et IA dans le contexte CFA.\n"
+        "Critères : Définir les étapes clés du processus ; Intégrer les outils numériques et l’IA ; Tester et ajuster le workflow pour le rendre opérationnel.\n"
+        "Progression attendue : décrire / organiser / intégrer / formaliser puis rendre robuste, transférable et documenté.\n"
+    )
 
     schema = {
         "type": "object",
         "additionalProperties": False,
-        "required": ["intitule", "description", "niveaua", "niveaub", "niveauc", "domaine_id", "grille_evaluation"],
+        "required": ["description", "niveaua", "niveaub", "niveauc", "grille_evaluation"],
         "properties": {
-            "intitule": {"type": "string", "minLength": 1, "maxLength": 140},
             "description": {"type": "string", "maxLength": 1200},
-            "niveaua": {"type": "string", "minLength": 40, "maxLength": 230},
-            "niveaub": {"type": "string", "minLength": 40, "maxLength": 230},
-            "niveauc": {"type": "string", "minLength": 40, "maxLength": 230},
-            "domaine_id": {"type": ["string", "null"]},
+            "niveaua": {"type": "string", "maxLength": 230},
+            "niveaub": {"type": "string", "maxLength": 230},
+            "niveauc": {"type": "string", "maxLength": 230},
             "grille_evaluation": {
                 "type": "object",
                 "additionalProperties": False,
                 "required": ["Critere1", "Critere2", "Critere3", "Critere4"],
                 "properties": {
-                    "Critere1": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "required": ["Nom", "Eval"],
-                        "properties": {
-                            "Nom": {"type": "string", "maxLength": 140},
-                            "Eval": {
-                                "type": "array",
-                                "minItems": 4,
-                                "maxItems": 4,
-                                "items": {"type": "string", "maxLength": 120}
+                    **{
+                        f"Critere{i}": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": ["Nom", "Eval"],
+                            "properties": {
+                                "Nom": {"type": "string", "maxLength": 160},
+                                "Eval": {
+                                    "type": "array",
+                                    "minItems": 4,
+                                    "maxItems": 4,
+                                    "items": {"type": "string", "maxLength": 120}
+                                }
                             }
-                        }
-                    },
-                    "Critere2": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "required": ["Nom", "Eval"],
-                        "properties": {
-                            "Nom": {"type": "string", "maxLength": 140},
-                            "Eval": {
-                                "type": "array",
-                                "minItems": 4,
-                                "maxItems": 4,
-                                "items": {"type": "string", "maxLength": 120}
-                            }
-                        }
-                    },
-                    "Critere3": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "required": ["Nom", "Eval"],
-                        "properties": {
-                            "Nom": {"type": "string", "maxLength": 140},
-                            "Eval": {
-                                "type": "array",
-                                "minItems": 4,
-                                "maxItems": 4,
-                                "items": {"type": "string", "maxLength": 120}
-                            }
-                        }
-                    },
-                    "Critere4": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "required": ["Nom", "Eval"],
-                        "properties": {
-                            "Nom": {"type": "string", "maxLength": 140},
-                            "Eval": {
-                                "type": "array",
-                                "minItems": 4,
-                                "maxItems": 4,
-                                "items": {"type": "string", "maxLength": 120}
-                            }
-                        }
+                        } for i in range(1, 5)
                     }
                 }
             }
@@ -2777,51 +2777,75 @@ def _ai_draft_poste_comp_from_catalog_logic(
     }
 
     system_prompt = (
-        "Tu es concepteur pédagogique et tu aides à concevoir une fiche compétence opérationnelle. "
-        "Tu dois respecter STRICTEMENT le schéma JSON fourni. "
-        "Tu rédiges librement, sans utiliser de trame figée ni de catégories passe-partout. "
-        "Tu laisses le contenu émerger de la compétence et du contexte, au lieu de plaquer une structure générique. "
-        "Tu commences par déterminer si la compétence doit être réutilisable dans d'autres entreprises ou si elle est réellement spécifique à l'entreprise actuelle. "
-        "Règle fondamentale : "
-        "si la compétence est réutilisable, le titre, la description, les niveaux A/B/C et la grille d'évaluation doivent rester totalement transverses, sans référence à un produit, une offre, un process interne, un marché cible ou une organisation locale. "
-        "Si la compétence est réellement spécifique à l'entreprise, le titre doit rendre cette spécificité explicite. "
-        "Tu n'utilises jamais un titre générique pour une compétence dont le contenu est spécifique. "
-        "La description ne doit pas paraphraser le poste. "
-        "Elle doit expliquer le rôle réel de la compétence quand on la possède, ce qu'elle permet de réaliser, sécuriser, améliorer, piloter ou obtenir, quel que soit l'environnement, sauf si la compétence est explicitement spécifique. "
-        "Règles de niveau A/B/C : "
-        "A = initial (débutant, guidé, applique des consignes simples), "
-        "B = avancé (autonome, structuré, fiable), "
-        "C = expert (maîtrise, optimise, anticipe, transmet/forme). "
-        "Ne mets JAMAIS un simple label type 'Initial/Avancé/Expert' dans niveaua/b/c : "
-        "rédige 1 à 2 phrases concrètes décrivant ce qui est attendu et observable. "
-        "Les évaluations (4 niveaux par critère) doivent être progressives, observables et actionnables. "
-        "Chaque évaluation doit être courte (<=120 caractères), 1 phrase, verbe d'action + résultat observable. "
-        "Tu dois produire EXACTEMENT le nombre de critères demandé. "
-        "Si le nombre demandé est inférieur à 4, laisse les critères restants vides "
-        "(Nom vide + 4 Eval vides). "
-        "Les critères doivent couvrir des axes distincts, spécifiques à la compétence, sans doublons ni formulations génériques. "
-        "Tu évites les formulations floues, les reprises du descriptif du poste, les références internes inutiles et les compétences fourre-tout."
+        "Tu complètes UNE fiche compétence pour un référentiel RH interne. "
+        "Tu renvoies uniquement un JSON strict conforme au schéma fourni. "
+        "Tu conserves STRICTEMENT l’intitulé fourni. "
+        "Tu ne changes pas le périmètre métier de la compétence. "
+        "Tu rédiges en français, dans un style métier concret, précis, pédagogique et humain. "
+        "Tu évites absolument les formulations génériques, interchangeables, mécaniques ou scolaires. "
+        "Tu n’utilises jamais de trames du type "
+        "'Préparation et cadrage de l'activité', "
+        "'Réalisation de l'activité', "
+        "'Contrôle et ajustement du résultat', "
+        "'Mise en œuvre de la compétence' "
+        "sauf si cela correspond littéralement et explicitement à la compétence, ce qui sera rare. "
+        "Tu n’écris pas des niveaux A/B/C ou des évaluations qui sont la même phrase avec deux mots changés. "
+        "Tu produis des critères réellement distincts, observables et utiles à un manager ou à un RH. "
+        "Tu t’inspires du style des exemples fournis, sans recopier leur contenu. "
+
+        "Règles impératives : "
+        "niveauA, niveauB, niveauC : rédiger ce que peut faire le possesseur de la compétence, "
+        "à la troisième personne du présent de l’indicatif, 230 caractères maximum. "
+        "Chaque Eval : rédiger ce que doit savoir faire la personne pour obtenir le niveau, "
+        "à la troisième personne du présent de l’indicatif, 120 caractères maximum. "
+        "Tu n’es pas obligée de commencer les phrases par 'Elle'. "
+        "Tu peux employer des tournures naturelles comme 'Sait…', 'Identifie…', 'Structure…', 'Conçoit…', "
+        "'Adapte…', 'Valide…', 'Formalise…', 'Optimise…', si elles sont justes métier. "
+
+        "Tu t’appuies implicitement sur une progression de maîtrise de type Bloom, sans jamais la citer : "
+        "repérer / appliquer / ajuster / concevoir ou optimiser selon la compétence. "
+        "La progression doit être nette entre A, B, C et entre les 4 niveaux de chaque critère. "
+
+        "Par défaut, cherche à produire une compétence réutilisable dans d’autres entreprises et d’autres postes. "
+        "Si l’intitulé est générique ou transverse, tout le contenu doit rester transverse : "
+        "pas de produit maison, pas de process interne, pas de marque, pas de contexte local caché. "
+        "Si la compétence est réellement spécifique, cette spécificité ne doit apparaître que si l’intitulé l’assume déjà explicitement. "
+        "Tu ne rends donc pas la fiche plus spécifique que l’intitulé fourni. "
+
+        "La description doit être explicite et utile. "
+        "Elle doit expliquer le rôle réel de la compétence quand on la possède, ce qu’elle permet de produire, structurer, sécuriser, piloter ou améliorer. "
+        "Elle ne doit pas paraphraser le poste. "
+        "Si la description actuelle est déjà bonne, tu en conserves l’intention et tu l’améliores seulement à la marge. "
+
+        "Réserve 4 critères aux compétences managériales, analytiques ou complexes. "
+        "Pour les autres, produis 1 à 3 critères. "
+        "Les critères non utilisés doivent être présents avec Nom vide et 4 Eval vides."
     )
 
     user_prompt = (
-        f"Objectif: {title}\n"
-        f"Contexte: {poste_context}\n"
-        f"Domaine imposé (si non vide): {domaine_force or ''}\n"
-        f"Nombre de critères à produire: {nb}\n\n"
-        f"Domaines disponibles (id -> titre_court):\n{dom_list_txt}\n\n"
-        "Contraintes:\n"
+        f"COMPÉTENCE À COMPLÉTER\n"
+        f"Intitulé imposé : {title}\n"
+        f"Description actuelle : {current_desc}\n"
+        f"Pourquoi cette compétence est utile : {why_needed}\n"
+        f"Contexte poste : {poste_context}\n"
+        f"Domaine imposé (si non vide) : {domaine_force or ''}\n"
+        f"Nombre de critères attendu : {nb}\n\n"
+
+        f"DOMAINES DISPONIBLES (id -> titre_court)\n{dom_list_txt}\n\n"
+
+        "RÈGLES À RESPECTER\n"
         f"- Produis exactement {nb} critères NON VIDES (Critere1..Critere{nb}).\n"
         f"- Critere{nb+1}..Critere4 doivent être VIDES (Nom=\"\" + 4 Eval vides).\n"
-        "- Chaque critère = un axe distinct et réellement évaluable.\n"
-        "- Les 4 niveaux d’un critère doivent montrer une progression claire et concrète.\n"
-        "- Niveaux A/B/C: A initial guidé, B autonome fiable, C expert optimise/transmet.\n"
-        "- Niveaux A/B/C <=230 caractères chacun.\n"
-        "- Eval <=120 caractères.\n"
-        "- N'utilise pas de formulations mécaniques ni de sous-phrases répétées d'un niveau à l'autre.\n"
-        "- Si la compétence est réutilisable, garde un contenu totalement transverse.\n"
-        "- Si la compétence dépend d'un contexte interne, d'une offre, d'un process ou d'un environnement propre à l'entreprise, rends cette spécificité explicite dans le titre.\n"
-        "- La description doit faire comprendre à quoi sert réellement cette compétence lorsqu'on la possède, et non décrire le poste.\n"
-        "- Si un intitulé semble trop générique pour un contenu spécifique, corrige en rendant le titre explicite.\n"
+        "- Chaque critère doit nommer un axe métier concret, pas une étape générique passe-partout.\n"
+        "- Chaque critère doit être distinct des autres.\n"
+        "- Les 4 niveaux d’un critère doivent montrer une vraie progression observable.\n"
+        "- Niveaux A/B/C <= 230 caractères.\n"
+        "- Eval <= 120 caractères.\n"
+        "- N’écris pas de phrases robotiques, mécaniques ou interchangeables.\n"
+        "- Si l’intitulé est réutilisable, garde tout le contenu réutilisable et transverse.\n"
+        "- N’injecte pas de contexte entreprise caché dans une compétence à intitulé générique.\n\n"
+
+        f"EXEMPLES DE STYLE À SUIVRE\n{style_examples_txt}\n"
     )
 
     data = _openai_responses_json(
@@ -2847,6 +2871,16 @@ def _ai_draft_poste_comp_from_catalog_logic(
             detail="IA: niveaux A/B/C trop courts ou réduits à un label. Relance avec plus de contexte."
         )
 
+    # On garde la description existante si elle est déjà solide.
+    if len(current_desc.split()) >= 12:
+        data["description"] = current_desc
+    else:
+        data["description"] = _clean_ai_comp_text(data.get("description"), 1200)
+
+    data["niveaua"] = _clean_ai_comp_text(data.get("niveaua"), 230)
+    data["niveaub"] = _clean_ai_comp_text(data.get("niveaub"), 230)
+    data["niveauc"] = _clean_ai_comp_text(data.get("niveauc"), 230)
+
     _fix_abc_levels(data)
 
     dom_out = (domaine_force or _clean_text(data.get("domaine_id"))).strip() or None
@@ -2855,13 +2889,30 @@ def _ai_draft_poste_comp_from_catalog_logic(
     data["domaine_id"] = dom_out
 
     ge = _sanitize_grille(data.get("grille_evaluation"))
-    used = 0
+    used_names = []
     for k in ("Critere1", "Critere2", "Critere3", "Critere4"):
         nm = _clean_text((ge.get(k) or {}).get("Nom"))
         if nm:
-            used += 1
-    if used < 1:
+            used_names.append(_norm_text_search(nm))
+
+    if not used_names:
         raise HTTPException(status_code=400, detail="IA: aucun critère exploitable généré.")
+
+    banned_generic = {
+        "preparation et cadrage de l activite",
+        "realisation de l activite",
+        "controle et ajustement du resultat",
+        "mise en oeuvre de la competence",
+        "evaluation de la competence",
+        "preparation et structuration de l activite",
+        "realisation et maitrise operationnelle",
+        "controle fiabilisation et amelioration",
+    }
+    if all(n in banned_generic for n in used_names):
+        raise HTTPException(
+            status_code=400,
+            detail="IA: critères trop génériques. Relance avec plus de contexte."
+        )
 
     data["grille_evaluation"] = ge
     data["intitule"] = title
