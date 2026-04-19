@@ -387,6 +387,36 @@
         if (el) el.style.display = "none";
     }
 
+    function getPendingPosteCompAiCount(){
+        const existing = Array.isArray(_posteCompAiResults?.existing) ? _posteCompAiResults.existing : [];
+        const missing = Array.isArray(_posteCompAiResults?.missing) ? _posteCompAiResults.missing : [];
+
+        const pendingExisting = existing.filter(it => !it?._already_added).length;
+        const pendingMissing = missing.length;
+
+        return pendingExisting + pendingMissing;
+    }
+
+    function closePosteCompAiModal(forceClose = false){
+        const pending = getPendingPosteCompAiCount();
+
+        if (!forceClose && pending > 0){
+            const msg = pending > 1
+                ? "Si vous fermez maintenant, les propositions de compétences non enregistrées seront perdues. Il faudra relancer la recherche IA pour les retrouver.\n\nVoulez-vous vraiment fermer ?"
+                : "Si vous fermez maintenant, la proposition de compétence non enregistrée sera perdue. Il faudra relancer la recherche IA pour la retrouver.\n\nVoulez-vous vraiment fermer ?";
+
+            if (!window.confirm(msg)){
+                return false;
+            }
+        }
+
+        closeModal("modalPosteCompAi");
+        _posteCompAiResults = { existing: [], missing: [] };
+        _posteCompCreateCtx = null;
+        resetPosteCompAiUi();
+        return true;
+    }
+
     function formatFileSize(bytes){
         const n = parseInt(bytes || 0, 10) || 0;
         if (n < 1024) return `${n} o`;
@@ -5001,8 +5031,26 @@ body {
             try { await openPosteCompAiModal(portal); }
             catch(e){ portal.showAlert("error", e?.message || String(e)); }
         });
-        byId("btnPosteCompAiX")?.addEventListener("click", () => closeModal("modalPosteCompAi"));
-        byId("btnPosteCompAiClose")?.addEventListener("click", () => closeModal("modalPosteCompAi"));
+        byId("btnPosteCompAiX")?.addEventListener("click", () => closePosteCompAiModal());
+        byId("btnPosteCompAiClose")?.addEventListener("click", () => closePosteCompAiModal());
+
+        const mcai = byId("modalPosteCompAi");
+        if (mcai && !mcai._sbBound){
+            mcai._sbBound = true;
+
+            mcai.addEventListener("click", (e) => {
+                if (e.target === mcai) closePosteCompAiModal();
+            });
+
+            document.addEventListener("keydown", (e) => {
+                const el = byId("modalPosteCompAi");
+                if (e.key === "Escape" && el && el.style.display === "flex"){
+                    const createEl = byId("modalPosteCompCreate");
+                    if (createEl && createEl.style.display === "flex") return;
+                    closePosteCompAiModal();
+                }
+            });
+        }
 
         byId("btnPosteCompCreateX")?.addEventListener("click", () => closePosteCompCreateModal());
         byId("btnPosteCompCreateCancel")?.addEventListener("click", () => closePosteCompCreateModal());
