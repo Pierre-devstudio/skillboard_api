@@ -722,7 +722,7 @@
               <div class="card-title" id="posteCompCreateTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Créer une compétence</div>
             </div>
             <div class="card-sub" id="posteCompCreateSub" style="margin:4px 0 0 0;">
-              Brouillon proposé par l’IA. Tu valides / ajustes avant création.
+              Brouillon proposé par l’IA. Vérifiez avant création.
             </div>
           </div>
         </div>
@@ -747,7 +747,6 @@
           <div class="info-item" style="flex:1; min-width:240px;">
             <div class="label">État</div>
             <select id="posteCompCreateEtat">
-              <option value="valide">valide</option>
               <option value="active">active</option>
               <option value="à valider" selected>à valider</option>
             </select>
@@ -763,15 +762,15 @@
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Niveau A</div>
+            <div class="label">Niveau A - Initial</div>
             <textarea id="posteCompCreateNivA" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
           </div>
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Niveau B</div>
+            <div class="label">Niveau B - Avancé</div>
             <textarea id="posteCompCreateNivB" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
           </div>
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Niveau C</div>
+            <div class="label">Niveau C - Expert</div>
             <textarea id="posteCompCreateNivC" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
           </div>
         </div>
@@ -780,7 +779,7 @@
           <div class="info-item" style="flex:1; min-width:260px;">
             <div class="sb-field-head">
               <div class="label" style="margin:0;">Grille d’évaluation</div>
-              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnPosteCompCreateAddCrit">
+              <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPosteCompCreateAddCrit">
                 Ajouter un critère
               </button>
             </div>
