@@ -46,6 +46,9 @@
     let _posteCompCreateCritEditIdx = null;
     let _iaBusyTimer = null;
     let _iaBusyStartedAt = 0;
+    let _iaBusyLongWarnAt = 200;
+    let _iaBusyHintDefault = "Cette opération peut prendre quelques minutes";
+    let _iaBusyHintLong = "La durée de cette opération est anormalement longue, appuyez sur Échap pour annuler et relancer la recherche";
 
     // --- Poste > Certifications (Exigences)
     let _posteCertItems = [];
@@ -213,18 +216,35 @@
         const ttl = byId("iaBusyTitle");
         const txt = byId("iaBusyText");
         const sec = byId("iaBusySeconds");
+        const hint = byId("iaBusyHint");
         if (!ov) return;
 
         if (ttl) ttl.textContent = title || "Analyse IA en cours";
         if (txt) txt.textContent = text || "Traitement en cours...";
         if (sec) sec.textContent = "0";
+        if (hint) {
+            hint.textContent = _iaBusyHintDefault;
+            hint.classList.remove("is-warning");
+        }
 
         _iaBusyStartedAt = Date.now();
         if (_iaBusyTimer) clearInterval(_iaBusyTimer);
         _iaBusyTimer = setInterval(() => {
             const s = Math.max(0, Math.floor((Date.now() - _iaBusyStartedAt) / 1000));
+
             const el = byId("iaBusySeconds");
             if (el) el.textContent = String(s);
+
+            const hintEl = byId("iaBusyHint");
+            if (hintEl){
+                if (s >= _iaBusyLongWarnAt){
+                    hintEl.textContent = _iaBusyHintLong;
+                    hintEl.classList.add("is-warning");
+                } else {
+                    hintEl.textContent = _iaBusyHintDefault;
+                    hintEl.classList.remove("is-warning");
+                }
+            }
         }, 250);
 
         ov.style.display = "flex";
@@ -235,6 +255,13 @@
             clearInterval(_iaBusyTimer);
             _iaBusyTimer = null;
         }
+
+        const hint = byId("iaBusyHint");
+        if (hint){
+            hint.textContent = _iaBusyHintDefault;
+            hint.classList.remove("is-warning");
+        }
+
         const ov = byId("iaBusyOverlay");
         if (ov) ov.style.display = "none";
     }
@@ -2056,15 +2083,22 @@ body {
     function openPosteAiModal(){
         const ttl = byId("posteAiTitle");
         const sub = byId("posteAiSub");
-        if (ttl) ttl.textContent = (_posteModalMode === "edit") ? "Proposer des textes de remplacement avec l’IA" : "Générer une fiche de poste avec l’IA";
+
+        if (ttl) ttl.textContent = (_posteModalMode === "edit")
+            ? "Proposer des textes de remplacement avec l’IA"
+            : "Générer une fiche de poste avec l’IA";
+
         if (sub) sub.textContent = (_posteModalMode === "edit")
             ? "L’IA reformule et enrichit la fiche actuelle sans changer le métier visé."
             : "L’IA propose un brouillon exploitable à partir de tes éléments et d’une recherche web.";
+
+        resetPosteAiModalFields();
         seedPosteAiModalFromCurrent();
         openModal("modalPosteAi");
     }
 
     function closePosteAiModal(){
+        resetPosteAiModalFields();
         closeModal("modalPosteAi");
     }
 

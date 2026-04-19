@@ -909,6 +909,18 @@
   color: #6b7280;
 }
 
+.sb-ia-overlay__hint{
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.sb-ia-overlay__hint.is-warning{
+  color: #b45309;
+  font-weight: 600;
+}
+
 /* Import documentaire (CORE) */
 .sb-dropzone{
   border:2px dashed rgba(17,24,39,.18);
