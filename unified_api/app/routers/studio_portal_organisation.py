@@ -3403,6 +3403,16 @@ def _fetch_owner_idcc(cur, oid: str) -> dict:
         "owner_source": "",
     }
 
+def _fetch_scope_idcc(cur, oid: str, request: Request, poste: Optional[dict] = None) -> dict:
+    scope_ent = ""
+
+    if isinstance(poste, dict):
+        scope_ent = (poste.get("id_ent") or "").strip()
+
+    if not scope_ent:
+        scope_ent = _resolve_org_scope_ent(cur, oid, request)
+
+    return _fetch_owner_idcc(cur, scope_ent or oid)
 
 def _fetch_ccn_referential(cur, idcc: str) -> Optional[dict]:
     if not (idcc or "").strip():
@@ -6457,8 +6467,8 @@ def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Reques
                 dossier = _fetch_poste_ccn_dossier(cur, pid)
                 logo_bytes = _fetch_owner_logo_bytes(cur, oid)
 
-                owner_ctx = _fetch_owner_idcc(cur, oid)
-                idcc = (owner_ctx.get("idcc") or "").strip()
+                scope_ctx = _fetch_scope_idcc(cur, oid, request, poste)
+                idcc = (scope_ctx.get("idcc") or "").strip()
                 referential = _fetch_ccn_referential(cur, idcc) if idcc else None
 
         ref_poste = _pdf_first_non_empty(
@@ -6533,11 +6543,11 @@ def studio_org_poste_ccn_context(id_owner: str, id_poste: str, request: Request)
                 if not pid:
                     raise HTTPException(status_code=400, detail="id_poste manquant.")
 
-                owner_ctx = _fetch_owner_idcc(cur, oid)
                 poste = _fetch_poste_for_ccn(cur, oid, pid)
                 dossier = _fetch_poste_ccn_dossier(cur, pid)
+                scope_ctx = _fetch_scope_idcc(cur, oid, request, poste)
 
-                idcc = (owner_ctx.get("idcc") or "").strip()
+                idcc = (scope_ctx.get("idcc") or "").strip()
                 referential = _fetch_ccn_referential(cur, idcc) if idcc else None
                 ref_json = referential.get("referentiel_json") if referential else {}
 
@@ -6582,8 +6592,10 @@ def studio_org_poste_ccn_propose(id_owner: str, id_poste: str, request: Request)
                 if not pid:
                     raise HTTPException(status_code=400, detail="id_poste manquant.")
 
-                owner_ctx = _fetch_owner_idcc(cur, oid)
-                idcc = (owner_ctx.get("idcc") or "").strip()
+                poste = _fetch_poste_for_ccn(cur, oid, pid)
+                scope_ctx = _fetch_scope_idcc(cur, oid, request, poste)
+
+                idcc = (scope_ctx.get("idcc") or "").strip()
                 if idcc not in ("1516", "3248", "1880"):
                     raise HTTPException(status_code=400, detail=f"Convention non supportée pour l’assistant (IDCC détecté : {idcc or 'aucun'}).")
 
@@ -6592,7 +6604,6 @@ def studio_org_poste_ccn_propose(id_owner: str, id_poste: str, request: Request)
                     raise HTTPException(status_code=404, detail="Référentiel conventionnel introuvable.")
 
                 ref_json = referential.get("referentiel_json") or {}
-                poste = _fetch_poste_for_ccn(cur, oid, pid)
 
                 model = (os.getenv("OPENAI_MODEL_POSTE_CCN") or "").strip() or "gpt-5"
 
@@ -6661,8 +6672,10 @@ def studio_org_poste_ccn_save(id_owner: str, id_poste: str, payload: SavePosteCc
                 if not pid:
                     raise HTTPException(status_code=400, detail="id_poste manquant.")
 
-                owner_ctx = _fetch_owner_idcc(cur, oid)
-                idcc = (owner_ctx.get("idcc") or "").strip()
+                poste = _fetch_poste_for_ccn(cur, oid, pid)
+                scope_ctx = _fetch_scope_idcc(cur, oid, request, poste)
+
+                idcc = (scope_ctx.get("idcc") or "").strip()
                 if idcc not in ("1516", "3248", "1880"):
                     raise HTTPException(status_code=400, detail=f"Convention non supportée pour l’assistant (IDCC détecté : {idcc or 'aucun'}).")
 
@@ -6671,7 +6684,6 @@ def studio_org_poste_ccn_save(id_owner: str, id_poste: str, payload: SavePosteCc
                     raise HTTPException(status_code=404, detail="Référentiel conventionnel introuvable.")
 
                 dossier = _fetch_poste_ccn_dossier(cur, pid)
-                poste = _fetch_poste_for_ccn(cur, oid, pid)
                 ref_json = referential.get("referentiel_json") or {}
 
                 proposition = payload.proposition_json if isinstance(payload.proposition_json, dict) else {}
