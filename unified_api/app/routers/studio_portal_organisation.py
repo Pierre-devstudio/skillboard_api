@@ -188,6 +188,69 @@ def _fetch_owner_logo_bytes(cur, oid: str) -> Optional[bytes]:
     except Exception:
         return raw
 
+def _fetch_logo_bytes_for_ent(cur, id_ent: str) -> Optional[bytes]:
+    ent = (id_ent or "").strip()
+    if not ent:
+        return None
+
+    cur.execute(
+        """
+        SELECT logo_bytes
+        FROM public.tbl_studio_owner_logo
+        WHERE id_owner = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        ORDER BY date_maj DESC, date_creation DESC
+        LIMIT 1
+        """,
+        (ent,),
+    )
+    row = cur.fetchone() or {}
+    raw = row.get("logo_bytes")
+    if raw is None:
+        return None
+    try:
+        return bytes(raw)
+    except Exception:
+        return raw
+
+
+def _fetch_pdf_scope_ent_name(cur, oid: str, id_ent: str) -> str:
+    ent = (id_ent or "").strip()
+    if not ent:
+        owner = studio_fetch_owner(cur, oid) or {}
+        return (
+            (owner.get("nom_ent") or "").strip()
+            or (owner.get("nom_owner") or "").strip()
+            or (owner.get("email") or "").strip()
+            or "Organisation"
+        )
+
+    if ent == oid:
+        owner = studio_fetch_owner(cur, oid) or {}
+        return (
+            (owner.get("nom_ent") or "").strip()
+            or (owner.get("nom_owner") or "").strip()
+            or (owner.get("email") or "").strip()
+            or "Organisation"
+        )
+
+    cur.execute(
+        """
+        SELECT nom_ent
+        FROM public.tbl_entreprise
+        WHERE id_ent = %s
+          AND id_owner_gestionnaire = %s
+        LIMIT 1
+        """,
+        (ent, oid),
+    )
+    row = cur.fetchone() or {}
+    nom = (row.get("nom_ent") or "").strip()
+    if nom:
+        return nom
+
+    return "Organisation"
+
 def _pdf_esc(v: Any) -> str:
     return str(v or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
@@ -6429,7 +6492,7 @@ def studio_org_get_organigramme_pdf(id_owner: str, request: Request):
 
                 scope_ent = _resolve_org_scope_ent(cur, oid, request)
                 data = _fetch_organigramme_data(cur, oid, scope_ent)
-                logo_bytes = _fetch_owner_logo_bytes(cur, oid)
+                logo_bytes = _fetch_logo_bytes_for_ent(cur, scope_ent)
 
         pdf_bytes = _build_organigramme_pdf(scope_ent, data, logo_bytes)
         filename = f'organigramme_{(scope_ent or "organisation").strip()}.pdf'
@@ -6465,7 +6528,9 @@ def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Reques
 
                 poste = _fetch_poste_for_ccn(cur, oid, pid)
                 dossier = _fetch_poste_ccn_dossier(cur, pid)
-                logo_bytes = _fetch_owner_logo_bytes(cur, oid)
+
+                scope_ent = (poste.get("id_ent") or "").strip() or _resolve_org_scope_ent(cur, oid, request)
+                logo_bytes = _fetch_logo_bytes_for_ent(cur, scope_ent)
 
                 scope_ctx = _fetch_scope_idcc(cur, oid, request, poste)
                 idcc = (scope_ctx.get("idcc") or "").strip()
@@ -6490,13 +6555,7 @@ def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Reques
         footer_parts.append("Novoskill Studio")
         footer_parts.append("Fiche de poste complète")
 
-        header_right = _pdf_first_non_empty(
-            poste.get("nom_ent"),
-            owner.get("nom_owner"),
-            owner.get("nom_ent"),
-            poste.get("id_ent"),
-            "",
-        ) or ""
+        header_right = _fetch_pdf_scope_ent_name(cur, oid, scope_ent)
 
         filename = f"Fiche de poste {ref_poste} - {intitule_poste}.pdf"
         filename = _pdf_latin1_safe(filename)
