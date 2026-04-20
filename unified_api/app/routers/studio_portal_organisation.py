@@ -3435,12 +3435,16 @@ def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
           COALESCE(p.nsf_groupe_code, '') AS nsf_groupe_code,
           COALESCE(p.nsf_groupe_obligatoire, FALSE) AS nsf_groupe_obligatoire,
           COALESCE(ng.titre, '') AS nsf_groupe_titre,
-          COALESCE(s.nom_service, '') AS nom_service
+          COALESCE(s.nom_service, '') AS nom_service,
+          COALESCE(ent.nom_ent, '') AS nom_ent
         FROM public.tbl_fiche_poste p
         LEFT JOIN public.tbl_entreprise_organigramme s
           ON s.id_service = p.id_service
          AND s.id_ent = p.id_ent
          AND COALESCE(s.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_entreprise ent
+          ON ent.id_ent = p.id_ent
+         AND COALESCE(ent.masque, FALSE) = FALSE 
         LEFT JOIN public.tbl_nsf_groupe ng
           ON ng.code = p.nsf_groupe_code
          AND COALESCE(ng.masque, FALSE) = FALSE
@@ -5849,6 +5853,14 @@ def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Reques
         footer_parts.append("Novoskill Studio")
         footer_parts.append("Fiche de poste complète")
 
+        header_right = _pdf_first_non_empty(
+            poste.get("nom_ent"),
+            owner.get("nom_owner"),
+            owner.get("nom_ent"),
+            poste.get("id_ent"),
+            "",
+        ) or ""
+
         filename = f"Fiche de poste {ref_poste} - {intitule_poste}.pdf"
         filename = _pdf_latin1_safe(filename)
 
@@ -5858,6 +5870,7 @@ def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Reques
                 "title": _pdf_latin1_safe(f"Fiche de poste - {intitule_poste}"),
                 "doc_label": _pdf_latin1_safe("Fiche de poste complète"),
                 "footer_left": _pdf_latin1_safe(" • ".join(footer_parts) if footer_parts else "Novoskill Studio"),
+                "header_right": _pdf_latin1_safe(header_right),
                 "logo_bytes": logo_bytes,
             },
         )

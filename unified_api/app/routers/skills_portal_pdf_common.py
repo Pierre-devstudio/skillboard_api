@@ -222,6 +222,12 @@ def _header_footer(canvas, doc):
     canvas.setLineWidth(0.6)
     canvas.line(left, header_line_y, right, header_line_y)
 
+    header_right = str(meta.get("header_right") or "").strip()
+    if header_right:
+        canvas.setFillColor(PDF_MUTED)
+        canvas.setFont("Helvetica", 8.5)
+        canvas.drawRightString(right, header_line_y + (2.2 * mm), header_right)
+
     # Footer dans la marge basse de 1 cm
     footer_line_y = PDF_MARGIN_BOTTOM
     footer_text_y = 4 * mm
