@@ -4364,7 +4364,7 @@ def _build_pdf_responsabilites_flowables(html: Optional[str], styles: dict) -> L
 
     blocks = parser.get_blocks()
 
-    out: List = [Paragraph("Responsabilités", section_style)]
+    out: List = []
 
     if not blocks:
         plain = _pdf_split_lines(html)
@@ -4456,7 +4456,13 @@ def _build_pdf_property_grid(entries: List[tuple], styles: dict, content_width: 
     return table
 
 
-def _build_pdf_rich_table(headers: List[str], rows: List[List[str]], col_widths: List[float], styles: dict) -> Table:
+def _build_pdf_rich_table(
+    headers: List[str],
+    rows: List[List[str]],
+    col_widths: List[float],
+    styles: dict,
+    outer_box: bool = True,
+) -> Table:
     header_style = ParagraphStyle(
         "NsPdfTableHead",
         parent=styles["small"],
@@ -4492,19 +4498,50 @@ def _build_pdf_rich_table(headers: List[str], rows: List[List[str]], col_widths:
         hAlign="LEFT",
     )
 
-    table.setStyle(TableStyle([
+    ts = [
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f8fafc")),
         ("TEXTCOLOR", (0, 0), (-1, -1), PDF_TEXT),
-        ("BOX", (0, 0), (-1, -1), 0.7, PDF_LINE),
         ("INNERGRID", (0, 0), (-1, -1), 0.7, PDF_LINE),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 6),
         ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-    ]))
+        ("TOPPADDING", (0, 0), (-1, 0), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+        ("TOPPADDING", (0, 1), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 5),
+    ]
 
+    if outer_box:
+        ts.insert(2, ("BOX", (0, 0), (-1, -1), 0.7, PDF_LINE))
+
+    table.setStyle(TableStyle(ts))
     return table
+
+def _build_pdf_rich_table_rounded(
+    headers: List[str],
+    rows: List[List[str]],
+    col_widths: List[float],
+    styles: dict,
+):
+    pad = 1.5 * mm
+
+    inner_table = _build_pdf_rich_table(
+        headers=headers,
+        rows=rows,
+        col_widths=col_widths,
+        styles=styles,
+        outer_box=False,
+    )
+
+    return _RoundedTableBox(
+        inner_table=inner_table,
+        width=sum(col_widths or []) + (2 * pad),
+        padding=pad,
+        radius=3 * mm,
+        stroke_color=PDF_LINE,
+        fill_color=colors.white,
+        stroke_width=0.8,
+    )
 
 def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], referential: Optional[dict]) -> List:
     styles = build_pdf_styles()
@@ -4625,7 +4662,7 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
     if not comp_rows:
         comp_rows.append(["—", "Aucune compétence rattachée.", "—", "—"])
 
-    story.append(_build_pdf_rich_table(
+    story.append(_build_pdf_rich_table_rounded(
         ["Code", "Compétence", "Niveau requis", "Criticité"],
         comp_rows,
         [24 * mm, 94 * mm, 30 * mm, 30 * mm],
@@ -4646,7 +4683,7 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
     if not cert_rows:
         cert_rows.append(["—", "Aucune certification rattachée.", "—", "—"])
 
-    story.append(_build_pdf_rich_table(
+    story.append(_build_pdf_rich_table_rounded(
         ["Catégorie", "Certification", "Validité", "Exigence"],
         cert_rows,
         [40 * mm, 92 * mm, 22 * mm, 24 * mm],
