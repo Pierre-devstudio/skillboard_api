@@ -4297,17 +4297,12 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
         styles,
     ))
     story.append(make_spacer(2))
-    story.append(_build_owner_logo_flowable(owner, styles))
-    story.append(make_spacer(3))
     story.append(_build_pdf_reference_block(poste, styles, content_width))
     story.append(make_spacer(1.8))
 
     mission_lines = _pdf_split_lines(poste.get("mission_principale")) or ["—"]
     story.extend(_build_pdf_plain_block("Mission principale", mission_lines, styles))
-    story.append(make_spacer(3.4))
-
-    story.extend(_build_pdf_responsabilites_flowables(poste.get("responsabilites"), styles))
-    story.append(make_spacer(4))
+    story.append(make_spacer(3.2))
 
     nsf_label = _pdf_first_non_empty(poste.get("nsf_groupe_titre"), poste.get("nsf_groupe_code"))
     if nsf_label and poste.get("nsf_groupe_obligatoire"):
@@ -4342,6 +4337,15 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
     story.append(Paragraph("Contraintes et spécificités", contraintes_title))
     story.append(_build_pdf_property_grid(contraintes_entries, styles, content_width, detail_tuple))
 
+    story.append(PageBreak())
+
+    story.extend(_build_pdf_centered_titles(
+        "Responsabilités",
+        "",
+        styles,
+    ))
+    story.append(make_spacer(2))
+    story.extend(_build_pdf_responsabilites_flowables(poste.get("responsabilites"), styles))
     story.append(PageBreak())
     story.extend(_build_pdf_centered_titles(
         "Compétences et certifications requises",
