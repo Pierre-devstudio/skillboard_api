@@ -6535,6 +6535,7 @@ def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Reques
                 scope_ctx = _fetch_scope_idcc(cur, oid, request, poste)
                 idcc = (scope_ctx.get("idcc") or "").strip()
                 referential = _fetch_ccn_referential(cur, idcc) if idcc else None
+                header_right = _fetch_pdf_scope_ent_name(cur, oid, scope_ent)
 
         ref_poste = _pdf_first_non_empty(
             poste.get("code_poste"),
@@ -6554,8 +6555,6 @@ def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Reques
             footer_parts.append(f"Dernière mise à jour du poste : {maj_label}")
         footer_parts.append("Novoskill Studio")
         footer_parts.append("Fiche de poste complète")
-
-        header_right = _fetch_pdf_scope_ent_name(cur, oid, scope_ent)
 
         filename = f"Fiche de poste {ref_poste} - {intitule_poste}.pdf"
         filename = _pdf_latin1_safe(filename)
