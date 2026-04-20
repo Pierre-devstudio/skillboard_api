@@ -19,6 +19,79 @@
   let _orgWorkspaceLoadingPromise = null;
   let _orgWorkspaceScriptPromise = null;
 
+  function getMenuStudioAssetUrl(filename){
+    return new URL(`/menu_studio/${filename}`, window.location.origin).toString();
+  }
+
+  function loadExternalScriptOnce(src, marker){
+    const key = String(marker || src || "").trim();
+
+    return new Promise((resolve, reject) => {
+      const existing = Array.from(document.querySelectorAll("script[data-client-space-ext]"))
+        .find(s => (s.dataset.clientSpaceExt || "") === key);
+
+      if (existing){
+        if (existing.dataset.loaded === "1"){
+          resolve();
+          return;
+        }
+        existing.addEventListener("load", () => resolve(), { once: true });
+        existing.addEventListener("error", () => reject(new Error(`Impossible de charger ${src}`)), { once: true });
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = true;
+      script.dataset.clientSpaceExt = key;
+
+      script.addEventListener("load", () => {
+        script.dataset.loaded = "1";
+        resolve();
+      }, { once: true });
+
+      script.addEventListener("error", () => {
+        reject(new Error(`Impossible de charger ${src}`));
+      }, { once: true });
+
+      document.head.appendChild(script);
+    });
+  }
+
+  async function ensureOrganisationWorkspaceMarkup(mount){
+    if (!mount){
+      throw new Error("orgWorkspaceMount introuvable.");
+    }
+
+    if (mount.dataset.loaded === "1"){
+      return;
+    }
+
+    const htmlUrl = getMenuStudioAssetUrl("studio_organisation.html");
+    const resp = await fetch(htmlUrl, { credentials: "same-origin" });
+
+    if (!resp.ok){
+      throw new Error(`Impossible de charger ${htmlUrl}`);
+    }
+
+    const html = await resp.text();
+    const host = document.createElement("div");
+    host.innerHTML = html;
+
+    const root = host.querySelector('#view-organisation[data-view="organisation"]');
+    if (!root){
+      throw new Error("Bloc Organisation partagé introuvable.");
+    }
+
+    mount.innerHTML = "";
+    while (host.firstChild){
+      mount.appendChild(host.firstChild);
+    }
+
+    mount.dataset.loaded = "1";
+    _orgWorkspaceReady = true;
+  }
+
   function byId(id){ return document.getElementById(id); }
 
   function normalizeApeCode(value){
@@ -1054,76 +1127,91 @@ function bindPostalAssist(){
     });
   }
 
-  function ensureOrganisationScriptLoaded(){
-    if (typeof window.__studioOrganisationInit !== "function") {
-      throw new Error("Logique Organisation non fusionnée dans studio_client_space.js.");
+  async function ensureOrganisationScriptLoaded(){
+    if (typeof window.__studioOrganisationInit === "function") {
+      return;
     }
-    return Promise.resolve();
+
+    if (!_orgWorkspaceScriptPromise){
+      _orgWorkspaceScriptPromise = (async () => {
+        await loadExternalScriptOnce(
+          getMenuStudioAssetUrl("studio_organisation.js"),
+          "studio-organisation-shared"
+        );
+
+        if (typeof window.__studioOrganisationInit !== "function"){
+          throw new Error("Initialisation Organisation introuvable après chargement du script partagé.");
+        }
+      })();
+    }
+
+    await _orgWorkspaceScriptPromise;
   }
 
   async function loadOrganisationWorkspace(){
-    const mount = byId("orgWorkspaceMount");
-    const ownerId = getOwnerId();
-    const clientId = getClientId();
-
-    try {
-      console.info("[OrgWorkspace] start", {
-        ownerId,
-        clientId,
-        hasMount: !!mount,
-        hasTemplate: !!byId("tplOrgWorkspace"),
-        initType: typeof window.__studioOrganisationInit
-      });
-
-      if (!mount) {
-        throw new Error("orgWorkspaceMount introuvable.");
-      }
-
-      ensureOrganisationPortalBridge();
-
-      if (mount.dataset.loaded !== "1") {
-        const tpl = byId("tplOrgWorkspace");
-        if (!tpl || !tpl.content) {
-          throw new Error("Template Organisation introuvable.");
-        }
-
-        const root = tpl.content.querySelector('#view-organisation[data-view="organisation"]');
-        if (!root) {
-          throw new Error("Bloc Organisation partagé introuvable.");
-        }
-
-        mount.innerHTML = "";
-        mount.appendChild(root.cloneNode(true));
-        mount.dataset.loaded = "1";
-      }
-
-      await ensureOrganisationScriptLoaded();
-
-      if (typeof window.__studioOrganisationInit !== "function") {
-        throw new Error("Initialisation Organisation introuvable.");
-      }
-
-      await window.__studioOrganisationInit({ force: true });
-
-      console.info("[OrgWorkspace] done", {
-        ownerId,
-        clientId,
-        initType: typeof window.__studioOrganisationInit
-      });
-    } catch (e) {
-      console.error("[OrgWorkspace] error", {
-        ownerId,
-        clientId,
-        hasMount: !!mount,
-        hasTemplate: !!byId("tplOrgWorkspace"),
-        initType: typeof window.__studioOrganisationInit,
-        message: e?.message || String(e)
-      }, e);
-
-      throw new Error(
-        `Organisation workspace: ${e?.message || e} | owner=${ownerId || "-"} | client=${clientId || "-"} | init=${typeof window.__studioOrganisationInit}`
-      );
+    if (_orgWorkspaceLoadingPromise){
+      return await _orgWorkspaceLoadingPromise;
     }
+
+    _orgWorkspaceLoadingPromise = (async () => {
+      const mount = byId("orgWorkspaceMount");
+      const ownerId = getOwnerId();
+      const clientId = getClientId();
+
+      try {
+        console.info("[OrgWorkspace] start", {
+          ownerId,
+          clientId,
+          hasMount: !!mount,
+          initType: typeof window.__studioOrganisationInit
+        });
+
+        if (!mount) {
+          throw new Error("orgWorkspaceMount introuvable.");
+        }
+
+        ensureOrganisationPortalBridge();
+
+        // On charge d'abord le vrai JS partagé.
+        // Comme le HTML n'est pas encore monté, il ne s'auto-initialise pas.
+        await ensureOrganisationScriptLoaded();
+
+        // Puis on injecte le vrai HTML partagé validé.
+        await ensureOrganisationWorkspaceMarkup(mount);
+
+        if (typeof window.__studioOrganisationInit !== "function") {
+          throw new Error("Initialisation Organisation introuvable.");
+        }
+
+        await window.__studioOrganisationInit({ force: true });
+
+        _orgWorkspaceReady = true;
+
+        console.info("[OrgWorkspace] done", {
+          ownerId,
+          clientId,
+          initType: typeof window.__studioOrganisationInit
+        });
+      } catch (e) {
+        _orgWorkspaceReady = false;
+
+        console.error("[OrgWorkspace] error", {
+          ownerId,
+          clientId,
+          hasMount: !!mount,
+          initType: typeof window.__studioOrganisationInit,
+          message: e?.message || String(e)
+        }, e);
+
+        throw new Error(
+          `Organisation workspace: ${e?.message || e} | owner=${ownerId || "-"} | client=${clientId || "-"} | init=${typeof window.__studioOrganisationInit}`
+        );
+      } finally {
+        _orgWorkspaceLoadingPromise = null;
+      }
+    })();
+
+    return await _orgWorkspaceLoadingPromise;
   }
 
   function setSection(name){
