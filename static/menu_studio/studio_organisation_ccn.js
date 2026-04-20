@@ -1,5 +1,5 @@
 (function () {
-  const DEFAULT_HTML_URL = "/studio_organisation_ccn.html";
+  const DEFAULT_HTML_URL = null;
   let _htmlPromise = null;
 
   async function fetchHtml(url){

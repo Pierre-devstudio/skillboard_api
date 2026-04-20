@@ -72,6 +72,17 @@
     let _orgCcnController = null;
     let _orgCcnAssetsPromise = null;
 
+    function getStudioOrganisationAssetUrl(filename){
+        const scripts = Array.from(document.querySelectorAll('script[src]'));
+        const current = scripts.find(s => (s.getAttribute('src') || '').includes('studio_organisation.js'));
+
+        if (current){
+            return new URL(filename, current.src).toString();
+        }
+
+        return new URL(`/menu_studio/${filename}`, window.location.origin).toString();
+    }
+
     function loadExternalScriptOnce(src){
         return new Promise((resolve, reject) => {
             const existing = document.querySelector(`script[data-studio-org-ccn="${src}"]`);
@@ -101,7 +112,7 @@
         if (!_orgCcnAssetsPromise){
             _orgCcnAssetsPromise = (async () => {
                 if (!window.__studioOrganisationCcn){
-                    await loadExternalScriptOnce("/studio_organisation_ccn.js");
+                    await loadExternalScriptOnce(getStudioOrganisationAssetUrl("studio_organisation_ccn.js"));
                 }
 
                 if (!window.__studioOrganisationCcn){
@@ -110,7 +121,7 @@
 
                 const root = getOrganisationRoot();
                 await window.__studioOrganisationCcn.ensureMounted(root, {
-                    htmlUrl: "/studio_organisation_ccn.html",
+                    htmlUrl: getStudioOrganisationAssetUrl("studio_organisation_ccn.html"),
                     blockSlotId: "posteCcnSlot",
                     modalSlotId: "posteCcnModalSlot"
                 });
