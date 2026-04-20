@@ -58,6 +58,16 @@
     });
   }
 
+  function applyClientSpaceOrganisationLabels(mount){
+    const root = mount?.querySelector('#view-organisation[data-view="organisation"]');
+    if (!root) return;
+
+    const titleEl = root.querySelector(':scope > .card .org-card-head .card-title');
+    if (titleEl){
+      titleEl.textContent = "Organisation";
+    }
+  }
+
   async function ensureOrganisationWorkspaceMarkup(mount){
     if (!mount){
       throw new Error("orgWorkspaceMount introuvable.");
@@ -1178,6 +1188,7 @@ function bindPostalAssist(){
 
         // Puis on injecte le vrai HTML partagé validé.
         await ensureOrganisationWorkspaceMarkup(mount);
+        applyClientSpaceOrganisationLabels(mount);
 
         if (typeof window.__studioOrganisationInit !== "function") {
           throw new Error("Initialisation Organisation introuvable.");
