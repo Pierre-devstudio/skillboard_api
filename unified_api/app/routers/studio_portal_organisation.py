@@ -20,7 +20,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
-from reportlab.platypus import Paragraph, Table, TableStyle, PageBreak, KeepTogether, Image
+from reportlab.platypus import Paragraph, Table, TableStyle, PageBreak, KeepTogether, Image, Flowable
 
 from app.routers.skills_portal_common import get_conn
 from app.routers.skills_portal_pdf_common import (
@@ -3886,6 +3886,51 @@ def _build_pdf_centered_titles(main_title: str, secondary_title: str, styles: di
         out.append(Paragraph(_pdf_esc(secondary_title), secondary_style))
     return out
 
+class _RoundedTableBox(Flowable):
+    def __init__(
+        self,
+        inner_table: Table,
+        width: float,
+        padding: float = 4 * mm,
+        radius: float = 3 * mm,
+        stroke_color=PDF_LINE,
+        fill_color=colors.white,
+        stroke_width: float = 0.8,
+    ):
+        super().__init__()
+        self.inner_table = inner_table
+        self.width = width
+        self.padding = padding
+        self.radius = radius
+        self.stroke_color = stroke_color
+        self.fill_color = fill_color
+        self.stroke_width = stroke_width
+        self._inner_w = 0
+        self._inner_h = 0
+        self.height = 0
+
+    def wrap(self, availWidth, availHeight):
+        inner_w = max(10, self.width - (2 * self.padding))
+        self._inner_w, self._inner_h = self.inner_table.wrap(inner_w, availHeight)
+        self.height = self._inner_h + (2 * self.padding)
+        return self.width, self.height
+
+    def draw(self):
+        self.canv.saveState()
+        self.canv.setFillColor(self.fill_color)
+        self.canv.setStrokeColor(self.stroke_color)
+        self.canv.setLineWidth(self.stroke_width)
+        self.canv.roundRect(
+            0,
+            0,
+            self.width,
+            self.height,
+            self.radius,
+            stroke=1,
+            fill=1,
+        )
+        self.inner_table.drawOn(self.canv, self.padding, self.padding)
+        self.canv.restoreState()
 
 def _build_pdf_field_cell(label: str, value: str, styles: dict):
     label_style = ParagraphStyle(
@@ -3913,9 +3958,16 @@ def _build_pdf_field_cell(label: str, value: str, styles: dict):
 
 
 def _build_pdf_reference_block(poste: dict, styles: dict, content_width: float):
-    ref_code = _pdf_first_non_empty(poste.get("code_poste"), poste.get("codif_client"), poste.get("codif_poste")) or "—"
+    ref_code = _pdf_first_non_empty(
+        poste.get("code_poste"),
+        poste.get("codif_client"),
+        poste.get("codif_poste"),
+    ) or "—"
     service_label = _pdf_first_non_empty(poste.get("nom_service"), "Non lié") or "Non lié"
     manager_label = _pdf_bool_oui_non(poste.get("isresponsable"))
+
+    inner_width = content_width - (8 * mm)
+    col_w = inner_width / 2.0
 
     rows = [
         [
@@ -3928,16 +3980,25 @@ def _build_pdf_reference_block(poste: dict, styles: dict, content_width: float):
         ],
     ]
 
-    table = Table(rows, colWidths=[content_width / 2.0, content_width / 2.0])
-    table.hAlign = "LEFT"
-    table.setStyle(TableStyle([
+    inner = Table(rows, colWidths=[col_w, col_w])
+    inner.hAlign = "LEFT"
+    inner.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
         ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
     ]))
-    return table
+
+    return _RoundedTableBox(
+        inner_table=inner,
+        width=content_width,
+        padding=4 * mm,
+        radius=3 * mm,
+        stroke_color=PDF_LINE,
+        fill_color=colors.white,
+        stroke_width=0.8,
+    )
 
 
 class _PdfResponsabilitesParser(HTMLParser):
@@ -4256,6 +4317,7 @@ def _build_pdf_rich_table(headers: List[str], rows: List[List[str]], col_widths:
         leading=10,
         textColor=PDF_TEXT,
     )
+
     cell_style = ParagraphStyle(
         "NsPdfTableCell",
         parent=styles["body"],
@@ -4265,12 +4327,23 @@ def _build_pdf_rich_table(headers: List[str], rows: List[List[str]], col_widths:
         textColor=PDF_TEXT,
     )
 
-    data = [[Paragraph(_pdf_esc(h), header_style) for h in headers]]
-    for row in rows:
-        data.append([Paragraph(_pdf_esc(c or "—"), cell_style) for c in row])
+    safe_headers = [Paragraph(_pdf_esc(h or "—"), header_style) for h in (headers or [])]
 
-    table = Table(data, colWidths=col_widths, repeatRows=1)
-    table.hAlign = "LEFT"
+    data = [safe_headers]
+    for row in (rows or []):
+        safe_row = []
+        for idx in range(len(col_widths or [])):
+            val = row[idx] if idx < len(row or []) else "—"
+            safe_row.append(Paragraph(_pdf_esc(val or "—"), cell_style))
+        data.append(safe_row)
+
+    table = Table(
+        data,
+        colWidths=col_widths,
+        repeatRows=1,
+        hAlign="LEFT",
+    )
+
     table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f8fafc")),
         ("TEXTCOLOR", (0, 0), (-1, -1), PDF_TEXT),
@@ -4282,8 +4355,8 @@ def _build_pdf_rich_table(headers: List[str], rows: List[List[str]], col_widths:
         ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
     ]))
-    return table
 
+    return table
 
 def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], referential: Optional[dict]) -> List:
     styles = build_pdf_styles()
@@ -4291,14 +4364,17 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
 
     content_width = A4[0] - PDF_MARGIN_LEFT - PDF_MARGIN_RIGHT
 
+    # ------------------------------------------------------------------
+    # PAGE 1 : titre + bloc référence + mission principale + contraintes
+    # ------------------------------------------------------------------
     story.extend(_build_pdf_centered_titles(
         "Fiche de poste",
         poste.get("intitule_poste") or "",
         styles,
     ))
-    story.append(make_spacer(2))
+    story.append(make_spacer(10))
     story.append(_build_pdf_reference_block(poste, styles, content_width))
-    story.append(make_spacer(1.8))
+    story.append(make_spacer(5))
 
     mission_lines = _pdf_split_lines(poste.get("mission_principale")) or ["—"]
     story.extend(_build_pdf_plain_block("Mission principale", mission_lines, styles))
@@ -4309,7 +4385,10 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
         nsf_label = f"{nsf_label} (obligatoire)"
 
     contraintes_entries = []
-    contraintes_entries.append(("Niveau d’étude minimum", _pdf_niveau_education_label(poste.get("niveau_education_minimum"))))
+    contraintes_entries.append((
+        "Niveau d’étude minimum",
+        _pdf_niveau_education_label(poste.get("niveau_education_minimum"))
+    ))
     if nsf_label:
         contraintes_entries.append(("Domaine du diplôme (NSF)", nsf_label))
     if poste.get("mobilite"):
@@ -4337,8 +4416,10 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
     story.append(Paragraph("Contraintes et spécificités", contraintes_title))
     story.append(_build_pdf_property_grid(contraintes_entries, styles, content_width, detail_tuple))
 
+    # ------------------------------------------------------------------
+    # PAGE 2+ : responsabilités
+    # ------------------------------------------------------------------
     story.append(PageBreak())
-
     story.extend(_build_pdf_centered_titles(
         "Responsabilités",
         "",
@@ -4346,6 +4427,10 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
     ))
     story.append(make_spacer(2))
     story.extend(_build_pdf_responsabilites_flowables(poste.get("responsabilites"), styles))
+
+    # ------------------------------------------------------------------
+    # PAGE SUIVANTE : compétences et certifications (inchangé)
+    # ------------------------------------------------------------------
     story.append(PageBreak())
     story.extend(_build_pdf_centered_titles(
         "Compétences et certifications requises",
@@ -4406,6 +4491,9 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
         styles,
     ))
 
+    # ------------------------------------------------------------------
+    # PAGE COTATION CONVENTIONNELLE (inchangée)
+    # ------------------------------------------------------------------
     proposition = (dossier or {}).get("proposition_json") or {}
     validation = (dossier or {}).get("validation_json") or {}
     has_ccn = bool(proposition or validation)
