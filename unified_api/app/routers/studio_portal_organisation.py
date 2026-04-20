@@ -4004,6 +4004,49 @@ def _build_pdf_reference_block(poste: dict, styles: dict, content_width: float):
         stroke_width=0.8,
     )
 
+def _build_pdf_ccn_recap_block(validation: dict, styles: dict, content_width: float):
+    coef_raw = str(validation.get("coefficient") or "").strip()
+    palier_raw = str(validation.get("palier") or "").strip()
+    categorie = _pdf_first_non_empty(validation.get("categorie_professionnelle"), "—") or "—"
+
+    try:
+        coef_label = str(int(coef_raw)) if coef_raw else "—"
+    except Exception:
+        coef_label = coef_raw or "—"
+
+    try:
+        palier_label = str(int(palier_raw)) if palier_raw else "—"
+    except Exception:
+        palier_label = palier_raw or "—"
+
+    inner_width = content_width - (8 * mm)
+    col_w = inner_width / 3.0
+
+    rows = [[
+        _build_pdf_field_cell("Coefficient retenu", coef_label, styles),
+        _build_pdf_field_cell("Palier retenu", palier_label, styles),
+        _build_pdf_field_cell("Catégorie retenue", categorie, styles),
+    ]]
+
+    inner = Table(rows, colWidths=[col_w, col_w, col_w])
+    inner.hAlign = "LEFT"
+    inner.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+    ]))
+
+    return _RoundedTableBox(
+        inner_table=inner,
+        width=content_width,
+        padding=4 * mm,
+        radius=3 * mm,
+        stroke_color=PDF_LINE,
+        fill_color=colors.white,
+        stroke_width=0.8,
+    )
 
 class _PdfResponsabilitesParser(HTMLParser):
     def __init__(self):
@@ -4419,6 +4462,18 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
     )
     story.append(Paragraph("Contraintes et spécificités", contraintes_title))
     story.append(_build_pdf_property_grid(contraintes_entries, styles, content_width, detail_tuple))
+
+    validation_page1 = (dossier or {}).get("validation_json") or {}
+    coef_page1 = str(validation_page1.get("coefficient") or "").strip()
+    palier_page1 = str(validation_page1.get("palier") or "").strip()
+    categorie_page1 = str(validation_page1.get("categorie_professionnelle") or "").strip()
+
+    has_ccn_recap = bool(coef_page1 or palier_page1 or categorie_page1)
+
+    if has_ccn_recap:
+        story.append(make_spacer(3.2))
+        story.append(Paragraph("Cotation conventionnelle", contraintes_title))
+        story.append(_build_pdf_ccn_recap_block(validation_page1, styles, content_width))
 
     # ------------------------------------------------------------------
     # PAGE 2+ : responsabilités
@@ -5871,6 +5926,8 @@ def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Reques
                 "doc_label": _pdf_latin1_safe("Fiche de poste complète"),
                 "footer_left": _pdf_latin1_safe(" • ".join(footer_parts) if footer_parts else "Novoskill Studio"),
                 "header_right": _pdf_latin1_safe(header_right),
+                "header_right_font_name": "Helvetica-Bold",
+                "header_right_font_size": 10.5,
                 "logo_bytes": logo_bytes,
             },
         )

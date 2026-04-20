@@ -224,8 +224,14 @@ def _header_footer(canvas, doc):
 
     header_right = str(meta.get("header_right") or "").strip()
     if header_right:
+        header_right_font_name = str(meta.get("header_right_font_name") or "Helvetica").strip() or "Helvetica"
+        try:
+            header_right_font_size = float(meta.get("header_right_font_size") or 8.5)
+        except Exception:
+            header_right_font_size = 8.5
+
         canvas.setFillColor(PDF_MUTED)
-        canvas.setFont("Helvetica", 8.5)
+        canvas.setFont(header_right_font_name, header_right_font_size)
         canvas.drawRightString(right, header_line_y + (2.2 * mm), header_right)
 
     # Footer dans la marge basse de 1 cm
