@@ -67,7 +67,78 @@
     const POSTE_IMPORT_MAX_BYTES = 15 * 1024 * 1024;
     let _posteImportFile = null;
     let _posteCcnContext = null;
-    let _posteCcnAnalysis = null;   
+    let _posteCcnAnalysis = null;
+    
+    let _orgCcnController = null;
+    let _orgCcnAssetsPromise = null;
+
+    function loadExternalScriptOnce(src){
+        return new Promise((resolve, reject) => {
+            const existing = document.querySelector(`script[data-studio-org-ccn="${src}"]`);
+            if (existing){
+                if (existing.dataset.loaded === "1") { resolve(); return; }
+                existing.addEventListener("load", () => resolve(), { once: true });
+                existing.addEventListener("error", () => reject(new Error(`Impossible de charger ${src}`)), { once: true });
+                return;
+            }
+
+            const script = document.createElement("script");
+            script.src = src;
+            script.async = true;
+            script.dataset.studioOrgCcn = src;
+            script.addEventListener("load", () => {
+                script.dataset.loaded = "1";
+                resolve();
+            }, { once: true });
+            script.addEventListener("error", () => reject(new Error(`Impossible de charger ${src}`)), { once: true });
+            document.head.appendChild(script);
+        });
+    }
+
+    async function ensureStudioOrganisationCcnController(portal){
+        if (_orgCcnController) return _orgCcnController;
+
+        if (!_orgCcnAssetsPromise){
+            _orgCcnAssetsPromise = (async () => {
+                if (!window.__studioOrganisationCcn){
+                    await loadExternalScriptOnce("/studio_organisation_ccn.js");
+                }
+
+                if (!window.__studioOrganisationCcn){
+                    throw new Error("Composant CCN introuvable après chargement.");
+                }
+
+                const root = getOrganisationRoot();
+                await window.__studioOrganisationCcn.ensureMounted(root, {
+                    htmlUrl: "/studio_organisation_ccn.html",
+                    blockSlotId: "posteCcnSlot",
+                    modalSlotId: "posteCcnModalSlot"
+                });
+            })();
+        }
+
+        await _orgCcnAssetsPromise;
+
+        if (!_orgCcnController){
+            _orgCcnController = window.__studioOrganisationCcn.createController({
+                byId,
+                setValue: _setValue,
+                openModal,
+                closeModal,
+                ensureEditingPoste,
+                getOwnerId,
+                getEditingPosteId: () => _editingPosteId,
+                openIaBusyOverlay,
+                closeIaBusyOverlay,
+            });
+        }
+
+        if (_orgCcnController && portal){
+            _orgCcnController.bindOnce(portal);
+        }
+
+        return _orgCcnController;
+    }
 
     function getOwnerId() {
         const forced = (window.__orgScopeOwnerId || "").toString().trim();
@@ -1625,460 +1696,46 @@ body {
         // ------------------------------------------------------
     // Poste > Paramétrage RH > Cotation conventionnelle
     // ------------------------------------------------------
-    function _posteCcnDefaultSummary(isCreate){
-        return isCreate
-            ? "Enregistre d’abord le poste pour lancer une cotation traçable."
-            : "Aucune cotation conventionnelle enregistrée.";
-    }
-
     function resetPosteCcnUi(isCreate){
-        _posteCcnContext = null;
-        _posteCcnAnalysis = null;
-
-        _setValue("posteCcnConvention", isCreate ? "Disponible après enregistrement du poste" : "Chargement…");
-        _setValue("posteCcnStatus", isCreate ? "Brouillon non enregistré" : "Chargement…");
-        _setValue("posteCcnResult", "—");
-        _setValue("posteCcnCategory", "—");
-        _setValue("posteCcnSummary", _posteCcnDefaultSummary(!!isCreate));
-
-        _setValue("posteCcnModalConvention", "—");
-        _setValue("posteCcnModalVersion", "—");
-        _setValue("posteCcnModalPoste", "—");
-        _setValue("posteCcnModalService", "—");
-        _setValue("posteCcnModalBase", "");
-
-        _setValue("posteCcnPropCoeff", "—");
-        _setValue("posteCcnPropPalier", "—");
-        _setValue("posteCcnPropCategorie", "—");
-        _setValue("posteCcnPropPoints", "—");
-        _setValue("posteCcnPropResume", "");
-        _setValue("posteCcnPropJustification", "");
-
-        _setValue("posteCcnFinalCoefficient", "");
-        _setValue("posteCcnFinalPalier", "");
-        _setValue("posteCcnFinalCategorie", "");
-        _setValue("posteCcnFinalJustification", "");
-
-        const tbody = byId("posteCcnCriteriaTbody");
-        if (tbody) tbody.innerHTML = "";
-        const empty = byId("posteCcnCriteriaEmpty");
-        if (empty) empty.style.display = "";
-
-        const reuse = byId("btnPosteCcnReuse");
-        if (reuse){
-            reuse.disabled = true;
-            reuse.style.opacity = ".6";
-        }
-
-        const sub = byId("posteCcnSub");
-        if (sub){
-            sub.textContent = isCreate
-                ? "Enregistre le poste, puis lance l’assistant de cotation conventionnelle."
-                : "Assistant dédié à la cotation de l’emploi selon la convention collective détectée.";
-        }
-    }
-
-    function getPosteCcnReferential(){
-        return _posteCcnContext?.referential || null;
-    }
-
-    function findPosteCcnPalierByCoefficient(coef){
-        const ref = getPosteCcnReferential() || {};
-        const n = parseInt(coef ?? 0, 10);
-        if (!Number.isFinite(n) || n <= 0) return null;
-
-        const paliers = Array.isArray(ref?.paliers) ? ref.paliers : [];
-        if (paliers.length){
-            for (const it of paliers){
-                const min = parseInt(it?.coef_min ?? 0, 10) || 0;
-                const max = (it?.coef_max === null || it?.coef_max === undefined) ? 999999 : (parseInt(it.coef_max, 10) || 999999);
-                if (n >= min && n <= max){
-                    return {
-                        palier: parseInt(it?.palier ?? 0, 10) || 0,
-                        groupe: "",
-                        raw: it
-                    };
-                }
-            }
-            return null;
-        }
-
-        const cmap = Array.isArray(ref?.classification_map) ? ref.classification_map : [];
-        for (const it of cmap){
-            const min = parseInt(it?.points_min ?? 0, 10) || 0;
-            const max = parseInt(it?.points_max ?? 0, 10) || 0;
-            if (n >= min && n <= max){
-                return {
-                    palier: parseInt(it?.classe ?? 0, 10) || 0,
-                    groupe: (it?.groupe || "").toString().trim().toUpperCase(),
-                    raw: it
-                };
-            }
-        }
-
-        return null;
-    }
-
-    function countPosteCcnCadreConditions(criteria){
-        const rows = Array.isArray(criteria) ? criteria : [];
-        const marche = (code) => parseInt((rows.find(x => String(x?.code || "").trim() === code)?.marche) ?? 0, 10) || 0;
-        let ok = 0;
-        if (marche("management") >= 3) ok += 1;
-        if (marche("ampleur_connaissances") >= 4) ok += 1;
-        if (marche("autonomie") >= 6) ok += 1;
-        return ok;
-    }
-
-    function computePosteCcnCategory(coef, criteria){
-        const ref = getPosteCcnReferential() || {};
-        const n = parseInt(coef ?? 0, 10);
-        if (!Number.isFinite(n) || n <= 0) return "";
-
-        const cmap = Array.isArray(ref?.classification_map) ? ref.classification_map : [];
-        if (cmap.length){
-            const band = findPosteCcnPalierByCoefficient(n);
-            const grp = (band?.groupe || "").toString().trim().toUpperCase();
-            if (!grp) return "";
-            const cadreGroups = new Set((ref?.cadre_groups || ["F","G","H","I"]).map(x => String(x || "").trim().toUpperCase()));
-            return `Groupe ${grp} · ${cadreGroups.has(grp) ? "Cadre" : "Non-cadre"}`;
-        }
-
-        if (n >= 350) return "Cadre";
-        if (n >= 310 && n <= 349){
-            const rows = Array.isArray(criteria) ? criteria : [];
-            const marche = (code) => parseInt((rows.find(x => String(x?.code || "").trim() === code)?.marche) ?? 0, 10) || 0;
-            let ok = 0;
-            if (marche("management") >= 3) ok += 1;
-            if (marche("ampleur_connaissances") >= 4) ok += 1;
-            if (marche("autonomie") >= 6) ok += 1;
-            return ok >= 2 ? "Cadre" : "Agent de maîtrise / technicien";
-        }
-        if (n >= 171) return "Agent de maîtrise / technicien";
-        if (n >= 100) return "Employé";
-        return "";
-    }
-
-    function formatPosteCcnResultText(data){
-        const coef = parseInt(data?.coefficient ?? 0, 10) || 0;
-        const palier = parseInt(data?.palier ?? 0, 10) || 0;
-        return (!coef && !palier) ? "—" : `Coef. ${coef || "—"} · Palier ${palier || "—"}`;
-    }
-
-    function renderPosteCcnCriteriaRows(analysis){
-        const tbody = byId("posteCcnCriteriaTbody");
-        const empty = byId("posteCcnCriteriaEmpty");
-        if (!tbody || !empty) return;
-
-        tbody.innerHTML = "";
-        const rows = [];
-
-        (Array.isArray(analysis?.criteres) ? analysis.criteres : []).forEach(x => {
-            rows.push({
-                libelle: x?.libelle || x?.code || "Critère",
-                niveau: `M${parseInt(x?.marche ?? 0, 10) || 0}`,
-                points: parseInt(x?.points ?? 0, 10) || 0,
-                justification: x?.justification || ""
-            });
-        });
-
-        (Array.isArray(analysis?.bonifications) ? analysis.bonifications : []).forEach(x => {
-            rows.push({
-                libelle: x?.libelle || x?.code || "Bonification",
-                niveau: x?.niveau_label || `M${parseInt(x?.marche ?? 0, 10) || 0}`,
-                points: parseInt(x?.points ?? 0, 10) || 0,
-                justification: x?.justification || ""
-            });
-        });
-
-        if (!rows.length){
-            empty.style.display = "";
-            return;
-        }
-
-        empty.style.display = "none";
-
-        rows.forEach(r => {
-            const tr = document.createElement("tr");
-
-            const tdLib = document.createElement("td");
-            tdLib.textContent = r.libelle || "—";
-
-            const tdNiv = document.createElement("td");
-            tdNiv.style.textAlign = "center";
-            const badge = document.createElement("span");
-            badge.className = "sb-badge sb-badge--ccn-level";
-            badge.textContent = r.niveau || "—";
-            tdNiv.appendChild(badge);
-
-            const tdPts = document.createElement("td");
-            tdPts.style.textAlign = "center";
-            tdPts.textContent = String(r.points ?? "—");
-
-            const tdJust = document.createElement("td");
-            tdJust.textContent = r.justification || "—";
-
-            tr.appendChild(tdLib);
-            tr.appendChild(tdNiv);
-            tr.appendChild(tdPts);
-            tr.appendChild(tdJust);
-            tbody.appendChild(tr);
-        });
-    }
-
-    function fillPosteCcnDecision(data){
-        _setValue("posteCcnFinalCoefficient", data?.coefficient || "");
-        _setValue("posteCcnFinalJustification", data?.justification || "");
-        refreshPosteCcnDecisionDerived();
-    }
-
-    function fillPosteCcnProposal(analysis){
-        _posteCcnAnalysis = analysis || null;
-        const proposal = analysis?.proposal || {};
-
-        _setValue("posteCcnPropCoeff", proposal?.coefficient ?? "—");
-        _setValue("posteCcnPropPalier", proposal?.palier ?? "—");
-        _setValue("posteCcnPropCategorie", proposal?.categorie_professionnelle || "—");
-        _setValue("posteCcnPropPoints", analysis?.total_points ?? "—");
-        _setValue("posteCcnPropResume", proposal?.resume_cotation || "");
-        _setValue("posteCcnPropJustification", analysis?.justification_globale || "");
-
-        renderPosteCcnCriteriaRows(analysis);
-
-        const reuse = byId("btnPosteCcnReuse");
-        if (reuse){
-            reuse.disabled = !analysis?.proposal;
-            reuse.style.opacity = reuse.disabled ? ".6" : "";
-        }
-    }
-
-    function refreshPosteCcnDecisionDerived(){
-        const coef = parseInt((byId("posteCcnFinalCoefficient")?.value || "").trim(), 10);
-        if (!Number.isFinite(coef) || coef <= 0){
-            _setValue("posteCcnFinalPalier", "");
-            _setValue("posteCcnFinalCategorie", "");
-            return;
-        }
-        const criteria = _posteCcnAnalysis?.criteres || _posteCcnContext?.dossier?.proposition_json?.criteres || [];
-        _setValue("posteCcnFinalPalier", findPosteCcnPalierByCoefficient(coef)?.palier ?? "");
-        _setValue("posteCcnFinalCategorie", computePosteCcnCategory(coef, criteria));
-    }
-
-    function fillPosteCcnContext(ctx){
-        _posteCcnContext = ctx || null;
-
-        const conventionTxt = ctx?.convention_label
-            ? `${ctx.convention_label}${ctx?.idcc ? ` (IDCC ${ctx.idcc})` : ""}`
-            : (ctx?.idcc ? `IDCC ${ctx.idcc}` : "Convention non détectée");
-
-        _setValue("posteCcnConvention", conventionTxt);
-        _setValue("posteCcnModalConvention", conventionTxt);
-        _setValue("posteCcnModalVersion", ctx?.version_label || "—");
-        _setValue("posteCcnModalPoste", ctx?.poste?.intitule_poste || "—");
-        _setValue("posteCcnModalService", ctx?.poste?.nom_service || "Non lié");
-
-        const base = [];
-        if (ctx?.poste?.mission_principale) base.push(`Mission : ${ctx.poste.mission_principale}`);
-        if (ctx?.poste?.competences_count !== undefined) base.push(`Compétences requises : ${ctx.poste.competences_count}`);
-        if (ctx?.poste?.certifications_count !== undefined) base.push(`Certifications : ${ctx.poste.certifications_count}`);
-        _setValue("posteCcnModalBase", base.join("\n"));
-
-        let status = "Non démarré";
-        let result = "—";
-        let category = "—";
-        let summary = _posteCcnDefaultSummary(false);
-
-        const dossier = ctx?.dossier || null;
-        const proposal = dossier?.proposition_json || null;
-        const validation = dossier?.validation_json || null;
-
-        if (!ctx?.supported){
-            status = "Convention non supportée";
-            summary = ctx?.support_message || "L’assistant n’est pas disponible pour cette convention.";
-        } else if (validation && Object.keys(validation).length){
-            status = "Validée";
-            result = formatPosteCcnResultText(validation);
-            summary = validation?.justification || proposal?.proposal?.resume_cotation || _posteCcnDefaultSummary(false);
-            category = validation?.categorie_professionnelle || proposal?.proposal?.categorie_professionnelle || "—";
-        } else if (proposal && Object.keys(proposal).length){
-            status = "Brouillon";
-            result = formatPosteCcnResultText(proposal?.proposal || proposal);
-            summary = proposal?.justification_globale || proposal?.proposal?.resume_cotation || _posteCcnDefaultSummary(false);
-            category = proposal?.proposal?.categorie_professionnelle || "—";
-        }
-
-        _setValue("posteCcnStatus", status);
-        _setValue("posteCcnResult", result);
-        _setValue("posteCcnCategory", category);
-        _setValue("posteCcnSummary", summary);
-
-        fillPosteCcnProposal(proposal && Object.keys(proposal).length ? proposal : null);
-
-        if (validation && Object.keys(validation).length){
-            fillPosteCcnDecision({
-                coefficient: validation.coefficient,
-                justification: validation.justification || ""
-            });
-        } else if (proposal?.proposal){
-            fillPosteCcnDecision({
-                coefficient: proposal.proposal.coefficient,
-                justification: proposal.justification_globale || proposal.proposal.resume_cotation || ""
-            });
-        } else {
-            fillPosteCcnDecision({ coefficient: "", justification: "" });
-        }
-
-        const sub = byId("posteCcnSub");
-        if (sub){
-            sub.textContent = ctx?.supported
-                ? "Assistant dédié à la cotation de l’emploi selon la convention collective détectée."
-                : (ctx?.support_message || "Convention non encore supportée.");
+        if (_orgCcnController){
+            _orgCcnController.resetUi(!!isCreate);
         }
     }
 
     async function loadPosteCcnContext(portal){
-        if (!_editingPosteId) return null;
-        const ownerId = getOwnerId();
-        const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingPosteId)}/ccn_context`;
-        const ctx = await portal.apiJson(url);
-        fillPosteCcnContext(ctx);
-        return ctx;
+        const ctrl = await ensureStudioOrganisationCcnController(portal);
+        if (!ctrl) return null;
+        return await ctrl.loadContext(portal);
     }
 
     async function openPosteCcnModal(portal){
-        await ensureEditingPoste(portal);
-        if (!_posteCcnContext || _posteCcnContext?.poste?.id_poste !== _editingPosteId){
-            await loadPosteCcnContext(portal);
-        }
-        openModal("modalPosteCcn");
+        const ctrl = await ensureStudioOrganisationCcnController(portal);
+        if (!ctrl) return;
+        await ctrl.openModal(portal);
     }
 
     function closePosteCcnModal(){
-        closeModal("modalPosteCcn");
+        if (_orgCcnController){
+            _orgCcnController.closeModal();
+        }
     }
 
     function reusePosteCcnProposal(){
-        const proposal = _posteCcnAnalysis?.proposal || _posteCcnContext?.dossier?.proposition_json?.proposal || null;
-        const justification = _posteCcnAnalysis?.justification_globale || _posteCcnContext?.dossier?.proposition_json?.justification_globale || "";
-        if (!proposal) return;
-        fillPosteCcnDecision({
-            coefficient: proposal.coefficient,
-            justification: justification || proposal.resume_cotation || ""
-        });
+        if (_orgCcnController){
+            _orgCcnController.reuseProposal();
+        }
     }
 
     async function runPosteCcnAnalysis(portal){
-        const pid = await ensureEditingPoste(portal);
-        if (!_posteCcnContext || _posteCcnContext?.poste?.id_poste !== pid){
-            await loadPosteCcnContext(portal);
-        }
-        if (!_posteCcnContext?.supported){
-            portal.showAlert("error", _posteCcnContext?.support_message || "Convention non supportée.");
-            return;
-        }
-
-        const ownerId = getOwnerId();
-        const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}/ccn_assistant/propose`;
-
-        const btn = byId("btnPosteCcnAnalyze");
-        if (btn){
-            btn.disabled = true;
-            btn.style.opacity = ".6";
-            btn.textContent = "Analyse…";
-        }
-
-        openIaBusyOverlay(
-            "Cotation conventionnelle en cours",
-            "Lecture du poste, application du référentiel conventionnel et génération de la justification..."
-        );
-
-        try{
-            const res = await portal.apiJson(url, { method: "POST" });
-            const analysis = res?.proposition || null;
-
-            fillPosteCcnProposal(analysis);
-            reusePosteCcnProposal();
-
-            if (_posteCcnContext){
-                if (!_posteCcnContext.dossier) _posteCcnContext.dossier = {};
-                _posteCcnContext.dossier.proposition_json = analysis || {};
-            }
-
-            _setValue("posteCcnStatus", "Proposition non enregistrée");
-            _setValue("posteCcnResult", formatPosteCcnResultText(analysis?.proposal || {}));
-            _setValue("posteCcnCategory", analysis?.proposal?.categorie_professionnelle || "—");
-            _setValue(
-                "posteCcnSummary",
-                analysis?.justification_globale || analysis?.proposal?.resume_cotation || "Proposition IA prête à être revue."
-            );
-
-            portal.showAlert("", "");
-        } finally {
-            closeIaBusyOverlay();
-            if (btn){
-                btn.disabled = false;
-                btn.style.opacity = "";
-                btn.textContent = "Lancer l’analyse";
-            }
-        }
+        const ctrl = await ensureStudioOrganisationCcnController(portal);
+        if (!ctrl) return;
+        await ctrl.runAnalysis(portal);
     }
 
     async function savePosteCcnDecision(portal){
-        const pid = await ensureEditingPoste(portal);
-        if (!_posteCcnContext || _posteCcnContext?.poste?.id_poste !== pid){
-            await loadPosteCcnContext(portal);
-        }
-        if (!_posteCcnContext?.supported){
-            portal.showAlert("error", _posteCcnContext?.support_message || "Convention non supportée.");
-            return;
-        }
-
-        const coef = parseInt((byId("posteCcnFinalCoefficient")?.value || "").trim(), 10);
-        const ref = getPosteCcnReferential() || {};
-        const is3248 = Array.isArray(ref?.classification_map) && ref.classification_map.length > 0;
-        const minCoef = is3248 ? 6 : 100;
-
-        if (!Number.isFinite(coef) || coef < minCoef){
-            portal.showAlert("error", is3248
-                ? "La cotation retenue doit être supérieure ou égale à 6."
-                : "Le coefficient retenu doit être supérieur ou égal à 100."
-            );
-            return;
-        }
-
-        const justification = (byId("posteCcnFinalJustification")?.value || "").trim();
-        if (!justification){
-            portal.showAlert("error", "La justification retenue est obligatoire.");
-            return;
-        }
-
-        const ownerId = getOwnerId();
-        const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(pid)}/ccn_assistant/save`;
-
-        const btn = byId("btnPosteCcnSave");
-        if (btn){
-            btn.disabled = true;
-            btn.style.opacity = ".6";
-        }
-
-        try{
-            await portal.apiJson(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    coefficient_retenu: coef,
-                    justification_retenue: justification,
-                    proposition_json: _posteCcnAnalysis || _posteCcnContext?.dossier?.proposition_json || {}
-                }),
-            });
-            await loadPosteCcnContext(portal);
-            closePosteCcnModal();
-            portal.showAlert("", "");
-        } finally {
-            if (btn){
-                btn.disabled = false;
-                btn.style.opacity = "";
-            }
-        }
+        const ctrl = await ensureStudioOrganisationCcnController(portal);
+        if (!ctrl) return;
+        await ctrl.saveDecision(portal);
     }
 
     function resetPosteAiModalFields(){
@@ -4994,39 +4651,7 @@ body {
             catch(e){ portal.showAlert("error", e?.message || String(e)); }
         });
 
-        byId("btnPosteCcnOpen")?.addEventListener("click", async () => {
-            try { await openPosteCcnModal(portal); }
-            catch(e){ portal.showAlert("error", e?.message || String(e)); }
-        });
-        byId("btnPosteCcnX")?.addEventListener("click", closePosteCcnModal);
-        byId("btnPosteCcnCancel")?.addEventListener("click", closePosteCcnModal);
-        byId("btnPosteCcnAnalyze")?.addEventListener("click", async () => {
-            try { await runPosteCcnAnalysis(portal); }
-            catch(e){ portal.showAlert("error", e?.message || String(e)); }
-        });
-        byId("btnPosteCcnReuse")?.addEventListener("click", () => {
-            try { reusePosteCcnProposal(); }
-            catch(e){ portal.showAlert("error", e?.message || String(e)); }
-        });
-        byId("btnPosteCcnSave")?.addEventListener("click", async () => {
-            try { await savePosteCcnDecision(portal); }
-            catch(e){ portal.showAlert("error", e?.message || String(e)); }
-        });
-        byId("posteCcnFinalCoefficient")?.addEventListener("input", refreshPosteCcnDecisionDerived);
-
-        const mccn = byId("modalPosteCcn");
-        if (mccn && !mccn._sbBound){
-            mccn._sbBound = true;
-
-            mccn.addEventListener("click", (e) => {
-                if (e.target === mccn) closePosteCcnModal();
-            });
-
-            document.addEventListener("keydown", (e) => {
-                const el = byId("modalPosteCcn");
-                if (e.key === "Escape" && el && el.style.display === "flex") closePosteCcnModal();
-            });
-        }
+        _orgCcnController?.bindOnce(portal);
 
         byId("btnPosteCompAi")?.addEventListener("click", async () => {
             try { await openPosteCompAiModal(portal); }
@@ -5203,6 +4828,7 @@ body {
 
         await ensureRole(portal);
         traceOrg("init:role", { role: _roleCode || "user" });
+        await ensureStudioOrganisationCcnController(portal);
 
         bindOnce(portal);
 

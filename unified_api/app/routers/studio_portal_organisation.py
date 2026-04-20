@@ -5362,6 +5362,187 @@ def _make_3248_user_prompt(poste: dict) -> str:
         "Base-toi uniquement sur les informations ci-dessous.\n\n"
         + json.dumps(payload, ensure_ascii=False, indent=2)
     )
+
+def _find_1880_group_meta(ref_json: dict, group_no: int) -> Optional[dict]:
+    g = int(group_no or 0)
+    for row in (ref_json.get("group_definitions") or []):
+        if int(row.get("group") or 0) == g:
+            return row
+    return None
+
+
+def _allowed_1880_levels(ref_json: dict, group_no: int) -> List[int]:
+    key = str(int(group_no or 0))
+    raw = (ref_json.get("levels_by_group") or {}).get(key) or []
+    out = []
+    for x in raw:
+        try:
+            n = int(x)
+            if n > 0:
+                out.append(n)
+        except Exception:
+            pass
+    return out or [1]
+
+
+def _normalize_1880_group(group_no: Any) -> int:
+    try:
+        g = int(group_no or 0)
+    except Exception:
+        g = 0
+    return max(1, min(g, 9))
+
+
+def _normalize_1880_level(ref_json: dict, group_no: int, level_no: Any) -> int:
+    allowed = _allowed_1880_levels(ref_json, group_no)
+    try:
+        lvl = int(level_no or 0)
+    except Exception:
+        lvl = 0
+    if lvl in allowed:
+        return lvl
+    return allowed[0]
+
+
+def _compute_1880_category(group_no: int, ref_json: dict) -> str:
+    meta = _find_1880_group_meta(ref_json, group_no) or {}
+    title = _clean_text(meta.get("short_title")) or _clean_text(meta.get("title"))
+    if title:
+        return title
+    return f"Groupe {int(group_no or 0)}"
+
+
+def _build_1880_analysis(ref_json: dict, ai_data: dict) -> dict:
+    criteres = []
+
+    for meta in (ref_json.get("criteres") or []):
+        code = (meta.get("code") or "").strip()
+        row = ai_data.get(code) if isinstance(ai_data.get(code), dict) else {}
+        crit_group = _normalize_1880_group(row.get("group"))
+
+        criteres.append(
+            {
+                "code": code,
+                "libelle": meta.get("label"),
+                "marche": crit_group,
+                "points": None,
+                "niveau_label": f"G{crit_group}",
+                "justification": _clean_text(row.get("justification")),
+            }
+        )
+
+    final_group = _normalize_1880_group(ai_data.get("groupe_propose"))
+    final_level = _normalize_1880_level(ref_json, final_group, ai_data.get("niveau_propose"))
+    categorie = _compute_1880_category(final_group, ref_json)
+
+    return {
+        "mode": "group_level",
+        "result_labels": ref_json.get("result_labels") or {},
+        "proposal": {
+            "coefficient": final_group,
+            "palier": final_level,
+            "categorie_professionnelle": categorie,
+            "resume_cotation": _clean_text(ai_data.get("resume_cotation")),
+            "groupe_emploi": final_group,
+            "niveau_emploi": final_level,
+        },
+        "total_points": None,
+        "criteres": criteres,
+        "bonifications": [],
+        "justification_globale": _clean_text(ai_data.get("justification_globale")),
+        "zones_de_vigilance": [
+            _clean_text(x) for x in (ai_data.get("zones_de_vigilance") or []) if _clean_text(x)
+        ][:6],
+    }
+
+
+def _make_1880_ai_schema() -> dict:
+    def crit_schema():
+        return {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["group", "justification"],
+            "properties": {
+                "group": {"type": "integer", "minimum": 1, "maximum": 9},
+                "justification": {"type": "string", "maxLength": 900},
+            },
+        }
+
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "complexite",
+            "impact",
+            "information_communication",
+            "autonomie",
+            "connaissances",
+            "groupe_propose",
+            "niveau_propose",
+            "resume_cotation",
+            "justification_globale",
+            "zones_de_vigilance",
+        ],
+        "properties": {
+            "complexite": crit_schema(),
+            "impact": crit_schema(),
+            "information_communication": crit_schema(),
+            "autonomie": crit_schema(),
+            "connaissances": crit_schema(),
+            "groupe_propose": {"type": "integer", "minimum": 1, "maximum": 9},
+            "niveau_propose": {"type": "integer", "minimum": 1, "maximum": 3},
+            "resume_cotation": {"type": "string", "maxLength": 600},
+            "justification_globale": {"type": "string", "maxLength": 2500},
+            "zones_de_vigilance": {
+                "type": "array",
+                "items": {"type": "string", "maxLength": 300},
+                "maxItems": 6,
+            },
+        },
+    }
+
+
+def _make_1880_system_prompt(ref_json: dict) -> str:
+    return (
+        "Tu es un assistant RH spécialisé dans la cotation conventionnelle des postes. "
+        "Tu analyses uniquement la convention fournie par le référentiel JSON transmis. "
+        "Pour l'IDCC 1880 négoce de l'ameublement, tu raisonnes en classification par critères classants. "
+        "Tu dois apprécier séparément cinq critères : complexité, impact, information / communication, autonomie, connaissances. "
+        "Chaque critère doit être positionné sur un repère de groupe de 1 à 9. "
+        "Ensuite, tu proposes un groupe final de 1 à 9 pour l'emploi, puis un niveau dans ce groupe. "
+        "Tu respectes strictement les niveaux autorisés par groupe indiqués dans le référentiel JSON. "
+        "Tu ne dois jamais inventer une autre convention, ni citer d'autres textes. "
+        "Tu rends uniquement un JSON strict conforme au schéma demandé. "
+        "Tu raisonnes de façon prudente et justifiée, à partir du contenu réel du poste. "
+        "Quand l'information est insuffisante, tu choisis le positionnement le plus plausible mais tu le signales dans la justification globale et dans les zones_de_vigilance. "
+        "Référentiel conventionnel à appliquer : "
+        + json.dumps(ref_json, ensure_ascii=False)
+    )
+
+
+def _make_1880_user_prompt(poste: dict) -> str:
+    payload = {
+        "code_poste": poste.get("code_poste"),
+        "intitule_poste": poste.get("intitule_poste"),
+        "service": poste.get("nom_service"),
+        "mission_principale": poste.get("mission_principale"),
+        "responsabilites_text": poste.get("responsabilites_text"),
+        "niveau_contrainte": poste.get("niveau_contrainte"),
+        "mobilite": poste.get("mobilite"),
+        "perspectives_evolution": poste.get("perspectives_evolution"),
+        "risque_physique": poste.get("risque_physique"),
+        "detail_contrainte": poste.get("detail_contrainte"),
+        "niveau_education_minimum": poste.get("niveau_education_minimum"),
+        "nsf_groupe_code": poste.get("nsf_groupe_code"),
+        "nsf_groupe_obligatoire": poste.get("nsf_groupe_obligatoire"),
+        "competences": poste.get("competences"),
+        "certifications": poste.get("certifications"),
+    }
+    return (
+        "Analyse ce poste et propose un positionnement conventionnel justifié. "
+        "Base-toi uniquement sur les informations ci-dessous.\n\n"
+        + json.dumps(payload, ensure_ascii=False, indent=2)
+    )
 # ------------------------------------------------------
 # Models
 # ------------------------------------------------------
@@ -5517,6 +5698,7 @@ class AiPosteCompetencePreparePayload(BaseModel):
 
 class SavePosteCcnDecisionPayload(BaseModel):
     coefficient_retenu: int
+    palier_retenu: Optional[int] = None
     justification_retenue: str
     proposition_json: Optional[dict] = None
 
@@ -6359,7 +6541,7 @@ def studio_org_poste_ccn_context(id_owner: str, id_poste: str, request: Request)
                 referential = _fetch_ccn_referential(cur, idcc) if idcc else None
                 ref_json = referential.get("referentiel_json") if referential else {}
 
-                supported = bool(referential and idcc in ("1516", "3248"))
+                supported = bool(referential and idcc in ("1516", "3248", "1880"))
                 support_message = ""
                 if not idcc:
                     support_message = "Aucune convention collective détectée sur l’entreprise."
@@ -6402,7 +6584,7 @@ def studio_org_poste_ccn_propose(id_owner: str, id_poste: str, request: Request)
 
                 owner_ctx = _fetch_owner_idcc(cur, oid)
                 idcc = (owner_ctx.get("idcc") or "").strip()
-                if idcc not in ("1516", "3248"):
+                if idcc not in ("1516", "3248", "1880"):
                     raise HTTPException(status_code=400, detail=f"Convention non supportée pour l’assistant (IDCC détecté : {idcc or 'aucun'}).")
 
                 referential = _fetch_ccn_referential(cur, idcc)
@@ -6435,6 +6617,17 @@ def studio_org_poste_ccn_propose(id_owner: str, id_poste: str, request: Request)
                         use_web=False,
                     )
                     analysis = _build_3248_analysis(ref_json, ai_data)
+
+                elif idcc == "1880":
+                    ai_data = _openai_responses_json(
+                        model=model,
+                        schema_name="poste_ccn_1880",
+                        schema=_make_1880_ai_schema(),
+                        system_prompt=_make_1880_system_prompt(ref_json),
+                        user_prompt=_make_1880_user_prompt(poste),
+                        use_web=False,
+                    )
+                    analysis = _build_1880_analysis(ref_json, ai_data)
 
                 else:
                     raise HTTPException(status_code=400, detail=f"Convention non supportée pour l’assistant (IDCC détecté : {idcc or 'aucun'}).")
@@ -6470,7 +6663,7 @@ def studio_org_poste_ccn_save(id_owner: str, id_poste: str, payload: SavePosteCc
 
                 owner_ctx = _fetch_owner_idcc(cur, oid)
                 idcc = (owner_ctx.get("idcc") or "").strip()
-                if idcc not in ("1516", "3248"):
+                if idcc not in ("1516", "3248", "1880"):
                     raise HTTPException(status_code=400, detail=f"Convention non supportée pour l’assistant (IDCC détecté : {idcc or 'aucun'}).")
 
                 referential = _fetch_ccn_referential(cur, idcc)
@@ -6486,6 +6679,8 @@ def studio_org_poste_ccn_save(id_owner: str, id_poste: str, payload: SavePosteCc
                     proposition = dossier.get("proposition_json") or {}
 
                 criteres = proposition.get("criteres") or []
+
+                palier_retenu = int(payload.palier_retenu or 0)
 
                 if idcc == "1516":
                     if coefficient < 100:
@@ -6519,6 +6714,31 @@ def studio_org_poste_ccn_save(id_owner: str, id_poste: str, payload: SavePosteCc
                         "categorie_professionnelle": categorie,
                         "groupe_emploi": groupe,
                         "classe_emploi": classe,
+                        "justification": justification,
+                        "validated_by": (u.get("email") or "").strip(),
+                        "validated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    }
+
+                elif idcc == "1880":
+                    if coefficient < 1 or coefficient > 9:
+                        raise HTTPException(status_code=400, detail="Le groupe retenu doit être compris entre 1 et 9.")
+
+                    niveau = _normalize_1880_level(ref_json, coefficient, palier_retenu)
+                    allowed = _allowed_1880_levels(ref_json, coefficient)
+                    if palier_retenu and palier_retenu not in allowed:
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"Le niveau retenu n'est pas autorisé pour le groupe {coefficient}."
+                        )
+
+                    categorie = _compute_1880_category(coefficient, ref_json)
+
+                    validation_json = {
+                        "coefficient": coefficient,
+                        "palier": niveau,
+                        "categorie_professionnelle": categorie,
+                        "groupe_emploi": coefficient,
+                        "niveau_emploi": niveau,
                         "justification": justification,
                         "validated_by": (u.get("email") or "").strip(),
                         "validated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
