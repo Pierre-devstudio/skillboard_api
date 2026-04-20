@@ -4004,6 +4004,107 @@ def _build_pdf_reference_block(poste: dict, styles: dict, content_width: float):
         stroke_width=0.8,
     )
 
+def _build_pdf_text_block(body_lines: List[str], styles: dict, content_width: float):
+    body_style = ParagraphStyle(
+        "NsPdfRoundedTextBody",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=13,
+        textColor=PDF_TEXT,
+        spaceAfter=0,
+    )
+
+    lines = [str(x or "").strip() for x in (body_lines or []) if str(x or "").strip()]
+    if not lines:
+        lines = ["—"]
+
+    flow = []
+    for idx, line in enumerate(lines):
+        flow.append(Paragraph(_pdf_esc(line), body_style))
+        if idx < len(lines) - 1:
+            flow.append(make_spacer(1.2))
+
+    inner = Table([[flow]], colWidths=[content_width - (8 * mm)])
+    inner.hAlign = "LEFT"
+    inner.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+
+    return _RoundedTableBox(
+        inner_table=inner,
+        width=content_width,
+        padding=4 * mm,
+        radius=3 * mm,
+        stroke_color=PDF_LINE,
+        fill_color=colors.white,
+        stroke_width=0.8,
+    )
+
+
+def _build_pdf_constraints_block(entries: List[tuple], styles: dict, content_width: float, detail_tuple: Optional[tuple] = None):
+    safe_entries = list(entries or [])
+    if not safe_entries:
+        safe_entries = [("Contraintes", "—")]
+
+    inner_width = content_width - (8 * mm)
+    col_w = inner_width / 2.0
+
+    rows = []
+    current_row = []
+
+    for label, value in safe_entries:
+        current_row.append(_build_pdf_field_cell(label, value, styles))
+        if len(current_row) == 2:
+            rows.append(current_row)
+            current_row = []
+
+    if current_row:
+        current_row.append("")
+        rows.append(current_row)
+
+    if detail_tuple:
+        d_label = str(detail_tuple[0] or "").strip() or "Détail"
+        d_value = str(detail_tuple[1] or "").strip() or "—"
+        rows.append([
+            _build_pdf_field_cell(d_label, d_value, styles),
+            "",
+        ])
+
+    inner = Table(rows, colWidths=[col_w, col_w])
+    inner.hAlign = "LEFT"
+
+    ts = [
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]
+
+    if detail_tuple:
+        last_idx = len(rows) - 1
+        ts.extend([
+            ("SPAN", (0, last_idx), (1, last_idx)),
+            ("RIGHTPADDING", (0, last_idx), (0, last_idx), 0),
+        ])
+
+    inner.setStyle(TableStyle(ts))
+
+    return _RoundedTableBox(
+        inner_table=inner,
+        width=content_width,
+        padding=4 * mm,
+        radius=3 * mm,
+        stroke_color=PDF_LINE,
+        fill_color=colors.white,
+        stroke_width=0.8,
+    )
+
 def _build_pdf_ccn_recap_block(validation: dict, styles: dict, content_width: float):
     coef_raw = str(validation.get("coefficient") or "").strip()
     palier_raw = str(validation.get("palier") or "").strip()
@@ -4423,8 +4524,20 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
     story.append(_build_pdf_reference_block(poste, styles, content_width))
     story.append(make_spacer(5))
 
+    section_title = ParagraphStyle(
+        "NsPdfPage1SectionTitle",
+        parent=styles["section"],
+        fontName="Helvetica-Bold",
+        fontSize=11,
+        leading=13,
+        spaceAfter=5,
+        spaceBefore=0,
+        textColor=PDF_TEXT,
+    )
+
     mission_lines = _pdf_split_lines(poste.get("mission_principale")) or ["—"]
-    story.extend(_build_pdf_plain_block("Mission principale", mission_lines, styles))
+    story.append(Paragraph("Mission principale", section_title))
+    story.append(_build_pdf_text_block(mission_lines, styles, content_width))
     story.append(make_spacer(3.2))
 
     nsf_label = _pdf_first_non_empty(poste.get("nsf_groupe_titre"), poste.get("nsf_groupe_code"))
@@ -4450,18 +4563,8 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
     detail_contrainte = _html_to_text(poste.get("detail_contrainte"))
     detail_tuple = ("Détail des contraintes", detail_contrainte) if detail_contrainte else None
 
-    contraintes_title = ParagraphStyle(
-        "NsPdfContraintesTitle",
-        parent=styles["section"],
-        fontName="Helvetica-Bold",
-        fontSize=11,
-        leading=13,
-        spaceAfter=5,
-        spaceBefore=0,
-        textColor=PDF_TEXT,
-    )
-    story.append(Paragraph("Contraintes et spécificités", contraintes_title))
-    story.append(_build_pdf_property_grid(contraintes_entries, styles, content_width, detail_tuple))
+    story.append(Paragraph("Contraintes et spécificités", section_title))
+    story.append(_build_pdf_constraints_block(contraintes_entries, styles, content_width, detail_tuple))
 
     validation_page1 = (dossier or {}).get("validation_json") or {}
     coef_page1 = str(validation_page1.get("coefficient") or "").strip()
@@ -4472,7 +4575,7 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
 
     if has_ccn_recap:
         story.append(make_spacer(3.2))
-        story.append(Paragraph("Cotation conventionnelle", contraintes_title))
+        story.append(Paragraph("Cotation conventionnelle", section_title))
         story.append(_build_pdf_ccn_recap_block(validation_page1, styles, content_width))
 
     # ------------------------------------------------------------------
