@@ -18,6 +18,8 @@
   let _orgWorkspaceReady = false;
   let _orgWorkspaceLoadingPromise = null;
   let _orgWorkspaceScriptPromise = null;
+  let _clientLogoMeta = { has_logo: false };
+  let _clientLogoBlobUrl = null;
 
   function getMenuStudioAssetUrl(filename){
     return new URL(`/menu_studio/${filename}`, window.location.origin).toString();
@@ -103,6 +105,241 @@
   }
 
   function byId(id){ return document.getElementById(id); }
+
+  function isStudioAdmin(){
+    const r = (window.__studioRoleCode || "user").toString().trim().toLowerCase();
+    return r === "admin";
+  }
+
+  function formatLogoBytes(bytes){
+    const n = parseInt(bytes || 0, 10) || 0;
+    if (n < 1024) return `${n} o`;
+    if (n < (1024 * 1024)) return `${(n / 1024).toFixed(1)} Ko`;
+    return `${(n / (1024 * 1024)).toFixed(1)} Mo`;
+  }
+
+  async function loadClientLogoMeta(token){
+    const ownerId = getOwnerId();
+    const clientId = getClientId();
+
+    if (!ownerId || !clientId || !token){
+      return {
+        has_logo: false,
+        filename: null,
+        mime_type: null,
+        size_bytes: 0,
+        date_maj: null,
+      };
+    }
+
+    try {
+      return await apiJson(
+        `${API_BASE}/studio/data/client-logo-meta/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}`,
+        token
+      );
+    } catch (_) {
+      return {
+        has_logo: false,
+        filename: null,
+        mime_type: null,
+        size_bytes: 0,
+        date_maj: null,
+      };
+    }
+  }
+
+  async function renderClientLogo(logoMeta){
+    const img = byId("ficheLogoImg");
+    const empty = byId("ficheLogoEmpty");
+    const meta = byId("ficheLogoMeta");
+    const btnUpload = byId("btnFicheUploadLogo");
+    const btnRemove = byId("btnFicheRemoveLogo");
+
+    const hasLogo = !!(logoMeta && logoMeta.has_logo);
+    const admin = isStudioAdmin();
+
+    if (btnUpload) btnUpload.style.display = admin ? "inline-flex" : "none";
+    if (btnRemove) btnRemove.style.display = (admin && hasLogo) ? "inline-flex" : "none";
+
+    if (_clientLogoBlobUrl) {
+      try { URL.revokeObjectURL(_clientLogoBlobUrl); } catch (_) {}
+      _clientLogoBlobUrl = null;
+    }
+
+    if (!hasLogo) {
+      if (img) {
+        img.removeAttribute("src");
+        img.style.display = "none";
+      }
+      if (empty) {
+        empty.textContent = "Aucun logo enregistré.";
+        empty.style.display = "";
+      }
+      if (meta) {
+        meta.textContent = "Le logo enregistré sera réutilisé automatiquement dans les sorties PDF de cette structure.";
+      }
+      return;
+    }
+
+    if (empty) {
+      empty.textContent = "Chargement du logo…";
+      empty.style.display = "";
+    }
+
+    if (meta) {
+      const mime = String(logoMeta.mime_type || "").replace("image/", "").toUpperCase();
+      const parts = [];
+      if (logoMeta.filename) parts.push(logoMeta.filename);
+      if (mime) parts.push(mime);
+      if (logoMeta.size_bytes) parts.push(formatLogoBytes(logoMeta.size_bytes));
+      meta.textContent = parts.join(" · ") || "Logo actif.";
+    }
+
+    try {
+      const ownerId = getOwnerId();
+      const clientId = getClientId();
+      const token = await ensureAuthReady();
+      if (!token) throw new Error("Session Studio introuvable.");
+
+      const headers = { "Authorization": `Bearer ${token}` };
+      const stamp = encodeURIComponent(logoMeta.date_maj || Date.now());
+
+      const resp = await fetch(
+        `${API_BASE}/studio/data/client-logo/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}?v=${stamp}`,
+        {
+          method: "GET",
+          headers,
+          credentials: "same-origin",
+        }
+      );
+
+      if (!resp.ok) {
+        let msg = `Erreur logo (${resp.status})`;
+        try {
+          const err = await resp.json();
+          if (err && err.detail) msg = String(err.detail);
+        } catch (_) {}
+        throw new Error(msg);
+      }
+
+      const blob = await resp.blob();
+      _clientLogoBlobUrl = URL.createObjectURL(blob);
+
+      if (img) {
+        img.onerror = () => {
+          img.removeAttribute("src");
+          img.style.display = "none";
+          if (empty) {
+            empty.textContent = "Impossible d’afficher le logo.";
+            empty.style.display = "";
+          }
+        };
+        img.src = _clientLogoBlobUrl;
+        img.style.display = "";
+      }
+
+      if (empty) {
+        empty.textContent = "";
+        empty.style.display = "none";
+      }
+
+    } catch (e) {
+      if (img) {
+        img.removeAttribute("src");
+        img.style.display = "none";
+      }
+      if (empty) {
+        empty.textContent = e.message || "Impossible d’afficher le logo.";
+        empty.style.display = "";
+      }
+    }
+  }
+
+  async function uploadClientLogo(file){
+    const ownerId = getOwnerId();
+    const clientId = getClientId();
+    if (!ownerId || !clientId) throw new Error("Contexte client manquant.");
+    if (!file) return;
+
+    const name = String(file.name || "").toLowerCase();
+    if (!/\.(png|jpg|jpeg)$/.test(name)) {
+      throw new Error("Format logo non supporté. Utilise un fichier PNG ou JPG.");
+    }
+
+    if ((file.size || 0) > (2 * 1024 * 1024)) {
+      throw new Error("Logo trop volumineux. Limite : 2 Mo.");
+    }
+
+    setMessage("");
+
+    const token = await ensureAuthReady();
+    if (!token) throw new Error("Session Studio introuvable.");
+
+    const fd = new FormData();
+    fd.append("file", file, file.name || "logo");
+
+    const resp = await fetch(
+      `${API_BASE}/studio/data/client-logo/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}`,
+      {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: fd,
+        credentials: "same-origin",
+      }
+    );
+
+    if (!resp.ok) {
+      let msg = `Erreur logo (${resp.status})`;
+      try {
+        const err = await resp.json();
+        if (err && err.detail) msg = String(err.detail);
+      } catch (_) {}
+      throw new Error(msg);
+    }
+
+    const data = await resp.json().catch(() => null);
+    _clientLogoMeta = data?.logo || await loadClientLogoMeta(token);
+    await renderClientLogo(_clientLogoMeta);
+  }
+
+  async function archiveClientLogo(){
+    const ownerId = getOwnerId();
+    const clientId = getClientId();
+    if (!ownerId || !clientId) throw new Error("Contexte client manquant.");
+
+    setMessage("");
+
+    const token = await ensureAuthReady();
+    if (!token) throw new Error("Session Studio introuvable.");
+
+    const resp = await fetch(
+      `${API_BASE}/studio/data/client-logo/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}/archive`,
+      {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        credentials: "same-origin",
+      }
+    );
+
+    if (!resp.ok) {
+      let msg = `Erreur retrait logo (${resp.status})`;
+      try {
+        const err = await resp.json();
+        if (err && err.detail) msg = String(err.detail);
+      } catch (_) {}
+      throw new Error(msg);
+    }
+
+    const data = await resp.json().catch(() => null);
+    _clientLogoMeta = data?.logo || {
+      has_logo: false,
+      filename: null,
+      mime_type: null,
+      size_bytes: 0,
+      date_maj: null,
+    };
+    await renderClientLogo(_clientLogoMeta);
+  }
 
   function normalizeApeCode(value){
     const digits = (value || "").toString().replace(/\D+/g, "").slice(0, 4);
@@ -1917,6 +2154,7 @@ function bindPostalAssist(){
     syncLinkedStructuresVisibility();
     syncStructureProfileUi();
     queuePostalLookupFromCurrentValues();
+    renderClientLogo(_clientLogoMeta).catch(() => {});
   }
 
   function readFichePayload(){
@@ -2228,6 +2466,43 @@ function bindPostalAssist(){
 
     byId("ficheProfilStructurel")?.addEventListener("change", syncStructureProfileUi);
     byId("ficheGroupOk")?.addEventListener("change", syncStructureProfileUi);
+
+    const btnUploadLogo = byId("btnFicheUploadLogo");
+    const btnRemoveLogo = byId("btnFicheRemoveLogo");
+    const inputLogo = byId("ficheLogoFileInput");
+
+    if (btnUploadLogo && inputLogo) {
+      btnUploadLogo.addEventListener("click", () => {
+        if (!isStudioAdmin()) return;
+        inputLogo.click();
+      });
+
+      inputLogo.addEventListener("change", async (e) => {
+        const file = e && e.target && e.target.files ? e.target.files[0] : null;
+        try {
+          if (!isStudioAdmin()) return;
+          if (!file) return;
+          await uploadClientLogo(file);
+          setMessage("");
+        } catch (err) {
+          setMessage(err?.message || "Erreur lors de l’import du logo.");
+        } finally {
+          inputLogo.value = "";
+        }
+      });
+    }
+
+    if (btnRemoveLogo) {
+      btnRemoveLogo.addEventListener("click", async () => {
+        try {
+          if (!isStudioAdmin()) return;
+          await archiveClientLogo();
+          setMessage("");
+        } catch (err) {
+          setMessage(err?.message || "Erreur lors du retrait du logo.");
+        }
+      });
+    }
   }
 
   async function loadData(){
@@ -2244,11 +2519,12 @@ function bindPostalAssist(){
     const token = await ensureAuthReady();
     if (!token) return;
 
-    const [detail, clientsData, context, opcoItems] = await Promise.all([
+    const [detail, clientsData, context, opcoItems, logoMeta] = await Promise.all([
       apiJson(`${API_BASE}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}`, token),
       apiJson(`${API_BASE}/studio/clients/${encodeURIComponent(ownerId)}`, token),
       apiJson(`${API_BASE}/studio/context/${encodeURIComponent(ownerId)}`, token),
       loadOpcoOptions(),
+      loadClientLogoMeta(token),
     ]);
 
     _detail = detail || {};
@@ -2256,6 +2532,13 @@ function bindPostalAssist(){
     _ownerFeatures = clientsData?.owner_features || {};
     _context = context || {};
     _opcoOptions = Array.isArray(opcoItems) ? opcoItems : [];
+    _clientLogoMeta = logoMeta || {
+      has_logo: false,
+      filename: null,
+      mime_type: null,
+      size_bytes: 0,
+      date_maj: null,
+    };
 
     renderLinks();
     renderDynamicLabels();

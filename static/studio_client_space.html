@@ -167,6 +167,8 @@
             <div class="cs-card-title" id="sectionCompanySheetTitle">Fiche entreprise</div>
             <div class="cs-card-sub is-hidden" id="sectionCompanySheetSub"></div>
 
+            <input type="file" id="ficheLogoFileInput" accept=".png,.jpg,.jpeg,image/png,image/jpeg" hidden />
+
             <div class="sb-form-grid cs-form-grid">
               <div class="sb-field sb-span-2">
                 <label class="sb-label" for="ficheNomEnt">Nom entreprise</label>
@@ -201,6 +203,28 @@
               <div class="sb-field sb-span-2">
                 <label class="sb-label" for="ficheNumTvaEnt">N° TVA</label>
                 <input type="text" class="sb-ctrl cs-form-ctrl" id="ficheNumTvaEnt" disabled />
+              </div>
+
+              <div class="sb-field sb-span-2">
+                <div class="label">Logo</div>
+
+                <div class="sb-logo-card">
+                  <div class="sb-logo-preview" id="ficheLogoPreview">
+                    <img id="ficheLogoImg" alt="Logo structure" style="display:none;" />
+                    <div class="sb-help" id="ficheLogoEmpty">Aucun logo enregistré.</div>
+                  </div>
+
+                  <div class="sb-logo-meta">
+                    <div class="card-sub" id="ficheLogoMeta" style="margin:0;">
+                      Le logo enregistré sera réutilisé automatiquement dans les sorties PDF de cette structure.
+                    </div>
+
+                    <div class="sb-actions">
+                      <button type="button" class="sb-btn sb-btn--doc" id="btnFicheUploadLogo">Importer votre logo</button>
+                      <button type="button" class="sb-btn sb-btn--danger-soft" id="btnFicheRemoveLogo">Retirer le logo</button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

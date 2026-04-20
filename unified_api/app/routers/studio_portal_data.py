@@ -315,6 +315,32 @@ def _require_owner_access(cur, u: dict, id_owner: str):
     return oid
 
 
+def _require_client_structure_access(cur, u: dict, id_owner: str, id_ent: str) -> tuple[str, str]:
+    oid = _require_owner_access(cur, u, id_owner)
+    studio_fetch_owner(cur, oid)
+
+    ent = (id_ent or "").strip()
+    if not ent:
+        raise HTTPException(status_code=400, detail="id_ent manquant.")
+
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_entreprise
+        WHERE id_ent = %s
+          AND id_owner_gestionnaire = %s
+          AND COALESCE(masque, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (ent, oid),
+    )
+    row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Structure cliente introuvable ou masquée.")
+
+    return oid, ent
+
+
 def _fetch_org(cur, oid: str) -> dict:
     """
     Règle:
@@ -960,6 +986,152 @@ def archive_studio_owner_logo(id_owner: str, request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/data/logo archive error: {e}")
        
+@router.get("/studio/data/client-logo-meta/{id_owner}/{id_ent}")
+def get_studio_client_logo_meta(id_owner: str, id_ent: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                _, ent = _require_client_structure_access(cur, u, id_owner, id_ent)
+                logo = _fetch_owner_logo_meta(cur, ent)
+
+        return logo
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/data/client-logo-meta GET error: {e}")
+
+
+@router.get("/studio/data/client-logo/{id_owner}/{id_ent}")
+def get_studio_client_logo(id_owner: str, id_ent: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                _, ent = _require_client_structure_access(cur, u, id_owner, id_ent)
+
+                row = _fetch_owner_logo_row(cur, ent)
+                if not row:
+                    raise HTTPException(status_code=404, detail="Aucun logo enregistré.")
+
+                raw = _fetch_owner_logo_bytes(cur, ent)
+                if not raw:
+                    raise HTTPException(status_code=404, detail="Aucun logo enregistré.")
+
+                filename = _clean_text(row.get("filename_original")) or "logo.png"
+                mime_type = _clean_text(row.get("mime_type")) or "application/octet-stream"
+
+        return Response(
+            content=raw,
+            media_type=mime_type,
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/data/client-logo GET error: {e}")
+
+
+@router.post("/studio/data/client-logo/{id_owner}/{id_ent}")
+def upload_studio_client_logo(id_owner: str, id_ent: str, request: Request, file: UploadFile = File(...)):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        filename = _clean_text(getattr(file, "filename", "") or "logo")
+        content_type = _clean_text(getattr(file, "content_type", ""))
+        raw = file.file.read() if file and file.file else b""
+
+        mime_type = _validate_logo_upload(filename, content_type, raw)
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid, ent = _require_client_structure_access(cur, u, id_owner, id_ent)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_studio_owner_logo
+                    SET archive = TRUE,
+                        date_maj = NOW()
+                    WHERE id_owner = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    """,
+                    (ent,),
+                )
+
+                id_logo = str(uuid.uuid4())
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_studio_owner_logo
+                        (id_logo, id_owner, filename_original, mime_type, logo_bytes, taille_bytes, date_creation, date_maj, archive)
+                    VALUES
+                        (%s, %s, %s, %s, %s, %s, NOW(), NOW(), FALSE)
+                    """,
+                    (
+                        id_logo,
+                        ent,
+                        filename or None,
+                        mime_type,
+                        raw,
+                        len(raw),
+                    ),
+                )
+
+                conn.commit()
+                logo = _fetch_owner_logo_meta(cur, ent)
+
+        return {"ok": True, "logo": logo}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/data/client-logo POST error: {e}")
+
+
+@router.post("/studio/data/client-logo/{id_owner}/{id_ent}/archive")
+def archive_studio_client_logo(id_owner: str, id_ent: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid, ent = _require_client_structure_access(cur, u, id_owner, id_ent)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_studio_owner_logo
+                    SET archive = TRUE,
+                        date_maj = NOW()
+                    WHERE id_owner = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    """,
+                    (ent,),
+                )
+                conn.commit()
+
+                logo = _fetch_owner_logo_meta(cur, ent)
+
+        return {"ok": True, "logo": logo}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/data/client-logo archive error: {e}")
+
+
 # ======================================================
 # Référentiels Studio (nécessaires pour la page "Vos données")
 # ======================================================
