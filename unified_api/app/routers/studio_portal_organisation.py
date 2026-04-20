@@ -1011,6 +1011,30 @@ def _format_pdf_publication_date_fr(dt: Optional[datetime] = None) -> str:
     d = dt or datetime.now()
     return f"{d.day:02d} {months[d.month - 1]} {d.year:04d}"
 
+def _format_pdf_short_date_fr(v: Any) -> str:
+    if v is None:
+        return "—"
+
+    if isinstance(v, datetime):
+        return v.strftime("%d/%m/%Y")
+
+    if isinstance(v, py_date):
+        return v.strftime("%d/%m/%Y")
+
+    s = str(v).strip()
+    if not s:
+        return "—"
+
+    m = re.match(r"^(\d{4})-(\d{2})-(\d{2})", s)
+    if m:
+        return f"{m.group(3)}/{m.group(2)}/{m.group(1)}"
+
+    try:
+        dt = datetime.fromisoformat(s.replace("Z", "+00:00"))
+        return dt.strftime("%d/%m/%Y")
+    except Exception:
+        return s
+
 def _org_max_depth(nodes: List[dict], depth: int = 0) -> int:
     max_depth = depth
     for node in nodes:
@@ -4109,6 +4133,10 @@ def _build_pdf_ccn_recap_block(validation: dict, styles: dict, content_width: fl
     coef_raw = str(validation.get("coefficient") or "").strip()
     palier_raw = str(validation.get("palier") or "").strip()
     categorie = _pdf_first_non_empty(validation.get("categorie_professionnelle"), "—") or "—"
+    justification = str(validation.get("justification") or "").strip()
+
+    validated_by = str(validation.get("validated_by") or "").strip()
+    validated_at = _format_pdf_short_date_fr(validation.get("validated_at"))
 
     try:
         coef_label = str(int(coef_raw)) if coef_raw else "—"
@@ -4123,20 +4151,77 @@ def _build_pdf_ccn_recap_block(validation: dict, styles: dict, content_width: fl
     inner_width = content_width - (8 * mm)
     col_w = inner_width / 3.0
 
-    rows = [[
-        _build_pdf_field_cell("Coefficient retenu", coef_label, styles),
-        _build_pdf_field_cell("Palier retenu", palier_label, styles),
-        _build_pdf_field_cell("Catégorie retenue", categorie, styles),
-    ]]
-
-    inner = Table(rows, colWidths=[col_w, col_w, col_w])
-    inner.hAlign = "LEFT"
-    inner.setStyle(TableStyle([
+    top_grid = Table(
+        [[
+            _build_pdf_field_cell("Coefficient retenu", coef_label, styles),
+            _build_pdf_field_cell("Palier retenu", palier_label, styles),
+            _build_pdf_field_cell("Catégorie retenue", categorie, styles),
+        ]],
+        colWidths=[col_w, col_w, col_w],
+    )
+    top_grid.hAlign = "LEFT"
+    top_grid.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 6),
         ("TOPPADDING", (0, 0), (-1, -1), 0),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+    ]))
+
+    label_style = ParagraphStyle(
+        "NsPdfCcnRecapLabel",
+        parent=styles["small"],
+        fontName="Helvetica-Bold",
+        fontSize=7.8,
+        leading=9.2,
+        textColor=PDF_MUTED,
+        spaceAfter=1,
+    )
+    body_style = ParagraphStyle(
+        "NsPdfCcnRecapBody",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=8.9,
+        leading=11,
+        textColor=PDF_TEXT,
+        spaceAfter=0,
+    )
+    meta_style = ParagraphStyle(
+        "NsPdfCcnRecapMeta",
+        parent=styles["small"],
+        fontName="Helvetica",
+        fontSize=8,
+        leading=9.5,
+        textColor=PDF_MUTED,
+        spaceAfter=0,
+    )
+
+    content = [top_grid]
+
+    if justification:
+        content.append(make_spacer(1.3))
+        content.append(Paragraph("Justification RH", label_style))
+        content.append(Paragraph(_pdf_esc(justification), body_style))
+
+    if validated_by or (validated_at and validated_at != "—"):
+        if validated_by and validated_at and validated_at != "—":
+            validation_txt = f"Validation faite par {validated_by} le {validated_at}"
+        elif validated_by:
+            validation_txt = f"Validation faite par {validated_by}"
+        else:
+            validation_txt = f"Validation effectuée le {validated_at}"
+
+        content.append(make_spacer(1.2))
+        content.append(Paragraph(_pdf_esc(validation_txt), meta_style))
+
+    inner = Table([[content]], colWidths=[inner_width])
+    inner.hAlign = "LEFT"
+    inner.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
     ]))
 
     return _RoundedTableBox(
@@ -4517,6 +4602,182 @@ def _build_pdf_rich_table(
     table.setStyle(TableStyle(ts))
     return table
 
+def _build_pdf_ccn_ia_block(proposition: dict, styles: dict, content_width: float):
+    proposal_meta = proposition.get("proposal") if isinstance(proposition.get("proposal"), dict) else {}
+
+    coef_label = _pdf_first_non_empty(proposal_meta.get("coefficient"), "—") or "—"
+    palier_label = _pdf_first_non_empty(proposal_meta.get("palier"), "—") or "—"
+    categorie_label = _pdf_first_non_empty(proposal_meta.get("categorie_professionnelle"), "—") or "—"
+    points_label = _pdf_first_non_empty(proposition.get("total_points"), "—") or "—"
+    justification_ia = str(proposition.get("justification_globale") or "").strip()
+
+    inner_width = content_width - (8 * mm)
+    col_w = inner_width / 2.0
+
+    label_style = ParagraphStyle(
+        "NsPdfCcnIaLabel",
+        parent=styles["small"],
+        fontName="Helvetica-Bold",
+        fontSize=7.6,
+        leading=8.8,
+        textColor=PDF_MUTED,
+        spaceAfter=1,
+    )
+    body_style = ParagraphStyle(
+        "NsPdfCcnIaBody",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=8.9,
+        leading=10.8,
+        textColor=PDF_TEXT,
+        spaceAfter=0,
+    )
+    empty_style = ParagraphStyle(
+        "NsPdfCcnIaEmpty",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=8.9,
+        leading=10.8,
+        textColor=PDF_TEXT,
+        spaceAfter=0,
+    )
+
+    if not proposition:
+        inner = Table(
+            [[Paragraph("Aucune proposition IA enregistrée.", empty_style)]],
+            colWidths=[inner_width],
+        )
+        inner.hAlign = "LEFT"
+        inner.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ]))
+
+        return _RoundedTableBox(
+            inner_table=inner,
+            width=content_width,
+            padding=4 * mm,
+            radius=3 * mm,
+            stroke_color=PDF_LINE,
+            fill_color=colors.white,
+            stroke_width=0.8,
+        )
+
+    top_grid = Table(
+        [
+            [
+                _build_pdf_field_cell("Coefficient proposé", str(coef_label), styles),
+                _build_pdf_field_cell("Palier proposé", str(palier_label), styles),
+            ],
+            [
+                _build_pdf_field_cell("Catégorie proposée", str(categorie_label), styles),
+                _build_pdf_field_cell("Points calculés", str(points_label), styles),
+            ],
+        ],
+        colWidths=[col_w, col_w],
+    )
+    top_grid.hAlign = "LEFT"
+    top_grid.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]))
+
+    content = [top_grid]
+
+    if justification_ia:
+        content.append(make_spacer(1.1))
+        content.append(Paragraph("Justification IA", label_style))
+        content.append(Paragraph(_pdf_esc(justification_ia), body_style))
+
+    inner = Table([[content]], colWidths=[inner_width])
+    inner.hAlign = "LEFT"
+    inner.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+
+    return _RoundedTableBox(
+        inner_table=inner,
+        width=content_width,
+        padding=4 * mm,
+        radius=3 * mm,
+        stroke_color=PDF_LINE,
+        fill_color=colors.white,
+        stroke_width=0.8,
+    )
+
+
+def _build_pdf_ccn_criteria_table_rounded(headers: List[str], rows: List[List[str]], col_widths: List[float], styles: dict):
+    header_style = ParagraphStyle(
+        "NsPdfCcnTableHead",
+        parent=styles["small"],
+        fontName="Helvetica-Bold",
+        fontSize=7.8,
+        leading=9.4,
+        textColor=PDF_TEXT,
+    )
+
+    cell_style = ParagraphStyle(
+        "NsPdfCcnTableCell",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=8.4,
+        leading=10.2,
+        textColor=PDF_TEXT,
+    )
+
+    safe_headers = [Paragraph(_pdf_esc(h or "—"), header_style) for h in (headers or [])]
+
+    data = [safe_headers]
+    for row in (rows or []):
+        safe_row = []
+        for idx in range(len(col_widths or [])):
+            val = row[idx] if idx < len(row or []) else "—"
+            safe_row.append(Paragraph(_pdf_esc(val or "—"), cell_style))
+        data.append(safe_row)
+
+    inner_table = Table(
+        data,
+        colWidths=col_widths,
+        repeatRows=1,
+        hAlign="LEFT",
+        splitByRow=1,
+    )
+
+    inner_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f8fafc")),
+        ("TEXTCOLOR", (0, 0), (-1, -1), PDF_TEXT),
+        ("INNERGRID", (0, 0), (-1, -1), 0.7, PDF_LINE),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, 0), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 5),
+        ("TOPPADDING", (0, 1), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 4),
+    ]))
+
+    pad = 1.6 * mm
+
+    return _RoundedTableBox(
+        inner_table=inner_table,
+        width=sum(col_widths or []) + (2 * pad),
+        padding=pad,
+        radius=3 * mm,
+        stroke_color=PDF_LINE,
+        fill_color=colors.white,
+        stroke_width=0.8,
+    )
+
 def _build_pdf_rich_table_rounded(
     headers: List[str],
     rows: List[List[str]],
@@ -4698,71 +4959,60 @@ def _build_poste_pdf_story(owner: dict, poste: dict, dossier: Optional[dict], re
     has_ccn = bool(proposition or validation)
 
     if has_ccn:
-        story.append(PageBreak())
-        story.extend(_build_pdf_centered_titles(
-            "Cotation conventionnelle",
-            "",
-            styles,
-        ))
-        story.append(make_spacer(2))
+            story.append(PageBreak())
 
-        proposal_meta = proposition.get("proposal") if isinstance(proposition.get("proposal"), dict) else {}
-        ia_lines = [
-            f"Coefficient proposé : {proposal_meta.get('coefficient') or '—'}",
-            f"Palier proposé : {proposal_meta.get('palier') or '—'}",
-            f"Catégorie proposée : {proposal_meta.get('categorie_professionnelle') or '—'}",
-            f"Points calculés : {proposition.get('total_points') or '—'}",
-        ]
-        if proposal_meta.get("resume_cotation"):
-            ia_lines.append(f"Synthèse de cotation : {proposal_meta.get('resume_cotation')}")
-        if proposition.get("justification_globale"):
-            ia_lines.append(f"Justification IA : {proposition.get('justification_globale')}")
-        if not proposition:
-            ia_lines = ["Aucune proposition IA enregistrée."]
-
-        story.extend(_build_pdf_plain_block("Recommandation IA", ia_lines, styles))
-        story.append(make_spacer(2))
-
-        rh_lines = [
-            f"Coefficient retenu : {validation.get('coefficient') or '—'}",
-            f"Palier retenu : {validation.get('palier') or '—'}",
-            f"Catégorie retenue : {validation.get('categorie_professionnelle') or '—'}",
-        ]
-        if validation.get("justification"):
-            rh_lines.append(f"Justification RH : {validation.get('justification')}")
-        if validation.get("validated_by") or validation.get("validated_at"):
-            rh_lines.append(
-                f"Validation : {_pdf_first_non_empty(validation.get('validated_by'), '—')} · {_pdf_first_non_empty(validation.get('validated_at'), '—')}"
+            ccn_title_style = ParagraphStyle(
+                "NsPdfCcnPageTitle",
+                parent=styles["title"],
+                alignment=1,
+                fontName="Helvetica-Bold",
+                fontSize=16,
+                leading=18,
+                textColor=PDF_TEXT,
+                spaceAfter=0,
             )
-        if not validation:
-            rh_lines = ["Aucune décision RH enregistrée."]
+            ccn_sub_style = ParagraphStyle(
+                "NsPdfCcnPageSubTitle",
+                parent=styles["subtitle"],
+                alignment=1,
+                fontName="Helvetica",
+                fontSize=9.3,
+                leading=11,
+                textColor=PDF_MUTED,
+                spaceAfter=0,
+            )
 
-        story.extend(_build_pdf_plain_block("Décision RH", rh_lines, styles))
-
-        crit_rows = []
-        for it in proposition.get("criteres") or []:
-            crit_rows.append([
-                _pdf_first_non_empty(it.get("libelle"), it.get("code"), "Critère") or "Critère",
-                f"M{int(it.get('marche') or 0)}",
-                str(int(it.get("points") or 0)),
-                _pdf_first_non_empty(it.get("justification"), "—") or "—",
-            ])
-        for it in proposition.get("bonifications") or []:
-            crit_rows.append([
-                _pdf_first_non_empty(it.get("libelle"), it.get("code"), "Bonification") or "Bonification",
-                _pdf_first_non_empty(it.get("niveau_label"), f"M{int(it.get('marche') or 0)}") or "—",
-                str(int(it.get("points") or 0)),
-                _pdf_first_non_empty(it.get("justification"), "—") or "—",
-            ])
-
-        if crit_rows:
+            story.append(Paragraph("Cotation conventionnelle", ccn_title_style))
+            story.append(make_spacer(1))
+            story.append(Paragraph("Recommandations Novoskill IA", ccn_sub_style))
             story.append(make_spacer(3))
-            story.append(_build_pdf_rich_table(
-                ["Critère / bonification", "Niveau", "Points", "Justification"],
-                crit_rows,
-                [54 * mm, 18 * mm, 18 * mm, 88 * mm],
-                styles,
-            ))
+
+            story.append(_build_pdf_ccn_ia_block(proposition, styles, content_width))
+
+            crit_rows = []
+            for it in proposition.get("criteres") or []:
+                crit_rows.append([
+                    _pdf_first_non_empty(it.get("libelle"), it.get("code"), "Critère") or "Critère",
+                    f"M{int(it.get('marche') or 0)}",
+                    str(int(it.get("points") or 0)),
+                    _pdf_first_non_empty(it.get("justification"), "—") or "—",
+                ])
+            for it in proposition.get("bonifications") or []:
+                crit_rows.append([
+                    _pdf_first_non_empty(it.get("libelle"), it.get("code"), "Bonification") or "Bonification",
+                    _pdf_first_non_empty(it.get("niveau_label"), f"M{int(it.get('marche') or 0)}") or "—",
+                    str(int(it.get("points") or 0)),
+                    _pdf_first_non_empty(it.get("justification"), "—") or "—",
+                ])
+
+            if crit_rows:
+                story.append(make_spacer(3))
+                story.append(_build_pdf_ccn_criteria_table_rounded(
+                    ["Critère / bonification", "Niveau", "Points", "Justification"],
+                    crit_rows,
+                    [34 * mm, 18 * mm, 16 * mm, 110 * mm],
+                    styles,
+                ))
 
     return story
 
