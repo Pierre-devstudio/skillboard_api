@@ -945,7 +945,16 @@
 #posteCompTable th:nth-child(2),
 #posteCompTable td:nth-child(2){
   width:84px;
-  text-align:center;
+  text-align:center !important;
+}
+
+#posteCompTable th:nth-child(2){
+  vertical-align:middle;
+}
+
+#posteCompTable td:nth-child(2) .sb-badge--niv{
+  display:inline-flex;
+  margin:0 auto;
 }
 
 #posteCompTable th:nth-child(3),
