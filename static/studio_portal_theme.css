@@ -776,10 +776,8 @@
    ====================================================== */
 
 .sb-table-th-2l{
-  display:inline-flex;
+  display:block;
   width:100%;
-  align-items:center;
-  justify-content:center;
   line-height:1.1;
   text-align:center;
   white-space:normal;
