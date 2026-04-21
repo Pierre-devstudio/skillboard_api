@@ -832,6 +832,22 @@
   gap:6px;
 }
 
+.sb-skill-required-dot{
+  width:10px;
+  height:10px;
+  min-width:10px;
+  border-radius:999px;
+  display:inline-block;
+  background:#16a34a;
+  border:1px solid rgba(22,163,74,.38);
+  box-shadow:0 0 0 2px rgba(22,163,74,.10);
+  vertical-align:middle;
+}
+
+.sb-skill-required-dot[title]{
+  cursor:help;
+}
+
 .sb-skill-table .sb-comp-cell{
   width:100%;
 }

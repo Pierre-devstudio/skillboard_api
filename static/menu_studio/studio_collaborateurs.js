@@ -2081,6 +2081,7 @@
       const idComp = (x.id_comp || '').toString().trim();
       const idEffectifComp = (x.id_effectif_competence || '').toString().trim();
       const lvl = levelMeta(x.niveau_actuel);
+      const isRequiredByPoste = !!x.is_required;
       const rowAttrs = idEffectifComp
         ? `class="sb-table-row-clickable" data-act="open-skill-eval" data-id-effectif-comp="${esc(idEffectifComp)}" tabindex="0"`
         : '';
@@ -2127,6 +2128,17 @@
                     >
                       ${iconTrash}
                     </button>
+                  `
+                  : ``
+              }
+              ${
+                isRequiredByPoste
+                  ? `
+                    <span
+                      class="sb-skill-required-dot"
+                      title="Requis par le poste actuel"
+                      aria-label="Requis par le poste actuel"
+                    ></span>
                   `
                   : ``
               }
