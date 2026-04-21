@@ -949,13 +949,14 @@
 
 #posteCompTable th:nth-child(3),
 #posteCompTable td:nth-child(3){
-  width:74px;
+  width:80px;
   text-align:center;
 }
 
 #posteCompTable th:nth-child(4),
 #posteCompTable td:nth-child(4){
   width:96px;
+  text-align:center;
 }
 
 #posteCertTable th:nth-child(1),
@@ -978,6 +979,7 @@
 #posteCertTable th:nth-child(5),
 #posteCertTable td:nth-child(5){
   width:96px;
+  text-align:center;
 }
 
 #posteCompTable .sb-comp-cell,
