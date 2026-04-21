@@ -631,22 +631,29 @@
     await loadCollabCompAddList(portal);
   }
 
-  async function addCompetenceToCollaborateur(portal, idComp){
+  async function addCompetenceToCollaborateur(portal, idComp, opts = {}){
     if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
 
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error('Owner introuvable.');
+
+    const payload = { id_comp: idComp };
+    const niveauActuel = (opts?.niveau_actuel || '').toString().trim();
+    if (niveauActuel) payload.niveau_actuel = niveauActuel;
 
     await portal.apiJson(
       `${portal.apiBase}/studio/collaborateurs/competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/add`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_comp: idComp })
+        body: JSON.stringify(payload)
       }
     );
 
-    closeModal('modalCollabCompAdd');
+    if (opts?.closeModal !== false) {
+      closeModal('modalCollabCompAdd');
+    }
+
     _tabLoaded.skills = false;
     await loadTabIfNeeded(portal, 'skills');
   }
@@ -1981,13 +1988,29 @@
     const host = byId('collabSkillsPanel');
     if (!host) return;
 
-    const items = Array.isArray(data?.items) ? data.items : [];
-    _collabSkillItems = items.slice();
+    const ownedItems = Array.isArray(data?.owned_items)
+      ? data.owned_items
+      : (Array.isArray(data?.items) ? data.items : []);
+    const missingItems = Array.isArray(data?.missing_required_items)
+      ? data.missing_required_items
+      : [];
+
+    _collabSkillItems = ownedItems.slice();
 
     const poste = getCurrentPosteForSkills();
-    const canSync = !!_editingId && !!poste.id;
-    const canAdd = !!_editingId;
+    const posteId = (poste.id || data?.id_poste_actuel || '').toString().trim();
     const posteLabel = poste.label || data?.intitule_poste || '–';
+    const canSync = !!_editingId && !!posteId && missingItems.length > 0;
+    const canAdd = !!_editingId;
+
+    const levelMeta = (niv) => {
+      const raw = String(niv || '').trim();
+      const v = raw.toUpperCase();
+      if (v === 'A' || raw.toLowerCase() === 'initial') return { text: 'A - Initial', cls: 'sb-badge--niv-a' };
+      if (v === 'B' || raw.toLowerCase() === 'avancé' || raw.toLowerCase() === 'avance') return { text: 'B - Avancé', cls: 'sb-badge--niv-b' };
+      if (v === 'C' || raw.toLowerCase() === 'expert') return { text: 'C - Expert', cls: 'sb-badge--niv-c' };
+      return { text: raw || '–', cls: '' };
+    };
 
     const iconTrash = `
       <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1999,7 +2022,7 @@
       </svg>
     `;
 
-    const rows = items.map(x => {
+    const ownedRows = ownedItems.map(x => {
       const niveau = (x.niveau_actuel || '').trim() || '–';
       const lastEval = formatDateFR(x.date_derniere_eval);
       const idComp = (x.id_comp || '').toString().trim();
@@ -2012,8 +2035,9 @@
         <tr ${rowAttrs}>
           <td>
             <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              ${x.code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(x.code)}</span>` : ''}
+              ${x.code ? `<span class="sb-badge sb-badge--comp">${esc(x.code)}</span>` : ''}
               <div class="sb-comp-title">${esc(x.intitule || '')}</div>
+              ${x.is_required ? `<span class="sb-badge sb-badge--accent-soft">Requise par le poste</span>` : ''}
             </div>
           </td>
           <td style="text-align:center;">${esc(niveau)}</td>
@@ -2040,6 +2064,36 @@
       `;
     }).join('');
 
+    const missingRows = missingItems.map(x => {
+      const lvl = levelMeta(x.niveau_requis);
+      const idComp = (x.id_comp || '').toString().trim();
+
+      return `
+        <tr>
+          <td>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              ${x.code ? `<span class="sb-badge sb-badge--comp">${esc(x.code)}</span>` : ''}
+              <div class="sb-comp-title">${esc(x.intitule || '')}</div>
+            </div>
+          </td>
+          <td style="text-align:center;">
+            <span class="sb-badge sb-badge--niv ${lvl.cls}">${esc(lvl.text)}</span>
+          </td>
+          <td style="width:120px; text-align:center;">
+            <button
+              type="button"
+              class="sb-btn sb-btn--accent sb-btn--xs"
+              data-act="add-missing-skill"
+              data-id-comp="${esc(idComp)}"
+              data-niveau-requis="${esc(x.niveau_requis || '')}"
+            >
+              Ajouter
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
     host.innerHTML = `
       <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:0 0 10px 0;">
         <div class="card-sub" style="margin:0;">
@@ -2051,30 +2105,59 @@
             class="sb-btn sb-btn--poste-soft"
             id="btnSyncCollabSkillsFromPoste"
           >
-            Importer les compétences du poste
+            Importer toutes les compétences manquantes (${missingItems.length})
           </button>
         ` : ``}
       </div>
 
-      ${
-        items.length
-          ? `
-            <div class="sb-table-wrap">
-              <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
-                <thead>
-                  <tr>
-                    <th>Compétence</th>
-                    <th style="width:120px; text-align:center;">Niv. actuel</th>
-                    <th style="width:140px; text-align:center;">Dernière éval.</th>
-                    <th style="width:52px;"></th>
-                  </tr>
-                </thead>
-                <tbody>${rows}</tbody>
-              </table>
-            </div>
-          `
-          : `<div class="card-sub" style="margin:0;">Aucune compétence trouvée.</div>`
-      }
+      <div class="card" style="margin:0; padding:12px;">
+        <div class="card-title" style="margin:0 0 10px 0;">Compétences détenues par le collaborateur</div>
+        ${
+          ownedItems.length
+            ? `
+              <div class="sb-table-wrap">
+                <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
+                  <thead>
+                    <tr>
+                      <th>Compétence</th>
+                      <th style="width:120px; text-align:center;">Niv. actuel</th>
+                      <th style="width:140px; text-align:center;">Dernière éval.</th>
+                      <th style="width:52px;"></th>
+                    </tr>
+                  </thead>
+                  <tbody>${ownedRows}</tbody>
+                </table>
+              </div>
+            `
+            : `<div class="card-sub" style="margin:0;">Aucune compétence détenue.</div>`
+        }
+      </div>
+
+      <div class="card" style="margin:12px 0 0 0; padding:12px;">
+        <div class="card-title" style="margin:0 0 10px 0;">Compétences requises par le poste non importées</div>
+        ${
+          posteId
+            ? (
+              missingItems.length
+                ? `
+                  <div class="sb-table-wrap">
+                    <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
+                      <thead>
+                        <tr>
+                          <th>Compétence</th>
+                          <th style="width:160px; text-align:center;">Niveau requis</th>
+                          <th style="width:120px;"></th>
+                        </tr>
+                      </thead>
+                      <tbody>${missingRows}</tbody>
+                    </table>
+                  </div>
+                `
+                : `<div class="card-sub" style="margin:0;">Toutes les compétences requises du poste sont déjà détenues par le collaborateur.</div>`
+            )
+            : `<div class="card-sub" style="margin:0;">Aucun poste actuel sélectionné.</div>`
+        }
+      </div>
 
       ${
         canAdd
@@ -2115,6 +2198,24 @@
       });
     }
 
+    host.querySelectorAll('[data-act="add-missing-skill"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+          btn.disabled = true;
+          await addCompetenceToCollaborateur(portal, btn.getAttribute('data-id-comp'), {
+            niveau_actuel: btn.getAttribute('data-niveau-requis'),
+            closeModal: false,
+          });
+        } catch (e2) {
+          btn.disabled = false;
+          if (portal.showAlert) portal.showAlert('error', getErrorMessage(e2));
+        }
+      });
+    });
+
     host.querySelectorAll('[data-act="remove-skill"]').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -2153,7 +2254,7 @@
       });
     });
   }
-
+  
   function renderCertifications(data){
     const host = byId('collabCertsPanel');
     if (!host) return;

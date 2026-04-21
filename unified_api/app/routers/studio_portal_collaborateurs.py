@@ -1597,6 +1597,7 @@ class CollaborateurCompetenceRemovePayload(BaseModel):
 
 class CollaborateurCompetenceAddPayload(BaseModel):
     id_comp: Optional[str] = None
+    niveau_actuel: Optional[str] = None
 
 class CollaborateurCompetenceEvalCriterePayload(BaseModel):
     code_critere: str
@@ -1641,19 +1642,16 @@ def _normalize_skill_level_from_poste(value: Optional[str]) -> str:
          .replace("ü", "u")
     )
 
-    if s.startswith("exp"):
+    if s in ("c", "expert") or s.startswith("exp"):
         return "Expert"
-    if s.startswith("ava") or s.startswith("adv"):
+
+    if s in ("b", "avance", "advanced") or s.startswith("ava") or s.startswith("adv"):
         return "Avancé"
+
+    if s in ("a", "initial") or s.startswith("ini"):
+        return "Initial"
+
     return "Initial"
-
-
-def _score_for_skill_level(niveau: str) -> float:
-    if niveau == "Expert":
-        return 19.0
-    if niveau == "Avancé":
-        return 10.0
-    return 6.0
 
 
 def _get_effectif_competence_columns(cur) -> set:
@@ -1723,7 +1721,12 @@ def _insert_effectif_competence_row(cur, id_effectif_client: str, id_comp: str, 
     )
     return row_id
 
-def _insert_effectif_competence_row_empty(cur, id_effectif_client: str, id_comp: str) -> str:
+def _insert_effectif_competence_row_without_eval(
+    cur,
+    id_effectif_client: str,
+    id_comp: str,
+    niveau_actuel: Optional[str] = None,
+) -> str:
     cols = _get_effectif_competence_columns(cur)
 
     required = ("id_effectif_competence", "id_effectif_client", "id_comp", "id_dernier_audit")
@@ -1733,6 +1736,8 @@ def _insert_effectif_competence_row_empty(cur, id_effectif_client: str, id_comp:
             status_code=500,
             detail="tbl_effectif_client_competence incomplète : " + ", ".join(missing),
         )
+
+    niveau_norm = _normalize_skill_level_from_poste(niveau_actuel) if _norm_text(niveau_actuel) else None
 
     row_id = str(uuid.uuid4())
     insert_cols = []
@@ -1756,7 +1761,7 @@ def _insert_effectif_competence_row_empty(cur, id_effectif_client: str, id_comp:
     add_value("id_dernier_audit", None)
 
     if "niveau_actuel" in cols:
-        add_value("niveau_actuel", None)
+        add_value("niveau_actuel", niveau_norm)
 
     add_value("actif", True)
     add_value("archive", False)
@@ -1778,6 +1783,104 @@ def _insert_effectif_competence_row_empty(cur, id_effectif_client: str, id_comp:
         tuple(params),
     )
     return row_id
+
+def _upsert_effectif_competence_without_audit(
+    cur,
+    id_effectif_client: str,
+    id_comp: str,
+    niveau_actuel: Optional[str] = None,
+) -> dict:
+    cols = _get_effectif_competence_columns(cur)
+    niveau_norm = _normalize_skill_level_from_poste(niveau_actuel) if _norm_text(niveau_actuel) else None
+
+    archive_expr = "COALESCE(ecc.archive, FALSE)" if "archive" in cols else "FALSE"
+    actif_expr = "COALESCE(ecc.actif, TRUE)" if "actif" in cols else "TRUE"
+    order_expr = "COALESCE(ecc.dernier_update, NOW()) DESC" if "dernier_update" in cols else "ecc.id_effectif_competence DESC"
+
+    cur.execute(
+        f"""
+        SELECT
+          ecc.id_effectif_competence,
+          {archive_expr} AS archive_row,
+          {actif_expr} AS actif_row,
+          COALESCE(ecc.niveau_actuel, '') AS niveau_actuel_row
+        FROM public.tbl_effectif_client_competence ecc
+        WHERE ecc.id_effectif_client = %s
+          AND ecc.id_comp = %s
+        ORDER BY
+          {archive_expr} ASC,
+          {actif_expr} DESC,
+          {order_expr}
+        LIMIT 1
+        """,
+        (id_effectif_client, id_comp),
+    )
+    existing = cur.fetchone() or {}
+
+    existing_id = (existing.get("id_effectif_competence") or "").strip()
+    if existing_id and not bool(existing.get("archive_row")) and bool(existing.get("actif_row")):
+        return {
+            "id_effectif_competence": existing_id,
+            "action": "existing",
+            "already_exists": True,
+            "niveau_actuel": (existing.get("niveau_actuel_row") or "").strip() or niveau_norm,
+        }
+
+    if existing_id:
+        set_parts = []
+        params = []
+
+        if "niveau_actuel" in cols:
+            set_parts.append("niveau_actuel = %s")
+            params.append(niveau_norm)
+
+        if "id_dernier_audit" in cols:
+            set_parts.append("id_dernier_audit = %s")
+            params.append(None)
+
+        if "actif" in cols:
+            set_parts.append("actif = TRUE")
+
+        if "archive" in cols:
+            set_parts.append("archive = FALSE")
+
+        if "date_derniere_eval" in cols:
+            set_parts.append("date_derniere_eval = %s")
+            params.append(None)
+
+        if "dernier_update" in cols:
+            set_parts.append("dernier_update = NOW()")
+
+        params.append(existing_id)
+
+        cur.execute(
+            f"""
+            UPDATE public.tbl_effectif_client_competence
+            SET {", ".join(set_parts)}
+            WHERE id_effectif_competence = %s
+            """,
+            tuple(params),
+        )
+
+        return {
+            "id_effectif_competence": existing_id,
+            "action": "reactivated",
+            "already_exists": False,
+            "niveau_actuel": niveau_norm,
+        }
+
+    row_id = _insert_effectif_competence_row_without_eval(
+        cur,
+        id_effectif_client,
+        id_comp,
+        niveau_norm,
+    )
+    return {
+        "id_effectif_competence": row_id,
+        "action": "inserted",
+        "already_exists": False,
+        "niveau_actuel": niveau_norm,
+    }
 
 def _set_effectif_competence_last_audit(cur, id_effectif_competence: str, id_audit_competence: str, niveau_actuel: str) -> None:
     cols = _get_effectif_competence_columns(cur)
@@ -2479,76 +2582,158 @@ def studio_collab_competences(id_owner: str, id_collaborateur: str, request: Req
                 src = _resolve_owner_source(cur, oid)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
 
-                cur.execute(
-                    """
-                    WITH req AS (
-                        SELECT
-                            fpc.id_competence AS id_comp,
-                            fpc.niveau_requis,
-                            fpc.poids_criticite,
-                            fpc.freq_usage,
-                            fpc.impact_resultat,
-                            fpc.dependance
-                        FROM public.tbl_fiche_poste_competence fpc
-                        WHERE fpc.id_poste = %s
-                    ),
-                    curc AS (
+                id_poste = _norm_text(scope.get("id_poste_actuel"))
+                id_effectif_data = (scope.get("id_effectif_data") or "").strip()
+                if not id_effectif_data:
+                    raise HTTPException(status_code=400, detail="Identifiant salarié exploitable introuvable.")
+
+                ecc_cols = _get_effectif_competence_columns(cur)
+                active_filter = "COALESCE(ecc.actif, TRUE) = TRUE" if "actif" in ecc_cols else "TRUE"
+                archive_filter = "COALESCE(ecc.archive, FALSE) = FALSE" if "archive" in ecc_cols else "FALSE"
+
+                owned_rows = []
+                missing_rows = []
+
+                if id_poste:
+                    cur.execute(
+                        f"""
+                        WITH req AS (
+                            SELECT
+                                fpc.id_competence AS id_comp,
+                                fpc.niveau_requis,
+                                fpc.poids_criticite,
+                                fpc.freq_usage,
+                                fpc.impact_resultat,
+                                fpc.dependance
+                            FROM public.tbl_fiche_poste_competence fpc
+                            WHERE fpc.id_poste = %s
+                              AND COALESCE(fpc.masque, FALSE) = FALSE
+                        )
                         SELECT
                             ecc.id_effectif_competence,
-                            ecc.id_comp,
+                            c.id_comp,
+                            c.code,
+                            c.intitule,
+                            c.domaine,
+                            (req.id_comp IS NOT NULL) AS is_required,
+                            req.niveau_requis,
                             ecc.niveau_actuel,
                             ecc.date_derniere_eval,
-                            ecc.id_dernier_audit
+                            ecc.id_dernier_audit,
+                            req.poids_criticite,
+                            req.freq_usage,
+                            req.impact_resultat,
+                            req.dependance
                         FROM public.tbl_effectif_client_competence ecc
+                        JOIN public.tbl_competence c
+                          ON c.id_comp = ecc.id_comp
+                        LEFT JOIN req
+                          ON req.id_comp = c.id_comp
                         WHERE ecc.id_effectif_client = %s
-                          AND ecc.actif = TRUE
-                          AND ecc.archive = FALSE
+                          AND {active_filter}
+                          AND {archive_filter}
+                          AND COALESCE(c.masque, FALSE) = FALSE
+                          AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
+                        ORDER BY
+                          COALESCE(req.poids_criticite, 0) DESC,
+                          lower(COALESCE(c.intitule, ''))
+                        """,
+                        (id_poste, id_effectif_data),
                     )
-                    SELECT
-                        c.id_comp,
-                        c.code,
-                        c.intitule,
-                        c.domaine,
-                        (req.id_comp IS NOT NULL) AS is_required,
-                        req.niveau_requis,
-                        curc.id_effectif_competence,
-                        curc.niveau_actuel,
-                        curc.date_derniere_eval,
-                        curc.id_dernier_audit,
-                        req.poids_criticite,
-                        req.freq_usage,
-                        req.impact_resultat,
-                        req.dependance
-                    FROM public.tbl_competence c
-                    LEFT JOIN req
-                      ON req.id_comp = c.id_comp
-                    LEFT JOIN curc
-                      ON curc.id_comp = c.id_comp
-                    WHERE (req.id_comp IS NOT NULL OR curc.id_comp IS NOT NULL)
-                      AND COALESCE(c.masque, FALSE) = FALSE
-                      AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
-                    ORDER BY
-                      (req.id_comp IS NULL) ASC,
-                      COALESCE(req.poids_criticite, 0) DESC,
-                      c.intitule
-                    """,
-                    (scope["id_poste_actuel"], scope["id_effectif_data"]),
-                )
-                rows = cur.fetchall() or []
+                    owned_rows = cur.fetchall() or []
+
+                    cur.execute(
+                        f"""
+                        WITH req AS (
+                            SELECT
+                                fpc.id_competence AS id_comp,
+                                fpc.niveau_requis,
+                                fpc.poids_criticite,
+                                fpc.freq_usage,
+                                fpc.impact_resultat,
+                                fpc.dependance
+                            FROM public.tbl_fiche_poste_competence fpc
+                            WHERE fpc.id_poste = %s
+                              AND COALESCE(fpc.masque, FALSE) = FALSE
+                        )
+                        SELECT
+                            NULL AS id_effectif_competence,
+                            c.id_comp,
+                            c.code,
+                            c.intitule,
+                            c.domaine,
+                            TRUE AS is_required,
+                            req.niveau_requis,
+                            NULL AS niveau_actuel,
+                            NULL AS date_derniere_eval,
+                            NULL AS id_dernier_audit,
+                            req.poids_criticite,
+                            req.freq_usage,
+                            req.impact_resultat,
+                            req.dependance
+                        FROM req
+                        JOIN public.tbl_competence c
+                          ON c.id_comp = req.id_comp
+                         AND COALESCE(c.masque, FALSE) = FALSE
+                         AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
+                        LEFT JOIN public.tbl_effectif_client_competence ecc
+                          ON ecc.id_effectif_client = %s
+                         AND ecc.id_comp = req.id_comp
+                         AND {active_filter}
+                         AND {archive_filter}
+                        WHERE ecc.id_effectif_competence IS NULL
+                        ORDER BY
+                          COALESCE(req.poids_criticite, 0) DESC,
+                          lower(COALESCE(c.intitule, ''))
+                        """,
+                        (id_poste, id_effectif_data),
+                    )
+                    missing_rows = cur.fetchall() or []
+                else:
+                    cur.execute(
+                        f"""
+                        SELECT
+                            ecc.id_effectif_competence,
+                            c.id_comp,
+                            c.code,
+                            c.intitule,
+                            c.domaine,
+                            FALSE AS is_required,
+                            NULL AS niveau_requis,
+                            ecc.niveau_actuel,
+                            ecc.date_derniere_eval,
+                            ecc.id_dernier_audit,
+                            NULL AS poids_criticite,
+                            NULL AS freq_usage,
+                            NULL AS impact_resultat,
+                            NULL AS dependance
+                        FROM public.tbl_effectif_client_competence ecc
+                        JOIN public.tbl_competence c
+                          ON c.id_comp = ecc.id_comp
+                        WHERE ecc.id_effectif_client = %s
+                          AND {active_filter}
+                          AND {archive_filter}
+                          AND COALESCE(c.masque, FALSE) = FALSE
+                          AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
+                        ORDER BY lower(COALESCE(c.intitule, ''))
+                        """,
+                        (id_effectif_data,),
+                    )
+                    owned_rows = cur.fetchall() or []
 
                 domaine_ids = []
                 seen = set()
-                for rr in rows:
+                for rr in (owned_rows + missing_rows):
                     did = (rr.get("domaine") or "").strip()
                     if did and did not in seen:
                         seen.add(did)
                         domaine_ids.append(did)
                 domaine_map = _load_domaine_competence_map(cur, domaine_ids)
 
-        items = []
-        for r in rows:
+        owned_items = []
+        for r in owned_rows:
             dmeta = domaine_map.get((r.get("domaine") or "").strip(), {})
-            items.append(
+            owned_items.append(
                 {
                     "id_effectif_competence": r.get("id_effectif_competence"),
                     "id_comp": r.get("id_comp"),
@@ -2569,11 +2754,37 @@ def studio_collab_competences(id_owner: str, id_collaborateur: str, request: Req
                 }
             )
 
+        missing_required_items = []
+        for r in missing_rows:
+            dmeta = domaine_map.get((r.get("domaine") or "").strip(), {})
+            missing_required_items.append(
+                {
+                    "id_effectif_competence": None,
+                    "id_comp": r.get("id_comp"),
+                    "code": r.get("code"),
+                    "intitule": r.get("intitule"),
+                    "domaine": r.get("domaine"),
+                    "domaine_titre": dmeta.get("titre"),
+                    "domaine_couleur": dmeta.get("couleur"),
+                    "is_required": True,
+                    "niveau_requis": r.get("niveau_requis"),
+                    "niveau_actuel": None,
+                    "date_derniere_eval": None,
+                    "id_dernier_audit": None,
+                    "poids_criticite": r.get("poids_criticite"),
+                    "freq_usage": r.get("freq_usage"),
+                    "impact_resultat": r.get("impact_resultat"),
+                    "dependance": r.get("dependance"),
+                }
+            )
+
         return {
             "id_collaborateur": cid,
             "id_poste_actuel": scope.get("id_poste_actuel"),
             "intitule_poste": scope.get("intitule_poste"),
-            "items": items,
+            "items": owned_items,
+            "owned_items": owned_items,
+            "missing_required_items": missing_required_items,
         }
     except HTTPException:
         raise
@@ -2637,32 +2848,14 @@ def studio_collab_sync_competences_from_poste(
                     JOIN public.tbl_competence c
                       ON c.id_comp = fpc.id_competence
                      AND COALESCE(c.masque, FALSE) = FALSE
-                     AND COALESCE(c.etat, 'active') = 'active'
+                     AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
                     WHERE fpc.id_poste = %s
+                      AND COALESCE(fpc.masque, FALSE) = FALSE
                     ORDER BY COALESCE(fpc.poids_criticite, 0) DESC, c.intitule
                     """,
                     (id_poste,),
                 )
                 req_rows = cur.fetchall() or []
-
-                ecc_cols = _get_effectif_competence_columns(cur)
-                active_where = " AND COALESCE(ecc.actif, TRUE) = TRUE" if "actif" in ecc_cols else ""
-
-                cur.execute(
-                    f"""
-                    SELECT ecc.id_comp
-                    FROM public.tbl_effectif_client_competence ecc
-                    WHERE ecc.id_effectif_client = %s
-                      AND COALESCE(ecc.archive, FALSE) = FALSE
-                      {active_where}
-                    """,
-                    (id_effectif_data,),
-                )
-                existing_ids = {
-                    (r.get("id_comp") or "").strip()
-                    for r in (cur.fetchall() or [])
-                    if (r.get("id_comp") or "").strip()
-                }
 
                 inserted = 0
                 skipped_existing = 0
@@ -2672,50 +2865,18 @@ def studio_collab_sync_competences_from_poste(
                     if not id_comp:
                         continue
 
-                    if id_comp in existing_ids:
-                        skipped_existing += 1
-                        continue
-
                     niveau = _normalize_skill_level_from_poste(r.get("niveau_requis"))
-                    note = _score_for_skill_level(niveau)
-
-                    id_effectif_competence = _insert_effectif_competence_row(
+                    upsert_res = _upsert_effectif_competence_without_audit(
                         cur,
                         id_effectif_data,
                         id_comp,
                         niveau,
                     )
 
-                    id_audit = str(uuid.uuid4())
-                    cur.execute(
-                        """
-                        INSERT INTO public.tbl_effectif_client_audit_competence (
-                          id_audit_competence,
-                          id_effectif_competence,
-                          date_audit,
-                          methode_eval,
-                          resultat_eval
-                        ) VALUES (
-                          %s, %s, CURRENT_DATE, %s, %s
-                        )
-                        """,
-                        (
-                            id_audit,
-                            id_effectif_competence,
-                            "synchro_premier",
-                            note,
-                        ),
-                    )
-
-                    _set_effectif_competence_last_audit(
-                        cur,
-                        id_effectif_competence,
-                        id_audit,
-                        niveau,
-                    )
-
-                    existing_ids.add(id_comp)
-                    inserted += 1
+                    if upsert_res.get("already_exists"):
+                        skipped_existing += 1
+                    else:
+                        inserted += 1
 
                 conn.commit()
 
@@ -2785,89 +2946,17 @@ def studio_collab_add_competence(
                 if not comp:
                     raise HTTPException(status_code=404, detail="Compétence introuvable dans le catalogue owner.")
 
-                ecc_cols = _get_effectif_competence_columns(cur)
-
-                archive_expr = "COALESCE(archive, FALSE)" if "archive" in ecc_cols else "FALSE"
-                actif_expr = "COALESCE(actif, TRUE)" if "actif" in ecc_cols else "TRUE"
-                order_expr = "COALESCE(dernier_update, NOW()) DESC" if "dernier_update" in ecc_cols else "id_effectif_competence DESC"
-
-                cur.execute(
-                    f"""
-                    SELECT
-                      id_effectif_competence,
-                      {archive_expr} AS archive_row,
-                      {actif_expr} AS actif_row
-                    FROM public.tbl_effectif_client_competence
-                    WHERE id_effectif_client = %s
-                      AND id_comp = %s
-                    ORDER BY
-                      {archive_expr} ASC,
-                      {actif_expr} DESC,
-                      {order_expr}
-                    LIMIT 1
-                    """,
-                    (id_effectif_data, id_comp),
+                # Réutilisation stricte de la logique métier existante :
+                # - si la compétence existe déjà active : on ne la recrée pas
+                # - si elle existait archivée/inactive : on la réactive
+                # - si un niveau est fourni (cas import depuis poste), il est appliqué
+                # - aucune date de dernière évaluation n'est renseignée
+                upsert_res = _upsert_effectif_competence_without_audit(
+                    cur,
+                    id_effectif_data,
+                    id_comp,
+                    payload.niveau_actuel,
                 )
-                existing = cur.fetchone() or {}
-
-                if existing.get("id_effectif_competence") and not bool(existing.get("archive_row")) and bool(existing.get("actif_row")):
-                    return {
-                        "ok": True,
-                        "id_collaborateur": cid,
-                        "id_effectif_data": id_effectif_data,
-                        "id_comp": id_comp,
-                        "code": (comp.get("code") or "").strip(),
-                        "intitule": (comp.get("intitule") or "").strip(),
-                        "inserted": False,
-                        "already_exists": True,
-                        "niveau_actuel": None,
-                    }
-
-                if existing.get("id_effectif_competence"):
-                    id_effectif_competence = (existing.get("id_effectif_competence") or "").strip()
-
-                    set_parts = []
-                    params = []
-
-                    if "niveau_actuel" in ecc_cols:
-                        set_parts.append("niveau_actuel = %s")
-                        params.append(None)
-
-                    if "id_dernier_audit" in ecc_cols:
-                        set_parts.append("id_dernier_audit = %s")
-                        params.append(None)
-
-                    if "actif" in ecc_cols:
-                        set_parts.append("actif = TRUE")
-
-                    if "archive" in ecc_cols:
-                        set_parts.append("archive = FALSE")
-
-                    if "date_derniere_eval" in ecc_cols:
-                        set_parts.append("date_derniere_eval = %s")
-                        params.append(None)
-
-                    if "dernier_update" in ecc_cols:
-                        set_parts.append("dernier_update = NOW()")
-
-                    params.append(id_effectif_competence)
-
-                    cur.execute(
-                        f"""
-                        UPDATE public.tbl_effectif_client_competence
-                        SET {", ".join(set_parts)}
-                        WHERE id_effectif_competence = %s
-                        """,
-                        tuple(params),
-                    )
-                    action = "reactivated"
-                else:
-                    _insert_effectif_competence_row_empty(
-                        cur,
-                        id_effectif_data,
-                        id_comp,
-                    )
-                    action = "inserted"
 
                 conn.commit()
 
@@ -2878,10 +2967,10 @@ def studio_collab_add_competence(
             "id_comp": id_comp,
             "code": (comp.get("code") or "").strip(),
             "intitule": (comp.get("intitule") or "").strip(),
-            "inserted": True,
-            "already_exists": False,
-            "action": action,
-            "niveau_actuel": None,
+            "inserted": not bool(upsert_res.get("already_exists")),
+            "already_exists": bool(upsert_res.get("already_exists")),
+            "action": upsert_res.get("action"),
+            "niveau_actuel": upsert_res.get("niveau_actuel"),
         }
 
     except HTTPException:
