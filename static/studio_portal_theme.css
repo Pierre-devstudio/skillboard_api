@@ -786,27 +786,43 @@
 
 .sb-skill-col-level{
   width:104px;
-  text-align:center;
+  text-align:center !important;
 }
 
 .sb-skill-col-date{
   width:112px;
-  text-align:center;
+  text-align:center !important;
 }
 
 .sb-skill-col-required{
   width:128px;
-  text-align:center;
+  text-align:center !important;
 }
 
 .sb-skill-col-action{
   width:92px;
-  text-align:center;
+  text-align:center !important;
 }
 
 .sb-skill-col-actions{
   width:92px;
-  text-align:right;
+  text-align:right !important;
+}
+
+.sb-skill-table thead th.sb-skill-col-level,
+.sb-skill-table tbody td.sb-skill-col-level,
+.sb-skill-table thead th.sb-skill-col-date,
+.sb-skill-table tbody td.sb-skill-col-date,
+.sb-skill-table thead th.sb-skill-col-required,
+.sb-skill-table tbody td.sb-skill-col-required,
+.sb-skill-table thead th.sb-skill-col-action,
+.sb-skill-table tbody td.sb-skill-col-action{
+  text-align:center !important;
+}
+
+.sb-skill-table thead th.sb-skill-col-actions,
+.sb-skill-table tbody td.sb-skill-col-actions{
+  text-align:right !important;
 }
 
 .sb-skill-actions{
