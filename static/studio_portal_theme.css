@@ -571,16 +571,27 @@
 .sb-comp-cell{
   display:flex;
   align-items:center;
-  gap:10px;
+  gap:8px;
   min-width:0;
+  width:100%;
+  flex-wrap:nowrap;
+}
+
+.sb-comp-cell > .sb-badge,
+.sb-comp-cell > .sb-badge-ref-comp-code{
+  flex:0 0 auto;
 }
 
 .sb-comp-cell__title{
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
   font-size:14px;
   font-weight:600;
   color:#111827;
   line-height:1.35;
-  min-width:0;
 }
 
 /* ======================================================
@@ -756,6 +767,61 @@
   background:#e0ebff;
   border-color:#6f8fd0;
   color:#1e3570;
+}
+
+/* Tables compétences collaborateur */
+.sb-skill-table{
+  width:100%;
+  table-layout:fixed;
+}
+
+.sb-skill-table th,
+.sb-skill-table td{
+  vertical-align:middle;
+}
+
+.sb-skill-col-competence{
+  width:auto;
+}
+
+.sb-skill-col-level{
+  width:104px;
+  text-align:center;
+}
+
+.sb-skill-col-date{
+  width:112px;
+  text-align:center;
+}
+
+.sb-skill-col-required{
+  width:128px;
+  text-align:center;
+}
+
+.sb-skill-col-action{
+  width:92px;
+  text-align:center;
+}
+
+.sb-skill-col-actions{
+  width:92px;
+  text-align:right;
+}
+
+.sb-skill-actions{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:6px;
+}
+
+.sb-skill-table .sb-comp-cell{
+  width:100%;
+}
+
+.sb-skill-table .sb-comp-cell__title{
+  display:block;
 }
 
 /* Bouton documentaire (CORE)

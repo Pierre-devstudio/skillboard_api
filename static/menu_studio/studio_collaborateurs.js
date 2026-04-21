@@ -1989,10 +1989,11 @@
     if (!host) return;
 
     const ownedItems = Array.isArray(data?.owned_items)
-      ? data.owned_items
-      : (Array.isArray(data?.items) ? data.items : []);
+      ? data.owned_items.slice()
+      : (Array.isArray(data?.items) ? data.items.slice() : []);
+
     const missingItems = Array.isArray(data?.missing_required_items)
-      ? data.missing_required_items
+      ? data.missing_required_items.slice()
       : [];
 
     _collabSkillItems = ownedItems.slice();
@@ -2005,11 +2006,57 @@
 
     const levelMeta = (niv) => {
       const raw = String(niv || '').trim();
-      const v = raw.toUpperCase();
-      if (v === 'A' || raw.toLowerCase() === 'initial') return { text: 'A - Initial', cls: 'sb-badge--niv-a' };
-      if (v === 'B' || raw.toLowerCase() === 'avancé' || raw.toLowerCase() === 'avance') return { text: 'B - Avancé', cls: 'sb-badge--niv-b' };
-      if (v === 'C' || raw.toLowerCase() === 'expert') return { text: 'C - Expert', cls: 'sb-badge--niv-c' };
-      return { text: raw || '–', cls: '' };
+      const norm = raw.toUpperCase();
+
+      if (!raw || raw === '—' || raw === '-') {
+        return { text: '—', cls: 'sb-badge--outline-accent' };
+      }
+
+      if (norm === 'A' || raw.toLowerCase() === 'initial') {
+        return { text: 'A - Initial', cls: 'sb-badge--niv sb-badge--niv-a' };
+      }
+      if (norm === 'B' || raw.toLowerCase() === 'avancé' || raw.toLowerCase() === 'avance') {
+        return { text: 'B - Avancé', cls: 'sb-badge--niv sb-badge--niv-b' };
+      }
+      if (norm === 'C' || raw.toLowerCase() === 'expert') {
+        return { text: 'C - Expert', cls: 'sb-badge--niv sb-badge--niv-c' };
+      }
+
+      return { text: raw, cls: 'sb-badge--outline-accent' };
+    };
+
+    const critValue = (item) => {
+      const n = parseInt(
+        item?.poids_criticite ??
+        item?.poidsCriticite ??
+        item?.criticite ??
+        0,
+        10
+      );
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const sortByCriticite = (a, b) => {
+      const diff = critValue(b) - critValue(a);
+      if (diff !== 0) return diff;
+
+      return String(a?.intitule || '').localeCompare(
+        String(b?.intitule || ''),
+        'fr',
+        { sensitivity: 'base' }
+      );
+    };
+
+    const sortedMissingItems = missingItems.slice().sort(sortByCriticite);
+
+    const buildCompCell = (code, intitule) => {
+      const title = String(intitule || '').trim();
+      return `
+        <div class="sb-comp-cell">
+          ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ''}
+          <div class="sb-comp-cell__title" title="${esc(title)}">${esc(title)}</div>
+        </div>
+      `;
     };
 
     const iconTrash = `
@@ -2022,70 +2069,94 @@
       </svg>
     `;
 
+    const iconEval = `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 11l3 3L22 4"/>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+    `;
+
     const ownedRows = ownedItems.map(x => {
-      const niveau = (x.niveau_actuel || '').trim() || '–';
       const lastEval = formatDateFR(x.date_derniere_eval);
       const idComp = (x.id_comp || '').toString().trim();
       const idEffectifComp = (x.id_effectif_competence || '').toString().trim();
+      const lvl = levelMeta(x.niveau_actuel);
       const rowAttrs = idEffectifComp
         ? `class="sb-table-row-clickable" data-act="open-skill-eval" data-id-effectif-comp="${esc(idEffectifComp)}" tabindex="0"`
         : '';
 
       return `
         <tr ${rowAttrs}>
-          <td>
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              ${x.code ? `<span class="sb-badge sb-badge--comp">${esc(x.code)}</span>` : ''}
-              <div class="sb-comp-title">${esc(x.intitule || '')}</div>
-              ${x.is_required ? `<span class="sb-badge sb-badge--accent-soft">Requise par le poste</span>` : ''}
-            </div>
+          <td class="sb-skill-col-competence">
+            ${buildCompCell(x.code || '', x.intitule || '')}
           </td>
-          <td style="text-align:center;">${esc(niveau)}</td>
-          <td style="text-align:center;">${esc(lastEval)}</td>
-          <td style="width:52px; text-align:center;">
-            ${
-              idComp
-                ? `
-                  <button
-                    type="button"
-                    class="sb-icon-btn sb-icon-btn--danger"
-                    data-act="remove-skill"
-                    data-id-comp="${esc(idComp)}"
-                    title="Retirer la compétence"
-                    aria-label="Retirer la compétence"
-                  >
-                    ${iconTrash}
-                  </button>
-                `
-                : ``
-            }
+          <td class="sb-skill-col-level">
+            <span class="sb-badge ${lvl.cls}">${esc(lvl.text)}</span>
+          </td>
+          <td class="sb-skill-col-date">
+            ${esc(lastEval)}
+          </td>
+          <td class="sb-skill-col-actions">
+            <div class="sb-skill-actions">
+              ${
+                idEffectifComp
+                  ? `
+                    <button
+                      type="button"
+                      class="sb-icon-btn sb-icon-btn--doc"
+                      data-act="open-skill-eval-btn"
+                      data-id-effectif-comp="${esc(idEffectifComp)}"
+                      title="Évaluer la compétence"
+                      aria-label="Évaluer la compétence"
+                    >
+                      ${iconEval}
+                    </button>
+                  `
+                  : ``
+              }
+              ${
+                idComp
+                  ? `
+                    <button
+                      type="button"
+                      class="sb-icon-btn sb-icon-btn--danger"
+                      data-act="remove-skill"
+                      data-id-comp="${esc(idComp)}"
+                      title="Retirer la compétence"
+                      aria-label="Retirer la compétence"
+                    >
+                      ${iconTrash}
+                    </button>
+                  `
+                  : ``
+              }
+            </div>
           </td>
         </tr>
       `;
     }).join('');
 
-    const missingRows = missingItems.map(x => {
+    const missingRows = sortedMissingItems.map(x => {
       const lvl = levelMeta(x.niveau_requis);
       const idComp = (x.id_comp || '').toString().trim();
 
       return `
         <tr>
-          <td>
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              ${x.code ? `<span class="sb-badge sb-badge--comp">${esc(x.code)}</span>` : ''}
-              <div class="sb-comp-title">${esc(x.intitule || '')}</div>
-            </div>
+          <td class="sb-skill-col-competence">
+            ${buildCompCell(x.code || '', x.intitule || '')}
           </td>
-          <td style="text-align:center;">
-            <span class="sb-badge sb-badge--niv ${lvl.cls}">${esc(lvl.text)}</span>
+          <td class="sb-skill-col-required">
+            <span class="sb-badge ${lvl.cls}">${esc(lvl.text)}</span>
           </td>
-          <td style="width:120px; text-align:center;">
+          <td class="sb-skill-col-action">
             <button
               type="button"
               class="sb-btn sb-btn--accent sb-btn--xs"
               data-act="add-missing-skill"
               data-id-comp="${esc(idComp)}"
               data-niveau-requis="${esc(x.niveau_requis || '')}"
+              title="Ajouter cette compétence au collaborateur"
+              aria-label="Ajouter cette compétence au collaborateur"
             >
               Ajouter
             </button>
@@ -2105,7 +2176,7 @@
             class="sb-btn sb-btn--poste-soft"
             id="btnSyncCollabSkillsFromPoste"
           >
-            Importer toutes les compétences manquantes (${missingItems.length})
+            Importer toutes les compétences manquantes (${sortedMissingItems.length})
           </button>
         ` : ``}
       </div>
@@ -2116,13 +2187,13 @@
           ownedItems.length
             ? `
               <div class="sb-table-wrap">
-                <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
+                <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-skill-table">
                   <thead>
                     <tr>
-                      <th>Compétence</th>
-                      <th style="width:120px; text-align:center;">Niv. actuel</th>
-                      <th style="width:140px; text-align:center;">Dernière éval.</th>
-                      <th style="width:52px;"></th>
+                      <th class="sb-skill-col-competence">Compétence</th>
+                      <th class="sb-skill-col-level">Niv. actuel</th>
+                      <th class="sb-skill-col-date">Dernière éval.</th>
+                      <th class="sb-skill-col-actions"></th>
                     </tr>
                   </thead>
                   <tbody>${ownedRows}</tbody>
@@ -2138,15 +2209,15 @@
         ${
           posteId
             ? (
-              missingItems.length
+              sortedMissingItems.length
                 ? `
                   <div class="sb-table-wrap">
-                    <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
+                    <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-skill-table">
                       <thead>
                         <tr>
-                          <th>Compétence</th>
-                          <th style="width:160px; text-align:center;">Niveau requis</th>
-                          <th style="width:120px;"></th>
+                          <th class="sb-skill-col-competence">Compétence</th>
+                          <th class="sb-skill-col-required">Niveau requis</th>
+                          <th class="sb-skill-col-action"></th>
                         </tr>
                       </thead>
                       <tbody>${missingRows}</tbody>
@@ -2231,6 +2302,19 @@
       });
     });
 
+    host.querySelectorAll('[data-act="open-skill-eval-btn"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+          await openCollabSkillEvalModal(portal, btn.getAttribute('data-id-effectif-comp'));
+        } catch (err) {
+          if (portal.showAlert) portal.showAlert('error', getErrorMessage(err));
+        }
+      });
+    });
+
     host.querySelectorAll('[data-act="open-skill-eval"]').forEach(row => {
       row.addEventListener('click', async (e) => {
         if (e.target.closest('button')) return;
@@ -2254,7 +2338,7 @@
       });
     });
   }
-  
+
   function renderCertifications(data){
     const host = byId('collabCertsPanel');
     if (!host) return;
