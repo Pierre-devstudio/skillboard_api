@@ -1303,7 +1303,7 @@
     }
 
     el.textContent = text;
-    el.style.display = "inline-flex";
+    el.style.display = "inline-block";
   }
 
   function openModal(id){
@@ -2530,7 +2530,6 @@
       });
     }
 
-    await loadContext(portal);
     await loadGlobalStats(portal);
     await loadList(portal);
 
@@ -2538,7 +2537,7 @@
       closeModal('modalCollaborateur');
     } else {
       refreshModalSendButton();
-      setCollabSaveMsg("Enregistré avec succès");
+      setCollabSaveMsg('Enregistré avec succès');
     }
 
     return _editingId || data?.id_collaborateur || null;
@@ -2677,16 +2676,10 @@
     byId('btnCloseCollaborateur')?.addEventListener('click', () => closeModal('modalCollaborateur'));
     byId('btnCollabCancel')?.addEventListener('click', () => closeModal('modalCollaborateur'));
 
-    byId('modalCollaborateur')?.addEventListener('input', (e) => {
-      if (e.target?.closest('input, textarea, select')) {
-        setCollabSaveMsg('');
-      }
-    });
-
-    byId('modalCollaborateur')?.addEventListener('change', (e) => {
-      if (e.target?.closest('input, textarea, select')) {
-        setCollabSaveMsg('');
-      }
+    byId('modalCollaborateur')?.addEventListener('click', (e) => {
+      const saveBtn = byId('btnCollabSave');
+      if (saveBtn && (e.target === saveBtn || saveBtn.contains(e.target))) return;
+      setCollabSaveMsg('');
     });
 
     byId('btnCollabSave')?.addEventListener('click', async () => {

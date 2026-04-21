@@ -1361,23 +1361,13 @@
   flex-wrap:wrap;
 }
 
-.sb-inline-status{
-  display:inline-flex;
-  align-items:center;
-  min-height:32px;
-  padding:6px 10px;
-  border-radius:10px;
-  border:1px solid transparent;
-  font-size:12px;
-  font-weight:600;
+.sb-save-inline-msg{
+  display:inline-block;
+  font-size:10px;
+  font-weight:400;
+  color:#0a7a2f;
   line-height:1.2;
   white-space:nowrap;
-}
-
-.sb-inline-status--success{
-  border-color: rgba(10, 122, 47, 0.678);
-  background: rgba(10,122,47,.08);
-  color:#0a7a2f;
 }
 
 /* ======================================================
