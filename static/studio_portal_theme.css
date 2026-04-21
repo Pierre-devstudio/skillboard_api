@@ -944,7 +944,7 @@
 
 #posteCompTable th:nth-child(2),
 #posteCompTable td:nth-child(2){
-  width:84px;
+  width:96px;
   text-align:center !important;
 }
 
