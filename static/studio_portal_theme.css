@@ -769,79 +769,143 @@
   color:#1e3570;
 }
 
-/* Tables compétences collaborateur */
-.sb-skill-table{
+/* ======================================================
+   Collaborateurs > Modal > Onglet Compétences
+   Styles DÉDIÉS - isolés pour ne toucher aucune autre table
+   ====================================================== */
+
+.sb-collab-skills-table{
   width:100%;
   table-layout:fixed;
 }
 
-.sb-skill-table th,
-.sb-skill-table td{
+.sb-collab-skills-table th,
+.sb-collab-skills-table td{
   vertical-align:middle;
 }
 
-.sb-skill-col-indicator{
-  width:22px;
-  min-width:22px;
-  max-width:22px;
-  text-align:center !important;
+.sb-collab-skills-table--owned .sb-collab-skill-col-indicator{
+  width:14px;
+  min-width:14px;
+  max-width:14px;
+  text-align:center;
 }
 
-.sb-skill-col-competence{
+.sb-collab-skills-table--owned th.sb-collab-skill-col-indicator,
+.sb-collab-skills-table--owned td.sb-collab-skill-col-indicator{
+  padding-left:0;
+  padding-right:0;
+}
+
+.sb-collab-skills-table--owned .sb-collab-skill-col-competence{
   width:auto;
 }
 
-.sb-skill-col-level{
-  width:104px;
-  text-align:center !important;
+.sb-collab-skills-table--owned .sb-collab-skill-col-level{
+  width:76px;
+  text-align:center;
 }
 
-.sb-skill-col-date{
-  width:112px;
-  text-align:center !important;
+.sb-collab-skills-table--owned .sb-collab-skill-col-date{
+  width:74px;
+  text-align:center;
 }
 
-.sb-skill-col-required{
-  width:128px;
-  text-align:center !important;
+.sb-collab-skills-table--owned .sb-collab-skill-col-actions{
+  width:98px;
+  text-align:right;
 }
 
-.sb-skill-col-action{
-  width:92px;
-  text-align:center !important;
+.sb-collab-skills-table--required .sb-collab-skill-col-competence{
+  width:auto;
 }
 
-.sb-skill-col-actions{
-  width:92px;
-  text-align:right !important;
+.sb-collab-skills-table--required .sb-collab-skill-col-required{
+  width:74px;
+  text-align:center;
 }
 
-.sb-skill-table thead th.sb-skill-col-indicator,
-.sb-skill-table tbody td.sb-skill-col-indicator,
-.sb-skill-table thead th.sb-skill-col-level,
-.sb-skill-table tbody td.sb-skill-col-level,
-.sb-skill-table thead th.sb-skill-col-date,
-.sb-skill-table tbody td.sb-skill-col-date,
-.sb-skill-table thead th.sb-skill-col-required,
-.sb-skill-table tbody td.sb-skill-col-required,
-.sb-skill-table thead th.sb-skill-col-action,
-.sb-skill-table tbody td.sb-skill-col-action{
-  text-align:center !important;
+.sb-collab-skills-table--required .sb-collab-skill-col-action{
+  width:72px;
+  text-align:center;
 }
 
-.sb-skill-table thead th.sb-skill-col-actions,
-.sb-skill-table tbody td.sb-skill-col-actions{
-  text-align:right !important;
+.sb-collab-skills-table thead th.sb-collab-skill-col-indicator,
+.sb-collab-skills-table tbody td.sb-collab-skill-col-indicator,
+.sb-collab-skills-table thead th.sb-collab-skill-col-level,
+.sb-collab-skills-table tbody td.sb-collab-skill-col-level,
+.sb-collab-skills-table thead th.sb-collab-skill-col-date,
+.sb-collab-skills-table tbody td.sb-collab-skill-col-date,
+.sb-collab-skills-table thead th.sb-collab-skill-col-required,
+.sb-collab-skills-table tbody td.sb-collab-skill-col-required,
+.sb-collab-skills-table thead th.sb-collab-skill-col-action,
+.sb-collab-skills-table tbody td.sb-collab-skill-col-action{
+  text-align:center;
 }
 
-.sb-skill-actions{
+.sb-collab-skills-table thead th.sb-collab-skill-col-actions,
+.sb-collab-skills-table tbody td.sb-collab-skill-col-actions{
+  text-align:right;
+}
+
+.sb-collab-skill-cell{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  width:100%;
+  flex-wrap:nowrap;
+}
+
+.sb-collab-skill-cell > .sb-badge{
+  flex:0 0 auto;
+}
+
+.sb-collab-skill-title{
+  flex:1 1 auto;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:14px;
+  font-weight:600;
+  color:#111827;
+  line-height:1.35;
+}
+
+.sb-collab-skill-date{
+  font-size:11px;
+  line-height:1.15;
+  color:#334155;
+  white-space:nowrap;
+}
+
+.sb-collab-skill-actions{
   display:flex;
   justify-content:flex-end;
   align-items:center;
-  gap:6px;
+  gap:3px;
 }
 
-.sb-skill-required-dot{
+.sb-collab-skill-actions .sb-icon-btn{
+  width:28px;
+  height:28px;
+  border-radius:9px;
+}
+
+.sb-collab-skill-actions .sb-icon-btn svg{
+  width:13px;
+  height:13px;
+}
+
+.sb-collab-skill-indicator{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+}
+
+.sb-collab-skill-required-dot{
   width:10px;
   height:10px;
   min-width:10px;
@@ -853,24 +917,46 @@
   vertical-align:middle;
 }
 
-.sb-skill-required-dot[title]{
+.sb-collab-skill-required-dot[title]{
   cursor:help;
 }
 
-.sb-skill-indicator{
-  display:flex;
+.sb-badge.sb-collab-level-badge{
+  min-width:0;
+  height:18px;
+  padding:0 7px;
+  border-radius:999px;
+  display:inline-flex;
   align-items:center;
   justify-content:center;
-  width:100%;
+  background:transparent;
+  font-weight:600;
+  font-size:10.5px;
+  line-height:1;
+  box-sizing:border-box;
+  white-space:nowrap;
 }
 
-.sb-skill-table .sb-comp-cell{
-  width:100%;
+.sb-badge.sb-collab-level-badge--a{
+  border:1px solid color-mix(in srgb, rgb(226, 114, 9) 55%, transparent);
+  color:color-mix(in srgb, rgb(226, 114, 9) 55%, transparent);
 }
 
-.sb-skill-table .sb-comp-cell__title{
-  display:block;
+.sb-badge.sb-collab-level-badge--b{
+  border:1px solid color-mix(in srgb, rgb(226, 114, 9) 85%, transparent);
+  color:color-mix(in srgb, rgb(226, 114, 9) 85%, transparent);
 }
+
+.sb-badge.sb-collab-level-badge--c{
+  border:1px solid rgb(226, 114, 9);
+  color:rgb(226, 114, 9);
+}
+
+.sb-badge.sb-collab-level-badge--empty{
+  border:1px solid rgba(148,163,184,.45);
+  color:#64748b;
+}
+
 
 /* Bouton documentaire (CORE)
    Pour les actions de consultation / ouverture de document / PDF */

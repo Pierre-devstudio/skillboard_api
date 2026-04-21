@@ -2009,20 +2009,20 @@
       const norm = raw.toUpperCase();
 
       if (!raw || raw === '—' || raw === '-') {
-        return { text: '—', cls: 'sb-badge--outline-accent' };
+        return { text: '—', cls: 'sb-collab-level-badge sb-collab-level-badge--empty' };
       }
 
       if (norm === 'A' || raw.toLowerCase() === 'initial') {
-        return { text: 'A - Initial', cls: 'sb-badge--niv sb-badge--niv-a' };
+        return { text: 'Initial', cls: 'sb-collab-level-badge sb-collab-level-badge--a' };
       }
       if (norm === 'B' || raw.toLowerCase() === 'avancé' || raw.toLowerCase() === 'avance') {
-        return { text: 'B - Avancé', cls: 'sb-badge--niv sb-badge--niv-b' };
+        return { text: 'Avancé', cls: 'sb-collab-level-badge sb-collab-level-badge--b' };
       }
       if (norm === 'C' || raw.toLowerCase() === 'expert') {
-        return { text: 'C - Expert', cls: 'sb-badge--niv sb-badge--niv-c' };
+        return { text: 'Expert', cls: 'sb-collab-level-badge sb-collab-level-badge--c' };
       }
 
-      return { text: raw, cls: 'sb-badge--outline-accent' };
+      return { text: raw, cls: 'sb-collab-level-badge sb-collab-level-badge--empty' };
     };
 
     const critValue = (item) => {
@@ -2052,12 +2052,28 @@
     const buildCompCell = (code, intitule) => {
       const title = String(intitule || '').trim();
       return `
-        <div class="sb-comp-cell">
-          ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ''}
-          <div class="sb-comp-cell__title" title="${esc(title)}">${esc(title)}</div>
+        <div class="sb-collab-skill-cell">
+          ${code ? `<span class="sb-badge sb-badge--comp">${esc(code)}</span>` : ''}
+          <div class="sb-collab-skill-title" title="${esc(title)}">${esc(title)}</div>
         </div>
       `;
     };
+
+    const iconPdf = `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 2v6h6"/>
+        <path d="M8.5 15.5h7"/>
+        <path d="M8.5 18.5h5"/>
+      </svg>
+    `;
+
+    const iconEval = `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 11l3 3L22 4"/>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+    `;
 
     const iconTrash = `
       <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2066,13 +2082,6 @@
         <path d="M10 11v6"/>
         <path d="M14 11v6"/>
         <path d="M9 6V4h6v2"/>
-      </svg>
-    `;
-
-    const iconEval = `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 11l3 3L22 4"/>
-        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
       </svg>
     `;
 
@@ -2089,13 +2098,13 @@
 
       return `
         <tr ${rowAttrs}>
-          <td class="sb-skill-col-indicator">
+          <td class="sb-collab-skill-col-indicator">
             ${
               isRequiredByPoste
                 ? `
-                  <div class="sb-skill-indicator">
+                  <div class="sb-collab-skill-indicator">
                     <span
-                      class="sb-skill-required-dot"
+                      class="sb-collab-skill-required-dot"
                       title="Requis par le poste actuel"
                       aria-label="Requis par le poste actuel"
                     ></span>
@@ -2104,17 +2113,33 @@
                 : ``
             }
           </td>
-          <td class="sb-skill-col-competence">
+          <td class="sb-collab-skill-col-competence">
             ${buildCompCell(x.code || '', x.intitule || '')}
           </td>
-          <td class="sb-skill-col-level">
+          <td class="sb-collab-skill-col-level">
             <span class="sb-badge ${lvl.cls}">${esc(lvl.text)}</span>
           </td>
-          <td class="sb-skill-col-date">
-            ${esc(lastEval)}
+          <td class="sb-collab-skill-col-date">
+            <span class="sb-collab-skill-date">${esc(lastEval)}</span>
           </td>
-          <td class="sb-skill-col-actions">
-            <div class="sb-skill-actions">
+          <td class="sb-collab-skill-col-actions">
+            <div class="sb-collab-skill-actions">
+              ${
+                idComp
+                  ? `
+                    <button
+                      type="button"
+                      class="sb-icon-btn sb-icon-btn--doc"
+                      data-act="open-skill-sheet-btn"
+                      data-id-comp="${esc(idComp)}"
+                      title="Voir la fiche"
+                      aria-label="Voir la fiche"
+                    >
+                      ${iconPdf}
+                    </button>
+                  `
+                  : ``
+              }
               ${
                 idEffectifComp
                   ? `
@@ -2159,13 +2184,13 @@
 
       return `
         <tr>
-          <td class="sb-skill-col-competence">
+          <td class="sb-collab-skill-col-competence">
             ${buildCompCell(x.code || '', x.intitule || '')}
           </td>
-          <td class="sb-skill-col-required">
+          <td class="sb-collab-skill-col-required">
             <span class="sb-badge ${lvl.cls}">${esc(lvl.text)}</span>
           </td>
-          <td class="sb-skill-col-action">
+          <td class="sb-collab-skill-col-action">
             <button
               type="button"
               class="sb-btn sb-btn--accent sb-btn--xs"
@@ -2204,14 +2229,14 @@
           ownedItems.length
             ? `
               <div class="sb-table-wrap">
-                <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-skill-table">
+                <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-skills-table sb-collab-skills-table--owned">
                   <thead>
                     <tr>
-                      <th class="sb-skill-col-indicator"></th>
-                      <th class="sb-skill-col-competence">Compétence</th>
-                      <th class="sb-skill-col-level">Niv. actuel</th>
-                      <th class="sb-skill-col-date">Dernière éval.</th>
-                      <th class="sb-skill-col-actions"></th>
+                      <th class="sb-collab-skill-col-indicator"></th>
+                      <th class="sb-collab-skill-col-competence">Compétence</th>
+                      <th class="sb-collab-skill-col-level">Niv. actuel</th>
+                      <th class="sb-collab-skill-col-date">Dernière éval.</th>
+                      <th class="sb-collab-skill-col-actions"></th>
                     </tr>
                   </thead>
                   <tbody>${ownedRows}</tbody>
@@ -2230,12 +2255,12 @@
               sortedMissingItems.length
                 ? `
                   <div class="sb-table-wrap">
-                    <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-skill-table">
+                    <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-skills-table sb-collab-skills-table--required">
                       <thead>
                         <tr>
-                          <th class="sb-skill-col-competence">Compétence</th>
-                          <th class="sb-skill-col-required">Niveau requis</th>
-                          <th class="sb-skill-col-action"></th>
+                          <th class="sb-collab-skill-col-competence">Compétence</th>
+                          <th class="sb-collab-skill-col-required">Niveau requis</th>
+                          <th class="sb-collab-skill-col-action"></th>
                         </tr>
                       </thead>
                       <tbody>${missingRows}</tbody>
@@ -2317,6 +2342,13 @@
           btn.disabled = false;
           if (portal.showAlert) portal.showAlert('error', getErrorMessage(e2));
         }
+      });
+    });
+
+    host.querySelectorAll('[data-act="open-skill-sheet-btn"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
       });
     });
 
