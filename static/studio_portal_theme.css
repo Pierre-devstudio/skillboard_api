@@ -776,19 +776,22 @@
    ====================================================== */
 
 .sb-table-th-2l{
-  display:inline-block;
+  display:inline-flex;
+  width:100%;
+  align-items:center;
+  justify-content:center;
   line-height:1.1;
   text-align:center;
   white-space:normal;
 }
 
 .sb-table-action-cell{
-  text-align:right;
+  text-align:center;
 }
 
 .sb-table-action-cell .sb-icon-actions{
   display:flex;
-  justify-content:flex-end;
+  justify-content:center;
   align-items:center;
   gap:6px;
   flex-wrap:nowrap;
