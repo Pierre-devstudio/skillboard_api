@@ -1036,14 +1036,15 @@
 }
 
 #posteCompTable .sb-icon-btn{
-  width:30px;
-  height:30px;
-  border-radius:9px;
+  width:28px;
+  height:28px;
+  padding:0;
+  border-radius:6px;
 }
 
 #posteCompTable .sb-icon-btn svg{
-  width:14px;
-  height:14px;
+  width:13px;
+  height:13px;
 }
 
 /* Bouton documentaire (CORE)
