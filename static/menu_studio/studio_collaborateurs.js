@@ -2009,20 +2009,20 @@
       const norm = raw.toUpperCase();
 
       if (!raw || raw === '—' || raw === '-') {
-        return { text: '—', cls: 'sb-collab-level-badge sb-collab-level-badge--empty' };
+        return { text: '—', cls: 'sb-badge--outline-accent' };
       }
 
       if (norm === 'A' || raw.toLowerCase() === 'initial') {
-        return { text: 'Initial', cls: 'sb-collab-level-badge sb-collab-level-badge--a' };
+        return { text: 'Initial', cls: 'sb-badge--niv sb-badge--niv-a' };
       }
       if (norm === 'B' || raw.toLowerCase() === 'avancé' || raw.toLowerCase() === 'avance') {
-        return { text: 'Avancé', cls: 'sb-collab-level-badge sb-collab-level-badge--b' };
+        return { text: 'Avancé', cls: 'sb-badge--niv sb-badge--niv-b' };
       }
       if (norm === 'C' || raw.toLowerCase() === 'expert') {
-        return { text: 'Expert', cls: 'sb-collab-level-badge sb-collab-level-badge--c' };
+        return { text: 'Expert', cls: 'sb-badge--niv sb-badge--niv-c' };
       }
 
-      return { text: raw, cls: 'sb-collab-level-badge sb-collab-level-badge--empty' };
+      return { text: raw, cls: 'sb-badge--outline-accent' };
     };
 
     const critValue = (item) => {
@@ -2052,9 +2052,9 @@
     const buildCompCell = (code, intitule) => {
       const title = String(intitule || '').trim();
       return `
-        <div class="sb-collab-skill-cell">
+        <div class="sb-comp-cell">
           ${code ? `<span class="sb-badge sb-badge--comp">${esc(code)}</span>` : ''}
-          <div class="sb-collab-skill-title" title="${esc(title)}">${esc(title)}</div>
+          <div class="sb-comp-cell__title" title="${esc(title)}">${esc(title)}</div>
         </div>
       `;
     };
@@ -2120,16 +2120,16 @@
             <span class="sb-badge ${lvl.cls}">${esc(lvl.text)}</span>
           </td>
           <td class="sb-collab-skill-col-date">
-            <span class="sb-collab-skill-date">${esc(lastEval)}</span>
+            <span class="sb-collab-skill-date-sm">${esc(lastEval)}</span>
           </td>
-          <td class="sb-collab-skill-col-actions">
-            <div class="sb-collab-skill-actions">
+          <td class="sb-collab-skill-col-actions sb-table-action-cell">
+            <div class="sb-icon-actions">
               ${
                 idComp
                   ? `
                     <button
                       type="button"
-                      class="sb-icon-btn sb-icon-btn--doc"
+                      class="sb-icon-btn"
                       data-act="open-skill-sheet-btn"
                       data-id-comp="${esc(idComp)}"
                       title="Voir la fiche"
@@ -2145,7 +2145,7 @@
                   ? `
                     <button
                       type="button"
-                      class="sb-icon-btn sb-icon-btn--doc"
+                      class="sb-icon-btn"
                       data-act="open-skill-eval-btn"
                       data-id-effectif-comp="${esc(idEffectifComp)}"
                       title="Évaluer la compétence"
@@ -2234,9 +2234,9 @@
                     <tr>
                       <th class="sb-collab-skill-col-indicator"></th>
                       <th class="sb-collab-skill-col-competence">Compétence</th>
-                      <th class="sb-collab-skill-col-level">Niv. actuel</th>
-                      <th class="sb-collab-skill-col-date">Dernière éval.</th>
-                      <th class="sb-collab-skill-col-actions"></th>
+                      <th class="sb-collab-skill-col-level"><span class="sb-table-th-2l">Niv.<br>actuel</span></th>
+                      <th class="sb-collab-skill-col-date"><span class="sb-table-th-2l">Dernière<br>éval.</span></th>
+                      <th class="sb-collab-skill-col-actions">Actions</th>
                     </tr>
                   </thead>
                   <tbody>${ownedRows}</tbody>
@@ -2259,8 +2259,8 @@
                       <thead>
                         <tr>
                           <th class="sb-collab-skill-col-competence">Compétence</th>
-                          <th class="sb-collab-skill-col-required">Niveau requis</th>
-                          <th class="sb-collab-skill-col-action"></th>
+                          <th class="sb-collab-skill-col-required"><span class="sb-table-th-2l">Niveau<br>requis</span></th>
+                          <th class="sb-collab-skill-col-action">Action</th>
                         </tr>
                       </thead>
                       <tbody>${missingRows}</tbody>

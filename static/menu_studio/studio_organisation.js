@@ -2831,10 +2831,12 @@ body {
         if (!tb) return;
 
         const levelMeta = (niv) => {
-            const v = String(niv || "").trim().toUpperCase();
-            if (v === "A") return { text: "A - Initial", cls: "sb-badge--niv-a" };
-            if (v === "B") return { text: "B - Avancé", cls: "sb-badge--niv-b" };
-            if (v === "C") return { text: "C - Expert", cls: "sb-badge--niv-c" };
+            const raw = String(niv || "").trim();
+            const v = raw.toUpperCase();
+
+            if (v === "A" || raw.toLowerCase() === "initial") return { text: "Initial", cls: "sb-badge--niv-a" };
+            if (v === "B" || raw.toLowerCase() === "avancé" || raw.toLowerCase() === "avance") return { text: "Avancé", cls: "sb-badge--niv-b" };
+            if (v === "C" || raw.toLowerCase() === "expert") return { text: "Expert", cls: "sb-badge--niv-c" };
             return { text: "—", cls: "" };
         };
 
@@ -2892,6 +2894,7 @@ body {
             const title = document.createElement("div");
             title.className = "sb-comp-cell__title";
             title.textContent = it.intitule || "";
+            title.title = it.intitule || "";
 
             compWrap.appendChild(code);
             compWrap.appendChild(title);
@@ -2914,7 +2917,7 @@ body {
             tdCrit.appendChild(bc);
 
             const tdAct = document.createElement("td");
-            tdAct.style.textAlign = "right";
+            tdAct.className = "sb-table-action-cell";
 
             if (isAdmin()){
                 const actions = document.createElement("div");
@@ -2922,7 +2925,7 @@ body {
 
                 const btnEdit = document.createElement("button");
                 btnEdit.type = "button";
-                btnEdit.className = "sb-icon-btn sb-icon-btn--poste-square";
+                btnEdit.className = "sb-icon-btn";
                 btnEdit.title = "Modifier";
                 btnEdit.setAttribute("aria-label", "Modifier");
                 btnEdit.innerHTML = iconEdit;
@@ -2930,7 +2933,7 @@ body {
 
                 const btnRem = document.createElement("button");
                 btnRem.type = "button";
-                btnRem.className = "sb-icon-btn sb-icon-btn--danger sb-icon-btn--poste-square";
+                btnRem.className = "sb-icon-btn sb-icon-btn--danger";
                 btnRem.title = "Retirer";
                 btnRem.setAttribute("aria-label", "Retirer");
                 btnRem.innerHTML = iconTrash;
