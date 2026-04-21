@@ -1292,6 +1292,20 @@
     if (el) el.textContent = msg || "—";
   }
 
+  function setCollabSaveMsg(text){
+    const el = byId("collabSaveMsg");
+    if (!el) return;
+
+    if (!text){
+      el.style.display = "none";
+      el.textContent = "Enregistré avec succès";
+      return;
+    }
+
+    el.textContent = text;
+    el.style.display = "inline-flex";
+  }
+
   function openModal(id){
     const el = byId(id);
     if (el) el.style.display = "flex";
@@ -1818,6 +1832,7 @@
   }
 
   function clearForm(){
+    setCollabSaveMsg("");
     [
       "collabPrenom","collabNom","collabEmail","collabTel","collabTel2","collabAdresse",
       "collabCodePostal","collabVille","collabPays","collabObservations","collabMatricule",
@@ -2474,6 +2489,7 @@
 
   async function saveModal(portal, options){
     const opts = options || {};
+    setCollabSaveMsg("");
 
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error('Owner introuvable.');
@@ -2522,6 +2538,7 @@
       closeModal('modalCollaborateur');
     } else {
       refreshModalSendButton();
+      setCollabSaveMsg("Enregistré avec succès");
     }
 
     return _editingId || data?.id_collaborateur || null;
@@ -2660,9 +2677,21 @@
     byId('btnCloseCollaborateur')?.addEventListener('click', () => closeModal('modalCollaborateur'));
     byId('btnCollabCancel')?.addEventListener('click', () => closeModal('modalCollaborateur'));
 
+    byId('modalCollaborateur')?.addEventListener('input', (e) => {
+      if (e.target?.closest('input, textarea, select')) {
+        setCollabSaveMsg('');
+      }
+    });
+
+    byId('modalCollaborateur')?.addEventListener('change', (e) => {
+      if (e.target?.closest('input, textarea, select')) {
+        setCollabSaveMsg('');
+      }
+    });
+
     byId('btnCollabSave')?.addEventListener('click', async () => {
       try {
-        await saveModal(portal);
+        await saveModal(portal, { keepOpen: true });
       } catch (e) {
         portal.showAlert('error', getErrorMessage(e));
       }
