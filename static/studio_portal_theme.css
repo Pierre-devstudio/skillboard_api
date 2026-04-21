@@ -1035,16 +1035,17 @@
   flex-wrap:nowrap;
 }
 
-#posteCompTable .sb-icon-btn{
-  width:28px;
-  height:28px;
-  padding:0;
-  border-radius:6px;
+#posteCompTable .sb-icon-btn--poste-square{
+  width:28px !important;
+  min-width:28px !important;
+  height:28px !important;
+  padding:0 !important;
+  border-radius:4px !important;
 }
 
-#posteCompTable .sb-icon-btn svg{
-  width:13px;
-  height:13px;
+#posteCompTable .sb-icon-btn--poste-square svg{
+  width:13px !important;
+  height:13px !important;
 }
 
 /* Bouton documentaire (CORE)

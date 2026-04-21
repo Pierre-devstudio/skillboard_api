@@ -2922,7 +2922,7 @@ body {
 
                 const btnEdit = document.createElement("button");
                 btnEdit.type = "button";
-                btnEdit.className = "sb-icon-btn";
+                btnEdit.className = "sb-icon-btn sb-icon-btn--poste-square";
                 btnEdit.title = "Modifier";
                 btnEdit.setAttribute("aria-label", "Modifier");
                 btnEdit.innerHTML = iconEdit;
@@ -2930,7 +2930,7 @@ body {
 
                 const btnRem = document.createElement("button");
                 btnRem.type = "button";
-                btnRem.className = "sb-icon-btn sb-icon-btn--danger";
+                btnRem.className = "sb-icon-btn sb-icon-btn--danger sb-icon-btn--poste-square";
                 btnRem.title = "Retirer";
                 btnRem.setAttribute("aria-label", "Retirer");
                 btnRem.innerHTML = iconTrash;
