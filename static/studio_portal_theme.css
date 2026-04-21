@@ -719,17 +719,18 @@
 }
 
 .sb-icon-btn{
-  width:32px;
-  height:32px;
+  width:30px;
+  height:30px;
   padding:0;
   display:inline-flex;
   align-items:center;
   justify-content:center;
   border:1px solid #d1d5db;
-  border-radius:10px;
+  border-radius:6px;
   background:#fff;
   color:#334155;
   cursor:pointer;
+  box-sizing:border-box;
 }
 
 .sb-icon-btn:hover{
@@ -739,8 +740,8 @@
 }
 
 .sb-icon-btn svg{
-  width:16px;
-  height:16px;
+  width:14px;
+  height:14px;
   display:block;
 }
 
