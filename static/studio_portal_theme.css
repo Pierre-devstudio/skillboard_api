@@ -957,6 +957,94 @@
   color:#64748b;
 }
 
+/* ======================================================
+   Organisation > Modal poste > Table compétences requises
+   Gabarit DÉDIÉ pour retrouver le rendu d’avant
+   ====================================================== */
+
+#posteBlocCompetences .table-wrap{
+  max-width:100%;
+  overflow-x:auto;
+}
+
+#posteCompTable{
+  width:100%;
+  max-width:100%;
+  table-layout:fixed;
+}
+
+#posteCompTable th,
+#posteCompTable td{
+  box-sizing:border-box;
+  vertical-align:middle;
+}
+
+#posteCompTable th:nth-child(2),
+#posteCompTable td:nth-child(2){
+  width:118px !important;
+  text-align:center !important;
+}
+
+#posteCompTable th:nth-child(3),
+#posteCompTable td:nth-child(3){
+  width:84px !important;
+  text-align:center !important;
+}
+
+#posteCompTable th:nth-child(4),
+#posteCompTable td:nth-child(4){
+  width:78px !important;
+  text-align:right !important;
+}
+
+#posteCompTable th:first-child,
+#posteCompTable td:first-child{
+  min-width:0;
+}
+
+#posteCompTable .sb-comp-cell{
+  width:100%;
+  min-width:0;
+}
+
+#posteCompTable .sb-comp-cell__title{
+  display:block;
+}
+
+#posteCompTable .sb-badge.sb-badge--niv,
+#posteCompTable .sb-badge.sb-badge-niv{
+  min-width:74px;
+  height:20px;
+  padding:0 8px;
+  font-size:11px;
+}
+
+#posteCompTable .sb-badge.sb-crit-badge,
+#posteCompTable .sb-crit-badge{
+  width:26px;
+  min-width:26px;
+  height:26px;
+  font-size:11px;
+}
+
+#posteCompTable .sb-icon-actions{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:4px;
+  flex-wrap:nowrap;
+}
+
+#posteCompTable .sb-icon-btn{
+  width:30px;
+  height:30px;
+  border-radius:9px;
+}
+
+#posteCompTable .sb-icon-btn svg{
+  width:14px;
+  height:14px;
+}
 
 /* Bouton documentaire (CORE)
    Pour les actions de consultation / ouverture de document / PDF */
