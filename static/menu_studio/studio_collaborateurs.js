@@ -2082,12 +2082,28 @@
       const idEffectifComp = (x.id_effectif_competence || '').toString().trim();
       const lvl = levelMeta(x.niveau_actuel);
       const isRequiredByPoste = !!x.is_required;
+
       const rowAttrs = idEffectifComp
         ? `class="sb-table-row-clickable" data-act="open-skill-eval" data-id-effectif-comp="${esc(idEffectifComp)}" tabindex="0"`
         : '';
 
       return `
         <tr ${rowAttrs}>
+          <td class="sb-skill-col-indicator">
+            ${
+              isRequiredByPoste
+                ? `
+                  <div class="sb-skill-indicator">
+                    <span
+                      class="sb-skill-required-dot"
+                      title="Requis par le poste actuel"
+                      aria-label="Requis par le poste actuel"
+                    ></span>
+                  </div>
+                `
+                : ``
+            }
+          </td>
           <td class="sb-skill-col-competence">
             ${buildCompCell(x.code || '', x.intitule || '')}
           </td>
@@ -2128,17 +2144,6 @@
                     >
                       ${iconTrash}
                     </button>
-                  `
-                  : ``
-              }
-              ${
-                isRequiredByPoste
-                  ? `
-                    <span
-                      class="sb-skill-required-dot"
-                      title="Requis par le poste actuel"
-                      aria-label="Requis par le poste actuel"
-                    ></span>
                   `
                   : ``
               }
@@ -2202,6 +2207,7 @@
                 <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-skill-table">
                   <thead>
                     <tr>
+                      <th class="sb-skill-col-indicator"></th>
                       <th class="sb-skill-col-competence">Compétence</th>
                       <th class="sb-skill-col-level">Niv. actuel</th>
                       <th class="sb-skill-col-date">Dernière éval.</th>
@@ -2727,12 +2733,24 @@
       });
     }
 
+    /* IMPORTANT :
+      le poste actuel peut avoir changé, donc les compétences requises calculées
+      pour l’onglet Compétences doivent être invalidées après chaque enregistrement.
+      Sinon on garde un rendu obsolète car _tabLoaded.skills reste à true. */
+    _tabLoaded.skills = false;
+
     await loadGlobalStats(portal);
     await loadList(portal);
 
     if (!opts.keepOpen) {
       closeModal('modalCollaborateur');
     } else {
+      const activeTab = document.querySelector('#collabModalBody [data-panel].is-active')?.getAttribute('data-panel') || 'ident';
+
+      if (activeTab === 'skills' && _editingId) {
+        await loadTabIfNeeded(portal, 'skills');
+      }
+
       refreshModalSendButton();
       setCollabSaveMsg('Enregistré avec succès');
     }

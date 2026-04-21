@@ -780,6 +780,13 @@
   vertical-align:middle;
 }
 
+.sb-skill-col-indicator{
+  width:22px;
+  min-width:22px;
+  max-width:22px;
+  text-align:center !important;
+}
+
 .sb-skill-col-competence{
   width:auto;
 }
@@ -809,6 +816,8 @@
   text-align:right !important;
 }
 
+.sb-skill-table thead th.sb-skill-col-indicator,
+.sb-skill-table tbody td.sb-skill-col-indicator,
 .sb-skill-table thead th.sb-skill-col-level,
 .sb-skill-table tbody td.sb-skill-col-level,
 .sb-skill-table thead th.sb-skill-col-date,
@@ -846,6 +855,13 @@
 
 .sb-skill-required-dot[title]{
   cursor:help;
+}
+
+.sb-skill-indicator{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
 }
 
 .sb-skill-table .sb-comp-cell{
