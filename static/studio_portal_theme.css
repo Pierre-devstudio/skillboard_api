@@ -1541,6 +1541,13 @@
   color:#111827;
 }
 
+.sb-kpi-select{
+  width:100%;
+  margin-top:8px;
+  min-height:38px;
+  font-size:13px;
+}
+
 /* ======================================================
    Studio CORE – Assistant cotation conventionnelle
    ====================================================== */

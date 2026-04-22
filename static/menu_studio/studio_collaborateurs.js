@@ -740,9 +740,14 @@
     }
 
     if (byId('collabSkillEvalScoreRaw')) byId('collabSkillEvalScoreRaw').textContent = '—';
-    if (byId('collabSkillEvalScoreCoef')) byId('collabSkillEvalScoreCoef').textContent = '—';
     if (byId('collabSkillEvalScore24')) byId('collabSkillEvalScore24').textContent = '—';
     if (byId('collabSkillEvalLevel')) byId('collabSkillEvalLevel').textContent = '—';
+
+    const methodSel = byId('collabSkillEvalMethod');
+    if (methodSel){
+      methodSel.value = '';
+      methodSel.disabled = true;
+    }
 
     const obs = byId('collabSkillEvalObservation');
     if (obs){
@@ -750,8 +755,7 @@
       obs.disabled = true;
     }
 
-    const btnSave = byId('btnCollabSkillEvalSave');
-    if (btnSave) btnSave.disabled = true;
+    refreshCollabSkillEvalSaveState();
 
     setCollabSkillEvalMsg(false, '');
   }
@@ -974,20 +978,51 @@
     return '—';
   }
 
+  function score24ToMasteryPct(score24){
+    const n = Number(score24);
+    if (!Number.isFinite(n)) return null;
+    return Math.max(0, Math.min(100, Math.round((n / 24) * 100)));
+  }
+
+  function getCollabSkillEvalMethods(){
+    return [
+      'Observation en situation de travail',
+      'Entretien professionnel',
+      'Retour manager / tuteur',
+      'Retour formation',
+      'Examen / Certification'
+    ];
+  }
+
+  function normalizeCollabSkillEvalMethod(value){
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    return getCollabSkillEvalMethods().find(x => x === raw) || '';
+  }
+
+  function refreshCollabSkillEvalSaveState(){
+    const btn = byId('btnCollabSkillEvalSave');
+    if (!btn) return;
+
+    const enabledCount = getCollabSkillEvalEnabledCriteria().length;
+    const methodValue = normalizeCollabSkillEvalMethod(byId('collabSkillEvalMethod')?.value || '');
+
+    btn.disabled = enabledCount === 0 || !methodValue;
+  }
+
   function recalcCollabSkillEvalScore(){
     if (!_collabSkillEvalState.id_effectif_competence) return;
 
     const enabled = getCollabSkillEvalEnabledCriteria();
-    const coefEl = byId('collabSkillEvalScoreCoef');
     const rawEl = byId('collabSkillEvalScoreRaw');
     const scoreEl = byId('collabSkillEvalScore24');
     const levelEl = byId('collabSkillEvalLevel');
 
     if (!enabled.length){
-      if (coefEl) coefEl.textContent = '—';
       if (rawEl) rawEl.textContent = '—';
       if (scoreEl) scoreEl.textContent = '—';
       if (levelEl) levelEl.textContent = '—';
+      refreshCollabSkillEvalSaveState();
       return;
     }
 
@@ -1005,23 +1040,29 @@
     });
 
     const calc = computeCollabSkillEvalScore(sum, enabled.length);
-    if (coefEl) coefEl.textContent = String(calc.coef);
 
     if (!filled){
       if (rawEl) rawEl.textContent = '—';
       if (scoreEl) scoreEl.textContent = '—';
       if (levelEl) levelEl.textContent = '—';
+      refreshCollabSkillEvalSaveState();
       return;
     }
 
     if (rawEl) rawEl.textContent = String(sum);
-    if (scoreEl) scoreEl.textContent = String(calc.score24);
+
+    const masteryPct = score24ToMasteryPct(calc.score24);
+    if (scoreEl) {
+      scoreEl.textContent = masteryPct == null ? '—' : `${masteryPct} %`;
+    }
 
     if (filled === enabled.length) {
       if (levelEl) levelEl.textContent = levelFromCollabSkillEvalScore(calc.score24);
     } else {
       if (levelEl) levelEl.textContent = '—';
     }
+
+    refreshCollabSkillEvalSaveState();
   }
 
   function fillCollabSkillEvalModal(data){
@@ -1183,14 +1224,19 @@
       enabledCount += 1;
     }
 
+    const methodSel = byId('collabSkillEvalMethod');
+    if (methodSel){
+      methodSel.value = normalizeCollabSkillEvalMethod(data?.last_audit?.methode_eval || '');
+      methodSel.disabled = enabledCount === 0;
+    }
+
     const obs = byId('collabSkillEvalObservation');
     if (obs){
       obs.disabled = enabledCount === 0;
       obs.value = (data?.last_audit?.observation || '').toString();
     }
 
-    const btnSave = byId('btnCollabSkillEvalSave');
-    if (btnSave) btnSave.disabled = enabledCount === 0;
+    refreshCollabSkillEvalSaveState();
 
     if (enabledCount === 0 && byId('collabSkillEvalHint')) {
       byId('collabSkillEvalHint').textContent = 'Aucun critère d’évaluation paramétré sur cette compétence.';
@@ -1252,6 +1298,9 @@
 
     const observation = (byId('collabSkillEvalObservation')?.value || '').trim();
 
+    const methodeEval = normalizeCollabSkillEvalMethod(byId('collabSkillEvalMethod')?.value || '');
+    if (!methodeEval) throw new Error("Sélectionnez une méthode d’évaluation.");
+
     const res = await portal.apiJson(
       `${portal.apiBase}/studio/collaborateurs/competences/evaluation/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/save`,
       {
@@ -1264,13 +1313,19 @@
           niveau_actuel: niveau,
           observation: observation || null,
           criteres,
-          methode_eval: 'Évaluation Studio'
+          methode_eval: methodeEval
         })
       }
     );
 
     if (byId('collabSkillEvalCurrent')) byId('collabSkillEvalCurrent').textContent = niveau;
     if (byId('collabSkillEvalLastEval')) byId('collabSkillEvalLastEval').textContent = `Dernière éval : ${formatDateFR(res?.date_audit)}`;
+    
+    const methodSel = byId('collabSkillEvalMethod');
+    if (methodSel){
+      methodSel.value = normalizeCollabSkillEvalMethod(res?.methode_eval || methodeEval);
+    }
+
     if (byId('collabSkillEvalLastAuditMeta')) {
       const parts = [];
       if (res?.date_audit) parts.push(formatDateFR(res.date_audit));
@@ -3174,8 +3229,7 @@
       } catch (e) {
         setCollabSkillEvalMsg(false, `Échec de l'enregistrement - ${getErrorMessage(e)}`);
       } finally {
-        const btn = byId('btnCollabSkillEvalSave');
-        if (btn && getCollabSkillEvalEnabledCriteria().length > 0) btn.disabled = false;
+        refreshCollabSkillEvalSaveState();
       }
     });
 
@@ -3183,6 +3237,9 @@
       byId(`collabSkillEvalCritNote${i}`)?.addEventListener('change', recalcCollabSkillEvalScore);
       byId(`collabSkillEvalCritNote${i}`)?.addEventListener('input', recalcCollabSkillEvalScore);
     }
+
+    byId('collabSkillEvalMethod')?.addEventListener('change', refreshCollabSkillEvalSaveState);
+    byId('collabSkillEvalMethod')?.addEventListener('input', refreshCollabSkillEvalSaveState);
 
     const collabCompSearch = byId('collabCompAddSearch');
     if (collabCompSearch){

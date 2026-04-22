@@ -496,17 +496,24 @@
 
       <div class="sb-kpi-grid" style="margin-top:12px;">
         <div class="sb-kpi-card">
-          <div class="sb-kpi-label">Somme brute</div>
+          <div class="sb-kpi-label">Méthode d’évaluation</div>
+          <select id="collabSkillEvalMethod" class="sb-kpi-select" disabled>
+            <option value="">Sélectionner</option>
+            <option value="Observation en situation de travail">Observation en situation de travail</option>
+            <option value="Entretien professionnel">Entretien professionnel</option>
+            <option value="Retour manager / tuteur">Retour manager / tuteur</option>
+            <option value="Retour formation">Retour formation</option>
+            <option value="Examen / Certification">Examen / Certification</option>
+          </select>
+        </div>
+
+        <div class="sb-kpi-card">
+          <div class="sb-kpi-label">Somme des notes</div>
           <div class="sb-kpi-value" id="collabSkillEvalScoreRaw">—</div>
         </div>
 
         <div class="sb-kpi-card">
-          <div class="sb-kpi-label">Coef.</div>
-          <div class="sb-kpi-value" id="collabSkillEvalScoreCoef">—</div>
-        </div>
-
-        <div class="sb-kpi-card">
-          <div class="sb-kpi-label">Score /24</div>
+          <div class="sb-kpi-label">Maîtrise</div>
           <div class="sb-kpi-value" id="collabSkillEvalScore24">—</div>
         </div>
 
