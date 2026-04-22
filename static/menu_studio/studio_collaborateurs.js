@@ -3487,10 +3487,6 @@
           Définissez les accès console du collaborateur. <strong>Email enregistré :</strong> ${esc(savedEmail || 'non renseigné')}
         </div>
 
-        <div class="sb-access-note">
-          Les droits sont enregistrés avec le bouton <strong>Enregistrer</strong> du modal.
-        </div>
-
         ${hasEmail ? '' : `<div class="sb-access-note">Aucun accès ne peut être ouvert tant que l’email n’est pas renseigné et enregistré sur le collaborateur.</div>`}
 
         <div class="sb-access-grid">${rows}</div>
