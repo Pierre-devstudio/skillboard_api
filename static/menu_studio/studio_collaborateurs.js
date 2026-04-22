@@ -2397,7 +2397,26 @@
       </div>
 
       <div class="card" style="margin:0; padding:12px;">
-        <div class="card-title" style="margin:0 0 10px 0;">Compétences détenues par le collaborateur</div>
+        <div class="sb-block-head" style="margin:0 0 10px 0;">
+          <div class="card-title" style="margin:0;">Compétences détenues par le collaborateur</div>
+
+          ${
+            canAdd
+              ? `
+                <div class="sb-actions" style="justify-content:flex-end; width:100%;">
+                  <button
+                    type="button"
+                    class="sb-btn sb-btn--accent sb-btn--xs"
+                    id="btnCollabCompAdd"
+                  >
+                    Ajouter une compétence
+                  </button>
+                </div>
+              `
+              : ``
+          }
+        </div>
+
         ${
           ownedItems.length
             ? `
@@ -2445,22 +2464,6 @@
             : `<div class="card-sub" style="margin:0;">Aucun poste actuel sélectionné.</div>`
         }
       </div>
-
-      ${
-        canAdd
-          ? `
-            <div class="sb-actions" style="justify-content:flex-end; margin-top:10px;">
-              <button
-                type="button"
-                class="sb-btn sb-btn--accent sb-btn--xs"
-                id="btnCollabCompAdd"
-              >
-                Ajouter une compétence
-              </button>
-            </div>
-          `
-          : ``
-      }
     `;
 
     const btnSync = byId('btnSyncCollabSkillsFromPoste');
