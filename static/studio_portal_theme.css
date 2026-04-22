@@ -1474,6 +1474,26 @@
   line-height: 1.45;
 }
 
+.sb-textarea--inline{
+  width:100%;
+  min-height:42px;
+  padding:8px 10px;
+  border:1px solid #cbd5e1;
+  border-radius:10px;
+  background:#fff;
+  color:#111827;
+  font-family:inherit;
+  font-size:13px;
+  line-height:1.35;
+  box-sizing:border-box;
+  resize:vertical;
+}
+
+.sb-textarea--inline:disabled{
+  background:#f8fafc;
+  color:#475467;
+}
+
 /* bouton X */
 .sb-modal-x{
   border:none;

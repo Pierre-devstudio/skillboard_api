@@ -785,6 +785,26 @@
     return lum >= 160 ? '#111827' : '#fff';
   }
 
+  function colorToRgbTriplet(raw){
+    const s = normalizeStudioColor(raw);
+    if (!s) return '';
+
+    if (/^#([0-9a-f]{6})$/i.test(s)){
+      const hex = s.slice(1);
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      return `${r},${g},${b}`;
+    }
+
+    const m = s.match(/^rgb\s*\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*\)$/i);
+    if (m){
+      return `${m[1]},${m[2]},${m[3]}`;
+    }
+
+    return '';
+  }
+
   function ensureCollabSkillGuidePopover(){
     let pop = document.getElementById('collabSkillGuidePopover');
     if (pop) return pop;
@@ -1060,27 +1080,17 @@
         ''
       ).toString().trim();
 
-      domain.textContent = label;
-      domain.style.display = label ? 'inline-block' : 'none';
+      domain.innerHTML = '';
+      domain.style.display = label ? 'inline-flex' : 'none';
+      domain.style.removeProperty('--sb-domain-rgb');
 
-      domain.style.background = '';
-      domain.style.border = '';
-      domain.style.color = '';
-      domain.style.padding = '';
-      domain.style.borderRadius = '';
-      domain.style.fontSize = '';
-      domain.style.lineHeight = '';
+      const rgb = colorToRgbTriplet(data?.domaine_couleur);
+      if (rgb){
+        domain.style.setProperty('--sb-domain-rgb', rgb);
+      }
 
-      const col = normalizeStudioColor(data?.domaine_couleur);
-      if (label && col){
-        domain.style.display = 'inline-block';
-        domain.style.padding = '3px 8px';
-        domain.style.borderRadius = '999px';
-        domain.style.border = `1px solid ${col}`;
-        domain.style.background = col;
-        domain.style.color = pickStudioTextColor(col);
-        domain.style.fontSize = '12px';
-        domain.style.lineHeight = '18px';
+      if (label){
+        domain.innerHTML = `<span class="sb-dot"></span><span>${esc(label)}</span>`;
       }
     }
 
