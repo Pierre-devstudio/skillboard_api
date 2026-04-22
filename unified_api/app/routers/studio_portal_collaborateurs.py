@@ -1145,6 +1145,209 @@ def _archive_collab_certification_proof(cur, id_preuve_doc: Optional[str]) -> No
         (pid,),
     )
 
+POSTE_HISTORY_SOURCE_LABELS = {
+    "manuel": "Manuel",
+    "sirh": "SIRH",
+    "import": "Import",
+    "admin": "Admin",
+}
+
+
+def _normalize_poste_history_source(value: Optional[str], default: str = "manuel") -> str:
+    raw = (value or "").strip().lower()
+    mapping = {
+        "manuel": "manuel",
+        "manual": "manuel",
+        "sirh": "sirh",
+        "import": "import",
+        "admin": "admin",
+        "administrateur": "admin",
+    }
+    return mapping.get(raw, default or "manuel")
+
+
+def _poste_history_source_label(value: Optional[str]) -> str:
+    code = _normalize_poste_history_source(value, default="manuel")
+    return POSTE_HISTORY_SOURCE_LABELS.get(code, "Manuel")
+
+
+def _fetch_effectif_current_poste_state(cur, oid: str, id_effectif: str) -> dict:
+    cur.execute(
+        """
+        SELECT
+          id_poste_actuel,
+          date_debut_poste_actuel
+        FROM public.tbl_effectif_client
+        WHERE id_ent = %s
+          AND id_effectif = %s
+        LIMIT 1
+        """,
+        (oid, id_effectif),
+    )
+    row = cur.fetchone() or {}
+    return {
+        "id_poste_actuel": (row.get("id_poste_actuel") or "").strip() or None,
+        "date_debut_poste_actuel": row.get("date_debut_poste_actuel"),
+    }
+
+
+def _fetch_open_effectif_poste_history_row(cur, id_effectif: str) -> dict:
+    cur.execute(
+        """
+        SELECT
+          id_effectif_historique_poste,
+          id_poste,
+          date_debut,
+          date_fin
+        FROM public.tbl_effectif_client_historique_poste
+        WHERE id_effectif = %s
+          AND COALESCE(archive, FALSE) = FALSE
+          AND date_fin IS NULL
+        ORDER BY
+          COALESCE(date_debut, DATE '1900-01-01') DESC,
+          date_maj DESC,
+          date_creation DESC,
+          id_effectif_historique_poste DESC
+        LIMIT 1
+        """,
+        (id_effectif,),
+    )
+    return cur.fetchone() or {}
+
+
+def _upsert_open_effectif_poste_history_row(
+    cur,
+    id_effectif: str,
+    id_poste: str,
+    date_debut: Optional[py_date],
+    source_changement: str = "manuel",
+) -> None:
+    eff_id = (id_effectif or "").strip()
+    poste_id = (id_poste or "").strip()
+    if not eff_id or not poste_id:
+        return
+
+    source_code = _normalize_poste_history_source(source_changement, default="manuel")
+    open_row = _fetch_open_effectif_poste_history_row(cur, eff_id)
+
+    if (open_row.get("id_effectif_historique_poste") or "").strip() and (open_row.get("id_poste") or "").strip() == poste_id:
+        cur.execute(
+            """
+            UPDATE public.tbl_effectif_client_historique_poste
+            SET
+              date_debut = %s,
+              source_changement = %s,
+              date_maj = NOW()
+            WHERE id_effectif_historique_poste = %s
+            """,
+            (
+                date_debut,
+                source_code,
+                open_row.get("id_effectif_historique_poste"),
+            ),
+        )
+        return
+
+    cur.execute(
+        """
+        INSERT INTO public.tbl_effectif_client_historique_poste (
+          id_effectif_historique_poste,
+          id_effectif,
+          id_poste,
+          date_debut,
+          date_fin,
+          commentaire,
+          source_changement,
+          archive,
+          date_creation,
+          date_maj
+        ) VALUES (
+          %s, %s, %s, %s, NULL, NULL, %s, FALSE, NOW(), NOW()
+        )
+        """,
+        (
+            str(uuid.uuid4()),
+            eff_id,
+            poste_id,
+            date_debut,
+            source_code,
+        ),
+    )
+
+
+def _close_effectif_poste_history_open_rows(
+    cur,
+    id_effectif: str,
+    date_fin: Optional[py_date],
+) -> None:
+    eff_id = (id_effectif or "").strip()
+    if not eff_id:
+        return
+
+    cur.execute(
+        """
+        UPDATE public.tbl_effectif_client_historique_poste
+        SET
+          date_fin = %s,
+          date_maj = NOW()
+        WHERE id_effectif = %s
+          AND COALESCE(archive, FALSE) = FALSE
+          AND date_fin IS NULL
+        """,
+        (date_fin, eff_id),
+    )
+
+
+def _sync_effectif_poste_history(
+    cur,
+    id_effectif: str,
+    old_id_poste: Optional[str],
+    old_date_debut: Optional[py_date],
+    new_id_poste: Optional[str],
+    new_date_debut: Optional[py_date],
+    source_changement: str = "manuel",
+) -> None:
+    eff_id = (id_effectif or "").strip()
+    old_poste = (old_id_poste or "").strip() or None
+    new_poste = (new_id_poste or "").strip() or None
+    source_code = _normalize_poste_history_source(source_changement, default="manuel")
+
+    if not eff_id:
+        return
+
+    if not old_poste and not new_poste:
+        return
+
+    if old_poste == new_poste:
+        if new_poste:
+            _upsert_open_effectif_poste_history_row(
+                cur,
+                eff_id,
+                new_poste,
+                new_date_debut,
+                source_code,
+            )
+        return
+
+    if old_poste:
+        close_date = py_date.today()
+        if new_date_debut:
+            close_date = new_date_debut - timedelta(days=1)
+
+        if old_date_debut and close_date and close_date < old_date_debut:
+            close_date = old_date_debut
+
+        _close_effectif_poste_history_open_rows(cur, eff_id, close_date)
+
+    if new_poste:
+        _upsert_open_effectif_poste_history_row(
+            cur,
+            eff_id,
+            new_poste,
+            new_date_debut,
+            source_code,
+        )
+
 def _service_exists_active(cur, id_ent: str, id_service: Optional[str]) -> bool:
     sid = (id_service or "").strip()
     if not sid:
@@ -4783,6 +4986,86 @@ def studio_collab_certification_open_proof(
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/certifications/proof open error: {e}")
 
 
+@router.get("/studio/collaborateurs/historique/postes/{id_owner}/{id_collaborateur}")
+def studio_collab_history_postes(id_owner: str, id_collaborateur: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+
+                cur.execute(
+                    """
+                    SELECT
+                      h.id_effectif_historique_poste,
+                      h.id_poste,
+                      h.date_debut,
+                      h.date_fin,
+                      h.commentaire,
+                      h.source_changement,
+                      COALESCE(NULLIF(BTRIM(COALESCE(p.codif_client, '')), ''), NULLIF(BTRIM(COALESCE(p.codif_poste, '')), ''), '') AS code_poste,
+                      COALESCE(p.intitule_poste, '') AS intitule_poste,
+                      COALESCE(s.nom_service, '') AS nom_service
+                    FROM public.tbl_effectif_client_historique_poste h
+                    LEFT JOIN public.tbl_fiche_poste p
+                      ON p.id_poste = h.id_poste
+                     AND p.id_owner = %s
+                    LEFT JOIN public.tbl_entreprise_organigramme s
+                      ON s.id_service = p.id_service
+                     AND s.id_ent = %s
+                     AND COALESCE(s.archive, FALSE) = FALSE
+                    WHERE h.id_effectif = %s
+                      AND COALESCE(h.archive, FALSE) = FALSE
+                    ORDER BY
+                      COALESCE(h.date_debut, DATE '1900-01-01') DESC,
+                      COALESCE(h.date_fin, DATE '2999-12-31') DESC,
+                      h.date_creation DESC,
+                      h.id_effectif_historique_poste DESC
+                    """,
+                    (oid, oid, scope["id_effectif_data"]),
+                )
+                rows = cur.fetchall() or []
+
+        items = []
+        for r in rows:
+            items.append(
+                {
+                    "id_effectif_historique_poste": r.get("id_effectif_historique_poste"),
+                    "id_poste": r.get("id_poste"),
+                    "code_poste": (r.get("code_poste") or "").strip(),
+                    "intitule_poste": (r.get("intitule_poste") or "").strip(),
+                    "nom_service": (r.get("nom_service") or "").strip(),
+                    "date_debut": r.get("date_debut").isoformat() if r.get("date_debut") else None,
+                    "date_fin": r.get("date_fin").isoformat() if r.get("date_fin") else None,
+                    "commentaire": r.get("commentaire"),
+                    "source_changement": _normalize_poste_history_source(r.get("source_changement"), default="manuel"),
+                    "source_changement_label": _poste_history_source_label(r.get("source_changement")),
+                    "is_current": r.get("date_fin") is None,
+                }
+            )
+
+        return {
+            "id_collaborateur": cid,
+            "id_poste_actuel": scope.get("id_poste_actuel"),
+            "intitule_poste": scope.get("intitule_poste"),
+            "items": items,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/historique/postes error: {e}")
+
 @router.get("/studio/collaborateurs/historique/formations-jmb/{id_owner}/{id_collaborateur}")
 def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str, request: Request):
     auth = request.headers.get("Authorization", "")
@@ -5333,7 +5616,16 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                           _norm_bool(payload.is_temp, False),
                           _norm_text(payload.role_temp),
                           _norm_text(payload.code_effectif),
-                        ),
+                        )
+                    )
+                    _sync_effectif_poste_history(
+                        cur,
+                        cid,
+                        None,
+                        None,
+                        id_poste,
+                        date_debut_poste,
+                        source_changement="manuel",
                     )
                     conn.commit()
                     return {
@@ -5390,6 +5682,15 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                 )
 
                 _upsert_effectif_mirror_for_utilisateur(cur, oid, cid, payload)
+                _sync_effectif_poste_history(
+                    cur,
+                    cid,
+                    None,
+                    None,
+                    user_poste,
+                    date_debut_poste,
+                    source_changement="manuel",
+                )
                 conn.commit()
 
                 return {
@@ -5442,17 +5743,8 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                 )
 
                 if src["source_kind"] == "entreprise":
-                    cur.execute(
-                        """
-                        SELECT 1
-                        FROM public.tbl_effectif_client
-                        WHERE id_ent = %s
-                          AND id_effectif = %s
-                        LIMIT 1
-                        """,
-                        (oid, cid),
-                    )
-                    if not cur.fetchone():
+                    old_state = _fetch_effectif_current_poste_state(cur, oid, cid)
+                    if not old_state:
                         raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
 
                     id_poste = _norm_text(payload.id_poste_actuel)
@@ -5533,6 +5825,15 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                           cid,
                         ),
                     )
+                    _sync_effectif_poste_history(
+                        cur,
+                        cid,
+                        old_state.get("id_poste_actuel"),
+                        old_state.get("date_debut_poste_actuel"),
+                        id_poste,
+                        date_debut_poste,
+                        source_changement="manuel",
+                    )
                     conn.commit()
                     return {
                         "ok": True,
@@ -5551,6 +5852,8 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                 )
                 if not cur.fetchone():
                     raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+
+                old_state = _fetch_effectif_current_poste_state(cur, oid, cid)
 
                 user_poste = _norm_text(payload.id_poste_actuel) or _norm_text(payload.fonction)
                 if user_poste:
@@ -5595,6 +5898,15 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                 )
 
                 _upsert_effectif_mirror_for_utilisateur(cur, oid, cid, payload)
+                _sync_effectif_poste_history(
+                    cur,
+                    cid,
+                    old_state.get("id_poste_actuel"),
+                    old_state.get("date_debut_poste_actuel"),
+                    user_poste,
+                    date_debut_poste,
+                    source_changement="manuel",
+                )
                 conn.commit()
 
                 return {

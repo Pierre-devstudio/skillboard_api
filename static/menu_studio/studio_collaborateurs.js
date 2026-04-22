@@ -324,6 +324,14 @@
     return d.toLocaleDateString("fr-FR");
   }
 
+  function historyPosteSourceLabel(value){
+    const s = String(value || '').trim().toLowerCase();
+    if (s === 'sirh') return 'SIRH';
+    if (s === 'import') return 'Import';
+    if (s === 'admin') return 'Admin';
+    return 'Manuel';
+  }
+
   function getConsoleDefs(){
     return Array.isArray(_ctx?.consoles) ? _ctx.consoles : [];
   }
@@ -3370,34 +3378,50 @@
   function renderHistory(data){
     const host = byId('collabHistoryPanel');
     if (!host) return;
+
     const items = Array.isArray(data?.items) ? data.items : [];
 
     if (!items.length) {
-      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun historique trouvé.</div>`;
+      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucun historique de poste trouvé.</div>`;
       return;
     }
 
-    const rows = items.map(x => `
-      <tr>
-        <td style="white-space:nowrap;">${esc(x.code_action_formation || '–')}</td>
-        <td>${esc(x.titre_formation || '–')}</td>
-        <td style="text-align:center;">${esc(formatDateFR(x.date_debut_formation))}</td>
-        <td style="text-align:center;">${esc(formatDateFR(x.date_fin_formation))}</td>
-        <td style="text-align:center;">${esc(x.etat_action || '–')}</td>
-      </tr>
-    `).join('');
+    const rows = items.map(x => {
+      const code = (x.code_poste || '').toString().trim();
+      const intitule = (x.intitule_poste || '').toString().trim() || 'Poste';
+      const service = (x.nom_service || '').toString().trim();
+      const badgeCurrent = x.is_current
+        ? `<span class="sb-badge sb-badge--poste-soft" style="margin-left:8px;">Actuel</span>`
+        : '';
+
+      return `
+        <tr>
+          <td style="white-space:nowrap; text-align:center;">${esc(code || '–')}</td>
+          <td>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <div style="font-weight:700; color:#111827;">${esc(intitule)}</div>
+              ${badgeCurrent}
+            </div>
+            ${service ? `<div class="card-sub" style="margin:6px 0 0 0;">${esc(service)}</div>` : ''}
+          </td>
+          <td style="text-align:center;">${esc(formatDateFR(x.date_debut))}</td>
+          <td style="text-align:center;">${esc(formatDateFR(x.date_fin))}</td>
+          <td style="text-align:center;">${esc(x.source_changement_label || historyPosteSourceLabel(x.source_changement))}</td>
+        </tr>
+      `;
+    }).join('');
 
     host.innerHTML = `
-      <div class="card-sub" style="margin:0 0 10px 0;">Formations effectuées avec JMBCONSULTANT.</div>
+      <div class="card-sub" style="margin:0 0 10px 0;">Historique des postes tenus.</div>
       <div class="sb-table-wrap">
         <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
           <thead>
             <tr>
-              <th style="width:110px;">Code</th>
-              <th>Formation</th>
+              <th style="width:110px; text-align:center;">Code</th>
+              <th>Poste</th>
               <th style="width:120px; text-align:center;">Début</th>
               <th style="width:120px; text-align:center;">Fin</th>
-              <th style="width:120px; text-align:center;">État</th>
+              <th style="width:120px; text-align:center;">Source</th>
             </tr>
           </thead>
           <tbody>${rows}</tbody>
@@ -3547,7 +3571,7 @@
 
     if (tab === 'history') {
       setPanelMessage('collabHistoryPanel', 'Chargement…');
-      const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/formations-jmb/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`);
+      const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/historique/postes/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`);
       renderHistory(data);
       return;
     }
@@ -3683,6 +3707,7 @@
       doivent être invalidés après chaque enregistrement. */
     _tabLoaded.skills = false;
     _tabLoaded.certs = false;
+    _tabLoaded.history = false;
 
     await loadGlobalStats(portal);
     await loadList(portal);
@@ -3698,6 +3723,10 @@
 
       if (activeTab === 'certs' && _editingId) {
         await loadTabIfNeeded(portal, 'certs');
+      }
+
+      if (activeTab === 'history' && _editingId) {
+        await loadTabIfNeeded(portal, 'history');
       }
 
       refreshModalSendButton();
