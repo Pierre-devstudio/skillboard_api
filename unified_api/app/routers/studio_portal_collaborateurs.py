@@ -1318,6 +1318,8 @@ def _sync_effectif_poste_history(
     if not old_poste and not new_poste:
         return
 
+    # Pas de changement de poste :
+    # on garde / met à jour la ligne ouverte du poste courant.
     if old_poste == new_poste:
         if new_poste:
             _upsert_open_effectif_poste_history_row(
@@ -1329,16 +1331,70 @@ def _sync_effectif_poste_history(
             )
         return
 
+    # Calcul de la date de fin de l'ancien poste.
+    close_date = py_date.today()
+    if new_date_debut:
+        close_date = new_date_debut - timedelta(days=1)
+
+    if old_date_debut and close_date and close_date < old_date_debut:
+        close_date = old_date_debut
+
+    # Si l'ancien poste existe, il faut impérativement l'écrire dans l'historique,
+    # même s'il n'y a encore aucune ligne ouverte pour lui.
     if old_poste:
-        close_date = py_date.today()
-        if new_date_debut:
-            close_date = new_date_debut - timedelta(days=1)
+        open_row = _fetch_open_effectif_poste_history_row(cur, eff_id)
+        open_hist_id = (open_row.get("id_effectif_historique_poste") or "").strip()
+        open_hist_poste = (open_row.get("id_poste") or "").strip() or None
 
-        if old_date_debut and close_date and close_date < old_date_debut:
-            close_date = old_date_debut
+        if open_hist_id and open_hist_poste == old_poste:
+            cur.execute(
+                """
+                UPDATE public.tbl_effectif_client_historique_poste
+                SET
+                  date_fin = %s,
+                  source_changement = %s,
+                  date_maj = NOW()
+                WHERE id_effectif_historique_poste = %s
+                """,
+                (
+                    close_date,
+                    source_code,
+                    open_hist_id,
+                ),
+            )
+        else:
+            # On ferme d'abord toute ligne ouverte incohérente éventuelle,
+            # puis on crée explicitement la ligne historique de l'ancien poste.
+            _close_effectif_poste_history_open_rows(cur, eff_id, close_date)
 
-        _close_effectif_poste_history_open_rows(cur, eff_id, close_date)
+            cur.execute(
+                """
+                INSERT INTO public.tbl_effectif_client_historique_poste (
+                  id_effectif_historique_poste,
+                  id_effectif,
+                  id_poste,
+                  date_debut,
+                  date_fin,
+                  commentaire,
+                  source_changement,
+                  archive,
+                  date_creation,
+                  date_maj
+                ) VALUES (
+                  %s, %s, %s, %s, %s, NULL, %s, FALSE, NOW(), NOW()
+                )
+                """,
+                (
+                    str(uuid.uuid4()),
+                    eff_id,
+                    old_poste,
+                    old_date_debut,
+                    close_date,
+                    source_code,
+                ),
+            )
 
+    # Puis on ouvre / met à jour la ligne du nouveau poste courant.
     if new_poste:
         _upsert_open_effectif_poste_history_row(
             cur,
