@@ -42,6 +42,21 @@
     last_audit: null
   };
 
+  let _collabCertItems = [];
+  let _collabCertAddItems = [];
+  let _collabCertAddItemsAll = [];
+  let _collabCertAddSearch = "";
+  let _collabCertAddTimer = null;
+  let _collabCertAddCategory = "";
+
+  let _collabCertEditState = {
+    id_effectif_certification: "",
+    id_certification: "",
+    id_preuve_doc: "",
+    preuve_nom_fichier: "",
+    proofFile: null,
+  };
+
   function byId(id){ return document.getElementById(id); }
 
   function esc(s){
@@ -656,6 +671,382 @@
 
     _tabLoaded.skills = false;
     await loadTabIfNeeded(portal, 'skills');
+  }
+
+    function certificationStateLabel(code){
+    const s = String(code || '').trim().toLowerCase();
+    if (s === 'a_obtenir') return 'À obtenir';
+    if (s === 'en_cours') return 'En cours';
+    if (s === 'acquise') return 'Acquise';
+    if (s === 'a_renouveler') return 'À renouveler';
+    if (s === 'expiree') return 'Expirée';
+    return '–';
+  }
+
+  function certificationMonthLabel(value){
+    if (value == null || value === '') return '–';
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '–';
+    if (n <= 0) return 'Permanent';
+    return `${n} mois`;
+  }
+
+  async function fetchAuthJson(url, options = {}){
+    const headers = new Headers(options.headers || {});
+    const token = await getPortalAccessToken();
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+
+    const res = await fetch(url, { ...options, headers });
+
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`;
+      try {
+        const js = await res.clone().json();
+        detail = js?.detail || js?.message || detail;
+      } catch (_) {
+        try {
+          const txt = await res.text();
+          if (txt) detail = txt;
+        } catch (_) {}
+      }
+      throw new Error(detail);
+    }
+
+    const ct = String(res.headers.get('content-type') || '').toLowerCase();
+    if (ct.includes('application/json')) {
+      return await res.json();
+    }
+
+    return {};
+  }
+
+  async function openFetchedBinary(url){
+    const blob = await fetchPdfBlob(url);
+    const blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, '_blank');
+    setTimeout(() => {
+      try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+    }, 5 * 60 * 1000);
+  }
+
+  function resetCollabCertAddState(){
+    if (byId('collabCertAddSearch')) byId('collabCertAddSearch').value = '';
+    if (byId('collabCertAddList')) byId('collabCertAddList').innerHTML = '';
+
+    const sel = byId('collabCertAddCategory');
+    if (sel){
+      sel.innerHTML = `
+        <option value="">Toutes</option>
+        <option value="__none__">Sans catégorie</option>
+      `;
+      sel.value = '';
+    }
+
+    _collabCertAddSearch = '';
+    _collabCertAddItems = [];
+    _collabCertAddItemsAll = [];
+    _collabCertAddCategory = '';
+  }
+
+  function refreshCollabCertAddCategoryOptions(items){
+    const sel = byId('collabCertAddCategory');
+    if (!sel) return;
+
+    const keep = (sel.value || '').trim();
+    const map = new Map();
+
+    (items || []).forEach(it => {
+      const value = (it.categorie || '').toString().trim() || '__none__';
+      const label = (it.categorie || '').toString().trim() || 'Sans catégorie';
+      if (!map.has(value)) map.set(value, label);
+    });
+
+    sel.innerHTML = '';
+    sel.appendChild(new Option('Toutes', ''));
+    sel.appendChild(new Option('Sans catégorie', '__none__'));
+
+    Array.from(map.entries())
+      .filter(([id]) => id !== '__none__')
+      .sort((a, b) => a[1].localeCompare(b[1], 'fr', { sensitivity: 'base' }))
+      .forEach(([id, label]) => sel.appendChild(new Option(label, id)));
+
+    if (keep && sel.querySelector(`option[value="${keep}"]`)) sel.value = keep;
+    else sel.value = '';
+
+    _collabCertAddCategory = (sel.value || '').trim();
+  }
+
+  function applyCollabCertAddCategoryFilter(items){
+    const cat = (_collabCertAddCategory || '').trim();
+    if (!cat) return (items || []).slice();
+
+    if (cat === '__none__'){
+      return (items || []).filter(it => !((it.categorie || '').toString().trim()));
+    }
+
+    return (items || []).filter(it => ((it.categorie || '').toString().trim() === cat));
+  }
+
+  function renderCollabCertAddList(portal){
+    const host = byId('collabCertAddList');
+    if (!host) return;
+    host.innerHTML = '';
+
+    const items = _collabCertAddItems || [];
+    if (!items.length){
+      const e = document.createElement('div');
+      e.className = 'card-sub';
+      e.textContent = 'Aucune certification à afficher.';
+      host.appendChild(e);
+      return;
+    }
+
+    items.forEach(it => {
+      const row = document.createElement('div');
+      row.className = 'sb-row-card';
+
+      const left = document.createElement('div');
+      left.className = 'sb-row-left';
+
+      const main = document.createElement('div');
+      main.style.minWidth = '0';
+
+      const title = document.createElement('div');
+      title.className = 'sb-row-title';
+      title.textContent = it.nom_certification || '';
+
+      const meta = document.createElement('div');
+      meta.className = 'card-sub';
+      meta.style.margin = '4px 0 0 0';
+      meta.textContent = (it.categorie || 'Sans catégorie').toString();
+
+      main.appendChild(title);
+      main.appendChild(meta);
+      left.appendChild(main);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'sb-btn sb-btn--accent sb-btn--xs';
+      btn.textContent = 'Ajouter';
+      btn.addEventListener('click', async () => {
+        try {
+          btn.disabled = true;
+          await addCertificationToCollaborateur(portal, it.id_certification);
+        } catch (e) {
+          btn.disabled = false;
+          if (portal.showAlert) portal.showAlert('error', getErrorMessage(e));
+        }
+      });
+
+      row.appendChild(left);
+      row.appendChild(btn);
+
+      host.appendChild(row);
+    });
+  }
+
+  async function loadCollabCertAddList(portal){
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
+
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
+
+    const url =
+      `${portal.apiBase}/studio/org/certifications_catalogue/${encodeURIComponent(ownerId)}` +
+      `?q=${encodeURIComponent(_collabCertAddSearch)}` +
+      `&categorie=${encodeURIComponent(_collabCertAddCategory)}`;
+
+    const data = await portal.apiJson(url);
+    let items = Array.isArray(data?.items) ? data.items : [];
+
+    const existing = new Set(
+      (_collabCertItems || [])
+        .map(x => (x.id_certification || '').toString().trim())
+        .filter(Boolean)
+    );
+
+    items = items.filter(it => {
+      const idCert = (it.id_certification || '').toString().trim();
+      return idCert && !existing.has(idCert);
+    });
+
+    _collabCertAddItemsAll = items;
+    refreshCollabCertAddCategoryOptions(_collabCertAddItemsAll);
+    _collabCertAddItems = applyCollabCertAddCategoryFilter(_collabCertAddItemsAll);
+    renderCollabCertAddList(portal);
+  }
+
+  async function openCollabCertAddModal(portal){
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
+    resetCollabCertAddState();
+    openModal('modalCollabCertAdd');
+    await loadCollabCertAddList(portal);
+  }
+
+  async function addCertificationToCollaborateur(portal, idCertification){
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
+
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
+
+    await portal.apiJson(
+      `${portal.apiBase}/studio/collaborateurs/certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/add`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id_certification: idCertification
+        })
+      }
+    );
+
+    closeModal('modalCollabCertAdd');
+    _tabLoaded.certs = false;
+    await loadTabIfNeeded(portal, 'certs');
+  }
+
+  function resetCollabCertEditState(){
+    _collabCertEditState = {
+      id_effectif_certification: "",
+      id_certification: "",
+      id_preuve_doc: "",
+      preuve_nom_fichier: "",
+      proofFile: null,
+    };
+
+    if (byId('collabCertEditTitle')) byId('collabCertEditTitle').textContent = '—';
+    if (byId('collabCertEtat')) byId('collabCertEtat').value = 'a_obtenir';
+    if (byId('collabCertDateObtention')) byId('collabCertDateObtention').value = '';
+    if (byId('collabCertDateExpiration')) byId('collabCertDateExpiration').value = '';
+    if (byId('collabCertOrganisme')) byId('collabCertOrganisme').value = '';
+    if (byId('collabCertReference')) byId('collabCertReference').value = '';
+    if (byId('collabCertCommentaire')) byId('collabCertCommentaire').value = '';
+    if (byId('collabCertProofFile')) byId('collabCertProofFile').value = '';
+
+    refreshCollabCertProofUi();
+  }
+
+  function refreshCollabCertProofUi(){
+    const nameEl = byId('collabCertProofName');
+    const metaEl = byId('collabCertProofMeta');
+    const openBtn = byId('btnCollabCertProofOpen');
+
+    if (_collabCertEditState.proofFile){
+      if (nameEl) nameEl.textContent = _collabCertEditState.proofFile.name || 'Document sélectionné';
+      if (metaEl) metaEl.textContent = 'Le document sera enregistré avec la certification.';
+      if (openBtn) openBtn.disabled = true;
+      return;
+    }
+
+    if (_collabCertEditState.preuve_nom_fichier){
+      if (nameEl) nameEl.textContent = _collabCertEditState.preuve_nom_fichier;
+      if (metaEl) metaEl.textContent = 'Document preuve déjà enregistré.';
+      if (openBtn) openBtn.disabled = false;
+      return;
+    }
+
+    if (nameEl) nameEl.textContent = 'Aucun document preuve';
+    if (metaEl) metaEl.textContent = 'PDF, PNG, JPEG ou WEBP · 5 Mo max.';
+    if (openBtn) openBtn.disabled = true;
+  }
+
+  function openCollabCertEditModal(item){
+    resetCollabCertEditState();
+
+    _collabCertEditState.id_effectif_certification = String(item?.id_effectif_certification || '').trim();
+    _collabCertEditState.id_certification = String(item?.id_certification || '').trim();
+    _collabCertEditState.id_preuve_doc = String(item?.id_preuve_doc || '').trim();
+    _collabCertEditState.preuve_nom_fichier = String(item?.preuve_nom_fichier || '').trim();
+
+    if (byId('collabCertEditTitle')) byId('collabCertEditTitle').textContent = item?.nom_certification || 'Certification';
+    if (byId('collabCertEtat')) byId('collabCertEtat').value = String(item?.etat || 'a_obtenir').trim() || 'a_obtenir';
+    if (byId('collabCertDateObtention')) byId('collabCertDateObtention').value = item?.date_obtention || '';
+    if (byId('collabCertDateExpiration')) byId('collabCertDateExpiration').value = item?.date_expiration || '';
+    if (byId('collabCertOrganisme')) byId('collabCertOrganisme').value = item?.organisme || '';
+    if (byId('collabCertReference')) byId('collabCertReference').value = item?.reference || '';
+    if (byId('collabCertCommentaire')) byId('collabCertCommentaire').value = item?.commentaire || '';
+
+    refreshCollabCertProofUi();
+    openModal('modalCollabCertEdit');
+  }
+
+  async function openCollabCertProof(portal){
+    if (!_editingId) throw new Error('Collaborateur introuvable.');
+    if (!_collabCertEditState.id_effectif_certification) throw new Error('Certification introuvable.');
+
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
+
+    await openFetchedBinary(
+      `${portal.apiBase}/studio/collaborateurs/certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/${encodeURIComponent(_collabCertEditState.id_effectif_certification)}/preuve`
+    );
+  }
+
+  async function uploadCollabCertProof(portal, idEffectifCertification, fileObj){
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
+    if (!idEffectifCertification) throw new Error('Certification introuvable.');
+    if (!fileObj) return null;
+
+    const fd = new FormData();
+    fd.append('file', fileObj);
+
+    return await fetchAuthJson(
+      `${portal.apiBase}/studio/collaborateurs/certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/${encodeURIComponent(idEffectifCertification)}/preuve`,
+      {
+        method: 'POST',
+        body: fd,
+      }
+    );
+  }
+
+  async function saveCollabCertEdit(portal){
+    if (!_editingId) throw new Error('Collaborateur introuvable.');
+    if (!_collabCertEditState.id_effectif_certification) throw new Error('Certification introuvable.');
+
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
+
+    await portal.apiJson(
+      `${portal.apiBase}/studio/collaborateurs/certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/${encodeURIComponent(_collabCertEditState.id_effectif_certification)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          etat: byId('collabCertEtat')?.value || 'a_obtenir',
+          date_obtention: byId('collabCertDateObtention')?.value || null,
+          date_expiration: byId('collabCertDateExpiration')?.value || null,
+          organisme: byId('collabCertOrganisme')?.value || null,
+          reference: byId('collabCertReference')?.value || null,
+          commentaire: byId('collabCertCommentaire')?.value || null,
+        })
+      }
+    );
+
+    if (_collabCertEditState.proofFile){
+      await uploadCollabCertProof(portal, _collabCertEditState.id_effectif_certification, _collabCertEditState.proofFile);
+    }
+
+    closeModal('modalCollabCertEdit');
+    _tabLoaded.certs = false;
+    await loadTabIfNeeded(portal, 'certs');
+  }
+
+  async function archiveCertificationForCollaborateur(portal, idEffectifCertification){
+    if (!_editingId) throw new Error('Collaborateur introuvable.');
+    if (!idEffectifCertification) throw new Error('Certification introuvable.');
+    if (!window.confirm('Archiver cette certification ?')) return;
+
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
+
+    await portal.apiJson(
+      `${portal.apiBase}/studio/collaborateurs/certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/${encodeURIComponent(idEffectifCertification)}/archive`,
+      { method: 'POST' }
+    );
+
+    _tabLoaded.certs = false;
+    await loadTabIfNeeded(portal, 'certs');
   }
 
   function setCollabSkillEvalMsg(isOk, text){
@@ -2650,65 +3041,163 @@
     });
   }
 
-  function renderCertifications(data){
+  function renderCertifications(data, portal){
     const host = byId('collabCertsPanel');
     if (!host) return;
-    const items = Array.isArray(data?.items) ? data.items : [];
 
-    if (!items.length) {
-      host.innerHTML = `<div class="card-sub" style="margin:0;">Aucune certification trouvée.</div>`;
-      return;
-    }
+    const items = Array.isArray(data?.items) ? data.items.slice() : [];
+    _collabCertItems = items.slice();
+
+    const canAdd = !!_editingId;
+
+    const iconPen = `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 20h9"/>
+        <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+      </svg>
+    `;
+
+    const iconTrash = `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"/>
+        <path d="M19 6l-1 14H6L5 6"/>
+        <path d="M10 11v6"/>
+        <path d="M14 11v6"/>
+        <path d="M9 6V4h6v2"/>
+      </svg>
+    `;
 
     const rows = items.map(x => {
-      const badges = [];
-      if (x.categorie) badges.push(`<span class="sb-badge sb-badge--outline-accent">${esc(x.categorie)}</span>`);
-      badges.push(`<span class="sb-badge sb-badge--accent-soft">${esc(x.is_required ? 'Requis' : 'Hors poste')}</span>`);
-
-      let statut = '–';
-      const s = String(x.statut_validite || '').toLowerCase();
-      if (!x.is_acquired) statut = 'Non acquis';
-      else if (s === 'valide') statut = 'Valide';
-      else if (s === 'a_renouveler') statut = 'À renouveler';
-      else if (s === 'expiree') statut = 'Expirée';
-
-      const validite = x.validite_attendue == null ? '–' : (Number(x.validite_attendue) <= 0 ? 'Permanent' : `${x.validite_attendue} mois`);
-      const jours = x.jours_restants == null ? '–' : `${x.jours_restants} j`;
+      const indicator = x.is_required_poste
+        ? `<span class="sb-collab-cert-poste-dot sb-collab-cert-poste-dot--required" title="Certification requise actuellement par le poste"></span>`
+        : (
+            x.is_wanted_poste
+              ? `<span class="sb-collab-cert-poste-dot sb-collab-cert-poste-dot--wanted" title="Certification souhaitée actuellement par le poste"></span>`
+              : ''
+          );
 
       return `
         <tr>
-          <td>
+          <td class="sb-collab-cert-col-indicator">
+            <div class="sb-collab-cert-indicator">${indicator}</div>
+          </td>
+          <td class="sb-collab-cert-col-name">
             <div style="font-weight:700; color:#111827;">${esc(x.nom_certification || '')}</div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">${badges.join('')}</div>
           </td>
-          <td style="text-align:center;">${esc(validite)}</td>
-          <td style="text-align:center;">
-            <div>${esc(statut)}</div>
-            <div class="card-sub" style="margin:6px 0 0 0;">${esc(jours)}</div>
+          <td class="sb-collab-cert-col-validity">${esc(certificationMonthLabel(x.validite_attendue))}</td>
+          <td class="sb-collab-cert-col-state">${esc(x.etat_label || certificationStateLabel(x.etat))}</td>
+          <td class="sb-collab-cert-col-obtention">${esc(formatDateFR(x.date_obtention))}</td>
+          <td class="sb-collab-cert-col-expiration">${esc(formatDateFR(x.date_expiration_effective || x.date_expiration || x.date_expiration_calculee))}</td>
+          <td class="sb-collab-cert-col-actions sb-table-action-cell">
+            <div class="sb-icon-actions">
+              <button
+                type="button"
+                class="sb-icon-btn"
+                data-act="edit-cert"
+                data-id-effectif-certification="${esc(x.id_effectif_certification || '')}"
+                title="Modifier la certification"
+                aria-label="Modifier la certification"
+              >
+                ${iconPen}
+              </button>
+
+              <button
+                type="button"
+                class="sb-icon-btn sb-icon-btn--danger"
+                data-act="archive-cert"
+                data-id-effectif-certification="${esc(x.id_effectif_certification || '')}"
+                title="Archiver la certification"
+                aria-label="Archiver la certification"
+              >
+                ${iconTrash}
+              </button>
+            </div>
           </td>
-          <td style="text-align:center;">${esc(formatDateFR(x.date_obtention))}</td>
-          <td style="text-align:center;">${esc(formatDateFR(x.date_expiration || x.date_expiration_calculee))}</td>
         </tr>
       `;
     }).join('');
 
     host.innerHTML = `
-      <div class="card-sub" style="margin:0 0 10px 0;">Poste actuel : <strong>${esc(data?.intitule_poste || '–')}</strong></div>
-      <div class="sb-table-wrap">
-        <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
-          <thead>
-            <tr>
-              <th>Certification</th>
-              <th style="width:120px; text-align:center;">Validité</th>
-              <th style="width:140px; text-align:center;">État</th>
-              <th style="width:130px; text-align:center;">Obtention</th>
-              <th style="width:130px; text-align:center;">Expiration</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:0 0 10px 0;">
+        <div class="card-sub" style="margin:0;">Poste actuel : <strong>${esc(data?.intitule_poste || '–')}</strong></div>
+        ${
+          canAdd
+            ? `
+              <button
+                type="button"
+                class="sb-btn sb-btn--accent sb-btn--xs"
+                id="btnCollabCertAdd"
+              >
+                Ajouter une certification
+              </button>
+            `
+            : ``
+        }
       </div>
+
+      ${
+        items.length
+          ? `
+            <div class="sb-table-wrap">
+              <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-certs-table">
+                <thead>
+                  <tr>
+                    <th class="sb-collab-cert-col-indicator"></th>
+                    <th class="sb-collab-cert-col-name">Certification</th>
+                    <th class="sb-collab-cert-col-validity">Validité</th>
+                    <th class="sb-collab-cert-col-state">État</th>
+                    <th class="sb-collab-cert-col-obtention">Obtention</th>
+                    <th class="sb-collab-cert-col-expiration">Expiration</th>
+                    <th class="sb-collab-cert-col-actions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          `
+          : `<div class="card-sub" style="margin:0;">Aucune certification enregistrée pour ce collaborateur.</div>`
+      }
     `;
+
+    const btnAdd = byId('btnCollabCertAdd');
+    if (btnAdd) {
+      btnAdd.addEventListener('click', async () => {
+        try {
+          await openCollabCertAddModal(portal);
+        } catch (e) {
+          if (portal.showAlert) portal.showAlert('error', getErrorMessage(e));
+        }
+      });
+    }
+
+    host.querySelectorAll('[data-act="edit-cert"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const id = String(btn.getAttribute('data-id-effectif-certification') || '').trim();
+        const item = (_collabCertItems || []).find(x => String(x?.id_effectif_certification || '').trim() === id) || null;
+        if (!item) return;
+
+        openCollabCertEditModal(item);
+      });
+    });
+
+    host.querySelectorAll('[data-act="archive-cert"]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+          await archiveCertificationForCollaborateur(
+            portal,
+            btn.getAttribute('data-id-effectif-certification')
+          );
+        } catch (err) {
+          if (portal.showAlert) portal.showAlert('error', getErrorMessage(err));
+        }
+      });
+    });
   }
 
   function renderHistory(data){
@@ -2889,7 +3378,7 @@
     if (tab === 'certs') {
       setPanelMessage('collabCertsPanel', 'Chargement…');
       const data = await portal.apiJson(`${portal.apiBase}/studio/collaborateurs/certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`);
-      renderCertifications(data);
+      renderCertifications(data, portal);
       return;
     }
 
@@ -3027,10 +3516,10 @@
     }
 
     /* IMPORTANT :
-      le poste actuel peut avoir changé, donc les compétences requises calculées
-      pour l’onglet Compétences doivent être invalidées après chaque enregistrement.
-      Sinon on garde un rendu obsolète car _tabLoaded.skills reste à true. */
+      le poste actuel peut avoir changé, donc les onglets dépendants du poste
+      doivent être invalidés après chaque enregistrement. */
     _tabLoaded.skills = false;
+    _tabLoaded.certs = false;
 
     await loadGlobalStats(portal);
     await loadList(portal);
@@ -3042,6 +3531,10 @@
 
       if (activeTab === 'skills' && _editingId) {
         await loadTabIfNeeded(portal, 'skills');
+      }
+
+      if (activeTab === 'certs' && _editingId) {
+        await loadTabIfNeeded(portal, 'certs');
       }
 
       refreshModalSendButton();
@@ -3217,8 +3710,38 @@
 
     byId('btnCloseCollabCompAdd')?.addEventListener('click', () => closeModal('modalCollabCompAdd'));
 
+    byId('btnCloseCollabCertAdd')?.addEventListener('click', () => closeModal('modalCollabCertAdd'));
+    byId('btnCloseCollabCertEdit')?.addEventListener('click', () => closeModal('modalCollabCertEdit'));
+    byId('btnCollabCertEditCancel')?.addEventListener('click', () => closeModal('modalCollabCertEdit'));
+
     byId('btnCloseCollabSkillEval')?.addEventListener('click', () => closeModal('modalCollabSkillEval'));
     byId('btnCollabSkillEvalCancel')?.addEventListener('click', () => closeModal('modalCollabSkillEval'));
+
+    byId('btnCollabCertEditSave')?.addEventListener('click', async () => {
+      try {
+        await saveCollabCertEdit(portal);
+      } catch (e) {
+        portal.showAlert('error', getErrorMessage(e));
+      }
+    });
+
+    byId('btnCollabCertProofPick')?.addEventListener('click', () => {
+      byId('collabCertProofFile')?.click();
+    });
+
+    byId('collabCertProofFile')?.addEventListener('change', (e) => {
+      const fileObj = e?.target?.files?.[0] || null;
+      _collabCertEditState.proofFile = fileObj;
+      refreshCollabCertProofUi();
+    });
+
+    byId('btnCollabCertProofOpen')?.addEventListener('click', async () => {
+      try {
+        await openCollabCertProof(portal);
+      } catch (e) {
+        portal.showAlert('error', getErrorMessage(e));
+      }
+    });    
 
     byId('btnCollabSkillEvalSave')?.addEventListener('click', async () => {
       try {
@@ -3263,6 +3786,22 @@
       renderCollabCompAddList(portal);
     });
 
+    const collabCertSearch = byId('collabCertAddSearch');
+    if (collabCertSearch){
+      collabCertSearch.addEventListener('input', () => {
+        _collabCertAddSearch = (collabCertSearch.value || '').trim();
+        if (_collabCertAddTimer) clearTimeout(_collabCertAddTimer);
+        _collabCertAddTimer = setTimeout(() => {
+          loadCollabCertAddList(portal).catch(err => portal.showAlert('error', getErrorMessage(err)));
+        }, 250);
+      });
+    }
+
+    byId('collabCertAddCategory')?.addEventListener('change', (e) => {
+      _collabCertAddCategory = (e.target.value || '').trim();
+      loadCollabCertAddList(portal).catch(err => portal.showAlert('error', getErrorMessage(err)));
+    });
+
     bindPhoneMask(byId('collabTel'));
     bindPhoneMask(byId('collabTel2'));
     bindCollabPostalAssist(portal);
@@ -3270,6 +3809,14 @@
     byId('collabPoste')?.addEventListener('change', refreshServiceFromPoste);
     byId('collabTemp')?.addEventListener('change', refreshTempRoleVisibility);
     byId('collabHaveDateFin')?.addEventListener('change', refreshSortieVisibility);
+
+    byId('modalCollabCertAdd')?.addEventListener('click', (e) => {
+      if (e.target === byId('modalCollabCertAdd')) closeModal('modalCollabCertAdd');
+    });
+
+    byId('modalCollabCertEdit')?.addEventListener('click', (e) => {
+      if (e.target === byId('modalCollabCertEdit')) closeModal('modalCollabCertEdit');
+    });
 
     byId('modalCollabSkillEval')?.addEventListener('click', (e) => {
       if (e.target === byId('modalCollabSkillEval')) closeModal('modalCollabSkillEval');

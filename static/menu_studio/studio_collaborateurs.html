@@ -385,6 +385,127 @@
     </div>
   </div>
 </div>
+
+<!-- MODAL : Ajouter certification au collaborateur -->
+<div class="sb-modal" id="modalCollabCertAdd" style="display:none;">
+  <div class="sb-modal-card">
+    <div class="sb-modal-head">
+      <div>
+        <div class="card-title" style="margin-bottom:2px;">Ajouter une certification</div>
+        <div class="card-sub" style="margin:0;">Catalogue général des certifications.</div>
+      </div>
+      <button type="button" class="sb-modal-x" id="btnCloseCollabCertAdd" aria-label="Fermer">&times;</button>
+    </div>
+
+    <div class="sb-modal-body">
+      <div class="sb-toolbar">
+        <div class="sb-search">
+          <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
+          <input type="text" id="collabCertAddSearch" placeholder="Nom, description ou catégorie…" />
+        </div>
+
+        <div class="info-item" style="min-width:240px;">
+          <div class="label">Catégorie</div>
+          <select id="collabCertAddCategory">
+            <option value="">Toutes</option>
+            <option value="__none__">Sans catégorie</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="sb-stack sb-stack--xxs sb-mt-10" id="collabCertAddList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL : Modifier certification collaborateur -->
+<div class="sb-modal" id="modalCollabCertEdit" style="display:none;">
+  <div class="sb-modal-card" style="width:min(860px, 96vw);">
+    <div class="sb-modal-head">
+      <div style="min-width:0; flex:1;">
+        <div class="card-title" style="margin:0;">Modifier la certification</div>
+        <div class="card-sub" id="collabCertEditSub" style="margin:4px 0 0 0;">
+          Renseignez l’état, les dates et la preuve documentaire si besoin.
+        </div>
+      </div>
+      <button type="button" class="sb-modal-x" id="btnCloseCollabCertEdit" aria-label="Fermer">&times;</button>
+    </div>
+
+    <div class="sb-modal-body">
+      <div class="card" style="margin:0; padding:12px;">
+        <div class="label"><b>Certification</b></div>
+        <div id="collabCertEditTitle" style="font-weight:700; color:#111827; line-height:1.35; margin-top:6px;">—</div>
+      </div>
+
+      <div class="sb-grid-12 sb-collab-form-grid" style="margin-top:12px;">
+        <div class="sb-field sb-col-4">
+          <div class="label">État</div>
+          <select id="collabCertEtat">
+            <option value="a_obtenir">À obtenir</option>
+            <option value="en_cours">En cours</option>
+            <option value="acquise">Acquise</option>
+            <option value="a_renouveler">À renouveler</option>
+            <option value="expiree">Expirée</option>
+          </select>
+        </div>
+
+        <div class="sb-field sb-col-4">
+          <div class="label">Date d’obtention</div>
+          <input type="date" id="collabCertDateObtention" class="sb-collab-date" />
+        </div>
+
+        <div class="sb-field sb-col-4">
+          <div class="label">Date d’expiration</div>
+          <input type="date" id="collabCertDateExpiration" class="sb-collab-date" />
+        </div>
+
+        <div class="sb-field sb-col-6">
+          <div class="label">Organisme</div>
+          <input type="text" id="collabCertOrganisme" />
+        </div>
+
+        <div class="sb-field sb-col-6">
+          <div class="label">Référence</div>
+          <input type="text" id="collabCertReference" />
+        </div>
+
+        <div class="sb-field sb-col-12">
+          <div class="label">Commentaire</div>
+          <textarea id="collabCertCommentaire" rows="4" class="sb-textarea--md"></textarea>
+        </div>
+
+        <div class="sb-field sb-col-12">
+          <div class="label">Document preuve</div>
+          <input
+            type="file"
+            id="collabCertProofFile"
+            accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
+            style="display:none;"
+          />
+
+          <div class="sb-file-card">
+            <div class="sb-file-card__main">
+              <div class="sb-file-card__name" id="collabCertProofName">Aucun document preuve</div>
+              <div class="sb-file-card__meta" id="collabCertProofMeta">PDF, PNG, JPEG ou WEBP · 5 Mo max.</div>
+            </div>
+
+            <div class="sb-actions">
+              <button type="button" class="sb-btn sb-btn--secondary" id="btnCollabCertProofPick">Importer un document</button>
+              <button type="button" class="sb-btn sb-btn--doc" id="btnCollabCertProofOpen" disabled>Ouvrir</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sb-modal-foot">
+      <div class="sb-actions" style="justify-content:flex-end; width:100%;">
+        <button type="button" class="sb-btn sb-btn--soft" id="btnCollabCertEditCancel">Annuler</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnCollabCertEditSave">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+</div>
 <!-- MODAL : Évaluer la compétence -->
 <div class="sb-modal" id="modalCollabSkillEval" style="display:none;">
   <div class="sb-modal-card" style="width:min(980px, 96vw);">

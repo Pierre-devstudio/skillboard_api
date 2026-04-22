@@ -914,6 +914,106 @@
   white-space:nowrap;
 }
 
+/* Collaborateurs > Certifications */
+.sb-collab-certs-table{
+  width:100%;
+  table-layout:fixed;
+}
+
+.sb-collab-certs-table th,
+.sb-collab-certs-table td{
+  vertical-align:middle;
+}
+
+.sb-collab-certs-table .sb-collab-cert-col-indicator{
+  width:14px;
+  min-width:14px;
+  max-width:14px;
+  text-align:center;
+}
+
+.sb-collab-certs-table th.sb-collab-cert-col-indicator,
+.sb-collab-certs-table td.sb-collab-cert-col-indicator{
+  padding-left:0;
+  padding-right:0;
+}
+
+.sb-collab-certs-table .sb-collab-cert-col-name{
+  width:auto;
+}
+
+.sb-collab-certs-table .sb-collab-cert-col-validity{
+  width:110px;
+  text-align:center;
+}
+
+.sb-collab-certs-table .sb-collab-cert-col-state{
+  width:120px;
+  text-align:center;
+}
+
+.sb-collab-certs-table .sb-collab-cert-col-obtention{
+  width:118px;
+  text-align:center;
+}
+
+.sb-collab-certs-table .sb-collab-cert-col-expiration{
+  width:118px;
+  text-align:center;
+}
+
+.sb-collab-certs-table .sb-collab-cert-col-actions{
+  width:90px;
+  text-align:center;
+}
+
+.sb-collab-certs-table thead th.sb-collab-cert-col-indicator,
+.sb-collab-certs-table tbody td.sb-collab-cert-col-indicator,
+.sb-collab-certs-table thead th.sb-collab-cert-col-validity,
+.sb-collab-certs-table tbody td.sb-collab-cert-col-validity,
+.sb-collab-certs-table thead th.sb-collab-cert-col-state,
+.sb-collab-certs-table tbody td.sb-collab-cert-col-state,
+.sb-collab-certs-table thead th.sb-collab-cert-col-obtention,
+.sb-collab-certs-table tbody td.sb-collab-cert-col-obtention,
+.sb-collab-certs-table thead th.sb-collab-cert-col-expiration,
+.sb-collab-certs-table tbody td.sb-collab-cert-col-expiration,
+.sb-collab-certs-table thead th.sb-collab-cert-col-actions,
+.sb-collab-certs-table tbody td.sb-collab-cert-col-actions{
+  text-align:center;
+}
+
+.sb-collab-cert-indicator{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+}
+
+.sb-collab-cert-poste-dot{
+  width:10px;
+  height:10px;
+  min-width:10px;
+  border-radius:999px;
+  display:inline-block;
+  vertical-align:middle;
+}
+
+.sb-collab-cert-poste-dot--required{
+  background:#16a34a;
+  border:1px solid rgba(22,163,74,.38);
+  box-shadow:0 0 0 2px rgba(22,163,74,.10);
+}
+
+.sb-collab-cert-poste-dot--wanted{
+  background:rgba(124,58,237, 1);
+  border:1px solid rgba(124,58,237, .48);
+  box-shadow:0 0 0 2px rgba(124,58,237, .10);
+}
+
+.sb-collab-cert-poste-dot[title]{
+  cursor:help;
+}
+
 /* Organisation > Poste > Exigences */
 #posteBlocCompetences .table-wrap,
 #posteBlocCertifications .table-wrap{

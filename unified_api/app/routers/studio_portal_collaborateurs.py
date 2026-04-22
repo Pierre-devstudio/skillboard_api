@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Response
 from pydantic import BaseModel
 from typing import Optional, List, Any
 from psycopg.rows import dict_row
@@ -8,7 +8,7 @@ import uuid
 import requests
 import json
 import re
-from datetime import date as py_date
+from datetime import date as py_date, timedelta
 from io import BytesIO
 
 from reportlab.lib import colors
@@ -961,6 +961,189 @@ def _norm_iso_date(v: Optional[str]) -> Optional[py_date]:
     except Exception:
         raise HTTPException(status_code=400, detail="Date invalide (format attendu YYYY-MM-DD).")
 
+CERTIFICATION_STATE_LABELS = {
+    "a_obtenir": "À obtenir",
+    "en_cours": "En cours",
+    "acquise": "Acquise",
+    "a_renouveler": "À renouveler",
+    "expiree": "Expirée",
+}
+
+CERTIFICATION_ALLOWED_PROOF_MIME = {
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+}
+
+CERTIFICATION_PROOF_MAX_BYTES = 5 * 1024 * 1024
+
+
+def _normalize_collab_certification_state(value: Optional[str], default: str = "a_obtenir") -> str:
+    raw = (value or "").strip().lower()
+    raw = (
+        raw.replace("é", "e")
+           .replace("è", "e")
+           .replace("ê", "e")
+           .replace("ë", "e")
+           .replace("à", "a")
+           .replace("â", "a")
+           .replace("î", "i")
+           .replace("ï", "i")
+           .replace("ô", "o")
+           .replace("ö", "o")
+           .replace("û", "u")
+           .replace("ü", "u")
+    )
+
+    mapping = {
+        "a_obtenir": "a_obtenir",
+        "a obtenir": "a_obtenir",
+        "non acquis": "a_obtenir",
+        "non_acquis": "a_obtenir",
+        "en_cours": "en_cours",
+        "en cours": "en_cours",
+        "acquise": "acquise",
+        "acquis": "acquise",
+        "valide": "acquise",
+        "validee": "acquise",
+        "a_renouveler": "a_renouveler",
+        "a renouveler": "a_renouveler",
+        "expiree": "expiree",
+        "expire": "expiree",
+    }
+
+    out = mapping.get(raw)
+    if out:
+        return out
+
+    if default:
+        return default
+
+    raise HTTPException(status_code=400, detail="État certification invalide.")
+
+
+def _collab_certification_state_label(code: Optional[str]) -> str:
+    return CERTIFICATION_STATE_LABELS.get(
+        _normalize_collab_certification_state(code, default="a_obtenir"),
+        "À obtenir",
+    )
+
+
+def _default_collab_certification_state(date_obtention: Optional[py_date]) -> str:
+    return "acquise" if date_obtention else "a_obtenir"
+
+
+def _collab_certification_expiration_effective(
+    date_obtention: Optional[py_date],
+    date_expiration: Optional[py_date],
+    validite_attendue,
+) -> Optional[py_date]:
+    if date_expiration:
+        return date_expiration
+
+    if not date_obtention:
+        return None
+
+    if validite_attendue is None:
+        return None
+
+    try:
+        months = int(validite_attendue)
+    except Exception:
+        return None
+
+    if months <= 0:
+        return None
+
+    return _add_years_months(date_obtention, months=months)
+
+
+def _effective_collab_certification_state(
+    raw_etat: Optional[str],
+    date_obtention: Optional[py_date],
+    date_expiration_effective: Optional[py_date],
+    delai_renouvellement,
+) -> str:
+    raw = (raw_etat or "").strip()
+    if raw:
+        return _normalize_collab_certification_state(raw, default="a_obtenir")
+
+    if not date_obtention:
+        return "a_obtenir"
+
+    if date_expiration_effective:
+        if date_expiration_effective < py_date.today():
+            return "expiree"
+
+        try:
+            delay_days = int(delai_renouvellement or 60)
+        except Exception:
+            delay_days = 60
+
+        if date_expiration_effective <= (py_date.today() + timedelta(days=delay_days)):
+            return "a_renouveler"
+
+    return "acquise"
+
+
+def _normalize_certification_proof_content_type(filename: str, content_type: Optional[str]) -> str:
+    ct = (content_type or "").strip().lower()
+    if ct in CERTIFICATION_ALLOWED_PROOF_MIME:
+        return ct
+
+    ext = os.path.splitext(filename or "")[1].strip().lower()
+    mapping = {
+        ".pdf": "application/pdf",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+    }
+    return mapping.get(ext, "")
+
+
+def _get_collab_certification_row(cur, id_effectif: str, id_effectif_certification: str) -> dict:
+    cur.execute(
+        """
+        SELECT
+          ecc.id_effectif_certification,
+          ecc.id_effectif,
+          ecc.id_certification,
+          ecc.id_preuve_doc,
+          COALESCE(NULLIF(BTRIM(COALESCE(ecc.etat, '')), ''), '') AS etat,
+          c.nom_certification
+        FROM public.tbl_effectif_client_certification ecc
+        JOIN public.tbl_certification c
+          ON c.id_certification = ecc.id_certification
+         AND COALESCE(c.masque, FALSE) = FALSE
+        WHERE ecc.id_effectif = %s
+          AND ecc.id_effectif_certification = %s
+          AND COALESCE(ecc.archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (id_effectif, id_effectif_certification),
+    )
+    row = cur.fetchone() or {}
+    if not row:
+        raise HTTPException(status_code=404, detail="Certification collaborateur introuvable.")
+    return row
+
+
+def _archive_collab_certification_proof(cur, id_preuve_doc: Optional[str]) -> None:
+    pid = (id_preuve_doc or "").strip()
+    if not pid:
+        return
+
+    cur.execute(
+        """
+        UPDATE public.tbl_effectif_client_certification_doc
+        SET archive = TRUE,
+            date_maj = NOW()
+        WHERE id_preuve_doc = %s
+        """,
+        (pid,),
+    )
 
 def _service_exists_active(cur, id_ent: str, id_service: Optional[str]) -> bool:
     sid = (id_service or "").strip()
@@ -1640,6 +1823,15 @@ class CollaborateurAccessPayload(BaseModel):
 
 class CollaborateurAccessBulkSendPayload(BaseModel):
     ids_collaborateurs: List[str] = []
+
+class CollaborateurCertificationPayload(BaseModel):
+    id_certification: Optional[str] = None
+    etat: Optional[str] = None
+    date_obtention: Optional[str] = None
+    date_expiration: Optional[str] = None
+    organisme: Optional[str] = None
+    reference: Optional[str] = None
+    commentaire: Optional[str] = None
 
 def _normalize_skill_level_from_poste(value: Optional[str]) -> str:
     s = (_norm_text(value) or "").lower()
@@ -3869,8 +4061,7 @@ def studio_collab_certifications(id_owner: str, id_collaborateur: str, request: 
                         SELECT
                             fpc.id_certification,
                             fpc.validite_override,
-                            fpc.niveau_exigence,
-                            fpc.commentaire
+                            lower(COALESCE(fpc.niveau_exigence, 'requis')) AS niveau_exigence
                         FROM public.tbl_fiche_poste_certification fpc
                         WHERE fpc.id_poste = %s
                     ),
@@ -3880,92 +4071,62 @@ def studio_collab_certifications(id_owner: str, id_collaborateur: str, request: 
                             ROW_NUMBER() OVER (
                                 PARTITION BY ecc.id_certification
                                 ORDER BY
-                                    ecc.date_obtention DESC NULLS LAST,
-                                    ecc.date_creation DESC,
+                                    ecc.date_maj DESC NULLS LAST,
+                                    ecc.date_creation DESC NULLS LAST,
                                     ecc.id_effectif_certification DESC
                             ) AS rn
                         FROM public.tbl_effectif_client_certification ecc
                         WHERE ecc.id_effectif = %s
-                          AND ecc.archive = FALSE
-                    ),
-                    curc AS (
-                        SELECT
-                            id_effectif_certification,
-                            id_certification,
-                            date_obtention,
-                            date_expiration,
-                            organisme,
-                            reference,
-                            commentaire,
-                            id_preuve_doc
-                        FROM curc_raw
-                        WHERE rn = 1
-                    ),
-                    base AS (
-                        SELECT
-                            c.id_certification,
-                            c.nom_certification,
-                            c.description,
-                            c.categorie,
-                            c.delai_renouvellement,
-                            (req.id_certification IS NOT NULL) AS is_required,
-                            COALESCE(req.niveau_exigence, 'requis') AS niveau_exigence,
-                            c.duree_validite AS validite_reference,
-                            req.validite_override,
-                            COALESCE(req.validite_override, c.duree_validite) AS validite_attendue,
-                            req.commentaire AS commentaire_poste,
-                            (curc.id_certification IS NOT NULL) AS is_acquired,
-                            curc.id_effectif_certification,
-                            curc.date_obtention,
-                            curc.date_expiration,
-                            curc.organisme,
-                            curc.reference,
-                            curc.commentaire,
-                            curc.id_preuve_doc,
-                            CASE
-                                WHEN curc.date_expiration IS NULL
-                                 AND curc.date_obtention IS NOT NULL
-                                 AND COALESCE(req.validite_override, c.duree_validite) IS NOT NULL
-                                THEN (curc.date_obtention + make_interval(months => COALESCE(req.validite_override, c.duree_validite)))::date
-                                ELSE NULL
-                            END AS date_expiration_calculee
-                        FROM public.tbl_certification c
-                        LEFT JOIN req
-                          ON req.id_certification = c.id_certification
-                        LEFT JOIN curc
-                          ON curc.id_certification = c.id_certification
-                        WHERE (req.id_certification IS NOT NULL OR curc.id_certification IS NOT NULL)
-                          AND COALESCE(c.masque, FALSE) = FALSE
-                    ),
-                    calc AS (
-                        SELECT
-                            b.*,
-                            COALESCE(b.date_expiration, b.date_expiration_calculee) AS date_expiration_effective
-                        FROM base b
+                          AND COALESCE(ecc.archive, FALSE) = FALSE
                     )
                     SELECT
-                        c.*,
+                        ecc.id_effectif_certification,
+                        ecc.id_certification,
+                        c.nom_certification,
+                        c.description,
+                        c.categorie,
+                        c.duree_validite,
+                        c.delai_renouvellement,
+                        COALESCE(req.validite_override, c.duree_validite) AS validite_attendue,
+                        COALESCE(req.niveau_exigence, '') AS niveau_exigence,
                         CASE
-                            WHEN c.date_expiration_effective IS NULL THEN NULL
-                            WHEN c.date_expiration_effective < CURRENT_DATE THEN 'expiree'
-                            WHEN c.date_expiration_effective < (CURRENT_DATE + COALESCE(c.delai_renouvellement, 60)) THEN 'a_renouveler'
-                            ELSE 'valide'
-                        END AS statut_validite,
+                            WHEN req.id_certification IS NOT NULL
+                             AND COALESCE(req.niveau_exigence, 'requis') IN ('souhaite', 'souhaité')
+                            THEN TRUE ELSE FALSE
+                        END AS is_wanted_poste,
                         CASE
-                            WHEN c.date_expiration_effective IS NULL THEN NULL
-                            ELSE (c.date_expiration_effective - CURRENT_DATE)
-                        END AS jours_restants
-                    FROM calc c
+                            WHEN req.id_certification IS NOT NULL
+                             AND COALESCE(req.niveau_exigence, 'requis') NOT IN ('souhaite', 'souhaité')
+                            THEN TRUE ELSE FALSE
+                        END AS is_required_poste,
+                        ecc.date_obtention,
+                        ecc.date_expiration,
+                        ecc.organisme,
+                        ecc.reference,
+                        ecc.commentaire,
+                        ecc.id_preuve_doc,
+                        COALESCE(NULLIF(BTRIM(COALESCE(ecc.etat, '')), ''), '') AS etat,
+                        doc.nom_fichier AS preuve_nom_fichier,
+                        doc.type_mime AS preuve_content_type
+                    FROM curc_raw ecc
+                    JOIN public.tbl_certification c
+                      ON c.id_certification = ecc.id_certification
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                    LEFT JOIN req
+                      ON req.id_certification = ecc.id_certification
+                    LEFT JOIN public.tbl_effectif_client_certification_doc doc
+                      ON doc.id_preuve_doc = ecc.id_preuve_doc
+                     AND COALESCE(doc.archive, FALSE) = FALSE
+                    WHERE ecc.rn = 1
                     ORDER BY
-                        (c.is_required = FALSE) ASC,
-                        CASE lower(COALESCE(c.niveau_exigence, 'requis'))
-                            WHEN 'requis' THEN 0
-                            WHEN 'souhaite' THEN 1
-                            WHEN 'souhaité' THEN 1
+                        CASE
+                            WHEN req.id_certification IS NOT NULL
+                             AND COALESCE(req.niveau_exigence, 'requis') NOT IN ('souhaite', 'souhaité') THEN 0
+                            WHEN req.id_certification IS NOT NULL
+                             AND COALESCE(req.niveau_exigence, 'requis') IN ('souhaite', 'souhaité') THEN 1
                             ELSE 2
-                        END ASC,
-                        COALESCE(c.categorie, '') ASC,
-                        c.nom_certification
+                        END,
+                        lower(COALESCE(c.nom_certification, ''))
                     """,
                     (scope["id_poste_actuel"], scope["id_effectif_data"]),
                 )
@@ -3973,31 +4134,48 @@ def studio_collab_certifications(id_owner: str, id_collaborateur: str, request: 
 
         items = []
         for r in rows:
-            jr = r.get("jours_restants")
+            date_obtention = r.get("date_obtention")
+            date_expiration = r.get("date_expiration")
+            validite_attendue = r.get("validite_attendue")
+            date_expiration_calculee = _collab_certification_expiration_effective(
+                date_obtention,
+                date_expiration,
+                validite_attendue,
+            )
+            date_expiration_effective = date_expiration or date_expiration_calculee
+
+            etat_code = _effective_collab_certification_state(
+                r.get("etat"),
+                date_obtention,
+                date_expiration_effective,
+                r.get("delai_renouvellement"),
+            )
+
             items.append(
                 {
+                    "id_effectif_certification": r.get("id_effectif_certification"),
                     "id_certification": r.get("id_certification"),
                     "nom_certification": r.get("nom_certification"),
-                    "categorie": r.get("categorie"),
                     "description": r.get("description"),
-                    "is_required": bool(r.get("is_required")),
-                    "niveau_exigence": r.get("niveau_exigence"),
-                    "validite_reference": r.get("validite_reference"),
-                    "validite_override": r.get("validite_override"),
-                    "validite_attendue": r.get("validite_attendue"),
+                    "categorie": r.get("categorie"),
+                    "validite_attendue": validite_attendue,
                     "delai_renouvellement": r.get("delai_renouvellement"),
-                    "commentaire_poste": r.get("commentaire_poste"),
-                    "is_acquired": bool(r.get("is_acquired")),
-                    "id_effectif_certification": r.get("id_effectif_certification"),
-                    "date_obtention": r.get("date_obtention").isoformat() if r.get("date_obtention") else None,
-                    "date_expiration": r.get("date_expiration").isoformat() if r.get("date_expiration") else None,
-                    "date_expiration_calculee": r.get("date_expiration_calculee").isoformat() if r.get("date_expiration_calculee") else None,
-                    "statut_validite": r.get("statut_validite"),
-                    "jours_restants": int(jr) if jr is not None else None,
+                    "niveau_exigence": r.get("niveau_exigence"),
+                    "is_required_poste": bool(r.get("is_required_poste")),
+                    "is_wanted_poste": bool(r.get("is_wanted_poste")),
+                    "date_obtention": date_obtention.isoformat() if date_obtention else None,
+                    "date_expiration": date_expiration.isoformat() if date_expiration else None,
+                    "date_expiration_calculee": date_expiration_calculee.isoformat() if date_expiration_calculee else None,
+                    "date_expiration_effective": date_expiration_effective.isoformat() if date_expiration_effective else None,
+                    "etat": etat_code,
+                    "etat_label": _collab_certification_state_label(etat_code),
                     "organisme": r.get("organisme"),
                     "reference": r.get("reference"),
                     "commentaire": r.get("commentaire"),
                     "id_preuve_doc": r.get("id_preuve_doc"),
+                    "preuve_nom_fichier": r.get("preuve_nom_fichier"),
+                    "preuve_content_type": r.get("preuve_content_type"),
+                    "preuve_available": bool((r.get("id_preuve_doc") or "").strip() and (r.get("preuve_nom_fichier") or "").strip()),
                 }
             )
 
@@ -4007,10 +4185,413 @@ def studio_collab_certifications(id_owner: str, id_collaborateur: str, request: 
             "intitule_poste": scope.get("intitule_poste"),
             "items": items,
         }
+
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/certifications error: {e}")
+
+
+@router.post("/studio/collaborateurs/certifications/{id_owner}/{id_collaborateur}/add")
+def studio_collab_certification_add(
+    id_owner: str,
+    id_collaborateur: str,
+    payload: CollaborateurCertificationPayload,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        cert_id = (payload.id_certification or "").strip()
+
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+        if not cert_id:
+            raise HTTPException(status_code=400, detail="id_certification manquant.")
+
+        date_obtention = _norm_iso_date(payload.date_obtention)
+        date_expiration = _norm_iso_date(payload.date_expiration)
+
+        if date_obtention and date_expiration and date_expiration < date_obtention:
+            raise HTTPException(status_code=400, detail="date_expiration incohérente avec date_obtention.")
+
+        etat = _normalize_collab_certification_state(
+            payload.etat,
+            default=_default_collab_certification_state(date_obtention),
+        )
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM public.tbl_certification
+                    WHERE id_certification = %s
+                      AND COALESCE(masque, FALSE) = FALSE
+                    LIMIT 1
+                    """,
+                    (cert_id,),
+                )
+                if not cur.fetchone():
+                    raise HTTPException(status_code=404, detail="Certification introuvable dans le catalogue.")
+
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM public.tbl_effectif_client_certification
+                    WHERE id_effectif = %s
+                      AND id_certification = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    LIMIT 1
+                    """,
+                    (scope["id_effectif_data"], cert_id),
+                )
+                if cur.fetchone():
+                    raise HTTPException(status_code=400, detail="Cette certification est déjà présente pour ce collaborateur.")
+
+                id_effectif_certification = str(uuid.uuid4())
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_effectif_client_certification (
+                      id_effectif_certification,
+                      id_effectif,
+                      id_certification,
+                      date_obtention,
+                      date_expiration,
+                      organisme,
+                      reference,
+                      commentaire,
+                      id_preuve_doc,
+                      etat,
+                      archive,
+                      date_creation,
+                      date_maj
+                    ) VALUES (
+                      %s, %s, %s, %s, %s, %s, %s, %s, NULL, %s, FALSE, CURRENT_DATE, NOW()
+                    )
+                    """,
+                    (
+                        id_effectif_certification,
+                        scope["id_effectif_data"],
+                        cert_id,
+                        date_obtention,
+                        date_expiration,
+                        _norm_text(payload.organisme),
+                        _norm_text(payload.reference),
+                        _norm_text(payload.commentaire),
+                        etat,
+                    ),
+                )
+
+        return {
+            "ok": True,
+            "id_effectif_certification": id_effectif_certification,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/certifications/add error: {e}")
+
+
+@router.post("/studio/collaborateurs/certifications/{id_owner}/{id_collaborateur}/{id_effectif_certification}")
+def studio_collab_certification_update(
+    id_owner: str,
+    id_collaborateur: str,
+    id_effectif_certification: str,
+    payload: CollaborateurCertificationPayload,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        ecid = (id_effectif_certification or "").strip()
+
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+        if not ecid:
+            raise HTTPException(status_code=400, detail="id_effectif_certification manquant.")
+
+        date_obtention = _norm_iso_date(payload.date_obtention)
+        date_expiration = _norm_iso_date(payload.date_expiration)
+
+        if date_obtention and date_expiration and date_expiration < date_obtention:
+            raise HTTPException(status_code=400, detail="date_expiration incohérente avec date_obtention.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+
+                existing = _get_collab_certification_row(cur, scope["id_effectif_data"], ecid)
+
+                etat = _normalize_collab_certification_state(
+                    payload.etat,
+                    default=(existing.get("etat") or _default_collab_certification_state(date_obtention)),
+                )
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client_certification
+                    SET
+                      etat = %s,
+                      date_obtention = %s,
+                      date_expiration = %s,
+                      organisme = %s,
+                      reference = %s,
+                      commentaire = %s,
+                      date_maj = NOW()
+                    WHERE id_effectif_certification = %s
+                    """,
+                    (
+                        etat,
+                        date_obtention,
+                        date_expiration,
+                        _norm_text(payload.organisme),
+                        _norm_text(payload.reference),
+                        _norm_text(payload.commentaire),
+                        ecid,
+                    ),
+                )
+
+        return {"ok": True, "id_effectif_certification": ecid}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/certifications/update error: {e}")
+
+
+@router.post("/studio/collaborateurs/certifications/{id_owner}/{id_collaborateur}/{id_effectif_certification}/archive")
+def studio_collab_certification_archive(
+    id_owner: str,
+    id_collaborateur: str,
+    id_effectif_certification: str,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        ecid = (id_effectif_certification or "").strip()
+
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+        if not ecid:
+            raise HTTPException(status_code=400, detail="id_effectif_certification manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+
+                existing = _get_collab_certification_row(cur, scope["id_effectif_data"], ecid)
+
+                _archive_collab_certification_proof(cur, existing.get("id_preuve_doc"))
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client_certification
+                    SET archive = TRUE,
+                        id_preuve_doc = NULL,
+                        date_maj = NOW()
+                    WHERE id_effectif_certification = %s
+                    """,
+                    (ecid,),
+                )
+
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/certifications/archive error: {e}")
+
+
+@router.post("/studio/collaborateurs/certifications/{id_owner}/{id_collaborateur}/{id_effectif_certification}/preuve")
+def studio_collab_certification_upload_proof(
+    id_owner: str,
+    id_collaborateur: str,
+    id_effectif_certification: str,
+    request: Request,
+    file: UploadFile = File(...),
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        ecid = (id_effectif_certification or "").strip()
+
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+        if not ecid:
+            raise HTTPException(status_code=400, detail="id_effectif_certification manquant.")
+
+        filename = (getattr(file, "filename", "") or "preuve").strip() or "preuve"
+        raw = file.file.read() if file and file.file else b""
+        if not raw:
+            raise HTTPException(status_code=400, detail="Fichier preuve vide.")
+        if len(raw) > CERTIFICATION_PROOF_MAX_BYTES:
+            raise HTTPException(status_code=400, detail="Fichier preuve trop volumineux (max 5 Mo).")
+
+        content_type = _normalize_certification_proof_content_type(filename, getattr(file, "content_type", ""))
+        if content_type not in CERTIFICATION_ALLOWED_PROOF_MIME:
+            raise HTTPException(status_code=400, detail="Format preuve non supporté (PDF, PNG, JPEG, WEBP).")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+
+                existing = _get_collab_certification_row(cur, scope["id_effectif_data"], ecid)
+
+                old_proof_id = (existing.get("id_preuve_doc") or "").strip()
+                if old_proof_id:
+                    _archive_collab_certification_proof(cur, old_proof_id)
+
+                new_proof_id = str(uuid.uuid4())
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_effectif_client_certification_doc (
+                      id_preuve_doc,
+                      id_effectif_certification,
+                      nom_fichier,
+                      type_mime,
+                      document_bytes,
+                      taille_octets,
+                      archive,
+                      date_creation,
+                      date_maj
+                    ) VALUES (
+                      %s, %s, %s, %s, %s, %s, FALSE, NOW(), NOW()
+                    )
+                    """,
+                    (
+                        new_proof_id,
+                        ecid,
+                        filename,
+                        content_type,
+                        raw,
+                        len(raw),
+                    ),
+                )
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client_certification
+                    SET id_preuve_doc = %s,
+                        date_maj = NOW()
+                    WHERE id_effectif_certification = %s
+                    """,
+                    (new_proof_id, ecid),
+                )
+
+        return {
+            "ok": True,
+            "id_preuve_doc": new_proof_id,
+            "nom_fichier": filename,
+            "type_mime": content_type,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/certifications/proof upload error: {e}")
+
+
+@router.get("/studio/collaborateurs/certifications/{id_owner}/{id_collaborateur}/{id_effectif_certification}/preuve")
+def studio_collab_certification_open_proof(
+    id_owner: str,
+    id_collaborateur: str,
+    id_effectif_certification: str,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        ecid = (id_effectif_certification or "").strip()
+
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+        if not ecid:
+            raise HTTPException(status_code=400, detail="id_effectif_certification manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+
+                existing = _get_collab_certification_row(cur, scope["id_effectif_data"], ecid)
+                proof_id = (existing.get("id_preuve_doc") or "").strip()
+                if not proof_id:
+                    raise HTTPException(status_code=404, detail="Aucune preuve disponible pour cette certification.")
+
+                cur.execute(
+                    """
+                    SELECT
+                      nom_fichier,
+                      type_mime,
+                      document_bytes
+                    FROM public.tbl_effectif_client_certification_doc
+                    WHERE id_preuve_doc = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    LIMIT 1
+                    """,
+                    (proof_id,),
+                )
+                doc = cur.fetchone() or {}
+                if not doc:
+                    raise HTTPException(status_code=404, detail="Document preuve introuvable.")
+
+        raw = doc.get("document_bytes")
+        data = bytes(raw) if raw is not None else b""
+        if not data:
+            raise HTTPException(status_code=404, detail="Document preuve vide.")
+
+        filename = (doc.get("nom_fichier") or "preuve").replace('"', "'")
+        media_type = (doc.get("type_mime") or "application/octet-stream").strip() or "application/octet-stream"
+
+        return Response(
+            content=data,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/certifications/proof open error: {e}")
 
 
 @router.get("/studio/collaborateurs/historique/formations-jmb/{id_owner}/{id_collaborateur}")
