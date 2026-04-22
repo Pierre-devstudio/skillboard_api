@@ -4292,6 +4292,8 @@ def studio_collab_certification_add(
                     ),
                 )
 
+                conn.commit()
+
         return {
             "ok": True,
             "id_effectif_certification": id_effectif_certification,
@@ -4368,6 +4370,8 @@ def studio_collab_certification_update(
                     ),
                 )
 
+                conn.commit()
+
         return {"ok": True, "id_effectif_certification": ecid}
 
     except HTTPException:
@@ -4417,6 +4421,8 @@ def studio_collab_certification_archive(
                     """,
                     (ecid,),
                 )
+
+                conn.commit()
 
         return {"ok": True}
 
@@ -4508,6 +4514,8 @@ def studio_collab_certification_upload_proof(
                     """,
                     (new_proof_id, ecid),
                 )
+
+                conn.commit()
 
         return {
             "ok": True,
