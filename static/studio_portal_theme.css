@@ -1861,6 +1861,7 @@
 .sb-col-9{ grid-column:span 9; }
 .sb-col-6{ grid-column:span 6; }
 .sb-col-5{ grid-column:span 5; }
+.sb-col-4{ grid-column:span 4; }
 .sb-col-3{ grid-column:span 3; }
 .sb-col-2{ grid-column:span 2; }
 
@@ -1876,6 +1877,9 @@
 .sb-col-5 > input,
 .sb-col-5 > select,
 .sb-col-5 > textarea,
+.sb-col-4 > input,
+.sb-col-4 > select,
+.sb-col-4 > textarea,
 .sb-col-3 > input,
 .sb-col-3 > select,
 .sb-col-3 > textarea,
@@ -1894,6 +1898,7 @@
   .sb-col-9,
   .sb-col-6,
   .sb-col-5,
+  .sb-col-4,
   .sb-col-3,
   .sb-col-2{
     grid-column:span 1;
