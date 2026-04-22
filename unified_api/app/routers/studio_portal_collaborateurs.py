@@ -1,6 +1,6 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Any
 from psycopg.rows import dict_row
 import os
 import secrets
@@ -9,9 +9,25 @@ import requests
 import json
 import re
 from datetime import date as py_date
+from io import BytesIO
+
+from reportlab.lib import colors
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import KeepTogether, Paragraph, Spacer, Table, TableStyle
 
 from app.routers.MailManager import send_novoskill_access_mail
 from app.routers.skills_portal_common import get_conn
+from app.routers.skills_portal_pdf_common import (
+    PDF_BRAND_RED,
+    PDF_LINE,
+    PDF_MARGIN_LEFT,
+    PDF_MARGIN_RIGHT,
+    PDF_MUTED,
+    PDF_TEXT,
+    build_pdf_document,
+    build_pdf_styles,
+)
 from app.routers.studio_portal_common import (
     STUDIO_SUPABASE_URL,
     studio_require_user,
@@ -1925,6 +1941,339 @@ def _json_like_to_obj(value):
             return {}
     return {}
 
+def _pdf_esc(v: Any) -> str:
+    return str(v or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _pdf_clean_text(v: Any) -> str:
+    s = str(v or "").replace("\\x00", " ").strip()
+    s = re.sub(r"\s+", " ", s)
+    return s.strip()
+
+
+def _pdf_truncate(v: Any, max_len: int) -> str:
+    s = _pdf_clean_text(v)
+    if len(s) <= max_len:
+        return s
+    cut = s[:max_len].rsplit(" ", 1)[0].strip(" ,;:.-")
+    return (cut or s[:max_len]).strip() + "…"
+
+
+def _pdf_latin1_safe(v: Any) -> str:
+    s = str(v or "").strip()
+    if not s:
+        return ""
+
+    replacements = {
+        "–": "-",
+        "—": "-",
+        "•": "-",
+        "\u00a0": " ",
+        "‘": "'",
+        "’": "'",
+        "“": '"',
+        "”": '"',
+    }
+    for src, dst in replacements.items():
+        s = s.replace(src, dst)
+
+    try:
+        s.encode("latin-1")
+        return s
+    except Exception:
+        return s.encode("latin-1", errors="ignore").decode("latin-1").strip()
+
+
+def _pdf_safe_filename_part(v: Any, max_len: int = 120) -> str:
+    s = str(v or "").strip()
+    s = re.sub(r'[\\/:*?"<>|]+', " ", s)
+    s = re.sub(r"\s+", " ", s).strip(" ._-")
+    if not s:
+        return "Competence"
+    if len(s) > max_len:
+        s = s[:max_len].rsplit(" ", 1)[0].strip()
+    return s or "Competence"
+
+
+def _fetch_owner_logo_bytes(cur, oid: str) -> Optional[bytes]:
+    owner_id = (oid or "").strip()
+    if not owner_id:
+        return None
+
+    cur.execute(
+        """
+        SELECT logo_bytes
+        FROM public.tbl_studio_owner_logo
+        WHERE id_owner = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        ORDER BY date_maj DESC, date_creation DESC
+        LIMIT 1
+        """,
+        (owner_id,),
+    )
+    row = cur.fetchone() or {}
+    raw = row.get("logo_bytes")
+    if raw is None:
+        return None
+    try:
+        return bytes(raw)
+    except Exception:
+        return raw
+
+
+def _pdf_eval_coef_text(nb_criteres: int) -> str:
+    try:
+        nb = int(nb_criteres or 0)
+    except Exception:
+        nb = 0
+
+    if nb <= 1:
+        return "6"
+    if nb == 2:
+        return "3"
+    if nb == 3:
+        return "2"
+    return "1,5"
+
+
+def _pdf_level_note_range(level_code: str) -> str:
+    code = str(level_code or "").strip().upper()
+    if code == "A":
+        return "note : 6 à 9"
+    if code == "B":
+        return "note : 10 à 18"
+    if code == "C":
+        return "note : 19 à 24"
+    return "note : -"
+
+
+def _build_competence_pdf_story(comp: dict) -> List:
+    styles = build_pdf_styles()
+    content_width = 210 * mm - PDF_MARGIN_LEFT - PDF_MARGIN_RIGHT
+
+    title_style = ParagraphStyle(
+        "NsPdfCompTitle",
+        parent=styles["title"],
+        alignment=1,
+        fontName="Helvetica-Bold",
+        fontSize=16,
+        leading=18,
+        textColor=PDF_TEXT,
+        spaceAfter=0,
+    )
+    skill_title_style = ParagraphStyle(
+        "NsPdfCompSkillTitle",
+        parent=styles["section"],
+        fontName="Helvetica-Bold",
+        fontSize=12.2,
+        leading=14.4,
+        textColor=PDF_BRAND_RED,
+        spaceAfter=0,
+    )
+    desc_style = ParagraphStyle(
+        "NsPdfCompDesc",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=11.5,
+        textColor=PDF_TEXT,
+        spaceAfter=0,
+    )
+    section_style = ParagraphStyle(
+        "NsPdfCompSection",
+        parent=styles["section"],
+        fontName="Helvetica-Bold",
+        fontSize=11.2,
+        leading=13,
+        textColor=PDF_BRAND_RED,
+        spaceAfter=0,
+    )
+    table_head_style = ParagraphStyle(
+        "NsPdfCompTableHead",
+        parent=styles["small"],
+        alignment=1,
+        fontName="Helvetica-Bold",
+        fontSize=7.8,
+        leading=9,
+        textColor=colors.white,
+        spaceAfter=0,
+    )
+    crit_name_style = ParagraphStyle(
+        "NsPdfCompCritName",
+        parent=styles["body"],
+        fontName="Helvetica-Bold",
+        fontSize=7.8,
+        leading=9.1,
+        textColor=PDF_TEXT,
+        spaceAfter=0,
+    )
+    crit_cell_style = ParagraphStyle(
+        "NsPdfCompCritCell",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=7.2,
+        leading=8.2,
+        textColor=PDF_TEXT,
+        spaceAfter=0,
+    )
+    coef_style = ParagraphStyle(
+        "NsPdfCompCoef",
+        parent=styles["small"],
+        fontName="Helvetica-Oblique",
+        fontSize=8,
+        leading=9.5,
+        textColor=PDF_MUTED,
+        spaceAfter=0,
+    )
+    level_head_style = ParagraphStyle(
+        "NsPdfCompLevelHead",
+        parent=styles["body"],
+        alignment=1,
+        fontName="Helvetica-Bold",
+        fontSize=8.8,
+        leading=10.2,
+        textColor=colors.white,
+        spaceAfter=0,
+    )
+    level_note_style = ParagraphStyle(
+        "NsPdfCompLevelNote",
+        parent=styles["small"],
+        alignment=1,
+        fontName="Helvetica",
+        fontSize=8,
+        leading=9.2,
+        textColor=PDF_TEXT,
+        spaceAfter=0,
+    )
+    level_body_style = ParagraphStyle(
+        "NsPdfCompLevelBody",
+        parent=styles["body"],
+        alignment=1,
+        fontName="Helvetica",
+        fontSize=8.2,
+        leading=9.8,
+        textColor=PDF_TEXT,
+        spaceAfter=0,
+    )
+
+    code = _pdf_clean_text(comp.get("code")) or "—"
+    intitule = _pdf_clean_text(comp.get("intitule")) or "Compétence"
+    description = _pdf_truncate(comp.get("description"), 420) or "—"
+
+    grille = _json_like_to_obj(comp.get("grille_evaluation"))
+    crit_rows = []
+    used_count = 0
+
+    for idx in range(1, 5):
+        node = grille.get(f"Critere{idx}") if isinstance(grille, dict) else {}
+        node = node if isinstance(node, dict) else {}
+
+        nom = _pdf_truncate(node.get("Nom"), 90)
+        evals = node.get("Eval") if isinstance(node.get("Eval"), list) else []
+        evals = [
+            Paragraph(_pdf_esc(_pdf_truncate(evals[i] if i < len(evals) else "", 130)), crit_cell_style)
+            for i in range(4)
+        ]
+
+        if nom:
+            used_count += 1
+
+        crit_rows.append([
+            Paragraph(_pdf_esc(nom or ""), crit_name_style),
+            *evals,
+        ])
+
+    coef_txt = _pdf_eval_coef_text(used_count)
+
+    level_rows = [
+        [
+            Paragraph("Initial", level_head_style),
+            Paragraph("Avancé", level_head_style),
+            Paragraph("Expert", level_head_style),
+        ],
+        [
+            Paragraph(_pdf_level_note_range("A"), level_note_style),
+            Paragraph(_pdf_level_note_range("B"), level_note_style),
+            Paragraph(_pdf_level_note_range("C"), level_note_style),
+        ],
+        [
+            Paragraph(_pdf_esc(_pdf_truncate(comp.get("niveaua"), 260) or "—"), level_body_style),
+            Paragraph(_pdf_esc(_pdf_truncate(comp.get("niveaub"), 260) or "—"), level_body_style),
+            Paragraph(_pdf_esc(_pdf_truncate(comp.get("niveauc"), 260) or "—"), level_body_style),
+        ],
+    ]
+
+    crit_table = Table(
+        [[
+            Paragraph("", table_head_style),
+            Paragraph("1", table_head_style),
+            Paragraph("2", table_head_style),
+            Paragraph("3", table_head_style),
+            Paragraph("4", table_head_style),
+        ]] + crit_rows,
+        colWidths=[44 * mm, 36.5 * mm, 36.5 * mm, 36.5 * mm, 36.5 * mm],
+        hAlign="LEFT",
+    )
+    crit_table.setStyle(TableStyle([
+        ("BACKGROUND", (1, 0), (-1, 0), PDF_BRAND_RED),
+        ("BACKGROUND", (0, 0), (0, 0), colors.white),
+        ("BOX", (0, 0), (-1, -1), 0.75, PDF_LINE),
+        ("INNERGRID", (0, 0), (-1, -1), 0.75, PDF_LINE),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, 0), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
+        ("TOPPADDING", (0, 1), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+    ]))
+
+    level_table = Table(
+        level_rows,
+        colWidths=[content_width / 3.0, content_width / 3.0, content_width / 3.0],
+        hAlign="LEFT",
+    )
+    level_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), PDF_BRAND_RED),
+        ("BOX", (0, 0), (-1, -1), 0.75, PDF_LINE),
+        ("INNERGRID", (0, 0), (-1, -1), 0.75, PDF_LINE),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, 0), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 5),
+        ("TOPPADDING", (0, 1), (-1, 1), 4),
+        ("BOTTOMPADDING", (0, 1), (-1, 1), 4),
+        ("TOPPADDING", (0, 2), (-1, 2), 8),
+        ("BOTTOMPADDING", (0, 2), (-1, 2), 8),
+    ]))
+
+    story: List = []
+    story.append(Paragraph("Référentiel de compétences", title_style))
+    story.append(Spacer(1, 5 * mm))
+    story.append(Paragraph(_pdf_esc(f"{code} - {intitule}"), skill_title_style))
+    story.append(Spacer(1, 2 * mm))
+    story.append(Paragraph(_pdf_esc(description), desc_style))
+    story.append(Spacer(1, 10 * mm))
+
+    story.append(KeepTogether([
+        Paragraph("Critères d'évaluation", section_style),
+        Spacer(1, 4 * mm),
+        crit_table,
+    ]))
+
+    story.append(Spacer(1, 3 * mm))
+    story.append(Paragraph(_pdf_esc(f"Coefficient à appliquer pour le calcul du niveau de maîtrise : {coef_txt}"), coef_style))
+    story.append(Spacer(1, 6 * mm))
+
+    story.append(KeepTogether([
+        Paragraph("Niveaux de maîtrise", section_style),
+        Spacer(1, 4 * mm),
+        level_table,
+    ]))
+
+    return story
+
 # ------------------------------------------------------
 # Context
 # ------------------------------------------------------
@@ -3081,6 +3430,133 @@ def studio_collab_remove_competence(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/competences/remove error: {e}")
+
+@router.get("/studio/collaborateurs/competences/fiche_pdf/{id_owner}/{id_collaborateur}/{id_comp}")
+def studio_collab_competence_fiche_pdf(
+    id_owner: str,
+    id_collaborateur: str,
+    id_comp: str,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        cid = (id_collaborateur or "").strip()
+        comp_id = (id_comp or "").strip()
+        if not cid:
+            raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
+        if not comp_id:
+            raise HTTPException(status_code=400, detail="id_comp manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                owner = studio_fetch_owner(cur, oid) or {}
+                studio_require_min_role(cur, u, oid, "admin")
+                src = _resolve_owner_source(cur, oid)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+
+                id_effectif_data = (scope.get("id_effectif_data") or "").strip()
+                if not id_effectif_data:
+                    raise HTTPException(status_code=400, detail="Identifiant salarié exploitable introuvable.")
+
+                ecc_cols = _get_effectif_competence_columns(cur)
+                active_filter = "COALESCE(ecc.actif, TRUE) = TRUE" if "actif" in ecc_cols else "TRUE"
+                archive_filter = "COALESCE(ecc.archive, FALSE) = FALSE" if "archive" in ecc_cols else "FALSE"
+                order_expr = "COALESCE(ecc.dernier_update, NOW()) DESC" if "dernier_update" in ecc_cols else "ecc.id_effectif_competence DESC"
+
+                cur.execute(
+                    f"""
+                    SELECT
+                      ecc.id_effectif_competence,
+                      ecc.niveau_actuel,
+                      ecc.date_derniere_eval,
+                      c.id_comp,
+                      c.code,
+                      c.intitule,
+                      c.description,
+                      c.domaine,
+                      c.niveaua,
+                      c.niveaub,
+                      c.niveauc,
+                      c.grille_evaluation
+                    FROM public.tbl_effectif_client_competence ecc
+                    JOIN public.tbl_competence c
+                      ON c.id_comp = ecc.id_comp
+                     AND c.id_owner = %s
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                     AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
+                    WHERE ecc.id_effectif_client = %s
+                      AND c.id_comp = %s
+                      AND {active_filter}
+                      AND {archive_filter}
+                    ORDER BY {order_expr}
+                    LIMIT 1
+                    """,
+                    (oid, id_effectif_data, comp_id),
+                )
+                row = cur.fetchone() or {}
+                if not row:
+                    raise HTTPException(status_code=404, detail="Compétence collaborateur introuvable.")
+
+                did = (row.get("domaine") or "").strip()
+                dmeta = _load_domaine_competence_map(cur, [did]).get(did, {}) if did else {}
+                logo_bytes = _fetch_owner_logo_bytes(cur, oid)
+
+        skill = {
+            "id_comp": row.get("id_comp"),
+            "code": (row.get("code") or "").strip(),
+            "intitule": (row.get("intitule") or "").strip(),
+            "description": row.get("description") or "",
+            "niveaua": row.get("niveaua") or "",
+            "niveaub": row.get("niveaub") or "",
+            "niveauc": row.get("niveauc") or "",
+            "grille_evaluation": _json_like_to_obj(row.get("grille_evaluation")),
+            "domaine": did,
+            "domaine_titre": dmeta.get("titre") or "",
+            "niveau_actuel": row.get("niveau_actuel") or "",
+        }
+
+        header_right = (
+            (src.get("source_name") or "").strip()
+            or (owner.get("nom_owner") or "").strip()
+            or (owner.get("nom_ent") or "").strip()
+            or "Novoskill Studio"
+        )
+
+        code_label = skill.get("code") or "Compétence"
+        intitule_label = skill.get("intitule") or "Compétence"
+        filename = _pdf_latin1_safe(
+            f"Fiche compétence {_pdf_safe_filename_part(code_label, 32)} - {_pdf_safe_filename_part(intitule_label, 80)}.pdf"
+        )
+
+        pdf_bytes = build_pdf_document(
+            _build_competence_pdf_story(skill),
+            meta={
+                "title": _pdf_latin1_safe(f"Fiche compétence - {code_label} - {intitule_label}"),
+                "doc_label": _pdf_latin1_safe("Fiche compétence"),
+                "footer_left": _pdf_latin1_safe("Novoskill Studio • Fiche compétence"),
+                "header_right": _pdf_latin1_safe(header_right),
+                "header_right_font_name": "Helvetica-Bold",
+                "header_right_font_size": 10.5,
+                "logo_bytes": logo_bytes,
+            },
+        )
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/competences/fiche_pdf error: {e}")
 
 @router.get("/studio/collaborateurs/competences/evaluation/{id_owner}/{id_collaborateur}/{id_effectif_competence}")
 def studio_collab_competence_evaluation_detail(

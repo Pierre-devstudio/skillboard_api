@@ -854,6 +854,7 @@
 
 .sb-collab-skills-table--owned .sb-collab-skill-col-actions{
   width:110px;
+  text-align:center;
 }
 
 .sb-collab-skills-table--required .sb-collab-skill-col-competence{
