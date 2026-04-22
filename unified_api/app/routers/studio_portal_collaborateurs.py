@@ -2039,12 +2039,12 @@ def _pdf_eval_coef_text(nb_criteres: int) -> str:
 def _pdf_level_note_range(level_code: str) -> str:
     code = str(level_code or "").strip().upper()
     if code == "A":
-        return "note : 6 à 9"
+        return "Maîtrise < 41 %"
     if code == "B":
-        return "note : 10 à 18"
+        return "Maîtrise entre 41 % et 75 %"
     if code == "C":
-        return "note : 19 à 24"
-    return "note : -"
+        return "Maîtrise > 75 %"
+    return "Maîtrise -"
 
 
 def _build_competence_pdf_story(comp: dict) -> List:
@@ -2061,9 +2061,20 @@ def _build_competence_pdf_story(comp: dict) -> List:
         textColor=PDF_TEXT,
         spaceAfter=0,
     )
+    code_style = ParagraphStyle(
+        "NsPdfCompCode",
+        parent=styles["body"],
+        alignment=1,
+        fontName="Helvetica-Bold",
+        fontSize=10.5,
+        leading=12,
+        textColor=PDF_TEXT,
+        spaceAfter=0,
+    )
     skill_title_style = ParagraphStyle(
         "NsPdfCompSkillTitle",
         parent=styles["section"],
+        alignment=1,
         fontName="Helvetica-Bold",
         fontSize=12.2,
         leading=14.4,
@@ -2072,6 +2083,15 @@ def _build_competence_pdf_story(comp: dict) -> List:
     )
     desc_style = ParagraphStyle(
         "NsPdfCompDesc",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=11.5,
+        textColor=PDF_TEXT,
+        spaceAfter=0,
+    )
+    domain_style = ParagraphStyle(
+        "NsPdfCompDomain",
         parent=styles["body"],
         fontName="Helvetica",
         fontSize=9,
@@ -2116,15 +2136,6 @@ def _build_competence_pdf_story(comp: dict) -> List:
         textColor=PDF_TEXT,
         spaceAfter=0,
     )
-    coef_style = ParagraphStyle(
-        "NsPdfCompCoef",
-        parent=styles["small"],
-        fontName="Helvetica-Oblique",
-        fontSize=8,
-        leading=9.5,
-        textColor=PDF_MUTED,
-        spaceAfter=0,
-    )
     level_head_style = ParagraphStyle(
         "NsPdfCompLevelHead",
         parent=styles["body"],
@@ -2159,10 +2170,10 @@ def _build_competence_pdf_story(comp: dict) -> List:
     code = _pdf_clean_text(comp.get("code")) or "—"
     intitule = _pdf_clean_text(comp.get("intitule")) or "Compétence"
     description = _pdf_truncate(comp.get("description"), 420) or "—"
+    domaine_titre = _pdf_clean_text(comp.get("domaine_titre") or comp.get("domaine")) or "—"
 
     grille = _json_like_to_obj(comp.get("grille_evaluation"))
     crit_rows = []
-    used_count = 0
 
     for idx in range(1, 5):
         node = grille.get(f"Critere{idx}") if isinstance(grille, dict) else {}
@@ -2171,19 +2182,17 @@ def _build_competence_pdf_story(comp: dict) -> List:
         nom = _pdf_truncate(node.get("Nom"), 90)
         evals = node.get("Eval") if isinstance(node.get("Eval"), list) else []
         evals = [
-            Paragraph(_pdf_esc(_pdf_truncate(evals[i] if i < len(evals) else "", 130)), crit_cell_style)
+            Paragraph(
+                _pdf_esc(_pdf_truncate(evals[i] if i < len(evals) else "", 130)),
+                crit_cell_style,
+            )
             for i in range(4)
         ]
-
-        if nom:
-            used_count += 1
 
         crit_rows.append([
             Paragraph(_pdf_esc(nom or ""), crit_name_style),
             *evals,
         ])
-
-    coef_txt = _pdf_eval_coef_text(used_count)
 
     level_rows = [
         [
@@ -2249,12 +2258,21 @@ def _build_competence_pdf_story(comp: dict) -> List:
     ]))
 
     story: List = []
-    story.append(Paragraph("Référentiel de compétences", title_style))
+    story.append(Paragraph("Définition de la compétence", title_style))
     story.append(Spacer(1, 5 * mm))
-    story.append(Paragraph(_pdf_esc(f"{code} - {intitule}"), skill_title_style))
-    story.append(Spacer(1, 2 * mm))
+    story.append(Paragraph(_pdf_esc(code), code_style))
+    story.append(Spacer(1, 1.5 * mm))
+    story.append(Paragraph(_pdf_esc(intitule), skill_title_style))
+    story.append(Spacer(1, 4 * mm))
     story.append(Paragraph(_pdf_esc(description), desc_style))
-    story.append(Spacer(1, 10 * mm))
+    story.append(Spacer(1, 6 * mm))
+    story.append(
+        Paragraph(
+            f"Cette compétence est classée dans le domaine <b>{_pdf_esc(domaine_titre)}</b> de votre référentiel.",
+            domain_style,
+        )
+    )
+    story.append(Spacer(1, 7 * mm))
 
     story.append(KeepTogether([
         Paragraph("Critères d'évaluation", section_style),
@@ -2262,8 +2280,6 @@ def _build_competence_pdf_story(comp: dict) -> List:
         crit_table,
     ]))
 
-    story.append(Spacer(1, 3 * mm))
-    story.append(Paragraph(_pdf_esc(f"Coefficient à appliquer pour le calcul du niveau de maîtrise : {coef_txt}"), coef_style))
     story.append(Spacer(1, 6 * mm))
 
     story.append(KeepTogether([
