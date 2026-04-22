@@ -3390,18 +3390,13 @@
       const code = (x.code_poste || '').toString().trim();
       const intitule = (x.intitule_poste || '').toString().trim() || 'Poste';
       const service = (x.nom_service || '').toString().trim();
-      const badgeCurrent = x.is_current
-        ? `<span class="sb-badge sb-badge--poste-soft" style="margin-left:8px;">Actuel</span>`
-        : '';
+      const badgeCurrent = '';
 
       return `
         <tr>
           <td style="white-space:nowrap; text-align:center;">${esc(code || '–')}</td>
           <td>
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <div style="font-weight:700; color:#111827;">${esc(intitule)}</div>
-              ${badgeCurrent}
-            </div>
+            <div style="font-weight:700; color:#111827;">${esc(intitule)}</div>
             ${service ? `<div class="card-sub" style="margin:6px 0 0 0;">${esc(service)}</div>` : ''}
           </td>
           <td style="text-align:center;">${esc(formatDateFR(x.date_debut))}</td>
