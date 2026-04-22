@@ -1347,14 +1347,80 @@
     return await res.blob();
   }
 
-  function openPdfBlobInWindow(blob, title){
-    const blobUrl = URL.createObjectURL(blob);
+  function openPdfLoadingWindow(title){
     const safeTitle = htmlEsc(title || 'Document PDF');
-    const win = window.open('', '_blank', 'noopener');
+    const win = window.open('', '_blank');
 
     if (!win) {
+      throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
+    }
+
+    win.document.open();
+    win.document.write(`<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>${safeTitle}</title>
+  <style>
+    html,body{
+      height:100%;
+      margin:0;
+      background:#f3f4f6;
+      font-family:Arial,sans-serif;
+      color:#111827;
+    }
+    .pdf-loading{
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      gap:12px;
+    }
+    .pdf-loading__spinner{
+      width:34px;
+      height:34px;
+      border-radius:999px;
+      border:4px solid rgba(17,24,39,.12);
+      border-top-color:#355caa;
+      animation:pdfSpin .8s linear infinite;
+    }
+    .pdf-loading__text{
+      font-size:14px;
+      color:#475467;
+    }
+    iframe{
+      width:100%;
+      height:100%;
+      border:0;
+      background:#fff;
+    }
+    @keyframes pdfSpin{
+      to{ transform:rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="pdf-loading">
+    <div class="pdf-loading__spinner"></div>
+    <div class="pdf-loading__text">Génération du PDF…</div>
+  </div>
+</body>
+</html>`);
+    win.document.close();
+
+    return win;
+  }
+
+  function renderPdfBlobInWindow(win, blob, title){
+    const blobUrl = URL.createObjectURL(blob);
+    const safeTitle = htmlEsc(title || 'Document PDF');
+
+    if (!win || win.closed){
       window.open(blobUrl, '_blank');
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 5 * 60 * 1000);
+      setTimeout(() => {
+        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+      }, 5 * 60 * 1000);
       return;
     }
 
@@ -1379,11 +1445,14 @@
       try { URL.revokeObjectURL(blobUrl); } catch (_) {}
     };
 
-    win.addEventListener('beforeunload', revoke, { once: true });
+    try {
+      win.addEventListener('beforeunload', revoke, { once: true });
+    } catch (_) {}
+
     setTimeout(revoke, 5 * 60 * 1000);
   }
 
-  async function openCollabSkillSheetPdf(portal, idComp){
+  async function openCollabSkillSheetPdf(portal, idComp, popupWin){
     if (!_editingId) throw new Error('Collaborateur introuvable.');
 
     const ownerId = getOwnerId();
@@ -1392,15 +1461,15 @@
     const compId = String(idComp || '').trim();
     if (!compId) throw new Error('Compétence introuvable.');
 
-    const url = `${portal.apiBase}/studio/collaborateurs/competences/fiche_pdf/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/${encodeURIComponent(compId)}`;
-    const blob = await fetchPdfBlob(url);
-
     const row = (_collabSkillItems || []).find(x => String(x?.id_comp || '').trim() === compId) || null;
     const title = row
       ? `Fiche compétence - ${String(row.code || '').trim() ? `${row.code} - ` : ''}${String(row.intitule || '').trim() || 'Compétence'}`
       : 'Fiche compétence';
 
-    openPdfBlobInWindow(blob, title);
+    const url = `${portal.apiBase}/studio/collaborateurs/competences/fiche_pdf/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/${encodeURIComponent(compId)}`;
+    const blob = await fetchPdfBlob(url);
+
+    renderPdfBlobInWindow(popupWin, blob, title);
   }
 
   function setCollabSaveMsg(text){
@@ -2454,9 +2523,23 @@
         e.preventDefault();
         e.stopPropagation();
 
+        const row = (_collabSkillItems || []).find(
+          x => String(x?.id_comp || '').trim() === String(btn.getAttribute('data-id-comp') || '').trim()
+        ) || null;
+
+        const title = row
+          ? `Fiche compétence - ${String(row.code || '').trim() ? `${row.code} - ` : ''}${String(row.intitule || '').trim() || 'Compétence'}`
+          : 'Fiche compétence';
+
+        let popupWin = null;
+
         try {
-          await openCollabSkillSheetPdf(portal, btn.getAttribute('data-id-comp'));
+          popupWin = openPdfLoadingWindow(title);
+          await openCollabSkillSheetPdf(portal, btn.getAttribute('data-id-comp'), popupWin);
         } catch (err) {
+          if (popupWin && !popupWin.closed) {
+            try { popupWin.close(); } catch (_) {}
+          }
           if (portal.showAlert) portal.showAlert('error', getErrorMessage(err));
         }
       });
