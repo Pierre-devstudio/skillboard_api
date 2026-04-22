@@ -392,9 +392,13 @@
     <div class="sb-modal-head">
       <div>
         <div class="card-title" style="margin-bottom:2px;">Ajouter une certification</div>
-        <div class="card-sub" style="margin:0;">Catalogue général des certifications.</div>
+        <div class="card-sub" style="margin:0;">Catalogue global des certifications.</div>
       </div>
-      <button type="button" class="sb-modal-x" id="btnCloseCollabCertAdd" aria-label="Fermer">&times;</button>
+
+      <div class="sb-actions">
+        <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnCollabCertCreate">Créer une certification</button>
+        <button type="button" class="sb-modal-x" id="btnCloseCollabCertAdd" aria-label="Fermer">&times;</button>
+      </div>
     </div>
 
     <div class="sb-modal-body">
@@ -414,6 +418,71 @@
       </div>
 
       <div class="sb-stack sb-stack--xxs sb-mt-10" id="collabCertAddList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL : Créer une certification -->
+<div class="sb-modal" id="modalCollabCertCreate" style="display:none;">
+  <div class="sb-modal-card">
+    <div class="sb-modal-head">
+      <div>
+        <div class="card-title" style="margin-bottom:2px;">Créer une certification</div>
+        <div class="card-sub" style="margin:0;">Création dans le catalogue global des certifications.</div>
+      </div>
+      <button type="button" class="sb-modal-x" id="btnCloseCollabCertCreate" aria-label="Fermer">&times;</button>
+    </div>
+
+    <div class="sb-modal-body">
+      <div class="row">
+        <div class="info-item" style="flex:2; min-width:260px;">
+          <div class="label">Nom de la certification</div>
+          <input type="text" id="collabCertCreateName" />
+        </div>
+
+        <div class="info-item" style="flex:1; min-width:220px;">
+          <div class="label">Catégorie</div>
+          <input
+            type="text"
+            id="collabCertCreateCategory"
+            list="collabCertCreateCategoryList"
+            placeholder="Choisir une catégorie existante ou en saisir une nouvelle"
+          />
+          <datalist id="collabCertCreateCategoryList"></datalist>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="info-item" style="flex:1; min-width:220px;">
+          <div class="label">Validité catalogue (mois)</div>
+          <div class="sb-stepper">
+            <button type="button" class="sb-stepper-btn" data-stepper-target="collabCertCreateValidity" data-stepper-delta="-1" aria-label="Diminuer la validité">−</button>
+            <input type="number" id="collabCertCreateValidity" min="1" step="1" inputmode="numeric" />
+            <button type="button" class="sb-stepper-btn" data-stepper-target="collabCertCreateValidity" data-stepper-delta="1" aria-label="Augmenter la validité">+</button>
+          </div>
+        </div>
+
+        <div class="info-item" style="flex:1; min-width:220px;">
+          <div class="label">Délai de renouvellement (mois)</div>
+          <div class="sb-stepper">
+            <button type="button" class="sb-stepper-btn" data-stepper-target="collabCertCreateRenewal" data-stepper-delta="-1" aria-label="Diminuer le délai de renouvellement">−</button>
+            <input type="number" id="collabCertCreateRenewal" min="1" step="1" inputmode="numeric" />
+            <button type="button" class="sb-stepper-btn" data-stepper-target="collabCertCreateRenewal" data-stepper-delta="1" aria-label="Augmenter le délai de renouvellement">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="info-item" style="flex:1; min-width:260px;">
+          <div class="label">Description (optionnel)</div>
+          <textarea id="collabCertCreateDescription" rows="4"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="sb-modal-foot">
+      <button type="button" class="sb-btn sb-btn--soft" id="btnCollabCertCreateCancel">Annuler</button>
+      <button type="button" class="sb-btn sb-btn--accent" id="btnCollabCertCreateSave">Créer</button>
     </div>
   </div>
 </div>

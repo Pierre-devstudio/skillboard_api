@@ -729,6 +729,38 @@
     }, 5 * 60 * 1000);
   }
 
+  function bindCollabStepperButtons(host){
+    if (!host) return;
+
+    host.querySelectorAll('.sb-stepper-btn').forEach(btn => {
+      if (btn.dataset.collabStepperBound === '1') return;
+      btn.dataset.collabStepperBound = '1';
+
+      btn.addEventListener('click', () => {
+        const targetId = (btn.getAttribute('data-stepper-target') || '').trim();
+        const delta = parseInt(btn.getAttribute('data-stepper-delta') || '0', 10);
+        const input = byId(targetId);
+        if (!input || !Number.isFinite(delta) || !delta) return;
+
+        const min = parseInt(input.getAttribute('min') || '0', 10);
+        const step = parseInt(input.getAttribute('step') || '1', 10) || 1;
+
+        let cur = parseInt((input.value || '').trim(), 10);
+        if (!Number.isFinite(cur)) {
+          cur = Math.max(min || step, step);
+        } else {
+          cur += (delta * step);
+        }
+
+        if (Number.isFinite(min)) cur = Math.max(min, cur);
+
+        input.value = String(cur);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+    });
+  }
+
   function resetCollabCertAddState(){
     if (byId('collabCertAddSearch')) byId('collabCertAddSearch').value = '';
     if (byId('collabCertAddList')) byId('collabCertAddList').innerHTML = '';
@@ -852,7 +884,7 @@
     if (!ownerId) throw new Error('Owner introuvable.');
 
     const url =
-      `${portal.apiBase}/studio/org/certifications_catalogue/${encodeURIComponent(ownerId)}` +
+      `${portal.apiBase}/studio/collaborateurs/certifications_catalogue/${encodeURIComponent(ownerId)}` +
       `?q=${encodeURIComponent(_collabCertAddSearch)}` +
       `&categorie=${encodeURIComponent(_collabCertAddCategory)}`;
 
@@ -876,6 +908,136 @@
     renderCollabCertAddList(portal);
   }
 
+
+  async function loadCollabCertCreateCategories(portal){
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
+
+    const url = `${portal.apiBase}/studio/collaborateurs/certifications_catalogue/${encodeURIComponent(ownerId)}?q=`;
+    const data = await portal.apiJson(url);
+
+    const list = byId('collabCertCreateCategoryList');
+    if (!list) return;
+
+    const values = Array.from(
+      new Set(
+        (data.items || [])
+          .map(it => (it.categorie || '').toString().trim())
+          .filter(Boolean)
+      )
+    ).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' }));
+
+    list.innerHTML = '';
+    values.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v;
+      list.appendChild(opt);
+    });
+  }
+
+  async function openCollabCertCreateModal(portal){
+    if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
+
+    closeModal('modalCollabCertAdd');
+
+    byId('collabCertCreateName').value = (_collabCertAddSearch || '').trim();
+    byId('collabCertCreateCategory').value =
+      (_collabCertAddCategory && _collabCertAddCategory !== '__none__')
+        ? _collabCertAddCategory
+        : '';
+    byId('collabCertCreateValidity').value = '';
+    byId('collabCertCreateRenewal').value = '';
+    byId('collabCertCreateDescription').value = '';
+
+    openModal('modalCollabCertCreate');
+    await loadCollabCertCreateCategories(portal);
+  }
+
+  function closeCollabCertCreateModal(reopenAdd){
+    closeModal('modalCollabCertCreate');
+    if (reopenAdd) openModal('modalCollabCertAdd');
+  }
+
+  async function saveCollabCertCreate(portal){
+    const ownerId = getOwnerId();
+    if (!ownerId) throw new Error('Owner introuvable.');
+
+    const nom = (byId('collabCertCreateName')?.value || '').trim();
+    const categorie = (byId('collabCertCreateCategory')?.value || '').trim() || null;
+    const description = (byId('collabCertCreateDescription')?.value || '').trim() || null;
+
+    if (!nom){
+      portal.showAlert('error', 'Le nom de la certification est obligatoire.');
+      return;
+    }
+
+    const rawValidity = (byId('collabCertCreateValidity')?.value || '').trim();
+    const rawRenewal = (byId('collabCertCreateRenewal')?.value || '').trim();
+
+    let duree_validite = null;
+    let delai_renouvellement = null;
+
+    if (rawValidity){
+      if (!/^\d+$/.test(rawValidity)) {
+        portal.showAlert('error', 'La validité catalogue doit être un entier positif.');
+        return;
+      }
+      duree_validite = parseInt(rawValidity, 10);
+      if (!Number.isFinite(duree_validite) || duree_validite <= 0){
+        portal.showAlert('error', 'La validité catalogue doit être supérieure à 0.');
+        return;
+      }
+    }
+
+    if (rawRenewal){
+      if (!/^\d+$/.test(rawRenewal)) {
+        portal.showAlert('error', 'Le délai de renouvellement doit être un entier positif.');
+        return;
+      }
+      delai_renouvellement = parseInt(rawRenewal, 10);
+      if (!Number.isFinite(delai_renouvellement) || delai_renouvellement <= 0){
+        portal.showAlert('error', 'Le délai de renouvellement doit être supérieur à 0.');
+        return;
+      }
+    }
+
+    const data = await portal.apiJson(
+      `${portal.apiBase}/studio/collaborateurs/certifications_catalogue/${encodeURIComponent(ownerId)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nom_certification: nom,
+          categorie: categorie,
+          description: description,
+          duree_validite: duree_validite,
+          delai_renouvellement: delai_renouvellement
+        })
+      }
+    );
+
+    const it = data?.item || {};
+
+    closeModal('modalCollabCertCreate');
+    closeModal('modalCollabCertAdd');
+
+    const addRes = await addCertificationToCollaborateur(
+      portal,
+      it.id_certification,
+      { closeModal: false }
+    );
+
+    const addedId = String(addRes?.id_effectif_certification || '').trim();
+    const addedItem =
+      (_collabCertItems || []).find(x => String(x?.id_effectif_certification || '').trim() === addedId)
+      || (_collabCertItems || []).find(x => String(x?.id_certification || '').trim() === String(it.id_certification || '').trim())
+      || null;
+
+    if (addedItem){
+      openCollabCertEditModal(addedItem);
+    }
+  }
+
   async function openCollabCertAddModal(portal){
     if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
     resetCollabCertAddState();
@@ -883,13 +1045,13 @@
     await loadCollabCertAddList(portal);
   }
 
-  async function addCertificationToCollaborateur(portal, idCertification){
+  async function addCertificationToCollaborateur(portal, idCertification, opts = {}){
     if (!_editingId) throw new Error("Enregistrez d’abord le collaborateur.");
 
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error('Owner introuvable.');
 
-    await portal.apiJson(
+    const res = await portal.apiJson(
       `${portal.apiBase}/studio/collaborateurs/certifications/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}/add`,
       {
         method: 'POST',
@@ -900,9 +1062,14 @@
       }
     );
 
-    closeModal('modalCollabCertAdd');
+    if (opts?.closeModal !== false) {
+      closeModal('modalCollabCertAdd');
+    }
+
     _tabLoaded.certs = false;
     await loadTabIfNeeded(portal, 'certs');
+
+    return res;
   }
 
   function resetCollabCertEditState(){
@@ -3802,6 +3969,27 @@
       loadCollabCertAddList(portal).catch(err => portal.showAlert('error', getErrorMessage(err)));
     });
 
+    bindCollabStepperButtons(byId('modalCollabCertCreate'));
+
+    byId('btnCollabCertCreate')?.addEventListener('click', async () => {
+      try {
+        await openCollabCertCreateModal(portal);
+      } catch (e) {
+        portal.showAlert('error', getErrorMessage(e));
+      }
+    });
+
+    byId('btnCloseCollabCertCreate')?.addEventListener('click', () => closeCollabCertCreateModal(true));
+    byId('btnCollabCertCreateCancel')?.addEventListener('click', () => closeCollabCertCreateModal(true));
+
+    byId('btnCollabCertCreateSave')?.addEventListener('click', async () => {
+      try {
+        await saveCollabCertCreate(portal);
+      } catch (e) {
+        portal.showAlert('error', getErrorMessage(e));
+      }
+    });
+
     bindPhoneMask(byId('collabTel'));
     bindPhoneMask(byId('collabTel2'));
     bindCollabPostalAssist(portal);
@@ -3812,6 +4000,10 @@
 
     byId('modalCollabCertAdd')?.addEventListener('click', (e) => {
       if (e.target === byId('modalCollabCertAdd')) closeModal('modalCollabCertAdd');
+    });
+
+    byId('modalCollabCertCreate')?.addEventListener('click', (e) => {
+      if (e.target === byId('modalCollabCertCreate')) closeCollabCertCreateModal(true);
     });
 
     byId('modalCollabCertEdit')?.addEventListener('click', (e) => {

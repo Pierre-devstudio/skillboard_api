@@ -1824,6 +1824,13 @@ class CollaborateurAccessPayload(BaseModel):
 class CollaborateurAccessBulkSendPayload(BaseModel):
     ids_collaborateurs: List[str] = []
 
+class CollaborateurCertificationCatalogCreatePayload(BaseModel):
+    nom_certification: Optional[str] = None
+    description: Optional[str] = None
+    categorie: Optional[str] = None
+    duree_validite: Optional[int] = None
+    delai_renouvellement: Optional[int] = None
+
 class CollaborateurCertificationPayload(BaseModel):
     id_certification: Optional[str] = None
     etat: Optional[str] = None
@@ -4191,6 +4198,180 @@ def studio_collab_certifications(id_owner: str, id_collaborateur: str, request: 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/certifications error: {e}")
 
+
+@router.get("/studio/collaborateurs/certifications_catalogue/{id_owner}")
+def studio_collab_list_certifications_catalogue(
+    id_owner: str,
+    request: Request,
+    q: Optional[str] = None,
+    categorie: Optional[str] = None,
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        q_txt = (q or "").strip()
+        cat_txt = (categorie or "").strip()
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                sql = """
+                    SELECT
+                      c.id_certification,
+                      c.nom_certification,
+                      c.description,
+                      c.categorie,
+                      c.duree_validite,
+                      c.delai_renouvellement
+                    FROM public.tbl_certification c
+                    WHERE COALESCE(c.masque, FALSE) = FALSE
+                """
+                params = []
+
+                if q_txt:
+                    like = f"%{q_txt}%"
+                    sql += """
+                      AND (
+                        lower(COALESCE(c.nom_certification, '')) LIKE lower(%s)
+                        OR lower(COALESCE(c.description, '')) LIKE lower(%s)
+                        OR lower(COALESCE(c.categorie, '')) LIKE lower(%s)
+                      )
+                    """
+                    params.extend([like, like, like])
+
+                if cat_txt:
+                    if cat_txt == "__none__":
+                        sql += """
+                          AND COALESCE(NULLIF(BTRIM(COALESCE(c.categorie, '')), ''), '') = ''
+                        """
+                    else:
+                        sql += """
+                          AND lower(COALESCE(c.categorie, '')) = lower(%s)
+                        """
+                        params.append(cat_txt)
+
+                sql += """
+                    ORDER BY lower(COALESCE(c.nom_certification, ''))
+                """
+
+                cur.execute(sql, tuple(params))
+                rows = cur.fetchall() or []
+
+        items = []
+        for r in rows:
+            items.append({
+                "id_certification": r.get("id_certification"),
+                "nom_certification": (r.get("nom_certification") or "").strip(),
+                "description": r.get("description"),
+                "categorie": r.get("categorie"),
+                "duree_validite": r.get("duree_validite"),
+                "delai_renouvellement": r.get("delai_renouvellement"),
+            })
+
+        return {"items": items}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/certifications_catalogue error: {e}")
+
+
+@router.post("/studio/collaborateurs/certifications_catalogue/{id_owner}")
+def studio_collab_create_certification_catalogue(
+    id_owner: str,
+    payload: CollaborateurCertificationCatalogCreatePayload,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        nom = (payload.nom_certification or "").strip()
+        if not nom:
+            raise HTTPException(status_code=400, detail="nom_certification obligatoire.")
+
+        categorie = (payload.categorie or "").strip() or None
+        description = (payload.description or "").strip() or None
+
+        duree_validite = payload.duree_validite
+        if duree_validite is not None:
+            try:
+                duree_validite = int(duree_validite)
+            except Exception:
+                raise HTTPException(status_code=400, detail="duree_validite invalide.")
+            if duree_validite <= 0:
+                raise HTTPException(status_code=400, detail="duree_validite doit être > 0.")
+
+        delai_renouvellement = payload.delai_renouvellement
+        if delai_renouvellement is not None:
+            try:
+                delai_renouvellement = int(delai_renouvellement)
+            except Exception:
+                raise HTTPException(status_code=400, detail="delai_renouvellement invalide.")
+            if delai_renouvellement <= 0:
+                raise HTTPException(status_code=400, detail="delai_renouvellement doit être > 0.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "admin")
+
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM public.tbl_certification
+                    WHERE lower(nom_certification) = lower(%s)
+                      AND COALESCE(masque, FALSE) = FALSE
+                    LIMIT 1
+                    """,
+                    (nom,),
+                )
+                if cur.fetchone():
+                    raise HTTPException(status_code=400, detail="Une certification active porte déjà ce nom.")
+
+                cid = str(uuid.uuid4())
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_certification
+                      (
+                        id_certification,
+                        nom_certification,
+                        description,
+                        categorie,
+                        duree_validite,
+                        date_creation,
+                        masque,
+                        delai_renouvellement
+                      )
+                    VALUES
+                      (%s, %s, %s, %s, %s, CURRENT_DATE, FALSE, %s)
+                    """,
+                    (cid, nom, description, categorie, duree_validite, delai_renouvellement),
+                )
+                conn.commit()
+
+        return {
+            "ok": True,
+            "item": {
+                "id_certification": cid,
+                "nom_certification": nom,
+                "description": description,
+                "categorie": categorie,
+                "duree_validite": duree_validite,
+                "delai_renouvellement": delai_renouvellement,
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/collaborateurs/certifications_catalogue create error: {e}")
 
 @router.post("/studio/collaborateurs/certifications/{id_owner}/{id_collaborateur}/add")
 def studio_collab_certification_add(
