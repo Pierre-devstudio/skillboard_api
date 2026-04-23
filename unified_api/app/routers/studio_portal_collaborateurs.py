@@ -123,7 +123,7 @@ def _resolve_owner_source(cur, oid: str, request: Optional[Request] = None) -> d
         scope_ent = (request.query_params.get("id_ent") or "").strip()
 
     # En Espace de gestion, si un client scope est fourni et bien rattaché à l'owner,
-    # il doit devenir la source métier prioritaire pour les collaborateurs.
+    # il doit devenir la source métier prioritaire.
     if scope_ent:
         cur.execute(
             """
@@ -2855,7 +2855,7 @@ def studio_collab_list(
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
                 if src["source_kind"] == "entreprise":
@@ -3209,7 +3209,7 @@ def studio_collab_detail(id_owner: str, id_collaborateur: str, request: Request)
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
                 if src["source_kind"] == "entreprise":
@@ -3429,7 +3429,7 @@ def studio_collab_competences(id_owner: str, id_collaborateur: str, request: Req
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -3662,7 +3662,7 @@ def studio_collab_sync_competences_from_poste(
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -3771,7 +3771,7 @@ def studio_collab_add_competence(
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -3855,7 +3855,7 @@ def studio_collab_remove_competence(
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -3959,7 +3959,7 @@ def studio_collab_competence_fiche_pdf(
                 oid = _require_owner_access(cur, u, id_owner)
                 owner = studio_fetch_owner(cur, oid) or {}
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -4087,7 +4087,7 @@ def studio_collab_competence_evaluation_detail(
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -4217,7 +4217,7 @@ def studio_collab_competence_evaluation_save(
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -4352,7 +4352,7 @@ def studio_collab_certifications(id_owner: str, id_collaborateur: str, request: 
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -4702,7 +4702,7 @@ def studio_collab_certification_add(
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -4812,7 +4812,7 @@ def studio_collab_certification_update(
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -4881,7 +4881,7 @@ def studio_collab_certification_archive(
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -4946,7 +4946,7 @@ def studio_collab_certification_upload_proof(
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -5033,7 +5033,7 @@ def studio_collab_certification_open_proof(
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -5097,7 +5097,7 @@ def studio_collab_history_postes(id_owner: str, id_collaborateur: str, request: 
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -5179,7 +5179,7 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -5256,7 +5256,7 @@ def studio_collab_acces(id_owner: str, id_collaborateur: str, request: Request):
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 data = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid, scope_ent)
 
@@ -5296,7 +5296,7 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
                 before_state = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid, scope_ent)
@@ -5436,7 +5436,7 @@ def studio_collab_send_access_mail(id_owner: str, id_collaborateur: str, request
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
                 result = _send_access_mail_for_collaborateur(cur, u, oid, src["source_kind"], cid, scope_ent)
@@ -5483,7 +5483,7 @@ def studio_collab_send_access_mail_bulk(id_owner: str, payload: CollaborateurAcc
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
                 for cid in ids:
@@ -5620,7 +5620,7 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
                 date_naissance = _norm_iso_date(payload.date_naissance)
@@ -5832,7 +5832,7 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
                 date_naissance = _norm_iso_date(payload.date_naissance)
@@ -6044,7 +6044,7 @@ def studio_collab_archive(id_owner: str, id_collaborateur: str, request: Request
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
                 if src["source_kind"] == "entreprise":
