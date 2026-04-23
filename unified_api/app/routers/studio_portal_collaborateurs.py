@@ -1687,14 +1687,14 @@ def _get_collab_scope(cur, oid: str, source_kind: str, cid: str, scope_ent: Opti
             FROM public.tbl_effectif_client e
             LEFT JOIN public.tbl_fiche_poste p
               ON p.id_poste = e.id_poste_actuel
-             AND p.id_owner = e.id_ent
+             AND p.id_owner = %s
              AND p.id_ent = e.id_ent
              AND COALESCE(p.actif, TRUE) = TRUE
             WHERE e.id_ent = %s
               AND e.id_effectif = %s
             LIMIT 1
             """,
-            (ent_scope, cid),
+            (oid, ent_scope, cid),
         )
         r = cur.fetchone() or {}
         if not r:
@@ -2989,13 +2989,14 @@ def studio_collab_list(
                          AND s.id_service = e.id_service
                          AND COALESCE(s.archive, FALSE) = FALSE
                         LEFT JOIN public.tbl_fiche_poste p
-                          ON p.id_owner = e.id_ent
+                          ON p.id_owner = %s
                          AND p.id_ent = e.id_ent
                          AND p.id_poste = e.id_poste_actuel
+                         AND COALESCE(p.actif, TRUE) = TRUE
                         WHERE {" AND ".join(where)}
                         ORDER BY lower(e.nom_effectif), lower(e.prenom_effectif)
                         """,
-                        tuple(params),
+                        tuple([oid] + params),
                     )
                     rows = cur.fetchall() or []
 

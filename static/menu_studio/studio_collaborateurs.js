@@ -3043,8 +3043,8 @@
         ` : ``}
       </div>
 
-      <div class="card" style="margin:0; padding:12px;">
-        <div class="sb-block-head" style="margin:0 0 10px 0;">
+      <div class="card" style="margin:0;">
+        <div class="sb-block-head" style="margin:0 0 14px 0;">
           <div class="card-title" style="margin:0;">Compétences détenues par le collaborateur</div>
 
           ${
@@ -3086,8 +3086,8 @@
         }
       </div>
 
-      <div class="card" style="margin:12px 0 0 0; padding:12px;">
-        <div class="card-title" style="margin:0 0 10px 0;">Compétences requises par le poste non importées</div>
+      <div class="card" style="margin:12px 0 0 0;">
+        <div class="card-title" style="margin:0 0 14px 0;">Compétences requises par le poste non importées</div>
         ${
           posteId
             ? (
@@ -3239,6 +3239,8 @@
     const items = Array.isArray(data?.items) ? data.items.slice() : [];
     _collabCertItems = items.slice();
 
+    const poste = getCurrentPosteForSkills();
+    const posteLabel = poste.label || data?.intitule_poste || '–';
     const canAdd = !!_editingId;
 
     const iconPen = `
@@ -3310,7 +3312,7 @@
 
     host.innerHTML = `
       <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin:0 0 10px 0;">
-        <div class="card-sub" style="margin:0;">Poste actuel : <strong>${esc(data?.intitule_poste || '–')}</strong></div>
+        <div class="card-sub" style="margin:0;">Poste actuel : <strong>${esc(posteLabel)}</strong></div>
         ${
           canAdd
             ? `
