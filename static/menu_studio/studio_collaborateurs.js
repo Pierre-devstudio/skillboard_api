@@ -1,5 +1,6 @@
 (function () {
   let _bound = false;
+  let _loaded = false;
   let _ctx = null;
   let _items = [];
   let _globalItems = [];
@@ -57,7 +58,18 @@
     proofFile: null,
   };
 
-  function byId(id){ return document.getElementById(id); }
+  function getCollaborateursRoot(){
+    return document.querySelector('#view-collaborateurs[data-view="collaborateurs"]');
+  }
+
+  function byId(id){
+    const root = getCollaborateursRoot();
+    if (root){
+      const el = root.querySelector(`#${id}`);
+      if (el) return el;
+    }
+    return document.getElementById(id);
+  }
 
   function esc(s){
     return String(s ?? "")
@@ -1919,9 +1931,13 @@
     return res;
   }
 
-  function getOwnerId() {
+  function getOwnerId(){
+    const forced = (window.__collabScopeOwnerId || "").toString().trim();
+    if (forced) return forced;
+
     const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
     if (pid) return pid;
+
     return (new URL(window.location.href).searchParams.get("id") || "").trim();
   }
 
@@ -4035,23 +4051,52 @@
     });
   }
 
-  async function init(){
-    try { await (window.__studioAuthReady || Promise.resolve(null)); } catch (_) {}
+  async function init(force = false){
+    try {
+      await (window.__studioAuthReady || Promise.resolve(null));
+    } catch (_) {}
+
     const portal = window.portal;
-    if (!portal) return;
+    const root = getCollaborateursRoot();
+
+    if (!portal || !root){
+      return;
+    }
+
+    if (_loaded && !force){
+      return;
+    }
+
+    _loaded = true;
 
     bindOnce(portal);
     setStatus('Chargement…');
+
     await loadContext(portal);
     await loadGlobalStats(portal);
     await loadList(portal);
+
     setStatus('—');
   }
 
-  init().catch(e => {
-    if (window.portal && window.portal.showAlert) {
-      window.portal.showAlert('error', 'Erreur collaborateurs : ' + getErrorMessage(e));
+  function handleInitError(e){
+    const msg = getErrorMessage(e);
+    setStatus(msg);
+    if (window.portal?.showAlert){
+      window.portal.showAlert('error', msg);
     }
-    setStatus('Erreur de chargement.');
-  });
+  }
+
+  window.__studioCollaborateursInit = async function(options){
+    try {
+      await init(!!(options && options.force));
+    } catch (e) {
+      handleInitError(e);
+      throw e;
+    }
+  };
+
+  if (getCollaborateursRoot() && window.portal){
+    window.__studioCollaborateursInit().catch(() => {});
+  }
 })();

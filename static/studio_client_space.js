@@ -18,6 +18,9 @@
   let _orgWorkspaceReady = false;
   let _orgWorkspaceLoadingPromise = null;
   let _orgWorkspaceScriptPromise = null;
+  let _collabWorkspaceReady = false;
+  let _collabWorkspaceLoadingPromise = null;
+  let _collabWorkspaceScriptPromise = null;
   let _clientLogoMeta = { has_logo: false };
   let _clientLogoBlobUrl = null;
 
@@ -102,6 +105,55 @@
 
     mount.dataset.loaded = "1";
     _orgWorkspaceReady = true;
+  }
+
+    function applyClientSpaceCollaborateursLabels(mount){
+    const root = mount?.querySelector('#view-collaborateurs[data-view="collaborateurs"]');
+    if (!root) return;
+
+    const titleEl = root.querySelector('#collabPageTitle');
+    if (titleEl){
+      titleEl.textContent = "Collaborateurs";
+    }
+
+    const subEl = root.querySelector('#collabPageSub');
+    if (subEl){
+      subEl.textContent = "Gérez les collaborateurs, les accès, les compétences et les certifications du périmètre courant.";
+    }
+  }
+
+  async function ensureCollaborateursWorkspaceMarkup(mount){
+    if (!mount){
+      throw new Error("collabWorkspaceMount introuvable.");
+    }
+
+    if (mount.dataset.loaded === "1"){
+      return;
+    }
+
+    const htmlUrl = getMenuStudioAssetUrl("studio_collaborateurs.html");
+    const resp = await fetch(htmlUrl, { credentials: "same-origin" });
+
+    if (!resp.ok){
+      throw new Error(`Impossible de charger ${htmlUrl}`);
+    }
+
+    const html = await resp.text();
+    const host = document.createElement("div");
+    host.innerHTML = html;
+
+    const root = host.querySelector('#view-collaborateurs[data-view="collaborateurs"]');
+    if (!root){
+      throw new Error("Bloc Collaborateurs partagé introuvable.");
+    }
+
+    mount.innerHTML = "";
+    while (host.firstChild){
+      mount.appendChild(host.firstChild);
+    }
+
+    mount.dataset.loaded = "1";
+    _collabWorkspaceReady = true;
   }
 
   function byId(id){ return document.getElementById(id); }
@@ -1319,14 +1371,26 @@ function bindPostalAssist(){
   }
 
   function appendOrgScopeToUrl(rawUrl){
-    const url = new URL(rawUrl, window.location.origin);
+    const raw = String(rawUrl || "");
+    if (!raw) return raw;
+
+    const url = new URL(raw, window.location.origin);
     const clientId = getClientId();
     const ownerId = getOwnerId();
 
     if (!clientId || !ownerId) return url.toString();
-    if (!url.pathname.startsWith("/studio/org/")) return url.toString();
-    if (url.searchParams.has("id_ent")) return url.toString();
     if (clientId === ownerId) return url.toString();
+    if (url.searchParams.has("id_ent")) return url.toString();
+
+    const scopedPrefixes = [
+      "/studio/org/",
+      "/studio/collaborateurs/"
+    ];
+
+    const mustScope = scopedPrefixes.some(prefix => url.pathname.startsWith(prefix));
+    if (!mustScope){
+      return url.toString();
+    }
 
     url.searchParams.set("id_ent", clientId);
     return url.toString();
@@ -1462,6 +1526,107 @@ function bindPostalAssist(){
     return await _orgWorkspaceLoadingPromise;
   }
 
+    function ensureCollaborateursPortalBridge(){
+    window.__collabScopeOwnerId = getOwnerId();
+    window.__collabScopeEntId = getClientId();
+    window.__studioAuthReady = Promise.resolve(true);
+
+    const existingPortal = window.portal || {};
+    const existingShowAlert = typeof existingPortal.showAlert === "function"
+      ? existingPortal.showAlert.bind(existingPortal)
+      : null;
+
+    window.portal = Object.assign({}, existingPortal, {
+      apiBase: API_BASE,
+      contactId: getOwnerId(),
+
+      async apiJson(url, options = {}){
+        const token = await ensureAuthReady();
+        if (!token){
+          throw new Error("Session Studio introuvable.");
+        }
+
+        const scopedUrl = appendOrgScopeToUrl(url);
+        const opts = Object.assign({}, options || {});
+        const headers = Object.assign({}, opts.headers || {});
+        headers.Authorization = `Bearer ${token}`;
+        opts.headers = headers;
+        opts.credentials = opts.credentials || "same-origin";
+
+        const resp = await fetch(scopedUrl, opts);
+        let data = null;
+
+        try {
+          data = await resp.json();
+        } catch (_) {
+          data = null;
+        }
+
+        if (!resp.ok){
+          const detail = data?.detail || data?.message || `Erreur HTTP ${resp.status}`;
+          throw new Error(detail);
+        }
+
+        return data;
+      },
+
+      showAlert(type, message){
+        if (existingShowAlert){
+          existingShowAlert(type, message);
+          return;
+        }
+
+        if (message){
+          setMessage(message);
+        } else {
+          setMessage("");
+        }
+      }
+    });
+  }
+
+  async function ensureCollaborateursScriptLoaded(){
+    if (_collabWorkspaceScriptPromise){
+      return _collabWorkspaceScriptPromise;
+    }
+
+    _collabWorkspaceScriptPromise = (async () => {
+      const jsUrl = getMenuStudioAssetUrl("studio_collaborateurs.js");
+      await loadExternalScriptOnce(jsUrl, "studio_collaborateurs.js");
+
+      if (typeof window.__studioCollaborateursInit !== "function"){
+        throw new Error("Initialiseur Collaborateurs introuvable après chargement du script.");
+      }
+    })();
+
+    return _collabWorkspaceScriptPromise;
+  }
+
+  async function loadCollaborateursWorkspace(){
+    if (_collabWorkspaceLoadingPromise){
+      return _collabWorkspaceLoadingPromise;
+    }
+
+    _collabWorkspaceLoadingPromise = (async () => {
+      const mount = byId("collabWorkspaceMount");
+      if (!mount){
+        throw new Error("collabWorkspaceMount introuvable.");
+      }
+
+      await ensureCollaborateursWorkspaceMarkup(mount);
+      applyClientSpaceCollaborateursLabels(mount);
+      ensureCollaborateursPortalBridge();
+      await ensureCollaborateursScriptLoaded();
+      await window.__studioCollaborateursInit({ force: true });
+    })();
+
+    try {
+      await _collabWorkspaceLoadingPromise;
+    } finally {
+      _collabWorkspaceLoadingPromise = null;
+    }
+  }
+
   function setSection(name){
     document.querySelectorAll(".menu-item[data-section]").forEach(btn => {
       btn.classList.toggle("active", btn.dataset.section === name);
@@ -1478,15 +1643,24 @@ function bindPostalAssist(){
         const section = btn.dataset.section || "dashboard";
         setSection(section);
 
-        if (section !== "organisation") {
+        if (section === "organisation") {
+          try {
+            setMessage("");
+            await loadOrganisationWorkspace();
+          } catch (e) {
+            setMessage(e.message || "Erreur lors du chargement de l’organisation.");
+          }
           return;
         }
 
-        try {
-          setMessage("");
-          await loadOrganisationWorkspace();
-        } catch (e) {
-          setMessage(e.message || "Erreur lors du chargement de l’organisation.");
+        if (section === "collaborateurs") {
+          try {
+            setMessage("");
+            await loadCollaborateursWorkspace();
+          } catch (e) {
+            setMessage(e.message || "Erreur lors du chargement des collaborateurs.");
+          }
+          return;
         }
       });
     });
@@ -2549,7 +2723,8 @@ function bindPostalAssist(){
     setFicheEditMode(false);
     setSection("dashboard");
 
-    loadOrganisationWorkspace({ silent: true }).catch(() => {});
+    loadOrganisationWorkspace().catch(() => {});
+    loadCollaborateursWorkspace().catch(() => {});
   }
 
   window.addEventListener("DOMContentLoaded", async () => {

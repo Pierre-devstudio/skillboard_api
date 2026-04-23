@@ -156,6 +156,33 @@ def _resolve_owner_source(cur, oid: str) -> dict:
 
     raise HTTPException(status_code=404, detail="Owner non rattaché à une entreprise exploitable.")
 
+def _resolve_collab_scope_ent(cur, oid: str, source_kind: str, request: Optional[Request]) -> str:
+    if source_kind != "entreprise":
+        return oid
+
+    if request is None:
+        return oid
+
+    scope_ent = (request.query_params.get("id_ent") or "").strip()
+    if not scope_ent:
+        return oid
+
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_entreprise
+        WHERE id_ent = %s
+          AND id_owner_gestionnaire = %s
+          AND COALESCE(masque, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (scope_ent, oid),
+    )
+    if cur.fetchone() is None:
+        raise HTTPException(status_code=404, detail="Structure de scope introuvable.")
+
+    return scope_ent
+
 def _role_label(role_code: Optional[str]) -> str:
     return ROLE_LABELS.get((role_code or "none").strip().lower(), "Aucun accès")
 
@@ -318,7 +345,9 @@ def _default_access_ref_type(console_code: str, source_kind: str, source_row_kin
     return "effectif_client"
 
 
-def _fetch_collaborateur_identity_for_access(cur, oid: str, source_kind: str, cid: str) -> dict:
+def _fetch_collaborateur_identity_for_access(cur, oid: str, source_kind: str, cid: str, scope_ent: Optional[str] = None) -> dict:
+    ent_scope = (scope_ent or oid).strip() or oid
+
     if source_kind == "entreprise":
         cur.execute(
             """
@@ -333,7 +362,7 @@ def _fetch_collaborateur_identity_for_access(cur, oid: str, source_kind: str, ci
               AND e.id_effectif = %s
             LIMIT 1
             """,
-            (oid, cid),
+            (ent_scope, cid),
         )
         r = cur.fetchone() or {}
         if not r:
@@ -361,7 +390,7 @@ def _fetch_collaborateur_identity_for_access(cur, oid: str, source_kind: str, ci
         WHERE u.id_utilisateur = %s
         LIMIT 1
         """,
-        (oid, cid),
+        (ent_scope, cid),
     )
     r = cur.fetchone() or {}
     if not r:
@@ -432,8 +461,8 @@ def _fetch_access_summary_map(cur, oid: str, collaborator_ids: list) -> dict:
     return out
 
 
-def _build_access_state_for_collaborator(cur, oid: str, source_kind: str, cid: str) -> dict:
-    ident = _fetch_collaborateur_identity_for_access(cur, oid, source_kind, cid)
+def _build_access_state_for_collaborator(cur, oid: str, source_kind: str, cid: str, scope_ent: Optional[str] = None) -> dict:
+    ident = _fetch_collaborateur_identity_for_access(cur, oid, source_kind, cid, scope_ent)
     console_items = _build_console_items(cur, oid)
 
     cur.execute(
@@ -849,7 +878,7 @@ def _resolve_actor_display_name(cur, u: dict, id_owner: str) -> str:
 
     return email
 
-def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind: str, id_collaborateur: str) -> dict:
+def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind: str, id_collaborateur: str, scope_ent: Optional[str] = None) -> dict:
     cid = (id_collaborateur or "").strip()
     if not cid:
         return {
@@ -859,7 +888,7 @@ def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind
             "id_collaborateur": cid,
         }
 
-    ident = _fetch_collaborateur_identity_for_access(cur, id_owner, source_kind, cid)
+    ident = _fetch_collaborateur_identity_for_access(cur, id_owner, source_kind, cid, scope_ent)
     email = (ident.get("email") or "").strip()
     collaborateur_nom = f"{(ident.get('prenom') or '').strip()} {(ident.get('nom') or '').strip()}".strip()
 
@@ -873,7 +902,7 @@ def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind
             "collaborateur_nom": collaborateur_nom,
         }
 
-    access_state = _build_access_state_for_collaborator(cur, id_owner, source_kind, cid)
+    access_state = _build_access_state_for_collaborator(cur, id_owner, source_kind, cid, scope_ent)
     active_map = _build_active_access_map(access_state)
 
     if not active_map:
@@ -1388,7 +1417,7 @@ def _service_exists_active(cur, id_ent: str, id_service: Optional[str]) -> bool:
     return cur.fetchone() is not None
 
 
-def _fetch_poste_service(cur, oid: str, id_poste: Optional[str]) -> Optional[str]:
+def _fetch_poste_service(cur, oid: str, scope_ent: str, id_poste: Optional[str]) -> Optional[str]:
     pid = (id_poste or "").strip()
     if not pid:
         return None
@@ -1403,29 +1432,29 @@ def _fetch_poste_service(cur, oid: str, id_poste: Optional[str]) -> Optional[str
           AND COALESCE(actif, TRUE) = TRUE
         LIMIT 1
         """,
-        (pid, oid, oid),
+        (pid, oid, scope_ent),
     )
     r = cur.fetchone() or {}
     if not r:
-        raise HTTPException(status_code=400, detail="Poste actuel invalide pour cet owner.")
+        raise HTTPException(status_code=400, detail="Poste actuel invalide pour cette structure.")
     return (r.get("id_service") or "").strip() or None
 
 
-def _norm_service_from_payload(cur, oid: str, id_service: Optional[str], id_poste: Optional[str]) -> Optional[str]:
+def _norm_service_from_payload(cur, oid: str, scope_ent: str, id_service: Optional[str], id_poste: Optional[str]) -> Optional[str]:
     pid = (id_poste or "").strip()
     if pid:
-        return _fetch_poste_service(cur, oid, pid)
+        return _fetch_poste_service(cur, oid, scope_ent, pid)
 
     sid = (id_service or "").strip()
     if not sid:
         return None
 
-    if not _service_exists_active(cur, oid, sid):
-        raise HTTPException(status_code=400, detail="Service invalide pour cet owner.")
+    if not _service_exists_active(cur, scope_ent, sid):
+        raise HTTPException(status_code=400, detail="Service invalide pour cette structure.")
     return sid
 
 
-def _build_service_options(cur, oid: str, source_kind: str) -> list:
+def _build_service_options(cur, oid: str, scope_ent: str, source_kind: str) -> list:
     cur.execute(
         """
         WITH RECURSIVE svc AS (
@@ -1504,7 +1533,7 @@ def _build_service_options(cur, oid: str, source_kind: str) -> list:
         FROM svc_all
         ORDER BY svc_all.path
         """,
-        (oid, oid, oid, oid),
+        (scope_ent, scope_ent, scope_ent, scope_ent),
     )
     rows = cur.fetchall() or []
     items = []
@@ -1523,7 +1552,7 @@ def _build_service_options(cur, oid: str, source_kind: str) -> list:
     return items
 
 
-def _build_poste_options(cur, oid: str, source_kind: str) -> list:
+def _build_poste_options(cur, oid: str, scope_ent: str, source_kind: str) -> list:
     cur.execute(
         """
         SELECT
@@ -1549,7 +1578,7 @@ def _build_poste_options(cur, oid: str, source_kind: str) -> list:
           AND COALESCE(p.actif, TRUE) = TRUE
         ORDER BY COALESCE(p.codif_client, p.codif_poste, ''), p.intitule_poste
         """,
-        (oid, oid, oid, oid),
+        (scope_ent, scope_ent, oid, scope_ent),
     )
     rows = cur.fetchall() or []
     items = []
@@ -1618,7 +1647,9 @@ def _load_domaine_competence_map(cur, ids: list) -> dict:
     return out
 
 
-def _get_collab_scope(cur, oid: str, source_kind: str, cid: str) -> dict:
+def _get_collab_scope(cur, oid: str, source_kind: str, cid: str, scope_ent: Optional[str] = None) -> dict:
+    ent_scope = (scope_ent or oid).strip() or oid
+
     if source_kind == "entreprise":
         cur.execute(
             """
@@ -1637,7 +1668,7 @@ def _get_collab_scope(cur, oid: str, source_kind: str, cid: str) -> dict:
               AND e.id_effectif = %s
             LIMIT 1
             """,
-            (oid, cid),
+            (ent_scope, cid),
         )
         r = cur.fetchone() or {}
         if not r:
@@ -1668,7 +1699,7 @@ def _get_collab_scope(cur, oid: str, source_kind: str, cid: str) -> dict:
         WHERE u.id_utilisateur = %s
         LIMIT 1
         """,
-        (oid, oid, oid, cid),
+        (ent_scope, oid, ent_scope, cid),
     )
     r = cur.fetchone() or {}
     if not r:
@@ -1824,7 +1855,7 @@ def _compute_retraite_estimee(date_naissance, niveau_education: Optional[str]) -
 
 def _upsert_effectif_mirror_for_utilisateur(cur, oid: str, cid: str, payload) -> None:
     id_poste = _norm_text(payload.id_poste_actuel) or _norm_text(payload.fonction)
-    id_service = _norm_service_from_payload(cur, oid, payload.id_service, id_poste)
+    id_service = _norm_service_from_payload(cur, oid, oid, payload.id_service, id_poste)
 
     date_naissance = _norm_iso_date(payload.date_naissance)
     date_entree = _norm_iso_date(payload.date_entree_entreprise)
@@ -2730,8 +2761,9 @@ def studio_collab_context(id_owner: str, request: Request):
                 studio_require_min_role(cur, u, oid, "admin")
 
                 src = _resolve_owner_source(cur, oid)
-                services = _build_service_options(cur, oid, src["source_kind"])
-                postes = _build_poste_options(cur, oid, src["source_kind"])
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                services = _build_service_options(cur, oid, scope_ent, src["source_kind"])
+                postes = _build_poste_options(cur, oid, scope_ent, src["source_kind"])
                 consoles = _build_console_items(cur, oid)
 
                 quota_summary = []
@@ -2761,6 +2793,7 @@ def studio_collab_context(id_owner: str, request: Request):
             "postes": postes,
             "consoles": consoles,
             "quota_summary": quota_summary,
+            "scope_ent": scope_ent,
         }
     except HTTPException:
         raise
@@ -2797,6 +2830,7 @@ def studio_collab_list(
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
                 if src["source_kind"] == "entreprise":
                     cur.execute(
@@ -2817,7 +2851,7 @@ def studio_collab_list(
                         FROM public.tbl_effectif_client
                         WHERE id_ent = %s
                         """,
-                        (oid,),
+                        (scope_ent,),
                     )
                     s = cur.fetchone() or {}
                 else:
@@ -2852,7 +2886,7 @@ def studio_collab_list(
 
                 if src["source_kind"] == "entreprise":
                     where = ["e.id_ent = %s"]
-                    params = [oid]
+                    params = [scope_ent]
 
                     if not inc_arch:
                         where.append("COALESCE(e.archive, FALSE) = FALSE")
@@ -3150,6 +3184,7 @@ def studio_collab_detail(id_owner: str, id_collaborateur: str, request: Request)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
                 if src["source_kind"] == "entreprise":
                     cur.execute(
@@ -3194,7 +3229,7 @@ def studio_collab_detail(id_owner: str, id_collaborateur: str, request: Request)
                           AND e.id_effectif = %s
                         LIMIT 1
                         """,
-                        (oid, cid),
+                        (scope_ent, cid),
                     )
                     r = cur.fetchone() or {}
                     if not r:
@@ -3369,7 +3404,8 @@ def studio_collab_competences(id_owner: str, id_collaborateur: str, request: Req
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 id_poste = _norm_text(scope.get("id_poste_actuel"))
                 id_effectif_data = (scope.get("id_effectif_data") or "").strip()
@@ -3601,7 +3637,8 @@ def studio_collab_sync_competences_from_poste(
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 id_effectif_data = (scope.get("id_effectif_data") or "").strip()
                 if not id_effectif_data:
@@ -3611,7 +3648,7 @@ def studio_collab_sync_competences_from_poste(
                 if not id_poste:
                     raise HTTPException(status_code=400, detail="Aucun poste actuel sélectionné.")
 
-                _fetch_poste_service(cur, oid, id_poste)
+                _fetch_poste_service(cur, oid, scope_ent, id_poste)
 
                 cur.execute(
                     """
@@ -3623,7 +3660,7 @@ def studio_collab_sync_competences_from_poste(
                       AND COALESCE(actif, TRUE) = TRUE
                     LIMIT 1
                     """,
-                    (id_poste, oid, oid),
+                    (id_poste, oid, scope_ent),
                 )
                 poste_row = cur.fetchone() or {}
                 intitule_poste = (poste_row.get("intitule_poste") or "").strip() or None
@@ -3709,7 +3746,8 @@ def studio_collab_add_competence(
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 id_effectif_data = (scope.get("id_effectif_data") or "").strip()
                 if not id_effectif_data:
@@ -3792,7 +3830,8 @@ def studio_collab_remove_competence(
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 id_effectif_data = (scope.get("id_effectif_data") or "").strip()
                 if not id_effectif_data:
@@ -3895,7 +3934,8 @@ def studio_collab_competence_fiche_pdf(
                 owner = studio_fetch_owner(cur, oid) or {}
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 id_effectif_data = (scope.get("id_effectif_data") or "").strip()
                 if not id_effectif_data:
@@ -4022,7 +4062,8 @@ def studio_collab_competence_evaluation_detail(
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 id_effectif_data = (scope.get("id_effectif_data") or "").strip()
                 if not id_effectif_data:
@@ -4151,7 +4192,8 @@ def studio_collab_competence_evaluation_save(
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 id_effectif_data = (scope.get("id_effectif_data") or "").strip()
                 if not id_effectif_data:
@@ -4285,7 +4327,8 @@ def studio_collab_certifications(id_owner: str, id_collaborateur: str, request: 
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 cur.execute(
                     """
@@ -4634,7 +4677,8 @@ def studio_collab_certification_add(
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 cur.execute(
                     """
@@ -4743,7 +4787,8 @@ def studio_collab_certification_update(
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 existing = _get_collab_certification_row(cur, scope["id_effectif_data"], ecid)
 
@@ -4811,7 +4856,8 @@ def studio_collab_certification_archive(
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 existing = _get_collab_certification_row(cur, scope["id_effectif_data"], ecid)
 
@@ -4875,7 +4921,8 @@ def studio_collab_certification_upload_proof(
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 existing = _get_collab_certification_row(cur, scope["id_effectif_data"], ecid)
 
@@ -4961,7 +5008,8 @@ def studio_collab_certification_open_proof(
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 existing = _get_collab_certification_row(cur, scope["id_effectif_data"], ecid)
                 proof_id = (existing.get("id_preuve_doc") or "").strip()
@@ -5024,7 +5072,8 @@ def studio_collab_history_postes(id_owner: str, id_collaborateur: str, request: 
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                scope = _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                scope = _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 cur.execute(
                     """
@@ -5055,7 +5104,7 @@ def studio_collab_history_postes(id_owner: str, id_collaborateur: str, request: 
                       h.date_creation DESC,
                       h.id_effectif_historique_poste DESC
                     """,
-                    (oid, oid, scope["id_effectif_data"]),
+                    (oid, scope_ent, scope["id_effectif_data"]),
                 )
                 rows = cur.fetchall() or []
 
@@ -5105,7 +5154,8 @@ def studio_collab_historique_formations_jmb(id_owner: str, id_collaborateur: str
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                _get_collab_scope(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                _get_collab_scope(cur, oid, src["source_kind"], cid, scope_ent)
 
                 cur.execute(
                     """
@@ -5181,7 +5231,8 @@ def studio_collab_acces(id_owner: str, id_collaborateur: str, request: Request):
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
-                data = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                data = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid, scope_ent)
 
         return data
     except HTTPException:
@@ -5220,11 +5271,12 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
-                before_state = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid)
+                before_state = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid, scope_ent)
                 before_map = _build_active_access_map(before_state)
 
-                ident = _fetch_collaborateur_identity_for_access(cur, oid, src["source_kind"], cid)
+                ident = _fetch_collaborateur_identity_for_access(cur, oid, src["source_kind"], cid, scope_ent)
                 contracts = _load_owner_console_contracts(cur, oid)
                 usage_map = _count_owner_access_usage(cur, oid)
                 email = (ident.get("email") or "").strip()
@@ -5319,7 +5371,7 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                             (str(uuid.uuid4()), email, oid, desired_role, user_ref_type, cid, console),
                         )
 
-                after_state = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid)
+                after_state = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid, scope_ent)
                 after_map = _build_active_access_map(after_state)
 
                 conn.commit()
@@ -5359,8 +5411,9 @@ def studio_collab_send_access_mail(id_owner: str, id_collaborateur: str, request
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
-                result = _send_access_mail_for_collaborateur(cur, u, oid, src["source_kind"], cid)
+                result = _send_access_mail_for_collaborateur(cur, u, oid, src["source_kind"], cid, scope_ent)
 
         if result.get("ok"):
             return result
@@ -5405,10 +5458,11 @@ def studio_collab_send_access_mail_bulk(id_owner: str, payload: CollaborateurAcc
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
                 for cid in ids:
                     try:
-                        result = _send_access_mail_for_collaborateur(cur, u, oid, src["source_kind"], cid)
+                        result = _send_access_mail_for_collaborateur(cur, u, oid, src["source_kind"], cid, scope_ent)
                         if result.get("ok"):
                             sent_count += 1
                         else:
@@ -5541,6 +5595,7 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
                 date_naissance = _norm_iso_date(payload.date_naissance)
                 date_entree = _norm_iso_date(payload.date_entree_entreprise)
@@ -5557,7 +5612,7 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                 if src["source_kind"] == "entreprise":
                     cid = str(uuid.uuid4())
                     id_poste = _norm_text(payload.id_poste_actuel)
-                    id_service = _norm_service_from_payload(cur, oid, payload.id_service, id_poste)
+                    id_service = _norm_service_from_payload(cur, oid, scope_ent, payload.id_service, id_poste)
 
                     cur.execute(
                         """
@@ -5607,7 +5662,7 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                         """,
                         (
                           cid,
-                          oid,
+                          scope_ent,
                           nom,
                           prenom,
                           _norm_text(payload.civilite),
@@ -5660,7 +5715,7 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                 cid = str(uuid.uuid4())
                 user_poste = _norm_text(payload.id_poste_actuel) or _norm_text(payload.fonction)
                 if user_poste:
-                    _fetch_poste_service(cur, oid, user_poste)
+                    _fetch_poste_service(cur, oid, scope_ent, user_poste)
 
                 cur.execute(
                     """
@@ -5752,6 +5807,7 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
                 date_naissance = _norm_iso_date(payload.date_naissance)
                 date_entree = _norm_iso_date(payload.date_entree_entreprise)
@@ -5766,12 +5822,12 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                 )
 
                 if src["source_kind"] == "entreprise":
-                    old_state = _fetch_effectif_current_poste_state(cur, oid, cid)
+                    old_state = _fetch_effectif_current_poste_state(cur, scope_ent, cid)
                     if not old_state:
                         raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
 
                     id_poste = _norm_text(payload.id_poste_actuel)
-                    id_service = _norm_service_from_payload(cur, oid, payload.id_service, id_poste)
+                    id_service = _norm_service_from_payload(cur, oid, scope_ent, payload.id_service, id_poste)
 
                     cur.execute(
                         """
@@ -5844,7 +5900,7 @@ def studio_collab_update(id_owner: str, id_collaborateur: str, payload: Collabor
                           _norm_bool(payload.is_temp, False),
                           _norm_text(payload.role_temp),
                           _norm_text(payload.code_effectif),
-                          oid,
+                          scope_ent,
                           cid,
                         ),
                     )
@@ -5963,6 +6019,7 @@ def studio_collab_archive(id_owner: str, id_collaborateur: str, request: Request
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid)
+                scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
 
                 if src["source_kind"] == "entreprise":
                     cur.execute(
@@ -5973,7 +6030,7 @@ def studio_collab_archive(id_owner: str, id_collaborateur: str, request: Request
                         WHERE id_ent = %s
                           AND id_effectif = %s
                         """,
-                        (oid, cid),
+                        (scope_ent, cid),
                     )
                     if cur.rowcount <= 0:
                         raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
