@@ -117,7 +117,33 @@ def _require_owner_access(cur, u: dict, id_owner: str):
     return oid
 
 
-def _resolve_owner_source(cur, oid: str) -> dict:
+def _resolve_owner_source(cur, oid: str, request: Optional[Request] = None) -> dict:
+    scope_ent = ""
+    if request is not None:
+        scope_ent = (request.query_params.get("id_ent") or "").strip()
+
+    # En Espace de gestion, si un client scope est fourni et bien rattaché à l'owner,
+    # il doit devenir la source métier prioritaire pour les collaborateurs.
+    if scope_ent:
+        cur.execute(
+            """
+            SELECT id_ent, nom_ent
+            FROM public.tbl_entreprise
+            WHERE id_ent = %s
+              AND id_owner_gestionnaire = %s
+              AND COALESCE(masque, FALSE) = FALSE
+            LIMIT 1
+            """,
+            (scope_ent, oid),
+        )
+        r = cur.fetchone() or {}
+        if r.get("id_ent"):
+            return {
+                "source_kind": "entreprise",
+                "source_label": "Client",
+                "source_name": (r.get("nom_ent") or "").strip(),
+            }
+
     cur.execute(
         """
         SELECT id_mon_ent, nom_ent
@@ -2760,7 +2786,7 @@ def studio_collab_context(id_owner: str, request: Request):
                 owner = studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
 
-                src = _resolve_owner_source(cur, oid)
+                src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 services = _build_service_options(cur, oid, scope_ent, src["source_kind"])
                 postes = _build_poste_options(cur, oid, scope_ent, src["source_kind"])
