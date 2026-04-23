@@ -823,6 +823,12 @@
 .sb-collab-skills-table th,
 .sb-collab-skills-table td{
   vertical-align:middle;
+  box-sizing:border-box;
+}
+
+.sb-collab-skills-table .sb-collab-skill-col-competence{
+  width:auto;
+  min-width:0;
 }
 
 .sb-collab-skills-table--owned .sb-collab-skill-col-indicator{
@@ -838,37 +844,41 @@
   padding-right:0;
 }
 
-.sb-collab-skills-table--owned .sb-collab-skill-col-competence{
-  width:auto;
-}
-
 .sb-collab-skills-table--owned .sb-collab-skill-col-level{
   width:82px;
+  min-width:82px;
+  max-width:82px;
   text-align:center;
 }
 
 .sb-collab-skills-table--owned .sb-collab-skill-col-date{
-  width:74px;
+  width:78px;
+  min-width:78px;
+  max-width:78px;
   text-align:center;
 }
 
 .sb-collab-skills-table--owned .sb-collab-skill-col-actions{
   width:110px;
+  min-width:110px;
+  max-width:110px;
   text-align:center;
-}
-
-.sb-collab-skills-table--required .sb-collab-skill-col-competence{
-  width:auto;
+  white-space:nowrap;
 }
 
 .sb-collab-skills-table--required .sb-collab-skill-col-required{
   width:82px;
+  min-width:82px;
+  max-width:82px;
   text-align:center;
 }
 
 .sb-collab-skills-table--required .sb-collab-skill-col-action{
-  width:74px;
+  width:86px;
+  min-width:86px;
+  max-width:86px;
   text-align:center;
+  white-space:nowrap;
 }
 
 .sb-collab-skills-table thead th.sb-collab-skill-col-indicator,
@@ -882,6 +892,28 @@
 .sb-collab-skills-table thead th.sb-collab-skill-col-action,
 .sb-collab-skills-table tbody td.sb-collab-skill-col-action{
   text-align:center;
+}
+
+#modalCollaborateur .sb-collab-skills-table .sb-icon-actions{
+  width:100%;
+  justify-content:center;
+  align-items:center;
+  gap:6px;
+  flex-wrap:nowrap;
+}
+
+#modalCollaborateur .sb-collab-skills-table .sb-icon-btn{
+  width:30px;
+  min-width:30px;
+  height:30px;
+  flex:0 0 30px;
+}
+
+#modalCollaborateur .sb-collab-skills-table--required td.sb-collab-skill-col-action .sb-btn.sb-btn--xs{
+  width:76px;
+  min-width:76px;
+  justify-content:center;
+  white-space:nowrap;
 }
 
 .sb-collab-skill-indicator{
