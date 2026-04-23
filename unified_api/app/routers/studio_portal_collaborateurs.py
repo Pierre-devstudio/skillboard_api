@@ -243,6 +243,12 @@ def _is_unlimited_access_quota(value) -> bool:
     except Exception:
         return False
 
+def _resolve_access_owner_id(oid: str, source_kind: str, scope_ent: Optional[str] = None) -> str:
+    if (source_kind or "").strip() == "entreprise":
+        ent = (scope_ent or "").strip()
+        if ent:
+            return ent
+    return (oid or "").strip()
 
 def _load_owner_console_contracts(cur, oid: str) -> dict:
     cur.execute(
@@ -489,7 +495,8 @@ def _fetch_access_summary_map(cur, oid: str, collaborator_ids: list) -> dict:
 
 def _build_access_state_for_collaborator(cur, oid: str, source_kind: str, cid: str, scope_ent: Optional[str] = None) -> dict:
     ident = _fetch_collaborateur_identity_for_access(cur, oid, source_kind, cid, scope_ent)
-    console_items = _build_console_items(cur, oid)
+    access_owner_id = _resolve_access_owner_id(oid, source_kind, scope_ent)
+    console_items = _build_console_items(cur, access_owner_id)
 
     cur.execute(
         """
@@ -508,7 +515,7 @@ def _build_access_state_for_collaborator(cur, oid: str, source_kind: str, cid: s
           created_at DESC NULLS LAST,
           id_access DESC
         """,
-        (oid, cid),
+        (access_owner_id, cid),
     )
     rows = cur.fetchall() or []
 
@@ -915,6 +922,7 @@ def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind
         }
 
     ident = _fetch_collaborateur_identity_for_access(cur, id_owner, source_kind, cid, scope_ent)
+    access_owner_id = _resolve_access_owner_id(id_owner, source_kind, scope_ent)
     email = (ident.get("email") or "").strip()
     collaborateur_nom = f"{(ident.get('prenom') or '').strip()} {(ident.get('nom') or '').strip()}".strip()
 
@@ -942,7 +950,7 @@ def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind
         }
 
     provisioning = _sync_supabase_auth_user_from_access_state(
-        id_owner=id_owner,
+        id_owner=access_owner_id,
         id_effectif=cid,
         email=email,
         after_access_state=access_state,
@@ -2814,7 +2822,8 @@ def studio_collab_context(id_owner: str, request: Request):
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
                 services = _build_service_options(cur, oid, scope_ent, src["source_kind"])
                 postes = _build_poste_options(cur, oid, scope_ent, src["source_kind"])
-                consoles = _build_console_items(cur, oid)
+                access_owner_id = _resolve_access_owner_id(oid, src["source_kind"], scope_ent)
+                consoles = _build_console_items(cur, access_owner_id)
 
                 quota_summary = []
                 for item in consoles:
@@ -3198,9 +3207,10 @@ def studio_collab_list(
                                 "observations": r.get("observations"),
                             }
                         )
+                access_owner_id = _resolve_access_owner_id(oid, src["source_kind"], scope_ent)
                 access_summary_map = _fetch_access_summary_map(
                     cur,
-                    oid,
+                    access_owner_id,
                     [x.get("id_collaborateur") for x in items]
                 )
                 for it in items:
@@ -5323,13 +5333,14 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                 studio_require_min_role(cur, u, oid, "admin")
                 src = _resolve_owner_source(cur, oid, request)
                 scope_ent = _resolve_collab_scope_ent(cur, oid, src["source_kind"], request)
+                access_owner_id = _resolve_access_owner_id(oid, src["source_kind"], scope_ent)
 
                 before_state = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid, scope_ent)
                 before_map = _build_active_access_map(before_state)
 
                 ident = _fetch_collaborateur_identity_for_access(cur, oid, src["source_kind"], cid, scope_ent)
-                contracts = _load_owner_console_contracts(cur, oid)
-                usage_map = _count_owner_access_usage(cur, oid)
+                contracts = _load_owner_console_contracts(cur, access_owner_id)
+                usage_map = _count_owner_access_usage(cur, access_owner_id)
                 email = (ident.get("email") or "").strip()
 
                 for console in ["studio", "insights", "people", "partner", "learn"]:
@@ -5365,7 +5376,7 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                         ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST, id_access DESC
                         LIMIT 1
                         """,
-                        (oid, cid, console),
+                        (access_owner_id, cid, console),
                     )
                     row = cur.fetchone() or {}
                     id_access = (row.get("id_access") or "").strip()
@@ -5419,7 +5430,7 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                               %s, %s, %s, %s, FALSE, NOW(), %s, %s, %s, NOW(), 'actif'
                             )
                             """,
-                            (str(uuid.uuid4()), email, oid, desired_role, user_ref_type, cid, console),
+                            (str(uuid.uuid4()), email, access_owner_id, desired_role, user_ref_type, cid, console),
                         )
 
                 after_state = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid, scope_ent)
@@ -5430,7 +5441,7 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
         provisioning = {"auth_user": None, "created_now": False, "setup_link": None}
         if before_map or after_map:
             provisioning = _sync_supabase_auth_user_from_access_state(
-                id_owner=oid,
+                id_owner=access_owner_id,
                 id_effectif=cid,
                 email=ident.get("email"),
                 after_access_state=after_state,
