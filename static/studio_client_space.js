@@ -152,6 +152,18 @@
       mount.appendChild(host.firstChild);
     }
 
+    mount.querySelectorAll('.sb-modal, .modal').forEach(modalEl => {
+      const modalId = (modalEl.id || '').trim();
+      if (!modalId) return;
+
+      const existing = document.body.querySelector(`:scope > #${CSS.escape(modalId)}`);
+      if (existing && existing !== modalEl){
+        existing.remove();
+      }
+
+      document.body.appendChild(modalEl);
+    });
+
     mount.dataset.loaded = "1";
     _collabWorkspaceReady = true;
   }
