@@ -131,7 +131,8 @@
       return;
     }
 
-    const htmlUrl = getMenuStudioAssetUrl("studio_collaborateurs.html");
+    const collabAssetsVersion = "2026-04-23-02";
+    const htmlUrl = `${getMenuStudioAssetUrl("studio_collaborateurs.html")}?v=${encodeURIComponent(collabAssetsVersion)}`;
     const resp = await fetch(htmlUrl, { credentials: "same-origin" });
 
     if (!resp.ok){
@@ -1603,8 +1604,9 @@ function bindPostalAssist(){
     }
 
     _collabWorkspaceScriptPromise = (async () => {
-      const jsUrl = getMenuStudioAssetUrl("studio_collaborateurs.js");
-      await loadExternalScriptOnce(jsUrl, "studio_collaborateurs.js");
+      const collabAssetsVersion = "2026-04-23-02";
+      const jsUrl = `${getMenuStudioAssetUrl("studio_collaborateurs.js")}?v=${encodeURIComponent(collabAssetsVersion)}`;
+      await loadExternalScriptOnce(jsUrl, `studio_collaborateurs.js::${collabAssetsVersion}`);
 
       if (typeof window.__studioCollaborateursInit !== "function"){
         throw new Error("Initialiseur Collaborateurs introuvable après chargement du script.");
