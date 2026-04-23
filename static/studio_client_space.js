@@ -1539,7 +1539,7 @@ function bindPostalAssist(){
     return await _orgWorkspaceLoadingPromise;
   }
 
-    function ensureCollaborateursPortalBridge(){
+  function ensureCollaborateursPortalBridge(){
     window.__collabScopeOwnerId = getOwnerId();
     window.__collabScopeEntId = getClientId();
     window.__studioAuthReady = Promise.resolve(true);
@@ -1584,16 +1584,31 @@ function bindPostalAssist(){
       },
 
       showAlert(type, message){
+        const level = String(type || "").trim().toLowerCase();
+        const msg = String(message || "").trim();
+
+        if (!msg){
+          setMessage("");
+          return;
+        }
+
+        const isAccessMailInfo =
+          level !== "error" &&
+          (
+            /^mail d’accès envoyé à /i.test(msg) ||
+            /^\d+\s+mail\(s\)\s+envoyé\(s\)\./i.test(msg)
+          );
+
+        if (isAccessMailInfo){
+          return;
+        }
+
         if (existingShowAlert){
           existingShowAlert(type, message);
           return;
         }
 
-        if (message){
-          setMessage(message);
-        } else {
-          setMessage("");
-        }
+        setMessage(msg);
       }
     });
   }

@@ -243,6 +243,46 @@ def _is_unlimited_access_quota(value) -> bool:
     except Exception:
         return False
 
+def _has_pending_access_invitation(cur, id_owner: str, id_user_ref: str) -> bool:
+    oid = (id_owner or "").strip()
+    uid = (id_user_ref or "").strip()
+    if not oid or not uid:
+        return False
+
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_novoskill_user_access
+        WHERE id_owner = %s
+          AND id_user_ref = %s
+          AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') = 'invitation'
+        LIMIT 1
+        """,
+        (oid, uid),
+    )
+    return cur.fetchone() is not None
+
+
+def _activate_pending_access_invitations(cur, id_owner: str, id_user_ref: str) -> None:
+    oid = (id_owner or "").strip()
+    uid = (id_user_ref or "").strip()
+    if not oid or not uid:
+        return
+
+    cur.execute(
+        """
+        UPDATE public.tbl_novoskill_user_access
+        SET statut_access = 'actif',
+            updated_at = NOW()
+        WHERE id_owner = %s
+          AND id_user_ref = %s
+          AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') = 'invitation'
+        """,
+        (oid, uid),
+    )
+
 def _resolve_access_owner_id(oid: str, source_kind: str, scope_ent: Optional[str] = None) -> str:
     if (source_kind or "").strip() == "entreprise":
         ent = (scope_ent or "").strip()
@@ -794,6 +834,7 @@ def _sync_supabase_auth_user_from_access_state(
     id_effectif: str,
     email: Optional[str],
     after_access_state: dict,
+    force_setup_link: bool = False,
 ) -> dict:
     active_codes = set(_build_active_access_map(after_access_state).keys())
     target_email = (email or "").strip()
@@ -854,7 +895,7 @@ def _sync_supabase_auth_user_from_access_state(
         )
 
     setup_link = None
-    if created_now:
+    if created_now or force_setup_link:
         setup_link = _supabase_generate_recovery_link(
             target_email,
             _console_reset_url(_select_preferred_console_code(after_access_state)),
@@ -867,7 +908,6 @@ def _sync_supabase_auth_user_from_access_state(
         "created_now": created_now,
         "setup_link": setup_link,
     }
-
 
 def _resolve_actor_display_name(cur, u: dict, id_owner: str) -> str:
     email = (u.get("email") or "").strip()
@@ -922,7 +962,6 @@ def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind
         }
 
     ident = _fetch_collaborateur_identity_for_access(cur, id_owner, source_kind, cid, scope_ent)
-    access_owner_id = _resolve_access_owner_id(id_owner, source_kind, scope_ent)
     email = (ident.get("email") or "").strip()
     collaborateur_nom = f"{(ident.get('prenom') or '').strip()} {(ident.get('nom') or '').strip()}".strip()
 
@@ -949,15 +988,18 @@ def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind
             "collaborateur_nom": collaborateur_nom,
         }
 
+    first_access_pending = _has_pending_access_invitation(cur, id_owner, cid)
+
     provisioning = _sync_supabase_auth_user_from_access_state(
-        id_owner=access_owner_id,
+        id_owner=id_owner,
         id_effectif=cid,
         email=email,
         after_access_state=access_state,
+        force_setup_link=first_access_pending,
     )
 
     actor_name = _resolve_actor_display_name(cur, u, id_owner)
-    notification_mode = "first_access" if provisioning.get("created_now") else "update"
+    notification_mode = "first_access" if first_access_pending else "update"
 
     try:
         notification_sent = send_novoskill_access_mail(
@@ -987,6 +1029,10 @@ def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind
             "email": email,
             "collaborateur_nom": collaborateur_nom,
         }
+
+    if first_access_pending:
+        _activate_pending_access_invitations(cur, id_owner, cid)
+        access_state = _build_access_state_for_collaborator(cur, id_owner, source_kind, cid, scope_ent)
 
     access_state["ok"] = True
     access_state["id_collaborateur"] = cid
@@ -5339,13 +5385,21 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                 before_map = _build_active_access_map(before_state)
 
                 ident = _fetch_collaborateur_identity_for_access(cur, oid, src["source_kind"], cid, scope_ent)
-                contracts = _load_owner_console_contracts(cur, access_owner_id)
-                usage_map = _count_owner_access_usage(cur, access_owner_id)
+                contracts = _load_owner_console_contracts(cur, oid)
+                usage_map = _count_owner_access_usage(cur, oid)
                 email = (ident.get("email") or "").strip()
+
+                pending_invitation_before = _has_pending_access_invitation(cur, oid, cid)
+                auth_user_before = None
+                if email and _supabase_admin_is_configured():
+                    auth_user_before = _supabase_find_user_by_email(email)
+
+                first_access_pending = pending_invitation_before or (not before_map and not auth_user_before)
 
                 for console in ["studio", "insights", "people", "partner", "learn"]:
                     desired_role = role_map[console]
                     already_has_access = console in before_map
+                    target_statut_access = "invitation" if first_access_pending else "actif"
 
                     if desired_role != "none" and not contracts.get(console, False):
                         raise HTTPException(status_code=400, detail=f"La console {console} n'est pas active pour cet owner.")
@@ -5405,11 +5459,11 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                                 user_ref_type = %s,
                                 id_user_ref = %s,
                                 console_code = %s,
-                                statut_access = 'actif',
+                                statut_access = %s,
                                 updated_at = NOW()
                             WHERE id_access = %s
                             """,
-                            (email, desired_role, user_ref_type, cid, console, id_access),
+                            (email, desired_role, user_ref_type, cid, console, target_statut_access, id_access),
                         )
                     else:
                         cur.execute(
@@ -5427,10 +5481,10 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                               updated_at,
                               statut_access
                             ) VALUES (
-                              %s, %s, %s, %s, FALSE, NOW(), %s, %s, %s, NOW(), 'actif'
+                              %s, %s, %s, %s, FALSE, NOW(), %s, %s, %s, NOW(), %s
                             )
                             """,
-                            (str(uuid.uuid4()), email, access_owner_id, desired_role, user_ref_type, cid, console),
+                            (str(uuid.uuid4()), email, oid, desired_role, user_ref_type, cid, console, target_statut_access),
                         )
 
                 after_state = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid, scope_ent)
