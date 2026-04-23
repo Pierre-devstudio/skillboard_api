@@ -2501,70 +2501,26 @@ def _fetch_owner_logo_bytes(cur, oid: str) -> Optional[bytes]:
     except Exception:
         return raw
 
-def _fetch_client_logo_bytes(cur, oid: str, id_ent: str) -> Optional[bytes]:
-    owner_id = (oid or "").strip()
-    ent_id = (id_ent or "").strip()
-
-    if not owner_id or not ent_id or owner_id == ent_id:
+def _fetch_logo_bytes_for_ent(cur, id_ent: str) -> Optional[bytes]:
+    ent = (id_ent or "").strip()
+    if not ent:
         return None
 
     cur.execute(
         """
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'tbl_studio_client_logo'
-        """
-    )
-    cols = {
-        (r.get("column_name") or "").strip()
-        for r in (cur.fetchall() or [])
-        if (r.get("column_name") or "").strip()
-    }
-
-    if not cols:
-        return None
-
-    id_ent_col = None
-    if "id_ent" in cols:
-        id_ent_col = "id_ent"
-    elif "id_client" in cols:
-        id_ent_col = "id_client"
-    elif "id_structure" in cols:
-        id_ent_col = "id_structure"
-
-    if not id_ent_col or "id_owner" not in cols or "logo_bytes" not in cols:
-        return None
-
-    archive_filter = ""
-    if "archive" in cols:
-        archive_filter = "AND COALESCE(archive, FALSE) = FALSE"
-
-    order_parts = []
-    if "date_maj" in cols:
-        order_parts.append("date_maj DESC")
-    if "date_creation" in cols:
-        order_parts.append("date_creation DESC")
-
-    order_sql = f" ORDER BY {', '.join(order_parts)}" if order_parts else ""
-
-    cur.execute(
-        f"""
         SELECT logo_bytes
-        FROM public.tbl_studio_client_logo
+        FROM public.tbl_studio_owner_logo
         WHERE id_owner = %s
-          AND {id_ent_col} = %s
-          {archive_filter}
-        {order_sql}
+          AND COALESCE(archive, FALSE) = FALSE
+        ORDER BY date_maj DESC, date_creation DESC
         LIMIT 1
         """,
-        (owner_id, ent_id),
+        (ent,),
     )
     row = cur.fetchone() or {}
     raw = row.get("logo_bytes")
     if raw is None:
         return None
-
     try:
         return bytes(raw)
     except Exception:
@@ -4077,13 +4033,7 @@ def studio_collab_competence_fiche_pdf(
 
                 did = (row.get("domaine") or "").strip()
                 dmeta = _load_domaine_competence_map(cur, [did]).get(did, {}) if did else {}
-                logo_bytes = None
-
-                if (src.get("source_kind") or "").strip() == "entreprise" and scope_ent and scope_ent != oid:
-                    logo_bytes = _fetch_client_logo_bytes(cur, oid, scope_ent)
-
-                if not logo_bytes:
-                    logo_bytes = _fetch_owner_logo_bytes(cur, oid)
+                logo_bytes = _fetch_logo_bytes_for_ent(cur, scope_ent) or _fetch_owner_logo_bytes(cur, oid)
 
         skill = {
             "id_comp": row.get("id_comp"),
