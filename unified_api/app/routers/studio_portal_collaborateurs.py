@@ -962,6 +962,7 @@ def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind
         }
 
     ident = _fetch_collaborateur_identity_for_access(cur, id_owner, source_kind, cid, scope_ent)
+    access_owner_id = _resolve_access_owner_id(id_owner, source_kind, scope_ent)
     email = (ident.get("email") or "").strip()
     collaborateur_nom = f"{(ident.get('prenom') or '').strip()} {(ident.get('nom') or '').strip()}".strip()
 
@@ -988,10 +989,10 @@ def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind
             "collaborateur_nom": collaborateur_nom,
         }
 
-    first_access_pending = _has_pending_access_invitation(cur, id_owner, cid)
+    first_access_pending = _has_pending_access_invitation(cur, access_owner_id, cid)
 
     provisioning = _sync_supabase_auth_user_from_access_state(
-        id_owner=id_owner,
+        id_owner=access_owner_id,
         id_effectif=cid,
         email=email,
         after_access_state=access_state,
@@ -1031,7 +1032,7 @@ def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind
         }
 
     if first_access_pending:
-        _activate_pending_access_invitations(cur, id_owner, cid)
+        _activate_pending_access_invitations(cur, access_owner_id, cid)
         access_state = _build_access_state_for_collaborator(cur, id_owner, source_kind, cid, scope_ent)
 
     access_state["ok"] = True
@@ -5385,11 +5386,11 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                 before_map = _build_active_access_map(before_state)
 
                 ident = _fetch_collaborateur_identity_for_access(cur, oid, src["source_kind"], cid, scope_ent)
-                contracts = _load_owner_console_contracts(cur, oid)
-                usage_map = _count_owner_access_usage(cur, oid)
+                contracts = _load_owner_console_contracts(cur, access_owner_id)
+                usage_map = _count_owner_access_usage(cur, access_owner_id)
                 email = (ident.get("email") or "").strip()
 
-                pending_invitation_before = _has_pending_access_invitation(cur, oid, cid)
+                pending_invitation_before = _has_pending_access_invitation(cur, access_owner_id, cid)
                 auth_user_before = None
                 if email and _supabase_admin_is_configured():
                     auth_user_before = _supabase_find_user_by_email(email)
@@ -5484,7 +5485,7 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                               %s, %s, %s, %s, FALSE, NOW(), %s, %s, %s, NOW(), %s
                             )
                             """,
-                            (str(uuid.uuid4()), email, oid, desired_role, user_ref_type, cid, console, target_statut_access),
+                            (str(uuid.uuid4()), email, access_owner_id, desired_role, user_ref_type, cid, console, target_statut_access),
                         )
 
                 after_state = _build_access_state_for_collaborator(cur, oid, src["source_kind"], cid, scope_ent)
