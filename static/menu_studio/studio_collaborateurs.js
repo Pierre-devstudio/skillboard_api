@@ -711,12 +711,37 @@
     return `${n} mois`;
   }
 
+  function applyCollabScopeToUrl(rawUrl){
+    const raw = String(rawUrl || '').trim();
+    if (!raw) return raw;
+
+    const url = new URL(raw, window.location.origin);
+    const ownerId = getOwnerId();
+    const entId = (window.__collabScopeEntId || '').toString().trim();
+
+    if (!ownerId || !entId) return url.toString();
+    if (ownerId === entId) return url.toString();
+    if (url.searchParams.has('id_ent')) return url.toString();
+
+    const scopedPrefixes = [
+      '/studio/collaborateurs/',
+      '/studio/org/'
+    ];
+
+    const mustScope = scopedPrefixes.some(prefix => url.pathname.startsWith(prefix));
+    if (!mustScope) return url.toString();
+
+    url.searchParams.set('id_ent', entId);
+    return url.toString();
+  }
+
   async function fetchAuthJson(url, options = {}){
     const headers = new Headers(options.headers || {});
     const token = await getPortalAccessToken();
     if (token) headers.set('Authorization', `Bearer ${token}`);
 
-    const res = await fetch(url, { ...options, headers });
+    const scopedUrl = applyCollabScopeToUrl(url);
+    const res = await fetch(scopedUrl, { ...options, headers });
 
     if (!res.ok) {
       let detail = `HTTP ${res.status}`;
@@ -1971,7 +1996,9 @@
     const token = await getPortalAccessToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const res = await fetch(url, {
+    const scopedUrl = applyCollabScopeToUrl(url);
+
+    const res = await fetch(scopedUrl, {
       method: 'GET',
       headers,
       cache: 'no-store',
