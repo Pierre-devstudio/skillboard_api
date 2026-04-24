@@ -3583,7 +3583,10 @@ def _fetch_poste_for_ccn(cur, oid: str, pid: str) -> dict:
         WHERE pc.id_poste = %s
           AND COALESCE(pc.masque, FALSE) = FALSE
           AND COALESCE(c.masque, FALSE) = FALSE
-        ORDER BY lower(COALESCE(c.intitule, ''))
+        ORDER BY
+            COALESCE(pc.poids_criticite, 0) DESC,
+            lower(COALESCE(c.intitule, '')),
+            lower(COALESCE(c.code, ''))
         """,
         (pid,),
     )
