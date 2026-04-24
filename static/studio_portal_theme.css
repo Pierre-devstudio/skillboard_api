@@ -1136,6 +1136,12 @@
   display:block;
 }
 
+#posteCertTable td:nth-child(4) .sb-badge{
+  background:#fff;
+  border-color:#a53838;
+  color:#ac3535;
+}
+
 #posteCompTable .sb-comp-cell__title--proposal{
   color:#d97706;
 }
