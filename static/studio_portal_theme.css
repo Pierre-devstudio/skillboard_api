@@ -1616,6 +1616,36 @@
   line-height: 1.45;
 }
 
+/* Poste > Exigences > Contraintes : version légèrement compacte */
+#posteBlocContraintes .sb-form-grid{
+  gap:8px 12px;
+  margin-top:8px;
+}
+
+#posteBlocContraintes .sb-field{
+  gap:4px;
+}
+
+#posteBlocContraintes .label{
+  margin-bottom:3px;
+}
+
+#posteBlocContraintes select,
+#posteBlocContraintes input,
+#posteBlocContraintes textarea{
+  font-size:12.5px;
+  line-height:1.3;
+}
+
+#posteBlocContraintes select,
+#posteBlocContraintes input{
+  min-height:34px;
+}
+
+#posteBlocContraintes textarea{
+  line-height:1.35;
+}
+
 .sb-textarea--inline{
   width:100%;
   min-height:42px;
