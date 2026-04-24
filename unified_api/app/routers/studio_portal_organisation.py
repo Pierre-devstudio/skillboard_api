@@ -3243,9 +3243,19 @@ def _upsert_poste_comp_assoc(cur, id_poste: str, id_competence: str, niveau_requ
     cur.execute(
         """
         INSERT INTO public.tbl_fiche_poste_competence
-          (id_poste, id_competence, niveau_requis, freq_usage, impact_resultat, dependance, poids_criticite, masque)
+          (
+            id_poste,
+            id_competence,
+            niveau_requis,
+            freq_usage,
+            impact_resultat,
+            dependance,
+            poids_criticite,
+            statut_eval,
+            masque
+          )
         VALUES
-          (%s, %s, %s, %s, %s, %s, %s, FALSE)
+          (%s, %s, %s, %s, %s, %s, %s, 'proposition', FALSE)
         ON CONFLICT (id_poste, id_competence)
         DO UPDATE SET
           niveau_requis = EXCLUDED.niveau_requis,
@@ -3253,6 +3263,7 @@ def _upsert_poste_comp_assoc(cur, id_poste: str, id_competence: str, niveau_requ
           impact_resultat = EXCLUDED.impact_resultat,
           dependance = EXCLUDED.dependance,
           poids_criticite = EXCLUDED.poids_criticite,
+          statut_eval = 'proposition',
           masque = FALSE
         """,
         (
@@ -5709,6 +5720,7 @@ class UpsertPosteCompetencePayload(BaseModel):
     freq_usage: Optional[int] = 0        # 0..10
     impact_resultat: Optional[int] = 0   # 0..10
     dependance: Optional[int] = 0        # 0..10
+    valider_eval: Optional[bool] = False # True uniquement depuis le modal d’évaluation compétence
 
 class UpsertPosteCertificationPayload(BaseModel):
     id_certification: str
@@ -8165,7 +8177,8 @@ def studio_org_list_poste_competences(id_owner: str, id_poste: str, request: Req
                       pc.freq_usage,
                       pc.impact_resultat,
                       pc.dependance,
-                      pc.date_valorisation
+                      pc.date_valorisation,
+                        COALESCE(pc.statut_eval, 'proposition') AS statut_eval
 
                     FROM public.tbl_fiche_poste_competence pc
                     JOIN public.tbl_fiche_poste p
@@ -8207,6 +8220,7 @@ def studio_org_list_poste_competences(id_owner: str, id_poste: str, request: Req
                     "impact_resultat": r.get("impact_resultat"),
                     "dependance": r.get("dependance"),
                     "date_valorisation": r.get("date_valorisation"),
+                    "statut_eval": r.get("statut_eval") or "proposition",
                 }
             )
 
@@ -8238,6 +8252,7 @@ def studio_org_upsert_poste_competence(id_owner: str, id_poste: str, payload: Up
         im = _clamp_0_10(payload.impact_resultat or 0)
         de = _clamp_0_10(payload.dependance or 0)
         poids = _calc_poids_criticite_100(fu, im, de)
+        statut_eval = "valide" if bool(payload.valider_eval) else "proposition"
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -8282,29 +8297,30 @@ def studio_org_upsert_poste_competence(id_owner: str, id_poste: str, payload: Up
                 cur.execute(
                     """
                     INSERT INTO public.tbl_fiche_poste_competence
-                      (id_poste, id_competence, niveau_requis,
-                       poids_criticite, freq_usage, impact_resultat, dependance,
-                       date_valorisation, masque, date_modification)
+                    (id_poste, id_competence, niveau_requis,
+                    poids_criticite, freq_usage, impact_resultat, dependance,
+                    statut_eval, date_valorisation, masque, date_modification)
                     VALUES
-                      (%s, %s, %s,
-                       %s, %s, %s, %s,
-                       NOW(), FALSE, NOW())
+                    (%s, %s, %s,
+                    %s, %s, %s, %s,
+                    %s, NOW(), FALSE, NOW())
                     ON CONFLICT (id_poste, id_competence)
                     DO UPDATE SET
-                      niveau_requis = EXCLUDED.niveau_requis,
-                      poids_criticite = EXCLUDED.poids_criticite,
-                      freq_usage = EXCLUDED.freq_usage,
-                      impact_resultat = EXCLUDED.impact_resultat,
-                      dependance = EXCLUDED.dependance,
-                      date_valorisation = NOW(),
-                      masque = FALSE,
-                      date_modification = NOW()
+                    niveau_requis = EXCLUDED.niveau_requis,
+                    poids_criticite = EXCLUDED.poids_criticite,
+                    freq_usage = EXCLUDED.freq_usage,
+                    impact_resultat = EXCLUDED.impact_resultat,
+                    dependance = EXCLUDED.dependance,
+                    statut_eval = EXCLUDED.statut_eval,
+                    date_valorisation = NOW(),
+                    masque = FALSE,
+                    date_modification = NOW()
                     """,
-                    (pid, cid, niv, poids, fu, im, de),
+                    (pid, cid, niv, poids, fu, im, de, statut_eval),
                 )
                 conn.commit()
 
-        return {"ok": True, "poids_criticite": poids}
+        return {"ok": True, "poids_criticite": poids, "statut_eval": statut_eval}
 
     except HTTPException:
         raise

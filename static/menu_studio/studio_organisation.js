@@ -2927,6 +2927,12 @@ body {
             title.textContent = it.intitule || "";
             title.title = it.intitule || "";
 
+            const statutEval = (it.statut_eval || "proposition").toString().trim().toLowerCase();
+            if (statutEval === "proposition"){
+                title.classList.add("sb-comp-cell__title--proposal");
+                title.title = `${it.intitule || ""} — préévaluée par le système`;
+            }
+
             compWrap.appendChild(code);
             compWrap.appendChild(title);
             tdComp.appendChild(compWrap);
@@ -3258,7 +3264,8 @@ body {
             niveau_requis: niv,
             freq_usage: fu,
             impact_resultat: im,
-            dependance: de
+            dependance: de,
+            valider_eval: true
         })
         });
 

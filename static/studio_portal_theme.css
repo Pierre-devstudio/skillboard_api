@@ -1136,6 +1136,10 @@
   display:block;
 }
 
+#posteCompTable .sb-comp-cell__title--proposal{
+  color:#d97706;
+}
+
 /* Bouton documentaire (CORE)
    Pour les actions de consultation / ouverture de document / PDF */
 .sb-btn--doc{
