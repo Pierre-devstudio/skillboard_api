@@ -42,6 +42,7 @@ from app.routers.skills_portal_pdf_common import (
     make_meta_table,
     make_section_card,
     build_pdf_document,
+    build_competence_pdf_story,
 )
 from app.routers.studio_portal_common import (
     studio_require_user,
@@ -6525,6 +6526,116 @@ def studio_org_get_organigramme_pdf(id_owner: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/organigramme_pdf error: {e}")
+
+@router.get("/studio/org/competences/fiche_pdf/{id_owner}/{id_comp}")
+def studio_org_competence_fiche_pdf(
+    id_owner: str,
+    id_comp: str,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        comp_id = (id_comp or "").strip()
+        if not comp_id:
+            raise HTTPException(status_code=400, detail="id_comp manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                owner = studio_fetch_owner(cur, oid) or {}
+                studio_require_min_role(cur, u, oid, "admin")
+
+                scope_ent = _resolve_org_scope_ent(cur, oid, request)
+
+                cur.execute(
+                    """
+                    SELECT
+                      c.id_comp,
+                      c.code,
+                      c.intitule,
+                      c.description,
+                      c.domaine,
+                      c.niveaua,
+                      c.niveaub,
+                      c.niveauc,
+                      c.grille_evaluation,
+                      dc.titre_court AS domaine_titre_court,
+                      dc.titre AS domaine_titre
+                    FROM public.tbl_competence c
+                    LEFT JOIN public.tbl_domaine_competence dc
+                      ON dc.id_domaine_competence = c.domaine
+                     AND COALESCE(dc.masque, FALSE) = FALSE
+                    WHERE c.id_owner = %s
+                      AND c.id_comp = %s
+                      AND COALESCE(c.masque, FALSE) = FALSE
+                      AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
+                    LIMIT 1
+                    """,
+                    (oid, comp_id),
+                )
+                row = cur.fetchone() or {}
+                if not row:
+                    raise HTTPException(status_code=404, detail="Compétence introuvable dans le référentiel courant.")
+
+                logo_bytes = _fetch_logo_bytes_for_ent(cur, scope_ent) or _fetch_owner_logo_bytes(cur, oid)
+                header_right = (
+                    _fetch_pdf_scope_ent_name(cur, oid, scope_ent)
+                    or (owner.get("nom_owner") or "").strip()
+                    or (owner.get("nom_ent") or "").strip()
+                    or "Novoskill Studio"
+                )
+
+        skill = {
+            "id_comp": row.get("id_comp"),
+            "code": (row.get("code") or "").strip(),
+            "intitule": (row.get("intitule") or "").strip(),
+            "description": row.get("description") or "",
+            "niveaua": row.get("niveaua") or "",
+            "niveaub": row.get("niveaub") or "",
+            "niveauc": row.get("niveauc") or "",
+            "grille_evaluation": row.get("grille_evaluation"),
+            "domaine": row.get("domaine") or "",
+            "domaine_titre": (
+                (row.get("domaine_titre_court") or "").strip()
+                or (row.get("domaine_titre") or "").strip()
+            ),
+        }
+
+        code_label = skill.get("code") or "Compétence"
+        intitule_label = skill.get("intitule") or "Compétence"
+
+        filename = _pdf_latin1_safe(
+            f"Fiche compétence {_pdf_safe_filename_part(code_label, 32)} - {_pdf_safe_filename_part(intitule_label, 80)}.pdf"
+        )
+
+        pdf_bytes = build_pdf_document(
+            build_competence_pdf_story(skill),
+            meta={
+                "title": _pdf_latin1_safe(f"Fiche compétence - {code_label} - {intitule_label}"),
+                "doc_label": _pdf_latin1_safe("Fiche compétence"),
+                "footer_left": _pdf_latin1_safe("Novoskill Studio • Fiche compétence"),
+                "header_right": _pdf_latin1_safe(header_right),
+                "header_right_font_name": "Helvetica-Bold",
+                "header_right_font_size": 10.5,
+                "logo_bytes": logo_bytes,
+            },
+        )
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/org/competences/fiche_pdf error: {e}")
 
 @router.get("/studio/org/postes/{id_owner}/{id_poste}/fiche_pdf")
 def studio_org_get_poste_fiche_pdf(id_owner: str, id_poste: str, request: Request):

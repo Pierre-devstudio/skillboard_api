@@ -766,6 +766,166 @@
         return "";
     }
 
+
+    function htmlEsc(s){
+        return String(s ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+    }
+
+    async function fetchOrgPdfBlob(url){
+        const headers = {};
+        const token = await resolveStudioAccessToken();
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
+        const scopedUrl = appendOrgScope(url);
+
+        const res = await fetch(scopedUrl, {
+            method: "GET",
+            headers,
+            cache: "no-store",
+            credentials: "same-origin",
+        });
+
+        if (!res.ok){
+            let detail = `HTTP ${res.status}`;
+            try{
+                const js = await res.clone().json();
+                detail = js?.detail || js?.message || detail;
+            } catch(_){
+                try{
+                    const txt = await res.text();
+                    if (txt) detail = txt;
+                } catch(_){}
+            }
+            throw new Error(detail);
+        }
+
+        return await res.blob();
+    }
+
+    function openPdfLoadingWindow(title){
+        const safeTitle = htmlEsc(title || "Document PDF");
+        const win = window.open("", "_blank");
+
+        if (!win){
+            throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
+        }
+
+        win.document.open();
+        win.document.write(`<!doctype html>
+    <html lang="fr">
+    <head>
+    <meta charset="utf-8">
+    <title>${safeTitle}</title>
+    <style>
+        html,body{
+        height:100%;
+        margin:0;
+        background:#f3f4f6;
+        font-family:Arial,sans-serif;
+        color:#111827;
+        }
+        .pdf-loading{
+        height:100%;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        flex-direction:column;
+        gap:12px;
+        }
+        .pdf-loading__spinner{
+        width:34px;
+        height:34px;
+        border-radius:999px;
+        border:4px solid rgba(17,24,39,.12);
+        border-top-color:#355caa;
+        animation:pdfSpin .8s linear infinite;
+        }
+        .pdf-loading__text{
+        font-size:14px;
+        color:#475467;
+        }
+        iframe{
+        width:100%;
+        height:100%;
+        border:0;
+        background:#fff;
+        }
+        @keyframes pdfSpin{
+        to{ transform:rotate(360deg); }
+        }
+    </style>
+    </head>
+    <body>
+    <div class="pdf-loading">
+        <div class="pdf-loading__spinner"></div>
+        <div class="pdf-loading__text">Génération du PDF…</div>
+    </div>
+    </body>
+    </html>`);
+        win.document.close();
+
+        return win;
+    }
+
+    function renderPdfBlobInWindow(win, blob, title){
+        const blobUrl = URL.createObjectURL(blob);
+        const safeTitle = htmlEsc(title || "Document PDF");
+
+        if (!win || win.closed){
+            window.open(blobUrl, "_blank");
+            setTimeout(() => {
+                try { URL.revokeObjectURL(blobUrl); } catch(_){}
+            }, 5 * 60 * 1000);
+            return;
+        }
+
+        win.document.open();
+        win.document.write(`<!doctype html>
+    <html lang="fr">
+    <head>
+    <meta charset="utf-8">
+    <title>${safeTitle}</title>
+    <style>
+        html,body{height:100%;margin:0;background:#f3f4f6;}
+        iframe{width:100%;height:100%;border:0;background:#fff;}
+    </style>
+    </head>
+    <body>
+    <iframe src="${blobUrl}" title="${safeTitle}"></iframe>
+    </body>
+    </html>`);
+        win.document.close();
+
+        const revoke = () => {
+            try { URL.revokeObjectURL(blobUrl); } catch(_){}
+        };
+
+        try{
+            win.addEventListener("beforeunload", revoke, { once: true });
+        } catch(_){}
+
+        setTimeout(revoke, 5 * 60 * 1000);
+    }
+
+    async function openOrgSkillSheetPdf(portal, item, popupWin){
+        const ownerId = getOwnerId();
+        if (!ownerId) throw new Error("Owner introuvable.");
+
+        const compId = String(item?.id_comp || "").trim();
+        if (!compId) throw new Error("Compétence introuvable.");
+
+        const title = `Fiche compétence - ${String(item?.code || "").trim() ? `${String(item.code).trim()} - ` : ""}${String(item?.intitule || "").trim() || "Compétence"}`;
+        const url = `${portal.apiBase}/studio/org/competences/fiche_pdf/${encodeURIComponent(ownerId)}/${encodeURIComponent(compId)}`;
+        const blob = await fetchOrgPdfBlob(url);
+
+        renderPdfBlobInWindow(popupWin, blob, title);
+    }
+
     function getFilenameFromContentDisposition(value){
         const raw = String(value || "").trim();
         if (!raw) return "";
@@ -2652,6 +2812,39 @@ body {
             const right = document.createElement("div");
             right.className = "sb-row-right sb-ai-existing-actions";
 
+            const btnPdf = document.createElement("button");
+            btnPdf.type = "button";
+            btnPdf.className = "sb-icon-btn sb-icon-btn--doc";
+            btnPdf.title = "Voir fiche";
+            btnPdf.setAttribute("aria-label", "Voir fiche compétence");
+            btnPdf.innerHTML = `
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <path d="M14 2v6h6"/>
+                    <path d="M8 13h1.5a1.5 1.5 0 0 1 0 3H8v-3z"/>
+                    <path d="M13 13v3"/>
+                    <path d="M13 13h3"/>
+                    <path d="M16 13v3"/>
+                </svg>
+            `;
+            btnPdf.addEventListener("click", async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const titlePdf = `Fiche compétence - ${String(it.code || "").trim() ? `${String(it.code).trim()} - ` : ""}${String(it.intitule || "").trim() || "Compétence"}`;
+                let popupWin = null;
+
+                try{
+                    popupWin = openPdfLoadingWindow(titlePdf);
+                    await openOrgSkillSheetPdf(window.portal, it, popupWin);
+                } catch(err){
+                    if (popupWin && !popupWin.closed){
+                        try { popupWin.close(); } catch(_){}
+                    }
+                    window.portal.showAlert("error", err?.message || String(err));
+                }
+            });
+
             const btn = document.createElement("button");
             btn.type = "button";
             btn.className = "sb-btn sb-btn--accent sb-btn--xs";
@@ -2664,6 +2857,7 @@ body {
                 catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
             });
 
+            right.appendChild(btnPdf);
             right.appendChild(btn);
 
             row.appendChild(left);
