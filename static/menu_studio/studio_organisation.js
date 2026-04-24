@@ -71,6 +71,7 @@
     
     let _orgCcnController = null;
     let _orgCcnAssetsPromise = null;
+    let _posteSaveInlineTimer = null;
 
     function getStudioOrganisationAssetUrl(filename){
         const scripts = Array.from(document.querySelectorAll('script[src]'));
@@ -235,6 +236,36 @@
         el.style.background = isError ? "#fff1f2" : "#f8fafc";
         el.style.borderColor = isError ? "#fecaca" : "#e5e7eb";
         el.style.color = isError ? "#991b1b" : "#334155";
+    }
+
+    function resetPosteSaveInlineMsg(){
+        if (_posteSaveInlineTimer){
+            clearTimeout(_posteSaveInlineTimer);
+            _posteSaveInlineTimer = null;
+        }
+
+        const el = byId("posteSaveInlineMsg");
+        if (!el) return;
+
+        el.textContent = "";
+        el.classList.add("is-hidden");
+    }
+
+    function showPosteSaveInlineMsg(message){
+        const el = byId("posteSaveInlineMsg");
+        if (!el) return;
+
+        if (_posteSaveInlineTimer){
+            clearTimeout(_posteSaveInlineTimer);
+            _posteSaveInlineTimer = null;
+        }
+
+        el.textContent = message || "Enregistré avec succès";
+        el.classList.remove("is-hidden");
+
+        _posteSaveInlineTimer = setTimeout(() => {
+            resetPosteSaveInlineMsg();
+        }, 2800);
     }
 
     function formatOrgDiag(step, extra){
@@ -3817,6 +3848,7 @@ body {
     function openCreatePosteModal(portal){
         _posteModalMode = "create";
         _editingPosteId = null;
+        resetPosteSaveInlineMsg();
 
         refreshPosteImportButton();
         resetPosteImportState();
@@ -3877,6 +3909,7 @@ body {
 
     function openEditPosteModal(portal, p){
         _posteModalMode = "edit";
+        resetPosteSaveInlineMsg();
         const pid = (p && p.id_poste) ? String(p.id_poste).trim() : "";
 
         refreshPosteImportButton();
@@ -3978,6 +4011,7 @@ body {
         closeModal("modalPosteCompCreate");
         closeModal("modalPosteImport");
         closeModal("modalPoste");
+        resetPosteSaveInlineMsg();
         resetPosteImportState();
     }
 
@@ -4549,12 +4583,19 @@ body {
 
         byId("btnPosteSave")?.addEventListener("click", async () => {
             try {
-                await savePosteFromModal(portal, {
+                resetPosteSaveInlineMsg();
+
+                const saved = await savePosteFromModal(portal, {
                     keepOpen: true,
-                    statusMessage: "Poste enregistré."
+                    silent: true
                 });
+
+                if (saved){
+                    showPosteSaveInlineMsg("Enregistré avec succès");
+                }
             }
             catch(e){
+                resetPosteSaveInlineMsg();
                 portal.showAlert("error", e?.message || String(e));
             }
         });

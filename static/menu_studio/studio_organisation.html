@@ -349,16 +349,18 @@
       </div>
 
       <div class="sb-modal-foot">
-        <div class="sb-actions" style="width:100%; justify-content:space-between;">
+        <div class="sb-foot-split">
           <div class="sb-actions">
             <button type="button" class="sb-btn sb-btn--danger-soft" id="btnPosteArchive">Archiver</button>
             <button type="button" class="sb-btn sb-btn--secondary" id="btnPosteDuplicate">Dupliquer</button>
           </div>
-          <div class="sb-actions">
+
+          <div class="sb-actions" style="align-items:center;">
+            <span id="posteSaveInlineMsg" class="sb-save-inline-msg is-hidden" aria-live="polite"></span>
             <button type="button" class="sb-btn sb-btn--doc" id="btnPosteImport">Importer</button>
             <button type="button" class="sb-btn sb-btn--ai" id="btnPosteAi">Générer avec l’IA</button>
             <button type="button" class="sb-btn sb-btn--soft" id="btnPosteCancel">Annuler</button>
-            <button type="button" class="sb-btn sb-btn--accent" id="btnPosteSave">Enregistrer</button>            
+            <button type="button" class="sb-btn sb-btn--accent" id="btnPosteSave">Enregistrer</button>
           </div>
         </div>
       </div>
