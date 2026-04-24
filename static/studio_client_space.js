@@ -263,7 +263,7 @@
     try {
       const ownerId = getOwnerId();
       const clientId = getClientId();
-      const token = await ensureAuthReady();
+      const token = await getStudioAccessToken();
       if (!token) throw new Error("Session Studio introuvable.");
 
       const headers = { "Authorization": `Bearer ${token}` };
@@ -337,7 +337,7 @@
 
     setMessage("");
 
-    const token = await ensureAuthReady();
+    const token = await getStudioAccessToken();
     if (!token) throw new Error("Session Studio introuvable.");
 
     const fd = new FormData();
@@ -374,7 +374,7 @@
 
     setMessage("");
 
-    const token = await ensureAuthReady();
+    const token = await getStudioAccessToken();
     if (!token) throw new Error("Session Studio introuvable.");
 
     const resp = await fetch(
@@ -510,7 +510,7 @@
     const ownerId = getOwnerId();
     if (!ownerId) return [];
 
-    const token = await ensureAuthReady();
+    const token = await getStudioAccessToken();
     if (!token) return [];
 
     const data = await apiJson(
@@ -578,7 +578,7 @@
 
   async function fetchPublicCompanyData(query){
     const ownerId = getOwnerId();
-    const token = await ensureAuthReady();
+    const token = await getStudioAccessToken();
     if (!token) return null;
 
     const qs = new URLSearchParams();
@@ -818,7 +818,7 @@ function syncLinkedStructuresVisibility(){
     const ownerId = getOwnerId();
     if (!ownerId) return [];
 
-    const token = await ensureAuthReady();
+    const token = await getStudioAccessToken();
     if (!token) return [];
 
     const qs = new URLSearchParams();
@@ -1216,7 +1216,7 @@ function bindPostalAssist(){
   async function saveOrgCreateStructure(){
     const ownerId = getOwnerId();
     const parentId = (_orgCreateParentId || getClientId() || "").trim();
-    const token = await ensureAuthReady();
+    const token = await getStudioAccessToken();
     if (!token) return;
     if (!parentId) {
       setMessage("Parent de rattachement introuvable.");
@@ -1348,13 +1348,7 @@ function bindPostalAssist(){
         contactIdMetaKeys: ["id_owner"],
       });
 
-      const session = await window.PortalAuthCommon.getSession().catch(() => null);
-      if (!session?.access_token) {
-        window.location.href = "/studio_login.html";
-        return null;
-      }
-
-      return session.access_token;
+      return true;
     })();
 
     try {
@@ -1365,13 +1359,77 @@ function bindPostalAssist(){
     }
   }
 
-  async function apiJson(url, token, options){
-    const opts = Object.assign({}, options || {});
-    opts.headers = Object.assign({}, opts.headers || {}, {
-      "Authorization": `Bearer ${token}`
-    });
+  async function getStudioAccessToken(){
+    await ensureAuthReady();
 
-    const r = await fetch(url, opts);
+    const session = await window.PortalAuthCommon.getSession().catch(() => null);
+    const token =
+      session?.access_token ||
+      session?.session?.access_token ||
+      session?.data?.session?.access_token ||
+      "";
+
+    if (!token) {
+      window.location.href = "/studio_login.html";
+      return "";
+    }
+
+    return String(token).trim();
+  }
+
+  async function refreshStudioAccessToken(){
+    await ensureAuthReady();
+
+    try {
+      const client = window.PortalAuthCommon.getClient();
+      if (client?.auth?.refreshSession) {
+        const { data, error } = await client.auth.refreshSession();
+        if (!error && data?.session?.access_token) {
+          return String(data.session.access_token).trim();
+        }
+      }
+    } catch (_) {}
+
+    return await getStudioAccessToken();
+  }
+
+  async function fetchWithFreshStudioAuth(url, options = {}, retryOnUnauthorized = true){
+    const opts = Object.assign({}, options || {});
+    const headers = Object.assign({}, opts.headers || {});
+
+    const token = await getStudioAccessToken();
+    if (!token) {
+      throw new Error("Session Studio introuvable.");
+    }
+
+    headers.Authorization = `Bearer ${token}`;
+    opts.headers = headers;
+    opts.credentials = opts.credentials || "same-origin";
+
+    let resp = await fetch(url, opts);
+
+    if (retryOnUnauthorized && (resp.status === 401 || resp.status === 403)) {
+      const retryToken = await refreshStudioAccessToken();
+
+      if (retryToken) {
+        const retryHeaders = Object.assign({}, opts.headers || {}, {
+          Authorization: `Bearer ${retryToken}`,
+        });
+
+        resp = await fetch(url, Object.assign({}, opts, {
+          headers: retryHeaders,
+        }));
+      }
+    }
+
+    return resp;
+  }
+
+  async function apiJson(url, token, options){
+    void token;
+
+    const opts = Object.assign({}, options || {});
+    const r = await fetchWithFreshStudioAuth(url, opts, true);
     const data = await r.json().catch(() => null);
 
     if (!r.ok) {
@@ -1380,6 +1438,7 @@ function bindPostalAssist(){
         : `Erreur HTTP ${r.status}`;
       throw new Error(detail);
     }
+
     return data;
   }
 
@@ -1421,16 +1480,10 @@ function bindPostalAssist(){
       apiBase: API_BASE,
       contactId: getOwnerId(),
       async apiJson(url, options){
-        const token = await ensureAuthReady();
-        if (!token) throw new Error("Session Studio introuvable.");
-
         const scopedUrl = appendOrgScopeToUrl(url);
         const opts = Object.assign({}, options || {});
-        opts.headers = Object.assign({}, opts.headers || {}, {
-          "Authorization": `Bearer ${token}`
-        });
 
-        const r = await fetch(scopedUrl, opts);
+        const r = await fetchWithFreshStudioAuth(scopedUrl, opts, true);
         const data = await r.json().catch(() => null);
 
         if (!r.ok) {
@@ -1439,6 +1492,7 @@ function bindPostalAssist(){
             : `Erreur HTTP ${r.status}`;
           throw new Error(detail);
         }
+
         return data;
       },
       showAlert(type, message){
@@ -1554,19 +1608,10 @@ function bindPostalAssist(){
       contactId: getOwnerId(),
 
       async apiJson(url, options = {}){
-        const token = await ensureAuthReady();
-        if (!token){
-          throw new Error("Session Studio introuvable.");
-        }
-
         const scopedUrl = appendOrgScopeToUrl(url);
         const opts = Object.assign({}, options || {});
-        const headers = Object.assign({}, opts.headers || {});
-        headers.Authorization = `Bearer ${token}`;
-        opts.headers = headers;
-        opts.credentials = opts.credentials || "same-origin";
 
-        const resp = await fetch(scopedUrl, opts);
+        const resp = await fetchWithFreshStudioAuth(scopedUrl, opts, true);
         let data = null;
 
         try {
@@ -2125,7 +2170,7 @@ function bindPostalAssist(){
 
     const ownerId = getOwnerId();
     const clientId = getClientId();
-    const token = await ensureAuthReady();
+    const token = await getStudioAccessToken();
     if (!token) return;
 
     const data = await apiJson(
@@ -2148,7 +2193,7 @@ function bindPostalAssist(){
     const confirmed = window.confirm("Retirer cette structure va archiver toute sa branche dans le périmètre actif. Continuer ?");
     if (!confirmed) return;
 
-    const token = await ensureAuthReady();
+    const token = await getStudioAccessToken();
     if (!token) return;
 
     await apiJson(
@@ -2204,7 +2249,7 @@ function bindPostalAssist(){
   async function loadOrgHistoryData(){
     const ownerId = getOwnerId();
     const clientId = getClientId();
-    const token = await ensureAuthReady();
+    const token = await getStudioAccessToken();
     if (!token) return;
 
     const data = await apiJson(
@@ -2222,7 +2267,7 @@ function bindPostalAssist(){
     const id = (idEnt || "").toString().trim();
     if (!ownerId || !clientId || !id) return;
 
-    const token = await ensureAuthReady();
+    const token = await getStudioAccessToken();
     if (!token) return;
 
     await apiJson(
@@ -2244,7 +2289,7 @@ function bindPostalAssist(){
     const confirmed = window.confirm("Réactiver cette structure comme client direct dans le portefeuille Studio ?");
     if (!confirmed) return;
 
-    const token = await ensureAuthReady();
+    const token = await getStudioAccessToken();
     if (!token) return;
 
     await apiJson(
@@ -2491,7 +2536,7 @@ function bindPostalAssist(){
       if (btnCancel) btnCancel.disabled = true;
       if (btnEdit) btnEdit.disabled = true;
 
-      const token = await ensureAuthReady();
+      const token = await getStudioAccessToken();
       if (!token) return;
 
       const payload = readFichePayload();
@@ -2719,7 +2764,7 @@ function bindPostalAssist(){
       throw new Error("Paramètre client manquant dans l’URL.");
     }
 
-    const token = await ensureAuthReady();
+    const token = await getStudioAccessToken();
     if (!token) return;
 
     const [detail, clientsData, context, opcoItems, logoMeta] = await Promise.all([
