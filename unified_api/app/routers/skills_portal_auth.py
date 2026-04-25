@@ -113,3 +113,36 @@ def skills_auth_context(request: Request):
         "is_super_admin": is_super,
         "id_effectif": id_effectif,
     }
+
+@router.post("/skills/auth/activate")
+def skills_auth_activate(request: Request):
+    """
+    Active les accès Insights après création / réinitialisation du mot de passe.
+    Le token Supabase fait foi : l'email n'est jamais reçu depuis le front.
+    """
+    token = _get_bearer_token(request)
+    email = _supabase_get_user_email(token)
+
+    with get_conn() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                UPDATE public.tbl_novoskill_user_access
+                SET statut_access = 'actif',
+                    updated_at = NOW()
+                WHERE lower(email) = lower(%s)
+                  AND console_code = 'insights'
+                  AND COALESCE(archive, FALSE) = FALSE
+                  AND COALESCE(statut_access, '') = 'invitation'
+                RETURNING id_access
+                """,
+                (email,),
+            )
+            rows = cur.fetchall() or []
+        conn.commit()
+
+    return {
+        "email": email,
+        "console_code": "insights",
+        "activated": len(rows),
+    }

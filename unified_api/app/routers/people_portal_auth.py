@@ -30,3 +30,40 @@ def people_auth_context(request: Request):
         "is_super_admin": bool(u.get("is_super_admin")),
         "id_effectif": id_effectif or None,
     }
+
+@router.post("/people/auth/activate")
+def people_auth_activate(request: Request):
+    """
+    Active les accès People après création / réinitialisation du mot de passe.
+    Le token Supabase fait foi : l'email n'est jamais reçu depuis le front.
+    """
+    auth = request.headers.get("Authorization", "")
+    u = people_require_user(auth)
+
+    email = (u.get("email") or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=401, detail="Email introuvable dans la session.")
+
+    with get_conn() as conn:
+        with conn.cursor(row_factory=dict_row) as cur:
+            cur.execute(
+                """
+                UPDATE public.tbl_novoskill_user_access
+                SET statut_access = 'actif',
+                    updated_at = NOW()
+                WHERE lower(email) = lower(%s)
+                  AND console_code = 'people'
+                  AND COALESCE(archive, FALSE) = FALSE
+                  AND COALESCE(statut_access, '') = 'invitation'
+                RETURNING id_access
+                """,
+                (email,),
+            )
+            rows = cur.fetchall() or []
+        conn.commit()
+
+    return {
+        "email": email,
+        "console_code": "people",
+        "activated": len(rows),
+    }
