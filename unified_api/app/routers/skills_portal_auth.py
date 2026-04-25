@@ -131,10 +131,9 @@ def skills_auth_activate(request: Request):
                 SET statut_access = 'actif',
                     updated_at = NOW()
                 WHERE lower(email) = lower(%s)
-                  AND console_code = 'insights'
-                  AND COALESCE(archive, FALSE) = FALSE
-                  AND COALESCE(statut_access, '') = 'invitation'
-                RETURNING id_access
+                AND COALESCE(archive, FALSE) = FALSE
+                AND COALESCE(statut_access, '') = 'invitation'
+                RETURNING id_access, console_code
                 """,
                 (email,),
             )
@@ -143,6 +142,6 @@ def skills_auth_activate(request: Request):
 
     return {
         "email": email,
-        "console_code": "insights",
         "activated": len(rows),
+        "console_codes": sorted(list({(r.get("console_code") or "").strip() for r in rows if r.get("console_code")})),
     }

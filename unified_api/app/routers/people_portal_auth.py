@@ -52,10 +52,9 @@ def people_auth_activate(request: Request):
                 SET statut_access = 'actif',
                     updated_at = NOW()
                 WHERE lower(email) = lower(%s)
-                  AND console_code = 'people'
-                  AND COALESCE(archive, FALSE) = FALSE
-                  AND COALESCE(statut_access, '') = 'invitation'
-                RETURNING id_access
+                    AND COALESCE(archive, FALSE) = FALSE
+                    AND COALESCE(statut_access, '') = 'invitation'
+                RETURNING id_access, console_code
                 """,
                 (email,),
             )
@@ -64,6 +63,6 @@ def people_auth_activate(request: Request):
 
     return {
         "email": email,
-        "console_code": "people",
         "activated": len(rows),
+        "console_codes": sorted(list({(r.get("console_code") or "").strip() for r in rows if r.get("console_code")})),
     }
