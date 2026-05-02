@@ -121,7 +121,8 @@
   portal.registerMenu({ view: "actions-programmer", placeholderTitle: "Actions à programmer", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "actions-en-cours", placeholderTitle: "Actions en cours", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "actions-passees", placeholderTitle: "Actions passées", placeholderSub: "Page à venir." });
-
+  
+  portal.registerMenu({ view: "abonnement-facturation", placeholderTitle: "Abonnement & facturation", placeholderSub: "Suivi de l’abonnement, des accès et des éléments de facturation. Page à venir." });
   portal.registerMenu({ view: "accompagnement", placeholderTitle: "Accompagnement Novoskill", placeholderSub: "Assistance, demande de formation, évolution et contact. Page à venir." });
 
   window.addEventListener("DOMContentLoaded", async () => {
