@@ -163,14 +163,14 @@ def studio_me_scope(request: Request):
                 )
                 rr = cur.fetchone() or {}
                 rc = (rr.get("role_code") or "user").strip().lower()
-                if rc in ("admin", "editor", "user"):
+                if rc in ("admin", "supervisor", "user"):
                     role_code = rc
 
             role_label = "Utilisateur"
             if role_code == "admin":
                 role_label = "Administrateur"
-            elif role_code == "editor":
-                role_label = "Éditeur"
+            elif role_code == "supervisor":
+                role_label = "Superviseur"
 
             ow = studio_fetch_owner(cur, id_owner)
             ow["role_code"] = role_code

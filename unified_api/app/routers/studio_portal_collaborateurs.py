@@ -47,7 +47,7 @@ CONSOLE_DEFS = [
 ROLE_LABELS = {
     "none": "Aucun accès",
     "user": "Utilisateur",
-    "editor": "Éditeur",
+    "supervisor": "Superviseur",
     "admin": "Administrateur",
 }
 
@@ -223,9 +223,8 @@ def _normalize_access_role_code(value: Optional[str]) -> str:
         "aucun accès": "none",
         "user": "user",
         "utilisateur": "user",
-        "editor": "editor",
-        "editeur": "editor",
-        "éditeur": "editor",
+        "supervisor": "supervisor",
+        "superviseur": "supervisor",
         "admin": "admin",
         "administrateur": "admin",
     }
@@ -5623,7 +5622,7 @@ def studio_collab_postal_codes(id_owner: str, request: Request, code_postal: Opt
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 cp = "".join(ch for ch in str(code_postal or "").strip() if ch.isdigit())[:5]
                 city = _norm_text(ville)

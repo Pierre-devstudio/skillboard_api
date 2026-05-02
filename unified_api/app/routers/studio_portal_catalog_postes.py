@@ -133,8 +133,8 @@ def studio_catalog_list_postes(
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
 
-                # editor+ (le menu est editor, on aligne l'API)
-                studio_require_min_role(cur, u, oid, "editor")
+                # supervisor+ (le menu est superviseur, on aligne l'API)
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 where = ["p.id_owner = %s"]
                 params = [oid]
@@ -217,7 +217,7 @@ def studio_catalog_next_code(id_owner: str, request: Request):
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 # V1: création “Mon entreprise” uniquement => id_ent = oid
                 code = _next_pt_code(cur, oid, oid)
@@ -245,7 +245,7 @@ def studio_catalog_create_poste(id_owner: str, payload: CreatePostePayload, requ
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 pid = str(uuid.uuid4())
 
@@ -290,7 +290,7 @@ def studio_catalog_update_poste(id_owner: str, id_poste: str, payload: UpdatePos
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 # check existence + owner perimeter
                 cur.execute(
@@ -360,7 +360,7 @@ def studio_catalog_archive_poste(id_owner: str, id_poste: str, request: Request)
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 cur.execute(
                     """

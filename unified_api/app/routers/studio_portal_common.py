@@ -107,7 +107,7 @@ def studio_role_rank(role_code: str) -> int:
     c = (role_code or "").strip().lower()
     if c == "admin":
         return 3
-    if c == "editor":
+    if c == "supervisor":
         return 2
     return 1  # user
 
@@ -136,7 +136,7 @@ def studio_fetch_role_code(cur, email: str, id_owner: str, is_super_admin: bool)
     )
     r = cur.fetchone() or {}
     rc = (r.get("role_code") or "user").strip().lower()
-    if rc not in ("admin", "editor", "user"):
+    if rc not in ("admin", "supervisor", "user"):
         rc = "user"
     return rc
 
@@ -144,10 +144,10 @@ def studio_fetch_role_code(cur, email: str, id_owner: str, is_super_admin: bool)
 def studio_require_min_role(cur, u: dict, id_owner: str, min_role: str):
     """
     Vérifie le rôle d'accès Studio pour l'owner.
-    min_role: 'user' | 'editor' | 'admin'
+    min_role: 'user' | 'supervisor' | 'admin'
     """
     need = (min_role or "user").strip().lower()
-    if need not in ("user", "editor", "admin"):
+    if need not in ("user", "supervisor", "admin"):
         need = "user"
 
     rc = studio_fetch_role_code(cur, (u.get("email") or ""), id_owner, bool(u.get("is_super_admin")))

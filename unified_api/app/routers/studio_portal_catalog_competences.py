@@ -238,7 +238,7 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 cur.execute(
                     """
@@ -437,7 +437,7 @@ def studio_catalog_list_domaines(id_owner: str, request: Request):
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 cur.execute(
                     """
@@ -495,7 +495,7 @@ def studio_catalog_list_competences(
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 where = ["c.id_owner = %s"]
                 params = [oid]
@@ -572,7 +572,7 @@ def studio_catalog_next_competence_code(id_owner: str, request: Request, prefix:
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 code = _next_comp_code(cur, oid)
 
@@ -598,7 +598,7 @@ def studio_catalog_competence_detail(id_owner: str, id_comp: str, request: Reque
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 cur.execute(
                     """
@@ -670,7 +670,7 @@ def studio_catalog_create_competence(id_owner: str, payload: CreateCompetencePay
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 code = _next_comp_code(cur, oid)
 
@@ -732,7 +732,7 @@ def studio_catalog_update_competence(id_owner: str, id_comp: str, payload: Updat
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 if not _competence_exists_owner(cur, oid, cid):
                     raise HTTPException(status_code=404, detail="Compétence introuvable (owner).")
@@ -811,7 +811,7 @@ def studio_catalog_archive_competence(id_owner: str, id_comp: str, request: Requ
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 cur.execute(
                     """

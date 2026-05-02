@@ -350,11 +350,11 @@
   function roleRank(code){
     const c = (code || "").toString().trim().toLowerCase();
     if (c === "admin") return 3;
-    if (c === "editor") return 2;
+    if (c === "supervisor") return 2;
     return 1;
   }
 
-  function isEditor(){
+  function isSupervisor(){
     return roleRank(_roleCode || "user") >= 2;
   }
 
@@ -365,7 +365,7 @@
   }
 
   async function ensureRole(portal){
-    if (_roleCode && ["admin","editor","user"].includes(_roleCode)) return;
+    if (_roleCode && ["admin","supervisor","user"].includes(_roleCode)) return;
 
     const ownerId = getOwnerId();
     if (!ownerId) { _roleCode = "user"; return; }
@@ -373,11 +373,11 @@
     try {
       const ctx = await portal.apiJson(`${portal.apiBase}/studio/context/${encodeURIComponent(ownerId)}`);
       const rc = (ctx && ctx.role_code ? String(ctx.role_code) : "user").trim().toLowerCase();
-      _roleCode = ["admin","editor","user"].includes(rc) ? rc : "user";
+      _roleCode = ["admin","supervisor","user"].includes(rc) ? rc : "user";
       window.__studioRoleCode = _roleCode;
     } catch (_) {
       const rc = (window.__studioRoleCode || "user").toString().trim().toLowerCase();
-      _roleCode = ["admin","editor","user"].includes(rc) ? rc : "user";
+      _roleCode = ["admin","supervisor","user"].includes(rc) ? rc : "user";
     }
   }
 
@@ -524,7 +524,7 @@
             right.appendChild(dom);
         }
 
-      if (isEditor()) {
+      if (isSupervisor()) {
         const btnEdit = document.createElement("button");
         btnEdit.type = "button";
         btnEdit.className = "sb-btn sb-btn--soft sb-btn--xs";
@@ -815,7 +815,7 @@
     if (_bound) return;
     _bound = true;
 
-    if (!isEditor()) {
+    if (!isSupervisor()) {
       const b = byId("btnCompNew");
       if (b) b.style.display = "none";
     }

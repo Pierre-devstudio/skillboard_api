@@ -69,8 +69,8 @@ def _role_label(role_code: str) -> str:
     c = (role_code or "").strip().lower()
     if c == "admin":
         return "Administrateur"
-    if c == "editor":
-        return "Éditeur"
+    if c == "supervisor":
+        return "Superviseur"
     return "Utilisateur"
 
 
@@ -196,7 +196,7 @@ def learn_list_profiles(cur, email: str = "", is_super_admin: bool = False) -> l
         seen.add(key)
 
         role_code = (r.get("role_code") or "user").strip().lower()
-        if role_code not in ("admin", "editor", "user"):
+        if role_code not in ("admin", "supervisor", "user"):
             role_code = "user"
 
         out.append(

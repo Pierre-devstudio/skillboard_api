@@ -64,7 +64,7 @@
     function roleRank(code){
     const c = (code || "").toString().trim().toLowerCase();
     if (c === "admin") return 3;
-    if (c === "editor") return 2;
+    if (c === "supervisor") return 2;
     return 1; // user
   }
 

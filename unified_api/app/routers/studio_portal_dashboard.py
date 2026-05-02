@@ -156,8 +156,8 @@ def _role_code_to_label(code: str) -> Optional[str]:
     c = (code or "").strip().lower()
     if c == "admin":
         return "Administrateur"
-    if c == "editor":
-        return "Éditeur"
+    if c == "supervisor":
+        return "Superviseur"
     if c == "user":
         return "Utilisateur"
     return None
@@ -187,7 +187,7 @@ def _fetch_role_code(cur, email: str, id_owner: str, is_super_admin: bool) -> st
     )
     r = cur.fetchone() or {}
     rc = (r.get("role_code") or "user").strip().lower()
-    if rc not in ("admin", "editor", "user"):
+    if rc not in ("admin", "supervisor", "user"):
         rc = "user"
     return rc
 

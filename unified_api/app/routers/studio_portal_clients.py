@@ -983,7 +983,7 @@ def get_studio_clients(id_owner: str, request: Request):
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 return {
                     "summary": _fetch_clients_summary(cur, oid),
@@ -1006,7 +1006,7 @@ def get_studio_client_detail(id_owner: str, id_ent: str, request: Request):
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
                 return _fetch_client_detail(cur, oid, id_ent)
     except HTTPException:
         raise
@@ -1024,7 +1024,7 @@ def get_studio_offer_catalog(id_owner: str, request: Request):
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
                 return {"items": _fetch_offer_catalog(cur)}
     except HTTPException:
         raise
@@ -1042,7 +1042,7 @@ def get_studio_client_commercial(id_owner: str, id_ent: str, request: Request):
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 if not _structure_exists_for_owner(cur, oid, id_ent, include_masked=True):
                     raise HTTPException(status_code=404, detail="Structure introuvable.")
@@ -1066,7 +1066,7 @@ def upsert_studio_client_commercial(id_owner: str, id_ent: str, payload: Commerc
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 if not _structure_exists_for_owner(cur, oid, id_ent, include_masked=True):
                     raise HTTPException(status_code=404, detail="Structure introuvable.")
@@ -1240,7 +1240,7 @@ def archive_studio_client_commercial(id_owner: str, id_ent: str, request: Reques
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 if not _structure_exists_for_owner(cur, oid, id_ent, include_masked=True):
                     raise HTTPException(status_code=404, detail="Structure introuvable.")
@@ -1286,7 +1286,7 @@ def create_studio_client(id_owner: str, payload: ClientPayload, request: Request
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 _validate_idcc_exists(cur, _normalize_text(patch.get("idcc")))
                 _validate_ape_exists(cur, _normalize_text(patch.get("code_ape_ent")))
@@ -1401,7 +1401,7 @@ def update_studio_client(id_owner: str, id_ent: str, payload: ClientPayload, req
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 if not _structure_exists_for_owner(cur, oid, id_ent):
                     raise HTTPException(status_code=404, detail="Structure introuvable.")
@@ -1466,7 +1466,7 @@ def archive_studio_client(id_owner: str, id_ent: str, request: Request):
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 if not _structure_exists_for_owner(cur, oid, id_ent):
                     raise HTTPException(status_code=404, detail="Structure introuvable.")
@@ -1498,7 +1498,7 @@ def get_studio_child_structures(id_owner: str, id_ent: str, request: Request):
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 if not _structure_exists_for_owner(cur, oid, id_ent):
                     raise HTTPException(status_code=404, detail="Structure introuvable.")
@@ -1612,7 +1612,7 @@ def detach_studio_child_structure(id_owner: str, id_ent: str, id_child: str, req
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 if not _structure_exists_for_owner(cur, oid, id_ent):
                     raise HTTPException(status_code=404, detail="Structure parente introuvable.")
@@ -1672,7 +1672,7 @@ def get_studio_child_structures_history(id_owner: str, id_ent: str, request: Req
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 if not _structure_exists_for_owner(cur, oid, id_ent):
                     raise HTTPException(status_code=404, detail="Structure courante introuvable.")
@@ -1756,7 +1756,7 @@ def restore_studio_child_structure_here(id_owner: str, id_ent: str, id_child: st
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 if not _structure_exists_for_owner(cur, oid, id_ent):
                     raise HTTPException(status_code=404, detail="Structure de rattachement introuvable.")
@@ -1878,7 +1878,7 @@ def promote_studio_child_structure_direct(id_owner: str, id_ent: str, id_child: 
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 if not _structure_exists_for_owner(cur, oid, id_ent):
                     raise HTTPException(status_code=404, detail="Structure courante introuvable.")
@@ -1966,7 +1966,7 @@ def create_studio_child_structure(id_owner: str, id_ent: str, payload: ClientPay
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 if not _structure_exists_for_owner(cur, oid, id_ent):
                     raise HTTPException(status_code=404, detail="Structure parente introuvable.")
@@ -2074,7 +2074,7 @@ def get_studio_postal_codes(id_owner: str, request: Request, code_postal: Option
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 cp = re.sub(r"\D+", "", (code_postal or "").strip())[:5]
                 city = _normalize_text(ville)
@@ -2153,7 +2153,7 @@ def get_studio_public_company(id_owner: str, request: Request, q: str):
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 item = _fetch_public_company_data(q)
 
@@ -2183,7 +2183,7 @@ def get_studio_referentiel_opco(id_owner: str, request: Request):
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
                 studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "editor")
+                studio_require_min_role(cur, u, oid, "supervisor")
 
                 cur.execute(
                     """

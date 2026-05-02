@@ -368,7 +368,7 @@
   function getRoleLabel(roleCode){
     const code = String(roleCode || '').trim().toLowerCase();
     if (code === 'admin') return 'Administrateur';
-    if (code === 'editor') return 'Éditeur';
+    if (code === 'supervisor') return 'Superviseur';
     if (code === 'user') return 'Utilisateur';
     return 'Aucun accès';
   }
@@ -3535,7 +3535,7 @@
             <select data-console-role="${esc(consoleCode)}" ${disabled ? 'disabled' : ''}>
               <option value="none" ${roleCode === 'none' ? 'selected' : ''}>Aucun accès</option>
               <option value="user" ${roleCode === 'user' ? 'selected' : ''}>Utilisateur</option>
-              <option value="editor" ${roleCode === 'editor' ? 'selected' : ''}>Éditeur</option>
+              <option value="supervisor" ${roleCode === 'supervisor' ? 'selected' : ''}>Superviseur</option>
               <option value="admin" ${roleCode === 'admin' ? 'selected' : ''}>Administrateur</option>
             </select>
           </div>

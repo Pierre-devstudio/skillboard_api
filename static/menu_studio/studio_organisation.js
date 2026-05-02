@@ -190,7 +190,7 @@
 
     async function ensureRole(portal){
         // Si le rôle est déjà connu, on ne refait rien
-        if (_roleCode && ["admin","editor","user"].includes(_roleCode)) return;
+        if (_roleCode && ["admin","supervisor","user"].includes(_roleCode)) return;
 
         const ownerId = getOwnerId();
         if (!ownerId) { _roleCode = "user"; return; }
@@ -198,12 +198,12 @@
         try {
             const ctx = await portal.apiJson(`${portal.apiBase}/studio/context/${encodeURIComponent(ownerId)}`);
             const rc = (ctx && ctx.role_code ? String(ctx.role_code) : "user").trim().toLowerCase();
-            _roleCode = ["admin","editor","user"].includes(rc) ? rc : "user";
+            _roleCode = ["admin","supervisor","user"].includes(rc) ? rc : "user";
             window.__studioRoleCode = _roleCode; // synchronise le reste de l’app
         } catch (_) {
             // fallback safe
             const rc = (window.__studioRoleCode || "user").toString().trim().toLowerCase();
-            _roleCode = ["admin","editor","user"].includes(rc) ? rc : "user";
+            _roleCode = ["admin","supervisor","user"].includes(rc) ? rc : "user";
         }
     }
 
