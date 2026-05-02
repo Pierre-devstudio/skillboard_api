@@ -16,6 +16,14 @@
     htmlUrl: "/menu_learn/learn_catalogue_formation.html"
   });
 
+  const COMING_SOON = "/menu_learn/learn_coming_soon.html";
+
+  window.portal.registerMenu({ view: "parcours", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "sessions", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "inscriptions", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "suivi_formation", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "evaluations", htmlUrl: COMING_SOON });
+
   function byId(id){ return document.getElementById(id); }
 
   function buildPortalUrlWithId(effectifId) {
