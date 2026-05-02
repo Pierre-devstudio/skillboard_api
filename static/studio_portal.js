@@ -50,7 +50,7 @@
   window.portal.registerMenu({ view: "partners", htmlUrl: COMING_SOON });
 
   
-  window.portal.registerMenu({ view: "catalog_formations", htmlUrl: COMING_SOON });
+  window.portal.registerMenu({ view: "catalog_certifications", htmlUrl: COMING_SOON });
 
   window.portal.registerMenu({ view: "pilotage_clients", htmlUrl: COMING_SOON });
 
@@ -72,7 +72,7 @@
 
     const myRank = roleRank(window.__studioRoleCode);
 
-    document.querySelectorAll(".menu-item[data-min-role]").forEach(el => {
+    document.querySelectorAll(".menu-item[data-min-role], .menu-section-title[data-min-role]").forEach(el => {
       const need = (el.dataset.minRole || "user").toString().trim().toLowerCase();
       const ok = myRank >= roleRank(need);
       el.style.display = ok ? "" : "none";
