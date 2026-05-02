@@ -116,12 +116,36 @@
     onShow: (p) => window.SkillsEntretienPerformance?.onShow?.(p),
   });
 
-  // Placeholders (pour éviter les clics “vides”)      
-  portal.registerMenu({ view: "catalogue-formation", placeholderTitle: "Votre catalogue de formation", placeholderSub: "Page à venir." });
-  portal.registerMenu({ view: "plan-actions", placeholderTitle: "Plan d’actions", placeholderSub: "Suivi des actions à programmer, en cours et passées avec filtres par état. Page à venir." });
-  
-  portal.registerMenu({ view: "abonnement-facturation", placeholderTitle: "Abonnement & facturation", placeholderSub: "Suivi de l’abonnement, des accès et des éléments de facturation. Page à venir." });
-  portal.registerMenu({ view: "accompagnement", placeholderTitle: "Accompagnement Novoskill", placeholderSub: "Assistance, demande de formation, évolution et contact. Page à venir." });
+  // Placeholders (pour éviter les clics “vides”)
+  portal.registerMenu({
+    view: "simulations-rh",
+    placeholderTitle: "Simulations RH",
+    placeholderSub: "Tester des hypothèses RH sans modifier les données réelles : changement de poste, absence, départ, transfert de charge ou renfort. Page à venir."
+  });
+
+  portal.registerMenu({
+    view: "plan-actions",
+    placeholderTitle: "Plan d’actions",
+    placeholderSub: "Suivi des actions à programmer, en cours et passées avec filtres par état. Page à venir."
+  });
+
+  portal.registerMenu({
+    view: "besoins-formations",
+    placeholderTitle: "Besoins & formations",
+    placeholderSub: "Identifier et qualifier les besoins formation issus des risques, écarts de compétences et simulations RH. Page à venir."
+  });
+
+  portal.registerMenu({
+    view: "abonnement-facturation",
+    placeholderTitle: "Abonnement & facturation",
+    placeholderSub: "Suivi de l’abonnement, des accès et des éléments de facturation. Page à venir."
+  });
+
+  portal.registerMenu({
+    view: "accompagnement",
+    placeholderTitle: "Accompagnement Novoskill",
+    placeholderSub: "Assistance, demande de formation, évolution et contact. Page à venir."
+  });
 
   window.addEventListener("DOMContentLoaded", async () => {
     const ok = portal.initShell();
