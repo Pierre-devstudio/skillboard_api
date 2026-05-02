@@ -47,7 +47,6 @@
   // Placeholders (menu complet)
   const COMING_SOON = "/menu_studio/studio_coming_soon.html";
   
-  window.portal.registerMenu({ view: "access", htmlUrl: COMING_SOON });
   window.portal.registerMenu({ view: "partners", htmlUrl: COMING_SOON });
 
   
