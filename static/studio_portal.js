@@ -55,7 +55,6 @@
   window.portal.registerMenu({ view: "pilotage_clients", htmlUrl: COMING_SOON });
 
   window.portal.registerMenu({ view: "factures", htmlUrl: COMING_SOON });
-  window.portal.registerMenu({ view: "documents", htmlUrl: COMING_SOON });
   window.portal.registerMenu({ view: "evolutions", htmlUrl: COMING_SOON });
 
   function byId(id){ return document.getElementById(id); }

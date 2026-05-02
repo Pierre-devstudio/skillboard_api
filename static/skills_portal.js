@@ -121,7 +121,6 @@
   portal.registerMenu({ view: "actions-programmer", placeholderTitle: "Actions à programmer", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "actions-en-cours", placeholderTitle: "Actions en cours", placeholderSub: "Page à venir." });
   portal.registerMenu({ view: "actions-passees", placeholderTitle: "Actions passées", placeholderSub: "Page à venir." });
-  portal.registerMenu({ view: "vos-documents", placeholderTitle: "Vos documents", placeholderSub: "Page à venir." });
 
   window.addEventListener("DOMContentLoaded", async () => {
     const ok = portal.initShell();
