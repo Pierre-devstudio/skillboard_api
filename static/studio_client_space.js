@@ -1758,19 +1758,6 @@ function bindPostalAssist(){
     });
   }
 
-  function buildPortfolioUrl(){
-    const ownerId = getOwnerId();
-    return `/studio/?id=${encodeURIComponent(ownerId)}&view=clients`;
-  }
-
-  function renderLinks(){
-    const url = buildPortfolioUrl();
-    const side = byId("btnOpenPortfolioSide");
-    const top = byId("btnOpenPortfolioTop");
-    if (side) side.href = url;
-    if (top) top.href = url;
-  }
-
   function getCompanySheetLabel(){
     const t = (_detail?.owner_type_client || "entreprise").toString().trim().toLowerCase();
     return t === "site" ? "Fiche site" : "Fiche entreprise";
@@ -2788,7 +2775,6 @@ function bindPostalAssist(){
       date_maj: null,
     };
 
-    renderLinks();
     renderDynamicLabels();
     renderHeader();
     renderDashboard();
@@ -2810,7 +2796,6 @@ function bindPostalAssist(){
     bindApeMask();
     bindOpcoSelect();
     bindOrgCreateMasks();
-    renderLinks();
     setFicheEditMode(false);
 
     try {
