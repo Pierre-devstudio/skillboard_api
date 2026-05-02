@@ -51,8 +51,7 @@
 
   
   window.portal.registerMenu({ view: "catalog_certifications", htmlUrl: COMING_SOON });
-
-  window.portal.registerMenu({ view: "pilotage_clients", htmlUrl: COMING_SOON });
+ 
 
   window.portal.registerMenu({ view: "abonnement_facturation", htmlUrl: COMING_SOON });
   window.portal.registerMenu({ view: "accompagnement", htmlUrl: COMING_SOON });
