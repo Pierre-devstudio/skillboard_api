@@ -1,20 +1,36 @@
 :root{
+  --accent:#67C63D;
+  --sidebar-bg:#333333;
   --partner-accent:#67C63D;
   --partner-accent-rgb:103,198,61;
 }
 
-.product-badge{
-  background:var(--partner-accent);
-  color:#fff;
+.sidebar-header .product-badge{
+  display:inline-flex;
+  align-items:center;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+  background: rgba(var(--partner-accent-rgb), .22);
+  border:1px solid rgba(var(--partner-accent-rgb), .58);
+  color:#ffffff;
 }
 
-.menu .menu-item.active{
-  background:rgba(var(--partner-accent-rgb), .18);
-  border-color:rgba(var(--partner-accent-rgb), .35);
+.menu-item.active{
+  background: rgba(var(--partner-accent-rgb), .28);
+  color:#ffffff;
+  box-shadow: inset 3px 0 0 var(--partner-accent);
 }
 
-.menu .menu-item:hover{
-  background:rgba(var(--partner-accent-rgb), .10);
+.menu-item:hover{
+  background: rgba(var(--partner-accent-rgb), .12);
+}
+
+.menu-sep{
+  height:1px;
+  margin:10px 0;
+  background: rgba(255,255,255,.15);
 }
 
 .pt-card-note{
