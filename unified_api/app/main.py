@@ -2,7 +2,7 @@ import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import recueil_attentes, preparation_formation, presence_formation, presence_consultant, validation_acquis,satisfaction_formation_stagiaire, satisfaction_formation_responsable, satisfaction_formation_consultant, adaptation_formation, consultant_portal, skills_portal,  studio_portal, people_portal, learn_portal
+from app.routers import recueil_attentes, preparation_formation, presence_formation, presence_consultant, validation_acquis,satisfaction_formation_stagiaire, satisfaction_formation_responsable, satisfaction_formation_consultant, adaptation_formation, skills_portal,  studio_portal, people_portal, learn_portal, partner_portal
 
 app = FastAPI()
 
@@ -78,13 +78,13 @@ def get_portal_config(space: str):
         }
 
     if s == "partner":
-        supabase_url = os.getenv("PARTNER_SUPABASE_URL", "") or ""
-        supabase_anon = os.getenv("PARTNER_SUPABASE_ANON_KEY", "") or ""
+        supabase_url = os.getenv("PARTNER_SUPABASE_URL", "") or os.getenv("SKILLS_SUPABASE_URL", "") or ""
+        supabase_anon = os.getenv("PARTNER_SUPABASE_ANON_KEY", "") or os.getenv("SKILLS_SUPABASE_ANON_KEY", "") or ""
 
         if not supabase_url or not supabase_anon:
             raise HTTPException(
                 status_code=500,
-                detail="Config Partner manquante: PARTNER_SUPABASE_URL / PARTNER_SUPABASE_ANON_KEY",
+                detail="Config Partner manquante: PARTNER_SUPABASE_URL / PARTNER_SUPABASE_ANON_KEY (ou fallback Skills)",
             )
 
         return {
@@ -140,9 +140,6 @@ for route in satisfaction_formation_consultant.router.routes:
 for route in adaptation_formation.router.routes:
     app.router.routes.append(route)
 
-for route in consultant_portal.router.routes:
-    app.router.routes.append(route)
-
 for route in skills_portal.router.routes:
     app.router.routes.append(route)
 
@@ -153,4 +150,7 @@ for route in people_portal.router.routes:
     app.router.routes.append(route)
 
 for route in learn_portal.router.routes:
+    app.router.routes.append(route)
+
+for route in partner_portal.router.routes:
     app.router.routes.append(route)
