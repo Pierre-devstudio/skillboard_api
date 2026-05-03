@@ -117,77 +117,33 @@
   });
 
   // Placeholders (pour éviter les clics “vides”)
-  portal.registerMenu({
-    view: "simulations-rh",
-    placeholderTitle: "Simulations RH",
-    placeholderSub: "Tester des hypothèses RH sans modifier les données réelles : changement de poste, absence, départ, transfert de charge ou renfort. Page à venir."
-  });
+  const COMING_SOON = "/menus/skills_coming_soon.html";
 
-  portal.registerMenu({
-    view: "plan-actions",
-    placeholderTitle: "Plan d’actions",
-    placeholderSub: "Suivi des actions à programmer, en cours et passées avec filtres par état. Page à venir."
-  });
-
-  portal.registerMenu({
-    view: "besoins-formations",
-    placeholderTitle: "Besoins & formations",
-    placeholderSub: "Identifier et qualifier les besoins formation issus des risques, écarts de compétences et simulations RH. Page à venir."
-  });
-
-  portal.registerMenu({
-    view: "abonnement-facturation",
-    placeholderTitle: "Abonnement & facturation",
-    placeholderSub: "Suivi de l’abonnement, des accès et des éléments de facturation. Page à venir."
-  });
-
-  portal.registerMenu({
-    view: "accompagnement",
-    placeholderTitle: "Accompagnement Novoskill",
-    placeholderSub: "Assistance, demande de formation, évolution et contact. Page à venir."
-  });
+  portal.registerMenu({ view: "simulations-rh", htmlUrl: COMING_SOON });
+  portal.registerMenu({ view: "plan-actions", htmlUrl: COMING_SOON });
+  portal.registerMenu({ view: "besoins-formations", htmlUrl: COMING_SOON });
+  portal.registerMenu({ view: "abonnement-facturation", htmlUrl: COMING_SOON });
+  portal.registerMenu({ view: "accompagnement", htmlUrl: COMING_SOON });
 
   window.addEventListener("DOMContentLoaded", async () => {
-    const ok = portal.initShell();
-    if (!ok) return;
-
-    await portal.ensureContext();
-    // Vue initiale: hash > défaut dashboard
-    const rawHash = (window.location.hash || "").replace(/^#/, "").trim();
-    const viewFromHash = rawHash ? rawHash.split(/[?&]/)[0].replace(/^\/+/, "").trim() : "";
-    const initialView = viewFromHash || "dashboard";
+    try {
+      await portal.ensureContext();
+    } catch (_) {}
 
     const getViewFromHash = () => {
-    const rawHash = (window.location.hash || "").replace(/^#/, "").trim();
-    const view = rawHash ? rawHash.split(/[?&]/)[0].replace(/^\/+/, "").trim() : "";
-    return view || "dashboard";
+      const rawHash = (window.location.hash || "").replace(/^#/, "").trim();
+      const view = rawHash ? rawHash.split(/[?&]/)[0].replace(/^\/+/, "").trim() : "";
+      return view || "dashboard";
     };
 
-    let _navLock = false;
-    let _lastView = null;
+    const initialView = getViewFromHash();
+    if (initialView && initialView !== "dashboard") {
+      await portal.switchView(initialView);
+    }
 
-    const go = async (viewName) => {
-      const v = (viewName || "").trim() || "dashboard";
-      if (_navLock) return;
-      if (_lastView === v) return;
-
-      _navLock = true;
-      try {
-        _lastView = v;
-        await portal.switchView(v);
-      } finally {
-        _navLock = false;
-      }
-    };
-
-    // Vue initiale (hash si présent)
-    await go(getViewFromHash());
-
-    // Navigation option 2 : hashchange => switchView
     window.addEventListener("hashchange", () => {
-      go(getViewFromHash());
+      const view = getViewFromHash();
+      if (view) portal.switchView(view);
     });
-
-
   });
 })();

@@ -117,6 +117,7 @@ def partner_list_profiles(cur, email: str = "", is_super_admin: bool = False) ->
         FROM public.tbl_novoskill_user_access a
         JOIN public.tbl_consultant c
           ON c.id_consultant = a.id_user_ref
+         AND c.id_owner = a.id_owner
          AND COALESCE(c.actif, TRUE) = TRUE
         LEFT JOIN public.tbl_novoskill_owner o
           ON o.id_owner = a.id_owner

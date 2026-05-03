@@ -40,6 +40,34 @@
     });
   }
 
+  async function activateAccesses() {
+    const session = await window.PortalAuthCommon.getSession().catch(() => null);
+    const token = session?.access_token || "";
+
+    if (!token) {
+      throw new Error("Mot de passe enregistré, mais session d’activation introuvable. Relance le lien reçu par email.");
+    }
+
+    const r = await fetch(`${API_BASE}/partner/auth/activate`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+      },
+    });
+
+    const data = await r.json().catch(() => null);
+
+    if (!r.ok) {
+      throw new Error(
+        (data && (data.detail || data.message))
+          ? (data.detail || data.message)
+          : "Mot de passe enregistré, mais activation des accès Partner impossible."
+      );
+    }
+
+    return data;
+  }
+
   async function updatePassword() {
     const btn = byId("btnUpdatePwd");
     const p1 = (byId("pwd1")?.value || "").trim();
@@ -60,8 +88,9 @@
       setMsg("Mise à jour en cours…", "");
 
       await window.PortalAuthCommon.updatePassword(p1);
+      await activateAccesses();
 
-      setMsg("Mot de passe mis à jour. Vous pouvez vous reconnecter.", "success");
+      setMsg("Mot de passe mis à jour. Tes accès Partner sont actifs. Tu peux te reconnecter.", "success");
 
       setTimeout(() => {
         window.location.href = "/partner_login.html";
