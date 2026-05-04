@@ -1234,10 +1234,6 @@ body {
         }
     }
 
-    function serviceMeta(nbPostes, nbCollabs){
-        return `${nbPostes} poste(s) · ${nbCollabs} collaborateur(s)`;
-    }
-
     function syncSelectedServiceContext(){
         if (!_selectedService || _selectedService === "__all__"){
             _selectedService = "__all__";
@@ -1306,12 +1302,7 @@ body {
         left.style.paddingLeft = `${Math.min(6, Math.max(0, depth)) * 14}px`;
         left.textContent = name;
 
-        const right = document.createElement("div");
-        right.className = "sb-list-meta";
-        right.textContent = `${nbPostes} · ${nbCollabs}`;
-
         row.appendChild(left);
-        row.appendChild(right);
 
         row.addEventListener("click", () => selectService(id, name, nbPostes, nbCollabs));
         return row;
