@@ -114,6 +114,16 @@
 }
 .sb-actions{ display:flex; gap:8px; flex-wrap:wrap; }
 
+.sb-save-success{
+  display:none;
+  align-items:center;
+  font-size:11px;
+  font-weight:600;
+  line-height:1.2;
+  color:#15803d;
+  white-space:nowrap;
+}
+
 .org-card-head{
   display:flex;
   justify-content:space-between;

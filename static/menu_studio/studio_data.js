@@ -6,6 +6,7 @@
   let _initialContact = null;
   let _refOpco = null;
   let _entLogoBlobUrl = null;
+  const _saveSuccessTimers = {};
 
   function isAdmin(){
     const r = (window.__studioRoleCode || "user").toString().trim().toLowerCase();
@@ -255,6 +256,38 @@
     el.classList.toggle("error", !!isError);
   }
 
+  function hideSaveSuccess(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    if (_saveSuccessTimers[id]) {
+      clearTimeout(_saveSuccessTimers[id]);
+      delete _saveSuccessTimers[id];
+    }
+
+    el.textContent = "";
+    el.style.display = "none";
+  }
+
+  function showSaveSuccess(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    if (_saveSuccessTimers[id]) {
+      clearTimeout(_saveSuccessTimers[id]);
+      delete _saveSuccessTimers[id];
+    }
+
+    el.textContent = "Enregistré avec succès";
+    el.style.display = "inline-flex";
+
+    _saveSuccessTimers[id] = setTimeout(() => {
+      el.textContent = "";
+      el.style.display = "none";
+      delete _saveSuccessTimers[id];
+    }, 5000);
+  }
+
   function normalizeValue(v) {
     const s = (v ?? "").toString().trim();
     return s.length === 0 ? null : s;
@@ -291,6 +324,8 @@
   }
 
   function setEntrepriseEditMode(isEdit) {
+    if (isEdit) hideSaveSuccess("entSaveSuccess");
+
     document.querySelectorAll("[data-editable-ent='1']").forEach(el => el.disabled = !isEdit);
     const b1 = document.getElementById("btnEditEntreprise");
     const b2 = document.getElementById("btnSaveEntreprise");
@@ -301,6 +336,8 @@
   }
 
   function setContactEditMode(isEdit) {
+    if (isEdit) hideSaveSuccess("contactSaveSuccess");
+
     document.querySelectorAll("[data-editable-ct='1']").forEach(el => el.disabled = !isEdit);
     // IMPORTANT : le champ rôle est disabled dans le HTML et n'a PAS data-editable-ct
     const b1 = document.getElementById("btnEditContact");
@@ -426,6 +463,9 @@
     setEntrepriseEditMode(false);
     setContactEditMode(false);
 
+    hideSaveSuccess("entSaveSuccess");
+    hideSaveSuccess("contactSaveSuccess");
+
     _loaded = true;
     setStatus("—");
   }
@@ -500,6 +540,7 @@
 
     portal.showAlert("", "");
     setEntrepriseEditMode(false);
+    showSaveSuccess("entSaveSuccess");
   }
 
   async function saveContact(portal) {
@@ -515,8 +556,9 @@
     const patch = buildPatchFromInitial(_initialContact, current, allowed);
 
     if (Object.keys(patch).length === 0) {
-      portal.showAlert("", "");
-      setContactEditMode(false);
+    portal.showAlert("", "");
+    setContactEditMode(false);
+    showSaveSuccess("contactSaveSuccess");
       return;
     }
 

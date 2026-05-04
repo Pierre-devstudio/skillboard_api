@@ -7,7 +7,8 @@
         <div class="card-sub" style="margin:0;">Le nom de l’entreprise n’est pas modifiable.</div>
       </div>
       <div class="sb-actions">
-        <button type="button" class="sb-btn sb-btn--accent" id="btnEditEntreprise">Modifier les informations</button>
+        <span class="sb-save-success" id="entSaveSuccess" aria-live="polite"></span>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnEditEntreprise">Modifier les informations</button>   
         <button type="button" class="sb-btn sb-btn--accent" id="btnSaveEntreprise" style="display:none;">Enregistrer les informations</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnCancelEntreprise" style="display:none;">Annuler</button>
       </div>
@@ -125,6 +126,7 @@
         <div class="card-sub" style="margin:0;">Contact actuellement connecté.</div>
       </div>
       <div class="sb-actions">
+        <span class="sb-save-success" id="contactSaveSuccess" aria-live="polite"></span>
         <button type="button" class="sb-btn sb-btn--accent" id="btnEditContact">Modifier les informations</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnSaveContact" style="display:none;">Enregistrer les informations</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnCancelContact" style="display:none;">Annuler</button>
