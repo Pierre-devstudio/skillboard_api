@@ -58,6 +58,31 @@
   user-select: none;
 }
 
+/* Header Studio – identité utilisateur */
+.studio-topbar-user{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  justify-content:center;
+  min-width:150px;
+  line-height:1.15;
+}
+
+.studio-topbar-user-name{
+  font-size:13px;
+  font-weight:600;
+  color:#111827;
+  white-space:nowrap;
+}
+
+.studio-topbar-user-role{
+  margin-top:2px;
+  font-size:11px;
+  font-style:italic;
+  font-weight:400;
+  color:#6b7280;
+  white-space:nowrap;
+}
 /* ======================================================
    Studio CORE – composants réutilisables (pas “par vue”)
    ====================================================== */

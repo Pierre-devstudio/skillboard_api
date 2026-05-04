@@ -103,9 +103,13 @@
 
   async function tryFillTopbar() {
     const info = byId("topbarInfo");
+    const userName = byId("topbarUserName");
+    const userRole = byId("topbarUserRole");
     const name = byId("topbarName");
 
-    if (info) info.textContent = "Chargement…";
+    if (info) info.style.display = "";
+    if (userName) userName.textContent = "Chargement…";
+    if (userRole) userRole.textContent = "";
     if (name) name.textContent = "Studio";
 
     try {
@@ -115,16 +119,25 @@
       const token = session?.access_token || "";
       if (!token) return;
 
-      // 1) Email
+      // 1) Identité utilisateur
+      let displayName = "";
+      let fallbackEmail = "";
+
       const rMe = await fetch(`${API_BASE}/studio/me`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       const me = await rMe.json().catch(() => null);
+
       if (rMe.ok && me) {
-        if (info) info.textContent = (me.email || "");
+        const prenom = (me.prenom || "").toString().trim();
+        const nom = (me.nom || "").toString().trim();
+        fallbackEmail = (me.email || "").toString().trim();
+
+        displayName = `${prenom} ${nom}`.trim();
+        if (!displayName) displayName = fallbackEmail;
       }
 
-      // 2) Nom owner (scope)
+      // 2) Nom owner + rôle Studio
       const rScope = await fetch(`${API_BASE}/studio/me/scope`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
@@ -132,6 +145,7 @@
 
       let ownerName = "";
       let roleCode = "user";
+      let roleLabel = "Utilisateur";
 
       if (rScope.ok && scope && Array.isArray(scope.owners) && scope.owners.length) {
         const currentId = (new URL(window.location.href).searchParams.get("id") || "").trim();
@@ -140,12 +154,19 @@
 
         ownerName = (cur?.nom_owner || "").trim();
         roleCode = (cur?.role_code || "user").toString().trim().toLowerCase();
+        roleLabel = (cur?.role_label || "Utilisateur").toString().trim();
       }
 
       if (name) name.textContent = ownerName || "Studio";
+
+      if (userName) userName.textContent = displayName || "Utilisateur";
+      if (userRole) userRole.textContent = roleLabel || "Utilisateur";
+
       applyMenuGating(roleCode);
     } catch (_) {
-      // on laisse le fallback
+      // on laisse le fallback propre au lieu d'afficher un roman d'erreur dans le header
+      if (userName) userName.textContent = "Utilisateur";
+      if (userRole) userRole.textContent = "";
     }
   }
 

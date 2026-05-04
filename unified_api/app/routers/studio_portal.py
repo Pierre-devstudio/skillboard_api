@@ -39,6 +39,7 @@ def studio_me(request: Request):
     u = studio_require_user(auth)
 
     prenom = None
+    nom = None
 
     try:
         email = (u.get("email") or "").strip()
@@ -64,7 +65,7 @@ def studio_me(request: Request):
                     if ref_type == "utilisateur" and ref_id:
                         cur.execute(
                             """
-                            SELECT ut_prenom
+                            SELECT ut_prenom, ut_nom
                             FROM public.tbl_utilisateur
                             WHERE id_utilisateur = %s
                               AND COALESCE(archive, FALSE) = FALSE
@@ -74,11 +75,13 @@ def studio_me(request: Request):
                         )
                         r = cur.fetchone() or {}
                         prenom = r.get("ut_prenom")
+                        nom = r.get("ut_nom")
+
 
                     elif ref_type == "effectif_client" and ref_id:
                         cur.execute(
                             """
-                            SELECT prenom_effectif
+                            SELECT prenom_effectif, nom_effectif
                             FROM public.tbl_effectif_client
                             WHERE id_effectif = %s
                               AND COALESCE(archive, FALSE) = FALSE
@@ -88,13 +91,16 @@ def studio_me(request: Request):
                         )
                         r = cur.fetchone() or {}
                         prenom = r.get("prenom_effectif")
+                        nom = r.get("nom_effectif")
     except Exception:
         prenom = None
+        nom = None
 
     return {
         "id": u.get("id"),
         "email": u.get("email"),
         "prenom": (prenom or "").strip() or None,
+        "nom": (nom or "").strip() or None,
         "is_super_admin": bool(u.get("is_super_admin")),
         "user_metadata": u.get("user_metadata") or {},
     }
