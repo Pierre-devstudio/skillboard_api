@@ -112,7 +112,13 @@
   align-items:flex-start;
   gap:12px;
 }
-.sb-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+
+.sb-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
 
 .sb-save-success{
   display:none;
@@ -122,6 +128,16 @@
   line-height:1.2;
   color:#15803d;
   white-space:nowrap;
+}
+
+/* Studio > Vos informations : les champs en lecture restent lisibles */
+#view-data input:disabled,
+#view-data select:disabled,
+#view-data textarea:disabled{
+  color:#111827;
+  -webkit-text-fill-color:#111827;
+  opacity:1;
+  background:#ffffff;
 }
 
 .org-card-head{

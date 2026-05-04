@@ -231,6 +231,21 @@ def _normalize_civilite(value: str | None) -> str | None:
 
     return s
 
+def _normalize_contact_nom(value: str | None) -> str | None:
+    s = (value or "").strip()
+    if not s:
+        return None
+    s = re.sub(r"\s+", " ", s)
+    return s.upper()
+
+
+def _normalize_contact_prenom(value: str | None) -> str | None:
+    s = (value or "").strip()
+    if not s:
+        return None
+    s = re.sub(r"\s+", " ", s).lower()
+    return s[:1].upper() + s[1:]
+
 def _lookup_idcc(cur, idcc: str | None) -> str | None:
     if not idcc:
         return None
@@ -735,6 +750,15 @@ def update_studio_contact(id_owner: str, payload: UpdateContactPayload, request:
 
     try:
         patch = _build_patch_set(payload)
+
+        if "civilite" in patch:
+            patch["civilite"] = _normalize_civilite(patch.get("civilite"))
+
+        if "prenom" in patch:
+            patch["prenom"] = _normalize_contact_prenom(patch.get("prenom"))
+
+        if "nom" in patch:
+            patch["nom"] = _normalize_contact_nom(patch.get("nom"))
 
         # règles minimales (vendable + cohérent)
         if "nom" in patch:

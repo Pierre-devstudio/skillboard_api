@@ -256,6 +256,11 @@
     el.classList.toggle("error", !!isError);
   }
 
+  function normalizeValue(v) {
+    const s = (v ?? "").toString().trim();
+    return s.length === 0 ? null : s;
+  }
+
   function hideSaveSuccess(id) {
     const el = document.getElementById(id);
     if (!el) return;
@@ -288,9 +293,23 @@
     }, 5000);
   }
 
-  function normalizeValue(v) {
-    const s = (v ?? "").toString().trim();
-    return s.length === 0 ? null : s;
+  function normalizeContactNom(raw) {
+    const s = (raw ?? "").toString().trim().replace(/\s+/g, " ");
+    return s ? s.toLocaleUpperCase("fr-FR") : "";
+  }
+
+  function normalizeContactPrenom(raw) {
+    const s = (raw ?? "").toString().trim().replace(/\s+/g, " ").toLocaleLowerCase("fr-FR");
+    if (!s) return "";
+    return s.charAt(0).toLocaleUpperCase("fr-FR") + s.slice(1);
+  }
+
+  function applyContactIdentityFormat() {
+    const prenom = document.getElementById("ct_prenom_ca");
+    const nom = document.getElementById("ct_nom_ca");
+
+    if (prenom) prenom.value = normalizeContactPrenom(prenom.value);
+    if (nom) nom.value = normalizeContactNom(nom.value);
   }
 
   function buildPatchFromInitial(initialObj, currentObj, allowedKeys) {
@@ -324,25 +343,35 @@
   }
 
   function setEntrepriseEditMode(isEdit) {
+    const admin = isAdmin();
+
     if (isEdit) hideSaveSuccess("entSaveSuccess");
 
-    document.querySelectorAll("[data-editable-ent='1']").forEach(el => el.disabled = !isEdit);
+    document.querySelectorAll("[data-editable-ent='1']").forEach(el => {
+      el.disabled = !(admin && isEdit);
+    });
+
     const b1 = document.getElementById("btnEditEntreprise");
     const b2 = document.getElementById("btnSaveEntreprise");
     const b3 = document.getElementById("btnCancelEntreprise");
-    if (b1) b1.style.display = isEdit ? "none" : "inline-flex";
-    if (b2) b2.style.display = isEdit ? "inline-flex" : "none";
-    if (b3) b3.style.display = isEdit ? "inline-flex" : "none";
+
+    if (b1) b1.style.display = (!admin || isEdit) ? "none" : "inline-flex";
+    if (b2) b2.style.display = (admin && isEdit) ? "inline-flex" : "none";
+    if (b3) b3.style.display = (admin && isEdit) ? "inline-flex" : "none";
   }
 
   function setContactEditMode(isEdit) {
     if (isEdit) hideSaveSuccess("contactSaveSuccess");
 
-    document.querySelectorAll("[data-editable-ct='1']").forEach(el => el.disabled = !isEdit);
+    document.querySelectorAll("[data-editable-ct='1']").forEach(el => {
+      el.disabled = !isEdit;
+    });
+
     // IMPORTANT : le champ rôle est disabled dans le HTML et n'a PAS data-editable-ct
     const b1 = document.getElementById("btnEditContact");
     const b2 = document.getElementById("btnSaveContact");
     const b3 = document.getElementById("btnCancelContact");
+
     if (b1) b1.style.display = isEdit ? "none" : "inline-flex";
     if (b2) b2.style.display = isEdit ? "inline-flex" : "none";
     if (b3) b3.style.display = isEdit ? "inline-flex" : "none";
@@ -422,8 +451,8 @@
     const civ = document.getElementById("ct_civ_ca");
     if (civ) civ.value = (ct.civilite || "").trim();
 
-    setValueOrEmpty("ct_prenom_ca", ct.prenom);
-    setValueOrEmpty("ct_nom_ca", ct.nom);
+    setValueOrEmpty("ct_prenom_ca", normalizeContactPrenom(ct.prenom));
+    setValueOrEmpty("ct_nom_ca", normalizeContactNom(ct.nom));
 
     // Lecture seule: rôle d'accès Studio
     setValueOrEmpty("ct_role_ca", ct.role);
@@ -492,10 +521,12 @@
   }
 
   function collectContactFromUI() {
+    applyContactIdentityFormat();
+
     return {
       civilite: normalizeValue(document.getElementById("ct_civ_ca")?.value),
-      prenom: normalizeValue(document.getElementById("ct_prenom_ca")?.value),
-      nom: normalizeValue(document.getElementById("ct_nom_ca")?.value),
+      prenom: normalizeValue(normalizeContactPrenom(document.getElementById("ct_prenom_ca")?.value)),
+      nom: normalizeValue(normalizeContactNom(document.getElementById("ct_nom_ca")?.value)),
       email: normalizeValue(document.getElementById("ct_mail_ca")?.value),
       telephone: normalizeValue(document.getElementById("ct_tel_ca")?.value),
       telephone2: normalizeValue(document.getElementById("ct_tel2_ca")?.value),
@@ -518,7 +549,7 @@
 
     if (Object.keys(patch).length === 0) {
       portal.showAlert("", "");
-      setEntrepriseEditMode(false);
+      setEntrepriseEditMode(false);      
       return;
     }
 
@@ -545,6 +576,8 @@
 
   async function saveContact(portal) {
     const ownerId = getOwnerId();
+    applyContactIdentityFormat();
+
     const current = collectContactFromUI();
 
     if (!current.nom || current.nom.trim().length === 0) {
@@ -556,9 +589,8 @@
     const patch = buildPatchFromInitial(_initialContact, current, allowed);
 
     if (Object.keys(patch).length === 0) {
-    portal.showAlert("", "");
-    setContactEditMode(false);
-    showSaveSuccess("contactSaveSuccess");
+      portal.showAlert("", "");
+      setContactEditMode(false);
       return;
     }
 
@@ -578,6 +610,7 @@
 
     portal.showAlert("", "");
     setContactEditMode(false);
+    showSaveSuccess("contactSaveSuccess");
   }
 
   function cancelEntreprise(portal) {
@@ -695,6 +728,29 @@
       el.addEventListener("input", () => formatPhoneInput(el));
       el.addEventListener("blur", () => formatPhoneInput(el));
     });
+
+    const prenomContact = document.getElementById("ct_prenom_ca");
+    if (prenomContact) {
+      prenomContact.addEventListener("blur", () => {
+        prenomContact.value = normalizeContactPrenom(prenomContact.value);
+      });
+    }
+
+    const nomContact = document.getElementById("ct_nom_ca");
+    if (nomContact) {
+      nomContact.addEventListener("input", () => {
+        const start = nomContact.selectionStart;
+        const end = nomContact.selectionEnd;
+        nomContact.value = normalizeContactNom(nomContact.value);
+        try {
+          nomContact.setSelectionRange(start, end);
+        } catch (_) {}
+      });
+
+      nomContact.addEventListener("blur", () => {
+        nomContact.value = normalizeContactNom(nomContact.value);
+      });
+    }
 
     setEntrepriseEditMode(false);
     setContactEditMode(false);
