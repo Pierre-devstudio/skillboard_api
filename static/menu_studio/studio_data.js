@@ -332,15 +332,6 @@
     sel.value = selectedId || "";
   }
 
-  function setOpcoHintFromCurrent() {
-    const sel = document.getElementById("ent_id_opco");
-    if (!sel) return;
-    const id = sel.value || "";
-    if (!id) { setTextOrDash("opcoHint", "—", false); return; }
-    const item = (_refOpco || []).find(x => x.id_opco === id);
-    setTextOrDash("opcoHint", item ? item.nom_opco : "—", false);
-  }
-
   async function lookupIdcc(portal, idcc) {
     const v = (idcc || "").trim();
     if (!v) { setTextOrDash("idccHint", "—", false); return; }
@@ -387,7 +378,6 @@
     setValueOrEmpty("ent_idcc", org.idcc);
     setTextOrDash("idccHint", org.idcc_libelle || "—", false);
 
-    setTextOrDash("opcoHint", org.opco_nom || "—", false);
     renderEntrepriseLogo(org.logo || { has_logo: false }).catch(() => {});
   }
 
@@ -655,11 +645,6 @@
     const idccInput = document.getElementById("ent_idcc");
     if (idccInput) {
       idccInput.addEventListener("blur", async () => lookupIdcc(portal, idccInput.value));
-    }
-
-    const opcoSel = document.getElementById("ent_id_opco");
-    if (opcoSel) {
-      opcoSel.addEventListener("change", () => setOpcoHintFromCurrent());
     }
 
     ["ent_telephone_ent", "ct_tel_ca", "ct_tel2_ca"].forEach(id => {
