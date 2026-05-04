@@ -133,15 +133,27 @@
           <div class="row">
             <div class="info-item" style="flex:3; min-width:260px;">
               <div class="label">Responsabilités</div>
+              <div class="sb-help sb-richtext-help">
+                Structure attendue : ajoutez une activité principale, puis détaillez ses sous-activités associées.
+              </div>
+
               <div class="sb-richtext" data-rt="posteResp">
                 <div class="sb-richtext-bar">
                   <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="bold" title="Gras"><b>G</b></button>
                   <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="italic" title="Italique"><i>I</i></button>
                   <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="underline" title="Souligner"><u>S</u></button>
+
                   <span class="sb-richtext-sep"></span>
-                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="insertUnorderedList" title="Liste à puces">• Liste</button>
-                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="insertOrderedList" title="Liste numérotée">1. Liste</button>
+
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-richtext-struct-btn" data-rt-action="main-activity" title="Ajouter une activité principale numérotée">
+                    Activité principale
+                  </button>
+                  <button type="button" class="sb-btn sb-btn--soft sb-btn--xs sb-richtext-struct-btn" data-rt-action="sub-activity" title="Ajouter une sous-activité en puce sous l’activité principale">
+                    Sous-activité
+                  </button>
+
                   <span class="sb-richtext-sep"></span>
+
                   <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-cmd="removeFormat" title="Nettoyer">Nettoyer</button>
                 </div>
 

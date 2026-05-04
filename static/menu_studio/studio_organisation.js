@@ -459,6 +459,174 @@
         else el.innerHTML = html || "";
     }
 
+    const RT_MAIN_ACTIVITY_PLACEHOLDER = "Activité principale à renseigner";
+    const RT_SUB_ACTIVITY_PLACEHOLDER = "Sous-activité à renseigner";
+
+    function rtFocusAndSelectNode(node){
+        if (!node) return;
+
+        const range = document.createRange();
+        range.selectNodeContents(node);
+
+        const sel = window.getSelection();
+        if (!sel) return;
+
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    function rtEnsureMainList(ed){
+        if (!ed) return null;
+
+        let ol = Array.from(ed.children || []).find(el => {
+            return (el.tagName || "").toUpperCase() === "OL";
+        });
+
+        if (!ol){
+            ol = document.createElement("ol");
+            ed.appendChild(ol);
+        }
+
+        return ol;
+    }
+
+    function rtCreateTextSpan(text, className){
+        const span = document.createElement("span");
+        span.className = className || "";
+        span.textContent = text || "";
+        return span;
+    }
+
+    function rtGetMainItems(ed){
+        const ol = rtEnsureMainList(ed);
+        if (!ol) return [];
+        return Array.from(ol.children || []).filter(el => {
+            return (el.tagName || "").toUpperCase() === "LI";
+        });
+    }
+
+    function rtGetCurrentMainItem(ed){
+        if (!ed) return null;
+
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount) return null;
+
+        let node = sel.anchorNode;
+        if (!node) return null;
+        if (node.nodeType === 3) node = node.parentElement;
+        if (!node || !node.closest) return null;
+
+        const ol = Array.from(ed.children || []).find(el => {
+            return (el.tagName || "").toUpperCase() === "OL";
+        });
+        if (!ol) return null;
+
+        let li = node.closest("li");
+        if (!li || !ed.contains(li)) return null;
+
+        while (li && li.parentElement !== ol){
+            li = li.parentElement ? li.parentElement.closest("li") : null;
+        }
+
+        return (li && li.parentElement === ol) ? li : null;
+    }
+
+    function rtAppendMainActivity(ed, shouldFocus){
+        const ol = rtEnsureMainList(ed);
+        if (!ol) return null;
+
+        const li = document.createElement("li");
+        const label = rtCreateTextSpan(RT_MAIN_ACTIVITY_PLACEHOLDER, "sb-rt-main-label");
+        li.appendChild(label);
+
+        const ul = document.createElement("ul");
+        li.appendChild(ul);
+
+        ol.appendChild(li);
+
+        if (shouldFocus !== false){
+            ed.focus();
+            rtFocusAndSelectNode(label);
+        }
+
+        return li;
+    }
+
+    function rtAddMainActivity(id){
+        const ed = byId(id);
+        if (!ed) return;
+
+        rtAppendMainActivity(ed, true);
+    }
+
+    function rtAddSubActivity(id){
+        const ed = byId(id);
+        if (!ed) return;
+
+        let mainLi = rtGetCurrentMainItem(ed);
+
+        if (!mainLi){
+            const items = rtGetMainItems(ed);
+            mainLi = items.length ? items[items.length - 1] : null;
+        }
+
+        if (!mainLi){
+            mainLi = rtAppendMainActivity(ed, false);
+        }
+
+        if (!mainLi) return;
+
+        let ul = Array.from(mainLi.children || []).find(el => {
+            return (el.tagName || "").toUpperCase() === "UL";
+        });
+
+        if (!ul){
+            ul = document.createElement("ul");
+            mainLi.appendChild(ul);
+        }
+
+        const subLi = document.createElement("li");
+        const label = rtCreateTextSpan(RT_SUB_ACTIVITY_PLACEHOLDER, "sb-rt-sub-label");
+        subLi.appendChild(label);
+        ul.appendChild(subLi);
+
+        ed.focus();
+        rtFocusAndSelectNode(label);
+    }
+
+    function rtGetStructuredHtml(id){
+        const el = byId(id);
+        if (!el) return "";
+
+        const tag = (el.tagName || "").toUpperCase();
+        if (tag === "TEXTAREA" || tag === "INPUT") return el.value || "";
+
+        const clone = el.cloneNode(true);
+
+        clone.querySelectorAll(".sb-rt-main-label, .sb-rt-sub-label").forEach(node => {
+            const txt = (node.textContent || "").replace(/\u00a0/g, " ").trim();
+            if (txt === RT_MAIN_ACTIVITY_PLACEHOLDER || txt === RT_SUB_ACTIVITY_PLACEHOLDER){
+                node.textContent = "";
+            }
+        });
+
+        Array.from(clone.querySelectorAll("li")).reverse().forEach(li => {
+            const txt = (li.textContent || "").replace(/\u00a0/g, " ").trim();
+            if (!txt) li.remove();
+        });
+
+        Array.from(clone.querySelectorAll("ul, ol")).reverse().forEach(list => {
+            if (!list.querySelector("li")) list.remove();
+        });
+
+        const txt = (clone.textContent || "").replace(/\u00a0/g, " ").trim();
+        return txt ? (clone.innerHTML || "") : "";
+    }
+
+    function rtGetPosteRespHtml(){
+        return rtGetStructuredHtml("posteResp").trim();
+    }
+
     function bindRichtext(id){
         const ed = byId(id);
         if (!ed) return;
@@ -469,23 +637,44 @@
 
         bar._sbBound = true;
 
-        // Paste propre (évite le HTML Word/Outlook)
+        // Paste propre : on évite le HTML Word/Outlook, sinon la fiche de poste devient une décharge CSS.
         ed.addEventListener("paste", (e) => {
             try{
-            e.preventDefault();
-            const text = (e.clipboardData || window.clipboardData).getData("text/plain") || "";
-            document.execCommand("insertText", false, text);
+                e.preventDefault();
+                const text = (e.clipboardData || window.clipboardData).getData("text/plain") || "";
+                document.execCommand("insertText", false, text);
             } catch(_){}
+        });
+
+        bar.querySelectorAll("[data-rt-action]").forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const action = btn.getAttribute("data-rt-action") || "";
+                if (action === "main-activity") {
+                    rtAddMainActivity(id);
+                    return;
+                }
+
+                if (action === "sub-activity") {
+                    rtAddSubActivity(id);
+                    return;
+                }
+            });
         });
 
         bar.querySelectorAll("[data-cmd]").forEach(btn => {
             btn.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            ed.focus();
-            const cmd = btn.getAttribute("data-cmd");
-            if (!cmd) return;
-            document.execCommand(cmd, false, null);
+                e.preventDefault();
+                e.stopPropagation();
+
+                ed.focus();
+
+                const cmd = btn.getAttribute("data-cmd");
+                if (!cmd) return;
+
+                document.execCommand(cmd, false, null);
             });
         });
     }
@@ -1944,7 +2133,7 @@ body {
     function seedPosteAiModalFromCurrent(){
         const title = (byId("posteIntitule")?.value || "").trim();
         const mission = (byId("posteMission")?.value || "").trim();
-        const respHtml = rtGetHtml("posteResp");
+        const respHtml = rtGetPosteRespHtml();
         const respTxt = htmlToPlainText(respHtml);
         const ctr = (byId("posteCtrDetailContrainte")?.value || "").trim();
         const pieces = [];
@@ -1990,7 +2179,7 @@ body {
             id_poste: _editingPosteId || null,
             current_intitule_poste: (byId("posteIntitule")?.value || "").trim() || null,
             current_mission_principale: (byId("posteMission")?.value || "").trim() || null,
-            current_responsabilites_html: rtGetHtml("posteResp").trim() || null,
+            current_responsabilites_html: rtGetPosteRespHtml() || null,
             intitule: (byId("posteAiIntitule")?.value || "").trim(),
             contexte: (byId("posteAiContexte")?.value || "").trim() || null,
             taches: (byId("posteAiTaches")?.value || "").trim() || null,
@@ -2070,7 +2259,7 @@ body {
             id_poste: _editingPosteId || null,
             intitule_poste: (byId("posteIntitule")?.value || "").trim() || null,
             mission_principale: (byId("posteMission")?.value || "").trim() || null,
-            responsabilites_html: rtGetHtml("posteResp").trim() || null,
+            responsabilites_html: rtGetPosteRespHtml() || null,
             ai_contexte: (byId("posteAiContexte")?.value || "").trim() || null,
             ai_taches: (byId("posteAiTaches")?.value || "").trim() || null,
             ai_outils: (byId("posteAiOutils")?.value || "").trim() || null,
@@ -4222,7 +4411,7 @@ body {
         const codc = (byId("posteCodifClient")?.value || "").trim();
         const title = (byId("posteIntitule")?.value || "").trim();
         const mission = (byId("posteMission")?.value || "").trim();
-        const resp = rtGetHtml("posteResp").trim();
+        const resp = rtGetPosteRespHtml();
 
         if (!sid){
             portal.showAlert("error", "Sélectionne un service.");
