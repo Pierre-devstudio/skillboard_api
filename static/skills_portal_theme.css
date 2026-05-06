@@ -267,6 +267,58 @@
   margin: 2px 0;
 }
 
+/* Lecture structurée des responsabilités poste
+   Utilisé dans Insights : rendu conforme au stockage HTML Studio, sans édition.
+*/
+.sb-richtext-readonly{
+  border: 1px solid rgba(17,24,39,.14);
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px;
+  max-height: 260px;
+  overflow: auto;
+  box-sizing: border-box;
+  line-height: 1.45;
+  font-size: 13px;
+  color: #111827;
+}
+
+.sb-richtext-readonly ol,
+.sb-richtext-readonly ul{
+  margin: 0 0 0 18px;
+  padding: 0;
+}
+
+.sb-richtext-readonly ol > li{
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.sb-richtext-readonly ol > li > ul{
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+.sb-richtext-readonly ol > li > ul > li{
+  margin: 2px 0;
+}
+
+.sb-richtext-readonly p{
+  margin: 0 0 8px 0;
+}
+
+.sb-richtext-readonly strong{
+  font-weight: 700;
+}
+
+.sb-richtext-readonly em{
+  font-style: italic;
+}
+
+.sb-richtext-readonly u{
+  text-decoration: underline;
+}
+
 /* -------- Fields: text-block (label au-dessus) -------- */
 .sb-field.text-block{
   display: flex;

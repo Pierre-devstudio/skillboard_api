@@ -13,6 +13,7 @@ from app.routers.skills_portal_common import (
 
 import html as _html
 import re
+from html.parser import HTMLParser
 
 
 router = APIRouter()
@@ -417,18 +418,185 @@ def _rtf_to_html_basic(rtf: str) -> str:
     return "".join(out).strip()
 
 
+_ALLOWED_RESPONSABILITES_TAGS = {
+    "p",
+    "br",
+    "ol",
+    "ul",
+    "li",
+    "strong",
+    "b",
+    "em",
+    "i",
+    "u",
+    "span",
+}
+
+_RESPONSABILITES_TAG_ALIASES = {
+    "b": "strong",
+    "i": "em",
+}
+
+_RESPONSABILITES_VOID_TAGS = {"br"}
+
+_RESPONSABILITES_DANGEROUS_TAGS = {
+    "script",
+    "style",
+    "iframe",
+    "object",
+    "embed",
+}
+
+
+class _SafeResponsabilitesHtmlParser(HTMLParser):
+    """
+    Nettoyage HTML volontairement limité pour les responsabilités de poste.
+
+    Objectif :
+    - accepter le HTML structuré généré par Studio : ol/li/ul, gras, italique, souligné ;
+    - supprimer les attributs, styles inline, scripts et balises inutiles ;
+    - conserver le rendu lisible dans Insights sans exposer du HTML brut à l’écran.
+    """
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.out = []
+        self.skip_depth = 0
+
+    def _safe_tag(self, tag: str) -> str:
+        t = (tag or "").lower().strip()
+        return _RESPONSABILITES_TAG_ALIASES.get(t, t)
+
+    def handle_starttag(self, tag, attrs):
+        raw_tag = (tag or "").lower().strip()
+
+        if raw_tag in _RESPONSABILITES_DANGEROUS_TAGS:
+            self.skip_depth += 1
+            return
+
+        if self.skip_depth:
+            return
+
+        safe_tag = self._safe_tag(raw_tag)
+        if safe_tag not in _ALLOWED_RESPONSABILITES_TAGS:
+            return
+
+        # Aucun attribut conservé : pas de style inline, pas de onclick, pas de classe héritée du front Studio.
+        if safe_tag in _RESPONSABILITES_VOID_TAGS:
+            self.out.append(f"<{safe_tag}>")
+        else:
+            self.out.append(f"<{safe_tag}>")
+
+    def handle_startendtag(self, tag, attrs):
+        raw_tag = (tag or "").lower().strip()
+
+        if raw_tag in _RESPONSABILITES_DANGEROUS_TAGS:
+            return
+
+        if self.skip_depth:
+            return
+
+        safe_tag = self._safe_tag(raw_tag)
+        if safe_tag not in _ALLOWED_RESPONSABILITES_TAGS:
+            return
+
+        if safe_tag in _RESPONSABILITES_VOID_TAGS:
+            self.out.append(f"<{safe_tag}>")
+        else:
+            self.out.append(f"<{safe_tag}></{safe_tag}>")
+
+    def handle_endtag(self, tag):
+        raw_tag = (tag or "").lower().strip()
+
+        if raw_tag in _RESPONSABILITES_DANGEROUS_TAGS:
+            if self.skip_depth > 0:
+                self.skip_depth -= 1
+            return
+
+        if self.skip_depth:
+            return
+
+        safe_tag = self._safe_tag(raw_tag)
+        if safe_tag not in _ALLOWED_RESPONSABILITES_TAGS:
+            return
+
+        if safe_tag not in _RESPONSABILITES_VOID_TAGS:
+            self.out.append(f"</{safe_tag}>")
+
+    def handle_data(self, data):
+        if self.skip_depth:
+            return
+
+        if data:
+            self.out.append(_html.escape(data, quote=False))
+
+    def get_html(self) -> str:
+        cleaned = "".join(self.out).strip()
+
+        # Nettoyage léger des wrappers vides générés par copier/coller ou édition partielle.
+        cleaned = re.sub(r"<(span|strong|em|u)>\s*</\1>", "", cleaned, flags=re.I)
+        cleaned = re.sub(r"\s+</(p|li)>", lambda m: f"</{m.group(1)}>", cleaned, flags=re.I)
+
+        return cleaned.strip()
+
+
+def _looks_like_responsabilites_html(s: str | None) -> bool:
+    if not s:
+        return False
+
+    return bool(re.search(
+        r"</?(?:p|br|ol|ul|li|strong|b|em|i|u|span)\b[^>]*>",
+        str(s),
+        flags=re.I,
+    ))
+
+
+def _sanitize_responsabilites_html(s: str | None) -> str | None:
+    if not s:
+        return None
+
+    try:
+        parser = _SafeResponsabilitesHtmlParser()
+        parser.feed(str(s))
+        parser.close()
+
+        cleaned = parser.get_html()
+        plain = re.sub(r"<[^>]+>", "", cleaned).replace("\xa0", " ").strip()
+
+        return cleaned if plain else None
+    except Exception:
+        return None
+
+
 def _responsabilites_to_html(raw: str | None) -> str | None:
     if raw is None:
         return None
+
     s = str(raw).strip()
     if not s:
         return None
 
-    # RTF ?
+    # Ancien format : RTF desktop / historique.
     if s.startswith("{\\rtf"):
         return _rtf_to_html_basic(s)
 
-    # texte simple -> HTML safe
+    # Nouveau format Studio : HTML structuré ol/li/ul.
+    candidate = s
+    unescaped = _html.unescape(s)
+
+    # Cas éventuel où du HTML aurait été stocké échappé en base.
+    if _looks_like_responsabilites_html(unescaped) and (
+        not _looks_like_responsabilites_html(s)
+        or re.search(r"&lt;/?(?:p|br|ol|ul|li|strong|b|em|i|u|span)\b", s, flags=re.I)
+    ):
+        candidate = unescaped
+
+    if _looks_like_responsabilites_html(candidate):
+        cleaned = _sanitize_responsabilites_html(candidate)
+        if cleaned:
+            return cleaned
+
+    # Texte simple historique : affichage sécurisé.
     return _html.escape(s).replace("\n", "<br>")
 
 
