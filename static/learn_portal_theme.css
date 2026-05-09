@@ -346,6 +346,51 @@
   text-overflow:ellipsis;
 }
 
+.lf-prereq-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:10px;
+  margin:14px 0 8px;
+}
+
+.lf-prereq-card{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:12px;
+  padding:10px 12px;
+  background:#fff;
+}
+
+.lf-prereq-card-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:8px;
+}
+
+.lf-prereq-title{
+  font-size:13px;
+  font-weight:700;
+  color:#111827;
+}
+
+.lf-prereq-responses{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:10px;
+}
+
+@media (max-width: 900px){
+  .lf-prereq-head{
+    flex-direction:column;
+  }
+
+  .lf-prereq-responses{
+    grid-template-columns:1fr;
+  }
+}
+
 .lf-mini-card{
   border:1px solid rgba(17,24,39,.10);
   border-radius:12px;

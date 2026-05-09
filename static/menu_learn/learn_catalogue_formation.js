@@ -21,6 +21,7 @@
   let _selectedEval = [];
   let _selectedCompStag = [];
   let _selectedCompForm = [];
+  let _prerequis = [];
 
   let _detailContenus = [];
   let _detailPlans = [];
@@ -345,6 +346,121 @@
     }
   }
 
+    function defaultPrereq(){
+        return {
+        id_prerequis: null,
+        titre: "",
+        r1: "Je ne maîtrise pas",
+        r2: "J’ai besoin d’assistance",
+        r3: "Je maîtrise",
+        ordre_affichage: (_prerequis.length || 0) + 1
+        };
+    }
+
+  function normalizePrerequis(rows){
+    const arr = Array.isArray(rows) ? rows : [];
+
+    _prerequis = arr.map((p, idx) => ({
+      id_prerequis: p.id_prerequis || null,
+      titre: p.titre || "",
+      r1: p.r1 || "Je ne maîtrise pas",
+      r2: p.r2 || "J’ai besoin d’assistance",
+      r3: p.r3 || "Je maîtrise",
+      ordre_affichage: p.ordre_affichage || (idx + 1)
+    }));
+  }
+
+  function renderPrerequis(){
+    const host = byId("formPrereqList");
+    if (!host) return;
+
+    host.innerHTML = "";
+
+    if (!_prerequis.length){
+      const empty = document.createElement("div");
+      empty.className = "card-sub";
+      empty.textContent = "Aucun prérequis évaluables ajouté.";
+      host.appendChild(empty);
+      return;
+    }
+
+    _prerequis.forEach((p, idx) => {
+      const card = document.createElement("div");
+      card.className = "lf-prereq-card";
+
+      card.innerHTML = `
+        <div class="lf-prereq-card-head">
+          <div class="lf-prereq-title">Prérequis ${idx + 1}</div>
+          <button type="button" class="sb-icon-btn sb-icon-btn--danger" title="Retirer" aria-label="Retirer">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"/>
+              <path d="M8 6V4h8v2"/>
+              <path d="M19 6l-1 14H6L5 6"/>
+              <path d="M10 11v6"/>
+              <path d="M14 11v6"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Libellé du prérequis</div>
+            <input type="text" class="lf-prereq-input" data-field="titre" value="${htmlEsc(p.titre || "")}" />
+          </div>
+        </div>
+
+        <div class="lf-prereq-responses">
+          <div class="info-item">
+            <div class="label">Réponse 1</div>
+            <input type="text" class="lf-prereq-input" data-field="r1" value="${htmlEsc(p.r1 || "")}" />
+          </div>
+          <div class="info-item">
+            <div class="label">Réponse 2</div>
+            <input type="text" class="lf-prereq-input" data-field="r2" value="${htmlEsc(p.r2 || "")}" />
+          </div>
+          <div class="info-item">
+            <div class="label">Réponse 3</div>
+            <input type="text" class="lf-prereq-input" data-field="r3" value="${htmlEsc(p.r3 || "")}" />
+          </div>
+        </div>
+      `;
+
+      card.querySelectorAll(".lf-prereq-input").forEach(inp => {
+        inp.addEventListener("input", () => {
+          const field = inp.dataset.field;
+          _prerequis[idx][field] = inp.value || "";
+        });
+      });
+
+      const btnRemove = card.querySelector(".sb-icon-btn--danger");
+      btnRemove?.addEventListener("click", () => {
+        _prerequis.splice(idx, 1);
+        _prerequis.forEach((x, i) => x.ordre_affichage = i + 1);
+        renderPrerequis();
+      });
+
+      host.appendChild(card);
+    });
+  }
+
+  function addPrerequis(){
+    _prerequis.push(defaultPrereq());
+    renderPrerequis();
+  }
+
+  function buildPrerequisPayload(){
+    return (_prerequis || [])
+      .map((p, idx) => ({
+        id_prerequis: p.id_prerequis || null,
+        titre: (p.titre || "").trim(),
+        r1: (p.r1 || "").trim() || "Je ne maîtrise pas",
+        r2: (p.r2 || "").trim() || "J’ai besoin d’assistance",
+        r3: (p.r3 || "").trim() || "Je maîtrise",
+        ordre_affichage: idx + 1
+      }))
+      .filter(p => p.titre);
+  }
+
   function renderCompetences(){
     renderCompetenceList(
       "formCompStagList",
@@ -595,10 +711,12 @@
     _selectedEval = [];
     _selectedCompStag = [];
     _selectedCompForm = [];
+    _prerequis = [];
     _detailContenus = [];
     _detailPlans = [];
 
     renderRefChecks();
+    renderPrerequis();
     renderCompetences();
     renderContenus();
     renderPlans();
@@ -653,11 +771,13 @@
     _selectedEval = Array.isArray(d.methode_eval_ids) ? d.methode_eval_ids : [];
     _selectedCompStag = Array.isArray(d.competences_stagiaires_ids) ? d.competences_stagiaires_ids : [];
     _selectedCompForm = Array.isArray(d.competences_formateurs_ids) ? d.competences_formateurs_ids : [];
+    normalizePrerequis(d.prerequis || []);
 
     _detailContenus = Array.isArray(d.contenus) ? d.contenus : [];
     _detailPlans = Array.isArray(d.plans) ? d.plans : [];
 
     renderRefChecks();
+    renderPrerequis();
     renderCompetences();
     renderContenus();
     renderPlans();
@@ -682,7 +802,8 @@
       methode_peda: _selectedPeda,
       methode_eval: _selectedEval,
       competences_stagiaires: _selectedCompStag,
-      competences_formateurs: _selectedCompForm
+      competences_formateurs: _selectedCompForm,
+      prerequis: buildPrerequisPayload()
     };
   }
 
@@ -927,6 +1048,7 @@ iframe{width:100%;height:100%;border:0;display:block}
       }
     });
 
+    byId("btnFormPrereqAdd")?.addEventListener("click", addPrerequis);
     byId("formCompStagSearch")?.addEventListener("input", renderCompetences);
     byId("formCompFormSearch")?.addEventListener("input", renderCompetences);
 

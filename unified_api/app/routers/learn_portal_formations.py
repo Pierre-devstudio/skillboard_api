@@ -292,6 +292,117 @@ def _resolve_competences(cur, oid: str, ids: list) -> list:
         if x in by_id
     ]
 
+def _sync_formation_prerequis(cur, oid: str, id_form: str, prerequis: Optional[list]) -> None:
+    """
+    Synchronise les prérequis évaluables d'une fiche formation.
+
+    Principe Novoskill :
+    - pas de suppression physique ;
+    - archivage logique des anciennes lignes ;
+    - réactivation/update si id_prerequis fourni ;
+    - création si nouveau prérequis.
+    """
+    items = prerequis or []
+
+    cur.execute(
+        """
+        UPDATE public.tbl_fiche_formation_prerequis
+        SET archive = TRUE,
+            date_modification = NOW()
+        WHERE id_owner = %s
+          AND id_form = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        """,
+        (oid, id_form),
+    )
+
+    ordre = 1
+
+    for raw in items:
+        if raw is None:
+            continue
+
+        if isinstance(raw, dict):
+            item = raw
+        else:
+            item = raw.dict()
+
+        titre = _clean_text(item.get("titre"), 800)
+        if not titre:
+            continue
+
+        r1 = _clean_text(item.get("r1") or "Je ne maîtrise pas", 300)
+        r2 = _clean_text(item.get("r2") or "J’ai besoin d’assistance", 300)
+        r3 = _clean_text(item.get("r3") or "Je maîtrise", 300)
+
+        try:
+            item_ordre = int(item.get("ordre_affichage") or ordre)
+        except Exception:
+            item_ordre = ordre
+
+        pid = (item.get("id_prerequis") or "").strip()
+
+        if pid:
+            cur.execute(
+                """
+                UPDATE public.tbl_fiche_formation_prerequis
+                SET titre = %s,
+                    r1 = %s,
+                    r2 = %s,
+                    r3 = %s,
+                    ordre_affichage = %s,
+                    archive = FALSE,
+                    date_modification = NOW()
+                WHERE id_owner = %s
+                  AND id_form = %s
+                  AND id_prerequis = %s
+                """,
+                (titre, r1, r2, r3, item_ordre, oid, id_form, pid),
+            )
+
+            if cur.rowcount > 0:
+                ordre += 1
+                continue
+
+        cur.execute(
+            """
+            INSERT INTO public.tbl_fiche_formation_prerequis
+              (
+                id_prerequis,
+                id_owner,
+                id_form,
+                titre,
+                r1,
+                r2,
+                r3,
+                ordre_affichage,
+                archive,
+                date_creation,
+                date_modification
+              )
+            VALUES
+              (
+                %s, %s, %s,
+                %s, %s, %s, %s,
+                %s,
+                FALSE,
+                NOW(),
+                NOW()
+              )
+            """,
+            (
+                str(uuid.uuid4()),
+                oid,
+                id_form,
+                titre,
+                r1,
+                r2,
+                r3,
+                item_ordre,
+            ),
+        )
+
+        ordre += 1
 
 def _fetch_form_detail(cur, oid: str, id_form: str) -> dict:
     cur.execute(
@@ -481,6 +592,15 @@ def _fetch_form_detail(cur, oid: str, id_form: str) -> dict:
 # Models
 # ======================================================
 
+class FormationPrerequisPayload(BaseModel):
+    id_prerequis: Optional[str] = None
+    titre: Optional[str] = None
+    r1: Optional[str] = None
+    r2: Optional[str] = None
+    r3: Optional[str] = None
+    ordre_affichage: Optional[int] = None
+
+
 class FormationPayload(BaseModel):
     titre: str
     fournisseur_formation: Optional[str] = None
@@ -494,6 +614,7 @@ class FormationPayload(BaseModel):
     methode_eval: Optional[list] = None
     competences_stagiaires: Optional[list] = None
     competences_formateurs: Optional[list] = None
+    prerequis: Optional[list[FormationPrerequisPayload]] = None
     attestation_specifique: Optional[str] = None
     domaine: Optional[str] = None
     tarif_mini: Optional[Any] = None
@@ -513,6 +634,7 @@ class FormationUpdatePayload(BaseModel):
     methode_eval: Optional[list] = None
     competences_stagiaires: Optional[list] = None
     competences_formateurs: Optional[list] = None
+    prerequis: Optional[list[FormationPrerequisPayload]] = None
     attestation_specifique: Optional[str] = None
     domaine: Optional[str] = None
     tarif_mini: Optional[Any] = None
@@ -898,6 +1020,8 @@ def learn_formation_create(id_effectif: str, payload: FormationPayload, request:
                     ),
                 )
 
+                _sync_formation_prerequis(cur, oid, fid, payload.prerequis)
+
                 conn.commit()
 
         return {"id_form": fid, "code": code}
@@ -1000,6 +1124,9 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
                 if "etat" in patch_fields:
                     cols.append("etat = %s")
                     vals.append((payload.etat or "à valider").strip())
+
+                if "prerequis" in patch_fields:
+                    _sync_formation_prerequis(cur, oid, fid, payload.prerequis)
 
                 if cols:
                     cols.append("date_modification = NOW()")
