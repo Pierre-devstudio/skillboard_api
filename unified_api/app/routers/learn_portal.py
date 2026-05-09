@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg.rows import dict_row
 
-from app.routers import learn_portal_auth, learn_portal_dashboard
+from app.routers import learn_portal_auth, learn_portal_dashboard, learn_portal_competences
 from app.routers.skills_portal_common import get_conn
 from app.routers.learn_portal_common import (
     learn_require_user,
@@ -97,6 +97,9 @@ for route in learn_portal_auth.router.routes:
     app_local.router.routes.append(route)
 
 for route in learn_portal_dashboard.router.routes:
+    app_local.router.routes.append(route)
+
+for route in learn_portal_competences.router.routes:
     app_local.router.routes.append(route)
 
 router = app_local
