@@ -346,7 +346,7 @@ def _sync_formation_prerequis(cur, oid: str, id_form: str, prerequis: Optional[l
 
         r1 = _clean_text(item.get("r1") or "Je ne maîtrise pas", 300)
         r2 = _clean_text(item.get("r2") or "J’ai besoin d’assistance", 300)
-        r3 = _clean_text(item.get("r3") or "Je maîtrise", 300)
+        r3 = _clean_text(item.get("r3") or "", 300)
 
         try:
             item_ordre = int(item.get("ordre_affichage") or ordre)

@@ -234,22 +234,31 @@
 
 .sb-form-tabs{
   display:flex;
+  align-items:flex-end;
   gap:6px;
   padding:10px 0 0 0;
+  min-height:43px;
+  flex:0 0 43px;
   border-bottom:1px solid rgba(17,24,39,.08);
   overflow:auto;
 }
 
 .sb-form-tab{
+  min-height:32px;
+  height:32px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   border:1px solid rgba(231,36,243,.22);
   background:rgba(231,36,243,.08);
   color:#111827;
   border-radius:10px 10px 0 0;
-  padding:8px 10px;
+  padding:0 10px;
   font-size:12px;
   font-weight:700;
   cursor:pointer;
   white-space:nowrap;
+  box-sizing:border-box;
 }
 
 .sb-form-tab:hover{
@@ -290,14 +299,18 @@
 
 .lf-check-grid{
   display:grid;
+  align-content:start;
   gap:7px;
   margin-top:6px;
-  max-height:260px;
+  height:280px;
+  min-height:280px;
+  max-height:280px;
   overflow:auto;
   border:1px solid rgba(17,24,39,.10);
   border-radius:10px;
   padding:8px;
   background:#fff;
+  box-sizing:border-box;
 }
 
 .lf-check-item{
@@ -377,6 +390,11 @@
   align-items:center;
   gap:10px;
   margin-bottom:8px;
+}
+
+.lf-label-muted{
+  font-weight:500;
+  color:#64748b;
 }
 
 .lf-prereq-title{

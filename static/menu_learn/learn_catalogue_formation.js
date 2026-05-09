@@ -393,12 +393,12 @@
 
     function defaultPrereq(){
         return {
-        id_prerequis: null,
-        titre: "",
-        r1: "Je ne maîtrise pas",
-        r2: "J’ai besoin d’assistance",
-        r3: "Je maîtrise",
-        ordre_affichage: (_prerequis.length || 0) + 1
+            id_prerequis: null,
+            titre: "",
+            r1: "Oui",
+            r2: "Non",
+            r3: "",
+            ordre_affichage: (_prerequis.length || 0) + 1
         };
     }
 
@@ -410,7 +410,7 @@
       titre: p.titre || "",
       r1: p.r1 || "Je ne maîtrise pas",
       r2: p.r2 || "J’ai besoin d’assistance",
-      r3: p.r3 || "Je maîtrise",
+      r3: p.r3 || "",
       ordre_affichage: p.ordre_affichage || (idx + 1)
     }));
   }
@@ -464,7 +464,7 @@
             <input type="text" class="lf-prereq-input" data-field="r2" value="${htmlEsc(p.r2 || "")}" />
           </div>
           <div class="info-item">
-            <div class="label">Réponse 3</div>
+            <div class="label">Réponse 3 <span class="lf-label-muted">(optionnelle)</span></div>
             <input type="text" class="lf-prereq-input" data-field="r3" value="${htmlEsc(p.r3 || "")}" />
           </div>
         </div>
@@ -500,7 +500,7 @@
         titre: (p.titre || "").trim(),
         r1: (p.r1 || "").trim() || "Je ne maîtrise pas",
         r2: (p.r2 || "").trim() || "J’ai besoin d’assistance",
-        r3: (p.r3 || "").trim() || "Je maîtrise",
+        r3: (p.r3 || "").trim(),
         ordre_affichage: idx + 1
       }))
       .filter(p => p.titre);
