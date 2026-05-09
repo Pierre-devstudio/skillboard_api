@@ -526,7 +526,16 @@ def _fetch_form_detail(cur, oid: str, id_form: str) -> dict:
           p.modalite_generale,
           p.chemin_sharepoint,
           p.date_creation,
-          COALESCE(SUM(NULLIF(b.duree, '')::numeric), 0) AS duree_totale,
+          COALESCE(
+            SUM(
+              CASE
+                WHEN trim(COALESCE(b.duree::text, '')) ~ '^[0-9]+([\\.,][0-9]+)?$'
+                THEN replace(trim(b.duree::text), ',', '.')::numeric
+                ELSE 0
+              END
+            ),
+            0
+          ) AS duree_totale,
           COUNT(DISTINCT b.id_bloc_peda) AS nb_blocs
         FROM public.tbl_plan_pedagogique p
         LEFT JOIN public.tbl_bloc_pedagogique b

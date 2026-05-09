@@ -636,7 +636,13 @@
         btnEdit.title = "Modifier";
         btnEdit.setAttribute("aria-label", "Modifier");
         btnEdit.innerHTML = iconEdit();
-        btnEdit.addEventListener("click", () => openEdit(window.portal, it));
+        btnEdit.addEventListener("click", async () => {
+          try{
+            await openEdit(window.portal, it);
+          } catch(e){
+            window.portal.showAlert("error", e?.message || String(e));
+          }
+        });
 
         actions.appendChild(btnEdit);
 
@@ -676,6 +682,101 @@
     _items = Array.isArray(data?.items) ? data.items : [];
 
     renderList();
+  }
+
+    function setFieldValue(id, value){
+        const el = byId(id);
+        if (!el) return;
+        el.value = value ?? "";
+    }
+
+  function setSelectValue(id, value){
+    const el = byId(id);
+    if (!el) return;
+
+    const v = (value ?? "").toString();
+
+    const exists = Array.from(el.options || []).some(o => o.value === v);
+    if (v && !exists){
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      el.appendChild(opt);
+    }
+
+    el.value = v;
+  }
+
+  function normalizeIdArray(v){
+    if (!v) return [];
+
+    if (Array.isArray(v)){
+      return v.map(x => String(x || "").trim()).filter(Boolean);
+    }
+
+    if (typeof v === "string"){
+      const s = v.trim();
+      if (!s) return [];
+
+      try{
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)){
+          return parsed.map(x => String(x || "").trim()).filter(Boolean);
+        }
+      } catch(_){}
+
+      return [];
+    }
+
+    return [];
+  }
+
+  function fillFormationModal(d){
+    if (!d || !d.id_form){
+      throw new Error("Détail formation vide ou invalide.");
+    }
+
+    const badge = byId("formModalBadge");
+    if (badge){
+      badge.textContent = d.code || "";
+      badge.style.display = d.code ? "" : "none";
+    }
+
+    const modalTitle = byId("formModalTitle");
+    if (modalTitle){
+      modalTitle.textContent = d.titre || "Formation";
+    }
+
+    setFieldValue("formTitre", d.titre || "");
+    setSelectValue("formEtat", d.etat || "à valider");
+    setSelectValue("formDomaine", d.domaine || "");
+    setSelectValue("formFournisseur", d.fournisseur_formation || "");
+    setFieldValue("formType", d.type_formation || "");
+    setFieldValue("formDuree", d.duree ?? "");
+    setFieldValue("formTarif", d.tarif_mini ?? "");
+    setFieldValue("formPresentation", d.presentation || "");
+    setFieldValue("formPublic", d.public_cible || "");
+    setFieldValue("formObjectifs", d.objectifs || "");
+    setFieldValue("formAttestation", d.attestation_specifique || "");
+
+    _selectedModalites = normalizeIdArray(d.modalites_ids);
+    _selectedPeda = normalizeIdArray(d.methode_peda_ids);
+    _selectedEval = normalizeIdArray(d.methode_eval_ids);
+    _selectedCompStag = normalizeIdArray(d.competences_stagiaires_ids);
+    _selectedCompForm = normalizeIdArray(d.competences_formateurs_ids);
+
+    normalizePrerequis(d.prerequis || []);
+
+    _detailContenus = Array.isArray(d.contenus) ? d.contenus : [];
+    _detailPlans = Array.isArray(d.plans) ? d.plans : [];
+
+    renderRefChecks();
+    renderPrerequis();
+    renderCompetences();
+    renderContenus();
+    renderPlans();
+
+    setTab("identite");
   }
 
   async function openCreate(portal){
@@ -725,65 +826,73 @@
     openModal("modalFormEdit");
   }
 
-  async function openEdit(portal, it){
-    if (!isSupervisor()) return;
+    async function openEdit(portal, it){
+        if (!isSupervisor()) return;
 
-    await ensureRefs(portal);
+        try{
+        await ensureRefs(portal);
 
-    _modalMode = "edit";
-    _editingId = it.id_form;
+        _modalMode = "edit";
+        _editingId = it?.id_form || null;
 
-    const b = byId("formModalBadge");
-    if (b){
-      b.textContent = it.code || "";
-      b.style.display = it.code ? "" : "none";
+        if (!_editingId){
+            throw new Error("Identifiant formation manquant.");
+        }
+
+        const badge = byId("formModalBadge");
+        if (badge){
+            badge.textContent = it?.code || "";
+            badge.style.display = it?.code ? "" : "none";
+        }
+
+        const modalTitle = byId("formModalTitle");
+        if (modalTitle){
+            modalTitle.textContent = it?.titre || "Chargement de la formation…";
+        }
+
+        setFieldValue("formTitre", "");
+        setSelectValue("formEtat", "à valider");
+        setSelectValue("formDomaine", "");
+        setSelectValue("formFournisseur", "");
+        setFieldValue("formType", "");
+        setFieldValue("formDuree", "");
+        setFieldValue("formTarif", "");
+        setFieldValue("formPresentation", "");
+        setFieldValue("formPublic", "");
+        setFieldValue("formObjectifs", "");
+        setFieldValue("formAttestation", "");
+
+        _selectedModalites = [];
+        _selectedPeda = [];
+        _selectedEval = [];
+        _selectedCompStag = [];
+        _selectedCompForm = [];
+        _prerequis = [];
+        _detailContenus = [];
+        _detailPlans = [];
+
+        renderRefChecks();
+        renderPrerequis();
+        renderCompetences();
+        renderContenus();
+        renderPlans();
+
+        setTab("identite");
+        openModal("modalFormEdit");
+
+        const effectifId = getEffectifId();
+
+        const d = await portal.apiJson(
+            `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/${encodeURIComponent(_editingId)}`
+        );
+
+        fillFormationModal(d);
+
+        } catch(e){
+        closeModal("modalFormEdit");
+        portal.showAlert("error", "Impossible de charger la fiche formation : " + (e?.message || String(e)));
+        }
     }
-
-    byId("formModalTitle").textContent = it.titre || "Formation";
-    openModal("modalFormEdit");
-
-    const effectifId = getEffectifId();
-    const d = await portal.apiJson(
-      `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/${encodeURIComponent(_editingId)}`
-    );
-
-    if (b){
-      b.textContent = d.code || "";
-      b.style.display = d.code ? "" : "none";
-    }
-
-    byId("formModalTitle").textContent = d.titre || "Formation";
-
-    byId("formTitre").value = d.titre || "";
-    byId("formEtat").value = d.etat || "à valider";
-    byId("formDomaine").value = d.domaine || "";
-    byId("formFournisseur").value = d.fournisseur_formation || "";
-    byId("formType").value = d.type_formation || "";
-    byId("formDuree").value = d.duree || "";
-    byId("formTarif").value = d.tarif_mini || "";
-    byId("formPresentation").value = d.presentation || "";
-    byId("formPublic").value = d.public_cible || "";
-    byId("formObjectifs").value = d.objectifs || "";
-    byId("formAttestation").value = d.attestation_specifique || "";
-
-    _selectedModalites = Array.isArray(d.modalites_ids) ? d.modalites_ids : [];
-    _selectedPeda = Array.isArray(d.methode_peda_ids) ? d.methode_peda_ids : [];
-    _selectedEval = Array.isArray(d.methode_eval_ids) ? d.methode_eval_ids : [];
-    _selectedCompStag = Array.isArray(d.competences_stagiaires_ids) ? d.competences_stagiaires_ids : [];
-    _selectedCompForm = Array.isArray(d.competences_formateurs_ids) ? d.competences_formateurs_ids : [];
-    normalizePrerequis(d.prerequis || []);
-
-    _detailContenus = Array.isArray(d.contenus) ? d.contenus : [];
-    _detailPlans = Array.isArray(d.plans) ? d.plans : [];
-
-    renderRefChecks();
-    renderPrerequis();
-    renderCompetences();
-    renderContenus();
-    renderPlans();
-
-    setTab("identite");
-  }
 
   function buildPayload(){
     return {
