@@ -1,8 +1,223 @@
-<section id="view-catalogue-formation">
+<section id="view-catalogue_formation" data-view="catalogue_formation">
   <div class="card">
-    <div class="card-title">Catalogue de formation</div>
-    <div class="card-sub">
-      La page est ouverte. Le contenu fonctionnel sera ajouté ensuite.
+    <div class="sb-card-head">
+      <div>
+        <div class="card-title">Catalogue de formations</div>
+        <div class="card-sub">Créer, modifier, archiver les fiches formation du référentiel Learn.</div>
+      </div>
+      <div class="sb-actions">
+        <span class="sb-save-success" id="catFormsSuccess" style="display:none;"></span>
+        <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnFormNew">Ajouter une formation</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sb-toolbar">
+      <div class="sb-search">
+        <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
+        <input type="text" id="catFormsSearch" placeholder="Code, titre, domaine, fournisseur…" />
+      </div>
+
+      <div class="info-item" style="min-width:220px;">
+        <div class="label">Afficher</div>
+        <select id="catFormsShow">
+          <option value="active">Actives</option>
+          <option value="validation">À valider</option>
+          <option value="all">Toutes</option>
+          <option value="archived">Archivées</option>
+        </select>
+      </div>
+
+      <div class="info-item" style="min-width:240px;">
+        <div class="label">Domaine</div>
+        <select id="catFormsDomain">
+          <option value="">Tous</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sb-stack sb-stack--sm" id="catFormsList" style="margin-top:12px;"></div>
+  </div>
+
+  <div class="sb-modal" id="modalFormEdit" style="display:none;">
+    <div class="sb-modal-card sb-modal-card--wide">
+      <div class="sb-modal-head">
+        <div style="min-width:0;">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+            <span id="formModalBadge" class="sb-badge sb-badge--form" style="display:none;"></span>
+            <div class="card-title" id="formModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Formation</div>
+          </div>
+          <div class="card-sub" id="formModalSub" style="margin:4px 0 0 0;">
+            Process de création structuré : identification, modalités, compétences, contenu, plans.
+          </div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnFormX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-form-tabs" id="formTabs">
+        <button type="button" class="sb-form-tab is-active" data-tab="identite">1. Identifier</button>
+        <button type="button" class="sb-form-tab" data-tab="modalites">2. Modalités</button>
+        <button type="button" class="sb-form-tab" data-tab="competences">3. Compétences</button>
+        <button type="button" class="sb-form-tab" data-tab="contenu">4. Contenu</button>
+        <button type="button" class="sb-form-tab" data-tab="plans">5. Plans pédagogiques</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="sb-form-panel is-active" data-panel="identite">
+          <div class="row">
+            <div class="info-item" style="flex:2; min-width:320px;">
+              <div class="label">Titre de la formation</div>
+              <input type="text" id="formTitre" />
+            </div>
+
+            <div class="info-item" style="flex:1; min-width:200px;">
+              <div class="label">État</div>
+              <select id="formEtat">
+                <option value="active">active</option>
+                <option value="à valider">à valider</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="info-item" style="flex:1; min-width:240px;">
+              <div class="label">Domaine</div>
+              <select id="formDomaine">
+                <option value="">—</option>
+              </select>
+            </div>
+
+            <div class="info-item" style="flex:1; min-width:240px;">
+              <div class="label">Fournisseur</div>
+              <select id="formFournisseur">
+                <option value="">—</option>
+              </select>
+            </div>
+
+            <div class="info-item" style="flex:1; min-width:190px;">
+              <div class="label">Type</div>
+              <input type="text" id="formType" placeholder="Non Certifiante" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="info-item" style="flex:1; min-width:180px;">
+              <div class="label">Durée (heures)</div>
+              <input type="number" id="formDuree" min="0" step="1" />
+            </div>
+
+            <div class="info-item" style="flex:1; min-width:180px;">
+              <div class="label">Tarif mini HT</div>
+              <input type="number" id="formTarif" min="0" step="0.01" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="info-item" style="flex:1; min-width:260px;">
+              <div class="label">Présentation</div>
+              <textarea id="formPresentation" rows="4"></textarea>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="info-item" style="flex:1; min-width:260px;">
+              <div class="label">Public cible</div>
+              <textarea id="formPublic" rows="4" placeholder="Un public par ligne si besoin"></textarea>
+            </div>
+
+            <div class="info-item" style="flex:1; min-width:260px;">
+              <div class="label">Objectifs de la formation</div>
+              <textarea id="formObjectifs" rows="4"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="sb-form-panel" data-panel="modalites">
+          <div class="lf-panel-help">Sélectionnez les modalités, méthodes pédagogiques et méthodes d’évaluation applicables à la fiche formation.</div>
+
+          <div class="lf-check-grid-wrap">
+            <div>
+              <div class="label">Modalités possibles</div>
+              <div class="lf-check-grid" id="formModalitesList"></div>
+            </div>
+
+            <div>
+              <div class="label">Méthodes pédagogiques</div>
+              <div class="lf-check-grid" id="formPedaList"></div>
+            </div>
+
+            <div>
+              <div class="label">Méthodes d’évaluation</div>
+              <div class="lf-check-grid" id="formEvalList"></div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:12px;">
+            <div class="info-item" style="flex:1; min-width:260px;">
+              <div class="label">Attestation / sortie de formation</div>
+              <textarea id="formAttestation" rows="3" placeholder="Ex : Attestation de fin de formation"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="sb-form-panel" data-panel="competences">
+          <div class="lf-panel-help">Affectez les compétences visées pour les stagiaires, puis les compétences attendues côté formateur.</div>
+
+          <div class="row">
+            <div class="info-item" style="flex:1; min-width:300px;">
+              <div class="label">Compétences visées pour les stagiaires</div>
+              <input type="text" id="formCompStagSearch" placeholder="Filtrer les compétences…" />
+              <div class="lf-ref-list" id="formCompStagList"></div>
+            </div>
+
+            <div class="info-item" style="flex:1; min-width:300px;">
+              <div class="label">Compétences requises pour le formateur</div>
+              <input type="text" id="formCompFormSearch" placeholder="Filtrer les compétences…" />
+              <div class="lf-ref-list" id="formCompFormList"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sb-form-panel" data-panel="contenu">
+          <div class="lf-panel-help">Le contenu détaillé sera structuré via les lignes de contenu pédagogiques. Pour l’instant, cette section affiche le contenu existant.</div>
+          <div id="formContenusList" class="sb-stack sb-stack--sm"></div>
+        </div>
+
+        <div class="sb-form-panel" data-panel="plans">
+          <div class="lf-panel-help">Les plans pédagogiques existants sont listés ici. Le modal de création/modification d’un plan sera traité ensuite, sans tout mélanger comme un classeur Excel de comité de pilotage.</div>
+
+          <div class="sb-actions" style="justify-content:flex-end; margin-bottom:10px;">
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnFormPlanNew" disabled>Créer un plan pédagogique</button>
+          </div>
+
+          <div id="formPlansList" class="sb-stack sb-stack--sm"></div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--soft" id="btnFormPrev">Précédent</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnFormNext">Suivant</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnFormSave">Enregistrer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnFormCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sb-modal" id="modalFormArchive" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" style="margin-bottom:2px;">Archiver la formation</div>
+          <div class="card-sub" id="formArchiveMsg" style="margin:0;">—</div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnFormArchiveX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnFormArchiveConfirm">Confirmer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnFormArchiveCancel">Annuler</button>
+      </div>
     </div>
   </div>
 </section>
