@@ -1132,8 +1132,9 @@ iframe{width:100%;height:100%;border:0;display:block}
       btn.addEventListener("click", () => setTab(btn.dataset.tab || "identite"));
     });
 
-    byId("btnFormPrev")?.addEventListener("click", prevTab);
-    byId("btnFormNext")?.addEventListener("click", nextTab);
+    byId("btnFormAiReview")?.addEventListener("click", () => {
+      portal.showAlert("error", "La révision IA des textes sera câblée après finalisation du modal formation.");
+    });
 
     byId("btnFormX")?.addEventListener("click", () => closeModal("modalFormEdit"));
     byId("btnFormCancel")?.addEventListener("click", () => closeModal("modalFormEdit"));

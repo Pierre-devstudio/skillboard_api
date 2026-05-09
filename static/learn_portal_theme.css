@@ -236,9 +236,9 @@
 }
 
 .sb-form-tab{
-  border:1px solid rgba(17,24,39,.12);
-  background:#fff;
-  color:#334155;
+  border:1px solid rgba(231,36,243,.22);
+  background:rgba(231,36,243,.08);
+  color:#111827;
   border-radius:10px 10px 0 0;
   padding:8px 10px;
   font-size:12px;
@@ -247,10 +247,15 @@
   white-space:nowrap;
 }
 
+.sb-form-tab:hover{
+  background:rgba(231,36,243,.13);
+  border-color:rgba(231,36,243,.34);
+}
+
 .sb-form-tab.is-active{
   background:var(--accent);
   border-color:var(--accent);
-  color:#111827;
+  color:#fff;
 }
 
 .sb-form-panel{
@@ -673,6 +678,30 @@
 .sb-modal textarea{
   font-family:inherit;
   font-size:inherit;
+}
+
+.sb-modal .info-item input[type="number"]{
+  width:100%;
+  min-height:34px;
+  border:1px solid #cbd5e1;
+  border-radius:8px;
+  padding:7px 10px;
+  background:#fff;
+  color:#111827;
+  font-family:inherit;
+  font-size:13px;
+  line-height:1.3;
+  box-sizing:border-box;
+}
+
+.sb-modal .info-item input[type="number"]:focus{
+  outline:none;
+  border-color:rgba(231,36,243,.55);
+  box-shadow:0 0 0 3px rgba(231,36,243,.10);
+}
+
+.lf-textarea--tall{
+  min-height:110px;
 }
 
 .sb-modal-x{

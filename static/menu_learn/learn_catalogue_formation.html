@@ -48,9 +48,7 @@
             <span id="formModalBadge" class="sb-badge sb-badge--form" style="display:none;"></span>
             <div class="card-title" id="formModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Formation</div>
           </div>
-          <div class="card-sub" id="formModalSub" style="margin:4px 0 0 0;">
-            Process de création structuré : identification, modalités, compétences, contenu, plans.
-          </div>
+          <div class="card-sub" id="formModalSub" style="margin:4px 0 0 0; display:none;"></div>
         </div>
         <button type="button" class="sb-modal-x" id="btnFormX" aria-label="Fermer">×</button>
       </div>
@@ -66,9 +64,23 @@
       <div class="sb-modal-body">
         <div class="sb-form-panel is-active" data-panel="identite">
           <div class="row">
-            <div class="info-item" style="flex:2; min-width:320px;">
+            <div class="info-item" style="flex:1; min-width:320px;">
               <div class="label">Titre de la formation</div>
               <input type="text" id="formTitre" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="info-item" style="flex:1; min-width:240px;">
+              <div class="label">Domaine</div>
+              <select id="formDomaine">
+                <option value="">—</option>
+              </select>
+            </div>
+
+            <div class="info-item" style="flex:1; min-width:220px;">
+              <div class="label">Type</div>
+              <input type="text" id="formType" placeholder="Non Certifiante" />
             </div>
 
             <div class="info-item" style="flex:1; min-width:200px;">
@@ -81,54 +93,40 @@
           </div>
 
           <div class="row">
-            <div class="info-item" style="flex:1; min-width:240px;">
-              <div class="label">Domaine</div>
-              <select id="formDomaine">
-                <option value="">—</option>
-              </select>
-            </div>
-
-            <div class="info-item" style="flex:1; min-width:240px;">
+            <div class="info-item" style="flex:1; min-width:260px;">
               <div class="label">Fournisseur</div>
               <select id="formFournisseur">
                 <option value="">—</option>
               </select>
             </div>
 
-            <div class="info-item" style="flex:1; min-width:190px;">
-              <div class="label">Type</div>
-              <input type="text" id="formType" placeholder="Non Certifiante" />
+            <div class="info-item" style="flex:1; min-width:180px;">
+              <div class="label">Tarif mini HT (€)</div>
+              <input type="number" id="formTarif" min="0" step="0.01" />
             </div>
-          </div>
 
-          <div class="row">
             <div class="info-item" style="flex:1; min-width:180px;">
               <div class="label">Durée (heures)</div>
               <input type="number" id="formDuree" min="0" step="1" />
-            </div>
-
-            <div class="info-item" style="flex:1; min-width:180px;">
-              <div class="label">Tarif mini HT</div>
-              <input type="number" id="formTarif" min="0" step="0.01" />
             </div>
           </div>
 
           <div class="row">
             <div class="info-item" style="flex:1; min-width:260px;">
               <div class="label">Présentation</div>
-              <textarea id="formPresentation" rows="4"></textarea>
+              <textarea id="formPresentation" rows="5"></textarea>
             </div>
           </div>
 
           <div class="row">
             <div class="info-item" style="flex:1; min-width:260px;">
               <div class="label">Public cible</div>
-              <textarea id="formPublic" rows="4" placeholder="Un public par ligne si besoin"></textarea>
+              <textarea id="formPublic" rows="6" class="lf-textarea--tall" placeholder="Un public par ligne si besoin"></textarea>
             </div>
 
             <div class="info-item" style="flex:1; min-width:260px;">
               <div class="label">Objectifs de la formation</div>
-              <textarea id="formObjectifs" rows="4"></textarea>
+              <textarea id="formObjectifs" rows="6" class="lf-textarea--tall"></textarea>
             </div>
           </div>
         </div>
@@ -208,8 +206,7 @@
       </div>
 
       <div class="sb-modal-foot">
-        <button type="button" class="sb-btn sb-btn--soft" id="btnFormPrev">Précédent</button>
-        <button type="button" class="sb-btn sb-btn--soft" id="btnFormNext">Suivant</button>
+        <button type="button" class="sb-btn sb-btn--ai" id="btnFormAiReview">Revoir avec l’IA</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormSave">Enregistrer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormCancel">Annuler</button>
       </div>
