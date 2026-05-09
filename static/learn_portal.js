@@ -16,6 +16,11 @@
     htmlUrl: "/menu_learn/learn_catalogue_formation.html"
   });
 
+  window.portal.registerMenu({
+    view: "catalogue_competences",
+    htmlUrl: "/menu_learn/learn_catalogue_competences.html"
+  });
+
   const COMING_SOON = "/menu_learn/learn_coming_soon.html";
 
   window.portal.registerMenu({ view: "parcours", htmlUrl: COMING_SOON });
