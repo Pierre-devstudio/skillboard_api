@@ -22,6 +22,10 @@
   let _selectedCompStag = [];
   let _selectedCompForm = [];
   let _prerequis = [];
+  let _compPickerTarget = "stagiaire";
+  let _compPickerSelected = new Set();
+  let _compPickerSearch = "";
+  let _compPickerDomain = "";
 
   let _detailContenus = [];
   let _detailPlans = [];
@@ -53,6 +57,27 @@
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
   }
+
+    function argbIntToRgbTuple(v){
+        if (v === null || v === undefined) return null;
+
+        let n;
+        if (typeof v === "number") {
+            n = v;
+        } else {
+            const s = String(v).trim();
+            if (!s) return null;
+            n = parseInt(s, 10);
+            if (Number.isNaN(n)) return null;
+        }
+
+        const u = (n >>> 0);
+        const r = (u >> 16) & 255;
+        const g = (u >> 8) & 255;
+        const b = u & 255;
+
+        return { r, g, b, css: `${r},${g},${b}` };
+    }
 
   function openModal(id){
     const el = byId(id);
@@ -340,56 +365,132 @@
     );
   }
 
-  function renderCompetenceList(hostId, searchId, selected, onChange){
-    const host = byId(hostId);
-    if (!host) return;
+    function findCompetence(id){
+    const cid = String(id || "").trim();
+    if (!cid) return null;
 
-    const q = (byId(searchId)?.value || "").trim().toLowerCase();
-    const rows = (_refs?.competences || []).filter(c => {
-      if (!q) return true;
-
-      return [
-        c.code || "",
-        c.intitule || "",
-        c.domaine_titre_court || "",
-        c.domaine_titre || ""
-      ].join(" ").toLowerCase().includes(q);
-    });
-
-    host.innerHTML = "";
-
-    rows.forEach(c => {
-      const id = String(c.id_comp || "").trim();
-      if (!id) return;
-
-      const row = document.createElement("label");
-      row.className = "lf-ref-item";
-
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.checked = selected.includes(id);
-      cb.addEventListener("change", () => onChange(id, cb.checked));
-
-      const txt = document.createElement("div");
-      txt.className = "lf-ref-text";
-      txt.innerHTML = `
-        <span class="sb-badge sb-badge--comp">${htmlEsc(c.code || "—")}</span>
-        <span>${htmlEsc(c.intitule || "")}</span>
-      `;
-
-      row.appendChild(cb);
-      row.appendChild(txt);
-
-      host.appendChild(row);
-    });
-
-    if (!host.children.length){
-      const empty = document.createElement("div");
-      empty.className = "card-sub";
-      empty.textContent = "Aucune compétence trouvée.";
-      host.appendChild(empty);
+    return (_refs?.competences || []).find(c => String(c.id_comp || "").trim() === cid) || null;
     }
-  }
+
+    function makeDomainBadge(c){
+    const label = (c?.domaine_titre_court || c?.domaine_titre || "").toString().trim();
+    if (!label) return null;
+
+    const dom = document.createElement("span");
+    dom.className = "sb-badge sb-badge--comp-domain";
+
+    const rgb = argbIntToRgbTuple(c?.domaine_couleur);
+    if (rgb) dom.style.setProperty("--sb-domain-rgb", rgb.css);
+
+    const dot = document.createElement("span");
+    dot.className = "sb-dot";
+
+    dom.appendChild(dot);
+    dom.appendChild(document.createTextNode(label));
+
+    return dom;
+    }
+
+    function renderSelectedCompetenceList(hostId, selected, target){
+        const host = byId(hostId);
+        if (!host) return;
+
+        host.innerHTML = "";
+
+        const ids = Array.isArray(selected) ? selected : [];
+        const rows = ids
+            .map(id => findCompetence(id))
+            .filter(Boolean);
+
+        if (!rows.length){
+            const empty = document.createElement("div");
+            empty.className = "card-sub";
+            empty.textContent = "Aucune compétence affectée.";
+            host.appendChild(empty);
+            return;
+        }
+
+        rows.forEach(c => {
+            const row = document.createElement("div");
+            row.className = "sb-row-card lf-comp-selected-row";
+
+            const left = document.createElement("div");
+            left.className = "sb-row-left";
+
+            const code = document.createElement("span");
+            code.className = "sb-badge sb-badge--comp";
+            code.textContent = c.code || "—";
+
+            const title = document.createElement("div");
+            title.className = "sb-row-title";
+            title.textContent = c.intitule || "";
+
+            left.appendChild(code);
+            left.appendChild(title);
+
+            const right = document.createElement("div");
+            right.className = "sb-row-right";
+
+            const domBadge = makeDomainBadge(c);
+            if (domBadge) right.appendChild(domBadge);
+
+            const actions = document.createElement("div");
+            actions.className = "sb-icon-actions";
+
+            const btnPdf = document.createElement("button");
+            btnPdf.type = "button";
+            btnPdf.className = "sb-icon-btn sb-icon-btn--doc";
+            btnPdf.title = "Voir PDF";
+            btnPdf.setAttribute("aria-label", "Voir PDF");
+            btnPdf.innerHTML = iconPdf();
+            btnPdf.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            try{
+                await openCompetencePdfFromFormation(c);
+            } catch(err){
+                window.portal.showAlert("error", err?.message || String(err));
+            }
+            });
+
+            actions.appendChild(btnPdf);
+
+            const btnRemove = document.createElement("button");
+            btnRemove.type = "button";
+            btnRemove.className = "sb-icon-btn sb-icon-btn--danger";
+            btnRemove.title = "Retirer";
+            btnRemove.setAttribute("aria-label", "Retirer");
+            btnRemove.innerHTML = iconTrash();
+            btnRemove.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const id = String(c.id_comp || "").trim();
+
+            if (target === "stagiaire"){
+                _selectedCompStag = _selectedCompStag.filter(x => x !== id);
+            } else {
+                _selectedCompForm = _selectedCompForm.filter(x => x !== id);
+            }
+
+            renderCompetences();
+            });
+
+            actions.appendChild(btnRemove);
+            right.appendChild(actions);
+
+            row.appendChild(left);
+            row.appendChild(right);
+
+            host.appendChild(row);
+        });
+    }
+
+    function renderCompetences(){
+        renderSelectedCompetenceList("formCompStagSelected", _selectedCompStag, "stagiaire");
+        renderSelectedCompetenceList("formCompFormSelected", _selectedCompForm, "formateur");
+    }
 
     function defaultPrereq(){
         return {
@@ -506,27 +607,194 @@
       .filter(p => p.titre);
   }
 
-  function renderCompetences(){
-    renderCompetenceList(
-      "formCompStagList",
-      "formCompStagSearch",
-      _selectedCompStag,
-      (id, checked) => {
-        _selectedCompStag = toggleIn(_selectedCompStag, id, checked);
-        renderCompetences();
-      }
-    );
+    function fillCompPickerDomainSelect(){
+        const sel = byId("formCompPickerDomain");
+        if (!sel) return;
 
-    renderCompetenceList(
-      "formCompFormList",
-      "formCompFormSearch",
-      _selectedCompForm,
-      (id, checked) => {
-        _selectedCompForm = toggleIn(_selectedCompForm, id, checked);
+        const keep = sel.value || "";
+        const map = new Map();
+
+        (_refs?.competences || []).forEach(c => {
+            const id = String(c.domaine || "").trim();
+            if (!id) return;
+
+            const label = (c.domaine_titre_court || c.domaine_titre || id).toString().trim();
+            if (!label) return;
+
+            if (!map.has(id)) {
+            map.set(id, label);
+            }
+        });
+
+        sel.innerHTML = "";
+
+        const opt0 = document.createElement("option");
+        opt0.value = "";
+        opt0.textContent = "Tous";
+        sel.appendChild(opt0);
+
+        Array.from(map.entries())
+            .sort((a, b) => a[1].localeCompare(b[1], "fr", { sensitivity:"base" }))
+            .forEach(([id, label]) => {
+            const opt = document.createElement("option");
+            opt.value = id;
+            opt.textContent = label;
+            sel.appendChild(opt);
+            });
+
+        sel.value = keep && map.has(keep) ? keep : "";
+        _compPickerDomain = sel.value || "";
+        }
+
+        function currentPickerIds(){
+        return _compPickerTarget === "stagiaire" ? _selectedCompStag : _selectedCompForm;
+        }
+
+        function renderCompPickerList(){
+        const host = byId("formCompPickerList");
+        if (!host) return;
+
+        const already = new Set(currentPickerIds().map(x => String(x || "").trim()).filter(Boolean));
+        const q = (_compPickerSearch || "").trim().toLowerCase();
+        const dom = (_compPickerDomain || "").trim();
+
+        const rows = (_refs?.competences || []).filter(c => {
+            if (dom && String(c.domaine || "").trim() !== dom) return false;
+
+            if (!q) return true;
+
+            return [
+            c.code || "",
+            c.intitule || "",
+            c.domaine_titre_court || "",
+            c.domaine_titre || ""
+            ].join(" ").toLowerCase().includes(q);
+        });
+
+        host.innerHTML = "";
+
+        if (!rows.length){
+            const empty = document.createElement("div");
+            empty.className = "card-sub";
+            empty.textContent = "Aucune compétence trouvée.";
+            host.appendChild(empty);
+            return;
+        }
+
+        rows.forEach(c => {
+            const id = String(c.id_comp || "").trim();
+            if (!id) return;
+
+            const isAlready = already.has(id);
+
+            const row = document.createElement("div");
+            row.className = "lf-comp-picker-row";
+            if (isAlready) row.classList.add("is-already-selected");
+
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.checked = isAlready || _compPickerSelected.has(id);
+            cb.disabled = isAlready;
+            cb.title = isAlready ? "Déjà affectée" : "";
+
+            cb.addEventListener("change", () => {
+            if (cb.checked) _compPickerSelected.add(id);
+            else _compPickerSelected.delete(id);
+            });
+
+            const code = document.createElement("span");
+            code.className = "sb-badge sb-badge--comp";
+            code.textContent = c.code || "—";
+
+            const title = document.createElement("div");
+            title.className = "lf-comp-picker-title";
+            title.textContent = c.intitule || "";
+
+            const spacer = document.createElement("div");
+            spacer.className = "lf-comp-picker-spacer";
+
+            const btnPdf = document.createElement("button");
+            btnPdf.type = "button";
+            btnPdf.className = "sb-icon-btn sb-icon-btn--doc";
+            btnPdf.title = "Voir PDF";
+            btnPdf.setAttribute("aria-label", "Voir PDF");
+            btnPdf.innerHTML = iconPdf();
+            btnPdf.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            try{
+                await openCompetencePdfFromFormation(c);
+            } catch(err){
+                window.portal.showAlert("error", err?.message || String(err));
+            }
+            });
+
+            row.appendChild(cb);
+            row.appendChild(code);
+            row.appendChild(title);
+            row.appendChild(spacer);
+            row.appendChild(btnPdf);
+
+            host.appendChild(row);
+        });
+        }
+
+        async function openCompPicker(target){
+        if (!isSupervisor()) return;
+
+        await ensureRefs(window.portal);
+
+        _compPickerTarget = target === "formateur" ? "formateur" : "stagiaire";
+        _compPickerSelected = new Set();
+        _compPickerSearch = "";
+        _compPickerDomain = "";
+
+        const title = byId("formCompPickerTitle");
+        const sub = byId("formCompPickerSub");
+
+        if (title){
+            title.textContent = _compPickerTarget === "formateur"
+            ? "Ajouter des compétences requises pour le formateur"
+            : "Ajouter des compétences visées pour les stagiaires";
+        }
+
+        if (sub){
+            sub.textContent = _compPickerTarget === "formateur"
+            ? "Sélectionnez les compétences attendues pour animer cette formation."
+            : "Sélectionnez les compétences que cette formation doit permettre d’acquérir ou de renforcer.";
+        }
+
+        const search = byId("formCompPickerSearch");
+        if (search) search.value = "";
+
+        fillCompPickerDomainSelect();
+        renderCompPickerList();
+
+        openModal("modalFormCompPicker");
+        }
+
+        function closeCompPicker(){
+        closeModal("modalFormCompPicker");
+        _compPickerSelected = new Set();
+        }
+
+        function applyCompPickerSelection(){
+        const ids = Array.from(_compPickerSelected).filter(Boolean);
+
+        if (_compPickerTarget === "formateur"){
+            const set = new Set(_selectedCompForm);
+            ids.forEach(id => set.add(id));
+            _selectedCompForm = Array.from(set);
+        } else {
+            const set = new Set(_selectedCompStag);
+            ids.forEach(id => set.add(id));
+            _selectedCompStag = Array.from(set);
+        }
+
+        closeCompPicker();
         renderCompetences();
-      }
-    );
-  }
+    }
 
   function renderContenus(){
     const host = byId("formContenusList");
@@ -1141,6 +1409,41 @@ iframe{width:100%;height:100%;border:0;display:block}
     setTimeout(revoke, 5 * 60 * 1000);
   }
 
+    async function openCompetencePdfFromFormation(c){
+        const effectifId = getEffectifId();
+        const compId = String(c?.id_comp || "").trim();
+
+        if (!effectifId) throw new Error("Profil Learn manquant.");
+        if (!compId) throw new Error("Compétence introuvable.");
+
+        const title =
+            `Fiche compétence - ${
+            String(c?.code || "").trim()
+                ? `${String(c.code).trim()} - `
+                : ""
+            }${String(c?.intitule || "").trim() || "Compétence"}`;
+
+        let popupWin = null;
+
+        try{
+            popupWin = openPdfLoadingWindow(title);
+
+            const url =
+            `${window.portal.apiBase}/learn/competences/${encodeURIComponent(effectifId)}`
+            + `/${encodeURIComponent(compId)}/fiche_pdf`;
+
+            const blob = await fetchPdfBlob(url);
+
+            renderPdfBlobInWindow(popupWin, blob, title);
+        } catch(e){
+            if (popupWin && !popupWin.closed){
+            try { popupWin.close(); } catch(_){}
+            }
+
+            throw e;
+        }
+    }
+
   async function openFormationPdf(it){
     const effectifId = getEffectifId();
     const formId = String(it?.id_form || "").trim();
@@ -1226,8 +1529,22 @@ iframe{width:100%;height:100%;border:0;display:block}
 
     byId("btnFormPrereqAdd")?.addEventListener("click", addPrerequis);
     byId("formType")?.addEventListener("change", syncObsTypeFormation);
-    byId("formCompStagSearch")?.addEventListener("input", renderCompetences);
-    byId("formCompFormSearch")?.addEventListener("input", renderCompetences);
+    byId("btnFormCompStagAdd")?.addEventListener("click", () => openCompPicker("stagiaire"));
+    byId("btnFormCompFormAdd")?.addEventListener("click", () => openCompPicker("formateur"));
+
+    byId("btnFormCompPickerX")?.addEventListener("click", closeCompPicker);
+    byId("btnFormCompPickerCancel")?.addEventListener("click", closeCompPicker);
+    byId("btnFormCompPickerApply")?.addEventListener("click", applyCompPickerSelection);
+
+    byId("formCompPickerSearch")?.addEventListener("input", () => {
+    _compPickerSearch = (byId("formCompPickerSearch")?.value || "").trim();
+    renderCompPickerList();
+    });
+
+    byId("formCompPickerDomain")?.addEventListener("change", () => {
+    _compPickerDomain = (byId("formCompPickerDomain")?.value || "").trim();
+    renderCompPickerList();
+    });
 
     const s = byId("catFormsSearch");
 

@@ -181,20 +181,36 @@
         </div>
 
         <div class="sb-form-panel" data-panel="competences">
-          <div class="lf-panel-help">Affectez les compétences visées pour les stagiaires, puis les compétences attendues côté formateur.</div>
-
-          <div class="row">
-            <div class="info-item" style="flex:1; min-width:300px;">
-              <div class="label">Compétences visées pour les stagiaires</div>
-              <input type="text" id="formCompStagSearch" placeholder="Filtrer les compétences…" />
-              <div class="lf-ref-list" id="formCompStagList"></div>
+          <div class="lf-comp-zone">
+            <div class="lf-comp-zone-head">
+              <div>
+                <div class="label" style="margin:0;">Compétences visées pour les stagiaires</div>
+                <div class="card-sub" style="margin:3px 0 0 0;">
+                  Compétences que la formation doit permettre d’acquérir ou de renforcer.
+                </div>
+              </div>
+              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnFormCompStagAdd">
+                Ajouter des compétences
+              </button>
             </div>
 
-            <div class="info-item" style="flex:1; min-width:300px;">
-              <div class="label">Compétences requises pour le formateur</div>
-              <input type="text" id="formCompFormSearch" placeholder="Filtrer les compétences…" />
-              <div class="lf-ref-list" id="formCompFormList"></div>
+            <div class="sb-stack sb-stack--xs" id="formCompStagSelected"></div>
+          </div>
+
+          <div class="lf-comp-zone">
+            <div class="lf-comp-zone-head">
+              <div>
+                <div class="label" style="margin:0;">Compétences requises pour le formateur</div>
+                <div class="card-sub" style="margin:3px 0 0 0;">
+                  Compétences attendues pour animer correctement cette formation.
+                </div>
+              </div>
+              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnFormCompFormAdd">
+                Ajouter des compétences
+              </button>
             </div>
+
+            <div class="sb-stack sb-stack--xs" id="formCompFormSelected"></div>
           </div>
         </div>
 
@@ -219,6 +235,41 @@
         <button type="button" class="sb-btn sb-btn--ai" id="btnFormAiReview">Revoir avec l’IA</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormSave">Enregistrer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sb-modal sb-modal--above" id="modalFormCompPicker" style="display:none;">
+    <div class="sb-modal-card sb-modal-card--wide">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" id="formCompPickerTitle" style="margin:0;">Sélectionner des compétences</div>
+          <div class="card-sub" id="formCompPickerSub" style="margin:4px 0 0 0;"></div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnFormCompPickerX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="sb-toolbar">
+          <div class="sb-search">
+            <div class="card-sub" style="margin:0 0 4px 0;">Recherche</div>
+            <input type="text" id="formCompPickerSearch" placeholder="Code, intitulé, domaine…" />
+          </div>
+
+          <div class="info-item" style="min-width:240px;">
+            <div class="label">Domaine</div>
+            <select id="formCompPickerDomain">
+              <option value="">Tous</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="lf-comp-picker-list" id="formCompPickerList"></div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnFormCompPickerApply">Ajouter la sélection</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnFormCompPickerCancel">Annuler</button>
       </div>
     </div>
   </div>
