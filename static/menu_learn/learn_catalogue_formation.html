@@ -79,9 +79,13 @@
             </div>
 
             <div class="info-item" style="flex:1; min-width:220px;">
-              <div class="label">Type</div>
-              <input type="text" id="formType" placeholder="Non Certifiante" />
-            </div>
+                  <div class="label">Type</div>
+                  <select id="formType">
+                    <option value="Non certifiante">Non certifiante</option>
+                    <option value="Certifiante">Certifiante</option>
+                    <option value="Diplomante">Diplomante</option>
+                  </select>
+                </div>
 
             <div class="info-item" style="flex:1; min-width:200px;">
               <div class="label">État</div>
@@ -102,12 +106,19 @@
 
             <div class="info-item" style="flex:1; min-width:180px;">
               <div class="label">Tarif mini HT (€)</div>
-              <input type="number" id="formTarif" min="0" step="0.01" />
+              <input type="number" id="formTarif" min="0" step="1" />
             </div>
 
             <div class="info-item" style="flex:1; min-width:180px;">
               <div class="label">Durée (heures)</div>
               <input type="number" id="formDuree" min="0" step="1" />
+            </div>
+          </div>
+
+          <div class="row" id="formObsTypeRow" style="display:none;">
+            <div class="info-item" style="flex:1; min-width:260px;">
+              <div class="label" id="formObsTypeLabel">Précision</div>
+              <input type="text" id="formObsType" />
             </div>
           </div>
 

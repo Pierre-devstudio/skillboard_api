@@ -414,6 +414,7 @@ def _fetch_form_detail(cur, oid: str, id_form: str) -> dict:
           ff.fournisseur_formation,
           fo.nom AS fournisseur_nom,
           ff.type_formation,
+          ff.obs_type_form,
           ff.duree,
           ff.objectifs,
           ff.public_cible,
@@ -614,6 +615,7 @@ class FormationPayload(BaseModel):
     titre: str
     fournisseur_formation: Optional[str] = None
     type_formation: Optional[str] = None
+    obs_type_form: Optional[str] = None
     duree: Optional[Any] = None
     objectifs: Optional[str] = None
     public_cible: Optional[str] = None
@@ -634,6 +636,7 @@ class FormationUpdatePayload(BaseModel):
     titre: Optional[str] = None
     fournisseur_formation: Optional[str] = None
     type_formation: Optional[str] = None
+    obs_type_form: Optional[str] = None
     duree: Optional[Any] = None
     objectifs: Optional[str] = None
     public_cible: Optional[str] = None
@@ -977,6 +980,7 @@ def learn_formation_create(id_effectif: str, payload: FormationPayload, request:
                         titre,
                         fournisseur_formation,
                         type_formation,
+                        obs_type_form,
                         duree,
                         objectifs,
                         public_cible,
@@ -998,7 +1002,7 @@ def learn_formation_create(id_effectif: str, payload: FormationPayload, request:
                     VALUES
                       (
                         %s, %s, %s, %s,
-                        %s, %s, %s,
+                        %s, %s, %s, %s,
                         %s, %s, %s,
                         %s::jsonb, %s::jsonb, %s::jsonb,
                         %s::jsonb, %s::jsonb,
@@ -1013,6 +1017,7 @@ def learn_formation_create(id_effectif: str, payload: FormationPayload, request:
                         titre,
                         (payload.fournisseur_formation or None),
                         (payload.type_formation or None),
+                        _clean_text(payload.obs_type_form),
                         _safe_int(payload.duree),
                         _clean_text(payload.objectifs),
                         _clean_text(payload.public_cible),
@@ -1081,6 +1086,10 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
                 if "type_formation" in patch_fields:
                     cols.append("type_formation = %s")
                     vals.append(payload.type_formation or None)
+
+                if "obs_type_form" in patch_fields:
+                    cols.append("obs_type_form = %s")
+                    vals.append(_clean_text(payload.obs_type_form))
 
                 if "duree" in patch_fields:
                     cols.append("duree = %s")
@@ -1281,6 +1290,7 @@ def _build_formation_pdf_story(form: dict) -> list:
         [_p("Domaine", small_style), _p(domaine, body_style), _p("Durée", small_style), _p(f"{form.get('duree') or '—'} h", body_style)],
         [_p("Fournisseur", small_style), _p(fournisseur, body_style), _p("Tarif mini", small_style), _p(f"{form.get('tarif_mini') or '—'} € HT", body_style)],
         [_p("Type", small_style), _p(form.get("type_formation") or "—", body_style), _p("État", small_style), _p(form.get("etat") or "—", body_style)],
+        [_p("Précision type", small_style), _p(form.get("obs_type_form") or "—", body_style), _p("", small_style), _p("", body_style)],
     ]
 
     tbl = Table(meta, colWidths=[28 * mm, 62 * mm, 28 * mm, 62 * mm])

@@ -181,13 +181,50 @@
       (_refs?.fournisseurs || []).forEach(f => {
         const opt = document.createElement("option");
         opt.value = f.id_fourn || "";
-        opt.textContent = [f.code || "", f.nom || ""].filter(Boolean).join(" - ");
+        opt.textContent = f.nom || f.code || opt.value;
         fSel.appendChild(opt);
       });
 
       fSel.value = keep || "";
     }
   }
+
+    function normalizeTypeFormation(value){
+        const v = String(value || "").trim().toLowerCase();
+
+        if (v === "certifiante") return "Certifiante";
+        if (v === "diplomante" || v === "diplômante") return "Diplomante";
+        if (v === "non certifiante" || v === "non-certifiante" || v === "non Certifiante".toLowerCase()) return "Non certifiante";
+
+        return "Non certifiante";
+    }
+
+    function syncObsTypeFormation(){
+        const type = normalizeTypeFormation(byId("formType")?.value || "");
+        const row = byId("formObsTypeRow");
+        const label = byId("formObsTypeLabel");
+        const input = byId("formObsType");
+
+        if (!row) return;
+
+        const needsObs = type === "Certifiante" || type === "Diplomante";
+
+        row.style.display = needsObs ? "" : "none";
+
+        if (label){
+        label.textContent = type === "Certifiante"
+            ? "Certification RNCP ou RS"
+            : "Niveau reconnu par l’État";
+        }
+
+        if (input){
+        input.placeholder = type === "Certifiante"
+            ? "Ex : RNCPXXXXX, RSXXXX, intitulé de la certification…"
+            : "Ex : Niveau 5, titre reconnu par l’État, diplôme visé…";
+
+        if (!needsObs) input.value = "";
+        }
+    }
 
   function setTab(tab){
     _activeTab = tab || "identite";
@@ -751,7 +788,9 @@
     setSelectValue("formEtat", d.etat || "à valider");
     setSelectValue("formDomaine", d.domaine || "");
     setSelectValue("formFournisseur", d.fournisseur_formation || "");
-    setFieldValue("formType", d.type_formation || "");
+    setSelectValue("formType", normalizeTypeFormation(d.type_formation || ""));
+    setFieldValue("formObsType", d.obs_type_form || "");
+    syncObsTypeFormation();
     setFieldValue("formDuree", d.duree ?? "");
     setFieldValue("formTarif", d.tarif_mini ?? "");
     setFieldValue("formPresentation", d.presentation || "");
@@ -799,7 +838,9 @@
     byId("formEtat").value = "à valider";
     byId("formDomaine").value = "";
     byId("formFournisseur").value = "";
-    byId("formType").value = "Non Certifiante";
+    setSelectValue("formType", "Non certifiante");
+    setFieldValue("formObsType", "");
+    syncObsTypeFormation();
     byId("formDuree").value = "";
     byId("formTarif").value = "";
     byId("formPresentation").value = "";
@@ -900,7 +941,8 @@
       etat: (byId("formEtat").value || "à valider").trim(),
       domaine: (byId("formDomaine").value || "").trim() || null,
       fournisseur_formation: (byId("formFournisseur").value || "").trim() || null,
-      type_formation: (byId("formType").value || "").trim() || null,
+      type_formation: normalizeTypeFormation(byId("formType").value || ""),
+      obs_type_form: (byId("formObsType")?.value || "").trim() || null,
       duree: (byId("formDuree").value || "").trim() || null,
       tarif_mini: (byId("formTarif").value || "").trim() || null,
       presentation: (byId("formPresentation").value || "").trim() || null,
@@ -1159,6 +1201,7 @@ iframe{width:100%;height:100%;border:0;display:block}
     });
 
     byId("btnFormPrereqAdd")?.addEventListener("click", addPrerequis);
+    byId("formType")?.addEventListener("change", syncObsTypeFormation);
     byId("formCompStagSearch")?.addEventListener("input", renderCompetences);
     byId("formCompFormSearch")?.addEventListener("input", renderCompetences);
 
