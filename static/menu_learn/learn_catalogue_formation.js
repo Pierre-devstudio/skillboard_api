@@ -194,9 +194,16 @@
 
         if (v === "certifiante") return "Certifiante";
         if (v === "diplomante" || v === "diplômante") return "Diplomante";
-        if (v === "non certifiante" || v === "non-certifiante" || v === "non Certifiante".toLowerCase()) return "Non certifiante";
+        if (
+            v === "non certifiante" ||
+            v === "non-certifiante" ||
+            v === "non certifiant" ||
+            v === "non-certifiant"
+        ) {
+            return "Non Certifiante";
+        }
 
-        return "Non certifiante";
+        return "Non Certifiante";
     }
 
     function syncObsTypeFormation(){
@@ -838,7 +845,7 @@
     byId("formEtat").value = "à valider";
     byId("formDomaine").value = "";
     byId("formFournisseur").value = "";
-    setSelectValue("formType", "Non certifiante");
+    setSelectValue("formType", "Non Certifiante");
     setFieldValue("formObsType", "");
     syncObsTypeFormation();
     byId("formDuree").value = "";

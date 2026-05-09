@@ -117,6 +117,19 @@ def _safe_float(value: Any) -> Optional[float]:
     except Exception:
         return None
 
+def _normalize_type_formation(value: Any) -> str:
+    v = str(value or "").strip().lower()
+
+    if v == "certifiante":
+        return "Certifiante"
+
+    if v in ("diplomante", "diplômante"):
+        return "Diplomante"
+
+    if v in ("non certifiante", "non-certifiante", "non certifiant", "non-certifiant"):
+        return "Non Certifiante"
+
+    return "Non Certifiante"
 
 def _safe_int(value: Any) -> Optional[int]:
     if value is None:
@@ -1016,7 +1029,7 @@ def learn_formation_create(id_effectif: str, payload: FormationPayload, request:
                         code,
                         titre,
                         (payload.fournisseur_formation or None),
-                        (payload.type_formation or None),
+                        _normalize_type_formation(payload.type_formation),
                         _clean_text(payload.obs_type_form),
                         _safe_int(payload.duree),
                         _clean_text(payload.objectifs),
@@ -1085,7 +1098,7 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
 
                 if "type_formation" in patch_fields:
                     cols.append("type_formation = %s")
-                    vals.append(payload.type_formation or None)
+                    vals.append(_normalize_type_formation(payload.type_formation))
 
                 if "obs_type_form" in patch_fields:
                     cols.append("obs_type_form = %s")
