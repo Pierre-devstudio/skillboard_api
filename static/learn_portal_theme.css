@@ -120,6 +120,11 @@
   white-space:nowrap;
 }
 
+.sb-save-success--modal{
+  align-self:center;
+  margin-right:2px;
+}
+
 .sb-toolbar{
   display:flex;
   align-items:flex-end;

@@ -64,25 +64,26 @@
     if (el) el.style.display = "none";
   }
 
-  function setSuccess(msg){
-    const el = byId("catFormsSuccess");
-    if (!el) return;
+    function setSuccess(msg){
+        const el = byId("formModalSuccess");
+        if (!el) return;
 
-    if (!msg){
-      el.style.display = "none";
-      el.textContent = "";
-      return;
+        window.clearTimeout(el._hideTimer);
+
+        if (!msg){
+            el.style.display = "none";
+            el.textContent = "";
+            return;
+        }
+
+        el.textContent = msg;
+        el.style.display = "inline-flex";
+
+        el._hideTimer = window.setTimeout(() => {
+            el.style.display = "none";
+            el.textContent = "";
+        }, 5000);
     }
-
-    el.textContent = msg;
-    el.style.display = "inline-flex";
-
-    window.clearTimeout(el._hideTimer);
-    el._hideTimer = window.setTimeout(() => {
-      el.style.display = "none";
-      el.textContent = "";
-    }, 5000);
-  }
 
   function iconPdf(){
     return `
@@ -827,6 +828,7 @@
 
   async function openCreate(portal){
     if (!isSupervisor()) return;
+    setSuccess("");
 
     await ensureRefs(portal);
 
@@ -876,6 +878,7 @@
 
     async function openEdit(portal, it){
         if (!isSupervisor()) return;
+        setSuccess("");
 
         try{
         await ensureRefs(portal);
@@ -978,28 +981,35 @@
     }
 
     if (_modalMode === "create"){
-      await portal.apiJson(
+    const created = await portal.apiJson(
         `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`,
         {
-          method: "POST",
-          headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(payload)
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
         }
-      );
-    } else {
-      if (!_editingId) return;
+    );
 
-      await portal.apiJson(
+    _modalMode = "edit";
+    _editingId = created?.id_form || _editingId;
+
+    const badge = byId("formModalBadge");
+    if (badge && created?.code){
+        badge.textContent = created.code;
+        badge.style.display = "";
+    }
+    } else {
+    if (!_editingId) return;
+
+    await portal.apiJson(
         `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/${encodeURIComponent(_editingId)}`,
         {
-          method: "POST",
-          headers: { "Content-Type":"application/json" },
-          body: JSON.stringify(payload)
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body: JSON.stringify(payload)
         }
-      );
+    );
     }
-
-    closeModal("modalFormEdit");
 
     window.portal.showAlert("", "");
     setSuccess("Enregistré avec succès");
@@ -1030,7 +1040,7 @@
     closeModal("modalFormArchive");
 
     window.portal.showAlert("", "");
-    setSuccess("Formation archivée");
+    setSuccess("");
 
     await loadList(portal);
   }
@@ -1185,8 +1195,15 @@ iframe{width:100%;height:100%;border:0;display:block}
       portal.showAlert("error", "La révision IA des textes sera câblée après finalisation du modal formation.");
     });
 
-    byId("btnFormX")?.addEventListener("click", () => closeModal("modalFormEdit"));
-    byId("btnFormCancel")?.addEventListener("click", () => closeModal("modalFormEdit"));
+    byId("btnFormX")?.addEventListener("click", () => {
+    setSuccess("");
+    closeModal("modalFormEdit");
+    });
+
+    byId("btnFormCancel")?.addEventListener("click", () => {
+    setSuccess("");
+    closeModal("modalFormEdit");
+    });
 
     byId("btnFormSave")?.addEventListener("click", async () => {
       try {
