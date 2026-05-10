@@ -232,6 +232,10 @@
   width:min(1120px, 96vw);
 }
 
+.sb-modal-card--xl{
+  width:min(1320px, 97vw);
+}
+
 .sb-form-tabs{
   display:flex;
   align-items:flex-end;
@@ -659,6 +663,211 @@
 
   .lf-content-comp-badges{
     justify-content:flex-start;
+  }
+}
+
+.lf-plan-edit-top{
+  display:grid;
+  gap:12px;
+  margin-bottom:14px;
+}
+
+.lf-plan-duration-row{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:10px;
+}
+
+.lf-plan-duration-card{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:12px;
+  padding:10px 12px;
+  background:#f8fafc;
+}
+
+.lf-plan-duration-card.is-ok{
+  background:#f0fdf4;
+  border-color:#86efac;
+}
+
+.lf-plan-duration-card.is-ko{
+  background:#fff7ed;
+  border-color:#fed7aa;
+}
+
+.lf-plan-duration-value{
+  margin-top:4px;
+  font-size:15px;
+  font-weight:800;
+  color:#111827;
+}
+
+.lf-plan-builder{
+  display:grid;
+  grid-template-columns:340px minmax(0, 1fr);
+  gap:14px;
+  align-items:start;
+}
+
+.lf-plan-library,
+.lf-plan-sequences{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:14px;
+  background:#fff;
+  padding:12px;
+}
+
+.lf-plan-library-head,
+.lf-plan-sequences-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.lf-plan-content-library-list{
+  display:grid;
+  gap:8px;
+  margin-top:10px;
+  max-height:560px;
+  overflow:auto;
+}
+
+.lf-plan-content-brick{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:12px;
+  padding:9px 10px;
+  background:#f8fafc;
+  cursor:grab;
+}
+
+.lf-plan-content-brick:active{
+  cursor:grabbing;
+}
+
+.lf-plan-content-brick-title{
+  font-size:12px;
+  font-weight:800;
+  color:#111827;
+  line-height:1.25;
+  margin-bottom:4px;
+}
+
+.lf-plan-block-edit{
+  border:1px solid rgba(17,24,39,.12);
+  border-radius:14px;
+  background:#fff;
+  padding:10px 12px;
+}
+
+.lf-plan-block-edit.is-drag-over{
+  border-color:rgba(231,36,243,.55);
+  box-shadow:0 0 0 3px rgba(231,36,243,.08);
+}
+
+.lf-plan-block-edit-head{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.lf-plan-drag-handle{
+  width:28px;
+  height:28px;
+  border-radius:8px;
+  border:1px solid rgba(17,24,39,.12);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  cursor:grab;
+  background:#f8fafc;
+  color:#475569;
+  font-weight:800;
+}
+
+.lf-plan-drag-handle:active{
+  cursor:grabbing;
+}
+
+.lf-plan-block-title{
+  flex:1;
+  font-size:13px;
+  font-weight:800;
+  color:#111827;
+}
+
+.lf-plan-block-grid{
+  display:grid;
+  grid-template-columns:minmax(0, 1.5fr) 120px 220px;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.lf-plan-seq-drop{
+  border:1px dashed rgba(17,24,39,.22);
+  border-radius:12px;
+  padding:10px;
+  background:#f8fafc;
+  display:grid;
+  gap:8px;
+  margin:10px 0;
+  min-height:58px;
+}
+
+.lf-plan-seq-drop.is-drag-over{
+  border-color:rgba(231,36,243,.70);
+  background:rgba(231,36,243,.06);
+}
+
+.lf-plan-seq-content{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  border:1px solid rgba(17,24,39,.08);
+  border-radius:10px;
+  padding:8px 9px;
+  background:#fff;
+}
+
+.lf-plan-seq-content-main{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-width:0;
+}
+
+.lf-plan-seq-content-title{
+  font-size:12px;
+  font-weight:700;
+  color:#111827;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:520px;
+}
+
+@media (max-width: 1100px){
+  .lf-plan-builder{
+    grid-template-columns:1fr;
+  }
+
+  .lf-plan-content-library-list{
+    max-height:280px;
+  }
+
+  .lf-plan-block-grid{
+    grid-template-columns:1fr;
+  }
+
+  .lf-plan-duration-row{
+    grid-template-columns:1fr;
+  }
+
+  .lf-plan-seq-content-title{
+    max-width:260px;
   }
 }
 

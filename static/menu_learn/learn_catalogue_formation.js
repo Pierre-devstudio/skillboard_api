@@ -34,6 +34,13 @@
 
   let _detailPlans = [];
 
+  let _planMode = "create";
+  let _planEditId = null;
+  let _planBlocks = [];
+  let _planContentSearch = "";
+  let _planDragContentId = null;
+  let _planDragBlockId = null;
+
   function byId(id){ return document.getElementById(id); }
 
   function getEffectifId(){
@@ -1128,7 +1135,613 @@ function renderContentCompBadges(l){
             }
         );
     }
-    
+ 
+    function makeTmpId(prefix){
+        return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    }
+
+    function toNumber(v){
+        const n = parseFloat(String(v ?? "").replace(",", "."));
+        return Number.isFinite(n) ? n : 0;
+    }
+
+    function formatHours(v){
+        const n = toNumber(v);
+
+        if (!n) return "0 h";
+        if (Number.isInteger(n)) return `${n} h`;
+
+        return `${String(Math.round(n * 100) / 100).replace(".", ",")} h`;
+    }
+
+    function getFormationDuration(){
+        return toNumber(byId("formDuree")?.value || 0);
+    }
+
+    function getPlanDuration(){
+        return (_planBlocks || []).reduce((acc, b) => acc + toNumber(b.duree), 0);
+    }
+
+    function fillPlanModaliteSelect(selectId, value){
+        const sel = byId(selectId);
+        if (!sel) return;
+
+        const keep = String(value || "").trim();
+        sel.innerHTML = "";
+
+        const opt0 = document.createElement("option");
+        opt0.value = "";
+        opt0.textContent = "—";
+        sel.appendChild(opt0);
+
+        (_refs?.modalites || []).forEach(m => {
+            const label = (m.titre || m.titre_court || "").toString().trim();
+            if (!label) return;
+
+            const opt = document.createElement("option");
+            opt.value = label;
+            opt.textContent = label;
+            sel.appendChild(opt);
+        });
+
+        if (keep && !Array.from(sel.options).some(o => o.value === keep)){
+            const opt = document.createElement("option");
+            opt.value = keep;
+            opt.textContent = keep;
+            sel.appendChild(opt);
+        }
+
+        sel.value = keep || "";
+    }
+
+    function updatePlanDurationUI(){
+        const formation = getFormationDuration();
+        const plan = getPlanDuration();
+        const diff = Math.round((plan - formation) * 100) / 100;
+
+        const fEl = byId("planDureeFormation");
+        const pEl = byId("planDureeCalculee");
+        const dEl = byId("planDureeEcart");
+        const card = byId("planDureeEtatCard");
+
+        if (fEl) fEl.textContent = formatHours(formation);
+        if (pEl) pEl.textContent = formatHours(plan);
+
+        if (dEl){
+            if (!formation && !plan) dEl.textContent = "—";
+            else if (diff === 0) dEl.textContent = "Conforme";
+            else dEl.textContent = `${diff > 0 ? "+" : ""}${String(diff).replace(".", ",")} h`;
+        }
+
+        if (card){
+            card.classList.remove("is-ok", "is-ko");
+            if (formation || plan){
+            card.classList.add(diff === 0 ? "is-ok" : "is-ko");
+            }
+        }
+    }
+
+    function findContent(id){
+        const cid = String(id || "").trim();
+        if (!cid) return null;
+
+        return (_detailContenus || []).find(c => String(c.id_ligne_contenu || "").trim() === cid) || null;
+    }
+
+    function contentCompBadgesFromContent(c){
+        const items = Array.isArray(c?.competences_liees_items) ? c.competences_liees_items : [];
+
+        if (!items.length){
+            return "";
+        }
+
+        return items.map(x => `
+            <span class="sb-badge sb-badge--comp lf-content-comp-badge" title="${htmlEsc(x.intitule || "")}">
+            ${htmlEsc(x.code || "—")}
+            </span>
+        `).join("");
+    }
+
+    function createEmptyPlanBlock(){
+        return {
+            tmp_id: makeTmpId("bloc"),
+            titre: "",
+            duree: "",
+            modalite_intervention: byId("planModaliteGenerale")?.value || "",
+            objectif: "",
+            observations: "",
+            contenus: []
+        };
+    }
+
+    function planBlockKey(b){
+        return String(b.id_bloc_peda || b.tmp_id || "").trim();
+    }
+
+    function renderPlanContentLibrary(){
+        const host = byId("planContentLibrary");
+        if (!host) return;
+
+        const q = (_planContentSearch || "").trim().toLowerCase();
+
+        const rows = (_detailContenus || []).filter(c => {
+            if (!q) return true;
+
+            return [
+            c.titre_sequence || "",
+            c.objectif || "",
+            c.contenu || ""
+            ].join(" ").toLowerCase().includes(q);
+        });
+
+        host.innerHTML = "";
+
+        if (!rows.length){
+            const empty = document.createElement("div");
+            empty.className = "card-sub";
+            empty.textContent = "Aucun contenu disponible.";
+            host.appendChild(empty);
+            return;
+        }
+
+        rows.forEach(c => {
+            const id = String(c.id_ligne_contenu || "").trim();
+            if (!id) return;
+
+            const item = document.createElement("div");
+            item.className = "lf-plan-content-brick";
+            item.draggable = true;
+            item.dataset.id = id;
+
+            item.innerHTML = `
+            <div class="lf-plan-content-brick-title">${htmlEsc(c.titre_sequence || "Contenu")}</div>
+            <div class="card-sub">${htmlEsc(c.objectif || "")}</div>
+            <div class="lf-content-comp-badges">${contentCompBadgesFromContent(c)}</div>
+            `;
+
+            item.addEventListener("dragstart", (e) => {
+            _planDragContentId = id;
+
+            if (e.dataTransfer){
+                e.dataTransfer.effectAllowed = "copy";
+                e.dataTransfer.setData("text/plain", id);
+                e.dataTransfer.setData("application/x-learn-content", id);
+            }
+            });
+
+            item.addEventListener("dragend", () => {
+            _planDragContentId = null;
+            });
+
+            host.appendChild(item);
+        });
+    }
+
+    function addContentToPlanBlock(blockKey, contentId){
+        const b = (_planBlocks || []).find(x => planBlockKey(x) === blockKey);
+        const id = String(contentId || "").trim();
+
+        if (!b || !id || !findContent(id)) return;
+
+        if (!Array.isArray(b.contenus)) b.contenus = [];
+
+        b.contenus.push(id);
+        renderPlanBlocks();
+    }
+
+    function removeContentFromPlanBlock(blockKey, index){
+        const b = (_planBlocks || []).find(x => planBlockKey(x) === blockKey);
+        if (!b || !Array.isArray(b.contenus)) return;
+
+        b.contenus.splice(index, 1);
+        renderPlanBlocks();
+    }
+
+    function movePlanBlockLocal(sourceKey, targetKey){
+        const from = _planBlocks.findIndex(x => planBlockKey(x) === sourceKey);
+        const to = _planBlocks.findIndex(x => planBlockKey(x) === targetKey);
+
+        if (from < 0 || to < 0 || from === to) return;
+
+        const [item] = _planBlocks.splice(from, 1);
+        _planBlocks.splice(to, 0, item);
+
+        renderPlanBlocks();
+    }
+
+    function renderPlanBlockContents(block){
+        const ids = Array.isArray(block.contenus) ? block.contenus : [];
+
+        if (!ids.length){
+            return `<div class="card-sub">Déposez ici les contenus à travailler dans cette séquence.</div>`;
+        }
+
+        return ids.map((id, idx) => {
+            const c = findContent(id);
+
+            return `
+            <div class="lf-plan-seq-content">
+                <div class="lf-plan-seq-content-main">
+                <span class="sb-badge sb-badge--form">${idx + 1}</span>
+                <div>
+                    <div class="lf-plan-seq-content-title">${htmlEsc(c?.titre_sequence || "Contenu introuvable")}</div>
+                    <div class="lf-content-comp-badges">${contentCompBadgesFromContent(c)}</div>
+                </div>
+                </div>
+
+                <button type="button" class="sb-icon-btn sb-icon-btn--danger" data-remove-content="${idx}" title="Retirer" aria-label="Retirer">
+                ${iconTrash()}
+                </button>
+            </div>
+            `;
+        }).join("");
+    }
+
+    function renderPlanBlocks(){
+        const host = byId("planBlockList");
+        if (!host) return;
+
+        host.innerHTML = "";
+
+        if (!_planBlocks.length){
+            const empty = document.createElement("div");
+            empty.className = "card-sub";
+            empty.textContent = "Aucune séquence. Ajoutez une première séquence pédagogique.";
+            host.appendChild(empty);
+            updatePlanDurationUI();
+            return;
+        }
+
+        _planBlocks.forEach((b, idx) => {
+            const key = planBlockKey(b);
+
+            const card = document.createElement("div");
+            card.className = "lf-plan-block-edit";
+            card.dataset.key = key;
+
+            card.innerHTML = `
+            <div class="lf-plan-block-edit-head">
+                <div class="lf-plan-drag-handle" title="Glisser pour réordonner" draggable="true">☰</div>
+                <div class="lf-plan-block-title">Séquence ${idx + 1}</div>
+                <button type="button" class="sb-icon-btn sb-icon-btn--danger" data-action="remove-block" title="Retirer la séquence" aria-label="Retirer la séquence">
+                ${iconTrash()}
+                </button>
+            </div>
+
+            <div class="lf-plan-block-grid">
+                <div class="info-item">
+                <div class="label">Titre de la séquence</div>
+                <input type="text" data-field="titre" value="${htmlEsc(b.titre || "")}" />
+                </div>
+
+                <div class="info-item">
+                <div class="label">Durée</div>
+                <input type="number" min="0" step="0.25" data-field="duree" value="${htmlEsc(b.duree || "")}" />
+                </div>
+
+                <div class="info-item">
+                <div class="label">Modalité</div>
+                <select data-field="modalite_intervention"></select>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Objectif <span class="lf-label-muted">(optionnel)</span></div>
+                <textarea rows="2" data-field="objectif">${htmlEsc(b.objectif || "")}</textarea>
+                </div>
+            </div>
+
+            <div class="lf-plan-seq-drop" data-drop-zone="content">
+                ${renderPlanBlockContents(b)}
+            </div>
+
+            <div class="row">
+                <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Observations</div>
+                <textarea rows="2" data-field="observations">${htmlEsc(b.observations || "")}</textarea>
+                </div>
+            </div>
+            `;
+
+            const modaliteSelect = card.querySelector('select[data-field="modalite_intervention"]');
+            if (modaliteSelect){
+            fillPlanModaliteSelectOnElement(modaliteSelect, b.modalite_intervention || "");
+            }
+
+            card.querySelectorAll("[data-field]").forEach(el => {
+            const field = el.dataset.field;
+
+            el.addEventListener("input", () => {
+                b[field] = el.value || "";
+                if (field === "duree") updatePlanDurationUI();
+            });
+
+            el.addEventListener("change", () => {
+                b[field] = el.value || "";
+                if (field === "duree") updatePlanDurationUI();
+            });
+            });
+
+            card.querySelector('[data-action="remove-block"]')?.addEventListener("click", () => {
+            _planBlocks = _planBlocks.filter(x => planBlockKey(x) !== key);
+            renderPlanBlocks();
+            });
+
+            card.querySelectorAll("[data-remove-content]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const index = parseInt(btn.dataset.removeContent || "-1", 10);
+                if (index >= 0) removeContentFromPlanBlock(key, index);
+            });
+            });
+
+            const handle = card.querySelector(".lf-plan-drag-handle");
+            if (handle){
+            handle.addEventListener("dragstart", (e) => {
+                _planDragBlockId = key;
+
+                if (e.dataTransfer){
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", key);
+                e.dataTransfer.setData("application/x-learn-plan-block", key);
+                }
+            });
+
+            handle.addEventListener("dragend", () => {
+                _planDragBlockId = null;
+            });
+            }
+
+            card.addEventListener("dragover", (e) => {
+            if (!_planDragBlockId) return;
+            e.preventDefault();
+            card.classList.add("is-drag-over");
+            });
+
+            card.addEventListener("dragleave", () => {
+            card.classList.remove("is-drag-over");
+            });
+
+            card.addEventListener("drop", (e) => {
+            if (!_planDragBlockId) return;
+
+            e.preventDefault();
+            card.classList.remove("is-drag-over");
+
+            const source = _planDragBlockId || e.dataTransfer?.getData("application/x-learn-plan-block") || "";
+            movePlanBlockLocal(source, key);
+            });
+
+            const drop = card.querySelector('[data-drop-zone="content"]');
+            if (drop){
+            drop.addEventListener("dragover", (e) => {
+                if (!_planDragContentId && !e.dataTransfer?.getData("application/x-learn-content")) return;
+                e.preventDefault();
+                drop.classList.add("is-drag-over");
+            });
+
+            drop.addEventListener("dragleave", () => {
+                drop.classList.remove("is-drag-over");
+            });
+
+            drop.addEventListener("drop", (e) => {
+                e.preventDefault();
+                drop.classList.remove("is-drag-over");
+
+                const cid = _planDragContentId || e.dataTransfer?.getData("application/x-learn-content") || e.dataTransfer?.getData("text/plain") || "";
+                addContentToPlanBlock(key, cid);
+            });
+            }
+
+            host.appendChild(card);
+        });
+
+        updatePlanDurationUI();
+    }
+
+    function fillPlanModaliteSelectOnElement(sel, value){
+        if (!sel) return;
+
+        const keep = String(value || "").trim();
+        sel.innerHTML = "";
+
+        const opt0 = document.createElement("option");
+        opt0.value = "";
+        opt0.textContent = "—";
+        sel.appendChild(opt0);
+
+        (_refs?.modalites || []).forEach(m => {
+            const label = (m.titre || m.titre_court || "").toString().trim();
+            if (!label) return;
+
+            const opt = document.createElement("option");
+            opt.value = label;
+            opt.textContent = label;
+            sel.appendChild(opt);
+        });
+
+        if (keep && !Array.from(sel.options).some(o => o.value === keep)){
+            const opt = document.createElement("option");
+            opt.value = keep;
+            opt.textContent = keep;
+            sel.appendChild(opt);
+        }
+
+        sel.value = keep || "";
+    }
+
+    function normalizePlanDetailToBlocks(plan){
+        const blocs = Array.isArray(plan?.blocs) ? plan.blocs : [];
+
+        return blocs.map((b, idx) => ({
+            id_bloc_peda: b.id_bloc_peda || null,
+            tmp_id: makeTmpId("bloc"),
+            titre: b.titre || "",
+            duree: b.duree || "",
+            modalite_intervention: b.modalite_intervention || "",
+            objectif: b.objectif || "",
+            observations: b.observations || "",
+            position: b.position || (idx + 1),
+            contenus: Array.isArray(b.sequences)
+            ? b.sequences.map(s => String(s.id_ligne_contenu || "").trim()).filter(Boolean)
+            : []
+        }));
+    }
+
+    async function openPlanModal(p){
+        if (!_editingId){
+            window.portal.showAlert("error", "Enregistrez d’abord la fiche formation avant de créer un plan pédagogique.");
+            return;
+        }
+
+        await ensureRefs(window.portal);
+
+        _planContentSearch = "";
+        _planDragContentId = null;
+        _planDragBlockId = null;
+
+        const search = byId("planContentSearch");
+        if (search) search.value = "";
+
+        if (p?.id_plan_peda){
+            _planMode = "edit";
+            _planEditId = String(p.id_plan_peda || "").trim();
+
+            const effectifId = getEffectifId();
+
+            const detail = await window.portal.apiJson(
+            `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+            + `/${encodeURIComponent(_editingId)}`
+            + `/plans/${encodeURIComponent(_planEditId)}`
+            );
+
+            byId("planModalTitle").textContent = "Modifier le plan pédagogique";
+
+            const badge = byId("planModalBadge");
+            if (badge){
+            badge.textContent = detail.codification || "";
+            badge.style.display = detail.codification ? "" : "none";
+            }
+
+            byId("planTitre").value = detail.titre || "";
+            fillPlanModaliteSelect("planModaliteGenerale", detail.modalite_generale || "");
+            byId("planObservations").value = detail.commentaire || "";
+
+            _planBlocks = normalizePlanDetailToBlocks(detail);
+        } else {
+            _planMode = "create";
+            _planEditId = null;
+
+            byId("planModalTitle").textContent = "Créer un plan pédagogique";
+
+            const badge = byId("planModalBadge");
+            if (badge){
+            badge.textContent = "";
+            badge.style.display = "none";
+            }
+
+            byId("planTitre").value = "";
+            fillPlanModaliteSelect("planModaliteGenerale", "");
+            byId("planObservations").value = "";
+            _planBlocks = [];
+        }
+
+        renderPlanContentLibrary();
+        renderPlanBlocks();
+        updatePlanDurationUI();
+
+        openModal("modalFormPlan");
+    }
+
+    function closePlanModal(){
+        closeModal("modalFormPlan");
+        _planMode = "create";
+        _planEditId = null;
+        _planBlocks = [];
+        _planDragContentId = null;
+        _planDragBlockId = null;
+    }
+
+    function addPlanBlock(){
+        _planBlocks.push(createEmptyPlanBlock());
+        renderPlanBlocks();
+    }
+
+    function buildPlanPayload(){
+        return {
+            titre: (byId("planTitre")?.value || "").trim(),
+            modalite_generale: (byId("planModaliteGenerale")?.value || "").trim() || null,
+            commentaire: (byId("planObservations")?.value || "").trim() || null,
+            blocs: (_planBlocks || []).map((b, idx) => ({
+            titre: (b.titre || "").trim() || `Séquence ${idx + 1}`,
+            duree: (b.duree || "").toString().trim() || null,
+            modalite_intervention: (b.modalite_intervention || "").trim() || null,
+            objectif: (b.objectif || "").trim() || null,
+            observations: (b.observations || "").trim() || null,
+            contenus: Array.isArray(b.contenus) ? b.contenus : [],
+            position: idx + 1
+            }))
+        };
+    }
+
+    async function reloadFormationTechnicalDetail(portal){
+        const effectifId = getEffectifId();
+
+        const d = await portal.apiJson(
+            `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/${encodeURIComponent(_editingId)}`
+        );
+
+        _detailContenus = Array.isArray(d.contenus) ? d.contenus : [];
+        _detailPlans = Array.isArray(d.plans) ? d.plans : [];
+
+        renderContenus();
+        renderPlans();
+    }
+
+    async function savePlan(portal){
+        if (!_editingId){
+            portal.showAlert("error", "Enregistrez d’abord la fiche formation.");
+            return;
+        }
+
+        const payload = buildPlanPayload();
+
+        if (!payload.titre){
+            portal.showAlert("error", "Titre du plan obligatoire.");
+            return;
+        }
+
+        const effectifId = getEffectifId();
+
+        if (_planMode === "edit" && _planEditId){
+            await portal.apiJson(
+            `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+            + `/${encodeURIComponent(_editingId)}`
+            + `/plans/${encodeURIComponent(_planEditId)}`,
+            {
+                method: "POST",
+                headers: { "Content-Type":"application/json" },
+                body: JSON.stringify(payload)
+            }
+            );
+        } else {
+            await portal.apiJson(
+            `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+            + `/${encodeURIComponent(_editingId)}`
+            + `/plans`,
+            {
+                method: "POST",
+                headers: { "Content-Type":"application/json" },
+                body: JSON.stringify(payload)
+            }
+            );
+        }
+
+        closePlanModal();
+        await reloadFormationTechnicalDetail(portal);
+        setSuccess("Plan pédagogique enregistré");
+    }
+
     function renderPlans(){
         const host = byId("formPlansList");
         if (!host) return;
@@ -1187,8 +1800,12 @@ function renderContentCompBadges(l){
             }
             });
 
-            div.querySelector('[data-action="edit"]')?.addEventListener("click", () => {
-            window.portal.showAlert("error", "La modification du plan pédagogique sera câblée dans le prochain chantier.");
+            div.querySelector('[data-action="edit"]')?.addEventListener("click", async () => {
+                try{
+                    await openPlanModal(p);
+                } catch(e){
+                    window.portal.showAlert("error", getErrorMessage(e));
+                }
             });
 
             div.querySelector('[data-action="archive"]')?.addEventListener("click", () => {
@@ -1953,6 +2570,31 @@ iframe{width:100%;height:100%;border:0;display:block}
 
     byId("btnFormPrereqAdd")?.addEventListener("click", addPrerequis);
     byId("formType")?.addEventListener("change", syncObsTypeFormation);
+
+    byId("btnFormPlanNew")?.addEventListener("click", () => openPlanModal(null));
+
+    byId("btnFormPlanX")?.addEventListener("click", closePlanModal);
+    byId("btnFormPlanCancel")?.addEventListener("click", closePlanModal);
+
+    byId("btnPlanBlockAdd")?.addEventListener("click", addPlanBlock);
+
+    byId("planContentSearch")?.addEventListener("input", () => {
+    _planContentSearch = (byId("planContentSearch")?.value || "").trim();
+    renderPlanContentLibrary();
+    });
+
+    byId("planModaliteGenerale")?.addEventListener("change", () => {
+    renderPlanBlocks();
+    });
+
+    byId("btnFormPlanSave")?.addEventListener("click", async () => {
+    try{
+        await savePlan(portal);
+    } catch(e){
+        portal.showAlert("error", getErrorMessage(e));
+    }
+    });
+
     byId("btnFormContentAdd")?.addEventListener("click", () => openContentModal(null));
 
     byId("btnFormContentX")?.addEventListener("click", closeContentModal);

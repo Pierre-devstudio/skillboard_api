@@ -144,6 +144,43 @@ def _safe_int(value: Any) -> Optional[int]:
     except Exception:
         return None
 
+def _duration_text(value: Any) -> Optional[str]:
+    n = _safe_float(value)
+
+    if n is None:
+        return None
+
+    if float(n).is_integer():
+        return str(int(n))
+
+    return str(n).replace(",", ".").strip()
+
+
+def _next_plan_code(cur, oid: str) -> str:
+    cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (f"learn_plan_code:{oid}:PL",))
+
+    cur.execute(
+        """
+        SELECT COALESCE(
+          MAX((regexp_match(codification, '^PL([0-9]{5})$'))[1]::int),
+          0
+        ) AS max_n
+        FROM public.tbl_plan_pedagogique
+        WHERE id_owner = %s
+          AND codification ~ '^PL[0-9]{5}$'
+        """,
+        (oid,),
+    )
+
+    r = cur.fetchone() or {}
+    max_n_raw = r.get("max_n")
+    max_n = int(max_n_raw) if max_n_raw is not None else 0
+    nxt = max_n + 1
+
+    if nxt > 99999:
+        raise HTTPException(status_code=400, detail="Limite de numérotation atteinte (PL99999).")
+
+    return f"PL{nxt:05d}"
 
 def _next_form_code(cur, oid: str) -> str:
     cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (f"learn_form_code:{oid}:FC",))
@@ -402,6 +439,262 @@ def _renumber_contenus(cur, oid: str, id_form: str) -> None:
             """,
             (idx, oid, id_form, r.get("id_ligne_contenu")),
         )
+
+def _ensure_contenus_owner(cur, oid: str, id_form: str, ids: list) -> list:
+    clean_ids = [str(x or "").strip() for x in (ids or []) if str(x or "").strip()]
+    if not clean_ids:
+        return []
+
+    cur.execute(
+        """
+        SELECT id_ligne_contenu
+        FROM public.tbl_contenu_ligne
+        WHERE id_owner = %s
+          AND id_form = %s
+          AND id_ligne_contenu = ANY(%s)
+          AND COALESCE(archive, FALSE) = FALSE
+        """,
+        (oid, id_form, clean_ids),
+    )
+
+    valid = {str(r.get("id_ligne_contenu") or "").strip() for r in (cur.fetchall() or [])}
+    return [cid for cid in clean_ids if cid in valid]
+
+
+def _fetch_plan_detail(cur, oid: str, id_form: str, id_plan_peda: str) -> dict:
+    cur.execute(
+        """
+        SELECT
+          p.id_plan_peda,
+          p.codification,
+          p.titre,
+          p.commentaire,
+          p.modalite_generale,
+          p.chemin_sharepoint,
+          p.date_creation,
+          COALESCE(
+            SUM(
+              CASE
+                WHEN trim(COALESCE(b.duree::text, '')) ~ '^[0-9]+([\\.,][0-9]+)?$'
+                THEN replace(trim(b.duree::text), ',', '.')::numeric
+                ELSE 0
+              END
+            ),
+            0
+          ) AS duree_totale,
+          COUNT(DISTINCT b.id_bloc_peda) AS nb_blocs
+        FROM public.tbl_plan_pedagogique p
+        LEFT JOIN public.tbl_bloc_pedagogique b
+          ON b.id_owner = p.id_owner
+         AND b.id_plan_peda = p.id_plan_peda
+         AND COALESCE(b.archive, FALSE) = FALSE
+        WHERE p.id_owner = %s
+          AND p.id_form = %s
+          AND p.id_plan_peda = %s
+          AND COALESCE(p.archive, FALSE) = FALSE
+        GROUP BY
+          p.id_plan_peda,
+          p.codification,
+          p.titre,
+          p.commentaire,
+          p.modalite_generale,
+          p.chemin_sharepoint,
+          p.date_creation
+        LIMIT 1
+        """,
+        (oid, id_form, id_plan_peda),
+    )
+
+    plan = cur.fetchone()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan pédagogique introuvable.")
+
+    cur.execute(
+        """
+        SELECT
+          b.id_bloc_peda,
+          b.titre,
+          b.objectif,
+          b.duree,
+          b.modalite_intervention,
+          b.observations,
+          b.position
+        FROM public.tbl_bloc_pedagogique b
+        WHERE b.id_owner = %s
+          AND b.id_form = %s
+          AND b.id_plan_peda = %s
+          AND COALESCE(b.archive, FALSE) = FALSE
+        ORDER BY COALESCE(b.position, 999999), lower(COALESCE(b.titre, ''))
+        """,
+        (oid, id_form, id_plan_peda),
+    )
+
+    blocs = cur.fetchall() or []
+
+    for b in blocs:
+        cur.execute(
+            """
+            SELECT
+              s.id_sequence_bloc,
+              s.id_ligne_contenu,
+              s.position,
+              l.titre_sequence,
+              l.objectif,
+              l.contenu,
+              l.id_competence,
+              l.competences_liees
+            FROM public.tbl_sequence_bloc_pedagogique s
+            JOIN public.tbl_contenu_ligne l
+              ON l.id_owner = s.id_owner
+             AND l.id_ligne_contenu = s.id_ligne_contenu
+             AND COALESCE(l.archive, FALSE) = FALSE
+            WHERE s.id_owner = %s
+              AND s.id_bloc_peda = %s
+              AND COALESCE(s.archive, FALSE) = FALSE
+            ORDER BY COALESCE(s.position, 999999), lower(COALESCE(l.titre_sequence, ''))
+            """,
+            (oid, b.get("id_bloc_peda")),
+        )
+
+        seqs = cur.fetchall() or []
+
+        for s in seqs:
+            comp_ids = _normalize_competence_ids(s.get("competences_liees"))
+            if not comp_ids and s.get("id_competence"):
+                comp_ids = [str(s.get("id_competence")).strip()]
+
+            s["competences_liees_ids"] = comp_ids
+            s["competences_liees_items"] = _resolve_competences(cur, oid, comp_ids)
+
+        b["sequences"] = seqs
+
+    plan["blocs"] = blocs
+    return plan
+
+
+def _archive_plan_blocs_and_sequences(cur, oid: str, id_form: str, id_plan_peda: str) -> None:
+    cur.execute(
+        """
+        UPDATE public.tbl_sequence_bloc_pedagogique s
+        SET archive = TRUE,
+            date_modification = NOW()
+        FROM public.tbl_bloc_pedagogique b
+        WHERE b.id_owner = s.id_owner
+          AND b.id_bloc_peda = s.id_bloc_peda
+          AND b.id_owner = %s
+          AND b.id_form = %s
+          AND b.id_plan_peda = %s
+          AND COALESCE(s.archive, FALSE) = FALSE
+        """,
+        (oid, id_form, id_plan_peda),
+    )
+
+    cur.execute(
+        """
+        UPDATE public.tbl_bloc_pedagogique
+        SET archive = TRUE,
+            date_modification = NOW()
+        WHERE id_owner = %s
+          AND id_form = %s
+          AND id_plan_peda = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        """,
+        (oid, id_form, id_plan_peda),
+    )
+
+
+def _insert_plan_blocs(cur, oid: str, id_form: str, id_plan_peda: str, blocs: Optional[list]) -> None:
+    rows = blocs or []
+
+    for idx, raw in enumerate(rows, start=1):
+        if raw is None:
+            continue
+
+        item = raw if isinstance(raw, dict) else raw.dict()
+
+        titre = _clean_text(item.get("titre") or f"Séquence {idx}", 500)
+        duree = _duration_text(item.get("duree"))
+        modalite = _clean_text(item.get("modalite_intervention"), 250)
+        objectif = _clean_text(item.get("objectif"), 1200)
+        observations = _clean_text(item.get("observations"), 2000)
+
+        contenu_ids = _ensure_contenus_owner(cur, oid, id_form, item.get("contenus") or [])
+
+        bid = str(uuid.uuid4())
+
+        cur.execute(
+            """
+            INSERT INTO public.tbl_bloc_pedagogique
+              (
+                id_bloc_peda,
+                id_owner,
+                id_form,
+                id_plan_peda,
+                titre,
+                objectif,
+                duree,
+                modalite_intervention,
+                observations,
+                position,
+                archive,
+                date_creation,
+                date_modification
+              )
+            VALUES
+              (
+                %s, %s, %s, %s,
+                %s, %s, %s, %s, %s,
+                %s,
+                FALSE,
+                NOW(),
+                NOW()
+              )
+            """,
+            (
+                bid,
+                oid,
+                id_form,
+                id_plan_peda,
+                titre,
+                objectif,
+                duree,
+                modalite,
+                observations,
+                idx,
+            ),
+        )
+
+        for seq_idx, id_ligne in enumerate(contenu_ids, start=1):
+            cur.execute(
+                """
+                INSERT INTO public.tbl_sequence_bloc_pedagogique
+                  (
+                    id_sequence_bloc,
+                    id_owner,
+                    id_bloc_peda,
+                    id_ligne_contenu,
+                    position,
+                    archive,
+                    date_creation,
+                    date_modification
+                  )
+                VALUES
+                  (
+                    %s, %s, %s, %s,
+                    %s,
+                    FALSE,
+                    NOW(),
+                    NOW()
+                  )
+                """,
+                (
+                    str(uuid.uuid4()),
+                    oid,
+                    bid,
+                    id_ligne,
+                    seq_idx,
+                ),
+            )
 
 def _sync_formation_prerequis(cur, oid: str, id_form: str, prerequis: Optional[list]) -> None:
     """
@@ -784,6 +1077,22 @@ class FormationContenuPayload(BaseModel):
 
 class FormationContenuReorderPayload(BaseModel):
     items: list[str]
+
+class FormationPlanBlocPayload(BaseModel):
+    titre: Optional[str] = None
+    duree: Optional[Any] = None
+    modalite_intervention: Optional[str] = None
+    objectif: Optional[str] = None
+    observations: Optional[str] = None
+    contenus: Optional[list] = None
+    position: Optional[int] = None
+
+
+class FormationPlanPayload(BaseModel):
+    titre: str
+    modalite_generale: Optional[str] = None
+    commentaire: Optional[str] = None
+    blocs: Optional[list[FormationPlanBlocPayload]] = None
 
 # ======================================================
 # Référentiels
@@ -1897,6 +2206,185 @@ def _build_plan_pdf_story(form: dict, plan: dict) -> list:
 
     return story
 
+@router.get("/learn/formations/{id_effectif}/{id_form}/plans/{id_plan_peda}")
+def learn_formation_plan_detail(
+    id_effectif: str,
+    id_form: str,
+    id_plan_peda: str,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        pid = (id_plan_peda or "").strip()
+
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_plan_peda manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                oid = (profile.get("id_owner") or "").strip()
+
+                return _fetch_plan_detail(cur, oid, fid, pid)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations plan detail error: {e}")
+
+
+@router.post("/learn/formations/{id_effectif}/{id_form}/plans")
+def learn_formation_plan_create(
+    id_effectif: str,
+    id_form: str,
+    payload: FormationPlanPayload,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        titre = (payload.titre or "").strip()
+
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+        if not titre:
+            raise HTTPException(status_code=400, detail="Titre du plan obligatoire.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                _learn_require_min_role(profile, "supervisor")
+                oid = (profile.get("id_owner") or "").strip()
+
+                if not _formation_exists_owner(cur, oid, fid):
+                    raise HTTPException(status_code=404, detail="Formation introuvable.")
+
+                pid = str(uuid.uuid4())
+                code = _next_plan_code(cur, oid)
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_plan_pedagogique
+                      (
+                        id_plan_peda,
+                        id_owner,
+                        id_form,
+                        codification,
+                        titre,
+                        commentaire,
+                        modalite_generale,
+                        archive,
+                        date_creation,
+                        date_modification
+                      )
+                    VALUES
+                      (
+                        %s, %s, %s,
+                        %s, %s, %s, %s,
+                        FALSE,
+                        NOW(),
+                        NOW()
+                      )
+                    """,
+                    (
+                        pid,
+                        oid,
+                        fid,
+                        code,
+                        titre,
+                        _clean_text(payload.commentaire),
+                        _clean_text(payload.modalite_generale),
+                    ),
+                )
+
+                _insert_plan_blocs(cur, oid, fid, pid, payload.blocs)
+
+                item = _fetch_plan_detail(cur, oid, fid, pid)
+
+                conn.commit()
+
+        return {"ok": True, "id_plan_peda": pid, "codification": code, "item": item}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations plan create error: {e}")
+
+
+@router.post("/learn/formations/{id_effectif}/{id_form}/plans/{id_plan_peda}")
+def learn_formation_plan_update(
+    id_effectif: str,
+    id_form: str,
+    id_plan_peda: str,
+    payload: FormationPlanPayload,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        pid = (id_plan_peda or "").strip()
+        titre = (payload.titre or "").strip()
+
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_plan_peda manquant.")
+        if not titre:
+            raise HTTPException(status_code=400, detail="Titre du plan obligatoire.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                _learn_require_min_role(profile, "supervisor")
+                oid = (profile.get("id_owner") or "").strip()
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_plan_pedagogique
+                    SET titre = %s,
+                        commentaire = %s,
+                        modalite_generale = %s,
+                        date_modification = NOW()
+                    WHERE id_owner = %s
+                      AND id_form = %s
+                      AND id_plan_peda = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    """,
+                    (
+                        titre,
+                        _clean_text(payload.commentaire),
+                        _clean_text(payload.modalite_generale),
+                        oid,
+                        fid,
+                        pid,
+                    ),
+                )
+
+                if cur.rowcount <= 0:
+                    raise HTTPException(status_code=404, detail="Plan pédagogique introuvable.")
+
+                _archive_plan_blocs_and_sequences(cur, oid, fid, pid)
+                _insert_plan_blocs(cur, oid, fid, pid, payload.blocs)
+
+                item = _fetch_plan_detail(cur, oid, fid, pid)
+
+                conn.commit()
+
+        return {"ok": True, "id_plan_peda": pid, "item": item}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations plan update error: {e}")
 
 @router.get("/learn/formations/{id_effectif}/{id_form}/plans/{id_plan_peda}/fiche_pdf")
 def learn_formation_plan_fiche_pdf(

@@ -234,7 +234,7 @@
         <div class="sb-form-panel" data-panel="plans">
           
           <div class="sb-actions" style="justify-content:flex-end; margin-bottom:10px;">
-            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnFormPlanNew" disabled>Créer un plan pédagogique</button>
+            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnFormPlanNew">Créer un plan pédagogique</button>
           </div>
 
           <div id="formPlansList" class="sb-stack sb-stack--sm"></div>
@@ -246,6 +246,104 @@
         <button type="button" class="sb-btn sb-btn--ai" id="btnFormAiReview">Revoir avec l’IA</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormSave">Enregistrer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sb-modal sb-modal--above" id="modalFormPlan" style="display:none;">
+    <div class="sb-modal-card sb-modal-card--xl">
+      <div class="sb-modal-head">
+        <div style="min-width:0;">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+            <span id="planModalBadge" class="sb-badge sb-badge--plan" style="display:none;"></span>
+            <div class="card-title" id="planModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Plan pédagogique</div>
+          </div>
+          <div class="card-sub" id="planModalSub" style="margin:4px 0 0 0;">
+            Construisez le déroulé pédagogique à partir des contenus de la formation.
+          </div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnFormPlanX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="lf-plan-edit-top">
+          <div class="row" style="margin:0;">
+            <div class="info-item" style="flex:2; min-width:280px;">
+              <div class="label">Titre du plan</div>
+              <input type="text" id="planTitre" />
+            </div>
+
+            <div class="info-item" style="flex:1; min-width:220px;">
+              <div class="label">Modalité générale</div>
+              <select id="planModaliteGenerale">
+                <option value="">—</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="lf-plan-duration-row">
+            <div class="lf-plan-duration-card">
+              <div class="label">Durée formation</div>
+              <div class="lf-plan-duration-value" id="planDureeFormation">—</div>
+            </div>
+
+            <div class="lf-plan-duration-card">
+              <div class="label">Durée plan calculée</div>
+              <div class="lf-plan-duration-value" id="planDureeCalculee">—</div>
+            </div>
+
+            <div class="lf-plan-duration-card" id="planDureeEtatCard">
+              <div class="label">Écart</div>
+              <div class="lf-plan-duration-value" id="planDureeEcart">—</div>
+            </div>
+          </div>
+
+          <div class="row" style="margin:0;">
+            <div class="info-item" style="flex:1; min-width:260px;">
+              <div class="label">Observations du plan</div>
+              <textarea id="planObservations" rows="3"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="lf-plan-builder">
+          <div class="lf-plan-library">
+            <div class="lf-plan-library-head">
+              <div>
+                <div class="label lf-comp-zone-title" style="margin:0;">Briques de contenu</div>
+                <div class="card-sub" style="margin:3px 0 0 0;">
+                  Glissez un contenu dans une séquence. Une même brique peut être utilisée plusieurs fois.
+                </div>
+              </div>
+            </div>
+
+            <input type="text" id="planContentSearch" placeholder="Filtrer les contenus…" />
+
+            <div class="lf-plan-content-library-list" id="planContentLibrary"></div>
+          </div>
+
+          <div class="lf-plan-sequences">
+            <div class="lf-plan-sequences-head">
+              <div>
+                <div class="label lf-comp-zone-title" style="margin:0;">Séquences pédagogiques</div>
+                <div class="card-sub" style="margin:3px 0 0 0;">
+                  Définissez les journées, demi-journées ou séquences du déroulé.
+                </div>
+              </div>
+
+              <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnPlanBlockAdd">
+                Ajouter une séquence
+              </button>
+            </div>
+
+            <div class="sb-stack sb-stack--sm" id="planBlockList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnFormPlanSave">Enregistrer le plan</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnFormPlanCancel">Annuler</button>
       </div>
     </div>
   </div>
