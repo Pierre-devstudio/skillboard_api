@@ -1305,6 +1305,110 @@ def _find_domaine_formation_id(cur, labels: list) -> Optional[str]:
 
     return None
 
+def _is_generic_prereq_title(value: Any) -> bool:
+    s = _norm_match_text(value)
+
+    if not s:
+        return True
+
+    generic = {
+        "prerequis",
+        "pre requis",
+        "prerequis formation",
+        "conditions prealables",
+        "conditions d acces",
+        "avant formation",
+        "niveau requis",
+        "public concerne",
+    }
+
+    return s in generic or len(s) < 4
+
+
+def _looks_like_answer_label(value: Any) -> bool:
+    s = _norm_match_text(value)
+
+    if not s:
+        return True
+
+    labels = {
+        "oui",
+        "non",
+        "partiellement",
+        "je maitrise",
+        "je ne maitrise pas",
+        "je maitrise partiellement",
+        "acquis",
+        "non acquis",
+        "en cours d acquisition",
+        "besoin d assistance",
+        "j ai besoin d assistance",
+    }
+
+    return s in labels or len(s.split()) <= 3
+
+
+def _normalize_import_prerequis(raw_items: Any) -> list:
+    """
+    Normalise les prérequis extraits d'un document.
+
+    Objectif :
+    - éviter que l'IA place plusieurs prérequis dans r1/r2/r3 ;
+    - conserver un item = un prérequis ;
+    - réponses par défaut compatibles Oui / Non / optionnel.
+    """
+    items = raw_items if isinstance(raw_items, list) else []
+    out = []
+    seen = set()
+
+    def add_item(titre: Any, r1: Any = "Oui", r2: Any = "Non", r3: Any = ""):
+        clean_titre = _clean_text(titre, 800)
+        if not clean_titre:
+            return
+
+        key = _norm_match_text(clean_titre)
+        if not key or key in seen:
+            return
+
+        seen.add(key)
+
+        out.append({
+            "id_prerequis": None,
+            "titre": clean_titre,
+            "r1": _clean_text(r1 or "Oui", 300),
+            "r2": _clean_text(r2 or "Non", 300),
+            "r3": _clean_text(r3 or "", 300),
+            "ordre_affichage": len(out) + 1,
+        })
+
+    for raw in items:
+        if not isinstance(raw, dict):
+            add_item(raw)
+            continue
+
+        titre = _clean_text(raw.get("titre"), 800)
+        r1 = _clean_text(raw.get("r1"), 300)
+        r2 = _clean_text(raw.get("r2"), 300)
+        r3 = _clean_text(raw.get("r3"), 300)
+
+        responses = [x for x in [r1, r2, r3] if x]
+
+        # Cas typique du bug :
+        # titre = "Prérequis", r1/r2/r3 = les vrais prérequis.
+        if _is_generic_prereq_title(titre):
+            for resp in responses:
+                if resp and not _looks_like_answer_label(resp):
+                    add_item(resp)
+            continue
+
+        # Cas normal : titre = le prérequis, réponses = labels d'auto-positionnement.
+        clean_r1 = r1 if _looks_like_answer_label(r1) else "Oui"
+        clean_r2 = r2 if _looks_like_answer_label(r2) else "Non"
+        clean_r3 = r3 if _looks_like_answer_label(r3) else ""
+
+        add_item(titre, clean_r1, clean_r2, clean_r3)
+
+    return out
 
 def _build_import_ai_schema() -> dict:
     return {
@@ -1380,6 +1484,10 @@ def _analyse_import_document_with_ai(doc_text: str, filename: str) -> dict:
         "Tu dois renvoyer un JSON strict conforme au schéma. "
         "Pour les compétences, distingue les compétences visées pour les stagiaires et les compétences requises pour le formateur. "
         "Pour les contenus, découpe en lignes de contenu pédagogiques réutilisables, pas en planning horaire. "
+        "Pour les prérequis, règle stricte : chaque élément de la liste prerequis représente UN SEUL prérequis. "
+        "Le champ titre contient le prérequis lui-même. "
+        "Les champs r1, r2, r3 sont uniquement des réponses d’auto-positionnement, jamais des prérequis. "
+        "Pour un prérequis oui/non, utilise r1='Oui', r2='Non', r3=''. "
         "Le type_formation doit être l'une des valeurs: Certifiante, Diplomante, Non Certifiante. "
         "Si une information est absente, renvoie une chaîne vide, null ou une liste vide."
     )
@@ -1577,20 +1685,7 @@ async def learn_formations_import_document(
                 comp_stag = _match_import_competences(cur, oid, draft.get("competences_stagiaires") or [])
                 comp_form = _match_import_competences(cur, oid, draft.get("competences_formateurs") or [])
 
-        prerequis = []
-        for idx, p in enumerate(draft.get("prerequis") or [], start=1):
-            titre = _clean_text(p.get("titre"), 800)
-            if not titre:
-                continue
-
-            prerequis.append({
-                "id_prerequis": None,
-                "titre": titre,
-                "r1": _clean_text(p.get("r1") or "Oui", 300),
-                "r2": _clean_text(p.get("r2") or "Non", 300),
-                "r3": _clean_text(p.get("r3") or "", 300),
-                "ordre_affichage": idx,
-            })
+        prerequis = _normalize_import_prerequis(draft.get("prerequis") or [])
 
         contenus = []
         for c in draft.get("contenus") or []:
