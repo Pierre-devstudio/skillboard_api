@@ -62,6 +62,30 @@
       .replaceAll("'", "&#039;");
   }
 
+    function getErrorMessage(err){
+        if (!err) return "Erreur inconnue.";
+
+        if (typeof err === "string") return err;
+
+        if (err.message && typeof err.message === "string") return err.message;
+
+        if (err.detail){
+            if (typeof err.detail === "string") return err.detail;
+
+            try{
+            return JSON.stringify(err.detail);
+            } catch(_){}
+        }
+
+        if (err.error && typeof err.error === "string") return err.error;
+
+        try{
+            return JSON.stringify(err);
+        } catch(_){}
+
+        return "Erreur inconnue.";
+    }
+
     function argbIntToRgbTuple(v){
         if (v === null || v === undefined) return null;
 
@@ -917,7 +941,10 @@ function renderContentCompBadges(l){
             try{
                 await saveContentOrder(window.portal);
             } catch(err){
-                window.portal.showAlert("error", err?.message || String(err));
+                const msg = getErrorMessage(err);
+                if (msg && msg !== "[object Object]"){
+                    window.portal.showAlert("error", msg);
+                }
             }
             });
 
