@@ -1800,6 +1800,226 @@ def _build_formation_pdf_story(form: dict) -> list:
 
     return story
 
+def _build_plan_pdf_story(form: dict, plan: dict) -> list:
+    styles = build_pdf_styles()
+
+    title_style = ParagraphStyle(
+        "LearnPlanTitle",
+        parent=styles["title"],
+        fontName="Helvetica-Bold",
+        fontSize=16,
+        leading=19,
+        textColor=colors.HexColor("#1f2937"),
+        spaceAfter=4,
+    )
+
+    section_style = ParagraphStyle(
+        "LearnPlanSection",
+        parent=styles["section"],
+        fontName="Helvetica-Bold",
+        fontSize=11.2,
+        leading=13,
+        textColor=colors.HexColor("#c2410c"),
+        spaceAfter=5,
+        spaceBefore=8,
+    )
+
+    body_style = ParagraphStyle(
+        "LearnPlanBody",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=8.8,
+        leading=11.2,
+        textColor=colors.HexColor("#1f2937"),
+        spaceAfter=2,
+    )
+
+    small_style = ParagraphStyle(
+        "LearnPlanSmall",
+        parent=styles["small"],
+        fontName="Helvetica",
+        fontSize=7.8,
+        leading=9.4,
+        textColor=colors.HexColor("#6b7280"),
+    )
+
+    story = []
+
+    story.append(_p("Plan pédagogique", title_style))
+    story.append(_p(f"{form.get('code') or '—'} • {form.get('titre') or 'Formation'}", styles["subtitle"]))
+    story.append(Spacer(1, 4 * mm))
+
+    meta = [
+        [_p("Référence plan", small_style), _p(plan.get("codification") or "—", body_style), _p("Titre", small_style), _p(plan.get("titre") or "—", body_style)],
+        [_p("Modalité générale", small_style), _p(plan.get("modalite_generale") or "—", body_style), _p("Durée cumulée", small_style), _p(f"{plan.get('duree_totale') or 0} h", body_style)],
+        [_p("Nombre de blocs", small_style), _p(str(plan.get("nb_blocs") or 0), body_style), _p("Commentaire", small_style), _p(plan.get("commentaire") or "—", body_style)],
+    ]
+
+    tbl = Table(meta, colWidths=[30 * mm, 60 * mm, 30 * mm, 60 * mm])
+    tbl.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#e5e7eb")),
+        ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e7eb")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(tbl)
+
+    story.append(_p("Blocs pédagogiques", section_style))
+
+    blocs = plan.get("blocs") or []
+    if not blocs:
+        story.append(_p("Aucun bloc pédagogique n’est rattaché à ce plan.", body_style))
+    else:
+        rows = [[_p("Bloc", small_style), _p("Objectif", small_style), _p("Durée / modalité", small_style)]]
+
+        for b in blocs:
+            rows.append([
+                _p(b.get("titre") or "—", body_style),
+                _p(b.get("objectif") or "—", body_style),
+                _p(f"{b.get('duree') or '—'} h • {b.get('modalite_intervention') or '—'}", body_style),
+            ])
+
+        table = Table(rows, colWidths=[54 * mm, 82 * mm, 44 * mm])
+        table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#fff7ed")),
+            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e7eb")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        story.append(table)
+
+    return story
+
+
+@router.get("/learn/formations/{id_effectif}/{id_form}/plans/{id_plan_peda}/fiche_pdf")
+def learn_formation_plan_fiche_pdf(
+    id_effectif: str,
+    id_form: str,
+    id_plan_peda: str,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        pid = (id_plan_peda or "").strip()
+
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_plan_peda manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                oid = (profile.get("id_owner") or "").strip()
+
+                form = _fetch_form_detail(cur, oid, fid)
+                plan = None
+
+                for p in form.get("plans") or []:
+                    if str(p.get("id_plan_peda") or "").strip() == pid:
+                        plan = p
+                        break
+
+                if not plan:
+                    raise HTTPException(status_code=404, detail="Plan pédagogique introuvable.")
+
+                logo_bytes = _fetch_owner_logo_bytes(cur, oid)
+
+        code_label = plan.get("codification") or "Plan"
+        titre_label = plan.get("titre") or "Plan pédagogique"
+        owner_label = (profile.get("nom_owner") or "Novoskill Learn").strip() or "Novoskill Learn"
+
+        filename = _pdf_latin1_safe(
+            f"Plan pédagogique {_pdf_safe_filename_part(code_label, 32)} - {_pdf_safe_filename_part(titre_label, 80)}.pdf"
+        )
+
+        pdf_bytes = build_pdf_document(
+            _build_plan_pdf_story(form, plan),
+            meta={
+                "title": _pdf_latin1_safe(f"Plan pédagogique - {code_label} - {titre_label}"),
+                "doc_label": _pdf_latin1_safe("Plan pédagogique"),
+                "footer_left": _pdf_latin1_safe("Novoskill Learn • Plan pédagogique"),
+                "header_right": _pdf_latin1_safe(owner_label),
+                "header_right_font_name": "Helvetica-Bold",
+                "header_right_font_size": 10.5,
+                "logo_bytes": logo_bytes,
+            },
+        )
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations plan fiche_pdf error: {e}")
+
+
+@router.post("/learn/formations/{id_effectif}/{id_form}/plans/{id_plan_peda}/archive")
+def learn_formation_plan_archive(
+    id_effectif: str,
+    id_form: str,
+    id_plan_peda: str,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        pid = (id_plan_peda or "").strip()
+
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_plan_peda manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                _learn_require_min_role(profile, "supervisor")
+                oid = (profile.get("id_owner") or "").strip()
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_plan_pedagogique
+                    SET archive = TRUE,
+                        date_modification = NOW()
+                    WHERE id_owner = %s
+                      AND id_form = %s
+                      AND id_plan_peda = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    """,
+                    (oid, fid, pid),
+                )
+
+                if cur.rowcount <= 0:
+                    raise HTTPException(status_code=404, detail="Plan pédagogique introuvable.")
+
+                conn.commit()
+
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations plan archive error: {e}")
 
 @router.get("/learn/formations/{id_effectif}/{id_form}/fiche_pdf")
 def learn_formation_fiche_pdf(id_effectif: str, id_form: str, request: Request):

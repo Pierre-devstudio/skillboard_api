@@ -662,6 +662,44 @@
   }
 }
 
+.lf-plan-card{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:12px;
+  background:#fff;
+  overflow:hidden;
+}
+
+.lf-plan-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  padding:10px 12px;
+  background:#fff7ed;
+  border-bottom:1px solid #fed7aa;
+}
+
+.lf-plan-head-main{
+  min-width:0;
+}
+
+.lf-plan-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  font-size:13px;
+  font-weight:700;
+  color:#111827;
+}
+
+.lf-plan-title span:last-child{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
 .lf-mini-card{
   border:1px solid rgba(17,24,39,.10);
   border-radius:12px;
@@ -688,8 +726,8 @@
 
 .lf-plan-blocs{
   display:grid;
-  gap:6px;
-  margin-top:8px;
+  gap:0;
+  padding:8px 12px 10px;
 }
 
 .lf-plan-bloc{
@@ -697,13 +735,27 @@
   justify-content:space-between;
   gap:8px;
   border-top:1px solid rgba(17,24,39,.08);
-  padding-top:6px;
+  padding:7px 0;
   font-size:12px;
+}
+
+.lf-plan-bloc:first-child{
+  border-top:0;
 }
 
 .lf-plan-bloc span{
   color:#64748b;
   white-space:nowrap;
+}
+
+@media (max-width: 900px){
+  .lf-plan-head{
+    flex-direction:column;
+  }
+
+  .lf-plan-head .sb-icon-actions{
+    align-self:flex-end;
+  }
 }
 
 @media (max-width: 1000px){

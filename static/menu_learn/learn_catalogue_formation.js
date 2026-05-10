@@ -1129,40 +1129,75 @@ function renderContentCompBadges(l){
         );
     }
     
-  function renderPlans(){
-    const host = byId("formPlansList");
-    if (!host) return;
+    function renderPlans(){
+        const host = byId("formPlansList");
+        if (!host) return;
 
-    host.innerHTML = "";
+        host.innerHTML = "";
 
-    if (!_detailPlans.length){
-      host.innerHTML = `<div class="card-sub">Aucun plan pédagogique n’est encore rattaché à cette formation.</div>`;
-      return;
-    }
+        if (!_detailPlans.length){
+            host.innerHTML = `<div class="card-sub">Aucun plan pédagogique n’est encore rattaché à cette formation.</div>`;
+            return;
+        }
 
-    _detailPlans.forEach(p => {
-      const div = document.createElement("div");
-      div.className = "lf-mini-card";
-      div.innerHTML = `
-        <div class="lf-mini-title">
-          <span class="sb-badge sb-badge--plan">${htmlEsc(p.codification || "PLAN")}</span>
-          ${htmlEsc(p.titre || "Plan pédagogique")}
-        </div>
-        <div class="card-sub">
-          ${htmlEsc(p.modalite_generale || "—")} • ${htmlEsc(p.duree_totale || "0")} h • ${htmlEsc(p.nb_blocs || "0")} bloc(s)
-        </div>
-        <div class="lf-plan-blocs">
-          ${(p.blocs || []).map(b => `
-            <div class="lf-plan-bloc">
-              <strong>${htmlEsc(b.titre || "Bloc")}</strong>
-              <span>${htmlEsc(b.duree || "—")} h • ${htmlEsc(b.modalite_intervention || "—")}</span>
+        _detailPlans.forEach(p => {
+            const div = document.createElement("div");
+            div.className = "lf-plan-card";
+
+            div.innerHTML = `
+            <div class="lf-plan-head">
+                <div class="lf-plan-head-main">
+                <div class="lf-plan-title">
+                    <span class="sb-badge sb-badge--plan">${htmlEsc(p.codification || "PLAN")}</span>
+                    <span>${htmlEsc(p.titre || "Plan pédagogique")}</span>
+                </div>
+                <div class="card-sub" style="margin:4px 0 0 0;">
+                    ${htmlEsc(p.modalite_generale || "—")} • ${htmlEsc(p.duree_totale || "0")} h • ${htmlEsc(p.nb_blocs || "0")} bloc(s)
+                </div>
+                </div>
+
+                <div class="sb-icon-actions">
+                <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-action="pdf" title="Voir PDF" aria-label="Voir PDF">
+                    ${iconPdf()}
+                </button>
+                <button type="button" class="sb-icon-btn" data-action="edit" title="Modifier" aria-label="Modifier">
+                    ${iconEdit()}
+                </button>
+                <button type="button" class="sb-icon-btn sb-icon-btn--danger" data-action="archive" title="Archiver" aria-label="Archiver">
+                    ${iconTrash()}
+                </button>
+                </div>
             </div>
-          `).join("")}
-        </div>
-      `;
-      host.appendChild(div);
-    });
-  }
+
+            <div class="lf-plan-blocs">
+                ${(p.blocs || []).map(b => `
+                <div class="lf-plan-bloc">
+                    <strong>${htmlEsc(b.titre || "Bloc")}</strong>
+                    <span>${htmlEsc(b.duree || "—")} h • ${htmlEsc(b.modalite_intervention || "—")}</span>
+                </div>
+                `).join("")}
+            </div>
+            `;
+
+            div.querySelector('[data-action="pdf"]')?.addEventListener("click", async () => {
+            try{
+                await openPlanPdf(p);
+            } catch(e){
+                window.portal.showAlert("error", getErrorMessage ? getErrorMessage(e) : (e?.message || String(e)));
+            }
+            });
+
+            div.querySelector('[data-action="edit"]')?.addEventListener("click", () => {
+            window.portal.showAlert("error", "La modification du plan pédagogique sera câblée dans le prochain chantier.");
+            });
+
+            div.querySelector('[data-action="archive"]')?.addEventListener("click", () => {
+            openPlanArchive(p);
+            });
+
+            host.appendChild(div);
+        });
+    }
 
   function renderList(){
     const host = byId("catFormsList");
@@ -1754,6 +1789,85 @@ iframe{width:100%;height:100%;border:0;display:block}
         }
     }
 
+    async function openPlanPdf(p){
+        const effectifId = getEffectifId();
+        const formId = String(_editingId || "").trim();
+        const planId = String(p?.id_plan_peda || "").trim();
+
+        if (!effectifId) throw new Error("Profil Learn manquant.");
+        if (!formId) throw new Error("Formation non chargée.");
+        if (!planId) throw new Error("Plan pédagogique introuvable.");
+
+        const title =
+            `Plan pédagogique - ${
+            String(p?.codification || "").trim()
+                ? `${String(p.codification).trim()} - `
+                : ""
+            }${String(p?.titre || "").trim() || "Plan pédagogique"}`;
+
+        let popupWin = null;
+
+        try{
+            popupWin = openPdfLoadingWindow(title);
+
+            const url =
+            `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+            + `/${encodeURIComponent(formId)}`
+            + `/plans/${encodeURIComponent(planId)}/fiche_pdf`;
+
+            const blob = await fetchPdfBlob(url);
+
+            renderPdfBlobInWindow(popupWin, blob, title);
+        } catch(e){
+            if (popupWin && !popupWin.closed){
+            try { popupWin.close(); } catch(_){}
+            }
+
+            throw e;
+        }
+        }
+
+        function openPlanArchive(p){
+        const planId = String(p?.id_plan_peda || "").trim();
+
+        if (!planId){
+            window.portal.showAlert("error", "Plan pédagogique introuvable.");
+            return;
+        }
+
+        const label = `${p?.codification || "PLAN"} – ${p?.titre || "Plan pédagogique"}`;
+
+        if (!window.confirm(`Archiver le plan pédagogique "${label}" ?`)){
+            return;
+        }
+
+        archivePlan(p).catch(e => {
+            window.portal.showAlert("error", getErrorMessage ? getErrorMessage(e) : (e?.message || String(e)));
+        });
+        }
+
+        async function archivePlan(p){
+        const effectifId = getEffectifId();
+        const formId = String(_editingId || "").trim();
+        const planId = String(p?.id_plan_peda || "").trim();
+
+        if (!effectifId) throw new Error("Profil Learn manquant.");
+        if (!formId) throw new Error("Formation non chargée.");
+        if (!planId) throw new Error("Plan pédagogique introuvable.");
+
+        await window.portal.apiJson(
+            `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+            + `/${encodeURIComponent(formId)}`
+            + `/plans/${encodeURIComponent(planId)}/archive`,
+            { method:"POST" }
+        );
+
+        _detailPlans = _detailPlans.filter(x => String(x.id_plan_peda || "") !== planId);
+
+        renderPlans();
+        setSuccess("Plan pédagogique archivé");
+    }
+    
   async function openFormationPdf(it){
     const effectifId = getEffectifId();
     const formId = String(it?.id_form || "").trim();
