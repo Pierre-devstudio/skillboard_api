@@ -35,6 +35,8 @@
   let _detailPlans = [];
   let _importDraft = null;
   let _pendingImportContenus = [];
+  let _pendingCompStagCreate = [];
+  let _pendingCompFormCreate = [];
 
   let _planMode = "create";
   let _planEditId = null;
@@ -470,7 +472,11 @@
             .map(id => findCompetence(id))
             .filter(Boolean);
 
-        if (!rows.length){
+        const pending = target === "stagiaire"
+            ? (_pendingCompStagCreate || [])
+            : (_pendingCompFormCreate || []);
+
+        if (!rows.length && !pending.length){
             const empty = document.createElement("div");
             empty.className = "card-sub";
             empty.textContent = "Aucune compétence affectée.";
@@ -518,7 +524,7 @@
             try{
                 await openCompetencePdfFromFormation(c);
             } catch(err){
-                window.portal.showAlert("error", err?.message || String(err));
+                window.portal.showAlert("error", getErrorMessage(err));
             }
             });
 
@@ -546,6 +552,64 @@
             });
 
             actions.appendChild(btnRemove);
+            right.appendChild(actions);
+
+            row.appendChild(left);
+            row.appendChild(right);
+
+            host.appendChild(row);
+        });
+
+        pending.forEach((p, idx) => {
+            const row = document.createElement("div");
+            row.className = "sb-row-card lf-comp-selected-row lf-comp-proposal-row";
+
+            const left = document.createElement("div");
+            left.className = "sb-row-left";
+
+            const badge = document.createElement("span");
+            badge.className = "sb-badge sb-badge--state";
+            badge.textContent = "À créer";
+
+            const title = document.createElement("div");
+            title.className = "sb-row-title";
+            title.textContent = p.source || "";
+
+            left.appendChild(badge);
+            left.appendChild(title);
+
+            const right = document.createElement("div");
+            right.className = "sb-row-right";
+
+            const hint = document.createElement("span");
+            hint.className = "card-sub lf-comp-proposal-hint";
+            hint.textContent = "Proposition issue de l’import";
+
+            const actions = document.createElement("div");
+            actions.className = "sb-icon-actions";
+
+            const btnRemove = document.createElement("button");
+            btnRemove.type = "button";
+            btnRemove.className = "sb-icon-btn sb-icon-btn--danger";
+            btnRemove.title = "Retirer";
+            btnRemove.setAttribute("aria-label", "Retirer");
+            btnRemove.innerHTML = iconTrash();
+            btnRemove.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (target === "stagiaire"){
+                _pendingCompStagCreate.splice(idx, 1);
+            } else {
+                _pendingCompFormCreate.splice(idx, 1);
+            }
+
+            renderCompetences();
+            });
+
+            actions.appendChild(btnRemove);
+
+            right.appendChild(hint);
             right.appendChild(actions);
 
             row.appendChild(left);
@@ -901,8 +965,44 @@ function renderContentCompBadges(l){
         host.innerHTML = "";
 
         if (!_editingId){
-            host.innerHTML = `<div class="card-sub">Enregistrez d’abord la fiche formation avant d’ajouter du contenu structuré.</div>`;
+        if (_pendingImportContenus.length){
+            _pendingImportContenus.forEach((l, idx) => {
+            const div = document.createElement("div");
+            div.className = "lf-content-card lf-content-card--pending";
+
+            const compItems = (l.competences_liees || [])
+                .map(id => findCompetence(id))
+                .filter(Boolean);
+
+            const badges = compItems.length
+                ? compItems.map(c => `
+                    <span class="sb-badge sb-badge--comp lf-content-comp-badge" title="${htmlEsc(c.intitule || "")}">
+                    ${htmlEsc(c.code || "—")}
+                    </span>
+                `).join("")
+                : `<span class="card-sub" style="margin:0;">Compétences à confirmer</span>`;
+
+            div.innerHTML = `
+                <div class="lf-content-main">
+                <div class="lf-mini-title">${htmlEsc(l.titre_sequence || `Contenu ${idx + 1}`)}</div>
+                <div class="card-sub">${htmlEsc(l.objectif || "")}</div>
+                <div class="lf-mini-body">${htmlEsc(l.contenu || "—").replaceAll("\n", "<br>")}</div>
+                </div>
+
+                <div class="lf-content-side">
+                <div class="lf-content-comp-badges">${badges}</div>
+                <span class="sb-badge sb-badge--state">En attente d’enregistrement</span>
+                </div>
+            `;
+
+            host.appendChild(div);
+            });
+
             return;
+        }
+
+        host.innerHTML = `<div class="card-sub">Enregistrez d’abord la fiche formation avant d’ajouter du contenu structuré.</div>`;
+        return;
         }
 
         if (!_detailContenus.length){
@@ -2244,6 +2344,69 @@ function renderContentCompBadges(l){
         if (kind) el.classList.add("is-" + kind);
     }
 
+    function normalizeImportKey(value){
+        return String(value || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
+    }
+
+    function importRowsToCreate(rows){
+        return (rows || [])
+            .filter(r => !(r.selected_id || "").toString().trim())
+            .map(r => ({
+            source: (r.source || "").toString().trim(),
+            status: r.status || "non_trouve",
+            matches: Array.isArray(r.matches) ? r.matches : []
+            }))
+            .filter(r => r.source);
+    }
+
+    function buildImportSelectedMap(){
+        const map = new Map();
+
+        const allRows = []
+            .concat(_importDraft?.competences_stagiaires_import || [])
+            .concat(_importDraft?.competences_formateurs_import || []);
+
+        allRows.forEach(r => {
+            const key = normalizeImportKey(r.source || "");
+            const id = (r.selected_id || "").toString().trim();
+
+            if (key && id) {
+            map.set(key, id);
+            }
+        });
+
+        return map;
+    }
+
+    function enrichImportContenusWithCompetences(rows){
+        const map = buildImportSelectedMap();
+
+        return (rows || []).map(c => {
+            const sources = Array.isArray(c.competences_sources) ? c.competences_sources : [];
+            const ids = [];
+
+            sources.forEach(src => {
+            const key = normalizeImportKey(src);
+            const id = map.get(key);
+
+            if (id && !ids.includes(id)) {
+                ids.push(id);
+            }
+            });
+
+            return {
+            ...c,
+            competences_liees: ids
+            };
+        });
+    }
+
     function importSelectedIds(rows){
         const ids = [];
 
@@ -2431,7 +2594,12 @@ function renderContentCompBadges(l){
         _selectedCompStag = importSelectedIds(d.competences_stagiaires_import || []);
         _selectedCompForm = importSelectedIds(d.competences_formateurs_import || []);
 
-        _pendingImportContenus = Array.isArray(d.contenus) ? d.contenus : [];
+        _pendingCompStagCreate = importRowsToCreate(d.competences_stagiaires_import || []);
+        _pendingCompFormCreate = importRowsToCreate(d.competences_formateurs_import || []);
+
+        _pendingImportContenus = enrichImportContenusWithCompetences(
+        Array.isArray(d.contenus) ? d.contenus : []
+        );
 
         renderRefChecks();
         renderPrerequis();
@@ -2484,6 +2652,8 @@ function renderContentCompBadges(l){
     _detailContenus = [];
     _detailPlans = [];
     _pendingImportContenus = [];
+    _pendingCompStagCreate = [];
+    _pendingCompFormCreate = [];
 
     renderRefChecks();
     renderPrerequis();

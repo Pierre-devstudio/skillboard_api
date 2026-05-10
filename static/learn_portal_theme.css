@@ -482,6 +482,16 @@
   flex:0 0 auto;
 }
 
+.lf-comp-proposal-row{
+  background:#fff7ed;
+  border-color:#fed7aa;
+}
+
+.lf-comp-proposal-hint{
+  margin:0;
+  white-space:nowrap;
+}
+
 .lf-comp-picker-list{
   display:grid;
   gap:8px;
@@ -574,6 +584,11 @@
   padding:10px 12px;
   background:#fff;
   cursor:grab;
+}
+
+.lf-content-card--pending{
+  background:#fff7ed;
+  border-color:#fed7aa;
 }
 
 .lf-content-card:active{
