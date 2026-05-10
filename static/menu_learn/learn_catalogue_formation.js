@@ -28,6 +28,10 @@
   let _compPickerDomain = "";
 
   let _detailContenus = [];
+  let _contentEditId = null;
+  let _contentCompetenceIds = [];
+  let _dragContentId = null;
+
   let _detailPlans = [];
 
   function byId(id){ return document.getElementById(id); }
@@ -796,29 +800,308 @@
         renderCompetences();
     }
 
-  function renderContenus(){
-    const host = byId("formContenusList");
-    if (!host) return;
+function getContentCompIds(l){
+  if (!l) return [];
 
-    host.innerHTML = "";
+  const ids = Array.isArray(l.competences_liees_ids)
+    ? l.competences_liees_ids
+    : [];
 
-    if (!_detailContenus.length){
-      host.innerHTML = `<div class="card-sub">Aucun contenu détaillé n’est encore rattaché à cette formation.</div>`;
-      return;
-    }
+  if (ids.length) return ids.map(x => String(x || "").trim()).filter(Boolean);
 
-    _detailContenus.forEach(l => {
-      const div = document.createElement("div");
-      div.className = "lf-mini-card";
-      div.innerHTML = `
-        <div class="lf-mini-title">${htmlEsc(l.titre_sequence || "Séquence")}</div>
-        <div class="card-sub">${htmlEsc(l.objectif || "")}</div>
-        <div class="lf-mini-body">${htmlEsc(l.contenu || "—").replaceAll("\n", "<br>")}</div>
-      `;
-      host.appendChild(div);
-    });
+  if (l.id_competence) return [String(l.id_competence).trim()].filter(Boolean);
+
+  return [];
+}
+
+function renderContentCompBadges(l){
+  const items = Array.isArray(l?.competences_liees_items)
+    ? l.competences_liees_items
+    : [];
+
+  if (!items.length) {
+    return `<span class="card-sub" style="margin:0;">Aucune compétence liée</span>`;
   }
 
+  return items.map(c => `
+    <span class="sb-badge sb-badge--comp lf-content-comp-badge" title="${htmlEsc(c.intitule || "")}">
+      ${htmlEsc(c.code || "—")}
+    </span>
+  `).join("");
+}
+
+    function renderContenus(){
+        const host = byId("formContenusList");
+        if (!host) return;
+
+        host.innerHTML = "";
+
+        if (!_editingId){
+            host.innerHTML = `<div class="card-sub">Enregistrez d’abord la fiche formation avant d’ajouter du contenu structuré.</div>`;
+            return;
+        }
+
+        if (!_detailContenus.length){
+            host.innerHTML = `<div class="card-sub">Aucun contenu détaillé n’est encore rattaché à cette formation.</div>`;
+            return;
+        }
+
+        _detailContenus.forEach(l => {
+            const div = document.createElement("div");
+            div.className = "lf-content-card";
+            div.draggable = true;
+            div.dataset.id = l.id_ligne_contenu || "";
+
+            div.innerHTML = `
+            <div class="lf-content-main">
+                <div class="lf-mini-title">${htmlEsc(l.titre_sequence || "Séquence")}</div>
+                <div class="card-sub">${htmlEsc(l.objectif || "")}</div>
+                <div class="lf-mini-body">${htmlEsc(l.contenu || "—").replaceAll("\n", "<br>")}</div>
+            </div>
+
+            <div class="lf-content-side">
+                <div class="lf-content-comp-badges">
+                ${renderContentCompBadges(l)}
+                </div>
+
+                <div class="sb-icon-actions">
+                <button type="button" class="sb-icon-btn" data-action="edit" title="Modifier" aria-label="Modifier">
+                    ${iconEdit()}
+                </button>
+                <button type="button" class="sb-icon-btn sb-icon-btn--danger" data-action="remove" title="Retirer" aria-label="Retirer">
+                    ${iconTrash()}
+                </button>
+                </div>
+            </div>
+            `;
+
+            div.querySelector('[data-action="edit"]')?.addEventListener("click", () => openContentModal(l));
+            div.querySelector('[data-action="remove"]')?.addEventListener("click", () => archiveContent(l));
+
+            div.addEventListener("dragstart", (e) => {
+            _dragContentId = div.dataset.id || "";
+            div.classList.add("is-dragging");
+
+            if (e.dataTransfer){
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", _dragContentId);
+            }
+            });
+
+            div.addEventListener("dragend", () => {
+            div.classList.remove("is-dragging");
+            _dragContentId = null;
+            });
+
+            div.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            div.classList.add("is-drag-over");
+            });
+
+            div.addEventListener("dragleave", () => {
+            div.classList.remove("is-drag-over");
+            });
+
+            div.addEventListener("drop", async (e) => {
+            e.preventDefault();
+            div.classList.remove("is-drag-over");
+
+            const targetId = div.dataset.id || "";
+            const sourceId = _dragContentId || e.dataTransfer?.getData("text/plain") || "";
+
+            if (!sourceId || !targetId || sourceId === targetId) return;
+
+            moveContentLocal(sourceId, targetId);
+            renderContenus();
+
+            try{
+                await saveContentOrder(window.portal);
+            } catch(err){
+                window.portal.showAlert("error", err?.message || String(err));
+            }
+            });
+
+            host.appendChild(div);
+        });
+    }
+
+
+    function renderContentCompetenceChecks(){
+        const host = byId("formContentCompList");
+        if (!host) return;
+
+        host.innerHTML = "";
+
+        const ids = Array.isArray(_selectedCompStag) ? _selectedCompStag : [];
+        const rows = ids.map(id => findCompetence(id)).filter(Boolean);
+
+        if (!rows.length){
+            host.innerHTML = `<div class="card-sub">Aucune compétence stagiaire n’est encore affectée à la formation.</div>`;
+            return;
+        }
+
+        rows.forEach(c => {
+            const id = String(c.id_comp || "").trim();
+            if (!id) return;
+
+            const label = document.createElement("label");
+            label.className = "lf-content-comp-check";
+
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.checked = _contentCompetenceIds.includes(id);
+
+            cb.addEventListener("change", () => {
+            if (cb.checked){
+                if (!_contentCompetenceIds.includes(id)) _contentCompetenceIds.push(id);
+            } else {
+                _contentCompetenceIds = _contentCompetenceIds.filter(x => x !== id);
+            }
+            });
+
+            const code = document.createElement("span");
+            code.className = "sb-badge sb-badge--comp";
+            code.textContent = c.code || "—";
+
+            const title = document.createElement("span");
+            title.className = "lf-content-comp-check-title";
+            title.textContent = c.intitule || "";
+
+            label.appendChild(cb);
+            label.appendChild(code);
+            label.appendChild(title);
+
+            host.appendChild(label);
+        });
+        }
+
+        function openContentModal(l){
+        if (!_editingId){
+            window.portal.showAlert("error", "Enregistrez d’abord la fiche formation avant d’ajouter un contenu.");
+            return;
+        }
+
+        _contentEditId = l?.id_ligne_contenu || null;
+        _contentCompetenceIds = getContentCompIds(l);
+
+        byId("formContentModalTitle").textContent = _contentEditId ? "Modifier le contenu" : "Ajouter un contenu";
+        byId("formContentTitre").value = l?.titre_sequence || "";
+        byId("formContentObjectif").value = l?.objectif || "";
+        byId("formContentDetail").value = l?.contenu || "";
+
+        renderContentCompetenceChecks();
+
+        openModal("modalFormContent");
+        }
+
+        function closeContentModal(){
+        closeModal("modalFormContent");
+        _contentEditId = null;
+        _contentCompetenceIds = [];
+        }
+
+        function buildContentPayload(){
+        return {
+            titre_sequence: (byId("formContentTitre")?.value || "").trim(),
+            objectif: (byId("formContentObjectif")?.value || "").trim() || null,
+            contenu: (byId("formContentDetail")?.value || "").trim() || null,
+            competences_liees: _contentCompetenceIds
+        };
+        }
+
+        async function saveContent(portal){
+        if (!_editingId){
+            portal.showAlert("error", "Enregistrez d’abord la fiche formation.");
+            return;
+        }
+
+        const payload = buildContentPayload();
+
+        if (!payload.titre_sequence){
+            portal.showAlert("error", "Titre du contenu obligatoire.");
+            return;
+        }
+
+        const effectifId = getEffectifId();
+        let res;
+
+        if (_contentEditId){
+            res = await portal.apiJson(
+            `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/${encodeURIComponent(_editingId)}/contenus/${encodeURIComponent(_contentEditId)}`,
+            {
+                method: "POST",
+                headers: { "Content-Type":"application/json" },
+                body: JSON.stringify(payload)
+            }
+            );
+
+            const idx = _detailContenus.findIndex(x => String(x.id_ligne_contenu || "") === String(_contentEditId));
+            if (idx >= 0 && res?.item) _detailContenus[idx] = res.item;
+        } else {
+            res = await portal.apiJson(
+            `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/${encodeURIComponent(_editingId)}/contenus`,
+            {
+                method: "POST",
+                headers: { "Content-Type":"application/json" },
+                body: JSON.stringify(payload)
+            }
+            );
+
+            if (res?.item) _detailContenus.push(res.item);
+        }
+
+        closeContentModal();
+        renderContenus();
+        setSuccess("Contenu enregistré");
+        }
+
+        async function archiveContent(l){
+        const lid = String(l?.id_ligne_contenu || "").trim();
+
+        if (!_editingId || !lid) return;
+
+        const effectifId = getEffectifId();
+
+        await window.portal.apiJson(
+            `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/${encodeURIComponent(_editingId)}/contenus/${encodeURIComponent(lid)}/archive`,
+            { method:"POST" }
+        );
+
+        _detailContenus = _detailContenus.filter(x => String(x.id_ligne_contenu || "") !== lid);
+        _detailContenus.forEach((x, idx) => x.position = idx + 1);
+
+        renderContenus();
+        setSuccess("Contenu retiré");
+        }
+
+        function moveContentLocal(sourceId, targetId){
+        const from = _detailContenus.findIndex(x => String(x.id_ligne_contenu || "") === String(sourceId));
+        const to = _detailContenus.findIndex(x => String(x.id_ligne_contenu || "") === String(targetId));
+
+        if (from < 0 || to < 0 || from === to) return;
+
+        const [item] = _detailContenus.splice(from, 1);
+        _detailContenus.splice(to, 0, item);
+
+        _detailContenus.forEach((x, idx) => x.position = idx + 1);
+        }
+
+        async function saveContentOrder(portal){
+        if (!_editingId) return;
+
+        const effectifId = getEffectifId();
+        const ids = _detailContenus.map(x => String(x.id_ligne_contenu || "").trim()).filter(Boolean);
+
+        await portal.apiJson(
+            `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/${encodeURIComponent(_editingId)}/contenus/reorder`,
+            {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body: JSON.stringify({ items: ids })
+            }
+        );
+    }
+    
   function renderPlans(){
     const host = byId("formPlansList");
     if (!host) return;
@@ -1529,6 +1812,18 @@ iframe{width:100%;height:100%;border:0;display:block}
 
     byId("btnFormPrereqAdd")?.addEventListener("click", addPrerequis);
     byId("formType")?.addEventListener("change", syncObsTypeFormation);
+    byId("btnFormContentAdd")?.addEventListener("click", () => openContentModal(null));
+
+    byId("btnFormContentX")?.addEventListener("click", closeContentModal);
+    byId("btnFormContentCancel")?.addEventListener("click", closeContentModal);
+
+    byId("btnFormContentSave")?.addEventListener("click", async () => {
+    try{
+        await saveContent(portal);
+    } catch(e){
+        portal.showAlert("error", e?.message || String(e));
+    }
+    });
     byId("btnFormCompStagAdd")?.addEventListener("click", () => openCompPicker("stagiaire"));
     byId("btnFormCompFormAdd")?.addEventListener("click", () => openCompPicker("formateur"));
 

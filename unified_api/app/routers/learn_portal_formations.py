@@ -305,6 +305,104 @@ def _resolve_competences(cur, oid: str, ids: list) -> list:
         if x in by_id
     ]
 
+def _normalize_competence_ids(value: Any) -> list:
+    ids = _json_list(value)
+    out = []
+    seen = set()
+
+    for raw in ids:
+        cid = str(raw or "").strip()
+        if not cid or cid in seen:
+            continue
+        seen.add(cid)
+        out.append(cid)
+
+    return out
+
+
+def _ensure_competences_owner(cur, oid: str, ids: list) -> list:
+    clean_ids = _normalize_competence_ids(ids)
+    if not clean_ids:
+        return []
+
+    cur.execute(
+        """
+        SELECT id_comp
+        FROM public.tbl_competence
+        WHERE id_owner = %s
+          AND id_comp = ANY(%s)
+          AND COALESCE(masque, FALSE) = FALSE
+        """,
+        (oid, clean_ids),
+    )
+
+    valid = {str(r.get("id_comp") or "").strip() for r in (cur.fetchall() or [])}
+    return [cid for cid in clean_ids if cid in valid]
+
+
+def _fetch_contenu_row(cur, oid: str, id_form: str, id_ligne_contenu: str) -> dict:
+    cur.execute(
+        """
+        SELECT
+          l.id_ligne_contenu,
+          l.titre_sequence,
+          l.objectif,
+          l.contenu,
+          l.id_competence,
+          l.competences_liees,
+          l.position
+        FROM public.tbl_contenu_ligne l
+        WHERE l.id_owner = %s
+          AND l.id_form = %s
+          AND l.id_ligne_contenu = %s
+          AND COALESCE(l.archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (oid, id_form, id_ligne_contenu),
+    )
+
+    row = cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Contenu introuvable.")
+
+    comp_ids = _normalize_competence_ids(row.get("competences_liees"))
+    if not comp_ids and row.get("id_competence"):
+        comp_ids = [str(row.get("id_competence")).strip()]
+
+    row["competences_liees_ids"] = comp_ids
+    row["competences_liees_items"] = _resolve_competences(cur, oid, comp_ids)
+
+    return row
+
+
+def _renumber_contenus(cur, oid: str, id_form: str) -> None:
+    cur.execute(
+        """
+        SELECT id_ligne_contenu
+        FROM public.tbl_contenu_ligne
+        WHERE id_owner = %s
+          AND id_form = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        ORDER BY COALESCE(position, 999999), titre_sequence
+        """,
+        (oid, id_form),
+    )
+
+    rows = cur.fetchall() or []
+
+    for idx, r in enumerate(rows, start=1):
+        cur.execute(
+            """
+            UPDATE public.tbl_contenu_ligne
+            SET position = %s,
+                date_modification = NOW()
+            WHERE id_owner = %s
+              AND id_form = %s
+              AND id_ligne_contenu = %s
+            """,
+            (idx, oid, id_form, r.get("id_ligne_contenu")),
+        )
+
 def _sync_formation_prerequis(cur, oid: str, id_form: str, prerequis: Optional[list]) -> None:
     """
     Synchronise les prérequis évaluables d'une fiche formation.
@@ -513,6 +611,7 @@ def _fetch_form_detail(cur, oid: str, id_form: str) -> dict:
           l.objectif,
           l.contenu,
           l.id_competence,
+          l.competences_liees,
           c.code AS competence_code,
           c.intitule AS competence_intitule,
           l.position
@@ -528,7 +627,17 @@ def _fetch_form_detail(cur, oid: str, id_form: str) -> dict:
         """,
         (oid, id_form),
     )
-    form["contenus"] = cur.fetchall() or []
+    contenus = cur.fetchall() or []
+
+    for l in contenus:
+        comp_ids = _normalize_competence_ids(l.get("competences_liees"))
+        if not comp_ids and l.get("id_competence"):
+            comp_ids = [str(l.get("id_competence")).strip()]
+
+        l["competences_liees_ids"] = comp_ids
+        l["competences_liees_items"] = _resolve_competences(cur, oid, comp_ids)
+
+    form["contenus"] = contenus
 
     cur.execute(
         """
@@ -665,6 +774,16 @@ class FormationUpdatePayload(BaseModel):
     tarif_mini: Optional[Any] = None
     etat: Optional[str] = None
 
+class FormationContenuPayload(BaseModel):
+    titre_sequence: str
+    objectif: Optional[str] = None
+    contenu: Optional[str] = None
+    competences_liees: Optional[list] = None
+    position: Optional[int] = None
+
+
+class FormationContenuReorderPayload(BaseModel):
+    items: list[str]
 
 # ======================================================
 # Référentiels
@@ -1182,6 +1301,286 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"learn/formations update error: {e}")
 
+@router.post("/learn/formations/{id_effectif}/{id_form}/contenus")
+def learn_formation_contenu_create(
+    id_effectif: str,
+    id_form: str,
+    payload: FormationContenuPayload,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        titre = (payload.titre_sequence or "").strip()
+
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+        if not titre:
+            raise HTTPException(status_code=400, detail="Titre du contenu obligatoire.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                _learn_require_min_role(profile, "supervisor")
+                oid = (profile.get("id_owner") or "").strip()
+
+                if not _formation_exists_owner(cur, oid, fid):
+                    raise HTTPException(status_code=404, detail="Formation introuvable.")
+
+                comp_ids = _ensure_competences_owner(cur, oid, payload.competences_liees or [])
+                main_comp = comp_ids[0] if comp_ids else None
+
+                if payload.position is not None:
+                    position = int(payload.position)
+                else:
+                    cur.execute(
+                        """
+                        SELECT COALESCE(MAX(position), 0) + 1 AS next_position
+                        FROM public.tbl_contenu_ligne
+                        WHERE id_owner = %s
+                          AND id_form = %s
+                          AND COALESCE(archive, FALSE) = FALSE
+                        """,
+                        (oid, fid),
+                    )
+                    position = int((cur.fetchone() or {}).get("next_position") or 1)
+
+                lid = str(uuid.uuid4())
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_contenu_ligne
+                      (
+                        id_ligne_contenu,
+                        id_owner,
+                        id_form,
+                        titre_sequence,
+                        objectif,
+                        contenu,
+                        id_competence,
+                        competences_liees,
+                        position,
+                        archive,
+                        date_creation,
+                        date_modification
+                      )
+                    VALUES
+                      (
+                        %s, %s, %s,
+                        %s, %s, %s,
+                        %s, %s::jsonb,
+                        %s,
+                        FALSE,
+                        NOW(),
+                        NOW()
+                      )
+                    """,
+                    (
+                        lid,
+                        oid,
+                        fid,
+                        titre,
+                        _clean_text(payload.objectif),
+                        _clean_text(payload.contenu),
+                        main_comp,
+                        json.dumps(comp_ids, ensure_ascii=False),
+                        position,
+                    ),
+                )
+
+                _renumber_contenus(cur, oid, fid)
+                item = _fetch_contenu_row(cur, oid, fid, lid)
+
+                conn.commit()
+
+        return {"ok": True, "item": item}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations contenu create error: {e}")
+
+
+@router.post("/learn/formations/{id_effectif}/{id_form}/contenus/{id_ligne_contenu}")
+def learn_formation_contenu_update(
+    id_effectif: str,
+    id_form: str,
+    id_ligne_contenu: str,
+    payload: FormationContenuPayload,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        lid = (id_ligne_contenu or "").strip()
+        titre = (payload.titre_sequence or "").strip()
+
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+        if not lid:
+            raise HTTPException(status_code=400, detail="id_ligne_contenu manquant.")
+        if not titre:
+            raise HTTPException(status_code=400, detail="Titre du contenu obligatoire.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                _learn_require_min_role(profile, "supervisor")
+                oid = (profile.get("id_owner") or "").strip()
+
+                if not _formation_exists_owner(cur, oid, fid):
+                    raise HTTPException(status_code=404, detail="Formation introuvable.")
+
+                comp_ids = _ensure_competences_owner(cur, oid, payload.competences_liees or [])
+                main_comp = comp_ids[0] if comp_ids else None
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_contenu_ligne
+                    SET titre_sequence = %s,
+                        objectif = %s,
+                        contenu = %s,
+                        id_competence = %s,
+                        competences_liees = %s::jsonb,
+                        date_modification = NOW()
+                    WHERE id_owner = %s
+                      AND id_form = %s
+                      AND id_ligne_contenu = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    """,
+                    (
+                        titre,
+                        _clean_text(payload.objectif),
+                        _clean_text(payload.contenu),
+                        main_comp,
+                        json.dumps(comp_ids, ensure_ascii=False),
+                        oid,
+                        fid,
+                        lid,
+                    ),
+                )
+
+                if cur.rowcount <= 0:
+                    raise HTTPException(status_code=404, detail="Contenu introuvable.")
+
+                item = _fetch_contenu_row(cur, oid, fid, lid)
+
+                conn.commit()
+
+        return {"ok": True, "item": item}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations contenu update error: {e}")
+
+
+@router.post("/learn/formations/{id_effectif}/{id_form}/contenus/{id_ligne_contenu}/archive")
+def learn_formation_contenu_archive(
+    id_effectif: str,
+    id_form: str,
+    id_ligne_contenu: str,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        lid = (id_ligne_contenu or "").strip()
+
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+        if not lid:
+            raise HTTPException(status_code=400, detail="id_ligne_contenu manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                _learn_require_min_role(profile, "supervisor")
+                oid = (profile.get("id_owner") or "").strip()
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_contenu_ligne
+                    SET archive = TRUE,
+                        date_modification = NOW()
+                    WHERE id_owner = %s
+                      AND id_form = %s
+                      AND id_ligne_contenu = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    """,
+                    (oid, fid, lid),
+                )
+
+                if cur.rowcount <= 0:
+                    raise HTTPException(status_code=404, detail="Contenu introuvable.")
+
+                _renumber_contenus(cur, oid, fid)
+                conn.commit()
+
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations contenu archive error: {e}")
+
+
+@router.post("/learn/formations/{id_effectif}/{id_form}/contenus/reorder")
+def learn_formation_contenu_reorder(
+    id_effectif: str,
+    id_form: str,
+    payload: FormationContenuReorderPayload,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        ids = [str(x or "").strip() for x in (payload.items or []) if str(x or "").strip()]
+
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+        if not ids:
+            return {"ok": True}
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                _learn_require_min_role(profile, "supervisor")
+                oid = (profile.get("id_owner") or "").strip()
+
+                if not _formation_exists_owner(cur, oid, fid):
+                    raise HTTPException(status_code=404, detail="Formation introuvable.")
+
+                for idx, lid in enumerate(ids, start=1):
+                    cur.execute(
+                        """
+                        UPDATE public.tbl_contenu_ligne
+                        SET position = %s,
+                            date_modification = NOW()
+                        WHERE id_owner = %s
+                          AND id_form = %s
+                          AND id_ligne_contenu = %s
+                          AND COALESCE(archive, FALSE) = FALSE
+                        """,
+                        (idx, oid, fid, lid),
+                    )
+
+                conn.commit()
+
+        return {"ok": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations contenu reorder error: {e}")
 
 @router.post("/learn/formations/{id_effectif}/{id_form}/archive")
 def learn_formation_archive(id_effectif: str, id_form: str, request: Request):

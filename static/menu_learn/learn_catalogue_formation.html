@@ -215,7 +215,19 @@
         </div>
 
         <div class="sb-form-panel" data-panel="contenu">
-          <div class="lf-panel-help">Le contenu détaillé sera structuré via les lignes de contenu pédagogiques. Pour l’instant, cette section affiche le contenu existant.</div>
+          <div class="lf-content-head">
+            <div>
+              <div class="label lf-comp-zone-title" style="margin:0;">Contenu structuré de la formation</div>
+              <div class="card-sub" style="margin:3px 0 0 0;">
+                Organisez les séquences, objectifs, détails et compétences visées liées à chaque contenu.
+              </div>
+            </div>
+
+            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnFormContentAdd">
+              Ajouter un contenu
+            </button>
+          </div>
+
           <div id="formContenusList" class="sb-stack sb-stack--sm"></div>
         </div>
 
@@ -235,6 +247,55 @@
         <button type="button" class="sb-btn sb-btn--ai" id="btnFormAiReview">Revoir avec l’IA</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormSave">Enregistrer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sb-modal sb-modal--above" id="modalFormContent" style="display:none;">
+    <div class="sb-modal-card">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" id="formContentModalTitle" style="margin:0;">Contenu</div>
+          <div class="card-sub" style="margin:4px 0 0 0;">
+            Structurez une ligne de contenu et rattachez-la aux compétences visées.
+          </div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnFormContentX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Titre du contenu</div>
+            <input type="text" id="formContentTitre" />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Objectif</div>
+            <textarea id="formContentObjectif" rows="3"></textarea>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Détail du contenu</div>
+            <textarea id="formContentDetail" rows="7"></textarea>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="info-item" style="flex:1; min-width:260px;">
+            <div class="label">Compétences visées liées à ce contenu</div>
+            <div class="lf-content-comp-list" id="formContentCompList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnFormContentSave">Enregistrer le contenu</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnFormContentCancel">Annuler</button>
       </div>
     </div>
   </div>
