@@ -931,6 +931,247 @@
   }
 }
 
+.lf-import-shell{
+  display:grid;
+  grid-template-columns:320px minmax(0, 1fr);
+  gap:14px;
+  align-items:start;
+}
+
+.lf-import-card{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:16px;
+  padding:16px;
+  background:#fff;
+  display:grid;
+  gap:10px;
+  text-align:center;
+}
+
+.lf-import-icon{
+  width:46px;
+  height:46px;
+  border-radius:14px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin:0 auto;
+  background:rgba(231,36,243,.10);
+  color:#7e22ce;
+  font-size:24px;
+  font-weight:900;
+}
+
+.lf-import-title{
+  font-size:14px;
+  font-weight:800;
+  color:#111827;
+}
+
+.lf-import-input{
+  width:100%;
+  border:1px dashed rgba(17,24,39,.24);
+  border-radius:12px;
+  padding:12px;
+  background:#f8fafc;
+  box-sizing:border-box;
+}
+
+.lf-import-file{
+  font-size:12px;
+  color:#475569;
+  background:#f8fafc;
+  border:1px solid rgba(17,24,39,.08);
+  border-radius:10px;
+  padding:8px 10px;
+  word-break:break-word;
+}
+
+.lf-import-status{
+  min-height:18px;
+  font-size:12px;
+  line-height:1.35;
+  color:#64748b;
+}
+
+.lf-import-status.is-ok{
+  color:#15803d;
+  font-weight:700;
+}
+
+.lf-import-status.is-error{
+  color:#b42318;
+  font-weight:700;
+}
+
+.lf-import-status.is-loading{
+  color:#28407a;
+  font-weight:700;
+}
+
+.lf-import-preview{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:16px;
+  background:#fff;
+  padding:14px;
+  min-width:0;
+}
+
+.lf-import-preview-head{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:12px;
+}
+
+.lf-import-summary{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:8px;
+  margin-bottom:14px;
+}
+
+.lf-import-summary-item{
+  border:1px solid rgba(17,24,39,.08);
+  border-radius:12px;
+  padding:9px 10px;
+  background:#f8fafc;
+  min-width:0;
+}
+
+.lf-import-summary-item span{
+  display:block;
+  font-size:11px;
+  color:#64748b;
+  margin-bottom:3px;
+}
+
+.lf-import-summary-item strong{
+  display:block;
+  font-size:12px;
+  color:#111827;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.lf-import-section{
+  border-top:1px solid rgba(17,24,39,.08);
+  padding-top:10px;
+  margin-top:10px;
+}
+
+.lf-import-section-title{
+  font-size:13px;
+  font-weight:800;
+  color:#111827;
+  margin-bottom:8px;
+}
+
+.lf-import-comp-list,
+.lf-import-content-list{
+  display:grid;
+  gap:8px;
+}
+
+.lf-import-comp-row{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:12px;
+  padding:10px;
+  background:#fff;
+}
+
+.lf-import-comp-source{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:10px;
+  font-size:12.5px;
+  font-weight:800;
+  color:#111827;
+  margin-bottom:8px;
+}
+
+.lf-import-status-pill{
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  color:#7c2d12;
+  background:#fff7ed;
+  border:1px solid #fed7aa;
+  border-radius:999px;
+  padding:3px 7px;
+  white-space:nowrap;
+}
+
+.lf-import-matches{
+  display:grid;
+  gap:6px;
+}
+
+.lf-import-match{
+  display:grid;
+  grid-template-columns:auto auto minmax(0, 1fr) auto;
+  align-items:center;
+  gap:8px;
+  padding:7px;
+  border-radius:9px;
+  background:#f8fafc;
+  cursor:pointer;
+}
+
+.lf-import-match-title{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:12px;
+  font-weight:600;
+  color:#111827;
+}
+
+.lf-import-score{
+  font-size:11px;
+  font-weight:800;
+  color:#475569;
+}
+
+.lf-import-content-row{
+  display:grid;
+  grid-template-columns:auto minmax(0, 1fr);
+  gap:9px;
+  align-items:start;
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:12px;
+  padding:9px 10px;
+  background:#fff;
+}
+
+@media (max-width: 1000px){
+  .lf-import-shell{
+    grid-template-columns:1fr;
+  }
+
+  .lf-import-summary{
+    grid-template-columns:1fr 1fr;
+  }
+}
+
+@media (max-width: 650px){
+  .lf-import-summary{
+    grid-template-columns:1fr;
+  }
+
+  .lf-import-match{
+    grid-template-columns:auto auto minmax(0, 1fr);
+  }
+
+  .lf-import-score{
+    grid-column:3;
+  }
+}
+
 .lf-plan-card{
   border:1px solid rgba(17,24,39,.10);
   border-radius:12px;

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional, Any
 from psycopg.rows import dict_row
@@ -8,6 +8,8 @@ import json
 import re
 import unicodedata
 import html
+import os
+from difflib import SequenceMatcher
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT
@@ -19,6 +21,20 @@ from app.routers.skills_portal_common import get_conn
 from app.routers.learn_portal_common import learn_require_user, learn_fetch_profile
 from app.routers.skills_portal_pdf_common import build_pdf_document, build_pdf_styles
 
+try:
+    from openai import OpenAI
+except Exception:
+    OpenAI = None
+
+try:
+    from docx import Document as DocxDocument
+except Exception:
+    DocxDocument = None
+
+try:
+    from pypdf import PdfReader
+except Exception:
+    PdfReader = None
 
 router = APIRouter()
 
@@ -1014,6 +1030,395 @@ def _fetch_form_detail(cur, oid: str, id_form: str) -> dict:
 
 
 # ======================================================
+# Import document formation
+# ======================================================
+
+def _doc_clean_text(value: Any, max_len: int = 22000) -> str:
+    txt = str(value or "").replace("\x00", " ")
+    txt = re.sub(r"\r\n?", "\n", txt)
+    txt = re.sub(r"[ \t]+", " ", txt)
+    txt = re.sub(r"\n{3,}", "\n\n", txt).strip()
+
+    if len(txt) > max_len:
+        txt = txt[:max_len].rsplit(" ", 1)[0].strip()
+
+    return txt
+
+
+async def _extract_training_document_text(upload: UploadFile) -> str:
+    filename = (upload.filename or "").strip()
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+
+    raw = await upload.read()
+
+    if not raw:
+        raise HTTPException(status_code=400, detail="Document vide.")
+
+    if len(raw) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Document trop volumineux (10 Mo maximum).")
+
+    if ext == "pdf":
+        if PdfReader is None:
+            raise HTTPException(status_code=500, detail="Lecture PDF indisponible côté serveur.")
+
+        try:
+            reader = PdfReader(BytesIO(raw))
+            parts = []
+
+            for page in reader.pages[:40]:
+                try:
+                    parts.append(page.extract_text() or "")
+                except Exception:
+                    pass
+
+            txt = _doc_clean_text("\n".join(parts))
+
+            if not txt:
+                raise HTTPException(status_code=400, detail="Aucun texte exploitable détecté dans le PDF.")
+
+            return txt
+
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=400, detail="Impossible de lire le document PDF.")
+
+    if ext == "docx":
+        if DocxDocument is None:
+            raise HTTPException(status_code=500, detail="Lecture DOCX indisponible côté serveur.")
+
+        try:
+            doc = DocxDocument(BytesIO(raw))
+            parts = [p.text for p in doc.paragraphs if p.text]
+
+            for table in doc.tables:
+                for row in table.rows:
+                    parts.append(" | ".join((cell.text or "").strip() for cell in row.cells))
+
+            txt = _doc_clean_text("\n".join(parts))
+
+            if not txt:
+                raise HTTPException(status_code=400, detail="Aucun texte exploitable détecté dans le DOCX.")
+
+            return txt
+
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=400, detail="Impossible de lire le document DOCX.")
+
+    raise HTTPException(status_code=400, detail="Format non pris en charge. Formats acceptés : PDF ou DOCX.")
+
+
+def _norm_match_text(value: Any) -> str:
+    s = str(value or "").lower()
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    s = re.sub(r"[^a-z0-9]+", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+
+def _token_set(value: Any) -> set:
+    stop = {
+        "de", "des", "du", "la", "le", "les", "un", "une", "et", "ou", "en",
+        "a", "au", "aux", "dans", "sur", "pour", "par", "avec", "sans", "d",
+        "l", "formation", "competence", "competences", "capable", "etre", "être"
+    }
+    return {x for x in _norm_match_text(value).split() if len(x) > 2 and x not in stop}
+
+
+def _match_score(a: Any, b: Any) -> int:
+    aa = _norm_match_text(a)
+    bb = _norm_match_text(b)
+
+    if not aa or not bb:
+        return 0
+
+    ratio = SequenceMatcher(None, aa, bb).ratio()
+
+    ta = _token_set(aa)
+    tb = _token_set(bb)
+
+    if ta and tb:
+        overlap = len(ta & tb) / max(1, len(ta | tb))
+    else:
+        overlap = 0
+
+    score = int(round((ratio * 55) + (overlap * 45)))
+    return max(0, min(100, score))
+
+
+def _fetch_import_catalogue(cur, oid: str) -> list:
+    cur.execute(
+        """
+        SELECT
+          c.id_comp,
+          c.code,
+          c.intitule,
+          COALESCE(c.description, '') AS description,
+          COALESCE(c.niveaua, '') AS niveaua,
+          COALESCE(c.niveaub, '') AS niveaub,
+          COALESCE(c.niveauc, '') AS niveauc,
+          c.domaine,
+          dc.titre_court AS domaine_titre_court,
+          dc.titre AS domaine_titre,
+          dc.couleur AS domaine_couleur,
+          c.etat
+        FROM public.tbl_competence c
+        LEFT JOIN public.tbl_domaine_competence dc
+          ON dc.id_domaine_competence = c.domaine
+         AND COALESCE(dc.masque, FALSE) = FALSE
+        WHERE c.id_owner = %s
+          AND COALESCE(c.masque, FALSE) = FALSE
+          AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
+        ORDER BY lower(COALESCE(c.code, '')), lower(COALESCE(c.intitule, ''))
+        """,
+        (oid,),
+    )
+
+    return cur.fetchall() or []
+
+
+def _match_import_competences(cur, oid: str, labels: list) -> list:
+    catalogue = _fetch_import_catalogue(cur, oid)
+    out = []
+
+    for raw in labels or []:
+        label = str(raw or "").strip()
+        if not label:
+            continue
+
+        scored = []
+
+        for c in catalogue:
+            blob = " ".join([
+                c.get("intitule") or "",
+                c.get("description") or "",
+                c.get("niveaua") or "",
+                c.get("niveaub") or "",
+                c.get("niveauc") or "",
+                c.get("domaine_titre_court") or "",
+                c.get("domaine_titre") or "",
+            ])
+
+            score_title = _match_score(label, c.get("intitule") or "")
+            score_full = _match_score(label, blob)
+            score = max(score_title, int(round((score_title * 0.72) + (score_full * 0.28))))
+
+            if score >= 45:
+                scored.append({
+                    "id_comp": c.get("id_comp"),
+                    "code": c.get("code"),
+                    "intitule": c.get("intitule"),
+                    "domaine": c.get("domaine"),
+                    "domaine_titre_court": c.get("domaine_titre_court"),
+                    "domaine_titre": c.get("domaine_titre"),
+                    "domaine_couleur": c.get("domaine_couleur"),
+                    "score": score,
+                })
+
+        scored.sort(key=lambda x: x.get("score") or 0, reverse=True)
+        matches = scored[:3]
+
+        out.append({
+            "source": label,
+            "selected_id": matches[0]["id_comp"] if matches and matches[0].get("score", 0) >= 80 else None,
+            "status": "match_fort" if matches and matches[0].get("score", 0) >= 80 else ("approchant" if matches else "non_trouve"),
+            "matches": matches,
+        })
+
+    return out
+
+
+def _find_ref_ids_by_labels(rows: list, id_key: str, labels: list) -> list:
+    wanted = [str(x or "").strip() for x in (labels or []) if str(x or "").strip()]
+    if not wanted:
+        return []
+
+    out = []
+    seen = set()
+
+    for label in wanted:
+        scored = []
+
+        for r in rows or []:
+            rid = str(r.get(id_key) or "").strip()
+            if not rid:
+                continue
+
+            ref_label = " ".join([
+                str(r.get("titre") or ""),
+                str(r.get("titre_court") or ""),
+                str(r.get("description") or ""),
+            ])
+
+            score = _match_score(label, ref_label)
+            if score >= 65:
+                scored.append((score, rid))
+
+        scored.sort(reverse=True)
+
+        if scored:
+            rid = scored[0][1]
+            if rid not in seen:
+                seen.add(rid)
+                out.append(rid)
+
+    return out
+
+
+def _find_domaine_formation_id(cur, labels: list) -> Optional[str]:
+    clean = [str(x or "").strip() for x in (labels or []) if str(x or "").strip()]
+    if not clean:
+        return None
+
+    cur.execute(
+        """
+        SELECT
+          id_domaine_formation,
+          titre,
+          titre_court,
+          description
+        FROM public.tbl_domaine_formation
+        WHERE COALESCE(masque, FALSE) = FALSE
+        """
+    )
+
+    rows = cur.fetchall() or []
+    best = None
+
+    for label in clean:
+        for r in rows:
+            blob = " ".join([
+                str(r.get("titre") or ""),
+                str(r.get("titre_court") or ""),
+                str(r.get("description") or ""),
+            ])
+            score = _match_score(label, blob)
+
+            if best is None or score > best[0]:
+                best = (score, r.get("id_domaine_formation"))
+
+    if best and best[0] >= 65:
+        return best[1]
+
+    return None
+
+
+def _build_import_ai_schema() -> dict:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "titre", "presentation", "public_cible", "objectifs", "type_formation",
+            "obs_type_form", "duree", "tarif_mini", "domaines_probables",
+            "modalites", "methodes_peda", "methodes_eval", "prerequis",
+            "competences_stagiaires", "competences_formateurs", "contenus"
+        ],
+        "properties": {
+            "titre": {"type": "string"},
+            "presentation": {"type": "string"},
+            "public_cible": {"type": "string"},
+            "objectifs": {"type": "string"},
+            "type_formation": {"type": "string"},
+            "obs_type_form": {"type": ["string", "null"]},
+            "duree": {"type": ["number", "null"]},
+            "tarif_mini": {"type": ["number", "null"]},
+            "domaines_probables": {"type": "array", "items": {"type": "string"}},
+            "modalites": {"type": "array", "items": {"type": "string"}},
+            "methodes_peda": {"type": "array", "items": {"type": "string"}},
+            "methodes_eval": {"type": "array", "items": {"type": "string"}},
+            "prerequis": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["titre", "r1", "r2", "r3"],
+                    "properties": {
+                        "titre": {"type": "string"},
+                        "r1": {"type": "string"},
+                        "r2": {"type": "string"},
+                        "r3": {"type": "string"},
+                    },
+                },
+            },
+            "competences_stagiaires": {"type": "array", "items": {"type": "string"}},
+            "competences_formateurs": {"type": "array", "items": {"type": "string"}},
+            "contenus": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["titre_sequence", "objectif", "contenu", "competences_sources"],
+                    "properties": {
+                        "titre_sequence": {"type": "string"},
+                        "objectif": {"type": ["string", "null"]},
+                        "contenu": {"type": "string"},
+                        "competences_sources": {"type": "array", "items": {"type": "string"}},
+                    },
+                },
+            },
+        },
+    }
+
+
+def _analyse_import_document_with_ai(doc_text: str, filename: str) -> dict:
+    if OpenAI is None:
+        raise HTTPException(status_code=500, detail="Lib OpenAI manquante côté serveur.")
+
+    api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY non configurée.")
+
+    model = (os.getenv("OPENAI_MODEL_FORM_IMPORT") or "gpt-4o-mini").strip()
+
+    system_prompt = (
+        "Tu analyses un document de formation importé dans Novoskill Learn. "
+        "Tu dois extraire uniquement les informations présentes ou fortement déductibles du document. "
+        "Tu ne dois pas inventer une formation complète si le document est incomplet. "
+        "Tu dois renvoyer un JSON strict conforme au schéma. "
+        "Pour les compétences, distingue les compétences visées pour les stagiaires et les compétences requises pour le formateur. "
+        "Pour les contenus, découpe en lignes de contenu pédagogiques réutilisables, pas en planning horaire. "
+        "Le type_formation doit être l'une des valeurs: Certifiante, Diplomante, Non Certifiante. "
+        "Si une information est absente, renvoie une chaîne vide, null ou une liste vide."
+    )
+
+    user_prompt = (
+        f"Nom du fichier: {filename}\n\n"
+        f"Texte extrait du document:\n{doc_text}"
+    )
+
+    client = OpenAI(api_key=api_key)
+
+    resp = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.15,
+        max_tokens=3200,
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "learn_formation_import",
+                "schema": _build_import_ai_schema(),
+                "strict": True,
+            },
+        },
+    )
+
+    raw = (resp.choices[0].message.content or "").strip()
+    if not raw:
+        raise HTTPException(status_code=500, detail="Analyse IA vide.")
+
+    try:
+        return json.loads(raw)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Analyse IA illisible.")
+
+# ======================================================
 # Models
 # ======================================================
 
@@ -1115,6 +1520,125 @@ def learn_formations_context(id_effectif: str, request: Request):
         "can_edit": _role_rank(profile.get("role_code")) >= 2,
     }
 
+
+@router.post("/learn/formations/{id_effectif}/import_document")
+async def learn_formations_import_document(
+    id_effectif: str,
+    request: Request,
+    document: UploadFile = File(...),
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        filename = (document.filename or "").strip()
+        if not filename:
+            raise HTTPException(status_code=400, detail="Nom de fichier manquant.")
+
+        doc_text = await _extract_training_document_text(document)
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                _learn_require_min_role(profile, "supervisor")
+                oid = (profile.get("id_owner") or "").strip()
+
+                draft = _analyse_import_document_with_ai(doc_text, filename)
+
+                cur.execute(
+                    """
+                    SELECT id_mod_form, titre, titre_court, description
+                    FROM public.tbl_mod_form
+                    WHERE COALESCE(masque, FALSE) = FALSE
+                    """
+                )
+                modalites_rows = cur.fetchall() or []
+
+                cur.execute(
+                    """
+                    SELECT id_met_peda, titre, titre_court, description
+                    FROM public.tbl_met_peda
+                    WHERE COALESCE(masque, FALSE) = FALSE
+                    """
+                )
+                peda_rows = cur.fetchall() or []
+
+                cur.execute(
+                    """
+                    SELECT id_met_eval, titre, titre_court, description
+                    FROM public.tbl_met_eval
+                    WHERE COALESCE(masque, FALSE) = FALSE
+                    """
+                )
+                eval_rows = cur.fetchall() or []
+
+                domaine_id = _find_domaine_formation_id(cur, draft.get("domaines_probables") or [])
+
+                comp_stag = _match_import_competences(cur, oid, draft.get("competences_stagiaires") or [])
+                comp_form = _match_import_competences(cur, oid, draft.get("competences_formateurs") or [])
+
+        prerequis = []
+        for idx, p in enumerate(draft.get("prerequis") or [], start=1):
+            titre = _clean_text(p.get("titre"), 800)
+            if not titre:
+                continue
+
+            prerequis.append({
+                "id_prerequis": None,
+                "titre": titre,
+                "r1": _clean_text(p.get("r1") or "Oui", 300),
+                "r2": _clean_text(p.get("r2") or "Non", 300),
+                "r3": _clean_text(p.get("r3") or "", 300),
+                "ordre_affichage": idx,
+            })
+
+        contenus = []
+        for c in draft.get("contenus") or []:
+            titre = _clean_text(c.get("titre_sequence"), 500)
+            detail = _clean_text(c.get("contenu"), 8000)
+
+            if not titre and not detail:
+                continue
+
+            contenus.append({
+                "titre_sequence": titre or "Contenu",
+                "objectif": _clean_text(c.get("objectif"), 1200),
+                "contenu": detail,
+                "competences_sources": [
+                    str(x or "").strip()
+                    for x in (c.get("competences_sources") or [])
+                    if str(x or "").strip()
+                ],
+                "competences_liees": [],
+            })
+
+        out = {
+            "filename": filename,
+            "titre": _clean_text(draft.get("titre"), 500),
+            "presentation": _clean_text(draft.get("presentation"), 6000),
+            "public_cible": _clean_text(draft.get("public_cible"), 3000),
+            "objectifs": _clean_text(draft.get("objectifs"), 5000),
+            "type_formation": _normalize_type_formation(draft.get("type_formation")),
+            "obs_type_form": _clean_text(draft.get("obs_type_form"), 500),
+            "duree": _safe_float(draft.get("duree")),
+            "tarif_mini": _safe_float(draft.get("tarif_mini")),
+            "domaine": domaine_id,
+            "modalites_ids": _find_ref_ids_by_labels(modalites_rows, "id_mod_form", draft.get("modalites") or []),
+            "methode_peda_ids": _find_ref_ids_by_labels(peda_rows, "id_met_peda", draft.get("methodes_peda") or []),
+            "methode_eval_ids": _find_ref_ids_by_labels(eval_rows, "id_met_eval", draft.get("methodes_eval") or []),
+            "prerequis": prerequis,
+            "competences_stagiaires_import": comp_stag,
+            "competences_formateurs_import": comp_form,
+            "contenus": contenus,
+            "raw_text_preview": doc_text[:1800],
+        }
+
+        return out
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations import_document error: {e}")
 
 @router.get("/learn/formations/{id_effectif}/referentiels")
 def learn_formations_referentiels(id_effectif: str, request: Request):

@@ -243,6 +243,8 @@
 
       <div class="sb-modal-foot">
         <span class="sb-save-success sb-save-success--modal" id="formModalSuccess" style="display:none;"></span>
+        <button type="button" class="sb-btn sb-btn--doc" id="btnFormImport">Importer</button>
+        <button type="button" class="sb-btn sb-btn--ai" id="btnFormGenerateAi">Générer avec l’IA</button>
         <button type="button" class="sb-btn sb-btn--ai" id="btnFormAiReview">Revoir avec l’IA</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormSave">Enregistrer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormCancel">Annuler</button>
@@ -344,6 +346,74 @@
       <div class="sb-modal-foot">
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormPlanSave">Enregistrer le plan</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormPlanCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sb-modal sb-modal--above" id="modalFormImport" style="display:none;">
+    <div class="sb-modal-card sb-modal-card--wide">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" style="margin:0;">Importer une fiche formation</div>
+          <div class="card-sub" style="margin:4px 0 0 0;">
+            Importez un document PDF ou Word. Novoskill extrait les informations exploitables et les prépare dans la fiche.
+          </div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnFormImportX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="lf-import-shell">
+          <div class="lf-import-card">
+            <div class="lf-import-icon">⬆</div>
+            <div class="lf-import-title">Document source</div>
+            <div class="card-sub">
+              Formats acceptés : PDF ou DOCX. Le document est analysé pour préremplir la fiche formation.
+            </div>
+
+            <input type="file" id="formImportFile" class="lf-import-input"
+                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+
+            <div class="lf-import-file" id="formImportFileName">Aucun fichier sélectionné</div>
+
+            <button type="button" class="sb-btn sb-btn--accent" id="btnFormImportAnalyse">
+              Analyser le document
+            </button>
+
+            <div class="lf-import-status" id="formImportStatus"></div>
+          </div>
+
+          <div class="lf-import-preview" id="formImportPreview" style="display:none;">
+            <div class="lf-import-preview-head">
+              <div>
+                <div class="lf-import-title">Prévisualisation de l’analyse</div>
+                <div class="card-sub">Les données seront injectées dans le modal formation après validation.</div>
+              </div>
+            </div>
+
+            <div class="lf-import-summary" id="formImportSummary"></div>
+
+            <div class="lf-import-section">
+              <div class="lf-import-section-title">Compétences visées stagiaires</div>
+              <div id="formImportCompStag" class="lf-import-comp-list"></div>
+            </div>
+
+            <div class="lf-import-section">
+              <div class="lf-import-section-title">Compétences requises formateur</div>
+              <div id="formImportCompForm" class="lf-import-comp-list"></div>
+            </div>
+
+            <div class="lf-import-section">
+              <div class="lf-import-section-title">Contenus détectés</div>
+              <div id="formImportContents" class="lf-import-content-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnFormImportApply" disabled>Remplir la fiche</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnFormImportCancel">Annuler</button>
       </div>
     </div>
   </div>

@@ -33,6 +33,8 @@
   let _dragContentId = null;
 
   let _detailPlans = [];
+  let _importDraft = null;
+  let _pendingImportContenus = [];
 
   let _planMode = "create";
   let _planEditId = null;
@@ -311,6 +313,18 @@
 
         if (!needsObs) input.value = "";
         }
+    }
+
+    function syncFormModeActions(){
+        const isCreate = _modalMode === "create";
+
+        const btnImport = byId("btnFormImport");
+        const btnGenerate = byId("btnFormGenerateAi");
+        const btnReview = byId("btnFormAiReview");
+
+        if (btnImport) btnImport.style.display = isCreate ? "" : "none";
+        if (btnGenerate) btnGenerate.style.display = isCreate ? "" : "none";
+        if (btnReview) btnReview.style.display = isCreate ? "none" : "";
     }
 
   function setTab(tab){
@@ -2187,6 +2201,248 @@ function renderContentCompBadges(l){
     setTab("identite");
   }
 
+    function closeImportModal(){
+        closeModal("modalFormImport");
+        _importDraft = null;
+
+        const input = byId("formImportFile");
+        if (input) input.value = "";
+
+        const name = byId("formImportFileName");
+        if (name) name.textContent = "Aucun fichier sélectionné";
+
+        const status = byId("formImportStatus");
+        if (status){
+            status.textContent = "";
+            status.className = "lf-import-status";
+        }
+
+        const preview = byId("formImportPreview");
+        if (preview) preview.style.display = "none";
+
+        const apply = byId("btnFormImportApply");
+        if (apply) apply.disabled = true;
+    }
+
+    function openImportModal(){
+        if (_modalMode !== "create"){
+            window.portal.showAlert("error", "L’import est disponible uniquement lors de la création d’une formation.");
+            return;
+        }
+
+        closeImportModal();
+        openModal("modalFormImport");
+    }
+
+    function setImportStatus(msg, kind){
+        const el = byId("formImportStatus");
+        if (!el) return;
+
+        el.textContent = msg || "";
+        el.className = "lf-import-status";
+
+        if (kind) el.classList.add("is-" + kind);
+    }
+
+    function importSelectedIds(rows){
+        const ids = [];
+
+        (rows || []).forEach(r => {
+            const id = (r.selected_id || "").toString().trim();
+            if (id && !ids.includes(id)) ids.push(id);
+        });
+
+        return ids;
+    }
+
+    function renderImportCompetenceRows(hostId, rows){
+        const host = byId(hostId);
+        if (!host) return;
+
+        host.innerHTML = "";
+
+        if (!rows || !rows.length){
+            host.innerHTML = `<div class="card-sub">Aucune compétence détectée.</div>`;
+            return;
+        }
+
+        rows.forEach((r, idx) => {
+            const div = document.createElement("div");
+            div.className = "lf-import-comp-row";
+
+            const options = (r.matches || []).map(m => `
+            <label class="lf-import-match">
+                <input type="radio"
+                    name="${hostId}_${idx}"
+                    value="${htmlEsc(m.id_comp || "")}"
+                    ${r.selected_id === m.id_comp ? "checked" : ""} />
+                <span class="sb-badge sb-badge--comp">${htmlEsc(m.code || "—")}</span>
+                <span class="lf-import-match-title">${htmlEsc(m.intitule || "")}</span>
+                <span class="lf-import-score">${htmlEsc(m.score || 0)}%</span>
+            </label>
+            `).join("");
+
+            div.innerHTML = `
+            <div class="lf-import-comp-source">
+                <span>${htmlEsc(r.source || "")}</span>
+                <span class="lf-import-status-pill">${htmlEsc(r.status || "non_trouve")}</span>
+            </div>
+            <div class="lf-import-matches">
+                ${options || `<div class="card-sub">Aucune compétence approchante trouvée.</div>`}
+            </div>
+            `;
+
+            div.querySelectorAll("input[type='radio']").forEach(rad => {
+            rad.addEventListener("change", () => {
+                r.selected_id = rad.value || null;
+            });
+            });
+
+            host.appendChild(div);
+        });
+    }
+
+    function renderImportPreview(data){
+        const preview = byId("formImportPreview");
+        if (preview) preview.style.display = "";
+
+        const summary = byId("formImportSummary");
+        if (summary){
+            summary.innerHTML = `
+            <div class="lf-import-summary-item">
+                <span>Titre</span>
+                <strong>${htmlEsc(data.titre || "—")}</strong>
+            </div>
+            <div class="lf-import-summary-item">
+                <span>Type</span>
+                <strong>${htmlEsc(data.type_formation || "—")}</strong>
+            </div>
+            <div class="lf-import-summary-item">
+                <span>Durée</span>
+                <strong>${data.duree ? htmlEsc(data.duree) + " h" : "—"}</strong>
+            </div>
+            <div class="lf-import-summary-item">
+                <span>Contenus</span>
+                <strong>${htmlEsc((data.contenus || []).length)}</strong>
+            </div>
+            `;
+        }
+
+        renderImportCompetenceRows("formImportCompStag", data.competences_stagiaires_import || []);
+        renderImportCompetenceRows("formImportCompForm", data.competences_formateurs_import || []);
+
+        const contents = byId("formImportContents");
+        if (contents){
+            const rows = data.contenus || [];
+            contents.innerHTML = rows.length
+            ? rows.map((c, idx) => `
+                <div class="lf-import-content-row">
+                <span class="sb-badge sb-badge--form">${idx + 1}</span>
+                <div>
+                    <strong>${htmlEsc(c.titre_sequence || "Contenu")}</strong>
+                    <div class="card-sub">${htmlEsc(c.objectif || "")}</div>
+                </div>
+                </div>
+            `).join("")
+            : `<div class="card-sub">Aucun contenu détecté.</div>`;
+        }
+
+        const apply = byId("btnFormImportApply");
+        if (apply) apply.disabled = false;
+    }
+
+    async function analyseImportDocument(portal){
+        const input = byId("formImportFile");
+        const file = input?.files?.[0] || null;
+
+        if (!file){
+            setImportStatus("Sélectionne d’abord un document PDF ou Word.", "error");
+            return;
+        }
+
+        const btn = byId("btnFormImportAnalyse");
+        if (btn){
+            btn.disabled = true;
+            btn.textContent = "Analyse en cours…";
+        }
+
+        try{
+            const effectifId = getEffectifId();
+
+            const fd = new FormData();
+            fd.append("document", file);
+
+            setImportStatus("Analyse du document en cours. Oui, cette fois le robot travaille vraiment.", "loading");
+
+            const data = await portal.apiJson(
+            `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/import_document`,
+            {
+                method: "POST",
+                body: fd
+            }
+            );
+
+            _importDraft = data;
+            renderImportPreview(data);
+            setImportStatus("Analyse terminée. Vérifie les propositions avant de remplir la fiche.", "ok");
+
+        } catch(e){
+            _importDraft = null;
+
+            const apply = byId("btnFormImportApply");
+            if (apply) apply.disabled = true;
+
+            setImportStatus(getErrorMessage(e), "error");
+        } finally {
+            if (btn){
+            btn.disabled = false;
+            btn.textContent = "Analyser le document";
+            }
+        }
+    }
+
+    function applyImportDraft(){
+        const d = _importDraft;
+        if (!d){
+            setImportStatus("Aucune analyse à appliquer.", "error");
+            return;
+        }
+
+        setFieldValue("formTitre", d.titre || "");
+        setSelectValue("formEtat", "à valider");
+        setSelectValue("formType", normalizeTypeFormation(d.type_formation || ""));
+        setFieldValue("formObsType", d.obs_type_form || "");
+        syncObsTypeFormation();
+
+        setFieldValue("formDuree", d.duree ?? "");
+        setFieldValue("formTarif", d.tarif_mini ?? "");
+        setSelectValue("formDomaine", d.domaine || "");
+
+        setFieldValue("formPresentation", d.presentation || "");
+        setFieldValue("formPublic", d.public_cible || "");
+        setFieldValue("formObjectifs", d.objectifs || "");
+
+        _selectedModalites = normalizeIdArray(d.modalites_ids);
+        _selectedPeda = normalizeIdArray(d.methode_peda_ids);
+        _selectedEval = normalizeIdArray(d.methode_eval_ids);
+
+        normalizePrerequis(d.prerequis || []);
+
+        _selectedCompStag = importSelectedIds(d.competences_stagiaires_import || []);
+        _selectedCompForm = importSelectedIds(d.competences_formateurs_import || []);
+
+        _pendingImportContenus = Array.isArray(d.contenus) ? d.contenus : [];
+
+        renderRefChecks();
+        renderPrerequis();
+        renderCompetences();
+        renderContenus();
+
+        setTab("identite");
+        closeImportModal();
+        setSuccess("Document importé dans la fiche");
+    }
+
   async function openCreate(portal){
     if (!isSupervisor()) return;
     setSuccess("");
@@ -2194,6 +2450,7 @@ function renderContentCompBadges(l){
     await ensureRefs(portal);
 
     _modalMode = "create";
+    syncFormModeActions();
     _editingId = null;
 
     const b = byId("formModalBadge");
@@ -2226,6 +2483,7 @@ function renderContentCompBadges(l){
     _prerequis = [];
     _detailContenus = [];
     _detailPlans = [];
+    _pendingImportContenus = [];
 
     renderRefChecks();
     renderPrerequis();
@@ -2245,6 +2503,7 @@ function renderContentCompBadges(l){
         await ensureRefs(portal);
 
         _modalMode = "edit";
+        syncFormModeActions();
         _editingId = it?.id_form || null;
 
         if (!_editingId){
@@ -2353,11 +2612,34 @@ function renderContentCompBadges(l){
 
     _modalMode = "edit";
     _editingId = created?.id_form || _editingId;
+    syncFormModeActions();
 
     const badge = byId("formModalBadge");
     if (badge && created?.code){
         badge.textContent = created.code;
         badge.style.display = "";
+    }
+    if (_editingId && _pendingImportContenus.length){
+    for (const c of _pendingImportContenus){
+        const payloadContent = {
+        titre_sequence: (c.titre_sequence || "").trim() || "Contenu",
+        objectif: (c.objectif || "").trim() || null,
+        contenu: (c.contenu || "").trim() || null,
+        competences_liees: Array.isArray(c.competences_liees) ? c.competences_liees : []
+        };
+
+        await portal.apiJson(
+        `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/${encodeURIComponent(_editingId)}/contenus`,
+        {
+            method: "POST",
+            headers: { "Content-Type":"application/json" },
+            body: JSON.stringify(payloadContent)
+        }
+        );
+    }
+
+    _pendingImportContenus = [];
+    await reloadFormationTechnicalDetail(portal);
     }
     } else {
     if (!_editingId) return;
@@ -2655,6 +2937,7 @@ iframe{width:100%;height:100%;border:0;display:block}
     if (_bound) return;
     _bound = true;
 
+    syncFormModeActions();
     const bNew = byId("btnFormNew");
 
     if (bNew){
@@ -2665,6 +2948,38 @@ iframe{width:100%;height:100%;border:0;display:block}
     document.querySelectorAll("#formTabs .sb-form-tab").forEach(btn => {
       btn.addEventListener("click", () => setTab(btn.dataset.tab || "identite"));
     });
+
+
+    byId("btnFormImport")?.addEventListener("click", openImportModal);
+
+    byId("btnFormGenerateAi")?.addEventListener("click", () => {
+    portal.showAlert("error", "La génération IA complète sera câblée après l’import document.");
+    });
+
+    byId("btnFormImportX")?.addEventListener("click", closeImportModal);
+    byId("btnFormImportCancel")?.addEventListener("click", closeImportModal);
+
+    byId("formImportFile")?.addEventListener("change", () => {
+    const file = byId("formImportFile")?.files?.[0] || null;
+    const name = byId("formImportFileName");
+
+    if (name){
+        name.textContent = file ? file.name : "Aucun fichier sélectionné";
+    }
+
+    _importDraft = null;
+
+    const preview = byId("formImportPreview");
+    if (preview) preview.style.display = "none";
+
+    const apply = byId("btnFormImportApply");
+    if (apply) apply.disabled = true;
+
+    setImportStatus("", "");
+    });
+
+    byId("btnFormImportAnalyse")?.addEventListener("click", () => analyseImportDocument(portal));
+    byId("btnFormImportApply")?.addEventListener("click", applyImportDraft);
 
     byId("btnFormAiReview")?.addEventListener("click", () => {
       portal.showAlert("error", "La révision IA des textes sera câblée après finalisation du modal formation.");
