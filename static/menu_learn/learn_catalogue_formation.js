@@ -40,6 +40,7 @@
   let _planContentSearch = "";
   let _planDragContentId = null;
   let _planDragBlockId = null;
+  let _planDragSeq = null;
 
   function byId(id){ return document.getElementById(id); }
 
@@ -178,6 +179,24 @@
       </svg>
     `;
   }
+
+    function iconDoubleUp(){
+    return `
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 14l5-5 5 5"/>
+        <path d="M7 20l5-5 5 5"/>
+        </svg>
+    `;
+    }
+
+    function iconDoubleDown(){
+    return `
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 4l5 5 5-5"/>
+        <path d="M7 10l5 5 5-5"/>
+        </svg>
+    `;
+    }
 
   async function ensureContext(portal){
     const effectifId = getEffectifId();
@@ -1250,7 +1269,8 @@ function renderContentCompBadges(l){
             modalite_intervention: byId("planModaliteGenerale")?.value || "",
             objectif: "",
             observations: "",
-            contenus: []
+            contenus: [],
+            collapsed: false
         };
     }
 
@@ -1317,7 +1337,7 @@ function renderContentCompBadges(l){
         });
     }
 
-    function addContentToPlanBlock(blockKey, contentId){
+    function addContentToPlanBlock(blockKey, contentId, insertAt){
         const b = (_planBlocks || []).find(x => planBlockKey(x) === blockKey);
         const id = String(contentId || "").trim();
 
@@ -1325,7 +1345,9 @@ function renderContentCompBadges(l){
 
         if (!Array.isArray(b.contenus)) b.contenus = [];
 
-        b.contenus.push(id);
+        const idx = Number.isInteger(insertAt) ? insertAt : b.contenus.length;
+        b.contenus.splice(Math.max(0, Math.min(idx, b.contenus.length)), 0, id);
+
         renderPlanBlocks();
     }
 
@@ -1334,6 +1356,22 @@ function renderContentCompBadges(l){
         if (!b || !Array.isArray(b.contenus)) return;
 
         b.contenus.splice(index, 1);
+        renderPlanBlocks();
+    }
+
+    function moveContentInsidePlanBlock(blockKey, fromIndex, toIndex){
+        const b = (_planBlocks || []).find(x => planBlockKey(x) === blockKey);
+        if (!b || !Array.isArray(b.contenus)) return;
+
+        const from = parseInt(fromIndex, 10);
+        const to = parseInt(toIndex, 10);
+
+        if (!Number.isInteger(from) || !Number.isInteger(to)) return;
+        if (from < 0 || to < 0 || from >= b.contenus.length || to >= b.contenus.length || from === to) return;
+
+        const [item] = b.contenus.splice(from, 1);
+        b.contenus.splice(to, 0, item);
+
         renderPlanBlocks();
     }
 
@@ -1360,13 +1398,10 @@ function renderContentCompBadges(l){
             const c = findContent(id);
 
             return `
-            <div class="lf-plan-seq-content">
+            <div class="lf-plan-seq-content" draggable="true" data-content-index="${idx}">
                 <div class="lf-plan-seq-content-main">
                 <span class="sb-badge sb-badge--form">${idx + 1}</span>
-                <div>
-                    <div class="lf-plan-seq-content-title">${htmlEsc(c?.titre_sequence || "Contenu introuvable")}</div>
-                    <div class="lf-content-comp-badges">${contentCompBadgesFromContent(c)}</div>
-                </div>
+                <div class="lf-plan-seq-content-title">${htmlEsc(c?.titre_sequence || "Contenu introuvable")}</div>
                 </div>
 
                 <button type="button" class="sb-icon-btn sb-icon-btn--danger" data-remove-content="${idx}" title="Retirer" aria-label="Retirer">
@@ -1394,52 +1429,74 @@ function renderContentCompBadges(l){
 
         _planBlocks.forEach((b, idx) => {
             const key = planBlockKey(b);
+            const isCollapsed = !!b.collapsed;
+
+            const shortTitle = (b.titre || `Séquence ${idx + 1}`).trim();
+            const shortDuree = b.duree ? formatHours(b.duree) : "Durée non définie";
+            const shortModalite = (b.modalite_intervention || "Modalité non définie").trim();
 
             const card = document.createElement("div");
-            card.className = "lf-plan-block-edit";
+            card.className = "lf-plan-block-edit" + (isCollapsed ? " is-collapsed" : "");
             card.dataset.key = key;
 
             card.innerHTML = `
             <div class="lf-plan-block-edit-head">
                 <div class="lf-plan-drag-handle" title="Glisser pour réordonner" draggable="true">☰</div>
+
+                <div class="lf-plan-block-title-wrap">
                 <div class="lf-plan-block-title">Séquence ${idx + 1}</div>
+                <div class="lf-plan-block-summary">
+                    <span>${htmlEsc(shortTitle)}</span>
+                    <span>${htmlEsc(shortDuree)}</span>
+                    <span>${htmlEsc(shortModalite)}</span>
+                </div>
+                </div>
+
+                <button type="button" class="sb-icon-btn" data-action="toggle-block" title="${isCollapsed ? "Afficher le détail" : "Masquer le détail"}" aria-label="${isCollapsed ? "Afficher le détail" : "Masquer le détail"}">
+                ${isCollapsed ? iconDoubleDown() : iconDoubleUp()}
+                </button>
+
                 <button type="button" class="sb-icon-btn sb-icon-btn--danger" data-action="remove-block" title="Retirer la séquence" aria-label="Retirer la séquence">
                 ${iconTrash()}
                 </button>
             </div>
 
-            <div class="lf-plan-block-grid">
-                <div class="info-item">
-                <div class="label">Titre de la séquence</div>
-                <input type="text" data-field="titre" value="${htmlEsc(b.titre || "")}" />
-                </div>
-
-                <div class="info-item">
-                <div class="label">Durée</div>
-                <input type="number" min="0" step="0.25" data-field="duree" value="${htmlEsc(b.duree || "")}" />
-                </div>
-
-                <div class="info-item">
-                <div class="label">Modalité</div>
-                <select data-field="modalite_intervention"></select>
-                </div>
-            </div>
-
-            <div class="row">
+            <div class="lf-plan-block-body">
+                <div class="row">
                 <div class="info-item" style="flex:1; min-width:260px;">
-                <div class="label">Objectif <span class="lf-label-muted">(optionnel)</span></div>
-                <textarea rows="2" data-field="objectif">${htmlEsc(b.objectif || "")}</textarea>
+                    <div class="label">Titre de la séquence</div>
+                    <input type="text" data-field="titre" value="${htmlEsc(b.titre || "")}" />
                 </div>
-            </div>
+                </div>
 
-            <div class="lf-plan-seq-drop" data-drop-zone="content">
+                <div class="lf-plan-block-meta-row">
+                <div class="info-item lf-plan-duration-field">
+                    <div class="label">Durée (heures)</div>
+                    <input type="number" min="0" step="0.25" data-field="duree" value="${htmlEsc(b.duree || "")}" />
+                </div>
+
+                <div class="info-item" style="flex:1; min-width:220px;">
+                    <div class="label">Modalité</div>
+                    <select data-field="modalite_intervention"></select>
+                </div>
+                </div>
+
+                <div class="row">
+                <div class="info-item" style="flex:1; min-width:260px;">
+                    <div class="label">Objectif <span class="lf-label-muted">(optionnel)</span></div>
+                    <input type="text" data-field="objectif" value="${htmlEsc(b.objectif || "")}" />
+                </div>
+                </div>
+
+                <div class="lf-plan-seq-drop" data-drop-zone="content">
                 ${renderPlanBlockContents(b)}
-            </div>
+                </div>
 
-            <div class="row">
+                <div class="row">
                 <div class="info-item" style="flex:1; min-width:260px;">
-                <div class="label">Observations</div>
-                <textarea rows="2" data-field="observations">${htmlEsc(b.observations || "")}</textarea>
+                    <div class="label">Observations</div>
+                    <textarea rows="2" data-field="observations">${htmlEsc(b.observations || "")}</textarea>
+                </div>
                 </div>
             </div>
             `;
@@ -1455,12 +1512,19 @@ function renderContentCompBadges(l){
             el.addEventListener("input", () => {
                 b[field] = el.value || "";
                 if (field === "duree") updatePlanDurationUI();
+                if (field === "titre" || field === "modalite_intervention" || field === "duree") renderPlanBlocks();
             });
 
             el.addEventListener("change", () => {
                 b[field] = el.value || "";
                 if (field === "duree") updatePlanDurationUI();
+                if (field === "titre" || field === "modalite_intervention" || field === "duree") renderPlanBlocks();
             });
+            });
+
+            card.querySelector('[data-action="toggle-block"]')?.addEventListener("click", () => {
+            b.collapsed = !b.collapsed;
+            renderPlanBlocks();
             });
 
             card.querySelector('[data-action="remove-block"]')?.addEventListener("click", () => {
@@ -1472,6 +1536,57 @@ function renderContentCompBadges(l){
             btn.addEventListener("click", () => {
                 const index = parseInt(btn.dataset.removeContent || "-1", 10);
                 if (index >= 0) removeContentFromPlanBlock(key, index);
+            });
+            });
+
+            card.querySelectorAll(".lf-plan-seq-content").forEach(row => {
+            row.addEventListener("dragstart", (e) => {
+                const index = parseInt(row.dataset.contentIndex || "-1", 10);
+                _planDragSeq = { blockKey: key, index };
+
+                row.classList.add("is-dragging");
+
+                if (e.dataTransfer){
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("application/x-learn-plan-seq-content", `${key}|${index}`);
+                e.dataTransfer.setData("text/plain", `${key}|${index}`);
+                }
+            });
+
+            row.addEventListener("dragend", () => {
+                row.classList.remove("is-dragging");
+                _planDragSeq = null;
+            });
+
+            row.addEventListener("dragover", (e) => {
+                if (_planDragSeq || _planDragContentId || e.dataTransfer?.getData("application/x-learn-content")){
+                e.preventDefault();
+                row.classList.add("is-drag-over");
+                }
+            });
+
+            row.addEventListener("dragleave", () => {
+                row.classList.remove("is-drag-over");
+            });
+
+            row.addEventListener("drop", (e) => {
+                e.preventDefault();
+                row.classList.remove("is-drag-over");
+
+                const targetIndex = parseInt(row.dataset.contentIndex || "-1", 10);
+
+                if (_planDragSeq && _planDragSeq.blockKey === key){
+                moveContentInsidePlanBlock(key, _planDragSeq.index, targetIndex);
+                return;
+                }
+
+                const cid = _planDragContentId
+                || e.dataTransfer?.getData("application/x-learn-content")
+                || "";
+
+                if (cid){
+                addContentToPlanBlock(key, cid, targetIndex);
+                }
             });
             });
 
@@ -1515,9 +1630,10 @@ function renderContentCompBadges(l){
             const drop = card.querySelector('[data-drop-zone="content"]');
             if (drop){
             drop.addEventListener("dragover", (e) => {
-                if (!_planDragContentId && !e.dataTransfer?.getData("application/x-learn-content")) return;
+                if (_planDragSeq || _planDragContentId || e.dataTransfer?.getData("application/x-learn-content")){
                 e.preventDefault();
                 drop.classList.add("is-drag-over");
+                }
             });
 
             drop.addEventListener("dragleave", () => {
@@ -1528,7 +1644,20 @@ function renderContentCompBadges(l){
                 e.preventDefault();
                 drop.classList.remove("is-drag-over");
 
-                const cid = _planDragContentId || e.dataTransfer?.getData("application/x-learn-content") || e.dataTransfer?.getData("text/plain") || "";
+                if (_planDragSeq && _planDragSeq.blockKey === key){
+                const bTarget = (_planBlocks || []).find(x => planBlockKey(x) === key);
+                if (bTarget && Array.isArray(bTarget.contenus)){
+                    const lastIndex = Math.max(0, bTarget.contenus.length - 1);
+                    moveContentInsidePlanBlock(key, _planDragSeq.index, lastIndex);
+                }
+                return;
+                }
+
+                const cid = _planDragContentId
+                || e.dataTransfer?.getData("application/x-learn-content")
+                || e.dataTransfer?.getData("text/plain")
+                || "";
+
                 addContentToPlanBlock(key, cid);
             });
             }
@@ -1583,8 +1712,9 @@ function renderContentCompBadges(l){
             observations: b.observations || "",
             position: b.position || (idx + 1),
             contenus: Array.isArray(b.sequences)
-            ? b.sequences.map(s => String(s.id_ligne_contenu || "").trim()).filter(Boolean)
-            : []
+              ? b.sequences.map(s => String(s.id_ligne_contenu || "").trim()).filter(Boolean)
+                : [],
+            collapsed: false
         }));
     }
 
@@ -1660,6 +1790,7 @@ function renderContentCompBadges(l){
         _planBlocks = [];
         _planDragContentId = null;
         _planDragBlockId = null;
+        _planDragSeq = null;
     }
 
     function addPlanBlock(){
