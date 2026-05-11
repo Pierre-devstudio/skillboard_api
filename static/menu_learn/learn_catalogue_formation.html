@@ -350,6 +350,117 @@
     </div>
   </div>
 
+  <div class="sb-modal sb-modal--above" id="modalFormGenerateAi" style="display:none;">
+    <div class="sb-modal-card sb-modal-card--wide">
+      <div class="sb-modal-head">
+        <div>
+          <div class="card-title" style="margin:0;">Générer une fiche formation avec l’IA</div>
+          <div class="card-sub" style="margin:4px 0 0 0;">
+            Décrivez le besoin. Novoskill propose la fiche, les compétences, les contenus et un rapport de justification.
+          </div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnFormGenerateX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="lf-ai-shell">
+          <div class="lf-ai-form-card">
+            <div class="row">
+              <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Objectif de la formation</div>
+                <textarea id="aiFormObjectif" rows="4" placeholder="Ex : Permettre à des managers de conduire un entretien professionnel structuré..."></textarea>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Contexte <span class="lf-label-muted">(optionnel)</span></div>
+                <textarea id="aiFormContexte" rows="3" placeholder="Contexte client, environnement de travail, contraintes métier..."></textarea>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="info-item" style="flex:1; min-width:220px;">
+                <div class="label">Public visé <span class="lf-label-muted">(optionnel)</span></div>
+                <input type="text" id="aiFormPublic" />
+              </div>
+
+              <div class="info-item" style="flex:0 0 150px; max-width:150px;">
+                <div class="label">Durée souhaitée</div>
+                <input type="number" id="aiFormDuree" min="0" step="1" placeholder="heures" />
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Contraintes éventuelles</div>
+                <textarea id="aiFormContraintes" rows="3" placeholder="Contraintes réglementaires, outils imposés, contexte sensible..."></textarea>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="info-item" style="flex:1; min-width:260px;">
+                <div class="label">Documents de référence <span class="lf-label-muted">(PDF, Word, PowerPoint)</span></div>
+                <input type="file" id="aiFormDocs" class="lf-import-input" multiple
+                       accept=".pdf,.docx,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" />
+                <div class="card-sub" id="aiFormDocsLabel" style="margin-top:6px;">Aucun document sélectionné.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="lf-ai-preview" id="aiFormPreview" style="display:none;">
+            <div class="lf-import-preview-head">
+              <div>
+                <div class="lf-import-title">Résultat proposé</div>
+                <div class="card-sub">Vérifiez les propositions avant de remplir la fiche.</div>
+              </div>
+              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnAiReportDownload">Télécharger le rapport IA</button>
+            </div>
+
+            <div class="lf-import-summary" id="aiFormSummary"></div>
+
+            <div class="lf-import-section">
+              <div class="lf-import-section-title">Compétences visées stagiaires</div>
+              <div id="aiFormCompStag" class="lf-import-comp-list"></div>
+            </div>
+
+            <div class="lf-import-section">
+              <div class="lf-import-section-title">Compétences requises formateur</div>
+              <div id="aiFormCompForm" class="lf-import-comp-list"></div>
+            </div>
+
+            <div class="lf-import-section">
+              <div class="lf-import-section-title">Contenus proposés</div>
+              <div id="aiFormContents" class="lf-import-content-list"></div>
+            </div>
+
+            <div class="lf-import-section">
+              <div class="lf-import-section-title">Rapport IA</div>
+              <pre class="lf-ai-report" id="aiFormReport"></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--ai" id="btnFormGenerateRun">Générer</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnFormGenerateApply" disabled>Remplir la fiche</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnFormGenerateCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="sb-modal sb-modal--above" id="modalFormAiWait" style="display:none;">
+    <div class="sb-modal-card sb-modal-card--small">
+      <div class="lf-ai-wait">
+        <div class="lf-ai-spinner"></div>
+        <div class="card-title" style="margin:0;">Génération IA en cours</div>
+        <div class="card-sub" id="aiWaitMessage">Cette opération peut prendre quelques minutes.</div>
+        <div class="card-sub">Appuyez sur Échap pour annuler.</div>
+      </div>
+    </div>
+  </div>
+
   <div class="sb-modal sb-modal--above" id="modalFormImport" style="display:none;">
     <div class="sb-modal-card sb-modal-card--wide">
       <div class="sb-modal-head">

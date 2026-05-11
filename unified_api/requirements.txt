@@ -11,4 +11,5 @@ python-multipart
 openai
 reportlab
 python-docx
+python-pptx
 pypdf

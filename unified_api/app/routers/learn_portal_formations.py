@@ -36,6 +36,11 @@ try:
 except Exception:
     PdfReader = None
 
+try:
+    from pptx import Presentation as PptxPresentation
+except Exception:
+    PptxPresentation = None
+
 router = APIRouter()
 
 
@@ -1107,7 +1112,33 @@ async def _extract_training_document_text(upload: UploadFile) -> str:
         except Exception:
             raise HTTPException(status_code=400, detail="Impossible de lire le document DOCX.")
 
-    raise HTTPException(status_code=400, detail="Format non pris en charge. Formats acceptés : PDF ou DOCX.")
+    if ext == "pptx":
+        if PptxPresentation is None:
+            raise HTTPException(status_code=500, detail="Lecture PPTX indisponible côté serveur.")
+
+        try:
+            prs = PptxPresentation(BytesIO(raw))
+            parts = []
+
+            for slide in prs.slides[:80]:
+                for shape in slide.shapes:
+                    txt = getattr(shape, "text", "") or ""
+                    if txt.strip():
+                        parts.append(txt)
+
+            txt = _doc_clean_text("\n".join(parts))
+
+            if not txt:
+                raise HTTPException(status_code=400, detail="Aucun texte exploitable détecté dans le PPTX.")
+
+            return txt
+
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=400, detail="Impossible de lire le document PPTX.")
+
+    raise HTTPException(status_code=400, detail="Format non pris en charge. Formats acceptés : PDF, DOCX ou PPTX.")
 
 
 def _norm_match_text(value: Any) -> str:
@@ -1204,9 +1235,9 @@ def _match_import_competences(cur, oid: str, labels: list) -> list:
 
             score_title = _match_score(label, c.get("intitule") or "")
             score_full = _match_score(label, blob)
-            score = max(score_title, int(round((score_title * 0.72) + (score_full * 0.28))))
+            score = max(score_title, int(round((score_title * 0.70) + (score_full * 0.30))))
 
-            if score >= 45:
+            if score >= 50:
                 scored.append({
                     "id_comp": c.get("id_comp"),
                     "code": c.get("code"),
@@ -1220,11 +1251,25 @@ def _match_import_competences(cur, oid: str, labels: list) -> list:
 
         scored.sort(key=lambda x: x.get("score") or 0, reverse=True)
         matches = scored[:3]
+        best_score = matches[0].get("score", 0) if matches else 0
+
+        if best_score >= 82:
+            status = "recommandé"
+            selected_id = matches[0].get("id_comp")
+        elif best_score >= 66:
+            status = "approchant"
+            selected_id = None
+        elif best_score >= 50:
+            status = "à vérifier"
+            selected_id = None
+        else:
+            status = "à créer"
+            selected_id = None
 
         out.append({
             "source": label,
-            "selected_id": matches[0]["id_comp"] if matches and matches[0].get("score", 0) >= 80 else None,
-            "status": "match_fort" if matches and matches[0].get("score", 0) >= 80 else ("approchant" if matches else "non_trouve"),
+            "selected_id": selected_id,
+            "status": status,
             "matches": matches,
         })
 
@@ -1526,6 +1571,168 @@ def _analyse_import_document_with_ai(doc_text: str, filename: str) -> dict:
     except Exception:
         raise HTTPException(status_code=500, detail="Analyse IA illisible.")
 
+def _build_generation_ai_schema() -> dict:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": [
+            "titre", "presentation", "objectif_pedagogique", "public_cible",
+            "type_formation", "obs_type_form", "duree_recommandee", "duree_statut",
+            "duree_justification", "domaines_probables", "methodes_peda",
+            "methodes_eval", "prerequis", "competences_stagiaires",
+            "competences_formateurs", "contenus", "rapport_ia"
+        ],
+        "properties": {
+            "titre": {"type": "string"},
+            "presentation": {"type": "string"},
+            "objectif_pedagogique": {"type": "string"},
+            "public_cible": {"type": "string"},
+            "type_formation": {"type": "string"},
+            "obs_type_form": {"type": ["string", "null"]},
+            "duree_recommandee": {"type": ["number", "null"]},
+            "duree_statut": {"type": "string"},
+            "duree_justification": {"type": "string"},
+            "domaines_probables": {"type": "array", "items": {"type": "string"}},
+            "methodes_peda": {"type": "array", "items": {"type": "string"}},
+            "methodes_eval": {"type": "array", "items": {"type": "string"}},
+            "prerequis": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["titre", "r1", "r2", "r3"],
+                    "properties": {
+                        "titre": {"type": "string"},
+                        "r1": {"type": "string"},
+                        "r2": {"type": "string"},
+                        "r3": {"type": "string"},
+                    },
+                },
+            },
+            "competences_stagiaires": {"type": "array", "items": {"type": "string"}},
+            "competences_formateurs": {"type": "array", "items": {"type": "string"}},
+            "contenus": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["titre_sequence", "objectif", "contenu", "competences_sources"],
+                    "properties": {
+                        "titre_sequence": {"type": "string"},
+                        "objectif": {"type": ["string", "null"]},
+                        "contenu": {"type": "string"},
+                        "competences_sources": {"type": "array", "items": {"type": "string"}},
+                    },
+                },
+            },
+            "rapport_ia": {"type": "string"},
+        },
+    }
+
+
+def _analyse_generate_formation_with_ai(
+    objectif: str,
+    contexte: str,
+    public_vise: str,
+    duree_souhaitee: Optional[float],
+    contraintes: str,
+    documents_text: str,
+) -> dict:
+    if OpenAI is None:
+        raise HTTPException(status_code=500, detail="Lib OpenAI manquante côté serveur.")
+
+    api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY non configurée.")
+
+    model = (os.getenv("OPENAI_MODEL_FORM_GENERATE") or os.getenv("OPENAI_MODEL_FORM_IMPORT") or "gpt-4o-mini").strip()
+
+    duree_line = "Durée souhaitée non renseignée. Propose une durée réaliste et justifie-la."
+    if duree_souhaitee is not None:
+        duree_line = f"Durée souhaitée par l'utilisateur : {duree_souhaitee} heure(s). Tu peux la challenger et proposer une durée plus cohérente si nécessaire."
+
+    system_prompt = (
+        "Tu génères une fiche formation structurée pour Novoskill Learn. "
+        "Règles impératives : zéro marketing, rédaction opérationnelle, pédagogique, sobre et exploitable. "
+        "Le titre commence par un verbe d'action. "
+        "La présentation est un texte rédigé avec une bonne syntaxe, sans liste. "
+        "L'objectif pédagogique est la finalité globale de la formation et doit être formulé dans l'esprit : "
+        "À la fin de la formation, le stagiaire/l'apprenant sera capable de... "
+        "Ne confonds pas objectif pédagogique et compétences visées. Les compétences visées sont des capacités opérationnelles observables. "
+        "Les contenus sont des briques réutilisables indépendantes de la modalité. "
+        "Ne génère jamais de plan pédagogique, ni de déroulé jour par jour. "
+        "Ne demande pas et ne déduis pas une modalité de réalisation : la modalité sera traitée dans le plan pédagogique. "
+        "Les prérequis doivent être évaluables. Chaque prérequis est un élément distinct avec titre + réponses Oui/Non et r3 optionnelle. "
+        "Les compétences formateur doivent inclure des compétences d'animation/évaluation/apprentissage et des compétences métier liées au contenu ; "
+        "on considère que le formateur possède un niveau avancé ou expert. "
+        "Si un contexte est fourni, rends la formation spécifique à ce contexte. Si aucun contexte n'est fourni, génère une formation générique et réutilisable. "
+        "Le rapport IA final justifie la compréhension du besoin, les compétences, les contenus, la durée et les points de vigilance. "
+        "Le type_formation doit être l'une des valeurs : Certifiante, Diplomante, Non Certifiante. "
+        "Renvoie uniquement un JSON strict conforme au schéma."
+    )
+
+    user_prompt = (
+        f"Objectif demandé :\n{objectif}\n\n"
+        f"Contexte optionnel :\n{contexte or 'Non renseigné'}\n\n"
+        f"Public visé optionnel :\n{public_vise or 'Non renseigné'}\n\n"
+        f"{duree_line}\n\n"
+        f"Contraintes éventuelles :\n{contraintes or 'Non renseigné'}\n\n"
+        f"Documents de référence extraits :\n{documents_text or 'Aucun document fourni.'}"
+    )
+
+    client = OpenAI(api_key=api_key)
+
+    resp = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.2,
+        max_tokens=4200,
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "learn_formation_generation",
+                "schema": _build_generation_ai_schema(),
+                "strict": True,
+            },
+        },
+    )
+
+    raw = (resp.choices[0].message.content or "").strip()
+    if not raw:
+        raise HTTPException(status_code=500, detail="Génération IA vide.")
+
+    try:
+        return json.loads(raw)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Génération IA illisible.")
+
+
+def _format_generation_report(draft: dict, duree_souhaitee: Optional[float]) -> str:
+    report = _clean_text(draft.get("rapport_ia"), 8000)
+    if report:
+        return report
+
+    duree_txt = "Non renseignée" if duree_souhaitee is None else f"{duree_souhaitee} h"
+    rec_txt = draft.get("duree_recommandee") or "Non estimée"
+
+    return _clean_text(
+        "\n".join([
+            "Rapport de génération IA - Novoskill Learn",
+            "",
+            f"Formation proposée : {draft.get('titre') or '—'}",
+            "",
+            f"Durée demandée : {duree_txt}",
+            f"Durée recommandée : {rec_txt} h",
+            f"Analyse durée : {draft.get('duree_justification') or '—'}",
+            "",
+            "Points de vigilance : vérifier les compétences proposées à création avant enregistrement définitif.",
+        ]),
+        8000,
+    )
+
 # ======================================================
 # Models
 # ======================================================
@@ -1734,6 +1941,131 @@ async def learn_formations_import_document(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"learn/formations import_document error: {e}")
+
+@router.post("/learn/formations/{id_effectif}/generate_ai")
+async def learn_formations_generate_ai(
+    id_effectif: str,
+    request: Request,
+    objectif: str = "",
+    contexte: str = "",
+    public_vise: str = "",
+    duree_souhaitee: str = "",
+    contraintes: str = "",
+    documents: Optional[list[UploadFile]] = File(default=None),
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        obj = _clean_text(objectif, 3000)
+        if not obj:
+            raise HTTPException(status_code=400, detail="Objectif de formation obligatoire.")
+
+        duree = _safe_float(duree_souhaitee)
+        docs_text_parts = []
+
+        for upload in documents or []:
+            filename = (upload.filename or "").strip()
+            if not filename:
+                continue
+
+            txt = await _extract_training_document_text(upload)
+            if txt:
+                docs_text_parts.append(f"--- Document : {filename} ---\n{txt}")
+
+        docs_text = _doc_clean_text("\n\n".join(docs_text_parts), 36000)
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                _learn_require_min_role(profile, "supervisor")
+                oid = (profile.get("id_owner") or "").strip()
+
+                draft = _analyse_generate_formation_with_ai(
+                    objectif=obj,
+                    contexte=_clean_text(contexte, 5000),
+                    public_vise=_clean_text(public_vise, 2000),
+                    duree_souhaitee=duree,
+                    contraintes=_clean_text(contraintes, 4000),
+                    documents_text=docs_text,
+                )
+
+                cur.execute(
+                    """
+                    SELECT id_met_peda, titre, titre_court, description
+                    FROM public.tbl_met_peda
+                    WHERE COALESCE(masque, FALSE) = FALSE
+                    """
+                )
+                peda_rows = cur.fetchall() or []
+
+                cur.execute(
+                    """
+                    SELECT id_met_eval, titre, titre_court, description
+                    FROM public.tbl_met_eval
+                    WHERE COALESCE(masque, FALSE) = FALSE
+                    """
+                )
+                eval_rows = cur.fetchall() or []
+
+                domaine_id = _find_domaine_formation_id(cur, draft.get("domaines_probables") or [])
+                comp_stag = _match_import_competences(cur, oid, draft.get("competences_stagiaires") or [])
+                comp_form = _match_import_competences(cur, oid, draft.get("competences_formateurs") or [])
+
+        prerequis = _normalize_import_prerequis(draft.get("prerequis") or [])
+
+        contenus = []
+        for c in draft.get("contenus") or []:
+            titre = _clean_text(c.get("titre_sequence"), 500)
+            detail = _clean_text(c.get("contenu"), 8000)
+
+            if not titre and not detail:
+                continue
+
+            contenus.append({
+                "titre_sequence": titre or "Contenu",
+                "objectif": _clean_text(c.get("objectif"), 1200),
+                "contenu": detail,
+                "competences_sources": [
+                    str(x or "").strip()
+                    for x in (c.get("competences_sources") or [])
+                    if str(x or "").strip()
+                ],
+                "competences_liees": [],
+            })
+
+        duree_recommandee = _safe_float(draft.get("duree_recommandee"))
+
+        out = {
+            "titre": _clean_text(draft.get("titre"), 500),
+            "presentation": _clean_text(draft.get("presentation"), 6000),
+            "public_cible": _clean_text(draft.get("public_cible"), 3000),
+            "objectifs": _clean_text(draft.get("objectif_pedagogique"), 5000),
+            "type_formation": _normalize_type_formation(draft.get("type_formation")),
+            "obs_type_form": _clean_text(draft.get("obs_type_form"), 500),
+            "duree": duree_recommandee,
+            "duree_demandee": duree,
+            "duree_recommandee": duree_recommandee,
+            "duree_statut": _clean_text(draft.get("duree_statut"), 300),
+            "duree_justification": _clean_text(draft.get("duree_justification"), 1200),
+            "tarif_mini": None,
+            "domaine": domaine_id,
+            "modalites_ids": [],
+            "methode_peda_ids": _find_ref_ids_by_labels(peda_rows, "id_met_peda", draft.get("methodes_peda") or []),
+            "methode_eval_ids": _find_ref_ids_by_labels(eval_rows, "id_met_eval", draft.get("methodes_eval") or []),
+            "prerequis": prerequis,
+            "competences_stagiaires_import": comp_stag,
+            "competences_formateurs_import": comp_form,
+            "contenus": contenus,
+            "rapport_ia": _format_generation_report(draft, duree),
+        }
+
+        return out
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations generate_ai error: {e}")
 
 @router.get("/learn/formations/{id_effectif}/referentiels")
 def learn_formations_referentiels(id_effectif: str, request: Request):

@@ -34,6 +34,9 @@
 
   let _detailPlans = [];
   let _importDraft = null;
+  let _aiGenerationDraft = null;
+  let _aiAbortController = null;
+  let _aiLongTimer = null;
   let _pendingImportContenus = [];
   let _pendingCompStagCreate = [];
   let _pendingCompFormCreate = [];
@@ -2365,12 +2368,13 @@ function renderContentCompBadges(l){
             .filter(r => r.source);
     }
 
-    function buildImportSelectedMap(){
+        function buildImportSelectedMap(draft){
         const map = new Map();
+        const src = draft || _importDraft || _aiGenerationDraft || {};
 
         const allRows = []
-            .concat(_importDraft?.competences_stagiaires_import || [])
-            .concat(_importDraft?.competences_formateurs_import || []);
+            .concat(src?.competences_stagiaires_import || [])
+            .concat(src?.competences_formateurs_import || []);
 
         allRows.forEach(r => {
             const key = normalizeImportKey(r.source || "");
@@ -2384,8 +2388,8 @@ function renderContentCompBadges(l){
         return map;
     }
 
-    function enrichImportContenusWithCompetences(rows){
-        const map = buildImportSelectedMap();
+    function enrichImportContenusWithCompetences(rows, draft){
+        const map = buildImportSelectedMap(draft);
 
         return (rows || []).map(c => {
             const sources = Array.isArray(c.competences_sources) ? c.competences_sources : [];
@@ -2598,7 +2602,8 @@ function renderContentCompBadges(l){
         _pendingCompFormCreate = importRowsToCreate(d.competences_formateurs_import || []);
 
         _pendingImportContenus = enrichImportContenusWithCompetences(
-        Array.isArray(d.contenus) ? d.contenus : []
+            Array.isArray(d.contenus) ? d.contenus : [],
+            d
         );
 
         renderRefChecks();
@@ -2611,59 +2616,302 @@ function renderContentCompBadges(l){
         setSuccess("Document importé dans la fiche");
     }
 
-  async function openCreate(portal){
-    if (!isSupervisor()) return;
-    setSuccess("");
+    function closeGenerateAiModal(){
+        closeModal("modalFormGenerateAi");
+        _aiGenerationDraft = null;
 
-    await ensureRefs(portal);
+        const preview = byId("aiFormPreview");
+        if (preview) preview.style.display = "none";
 
-    _modalMode = "create";
-    syncFormModeActions();
-    _editingId = null;
+        const apply = byId("btnFormGenerateApply");
+        if (apply) apply.disabled = true;
 
-    const b = byId("formModalBadge");
-    if (b){
-      b.style.display = "none";
-      b.textContent = "";
+        const docs = byId("aiFormDocs");
+        if (docs) docs.value = "";
+
+        const docsLabel = byId("aiFormDocsLabel");
+        if (docsLabel) docsLabel.textContent = "Aucun document sélectionné.";
     }
 
-    byId("formModalTitle").textContent = "Créer une formation";
+    function openGenerateAiModal(){
+        if (_modalMode !== "create"){
+            window.portal.showAlert("error", "La génération IA est disponible uniquement lors de la création d’une formation.");
+            return;
+        }
 
-    byId("formTitre").value = "";
-    byId("formEtat").value = "à valider";
-    byId("formDomaine").value = "";
-    byId("formFournisseur").value = "";
-    setSelectValue("formType", "Non Certifiante");
-    setFieldValue("formObsType", "");
-    syncObsTypeFormation();
-    byId("formDuree").value = "";
-    byId("formTarif").value = "";
-    byId("formPresentation").value = "";
-    byId("formPublic").value = "";
-    byId("formObjectifs").value = "";
-    byId("formAttestation").value = "";
+        _aiGenerationDraft = null;
 
-    _selectedModalites = [];
-    _selectedPeda = [];
-    _selectedEval = [];
-    _selectedCompStag = [];
-    _selectedCompForm = [];
-    _prerequis = [];
-    _detailContenus = [];
-    _detailPlans = [];
-    _pendingImportContenus = [];
-    _pendingCompStagCreate = [];
-    _pendingCompFormCreate = [];
+        setFieldValue("aiFormObjectif", "");
+        setFieldValue("aiFormContexte", "");
+        setFieldValue("aiFormPublic", "");
+        setFieldValue("aiFormDuree", "");
+        setFieldValue("aiFormContraintes", "");
 
-    renderRefChecks();
-    renderPrerequis();
-    renderCompetences();
-    renderContenus();
-    renderPlans();
+        const preview = byId("aiFormPreview");
+        if (preview) preview.style.display = "none";
 
-    setTab("identite");
-    openModal("modalFormEdit");
-  }
+        const apply = byId("btnFormGenerateApply");
+        if (apply) apply.disabled = true;
+
+        const docs = byId("aiFormDocs");
+        if (docs) docs.value = "";
+
+        const docsLabel = byId("aiFormDocsLabel");
+        if (docsLabel) docsLabel.textContent = "Aucun document sélectionné.";
+
+        openModal("modalFormGenerateAi");
+    }
+
+    function openAiWait(){
+        const msg = byId("aiWaitMessage");
+        if (msg) msg.textContent = "Cette opération peut prendre quelques minutes.";
+
+        window.clearTimeout(_aiLongTimer);
+        _aiLongTimer = window.setTimeout(() => {
+            const m = byId("aiWaitMessage");
+            if (m) m.textContent = "La durée de cette opération est anormalement longue. Appuyez sur Échap pour annuler et relancer la génération.";
+        }, 200000);
+
+        openModal("modalFormAiWait");
+    }
+
+    function closeAiWait(){
+        window.clearTimeout(_aiLongTimer);
+        _aiLongTimer = null;
+        closeModal("modalFormAiWait");
+    }
+
+    function cancelAiGeneration(){
+        if (_aiAbortController){
+            _aiAbortController.abort();
+            _aiAbortController = null;
+        }
+
+        closeAiWait();
+    }
+
+    function renderGenerationPreview(data){
+        const preview = byId("aiFormPreview");
+        if (preview) preview.style.display = "";
+
+        const summary = byId("aiFormSummary");
+        if (summary){
+            summary.innerHTML = `
+            <div class="lf-import-summary-item">
+                <span>Titre</span>
+                <strong>${htmlEsc(data.titre || "—")}</strong>
+            </div>
+            <div class="lf-import-summary-item">
+                <span>Durée proposée</span>
+                <strong>${data.duree ? htmlEsc(data.duree) + " h" : "—"}</strong>
+            </div>
+            <div class="lf-import-summary-item">
+                <span>Analyse durée</span>
+                <strong>${htmlEsc(data.duree_statut || "—")}</strong>
+            </div>
+            <div class="lf-import-summary-item">
+                <span>Contenus</span>
+                <strong>${htmlEsc((data.contenus || []).length)}</strong>
+            </div>
+            `;
+        }
+
+        renderImportCompetenceRows("aiFormCompStag", data.competences_stagiaires_import || []);
+        renderImportCompetenceRows("aiFormCompForm", data.competences_formateurs_import || []);
+
+        const contents = byId("aiFormContents");
+        if (contents){
+            const rows = data.contenus || [];
+            contents.innerHTML = rows.length
+            ? rows.map((c, idx) => `
+                <div class="lf-import-content-row">
+                <span class="sb-badge sb-badge--form">${idx + 1}</span>
+                <div>
+                    <strong>${htmlEsc(c.titre_sequence || "Contenu")}</strong>
+                    <div class="card-sub">${htmlEsc(c.objectif || "")}</div>
+                </div>
+                </div>
+            `).join("")
+            : `<div class="card-sub">Aucun contenu proposé.</div>`;
+        }
+
+        const report = byId("aiFormReport");
+        if (report) report.textContent = data.rapport_ia || "";
+
+        const apply = byId("btnFormGenerateApply");
+        if (apply) apply.disabled = false;
+    }
+
+    async function generateFormationWithAi(portal){
+        const objectif = (byId("aiFormObjectif")?.value || "").trim();
+        if (!objectif){
+            portal.showAlert("error", "Objectif de formation obligatoire.");
+            return;
+        }
+
+        const effectifId = getEffectifId();
+        const fd = new FormData();
+        fd.append("objectif", objectif);
+        fd.append("contexte", (byId("aiFormContexte")?.value || "").trim());
+        fd.append("public_vise", (byId("aiFormPublic")?.value || "").trim());
+        fd.append("duree_souhaitee", (byId("aiFormDuree")?.value || "").trim());
+        fd.append("contraintes", (byId("aiFormContraintes")?.value || "").trim());
+
+        const files = Array.from(byId("aiFormDocs")?.files || []);
+        files.forEach(file => fd.append("documents", file));
+
+        _aiAbortController = new AbortController();
+        openAiWait();
+
+        try{
+            const data = await portal.apiJson(
+            `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/generate_ai`,
+            {
+                method: "POST",
+                body: fd,
+                signal: _aiAbortController.signal
+            }
+            );
+
+            _aiGenerationDraft = data;
+            renderGenerationPreview(data);
+        } catch(e){
+            if (e?.name !== "AbortError"){
+            portal.showAlert("error", getErrorMessage(e));
+            }
+        } finally {
+            _aiAbortController = null;
+            closeAiWait();
+        }
+    }
+
+    function applyGeneratedFormation(){
+        const d = _aiGenerationDraft;
+        if (!d){
+            window.portal.showAlert("error", "Aucune génération IA à appliquer.");
+            return;
+        }
+
+        setFieldValue("formTitre", d.titre || "");
+        setSelectValue("formEtat", "à valider");
+        setSelectValue("formType", normalizeTypeFormation(d.type_formation || ""));
+        setFieldValue("formObsType", d.obs_type_form || "");
+        syncObsTypeFormation();
+
+        setFieldValue("formDuree", d.duree ?? "");
+        setFieldValue("formTarif", d.tarif_mini ?? "");
+        setSelectValue("formDomaine", d.domaine || "");
+
+        setFieldValue("formPresentation", d.presentation || "");
+        setFieldValue("formPublic", d.public_cible || "");
+        setFieldValue("formObjectifs", d.objectifs || "");
+
+        _selectedModalites = normalizeIdArray(d.modalites_ids);
+        _selectedPeda = normalizeIdArray(d.methode_peda_ids);
+        _selectedEval = normalizeIdArray(d.methode_eval_ids);
+
+        normalizePrerequis(d.prerequis || []);
+
+        _selectedCompStag = importSelectedIds(d.competences_stagiaires_import || []);
+        _selectedCompForm = importSelectedIds(d.competences_formateurs_import || []);
+
+        _pendingCompStagCreate = importRowsToCreate(d.competences_stagiaires_import || []);
+        _pendingCompFormCreate = importRowsToCreate(d.competences_formateurs_import || []);
+
+        _pendingImportContenus = enrichImportContenusWithCompetences(
+            Array.isArray(d.contenus) ? d.contenus : [],
+            d
+        );
+
+        renderRefChecks();
+        renderPrerequis();
+        renderCompetences();
+        renderContenus();
+
+        setTab("identite");
+        closeGenerateAiModal();
+        setSuccess("Génération IA injectée dans la fiche");
+    }
+
+    function downloadAiReport(){
+        const txt = (_aiGenerationDraft?.rapport_ia || "").trim();
+        if (!txt){
+            window.portal.showAlert("error", "Aucun rapport IA à télécharger.");
+            return;
+        }
+
+        const title = (_aiGenerationDraft?.titre || "formation")
+            .toString()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-zA-Z0-9]+/g, "_")
+            .replace(/^_+|_+$/g, "")
+            .slice(0, 80) || "formation";
+
+        const blob = new Blob([txt], { type: "text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `rapport_ia_${title}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    async function openCreate(portal){
+        if (!isSupervisor()) return;
+        setSuccess("");
+
+        await ensureRefs(portal);
+
+        _modalMode = "create";
+        syncFormModeActions();
+        _editingId = null;
+
+        const b = byId("formModalBadge");
+        if (b){
+        b.style.display = "none";
+        b.textContent = "";
+        }
+
+        byId("formModalTitle").textContent = "Créer une formation";
+
+        byId("formTitre").value = "";
+        byId("formEtat").value = "à valider";
+        byId("formDomaine").value = "";
+        byId("formFournisseur").value = "";
+        setSelectValue("formType", "Non Certifiante");
+        setFieldValue("formObsType", "");
+        syncObsTypeFormation();
+        byId("formDuree").value = "";
+        byId("formTarif").value = "";
+        byId("formPresentation").value = "";
+        byId("formPublic").value = "";
+        byId("formObjectifs").value = "";
+        byId("formAttestation").value = "";
+
+        _selectedModalites = [];
+        _selectedPeda = [];
+        _selectedEval = [];
+        _selectedCompStag = [];
+        _selectedCompForm = [];
+        _prerequis = [];
+        _detailContenus = [];
+        _detailPlans = [];
+        _pendingImportContenus = [];
+        _pendingCompStagCreate = [];
+        _pendingCompFormCreate = [];
+
+        renderRefChecks();
+        renderPrerequis();
+        renderCompetences();
+        renderContenus();
+        renderPlans();
+
+        setTab("identite");
+        openModal("modalFormEdit");
+    }
 
     async function openEdit(portal, it){
         if (!isSupervisor()) return;
@@ -3122,8 +3370,28 @@ iframe{width:100%;height:100%;border:0;display:block}
 
     byId("btnFormImport")?.addEventListener("click", openImportModal);
 
-    byId("btnFormGenerateAi")?.addEventListener("click", () => {
-    portal.showAlert("error", "La génération IA complète sera câblée après l’import document.");
+    byId("btnFormGenerateAi")?.addEventListener("click", openGenerateAiModal);
+
+    byId("btnFormGenerateX")?.addEventListener("click", closeGenerateAiModal);
+    byId("btnFormGenerateCancel")?.addEventListener("click", closeGenerateAiModal);
+    byId("btnFormGenerateRun")?.addEventListener("click", () => generateFormationWithAi(portal));
+    byId("btnFormGenerateApply")?.addEventListener("click", applyGeneratedFormation);
+    byId("btnAiReportDownload")?.addEventListener("click", downloadAiReport);
+
+    byId("aiFormDocs")?.addEventListener("change", () => {
+    const files = Array.from(byId("aiFormDocs")?.files || []);
+    const label = byId("aiFormDocsLabel");
+    if (label){
+        label.textContent = files.length
+        ? files.map(f => f.name).join(", ")
+        : "Aucun document sélectionné.";
+    }
+    });
+
+    document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && _aiAbortController){
+        cancelAiGeneration();
+    }
     });
 
     byId("btnFormImportX")?.addEventListener("click", closeImportModal);
