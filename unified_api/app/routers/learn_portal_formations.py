@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional, Any
 from psycopg.rows import dict_row
@@ -1946,17 +1946,30 @@ async def learn_formations_import_document(
 async def learn_formations_generate_ai(
     id_effectif: str,
     request: Request,
-    objectif: str = Form(""),
-    contexte: str = Form(""),
-    public_vise: str = Form(""),
-    duree_souhaitee: str = Form(""),
-    contraintes: str = Form(""),
-    documents: Optional[list[UploadFile]] = File(default=None),
 ):
     auth = request.headers.get("Authorization", "")
     u = learn_require_user(auth)
 
     try:
+        form = await request.form()
+
+        objectif = str(form.get("objectif") or "")
+        contexte = str(form.get("contexte") or "")
+        public_vise = str(form.get("public_vise") or "")
+        duree_souhaitee = str(form.get("duree_souhaitee") or "")
+        contraintes = str(form.get("contraintes") or "")
+
+        documents = []
+        try:
+            raw_docs = form.getlist("documents")
+        except Exception:
+            raw_docs = []
+
+        for item in raw_docs:
+            if hasattr(item, "filename") and hasattr(item, "read"):
+                if (item.filename or "").strip():
+                    documents.append(item)
+
         obj = _clean_text(objectif, 3000)
         if not obj:
             raise HTTPException(status_code=400, detail="Objectif de formation obligatoire.")
