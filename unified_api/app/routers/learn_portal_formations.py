@@ -3058,6 +3058,10 @@ def _pdf_chip(text: Any, style, bg="#fff7ed", border="#fed7aa") -> Table:
 def _build_formation_pdf_story(form: dict) -> list:
     styles = build_pdf_styles()
 
+    # ======================================================
+    # Helpers locaux PDF catalogue
+    # ======================================================
+
     def clean_pdf_text(value: Any, fallback: str = "—") -> str:
         txt = str(value or "").strip()
 
@@ -3075,6 +3079,59 @@ def _build_formation_pdf_story(form: dict) -> list:
         txt = txt.strip()
 
         return txt if txt else fallback
+
+    def pretty_label(value: Any) -> str:
+        raw = clean_pdf_text(value, "")
+        if not raw:
+            return "—"
+
+        s = raw.strip()
+
+        mapping = {
+            "numerique": "Numérique",
+            "active": "Active",
+            "a valider": "À valider",
+            "à valider": "À valider",
+            "archive": "Archivée",
+            "modalite_presentiel": "Présentiel",
+            "modalite_virtuel": "Distanciel",
+            "modalite_distanciel": "Distanciel",
+            "modalite_blended": "Blended learning",
+            "methode_expose": "Exposé",
+            "methode_demo": "Démonstration",
+            "methode_demonstration": "Démonstration",
+            "methode_exercices": "Exercices",
+            "methode_etude_cas": "Étude de cas",
+            "methode_travail_groupe": "Travail de groupe",
+            "methode_formation_action": "Formation-action",
+            "eval_observation": "Observation",
+            "eval_entretien_individuel": "Entretien individuel",
+            "eval_etude_cas": "Étude de cas",
+            "eval_qcm": "QCM",
+            "eval_quiz": "Quiz",
+            "eval_mise_situation": "Mise en situation",
+        }
+
+        key = _norm_match_text(s).replace(" ", "_")
+        if key in mapping:
+            return mapping[key]
+
+        if "_" in s:
+            s = re.sub(r"^(modalite|methode|eval)_", "", s, flags=re.I)
+            s = s.replace("_", " ")
+
+        return s[:1].upper() + s[1:] if s else "—"
+
+    def ref_label(item: dict) -> str:
+        titre = item.get("titre") or ""
+        titre_court = item.get("titre_court") or ""
+
+        tc_clean = str(titre_court or "").strip().lower()
+
+        if tc_clean and not re.match(r"^(modalite|methode|eval)_", tc_clean):
+            return pretty_label(titre_court)
+
+        return pretty_label(titre or titre_court)
 
     def p(value: Any, style, fallback: str = "—"):
         txt = clean_pdf_text(value, fallback)
@@ -3134,24 +3191,8 @@ def _build_formation_pdf_story(form: dict) -> list:
 
         return out or [p("—", style)]
 
-    def info_card(label: str, value: Any, width: float):
-        tbl = Table(
-            [[p(label, info_label_style)], [p(value, info_value_style)]],
-            colWidths=[width],
-        )
-        tbl.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
-            ("BOX", (0, 0), (-1, -1), 0.55, colors.HexColor("#e2e8f0")),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ]))
-        return tbl
-
     def section_title(title: str):
-        marker = Table([[""]], colWidths=[3.5 * mm], rowHeights=[6.2 * mm])
+        marker = Table([[""]], colWidths=[3.5 * mm], rowHeights=[6 * mm])
         marker.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ff7a35")),
             ("BOX", (0, 0), (-1, -1), 0, colors.HexColor("#ff7a35")),
@@ -3167,6 +3208,22 @@ def _build_formation_pdf_story(form: dict) -> list:
             ("RIGHTPADDING", (0, 0), (-1, -1), 0),
             ("TOPPADDING", (0, 0), (-1, -1), 7),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ]))
+        return tbl
+
+    def info_card(label: str, value: Any, width: float, bg: str = "#f8fafc"):
+        tbl = Table(
+            [[p(label, info_label_style)], [p(value, info_value_style)]],
+            colWidths=[width],
+        )
+        tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(bg)),
+            ("BOX", (0, 0), (-1, -1), 0.55, colors.HexColor("#e2e8f0")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ]))
         return tbl
 
@@ -3201,6 +3258,49 @@ def _build_formation_pdf_story(form: dict) -> list:
         ]))
         return tbl
 
+    def soft_tag(value: Any):
+        tbl = Table([[p(value, chip_style)]])
+        tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
+            ("BOX", (0, 0), (-1, -1), 0.45, colors.HexColor("#fed7aa")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        return tbl
+
+    def tag_list(items: list, width: float):
+        labels = [pretty_label(x) for x in items or [] if str(x or "").strip()]
+
+        if not labels:
+            return p("—", body_style)
+
+        rows = []
+        current = []
+
+        for label in labels:
+            current.append(soft_tag(label))
+
+            if len(current) == 2:
+                rows.append(current)
+                current = []
+
+        if current:
+            while len(current) < 2:
+                current.append("")
+            rows.append(current)
+
+        tbl = Table(rows, colWidths=[width / 2, width / 2])
+        tbl.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+            ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ]))
+        return tbl
+
     def comp_rows(items: list, width: float):
         rows = []
 
@@ -3216,86 +3316,79 @@ def _build_formation_pdf_story(form: dict) -> list:
         if not rows:
             rows.append(["", p("—", body_style)])
 
-        tbl = Table(rows, colWidths=[27 * mm, width - 27 * mm])
+        tbl = Table(rows, colWidths=[26 * mm, width - 26 * mm])
         tbl.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
             ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-            ("TOPPADDING", (0, 0), (-1, -1), 3.5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3.5),
+            ("TOPPADDING", (0, 0), (-1, -1), 3.2),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3.2),
             ("LINEBELOW", (0, 0), (-1, -2), 0.35, colors.HexColor("#eef2f7")),
         ]))
         return tbl
 
-    def tag_list(items: list, width: float):
-        labels = [str(x or "").strip() for x in items or [] if str(x or "").strip()]
-
-        if not labels:
-            return p("—", body_style)
-
-        rows = []
-
-        for label in labels:
-            chip = Table([[p(label, chip_style)]], colWidths=[width])
-            chip.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
-                ("BOX", (0, 0), (-1, -1), 0.45, colors.HexColor("#fed7aa")),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-            ]))
-            rows.append([chip])
-
-        tbl = Table(rows, colWidths=[width])
-        tbl.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ("TOPPADDING", (0, 0), (-1, -1), 2),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-        ]))
-        return tbl
+    # ======================================================
+    # Styles
+    # ======================================================
 
     hero_title_style = ParagraphStyle(
-        "LearnOfHeroTitle",
+        "LearnCatHeroTitle",
         parent=styles["title"],
         fontName="Helvetica-Bold",
-        fontSize=20,
-        leading=24,
+        fontSize=22,
+        leading=26,
         textColor=colors.white,
-        spaceAfter=3,
+        spaceAfter=4,
     )
 
     hero_label_style = ParagraphStyle(
-        "LearnOfHeroLabel",
+        "LearnCatHeroLabel",
         parent=styles["small"],
         fontName="Helvetica-Bold",
-        fontSize=8.4,
+        fontSize=8.5,
         leading=10,
         textColor=colors.HexColor("#fed7aa"),
+        spaceAfter=4,
     )
 
     hero_sub_style = ParagraphStyle(
-        "LearnOfHeroSub",
+        "LearnCatHeroSub",
         parent=styles["body"],
         fontName="Helvetica",
-        fontSize=9,
-        leading=11.5,
+        fontSize=9.3,
+        leading=12,
         textColor=colors.HexColor("#e5e7eb"),
     )
 
+    hero_side_label_style = ParagraphStyle(
+        "LearnCatHeroSideLabel",
+        parent=styles["small"],
+        fontName="Helvetica-Bold",
+        fontSize=7.2,
+        leading=8.5,
+        textColor=colors.HexColor("#fed7aa"),
+    )
+
+    hero_side_value_style = ParagraphStyle(
+        "LearnCatHeroSideValue",
+        parent=styles["body"],
+        fontName="Helvetica-Bold",
+        fontSize=11,
+        leading=13,
+        textColor=colors.white,
+    )
+
     section_style = ParagraphStyle(
-        "LearnOfSection",
+        "LearnCatSection",
         parent=styles["section"],
         fontName="Helvetica-Bold",
-        fontSize=12.2,
-        leading=14,
+        fontSize=12.4,
+        leading=14.5,
         textColor=colors.HexColor("#111827"),
     )
 
     card_title_style = ParagraphStyle(
-        "LearnOfCardTitle",
+        "LearnCatCardTitle",
         parent=styles["small"],
         fontName="Helvetica-Bold",
         fontSize=8,
@@ -3305,23 +3398,23 @@ def _build_formation_pdf_story(form: dict) -> list:
     )
 
     body_style = ParagraphStyle(
-        "LearnOfBody",
+        "LearnCatBody",
         parent=styles["body"],
         fontName="Helvetica",
-        fontSize=8.7,
-        leading=11.1,
+        fontSize=8.8,
+        leading=11.3,
         textColor=colors.HexColor("#1f2937"),
         spaceAfter=2,
     )
 
     body_bold_style = ParagraphStyle(
-        "LearnOfBodyBold",
+        "LearnCatBodyBold",
         parent=body_style,
         fontName="Helvetica-Bold",
     )
 
     muted_style = ParagraphStyle(
-        "LearnOfMuted",
+        "LearnCatMuted",
         parent=styles["small"],
         fontName="Helvetica",
         fontSize=7.8,
@@ -3330,7 +3423,7 @@ def _build_formation_pdf_story(form: dict) -> list:
     )
 
     info_label_style = ParagraphStyle(
-        "LearnOfInfoLabel",
+        "LearnCatInfoLabel",
         parent=styles["small"],
         fontName="Helvetica",
         fontSize=7.2,
@@ -3339,7 +3432,7 @@ def _build_formation_pdf_story(form: dict) -> list:
     )
 
     info_value_style = ParagraphStyle(
-        "LearnOfInfoValue",
+        "LearnCatInfoValue",
         parent=styles["body"],
         fontName="Helvetica-Bold",
         fontSize=10.2,
@@ -3348,7 +3441,7 @@ def _build_formation_pdf_story(form: dict) -> list:
     )
 
     code_orange_style = ParagraphStyle(
-        "LearnOfCodeOrange",
+        "LearnCatCodeOrange",
         parent=styles["small"],
         fontName="Helvetica-Bold",
         fontSize=8.2,
@@ -3358,117 +3451,202 @@ def _build_formation_pdf_story(form: dict) -> list:
     )
 
     code_blue_style = ParagraphStyle(
-        "LearnOfCodeBlue",
+        "LearnCatCodeBlue",
         parent=styles["small"],
         fontName="Helvetica-Bold",
-        fontSize=7.4,
-        leading=8.8,
+        fontSize=7.3,
+        leading=8.6,
         textColor=colors.white,
         alignment=TA_CENTER,
     )
 
     chip_style = ParagraphStyle(
-        "LearnOfChip",
+        "LearnCatChip",
         parent=styles["small"],
         fontName="Helvetica-Bold",
-        fontSize=7.3,
+        fontSize=7.2,
         leading=8.5,
         textColor=colors.HexColor("#9a3412"),
         alignment=TA_CENTER,
     )
 
-    story = []
+    big_stat_label_style = ParagraphStyle(
+        "LearnCatBigStatLabel",
+        parent=styles["small"],
+        fontName="Helvetica-Bold",
+        fontSize=7.4,
+        leading=8.6,
+        textColor=colors.HexColor("#64748b"),
+        alignment=TA_CENTER,
+    )
+
+    big_stat_value_style = ParagraphStyle(
+        "LearnCatBigStatValue",
+        parent=styles["title"],
+        fontName="Helvetica-Bold",
+        fontSize=19,
+        leading=22,
+        textColor=colors.HexColor("#ff7a35"),
+        alignment=TA_CENTER,
+    )
+
+    # ======================================================
+    # Données
+    # ======================================================
 
     code = form.get("code") or "FC"
     titre = form.get("titre") or "Formation"
-    domaine = form.get("domaine_titre_court") or form.get("domaine_titre") or "—"
-    fournisseur = form.get("fournisseur_nom") or "—"
+    domaine = pretty_label(form.get("domaine_titre_court") or form.get("domaine_titre"))
+    fournisseur = pretty_label(form.get("fournisseur_nom"))
+    type_formation = pretty_label(form.get("type_formation"))
+    etat = pretty_label(form.get("etat"))
+    duree = _pdf_hours(form.get("duree"))
+    tarif = _pdf_money(form.get("tarif_mini"))
+    accroche = short_text(form.get("presentation"), 245) or "Fiche descriptive de formation."
 
-    accroche = short_text(form.get("presentation"), 235) or "Fiche descriptive de formation."
+    modalites = [
+        ref_label(x)
+        for x in (form.get("modalites_items") or [])
+        if ref_label(x) != "—"
+    ]
+    pedas = [
+        ref_label(x)
+        for x in (form.get("methode_peda_items") or [])
+        if ref_label(x) != "—"
+    ]
+    evals = [
+        ref_label(x)
+        for x in (form.get("methode_eval_items") or [])
+        if ref_label(x) != "—"
+    ]
 
-    code_box = Table([[p(code, code_orange_style)]], colWidths=[29 * mm])
-    code_box.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ff7a35")),
-        ("BOX", (0, 0), (-1, -1), 0, colors.HexColor("#ff7a35")),
-        ("LEFTPADDING", (0, 0), (-1, -1), 7),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 7),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    story = []
+
+    # ======================================================
+    # Page catalogue - Hero
+    # ======================================================
+
+    left_hero = Table(
+        [
+            [p("CATALOGUE FORMATION", hero_label_style)],
+            [p(titre, hero_title_style)],
+            [p(accroche, hero_sub_style)],
+        ],
+        colWidths=[124 * mm],
+    )
+    left_hero.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#172033")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 13),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 11),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 11),
     ]))
 
-    hero = Table(
+    right_hero = Table(
         [
-            [code_box, p("Catalogue formation", hero_label_style)],
-            ["", p(titre, hero_title_style)],
-            ["", p(accroche, hero_sub_style)],
+            [p("CODE", hero_side_label_style)],
+            [badge(code, code_orange_style, bg="#ff7a35")],
+            [p("DURÉE", hero_side_label_style)],
+            [p(duree, hero_side_value_style)],
+            [p("TYPE", hero_side_label_style)],
+            [p(type_formation, hero_side_value_style)],
         ],
-        colWidths=[35 * mm, 143 * mm],
+        colWidths=[54 * mm],
     )
-    hero.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#172033")),
-        ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#172033")),
-        ("SPAN", (0, 0), (0, 2)),
+    right_hero.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#22304a")),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+    ]))
+
+    hero = Table([[left_hero, right_hero]], colWidths=[126 * mm, 54 * mm])
+    hero.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "STRETCH"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    story.append(hero)
+    story.append(Spacer(1, 5 * mm))
+
+    # ======================================================
+    # En bref
+    # ======================================================
+
+    story.append(section_title("En bref"))
+
+    quick_grid = Table(
+        [[
+            info_card("Domaine", domaine, 42 * mm),
+            info_card("Fournisseur", fournisseur, 42 * mm),
+            info_card("Tarif indicatif", tarif, 42 * mm),
+            info_card("Statut", etat, 42 * mm),
+        ]],
+        colWidths=[45 * mm, 45 * mm, 45 * mm, 45 * mm],
+    )
+    quick_grid.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    story.append(quick_grid)
+
+    if form.get("obs_type_form"):
+        story.append(Spacer(1, 3 * mm))
+        story.append(card(
+            "Certification / niveau reconnu",
+            [p(form.get("obs_type_form"), body_style)],
+            180 * mm,
+            bg="#f8fafc",
+        ))
+
+    # ======================================================
+    # Objectif + Présentation
+    # ======================================================
+
+    story.append(section_title("Objectif pédagogique"))
+
+    objective_card = Table(
+        [[
+            Table(
+                [[p("OBJECTIF", big_stat_label_style)], [p("✓", big_stat_value_style)]],
+                colWidths=[22 * mm],
+            ),
+            p(form.get("objectifs") or "—", body_style),
+        ]],
+        colWidths=[26 * mm, 154 * mm],
+    )
+    objective_card.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
+        ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#fed7aa")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("LEFTPADDING", (0, 0), (-1, -1), 10),
         ("RIGHTPADDING", (0, 0), (-1, -1), 10),
         ("TOPPADDING", (0, 0), (-1, -1), 10),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
     ]))
-    story.append(hero)
-    story.append(Spacer(1, 5 * mm))
-
-    top_infos = Table(
-        [[
-            info_card("Durée", _pdf_hours(form.get("duree")), 43 * mm),
-            info_card("Type", form.get("type_formation") or "—", 43 * mm),
-            info_card("Domaine", domaine, 43 * mm),
-            info_card("Tarif mini", _pdf_money(form.get("tarif_mini")), 43 * mm),
-        ]],
-        colWidths=[45 * mm, 45 * mm, 45 * mm, 45 * mm],
-    )
-    top_infos.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-    ]))
-    story.append(top_infos)
-    story.append(Spacer(1, 3 * mm))
-
-    bottom_infos = Table(
-        [[
-            info_card("Fournisseur", fournisseur, 88 * mm),
-            info_card("État", form.get("etat") or "—", 42 * mm),
-            info_card("Certification / niveau", form.get("obs_type_form") or "—", 42 * mm),
-        ]],
-        colWidths=[90 * mm, 45 * mm, 45 * mm],
-    )
-    bottom_infos.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-    ]))
-    story.append(bottom_infos)
-    story.append(Spacer(1, 4 * mm))
-
-    story.append(section_title("Objectif pédagogique"))
-    story.append(card(
-        "Finalité de la formation",
-        [p(form.get("objectifs") or "—", body_style)],
-        180 * mm,
-        bg="#fff7ed",
-        border="#fed7aa",
-    ))
+    story.append(objective_card)
 
     story.append(section_title("Pourquoi cette formation ?"))
     story.append(card(
         "Présentation",
         [p(form.get("presentation") or "—", body_style)],
         180 * mm,
+        bg="#ffffff",
     ))
+
+    # ======================================================
+    # Public / Prérequis
+    # ======================================================
+
+    story.append(section_title("Public & conditions d’entrée"))
 
     public_items = lines(form.get("public_cible"))
     prereq_items = [
@@ -3477,21 +3655,13 @@ def _build_formation_pdf_story(form: dict) -> list:
         if x.get("titre")
     ]
 
-    story.append(section_title("Public & conditions d’entrée"))
-
-    public_card = card(
-        "Public cible",
-        bullet_list(public_items, body_style),
-        86 * mm,
+    public_grid = Table(
+        [[
+            card("Public cible", bullet_list(public_items, body_style), 86 * mm),
+            card("Prérequis évaluables", bullet_list(prereq_items, body_style), 86 * mm),
+        ]],
+        colWidths=[90 * mm, 90 * mm],
     )
-
-    prereq_card = card(
-        "Prérequis évaluables",
-        bullet_list(prereq_items, body_style),
-        86 * mm,
-    )
-
-    public_grid = Table([[public_card, prereq_card]], colWidths=[90 * mm, 90 * mm])
     public_grid.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
@@ -3499,45 +3669,33 @@ def _build_formation_pdf_story(form: dict) -> list:
     ]))
     story.append(public_grid)
 
-    story.append(PageBreak())
+    # ======================================================
+    # Compétences + méthodes
+    # ======================================================
 
     story.append(section_title("Compétences développées"))
 
-    comp_stag_card = card(
-        "Compétences visées pour les stagiaires",
-        [comp_rows(form.get("competences_stagiaires_items") or [], 82 * mm)],
-        86 * mm,
+    comp_grid = Table(
+        [[
+            card(
+                "Compétences visées pour les stagiaires",
+                [comp_rows(form.get("competences_stagiaires_items") or [], 82 * mm)],
+                86 * mm,
+            ),
+            card(
+                "Compétences requises pour le formateur",
+                [comp_rows(form.get("competences_formateurs_items") or [], 82 * mm)],
+                86 * mm,
+            ),
+        ]],
+        colWidths=[90 * mm, 90 * mm],
     )
-
-    comp_form_card = card(
-        "Compétences requises pour le formateur",
-        [comp_rows(form.get("competences_formateurs_items") or [], 82 * mm)],
-        86 * mm,
-    )
-
-    comp_grid = Table([[comp_stag_card, comp_form_card]], colWidths=[90 * mm, 90 * mm])
     comp_grid.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
         ("RIGHTPADDING", (0, 0), (-1, -1), 5),
     ]))
     story.append(comp_grid)
-
-    modalites = [
-        x.get("titre_court") or x.get("titre")
-        for x in (form.get("modalites_items") or [])
-        if x.get("titre_court") or x.get("titre")
-    ]
-    pedas = [
-        x.get("titre_court") or x.get("titre")
-        for x in (form.get("methode_peda_items") or [])
-        if x.get("titre_court") or x.get("titre")
-    ]
-    evals = [
-        x.get("titre_court") or x.get("titre")
-        for x in (form.get("methode_eval_items") or [])
-        if x.get("titre_court") or x.get("titre")
-    ]
 
     story.append(section_title("Modalités & méthodes"))
 
@@ -3556,6 +3714,10 @@ def _build_formation_pdf_story(form: dict) -> list:
     ]))
     story.append(method_grid)
 
+    # ======================================================
+    # Programme
+    # ======================================================
+
     story.append(PageBreak())
 
     story.append(section_title("Programme de formation"))
@@ -3570,6 +3732,25 @@ def _build_formation_pdf_story(form: dict) -> list:
     if not contenus:
         story.append(p("Aucun contenu détaillé n’est encore rattaché à cette formation.", body_style))
     else:
+        content_index_style = ParagraphStyle(
+            "LearnCatContentIndex",
+            parent=styles["small"],
+            fontName="Helvetica-Bold",
+            fontSize=12,
+            leading=14,
+            textColor=colors.white,
+            alignment=TA_CENTER,
+        )
+
+        content_title_style = ParagraphStyle(
+            "LearnCatContentTitle",
+            parent=styles["body"],
+            fontName="Helvetica-Bold",
+            fontSize=10.5,
+            leading=13,
+            textColor=colors.HexColor("#111827"),
+        )
+
         for idx, l in enumerate(contenus, start=1):
             comp_items = l.get("competences_liees_items") or []
 
@@ -3580,20 +3761,35 @@ def _build_formation_pdf_story(form: dict) -> list:
             if not chips:
                 chips = [p("Aucune compétence liée", muted_style)]
 
-            content_header = Table(
+            left_index = Table(
+                [[p(str(idx).zfill(2), content_index_style)]],
+                colWidths=[18 * mm],
+                rowHeights=[13 * mm],
+            )
+            left_index.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ff7a35")),
+                ("BOX", (0, 0), (-1, -1), 0, colors.HexColor("#ff7a35")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+            ]))
+
+            header = Table(
                 [[
-                    badge(str(idx).zfill(2), code_orange_style, bg="#ff7a35"),
-                    p(l.get("titre_sequence") or "Contenu", body_bold_style),
+                    left_index,
+                    p(l.get("titre_sequence") or "Contenu", content_title_style),
                     chips,
                 ]],
-                colWidths=[16 * mm, 107 * mm, 53 * mm],
+                colWidths=[20 * mm, 104 * mm, 54 * mm],
             )
-            content_header.setStyle(TableStyle([
+            header.setStyle(TableStyle([
                 ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
                 ("BOX", (0, 0), (-1, -1), 0, colors.HexColor("#fff7ed")),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
                 ("TOPPADDING", (0, 0), (-1, -1), 7),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
             ]))
@@ -3611,7 +3807,7 @@ def _build_formation_pdf_story(form: dict) -> list:
             body_flow.extend(bullet_list(subjects(l.get("contenu")), body_style))
 
             content_card = Table(
-                [[content_header], [body_flow]],
+                [[header], [body_flow]],
                 colWidths=[180 * mm],
             )
             content_card.setStyle(TableStyle([
@@ -3621,8 +3817,8 @@ def _build_formation_pdf_story(form: dict) -> list:
                 ("RIGHTPADDING", (0, 0), (-1, -1), 0),
                 ("TOPPADDING", (0, 0), (-1, -1), 0),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-                ("LEFTPADDING", (0, 1), (-1, 1), 10),
-                ("RIGHTPADDING", (0, 1), (-1, 1), 10),
+                ("LEFTPADDING", (0, 1), (-1, 1), 11),
+                ("RIGHTPADDING", (0, 1), (-1, 1), 11),
                 ("TOPPADDING", (0, 1), (-1, 1), 9),
                 ("BOTTOMPADDING", (0, 1), (-1, 1), 10),
             ]))
@@ -3631,7 +3827,7 @@ def _build_formation_pdf_story(form: dict) -> list:
 
     return story
 
-    
+
 def _lms_esc(value: Any) -> str:
     return html.escape(str(value or "").strip())
 
@@ -4451,7 +4647,7 @@ def learn_formation_fiche_pdf(id_effectif: str, id_form: str, request: Request):
             meta={
                 "title": _pdf_latin1_safe(f"Fiche formation - {code_label} - {titre_label}"),
                 "doc_label": _pdf_latin1_safe("Fiche formation"),
-                "footer_left": _pdf_latin1_safe("Novoskill Learn • Fiche formation"),
+                "footer_left": _pdf_latin1_safe("Novoskill Learn - Fiche formation"),
                 "header_right": _pdf_latin1_safe(owner_label),
                 "header_right_font_name": "Helvetica-Bold",
                 "header_right_font_size": 10.5,
