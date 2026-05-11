@@ -12,9 +12,9 @@ import os
 from difflib import SequenceMatcher
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT
+from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from reportlab.lib.units import mm
-from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, PageBreak
+from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
 from reportlab.lib.styles import ParagraphStyle
 
 from app.routers.skills_portal_common import get_conn
@@ -2923,161 +2923,809 @@ def _bullet_list(items: list, style) -> list:
     return out
 
 
+def _pdf_text(value: Any, fallback: str = "—") -> str:
+    txt = str(value or "").strip()
+    return txt if txt else fallback
+
+
+def _pdf_hours(value: Any) -> str:
+    n = _safe_float(value)
+    if n is None:
+        return "—"
+
+    if float(n).is_integer():
+        return f"{int(n)} h"
+
+    return f"{str(round(n, 2)).replace('.', ',')} h"
+
+
+def _pdf_money(value: Any) -> str:
+    n = _safe_float(value)
+    if n is None:
+        return "—"
+
+    if float(n).is_integer():
+        return f"{int(n)} € HT"
+
+    return f"{str(round(n, 2)).replace('.', ',')} € HT"
+
+
+def _pdf_lines(value: Any) -> list:
+    raw = str(value or "").replace("\r", "\n")
+    lines = []
+
+    for line in raw.split("\n"):
+        clean = line.strip().lstrip("•").lstrip("-").strip()
+        if clean:
+            lines.append(clean)
+
+    return lines
+
+
+def _pdf_content_subjects(value: Any) -> list:
+    lines = _pdf_lines(value)
+
+    if lines:
+        return lines
+
+    txt = str(value or "").strip()
+    if not txt:
+        return []
+
+    parts = re.split(r"(?<=[.!?])\s+", txt)
+    return [p.strip() for p in parts if p.strip()]
+
+
+def _pdf_card(title: str, body_flowables: list, width: float, title_style, body_style, bg="#ffffff", border="#e5e7eb"):
+    content = body_flowables or [_p("—", body_style)]
+
+    tbl = Table(
+        [[_p(title, title_style)], [content]],
+        colWidths=[width],
+    )
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(bg)),
+        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor(border)),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.4, colors.HexColor("#f1f5f9")),
+    ]))
+    return tbl
+
+
+def _pdf_kpi_grid(items: list, label_style, value_style) -> Table:
+    cols = 3
+    card_w = 58 * mm
+    rows = []
+    current = []
+
+    for item in items:
+        label = item.get("label") or ""
+        value = item.get("value") or "—"
+
+        card = Table(
+            [[_p(label, label_style)], [_p(value, value_style)]],
+            colWidths=[card_w],
+        )
+        card.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+            ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#e5e7eb")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 7),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+
+        current.append(card)
+
+        if len(current) == cols:
+            rows.append(current)
+            current = []
+
+    if current:
+        while len(current) < cols:
+            current.append("")
+        rows.append(current)
+
+    grid = Table(rows, colWidths=[card_w, card_w, card_w], hAlign="LEFT")
+    grid.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    return grid
+
+
+def _pdf_chip(text: Any, style, bg="#fff7ed", border="#fed7aa") -> Table:
+    tbl = Table([[_p(_pdf_text(text), style)]])
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(bg)),
+        ("BOX", (0, 0), (-1, -1), 0.45, colors.HexColor(border)),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 2.5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5),
+    ]))
+    return tbl
+
+
 def _build_formation_pdf_story(form: dict) -> list:
     styles = build_pdf_styles()
 
-    title_style = ParagraphStyle(
-        "LearnFormTitle",
+    hero_title = ParagraphStyle(
+        "LearnFormHeroTitle",
         parent=styles["title"],
         fontName="Helvetica-Bold",
-        fontSize=16,
-        leading=19,
-        textColor=colors.HexColor("#1f2937"),
-        spaceAfter=4,
+        fontSize=18,
+        leading=22,
+        textColor=colors.HexColor("#111827"),
+        spaceAfter=2,
+    )
+
+    hero_sub = ParagraphStyle(
+        "LearnFormHeroSub",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=9,
+        leading=11,
+        textColor=colors.HexColor("#64748b"),
+    )
+
+    code_style = ParagraphStyle(
+        "LearnFormCode",
+        parent=styles["body"],
+        fontName="Helvetica-Bold",
+        fontSize=8.6,
+        leading=10,
+        textColor=colors.white,
+        alignment=TA_CENTER,
     )
 
     section_style = ParagraphStyle(
-        "LearnFormSection",
+        "LearnFormSectionModern",
         parent=styles["section"],
         fontName="Helvetica-Bold",
-        fontSize=11.2,
-        leading=13,
+        fontSize=11.5,
+        leading=14,
         textColor=colors.HexColor("#c2410c"),
+        spaceBefore=9,
         spaceAfter=5,
-        spaceBefore=8,
+    )
+
+    card_title = ParagraphStyle(
+        "LearnFormCardTitle",
+        parent=styles["body"],
+        fontName="Helvetica-Bold",
+        fontSize=8.2,
+        leading=10,
+        textColor=colors.HexColor("#64748b"),
+        spaceAfter=3,
     )
 
     body_style = ParagraphStyle(
-        "LearnFormBody",
+        "LearnFormModernBody",
         parent=styles["body"],
         fontName="Helvetica",
-        fontSize=8.8,
-        leading=11.2,
+        fontSize=8.9,
+        leading=11.6,
         textColor=colors.HexColor("#1f2937"),
         spaceAfter=2,
     )
 
-    small_style = ParagraphStyle(
-        "LearnFormSmall",
+    body_bold = ParagraphStyle(
+        "LearnFormModernBodyBold",
+        parent=body_style,
+        fontName="Helvetica-Bold",
+    )
+
+    muted_style = ParagraphStyle(
+        "LearnFormMuted",
         parent=styles["small"],
         fontName="Helvetica",
         fontSize=7.8,
-        leading=9.4,
-        textColor=colors.HexColor("#6b7280"),
+        leading=9.5,
+        textColor=colors.HexColor("#64748b"),
+    )
+
+    value_style = ParagraphStyle(
+        "LearnFormValue",
+        parent=styles["body"],
+        fontName="Helvetica-Bold",
+        fontSize=10.5,
+        leading=13,
+        textColor=colors.HexColor("#111827"),
+    )
+
+    chip_style = ParagraphStyle(
+        "LearnFormChip",
+        parent=styles["small"],
+        fontName="Helvetica-Bold",
+        fontSize=7.3,
+        leading=8.6,
+        textColor=colors.HexColor("#9a3412"),
+        alignment=TA_CENTER,
     )
 
     story = []
 
-    code = form.get("code") or "—"
-    titre = form.get("titre") or "Formation"
-    domaine = form.get("domaine_titre_court") or form.get("domaine_titre") or "—"
-    fournisseur = form.get("fournisseur_nom") or "—"
+    code = _pdf_text(form.get("code"), "FC")
+    titre = _pdf_text(form.get("titre"), "Formation")
+    domaine = _pdf_text(form.get("domaine_titre_court") or form.get("domaine_titre"))
+    fournisseur = _pdf_text(form.get("fournisseur_nom"))
 
-    story.append(_p("Fiche descriptive de formation", title_style))
-    story.append(_p(f"{code} • {titre}", styles["subtitle"]))
-    story.append(Spacer(1, 4 * mm))
-
-    meta = [
-        [_p("Domaine", small_style), _p(domaine, body_style), _p("Durée", small_style), _p(f"{form.get('duree') or '—'} h", body_style)],
-        [_p("Fournisseur", small_style), _p(fournisseur, body_style), _p("Tarif mini", small_style), _p(f"{form.get('tarif_mini') or '—'} € HT", body_style)],
-        [_p("Type", small_style), _p(form.get("type_formation") or "—", body_style), _p("État", small_style), _p(form.get("etat") or "—", body_style)],
-        [_p("Précision type", small_style), _p(form.get("obs_type_form") or "—", body_style), _p("", small_style), _p("", body_style)],
-    ]
-
-    tbl = Table(meta, colWidths=[28 * mm, 62 * mm, 28 * mm, 62 * mm])
-    tbl.setStyle(TableStyle([
-        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#e5e7eb")),
-        ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e7eb")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-    ]))
-    story.append(tbl)
-
-    story.append(_p("Présentation", section_style))
-    story.append(_p(form.get("presentation") or "—", body_style))
-
-    story.append(_p("Public cible", section_style))
-    story.extend(_bullet_list([x for x in str(form.get("public_cible") or "").split("\n") if x.strip()], body_style))
-
-    story.append(_p("Objectifs de la formation", section_style))
-    story.append(_p(form.get("objectifs") or "—", body_style))
-
-    story.append(PageBreak())
-
-    story.append(_p("Modalités de formation", title_style))
-    story.append(Spacer(1, 4 * mm))
-
-    story.append(_p("Prérequis d’entrée en formation", section_style))
-    prereq = form.get("prerequis") or []
-    story.extend(_bullet_list([p.get("titre") for p in prereq], body_style))
-
-    story.append(_p("Objectifs pédagogiques / compétences visées", section_style))
-    story.extend(_bullet_list(form.get("competences_stagiaires_items") or [], body_style))
-
-    story.append(_p("Modalités possibles", section_style))
-    story.extend(_bullet_list(form.get("modalites_items") or [], body_style))
-
-    story.append(_p("Méthodes pédagogiques", section_style))
-    story.extend(_bullet_list(form.get("methode_peda_items") or [], body_style))
-
-    story.append(_p("Méthodes d’évaluation des acquis", section_style))
-    story.extend(_bullet_list(form.get("methode_eval_items") or [], body_style))
-
-    story.append(_p("Compétences techniques du formateur", section_style))
-    comp_form = form.get("competences_formateurs_items") or []
-    rows = [[_p("Code", small_style), _p("Désignation", small_style)]]
-    for c in comp_form:
-        rows.append([_p(c.get("code") or "—", body_style), _p(c.get("intitule") or "—", body_style)])
-
-    table = Table(rows, colWidths=[30 * mm, 145 * mm])
-    table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#fff7ed")),
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
-        ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e7eb")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+    code_box = Table([[_p(code, code_style)]], colWidths=[28 * mm])
+    code_box.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ff7a35")),
+        ("BOX", (0, 0), (-1, -1), 0.1, colors.HexColor("#ff7a35")),
+        ("LEFTPADDING", (0, 0), (-1, -1), 7),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 7),
         ("TOPPADDING", (0, 0), (-1, -1), 4),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
     ]))
-    story.append(table)
+
+    hero = Table(
+        [
+            [code_box, _p("Fiche formation", hero_sub)],
+            ["", _p(titre, hero_title)],
+        ],
+        colWidths=[34 * mm, 144 * mm],
+    )
+    hero.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
+        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#fed7aa")),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("SPAN", (1, 1), (1, 1)),
+        ("LEFTPADDING", (0, 0), (-1, -1), 9),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 9),
+        ("TOPPADDING", (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+    ]))
+    story.append(hero)
+    story.append(Spacer(1, 5 * mm))
+
+    story.append(_pdf_kpi_grid(
+        [
+            {"label": "Domaine", "value": domaine},
+            {"label": "Durée", "value": _pdf_hours(form.get("duree"))},
+            {"label": "Type", "value": _pdf_text(form.get("type_formation"))},
+            {"label": "Fournisseur", "value": fournisseur},
+            {"label": "Tarif mini", "value": _pdf_money(form.get("tarif_mini"))},
+            {"label": "État", "value": _pdf_text(form.get("etat"))},
+        ],
+        muted_style,
+        value_style,
+    ))
+
+    if form.get("obs_type_form"):
+        story.append(Spacer(1, 2 * mm))
+        story.append(_pdf_card(
+            "Certification / niveau reconnu",
+            [_p(form.get("obs_type_form"), body_style)],
+            180 * mm,
+            card_title,
+            body_style,
+            bg="#ffffff",
+        ))
+
+    story.append(_p("Objectif pédagogique", section_style))
+    story.append(_pdf_card(
+        "Finalité de la formation",
+        [_p(form.get("objectifs") or "—", body_style)],
+        180 * mm,
+        card_title,
+        body_style,
+        bg="#f8fafc",
+    ))
+
+    story.append(_p("Présentation", section_style))
+    story.append(_pdf_card(
+        "Présentation détaillée",
+        [_p(form.get("presentation") or "—", body_style)],
+        180 * mm,
+        card_title,
+        body_style,
+    ))
+
+    public_lines = _pdf_lines(form.get("public_cible"))
+    public_body = [_p(f"• {x}", body_style) for x in public_lines] or [_p("—", body_style)]
+
+    prereq_items = form.get("prerequis") or []
+    prereq_body = [_p(f"• {p.get('titre')}", body_style) for p in prereq_items if p.get("titre")] or [_p("—", body_style)]
+
+    two_cols = Table(
+        [[
+            _pdf_card("Public cible", public_body, 86 * mm, card_title, body_style),
+            _pdf_card("Prérequis évaluables", prereq_body, 86 * mm, card_title, body_style),
+        ]],
+        colWidths=[90 * mm, 90 * mm],
+    )
+    two_cols.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.append(_p("Public & prérequis", section_style))
+    story.append(two_cols)
+
+    comp_stag = form.get("competences_stagiaires_items") or []
+    comp_form = form.get("competences_formateurs_items") or []
+
+    def comp_body(rows):
+        out = []
+        for c in rows:
+            label = " – ".join([x for x in [c.get("code"), c.get("intitule")] if x])
+            if label:
+                out.append(_p(f"• {label}", body_style))
+        return out or [_p("—", body_style)]
+
+    comp_cols = Table(
+        [[
+            _pdf_card("Compétences visées pour les stagiaires", comp_body(comp_stag), 86 * mm, card_title, body_style, bg="#ffffff"),
+            _pdf_card("Compétences requises pour le formateur", comp_body(comp_form), 86 * mm, card_title, body_style, bg="#ffffff"),
+        ]],
+        colWidths=[90 * mm, 90 * mm],
+    )
+    comp_cols.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.append(_p("Compétences", section_style))
+    story.append(comp_cols)
+
+    def label_body(items):
+        out = []
+        for item in items or []:
+            label = item.get("titre_court") or item.get("titre") or item.get("intitule") or ""
+            if label:
+                out.append(_p(f"• {label}", body_style))
+        return out or [_p("—", body_style)]
+
+    method_cols = Table(
+        [[
+            _pdf_card("Modalités possibles", label_body(form.get("modalites_items")), 55 * mm, card_title, body_style, bg="#f8fafc"),
+            _pdf_card("Méthodes pédagogiques", label_body(form.get("methode_peda_items")), 55 * mm, card_title, body_style, bg="#f8fafc"),
+            _pdf_card("Méthodes d’évaluation", label_body(form.get("methode_eval_items")), 55 * mm, card_title, body_style, bg="#f8fafc"),
+        ]],
+        colWidths=[60 * mm, 60 * mm, 60 * mm],
+    )
+    method_cols.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.append(_p("Modalités & méthodes", section_style))
+    story.append(method_cols)
 
     story.append(PageBreak())
 
-    story.append(_p("Contenu de la formation", title_style))
+    story.append(_p("Programme de formation", hero_title))
+    story.append(_p("Contenus structurés de la formation", hero_sub))
     story.append(Spacer(1, 4 * mm))
 
     contenus = form.get("contenus") or []
     if not contenus:
         story.append(_p("Aucun contenu détaillé n’est encore rattaché à cette formation.", body_style))
     else:
-        for l in contenus:
-            story.append(_p(l.get("titre_sequence") or "Séquence", section_style))
+        for idx, l in enumerate(contenus, start=1):
+            comp_items = l.get("competences_liees_items") or []
+            chips = []
+
+            for c in comp_items:
+                chips.append(_pdf_chip(c.get("code") or "—", chip_style))
+
+            if not chips:
+                chips = [_p("Aucune compétence liée", muted_style)]
+
+            subjects = _pdf_content_subjects(l.get("contenu"))
+            subjects_body = [_p(f"• {s}", body_style) for s in subjects] or [_p("—", body_style)]
+
+            header = Table(
+                [[
+                    _p(f"{idx}. {l.get('titre_sequence') or 'Contenu'}", body_bold),
+                    chips,
+                ]],
+                colWidths=[120 * mm, 56 * mm],
+            )
+            header.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]))
+
+            body = []
             if l.get("objectif"):
-                story.append(_p(f"Objectif : {l.get('objectif')}", body_style))
-            story.append(_p(l.get("contenu") or "—", body_style))
+                body.append(_p(f"<b>Objectif :</b> {html.escape(str(l.get('objectif')))}", body_style))
 
-    story.append(PageBreak())
+            body.append(_p("<b>Sujets abordés :</b>", body_style))
+            body.extend(subjects_body)
 
-    story.append(_p("Plans pédagogiques", title_style))
-    story.append(Spacer(1, 4 * mm))
+            card = Table(
+                [[header], [body]],
+                colWidths=[180 * mm],
+            )
+            card.setStyle(TableStyle([
+                ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#e5e7eb")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 0),
+                ("BOTTOMPADDING", (0, 1), (-1, 1), 8),
+                ("LEFTPADDING", (0, 1), (-1, 1), 8),
+                ("RIGHTPADDING", (0, 1), (-1, 1), 8),
+                ("TOPPADDING", (0, 1), (-1, 1), 8),
+            ]))
 
-    plans = form.get("plans") or []
-    if not plans:
-        story.append(_p("Aucun plan pédagogique n’est encore rattaché à cette formation.", body_style))
-    else:
-        for p in plans:
-            story.append(_p(f"{p.get('codification') or '—'} • {p.get('titre') or 'Plan pédagogique'}", section_style))
-            story.append(_p(f"Modalité générale : {p.get('modalite_generale') or '—'}", body_style))
-            story.append(_p(f"Durée cumulée : {p.get('duree_totale') or 0} h • {p.get('nb_blocs') or 0} bloc(s)", body_style))
-
-            for b in p.get("blocs") or []:
-                story.append(_p(f"• {b.get('titre') or 'Bloc'} — {b.get('duree') or '—'} h", body_style))
+            story.append(KeepTogether([card, Spacer(1, 4 * mm)]))
 
     return story
+
+def _lms_esc(value: Any) -> str:
+    return html.escape(str(value or "").strip())
+
+
+def _lms_text(value: Any, fallback: str = "—") -> str:
+    txt = str(value or "").strip()
+    return _lms_esc(txt if txt else fallback)
+
+
+def _lms_nl2br(value: Any) -> str:
+    txt = _lms_esc(value)
+    return txt.replace("\n", "<br>")
+
+
+def _lms_subject_list(value: Any) -> str:
+    subjects = _pdf_content_subjects(value)
+    if not subjects:
+        return "<p>—</p>"
+
+    return "<ul>" + "".join(f"<li>{_lms_esc(s)}</li>" for s in subjects) + "</ul>"
+
+
+def _lms_items(items: list, label_fn=None) -> str:
+    rows = []
+
+    for item in items or []:
+        if label_fn:
+            label = label_fn(item)
+        elif isinstance(item, dict):
+            label = item.get("titre") or item.get("titre_court") or item.get("intitule") or item.get("code") or ""
+        else:
+            label = str(item or "")
+
+        label = str(label or "").strip()
+        if label:
+            rows.append(f"<li>{_lms_esc(label)}</li>")
+
+    if not rows:
+        return "<p>—</p>"
+
+    return "<ul>" + "".join(rows) + "</ul>"
+
+
+def _build_formation_lms_html(form: dict) -> str:
+    code = _lms_text(form.get("code"), "FC")
+    titre = _lms_text(form.get("titre"), "Formation")
+    domaine = _lms_text(form.get("domaine_titre_court") or form.get("domaine_titre"))
+    fournisseur = _lms_text(form.get("fournisseur_nom"))
+    duree = _lms_esc(_pdf_hours(form.get("duree")))
+    tarif = _lms_esc(_pdf_money(form.get("tarif_mini")))
+
+    prereq_html = _lms_items(form.get("prerequis") or [], lambda p: p.get("titre") or "")
+    public_html = _lms_items(_pdf_lines(form.get("public_cible")))
+
+    comp_stag_html = _lms_items(
+        form.get("competences_stagiaires_items") or [],
+        lambda c: " – ".join([x for x in [c.get("code"), c.get("intitule")] if x])
+    )
+    comp_form_html = _lms_items(
+        form.get("competences_formateurs_items") or [],
+        lambda c: " – ".join([x for x in [c.get("code"), c.get("intitule")] if x])
+    )
+
+    modalites_html = _lms_items(form.get("modalites_items") or [])
+    peda_html = _lms_items(form.get("methode_peda_items") or [])
+    eval_html = _lms_items(form.get("methode_eval_items") or [])
+
+    content_cards = []
+    for idx, l in enumerate(form.get("contenus") or [], start=1):
+        comp_items = l.get("competences_liees_items") or []
+        badges = "".join(
+            f'<span class="ns-lms-badge" title="{_lms_esc(c.get("intitule") or "")}">{_lms_text(c.get("code"), "—")}</span>'
+            for c in comp_items
+        )
+
+        if not badges:
+            badges = '<span class="ns-lms-muted">Aucune compétence liée</span>'
+
+        content_cards.append(f"""
+        <article class="ns-lms-content-card">
+          <div class="ns-lms-content-head">
+            <div>
+              <div class="ns-lms-content-index">Contenu {idx}</div>
+              <h3>{_lms_text(l.get("titre_sequence"), "Contenu")}</h3>
+            </div>
+            <div class="ns-lms-badges">{badges}</div>
+          </div>
+          <div class="ns-lms-content-body">
+            <p class="ns-lms-objective"><strong>Objectif :</strong> {_lms_text(l.get("objectif"))}</p>
+            <div class="ns-lms-subjects">
+              <strong>Sujets abordés</strong>
+              {_lms_subject_list(l.get("contenu"))}
+            </div>
+          </div>
+        </article>
+        """)
+
+    if not content_cards:
+        content_cards.append('<p class="ns-lms-muted">Aucun contenu détaillé n’est encore rattaché à cette formation.</p>')
+
+    obs_type = ""
+    if form.get("obs_type_form"):
+        obs_type = f"""
+        <div class="ns-lms-info-card">
+          <span>Certification / niveau reconnu</span>
+          <strong>{_lms_text(form.get("obs_type_form"))}</strong>
+        </div>
+        """
+
+    return f"""<style>
+.ns-lms-formation {{
+  --ns-accent:#ff7a35;
+  --ns-accent-soft:#fff7ed;
+  --ns-border:#e5e7eb;
+  --ns-text:#111827;
+  --ns-muted:#64748b;
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--ns-text);
+  line-height: 1.45;
+  max-width: 980px;
+  margin: 0 auto;
+}}
+.ns-lms-formation * {{
+  box-sizing: border-box;
+}}
+.ns-lms-hero {{
+  background: linear-gradient(135deg, #fff7ed 0%, #ffffff 72%);
+  border: 1px solid #fed7aa;
+  border-radius: 18px;
+  padding: 24px;
+  margin-bottom: 18px;
+}}
+.ns-lms-code {{
+  display: inline-block;
+  background: var(--ns-accent);
+  color: #fff;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}}
+.ns-lms-hero h1 {{
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.15;
+  color: var(--ns-text);
+}}
+.ns-lms-hero p {{
+  margin: 10px 0 0 0;
+  color: var(--ns-muted);
+}}
+.ns-lms-grid {{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}}
+.ns-lms-info-card,
+.ns-lms-card {{
+  border: 1px solid var(--ns-border);
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px;
+}}
+.ns-lms-info-card {{
+  background: #f8fafc;
+}}
+.ns-lms-info-card span {{
+  display: block;
+  color: var(--ns-muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}}
+.ns-lms-info-card strong {{
+  display: block;
+  font-size: 15px;
+  color: var(--ns-text);
+}}
+.ns-lms-section {{
+  margin-top: 20px;
+}}
+.ns-lms-section h2 {{
+  font-size: 18px;
+  color: #c2410c;
+  margin: 0 0 10px 0;
+}}
+.ns-lms-card h3 {{
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  color: var(--ns-text);
+}}
+.ns-lms-card p {{
+  margin: 0;
+}}
+.ns-lms-two {{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}}
+.ns-lms-three {{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}}
+.ns-lms-formation ul {{
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}}
+.ns-lms-formation li {{
+  margin: 3px 0;
+}}
+.ns-lms-content-card {{
+  border: 1px solid var(--ns-border);
+  border-radius: 16px;
+  background: #fff;
+  margin-bottom: 14px;
+  overflow: hidden;
+}}
+.ns-lms-content-head {{
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--ns-accent-soft);
+  border-bottom: 1px solid #fed7aa;
+  padding: 14px 16px;
+}}
+.ns-lms-content-index {{
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}}
+.ns-lms-content-head h3 {{
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.25;
+}}
+.ns-lms-content-body {{
+  padding: 14px 16px 16px 16px;
+}}
+.ns-lms-objective {{
+  margin: 0 0 10px 0;
+}}
+.ns-lms-subjects strong {{
+  display: block;
+  margin-bottom: 4px;
+}}
+.ns-lms-badges {{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+  min-width: 140px;
+}}
+.ns-lms-badge {{
+  display: inline-block;
+  border: 1px solid #fed7aa;
+  background: #fff;
+  color: #9a3412;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}}
+.ns-lms-muted {{
+  color: var(--ns-muted);
+}}
+@media (max-width: 760px) {{
+  .ns-lms-grid,
+  .ns-lms-two,
+  .ns-lms-three {{
+    grid-template-columns: 1fr;
+  }}
+  .ns-lms-content-head {{
+    flex-direction: column;
+  }}
+  .ns-lms-badges {{
+    justify-content: flex-start;
+  }}
+}}
+</style>
+
+<div class="ns-lms-formation">
+  <header class="ns-lms-hero">
+    <span class="ns-lms-code">{code}</span>
+    <h1>{titre}</h1>
+    <p>Fiche descriptive de formation</p>
+  </header>
+
+  <section class="ns-lms-grid">
+    <div class="ns-lms-info-card"><span>Domaine</span><strong>{domaine}</strong></div>
+    <div class="ns-lms-info-card"><span>Durée</span><strong>{duree}</strong></div>
+    <div class="ns-lms-info-card"><span>Type</span><strong>{_lms_text(form.get("type_formation"))}</strong></div>
+    <div class="ns-lms-info-card"><span>Fournisseur</span><strong>{fournisseur}</strong></div>
+    <div class="ns-lms-info-card"><span>Tarif mini</span><strong>{tarif}</strong></div>
+    <div class="ns-lms-info-card"><span>État</span><strong>{_lms_text(form.get("etat"))}</strong></div>
+    {obs_type}
+  </section>
+
+  <section class="ns-lms-section">
+    <h2>Objectif pédagogique</h2>
+    <div class="ns-lms-card">
+      <p>{_lms_nl2br(form.get("objectifs") or "—")}</p>
+    </div>
+  </section>
+
+  <section class="ns-lms-section">
+    <h2>Présentation</h2>
+    <div class="ns-lms-card">
+      <p>{_lms_nl2br(form.get("presentation") or "—")}</p>
+    </div>
+  </section>
+
+  <section class="ns-lms-section ns-lms-two">
+    <div class="ns-lms-card">
+      <h3>Public cible</h3>
+      {public_html}
+    </div>
+    <div class="ns-lms-card">
+      <h3>Prérequis évaluables</h3>
+      {prereq_html}
+    </div>
+  </section>
+
+  <section class="ns-lms-section ns-lms-two">
+    <div class="ns-lms-card">
+      <h3>Compétences visées pour les stagiaires</h3>
+      {comp_stag_html}
+    </div>
+    <div class="ns-lms-card">
+      <h3>Compétences requises pour le formateur</h3>
+      {comp_form_html}
+    </div>
+  </section>
+
+  <section class="ns-lms-section ns-lms-three">
+    <div class="ns-lms-card">
+      <h3>Modalités possibles</h3>
+      {modalites_html}
+    </div>
+    <div class="ns-lms-card">
+      <h3>Méthodes pédagogiques</h3>
+      {peda_html}
+    </div>
+    <div class="ns-lms-card">
+      <h3>Méthodes d’évaluation</h3>
+      {eval_html}
+    </div>
+  </section>
+
+  <section class="ns-lms-section">
+    <h2>Programme de formation</h2>
+    {"".join(content_cards)}
+  </section>
+</div>"""
 
 def _build_plan_pdf_story(form: dict, plan: dict) -> list:
     styles = build_pdf_styles()
@@ -3478,6 +4126,36 @@ def learn_formation_plan_archive(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"learn/formations plan archive error: {e}")
+
+@router.get("/learn/formations/{id_effectif}/{id_form}/fiche_html_lms")
+def learn_formation_fiche_html_lms(id_effectif: str, id_form: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                oid = (profile.get("id_owner") or "").strip()
+
+                form = _fetch_form_detail(cur, oid, fid)
+
+        html_payload = _build_formation_lms_html(form)
+
+        return Response(
+            content=html_payload,
+            media_type="text/html; charset=utf-8",
+            headers={"Cache-Control": "no-store"},
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations fiche_html_lms error: {e}")
 
 @router.get("/learn/formations/{id_effectif}/{id_form}/fiche_pdf")
 def learn_formation_fiche_pdf(id_effectif: str, id_form: str, request: Request):

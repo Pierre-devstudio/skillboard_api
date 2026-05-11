@@ -172,18 +172,29 @@
         }, 5000);
     }
 
-  function iconPdf(){
-    return `
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-        <path d="M14 2v6h6"/>
-        <path d="M8 13h1.5a1.5 1.5 0 0 1 0 3H8v-3z"/>
-        <path d="M13 13v3"/>
-        <path d="M13 13h3"/>
-        <path d="M16 13v3"/>
-      </svg>
-    `;
-  }
+    function iconHtml(){
+        return `
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4h16v16H4z"/>
+            <path d="M8 9l-3 3 3 3"/>
+            <path d="M16 9l3 3-3 3"/>
+            <path d="M14 7l-4 10"/>
+            </svg>
+        `;
+    }
+
+    function iconPdf(){
+        return `
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <path d="M14 2v6h6"/>
+            <path d="M8 13h1.5a1.5 1.5 0 0 1 0 3H8v-3z"/>
+            <path d="M13 13v3"/>
+            <path d="M13 13h3"/>
+            <path d="M16 13v3"/>
+        </svg>
+        `;
+    }
 
   function iconEdit(){
     return `
@@ -551,6 +562,25 @@
             });
 
             actions.appendChild(btnPdf);
+
+            const btnHtml = document.createElement("button");
+            btnHtml.type = "button";
+            btnHtml.className = "sb-icon-btn sb-icon-btn--doc";
+            btnHtml.title = "Copier HTML LMS";
+            btnHtml.setAttribute("aria-label", "Copier HTML LMS");
+            btnHtml.innerHTML = iconHtml();
+            btnHtml.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            try {
+                await copyFormationHtmlLms(it);
+            } catch(err){
+                window.portal.showAlert("error", getErrorMessage(err));
+            }
+            });
+
+            actions.appendChild(btnHtml);
 
             const btnRemove = document.createElement("button");
             btnRemove.type = "button";
@@ -3174,6 +3204,106 @@ function renderContentCompBadges(l){
 
     await loadList(portal);
   }
+
+    async function fetchTextWithAuth(url){
+        const headers = new Headers();
+
+        try{
+            if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function"){
+            const session = await window.PortalAuthCommon.getSession();
+            const token = session?.access_token || "";
+            if (token) headers.set("Authorization", `Bearer ${token}`);
+            }
+        } catch(_){}
+
+        const res = await fetch(url, { headers });
+
+        if (!res.ok){
+            let detail = `HTTP ${res.status}`;
+
+            try{
+            const js = await res.clone().json();
+            detail = js?.detail || js?.message || detail;
+            } catch(_){
+            try{
+                const txt = await res.text();
+                if (txt) detail = txt;
+            } catch(__){}
+            }
+
+            throw new Error(detail);
+        }
+
+        return await res.text();
+        }
+
+        function openHtmlFallbackWindow(title, htmlCode){
+        const win = window.open("", "_blank");
+
+        if (!win){
+            throw new Error("Le navigateur a bloqué l’ouverture du code HTML.");
+        }
+
+        const safeTitle = htmlEsc(title || "HTML LMS");
+        const safeCode = htmlEsc(htmlCode || "");
+
+        win.document.open();
+        win.document.write(`<!doctype html>
+        <html lang="fr">
+        <head>
+        <meta charset="utf-8">
+        <title>${safeTitle}</title>
+        <style>
+        body{margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827}
+        .wrap{max-width:1100px;margin:24px auto;padding:0 18px}
+        h1{font-size:20px;margin:0 0 8px}
+        p{color:#64748b;margin:0 0 14px}
+        textarea{width:100%;height:72vh;border:1px solid #cbd5e1;border-radius:12px;padding:14px;font-family:Consolas,monospace;font-size:13px;box-sizing:border-box;background:#fff}
+        </style>
+        </head>
+        <body>
+        <div class="wrap">
+        <h1>${safeTitle}</h1>
+        <p>Copiez ce code HTML puis collez-le dans votre LMS.</p>
+        <textarea>${safeCode}</textarea>
+        </div>
+        </body>
+        </html>`);
+        win.document.close();
+        }
+
+        async function copyFormationHtmlLms(it){
+        const effectifId = getEffectifId();
+        const formId = String(it?.id_form || "").trim();
+
+        if (!effectifId) throw new Error("Profil Learn manquant.");
+        if (!formId) throw new Error("Formation introuvable.");
+
+        const title =
+            `HTML LMS - ${
+            String(it?.code || "").trim()
+                ? `${String(it.code).trim()} - `
+                : ""
+            }${String(it?.titre || "").trim() || "Formation"}`;
+
+        const url =
+            `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+            + `/${encodeURIComponent(formId)}/fiche_html_lms`;
+
+        const htmlCode = await fetchTextWithAuth(url);
+
+        try{
+            if (!navigator.clipboard || !navigator.clipboard.writeText){
+            throw new Error("Clipboard indisponible.");
+            }
+
+            await navigator.clipboard.writeText(htmlCode);
+            setSuccess("HTML LMS copié dans le presse-papiers");
+        } catch(_){
+            openHtmlFallbackWindow(title, htmlCode);
+        }
+    }
+
 
   async function fetchPdfBlob(url){
     const headers = new Headers();
