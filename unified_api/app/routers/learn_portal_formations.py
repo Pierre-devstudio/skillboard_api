@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, File
+from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Optional, Any
 from psycopg.rows import dict_row
@@ -1946,11 +1946,11 @@ async def learn_formations_import_document(
 async def learn_formations_generate_ai(
     id_effectif: str,
     request: Request,
-    objectif: str = "",
-    contexte: str = "",
-    public_vise: str = "",
-    duree_souhaitee: str = "",
-    contraintes: str = "",
+    objectif: str = Form(""),
+    contexte: str = Form(""),
+    public_vise: str = Form(""),
+    duree_souhaitee: str = Form(""),
+    contraintes: str = Form(""),
     documents: Optional[list[UploadFile]] = File(default=None),
 ):
     auth = request.headers.get("Authorization", "")

@@ -82,20 +82,39 @@
 
         if (typeof err === "string") return err;
 
-        if (err.message && typeof err.message === "string") return err.message;
+        if (err.message && typeof err.message === "string" && err.message !== "[object Object]"){
+            return err.message;
+        }
 
         if (err.detail){
             if (typeof err.detail === "string") return err.detail;
 
+            if (Array.isArray(err.detail)){
+            return err.detail.map(x => {
+                if (typeof x === "string") return x;
+
+                const loc = Array.isArray(x.loc) ? x.loc.join(" > ") : "";
+                const msg = x.msg || x.message || "";
+                return [loc, msg].filter(Boolean).join(" : ");
+            }).filter(Boolean).join("\n") || "Erreur de validation.";
+            }
+
             try{
-            return JSON.stringify(err.detail);
+            return JSON.stringify(err.detail, null, 2);
             } catch(_){}
         }
 
-        if (err.error && typeof err.error === "string") return err.error;
+        if (err.error){
+            if (typeof err.error === "string") return err.error;
+
+            try{
+            return JSON.stringify(err.error, null, 2);
+            } catch(_){}
+        }
 
         try{
-            return JSON.stringify(err);
+            const txt = JSON.stringify(err, null, 2);
+            if (txt && txt !== "{}") return txt;
         } catch(_){}
 
         return "Erreur inconnue.";
@@ -2742,6 +2761,39 @@ function renderContentCompBadges(l){
         if (apply) apply.disabled = false;
     }
 
+    async function apiJsonMultipart(url, formData, signal){
+        const headers = new Headers();
+
+        try{
+            if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function"){
+            const session = await window.PortalAuthCommon.getSession();
+            const token = session?.access_token || "";
+            if (token) headers.set("Authorization", `Bearer ${token}`);
+            }
+        } catch(_){}
+
+        const resp = await fetch(url, {
+            method: "POST",
+            headers,
+            body: formData,
+            signal
+        });
+
+        const ct = (resp.headers.get("content-type") || "").toLowerCase();
+        const body = ct.includes("application/json")
+            ? await resp.json().catch(() => null)
+            : await resp.text().catch(() => "");
+
+        if (!resp.ok){
+            const error = new Error(getErrorMessage(body) || `HTTP ${resp.status}`);
+            error.status = resp.status;
+            error.body = body;
+            throw error;
+        }
+
+        return body;
+    }
+
     async function generateFormationWithAi(portal){
         const objectif = (byId("aiFormObjectif")?.value || "").trim();
         if (!objectif){
@@ -2764,13 +2816,10 @@ function renderContentCompBadges(l){
         openAiWait();
 
         try{
-            const data = await portal.apiJson(
+            const data = await apiJsonMultipart(
             `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/generate_ai`,
-            {
-                method: "POST",
-                body: fd,
-                signal: _aiAbortController.signal
-            }
+            fd,
+            _aiAbortController.signal
             );
 
             _aiGenerationDraft = data;
