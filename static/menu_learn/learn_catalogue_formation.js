@@ -563,25 +563,6 @@
 
             actions.appendChild(btnPdf);
 
-            const btnHtml = document.createElement("button");
-            btnHtml.type = "button";
-            btnHtml.className = "sb-icon-btn sb-icon-btn--doc";
-            btnHtml.title = "Copier HTML LMS";
-            btnHtml.setAttribute("aria-label", "Copier HTML LMS");
-            btnHtml.innerHTML = iconHtml();
-            btnHtml.addEventListener("click", async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            try {
-                await copyFormationHtmlLms(it);
-            } catch(err){
-                window.portal.showAlert("error", getErrorMessage(err));
-            }
-            });
-
-            actions.appendChild(btnHtml);
-
             const btnRemove = document.createElement("button");
             btnRemove.type = "button";
             btnRemove.className = "sb-icon-btn sb-icon-btn--danger";
@@ -2200,6 +2181,25 @@ function renderContentCompBadges(l){
       });
 
       actions.appendChild(btnPdf);
+
+      const btnHtml = document.createElement("button");
+      btnHtml.type = "button";
+      btnHtml.className = "sb-icon-btn sb-icon-btn--doc";
+      btnHtml.title = "Copier HTML LMS";
+      btnHtml.setAttribute("aria-label", "Copier HTML LMS");
+      btnHtml.innerHTML = iconHtml();
+      btnHtml.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try{
+          await copyFormationHtmlLms(it);
+        } catch(err){
+          window.portal.showAlert("error", getErrorMessage(err));
+        }
+      });
+
+      actions.appendChild(btnHtml);
 
       if (isSupervisor()){
         const btnEdit = document.createElement("button");
