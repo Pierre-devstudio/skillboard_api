@@ -3058,111 +3058,338 @@ def _pdf_chip(text: Any, style, bg="#fff7ed", border="#fed7aa") -> Table:
 def _build_formation_pdf_story(form: dict) -> list:
     styles = build_pdf_styles()
 
-    hero_title = ParagraphStyle(
-        "LearnFormHeroTitle",
+    def clean_pdf_text(value: Any, fallback: str = "—") -> str:
+        txt = str(value or "").strip()
+
+        if not txt:
+            return fallback
+
+        txt = html.unescape(txt)
+        txt = re.sub(r"(?i)<\s*br\s*/?\s*>", "\n", txt)
+        txt = re.sub(r"(?i)</\s*p\s*>", "\n", txt)
+        txt = re.sub(r"(?i)<\s*p[^>]*>", "", txt)
+        txt = re.sub(r"<[^>]+>", "", txt)
+        txt = txt.replace("\r", "\n")
+        txt = re.sub(r"[ \t]+", " ", txt)
+        txt = re.sub(r"\n{3,}", "\n\n", txt)
+        txt = txt.strip()
+
+        return txt if txt else fallback
+
+    def p(value: Any, style, fallback: str = "—"):
+        txt = clean_pdf_text(value, fallback)
+        txt = html.escape(txt).replace("\n", "<br/>")
+        return Paragraph(txt, style)
+
+    def p_html(value: Any, style):
+        return Paragraph(str(value or ""), style)
+
+    def short_text(value: Any, limit: int = 260) -> str:
+        txt = clean_pdf_text(value, "")
+
+        if not txt:
+            return ""
+
+        if len(txt) <= limit:
+            return txt
+
+        cut = txt[:limit].rsplit(" ", 1)[0].strip()
+        return f"{cut}…"
+
+    def lines(value: Any) -> list:
+        txt = clean_pdf_text(value, "")
+
+        if not txt:
+            return []
+
+        out = []
+        for raw in txt.split("\n"):
+            item = raw.strip().lstrip("•").lstrip("-").strip()
+            if item:
+                out.append(item)
+
+        return out
+
+    def subjects(value: Any) -> list:
+        out = lines(value)
+
+        if out:
+            return out
+
+        txt = clean_pdf_text(value, "")
+
+        if not txt:
+            return []
+
+        parts = re.split(r"(?<=[.!?])\s+", txt)
+        return [x.strip() for x in parts if x.strip()]
+
+    def bullet_list(values: list, style) -> list:
+        out = []
+
+        for value in values or []:
+            txt = clean_pdf_text(value, "")
+            if txt:
+                out.append(p(f"• {txt}", style))
+
+        return out or [p("—", style)]
+
+    def info_card(label: str, value: Any, width: float):
+        tbl = Table(
+            [[p(label, info_label_style)], [p(value, info_value_style)]],
+            colWidths=[width],
+        )
+        tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+            ("BOX", (0, 0), (-1, -1), 0.55, colors.HexColor("#e2e8f0")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        return tbl
+
+    def section_title(title: str):
+        marker = Table([[""]], colWidths=[3.5 * mm], rowHeights=[6.2 * mm])
+        marker.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ff7a35")),
+            ("BOX", (0, 0), (-1, -1), 0, colors.HexColor("#ff7a35")),
+        ]))
+
+        tbl = Table(
+            [[marker, p(title, section_style)]],
+            colWidths=[6 * mm, 174 * mm],
+        )
+        tbl.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 7),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ]))
+        return tbl
+
+    def card(title: str, flowables: list, width: float, bg: str = "#ffffff", border: str = "#e2e8f0"):
+        body = flowables or [p("—", body_style)]
+
+        tbl = Table(
+            [[p(title, card_title_style)], [body]],
+            colWidths=[width],
+        )
+        tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(bg)),
+            ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor(border)),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.35, colors.HexColor("#eef2f7")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 9),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 9),
+            ("TOPPADDING", (0, 0), (-1, -1), 7),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ]))
+        return tbl
+
+    def badge(value: Any, style, bg: str = "#2563a8"):
+        tbl = Table([[p(value, style)]])
+        tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(bg)),
+            ("BOX", (0, 0), (-1, -1), 0, colors.HexColor(bg)),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 2.8),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2.8),
+        ]))
+        return tbl
+
+    def comp_rows(items: list, width: float):
+        rows = []
+
+        for c in items or []:
+            code = c.get("code") or "—"
+            label = c.get("intitule") or "—"
+
+            rows.append([
+                badge(code, code_blue_style),
+                p(label, body_style),
+            ])
+
+        if not rows:
+            rows.append(["", p("—", body_style)])
+
+        tbl = Table(rows, colWidths=[27 * mm, width - 27 * mm])
+        tbl.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 3.5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3.5),
+            ("LINEBELOW", (0, 0), (-1, -2), 0.35, colors.HexColor("#eef2f7")),
+        ]))
+        return tbl
+
+    def tag_list(items: list, width: float):
+        labels = [str(x or "").strip() for x in items or [] if str(x or "").strip()]
+
+        if not labels:
+            return p("—", body_style)
+
+        rows = []
+
+        for label in labels:
+            chip = Table([[p(label, chip_style)]], colWidths=[width])
+            chip.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
+                ("BOX", (0, 0), (-1, -1), 0.45, colors.HexColor("#fed7aa")),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]))
+            rows.append([chip])
+
+        tbl = Table(rows, colWidths=[width])
+        tbl.setStyle(TableStyle([
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 2),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ]))
+        return tbl
+
+    hero_title_style = ParagraphStyle(
+        "LearnOfHeroTitle",
         parent=styles["title"],
         fontName="Helvetica-Bold",
-        fontSize=18,
-        leading=22,
-        textColor=colors.HexColor("#111827"),
-        spaceAfter=2,
-    )
-
-    hero_sub = ParagraphStyle(
-        "LearnFormHeroSub",
-        parent=styles["body"],
-        fontName="Helvetica",
-        fontSize=9,
-        leading=11,
-        textColor=colors.HexColor("#64748b"),
-    )
-
-    code_style = ParagraphStyle(
-        "LearnFormCode",
-        parent=styles["body"],
-        fontName="Helvetica-Bold",
-        fontSize=8.6,
-        leading=10,
+        fontSize=20,
+        leading=24,
         textColor=colors.white,
-        alignment=TA_CENTER,
-    )
-
-    section_style = ParagraphStyle(
-        "LearnFormSectionModern",
-        parent=styles["section"],
-        fontName="Helvetica-Bold",
-        fontSize=11.5,
-        leading=14,
-        textColor=colors.HexColor("#c2410c"),
-        spaceBefore=9,
-        spaceAfter=5,
-    )
-
-    card_title = ParagraphStyle(
-        "LearnFormCardTitle",
-        parent=styles["body"],
-        fontName="Helvetica-Bold",
-        fontSize=8.2,
-        leading=10,
-        textColor=colors.HexColor("#64748b"),
         spaceAfter=3,
     )
 
-    body_style = ParagraphStyle(
-        "LearnFormModernBody",
+    hero_label_style = ParagraphStyle(
+        "LearnOfHeroLabel",
+        parent=styles["small"],
+        fontName="Helvetica-Bold",
+        fontSize=8.4,
+        leading=10,
+        textColor=colors.HexColor("#fed7aa"),
+    )
+
+    hero_sub_style = ParagraphStyle(
+        "LearnOfHeroSub",
         parent=styles["body"],
         fontName="Helvetica",
-        fontSize=8.9,
-        leading=11.6,
+        fontSize=9,
+        leading=11.5,
+        textColor=colors.HexColor("#e5e7eb"),
+    )
+
+    section_style = ParagraphStyle(
+        "LearnOfSection",
+        parent=styles["section"],
+        fontName="Helvetica-Bold",
+        fontSize=12.2,
+        leading=14,
+        textColor=colors.HexColor("#111827"),
+    )
+
+    card_title_style = ParagraphStyle(
+        "LearnOfCardTitle",
+        parent=styles["small"],
+        fontName="Helvetica-Bold",
+        fontSize=8,
+        leading=9.5,
+        textColor=colors.HexColor("#64748b"),
+        spaceAfter=4,
+    )
+
+    body_style = ParagraphStyle(
+        "LearnOfBody",
+        parent=styles["body"],
+        fontName="Helvetica",
+        fontSize=8.7,
+        leading=11.1,
         textColor=colors.HexColor("#1f2937"),
         spaceAfter=2,
     )
 
-    body_bold = ParagraphStyle(
-        "LearnFormModernBodyBold",
+    body_bold_style = ParagraphStyle(
+        "LearnOfBodyBold",
         parent=body_style,
         fontName="Helvetica-Bold",
     )
 
     muted_style = ParagraphStyle(
-        "LearnFormMuted",
+        "LearnOfMuted",
         parent=styles["small"],
         fontName="Helvetica",
         fontSize=7.8,
-        leading=9.5,
+        leading=9.4,
         textColor=colors.HexColor("#64748b"),
     )
 
-    value_style = ParagraphStyle(
-        "LearnFormValue",
+    info_label_style = ParagraphStyle(
+        "LearnOfInfoLabel",
+        parent=styles["small"],
+        fontName="Helvetica",
+        fontSize=7.2,
+        leading=8.5,
+        textColor=colors.HexColor("#64748b"),
+    )
+
+    info_value_style = ParagraphStyle(
+        "LearnOfInfoValue",
         parent=styles["body"],
         fontName="Helvetica-Bold",
-        fontSize=10.5,
-        leading=13,
+        fontSize=10.2,
+        leading=12.2,
         textColor=colors.HexColor("#111827"),
     )
 
+    code_orange_style = ParagraphStyle(
+        "LearnOfCodeOrange",
+        parent=styles["small"],
+        fontName="Helvetica-Bold",
+        fontSize=8.2,
+        leading=9.5,
+        textColor=colors.white,
+        alignment=TA_CENTER,
+    )
+
+    code_blue_style = ParagraphStyle(
+        "LearnOfCodeBlue",
+        parent=styles["small"],
+        fontName="Helvetica-Bold",
+        fontSize=7.4,
+        leading=8.8,
+        textColor=colors.white,
+        alignment=TA_CENTER,
+    )
+
     chip_style = ParagraphStyle(
-        "LearnFormChip",
+        "LearnOfChip",
         parent=styles["small"],
         fontName="Helvetica-Bold",
         fontSize=7.3,
-        leading=8.6,
+        leading=8.5,
         textColor=colors.HexColor("#9a3412"),
         alignment=TA_CENTER,
     )
 
     story = []
 
-    code = _pdf_text(form.get("code"), "FC")
-    titre = _pdf_text(form.get("titre"), "Formation")
-    domaine = _pdf_text(form.get("domaine_titre_court") or form.get("domaine_titre"))
-    fournisseur = _pdf_text(form.get("fournisseur_nom"))
+    code = form.get("code") or "FC"
+    titre = form.get("titre") or "Formation"
+    domaine = form.get("domaine_titre_court") or form.get("domaine_titre") or "—"
+    fournisseur = form.get("fournisseur_nom") or "—"
 
-    code_box = Table([[_p(code, code_style)]], colWidths=[28 * mm])
+    accroche = short_text(form.get("presentation"), 235) or "Fiche descriptive de formation."
+
+    code_box = Table([[p(code, code_orange_style)]], colWidths=[29 * mm])
     code_box.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ff7a35")),
-        ("BOX", (0, 0), (-1, -1), 0.1, colors.HexColor("#ff7a35")),
+        ("BOX", (0, 0), (-1, -1), 0, colors.HexColor("#ff7a35")),
         ("LEFTPADDING", (0, 0), (-1, -1), 7),
         ("RIGHTPADDING", (0, 0), (-1, -1), 7),
         ("TOPPADDING", (0, 0), (-1, -1), 4),
@@ -3171,204 +3398,240 @@ def _build_formation_pdf_story(form: dict) -> list:
 
     hero = Table(
         [
-            [code_box, _p("Fiche formation", hero_sub)],
-            ["", _p(titre, hero_title)],
+            [code_box, p("Catalogue formation", hero_label_style)],
+            ["", p(titre, hero_title_style)],
+            ["", p(accroche, hero_sub_style)],
         ],
-        colWidths=[34 * mm, 144 * mm],
+        colWidths=[35 * mm, 143 * mm],
     )
     hero.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
-        ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#fed7aa")),
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#172033")),
+        ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#172033")),
+        ("SPAN", (0, 0), (0, 2)),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("SPAN", (1, 1), (1, 1)),
-        ("LEFTPADDING", (0, 0), (-1, -1), 9),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 9),
-        ("TOPPADDING", (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("TOPPADDING", (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
     ]))
     story.append(hero)
     story.append(Spacer(1, 5 * mm))
 
-    story.append(_pdf_kpi_grid(
-        [
-            {"label": "Domaine", "value": domaine},
-            {"label": "Durée", "value": _pdf_hours(form.get("duree"))},
-            {"label": "Type", "value": _pdf_text(form.get("type_formation"))},
-            {"label": "Fournisseur", "value": fournisseur},
-            {"label": "Tarif mini", "value": _pdf_money(form.get("tarif_mini"))},
-            {"label": "État", "value": _pdf_text(form.get("etat"))},
-        ],
-        muted_style,
-        value_style,
-    ))
+    top_infos = Table(
+        [[
+            info_card("Durée", _pdf_hours(form.get("duree")), 43 * mm),
+            info_card("Type", form.get("type_formation") or "—", 43 * mm),
+            info_card("Domaine", domaine, 43 * mm),
+            info_card("Tarif mini", _pdf_money(form.get("tarif_mini")), 43 * mm),
+        ]],
+        colWidths=[45 * mm, 45 * mm, 45 * mm, 45 * mm],
+    )
+    top_infos.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    story.append(top_infos)
+    story.append(Spacer(1, 3 * mm))
 
-    if form.get("obs_type_form"):
-        story.append(Spacer(1, 2 * mm))
-        story.append(_pdf_card(
-            "Certification / niveau reconnu",
-            [_p(form.get("obs_type_form"), body_style)],
-            180 * mm,
-            card_title,
-            body_style,
-            bg="#ffffff",
-        ))
+    bottom_infos = Table(
+        [[
+            info_card("Fournisseur", fournisseur, 88 * mm),
+            info_card("État", form.get("etat") or "—", 42 * mm),
+            info_card("Certification / niveau", form.get("obs_type_form") or "—", 42 * mm),
+        ]],
+        colWidths=[90 * mm, 45 * mm, 45 * mm],
+    )
+    bottom_infos.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+    ]))
+    story.append(bottom_infos)
+    story.append(Spacer(1, 4 * mm))
 
-    story.append(_p("Objectif pédagogique", section_style))
-    story.append(_pdf_card(
+    story.append(section_title("Objectif pédagogique"))
+    story.append(card(
         "Finalité de la formation",
-        [_p(form.get("objectifs") or "—", body_style)],
+        [p(form.get("objectifs") or "—", body_style)],
         180 * mm,
-        card_title,
-        body_style,
-        bg="#f8fafc",
+        bg="#fff7ed",
+        border="#fed7aa",
     ))
 
-    story.append(_p("Présentation", section_style))
-    story.append(_pdf_card(
-        "Présentation détaillée",
-        [_p(form.get("presentation") or "—", body_style)],
+    story.append(section_title("Pourquoi cette formation ?"))
+    story.append(card(
+        "Présentation",
+        [p(form.get("presentation") or "—", body_style)],
         180 * mm,
-        card_title,
-        body_style,
     ))
 
-    public_lines = _pdf_lines(form.get("public_cible"))
-    public_body = [_p(f"• {x}", body_style) for x in public_lines] or [_p("—", body_style)]
+    public_items = lines(form.get("public_cible"))
+    prereq_items = [
+        x.get("titre")
+        for x in (form.get("prerequis") or [])
+        if x.get("titre")
+    ]
 
-    prereq_items = form.get("prerequis") or []
-    prereq_body = [_p(f"• {p.get('titre')}", body_style) for p in prereq_items if p.get("titre")] or [_p("—", body_style)]
+    story.append(section_title("Public & conditions d’entrée"))
 
-    two_cols = Table(
-        [[
-            _pdf_card("Public cible", public_body, 86 * mm, card_title, body_style),
-            _pdf_card("Prérequis évaluables", prereq_body, 86 * mm, card_title, body_style),
-        ]],
-        colWidths=[90 * mm, 90 * mm],
+    public_card = card(
+        "Public cible",
+        bullet_list(public_items, body_style),
+        86 * mm,
     )
-    two_cols.setStyle(TableStyle([
+
+    prereq_card = card(
+        "Prérequis évaluables",
+        bullet_list(prereq_items, body_style),
+        86 * mm,
+    )
+
+    public_grid = Table([[public_card, prereq_card]], colWidths=[90 * mm, 90 * mm])
+    public_grid.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
     ]))
-    story.append(_p("Public & prérequis", section_style))
-    story.append(two_cols)
-
-    comp_stag = form.get("competences_stagiaires_items") or []
-    comp_form = form.get("competences_formateurs_items") or []
-
-    def comp_body(rows):
-        out = []
-        for c in rows:
-            label = " – ".join([x for x in [c.get("code"), c.get("intitule")] if x])
-            if label:
-                out.append(_p(f"• {label}", body_style))
-        return out or [_p("—", body_style)]
-
-    comp_cols = Table(
-        [[
-            _pdf_card("Compétences visées pour les stagiaires", comp_body(comp_stag), 86 * mm, card_title, body_style, bg="#ffffff"),
-            _pdf_card("Compétences requises pour le formateur", comp_body(comp_form), 86 * mm, card_title, body_style, bg="#ffffff"),
-        ]],
-        colWidths=[90 * mm, 90 * mm],
-    )
-    comp_cols.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-    ]))
-    story.append(_p("Compétences", section_style))
-    story.append(comp_cols)
-
-    def label_body(items):
-        out = []
-        for item in items or []:
-            label = item.get("titre_court") or item.get("titre") or item.get("intitule") or ""
-            if label:
-                out.append(_p(f"• {label}", body_style))
-        return out or [_p("—", body_style)]
-
-    method_cols = Table(
-        [[
-            _pdf_card("Modalités possibles", label_body(form.get("modalites_items")), 55 * mm, card_title, body_style, bg="#f8fafc"),
-            _pdf_card("Méthodes pédagogiques", label_body(form.get("methode_peda_items")), 55 * mm, card_title, body_style, bg="#f8fafc"),
-            _pdf_card("Méthodes d’évaluation", label_body(form.get("methode_eval_items")), 55 * mm, card_title, body_style, bg="#f8fafc"),
-        ]],
-        colWidths=[60 * mm, 60 * mm, 60 * mm],
-    )
-    method_cols.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-    ]))
-    story.append(_p("Modalités & méthodes", section_style))
-    story.append(method_cols)
+    story.append(public_grid)
 
     story.append(PageBreak())
 
-    story.append(_p("Programme de formation", hero_title))
-    story.append(_p("Contenus structurés de la formation", hero_sub))
+    story.append(section_title("Compétences développées"))
+
+    comp_stag_card = card(
+        "Compétences visées pour les stagiaires",
+        [comp_rows(form.get("competences_stagiaires_items") or [], 82 * mm)],
+        86 * mm,
+    )
+
+    comp_form_card = card(
+        "Compétences requises pour le formateur",
+        [comp_rows(form.get("competences_formateurs_items") or [], 82 * mm)],
+        86 * mm,
+    )
+
+    comp_grid = Table([[comp_stag_card, comp_form_card]], colWidths=[90 * mm, 90 * mm])
+    comp_grid.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+    ]))
+    story.append(comp_grid)
+
+    modalites = [
+        x.get("titre_court") or x.get("titre")
+        for x in (form.get("modalites_items") or [])
+        if x.get("titre_court") or x.get("titre")
+    ]
+    pedas = [
+        x.get("titre_court") or x.get("titre")
+        for x in (form.get("methode_peda_items") or [])
+        if x.get("titre_court") or x.get("titre")
+    ]
+    evals = [
+        x.get("titre_court") or x.get("titre")
+        for x in (form.get("methode_eval_items") or [])
+        if x.get("titre_court") or x.get("titre")
+    ]
+
+    story.append(section_title("Modalités & méthodes"))
+
+    method_grid = Table(
+        [[
+            card("Modalités possibles", [tag_list(modalites, 52 * mm)], 56 * mm, bg="#f8fafc"),
+            card("Méthodes pédagogiques", [tag_list(pedas, 52 * mm)], 56 * mm, bg="#f8fafc"),
+            card("Méthodes d’évaluation", [tag_list(evals, 52 * mm)], 56 * mm, bg="#f8fafc"),
+        ]],
+        colWidths=[60 * mm, 60 * mm, 60 * mm],
+    )
+    method_grid.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.append(method_grid)
+
+    story.append(PageBreak())
+
+    story.append(section_title("Programme de formation"))
+    story.append(p(
+        "Les contenus ci-dessous constituent les briques pédagogiques de la formation. Ils pourront ensuite être organisés dans un ou plusieurs plans pédagogiques.",
+        muted_style,
+    ))
     story.append(Spacer(1, 4 * mm))
 
     contenus = form.get("contenus") or []
+
     if not contenus:
-        story.append(_p("Aucun contenu détaillé n’est encore rattaché à cette formation.", body_style))
+        story.append(p("Aucun contenu détaillé n’est encore rattaché à cette formation.", body_style))
     else:
         for idx, l in enumerate(contenus, start=1):
             comp_items = l.get("competences_liees_items") or []
-            chips = []
 
+            chips = []
             for c in comp_items:
-                chips.append(_pdf_chip(c.get("code") or "—", chip_style))
+                chips.append(badge(c.get("code") or "—", code_blue_style, bg="#2563a8"))
 
             if not chips:
-                chips = [_p("Aucune compétence liée", muted_style)]
+                chips = [p("Aucune compétence liée", muted_style)]
 
-            subjects = _pdf_content_subjects(l.get("contenu"))
-            subjects_body = [_p(f"• {s}", body_style) for s in subjects] or [_p("—", body_style)]
-
-            header = Table(
+            content_header = Table(
                 [[
-                    _p(f"{idx}. {l.get('titre_sequence') or 'Contenu'}", body_bold),
+                    badge(str(idx).zfill(2), code_orange_style, bg="#ff7a35"),
+                    p(l.get("titre_sequence") or "Contenu", body_bold_style),
                     chips,
                 ]],
-                colWidths=[120 * mm, 56 * mm],
+                colWidths=[16 * mm, 107 * mm, 53 * mm],
             )
-            header.setStyle(TableStyle([
+            content_header.setStyle(TableStyle([
                 ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
+                ("BOX", (0, 0), (-1, -1), 0, colors.HexColor("#fff7ed")),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 8),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
             ]))
 
-            body = []
+            body_flow = []
+
             if l.get("objectif"):
-                body.append(_p(f"<b>Objectif :</b> {html.escape(str(l.get('objectif')))}", body_style))
+                body_flow.append(p_html(
+                    f"<b>Objectif :</b> {html.escape(clean_pdf_text(l.get('objectif'), ''))}",
+                    body_style,
+                ))
+                body_flow.append(Spacer(1, 2 * mm))
 
-            body.append(_p("<b>Sujets abordés :</b>", body_style))
-            body.extend(subjects_body)
+            body_flow.append(p_html("<b>Sujets abordés</b>", body_style))
+            body_flow.extend(bullet_list(subjects(l.get("contenu")), body_style))
 
-            card = Table(
-                [[header], [body]],
+            content_card = Table(
+                [[content_header], [body_flow]],
                 colWidths=[180 * mm],
             )
-            card.setStyle(TableStyle([
-                ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#e5e7eb")),
+            content_card.setStyle(TableStyle([
+                ("BOX", (0, 0), (-1, -1), 0.65, colors.HexColor("#e2e8f0")),
                 ("VALIGN", (0, 0), (-1, -1), "TOP"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 0),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 0),
                 ("TOPPADDING", (0, 0), (-1, -1), 0),
-                ("BOTTOMPADDING", (0, 1), (-1, 1), 8),
-                ("LEFTPADDING", (0, 1), (-1, 1), 8),
-                ("RIGHTPADDING", (0, 1), (-1, 1), 8),
-                ("TOPPADDING", (0, 1), (-1, 1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+                ("LEFTPADDING", (0, 1), (-1, 1), 10),
+                ("RIGHTPADDING", (0, 1), (-1, 1), 10),
+                ("TOPPADDING", (0, 1), (-1, 1), 9),
+                ("BOTTOMPADDING", (0, 1), (-1, 1), 10),
             ]))
 
-            story.append(KeepTogether([card, Spacer(1, 4 * mm)]))
+            story.append(KeepTogether([content_card, Spacer(1, 5 * mm)]))
 
     return story
 
+    
 def _lms_esc(value: Any) -> str:
     return html.escape(str(value or "").strip())
 
