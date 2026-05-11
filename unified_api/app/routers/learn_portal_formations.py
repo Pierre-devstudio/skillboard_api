@@ -3315,6 +3315,289 @@ def _build_formation_pdf_story(form: dict) -> list:
     return story
 
 
+def _formation_pdf_template_path(filename: str) -> str:
+    return os.path.abspath(
+        os.path.join(
+            os.path.dirname(__file__),
+            "..",
+            "assets",
+            "modeles_pdf",
+            "learn",
+            filename,
+        )
+    )
+
+
+def _build_formation_template_pdf_bytes(form: dict) -> bytes:
+    """
+    Génère la fiche formation à partir d'une trame PNG PowerPoint.
+
+    Trame attendue :
+    unified_api/app/assets/modeles_pdf/learn/formation_fiche_page1.png
+
+    Cette première version injecte uniquement :
+    - titre formation
+    - accroche
+    - objectif pédagogique
+    - modalités possibles
+    """
+    from reportlab.pdfgen import canvas as pdf_canvas
+    from reportlab.lib.utils import ImageReader
+
+    template_path = _formation_pdf_template_path("formation_fiche_page1.png")
+
+    if not os.path.exists(template_path):
+        raise HTTPException(
+            status_code=500,
+            detail=f"Modèle PDF introuvable : {template_path}",
+        )
+
+    # Format exact du PowerPoint fourni : 7,5 x 10 pouces.
+    # On garde ce ratio pour que le PNG et les coordonnées restent alignés.
+    page_w = 7.5 * 72
+    page_h = 10 * 72
+
+    def clean_pdf_text(value: Any, fallback: str = "") -> str:
+        txt = str(value or "").strip()
+
+        if not txt:
+            return fallback
+
+        txt = html.unescape(txt)
+        txt = re.sub(r"(?i)<\s*br\s*/?\s*>", "\n", txt)
+        txt = re.sub(r"(?i)</\s*p\s*>", "\n", txt)
+        txt = re.sub(r"(?i)<\s*p[^>]*>", "", txt)
+        txt = re.sub(r"<[^>]+>", "", txt)
+        txt = txt.replace("\r", "\n")
+        txt = re.sub(r"[ \t]+", " ", txt)
+        txt = re.sub(r"\n{3,}", "\n\n", txt)
+        txt = txt.strip()
+
+        return txt if txt else fallback
+
+    def short_text(value: Any, limit: int = 260) -> str:
+        txt = clean_pdf_text(value, "")
+
+        if not txt:
+            return ""
+
+        if len(txt) <= limit:
+            return txt
+
+        cut = txt[:limit].rsplit(" ", 1)[0].strip()
+        return f"{cut}…"
+
+    def pretty_label(value: Any) -> str:
+        raw = clean_pdf_text(value, "")
+        if not raw:
+            return ""
+
+        s = raw.strip()
+
+        mapping = {
+            "modalite_presentiel": "Présentiel",
+            "modalite_virtuel": "Distanciel",
+            "modalite_distanciel": "Distanciel",
+            "modalite_blended": "Blended learning",
+            "modalite_salle_numerique": "Salle numérique",
+            "salle numerique": "Salle numérique",
+            "presentiel": "Présentiel",
+            "présentiel": "Présentiel",
+            "distanciel": "Distanciel",
+            "blended learning": "Blended learning",
+        }
+
+        key = _norm_match_text(s).replace(" ", "_")
+        if key in mapping:
+            return mapping[key]
+
+        if "_" in s:
+            s = re.sub(r"^(modalite|methode|eval)_", "", s, flags=re.I)
+            s = s.replace("_", " ")
+
+        return s[:1].upper() + s[1:] if s else ""
+
+    def ref_label(item: dict) -> str:
+        titre = str(item.get("titre") or "").strip()
+        titre_court = str(item.get("titre_court") or "").strip()
+
+        if titre_court and not re.match(r"^(modalite|methode|eval)_", titre_court, flags=re.I):
+            return pretty_label(titre_court)
+
+        return pretty_label(titre or titre_court)
+
+    def para_html(value: Any) -> str:
+        return html.escape(clean_pdf_text(value, "")).replace("\n", "<br/>")
+
+    def fit_paragraph(text: Any, base_style: ParagraphStyle, max_w: float, max_h: float, min_font: float = 6.5):
+        raw = para_html(text)
+        current = float(base_style.fontSize)
+
+        while current >= min_font:
+            style = ParagraphStyle(
+                f"{base_style.name}_{str(current).replace('.', '_')}",
+                parent=base_style,
+                fontSize=current,
+                leading=max(current * 1.18, current + 1.4),
+            )
+
+            para = Paragraph(raw, style)
+            _, h = para.wrap(max_w, max_h)
+
+            if h <= max_h:
+                return para, h
+
+            current -= 0.5
+
+        # Dernier recours : réduction + coupe propre.
+        txt = clean_pdf_text(text, "")
+        if len(txt) > 420:
+            txt = txt[:420].rsplit(" ", 1)[0].strip() + "…"
+
+        style = ParagraphStyle(
+            f"{base_style.name}_fallback",
+            parent=base_style,
+            fontSize=min_font,
+            leading=min_font * 1.18,
+        )
+
+        para = Paragraph(para_html(txt), style)
+        _, h = para.wrap(max_w, max_h)
+        return para, h
+
+    def draw_text_box(c, text: Any, x: float, top: float, w: float, h: float, style: ParagraphStyle, clear: bool = True):
+        y = page_h - top - h
+
+        if clear:
+            c.saveState()
+            c.setFillColor(colors.white)
+            c.rect(x - 2, y - 2, w + 4, h + 4, stroke=0, fill=1)
+            c.restoreState()
+
+        para, para_h = fit_paragraph(text, style, w, h)
+        draw_y = y + h - para_h
+        para.drawOn(c, x, draw_y)
+
+    def draw_modalites(c, labels: list, x: float, top: float, w: float, h: float):
+        y = page_h - top - h
+
+        c.saveState()
+        c.setFillColor(colors.white)
+        c.rect(x - 2, y - 2, w + 4, h + 4, stroke=0, fill=1)
+        c.restoreState()
+
+        clean = [str(v or "").strip() for v in labels if str(v or "").strip()]
+        if not clean:
+            clean = ["Non précisé"]
+
+        line_h = 16
+        current_y = y + h - 12
+
+        for label in clean[:6]:
+            c.saveState()
+            c.setFillColor(colors.HexColor("#ff7a35"))
+            c.circle(x + 4, current_y + 3, 2.2, stroke=0, fill=1)
+
+            c.setFillColor(colors.HexColor("#111827"))
+            c.setFont("Helvetica-Bold", 9.5)
+            c.drawString(x + 12, current_y, label)
+            c.restoreState()
+
+            current_y -= line_h
+
+            if current_y < y + 4:
+                break
+
+    titre = clean_pdf_text(form.get("titre"), "Formation")
+    accroche = short_text(form.get("presentation"), 260) or "Présentation de la formation."
+    objectif = clean_pdf_text(form.get("objectifs"), "Objectif pédagogique à compléter.")
+
+    modalites = [
+        ref_label(x)
+        for x in (form.get("modalites_items") or [])
+        if ref_label(x)
+    ]
+
+    title_style = ParagraphStyle(
+        "FormationTemplateTitle",
+        fontName="Helvetica-Bold",
+        fontSize=27,
+        leading=31,
+        textColor=colors.HexColor("#111827"),
+    )
+
+    accroche_style = ParagraphStyle(
+        "FormationTemplateAccroche",
+        fontName="Helvetica",
+        fontSize=11.5,
+        leading=14.5,
+        textColor=colors.HexColor("#4b5563"),
+    )
+
+    objectif_style = ParagraphStyle(
+        "FormationTemplateObjectif",
+        fontName="Helvetica",
+        fontSize=10.2,
+        leading=13.2,
+        textColor=colors.HexColor("#1f2937"),
+    )
+
+    buf = BytesIO()
+    c = pdf_canvas.Canvas(buf, pagesize=(page_w, page_h))
+    c.setTitle(_pdf_latin1_safe(f"Fiche formation - {titre}"))
+
+    bg = ImageReader(template_path)
+    c.drawImage(bg, 0, 0, width=page_w, height=page_h, mask="auto")
+
+    # Coordonnées issues du PowerPoint source 7,5 x 10 pouces.
+    # x, top, width, height en points.
+    draw_text_box(
+        c,
+        titre,
+        x=29.9,
+        top=21.0,
+        w=404.0,
+        h=48.0,
+        style=title_style,
+        clear=True,
+    )
+
+    draw_text_box(
+        c,
+        accroche,
+        x=29.9,
+        top=90.2,
+        w=489.6,
+        h=52.0,
+        style=accroche_style,
+        clear=True,
+    )
+
+    draw_text_box(
+        c,
+        objectif,
+        x=29.9,
+        top=198.6,
+        w=230.4,
+        h=110.3,
+        style=objectif_style,
+        clear=True,
+    )
+
+    draw_modalites(
+        c,
+        modalites,
+        x=353.0,
+        top=202.7,
+        w=140.0,
+        h=94.0,
+    )
+
+    c.showPage()
+    c.save()
+
+    return buf.getvalue()
+
 def _lms_esc(value: Any) -> str:
     return html.escape(str(value or "").strip())
 
@@ -4119,7 +4402,6 @@ def learn_formation_fiche_pdf(id_effectif: str, id_form: str, request: Request):
                 oid = (profile.get("id_owner") or "").strip()
 
                 form = _fetch_form_detail(cur, oid, fid)
-                logo_bytes = _fetch_owner_logo_bytes(cur, oid)
 
         code_label = form.get("code") or "Formation"
         titre_label = form.get("titre") or "Formation"
@@ -4129,18 +4411,7 @@ def learn_formation_fiche_pdf(id_effectif: str, id_form: str, request: Request):
             f"Fiche formation {_pdf_safe_filename_part(code_label, 32)} - {_pdf_safe_filename_part(titre_label, 80)}.pdf"
         )
 
-        pdf_bytes = build_pdf_document(
-            _build_formation_pdf_story(form),
-            meta={
-                "title": _pdf_latin1_safe(f"Fiche formation - {code_label} - {titre_label}"),
-                "doc_label": _pdf_latin1_safe("Fiche formation"),
-                "footer_left": _pdf_latin1_safe("Novoskill Learn - Fiche formation"),
-                "header_right": _pdf_latin1_safe(owner_label),
-                "header_right_font_name": "Helvetica-Bold",
-                "header_right_font_size": 10.5,
-                "logo_bytes": logo_bytes,
-            },
-        )
+        pdf_bytes = _build_formation_template_pdf_bytes(form)
 
         return Response(
             content=pdf_bytes,
