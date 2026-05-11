@@ -2441,6 +2441,17 @@ function renderContentCompBadges(l){
         return ids;
     }
 
+    function importStatusClass(status){
+        const s = normalizeImportKey(status || "");
+
+        if (s.includes("creer")) return "is-create";
+        if (s.includes("verifier")) return "is-check";
+        if (s.includes("approchant")) return "is-close";
+        if (s.includes("recommande") || s.includes("match fort")) return "is-ok";
+
+        return "";
+    }
+
     function renderImportCompetenceRows(hostId, rows){
         const host = byId(hostId);
         if (!host) return;
@@ -2455,6 +2466,9 @@ function renderContentCompBadges(l){
         rows.forEach((r, idx) => {
             const div = document.createElement("div");
             div.className = "lf-import-comp-row";
+
+            const status = r.status || "à créer";
+            const statusClass = importStatusClass(status);
 
             const options = (r.matches || []).map(m => `
             <label class="lf-import-match">
@@ -2471,7 +2485,7 @@ function renderContentCompBadges(l){
             div.innerHTML = `
             <div class="lf-import-comp-source">
                 <span>${htmlEsc(r.source || "")}</span>
-                <span class="lf-import-status-pill">${htmlEsc(r.status || "non_trouve")}</span>
+                <span class="lf-import-status-pill ${statusClass}">${htmlEsc(status)}</span>
             </div>
             <div class="lf-import-matches">
                 ${options || `<div class="card-sub">Aucune compétence approchante trouvée.</div>`}
@@ -2495,21 +2509,24 @@ function renderContentCompBadges(l){
         const summary = byId("formImportSummary");
         if (summary){
             summary.innerHTML = `
-            <div class="lf-import-summary-item">
+            <div class="lf-result-title-card">
                 <span>Titre</span>
                 <strong>${htmlEsc(data.titre || "—")}</strong>
             </div>
-            <div class="lf-import-summary-item">
+
+            <div class="lf-result-summary-grid">
+                <div class="lf-import-summary-item">
                 <span>Type</span>
                 <strong>${htmlEsc(data.type_formation || "—")}</strong>
-            </div>
-            <div class="lf-import-summary-item">
+                </div>
+                <div class="lf-import-summary-item">
                 <span>Durée</span>
                 <strong>${data.duree ? htmlEsc(data.duree) + " h" : "—"}</strong>
-            </div>
-            <div class="lf-import-summary-item">
+                </div>
+                <div class="lf-import-summary-item">
                 <span>Contenus</span>
                 <strong>${htmlEsc((data.contenus || []).length)}</strong>
+                </div>
             </div>
             `;
         }
@@ -2716,21 +2733,24 @@ function renderContentCompBadges(l){
         const summary = byId("aiFormSummary");
         if (summary){
             summary.innerHTML = `
-            <div class="lf-import-summary-item">
+            <div class="lf-result-title-card">
                 <span>Titre</span>
                 <strong>${htmlEsc(data.titre || "—")}</strong>
             </div>
-            <div class="lf-import-summary-item">
+
+            <div class="lf-result-summary-grid">
+                <div class="lf-import-summary-item">
                 <span>Durée proposée</span>
                 <strong>${data.duree ? htmlEsc(data.duree) + " h" : "—"}</strong>
-            </div>
-            <div class="lf-import-summary-item">
+                </div>
+                <div class="lf-import-summary-item">
                 <span>Analyse durée</span>
                 <strong>${htmlEsc(data.duree_statut || "—")}</strong>
-            </div>
-            <div class="lf-import-summary-item">
+                </div>
+                <div class="lf-import-summary-item">
                 <span>Contenus</span>
                 <strong>${htmlEsc((data.contenus || []).length)}</strong>
+                </div>
             </div>
             `;
         }
