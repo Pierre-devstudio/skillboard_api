@@ -3641,10 +3641,22 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     def draw_header_title(c, titre: str):
         draw_paragraph_box(c, titre, 80, 46, 550, 35, header_title_style, min_font=10)
 
-    def capped_items(items: list, limit: int, marker: str):
-        clean = [str(x or "").strip() for x in items or [] if str(x or "").strip()]
+    def capped_items(items: list, limit: int, marker: any):
+        clean = []
+
+        for item in items or []:
+            if isinstance(item, dict):
+                has_value = any(str(item.get(k) or "").strip() for k in ("code", "titre", "intitule"))
+                if has_value:
+                    clean.append(item)
+            else:
+                txt = str(item or "").strip()
+                if txt:
+                    clean.append(txt)
+
         if len(clean) > limit:
             return clean[:limit - 1] + [marker], clean[limit - 1:]
+
         return clean, []
 
     def draw_bullet_items(
@@ -3694,19 +3706,27 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
         row_h = 25
 
         for item in rows[:max_rows]:
-            code = str(item.get("code") or "").strip()
-            titre = str(item.get("titre") or "").strip()
+            if isinstance(item, dict):
+                code = str(item.get("code") or "").strip()
+                titre = str(item.get("titre") or item.get("intitule") or "").strip()
+            else:
+                code = ""
+                titre = str(item or "").strip()
 
             if not code and not titre:
                 continue
 
-            c.saveState()
-            c.setFillColor(BLUE)
-            c.rect(x_pt(x), y_pt_from_top(current_top, row_h), w_pt(73), h_pt(row_h - 1), stroke=0, fill=1)
-            c.restoreState()
+            if code:
+                c.saveState()
+                c.setFillColor(BLUE)
+                c.rect(x_pt(x), y_pt_from_top(current_top, row_h), w_pt(73), h_pt(row_h - 1), stroke=0, fill=1)
+                c.restoreState()
 
-            draw_center_text(c, code, x + 2, current_top + 4, 69, 14, comp_code_style)
-            draw_paragraph_box(c, titre, x + 84, current_top + 5, 335, 17, comp_title_style, min_font=5.5)
+                draw_center_text(c, code, x + 2, current_top + 4, 69, 14, comp_code_style)
+                draw_paragraph_box(c, titre, x + 84, current_top + 5, 335, 17, comp_title_style, min_font=5.5)
+            else:
+                draw_paragraph_box(c, titre, x, current_top + 5, 410, 17, comp_title_style, min_font=5.5)
+
             current_top += row_h
 
     def draw_modality_boxes(c, labels: list, x: float, top: float, max_rows: int = 5):
