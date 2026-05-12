@@ -3316,10 +3316,59 @@ def _build_formation_pdf_story(form: dict) -> list:
 
 
 def _formation_pdf_template_path(filename: str) -> str:
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.normpath(
-        os.path.join(base_dir, "..", "assets", "modeles_pdf", "learn", filename)
+    """
+    résout un modèle pdf learn de manière robuste.
+
+    objectif :
+    - utiliser le dossier officiel app/assets/modeles_pdf/learn ;
+    - accepter les variantes de casse windows/linux ;
+    - accepter .png / .png sans imposer un renommage git ;
+    - retourner le vrai chemin existant quand il est trouvé.
+    """
+    clean_name = os.path.basename(str(filename or "").strip())
+
+    base_dir = os.path.normpath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "assets",
+            "modeles_pdf",
+            "learn",
+        )
     )
+
+    direct = os.path.join(base_dir, clean_name)
+    if os.path.exists(direct):
+        return direct
+
+    wanted_root, wanted_ext = os.path.splitext(clean_name)
+    wanted_key = clean_name.lower()
+
+    if os.path.isdir(base_dir):
+        try:
+            for existing in os.listdir(base_dir):
+                existing_path = os.path.join(base_dir, existing)
+
+                if not os.path.isfile(existing_path):
+                    continue
+
+                existing_key = existing.lower()
+                existing_root, existing_ext = os.path.splitext(existing)
+
+                # match exact insensible à la casse.
+                if existing_key == wanted_key:
+                    return existing_path
+
+                # match sur le nom sans extension + extension image acceptée.
+                if (
+                    existing_root.lower() == wanted_root.lower()
+                    and existing_ext.lower() in (".png", ".jpg", ".jpeg")
+                ):
+                    return existing_path
+        except Exception:
+            pass
+
+    return direct
 
 
 def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] = None) -> bytes:
@@ -3462,10 +3511,33 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
 
     def draw_background(c, filename: str):
         path = _formation_pdf_template_path(filename)
-        if not os.path.exists(path):
-            raise HTTPException(status_code=500, detail=f"Modèle PDF introuvable : {path}")
 
-        c.drawImage(ImageReader(path), 0, 0, width=PAGE_W, height=PAGE_H, preserveAspectRatio=False, mask="auto")
+        if not os.path.exists(path):
+            folder = os.path.dirname(path)
+
+            try:
+                available = sorted(os.listdir(folder)) if os.path.isdir(folder) else []
+            except Exception:
+                available = []
+
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Modèle PDF introuvable : "
+                    f"{path} | dossier_existe={os.path.isdir(folder)} "
+                    f"| fichiers_disponibles={available}"
+                ),
+            )
+
+        c.drawImage(
+            ImageReader(path),
+            0,
+            0,
+            width=PAGE_W,
+            height=PAGE_H,
+            preserveAspectRatio=False,
+            mask="auto",
+        )
 
     def fit_paragraph(text: Any, style: ParagraphStyle, width_px: float):
         para = Paragraph(html_para(text), style)
