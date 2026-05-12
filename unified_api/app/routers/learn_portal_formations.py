@@ -3316,46 +3316,80 @@ def _build_formation_pdf_story(form: dict) -> list:
 
 
 def _formation_pdf_template_path(filename: str) -> str:
-    return os.path.abspath(
+    base_dir = os.path.abspath(
         os.path.join(
             os.path.dirname(__file__),
             "..",
             "assets",
             "modeles_pdf",
             "learn",
-            filename,
         )
     )
 
+    direct = os.path.join(base_dir, filename)
+    if os.path.exists(direct):
+        return direct
 
-def _build_formation_template_pdf_bytes(form: dict) -> bytes:
+    root, ext = os.path.splitext(filename)
+    candidates = [
+        root + ".png",
+        root + ".PNG",
+        root + ".jpg",
+        root + ".JPG",
+    ]
+
+    for cand in candidates:
+        p = os.path.join(base_dir, os.path.basename(cand))
+        if os.path.exists(p):
+            return p
+
+    return direct
+
+
+def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] = None) -> bytes:
     """
-    Génère la fiche formation à partir d'une trame PNG PowerPoint.
+    Génère la fiche formation catalogue à partir des trames PNG Learn.
 
-    Trame attendue :
-    unified_api/app/assets/modeles_pdf/learn/formation_fiche_page1.png
-
-    Cette première version injecte uniquement :
-    - titre formation
-    - accroche
-    - objectif pédagogique
-    - modalités possibles
+    Trames utilisées :
+    - Fiche_formation_p1.png : synthèse
+    - Fiche_formation_p2.png : contenu
+    - Fiche_formation_p3.png : contenu suite
+    - Fiche_formation_p4.png : informations
+    - Fiche_formation_p5.png : annexe compétences
+    - Fiche_formation_p6.png : masquée pour l'instant
     """
     from reportlab.pdfgen import canvas as pdf_canvas
     from reportlab.lib.utils import ImageReader
 
-    template_path = _formation_pdf_template_path("formation_fiche_page1.png")
+    # Trames issues d'un export PowerPoint A4.
+    # Les coordonnées sont calées sur les PNG 794 x 1123 px.
+    DESIGN_W = 794.0
+    DESIGN_H = 1123.0
 
-    if not os.path.exists(template_path):
-        raise HTTPException(
-            status_code=500,
-            detail=f"Modèle PDF introuvable : {template_path}",
-        )
+    # A4 portrait en points PDF.
+    page_w = 595.2755905511812
+    page_h = 841.8897637795277
 
-    # Format exact du PowerPoint fourni : 7,5 x 10 pouces.
-    # On garde ce ratio pour que le PNG et les coordonnées restent alignés.
-    page_w = 7.5 * 72
-    page_h = 10 * 72
+    sx = page_w / DESIGN_W
+    sy = page_h / DESIGN_H
+
+    VIOLET = colors.HexColor("#E724F3")
+    PRESENTATION = colors.HexColor("#A02B93")
+    BLUE = colors.HexColor("#0070C0")
+    BLACK = colors.HexColor("#111111")
+    WHITE = colors.white
+
+    def x_pt(x: float) -> float:
+        return float(x) * sx
+
+    def y_pt_from_top(top: float, height: float = 0) -> float:
+        return page_h - ((float(top) + float(height)) * sy)
+
+    def w_pt(w: float) -> float:
+        return float(w) * sx
+
+    def h_pt(h: float) -> float:
+        return float(h) * sy
 
     def clean_pdf_text(value: Any, fallback: str = "") -> str:
         txt = str(value or "").strip()
@@ -3371,11 +3405,38 @@ def _build_formation_template_pdf_bytes(form: dict) -> bytes:
         txt = txt.replace("\r", "\n")
         txt = re.sub(r"[ \t]+", " ", txt)
         txt = re.sub(r"\n{3,}", "\n\n", txt)
-        txt = txt.strip()
+        return txt.strip() or fallback
 
-        return txt if txt else fallback
+    def html_para(value: Any) -> str:
+        return html.escape(clean_pdf_text(value, "")).replace("\n", "<br/>")
 
-    def short_text(value: Any, limit: int = 260) -> str:
+    def split_text_items(value: Any) -> list:
+        txt = clean_pdf_text(value, "")
+        if not txt:
+            return []
+
+        raw_items = re.split(r"\n|;|•", txt)
+        items = []
+
+        for raw in raw_items:
+            item = raw.strip().lstrip("-").lstrip("•").strip()
+            if item:
+                items.append(item)
+
+        return items
+
+    def subjects_from_text(value: Any) -> list:
+        items = split_text_items(value)
+        if items:
+            return items
+
+        txt = clean_pdf_text(value, "")
+        if not txt:
+            return []
+
+        return [x.strip() for x in re.split(r"(?<=[.!?])\s+", txt) if x.strip()]
+
+    def short_text(value: Any, limit: int = 330) -> str:
         txt = clean_pdf_text(value, "")
 
         if not txt:
@@ -3385,7 +3446,7 @@ def _build_formation_template_pdf_bytes(form: dict) -> bytes:
             return txt
 
         cut = txt[:limit].rsplit(" ", 1)[0].strip()
-        return f"{cut}…"
+        return f"{cut}..."
 
     def pretty_label(value: Any) -> str:
         raw = clean_pdf_text(value, "")
@@ -3398,13 +3459,37 @@ def _build_formation_template_pdf_bytes(form: dict) -> bytes:
             "modalite_presentiel": "Présentiel",
             "modalite_virtuel": "Distanciel",
             "modalite_distanciel": "Distanciel",
-            "modalite_blended": "Blended learning",
+            "modalite_blended": "Blended Learning",
             "modalite_salle_numerique": "Salle numérique",
+            "modalite_auto_formation": "Auto-formation",
+            "modalite_video_training": "Vidéo-training",
             "salle numerique": "Salle numérique",
             "presentiel": "Présentiel",
             "présentiel": "Présentiel",
             "distanciel": "Distanciel",
-            "blended learning": "Blended learning",
+            "blended learning": "Blended Learning",
+            "auto formation": "Auto-formation",
+            "auto-formation": "Auto-formation",
+            "video training": "Vidéo-training",
+            "vidéo training": "Vidéo-training",
+            "methode_expose": "Exposé",
+            "methode_demo": "Démonstration",
+            "methode_demonstration": "Démonstration",
+            "methode_exercices": "Exercices",
+            "methode_brainstorming": "Brainstorming",
+            "methode_jeux_roles": "Jeux de rôles",
+            "methode_etude_cas": "Étude de cas",
+            "methode_tour_table": "Tour de table",
+            "methode_travail_groupe": "Travail de groupe",
+            "methode_tutorat": "Tutorat",
+            "methode_formation_action": "Formation action",
+            "eval_auto_evaluation": "Auto-évaluation",
+            "eval_qcm": "QCM",
+            "eval_quiz": "Quiz interactif",
+            "eval_etude_cas": "Étude de cas",
+            "eval_travaux_pratiques": "Travaux pratiques",
+            "eval_entretien_individuel": "Entretien individuel avec le formateur",
+            "eval_observation": "Observation",
         }
 
         key = _norm_match_text(s).replace(" ", "_")
@@ -3426,176 +3511,590 @@ def _build_formation_template_pdf_bytes(form: dict) -> bytes:
 
         return pretty_label(titre or titre_court)
 
-    def para_html(value: Any) -> str:
-        return html.escape(clean_pdf_text(value, "")).replace("\n", "<br/>")
-
-    def fit_paragraph(text: Any, base_style: ParagraphStyle, max_w: float, max_h: float, min_font: float = 6.5):
-        raw = para_html(text)
+    def fit_paragraph(text: Any, base_style: ParagraphStyle, max_w: float, max_h: float, min_font: float = 5.8):
+        raw = html_para(text)
         current = float(base_style.fontSize)
+        ratio = float(base_style.leading) / max(float(base_style.fontSize), 1)
 
         while current >= min_font:
             style = ParagraphStyle(
                 f"{base_style.name}_{str(current).replace('.', '_')}",
                 parent=base_style,
                 fontSize=current,
-                leading=max(current * 1.18, current + 1.4),
+                leading=max(current * ratio, current + 1.0),
             )
 
             para = Paragraph(raw, style)
-            _, h = para.wrap(max_w, max_h)
+            _, ph = para.wrap(max_w, 10000)
 
-            if h <= max_h:
-                return para, h
+            if ph <= max_h:
+                return para, ph
 
-            current -= 0.5
+            current -= 0.4
 
-        # Dernier recours : réduction + coupe propre.
         txt = clean_pdf_text(text, "")
-        if len(txt) > 420:
-            txt = txt[:420].rsplit(" ", 1)[0].strip() + "…"
-
-        style = ParagraphStyle(
-            f"{base_style.name}_fallback",
-            parent=base_style,
-            fontSize=min_font,
-            leading=min_font * 1.18,
-        )
-
-        para = Paragraph(para_html(txt), style)
-        _, h = para.wrap(max_w, max_h)
-        return para, h
-
-    def draw_text_box(c, text: Any, x: float, top: float, w: float, h: float, style: ParagraphStyle, clear: bool = True):
-        y = page_h - top - h
-
-        if clear:
-            c.saveState()
-            c.setFillColor(colors.white)
-            c.rect(x - 2, y - 2, w + 4, h + 4, stroke=0, fill=1)
-            c.restoreState()
-
-        para, para_h = fit_paragraph(text, style, w, h)
-        draw_y = y + h - para_h
-        para.drawOn(c, x, draw_y)
-
-    def draw_modalites(c, labels: list, x: float, top: float, w: float, h: float):
-        y = page_h - top - h
-
-        c.saveState()
-        c.setFillColor(colors.white)
-        c.rect(x - 2, y - 2, w + 4, h + 4, stroke=0, fill=1)
-        c.restoreState()
-
-        clean = [str(v or "").strip() for v in labels if str(v or "").strip()]
-        if not clean:
-            clean = ["Non précisé"]
-
-        line_h = 16
-        current_y = y + h - 12
-
-        for label in clean[:6]:
-            c.saveState()
-            c.setFillColor(colors.HexColor("#ff7a35"))
-            c.circle(x + 4, current_y + 3, 2.2, stroke=0, fill=1)
-
-            c.setFillColor(colors.HexColor("#111827"))
-            c.setFont("Helvetica-Bold", 9.5)
-            c.drawString(x + 12, current_y, label)
-            c.restoreState()
-
-            current_y -= line_h
-
-            if current_y < y + 4:
+        while len(txt) > 60:
+            cut = txt.rsplit(" ", 1)[0].strip()
+            if not cut or cut == txt:
                 break
 
-    titre = clean_pdf_text(form.get("titre"), "Formation")
-    accroche = short_text(form.get("presentation"), 260) or "Présentation de la formation."
-    objectif = clean_pdf_text(form.get("objectifs"), "Objectif pédagogique à compléter.")
+            txt = cut + "..."
+            style = ParagraphStyle(
+                f"{base_style.name}_fallback",
+                parent=base_style,
+                fontSize=min_font,
+                leading=min_font * ratio,
+            )
+            para = Paragraph(html_para(txt), style)
+            _, ph = para.wrap(max_w, 10000)
 
-    modalites = [
-        ref_label(x)
-        for x in (form.get("modalites_items") or [])
-        if ref_label(x)
-    ]
+            if ph <= max_h:
+                return para, ph
 
-    title_style = ParagraphStyle(
-        "FormationTemplateTitle",
-        fontName="Helvetica-Bold",
-        fontSize=27,
-        leading=31,
-        textColor=colors.HexColor("#111827"),
+            txt = cut
+
+        style = ParagraphStyle(
+            f"{base_style.name}_fallback_final",
+            parent=base_style,
+            fontSize=min_font,
+            leading=min_font * ratio,
+        )
+        para = Paragraph(html_para(txt), style)
+        _, ph = para.wrap(max_w, 10000)
+        return para, ph
+
+    def draw_paragraph_box(
+        c,
+        text: Any,
+        x: float,
+        top: float,
+        width: float,
+        height: float,
+        style: ParagraphStyle,
+        min_font: float = 5.8,
+        valign: str = "top",
+    ) -> float:
+        xx = x_pt(x)
+        yy = y_pt_from_top(top, height)
+        ww = w_pt(width)
+        hh = h_pt(height)
+
+        para, ph = fit_paragraph(text, style, ww, hh, min_font=min_font)
+
+        if valign == "middle":
+            draw_y = yy + max((hh - ph) / 2, 0)
+        elif valign == "bottom":
+            draw_y = yy
+        else:
+            draw_y = yy + hh - ph
+
+        para.drawOn(c, xx, draw_y)
+        return ph / sy
+
+    def draw_center_text(c, text: Any, x: float, top: float, width: float, height: float, style: ParagraphStyle):
+        draw_paragraph_box(c, text, x, top, width, height, style, valign="middle")
+
+    def measure_paragraph_height(text: Any, style: ParagraphStyle, width: float) -> float:
+        para = Paragraph(html_para(text), style)
+        _, ph = para.wrap(w_pt(width), 10000)
+        return ph / sy
+
+    def draw_background(c, filename: str):
+        path = _formation_pdf_template_path(filename)
+        if not os.path.exists(path):
+            raise HTTPException(status_code=500, detail=f"Modèle PDF introuvable : {path}")
+
+        c.drawImage(
+            ImageReader(path),
+            0,
+            0,
+            width=page_w,
+            height=page_h,
+            mask="auto",
+        )
+
+    def draw_logo(c, x: float, top: float, width: float, height: float):
+        if not logo_bytes:
+            return
+
+        try:
+            img = ImageReader(BytesIO(logo_bytes))
+            iw, ih = img.getSize()
+
+            max_w = w_pt(width)
+            max_h = h_pt(height)
+
+            ratio = min(max_w / max(iw, 1), max_h / max(ih, 1))
+            dw = iw * ratio
+            dh = ih * ratio
+
+            xx = x_pt(x)
+            yy = y_pt_from_top(top, height) + max((max_h - dh) / 2, 0)
+
+            c.drawImage(img, xx, yy, width=dw, height=dh, mask="auto")
+        except Exception:
+            return
+
+    def draw_code(c, code: str):
+        draw_center_text(c, code, 684, 103, 48, 22, code_white_style)
+
+    def draw_header_title(c, titre: str):
+        draw_paragraph_box(c, titre, 80, 46, 550, 35, header_title_style, min_font=10)
+
+    def capped_items(items: list, limit: int, marker: str):
+        clean = [str(x or "").strip() for x in items or [] if str(x or "").strip()]
+        if len(clean) > limit:
+            return clean[:limit - 1] + [marker], clean[limit - 1:]
+        return clean, []
+
+    def draw_bullet_items(
+        c,
+        items: list,
+        x: float,
+        top: float,
+        width: float,
+        max_height: float,
+        style: ParagraphStyle,
+        max_items: Optional[int] = None,
+        bullet_color=VIOLET,
+        bullet_size: float = 2.1,
+    ):
+        clean = [str(v or "").strip() for v in items or [] if str(v or "").strip()]
+        if max_items is not None:
+            clean = clean[:max_items]
+
+        current_top = top
+        bottom = top + max_height
+
+        for item in clean:
+            available = bottom - current_top
+            if available <= 8:
+                break
+
+            used = draw_paragraph_box(
+                c,
+                item,
+                x + 17,
+                current_top,
+                width - 17,
+                available,
+                style,
+                min_font=5.8,
+            )
+
+            c.saveState()
+            c.setFillColor(bullet_color)
+            c.circle(x_pt(x + 5), y_pt_from_top(current_top + 8, 0), bullet_size, stroke=0, fill=1)
+            c.restoreState()
+
+            current_top += max(used + 4, 12)
+
+    def draw_blue_comp_rows(c, rows: list, x: float, top: float, max_rows: int):
+        current_top = top
+        row_h = 25
+
+        for item in rows[:max_rows]:
+            code = str(item.get("code") or "").strip()
+            titre = str(item.get("titre") or "").strip()
+
+            if not code and not titre:
+                continue
+
+            c.saveState()
+            c.setFillColor(BLUE)
+            c.rect(x_pt(x), y_pt_from_top(current_top, row_h), w_pt(73), h_pt(row_h - 1), stroke=0, fill=1)
+            c.restoreState()
+
+            draw_center_text(c, code, x + 2, current_top + 4, 69, 14, comp_code_style)
+            draw_paragraph_box(c, titre, x + 84, current_top + 5, 335, 17, comp_title_style, min_font=5.5)
+            current_top += row_h
+
+    def draw_modality_boxes(c, labels: list, x: float, top: float, max_rows: int = 5):
+        current_top = top
+        box_w = 146
+        box_h = 26
+
+        for label in labels[:max_rows]:
+            c.saveState()
+            c.setStrokeColor(VIOLET)
+            c.setLineWidth(1.8)
+            c.rect(x_pt(x), y_pt_from_top(current_top, box_h), w_pt(box_w), h_pt(box_h), stroke=1, fill=0)
+            c.restoreState()
+
+            draw_center_text(c, label, x + 4, current_top + 5, box_w - 8, 13, modality_style)
+            current_top += 29
+
+    def draw_simple_list_in_area(c, labels: list, x: float, top: float, width: float, max_height: float):
+        draw_bullet_items(
+            c,
+            labels,
+            x=x,
+            top=top,
+            width=width,
+            max_height=max_height,
+            style=body_style,
+            bullet_color=VIOLET,
+            bullet_size=1.8,
+        )
+
+    def content_badges(c, comps: list, x: float, top: float):
+        current_top = top
+        for comp in comps[:4]:
+            code = str(comp.get("code") or "").strip()
+            if not code:
+                continue
+
+            c.saveState()
+            c.setFillColor(BLUE)
+            c.rect(x_pt(x), y_pt_from_top(current_top, 25), w_pt(72), h_pt(25), stroke=0, fill=1)
+            c.restoreState()
+
+            draw_center_text(c, code, x + 3, current_top + 6, 66, 12, comp_code_style)
+            current_top += 25
+
+    def estimate_content_block_height(item: dict) -> float:
+        title = item.get("titre_sequence") or "Contenu"
+        objectif = item.get("objectif") or ""
+        details = subjects_from_text(item.get("contenu"))
+
+        h = 0
+        h += max(18, measure_paragraph_height(title, content_title_style, 530))
+        if objectif:
+            h += max(15, measure_paragraph_height(objectif, content_obj_style, 520))
+        h += 5
+
+        if details:
+            for d in details:
+                h += max(13, measure_paragraph_height(d, content_detail_style, 525))
+        else:
+            h += 13
+
+        badge_count = max(1, len(item.get("competences_liees_items") or []))
+        h = max(h, 25 * min(badge_count, 4))
+        return h + 18
+
+    def draw_content_block(c, item: dict, top: float):
+        title = item.get("titre_sequence") or "Contenu"
+        objectif = item.get("objectif") or ""
+        details = subjects_from_text(item.get("contenu"))
+        comps = item.get("competences_liees_items") or []
+
+        current_top = top
+
+        title_used = draw_paragraph_box(
+            c,
+            title,
+            29,
+            current_top,
+            560,
+            28,
+            content_title_style,
+            min_font=7.2,
+        )
+        content_badges(c, comps, 685, current_top - 4)
+        current_top += max(title_used, 18)
+
+        if objectif:
+            obj_used = draw_paragraph_box(
+                c,
+                objectif,
+                29,
+                current_top,
+                550,
+                22,
+                content_obj_style,
+                min_font=6.5,
+            )
+            current_top += max(obj_used, 15)
+
+        current_top += 2
+
+        if details:
+            for d in details:
+                used = draw_paragraph_box(
+                    c,
+                    d,
+                    49,
+                    current_top,
+                    535,
+                    22,
+                    content_detail_style,
+                    min_font=5.8,
+                )
+                current_top += max(used, 13)
+        else:
+            draw_paragraph_box(c, "—", 49, current_top, 535, 16, content_detail_style)
+
+    def comp_dicts(items: list) -> list:
+        out = []
+        for c in items or []:
+            out.append({
+                "code": c.get("code") or "—",
+                "titre": c.get("intitule") or "—",
+            })
+        return out
+
+    def labels_from_refs(items: list) -> list:
+        return [
+            ref_label(x)
+            for x in (items or [])
+            if ref_label(x)
+        ]
+
+    def draw_page_base(c, filename: str, title: str, code: str, show_logo: bool = False):
+        draw_background(c, filename)
+        draw_header_title(c, title)
+        draw_code(c, code)
+        if show_logo:
+            draw_logo(c, 17, 1067, 295, 48)
+
+    # ======================================================
+    # Styles
+    # ======================================================
+
+    header_title_style = ParagraphStyle(
+        "LearnTplHeaderTitle",
+        fontName="Helvetica",
+        fontSize=20,
+        leading=23,
+        textColor=WHITE,
     )
 
-    accroche_style = ParagraphStyle(
-        "FormationTemplateAccroche",
+    code_white_style = ParagraphStyle(
+        "LearnTplCodeWhite",
         fontName="Helvetica",
-        fontSize=11.5,
-        leading=14.5,
-        textColor=colors.HexColor("#4b5563"),
+        fontSize=6.2,
+        leading=7.2,
+        textColor=WHITE,
+        alignment=TA_CENTER,
+    )
+
+    presentation_style = ParagraphStyle(
+        "LearnTplPresentation",
+        fontName="Helvetica",
+        fontSize=9.2,
+        leading=11.2,
+        textColor=PRESENTATION,
+    )
+
+    body_style = ParagraphStyle(
+        "LearnTplBody",
+        fontName="Helvetica",
+        fontSize=8.1,
+        leading=10.0,
+        textColor=BLACK,
     )
 
     objectif_style = ParagraphStyle(
-        "FormationTemplateObjectif",
+        "LearnTplObjectif",
         fontName="Helvetica",
-        fontSize=10.2,
-        leading=13.2,
-        textColor=colors.HexColor("#1f2937"),
+        fontSize=8.2,
+        leading=10.6,
+        textColor=BLACK,
     )
+
+    duration_style = ParagraphStyle(
+        "LearnTplDuration",
+        fontName="Helvetica-Bold",
+        fontSize=13.5,
+        leading=15.5,
+        textColor=BLACK,
+        alignment=TA_CENTER,
+    )
+
+    tariff_style = ParagraphStyle(
+        "LearnTplTarif",
+        fontName="Helvetica-Bold",
+        fontSize=13.5,
+        leading=15.5,
+        textColor=BLACK,
+        alignment=TA_CENTER,
+    )
+
+    modality_style = ParagraphStyle(
+        "LearnTplModalite",
+        fontName="Helvetica",
+        fontSize=7.4,
+        leading=8.6,
+        textColor=VIOLET,
+        alignment=TA_CENTER,
+    )
+
+    comp_code_style = ParagraphStyle(
+        "LearnTplCompCode",
+        fontName="Helvetica",
+        fontSize=7.0,
+        leading=8.0,
+        textColor=WHITE,
+        alignment=TA_CENTER,
+    )
+
+    comp_title_style = ParagraphStyle(
+        "LearnTplCompTitle",
+        fontName="Helvetica",
+        fontSize=7.5,
+        leading=9.0,
+        textColor=BLACK,
+    )
+
+    content_title_style = ParagraphStyle(
+        "LearnTplContentTitle",
+        fontName="Helvetica-Bold",
+        fontSize=10.5,
+        leading=12.3,
+        textColor=VIOLET,
+    )
+
+    content_obj_style = ParagraphStyle(
+        "LearnTplContentObjectif",
+        fontName="Helvetica-Oblique",
+        fontSize=8.5,
+        leading=10.0,
+        textColor=VIOLET,
+    )
+
+    content_detail_style = ParagraphStyle(
+        "LearnTplContentDetail",
+        fontName="Helvetica",
+        fontSize=8.0,
+        leading=9.8,
+        textColor=BLACK,
+    )
+
+    info_title_style = ParagraphStyle(
+        "LearnTplInfoTitle",
+        fontName="Helvetica-Bold",
+        fontSize=8.6,
+        leading=10.2,
+        textColor=VIOLET,
+    )
+
+    # ======================================================
+    # Données
+    # ======================================================
+
+    code = clean_pdf_text(form.get("code"), "FC")
+    titre = clean_pdf_text(form.get("titre"), "Formation")
+    presentation = clean_pdf_text(form.get("presentation"), "")
+    accroche = short_text(presentation, 420) or "Présentation de la formation."
+    objectif = clean_pdf_text(form.get("objectifs"), "Objectif pédagogique à compléter.")
+    duree = _pdf_hours(form.get("duree"))
+    tarif = _pdf_money(form.get("tarif_mini"))
+
+    public_items = split_text_items(form.get("public_cible"))
+    public_page_items, _ = capped_items(public_items, 5, "et bien d'autres...")
+
+    prereq_items = [
+        str(x.get("titre") or "").strip()
+        for x in (form.get("prerequis") or [])
+        if str(x.get("titre") or "").strip()
+    ][:7]
+
+    attestation_items = split_text_items(form.get("attestation_specifique"))
+    if not attestation_items:
+        attestation_items = ["Une attestation de fin de formation"]
+    attestation_items = attestation_items[:6]
+
+    modalites_all = labels_from_refs(form.get("modalites_items") or [])
+    modalites_page, _ = capped_items(modalites_all, 5, "Contactez-nous...")
+
+    methodes_peda = labels_from_refs(form.get("methode_peda_items") or [])[:10]
+    methodes_eval = labels_from_refs(form.get("methode_eval_items") or [])[:10]
+
+    comp_stag_all = comp_dicts(form.get("competences_stagiaires_items") or [])
+    comp_form_all = comp_dicts(form.get("competences_formateurs_items") or [])
+
+    comp_stag_page, comp_stag_annexe = capped_items(comp_stag_all, 6, {
+        "code": "",
+        "titre": "La suite en annexe..."
+    })
+    comp_form_page, comp_form_annexe = capped_items(comp_form_all, 6, {
+        "code": "",
+        "titre": "La suite en annexe..."
+    })
+
+    contenus = form.get("contenus") or []
+
+    # ======================================================
+    # Génération
+    # ======================================================
 
     buf = BytesIO()
     c = pdf_canvas.Canvas(buf, pagesize=(page_w, page_h))
     c.setTitle(_pdf_latin1_safe(f"Fiche formation - {titre}"))
 
-    bg = ImageReader(template_path)
-    c.drawImage(bg, 0, 0, width=page_w, height=page_h, mask="auto")
+    # Page 1
+    draw_background(c, "Fiche_formation_p1.png")
+    draw_header_title(c, titre)
+    draw_code(c, code)
 
-    # Coordonnées issues du PowerPoint source 7,5 x 10 pouces.
-    # x, top, width, height en points.
-    draw_text_box(
-        c,
-        titre,
-        x=29.9,
-        top=21.0,
-        w=404.0,
-        h=48.0,
-        style=title_style,
-        clear=True,
-    )
+    draw_paragraph_box(c, accroche, 36, 153, 715, 70, presentation_style, min_font=6.7)
+    draw_bullet_items(c, public_page_items, 36, 302, 385, 74, body_style, bullet_color=VIOLET)
+    draw_paragraph_box(c, objectif, 36, 441, 395, 80, objectif_style, min_font=6.3)
 
-    draw_text_box(
-        c,
-        accroche,
-        x=29.9,
-        top=90.2,
-        w=489.6,
-        h=52.0,
-        style=accroche_style,
-        clear=True,
-    )
+    draw_blue_comp_rows(c, comp_stag_page, 41, 591, 6)
 
-    draw_text_box(
-        c,
-        objectif,
-        x=29.9,
-        top=198.6,
-        w=230.4,
-        h=110.3,
-        style=objectif_style,
-        clear=True,
-    )
+    draw_bullet_items(c, prereq_items, 36, 812, 380, 86, body_style, bullet_color=VIOLET)
+    draw_bullet_items(c, attestation_items, 36, 964, 380, 70, body_style, bullet_color=VIOLET)
 
-    draw_modalites(
-        c,
-        modalites,
-        x=353.0,
-        top=202.7,
-        w=140.0,
-        h=94.0,
-    )
+    draw_center_text(c, duree, 544, 361, 160, 28, duration_style)
+    draw_modality_boxes(c, modalites_page, 549, 423, max_rows=5)
+    draw_center_text(c, tarif, 535, 642, 172, 30, tariff_style)
+
+    draw_logo(c, 17, 1066, 295, 48)
+    c.showPage()
+
+    # Page 2 / 3 : contenu, sans couper les blocs
+    if contenus:
+        page_file = "Fiche_formation_p2.png"
+        draw_page_base(c, page_file, titre, code, show_logo=True)
+        current_top = 210
+        bottom_limit = 1010
+        first_content_page = True
+
+        for item in contenus:
+            block_h = estimate_content_block_height(item)
+
+            if current_top + block_h > bottom_limit and current_top > 215:
+                c.showPage()
+                page_file = "Fiche_formation_p3.png"
+                draw_page_base(c, page_file, titre, code, show_logo=False)
+                current_top = 210
+                bottom_limit = 1025
+                first_content_page = False
+
+            # Cas extrême : un seul bloc est plus haut que la zone disponible.
+            # On le garde sur une page dédiée et les styles réduisent autant que possible.
+            draw_content_block(c, item, current_top)
+            current_top += block_h + 22
+
+        c.showPage()
+
+    # Page 4 : informations
+    draw_page_base(c, "Fiche_formation_p4.png", titre, code, show_logo=False)
+
+    draw_simple_list_in_area(c, methodes_peda, 77, 374, 260, 150)
+    draw_simple_list_in_area(c, methodes_eval, 447, 374, 260, 150)
+
+    draw_blue_comp_rows(c, comp_form_page, 28, 650, 6)
 
     c.showPage()
-    c.save()
 
+    # Page 5 : annexe uniquement si nécessaire
+    if comp_stag_annexe or comp_form_annexe:
+        draw_page_base(c, "Fiche_formation_p5.png", titre, code, show_logo=True)
+
+        if comp_stag_annexe:
+            draw_blue_comp_rows(c, comp_stag_annexe, 42, 243, 10)
+
+        if comp_form_annexe:
+            draw_blue_comp_rows(c, comp_form_annexe, 42, 586, 10)
+
+        c.showPage()
+
+    # Page 6 volontairement non générée pour l'instant.
+
+    c.save()
     return buf.getvalue()
 
 def _lms_esc(value: Any) -> str:
@@ -4402,6 +4901,7 @@ def learn_formation_fiche_pdf(id_effectif: str, id_form: str, request: Request):
                 oid = (profile.get("id_owner") or "").strip()
 
                 form = _fetch_form_detail(cur, oid, fid)
+                logo_bytes = _fetch_owner_logo_bytes(cur, oid)
 
         code_label = form.get("code") or "Formation"
         titre_label = form.get("titre") or "Formation"
@@ -4411,7 +4911,7 @@ def learn_formation_fiche_pdf(id_effectif: str, id_form: str, request: Request):
             f"Fiche formation {_pdf_safe_filename_part(code_label, 32)} - {_pdf_safe_filename_part(titre_label, 80)}.pdf"
         )
 
-        pdf_bytes = _build_formation_template_pdf_bytes(form)
+        pdf_bytes = _build_formation_template_pdf_bytes(form, logo_bytes=logo_bytes)
 
         return Response(
             content=pdf_bytes,
