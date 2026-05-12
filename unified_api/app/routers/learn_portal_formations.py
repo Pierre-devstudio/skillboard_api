@@ -3613,7 +3613,7 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
         )
 
     def draw_code(c, code: str):
-        draw_center_text(c, code, 700, 33, 70, 44, code_white_style)
+        draw_center_text(c, code, 690, 33, 70, 44, code_white_style)
 
     def draw_bullet_list(
         c,
@@ -3701,6 +3701,8 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
         row_gap: float = 4.0,
     ) -> float:
         current_top = top
+        code_w = 66.0
+        code_inner_w = 62.0
 
         for item in rows[:max_rows]:
             code = clean_txt(item.get("code"))
@@ -3709,7 +3711,7 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
                 continue
 
             text_h = measure_paragraph_height(titre, comp_title_style, title_width)
-            row_h = max(26.0, text_h + 8.0)
+            row_h = max(24.0, text_h + 7.0)
 
             if code:
                 c.saveState()
@@ -3717,13 +3719,13 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
                 c.rect(
                     x_pt(x_code),
                     y_pt_from_top(current_top, row_h),
-                    w_pt(73),
+                    w_pt(code_w),
                     h_pt(row_h - 1),
                     stroke=0,
                     fill=1,
                 )
                 c.restoreState()
-                draw_center_text(c, code, x_code + 2, current_top, 69, row_h, comp_code_style)
+                draw_center_text(c, code, x_code + 2, current_top, code_inner_w, row_h, comp_code_style)
 
             draw_paragraph_box(
                 c,
@@ -3893,8 +3895,8 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     comp_code_style = ParagraphStyle(
         "LearnTplCompCode",
         fontName="Helvetica",
-        fontSize=9,
-        leading=10,
+        fontSize=8,
+        leading=9,
         textColor=WHITE,
         alignment=TA_CENTER,
     )
@@ -3996,13 +3998,13 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     draw_paragraph_box(c, presentation, 35, 126, 720, 96, presentation_style, valign="top")
     draw_bullet_list(c, public_items, 35, 258, 365, 112, public_style, bullet_radius=1.6, bullet_gap=10.0, item_gap=2.6)
     draw_paragraph_box(c, objective, 35, 405, 382, 146, objective_style, valign="top")
-    draw_comp_rows(c, comp_stag_page1, 29, 116, 593, 315, max_rows=6)
-    draw_bullet_list(c, prerequis_items, 35, 809, 365, 110, body_small_style)
+    draw_comp_rows(c, comp_stag_page1, 29, 105, 593, 326, max_rows=6)
+    draw_bullet_list(c, prerequis_items, 35, 819, 365, 100, body_small_style)
     draw_bullet_list(c, attestation_items, 35, 983, 365, 85, body_small_style, bullet_radius=1.7, bullet_gap=10.0, item_gap=3.0)
 
-    draw_center_text(c, duree_label, 548, 334, 143, 24, info_big_style)
+    draw_center_text(c, duree_label, 548, 346, 143, 24, info_big_style)
     draw_modalite_boxes(c, modalites_items, 551, 419)
-    draw_center_text(c, tarif_label, 548, 609, 143, 26, info_big_style)
+    draw_center_text(c, tarif_label, 548, 623, 143, 26, info_big_style)
 
     c.showPage()
 
@@ -4046,7 +4048,7 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     draw_bullet_list(c, methode_peda_items, 78, 373, 235, 165, body_style)
     draw_bullet_list(c, methode_eval_items, 448, 373, 235, 165, body_style)
 
-    draw_comp_rows(c, comp_form_page4, 28, 114, 651, 600, max_rows=6)
+    draw_comp_rows(c, comp_form_page4, 28, 104, 651, 610, max_rows=6)
 
     # Contacts déjà présents dans la trame PNG : aucune surimpression ici.
     c.showPage()
@@ -4065,11 +4067,11 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
             draw_owner_logo(c, top=1042, max_w=230, max_h=58)
 
             used_stag = min(10, len(stag_remaining))
-            draw_comp_rows(c, stag_remaining[:used_stag], 40, 124, 244, 320, max_rows=used_stag)
+            draw_comp_rows(c, stag_remaining[:used_stag], 40, 114, 244, 330, max_rows=used_stag)
             stag_remaining = stag_remaining[used_stag:]
 
             used_form = min(10, len(form_remaining))
-            draw_comp_rows(c, form_remaining[:used_form], 40, 124, 577, 320, max_rows=used_form)
+            draw_comp_rows(c, form_remaining[:used_form], 40, 114, 577, 330, max_rows=used_form)
             form_remaining = form_remaining[used_form:]
 
             c.showPage()
