@@ -12,7 +12,7 @@ import os
 from difflib import SequenceMatcher
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT, TA_CENTER
+from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
 from reportlab.lib.styles import ParagraphStyle
@@ -3438,23 +3438,27 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
 
     def labels_from_ref_items(items: list, limit: Optional[int] = None) -> list[str]:
         rows = []
+
         for item in items or []:
             if isinstance(item, dict):
-                label = (
-                    item.get("titre_court")
-                    or item.get("titre")
-                    or item.get("intitule")
-                    or item.get("code")
-                    or ""
-                )
+                titre = clean_txt(item.get("titre"))
+                titre_court = clean_txt(item.get("titre_court"))
+                intitule = clean_txt(item.get("intitule"))
+                code = clean_txt(item.get("code"))
+
+                if re.match(r"^(modalite|methode|eval)_", titre_court, flags=re.I):
+                    label = titre or intitule or code or titre_court
+                else:
+                    label = titre_court or titre or intitule or code
             else:
-                label = str(item or "")
-            label = clean_txt(label)
+                label = clean_txt(item)
+
             if label:
                 rows.append(label)
 
         if limit is not None:
             return rows[:limit]
+
         return rows
 
     def prereq_titles(items: list) -> list[str]:
@@ -3609,7 +3613,7 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
         )
 
     def draw_code(c, code: str):
-        draw_center_text(c, code, 680, 18, 58, 34, code_white_style)
+        draw_center_text(c, code, 700, 33, 70, 44, code_white_style)
 
     def draw_bullet_list(
         c,
@@ -3846,6 +3850,22 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
         textColor=BLACK,
         alignment=TA_LEFT,
     )
+    objective_style = ParagraphStyle(
+        "LearnTplObjective",
+        fontName="Helvetica",
+        fontSize=10,
+        leading=12,
+        textColor=BLACK,
+        alignment=TA_JUSTIFY,
+    )
+    public_style = ParagraphStyle(
+        "LearnTplPublic",
+        fontName="Helvetica",
+        fontSize=8.6,
+        leading=10.2,
+        textColor=BLACK,
+        alignment=TA_LEFT,
+    )
     body_small_style = ParagraphStyle(
         "LearnTplBodySmall",
         fontName="Helvetica",
@@ -3881,8 +3901,8 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     comp_title_style = ParagraphStyle(
         "LearnTplCompTitle",
         fontName="Helvetica",
-        fontSize=9,
-        leading=11,
+        fontSize=8,
+        leading=9.6,
         textColor=BLACK,
         alignment=TA_LEFT,
     )
@@ -3926,7 +3946,10 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     )
 
     prerequis_items = prereq_titles(form.get("prerequis") or [])[:7]
-    attestation_items = lines_from_text(form.get("attestation_specifique"))[:6]
+    attestation_items = lines_from_text(form.get("attestation_specifique"))
+    if not attestation_items:
+        attestation_items = ["une attestation de fin de formation"]
+    attestation_items = attestation_items[:6]
 
     modalites_items = cap_with_marker_strings(
         labels_from_ref_items(form.get("modalites_items") or []),
@@ -3970,12 +3993,12 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     draw_code(c, code_label)
     draw_owner_logo(c, top=1042, max_w=230, max_h=58)
 
-    draw_paragraph_box(c, presentation, 35, 119, 390, 74, presentation_style, valign="top")
-    draw_bullet_list(c, public_items, 35, 258, 345, 112, body_style)
-    draw_paragraph_box(c, objective, 35, 397, 348, 160, body_style, valign="top")
-    draw_comp_rows(c, comp_stag_page1, 29, 116, 593, 260, max_rows=6)
-    draw_bullet_list(c, prerequis_items, 35, 809, 345, 110, body_small_style)
-    draw_bullet_list(c, attestation_items, 35, 983, 345, 85, body_small_style)
+    draw_paragraph_box(c, presentation, 35, 126, 720, 96, presentation_style, valign="top")
+    draw_bullet_list(c, public_items, 35, 258, 365, 112, public_style, bullet_radius=1.6, bullet_gap=10.0, item_gap=2.6)
+    draw_paragraph_box(c, objective, 35, 405, 382, 146, objective_style, valign="top")
+    draw_comp_rows(c, comp_stag_page1, 29, 116, 593, 315, max_rows=6)
+    draw_bullet_list(c, prerequis_items, 35, 809, 365, 110, body_small_style)
+    draw_bullet_list(c, attestation_items, 35, 983, 365, 85, body_small_style, bullet_radius=1.7, bullet_gap=10.0, item_gap=3.0)
 
     draw_center_text(c, duree_label, 548, 334, 143, 24, info_big_style)
     draw_modalite_boxes(c, modalites_items, 551, 419)
@@ -4023,51 +4046,9 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     draw_bullet_list(c, methode_peda_items, 78, 373, 235, 165, body_style)
     draw_bullet_list(c, methode_eval_items, 448, 373, 235, 165, body_style)
 
-    draw_comp_rows(c, comp_form_page4, 28, 114, 651, 320, max_rows=6)
+    draw_comp_rows(c, comp_form_page4, 28, 114, 651, 600, max_rows=6)
 
-    # Coordonnées / contacts : version figée conforme à la maquette actuelle
-    draw_paragraph_box(
-        c,
-        f"{CONTACT_NAME}<br/>{CONTACT_EMAIL}<br/>{CONTACT_PHONE}",
-        35,
-        898,
-        170,
-        85,
-        body_style,
-        valign="top",
-    )
-    draw_paragraph_box(
-        c,
-        (
-            "Toutes nos formations sont accessibles aux personnes en situation de handicap.<br/>"
-            "N’hésitez pas à contacter notre référent handicap :<br/>"
-            f"{HANDICAP_NAME}<br/>{HANDICAP_EMAIL}<br/>{HANDICAP_PHONE}"
-        ),
-        417,
-        879,
-        300,
-        116,
-        body_style,
-        valign="top",
-    )
-    draw_paragraph_box(
-        c,
-        f"Ou visitez notre site web : {WEBSITE_URL}",
-        387,
-        1021,
-        285,
-        16,
-        ParagraphStyle(
-            "LearnTplWeb",
-            fontName="Helvetica-Bold",
-            fontSize=10,
-            leading=12,
-            textColor=VIOLET,
-            alignment=TA_LEFT,
-        ),
-        valign="top",
-    )
-
+    # Contacts déjà présents dans la trame PNG : aucune surimpression ici.
     c.showPage()
 
     # ==============================================================
