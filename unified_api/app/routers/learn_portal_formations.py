@@ -3437,16 +3437,11 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
         return [x.strip() for x in re.split(r"(?<=[.!?])\s+", txt) if x.strip()]
 
     def short_text(value: Any, limit: int = 330) -> str:
-        txt = clean_pdf_text(value, "")
-
-        if not txt:
-            return ""
-
-        if len(txt) <= limit:
-            return txt
-
-        cut = txt[:limit].rsplit(" ", 1)[0].strip()
-        return f"{cut}..."
+        """
+        Conservé pour compatibilité d'appel, mais ne tronque plus.
+        La mise en page PDF doit gérer le retour à la ligne, pas couper le texte.
+        """
+        return clean_pdf_text(value, "")
 
     def pretty_label(value: Any) -> str:
         raw = clean_pdf_text(value, "")
@@ -3512,54 +3507,16 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
         return pretty_label(titre or titre_court)
 
     def fit_paragraph(text: Any, base_style: ParagraphStyle, max_w: float, max_h: float, min_font: float = 5.8):
-        raw = html_para(text)
-        current = float(base_style.fontSize)
-        ratio = float(base_style.leading) / max(float(base_style.fontSize), 1)
+        """
+        Mesure le paragraphe sans jamais réduire la police ni tronquer le texte.
 
-        while current >= min_font:
-            style = ParagraphStyle(
-                f"{base_style.name}_{str(current).replace('.', '_')}",
-                parent=base_style,
-                fontSize=current,
-                leading=max(current * ratio, current + 1.0),
-            )
-
-            para = Paragraph(raw, style)
-            _, ph = para.wrap(max_w, 10000)
-
-            if ph <= max_h:
-                return para, ph
-
-            current -= 0.4
-
-        txt = clean_pdf_text(text, "")
-        while len(txt) > 60:
-            cut = txt.rsplit(" ", 1)[0].strip()
-            if not cut or cut == txt:
-                break
-
-            txt = cut + "..."
-            style = ParagraphStyle(
-                f"{base_style.name}_fallback",
-                parent=base_style,
-                fontSize=min_font,
-                leading=min_font * ratio,
-            )
-            para = Paragraph(html_para(txt), style)
-            _, ph = para.wrap(max_w, 10000)
-
-            if ph <= max_h:
-                return para, ph
-
-            txt = cut
-
-        style = ParagraphStyle(
-            f"{base_style.name}_fallback_final",
-            parent=base_style,
-            fontSize=min_font,
-            leading=min_font * ratio,
-        )
-        para = Paragraph(html_para(txt), style)
+        Règle PDF catalogue :
+        - pas de réduction automatique ;
+        - pas de texte coupé ;
+        - le retour à la ligne est assumé ;
+        - si le texte dépasse, il déborde verticalement plutôt que d'être massacré.
+        """
+        para = Paragraph(html_para(text), base_style)
         _, ph = para.wrap(max_w, 10000)
         return para, ph
 
@@ -3636,10 +3593,22 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
             return
 
     def draw_code(c, code: str):
-        draw_center_text(c, code, 684, 103, 48, 22, code_white_style)
+        # le libellé "code :" est dans la trame. on descend uniquement la valeur.
+        draw_center_text(c, code, 684, 116, 48, 18, code_white_style)
 
     def draw_header_title(c, titre: str):
-        draw_paragraph_box(c, titre, 80, 46, 550, 35, header_title_style, min_font=10)
+        # alignement vertical avec l'icône du bandeau, sans réduction de taille.
+        draw_paragraph_box(
+            c,
+            titre,
+            80,
+            30,
+            560,
+            58,
+            header_title_style,
+            min_font=20,
+            valign="middle",
+        )
 
     def capped_items(items: list, limit: int, marker: any):
         clean = []
@@ -3703,7 +3672,7 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
 
     def draw_blue_comp_rows(c, rows: list, x: float, top: float, max_rows: int):
         current_top = top
-        row_h = 25
+        row_h = 32
 
         for item in rows[:max_rows]:
             if isinstance(item, dict):
@@ -3719,13 +3688,49 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
             if code:
                 c.saveState()
                 c.setFillColor(BLUE)
-                c.rect(x_pt(x), y_pt_from_top(current_top, row_h), w_pt(73), h_pt(row_h - 1), stroke=0, fill=1)
+                c.rect(
+                    x_pt(x),
+                    y_pt_from_top(current_top, row_h),
+                    w_pt(73),
+                    h_pt(row_h - 1),
+                    stroke=0,
+                    fill=1,
+                )
                 c.restoreState()
 
-                draw_center_text(c, code, x + 2, current_top + 4, 69, 14, comp_code_style)
-                draw_paragraph_box(c, titre, x + 84, current_top + 5, 335, 17, comp_title_style, min_font=5.5)
+                draw_center_text(
+                    c,
+                    code,
+                    x + 2,
+                    current_top,
+                    69,
+                    row_h,
+                    comp_code_style,
+                )
+
+                draw_paragraph_box(
+                    c,
+                    titre,
+                    x + 84,
+                    current_top,
+                    345,
+                    row_h,
+                    comp_title_style,
+                    min_font=7.5,
+                    valign="middle",
+                )
             else:
-                draw_paragraph_box(c, titre, x, current_top + 5, 410, 17, comp_title_style, min_font=5.5)
+                draw_paragraph_box(
+                    c,
+                    titre,
+                    x,
+                    current_top,
+                    430,
+                    row_h,
+                    comp_title_style,
+                    min_font=7.5,
+                    valign="middle",
+                )
 
             current_top += row_h
 
@@ -4050,7 +4055,16 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
 
     draw_paragraph_box(c, accroche, 36, 153, 715, 70, presentation_style, min_font=6.7)
     draw_bullet_items(c, public_page_items, 36, 302, 385, 74, body_style, bullet_color=VIOLET)
-    draw_paragraph_box(c, objectif, 36, 441, 395, 80, objectif_style, min_font=6.3)
+    draw_paragraph_box(
+        c,
+        objectif,
+        36,
+        441,
+        405,
+        104,
+        objectif_style,
+        min_font=8.2,
+    )
 
     draw_blue_comp_rows(c, comp_stag_page, 41, 591, 6)
 
