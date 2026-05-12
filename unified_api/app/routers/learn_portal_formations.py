@@ -3613,7 +3613,7 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
         )
 
     def draw_code(c, code: str):
-        draw_center_text(c, code, 690, 33, 70, 44, code_white_style)
+        draw_center_text(c, code, 694, 33, 70, 44, code_white_style)
 
     def draw_bullet_list(
         c,
@@ -3855,8 +3855,8 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     objective_style = ParagraphStyle(
         "LearnTplObjective",
         fontName="Helvetica",
-        fontSize=10,
-        leading=12,
+        fontSize=9,
+        leading=11,
         textColor=BLACK,
         alignment=TA_JUSTIFY,
     )
@@ -3998,13 +3998,13 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     draw_paragraph_box(c, presentation, 35, 126, 720, 96, presentation_style, valign="top")
     draw_bullet_list(c, public_items, 35, 258, 365, 112, public_style, bullet_radius=1.6, bullet_gap=10.0, item_gap=2.6)
     draw_paragraph_box(c, objective, 35, 405, 382, 146, objective_style, valign="top")
-    draw_comp_rows(c, comp_stag_page1, 29, 105, 593, 326, max_rows=6)
+    draw_comp_rows(c, comp_stag_page1, 29, 105, 592, 326, max_rows=6)
     draw_bullet_list(c, prerequis_items, 35, 819, 365, 100, body_small_style)
     draw_bullet_list(c, attestation_items, 35, 983, 365, 85, body_small_style, bullet_radius=1.7, bullet_gap=10.0, item_gap=3.0)
 
-    draw_center_text(c, duree_label, 548, 346, 143, 24, info_big_style)
+    draw_center_text(c, duree_label, 548, 354, 143, 24, info_big_style)
     draw_modalite_boxes(c, modalites_items, 551, 419)
-    draw_center_text(c, tarif_label, 548, 623, 143, 26, info_big_style)
+    draw_center_text(c, tarif_label, 548, 633, 143, 26, info_big_style)
 
     c.showPage()
 
