@@ -77,6 +77,82 @@
       .replaceAll("'", "&#039;");
   }
 
+    const FORM_TITLE_MAX = 90;
+    const FORM_PRESENTATION_MAX = 625;
+    const FORM_OBJECTIF_MAX = 550;
+
+    function limitChars(value, maxLen){
+        const txt = String(value ?? "");
+        if (!maxLen || txt.length <= maxLen) return txt;
+        return txt.slice(0, maxLen);
+    }
+
+    function normalizeCatalogueSingleLine(value, maxLen){
+        let txt = String(value ?? "")
+        .replace(/\r\n?/g, "\n")
+        .replace(/\s+/g, " ")
+        .trim();
+
+        if (maxLen && txt.length > maxLen){
+        txt = txt.slice(0, maxLen).trim();
+        }
+
+        return txt;
+    }
+
+    function setCatalogueFieldValue(id, value){
+        const el = byId(id);
+        if (!el) return;
+
+        if (id === "formTitre"){
+        el.value = limitChars(String(value ?? "").trim(), FORM_TITLE_MAX);
+        return;
+        }
+
+        if (id === "formPresentation"){
+        el.value = normalizeCatalogueSingleLine(value, FORM_PRESENTATION_MAX);
+        return;
+        }
+
+        if (id === "formObjectifs"){
+        el.value = normalizeCatalogueSingleLine(value, FORM_OBJECTIF_MAX);
+        return;
+        }
+
+        el.value = value ?? "";
+    }
+
+    function readCatalogueField(id){
+        const raw = byId(id)?.value ?? "";
+
+        if (id === "formTitre"){
+        return limitChars(String(raw).trim(), FORM_TITLE_MAX);
+        }
+
+        if (id === "formPresentation"){
+        return normalizeCatalogueSingleLine(raw, FORM_PRESENTATION_MAX);
+        }
+
+        if (id === "formObjectifs"){
+        return normalizeCatalogueSingleLine(raw, FORM_OBJECTIF_MAX);
+        }
+
+        return String(raw).trim();
+    }
+
+    function bindCatalogueFieldLimit(id, maxLen){
+        const el = byId(id);
+        if (!el) return;
+
+        el.setAttribute("maxlength", String(maxLen));
+
+        el.addEventListener("input", () => {
+        if (el.value.length > maxLen){
+            el.value = el.value.slice(0, maxLen);
+        }
+        });
+    }
+
     function getErrorMessage(err){
         if (!err) return "Erreur inconnue.";
 
@@ -2319,7 +2395,7 @@ function renderContentCompBadges(l){
       modalTitle.textContent = d.titre || "Formation";
     }
 
-    setFieldValue("formTitre", d.titre || "");
+    setCatalogueFieldValue("formTitre", d.titre || "");
     setSelectValue("formEtat", d.etat || "à valider");
     setSelectValue("formDomaine", d.domaine || "");
     setSelectValue("formFournisseur", d.fournisseur_formation || "");
@@ -2328,9 +2404,9 @@ function renderContentCompBadges(l){
     syncObsTypeFormation();
     setFieldValue("formDuree", d.duree ?? "");
     setFieldValue("formTarif", d.tarif_mini ?? "");
-    setFieldValue("formPresentation", d.presentation || "");
+    setCatalogueFieldValue("formPresentation", d.presentation || "");
     setFieldValue("formPublic", d.public_cible || "");
-    setFieldValue("formObjectifs", d.objectifs || "");
+    setCatalogueFieldValue("formObjectifs", d.objectifs || "");
     setFieldValue("formAttestation", d.attestation_specifique || "");
 
     _selectedModalites = normalizeIdArray(d.modalites_ids);
@@ -2641,7 +2717,7 @@ function renderContentCompBadges(l){
             return;
         }
 
-        setFieldValue("formTitre", d.titre || "");
+        setCatalogueFieldValue("formTitre", d.titre || "");
         setSelectValue("formEtat", "à valider");
         setSelectValue("formType", normalizeTypeFormation(d.type_formation || ""));
         setFieldValue("formObsType", d.obs_type_form || "");
@@ -2651,9 +2727,9 @@ function renderContentCompBadges(l){
         setFieldValue("formTarif", d.tarif_mini ?? "");
         setSelectValue("formDomaine", d.domaine || "");
 
-        setFieldValue("formPresentation", d.presentation || "");
+        setCatalogueFieldValue("formPresentation", d.presentation || "");
         setFieldValue("formPublic", d.public_cible || "");
-        setFieldValue("formObjectifs", d.objectifs || "");
+        setCatalogueFieldValue("formObjectifs", d.objectifs || "");
 
         _selectedModalites = normalizeIdArray(d.modalites_ids);
         _selectedPeda = normalizeIdArray(d.methode_peda_ids);
@@ -2891,7 +2967,7 @@ function renderContentCompBadges(l){
             return;
         }
 
-        setFieldValue("formTitre", d.titre || "");
+        setCatalogueFieldValue("formTitre", d.titre || "");
         setSelectValue("formEtat", "à valider");
         setSelectValue("formType", normalizeTypeFormation(d.type_formation || ""));
         setFieldValue("formObsType", d.obs_type_form || "");
@@ -2901,9 +2977,9 @@ function renderContentCompBadges(l){
         setFieldValue("formTarif", d.tarif_mini ?? "");
         setSelectValue("formDomaine", d.domaine || "");
 
-        setFieldValue("formPresentation", d.presentation || "");
+        setCatalogueFieldValue("formPresentation", d.presentation || "");
         setFieldValue("formPublic", d.public_cible || "");
-        setFieldValue("formObjectifs", d.objectifs || "");
+        setCatalogueFieldValue("formObjectifs", d.objectifs || "");
 
         _selectedModalites = normalizeIdArray(d.modalites_ids);
         _selectedPeda = normalizeIdArray(d.methode_peda_ids);
@@ -3084,7 +3160,7 @@ function renderContentCompBadges(l){
 
   function buildPayload(){
     return {
-      titre: (byId("formTitre").value || "").trim(),
+      titre: readCatalogueField("formTitre"),
       etat: (byId("formEtat").value || "à valider").trim(),
       domaine: (byId("formDomaine").value || "").trim() || null,
       fournisseur_formation: (byId("formFournisseur").value || "").trim() || null,
@@ -3092,9 +3168,9 @@ function renderContentCompBadges(l){
       obs_type_form: (byId("formObsType")?.value || "").trim() || null,
       duree: (byId("formDuree").value || "").trim() || null,
       tarif_mini: (byId("formTarif").value || "").trim() || null,
-      presentation: (byId("formPresentation").value || "").trim() || null,
+      presentation: readCatalogueField("formPresentation") || null,
       public_cible: (byId("formPublic").value || "").trim() || null,
-      objectifs: (byId("formObjectifs").value || "").trim() || null,
+      objectifs: readCatalogueField("formObjectifs") || null,
       attestation_specifique: (byId("formAttestation").value || "").trim() || null,
       modalites: _selectedModalites,
       methode_peda: _selectedPeda,
@@ -3555,6 +3631,11 @@ iframe{width:100%;height:100%;border:0;display:block}
     _bound = true;
 
     syncFormModeActions();
+
+    bindCatalogueFieldLimit("formTitre", FORM_TITLE_MAX);
+    bindCatalogueFieldLimit("formPresentation", FORM_PRESENTATION_MAX);
+    bindCatalogueFieldLimit("formObjectifs", FORM_OBJECTIF_MAX);
+
     const bNew = byId("btnFormNew");
 
     if (bNew){

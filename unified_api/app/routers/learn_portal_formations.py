@@ -116,12 +116,42 @@ def _jsonb_param(value: Any) -> str:
     return json.dumps(arr, ensure_ascii=False)
 
 
+FORMATION_TITLE_MAX = 90
+FORMATION_PRESENTATION_MAX = 625
+FORMATION_OBJECTIF_MAX = 550
+
+
 def _clean_text(value: Any, max_len: int = 20000) -> str:
     txt = str(value or "").replace("\x00", " ").strip()
     txt = re.sub(r"\r\n?", "\n", txt)
     txt = re.sub(r"[ \t]+", " ", txt)
     if len(txt) > max_len:
         txt = txt[:max_len].rsplit(" ", 1)[0].strip()
+    return txt
+
+
+def _limit_catalogue_text(value: Any, max_len: int) -> str:
+    """
+    Texte court catalogue formation.
+
+    Utilisé pour titre / présentation / objectif :
+    - supprime HTML éventuel ;
+    - remplace les retours ligne par des espaces ;
+    - normalise les espaces ;
+    - bloque à max_len caractères.
+    """
+    txt = str(value or "").replace("\x00", " ").strip()
+    txt = html.unescape(txt)
+    txt = re.sub(r"(?i)<\s*br\s*/?\s*>", " ", txt)
+    txt = re.sub(r"(?i)</\s*p\s*>", " ", txt)
+    txt = re.sub(r"<[^>]+>", " ", txt)
+    txt = re.sub(r"\r\n?", "\n", txt)
+    txt = re.sub(r"\s+", " ", txt).strip()
+
+    if len(txt) > max_len:
+        cut = txt[:max_len].rsplit(" ", 1)[0].strip()
+        txt = cut if cut else txt[:max_len].strip()
+
     return txt
 
 
@@ -1537,6 +1567,9 @@ def _analyse_import_document_with_ai(doc_text: str, filename: str) -> dict:
         "Les champs r1, r2, r3 sont uniquement des réponses d’auto-positionnement, jamais des prérequis. "
         "Pour un prérequis oui/non, utilise r1='Oui', r2='Non', r3=''. "
         "Le type_formation doit être l'une des valeurs: Certifiante, Diplomante, Non Certifiante. "
+        "Contraintes catalogue impératives : le titre ne dépasse jamais 90 caractères, "
+        "la présentation ne dépasse jamais 625 caractères et doit être un seul paragraphe sans retour ligne, "
+        "l'objectif pédagogique ne dépasse jamais 550 caractères et doit être un seul paragraphe sans retour ligne. "
         "Si une information est absente, renvoie une chaîne vide, null ou une liste vide."
     )
 
@@ -1657,10 +1690,11 @@ def _analyse_generate_formation_with_ai(
     system_prompt = (
         "Tu génères une fiche formation structurée pour Novoskill Learn. "
         "Règles impératives : zéro marketing, rédaction opérationnelle, pédagogique, sobre et exploitable. "
-        "Le titre commence par un verbe d'action. "
-        "La présentation est un texte rédigé avec une bonne syntaxe, sans liste. "
+        "Le titre commence par un verbe d'action et ne dépasse jamais 90 caractères. "
+        "La présentation est un texte rédigé avec une bonne syntaxe, sans liste, sans retour ligne, et ne dépasse jamais 625 caractères. "
         "L'objectif pédagogique est la finalité globale de la formation et doit être formulé dans l'esprit : "
         "À la fin de la formation, le stagiaire/l'apprenant sera capable de... "
+        "Cet objectif pédagogique ne doit jamais dépasser 550 caractères et ne doit contenir aucun retour ligne. "
         "Ne confonds pas objectif pédagogique et compétences visées. Les compétences visées sont des capacités opérationnelles observables. "
         "Les contenus sont des briques réutilisables indépendantes de la modalité. "
         "Chaque contenu doit comporter un titre clair, un objectif court et un champ contenu détaillé. "
@@ -1922,10 +1956,10 @@ async def learn_formations_import_document(
 
         out = {
             "filename": filename,
-            "titre": _clean_text(draft.get("titre"), 500),
-            "presentation": _clean_text(draft.get("presentation"), 6000),
+            "titre": _limit_catalogue_text(draft.get("titre"), FORMATION_TITLE_MAX),
+            "presentation": _limit_catalogue_text(draft.get("presentation"), FORMATION_PRESENTATION_MAX),
             "public_cible": _clean_text(draft.get("public_cible"), 3000),
-            "objectifs": _clean_text(draft.get("objectifs"), 5000),
+            "objectifs": _limit_catalogue_text(draft.get("objectifs"), FORMATION_OBJECTIF_MAX),
             "type_formation": _normalize_type_formation(draft.get("type_formation")),
             "obs_type_form": _clean_text(draft.get("obs_type_form"), 500),
             "duree": _safe_float(draft.get("duree")),
@@ -2056,10 +2090,10 @@ async def learn_formations_generate_ai(
         duree_recommandee = _safe_float(draft.get("duree_recommandee"))
 
         out = {
-            "titre": _clean_text(draft.get("titre"), 500),
-            "presentation": _clean_text(draft.get("presentation"), 6000),
+            "titre": _limit_catalogue_text(draft.get("titre"), FORMATION_TITLE_MAX),
+            "presentation": _limit_catalogue_text(draft.get("presentation"), FORMATION_PRESENTATION_MAX),
             "public_cible": _clean_text(draft.get("public_cible"), 3000),
-            "objectifs": _clean_text(draft.get("objectif_pedagogique"), 5000),
+            "objectifs": _limit_catalogue_text(draft.get("objectif_pedagogique"), FORMATION_OBJECTIF_MAX),
             "type_formation": _normalize_type_formation(draft.get("type_formation")),
             "obs_type_form": _clean_text(draft.get("obs_type_form"), 500),
             "duree": duree_recommandee,
@@ -2368,7 +2402,7 @@ def learn_formation_create(id_effectif: str, payload: FormationPayload, request:
     u = learn_require_user(auth)
 
     try:
-        titre = (payload.titre or "").strip()
+        titre = _limit_catalogue_text(payload.titre, FORMATION_TITLE_MAX)
         if not titre:
             raise HTTPException(status_code=400, detail="Titre obligatoire.")
 
@@ -2430,9 +2464,9 @@ def learn_formation_create(id_effectif: str, payload: FormationPayload, request:
                         _normalize_type_formation(payload.type_formation),
                         _clean_text(payload.obs_type_form),
                         _safe_int(payload.duree),
-                        _clean_text(payload.objectifs),
+                        _limit_catalogue_text(payload.objectifs, FORMATION_OBJECTIF_MAX),
                         _clean_text(payload.public_cible),
-                        _clean_text(payload.presentation),
+                        _limit_catalogue_text(payload.presentation, FORMATION_PRESENTATION_MAX),
                         _jsonb_param(payload.modalites),
                         _jsonb_param(payload.methode_peda),
                         _jsonb_param(payload.methode_eval),
@@ -2484,7 +2518,7 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
                 vals = []
 
                 if "titre" in patch_fields:
-                    titre = (payload.titre or "").strip()
+                    titre = _limit_catalogue_text(payload.titre, FORMATION_TITLE_MAX)
                     if not titre:
                         raise HTTPException(status_code=400, detail="Titre obligatoire.")
                     cols.append("titre = %s")
@@ -2508,7 +2542,7 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
 
                 if "objectifs" in patch_fields:
                     cols.append("objectifs = %s")
-                    vals.append(_clean_text(payload.objectifs))
+                    vals.append(_limit_catalogue_text(payload.objectifs, FORMATION_OBJECTIF_MAX))
 
                 if "public_cible" in patch_fields:
                     cols.append("public_cible = %s")
@@ -2516,7 +2550,7 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
 
                 if "presentation" in patch_fields:
                     cols.append("presentation = %s")
-                    vals.append(_clean_text(payload.presentation))
+                    vals.append(_limit_catalogue_text(payload.presentation, FORMATION_PRESENTATION_MAX))
 
                 if "modalites" in patch_fields:
                     cols.append("modalites = %s::jsonb")
@@ -3937,9 +3971,9 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     # Données préparées
     # ------------------------------------------------------------------
     code_label = clean_txt(form.get("code")) or "FC"
-    title_label = clean_txt(form.get("titre")) or "Formation"
-    presentation = clean_txt(form.get("presentation"))
-    objective = clean_txt(form.get("objectifs"))
+    title_label = _limit_catalogue_text(form.get("titre"), FORMATION_TITLE_MAX) or "Formation"
+    presentation = _limit_catalogue_text(form.get("presentation"), FORMATION_PRESENTATION_MAX)
+    objective = _limit_catalogue_text(form.get("objectifs"), FORMATION_OBJECTIF_MAX)
 
     public_items = cap_with_marker_strings(
         lines_from_text(form.get("public_cible")),
