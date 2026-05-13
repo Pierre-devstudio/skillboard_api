@@ -80,6 +80,7 @@
     const FORM_TITLE_MAX = 90;
     const FORM_PRESENTATION_MAX = 625;
     const FORM_OBJECTIF_MAX = 550;
+    const FORM_PREREQ_MAX = 65;
 
     function limitChars(value, maxLen){
         const txt = String(value ?? "");
@@ -100,22 +101,52 @@
         return txt;
     }
 
+    function updateCharCounter(id){
+        const el = byId(id);
+        const counter = document.querySelector(`[data-counter-for="${id}"]`);
+
+        if (!el || !counter) return;
+
+        const max = parseInt(el.getAttribute("maxlength") || "0", 10);
+        const len = String(el.value || "").length;
+
+        if (max > 0){
+        counter.textContent = `${len}/${max} caractères`;
+        }
+    }
+
+    function updatePrereqCounter(card, idx, value){
+        const counter = card?.querySelector(`[data-prereq-counter="${idx}"]`);
+        if (!counter) return;
+
+        counter.textContent = `${String(value || "").length}/${FORM_PREREQ_MAX} caractères`;
+    }
+
+    function refreshCatalogueCounters(){
+        updateCharCounter("formTitre");
+        updateCharCounter("formPresentation");
+        updateCharCounter("formObjectifs");
+    }
+
     function setCatalogueFieldValue(id, value){
         const el = byId(id);
         if (!el) return;
 
         if (id === "formTitre"){
         el.value = limitChars(String(value ?? "").trim(), FORM_TITLE_MAX);
+        updateCharCounter(id);
         return;
         }
 
         if (id === "formPresentation"){
         el.value = normalizeCatalogueSingleLine(value, FORM_PRESENTATION_MAX);
+        updateCharCounter(id);
         return;
         }
 
         if (id === "formObjectifs"){
         el.value = normalizeCatalogueSingleLine(value, FORM_OBJECTIF_MAX);
+        updateCharCounter(id);
         return;
         }
 
@@ -150,7 +181,27 @@
         if (el.value.length > maxLen){
             el.value = el.value.slice(0, maxLen);
         }
+
+        if (id === "formPresentation" || id === "formObjectifs"){
+            const pos = el.selectionStart;
+            const normalized = normalizeCatalogueSingleLine(el.value, maxLen);
+
+            if (normalized !== el.value){
+            el.value = normalized;
+            try{
+                el.setSelectionRange(Math.min(pos, el.value.length), Math.min(pos, el.value.length));
+            } catch(_){}
+            }
+        }
+
+        updateCharCounter(id);
         });
+
+        updateCharCounter(id);
+    }
+
+    function limitPrereqTitle(value){
+        return limitChars(String(value ?? "").trim(), FORM_PREREQ_MAX);
     }
 
     function getErrorMessage(err){
@@ -744,18 +795,18 @@
         };
     }
 
-  function normalizePrerequis(rows){
-    const arr = Array.isArray(rows) ? rows : [];
+    function normalizePrerequis(rows){
+        const arr = Array.isArray(rows) ? rows : [];
 
-    _prerequis = arr.map((p, idx) => ({
-      id_prerequis: p.id_prerequis || null,
-      titre: p.titre || "",
-      r1: p.r1 || "Je ne maîtrise pas",
-      r2: p.r2 || "J’ai besoin d’assistance",
-      r3: p.r3 || "",
-      ordre_affichage: p.ordre_affichage || (idx + 1)
-    }));
-  }
+        _prerequis = arr.map((p, idx) => ({
+        id_prerequis: p.id_prerequis || null,
+        titre: limitPrereqTitle(p.titre || ""),
+        r1: p.r1 || "Je ne maîtrise pas",
+        r2: p.r2 || "J’ai besoin d’assistance",
+        r3: p.r3 || "",
+        ordre_affichage: p.ordre_affichage || (idx + 1)
+        }));
+    }
 
   function renderPrerequis(){
     const host = byId("formPrereqList");
@@ -791,8 +842,8 @@
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
-            <div class="label">Libellé du prérequis</div>
-            <input type="text" class="lf-prereq-input" data-field="titre" value="${htmlEsc(p.titre || "")}" />
+            <div class="label">Libellé du prérequis <span class="lf-label-muted lf-char-counter" data-prereq-counter="${idx}">${String(p.titre || "").length}/${FORM_PREREQ_MAX} caractères</span></div>
+            <input type="text" class="lf-prereq-input" data-field="titre" maxlength="${FORM_PREREQ_MAX}" value="${htmlEsc(limitPrereqTitle(p.titre || ""))}" />
           </div>
         </div>
 
@@ -815,6 +866,14 @@
       card.querySelectorAll(".lf-prereq-input").forEach(inp => {
         inp.addEventListener("input", () => {
           const field = inp.dataset.field;
+
+          if (field === "titre"){
+            inp.value = limitPrereqTitle(inp.value || "");
+            _prerequis[idx][field] = inp.value || "";
+            updatePrereqCounter(card, idx, inp.value);
+            return;
+          }
+
           _prerequis[idx][field] = inp.value || "";
         });
       });
@@ -839,7 +898,7 @@
     return (_prerequis || [])
       .map((p, idx) => ({
         id_prerequis: p.id_prerequis || null,
-        titre: (p.titre || "").trim(),
+        titre: limitPrereqTitle(p.titre || ""),
         r1: (p.r1 || "").trim() || "Je ne maîtrise pas",
         r2: (p.r2 || "").trim() || "J’ai besoin d’assistance",
         r3: (p.r3 || "").trim(),
@@ -3052,7 +3111,7 @@ function renderContentCompBadges(l){
 
         byId("formModalTitle").textContent = "Créer une formation";
 
-        byId("formTitre").value = "";
+        setCatalogueFieldValue("formTitre", "");
         byId("formEtat").value = "à valider";
         byId("formDomaine").value = "";
         byId("formFournisseur").value = "";
@@ -3061,9 +3120,9 @@ function renderContentCompBadges(l){
         syncObsTypeFormation();
         byId("formDuree").value = "";
         byId("formTarif").value = "";
-        byId("formPresentation").value = "";
+        setCatalogueFieldValue("formPresentation", "");
         byId("formPublic").value = "";
-        byId("formObjectifs").value = "";
+        setCatalogueFieldValue("formObjectifs", "");
         byId("formAttestation").value = "";
 
         _selectedModalites = [];
@@ -3114,16 +3173,16 @@ function renderContentCompBadges(l){
             modalTitle.textContent = it?.titre || "Chargement de la formation…";
         }
 
-        setFieldValue("formTitre", "");
+        setCatalogueFieldValue("formTitre", "");
         setSelectValue("formEtat", "à valider");
         setSelectValue("formDomaine", "");
         setSelectValue("formFournisseur", "");
         setFieldValue("formType", "");
         setFieldValue("formDuree", "");
         setFieldValue("formTarif", "");
-        setFieldValue("formPresentation", "");
+        setCatalogueFieldValue("formPresentation", "");
         setFieldValue("formPublic", "");
-        setFieldValue("formObjectifs", "");
+        setCatalogueFieldValue("formObjectifs", "");
         setFieldValue("formAttestation", "");
 
         _selectedModalites = [];
@@ -3635,6 +3694,7 @@ iframe{width:100%;height:100%;border:0;display:block}
     bindCatalogueFieldLimit("formTitre", FORM_TITLE_MAX);
     bindCatalogueFieldLimit("formPresentation", FORM_PRESENTATION_MAX);
     bindCatalogueFieldLimit("formObjectifs", FORM_OBJECTIF_MAX);
+    refreshCatalogueCounters();
 
     const bNew = byId("btnFormNew");
 

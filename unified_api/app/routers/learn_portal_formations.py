@@ -119,6 +119,7 @@ def _jsonb_param(value: Any) -> str:
 FORMATION_TITLE_MAX = 90
 FORMATION_PRESENTATION_MAX = 625
 FORMATION_OBJECTIF_MAX = 550
+FORMATION_PREREQ_MAX = 65
 
 
 def _clean_text(value: Any, max_len: int = 20000) -> str:
@@ -131,15 +132,6 @@ def _clean_text(value: Any, max_len: int = 20000) -> str:
 
 
 def _limit_catalogue_text(value: Any, max_len: int) -> str:
-    """
-    Texte court catalogue formation.
-
-    Utilisé pour titre / présentation / objectif :
-    - supprime HTML éventuel ;
-    - remplace les retours ligne par des espaces ;
-    - normalise les espaces ;
-    - bloque à max_len caractères.
-    """
     txt = str(value or "").replace("\x00", " ").strip()
     txt = html.unescape(txt)
     txt = re.sub(r"(?i)<\s*br\s*/?\s*>", " ", txt)
@@ -782,7 +774,7 @@ def _sync_formation_prerequis(cur, oid: str, id_form: str, prerequis: Optional[l
         else:
             item = raw.dict()
 
-        titre = _clean_text(item.get("titre"), 800)
+        titre = _limit_catalogue_text(item.get("titre"), FORMATION_PREREQ_MAX)
         if not titre:
             continue
 
@@ -1437,7 +1429,7 @@ def _normalize_import_prerequis(raw_items: Any) -> list:
     seen = set()
 
     def add_item(titre: Any, r1: Any = "Oui", r2: Any = "Non", r3: Any = ""):
-        clean_titre = _clean_text(titre, 800)
+        clean_titre = _limit_catalogue_text(titre, FORMATION_PREREQ_MAX)
         if not clean_titre:
             return
 
@@ -1566,6 +1558,7 @@ def _analyse_import_document_with_ai(doc_text: str, filename: str) -> dict:
         "Le champ titre contient le prérequis lui-même. "
         "Les champs r1, r2, r3 sont uniquement des réponses d’auto-positionnement, jamais des prérequis. "
         "Pour un prérequis oui/non, utilise r1='Oui', r2='Non', r3=''. "
+        "Chaque titre de prérequis ne doit jamais dépasser 65 caractères. "
         "Le type_formation doit être l'une des valeurs: Certifiante, Diplomante, Non Certifiante. "
         "Contraintes catalogue impératives : le titre ne dépasse jamais 90 caractères, "
         "la présentation ne dépasse jamais 625 caractères et doit être un seul paragraphe sans retour ligne, "
@@ -1703,6 +1696,7 @@ def _analyse_generate_formation_with_ai(
         "Ne génère jamais de plan pédagogique, ni de déroulé jour par jour. "
         "Ne demande pas et ne déduis pas une modalité de réalisation : la modalité sera traitée dans le plan pédagogique. "
         "Les prérequis doivent être évaluables. Chaque prérequis est un élément distinct avec titre + réponses Oui/Non et r3 optionnelle. "
+        "Chaque titre de prérequis ne doit jamais dépasser 65 caractères. "
         "Les compétences formateur doivent inclure des compétences d'animation/évaluation/apprentissage et des compétences métier liées au contenu ; "
         "on considère que le formateur possède un niveau avancé ou expert. "
         "Si un contexte est fourni, rends la formation spécifique à ce contexte. Si aucun contexte n'est fourni, génère une formation générique et réutilisable. "
