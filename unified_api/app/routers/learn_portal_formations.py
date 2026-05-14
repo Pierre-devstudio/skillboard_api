@@ -9,6 +9,7 @@ import re
 import unicodedata
 import html
 import os
+import hashlib
 from difflib import SequenceMatcher
 
 from reportlab.lib import colors
@@ -20,6 +21,16 @@ from reportlab.lib.styles import ParagraphStyle
 from app.routers.skills_portal_common import get_conn
 from app.routers.learn_portal_common import learn_require_user, learn_fetch_profile
 from app.routers.skills_portal_pdf_common import build_pdf_document, build_pdf_styles
+from app.routers.learn_portal_informations import (
+    learn_lms_api_post,
+    learn_lms_extract_url,
+    learn_lms_extract_workspace_id,
+    learn_lms_fetch_active_config,
+    learn_lms_keywords,
+    learn_lms_resolve_lara_defaults,
+    learn_lms_safe_int,
+    learn_lms_short_description,
+)
 
 try:
     from openai import OpenAI
@@ -4921,6 +4932,490 @@ def learn_formation_fiche_html_lms(id_effectif: str, id_form: str, request: Requ
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"learn/formations fiche_html_lms error: {e}")
+
+
+# ======================================================
+# Publication LMS
+# ======================================================
+
+def _lms_html_hash(html_payload: str) -> str:
+    return hashlib.sha256(str(html_payload or "").encode("utf-8")).hexdigest()
+
+
+def _lms_publication_row(cur, oid: str, id_form: str, id_lms_config: str) -> Optional[dict]:
+    cur.execute(
+        """
+        SELECT
+          id_publication,
+          id_owner,
+          id_form,
+          id_lms_config,
+          provider_code,
+          external_id,
+          external_url,
+          last_sync_at,
+          sync_status,
+          sync_error,
+          html_hash,
+          archive,
+          date_creation,
+          date_modification
+        FROM public.tbl_learn_lms_publication
+        WHERE id_owner = %s
+          AND id_form = %s
+          AND id_lms_config = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (oid, id_form, id_lms_config),
+    )
+
+    return cur.fetchone()
+
+
+def _lms_write_publication_success(
+    cur,
+    oid: str,
+    id_form: str,
+    id_lms_config: str,
+    provider_code: str,
+    external_id: str,
+    external_url: str,
+    html_hash: str,
+) -> dict:
+    row = _lms_publication_row(cur, oid, id_form, id_lms_config)
+
+    if row:
+        cur.execute(
+            """
+            UPDATE public.tbl_learn_lms_publication
+            SET provider_code = %s,
+                external_id = %s,
+                external_url = %s,
+                last_sync_at = NOW(),
+                sync_status = 'synced',
+                sync_error = NULL,
+                html_hash = %s,
+                archive = FALSE,
+                date_modification = NOW()
+            WHERE id_publication = %s
+              AND id_owner = %s
+            RETURNING
+              id_publication,
+              id_owner,
+              id_form,
+              id_lms_config,
+              provider_code,
+              external_id,
+              external_url,
+              last_sync_at,
+              sync_status,
+              sync_error,
+              html_hash,
+              archive,
+              date_creation,
+              date_modification
+            """,
+            (
+                provider_code,
+                external_id,
+                external_url or row.get("external_url"),
+                html_hash,
+                row.get("id_publication"),
+                oid,
+            ),
+        )
+    else:
+        cur.execute(
+            """
+            INSERT INTO public.tbl_learn_lms_publication
+              (
+                id_publication,
+                id_owner,
+                id_form,
+                id_lms_config,
+                provider_code,
+                external_id,
+                external_url,
+                last_sync_at,
+                sync_status,
+                sync_error,
+                html_hash,
+                archive,
+                date_creation,
+                date_modification
+              )
+            VALUES
+              (
+                gen_random_uuid()::text,
+                %s, %s, %s, %s,
+                %s, %s,
+                NOW(),
+                'synced',
+                NULL,
+                %s,
+                FALSE,
+                NOW(),
+                NOW()
+              )
+            RETURNING
+              id_publication,
+              id_owner,
+              id_form,
+              id_lms_config,
+              provider_code,
+              external_id,
+              external_url,
+              last_sync_at,
+              sync_status,
+              sync_error,
+              html_hash,
+              archive,
+              date_creation,
+              date_modification
+            """,
+            (
+                oid,
+                id_form,
+                id_lms_config,
+                provider_code,
+                external_id,
+                external_url,
+                html_hash,
+            ),
+        )
+
+    return cur.fetchone() or {}
+
+
+def _lms_write_publication_error(
+    cur,
+    oid: str,
+    id_form: str,
+    id_lms_config: str,
+    provider_code: str,
+    external_id: Optional[str],
+    html_hash: str,
+    error_value: Any,
+) -> dict:
+    try:
+        err_txt = json.dumps(error_value, ensure_ascii=False)[:4000]
+    except Exception:
+        err_txt = str(error_value or "")[:4000]
+
+    row = _lms_publication_row(cur, oid, id_form, id_lms_config)
+
+    if row:
+        cur.execute(
+            """
+            UPDATE public.tbl_learn_lms_publication
+            SET provider_code = %s,
+                external_id = COALESCE(%s, external_id),
+                last_sync_at = NOW(),
+                sync_status = 'error',
+                sync_error = %s,
+                html_hash = %s,
+                archive = FALSE,
+                date_modification = NOW()
+            WHERE id_publication = %s
+              AND id_owner = %s
+            RETURNING
+              id_publication,
+              id_owner,
+              id_form,
+              id_lms_config,
+              provider_code,
+              external_id,
+              external_url,
+              last_sync_at,
+              sync_status,
+              sync_error,
+              html_hash,
+              archive,
+              date_creation,
+              date_modification
+            """,
+            (
+                provider_code,
+                external_id,
+                err_txt,
+                html_hash,
+                row.get("id_publication"),
+                oid,
+            ),
+        )
+    else:
+        cur.execute(
+            """
+            INSERT INTO public.tbl_learn_lms_publication
+              (
+                id_publication,
+                id_owner,
+                id_form,
+                id_lms_config,
+                provider_code,
+                external_id,
+                external_url,
+                last_sync_at,
+                sync_status,
+                sync_error,
+                html_hash,
+                archive,
+                date_creation,
+                date_modification
+              )
+            VALUES
+              (
+                gen_random_uuid()::text,
+                %s, %s, %s, %s,
+                %s, NULL,
+                NOW(),
+                'error',
+                %s,
+                %s,
+                FALSE,
+                NOW(),
+                NOW()
+              )
+            RETURNING
+              id_publication,
+              id_owner,
+              id_form,
+              id_lms_config,
+              provider_code,
+              external_id,
+              external_url,
+              last_sync_at,
+              sync_status,
+              sync_error,
+              html_hash,
+              archive,
+              date_creation,
+              date_modification
+            """,
+            (
+                oid,
+                id_form,
+                id_lms_config,
+                provider_code,
+                external_id,
+                err_txt,
+                html_hash,
+            ),
+        )
+
+    return cur.fetchone() or {}
+
+
+def _lms_form_name(form: dict) -> str:
+    code = str(form.get("code") or "").strip()
+    titre = str(form.get("titre") or "").strip() or "Formation"
+    label = f"{code} - {titre}" if code else titre
+    return label[:180].strip()
+
+
+def _lms_lara_payload_common(form: dict, html_payload: str, cfg: dict, resolved: dict) -> dict:
+    cfg_json = cfg.get("config_json") or {}
+    visibility_type = learn_lms_safe_int(cfg_json.get("visibility_type"), 3)
+    language = learn_lms_safe_int(cfg_json.get("language"), 3)
+
+    return {
+        "name": _lms_form_name(form),
+        "categoryId": None,
+        "coverId": None,
+        "visibilityType": visibility_type,
+        "maxParticipants": 0,
+        "minParticipants": 0,
+        "type": str(resolved.get("workspace_type_id") or "").strip(),
+        "providerId": str(resolved.get("provider_id") or "").strip(),
+        "language": language,
+        "description": html_payload,
+        "shortDescription": learn_lms_short_description(
+            form.get("presentation") or form.get("objectifs") or form.get("titre") or "",
+            200,
+        ),
+        "subscriptionType": 1,
+        "startDate": "0001-01-01T00:00:00",
+        "endDate": "0001-01-01T00:00:00",
+        "isOverBookingSubscription": False,
+        "authorizationType": 0,
+        "needAdminApproval": False,
+        "enrolmentType": 0,
+        "externalLink": "",
+        "keywords": learn_lms_keywords(form),
+        "showAvailableSubscriptions": False,
+        "canDeclareMultipleTimes": False,
+        "autodeclarationPresenceActivitiesRequired": False,
+    }
+
+
+@router.get("/learn/formations/{id_effectif}/{id_form}/lms/status")
+def learn_formation_lms_status(id_effectif: str, id_form: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                oid = (profile.get("id_owner") or "").strip()
+
+                cfg = learn_lms_fetch_active_config(cur, oid, with_secret=False)
+                if not cfg or cfg.get("provider_code") != "lara":
+                    return {
+                        "configured": False,
+                        "provider_code": "manual",
+                        "published": False,
+                        "sync_status": "not_configured",
+                        "message": "Aucun connecteur LMS actif.",
+                    }
+
+                form = _fetch_form_detail(cur, oid, fid)
+                html_payload = _build_formation_lms_html(form)
+                current_hash = _lms_html_hash(html_payload)
+
+                row = _lms_publication_row(cur, oid, fid, cfg.get("id_lms_config"))
+
+        published = bool(row and row.get("external_id"))
+        sync_status = (row or {}).get("sync_status") or "jamais_sync"
+        outdated = bool(row and row.get("html_hash") and row.get("html_hash") != current_hash)
+
+        if outdated and sync_status == "synced":
+            sync_status = "outdated"
+
+        return {
+            "configured": True,
+            "provider_code": "lara",
+            "provider_label": "Lära",
+            "published": published,
+            "external_id": (row or {}).get("external_id"),
+            "external_url": (row or {}).get("external_url"),
+            "last_sync_at": (row or {}).get("last_sync_at"),
+            "sync_status": sync_status,
+            "sync_error": (row or {}).get("sync_error"),
+            "outdated": outdated,
+            "can_publish": _role_rank(profile.get("role_code")) >= 2,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations lms status error: {e}")
+
+
+@router.post("/learn/formations/{id_effectif}/{id_form}/lms/publish")
+def learn_formation_lms_publish(id_effectif: str, id_form: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                _learn_require_min_role(profile, "supervisor")
+                oid = (profile.get("id_owner") or "").strip()
+
+                cfg = learn_lms_fetch_active_config(cur, oid, with_secret=True)
+                if not cfg or cfg.get("provider_code") != "lara":
+                    raise HTTPException(status_code=400, detail="Aucun connecteur Lära actif.")
+
+                id_lms_config = str(cfg.get("id_lms_config") or "").strip()
+                if not id_lms_config:
+                    raise HTTPException(status_code=400, detail="Configuration LMS invalide.")
+
+                form = _fetch_form_detail(cur, oid, fid)
+                html_payload = _build_formation_lms_html(form)
+                html_hash = _lms_html_hash(html_payload)
+
+                resolved = learn_lms_resolve_lara_defaults(cfg)
+                existing = _lms_publication_row(cur, oid, fid, id_lms_config)
+
+                api_base = cfg.get("base_url") or ""
+                secret = cfg.get("secret_json") or {}
+                api_id = secret.get("api_id") or ""
+
+                external_id = str((existing or {}).get("external_id") or "").strip()
+                action = "update" if external_id else "create"
+
+                if external_id:
+                    payload = {
+                        "id": external_id,
+                        "description": html_payload,
+                        "shortDescription": learn_lms_short_description(
+                            form.get("presentation") or form.get("objectifs") or form.get("titre") or "",
+                            200,
+                        ),
+                        "keywords": learn_lms_keywords(form),
+                    }
+                    api_result = learn_lms_api_post(api_base, api_id, "workspace/edit", payload)
+                else:
+                    payload = _lms_lara_payload_common(form, html_payload, cfg, resolved)
+                    api_result = learn_lms_api_post(api_base, api_id, "workspace/create", payload)
+
+                    if api_result.get("ok"):
+                        external_id = learn_lms_extract_workspace_id(api_result.get("json"))
+
+                if not api_result.get("ok") or not external_id:
+                    saved = _lms_write_publication_error(
+                        cur,
+                        oid,
+                        fid,
+                        id_lms_config,
+                        "lara",
+                        external_id or None,
+                        html_hash,
+                        api_result,
+                    )
+                    conn.commit()
+
+                    raise HTTPException(status_code=400, detail={
+                        "message": "Publication Lära impossible.",
+                        "publication": saved,
+                        "response": api_result,
+                    })
+
+                external_url = str((existing or {}).get("external_url") or "").strip()
+
+                geturl_result = learn_lms_api_post(api_base, api_id, "workspace/geturl", {"id": external_id})
+                if geturl_result.get("ok"):
+                    external_url = learn_lms_extract_url(geturl_result.get("json")) or external_url
+
+                saved = _lms_write_publication_success(
+                    cur,
+                    oid,
+                    fid,
+                    id_lms_config,
+                    "lara",
+                    external_id,
+                    external_url,
+                    html_hash,
+                )
+
+                conn.commit()
+
+        return {
+            "ok": True,
+            "provider_code": "lara",
+            "action": action,
+            "action_label": "mise à jour" if action == "update" else "créée",
+            "external_id": external_id,
+            "external_url": external_url,
+            "publication": saved,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations lms publish error: {e}")
+
 
 @router.get("/learn/formations/{id_effectif}/{id_form}/fiche_pdf")
 def learn_formation_fiche_pdf(id_effectif: str, id_form: str, request: Request):

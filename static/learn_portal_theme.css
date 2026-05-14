@@ -1711,3 +1711,71 @@
     white-space:normal;
   }
 }
+
+/* ======================================================
+   Learn - Connecteur LMS
+   ====================================================== */
+
+.lf-lms-card{
+  display:grid;
+  gap:14px;
+}
+
+.lf-lms-grid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:12px;
+  align-items:start;
+}
+
+.lf-lms-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.lf-lms-status{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:12px;
+  padding:10px 12px;
+  font-size:12px;
+  line-height:1.45;
+  background:#f8fafc;
+  color:#334155;
+}
+
+.lf-lms-status.is-ok{
+  background:#f0fdf4;
+  border-color:#86efac;
+  color:#166534;
+}
+
+.lf-lms-status.is-error{
+  background:#fef2f2;
+  border-color:#fecaca;
+  color:#991b1b;
+}
+
+.lf-lms-status.is-info{
+  background:#f8fafc;
+  border-color:#cbd5e1;
+  color:#334155;
+}
+
+.sb-icon-btn--lms{
+  color:#7e22ce;
+  background:rgba(126,34,206,.08);
+  border-color:rgba(126,34,206,.22);
+}
+
+.sb-icon-btn--lms:hover{
+  background:rgba(126,34,206,.13);
+  border-color:rgba(126,34,206,.34);
+}
+
+@media (max-width:900px){
+  .lf-lms-grid{
+    grid-template-columns:1fr;
+  }
+}

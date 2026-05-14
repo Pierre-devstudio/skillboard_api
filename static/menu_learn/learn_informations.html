@@ -1,8 +1,66 @@
-<section id="view-informations">
+<section id="view-informations" data-view="informations">
   <div class="card">
-    <div class="card-title">Vos informations</div>
-    <div class="card-sub">
-      La page est ouverte. Le contenu fonctionnel sera ajouté ensuite.
+    <div class="sb-card-head">
+      <div>
+        <div class="card-title">Vos informations</div>
+        <div class="card-sub">Paramétrez les informations Learn liées à votre organisation.</div>
+      </div>
     </div>
+  </div>
+
+  <div class="card lf-lms-card">
+    <div class="sb-card-head">
+      <div>
+        <div class="card-title">Intégration LMS</div>
+        <div class="card-sub">
+          Configurez le connecteur utilisé pour publier les fiches formation dans votre LMS.
+        </div>
+      </div>
+      <span class="sb-badge sb-badge--state" id="lmsConfigBadge">Non configuré</span>
+    </div>
+
+    <div class="lf-lms-grid">
+      <div class="info-item">
+        <div class="label">Connecteur LMS</div>
+        <select id="lmsProvider">
+          <option value="manual">Aucun / export HTML manuel</option>
+          <option value="lara">Lära</option>
+        </select>
+      </div>
+
+      <div class="info-item lf-lms-lara-field">
+        <div class="label">URL API Lära</div>
+        <input type="text" id="lmsBaseUrl" placeholder="https://votre-lms.classilio.com/lmsapi" />
+      </div>
+
+      <div class="info-item lf-lms-lara-field">
+        <div class="label">ApiID</div>
+        <input type="password" id="lmsApiId" autocomplete="new-password" placeholder="Laisser vide pour conserver la clé enregistrée" />
+        <div class="card-sub" id="lmsSecretHint" style="margin-top:5px;"></div>
+      </div>
+
+      <div class="info-item lf-lms-lara-field">
+        <div class="label">Visibilité par défaut</div>
+        <select id="lmsVisibilityType">
+          <option value="3">Masquée</option>
+          <option value="1">Visible</option>
+        </select>
+      </div>
+
+      <div class="info-item lf-lms-lara-field">
+        <div class="label">Langue</div>
+        <select id="lmsLanguage">
+          <option value="3">Français</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="lf-lms-actions">
+      <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnLmsSave">Enregistrer</button>
+      <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnLmsTest">Tester la connexion</button>
+      <span class="sb-save-success" id="lmsSaveSuccess" style="display:none;"></span>
+    </div>
+
+    <div class="lf-lms-status" id="lmsStatusBox" style="display:none;"></div>
   </div>
 </section>

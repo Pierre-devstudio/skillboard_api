@@ -310,7 +310,19 @@
         `;
     }
 
-    function iconPdf(){
+    
+    function iconLms(){
+        return `
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 16l-4-4-4 4"/>
+            <path d="M12 12v9"/>
+            <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+            <path d="M16 16l-4-4-4 4"/>
+        </svg>
+        `;
+    }
+
+function iconPdf(){
         return `
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -2336,6 +2348,28 @@ function renderContentCompBadges(l){
 
       actions.appendChild(btnHtml);
 
+      if (isSupervisor() && !it.archive && !it.masque){
+        const btnLms = document.createElement("button");
+        btnLms.type = "button";
+        btnLms.className = "sb-icon-btn sb-icon-btn--lms";
+        btnLms.title = "Publier / mettre à jour dans le LMS";
+        btnLms.setAttribute("aria-label", "Publier / mettre à jour dans le LMS");
+        btnLms.innerHTML = iconLms();
+        btnLms.addEventListener("click", async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          try{
+            await publishFormationLms(it);
+          } catch(err){
+            window.portal.showAlert("error", getErrorMessage(err));
+          }
+        });
+
+        actions.appendChild(btnLms);
+      }
+
+
       if (isSupervisor()){
         const btnEdit = document.createElement("button");
         btnEdit.type = "button";
@@ -3407,7 +3441,39 @@ function renderContentCompBadges(l){
         win.document.close();
         }
 
-        async function copyFormationHtmlLms(it){
+        
+    async function publishFormationLms(it){
+        const effectifId = getEffectifId();
+        const formId = String(it?.id_form || "").trim();
+
+        if (!effectifId) throw new Error("Profil Learn manquant.");
+        if (!formId) throw new Error("Formation introuvable.");
+
+        const res = await window.portal.apiJson(
+            `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+            + `/${encodeURIComponent(formId)}/lms/publish`,
+            { method:"POST" }
+        );
+
+        const label = res?.action === "update"
+            ? "Formation mise à jour dans Lära"
+            : "Formation publiée dans Lära";
+
+        if (window.portal?.showAlert){
+            window.portal.showAlert("success", label);
+        }
+
+        if (res?.external_url){
+            try{
+                window.open(res.external_url, "_blank", "noopener,noreferrer");
+            } catch(_){}
+        }
+
+        return res;
+    }
+
+
+async function copyFormationHtmlLms(it){
         const effectifId = getEffectifId();
         const formId = String(it?.id_form || "").trim();
 
