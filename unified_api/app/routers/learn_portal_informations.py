@@ -5,15 +5,12 @@ from psycopg.rows import dict_row
 import json
 import os
 import re
+import time
 import urllib.request
 import urllib.error
-import time
 
 from app.routers.skills_portal_common import get_conn
-from app.routers.learn_portal_common import (
-    learn_require_user,
-    learn_fetch_profile,
-)
+from app.routers.learn_portal_common import learn_require_user, learn_fetch_profile
 
 router = APIRouter()
 
@@ -133,6 +130,7 @@ def learn_lms_public_config(row: Optional[dict]) -> dict:
             "has_secret": False,
             "visibility_type": 3,
             "language": 3,
+            "actif": False,
         }
 
     cfg = row.get("config_json") or {}
@@ -182,34 +180,49 @@ def learn_lms_fetch_public_config(cur, oid: str) -> Optional[dict]:
 
 
 def learn_lms_fetch_active_config(cur, oid: str, with_secret: bool = False) -> Optional[dict]:
-    secret_sql = ""
-    params = [oid]
-
     if with_secret:
-        secret_sql = ", pgp_sym_decrypt(secret_json_encrypted, %s)::text AS secret_json_txt"
-        params.append(learn_lms_secret_key())
-
-    cur.execute(
-        f"""
-        SELECT
-          id_lms_config,
-          id_owner,
-          provider_code,
-          nom_configuration,
-          base_url,
-          config_json,
-          (secret_json_encrypted IS NOT NULL) AS has_secret,
-          actif
-          {secret_sql}
-        FROM public.tbl_learn_lms_config
-        WHERE id_owner = %s
-          AND COALESCE(archive, FALSE) = FALSE
-          AND COALESCE(actif, TRUE) = TRUE
-        ORDER BY date_modification DESC, date_creation DESC
-        LIMIT 1
-        """,
-        tuple(params[::-1]) if with_secret else tuple(params),
-    )
+        cur.execute(
+            """
+            SELECT
+              id_lms_config,
+              id_owner,
+              provider_code,
+              nom_configuration,
+              base_url,
+              config_json,
+              (secret_json_encrypted IS NOT NULL) AS has_secret,
+              actif,
+              pgp_sym_decrypt(secret_json_encrypted, %s)::text AS secret_json_txt
+            FROM public.tbl_learn_lms_config
+            WHERE id_owner = %s
+              AND COALESCE(archive, FALSE) = FALSE
+              AND COALESCE(actif, TRUE) = TRUE
+            ORDER BY date_modification DESC, date_creation DESC
+            LIMIT 1
+            """,
+            (learn_lms_secret_key(), oid),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT
+              id_lms_config,
+              id_owner,
+              provider_code,
+              nom_configuration,
+              base_url,
+              config_json,
+              (secret_json_encrypted IS NOT NULL) AS has_secret,
+              actif
+            FROM public.tbl_learn_lms_config
+            WHERE id_owner = %s
+              AND COALESCE(archive, FALSE) = FALSE
+              AND COALESCE(actif, TRUE) = TRUE
+            ORDER BY date_modification DESC, date_creation DESC
+            LIMIT 1
+            """,
+            (oid,),
+        )
 
     row = cur.fetchone()
     if not row:
@@ -490,9 +503,8 @@ def learn_informations_lms_config_save(id_effectif: str, payload: LearnLmsConfig
             language=learn_lms_safe_int(payload.language, 3),
         )
 
-        if provider_code == "lara":
-            if not base_url:
-                raise HTTPException(status_code=400, detail="URL API Lära obligatoire.")
+        if provider_code == "lara" and not base_url:
+            raise HTTPException(status_code=400, detail="URL API Lära obligatoire.")
 
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -568,6 +580,7 @@ def learn_informations_lms_config_save(id_effectif: str, payload: LearnLmsConfig
                                 (existing_id, oid),
                             )
                 else:
+                    secret_value = json.dumps({"api_id": api_id}, ensure_ascii=False) if api_id else None
                     cur.execute(
                         """
                         INSERT INTO public.tbl_learn_lms_config
@@ -592,11 +605,7 @@ def learn_informations_lms_config_save(id_effectif: str, payload: LearnLmsConfig
                             %s,
                             %s,
                             %s::jsonb,
-                            CASE
-                              WHEN %s <> ''
-                              THEN pgp_sym_encrypt(%s, %s)
-                              ELSE NULL
-                            END,
+                            CASE WHEN %s::text IS NULL THEN NULL ELSE pgp_sym_encrypt(%s, %s) END,
                             TRUE,
                             FALSE,
                             NOW(),
@@ -609,9 +618,9 @@ def learn_informations_lms_config_save(id_effectif: str, payload: LearnLmsConfig
                             "Lära" if provider_code == "lara" else "Export HTML manuel",
                             base_url or None,
                             json.dumps(cfg_json, ensure_ascii=False),
-                            api_id,
-                            json.dumps({"api_id": api_id}, ensure_ascii=False),
-                            learn_lms_secret_key(),
+                            secret_value,
+                            secret_value,
+                            learn_lms_secret_key() if secret_value else "",
                         ),
                     )
 

@@ -1716,63 +1716,60 @@
    Learn - Intégration LMS
    ====================================================== */
 
-.lf-lms-grid{
+.lf-lms-config-grid{
   display:grid;
-  grid-template-columns:minmax(0, 1.1fr) minmax(0, .9fr);
-  gap:14px;
-  align-items:start;
-}
-
-.lf-lms-panel{
-  border:1px solid rgba(17,24,39,.10);
-  border-radius:14px;
-  padding:14px;
-  background:#fff;
-}
-
-.lf-lms-fields{
-  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
   gap:12px;
 }
 
-.lf-lms-secret-row{
+.lf-lms-actions{
   display:flex;
-  align-items:center;
+  justify-content:flex-end;
   gap:8px;
-  flex-wrap:wrap;
-  min-height:24px;
+  margin-top:14px;
 }
 
-.lf-lms-status{
-  min-height:18px;
+.lf-lms-test-result{
+  margin-top:12px;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid rgba(17,24,39,.10);
+  background:#f8fafc;
+  color:#334155;
   font-size:12px;
   line-height:1.35;
-  color:#64748b;
 }
 
-.lf-lms-status.is-ok{
-  color:#15803d;
-  font-weight:700;
+.lf-lms-test-result.is-ok{
+  background:#f0fdf4;
+  border-color:#86efac;
+  color:#166534;
 }
 
-.lf-lms-status.is-error{
-  color:#b42318;
-  font-weight:700;
+.lf-lms-test-result.is-error{
+  background:#fef2f2;
+  border-color:#fecaca;
+  color:#991b1b;
 }
 
 .sb-icon-btn--lms{
   color:#7e22ce;
   background:rgba(231,36,243,.08);
-  border-color:rgba(231,36,243,.24);
+  border-color:rgba(231,36,243,.22);
 }
 
 .sb-icon-btn--lms:hover{
   background:rgba(231,36,243,.14);
-  border-color:rgba(231,36,243,.38);
+  border-color:rgba(231,36,243,.36);
 }
 
 @media (max-width: 900px){
-  .lf-lms-grid{
+  .lf-lms-config-grid{
     grid-template-columns:1fr;
+  }
+
+  .lf-lms-actions{
+    justify-content:flex-start;
+    flex-wrap:wrap;
   }
 }

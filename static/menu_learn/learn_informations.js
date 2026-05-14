@@ -10,15 +10,6 @@
     return (new URL(window.location.href).searchParams.get("id") || "").trim();
   }
 
-  function htmlEsc(v){
-    return String(v ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
   function getErrorMessage(err){
     if (!err) return "Erreur inconnue.";
     if (typeof err === "string") return err;
@@ -29,46 +20,26 @@
 
     if (err.detail){
       if (typeof err.detail === "string") return err.detail;
-
-      try{
-        return JSON.stringify(err.detail, null, 2);
-      } catch(_){}
+      try{ return JSON.stringify(err.detail, null, 2); } catch(_){ }
     }
 
     try{
       const txt = JSON.stringify(err, null, 2);
       if (txt && txt !== "{}") return txt;
-    } catch(_){}
+    } catch(_){ }
 
     return "Erreur inconnue.";
   }
 
-  function setStatus(msg, kind){
-    const el = byId("learnLmsStatus");
-    if (!el) return;
-
-    el.classList.remove("is-ok", "is-error");
-
-    if (!msg){
-      el.textContent = "";
-      return;
-    }
-
-    el.textContent = msg;
-
-    if (kind === "ok") el.classList.add("is-ok");
-    if (kind === "error") el.classList.add("is-error");
-  }
-
   function setSuccess(msg){
-    const el = byId("learnLmsSaveSuccess");
+    const el = byId("learnInfoLmsSuccess");
     if (!el) return;
 
     window.clearTimeout(el._hideTimer);
 
     if (!msg){
-      el.style.display = "none";
       el.textContent = "";
+      el.style.display = "none";
       return;
     }
 
@@ -76,53 +47,71 @@
     el.style.display = "inline-flex";
 
     el._hideTimer = window.setTimeout(() => {
-      el.style.display = "none";
       el.textContent = "";
+      el.style.display = "none";
     }, 5000);
   }
 
-  function syncProviderFields(){
-    const provider = byId("learnLmsProvider")?.value || "manual";
-    const fields = byId("learnLmsLaraFields");
-    const testBtn = byId("btnLearnLmsTest");
+  function setTestResult(msg, ok){
+    const el = byId("learnLmsTestResult");
+    if (!el) return;
 
-    if (fields) fields.style.display = provider === "lara" ? "grid" : "none";
-    if (testBtn) testBtn.style.display = provider === "lara" ? "" : "none";
+    if (!msg){
+      el.textContent = "";
+      el.style.display = "none";
+      el.className = "lf-lms-test-result";
+      return;
+    }
+
+    el.textContent = msg;
+    el.style.display = "block";
+    el.className = "lf-lms-test-result " + (ok ? "is-ok" : "is-error");
+  }
+
+  function syncProviderFields(){
+    const provider = (byId("learnLmsProvider")?.value || "manual").trim();
+    const isLara = provider === "lara";
+
+    document.querySelectorAll(".lf-lms-lara-field").forEach(el => {
+      el.style.display = isLara ? "" : "none";
+    });
+
+    const btnTest = byId("btnLearnLmsTest");
+    if (btnTest) btnTest.style.display = isLara ? "" : "none";
   }
 
   function fillConfig(cfg){
     _config = cfg || {};
 
     const provider = byId("learnLmsProvider");
-    const base = byId("learnLmsBaseUrl");
-    const api = byId("learnLmsApiId");
+    const baseUrl = byId("learnLmsBaseUrl");
+    const apiId = byId("learnLmsApiId");
     const visibility = byId("learnLmsVisibility");
     const language = byId("learnLmsLanguage");
-    const hint = byId("learnLmsSecretHint");
+    const secretState = byId("learnLmsSecretState");
 
-    if (provider) provider.value = cfg?.provider_code || "manual";
-    if (base) base.value = cfg?.base_url || "";
-    if (api) api.value = "";
+    if (provider) provider.value = _config.provider_code || "manual";
+    if (baseUrl) baseUrl.value = _config.base_url || "";
+    if (apiId) apiId.value = "";
+    if (visibility) visibility.value = String(_config.visibility_type || 3);
+    if (language) language.value = String(_config.language || 3);
 
-    if (visibility) visibility.value = String(cfg?.visibility_type ?? 3);
-    if (language) language.value = String(cfg?.language ?? 3);
-
-    if (hint){
-      if (cfg?.has_secret){
-        hint.textContent = "ApiID déjà enregistré. Saisissez une nouvelle clé uniquement pour la remplacer.";
-      } else {
-        hint.textContent = "Aucun ApiID enregistré.";
-      }
+    if (secretState){
+      secretState.textContent = _config.has_secret
+        ? "Clé ApiID enregistrée. Laissez le champ vide pour la conserver."
+        : "Aucune clé enregistrée.";
     }
 
     syncProviderFields();
   }
 
   function buildPayload(){
+    const provider = (byId("learnLmsProvider")?.value || "manual").trim();
+
     return {
-      provider_code: byId("learnLmsProvider")?.value || "manual",
-      base_url: (byId("learnLmsBaseUrl")?.value || "").trim() || null,
-      api_id: (byId("learnLmsApiId")?.value || "").trim() || null,
+      provider_code: provider,
+      base_url: (byId("learnLmsBaseUrl")?.value || "").trim(),
+      api_id: (byId("learnLmsApiId")?.value || "").trim(),
       visibility_type: parseInt(byId("learnLmsVisibility")?.value || "3", 10),
       language: parseInt(byId("learnLmsLanguage")?.value || "3", 10)
     };
@@ -143,7 +132,7 @@
     const effectifId = getEffectifId();
     if (!effectifId) throw new Error("Profil Learn manquant (?id=...).");
 
-    setStatus("", "");
+    setTestResult("", true);
 
     const res = await portal.apiJson(
       `${portal.apiBase}/learn/informations/${encodeURIComponent(effectifId)}/lms/config`,
@@ -156,27 +145,26 @@
 
     fillConfig(res?.config || {});
     setSuccess("Configuration enregistrée");
-    setStatus("Configuration enregistrée.", "ok");
   }
 
   async function testConfig(portal){
     const effectifId = getEffectifId();
     if (!effectifId) throw new Error("Profil Learn manquant (?id=...).");
 
-    setStatus("Test de connexion en cours...", "");
+    setTestResult("Test en cours…", true);
 
     const res = await portal.apiJson(
       `${portal.apiBase}/learn/informations/${encodeURIComponent(effectifId)}/lms/test`,
       { method:"POST" }
     );
 
-    const msg = [
+    const parts = [
       res?.message || "Connexion validée.",
       res?.workspace_type_label ? `Type : ${res.workspace_type_label}` : "",
       res?.provider_label ? `Fournisseur : ${res.provider_label}` : ""
-    ].filter(Boolean).join(" • ");
+    ].filter(Boolean);
 
-    setStatus(msg, "ok");
+    setTestResult(parts.join(" • "), true);
   }
 
   function bindOnce(portal){
@@ -188,18 +176,18 @@
     byId("btnLearnLmsSave")?.addEventListener("click", async () => {
       try{
         await saveConfig(portal);
-      } catch(e){
-        setStatus(getErrorMessage(e), "error");
-        portal.showAlert("error", getErrorMessage(e));
+      } catch(err){
+        portal.showAlert("error", getErrorMessage(err));
       }
     });
 
     byId("btnLearnLmsTest")?.addEventListener("click", async () => {
       try{
         await testConfig(portal);
-      } catch(e){
-        setStatus(getErrorMessage(e), "error");
-        portal.showAlert("error", getErrorMessage(e));
+      } catch(err){
+        const msg = getErrorMessage(err);
+        setTestResult(msg, false);
+        portal.showAlert("error", msg);
       }
     });
   }
@@ -207,7 +195,7 @@
   async function init(){
     try {
       await (window.__learnAuthReady || Promise.resolve(null));
-    } catch(_){}
+    } catch(_){ }
 
     const portal = window.portal;
     if (!portal) return;
@@ -217,7 +205,7 @@
   }
 
   init().catch(e => {
-    if (window.portal && window.portal.showAlert){
+    if (window.portal && window.portal.showAlert) {
       window.portal.showAlert("error", "Erreur informations Learn : " + getErrorMessage(e));
     }
   });

@@ -99,10 +99,10 @@ for route in learn_portal_auth.router.routes:
 for route in learn_portal_dashboard.router.routes:
     app_local.router.routes.append(route)
 
-for route in learn_portal_competences.router.routes:
+for route in learn_portal_informations.router.routes:
     app_local.router.routes.append(route)
 
-for route in learn_portal_informations.router.routes:
+for route in learn_portal_competences.router.routes:
     app_local.router.routes.append(route)
 
 for route in learn_portal_formations.router.routes:

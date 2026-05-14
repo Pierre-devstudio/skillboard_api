@@ -183,18 +183,18 @@
         `;
     }
 
-    
+
     function iconLms(){
         return `
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 16.5a4.5 4.5 0 0 0-2.2-8.4A6 6 0 0 0 6.2 9.5 4 4 0 0 0 7 17h3"/>
-            <path d="M12 19V11"/>
-            <path d="M8.5 14.5L12 11l3.5 3.5"/>
-            </svg>
+        <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.5 19H7a5 5 0 1 1 1.2-9.85A6 6 0 0 1 19 11.5 3.75 3.75 0 0 1 17.5 19z"/>
+            <path d="M12 16V9"/>
+            <path d="M9 12l3-3 3 3"/>
+        </svg>
         `;
     }
 
-function iconPdf(){
+    function iconPdf(){
         return `
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -2270,6 +2270,31 @@ function renderContentCompBadges(l){
     });
   }
 
+
+    async function publishFormationLms(it){
+        const effectifId = getEffectifId();
+        const formId = String(it?.id_form || "").trim();
+
+        if (!effectifId) throw new Error("Profil Learn manquant.");
+        if (!formId) throw new Error("Formation introuvable.");
+
+        const res = await window.portal.apiJson(
+            `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+            + `/${encodeURIComponent(formId)}/lms/publish`,
+            { method:"POST" }
+        );
+
+        setSuccess(res?.message || "Formation publiée dans le LMS");
+
+        if (res?.external_url){
+            try{
+                window.open(res.external_url, "_blank", "noopener");
+            } catch(_){ }
+        }
+
+        await loadList(window.portal);
+    }
+
   async function loadList(portal){
     const effectifId = getEffectifId();
     if (!effectifId) throw new Error("Profil Learn manquant (?id=...).");
@@ -3333,34 +3358,6 @@ function renderContentCompBadges(l){
             openHtmlFallbackWindow(title, htmlCode);
         }
     }
-
-    async function publishFormationLms(it){
-        const effectifId = getEffectifId();
-        const formId = String(it?.id_form || "").trim();
-
-        if (!effectifId) throw new Error("Profil Learn manquant.");
-        if (!formId) throw new Error("Formation introuvable.");
-
-        const ok = window.confirm(
-            "Publier ou mettre à jour cette formation dans le LMS configuré ?"
-        );
-
-        if (!ok) return;
-
-        const res = await window.portal.apiJson(
-            `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
-            + `/${encodeURIComponent(formId)}/lms/publish`,
-            { method:"POST" }
-        );
-
-        setSuccess(res?.message || "Publication LMS effectuée");
-
-        if (res?.external_url){
-            const open = window.confirm("Publication LMS réussie. Ouvrir la formation dans le LMS ?");
-            if (open) window.open(res.external_url, "_blank", "noopener");
-        }
-    }
-
 
 
   async function fetchPdfBlob(url){
