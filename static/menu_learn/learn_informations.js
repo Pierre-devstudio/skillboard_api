@@ -237,4 +237,75 @@
       window.portal.showAlert("error", "Erreur informations Learn : " + (e?.message || e));
     }
   });
+
+    function normalizeLmsUrlValue(value){
+    let url = String(value || "").trim();
+
+    if (!url) return "";
+
+    if (!/^https?:\/\//i.test(url)){
+      url = "https://" + url;
+    }
+
+    url = url.replace(/\/+$/g, "");
+
+    const suffixes = [
+      "/workspace/gettypes",
+      "/workspace/create",
+      "/workspace/edit",
+      "/workspace/geturl",
+      "/workspace/get",
+      "/provider/getlist"
+    ];
+
+    const lower = url.toLowerCase();
+
+    for (const suffix of suffixes){
+      if (lower.endsWith(suffix)){
+        url = url.slice(0, -suffix.length).replace(/\/+$/g, "");
+        break;
+      }
+    }
+
+    if (!url.toLowerCase().includes("/lmsapi")){
+      url += "/lmsapi";
+    }
+
+    return url;
+  }
+
+  function normalizeLmsBaseUrlInput(){
+    const el = byId("lmsBaseUrl");
+    if (!el) return;
+
+    const normalized = normalizeLmsUrlValue(el.value);
+
+    if (normalized && normalized !== el.value){
+      el.value = normalized;
+    }
+  }
+
+  function bindLmsUrlNormalizer(){
+    const el = byId("lmsBaseUrl");
+    if (!el || el.dataset.urlNormalizerBound === "1") return;
+
+    el.dataset.urlNormalizerBound = "1";
+
+    el.addEventListener("blur", normalizeLmsBaseUrlInput);
+    el.addEventListener("change", normalizeLmsBaseUrlInput);
+
+    const btnSave = byId("btnLmsSave");
+    if (btnSave && btnSave.dataset.urlNormalizerBound !== "1"){
+      btnSave.dataset.urlNormalizerBound = "1";
+      btnSave.addEventListener("click", normalizeLmsBaseUrlInput, true);
+    }
+
+    const btnTest = byId("btnLmsTest");
+    if (btnTest && btnTest.dataset.urlNormalizerBound !== "1"){
+      btnTest.dataset.urlNormalizerBound = "1";
+      btnTest.addEventListener("click", normalizeLmsBaseUrlInput, true);
+    }
+  }
+
+  bindLmsUrlNormalizer();
 })();
