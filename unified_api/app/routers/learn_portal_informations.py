@@ -171,7 +171,7 @@ def learn_lms_fetch_public_config(cur, oid: str) -> Optional[dict]:
         WHERE id_owner = %s
           AND COALESCE(archive, FALSE) = FALSE
           AND COALESCE(actif, TRUE) = TRUE
-        ORDER BY date_modification DESC, date_creation DESC
+        ORDER BY updated_at DESC, created_at DESC
         LIMIT 1
         """,
         (oid,),
@@ -197,7 +197,7 @@ def learn_lms_fetch_active_config(cur, oid: str, with_secret: bool = False) -> O
             WHERE id_owner = %s
               AND COALESCE(archive, FALSE) = FALSE
               AND COALESCE(actif, TRUE) = TRUE
-            ORDER BY date_modification DESC, date_creation DESC
+            ORDER BY updated_at DESC, created_at DESC
             LIMIT 1
             """,
             (learn_lms_secret_key(), oid),
@@ -218,7 +218,7 @@ def learn_lms_fetch_active_config(cur, oid: str, with_secret: bool = False) -> O
             WHERE id_owner = %s
               AND COALESCE(archive, FALSE) = FALSE
               AND COALESCE(actif, TRUE) = TRUE
-            ORDER BY date_modification DESC, date_creation DESC
+            ORDER BY updated_at DESC, created_at DESC
             LIMIT 1
             """,
             (oid,),
@@ -246,7 +246,6 @@ def learn_lms_fetch_active_config(cur, oid: str, with_secret: bool = False) -> O
             row["secret_json"] = {}
 
     return row
-
 
 def learn_lms_api_post(api_base: str, api_id: str, path: str, payload: Optional[dict] = None, timeout: int = 45) -> dict:
     base_url = learn_lms_normalize_base_url(api_base)
@@ -530,7 +529,7 @@ def learn_informations_lms_config_save(id_effectif: str, payload: LearnLmsConfig
                                 secret_json_encrypted = pgp_sym_encrypt(%s, %s),
                                 actif = TRUE,
                                 archive = FALSE,
-                                date_modification = NOW()
+                                updated_at = NOW()
                             WHERE id_lms_config = %s
                               AND id_owner = %s
                             """,
@@ -555,7 +554,7 @@ def learn_informations_lms_config_save(id_effectif: str, payload: LearnLmsConfig
                                 config_json = %s::jsonb,
                                 actif = TRUE,
                                 archive = FALSE,
-                                date_modification = NOW()
+                                updated_at = NOW()
                             WHERE id_lms_config = %s
                               AND id_owner = %s
                             """,
@@ -594,8 +593,8 @@ def learn_informations_lms_config_save(id_effectif: str, payload: LearnLmsConfig
                             secret_json_encrypted,
                             actif,
                             archive,
-                            date_creation,
-                            date_modification
+                            created_at,
+                            updated_at
                           )
                         VALUES
                           (
