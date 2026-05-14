@@ -9,11 +9,10 @@ import re
 import unicodedata
 import html
 import os
-import hashlib
 from difflib import SequenceMatcher
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT, TA_CENTER
+from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether
 from reportlab.lib.styles import ParagraphStyle
@@ -21,18 +20,6 @@ from reportlab.lib.styles import ParagraphStyle
 from app.routers.skills_portal_common import get_conn
 from app.routers.learn_portal_common import learn_require_user, learn_fetch_profile
 from app.routers.skills_portal_pdf_common import build_pdf_document, build_pdf_styles
-from app.routers.learn_portal_informations import (
-    learn_lms_api_post,
-    learn_lms_extract_url,
-    learn_lms_extract_workspace_id,
-    learn_lms_fetch_active_config,
-    learn_lms_fetch_public_config,
-    learn_lms_keywords,
-    learn_lms_public_config,
-    learn_lms_resolve_lara_defaults,
-    learn_lms_safe_int,
-    learn_lms_short_description,
-)
 
 try:
     from openai import OpenAI
@@ -129,12 +116,34 @@ def _jsonb_param(value: Any) -> str:
     return json.dumps(arr, ensure_ascii=False)
 
 
+FORMATION_TITLE_MAX = 90
+FORMATION_PRESENTATION_MAX = 625
+FORMATION_OBJECTIF_MAX = 550
+FORMATION_PREREQ_MAX = 65
+
+
 def _clean_text(value: Any, max_len: int = 20000) -> str:
     txt = str(value or "").replace("\x00", " ").strip()
     txt = re.sub(r"\r\n?", "\n", txt)
     txt = re.sub(r"[ \t]+", " ", txt)
     if len(txt) > max_len:
         txt = txt[:max_len].rsplit(" ", 1)[0].strip()
+    return txt
+
+
+def _limit_catalogue_text(value: Any, max_len: int) -> str:
+    txt = str(value or "").replace("\x00", " ").strip()
+    txt = html.unescape(txt)
+    txt = re.sub(r"(?i)<\s*br\s*/?\s*>", " ", txt)
+    txt = re.sub(r"(?i)</\s*p\s*>", " ", txt)
+    txt = re.sub(r"<[^>]+>", " ", txt)
+    txt = re.sub(r"\r\n?", "\n", txt)
+    txt = re.sub(r"\s+", " ", txt).strip()
+
+    if len(txt) > max_len:
+        cut = txt[:max_len].rsplit(" ", 1)[0].strip()
+        txt = cut if cut else txt[:max_len].strip()
+
     return txt
 
 
@@ -765,7 +774,7 @@ def _sync_formation_prerequis(cur, oid: str, id_form: str, prerequis: Optional[l
         else:
             item = raw.dict()
 
-        titre = _clean_text(item.get("titre"), 800)
+        titre = _limit_catalogue_text(item.get("titre"), FORMATION_PREREQ_MAX)
         if not titre:
             continue
 
@@ -1420,7 +1429,7 @@ def _normalize_import_prerequis(raw_items: Any) -> list:
     seen = set()
 
     def add_item(titre: Any, r1: Any = "Oui", r2: Any = "Non", r3: Any = ""):
-        clean_titre = _clean_text(titre, 800)
+        clean_titre = _limit_catalogue_text(titre, FORMATION_PREREQ_MAX)
         if not clean_titre:
             return
 
@@ -1549,7 +1558,11 @@ def _analyse_import_document_with_ai(doc_text: str, filename: str) -> dict:
         "Le champ titre contient le prérequis lui-même. "
         "Les champs r1, r2, r3 sont uniquement des réponses d’auto-positionnement, jamais des prérequis. "
         "Pour un prérequis oui/non, utilise r1='Oui', r2='Non', r3=''. "
+        "Chaque titre de prérequis ne doit jamais dépasser 65 caractères. "
         "Le type_formation doit être l'une des valeurs: Certifiante, Diplomante, Non Certifiante. "
+        "Contraintes catalogue impératives : le titre ne dépasse jamais 90 caractères, "
+        "la présentation ne dépasse jamais 625 caractères et doit être un seul paragraphe sans retour ligne, "
+        "l'objectif pédagogique ne dépasse jamais 550 caractères et doit être un seul paragraphe sans retour ligne. "
         "Si une information est absente, renvoie une chaîne vide, null ou une liste vide."
     )
 
@@ -1670,10 +1683,11 @@ def _analyse_generate_formation_with_ai(
     system_prompt = (
         "Tu génères une fiche formation structurée pour Novoskill Learn. "
         "Règles impératives : zéro marketing, rédaction opérationnelle, pédagogique, sobre et exploitable. "
-        "Le titre commence par un verbe d'action. "
-        "La présentation est un texte rédigé avec une bonne syntaxe, sans liste. "
+        "Le titre commence par un verbe d'action et ne dépasse jamais 90 caractères. "
+        "La présentation est un texte rédigé avec une bonne syntaxe, sans liste, sans retour ligne, et ne dépasse jamais 625 caractères. "
         "L'objectif pédagogique est la finalité globale de la formation et doit être formulé dans l'esprit : "
         "À la fin de la formation, le stagiaire/l'apprenant sera capable de... "
+        "Cet objectif pédagogique ne doit jamais dépasser 550 caractères et ne doit contenir aucun retour ligne. "
         "Ne confonds pas objectif pédagogique et compétences visées. Les compétences visées sont des capacités opérationnelles observables. "
         "Les contenus sont des briques réutilisables indépendantes de la modalité. "
         "Chaque contenu doit comporter un titre clair, un objectif court et un champ contenu détaillé. "
@@ -1682,6 +1696,7 @@ def _analyse_generate_formation_with_ai(
         "Ne génère jamais de plan pédagogique, ni de déroulé jour par jour. "
         "Ne demande pas et ne déduis pas une modalité de réalisation : la modalité sera traitée dans le plan pédagogique. "
         "Les prérequis doivent être évaluables. Chaque prérequis est un élément distinct avec titre + réponses Oui/Non et r3 optionnelle. "
+        "Chaque titre de prérequis ne doit jamais dépasser 65 caractères. "
         "Les compétences formateur doivent inclure des compétences d'animation/évaluation/apprentissage et des compétences métier liées au contenu ; "
         "on considère que le formateur possède un niveau avancé ou expert. "
         "Si un contexte est fourni, rends la formation spécifique à ce contexte. Si aucun contexte n'est fourni, génère une formation générique et réutilisable. "
@@ -1935,10 +1950,10 @@ async def learn_formations_import_document(
 
         out = {
             "filename": filename,
-            "titre": _clean_text(draft.get("titre"), 500),
-            "presentation": _clean_text(draft.get("presentation"), 6000),
+            "titre": _limit_catalogue_text(draft.get("titre"), FORMATION_TITLE_MAX),
+            "presentation": _limit_catalogue_text(draft.get("presentation"), FORMATION_PRESENTATION_MAX),
             "public_cible": _clean_text(draft.get("public_cible"), 3000),
-            "objectifs": _clean_text(draft.get("objectifs"), 5000),
+            "objectifs": _limit_catalogue_text(draft.get("objectifs"), FORMATION_OBJECTIF_MAX),
             "type_formation": _normalize_type_formation(draft.get("type_formation")),
             "obs_type_form": _clean_text(draft.get("obs_type_form"), 500),
             "duree": _safe_float(draft.get("duree")),
@@ -2069,10 +2084,10 @@ async def learn_formations_generate_ai(
         duree_recommandee = _safe_float(draft.get("duree_recommandee"))
 
         out = {
-            "titre": _clean_text(draft.get("titre"), 500),
-            "presentation": _clean_text(draft.get("presentation"), 6000),
+            "titre": _limit_catalogue_text(draft.get("titre"), FORMATION_TITLE_MAX),
+            "presentation": _limit_catalogue_text(draft.get("presentation"), FORMATION_PRESENTATION_MAX),
             "public_cible": _clean_text(draft.get("public_cible"), 3000),
-            "objectifs": _clean_text(draft.get("objectif_pedagogique"), 5000),
+            "objectifs": _limit_catalogue_text(draft.get("objectif_pedagogique"), FORMATION_OBJECTIF_MAX),
             "type_formation": _normalize_type_formation(draft.get("type_formation")),
             "obs_type_form": _clean_text(draft.get("obs_type_form"), 500),
             "duree": duree_recommandee,
@@ -2381,7 +2396,7 @@ def learn_formation_create(id_effectif: str, payload: FormationPayload, request:
     u = learn_require_user(auth)
 
     try:
-        titre = (payload.titre or "").strip()
+        titre = _limit_catalogue_text(payload.titre, FORMATION_TITLE_MAX)
         if not titre:
             raise HTTPException(status_code=400, detail="Titre obligatoire.")
 
@@ -2443,9 +2458,9 @@ def learn_formation_create(id_effectif: str, payload: FormationPayload, request:
                         _normalize_type_formation(payload.type_formation),
                         _clean_text(payload.obs_type_form),
                         _safe_int(payload.duree),
-                        _clean_text(payload.objectifs),
+                        _limit_catalogue_text(payload.objectifs, FORMATION_OBJECTIF_MAX),
                         _clean_text(payload.public_cible),
-                        _clean_text(payload.presentation),
+                        _limit_catalogue_text(payload.presentation, FORMATION_PRESENTATION_MAX),
                         _jsonb_param(payload.modalites),
                         _jsonb_param(payload.methode_peda),
                         _jsonb_param(payload.methode_eval),
@@ -2497,7 +2512,7 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
                 vals = []
 
                 if "titre" in patch_fields:
-                    titre = (payload.titre or "").strip()
+                    titre = _limit_catalogue_text(payload.titre, FORMATION_TITLE_MAX)
                     if not titre:
                         raise HTTPException(status_code=400, detail="Titre obligatoire.")
                     cols.append("titre = %s")
@@ -2521,7 +2536,7 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
 
                 if "objectifs" in patch_fields:
                     cols.append("objectifs = %s")
-                    vals.append(_clean_text(payload.objectifs))
+                    vals.append(_limit_catalogue_text(payload.objectifs, FORMATION_OBJECTIF_MAX))
 
                 if "public_cible" in patch_fields:
                     cols.append("public_cible = %s")
@@ -2529,7 +2544,7 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
 
                 if "presentation" in patch_fields:
                     cols.append("presentation = %s")
-                    vals.append(_clean_text(payload.presentation))
+                    vals.append(_limit_catalogue_text(payload.presentation, FORMATION_PRESENTATION_MAX))
 
                 if "modalites" in patch_fields:
                     cols.append("modalites = %s::jsonb")
@@ -3072,7 +3087,12 @@ def _build_formation_pdf_story(form: dict) -> list:
     styles = build_pdf_styles()
 
     # ======================================================
-    # Helpers locaux PDF catalogue
+    # Version test - Trame catalogue formation
+    # Zones traitées :
+    # - titre formation
+    # - accroche
+    # - objectif pédagogique
+    # - modalités possibles
     # ======================================================
 
     def clean_pdf_text(value: Any, fallback: str = "—") -> str:
@@ -3093,68 +3113,12 @@ def _build_formation_pdf_story(form: dict) -> list:
 
         return txt if txt else fallback
 
-    def pretty_label(value: Any) -> str:
-        raw = clean_pdf_text(value, "")
-        if not raw:
-            return "—"
-
-        s = raw.strip()
-
-        mapping = {
-            "numerique": "Numérique",
-            "active": "Active",
-            "a valider": "À valider",
-            "à valider": "À valider",
-            "archive": "Archivée",
-            "modalite_presentiel": "Présentiel",
-            "modalite_virtuel": "Distanciel",
-            "modalite_distanciel": "Distanciel",
-            "modalite_blended": "Blended learning",
-            "methode_expose": "Exposé",
-            "methode_demo": "Démonstration",
-            "methode_demonstration": "Démonstration",
-            "methode_exercices": "Exercices",
-            "methode_etude_cas": "Étude de cas",
-            "methode_travail_groupe": "Travail de groupe",
-            "methode_formation_action": "Formation-action",
-            "eval_observation": "Observation",
-            "eval_entretien_individuel": "Entretien individuel",
-            "eval_etude_cas": "Étude de cas",
-            "eval_qcm": "QCM",
-            "eval_quiz": "Quiz",
-            "eval_mise_situation": "Mise en situation",
-        }
-
-        key = _norm_match_text(s).replace(" ", "_")
-        if key in mapping:
-            return mapping[key]
-
-        if "_" in s:
-            s = re.sub(r"^(modalite|methode|eval)_", "", s, flags=re.I)
-            s = s.replace("_", " ")
-
-        return s[:1].upper() + s[1:] if s else "—"
-
-    def ref_label(item: dict) -> str:
-        titre = item.get("titre") or ""
-        titre_court = item.get("titre_court") or ""
-
-        tc_clean = str(titre_court or "").strip().lower()
-
-        if tc_clean and not re.match(r"^(modalite|methode|eval)_", tc_clean):
-            return pretty_label(titre_court)
-
-        return pretty_label(titre or titre_court)
-
     def p(value: Any, style, fallback: str = "—"):
         txt = clean_pdf_text(value, fallback)
         txt = html.escape(txt).replace("\n", "<br/>")
         return Paragraph(txt, style)
 
-    def p_html(value: Any, style):
-        return Paragraph(str(value or ""), style)
-
-    def short_text(value: Any, limit: int = 260) -> str:
+    def short_text(value: Any, limit: int = 240) -> str:
         txt = clean_pdf_text(value, "")
 
         if not txt:
@@ -3166,134 +3130,69 @@ def _build_formation_pdf_story(form: dict) -> list:
         cut = txt[:limit].rsplit(" ", 1)[0].strip()
         return f"{cut}…"
 
-    def lines(value: Any) -> list:
-        txt = clean_pdf_text(value, "")
+    def pretty_label(value: Any) -> str:
+        raw = clean_pdf_text(value, "")
+        if not raw:
+            return ""
 
-        if not txt:
-            return []
+        s = raw.strip()
 
-        out = []
-        for raw in txt.split("\n"):
-            item = raw.strip().lstrip("•").lstrip("-").strip()
-            if item:
-                out.append(item)
+        mapping = {
+            "modalite_presentiel": "Présentiel",
+            "modalite_virtuel": "Distanciel",
+            "modalite_distanciel": "Distanciel",
+            "modalite_blended": "Blended learning",
+            "modalite_salle_numerique": "Salle numérique",
+            "salle numerique": "Salle numérique",
+            "présentiel": "Présentiel",
+            "presentiel": "Présentiel",
+            "distanciel": "Distanciel",
+            "blended learning": "Blended learning",
+        }
 
-        return out
+        key = _norm_match_text(s).replace(" ", "_")
+        if key in mapping:
+            return mapping[key]
 
-    def subjects(value: Any) -> list:
-        out = lines(value)
+        if "_" in s:
+            s = re.sub(r"^(modalite|methode|eval)_", "", s, flags=re.I)
+            s = s.replace("_", " ")
 
-        if out:
-            return out
+        return s[:1].upper() + s[1:] if s else ""
 
-        txt = clean_pdf_text(value, "")
+    def ref_label(item: dict) -> str:
+        titre = str(item.get("titre") or "").strip()
+        titre_court = str(item.get("titre_court") or "").strip()
 
-        if not txt:
-            return []
+        if titre_court and not re.match(r"^(modalite|methode|eval)_", titre_court, flags=re.I):
+            return pretty_label(titre_court)
 
-        parts = re.split(r"(?<=[.!?])\s+", txt)
-        return [x.strip() for x in parts if x.strip()]
+        return pretty_label(titre or titre_court)
 
-    def bullet_list(values: list, style) -> list:
-        out = []
-
-        for value in values or []:
-            txt = clean_pdf_text(value, "")
-            if txt:
-                out.append(p(f"• {txt}", style))
-
-        return out or [p("—", style)]
-
-    def section_title(title: str):
-        marker = Table([[""]], colWidths=[3.5 * mm], rowHeights=[6 * mm])
-        marker.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ff7a35")),
-            ("BOX", (0, 0), (-1, -1), 0, colors.HexColor("#ff7a35")),
-        ]))
-
-        tbl = Table(
-            [[marker, p(title, section_style)]],
-            colWidths=[6 * mm, 174 * mm],
-        )
-        tbl.setStyle(TableStyle([
+    def modality_chip(label: str):
+        chip = Table([[p(label, chip_style)]], colWidths=[44 * mm])
+        chip.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
+            ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#ff7a35")),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-            ("TOPPADDING", (0, 0), (-1, -1), 7),
+            ("LEFTPADDING", (0, 0), (-1, -1), 7),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ]))
-        return tbl
+        return chip
 
-    def info_card(label: str, value: Any, width: float, bg: str = "#f8fafc"):
-        tbl = Table(
-            [[p(label, info_label_style)], [p(value, info_value_style)]],
-            colWidths=[width],
-        )
-        tbl.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(bg)),
-            ("BOX", (0, 0), (-1, -1), 0.55, colors.HexColor("#e2e8f0")),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ]))
-        return tbl
+    def modality_grid(labels: list):
+        clean = [x for x in labels if str(x or "").strip()]
 
-    def card(title: str, flowables: list, width: float, bg: str = "#ffffff", border: str = "#e2e8f0"):
-        body = flowables or [p("—", body_style)]
-
-        tbl = Table(
-            [[p(title, card_title_style)], [body]],
-            colWidths=[width],
-        )
-        tbl.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(bg)),
-            ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor(border)),
-            ("LINEBELOW", (0, 0), (-1, 0), 0.35, colors.HexColor("#eef2f7")),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 9),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 9),
-            ("TOPPADDING", (0, 0), (-1, -1), 7),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-        ]))
-        return tbl
-
-    def badge(value: Any, style, bg: str = "#2563a8"):
-        tbl = Table([[p(value, style)]])
-        tbl.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(bg)),
-            ("BOX", (0, 0), (-1, -1), 0, colors.HexColor(bg)),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 2.8),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 2.8),
-        ]))
-        return tbl
-
-    def soft_tag(value: Any):
-        tbl = Table([[p(value, chip_style)]])
-        tbl.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
-            ("BOX", (0, 0), (-1, -1), 0.45, colors.HexColor("#fed7aa")),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("TOPPADDING", (0, 0), (-1, -1), 3),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ]))
-        return tbl
-
-    def tag_list(items: list, width: float):
-        labels = [pretty_label(x) for x in items or [] if str(x or "").strip()]
-
-        if not labels:
-            return p("—", body_style)
+        if not clean:
+            clean = ["Non précisé"]
 
         rows = []
         current = []
 
-        for label in labels:
-            current.append(soft_tag(label))
+        for label in clean:
+            current.append(modality_chip(label))
 
             if len(current) == 2:
                 rows.append(current)
@@ -3304,39 +3203,32 @@ def _build_formation_pdf_story(form: dict) -> list:
                 current.append("")
             rows.append(current)
 
-        tbl = Table(rows, colWidths=[width / 2, width / 2])
-        tbl.setStyle(TableStyle([
+        grid = Table(rows, colWidths=[47 * mm, 47 * mm])
+        grid.setStyle(TableStyle([
             ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ("LEFTPADDING", (0, 0), (-1, -1), 0),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 3),
-            ("TOPPADDING", (0, 0), (-1, -1), 2),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-        ]))
-        return tbl
-
-    def comp_rows(items: list, width: float):
-        rows = []
-
-        for c in items or []:
-            code = c.get("code") or "—"
-            label = c.get("intitule") or "—"
-
-            rows.append([
-                badge(code, code_blue_style),
-                p(label, body_style),
-            ])
-
-        if not rows:
-            rows.append(["", p("—", body_style)])
-
-        tbl = Table(rows, colWidths=[26 * mm, width - 26 * mm])
-        tbl.setStyle(TableStyle([
-            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 0),
             ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-            ("TOPPADDING", (0, 0), (-1, -1), 3.2),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 3.2),
-            ("LINEBELOW", (0, 0), (-1, -2), 0.35, colors.HexColor("#eef2f7")),
+            ("TOPPADDING", (0, 0), (-1, -1), 3),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        return grid
+
+    def rounded_card(title: str, body_flowables: list, width: float, bg: str = "#ffffff"):
+        tbl = Table(
+            [
+                [p(title, box_title_style)],
+                [body_flowables or [p("—", body_style)]],
+            ],
+            colWidths=[width],
+        )
+        tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(bg)),
+            ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#e5e7eb")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 13),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 13),
+            ("TOPPADDING", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
         ]))
         return tbl
 
@@ -3344,162 +3236,53 @@ def _build_formation_pdf_story(form: dict) -> list:
     # Styles
     # ======================================================
 
-    hero_title_style = ParagraphStyle(
-        "LearnCatHeroTitle",
+    title_style = ParagraphStyle(
+        "LearnTemplateTitle",
         parent=styles["title"],
         fontName="Helvetica-Bold",
-        fontSize=22,
-        leading=26,
-        textColor=colors.white,
-        spaceAfter=4,
+        fontSize=28,
+        leading=32,
+        textColor=colors.HexColor("#111827"),
+        spaceAfter=0,
     )
 
-    hero_label_style = ParagraphStyle(
-        "LearnCatHeroLabel",
-        parent=styles["small"],
-        fontName="Helvetica-Bold",
-        fontSize=8.5,
-        leading=10,
-        textColor=colors.HexColor("#fed7aa"),
-        spaceAfter=4,
-    )
-
-    hero_sub_style = ParagraphStyle(
-        "LearnCatHeroSub",
+    accroche_style = ParagraphStyle(
+        "LearnTemplateAccroche",
         parent=styles["body"],
         fontName="Helvetica",
-        fontSize=9.3,
-        leading=12,
-        textColor=colors.HexColor("#e5e7eb"),
+        fontSize=12.5,
+        leading=16,
+        textColor=colors.HexColor("#4b5563"),
+        spaceAfter=0,
     )
 
-    hero_side_label_style = ParagraphStyle(
-        "LearnCatHeroSideLabel",
-        parent=styles["small"],
-        fontName="Helvetica-Bold",
-        fontSize=7.2,
-        leading=8.5,
-        textColor=colors.HexColor("#fed7aa"),
-    )
-
-    hero_side_value_style = ParagraphStyle(
-        "LearnCatHeroSideValue",
-        parent=styles["body"],
-        fontName="Helvetica-Bold",
-        fontSize=11,
-        leading=13,
-        textColor=colors.white,
-    )
-
-    section_style = ParagraphStyle(
-        "LearnCatSection",
+    box_title_style = ParagraphStyle(
+        "LearnTemplateBoxTitle",
         parent=styles["section"],
         fontName="Helvetica-Bold",
-        fontSize=12.4,
-        leading=14.5,
+        fontSize=14.5,
+        leading=17,
         textColor=colors.HexColor("#111827"),
-    )
-
-    card_title_style = ParagraphStyle(
-        "LearnCatCardTitle",
-        parent=styles["small"],
-        fontName="Helvetica-Bold",
-        fontSize=8,
-        leading=9.5,
-        textColor=colors.HexColor("#64748b"),
-        spaceAfter=4,
+        spaceAfter=8,
     )
 
     body_style = ParagraphStyle(
-        "LearnCatBody",
+        "LearnTemplateBody",
         parent=styles["body"],
         fontName="Helvetica",
-        fontSize=8.8,
-        leading=11.3,
-        textColor=colors.HexColor("#1f2937"),
-        spaceAfter=2,
-    )
-
-    body_bold_style = ParagraphStyle(
-        "LearnCatBodyBold",
-        parent=body_style,
-        fontName="Helvetica-Bold",
-    )
-
-    muted_style = ParagraphStyle(
-        "LearnCatMuted",
-        parent=styles["small"],
-        fontName="Helvetica",
-        fontSize=7.8,
-        leading=9.4,
-        textColor=colors.HexColor("#64748b"),
-    )
-
-    info_label_style = ParagraphStyle(
-        "LearnCatInfoLabel",
-        parent=styles["small"],
-        fontName="Helvetica",
-        fontSize=7.2,
-        leading=8.5,
-        textColor=colors.HexColor("#64748b"),
-    )
-
-    info_value_style = ParagraphStyle(
-        "LearnCatInfoValue",
-        parent=styles["body"],
-        fontName="Helvetica-Bold",
         fontSize=10.2,
-        leading=12.2,
-        textColor=colors.HexColor("#111827"),
-    )
-
-    code_orange_style = ParagraphStyle(
-        "LearnCatCodeOrange",
-        parent=styles["small"],
-        fontName="Helvetica-Bold",
-        fontSize=8.2,
-        leading=9.5,
-        textColor=colors.white,
-        alignment=TA_CENTER,
-    )
-
-    code_blue_style = ParagraphStyle(
-        "LearnCatCodeBlue",
-        parent=styles["small"],
-        fontName="Helvetica-Bold",
-        fontSize=7.3,
-        leading=8.6,
-        textColor=colors.white,
-        alignment=TA_CENTER,
+        leading=14,
+        textColor=colors.HexColor("#1f2937"),
+        spaceAfter=0,
     )
 
     chip_style = ParagraphStyle(
-        "LearnCatChip",
+        "LearnTemplateChip",
         parent=styles["small"],
         fontName="Helvetica-Bold",
-        fontSize=7.2,
-        leading=8.5,
-        textColor=colors.HexColor("#9a3412"),
-        alignment=TA_CENTER,
-    )
-
-    big_stat_label_style = ParagraphStyle(
-        "LearnCatBigStatLabel",
-        parent=styles["small"],
-        fontName="Helvetica-Bold",
-        fontSize=7.4,
-        leading=8.6,
-        textColor=colors.HexColor("#64748b"),
-        alignment=TA_CENTER,
-    )
-
-    big_stat_value_style = ParagraphStyle(
-        "LearnCatBigStatValue",
-        parent=styles["title"],
-        fontName="Helvetica-Bold",
-        fontSize=19,
-        leading=22,
-        textColor=colors.HexColor("#ff7a35"),
+        fontSize=9.2,
+        leading=11,
+        textColor=colors.HexColor("#c2410c"),
         alignment=TA_CENTER,
     )
 
@@ -3507,339 +3290,826 @@ def _build_formation_pdf_story(form: dict) -> list:
     # Données
     # ======================================================
 
-    code = form.get("code") or "FC"
-    titre = form.get("titre") or "Formation"
-    domaine = pretty_label(form.get("domaine_titre_court") or form.get("domaine_titre"))
-    fournisseur = pretty_label(form.get("fournisseur_nom"))
-    type_formation = pretty_label(form.get("type_formation"))
-    etat = pretty_label(form.get("etat"))
-    duree = _pdf_hours(form.get("duree"))
-    tarif = _pdf_money(form.get("tarif_mini"))
-    accroche = short_text(form.get("presentation"), 245) or "Fiche descriptive de formation."
+    titre = clean_pdf_text(form.get("titre"), "Formation")
+    accroche = short_text(form.get("presentation"), 260) or "Présentation de la formation."
+    objectif = clean_pdf_text(form.get("objectifs"), "Objectif pédagogique à compléter.")
 
     modalites = [
         ref_label(x)
         for x in (form.get("modalites_items") or [])
-        if ref_label(x) != "—"
+        if ref_label(x)
     ]
-    pedas = [
-        ref_label(x)
-        for x in (form.get("methode_peda_items") or [])
-        if ref_label(x) != "—"
-    ]
-    evals = [
-        ref_label(x)
-        for x in (form.get("methode_eval_items") or [])
-        if ref_label(x) != "—"
-    ]
+
+    # ======================================================
+    # Construction de la page selon la trame fournie
+    # ======================================================
 
     story = []
 
-    # ======================================================
-    # Page catalogue - Hero
-    # ======================================================
+    story.append(Spacer(1, 8 * mm))
+    story.append(p(titre, title_style))
+    story.append(Spacer(1, 7 * mm))
+    story.append(p(accroche, accroche_style))
+    story.append(Spacer(1, 20 * mm))
 
-    left_hero = Table(
-        [
-            [p("CATALOGUE FORMATION", hero_label_style)],
-            [p(titre, hero_title_style)],
-            [p(accroche, hero_sub_style)],
-        ],
-        colWidths=[124 * mm],
-    )
-    left_hero.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#172033")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 13),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
-        ("TOPPADDING", (0, 0), (-1, -1), 11),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 11),
-    ]))
-
-    right_hero = Table(
-        [
-            [p("CODE", hero_side_label_style)],
-            [badge(code, code_orange_style, bg="#ff7a35")],
-            [p("DURÉE", hero_side_label_style)],
-            [p(duree, hero_side_value_style)],
-            [p("TYPE", hero_side_label_style)],
-            [p(type_formation, hero_side_value_style)],
-        ],
-        colWidths=[54 * mm],
-    )
-    right_hero.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#22304a")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 10),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-        ("TOPPADDING", (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
-    ]))
-
-    hero = Table([[left_hero, right_hero]], colWidths=[126 * mm, 54 * mm])
-    hero.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "STRETCH"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-    ]))
-    story.append(hero)
-    story.append(Spacer(1, 5 * mm))
-
-    # ======================================================
-    # En bref
-    # ======================================================
-
-    story.append(section_title("En bref"))
-
-    quick_grid = Table(
-        [[
-            info_card("Domaine", domaine, 42 * mm),
-            info_card("Fournisseur", fournisseur, 42 * mm),
-            info_card("Tarif indicatif", tarif, 42 * mm),
-            info_card("Statut", etat, 42 * mm),
-        ]],
-        colWidths=[45 * mm, 45 * mm, 45 * mm, 45 * mm],
-    )
-    quick_grid.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-    ]))
-    story.append(quick_grid)
-
-    if form.get("obs_type_form"):
-        story.append(Spacer(1, 3 * mm))
-        story.append(card(
-            "Certification / niveau reconnu",
-            [p(form.get("obs_type_form"), body_style)],
-            180 * mm,
-            bg="#f8fafc",
-        ))
-
-    # ======================================================
-    # Objectif + Présentation
-    # ======================================================
-
-    story.append(section_title("Objectif pédagogique"))
-
-    objective_card = Table(
-        [[
-            Table(
-                [[p("OBJECTIF", big_stat_label_style)], [p("✓", big_stat_value_style)]],
-                colWidths=[22 * mm],
-            ),
-            p(form.get("objectifs") or "—", body_style),
-        ]],
-        colWidths=[26 * mm, 154 * mm],
-    )
-    objective_card.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
-        ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#fed7aa")),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 10),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-        ("TOPPADDING", (0, 0), (-1, -1), 10),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
-    ]))
-    story.append(objective_card)
-
-    story.append(section_title("Pourquoi cette formation ?"))
-    story.append(card(
-        "Présentation",
-        [p(form.get("presentation") or "—", body_style)],
-        180 * mm,
+    objective_card = rounded_card(
+        "Objectifs pédagogiques",
+        [p(objectif, body_style)],
+        82 * mm,
         bg="#ffffff",
-    ))
-
-    # ======================================================
-    # Public / Prérequis
-    # ======================================================
-
-    story.append(section_title("Public & conditions d’entrée"))
-
-    public_items = lines(form.get("public_cible"))
-    prereq_items = [
-        x.get("titre")
-        for x in (form.get("prerequis") or [])
-        if x.get("titre")
-    ]
-
-    public_grid = Table(
-        [[
-            card("Public cible", bullet_list(public_items, body_style), 86 * mm),
-            card("Prérequis évaluables", bullet_list(prereq_items, body_style), 86 * mm),
-        ]],
-        colWidths=[90 * mm, 90 * mm],
     )
-    public_grid.setStyle(TableStyle([
+
+    modality_card = rounded_card(
+        "Modalités possibles",
+        [modality_grid(modalites)],
+        82 * mm,
+        bg="#ffffff",
+    )
+
+    main_grid = Table(
+        [[objective_card, modality_card]],
+        colWidths=[88 * mm, 88 * mm],
+    )
+    main_grid.setStyle(TableStyle([
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
         ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
     ]))
-    story.append(public_grid)
 
-    # ======================================================
-    # Compétences + méthodes
-    # ======================================================
-
-    story.append(section_title("Compétences développées"))
-
-    comp_grid = Table(
-        [[
-            card(
-                "Compétences visées pour les stagiaires",
-                [comp_rows(form.get("competences_stagiaires_items") or [], 82 * mm)],
-                86 * mm,
-            ),
-            card(
-                "Compétences requises pour le formateur",
-                [comp_rows(form.get("competences_formateurs_items") or [], 82 * mm)],
-                86 * mm,
-            ),
-        ]],
-        colWidths=[90 * mm, 90 * mm],
-    )
-    comp_grid.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-    ]))
-    story.append(comp_grid)
-
-    story.append(section_title("Modalités & méthodes"))
-
-    method_grid = Table(
-        [[
-            card("Modalités possibles", [tag_list(modalites, 52 * mm)], 56 * mm, bg="#f8fafc"),
-            card("Méthodes pédagogiques", [tag_list(pedas, 52 * mm)], 56 * mm, bg="#f8fafc"),
-            card("Méthodes d’évaluation", [tag_list(evals, 52 * mm)], 56 * mm, bg="#f8fafc"),
-        ]],
-        colWidths=[60 * mm, 60 * mm, 60 * mm],
-    )
-    method_grid.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-    ]))
-    story.append(method_grid)
-
-    # ======================================================
-    # Programme
-    # ======================================================
-
-    story.append(PageBreak())
-
-    story.append(section_title("Programme de formation"))
-    story.append(p(
-        "Les contenus ci-dessous constituent les briques pédagogiques de la formation. Ils pourront ensuite être organisés dans un ou plusieurs plans pédagogiques.",
-        muted_style,
-    ))
-    story.append(Spacer(1, 4 * mm))
-
-    contenus = form.get("contenus") or []
-
-    if not contenus:
-        story.append(p("Aucun contenu détaillé n’est encore rattaché à cette formation.", body_style))
-    else:
-        content_index_style = ParagraphStyle(
-            "LearnCatContentIndex",
-            parent=styles["small"],
-            fontName="Helvetica-Bold",
-            fontSize=12,
-            leading=14,
-            textColor=colors.white,
-            alignment=TA_CENTER,
-        )
-
-        content_title_style = ParagraphStyle(
-            "LearnCatContentTitle",
-            parent=styles["body"],
-            fontName="Helvetica-Bold",
-            fontSize=10.5,
-            leading=13,
-            textColor=colors.HexColor("#111827"),
-        )
-
-        for idx, l in enumerate(contenus, start=1):
-            comp_items = l.get("competences_liees_items") or []
-
-            chips = []
-            for c in comp_items:
-                chips.append(badge(c.get("code") or "—", code_blue_style, bg="#2563a8"))
-
-            if not chips:
-                chips = [p("Aucune compétence liée", muted_style)]
-
-            left_index = Table(
-                [[p(str(idx).zfill(2), content_index_style)]],
-                colWidths=[18 * mm],
-                rowHeights=[13 * mm],
-            )
-            left_index.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ff7a35")),
-                ("BOX", (0, 0), (-1, -1), 0, colors.HexColor("#ff7a35")),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-                ("TOPPADDING", (0, 0), (-1, -1), 0),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-            ]))
-
-            header = Table(
-                [[
-                    left_index,
-                    p(l.get("titre_sequence") or "Contenu", content_title_style),
-                    chips,
-                ]],
-                colWidths=[20 * mm, 104 * mm, 54 * mm],
-            )
-            header.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff7ed")),
-                ("BOX", (0, 0), (-1, -1), 0, colors.HexColor("#fff7ed")),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 7),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
-                ("TOPPADDING", (0, 0), (-1, -1), 7),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
-            ]))
-
-            body_flow = []
-
-            if l.get("objectif"):
-                body_flow.append(p_html(
-                    f"<b>Objectif :</b> {html.escape(clean_pdf_text(l.get('objectif'), ''))}",
-                    body_style,
-                ))
-                body_flow.append(Spacer(1, 2 * mm))
-
-            body_flow.append(p_html("<b>Sujets abordés</b>", body_style))
-            body_flow.extend(bullet_list(subjects(l.get("contenu")), body_style))
-
-            content_card = Table(
-                [[header], [body_flow]],
-                colWidths=[180 * mm],
-            )
-            content_card.setStyle(TableStyle([
-                ("BOX", (0, 0), (-1, -1), 0.65, colors.HexColor("#e2e8f0")),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-                ("TOPPADDING", (0, 0), (-1, -1), 0),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-                ("LEFTPADDING", (0, 1), (-1, 1), 11),
-                ("RIGHTPADDING", (0, 1), (-1, 1), 11),
-                ("TOPPADDING", (0, 1), (-1, 1), 9),
-                ("BOTTOMPADDING", (0, 1), (-1, 1), 10),
-            ]))
-
-            story.append(KeepTogether([content_card, Spacer(1, 5 * mm)]))
+    story.append(main_grid)
 
     return story
 
+
+def _formation_pdf_template_path(filename: str) -> str:
+    """
+    résout un modèle pdf learn de manière robuste.
+
+    objectif :
+    - utiliser le dossier officiel app/assets/modeles_pdf/learn ;
+    - accepter les variantes de casse windows/linux ;
+    - accepter .png / .png sans imposer un renommage git ;
+    - retourner le vrai chemin existant quand il est trouvé.
+    """
+    clean_name = os.path.basename(str(filename or "").strip())
+
+    base_dir = os.path.normpath(
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "assets",
+            "modeles_pdf",
+            "learn",
+        )
+    )
+
+    direct = os.path.join(base_dir, clean_name)
+    if os.path.exists(direct):
+        return direct
+
+    wanted_root, wanted_ext = os.path.splitext(clean_name)
+    wanted_key = clean_name.lower()
+
+    if os.path.isdir(base_dir):
+        try:
+            for existing in os.listdir(base_dir):
+                existing_path = os.path.join(base_dir, existing)
+
+                if not os.path.isfile(existing_path):
+                    continue
+
+                existing_key = existing.lower()
+                existing_root, existing_ext = os.path.splitext(existing)
+
+                # match exact insensible à la casse.
+                if existing_key == wanted_key:
+                    return existing_path
+
+                # match sur le nom sans extension + extension image acceptée.
+                if (
+                    existing_root.lower() == wanted_root.lower()
+                    and existing_ext.lower() in (".png", ".jpg", ".jpeg")
+                ):
+                    return existing_path
+        except Exception:
+            pass
+
+    return direct
+
+
+def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] = None) -> bytes:
+    from reportlab.pdfgen import canvas as pdf_canvas
+    from reportlab.lib.utils import ImageReader
+
+    # ------------------------------------------------------------------
+    # Base maquette : PNG exportés en A4 portrait
+    # ------------------------------------------------------------------
+    DESIGN_W = 794.0
+    DESIGN_H = 1123.0
+
+    PAGE_W = 595.2755905511812
+    PAGE_H = 841.8897637795277
+
+    SX = PAGE_W / DESIGN_W
+    SY = PAGE_H / DESIGN_H
+
+    VIOLET = colors.HexColor("#E144F0")
+    VIOLET_DARK = colors.HexColor("#A02B93")
+    VIOLET_SOFT = colors.HexColor("#EFCFF1")
+    BLUE = colors.HexColor("#0070C0")
+    BLACK = colors.HexColor("#111111")
+    WHITE = colors.white
+
+    CONTACT_NAME = "Pierre BIDABE"
+    CONTACT_EMAIL = "pierre@jmbconsultant.fr"
+    CONTACT_PHONE = "06 72 11 42 21"
+
+    HANDICAP_NAME = "Jean-Marie BIDABE"
+    HANDICAP_EMAIL = "jm.bidabe@jmbconsultant.fr"
+    HANDICAP_PHONE = "06 8 31 25 90"
+
+    WEBSITE_URL = "www.jmbconsultant.fr"
+
+    def x_pt(x: float) -> float:
+        return float(x) * SX
+
+    def y_pt_from_top(top: float, height: float = 0) -> float:
+        return PAGE_H - ((float(top) + float(height)) * SY)
+
+    def w_pt(w: float) -> float:
+        return float(w) * SX
+
+    def h_pt(h: float) -> float:
+        return float(h) * SY
+
+    def clean_txt(value: Any) -> str:
+        return str(value or "").strip()
+
+    def html_para(value: Any) -> str:
+        txt = clean_txt(value)
+        if not txt:
+            return ""
+        txt = html.escape(txt)
+        txt = txt.replace("\r\n", "\n").replace("\r", "\n")
+        txt = txt.replace("\n", "<br/>")
+        return txt
+
+    def lines_from_text(value: Any) -> list[str]:
+        out = []
+        for raw in _pdf_lines(value):
+            txt = clean_txt(raw)
+            if txt:
+                out.append(txt)
+        return out
+
+    def labels_from_ref_items(items: list, limit: Optional[int] = None) -> list[str]:
+        rows = []
+
+        for item in items or []:
+            if isinstance(item, dict):
+                titre = clean_txt(item.get("titre"))
+                titre_court = clean_txt(item.get("titre_court"))
+                intitule = clean_txt(item.get("intitule"))
+                code = clean_txt(item.get("code"))
+
+                if re.match(r"^(modalite|methode|eval)_", titre_court, flags=re.I):
+                    label = titre or intitule or code or titre_court
+                else:
+                    label = titre_court or titre or intitule or code
+            else:
+                label = clean_txt(item)
+
+            if label:
+                rows.append(label)
+
+        if limit is not None:
+            return rows[:limit]
+
+        return rows
+
+    def prereq_titles(items: list) -> list[str]:
+        rows = []
+        for item in items or []:
+            if isinstance(item, dict):
+                title = clean_txt(item.get("titre"))
+                if title:
+                    rows.append(title)
+        return rows
+
+    def comp_rows(items: list) -> list[dict]:
+        rows = []
+        for item in items or []:
+            if not isinstance(item, dict):
+                continue
+            code = clean_txt(item.get("code"))
+            titre = clean_txt(item.get("intitule") or item.get("titre") or item.get("titre_court"))
+            if code or titre:
+                rows.append({"code": code, "titre": titre})
+        return rows
+
+    def cap_with_marker_strings(items: list[str], limit: int, marker: str) -> list[str]:
+        clean = [clean_txt(x) for x in (items or []) if clean_txt(x)]
+        if len(clean) > limit:
+            return clean[:limit - 1] + [marker]
+        return clean
+
+    def cap_with_marker_comp(items: list[dict], limit: int, marker_title: str):
+        clean = [x for x in (items or []) if clean_txt(x.get("code")) or clean_txt(x.get("titre"))]
+        overflow = []
+        if len(clean) > limit:
+            overflow = clean[limit - 1:]
+            return clean[:limit - 1] + [{"code": "", "titre": marker_title}], overflow
+        return clean, overflow
+
+    def format_duration_hr(value: Any) -> str:
+        txt = clean_txt(value)
+        if not txt:
+            return "—"
+
+        txt = txt.replace(",", ".")
+        try:
+            num = float(txt)
+            if abs(num - int(num)) < 0.0001:
+                return f"{int(num)} hr"
+            return f"{str(num).replace('.', ',')} hr"
+        except Exception:
+            pass
+
+        if txt.lower().endswith("h"):
+            txt = txt[:-1].strip()
+        return f"{txt} hr"
+
+    def draw_background(c, filename: str):
+        path = _formation_pdf_template_path(filename)
+
+        if not os.path.exists(path):
+            folder = os.path.dirname(path)
+
+            try:
+                available = sorted(os.listdir(folder)) if os.path.isdir(folder) else []
+            except Exception:
+                available = []
+
+            raise HTTPException(
+                status_code=500,
+                detail=(
+                    "Modèle PDF introuvable : "
+                    f"{path} | dossier_existe={os.path.isdir(folder)} "
+                    f"| fichiers_disponibles={available}"
+                ),
+            )
+
+        c.drawImage(
+            ImageReader(path),
+            0,
+            0,
+            width=PAGE_W,
+            height=PAGE_H,
+            preserveAspectRatio=False,
+            mask="auto",
+        )
+
+    def fit_paragraph(text: Any, style: ParagraphStyle, width_px: float):
+        para = Paragraph(html_para(text), style)
+        _, ph = para.wrap(w_pt(width_px), 10000)
+        return para, ph
+
+    def measure_paragraph_height(text: Any, style: ParagraphStyle, width_px: float) -> float:
+        para, ph = fit_paragraph(text, style, width_px)
+        return ph / SY
+
+    def draw_paragraph_box(
+        c,
+        text: Any,
+        x: float,
+        top: float,
+        width: float,
+        height: float,
+        style: ParagraphStyle,
+        valign: str = "top",
+    ) -> float:
+        para, ph = fit_paragraph(text, style, width)
+        xx = x_pt(x)
+        yy = y_pt_from_top(top, height)
+        ww = w_pt(width)
+        hh = h_pt(height)
+
+        if valign == "middle":
+            draw_y = yy + max((hh - ph) / 2, 0)
+        elif valign == "bottom":
+            draw_y = yy
+        else:
+            draw_y = yy + hh - ph
+
+        para.drawOn(c, xx, draw_y)
+        return ph / SY
+
+    def draw_center_text(c, text: Any, x: float, top: float, width: float, height: float, style: ParagraphStyle):
+        draw_paragraph_box(c, text, x, top, width, height, style, valign="middle")
+
+    def draw_owner_logo(c, top: float = 1044, max_w: float = 230, max_h: float = 54):
+        if not logo_bytes:
+            return
+        try:
+            img = ImageReader(BytesIO(logo_bytes))
+            iw, ih = img.getSize()
+            if not iw or not ih:
+                return
+
+            ratio = min(w_pt(max_w) / float(iw), h_pt(max_h) / float(ih))
+            dw = float(iw) * ratio
+            dh = float(ih) * ratio
+
+            xx = x_pt(14)
+            yy = y_pt_from_top(top, max_h) + max((h_pt(max_h) - dh) / 2, 0)
+            c.drawImage(img, xx, yy, width=dw, height=dh, mask="auto")
+        except Exception:
+            return
+
+    def draw_header_title(c, title: str):
+        draw_paragraph_box(
+            c,
+            title,
+            78,
+            21,
+            520,
+            52,
+            header_title_style,
+            valign="middle",
+        )
+
+    def draw_code(c, code: str):
+        draw_center_text(c, code, 694, 33, 70, 44, code_white_style)
+
+    def draw_bullet_list(
+        c,
+        items: list[str],
+        x: float,
+        top: float,
+        width: float,
+        max_height: float,
+        style: ParagraphStyle,
+        bullet_radius: float = 2.0,
+        bullet_gap: float = 11.0,
+        item_gap: float = 4.0,
+    ) -> float:
+        current_top = top
+
+        for item in items or []:
+            item = clean_txt(item)
+            if not item:
+                continue
+
+            text_h = measure_paragraph_height(item, style, width - bullet_gap)
+            used_h = max(text_h, 10)
+
+            if (current_top + used_h) > (top + max_height):
+                break
+
+            c.saveState()
+            c.setFillColor(VIOLET)
+            c.circle(
+                x_pt(x + bullet_radius + 0.5),
+                y_pt_from_top(current_top + 7, 0),
+                bullet_radius,
+                stroke=0,
+                fill=1,
+            )
+            c.restoreState()
+
+            draw_paragraph_box(
+                c,
+                item,
+                x + bullet_gap,
+                current_top,
+                width - bullet_gap,
+                used_h,
+                style,
+                valign="top",
+            )
+            current_top += used_h + item_gap
+
+        return current_top - top
+
+    def draw_modalite_boxes(c, items: list[str], x: float, top: float):
+        current_top = top
+        box_h = 25
+        for txt in items or []:
+            txt = clean_txt(txt)
+            if not txt:
+                continue
+
+            c.saveState()
+            c.setStrokeColor(VIOLET)
+            c.setFillColor(colors.Color(252 / 255, 227 / 255, 253 / 255, alpha=0.40))
+            c.setLineWidth(1.4)
+            c.rect(
+                x_pt(x),
+                y_pt_from_top(current_top, box_h),
+                w_pt(145),
+                h_pt(box_h),
+                stroke=1,
+                fill=1,
+            )
+            c.restoreState()
+
+            draw_center_text(c, txt, x + 4, current_top, 137, box_h, modalite_style)
+            current_top += box_h + 6
+
+    def draw_comp_rows(
+        c,
+        rows: list[dict],
+        x_code: float,
+        x_title: float,
+        top: float,
+        title_width: float,
+        max_rows: int,
+        row_gap: float = 4.0,
+    ) -> float:
+        current_top = top
+        code_w = 66.0
+        code_inner_w = 62.0
+
+        for item in rows[:max_rows]:
+            code = clean_txt(item.get("code"))
+            titre = clean_txt(item.get("titre"))
+            if not code and not titre:
+                continue
+
+            text_h = measure_paragraph_height(titre, comp_title_style, title_width)
+            row_h = max(24.0, text_h + 7.0)
+
+            if code:
+                c.saveState()
+                c.setFillColor(BLUE)
+                c.rect(
+                    x_pt(x_code),
+                    y_pt_from_top(current_top, row_h),
+                    w_pt(code_w),
+                    h_pt(row_h - 1),
+                    stroke=0,
+                    fill=1,
+                )
+                c.restoreState()
+                draw_center_text(c, code, x_code + 2, current_top, code_inner_w, row_h, comp_code_style)
+
+            draw_paragraph_box(
+                c,
+                titre,
+                x_title,
+                current_top,
+                title_width,
+                row_h,
+                comp_title_style,
+                valign="middle",
+            )
+
+            current_top += row_h + row_gap
+
+        return current_top - top
+
+    def content_subject_lines(value: Any) -> list[str]:
+        rows = []
+        for s in _pdf_content_subjects(value):
+            txt = clean_txt(s)
+            if txt:
+                rows.append(txt)
+        return rows
+
+    def content_block_height(item: dict, detail_width: float = 520) -> float:
+        title = clean_txt(item.get("titre_sequence")) or "Contenu"
+        objective = clean_txt(item.get("objectif"))
+        details = content_subject_lines(item.get("contenu"))
+
+        total = 0.0
+        total += measure_paragraph_height(title, content_title_style, 560) + 4
+        if objective:
+            total += measure_paragraph_height(objective, content_obj_style, 560) + 5
+
+        if details:
+            for line in details:
+                total += measure_paragraph_height(line, content_detail_style, detail_width) + 1
+        else:
+            total += measure_paragraph_height("—", content_detail_style, detail_width)
+
+        return total + 18
+
+    def draw_content_codes(c, comp_items: list[dict], x: float, top: float):
+        current_top = top
+        for comp in comp_items or []:
+            code = clean_txt(comp.get("code"))
+            if not code:
+                continue
+
+            c.saveState()
+            c.setFillColor(BLUE)
+            c.rect(
+                x_pt(x),
+                y_pt_from_top(current_top, 24),
+                w_pt(72),
+                h_pt(24),
+                stroke=0,
+                fill=1,
+            )
+            c.restoreState()
+
+            draw_center_text(c, code, x + 3, current_top, 66, 24, comp_code_style)
+            current_top += 27
+
+    def draw_content_block(c, item: dict, top: float):
+        title = clean_txt(item.get("titre_sequence")) or "Contenu"
+        objective = clean_txt(item.get("objectif"))
+        details = content_subject_lines(item.get("contenu"))
+        comp_items = comp_rows(item.get("competences_liees_items") or [])
+
+        current_top = top
+
+        title_h = draw_paragraph_box(c, title, 29, current_top, 560, 20, content_title_style, valign="top")
+        current_top += title_h + 2
+
+        if objective:
+            obj_h = draw_paragraph_box(c, objective, 29, current_top, 560, 18, content_obj_style, valign="top")
+            current_top += obj_h + 4
+
+        if details:
+            for line in details:
+                used = draw_paragraph_box(c, line, 40, current_top, 520, 16, content_detail_style, valign="top")
+                current_top += used + 1
+        else:
+            used = draw_paragraph_box(c, "—", 40, current_top, 520, 16, content_detail_style, valign="top")
+            current_top += used
+
+        draw_content_codes(c, comp_items, 686, top)
+
+        return current_top - top + 14
+
+    # ------------------------------------------------------------------
+    # Styles
+    # ------------------------------------------------------------------
+    header_title_style = ParagraphStyle(
+        "LearnTplHeaderTitle",
+        fontName="Helvetica",
+        fontSize=16,
+        leading=18,
+        textColor=WHITE,
+        alignment=TA_LEFT,
+    )
+    code_white_style = ParagraphStyle(
+        "LearnTplCodeWhite",
+        fontName="Helvetica",
+        fontSize=7,
+        leading=8,
+        textColor=WHITE,
+        alignment=TA_CENTER,
+    )
+    presentation_style = ParagraphStyle(
+        "LearnTplPresentation",
+        fontName="Helvetica",
+        fontSize=10,
+        leading=12,
+        textColor=VIOLET_DARK,
+        alignment=TA_LEFT,
+    )
+    body_style = ParagraphStyle(
+        "LearnTplBody",
+        fontName="Helvetica",
+        fontSize=10,
+        leading=12,
+        textColor=BLACK,
+        alignment=TA_LEFT,
+    )
+    objective_style = ParagraphStyle(
+        "LearnTplObjective",
+        fontName="Helvetica",
+        fontSize=9,
+        leading=11,
+        textColor=BLACK,
+        alignment=TA_JUSTIFY,
+    )
+    public_style = ParagraphStyle(
+        "LearnTplPublic",
+        fontName="Helvetica",
+        fontSize=8.6,
+        leading=10.2,
+        textColor=BLACK,
+        alignment=TA_LEFT,
+    )
+    body_small_style = ParagraphStyle(
+        "LearnTplBodySmall",
+        fontName="Helvetica",
+        fontSize=9,
+        leading=11,
+        textColor=BLACK,
+        alignment=TA_LEFT,
+    )
+    modalite_style = ParagraphStyle(
+        "LearnTplModalite",
+        fontName="Helvetica",
+        fontSize=9,
+        leading=10,
+        textColor=VIOLET,
+        alignment=TA_CENTER,
+    )
+    info_big_style = ParagraphStyle(
+        "LearnTplInfoBig",
+        fontName="Helvetica-Bold",
+        fontSize=14,
+        leading=16,
+        textColor=BLACK,
+        alignment=TA_CENTER,
+    )
+    comp_code_style = ParagraphStyle(
+        "LearnTplCompCode",
+        fontName="Helvetica",
+        fontSize=8,
+        leading=9,
+        textColor=WHITE,
+        alignment=TA_CENTER,
+    )
+    comp_title_style = ParagraphStyle(
+        "LearnTplCompTitle",
+        fontName="Helvetica",
+        fontSize=8,
+        leading=9.6,
+        textColor=BLACK,
+        alignment=TA_LEFT,
+    )
+    content_title_style = ParagraphStyle(
+        "LearnTplContentTitle",
+        fontName="Helvetica-Bold",
+        fontSize=12,
+        leading=14,
+        textColor=VIOLET,
+        alignment=TA_LEFT,
+    )
+    content_obj_style = ParagraphStyle(
+        "LearnTplContentObj",
+        fontName="Helvetica-Oblique",
+        fontSize=10,
+        leading=12,
+        textColor=VIOLET,
+        alignment=TA_LEFT,
+    )
+    content_detail_style = ParagraphStyle(
+        "LearnTplContentDetail",
+        fontName="Helvetica",
+        fontSize=10,
+        leading=12,
+        textColor=BLACK,
+        alignment=TA_LEFT,
+    )
+
+    # ------------------------------------------------------------------
+    # Données préparées
+    # ------------------------------------------------------------------
+    code_label = clean_txt(form.get("code")) or "FC"
+    title_label = _limit_catalogue_text(form.get("titre"), FORMATION_TITLE_MAX) or "Formation"
+    presentation = _limit_catalogue_text(form.get("presentation"), FORMATION_PRESENTATION_MAX)
+    objective = _limit_catalogue_text(form.get("objectifs"), FORMATION_OBJECTIF_MAX)
+
+    public_items = cap_with_marker_strings(
+        lines_from_text(form.get("public_cible")),
+        5,
+        "et bien d'autres...",
+    )
+
+    prerequis_items = prereq_titles(form.get("prerequis") or [])[:7]
+    attestation_items = lines_from_text(form.get("attestation_specifique"))
+    if not attestation_items:
+        attestation_items = ["une attestation de fin de formation"]
+    attestation_items = attestation_items[:6]
+
+    modalites_items = cap_with_marker_strings(
+        labels_from_ref_items(form.get("modalites_items") or []),
+        5,
+        "Contactez nous ...",
+    )
+
+    methode_peda_items = labels_from_ref_items(form.get("methode_peda_items") or [], limit=10)
+    methode_eval_items = labels_from_ref_items(form.get("methode_eval_items") or [], limit=10)
+
+    comp_stag_all = comp_rows(form.get("competences_stagiaires_items") or [])
+    comp_form_all = comp_rows(form.get("competences_formateurs_items") or [])
+
+    comp_stag_page1, comp_stag_annexe = cap_with_marker_comp(
+        comp_stag_all,
+        6,
+        "La suite en annexe ...",
+    )
+    comp_form_page4, comp_form_annexe = cap_with_marker_comp(
+        comp_form_all,
+        6,
+        "La suite en annexe ...",
+    )
+
+    contents_all = form.get("contenus") or []
+
+    duree_label = format_duration_hr(form.get("duree"))
+    tarif_label = _pdf_money(form.get("tarif_mini"))
+
+    # ------------------------------------------------------------------
+    # Génération canvas
+    # ------------------------------------------------------------------
+    buff = BytesIO()
+    c = pdf_canvas.Canvas(buff, pagesize=(PAGE_W, PAGE_H))
+
+    # ==============================================================
+    # PAGE 1
+    # ==============================================================
+    draw_background(c, "Fiche_formation_p1.png")
+    draw_header_title(c, title_label)
+    draw_code(c, code_label)
+    draw_owner_logo(c, top=1042, max_w=230, max_h=58)
+
+    draw_paragraph_box(c, presentation, 35, 126, 720, 96, presentation_style, valign="top")
+    draw_bullet_list(c, public_items, 35, 258, 365, 112, public_style, bullet_radius=1.6, bullet_gap=10.0, item_gap=2.6)
+    draw_paragraph_box(c, objective, 35, 405, 382, 146, objective_style, valign="top")
+    draw_comp_rows(c, comp_stag_page1, 29, 105, 592, 326, max_rows=6)
+    draw_bullet_list(c, prerequis_items, 35, 819, 365, 100, body_small_style)
+    draw_bullet_list(c, attestation_items, 35, 983, 365, 85, body_small_style, bullet_radius=1.7, bullet_gap=10.0, item_gap=3.0)
+
+    draw_center_text(c, duree_label, 548, 354, 143, 24, info_big_style)
+    draw_modalite_boxes(c, modalites_items, 551, 419)
+    draw_center_text(c, tarif_label, 548, 633, 143, 26, info_big_style)
+
+    c.showPage()
+
+    # ==============================================================
+    # PAGE 2 / PAGE 3 : contenus (autant de pages que nécessaire)
+    # ==============================================================
+    if contents_all:
+        idx = 0
+        first_content_page = True
+
+        while idx < len(contents_all):
+            draw_background(c, "Fiche_formation_p2.png" if first_content_page else "Fiche_formation_p3.png")
+            draw_header_title(c, title_label)
+            draw_code(c, code_label)
+            draw_owner_logo(c, top=1042, max_w=230, max_h=58)
+
+            current_top = 178
+            page_bottom_limit = 1010
+
+            while idx < len(contents_all):
+                item = contents_all[idx]
+                need_h = content_block_height(item)
+                if (current_top + need_h) > page_bottom_limit:
+                    break
+
+                used_h = draw_content_block(c, item, current_top)
+                current_top += used_h + 18
+                idx += 1
+
+            c.showPage()
+            first_content_page = False
+
+    # ==============================================================
+    # PAGE 4 : informations
+    # ==============================================================
+    draw_background(c, "Fiche_formation_p4.png")
+    draw_header_title(c, title_label)
+    draw_code(c, code_label)
+    draw_owner_logo(c, top=1042, max_w=230, max_h=58)
+
+    draw_bullet_list(c, methode_peda_items, 78, 373, 235, 165, body_style)
+    draw_bullet_list(c, methode_eval_items, 448, 373, 235, 165, body_style)
+
+    draw_comp_rows(c, comp_form_page4, 28, 104, 651, 610, max_rows=6)
+
+    # Contacts déjà présents dans la trame PNG : aucune surimpression ici.
+    c.showPage()
+
+    # ==============================================================
+    # PAGE 5 : annexe si nécessaire
+    # ==============================================================
+    if comp_stag_annexe or comp_form_annexe:
+        stag_remaining = comp_stag_annexe[:]
+        form_remaining = comp_form_annexe[:]
+
+        while stag_remaining or form_remaining:
+            draw_background(c, "Fiche_formation_p5.png")
+            draw_header_title(c, title_label)
+            draw_code(c, code_label)
+            draw_owner_logo(c, top=1042, max_w=230, max_h=58)
+
+            used_stag = min(10, len(stag_remaining))
+            draw_comp_rows(c, stag_remaining[:used_stag], 40, 114, 244, 330, max_rows=used_stag)
+            stag_remaining = stag_remaining[used_stag:]
+
+            used_form = min(10, len(form_remaining))
+            draw_comp_rows(c, form_remaining[:used_form], 40, 114, 577, 330, max_rows=used_form)
+            form_remaining = form_remaining[used_form:]
+
+            c.showPage()
+
+    # ==============================================================
+    # PAGE 6 : volontairement masquée pour l'instant
+    # ==============================================================
+
+    c.save()
+    return buff.getvalue()
 
 def _lms_esc(value: Any) -> str:
     return html.escape(str(value or "").strip())
@@ -3885,319 +4155,342 @@ def _lms_items(items: list, label_fn=None) -> str:
 
 
 def _build_formation_lms_html(form: dict) -> str:
+    """
+    Génère un HTML autonome pour insertion LMS.
+
+    Objectif : rendu public plus attractif qu'une fiche brute, sans JS,
+    avec styles inline prioritaires pour mieux survivre aux éditeurs LMS.
+    """
+    CONTACT_NAME = "Pierre BIDABE"
+    CONTACT_EMAIL = "formation@jmbconsultant.fr"
+    CONTACT_PHONE = "06 72 11 42 21"
+    WEBSITE_URL = "www.jmbconsultant.fr"
+
+    HANDICAP_NAME = "Jean-Marie BIDABE"
+    HANDICAP_EMAIL = "jm.bidabe@jmbconsultant.fr"
+    HANDICAP_PHONE = "06 08 31 25 90"
+
     code = _lms_text(form.get("code"), "FC")
-    titre = _lms_text(form.get("titre"), "Formation")
+    titre_raw = _limit_catalogue_text(form.get("titre"), FORMATION_TITLE_MAX) or "Formation"
+    titre = _lms_esc(titre_raw)
+    presentation = _lms_esc(_limit_catalogue_text(form.get("presentation"), FORMATION_PRESENTATION_MAX) or "—")
+    objectif = _lms_esc(_limit_catalogue_text(form.get("objectifs"), FORMATION_OBJECTIF_MAX) or "—")
+
     domaine = _lms_text(form.get("domaine_titre_court") or form.get("domaine_titre"))
     fournisseur = _lms_text(form.get("fournisseur_nom"))
     duree = _lms_esc(_pdf_hours(form.get("duree")))
     tarif = _lms_esc(_pdf_money(form.get("tarif_mini")))
+    type_formation = _lms_text(form.get("type_formation"))
 
-    prereq_html = _lms_items(form.get("prerequis") or [], lambda p: p.get("titre") or "")
-    public_html = _lms_items(_pdf_lines(form.get("public_cible")))
+    def ref_label(item: Any) -> str:
+        if isinstance(item, dict):
+            return str(item.get("titre") or item.get("titre_court") or item.get("intitule") or item.get("code") or "").strip()
+        return str(item or "").strip()
 
-    comp_stag_html = _lms_items(
-        form.get("competences_stagiaires_items") or [],
-        lambda c: " – ".join([x for x in [c.get("code"), c.get("intitule")] if x])
-    )
-    comp_form_html = _lms_items(
-        form.get("competences_formateurs_items") or [],
-        lambda c: " – ".join([x for x in [c.get("code"), c.get("intitule")] if x])
-    )
+    def list_card_items(items: list, label_fn=None) -> str:
+        rows = []
 
-    modalites_html = _lms_items(form.get("modalites_items") or [])
-    peda_html = _lms_items(form.get("methode_peda_items") or [])
-    eval_html = _lms_items(form.get("methode_eval_items") or [])
+        for item in items or []:
+            if label_fn:
+                label = label_fn(item)
+            else:
+                label = ref_label(item)
+
+            label = str(label or "").strip()
+            if label:
+                rows.append(
+                    f'<li style="margin:6px 0;padding-left:2px;color:#1f2937;">{_lms_esc(label)}</li>'
+                )
+
+        if not rows:
+            return '<p style="margin:0;color:#64748b;">—</p>'
+
+        return (
+            '<ul style="margin:8px 0 0 18px;padding:0;line-height:1.45;">'
+            + "".join(rows)
+            + '</ul>'
+        )
+
+    def chip(label: Any, tone: str = "blue") -> str:
+        txt = _lms_esc(str(label or "").strip())
+        if not txt:
+            return ""
+
+        if tone == "pink":
+            bg = "#fce7ff"
+            bd = "#f0abfc"
+            fg = "#a21caf"
+        elif tone == "orange":
+            bg = "#fff7ed"
+            bd = "#fed7aa"
+            fg = "#c2410c"
+        else:
+            bg = "#eff6ff"
+            bd = "#bfdbfe"
+            fg = "#075985"
+
+        return (
+            f'<span style="display:inline-block;margin:3px 5px 3px 0;padding:5px 9px;'
+            f'border:1px solid {bd};border-radius:999px;background:{bg};color:{fg};'
+            f'font-size:12px;font-weight:700;line-height:1.15;">{txt}</span>'
+        )
+
+    def comp_chip(c: dict, tone: str = "blue") -> str:
+        code_txt = str(c.get("code") or "").strip()
+        title_txt = str(c.get("intitule") or c.get("titre") or "").strip()
+
+        if not code_txt and not title_txt:
+            return ""
+
+        if tone == "orange":
+            badge_bg = "#ea580c"
+            badge_border = "#c2410c"
+            title_color = "#c2410c"
+        else:
+            badge_bg = "#0369a1"
+            badge_border = "#075985"
+            title_color = "#075985"
+
+        code_html = ""
+        if code_txt:
+            code_html = (
+                f'<span style="display:inline-block;flex:0 0 auto;'
+                f'background:{badge_bg};border:1px solid {badge_border};color:#ffffff;'
+                f'border-radius:999px;padding:4px 8px;font-size:11px;font-weight:800;'
+                f'line-height:1.1;">{_lms_esc(code_txt)}</span>'
+            )
+
+        title_html = ""
+        if title_txt:
+            title_html = (
+                f'<span style="display:inline-block;color:{title_color};font-size:12px;'
+                f'font-weight:700;line-height:1.25;">{_lms_esc(title_txt)}</span>'
+            )
+
+        return (
+            f'<span style="display:flex;align-items:center;gap:8px;margin:5px 0;'
+            f'padding:6px 8px;border-radius:999px;">'
+            f'{code_html}{title_html}'
+            f'</span>'
+        )
+
+    def metric_card(label: str, value: str, highlight: bool = False) -> str:
+        bg = "#ffffff" if not highlight else "#fce7ff"
+        bd = "#e5e7eb" if not highlight else "#f0abfc"
+        fg = "#111827" if not highlight else "#a21caf"
+        return f'''
+          <div style="background:{bg};border:1px solid {bd};border-radius:16px;padding:14px;min-height:78px;">
+            <div style="font-size:12px;color:#64748b;margin-bottom:6px;">{_lms_esc(label)}</div>
+            <div style="font-size:18px;font-weight:800;color:{fg};line-height:1.2;">{value}</div>
+          </div>
+        '''
+
+    def soft_card(title: str, body_html: str, icon: str = "") -> str:
+        return f'''
+          <article style="background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;padding:18px;box-shadow:0 8px 24px rgba(15,23,42,.06);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              <h3 style="margin:0;color:#a21caf;font-size:18px;line-height:1.25;">{_lms_esc(title)}</h3>
+            </div>
+            <div style="font-size:14px;color:#1f2937;line-height:1.55;">{body_html}</div>
+          </article>
+        '''
+
+    public_html = list_card_items(_pdf_lines(form.get("public_cible")))
+    prereq_html = list_card_items(form.get("prerequis") or [], lambda p: p.get("titre") or "")
+    modalites_html = "".join(chip(ref_label(x), tone="pink") for x in (form.get("modalites_items") or [])) or '<span style="color:#64748b;">—</span>'
+    peda_html = list_card_items(form.get("methode_peda_items") or [])
+    eval_html = list_card_items(form.get("methode_eval_items") or [])
+
+    comp_stag_html = "".join(comp_chip(c, tone="blue") for c in (form.get("competences_stagiaires_items") or []))
+    if not comp_stag_html:
+        comp_stag_html = '<span style="color:#64748b;">Aucune compétence visée renseignée.</span>'
+
+    comp_form_html = "".join(comp_chip(c, tone="orange") for c in (form.get("competences_formateurs_items") or []))
+    if not comp_form_html:
+        comp_form_html = '<span style="color:#64748b;">Aucune compétence formateur renseignée.</span>'
+
+    obs_type_html = ""
+    if form.get("obs_type_form"):
+        obs_type_html = f'''
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb;">
+            <div style="font-size:12px;color:#64748b;margin-bottom:4px;">Précision</div>
+            <div style="font-size:14px;font-weight:500;color:#111827;line-height:1.35;">{_lms_text(form.get("obs_type_form"))}</div>
+          </div>
+        '''
+
+    type_card_html = f'''
+          <div style="grid-column:1 / -1;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;padding:14px;min-height:78px;">
+            <div style="font-size:12px;color:#64748b;margin-bottom:6px;">Type</div>
+            <div style="font-size:18px;font-weight:600;color:#111827;line-height:1.22;">{type_formation}</div>
+            {obs_type_html}
+          </div>
+    '''
 
     content_cards = []
     for idx, l in enumerate(form.get("contenus") or [], start=1):
         comp_items = l.get("competences_liees_items") or []
         badges = "".join(
-            f'<span class="ns-lms-badge" title="{_lms_esc(c.get("intitule") or "")}">{_lms_text(c.get("code"), "—")}</span>'
+            f'<span title="{_lms_esc(c.get("intitule") or "")}" style="display:inline-block;background:#0070c0;color:#fff;border-radius:8px;padding:5px 8px;margin:2px;font-size:11px;font-weight:800;">{_lms_text(c.get("code"), "—")}</span>'
             for c in comp_items
         )
 
         if not badges:
-            badges = '<span class="ns-lms-muted">Aucune compétence liée</span>'
+            badges = '<span style="font-size:12px;color:#64748b;">Compétences liées à préciser</span>'
 
-        content_cards.append(f"""
-        <article class="ns-lms-content-card">
-          <div class="ns-lms-content-head">
-            <div>
-              <div class="ns-lms-content-index">Contenu {idx}</div>
-              <h3>{_lms_text(l.get("titre_sequence"), "Contenu")}</h3>
+        subject_items = []
+        for subject in _pdf_content_subjects(l.get("contenu")):
+            subject_items.append(
+                f'<li style="margin:5px 0;color:#1f2937;">{_lms_esc(subject)}</li>'
+            )
+
+        subjects_html = (
+            '<ul style="margin:8px 0 0 18px;padding:0;line-height:1.45;">'
+            + "".join(subject_items)
+            + '</ul>'
+        ) if subject_items else '<p style="margin:8px 0 0 0;color:#64748b;">—</p>'
+
+        content_cards.append(f'''
+          <article style="background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;margin:0 0 16px 0;box-shadow:0 10px 26px rgba(15,23,42,.07);">
+            <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;background:linear-gradient(135deg,#fce7ff 0%,#ffffff 100%);border-bottom:1px solid #f0abfc;padding:16px 18px;">
+              <div>
+                <div style="display:inline-block;background:#e144f0;color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800;margin-bottom:8px;">Module {idx}</div>
+                <h3 style="margin:0;color:#111827;font-size:18px;line-height:1.25;">{_lms_text(l.get("titre_sequence"), "Contenu")}</h3>
+              </div>
+              <div style="min-width:110px;text-align:right;">{badges}</div>
             </div>
-            <div class="ns-lms-badges">{badges}</div>
-          </div>
-          <div class="ns-lms-content-body">
-            <p class="ns-lms-objective"><strong>Objectif :</strong> {_lms_text(l.get("objectif"))}</p>
-            <div class="ns-lms-subjects">
-              <strong>Sujets abordés</strong>
-              {_lms_subject_list(l.get("contenu"))}
+            <div style="padding:16px 18px 18px 18px;">
+              <p style="margin:0 0 12px 0;color:#a21caf;font-style:italic;line-height:1.45;"><strong>Objectif :</strong> {_lms_text(l.get("objectif"))}</p>
+              <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:13px 15px;">
+                <div style="font-weight:800;color:#111827;margin-bottom:4px;">Sujets abordés</div>
+                {subjects_html}
+              </div>
             </div>
-          </div>
-        </article>
-        """)
+          </article>
+        ''')
 
     if not content_cards:
-        content_cards.append('<p class="ns-lms-muted">Aucun contenu détaillé n’est encore rattaché à cette formation.</p>')
+        content_cards.append(
+            '<div style="background:#ffffff;border:1px dashed #cbd5e1;border-radius:16px;padding:18px;color:#64748b;">Aucun contenu détaillé n’est encore rattaché à cette formation.</div>'
+        )
 
-    obs_type = ""
-    if form.get("obs_type_form"):
-        obs_type = f"""
-        <div class="ns-lms-info-card">
-          <span>Certification / niveau reconnu</span>
-          <strong>{_lms_text(form.get("obs_type_form"))}</strong>
-        </div>
-        """
-
-    return f"""<style>
-.ns-lms-formation {{
-  --ns-accent:#ff7a35;
-  --ns-accent-soft:#fff7ed;
-  --ns-border:#e5e7eb;
-  --ns-text:#111827;
-  --ns-muted:#64748b;
-  font-family: Arial, Helvetica, sans-serif;
-  color: var(--ns-text);
-  line-height: 1.45;
-  max-width: 980px;
-  margin: 0 auto;
-}}
-.ns-lms-formation * {{
-  box-sizing: border-box;
-}}
-.ns-lms-hero {{
-  background: linear-gradient(135deg, #fff7ed 0%, #ffffff 72%);
-  border: 1px solid #fed7aa;
-  border-radius: 18px;
-  padding: 24px;
-  margin-bottom: 18px;
-}}
-.ns-lms-code {{
-  display: inline-block;
-  background: var(--ns-accent);
-  color: #fff;
-  border-radius: 999px;
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 10px;
-}}
-.ns-lms-hero h1 {{
-  margin: 0;
-  font-size: 28px;
-  line-height: 1.15;
-  color: var(--ns-text);
-}}
-.ns-lms-hero p {{
-  margin: 10px 0 0 0;
-  color: var(--ns-muted);
-}}
-.ns-lms-grid {{
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 18px;
-}}
-.ns-lms-info-card,
-.ns-lms-card {{
-  border: 1px solid var(--ns-border);
-  border-radius: 14px;
-  background: #fff;
-  padding: 14px;
-}}
-.ns-lms-info-card {{
-  background: #f8fafc;
-}}
-.ns-lms-info-card span {{
-  display: block;
-  color: var(--ns-muted);
-  font-size: 12px;
-  margin-bottom: 4px;
-}}
-.ns-lms-info-card strong {{
-  display: block;
-  font-size: 15px;
-  color: var(--ns-text);
-}}
-.ns-lms-section {{
-  margin-top: 20px;
-}}
-.ns-lms-section h2 {{
-  font-size: 18px;
-  color: #c2410c;
-  margin: 0 0 10px 0;
-}}
-.ns-lms-card h3 {{
-  margin: 0 0 8px 0;
-  font-size: 15px;
-  color: var(--ns-text);
-}}
-.ns-lms-card p {{
-  margin: 0;
-}}
-.ns-lms-two {{
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}}
-.ns-lms-three {{
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}}
-.ns-lms-formation ul {{
-  margin: 8px 0 0 0;
-  padding-left: 20px;
-}}
-.ns-lms-formation li {{
-  margin: 3px 0;
-}}
-.ns-lms-content-card {{
-  border: 1px solid var(--ns-border);
-  border-radius: 16px;
-  background: #fff;
-  margin-bottom: 14px;
-  overflow: hidden;
-}}
-.ns-lms-content-head {{
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  align-items: flex-start;
-  background: var(--ns-accent-soft);
-  border-bottom: 1px solid #fed7aa;
-  padding: 14px 16px;
-}}
-.ns-lms-content-index {{
-  color: #c2410c;
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 3px;
-}}
-.ns-lms-content-head h3 {{
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.25;
-}}
-.ns-lms-content-body {{
-  padding: 14px 16px 16px 16px;
-}}
-.ns-lms-objective {{
-  margin: 0 0 10px 0;
-}}
-.ns-lms-subjects strong {{
-  display: block;
-  margin-bottom: 4px;
-}}
-.ns-lms-badges {{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
-  min-width: 140px;
-}}
-.ns-lms-badge {{
-  display: inline-block;
-  border: 1px solid #fed7aa;
-  background: #fff;
-  color: #9a3412;
-  border-radius: 999px;
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 700;
-}}
-.ns-lms-muted {{
-  color: var(--ns-muted);
-}}
-@media (max-width: 760px) {{
-  .ns-lms-grid,
-  .ns-lms-two,
-  .ns-lms-three {{
-    grid-template-columns: 1fr;
-  }}
-  .ns-lms-content-head {{
-    flex-direction: column;
-  }}
-  .ns-lms-badges {{
-    justify-content: flex-start;
-  }}
+    return f'''<style>
+.ns-lms-formation * {{ box-sizing:border-box; }}
+.ns-lms-formation a {{ color:inherit; }}
+@media (max-width:760px) {{
+  .ns-lms-hero-grid,
+  .ns-lms-grid-2,
+  .ns-lms-grid-3 {{ grid-template-columns:1fr !important; }}
+  .ns-lms-content-head {{ flex-direction:column !important; }}
 }}
 </style>
 
-<div class="ns-lms-formation">
-  <header class="ns-lms-hero">
-    <span class="ns-lms-code">{code}</span>
-    <h1>{titre}</h1>
-    <p>Fiche descriptive de formation</p>
-  </header>
-
-  <section class="ns-lms-grid">
-    <div class="ns-lms-info-card"><span>Domaine</span><strong>{domaine}</strong></div>
-    <div class="ns-lms-info-card"><span>Durée</span><strong>{duree}</strong></div>
-    <div class="ns-lms-info-card"><span>Type</span><strong>{_lms_text(form.get("type_formation"))}</strong></div>
-    <div class="ns-lms-info-card"><span>Fournisseur</span><strong>{fournisseur}</strong></div>
-    <div class="ns-lms-info-card"><span>Tarif mini</span><strong>{tarif}</strong></div>
-    <div class="ns-lms-info-card"><span>État</span><strong>{_lms_text(form.get("etat"))}</strong></div>
-    {obs_type}
-  </section>
-
-  <section class="ns-lms-section">
-    <h2>Objectif pédagogique</h2>
-    <div class="ns-lms-card">
-      <p>{_lms_nl2br(form.get("objectifs") or "—")}</p>
+<div class="ns-lms-formation" style="font-family:Arial,Helvetica,sans-serif;color:#111827;line-height:1.5;max-width:1080px;margin:0 auto;background:#f8fafc;padding:22px;border-radius:22px;">
+  <section style="background:linear-gradient(135deg,#e144f0 0%,#a21caf 100%);border-radius:24px;padding:28px;color:#fff;box-shadow:0 18px 42px rgba(162,28,175,.24);margin-bottom:18px;">
+    <div class="ns-lms-hero-grid" style="display:grid;grid-template-columns:1.6fr .9fr;gap:22px;align-items:stretch;">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+          <span style="display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:800;">{code}</span>
+          <span style="display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.26);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;">{domaine}</span>
+        </div>
+        <h1 style="margin:0;font-size:34px;line-height:1.12;color:#fff;">{titre}</h1>
+        <p style="margin:16px 0 0 0;font-size:16px;line-height:1.55;color:rgba(255,255,255,.92);">{presentation}</p>
+      </div>
+      <aside style="background:rgba(255,255,255,.96);border-radius:20px;padding:18px;color:#111827;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45);">
+        <div style="font-size:13px;color:#64748b;margin-bottom:12px;font-weight:700;">Informations clés</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          {metric_card("Durée", duree, highlight=True)}
+          {metric_card("À partir de", tarif, highlight=True)}
+          {type_card_html}
+        </div>
+      </aside>
     </div>
   </section>
 
-  <section class="ns-lms-section">
-    <h2>Présentation</h2>
-    <div class="ns-lms-card">
-      <p>{_lms_nl2br(form.get("presentation") or "—")}</p>
+  <section class="ns-lms-grid-2" style="display:grid;grid-template-columns:1.25fr .75fr;gap:16px;margin-bottom:16px;">
+    {soft_card("Objectif pédagogique", f'<p style="margin:0;">{objectif}</p>', "🎯")}
+    {soft_card("Modalités possibles", modalites_html, "🧭")}
+  </section>
+
+  <section class="ns-lms-grid-3" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:16px;">
+    {soft_card("Public visé", public_html, "👥")}
+    {soft_card("Prérequis", prereq_html, "✅")}
+    {soft_card("Organisme", f'<p style="margin:0;"><strong>{fournisseur}</strong></p>{obs_type_html}', "🏢")}
+  </section>
+
+  <section style="background:#ffffff;border:1px solid #e5e7eb;border-radius:20px;padding:20px;margin-bottom:16px;box-shadow:0 10px 26px rgba(15,23,42,.06);">
+    <h2 style="margin:0 0 12px 0;color:#a21caf;font-size:22px;line-height:1.25;">Compétences développées</h2>
+    <div class="ns-lms-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:16px;padding:15px;">
+        <h3 style="margin:0 0 10px 0;font-size:16px;color:#075985;">Pour les apprenants</h3>
+        {comp_stag_html}
+      </div>
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:16px;padding:15px;">
+        <h3 style="margin:0 0 10px 0;font-size:16px;color:#c2410c;">Pour le formateur</h3>
+        {comp_form_html}
+      </div>
     </div>
   </section>
 
-  <section class="ns-lms-section ns-lms-two">
-    <div class="ns-lms-card">
-      <h3>Public cible</h3>
-      {public_html}
-    </div>
-    <div class="ns-lms-card">
-      <h3>Prérequis évaluables</h3>
-      {prereq_html}
-    </div>
+  <section class="ns-lms-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
+    {soft_card("Méthodes pédagogiques", peda_html, "🧩")}
+    {soft_card("Évaluation des acquis", eval_html, "📌")}
   </section>
 
-  <section class="ns-lms-section ns-lms-two">
-    <div class="ns-lms-card">
-      <h3>Compétences visées pour les stagiaires</h3>
-      {comp_stag_html}
+  <section style="margin:20px 0 18px 0;">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:12px;">
+      <div>
+        <div style="color:#e144f0;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;">Programme</div>
+        <h2 style="margin:2px 0 0 0;color:#111827;font-size:26px;line-height:1.2;">Contenu de la formation</h2>
+      </div>
     </div>
-    <div class="ns-lms-card">
-      <h3>Compétences requises pour le formateur</h3>
-      {comp_form_html}
-    </div>
-  </section>
-
-  <section class="ns-lms-section ns-lms-three">
-    <div class="ns-lms-card">
-      <h3>Modalités possibles</h3>
-      {modalites_html}
-    </div>
-    <div class="ns-lms-card">
-      <h3>Méthodes pédagogiques</h3>
-      {peda_html}
-    </div>
-    <div class="ns-lms-card">
-      <h3>Méthodes d’évaluation</h3>
-      {eval_html}
-    </div>
-  </section>
-
-  <section class="ns-lms-section">
-    <h2>Programme de formation</h2>
     {"".join(content_cards)}
   </section>
-</div>"""
+
+  <section style="background:#ffffff;border:1px solid #e5e7eb;border-radius:20px;padding:18px;margin-top:18px;margin-bottom:14px;box-shadow:0 8px 22px rgba(15,23,42,.05);">
+    <div style="color:#e144f0;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Infos pratiques</div>
+
+    <div class="ns-lms-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:16px;padding:14px;">
+        <div style="font-weight:800;color:#111827;margin-bottom:6px;">Délai d’accès</div>
+        <p style="margin:0;color:#374151;font-size:13px;line-height:1.45;">
+          Le délai d'accès entre la demande de formation et le début de prestation est estimé à environ 1 mois.
+        </p>
+      </div>
+
+      <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:16px;padding:14px;">
+        <div style="font-weight:800;color:#111827;margin-bottom:6px;">Accessibilité handicap</div>
+        <p style="margin:0;color:#374151;font-size:13px;line-height:1.45;">
+          Nos formations sont accessibles aux personnes en situation de handicap. Veuillez contacter notre référent handicap :
+          <strong>{_lms_esc(HANDICAP_NAME)}</strong> -
+          <a href="mailto:{HANDICAP_EMAIL}" style="color:#a21caf;text-decoration:underline;">{_lms_esc(HANDICAP_EMAIL)}</a> -
+          {_lms_esc(HANDICAP_PHONE)}.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section style="background:#111827;border-radius:22px;padding:22px;color:#fff;margin-top:0;display:block;">
+    <div class="ns-lms-grid-2" style="display:grid;grid-template-columns:1.25fr .75fr;gap:18px;align-items:center;">
+      <div>
+        <h2 style="margin:0 0 8px 0;font-size:24px;line-height:1.25;color:#fff;">Vous souhaitez en savoir plus ?</h2>
+        <p style="margin:0;color:#d1d5db;line-height:1.55;">Demandez une information, une adaptation ou une étude personnalisée de cette formation.</p>
+      </div>
+
+      <div style="text-align:right;">
+        <a href="mailto:{CONTACT_EMAIL}" style="display:inline-block;background:#e144f0;color:#fff;text-decoration:none;border-radius:999px;padding:12px 18px;font-weight:800;margin-bottom:10px;">Demander des informations</a>
+
+        <div style="font-size:13px;color:#f9fafb;font-weight:700;line-height:1.45;">{_lms_esc(CONTACT_NAME)}</div>
+        <div style="font-size:13px;color:#d1d5db;line-height:1.45;">
+          <a href="mailto:{CONTACT_EMAIL}" style="color:#d1d5db;text-decoration:underline;">{_lms_esc(CONTACT_EMAIL)}</a>
+        </div>
+        <div style="font-size:13px;color:#d1d5db;line-height:1.45;">{_lms_esc(CONTACT_PHONE)}</div>
+        <div style="font-size:13px;color:#d1d5db;line-height:1.45;">
+          <a href="https://{WEBSITE_URL}" target="_blank" rel="noopener" style="color:#d1d5db;text-decoration:underline;">{_lms_esc(WEBSITE_URL)}</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>'''
 
 def _build_plan_pdf_story(form: dict, plan: dict) -> list:
     styles = build_pdf_styles()
@@ -4599,281 +4892,6 @@ def learn_formation_plan_archive(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"learn/formations plan archive error: {e}")
 
-
-# ======================================================
-# Publication LMS
-# ======================================================
-
-def _formation_lms_publication_row(cur, oid: str, id_form: str, id_lms_config: str) -> Optional[dict]:
-    cur.execute(
-        """
-        SELECT
-          id_publication,
-          id_owner,
-          id_form,
-          id_lms_config,
-          provider_code,
-          external_id,
-          external_url,
-          last_sync_at,
-          sync_status,
-          sync_error,
-          html_hash,
-          date_creation,
-          date_modification
-        FROM public.tbl_learn_lms_publication
-        WHERE id_owner = %s
-          AND id_form = %s
-          AND id_lms_config = %s
-          AND COALESCE(archive, FALSE) = FALSE
-        ORDER BY date_modification DESC, date_creation DESC
-        LIMIT 1
-        """,
-        (oid, id_form, id_lms_config),
-    )
-
-    return cur.fetchone()
-
-
-@router.get("/learn/formations/{id_effectif}/{id_form}/lms/status")
-def learn_formation_lms_status(id_effectif: str, id_form: str, request: Request):
-    auth = request.headers.get("Authorization", "")
-    u = learn_require_user(auth)
-
-    try:
-        fid = (id_form or "").strip()
-        if not fid:
-            raise HTTPException(status_code=400, detail="id_form manquant.")
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                profile = _learn_require_profile(cur, u, id_effectif)
-                oid = (profile.get("id_owner") or "").strip()
-
-                if not _formation_exists_owner(cur, oid, fid):
-                    raise HTTPException(status_code=404, detail="Formation introuvable.")
-
-                cfg_row = learn_lms_fetch_public_config(cur, oid)
-                cfg_public = learn_lms_public_config(cfg_row)
-
-                publication = None
-                if cfg_row and cfg_row.get("id_lms_config"):
-                    publication = _formation_lms_publication_row(
-                        cur,
-                        oid,
-                        fid,
-                        cfg_row.get("id_lms_config"),
-                    )
-
-        return {
-            "configured": cfg_public.get("configured"),
-            "config": cfg_public,
-            "publication": publication,
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"learn/formations lms status error: {e}")
-
-
-@router.post("/learn/formations/{id_effectif}/{id_form}/lms/publish")
-def learn_formation_lms_publish(id_effectif: str, id_form: str, request: Request):
-    auth = request.headers.get("Authorization", "")
-    u = learn_require_user(auth)
-
-    try:
-        fid = (id_form or "").strip()
-        if not fid:
-            raise HTTPException(status_code=400, detail="id_form manquant.")
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                profile = _learn_require_profile(cur, u, id_effectif)
-                _learn_require_min_role(profile, "supervisor")
-                oid = (profile.get("id_owner") or "").strip()
-
-                cfg = learn_lms_fetch_active_config(cur, oid, with_secret=True)
-                if not cfg or cfg.get("provider_code") != "lara":
-                    raise HTTPException(status_code=400, detail="Aucun connecteur LMS Lära actif.")
-
-                form = _fetch_form_detail(cur, oid, fid)
-
-                html_payload = _build_formation_lms_html(form)
-                html_hash = hashlib.sha256(html_payload.encode("utf-8")).hexdigest()
-
-                publication = _formation_lms_publication_row(
-                    cur,
-                    oid,
-                    fid,
-                    cfg.get("id_lms_config"),
-                )
-
-                resolved = learn_lms_resolve_lara_defaults(cfg)
-
-                secret = cfg.get("secret_json") or {}
-                api_id = secret.get("api_id") or ""
-                api_base = cfg.get("base_url") or ""
-                cfg_json = cfg.get("config_json") or {}
-
-                visibility_type = learn_lms_safe_int(cfg_json.get("visibility_type"), 3)
-                language = learn_lms_safe_int(cfg_json.get("language"), 3)
-
-                title = _limit_catalogue_text(form.get("titre"), FORMATION_TITLE_MAX) or "Formation"
-                short_description = learn_lms_short_description(form.get("presentation") or title, 200)
-                keywords = learn_lms_keywords(form)
-
-                external_id = str((publication or {}).get("external_id") or "").strip()
-                action = "update" if external_id else "create"
-
-                if external_id:
-                    payload = {
-                        "id": external_id,
-                        "name": title,
-                        "visibilityType": visibility_type,
-                        "language": language,
-                        "description": html_payload,
-                        "shortDescription": short_description,
-                        "keywords": keywords,
-                    }
-
-                    lms_response = learn_lms_api_post(api_base, api_id, "workspace/edit", payload)
-
-                else:
-                    payload = {
-                        "name": title,
-                        "categoryId": None,
-                        "coverId": None,
-                        "visibilityType": visibility_type,
-                        "maxParticipants": 0,
-                        "minParticipants": 0,
-                        "type": resolved.get("workspace_type_id"),
-                        "providerId": resolved.get("provider_id"),
-                        "language": language,
-                        "description": html_payload,
-                        "shortDescription": short_description,
-                        "subscriptionType": 1,
-                        "startDate": "0001-01-01T00:00:00",
-                        "endDate": "0001-01-01T00:00:00",
-                        "isOverBookingSubscription": False,
-                        "authorizationType": 0,
-                        "needAdminApproval": False,
-                        "enrolmentType": 0,
-                        "externalLink": "",
-                        "keywords": keywords,
-                        "showAvailableSubscriptions": False,
-                        "canDeclareMultipleTimes": False,
-                        "autodeclarationPresenceActivitiesRequired": False,
-                    }
-
-                    # Règle validée par POC : ne pas envoyer certificateId si aucun certificat réel n'est défini.
-                    lms_response = learn_lms_api_post(api_base, api_id, "workspace/create", payload)
-                    external_id = learn_lms_extract_workspace_id(lms_response.get("json"))
-
-                if not lms_response.get("ok"):
-                    raise HTTPException(status_code=400, detail={
-                        "message": "Publication Lära impossible.",
-                        "response": lms_response,
-                    })
-
-                if not external_id:
-                    raise HTTPException(status_code=400, detail="Publication Lära créée mais identifiant workspace non retourné.")
-
-                external_url = str((publication or {}).get("external_url") or "").strip()
-
-                url_response = learn_lms_api_post(api_base, api_id, "workspace/geturl", {"id": external_id})
-                if url_response.get("ok"):
-                    external_url = learn_lms_extract_url(url_response.get("json")) or external_url
-
-                if publication and publication.get("id_publication"):
-                    cur.execute(
-                        """
-                        UPDATE public.tbl_learn_lms_publication
-                        SET provider_code = %s,
-                            external_id = %s,
-                            external_url = %s,
-                            last_sync_at = NOW(),
-                            sync_status = 'publie',
-                            sync_error = NULL,
-                            html_hash = %s,
-                            date_modification = NOW()
-                        WHERE id_publication = %s
-                          AND id_owner = %s
-                        """,
-                        (
-                            cfg.get("provider_code"),
-                            external_id,
-                            external_url or None,
-                            html_hash,
-                            publication.get("id_publication"),
-                            oid,
-                        ),
-                    )
-                    id_publication = publication.get("id_publication")
-                else:
-                    id_publication = str(uuid.uuid4())
-
-                    cur.execute(
-                        """
-                        INSERT INTO public.tbl_learn_lms_publication
-                          (
-                            id_publication,
-                            id_owner,
-                            id_form,
-                            id_lms_config,
-                            provider_code,
-                            external_id,
-                            external_url,
-                            last_sync_at,
-                            sync_status,
-                            sync_error,
-                            html_hash,
-                            archive,
-                            date_creation,
-                            date_modification
-                          )
-                        VALUES
-                          (
-                            %s, %s, %s, %s,
-                            %s, %s, %s,
-                            NOW(),
-                            'publie',
-                            NULL,
-                            %s,
-                            FALSE,
-                            NOW(),
-                            NOW()
-                          )
-                        """,
-                        (
-                            id_publication,
-                            oid,
-                            fid,
-                            cfg.get("id_lms_config"),
-                            cfg.get("provider_code"),
-                            external_id,
-                            external_url or None,
-                            html_hash,
-                        ),
-                    )
-
-                conn.commit()
-
-        return {
-            "ok": True,
-            "action": action,
-            "id_publication": id_publication,
-            "external_id": external_id,
-            "external_url": external_url or None,
-            "sync_status": "publie",
-            "message": "Formation publiée dans Lära." if action == "create" else "Formation mise à jour dans Lära.",
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"learn/formations lms publish error: {e}")
-
 @router.get("/learn/formations/{id_effectif}/{id_form}/fiche_html_lms")
 def learn_formation_fiche_html_lms(id_effectif: str, id_form: str, request: Request):
     auth = request.headers.get("Authorization", "")
@@ -4930,18 +4948,7 @@ def learn_formation_fiche_pdf(id_effectif: str, id_form: str, request: Request):
             f"Fiche formation {_pdf_safe_filename_part(code_label, 32)} - {_pdf_safe_filename_part(titre_label, 80)}.pdf"
         )
 
-        pdf_bytes = build_pdf_document(
-            _build_formation_pdf_story(form),
-            meta={
-                "title": _pdf_latin1_safe(f"Fiche formation - {code_label} - {titre_label}"),
-                "doc_label": _pdf_latin1_safe("Fiche formation"),
-                "footer_left": _pdf_latin1_safe("Novoskill Learn - Fiche formation"),
-                "header_right": _pdf_latin1_safe(owner_label),
-                "header_right_font_name": "Helvetica-Bold",
-                "header_right_font_size": 10.5,
-                "logo_bytes": logo_bytes,
-            },
-        )
+        pdf_bytes = _build_formation_template_pdf_bytes(form, logo_bytes=logo_bytes)
 
         return Response(
             content=pdf_bytes,

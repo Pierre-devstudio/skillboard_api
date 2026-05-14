@@ -64,8 +64,8 @@
         <div class="sb-form-panel is-active" data-panel="identite">
           <div class="row">
             <div class="info-item" style="flex:1; min-width:320px;">
-              <div class="label">Titre de la formation</div>
-              <input type="text" id="formTitre" />
+              <div class="label">Titre de la formation <span class="lf-label-muted lf-char-counter" data-counter-for="formTitre">0/90 caractères</span></div>
+              <input type="text" id="formTitre" maxlength="90" />
             </div>
           </div>
 
@@ -123,8 +123,8 @@
 
           <div class="row">
             <div class="info-item" style="flex:1; min-width:260px;">
-              <div class="label">Présentation</div>
-              <textarea id="formPresentation" rows="5"></textarea>
+              <div class="label">Présentation <span class="lf-label-muted lf-char-counter" data-counter-for="formPresentation">0/625 caractères</span></div>
+              <textarea id="formPresentation" rows="5" maxlength="625"></textarea>
             </div>
           </div>
 
@@ -135,8 +135,8 @@
             </div>
 
             <div class="info-item" style="flex:1; min-width:260px;">
-              <div class="label">Objectifs de la formation</div>
-              <textarea id="formObjectifs" rows="6" class="lf-textarea--tall"></textarea>
+              <div class="label">Objectifs de la formation <span class="lf-label-muted lf-char-counter" data-counter-for="formObjectifs">0/550 caractères</span></div>
+              <textarea id="formObjectifs" rows="6" class="lf-textarea--tall" maxlength="550"></textarea>
             </div>
           </div>
         </div>

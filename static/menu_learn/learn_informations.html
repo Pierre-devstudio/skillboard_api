@@ -1,67 +1,8 @@
-<section id="view-informations" data-view="informations">
+<section id="view-informations">
   <div class="card">
-    <div class="sb-card-head">
-      <div>
-        <div class="card-title">Vos informations</div>
-        <div class="card-sub">Paramètres propres à votre espace Learn.</div>
-      </div>
+    <div class="card-title">Vos informations</div>
+    <div class="card-sub">
+      La page est ouverte. Le contenu fonctionnel sera ajouté ensuite.
     </div>
-  </div>
-
-  <div class="card">
-    <div class="sb-card-head">
-      <div>
-        <div class="card-title">Intégration LMS</div>
-        <div class="card-sub">Configurez le connecteur utilisé pour publier les fiches formation vers votre LMS.</div>
-      </div>
-      <div class="sb-actions">
-        <span class="sb-save-success" id="learnInfoLmsSuccess" style="display:none;"></span>
-      </div>
-    </div>
-
-    <div class="lf-lms-config-grid" style="margin-top:14px;">
-      <div class="info-item">
-        <div class="label">Connecteur LMS</div>
-        <select id="learnLmsProvider">
-          <option value="manual">Aucun / export HTML manuel</option>
-          <option value="lara">Lära</option>
-        </select>
-      </div>
-
-      <div class="info-item lf-lms-lara-field">
-        <div class="label">URL API Lära</div>
-        <input type="text" id="learnLmsBaseUrl" placeholder="https://votre-lms/lmsapi" />
-      </div>
-
-      <div class="info-item lf-lms-lara-field">
-        <div class="label">ApiID</div>
-        <input type="password" id="learnLmsApiId" placeholder="Laisser vide pour conserver la clé déjà enregistrée" autocomplete="off" />
-        <div class="card-sub" id="learnLmsSecretState" style="margin-top:5px;">Aucune clé enregistrée.</div>
-      </div>
-
-      <div class="info-item lf-lms-lara-field">
-        <div class="label">Visibilité par défaut</div>
-        <select id="learnLmsVisibility">
-          <option value="3">Masquée</option>
-          <option value="0">Publique</option>
-          <option value="1">Non listée</option>
-          <option value="2">Privée</option>
-        </select>
-      </div>
-
-      <div class="info-item lf-lms-lara-field">
-        <div class="label">Langue</div>
-        <select id="learnLmsLanguage">
-          <option value="3">Français</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="lf-lms-actions">
-      <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnLearnLmsSave">Enregistrer</button>
-      <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnLearnLmsTest">Tester la connexion</button>
-    </div>
-
-    <div class="lf-lms-test-result" id="learnLmsTestResult" style="display:none;"></div>
   </div>
 </section>
