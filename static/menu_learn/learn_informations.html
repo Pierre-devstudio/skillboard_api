@@ -1,8 +1,92 @@
 <section id="view-informations">
   <div class="card">
-    <div class="card-title">Vos informations</div>
-    <div class="card-sub">
-      La page est ouverte. Le contenu fonctionnel sera ajouté ensuite.
+    <div class="sb-card-head">
+      <div>
+        <div class="card-title">Vos informations</div>
+        <div class="card-sub">
+          Paramétrez les informations utiles à votre espace Learn.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sb-card-head">
+      <div>
+        <div class="card-title">Intégration LMS</div>
+        <div class="card-sub">
+          Configurez le connecteur utilisé pour publier les fiches formation vers votre LMS.
+        </div>
+      </div>
+      <div class="sb-actions">
+        <span class="sb-save-success" id="learnLmsSaveSuccess" style="display:none;"></span>
+      </div>
+    </div>
+
+    <div class="lf-lms-grid" style="margin-top:14px;">
+      <div class="lf-lms-panel">
+        <div class="lf-lms-fields">
+          <div class="info-item">
+            <div class="label">Connecteur LMS</div>
+            <select id="learnLmsProvider">
+              <option value="manual">Aucun / export HTML manuel</option>
+              <option value="lara">Lära</option>
+            </select>
+          </div>
+
+          <div id="learnLmsLaraFields" class="lf-lms-fields" style="display:none;">
+            <div class="info-item">
+              <div class="label">URL API Lära</div>
+              <input type="text" id="learnLmsBaseUrl" placeholder="https://votre-domaine/lmsapi" />
+            </div>
+
+            <div class="info-item">
+              <div class="label">ApiID</div>
+              <input type="password" id="learnLmsApiId" autocomplete="off" placeholder="Laisser vide pour conserver la clé enregistrée" />
+              <div class="card-sub" id="learnLmsSecretHint" style="margin:5px 0 0 0;"></div>
+            </div>
+
+            <div class="row" style="margin:0;">
+              <div class="info-item" style="flex:1; min-width:180px;">
+                <div class="label">Visibilité par défaut</div>
+                <select id="learnLmsVisibility">
+                  <option value="3">Masquée</option>
+                  <option value="0">Catalogue</option>
+                  <option value="1">Privée</option>
+                </select>
+              </div>
+
+              <div class="info-item" style="flex:1; min-width:160px;">
+                <div class="label">Langue</div>
+                <select id="learnLmsLanguage">
+                  <option value="3">Français</option>
+                  <option value="1">Français Canada</option>
+                  <option value="2">Anglais</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="sb-actions">
+            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnLearnLmsSave">Enregistrer</button>
+            <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnLearnLmsTest">Tester la connexion</button>
+          </div>
+
+          <div class="lf-lms-status" id="learnLmsStatus"></div>
+        </div>
+      </div>
+
+      <div class="lf-lms-panel">
+        <div class="label" style="margin:0 0 8px 0;">Règles de fonctionnement</div>
+        <div class="card-sub" style="margin:0; line-height:1.5;">
+          Le connecteur actif sera utilisé depuis le catalogue formation pour publier ou mettre à jour une fiche dans le LMS.
+          L’export HTML manuel reste disponible dans tous les cas.
+        </div>
+
+        <div class="card-sub" style="margin:10px 0 0 0; line-height:1.5;">
+          L’ApiID est stocké côté serveur sous forme chiffrée. Il n’est jamais renvoyé dans l’interface après enregistrement.
+        </div>
+      </div>
     </div>
   </div>
 </section>

@@ -1711,3 +1711,68 @@
     white-space:normal;
   }
 }
+
+/* ======================================================
+   Learn - Intégration LMS
+   ====================================================== */
+
+.lf-lms-grid{
+  display:grid;
+  grid-template-columns:minmax(0, 1.1fr) minmax(0, .9fr);
+  gap:14px;
+  align-items:start;
+}
+
+.lf-lms-panel{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:14px;
+  padding:14px;
+  background:#fff;
+}
+
+.lf-lms-fields{
+  display:grid;
+  gap:12px;
+}
+
+.lf-lms-secret-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  min-height:24px;
+}
+
+.lf-lms-status{
+  min-height:18px;
+  font-size:12px;
+  line-height:1.35;
+  color:#64748b;
+}
+
+.lf-lms-status.is-ok{
+  color:#15803d;
+  font-weight:700;
+}
+
+.lf-lms-status.is-error{
+  color:#b42318;
+  font-weight:700;
+}
+
+.sb-icon-btn--lms{
+  color:#7e22ce;
+  background:rgba(231,36,243,.08);
+  border-color:rgba(231,36,243,.24);
+}
+
+.sb-icon-btn--lms:hover{
+  background:rgba(231,36,243,.14);
+  border-color:rgba(231,36,243,.38);
+}
+
+@media (max-width: 900px){
+  .lf-lms-grid{
+    grid-template-columns:1fr;
+  }
+}
