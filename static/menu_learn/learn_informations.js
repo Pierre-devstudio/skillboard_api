@@ -114,8 +114,9 @@
     if (lang) lang.value = String(_config.language || 3);
 
     if (hint){
+      hint.className = `lf-lms-secret-hint ${_config.has_secret ? "is-ok" : "is-empty"}`;
       hint.textContent = _config.has_secret
-        ? "Une clé ApiID est déjà enregistrée. Laissez ce champ vide pour la conserver."
+        ? "Clé ApiID enregistrée. Laissez le champ vide pour la conserver."
         : "Aucune clé ApiID enregistrée.";
     }
 
