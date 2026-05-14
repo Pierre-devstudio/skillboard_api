@@ -4155,319 +4155,266 @@ def _lms_items(items: list, label_fn=None) -> str:
 
 
 def _build_formation_lms_html(form: dict) -> str:
+    """
+    Génère un HTML autonome pour insertion LMS.
+
+    Objectif : rendu public plus attractif qu'une fiche brute, sans JS,
+    avec styles inline prioritaires pour mieux survivre aux éditeurs LMS.
+    """
+    CONTACT_EMAIL = "pierre@jmbconsultant.fr"
+    CONTACT_PHONE = "06 72 11 42 21"
+    WEBSITE_URL = "www.jmbconsultant.fr"
+
     code = _lms_text(form.get("code"), "FC")
-    titre = _lms_text(form.get("titre"), "Formation")
+    titre_raw = _limit_catalogue_text(form.get("titre"), FORMATION_TITLE_MAX) or "Formation"
+    titre = _lms_esc(titre_raw)
+    presentation = _lms_esc(_limit_catalogue_text(form.get("presentation"), FORMATION_PRESENTATION_MAX) or "—")
+    objectif = _lms_esc(_limit_catalogue_text(form.get("objectifs"), FORMATION_OBJECTIF_MAX) or "—")
+
     domaine = _lms_text(form.get("domaine_titre_court") or form.get("domaine_titre"))
     fournisseur = _lms_text(form.get("fournisseur_nom"))
     duree = _lms_esc(_pdf_hours(form.get("duree")))
     tarif = _lms_esc(_pdf_money(form.get("tarif_mini")))
+    type_formation = _lms_text(form.get("type_formation"))
 
-    prereq_html = _lms_items(form.get("prerequis") or [], lambda p: p.get("titre") or "")
-    public_html = _lms_items(_pdf_lines(form.get("public_cible")))
+    def ref_label(item: Any) -> str:
+        if isinstance(item, dict):
+            return str(item.get("titre") or item.get("titre_court") or item.get("intitule") or item.get("code") or "").strip()
+        return str(item or "").strip()
 
-    comp_stag_html = _lms_items(
-        form.get("competences_stagiaires_items") or [],
-        lambda c: " – ".join([x for x in [c.get("code"), c.get("intitule")] if x])
-    )
-    comp_form_html = _lms_items(
-        form.get("competences_formateurs_items") or [],
-        lambda c: " – ".join([x for x in [c.get("code"), c.get("intitule")] if x])
-    )
+    def list_card_items(items: list, label_fn=None) -> str:
+        rows = []
 
-    modalites_html = _lms_items(form.get("modalites_items") or [])
-    peda_html = _lms_items(form.get("methode_peda_items") or [])
-    eval_html = _lms_items(form.get("methode_eval_items") or [])
+        for item in items or []:
+            if label_fn:
+                label = label_fn(item)
+            else:
+                label = ref_label(item)
+
+            label = str(label or "").strip()
+            if label:
+                rows.append(
+                    f'<li style="margin:6px 0;padding-left:2px;color:#1f2937;">{_lms_esc(label)}</li>'
+                )
+
+        if not rows:
+            return '<p style="margin:0;color:#64748b;">—</p>'
+
+        return (
+            '<ul style="margin:8px 0 0 18px;padding:0;line-height:1.45;">'
+            + "".join(rows)
+            + '</ul>'
+        )
+
+    def chip(label: Any, tone: str = "blue") -> str:
+        txt = _lms_esc(str(label or "").strip())
+        if not txt:
+            return ""
+
+        if tone == "pink":
+            bg = "#fce7ff"
+            bd = "#f0abfc"
+            fg = "#a21caf"
+        elif tone == "orange":
+            bg = "#fff7ed"
+            bd = "#fed7aa"
+            fg = "#c2410c"
+        else:
+            bg = "#eff6ff"
+            bd = "#bfdbfe"
+            fg = "#075985"
+
+        return (
+            f'<span style="display:inline-block;margin:3px 5px 3px 0;padding:5px 9px;'
+            f'border:1px solid {bd};border-radius:999px;background:{bg};color:{fg};'
+            f'font-size:12px;font-weight:700;line-height:1.15;">{txt}</span>'
+        )
+
+    def comp_chip(c: dict, tone: str = "blue") -> str:
+        code_txt = str(c.get("code") or "").strip()
+        title_txt = str(c.get("intitule") or c.get("titre") or "").strip()
+
+        if not code_txt and not title_txt:
+            return ""
+
+        label = " – ".join([x for x in [code_txt, title_txt] if x])
+        return chip(label, tone=tone)
+
+    def metric_card(label: str, value: str, highlight: bool = False) -> str:
+        bg = "#ffffff" if not highlight else "#fce7ff"
+        bd = "#e5e7eb" if not highlight else "#f0abfc"
+        fg = "#111827" if not highlight else "#a21caf"
+        return f'''
+          <div style="background:{bg};border:1px solid {bd};border-radius:16px;padding:14px;min-height:78px;">
+            <div style="font-size:12px;color:#64748b;margin-bottom:6px;">{_lms_esc(label)}</div>
+            <div style="font-size:18px;font-weight:800;color:{fg};line-height:1.2;">{value}</div>
+          </div>
+        '''
+
+    def soft_card(title: str, body_html: str, icon: str = "") -> str:
+        icon_html = ""
+        if icon:
+            icon_html = f'<span style="font-size:22px;line-height:1;">{_lms_esc(icon)}</span>'
+
+        return f'''
+          <article style="background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;padding:18px;box-shadow:0 8px 24px rgba(15,23,42,.06);">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+              {icon_html}
+              <h3 style="margin:0;color:#a21caf;font-size:18px;line-height:1.25;">{_lms_esc(title)}</h3>
+            </div>
+            <div style="font-size:14px;color:#1f2937;line-height:1.55;">{body_html}</div>
+          </article>
+        '''
+
+    public_html = list_card_items(_pdf_lines(form.get("public_cible")))
+    prereq_html = list_card_items(form.get("prerequis") or [], lambda p: p.get("titre") or "")
+    modalites_html = "".join(chip(ref_label(x), tone="pink") for x in (form.get("modalites_items") or [])) or '<span style="color:#64748b;">—</span>'
+    peda_html = list_card_items(form.get("methode_peda_items") or [])
+    eval_html = list_card_items(form.get("methode_eval_items") or [])
+
+    comp_stag_html = "".join(comp_chip(c, tone="blue") for c in (form.get("competences_stagiaires_items") or []))
+    if not comp_stag_html:
+        comp_stag_html = '<span style="color:#64748b;">Aucune compétence visée renseignée.</span>'
+
+    comp_form_html = "".join(comp_chip(c, tone="orange") for c in (form.get("competences_formateurs_items") or []))
+    if not comp_form_html:
+        comp_form_html = '<span style="color:#64748b;">Aucune compétence formateur renseignée.</span>'
+
+    obs_type_html = ""
+    if form.get("obs_type_form"):
+        obs_type_html = metric_card("Certification / niveau reconnu", _lms_text(form.get("obs_type_form")))
 
     content_cards = []
     for idx, l in enumerate(form.get("contenus") or [], start=1):
         comp_items = l.get("competences_liees_items") or []
         badges = "".join(
-            f'<span class="ns-lms-badge" title="{_lms_esc(c.get("intitule") or "")}">{_lms_text(c.get("code"), "—")}</span>'
+            f'<span title="{_lms_esc(c.get("intitule") or "")}" style="display:inline-block;background:#0070c0;color:#fff;border-radius:8px;padding:5px 8px;margin:2px;font-size:11px;font-weight:800;">{_lms_text(c.get("code"), "—")}</span>'
             for c in comp_items
         )
 
         if not badges:
-            badges = '<span class="ns-lms-muted">Aucune compétence liée</span>'
+            badges = '<span style="font-size:12px;color:#64748b;">Compétences liées à préciser</span>'
 
-        content_cards.append(f"""
-        <article class="ns-lms-content-card">
-          <div class="ns-lms-content-head">
-            <div>
-              <div class="ns-lms-content-index">Contenu {idx}</div>
-              <h3>{_lms_text(l.get("titre_sequence"), "Contenu")}</h3>
+        subject_items = []
+        for subject in _pdf_content_subjects(l.get("contenu")):
+            subject_items.append(
+                f'<li style="margin:5px 0;color:#1f2937;">{_lms_esc(subject)}</li>'
+            )
+
+        subjects_html = (
+            '<ul style="margin:8px 0 0 18px;padding:0;line-height:1.45;">'
+            + "".join(subject_items)
+            + '</ul>'
+        ) if subject_items else '<p style="margin:8px 0 0 0;color:#64748b;">—</p>'
+
+        content_cards.append(f'''
+          <article style="background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;margin:0 0 16px 0;box-shadow:0 10px 26px rgba(15,23,42,.07);">
+            <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;background:linear-gradient(135deg,#fce7ff 0%,#ffffff 100%);border-bottom:1px solid #f0abfc;padding:16px 18px;">
+              <div>
+                <div style="display:inline-block;background:#e144f0;color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800;margin-bottom:8px;">Module {idx}</div>
+                <h3 style="margin:0;color:#111827;font-size:18px;line-height:1.25;">{_lms_text(l.get("titre_sequence"), "Contenu")}</h3>
+              </div>
+              <div style="min-width:110px;text-align:right;">{badges}</div>
             </div>
-            <div class="ns-lms-badges">{badges}</div>
-          </div>
-          <div class="ns-lms-content-body">
-            <p class="ns-lms-objective"><strong>Objectif :</strong> {_lms_text(l.get("objectif"))}</p>
-            <div class="ns-lms-subjects">
-              <strong>Sujets abordés</strong>
-              {_lms_subject_list(l.get("contenu"))}
+            <div style="padding:16px 18px 18px 18px;">
+              <p style="margin:0 0 12px 0;color:#a21caf;font-style:italic;line-height:1.45;"><strong>Objectif :</strong> {_lms_text(l.get("objectif"))}</p>
+              <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:13px 15px;">
+                <div style="font-weight:800;color:#111827;margin-bottom:4px;">Sujets abordés</div>
+                {subjects_html}
+              </div>
             </div>
-          </div>
-        </article>
-        """)
+          </article>
+        ''')
 
     if not content_cards:
-        content_cards.append('<p class="ns-lms-muted">Aucun contenu détaillé n’est encore rattaché à cette formation.</p>')
+        content_cards.append(
+            '<div style="background:#ffffff;border:1px dashed #cbd5e1;border-radius:16px;padding:18px;color:#64748b;">Aucun contenu détaillé n’est encore rattaché à cette formation.</div>'
+        )
 
-    obs_type = ""
-    if form.get("obs_type_form"):
-        obs_type = f"""
-        <div class="ns-lms-info-card">
-          <span>Certification / niveau reconnu</span>
-          <strong>{_lms_text(form.get("obs_type_form"))}</strong>
-        </div>
-        """
-
-    return f"""<style>
-.ns-lms-formation {{
-  --ns-accent:#ff7a35;
-  --ns-accent-soft:#fff7ed;
-  --ns-border:#e5e7eb;
-  --ns-text:#111827;
-  --ns-muted:#64748b;
-  font-family: Arial, Helvetica, sans-serif;
-  color: var(--ns-text);
-  line-height: 1.45;
-  max-width: 980px;
-  margin: 0 auto;
-}}
-.ns-lms-formation * {{
-  box-sizing: border-box;
-}}
-.ns-lms-hero {{
-  background: linear-gradient(135deg, #fff7ed 0%, #ffffff 72%);
-  border: 1px solid #fed7aa;
-  border-radius: 18px;
-  padding: 24px;
-  margin-bottom: 18px;
-}}
-.ns-lms-code {{
-  display: inline-block;
-  background: var(--ns-accent);
-  color: #fff;
-  border-radius: 999px;
-  padding: 5px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 10px;
-}}
-.ns-lms-hero h1 {{
-  margin: 0;
-  font-size: 28px;
-  line-height: 1.15;
-  color: var(--ns-text);
-}}
-.ns-lms-hero p {{
-  margin: 10px 0 0 0;
-  color: var(--ns-muted);
-}}
-.ns-lms-grid {{
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 18px;
-}}
-.ns-lms-info-card,
-.ns-lms-card {{
-  border: 1px solid var(--ns-border);
-  border-radius: 14px;
-  background: #fff;
-  padding: 14px;
-}}
-.ns-lms-info-card {{
-  background: #f8fafc;
-}}
-.ns-lms-info-card span {{
-  display: block;
-  color: var(--ns-muted);
-  font-size: 12px;
-  margin-bottom: 4px;
-}}
-.ns-lms-info-card strong {{
-  display: block;
-  font-size: 15px;
-  color: var(--ns-text);
-}}
-.ns-lms-section {{
-  margin-top: 20px;
-}}
-.ns-lms-section h2 {{
-  font-size: 18px;
-  color: #c2410c;
-  margin: 0 0 10px 0;
-}}
-.ns-lms-card h3 {{
-  margin: 0 0 8px 0;
-  font-size: 15px;
-  color: var(--ns-text);
-}}
-.ns-lms-card p {{
-  margin: 0;
-}}
-.ns-lms-two {{
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}}
-.ns-lms-three {{
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}}
-.ns-lms-formation ul {{
-  margin: 8px 0 0 0;
-  padding-left: 20px;
-}}
-.ns-lms-formation li {{
-  margin: 3px 0;
-}}
-.ns-lms-content-card {{
-  border: 1px solid var(--ns-border);
-  border-radius: 16px;
-  background: #fff;
-  margin-bottom: 14px;
-  overflow: hidden;
-}}
-.ns-lms-content-head {{
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  align-items: flex-start;
-  background: var(--ns-accent-soft);
-  border-bottom: 1px solid #fed7aa;
-  padding: 14px 16px;
-}}
-.ns-lms-content-index {{
-  color: #c2410c;
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 3px;
-}}
-.ns-lms-content-head h3 {{
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.25;
-}}
-.ns-lms-content-body {{
-  padding: 14px 16px 16px 16px;
-}}
-.ns-lms-objective {{
-  margin: 0 0 10px 0;
-}}
-.ns-lms-subjects strong {{
-  display: block;
-  margin-bottom: 4px;
-}}
-.ns-lms-badges {{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
-  min-width: 140px;
-}}
-.ns-lms-badge {{
-  display: inline-block;
-  border: 1px solid #fed7aa;
-  background: #fff;
-  color: #9a3412;
-  border-radius: 999px;
-  padding: 3px 8px;
-  font-size: 11px;
-  font-weight: 700;
-}}
-.ns-lms-muted {{
-  color: var(--ns-muted);
-}}
-@media (max-width: 760px) {{
-  .ns-lms-grid,
-  .ns-lms-two,
-  .ns-lms-three {{
-    grid-template-columns: 1fr;
-  }}
-  .ns-lms-content-head {{
-    flex-direction: column;
-  }}
-  .ns-lms-badges {{
-    justify-content: flex-start;
-  }}
+    return f'''<style>
+.ns-lms-formation * {{ box-sizing:border-box; }}
+.ns-lms-formation a {{ color:inherit; }}
+@media (max-width:760px) {{
+  .ns-lms-hero-grid,
+  .ns-lms-grid-2,
+  .ns-lms-grid-3 {{ grid-template-columns:1fr !important; }}
+  .ns-lms-content-head {{ flex-direction:column !important; }}
 }}
 </style>
 
-<div class="ns-lms-formation">
-  <header class="ns-lms-hero">
-    <span class="ns-lms-code">{code}</span>
-    <h1>{titre}</h1>
-    <p>Fiche descriptive de formation</p>
-  </header>
-
-  <section class="ns-lms-grid">
-    <div class="ns-lms-info-card"><span>Domaine</span><strong>{domaine}</strong></div>
-    <div class="ns-lms-info-card"><span>Durée</span><strong>{duree}</strong></div>
-    <div class="ns-lms-info-card"><span>Type</span><strong>{_lms_text(form.get("type_formation"))}</strong></div>
-    <div class="ns-lms-info-card"><span>Fournisseur</span><strong>{fournisseur}</strong></div>
-    <div class="ns-lms-info-card"><span>Tarif mini</span><strong>{tarif}</strong></div>
-    <div class="ns-lms-info-card"><span>État</span><strong>{_lms_text(form.get("etat"))}</strong></div>
-    {obs_type}
-  </section>
-
-  <section class="ns-lms-section">
-    <h2>Objectif pédagogique</h2>
-    <div class="ns-lms-card">
-      <p>{_lms_nl2br(form.get("objectifs") or "—")}</p>
+<div class="ns-lms-formation" style="font-family:Arial,Helvetica,sans-serif;color:#111827;line-height:1.5;max-width:1080px;margin:0 auto;background:#f8fafc;padding:22px;border-radius:22px;">
+  <section style="background:linear-gradient(135deg,#e144f0 0%,#a21caf 100%);border-radius:24px;padding:28px;color:#fff;box-shadow:0 18px 42px rgba(162,28,175,.24);margin-bottom:18px;">
+    <div class="ns-lms-hero-grid" style="display:grid;grid-template-columns:1.6fr .9fr;gap:22px;align-items:stretch;">
+      <div>
+        <div style="display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:800;margin-bottom:14px;">{code}</div>
+        <h1 style="margin:0;font-size:34px;line-height:1.12;color:#fff;">{titre}</h1>
+        <p style="margin:16px 0 0 0;font-size:16px;line-height:1.55;color:rgba(255,255,255,.92);">{presentation}</p>
+      </div>
+      <aside style="background:rgba(255,255,255,.96);border-radius:20px;padding:18px;color:#111827;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45);">
+        <div style="font-size:13px;color:#64748b;margin-bottom:12px;font-weight:700;">Informations clés</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          {metric_card("Durée", duree, highlight=True)}
+          {metric_card("Tarif", tarif, highlight=True)}
+          {metric_card("Type", type_formation)}
+          {metric_card("Domaine", domaine)}
+        </div>
+      </aside>
     </div>
   </section>
 
-  <section class="ns-lms-section">
-    <h2>Présentation</h2>
-    <div class="ns-lms-card">
-      <p>{_lms_nl2br(form.get("presentation") or "—")}</p>
+  <section class="ns-lms-grid-2" style="display:grid;grid-template-columns:1.25fr .75fr;gap:16px;margin-bottom:16px;">
+    {soft_card("Objectif pédagogique", f'<p style="margin:0;">{objectif}</p>', "🎯")}
+    {soft_card("Modalités possibles", modalites_html, "🧭")}
+  </section>
+
+  <section class="ns-lms-grid-3" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:16px;">
+    {soft_card("Public visé", public_html, "👥")}
+    {soft_card("Prérequis", prereq_html, "✅")}
+    {soft_card("Organisme", f'<p style="margin:0;"><strong>{fournisseur}</strong></p>{obs_type_html}', "🏢")}
+  </section>
+
+  <section style="background:#ffffff;border:1px solid #e5e7eb;border-radius:20px;padding:20px;margin-bottom:16px;box-shadow:0 10px 26px rgba(15,23,42,.06);">
+    <h2 style="margin:0 0 12px 0;color:#a21caf;font-size:22px;line-height:1.25;">Compétences développées</h2>
+    <div class="ns-lms-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:16px;padding:15px;">
+        <h3 style="margin:0 0 10px 0;font-size:16px;color:#075985;">Pour les apprenants</h3>
+        {comp_stag_html}
+      </div>
+      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:16px;padding:15px;">
+        <h3 style="margin:0 0 10px 0;font-size:16px;color:#c2410c;">Pour le formateur</h3>
+        {comp_form_html}
+      </div>
     </div>
   </section>
 
-  <section class="ns-lms-section ns-lms-two">
-    <div class="ns-lms-card">
-      <h3>Public cible</h3>
-      {public_html}
-    </div>
-    <div class="ns-lms-card">
-      <h3>Prérequis évaluables</h3>
-      {prereq_html}
-    </div>
+  <section class="ns-lms-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
+    {soft_card("Méthodes pédagogiques", peda_html, "🧩")}
+    {soft_card("Évaluation des acquis", eval_html, "📌")}
   </section>
 
-  <section class="ns-lms-section ns-lms-two">
-    <div class="ns-lms-card">
-      <h3>Compétences visées pour les stagiaires</h3>
-      {comp_stag_html}
+  <section style="margin:20px 0 18px 0;">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:12px;">
+      <div>
+        <div style="color:#e144f0;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;">Programme</div>
+        <h2 style="margin:2px 0 0 0;color:#111827;font-size:26px;line-height:1.2;">Contenu de la formation</h2>
+      </div>
     </div>
-    <div class="ns-lms-card">
-      <h3>Compétences requises pour le formateur</h3>
-      {comp_form_html}
-    </div>
-  </section>
-
-  <section class="ns-lms-section ns-lms-three">
-    <div class="ns-lms-card">
-      <h3>Modalités possibles</h3>
-      {modalites_html}
-    </div>
-    <div class="ns-lms-card">
-      <h3>Méthodes pédagogiques</h3>
-      {peda_html}
-    </div>
-    <div class="ns-lms-card">
-      <h3>Méthodes d’évaluation</h3>
-      {eval_html}
-    </div>
-  </section>
-
-  <section class="ns-lms-section">
-    <h2>Programme de formation</h2>
     {"".join(content_cards)}
   </section>
-</div>"""
+
+  <section style="background:#111827;border-radius:22px;padding:24px;color:#fff;margin-top:18px;display:block;">
+    <div class="ns-lms-grid-2" style="display:grid;grid-template-columns:1.25fr .75fr;gap:18px;align-items:center;">
+      <div>
+        <h2 style="margin:0 0 8px 0;font-size:24px;line-height:1.25;color:#fff;">Vous souhaitez en savoir plus ?</h2>
+        <p style="margin:0;color:#d1d5db;line-height:1.55;">Demandez une information, une adaptation ou une étude personnalisée de cette formation.</p>
+      </div>
+      <div style="text-align:right;">
+        <a href="mailto:{CONTACT_EMAIL}" style="display:inline-block;background:#e144f0;color:#fff;text-decoration:none;border-radius:999px;padding:12px 18px;font-weight:800;margin-bottom:8px;">Demander des informations</a>
+        <div style="font-size:13px;color:#d1d5db;">{_lms_esc(CONTACT_PHONE)} • {_lms_esc(WEBSITE_URL)}</div>
+      </div>
+    </div>
+  </section>
+</div>'''
 
 def _build_plan_pdf_story(form: dict, plan: dict) -> list:
     styles = build_pdf_styles()
