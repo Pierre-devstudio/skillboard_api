@@ -20,21 +20,57 @@
   }
 
   function getErrorMessage(err){
-    if (!err) return "Erreur inconnue.";
-    if (typeof err === "string") return err;
-    if (err.message && err.message !== "[object Object]") return err.message;
+    function read(v){
+      if (!v) return "";
 
-    if (err.detail){
-      if (typeof err.detail === "string") return err.detail;
-      try { return JSON.stringify(err.detail, null, 2); } catch(_){}
+      if (typeof v === "string"){
+        return v === "[object Object]" ? "" : v;
+      }
+
+      if (v.detail) {
+        const d = read(v.detail);
+        if (d) return d;
+      }
+
+      if (v.message && v.message !== "[object Object]"){
+        return String(v.message);
+      }
+
+      if (v.error){
+        const e = read(v.error);
+        if (e) return e;
+      }
+
+      if (v.errors){
+        if (typeof v.errors === "string") return v.errors;
+
+        if (v.errors.message){
+          return String(v.errors.message);
+        }
+
+        try{
+          return JSON.stringify(v.errors, null, 2);
+        } catch(_){}
+      }
+
+      if (v.response){
+        const r = read(v.response);
+        if (r) return r;
+      }
+
+      if (v.raw){
+        return String(v.raw);
+      }
+
+      try{
+        const txt = JSON.stringify(v, null, 2);
+        if (txt && txt !== "{}") return txt;
+      } catch(_){}
+
+      return "";
     }
 
-    try{
-      const txt = JSON.stringify(err, null, 2);
-      if (txt && txt !== "{}") return txt;
-    } catch(_){}
-
-    return "Erreur inconnue.";
+    return read(err) || "Erreur inconnue.";
   }
 
   function setSuccess(msg){
@@ -126,9 +162,19 @@
   function buildPayload(){
     const provider = byId("lmsProvider")?.value || "manual";
 
+    let baseUrl = "";
+    if (provider === "lara"){
+      baseUrl = normalizeLmsUrlValue(byId("lmsBaseUrl")?.value || "");
+
+      const baseInput = byId("lmsBaseUrl");
+      if (baseInput && baseUrl){
+        baseInput.value = baseUrl;
+      }
+    }
+
     return {
       provider_code: provider,
-      base_url: provider === "lara" ? (byId("lmsBaseUrl")?.value || "").trim() : "",
+      base_url: baseUrl,
       api_id: provider === "lara" ? (byId("lmsApiId")?.value || "").trim() : "",
       visibility_type: parseInt(byId("lmsVisibilityType")?.value || "3", 10),
       language: parseInt(byId("lmsLanguage")?.value || "3", 10)
@@ -146,8 +192,10 @@
     fillConfig(cfg);
   }
 
-  async function saveConfig(portal){
-    setStatus("", "");
+  async function saveConfig(portal, options = {}){
+    if (!options.silent){
+      setStatus("", "");
+    }
 
     const effectifId = getEffectifId();
     if (!effectifId) throw new Error("Profil Learn manquant (?id=...).");
@@ -162,18 +210,22 @@
     );
 
     fillConfig(res?.config || {});
-    setSuccess("Configuration enregistrée");
 
-    if (portal.showAlert){
-      portal.showAlert("success", "Configuration LMS enregistrée");
+    if (!options.silent){
+      setSuccess("Configuration enregistrée");
+      setStatus("ok", "Configuration LMS enregistrée.");
     }
+
+    return res;
   }
 
   async function testConfig(portal){
-    setStatus("info", "Test de connexion en cours…");
+    setStatus("info", "Enregistrement de la configuration puis test de connexion…");
 
     const effectifId = getEffectifId();
     if (!effectifId) throw new Error("Profil Learn manquant (?id=...).");
+
+    await saveConfig(portal, { silent:true });
 
     const res = await portal.apiJson(
       `${portal.apiBase}/learn/informations/${encodeURIComponent(effectifId)}/lms/test`,
@@ -205,7 +257,7 @@
       } catch(e){
         const msg = getErrorMessage(e);
         setStatus("error", msg);
-        portal.showAlert?.("error", msg);
+        console.error("Erreur enregistrement LMS", e);
       }
     });
 
@@ -215,7 +267,7 @@
       } catch(e){
         const msg = getErrorMessage(e);
         setStatus("error", msg);
-        portal.showAlert?.("error", msg);
+        console.error("Erreur test LMS", e);
       }
     });
   }
@@ -233,9 +285,9 @@
   }
 
   init().catch(e => {
-    if (window.portal && window.portal.showAlert) {
-      window.portal.showAlert("error", "Erreur informations Learn : " + (e?.message || e));
-    }
+    const msg = getErrorMessage(e);
+    setStatus("error", "Erreur informations Learn : " + msg);
+    console.error("Erreur initialisation informations Learn", e);
   });
 
     function normalizeLmsUrlValue(value){

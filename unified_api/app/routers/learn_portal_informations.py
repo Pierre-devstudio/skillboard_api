@@ -414,6 +414,33 @@ def learn_lms_keywords(form: dict) -> str:
 
     return ", ".join(vals)[:500]
 
+def learn_lms_api_error_message(step: str, response: dict) -> str:
+    status = response.get("status")
+    error = response.get("error")
+    raw = response.get("raw")
+    parsed = response.get("json")
+
+    parts = [f"{step} a échoué"]
+
+    if status is not None:
+        parts.append(f"statut HTTP {status}")
+
+    if error:
+        parts.append(str(error))
+
+    if isinstance(parsed, dict):
+        errors = parsed.get("errors")
+        if isinstance(errors, dict):
+            msg = errors.get("message") or errors.get("Message")
+            if msg:
+                parts.append(str(msg))
+        elif isinstance(errors, str):
+            parts.append(errors)
+
+    if raw and not isinstance(parsed, (dict, list)):
+        parts.append(str(raw)[:500])
+
+    return " - ".join(parts)
 
 def learn_lms_resolve_lara_defaults(cfg: dict) -> dict:
     api_base = cfg.get("base_url") or ""
@@ -422,21 +449,30 @@ def learn_lms_resolve_lara_defaults(cfg: dict) -> dict:
 
     r_types = learn_lms_api_post(api_base, api_id, "workspace/gettypes", {})
     if not r_types.get("ok"):
-        raise HTTPException(status_code=400, detail={
-            "message": "Connexion Lära impossible : workspace/gettypes a échoué.",
-            "response": r_types,
-        })
+        raise HTTPException(
+            status_code=400,
+            detail=learn_lms_api_error_message("workspace/gettypes", r_types),
+        )
 
     type_row = learn_lms_choose_formation_type(r_types.get("json") or [])
     if not type_row:
         raise HTTPException(status_code=400, detail="Aucun type Formation exploitable trouvé dans Lära.")
 
     r_provider = learn_lms_api_post(api_base, api_id, "provider/getlist", {})
+
     if not r_provider.get("ok"):
-        raise HTTPException(status_code=400, detail={
-            "message": "Connexion Lära impossible : provider/getlist a échoué.",
-            "response": r_provider,
-        })
+        r_provider = learn_lms_api_post(
+            api_base,
+            api_id,
+            "provider/getlist",
+            {"filterDate": "1900-01-01T00:00:00Z"},
+        )
+
+    if not r_provider.get("ok"):
+        raise HTTPException(
+            status_code=400,
+            detail=learn_lms_api_error_message("provider/getlist", r_provider),
+        )
 
     provider = learn_lms_choose_provider(r_provider.get("json") or [])
     if not provider:
