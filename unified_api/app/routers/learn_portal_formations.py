@@ -4237,8 +4237,37 @@ def _build_formation_lms_html(form: dict) -> str:
         if not code_txt and not title_txt:
             return ""
 
-        label = " – ".join([x for x in [code_txt, title_txt] if x])
-        return chip(label, tone=tone)
+        if tone == "orange":
+            badge_bg = "#ea580c"
+            badge_border = "#c2410c"
+            title_color = "#c2410c"
+        else:
+            badge_bg = "#0369a1"
+            badge_border = "#075985"
+            title_color = "#075985"
+
+        code_html = ""
+        if code_txt:
+            code_html = (
+                f'<span style="display:inline-block;flex:0 0 auto;'
+                f'background:{badge_bg};border:1px solid {badge_border};color:#ffffff;'
+                f'border-radius:999px;padding:4px 8px;font-size:11px;font-weight:800;'
+                f'line-height:1.1;">{_lms_esc(code_txt)}</span>'
+            )
+
+        title_html = ""
+        if title_txt:
+            title_html = (
+                f'<span style="display:inline-block;color:{title_color};font-size:12px;'
+                f'font-weight:700;line-height:1.25;">{_lms_esc(title_txt)}</span>'
+            )
+
+        return (
+            f'<span style="display:flex;align-items:center;gap:8px;margin:5px 0;'
+            f'padding:6px 8px;border-radius:999px;">'
+            f'{code_html}{title_html}'
+            f'</span>'
+        )
 
     def metric_card(label: str, value: str, highlight: bool = False) -> str:
         bg = "#ffffff" if not highlight else "#fce7ff"
