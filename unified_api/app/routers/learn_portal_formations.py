@@ -4958,8 +4958,8 @@ def _lms_publication_row(cur, oid: str, id_form: str, id_lms_config: str) -> Opt
           sync_error,
           html_hash,
           archive,
-          date_creation,
-          date_modification
+          created_at AS date_creation,
+          updated_at AS date_modification
         FROM public.tbl_learn_lms_publication
         WHERE id_owner = %s
           AND id_form = %s
@@ -4997,7 +4997,7 @@ def _lms_write_publication_success(
                 sync_error = NULL,
                 html_hash = %s,
                 archive = FALSE,
-                date_modification = NOW()
+                updated_at = NOW()
             WHERE id_publication = %s
               AND id_owner = %s
             RETURNING
@@ -5013,8 +5013,8 @@ def _lms_write_publication_success(
               sync_error,
               html_hash,
               archive,
-              date_creation,
-              date_modification
+              created_at AS date_creation,
+              updated_at AS date_modification
             """,
             (
                 provider_code,
@@ -5042,8 +5042,8 @@ def _lms_write_publication_success(
                 sync_error,
                 html_hash,
                 archive,
-                date_creation,
-                date_modification
+                created_at,
+                updated_at
               )
             VALUES
               (
@@ -5071,8 +5071,8 @@ def _lms_write_publication_success(
               sync_error,
               html_hash,
               archive,
-              date_creation,
-              date_modification
+              created_at AS date_creation,
+              updated_at AS date_modification
             """,
             (
                 oid,
@@ -5116,7 +5116,7 @@ def _lms_write_publication_error(
                 sync_error = %s,
                 html_hash = %s,
                 archive = FALSE,
-                date_modification = NOW()
+                updated_at = NOW()
             WHERE id_publication = %s
               AND id_owner = %s
             RETURNING
@@ -5132,8 +5132,8 @@ def _lms_write_publication_error(
               sync_error,
               html_hash,
               archive,
-              date_creation,
-              date_modification
+              created_at AS date_creation,
+              updated_at AS date_modification
             """,
             (
                 provider_code,
@@ -5161,8 +5161,8 @@ def _lms_write_publication_error(
                 sync_error,
                 html_hash,
                 archive,
-                date_creation,
-                date_modification
+                created_at,
+                updated_at
               )
             VALUES
               (
@@ -5190,8 +5190,8 @@ def _lms_write_publication_error(
               sync_error,
               html_hash,
               archive,
-              date_creation,
-              date_modification
+              created_at AS date_creation,
+              updated_at AS date_modification
             """,
             (
                 oid,
