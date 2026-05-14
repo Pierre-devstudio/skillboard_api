@@ -4161,9 +4161,14 @@ def _build_formation_lms_html(form: dict) -> str:
     Objectif : rendu public plus attractif qu'une fiche brute, sans JS,
     avec styles inline prioritaires pour mieux survivre aux éditeurs LMS.
     """
-    CONTACT_EMAIL = "pierre@jmbconsultant.fr"
+    CONTACT_NAME = "Pierre BIDABE"
+    CONTACT_EMAIL = "formation@jmbconsultant.fr"
     CONTACT_PHONE = "06 72 11 42 21"
     WEBSITE_URL = "www.jmbconsultant.fr"
+
+    HANDICAP_NAME = "Jean-Marie BIDABE"
+    HANDICAP_EMAIL = "jm.bidabe@jmbconsultant.fr"
+    HANDICAP_PHONE = "06 08 31 25 90"
 
     code = _lms_text(form.get("code"), "FC")
     titre_raw = _limit_catalogue_text(form.get("titre"), FORMATION_TITLE_MAX) or "Formation"
@@ -4441,15 +4446,47 @@ def _build_formation_lms_html(form: dict) -> str:
     {"".join(content_cards)}
   </section>
 
-  <section style="background:#111827;border-radius:22px;padding:24px;color:#fff;margin-top:18px;display:block;">
+  <section style="background:#ffffff;border:1px solid #e5e7eb;border-radius:20px;padding:18px;margin-top:18px;margin-bottom:14px;box-shadow:0 8px 22px rgba(15,23,42,.05);">
+    <div style="color:#e144f0;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Infos pratiques</div>
+
+    <div class="ns-lms-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:16px;padding:14px;">
+        <div style="font-weight:800;color:#111827;margin-bottom:6px;">Délai d’accès</div>
+        <p style="margin:0;color:#374151;font-size:13px;line-height:1.45;">
+          Le délai d'accès entre la demande de formation et le début de prestation est estimé à environ 1 mois.
+        </p>
+      </div>
+
+      <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:16px;padding:14px;">
+        <div style="font-weight:800;color:#111827;margin-bottom:6px;">Accessibilité handicap</div>
+        <p style="margin:0;color:#374151;font-size:13px;line-height:1.45;">
+          Nos formations sont accessibles aux personnes en situation de handicap. Veuillez contacter notre référent handicap :
+          <strong>{_lms_esc(HANDICAP_NAME)}</strong> -
+          <a href="mailto:{HANDICAP_EMAIL}" style="color:#a21caf;text-decoration:underline;">{_lms_esc(HANDICAP_EMAIL)}</a> -
+          {_lms_esc(HANDICAP_PHONE)}.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section style="background:#111827;border-radius:22px;padding:22px;color:#fff;margin-top:0;display:block;">
     <div class="ns-lms-grid-2" style="display:grid;grid-template-columns:1.25fr .75fr;gap:18px;align-items:center;">
       <div>
         <h2 style="margin:0 0 8px 0;font-size:24px;line-height:1.25;color:#fff;">Vous souhaitez en savoir plus ?</h2>
         <p style="margin:0;color:#d1d5db;line-height:1.55;">Demandez une information, une adaptation ou une étude personnalisée de cette formation.</p>
       </div>
+
       <div style="text-align:right;">
-        <a href="mailto:{CONTACT_EMAIL}" style="display:inline-block;background:#e144f0;color:#fff;text-decoration:none;border-radius:999px;padding:12px 18px;font-weight:800;margin-bottom:8px;">Demander des informations</a>
-        <div style="font-size:13px;color:#d1d5db;">{_lms_esc(CONTACT_PHONE)} • {_lms_esc(WEBSITE_URL)}</div>
+        <a href="mailto:{CONTACT_EMAIL}" style="display:inline-block;background:#e144f0;color:#fff;text-decoration:none;border-radius:999px;padding:12px 18px;font-weight:800;margin-bottom:10px;">Demander des informations</a>
+
+        <div style="font-size:13px;color:#f9fafb;font-weight:700;line-height:1.45;">{_lms_esc(CONTACT_NAME)}</div>
+        <div style="font-size:13px;color:#d1d5db;line-height:1.45;">
+          <a href="mailto:{CONTACT_EMAIL}" style="color:#d1d5db;text-decoration:underline;">{_lms_esc(CONTACT_EMAIL)}</a>
+        </div>
+        <div style="font-size:13px;color:#d1d5db;line-height:1.45;">{_lms_esc(CONTACT_PHONE)}</div>
+        <div style="font-size:13px;color:#d1d5db;line-height:1.45;">
+          <a href="https://{WEBSITE_URL}" target="_blank" rel="noopener" style="color:#d1d5db;text-decoration:underline;">{_lms_esc(WEBSITE_URL)}</a>
+        </div>
       </div>
     </div>
   </section>
