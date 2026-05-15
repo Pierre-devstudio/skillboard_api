@@ -3,6 +3,8 @@ from typing import Optional, Any
 from psycopg.rows import dict_row
 import hashlib
 import json
+import re
+from html import unescape
 
 from app.routers.skills_portal_common import get_conn
 from app.routers.learn_portal_common import learn_require_user
@@ -449,6 +451,147 @@ def learn_formations_lms_remote(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"learn/formations lms remote error: {e}")
+
+def _lms_strip_html(value: Any) -> str:
+    txt = str(value or "")
+
+    if not txt:
+        return ""
+
+    txt = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", txt)
+    txt = re.sub(r"(?i)<br\s*/?>", "\n", txt)
+    txt = re.sub(r"(?i)</(p|div|li|h1|h2|h3|h4|h5|h6|section|article)>", "\n", txt)
+    txt = re.sub(r"(?s)<[^>]+>", " ", txt)
+    txt = unescape(txt)
+    txt = txt.replace("\xa0", " ")
+
+    lines = []
+    for line in txt.splitlines():
+        clean = re.sub(r"\s+", " ", line).strip()
+        if clean:
+            lines.append(clean)
+
+    return "\n".join(lines).strip()
+
+
+def _lms_clip(value: Any, max_len: int) -> str:
+    txt = str(value or "").strip()
+
+    if not txt:
+        return ""
+
+    txt = re.sub(r"\s+", " ", txt).strip()
+
+    if len(txt) <= max_len:
+        return txt
+
+    return txt[:max_len].rstrip()
+
+
+def _lms_remote_to_preview(remote: dict) -> dict:
+    description_html = remote.get("description") or ""
+    description_text = _lms_strip_html(description_html)
+    short_description = str(remote.get("short_description") or "").strip()
+
+    presentation_src = short_description or description_text
+
+    code_form = str(remote.get("code_form") or remote.get("code") or "").strip()
+    titre = str(remote.get("titre") or "Formation LMS").strip()
+
+    warnings = []
+
+    if not code_form:
+        warnings.append("Aucun Code_form détecté dans les champs personnalisés Lära.")
+
+    if not description_html:
+        warnings.append("Aucune description détaillée exploitable n’a été récupérée depuis Lära.")
+
+    draft = {
+        "titre": _lms_clip(titre, 90),
+        "etat": "à valider",
+        "type_formation": "Non Certifiante",
+        "presentation": _lms_clip(presentation_src, 625),
+        "objectifs": "",
+        "public_cible": "",
+        "duree": None,
+        "tarif_mini": None,
+        "code_lms_detecte": code_form,
+        "description_text": _lms_clip(description_text, 2500),
+    }
+
+    return {
+        "remote": {
+            "provider_code": "lara",
+            "provider_label": "Lära",
+            "external_id": remote.get("external_id"),
+            "external_url": remote.get("external_url"),
+            "code": code_form,
+            "code_field": remote.get("code_field"),
+            "titre": titre,
+            "visibility_label": remote.get("visibility_label"),
+            "updated_at": remote.get("updated_at"),
+            "created_at": remote.get("created_at"),
+            "custom_fields": remote.get("custom_fields") or {},
+            "description_html": description_html,
+            "description_text": description_text,
+        },
+        "draft": draft,
+        "warnings": warnings,
+    }
+
+@router.get("/learn/formations/{id_effectif}/lms/remote/{external_id}/preview")
+def learn_formations_lms_remote_preview(
+    id_effectif: str,
+    external_id: str,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        ext = str(external_id or "").strip()
+        if not ext:
+            raise HTTPException(status_code=400, detail="Identifiant Lära manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                _learn_require_min_role(profile, "supervisor")
+                oid = (profile.get("id_owner") or "").strip()
+
+                cfg = learn_lms_fetch_active_config(cur, oid, with_secret=True)
+
+                if not cfg or cfg.get("provider_code") != "lara":
+                    raise HTTPException(status_code=400, detail="Aucun connecteur Lära actif.")
+
+                remote_result = lara_connector.get_remote_formation(
+                    cfg=cfg,
+                    external_id=ext,
+                )
+
+                if not remote_result.get("ok"):
+                    raise HTTPException(status_code=400, detail={
+                        "message": "Lecture de la formation Lära impossible.",
+                        "response": remote_result.get("response") or remote_result,
+                    })
+
+                remote = remote_result.get("item") or {}
+
+        preview = _lms_remote_to_preview(remote)
+
+        return {
+            "ok": True,
+            "provider_code": "lara",
+            "provider_label": "Lära",
+            "external_id": ext,
+            "preview": preview,
+            "can_import": _role_rank(profile.get("role_code")) >= 2,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations lms remote preview error: {e}")
 
 @router.get("/learn/formations/{id_effectif}/{id_form}/lms/status")
 def learn_formation_lms_status(id_effectif: str, id_form: str, request: Request):

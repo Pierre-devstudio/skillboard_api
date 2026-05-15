@@ -1737,6 +1737,137 @@
    Learn - Connecteur LMS
    ====================================================== */
 
+.lf-lms-preview-grid{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) minmax(0, 1fr);
+  gap:14px;
+  align-items:start;
+}
+
+.lf-lms-preview-card{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:14px;
+  background:#fff;
+  padding:14px;
+  min-width:0;
+}
+
+.lf-lms-preview-card--draft{
+  background:linear-gradient(135deg, rgba(231,36,243,.055), #ffffff);
+  border-color:rgba(231,36,243,.22);
+}
+
+.lf-lms-preview-card-title{
+  font-size:13px;
+  font-weight:750;
+  color:#111827;
+  margin-bottom:10px;
+}
+
+.lf-lms-preview-kv{
+  display:grid;
+  gap:7px;
+  margin-bottom:12px;
+}
+
+.lf-lms-preview-kv-row,
+.lf-lms-preview-field{
+  display:grid;
+  grid-template-columns:120px minmax(0, 1fr);
+  gap:8px;
+  align-items:center;
+  padding:7px 9px;
+  border:1px solid rgba(17,24,39,.08);
+  border-radius:10px;
+  background:#f8fafc;
+  font-size:12px;
+}
+
+.lf-lms-preview-kv-row span,
+.lf-lms-preview-field span{
+  color:#64748b;
+  font-weight:600;
+}
+
+.lf-lms-preview-kv-row strong,
+.lf-lms-preview-field strong{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#111827;
+  font-weight:650;
+}
+
+.lf-lms-preview-section-title{
+  font-size:12px;
+  font-weight:750;
+  color:#334155;
+  margin:12px 0 6px;
+}
+
+.lf-lms-preview-text{
+  min-height:52px;
+  max-height:220px;
+  overflow:auto;
+  border:1px solid rgba(17,24,39,.08);
+  border-radius:10px;
+  background:#f8fafc;
+  padding:9px 10px;
+  font-size:12px;
+  line-height:1.45;
+  color:#334155;
+  white-space:pre-wrap;
+}
+
+.lf-lms-preview-fields{
+  display:grid;
+  gap:7px;
+}
+
+.lf-lms-preview-draft{
+  display:grid;
+  gap:10px;
+}
+
+.lf-lms-preview-value{
+  border:1px solid rgba(17,24,39,.08);
+  border-radius:10px;
+  background:#fff;
+  padding:8px 10px;
+  font-size:12px;
+  line-height:1.4;
+  color:#111827;
+  min-height:18px;
+}
+
+.lf-lms-preview-warnings{
+  margin-top:12px;
+  display:grid;
+  gap:7px;
+}
+
+.lf-lms-preview-warning{
+  border:1px solid #fed7aa;
+  border-radius:10px;
+  background:#fff7ed;
+  color:#9a3412;
+  padding:8px 10px;
+  font-size:12px;
+  line-height:1.35;
+}
+
+@media (max-width: 950px){
+  .lf-lms-preview-grid{
+    grid-template-columns:1fr;
+  }
+
+  .lf-lms-preview-kv-row,
+  .lf-lms-preview-field{
+    grid-template-columns:1fr;
+  }
+}
+
 .lf-lms-card{
   display:grid;
   gap:14px;

@@ -39,6 +39,82 @@
     <div class="sb-stack sb-stack--sm" id="catFormsList" style="margin-top:12px;"></div>
   </div>
 
+  <div class="sb-modal" id="modalLmsImportPreview" style="display:none;">
+    <div class="sb-modal-card sb-modal-card--wide">
+      <div class="sb-modal-head">
+        <div style="min-width:0;">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+            <span class="sb-badge sb-badge--lms-only" id="lmsPreviewBadge">LMS</span>
+            <div class="card-title" id="lmsPreviewTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              Prévisualisation d’import LMS
+            </div>
+          </div>
+          <div class="card-sub" id="lmsPreviewSub" style="margin:4px 0 0 0;">
+            Vérifiez les données récupérées avant création dans Novoskill.
+          </div>
+        </div>
+        <button type="button" class="sb-modal-x" id="btnLmsPreviewX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="sb-modal-body">
+        <div class="lf-lms-preview-grid">
+          <div class="lf-lms-preview-card">
+            <div class="lf-lms-preview-card-title">Données récupérées depuis Lära</div>
+            <div class="lf-lms-preview-kv" id="lmsPreviewRemoteMeta"></div>
+
+            <div class="lf-lms-preview-section-title">Description LMS</div>
+            <div class="lf-lms-preview-text" id="lmsPreviewRemoteDescription">
+              Chargement…
+            </div>
+
+            <div class="lf-lms-preview-section-title">Champs personnalisés</div>
+            <div class="lf-lms-preview-fields" id="lmsPreviewCustomFields"></div>
+          </div>
+
+          <div class="lf-lms-preview-card lf-lms-preview-card--draft">
+            <div class="lf-lms-preview-card-title">Fiche Novoskill préparée</div>
+
+            <div class="lf-lms-preview-draft">
+              <div class="info-item">
+                <div class="label">Titre</div>
+                <div class="lf-lms-preview-value" id="lmsPreviewDraftTitle">—</div>
+              </div>
+
+              <div class="info-item">
+                <div class="label">État prévu</div>
+                <div class="lf-lms-preview-value" id="lmsPreviewDraftEtat">—</div>
+              </div>
+
+              <div class="info-item">
+                <div class="label">Type prévu</div>
+                <div class="lf-lms-preview-value" id="lmsPreviewDraftType">—</div>
+              </div>
+
+              <div class="info-item">
+                <div class="label">Code détecté</div>
+                <div class="lf-lms-preview-value" id="lmsPreviewDraftCode">—</div>
+              </div>
+
+              <div class="info-item">
+                <div class="label">Présentation proposée</div>
+                <div class="lf-lms-preview-text" id="lmsPreviewDraftPresentation">—</div>
+              </div>
+            </div>
+
+            <div class="lf-lms-preview-warnings" id="lmsPreviewWarnings" style="display:none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-modal-foot">
+        <button type="button" class="sb-btn sb-btn--accent" id="btnLmsPreviewCreate" disabled>
+          Créer la fiche Novoskill
+        </button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnLmsPreviewCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
   <div class="sb-modal" id="modalFormEdit" style="display:none;">
     <div class="sb-modal-card sb-modal-card--wide">
       <div class="sb-modal-head">

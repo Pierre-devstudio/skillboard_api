@@ -7,6 +7,7 @@
 
   let _items = [];
   let _lmsRemoteItems = [];
+  let _lmsImportPreview = null;
   let _refs = null;
 
   let _roleCode = "user";
@@ -457,21 +458,150 @@ function iconPdf(){
     }
   }
 
-  function openLmsSyncPreview(it){
-    const title = String(it?.titre || "Formation LMS").trim();
-    const code = String(it?.code || "").trim();
+  function renderLmsPreviewMeta(remote){
+    const host = byId("lmsPreviewRemoteMeta");
+    if (!host) return;
+
+    const rows = [
+      ["Code détecté", remote?.code || "—"],
+      ["Champ code", remote?.code_field || "Code_form"],
+      ["ID Lära", remote?.external_id || "—"],
+      ["Visibilité", remote?.visibility_label || "—"],
+      ["URL", remote?.external_url || "—"]
+    ];
+
+    host.innerHTML = rows.map(([k, v]) => `
+      <div class="lf-lms-preview-kv-row">
+        <span>${htmlEsc(k)}</span>
+        <strong>${htmlEsc(v)}</strong>
+      </div>
+    `).join("");
+  }
+
+  function renderLmsCustomFields(fields){
+    const host = byId("lmsPreviewCustomFields");
+    if (!host) return;
+
+    const entries = Object.entries(fields || {});
+
+    if (!entries.length){
+      host.innerHTML = `<div class="card-sub">Aucun champ personnalisé récupéré.</div>`;
+      return;
+    }
+
+    host.innerHTML = entries.map(([k, v]) => `
+      <div class="lf-lms-preview-field">
+        <span>${htmlEsc(k)}</span>
+        <strong>${htmlEsc(v || "—")}</strong>
+      </div>
+    `).join("");
+  }
+
+  function renderLmsImportPreview(data){
+    const preview = data?.preview || {};
+    const remote = preview.remote || {};
+    const draft = preview.draft || {};
+    const warnings = Array.isArray(preview.warnings) ? preview.warnings : [];
+
+    const badge = byId("lmsPreviewBadge");
+    if (badge){
+      badge.textContent = remote.code || "LMS";
+    }
+
+    const title = byId("lmsPreviewTitle");
+    if (title){
+      title.textContent = remote.titre || "Prévisualisation d’import LMS";
+    }
+
+    const sub = byId("lmsPreviewSub");
+    if (sub){
+      sub.textContent = [
+        "Formation récupérée depuis Lära",
+        remote.external_id ? `ID ${remote.external_id}` : ""
+      ].filter(Boolean).join(" • ");
+    }
+
+    renderLmsPreviewMeta(remote);
+    renderLmsCustomFields(remote.custom_fields || {});
+
+    const remoteDesc = byId("lmsPreviewRemoteDescription");
+    if (remoteDesc){
+      remoteDesc.textContent = remote.description_text || "Aucune description exploitable récupérée.";
+    }
+
+    const setTxt = (id, value) => {
+      const el = byId(id);
+      if (el) el.textContent = value || "—";
+    };
+
+    setTxt("lmsPreviewDraftTitle", draft.titre);
+    setTxt("lmsPreviewDraftEtat", draft.etat);
+    setTxt("lmsPreviewDraftType", draft.type_formation);
+    setTxt("lmsPreviewDraftCode", draft.code_lms_detecte);
+    setTxt("lmsPreviewDraftPresentation", draft.presentation);
+
+    const warnHost = byId("lmsPreviewWarnings");
+    if (warnHost){
+      if (warnings.length){
+        warnHost.style.display = "";
+        warnHost.innerHTML = warnings.map(w => `
+          <div class="lf-lms-preview-warning">${htmlEsc(w)}</div>
+        `).join("");
+      } else {
+        warnHost.style.display = "none";
+        warnHost.innerHTML = "";
+      }
+    }
+
+    const btnCreate = byId("btnLmsPreviewCreate");
+    if (btnCreate){
+      btnCreate.disabled = true;
+      btnCreate.title = "Création Novoskill câblée à l’étape suivante.";
+    }
+  }
+
+  async function openLmsSyncPreview(it){
     const externalId = String(it?.external_id || "").trim();
 
-    window.portal?.showAlert?.(
-      "success",
-      [
-        "Formation LMS détectée.",
-        code ? `Code : ${code}` : "",
-        title ? `Titre : ${title}` : "",
-        externalId ? `ID Lära : ${externalId}` : "",
-        "La prévisualisation d’import sera branchée à l’étape suivante."
-      ].filter(Boolean).join(" ")
-    );
+    if (!externalId){
+      window.portal?.showAlert?.("error", "Identifiant Lära introuvable.");
+      return;
+    }
+
+    _lmsImportPreview = null;
+
+    const title = byId("lmsPreviewTitle");
+    if (title) title.textContent = "Chargement de la formation Lära…";
+
+    const sub = byId("lmsPreviewSub");
+    if (sub) sub.textContent = "Lecture des données LMS en cours.";
+
+    const remoteDesc = byId("lmsPreviewRemoteDescription");
+    if (remoteDesc) remoteDesc.textContent = "Chargement…";
+
+    renderLmsPreviewMeta({});
+    renderLmsCustomFields({});
+
+    openModal("modalLmsImportPreview");
+
+    try{
+      const effectifId = getEffectifId();
+
+      const data = await window.portal.apiJson(
+        `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+        + `/lms/remote/${encodeURIComponent(externalId)}`
+        + `/preview`
+      );
+
+      _lmsImportPreview = data || null;
+      renderLmsImportPreview(data);
+
+    } catch(e){
+      _lmsImportPreview = null;
+
+      closeModal("modalLmsImportPreview");
+      window.portal?.showAlert?.("error", getErrorMessage(e));
+    }
   }
 
   function fillRefSelects(){
@@ -3886,6 +4016,20 @@ iframe{width:100%;height:100%;border:0;display:block}
     bindCatalogueFieldLimit("formPresentation", FORM_PRESENTATION_MAX);
     bindCatalogueFieldLimit("formObjectifs", FORM_OBJECTIF_MAX);
     refreshCatalogueCounters();
+
+    byId("btnLmsPreviewX")?.addEventListener("click", () => {
+      _lmsImportPreview = null;
+      closeModal("modalLmsImportPreview");
+    });
+
+    byId("btnLmsPreviewCancel")?.addEventListener("click", () => {
+      _lmsImportPreview = null;
+      closeModal("modalLmsImportPreview");
+    });
+
+    byId("btnLmsPreviewCreate")?.addEventListener("click", () => {
+      window.portal?.showAlert?.("error", "Création de la fiche Novoskill branchée à l’étape suivante.");
+    });
 
     const bNew = byId("btnFormNew");
 

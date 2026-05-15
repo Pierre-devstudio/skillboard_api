@@ -311,6 +311,97 @@ def list_remote_formations(cfg: dict, q: str = "", limit: int = 500) -> dict:
         "response": api_result,
     }
 
+def _lara_object_from_response(value: Any) -> dict:
+    if isinstance(value, dict):
+        for key in ("item", "data", "result", "workspace"):
+            v = value.get(key)
+            if isinstance(v, dict):
+                return v
+
+        if _lara_workspace_external_id(value) or _lara_workspace_name(value):
+            return value
+
+        for v in value.values():
+            if isinstance(v, dict):
+                nested = _lara_object_from_response(v)
+                if nested:
+                    return nested
+
+        return {}
+
+    if isinstance(value, list):
+        for v in value:
+            if isinstance(v, dict):
+                return v
+
+    return {}
+
+
+def get_remote_formation(cfg: dict, external_id: str) -> dict:
+    ext = str(external_id or "").strip()
+
+    if not ext:
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "item": None,
+            "response": {
+                "error": "Identifiant Lära manquant."
+            },
+        }
+
+    api_base = cfg.get("base_url") or ""
+    secret = cfg.get("secret_json") or {}
+    api_id = secret.get("api_id") or ""
+
+    api_result = learn_lms_api_post(
+        api_base,
+        api_id,
+        "workspace/get",
+        {"id": ext},
+    )
+
+    if not api_result.get("ok"):
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "item": None,
+            "response": api_result,
+        }
+
+    row = _lara_object_from_response(api_result.get("json"))
+
+    if not row:
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "item": None,
+            "response": {
+                "message": "La formation Lära a répondu OK, mais aucun objet exploitable n’a été retourné.",
+                "raw": api_result.get("json"),
+            },
+        }
+
+    item = _lara_normalize_remote_workspace(row, cfg)
+
+    item["description"] = _lara_text(
+        _lara_first(row, ("description", "htmlDescription", "details", "content"))
+    )
+
+    item["raw"] = row
+
+    if not item.get("external_url"):
+        geturl_result = learn_lms_api_post(api_base, api_id, "workspace/geturl", {"id": ext})
+        if geturl_result.get("ok"):
+            item["external_url"] = learn_lms_extract_url(geturl_result.get("json")) or ""
+
+    return {
+        "ok": True,
+        "provider_code": "lara",
+        "item": item,
+        "response": api_result,
+    }
+
 def _lara_drop_custom_fields_if_rejected(api_result: dict) -> bool:
     if not api_result or api_result.get("ok"):
         return False
