@@ -210,7 +210,7 @@ def _lms_compare_remote_with_local(remote_items: list, local_rows: list) -> tupl
 
             linked.append(item)
             continue
-        
+
         remote_only.append({
             "source_kind": "lms_only",
             "provider_code": "lara",
@@ -405,7 +405,7 @@ def _lms_write_publication_linked(
                 external_id = %s,
                 external_url = COALESCE(%s, external_url),
                 last_sync_at = NOW(),
-                sync_status = 'linked',
+                sync_status = 'synced',
                 sync_error = NULL,
                 html_hash = %s,
                 archive = FALSE,
@@ -463,7 +463,7 @@ def _lms_write_publication_linked(
                 %s, %s, %s, %s,
                 %s, %s,
                 NOW(),
-                'linked',
+                'synced',
                 NULL,
                 %s,
                 FALSE,
