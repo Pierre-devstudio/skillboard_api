@@ -7,6 +7,7 @@
 
   let _items = [];
   let _lmsRemoteItems = [];
+  let _lmsLinkedItems = [];
   let _lmsImportPreview = null;
   let _pendingLmsImportLink = null;
   let _refs = null;
@@ -431,6 +432,7 @@ function iconPdf(){
 
   async function loadRemoteLmsOnlyItems(portal){
     _lmsRemoteItems = [];
+    _lmsLinkedItems = [];
 
     if (!shouldLoadRemoteLmsItems()){
       return [];
@@ -452,6 +454,8 @@ function iconPdf(){
       }
 
       _lmsRemoteItems = Array.isArray(data?.items) ? data.items : [];
+      _lmsLinkedItems = Array.isArray(data?.linked_items) ? data.linked_items : [];
+
       return _lmsRemoteItems;
     } catch(e){
       console.warn("Récupération formations LMS impossible", e);
@@ -2549,6 +2553,44 @@ function renderContentCompBadges(l){
         });
     }
 
+    function isLmsSyncActive(it){
+        const status = String(it?.lms_sync_status || "").trim().toLowerCase();
+
+        return Boolean(
+            it?.lms_sync_active
+            || (
+            it?.lms_external_id
+            && ["synced", "linked", "outdated"].includes(status)
+            )
+        );
+        }
+
+        function applyLmsLinkedStateToLocalItems(localItems){
+        const map = new Map();
+
+        (_lmsLinkedItems || []).forEach(x => {
+            const id = String(x?.local_id_form || "").trim();
+            if (id) map.set(id, x);
+        });
+
+        return (localItems || []).map(it => {
+            const id = String(it?.id_form || "").trim();
+            const linked = map.get(id);
+
+            if (!linked) return it;
+
+            return {
+            ...it,
+            lms_match_status: linked.match_status || "",
+            lms_sync_diff_reasons: linked.sync_diff_reasons || [],
+            lms_sync_active: linked.lms_sync_active || it.lms_sync_active || false,
+            lms_sync_status: linked.local_sync_status || it.lms_sync_status || "",
+            lms_external_id: linked.local_lms_external_id || it.lms_external_id || "",
+            lms_external_url: linked.local_lms_external_url || it.lms_external_url || ""
+            };
+        });
+    }
+
   function renderList(){
     const host = byId("catFormsList");
     if (!host) return;
@@ -2570,6 +2612,7 @@ function renderContentCompBadges(l){
       row.className = "sb-row-card";
       if (it.archive || it.masque) row.classList.add("is-archived");
       if (lmsOnly) row.classList.add("is-lms-only");
+      if (!lmsOnly && it.lms_match_status === "remote_changed") row.classList.add("is-lms-drift");
 
       const left = document.createElement("div");
       left.className = "sb-row-left";
@@ -2589,20 +2632,26 @@ function renderContentCompBadges(l){
       sub.className = "card-sub";
       sub.style.margin = "2px 0 0 0";
 
-      if (lmsOnly){
-        sub.textContent = [
-          "Présente dans Lära",
-          it.type_lms_label ? `Type LMS : ${it.type_lms_label}` : "",
-          it.visibility_label || "",
-          it.external_id ? `ID ${it.external_id}` : ""
-        ].filter(Boolean).join(" • ");
-      } else {
-        sub.textContent = [
-          it.duree ? `${it.duree} h` : "",
-          it.fournisseur_nom || "",
-          it.nb_plans ? `${it.nb_plans} plan(s)` : "0 plan"
-        ].filter(Boolean).join(" • ");
-      }
+        if (lmsOnly){
+            sub.textContent = [
+                "Présente dans Lära",
+                it.type_lms_label ? `Type LMS : ${it.type_lms_label}` : ""
+            ].filter(Boolean).join(" • ");
+            } else {
+            const subParts = [
+                it.duree ? `${it.duree} h` : "",
+                it.fournisseur_nom || "",
+                it.nb_plans ? `${it.nb_plans} plan(s)` : "0 plan"
+            ];
+
+            if (it.lms_match_status === "remote_changed"){
+                subParts.push("Écart LMS détecté");
+            } else if (isLmsSyncActive(it)){
+                subParts.push("Synchronisation active");
+            }
+
+            sub.textContent = subParts.filter(Boolean).join(" • ");
+        }
 
       titleWrap.appendChild(title);
       titleWrap.appendChild(sub);
@@ -2619,12 +2668,6 @@ function renderContentCompBadges(l){
         lmsBadge.textContent = "LMS uniquement";
         right.appendChild(lmsBadge);
 
-        if (it.type_lms_label){
-          const typ = document.createElement("span");
-          typ.className = "sb-badge sb-badge--state";
-          typ.textContent = it.type_lms_label;
-          right.appendChild(typ);
-        }
       } else {
         const domLabel = (it.domaine_titre_court || it.domaine_titre || "").toString().trim();
         if (domLabel){
@@ -2767,27 +2810,27 @@ function renderContentCompBadges(l){
     });
   }
 
-  async function loadList(portal){
-    const effectifId = getEffectifId();
-    if (!effectifId) throw new Error("Profil Learn manquant (?id=...).");
+    async function loadList(portal){
+        const effectifId = getEffectifId();
+        if (!effectifId) throw new Error("Profil Learn manquant (?id=...).");
 
-    const url =
-      `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
-      + `?q=${encodeURIComponent(_q)}`
-      + `&show=${encodeURIComponent(_show)}`
-      + `&domaine=${encodeURIComponent(_dom)}`;
+        const url =
+            `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+            + `?q=${encodeURIComponent(_q)}`
+            + `&show=${encodeURIComponent(_show)}`
+            + `&domaine=${encodeURIComponent(_dom)}`;
 
-    const data = await portal.apiJson(url);
-    const localItems = Array.isArray(data?.items) ? data.items : [];
-    const remoteItems = await loadRemoteLmsOnlyItems(portal);
+        const data = await portal.apiJson(url);
+        const localItems = Array.isArray(data?.items) ? data.items : [];
+        const remoteItems = await loadRemoteLmsOnlyItems(portal);
 
-    _items = [
-      ...localItems,
-      ...remoteItems
-    ];
+        _items = [
+            ...applyLmsLinkedStateToLocalItems(localItems),
+            ...remoteItems
+        ];
 
-    renderList();
-  }
+        renderList();
+    }
 
     function setFieldValue(id, value){
         const el = byId(id);

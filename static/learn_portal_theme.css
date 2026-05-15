@@ -167,6 +167,15 @@
   color:#581c87;
 }
 
+.sb-row-card.is-lms-drift{
+  background:linear-gradient(135deg, rgba(245,158,11,.10), #ffffff);
+  border-color:rgba(245,158,11,.40);
+}
+
+.sb-row-card.is-lms-drift .sb-row-title{
+  color:#92400e;
+}
+
 .sb-badge--lms-code{
   background:#7e22ce;
   border:1px solid #7e22ce;

@@ -5,6 +5,7 @@ from pydantic import BaseModel
 import hashlib
 import json
 import re
+from datetime import datetime, timezone
 from html import unescape
 
 from app.routers.skills_portal_common import get_conn
@@ -66,6 +67,66 @@ def _lms_publication_row(cur, oid: str, id_form: str, id_lms_config: str) -> Opt
 def _lms_norm_key(value: Any) -> str:
     return str(value or "").strip().lower()
 
+def _lms_norm_compare(value: Any) -> str:
+    txt = str(value or "").strip().lower()
+    txt = re.sub(r"\s+", " ", txt)
+    return txt
+
+
+def _lms_parse_dt(value: Any) -> Optional[datetime]:
+    if not value:
+        return None
+
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        raw = str(value or "").strip()
+        if not raw:
+            return None
+
+        raw = raw.replace("Z", "+00:00")
+
+        try:
+            dt = datetime.fromisoformat(raw)
+        except Exception:
+            return None
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+
+    return dt.astimezone(timezone.utc)
+
+
+def _lms_remote_diff_reasons(remote: dict, local: dict) -> list:
+    reasons = []
+
+    remote_code = _lms_norm_compare(remote.get("code_form") or remote.get("code"))
+    local_code = _lms_norm_compare(local.get("code"))
+
+    if remote_code and local_code and remote_code != local_code:
+        reasons.append("code")
+
+    remote_title = _lms_norm_compare(remote.get("titre"))
+    local_title = _lms_norm_compare(local.get("titre"))
+
+    if remote_title and local_title and remote_title != local_title:
+        reasons.append("titre")
+
+    remote_dt = _lms_parse_dt(remote.get("updated_at"))
+    local_sync_dt = _lms_parse_dt(local.get("last_sync_at"))
+
+    if remote_dt and local_sync_dt and remote_dt > local_sync_dt:
+        reasons.append("date_lms")
+
+    return reasons
+
+
+def _lms_is_local_sync_active(local: dict) -> bool:
+    return bool(
+        local
+        and local.get("external_id")
+        and str(local.get("sync_status") or "").strip().lower() in ("synced", "linked", "outdated")
+    )
 
 def _lms_local_rows_for_compare(cur, oid: str, id_lms_config: str) -> list:
     cur.execute(
@@ -125,16 +186,31 @@ def _lms_compare_remote_with_local(remote_items: list, local_rows: list) -> tupl
 
         if local:
             item = dict(remote)
-            item["match_status"] = "linked_archived" if (local.get("archive") or local.get("masque")) else "linked"
+
+            diff_reasons = _lms_remote_diff_reasons(remote, local)
+
+            if local.get("archive") or local.get("masque"):
+                match_status = "linked_archived"
+            elif diff_reasons:
+                match_status = "remote_changed"
+            else:
+                match_status = "linked"
+
+            item["match_status"] = match_status
+            item["sync_diff_reasons"] = diff_reasons
             item["local_id_form"] = local.get("id_form")
             item["local_code"] = local.get("code")
             item["local_titre"] = local.get("titre")
             item["local_sync_status"] = local.get("sync_status")
+            item["local_lms_external_id"] = local.get("external_id")
+            item["local_lms_external_url"] = local.get("external_url")
+            item["lms_sync_active"] = _lms_is_local_sync_active(local)
             item["type_lms_id"] = remote.get("type_lms_id")
             item["type_lms_label"] = remote.get("type_lms_label")
+
             linked.append(item)
             continue
-
+        
         remote_only.append({
             "source_kind": "lms_only",
             "provider_code": "lara",

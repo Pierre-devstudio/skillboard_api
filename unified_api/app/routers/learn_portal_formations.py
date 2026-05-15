@@ -2320,7 +2320,17 @@ def learn_formations_list(
                       ff.etat,
                       COALESCE(ff.masque, FALSE) AS masque,
                       COALESCE(ff.archive, FALSE) AS archive,
-                      COUNT(DISTINCT p.id_plan_peda) AS nb_plans
+                      COUNT(DISTINCT p.id_plan_peda) AS nb_plans,
+                      lp.external_id AS lms_external_id,
+                      lp.external_url AS lms_external_url,
+                      lp.sync_status AS lms_sync_status,
+                      lp.last_sync_at AS lms_last_sync_at,
+                      CASE
+                        WHEN lp.external_id IS NOT NULL
+                        AND COALESCE(lp.sync_status, '') IN ('synced', 'linked', 'outdated')
+                        THEN TRUE
+                        ELSE FALSE
+                      END AS lms_sync_active
                     FROM public.tbl_fiche_formation ff
                     LEFT JOIN public.tbl_domaine_formation df
                       ON df.id_domaine_formation = ff.domaine
@@ -2331,9 +2341,23 @@ def learn_formations_list(
                      AND COALESCE(fo.archive, FALSE) = FALSE
                      AND COALESCE(fo.masque, FALSE) = FALSE
                     LEFT JOIN public.tbl_plan_pedagogique p
-                      ON p.id_owner = ff.id_owner
-                     AND p.id_form = ff.id_form
-                     AND COALESCE(p.archive, FALSE) = FALSE
+                    ON p.id_owner = ff.id_owner
+                    AND p.id_form = ff.id_form
+                    AND COALESCE(p.archive, FALSE) = FALSE
+                    LEFT JOIN LATERAL (
+                    SELECT id_lms_config
+                    FROM public.tbl_learn_lms_config
+                    WHERE id_owner = ff.id_owner
+                        AND COALESCE(archive, FALSE) = FALSE
+                        AND COALESCE(actif, TRUE) = TRUE
+                    ORDER BY updated_at DESC, created_at DESC
+                    LIMIT 1
+                    ) lcfg ON TRUE
+                    LEFT JOIN public.tbl_learn_lms_publication lp
+                    ON lp.id_owner = ff.id_owner
+                    AND lp.id_form = ff.id_form
+                    AND lp.id_lms_config = lcfg.id_lms_config
+                    AND COALESCE(lp.archive, FALSE) = FALSE
                     WHERE {" AND ".join(where)}
                     GROUP BY
                       ff.id_form,
@@ -2349,7 +2373,11 @@ def learn_formations_list(
                       ff.tarif_mini,
                       ff.etat,
                       ff.masque,
-                      ff.archive
+                      ff.archive,
+                      lp.external_id,
+                      lp.external_url,
+                      lp.sync_status,
+                      lp.last_sync_at
                     ORDER BY
                       lower(COALESCE(ff.code, '')),
                       lower(COALESCE(ff.titre, ''))
