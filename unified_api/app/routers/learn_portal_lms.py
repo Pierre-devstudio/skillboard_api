@@ -54,6 +54,97 @@ def _lms_publication_row(cur, oid: str, id_form: str, id_lms_config: str) -> Opt
 
     return cur.fetchone()
 
+def _lms_norm_key(value: Any) -> str:
+    return str(value or "").strip().lower()
+
+
+def _lms_local_rows_for_compare(cur, oid: str, id_lms_config: str) -> list:
+    cur.execute(
+        """
+        SELECT
+          ff.id_form,
+          ff.code,
+          ff.titre,
+          COALESCE(ff.masque, FALSE) AS masque,
+          COALESCE(ff.archive, FALSE) AS archive,
+          p.external_id,
+          p.external_url,
+          p.sync_status,
+          p.last_sync_at,
+          p.html_hash
+        FROM public.tbl_fiche_formation ff
+        LEFT JOIN public.tbl_learn_lms_publication p
+          ON p.id_owner = ff.id_owner
+         AND p.id_form = ff.id_form
+         AND p.id_lms_config = %s
+         AND COALESCE(p.archive, FALSE) = FALSE
+        WHERE ff.id_owner = %s
+        """,
+        (id_lms_config, oid),
+    )
+
+    return cur.fetchall() or []
+
+
+def _lms_compare_remote_with_local(remote_items: list, local_rows: list) -> tuple[list, list]:
+    by_code = {}
+    by_external = {}
+
+    for row in local_rows or []:
+        code_key = _lms_norm_key(row.get("code"))
+        ext_key = _lms_norm_key(row.get("external_id"))
+
+        if code_key:
+            by_code[code_key] = row
+
+        if ext_key:
+            by_external[ext_key] = row
+
+    remote_only = []
+    linked = []
+
+    for remote in remote_items or []:
+        code_key = _lms_norm_key(remote.get("code_form") or remote.get("code"))
+        ext_key = _lms_norm_key(remote.get("external_id"))
+
+        local = None
+
+        if code_key and code_key in by_code:
+            local = by_code[code_key]
+        elif ext_key and ext_key in by_external:
+            local = by_external[ext_key]
+
+        if local:
+            item = dict(remote)
+            item["match_status"] = "linked_archived" if (local.get("archive") or local.get("masque")) else "linked"
+            item["local_id_form"] = local.get("id_form")
+            item["local_code"] = local.get("code")
+            item["local_titre"] = local.get("titre")
+            item["local_sync_status"] = local.get("sync_status")
+            linked.append(item)
+            continue
+
+        remote_only.append({
+            "source_kind": "lms_only",
+            "provider_code": "lara",
+            "id_form": None,
+            "code": remote.get("code_form") or remote.get("code") or "LMS",
+            "titre": remote.get("titre") or "Formation LMS",
+            "domaine_titre_court": "LMS",
+            "domaine_titre": "Lära",
+            "fournisseur_nom": "Lära",
+            "etat": "LMS uniquement",
+            "masque": False,
+            "archive": False,
+            "nb_plans": 0,
+            "external_id": remote.get("external_id"),
+            "external_url": remote.get("external_url"),
+            "visibility_label": remote.get("visibility_label"),
+            "custom_fields": remote.get("custom_fields") or {},
+            "match_status": "remote_only",
+        })
+
+    return remote_only, linked
 
 def _lms_write_publication_success(
     cur,
@@ -288,6 +379,76 @@ def _lms_write_publication_error(
 
     return cur.fetchone() or {}
 
+@router.get("/learn/formations/{id_effectif}/lms/remote")
+def learn_formations_lms_remote(
+    id_effectif: str,
+    request: Request,
+    q: str = "",
+    limit: int = 500,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                oid = (profile.get("id_owner") or "").strip()
+
+                cfg = learn_lms_fetch_active_config(cur, oid, with_secret=True)
+
+                if not cfg or cfg.get("provider_code") != "lara":
+                    return {
+                        "configured": False,
+                        "provider_code": "manual",
+                        "items": [],
+                        "linked_items": [],
+                        "remote_count": 0,
+                        "remote_only_count": 0,
+                        "linked_count": 0,
+                        "can_sync": _role_rank(profile.get("role_code")) >= 2,
+                        "message": "Aucun connecteur LMS actif.",
+                    }
+
+                id_lms_config = str(cfg.get("id_lms_config") or "").strip()
+                if not id_lms_config:
+                    raise HTTPException(status_code=400, detail="Configuration LMS invalide.")
+
+                remote_result = lara_connector.list_remote_formations(
+                    cfg=cfg,
+                    q=q,
+                    limit=max(1, min(int(limit or 500), 1000)),
+                )
+
+                if not remote_result.get("ok"):
+                    raise HTTPException(status_code=400, detail={
+                        "message": "Récupération des formations Lära impossible.",
+                        "response": remote_result.get("response") or remote_result,
+                    })
+
+                local_rows = _lms_local_rows_for_compare(cur, oid, id_lms_config)
+
+        remote_items = remote_result.get("items") or []
+        remote_only, linked = _lms_compare_remote_with_local(remote_items, local_rows)
+
+        return {
+            "configured": True,
+            "provider_code": "lara",
+            "provider_label": "Lära",
+            "code_field": remote_result.get("code_field"),
+            "workspace_type_id": remote_result.get("workspace_type_id"),
+            "items": remote_only,
+            "linked_items": linked,
+            "remote_count": len(remote_items),
+            "remote_only_count": len(remote_only),
+            "linked_count": len(linked),
+            "can_sync": _role_rank(profile.get("role_code")) >= 2,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations lms remote error: {e}")
 
 @router.get("/learn/formations/{id_effectif}/{id_form}/lms/status")
 def learn_formation_lms_status(id_effectif: str, id_form: str, request: Request):

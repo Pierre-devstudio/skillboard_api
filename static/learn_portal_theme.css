@@ -158,6 +158,27 @@
   opacity:.55;
 }
 
+.sb-row-card.is-lms-only{
+  background:linear-gradient(135deg, rgba(231,36,243,.055), #ffffff);
+  border-color:rgba(231,36,243,.24);
+}
+
+.sb-row-card.is-lms-only .sb-row-title{
+  color:#581c87;
+}
+
+.sb-badge--lms-code{
+  background:#7e22ce;
+  border:1px solid #7e22ce;
+  color:#fff;
+}
+
+.sb-badge--lms-only{
+  background:#f5e8ff;
+  border:1px solid #d8b4fe;
+  color:#6b21a8;
+}
+
 .sb-row-left{
   display:flex;
   align-items:center;

@@ -58,6 +58,258 @@ def _lara_form_custom_fields(form: dict, cfg: dict) -> dict:
         field_name: code
     }
 
+def _lara_text(value: Any) -> str:
+    if value is None:
+        return ""
+
+    if isinstance(value, str):
+        return value.strip()
+
+    if isinstance(value, (int, float, bool)):
+        return str(value).strip()
+
+    if isinstance(value, dict):
+        for key in ("fr", "fr-FR", "fr_CA", "fr-CA", "default", "value", "label", "name", "text", "en", "en-US"):
+            if key in value:
+                txt = _lara_text(value.get(key))
+                if txt:
+                    return txt
+
+        for v in value.values():
+            txt = _lara_text(v)
+            if txt:
+                return txt
+
+        return ""
+
+    if isinstance(value, list):
+        for v in value:
+            txt = _lara_text(v)
+            if txt:
+                return txt
+        return ""
+
+    return str(value or "").strip()
+
+
+def _lara_first(row: dict, keys: tuple) -> Any:
+    if not isinstance(row, dict):
+        return None
+
+    for key in keys:
+        if key in row:
+            return row.get(key)
+
+    return None
+
+
+def _lara_custom_fields(row: dict) -> dict:
+    raw = _lara_first(row, ("customFields", "customfields", "custom_fields", "CustomFields"))
+
+    if not raw:
+        return {}
+
+    if isinstance(raw, dict):
+        return {
+            str(k or "").strip(): _lara_text(v)
+            for k, v in raw.items()
+            if str(k or "").strip()
+        }
+
+    if isinstance(raw, list):
+        out = {}
+
+        for item in raw:
+            if not isinstance(item, dict):
+                continue
+
+            name = _lara_text(
+                item.get("name")
+                or item.get("key")
+                or item.get("code")
+                or item.get("field")
+                or item.get("fieldName")
+                or item.get("label")
+            )
+
+            value = (
+                item.get("value")
+                if "value" in item
+                else item.get("text")
+                if "text" in item
+                else item.get("content")
+            )
+
+            if name:
+                out[name] = _lara_text(value)
+
+        return out
+
+    return {}
+
+
+def _lara_workspace_external_id(row: dict) -> str:
+    return _lara_text(_lara_first(row, ("id", "Id", "ID", "workspaceId", "workspaceID", "workspace_id")))
+
+
+def _lara_workspace_name(row: dict) -> str:
+    return _lara_text(_lara_first(row, ("name", "title", "titre", "label", "shortName"))) or "Formation LMS"
+
+
+def _lara_workspace_type_id(row: dict) -> str:
+    raw = _lara_first(row, ("type", "typeId", "workspaceTypeId", "workspaceType", "workspace_type_id"))
+
+    if isinstance(raw, dict):
+        return _lara_text(raw.get("id") or raw.get("value") or raw.get("type") or raw.get("typeId"))
+
+    return _lara_text(raw)
+
+
+def _lara_visibility_label(value: Any) -> str:
+    v = _lara_text(value)
+
+    if v == "1":
+        return "Visible"
+
+    if v == "3":
+        return "Masquée"
+
+    return v or "—"
+
+
+def _lara_list_from_response(value: Any) -> list:
+    if isinstance(value, list):
+        return value
+
+    if not isinstance(value, dict):
+        return []
+
+    for key in ("items", "data", "result", "results", "workspaces", "rows", "list"):
+        v = value.get(key)
+        if isinstance(v, list):
+            return v
+
+    for v in value.values():
+        if isinstance(v, dict):
+            nested = _lara_list_from_response(v)
+            if nested:
+                return nested
+
+    return []
+
+
+def _lara_matches_workspace_type(row: dict, workspace_type_id: str) -> bool:
+    expected = _lara_text(workspace_type_id)
+
+    if not expected:
+        return True
+
+    current = _lara_workspace_type_id(row)
+
+    if not current:
+        return True
+
+    return current == expected
+
+
+def _lara_normalize_remote_workspace(row: dict, cfg: dict) -> dict:
+    custom_fields = _lara_custom_fields(row)
+    code_field = _lara_code_custom_field_name(cfg)
+    code_form = _lara_text(custom_fields.get(code_field))
+
+    external_id = _lara_workspace_external_id(row)
+    name = _lara_workspace_name(row)
+
+    visibility_type = _lara_text(
+        _lara_first(row, ("visibilityType", "visibility_type", "visibility", "visibilityId"))
+    )
+
+    return {
+        "source_kind": "lms_remote",
+        "provider_code": "lara",
+        "external_id": external_id,
+        "external_url": _lara_text(_lara_first(row, ("url", "publicUrl", "catalogUrl", "link"))),
+        "code": code_form,
+        "code_form": code_form,
+        "code_field": code_field,
+        "titre": name,
+        "short_description": _lara_text(_lara_first(row, ("shortDescription", "summary", "descriptionShort"))),
+        "visibility_type": visibility_type,
+        "visibility_label": _lara_visibility_label(visibility_type),
+        "updated_at": _lara_text(_lara_first(row, ("updatedAt", "updateDate", "modifiedAt", "lastUpdateDate"))),
+        "created_at": _lara_text(_lara_first(row, ("createdAt", "creationDate", "dateCreation"))),
+        "custom_fields": custom_fields,
+    }
+
+
+def list_remote_formations(cfg: dict, q: str = "", limit: int = 500) -> dict:
+    resolved = learn_lms_resolve_lara_defaults(cfg)
+
+    api_base = cfg.get("base_url") or ""
+    secret = cfg.get("secret_json") or {}
+    api_id = secret.get("api_id") or ""
+
+    workspace_type_id = str(resolved.get("workspace_type_id") or "").strip()
+
+    api_result = learn_lms_api_post(
+        api_base,
+        api_id,
+        "workspace/getlist",
+        {"filterDate": "1900-01-01T00:00:00Z"},
+    )
+
+    if not api_result.get("ok"):
+        api_result = learn_lms_api_post(api_base, api_id, "workspace/getlist", {})
+
+    if not api_result.get("ok"):
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "items": [],
+            "response": api_result,
+        }
+
+    raw_rows = _lara_list_from_response(api_result.get("json"))
+    query = _lara_text(q).lower()
+
+    items = []
+
+    for row in raw_rows:
+        if not isinstance(row, dict):
+            continue
+
+        if not _lara_matches_workspace_type(row, workspace_type_id):
+            continue
+
+        item = _lara_normalize_remote_workspace(row, cfg)
+
+        if not item.get("external_id"):
+            continue
+
+        haystack = " ".join([
+            item.get("external_id") or "",
+            item.get("code") or "",
+            item.get("titre") or "",
+            item.get("short_description") or "",
+        ]).lower()
+
+        if query and query not in haystack:
+            continue
+
+        items.append(item)
+
+        if limit and len(items) >= limit:
+            break
+
+    return {
+        "ok": True,
+        "provider_code": "lara",
+        "workspace_type_id": workspace_type_id,
+        "code_field": _lara_code_custom_field_name(cfg),
+        "items": items,
+        "total_raw": len(raw_rows),
+        "response": api_result,
+    }
 
 def _lara_drop_custom_fields_if_rejected(api_result: dict) -> bool:
     if not api_result or api_result.get("ok"):

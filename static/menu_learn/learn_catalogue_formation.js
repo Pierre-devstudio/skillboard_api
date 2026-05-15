@@ -6,6 +6,7 @@
   let _qTimer = null;
 
   let _items = [];
+  let _lmsRemoteItems = [];
   let _refs = null;
 
   let _roleCode = "user";
@@ -356,6 +357,17 @@ function iconPdf(){
     `;
   }
 
+  function iconSync(){
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12a9 9 0 0 1-15.5 6.2"/>
+        <path d="M3 12A9 9 0 0 1 18.5 5.8"/>
+        <path d="M18 3v4h-4"/>
+        <path d="M6 21v-4h4"/>
+      </svg>
+    `;
+  }
+
     function iconDoubleUp(){
     return `
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -402,6 +414,64 @@ function iconPdf(){
     fillRefSelects();
 
     return _refs;
+  }
+
+  function isLmsOnlyItem(it){
+    return String(it?.source_kind || "") === "lms_only";
+  }
+
+  function shouldLoadRemoteLmsItems(){
+    if (_dom) return false;
+    if (_show === "archived") return false;
+    if (_show === "validation") return false;
+    return true;
+  }
+
+  async function loadRemoteLmsOnlyItems(portal){
+    _lmsRemoteItems = [];
+
+    if (!shouldLoadRemoteLmsItems()){
+      return [];
+    }
+
+    const effectifId = getEffectifId();
+    if (!effectifId) return [];
+
+    const url =
+      `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/lms/remote`
+      + `?q=${encodeURIComponent(_q || "")}`
+      + `&limit=500`;
+
+    try{
+      const data = await portal.apiJson(url);
+
+      if (!data?.configured){
+        return [];
+      }
+
+      _lmsRemoteItems = Array.isArray(data?.items) ? data.items : [];
+      return _lmsRemoteItems;
+    } catch(e){
+      console.warn("Récupération formations LMS impossible", e);
+      return [];
+    }
+  }
+
+  function openLmsSyncPreview(it){
+    const title = String(it?.titre || "Formation LMS").trim();
+    const code = String(it?.code || "").trim();
+    const externalId = String(it?.external_id || "").trim();
+
+    window.portal?.showAlert?.(
+      "success",
+      [
+        "Formation LMS détectée.",
+        code ? `Code : ${code}` : "",
+        title ? `Titre : ${title}` : "",
+        externalId ? `ID Lära : ${externalId}` : "",
+        "La prévisualisation d’import sera branchée à l’étape suivante."
+      ].filter(Boolean).join(" ")
+    );
   }
 
   function fillRefSelects(){
@@ -2256,16 +2326,19 @@ function renderContentCompBadges(l){
     }
 
     _items.forEach(it => {
+      const lmsOnly = isLmsOnlyItem(it);
+
       const row = document.createElement("div");
       row.className = "sb-row-card";
       if (it.archive || it.masque) row.classList.add("is-archived");
+      if (lmsOnly) row.classList.add("is-lms-only");
 
       const left = document.createElement("div");
       left.className = "sb-row-left";
 
       const code = document.createElement("span");
-      code.className = "sb-badge sb-badge--form";
-      code.textContent = it.code || "—";
+      code.className = lmsOnly ? "sb-badge sb-badge--lms-code" : "sb-badge sb-badge--form";
+      code.textContent = it.code || (lmsOnly ? "LMS" : "—");
 
       const titleWrap = document.createElement("div");
       titleWrap.style.minWidth = "0";
@@ -2277,11 +2350,20 @@ function renderContentCompBadges(l){
       const sub = document.createElement("div");
       sub.className = "card-sub";
       sub.style.margin = "2px 0 0 0";
-      sub.textContent = [
-        it.duree ? `${it.duree} h` : "",
-        it.fournisseur_nom || "",
-        it.nb_plans ? `${it.nb_plans} plan(s)` : "0 plan"
-      ].filter(Boolean).join(" • ");
+
+      if (lmsOnly){
+        sub.textContent = [
+          "Présente dans Lära",
+          it.visibility_label || "",
+          it.external_id ? `ID ${it.external_id}` : ""
+        ].filter(Boolean).join(" • ");
+      } else {
+        sub.textContent = [
+          it.duree ? `${it.duree} h` : "",
+          it.fournisseur_nom || "",
+          it.nb_plans ? `${it.nb_plans} plan(s)` : "0 plan"
+        ].filter(Boolean).join(" • ");
+      }
 
       titleWrap.appendChild(title);
       titleWrap.appendChild(sub);
@@ -2292,23 +2374,61 @@ function renderContentCompBadges(l){
       const right = document.createElement("div");
       right.className = "sb-row-right";
 
-      const domLabel = (it.domaine_titre_court || it.domaine_titre || "").toString().trim();
-      if (domLabel){
-        const dom = document.createElement("span");
-        dom.className = "sb-badge sb-badge--form-domain";
-        dom.textContent = domLabel;
-        right.appendChild(dom);
-      }
+      if (lmsOnly){
+        const lmsBadge = document.createElement("span");
+        lmsBadge.className = "sb-badge sb-badge--lms-only";
+        lmsBadge.textContent = "LMS uniquement";
+        right.appendChild(lmsBadge);
 
-      if (it.etat){
-        const et = document.createElement("span");
-        et.className = "sb-badge sb-badge--state";
-        et.textContent = it.etat;
-        right.appendChild(et);
+        if (it.visibility_label){
+          const vis = document.createElement("span");
+          vis.className = "sb-badge sb-badge--state";
+          vis.textContent = it.visibility_label;
+          right.appendChild(vis);
+        }
+      } else {
+        const domLabel = (it.domaine_titre_court || it.domaine_titre || "").toString().trim();
+        if (domLabel){
+          const dom = document.createElement("span");
+          dom.className = "sb-badge sb-badge--form-domain";
+          dom.textContent = domLabel;
+          right.appendChild(dom);
+        }
+
+        if (it.etat){
+          const et = document.createElement("span");
+          et.className = "sb-badge sb-badge--state";
+          et.textContent = it.etat;
+          right.appendChild(et);
+        }
       }
 
       const actions = document.createElement("div");
       actions.className = "sb-icon-actions";
+
+      if (lmsOnly){
+        if (isSupervisor()){
+          const btnSync = document.createElement("button");
+          btnSync.type = "button";
+          btnSync.className = "sb-icon-btn sb-icon-btn--lms";
+          btnSync.title = "Synchroniser dans Novoskill";
+          btnSync.setAttribute("aria-label", "Synchroniser dans Novoskill");
+          btnSync.innerHTML = iconSync();
+          btnSync.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openLmsSyncPreview(it);
+          });
+
+          actions.appendChild(btnSync);
+        }
+
+        right.appendChild(actions);
+        row.appendChild(left);
+        row.appendChild(right);
+        host.appendChild(row);
+        return;
+      }
 
       const btnPdf = document.createElement("button");
       btnPdf.type = "button";
@@ -2369,7 +2489,6 @@ function renderContentCompBadges(l){
         actions.appendChild(btnLms);
       }
 
-
       if (isSupervisor()){
         const btnEdit = document.createElement("button");
         btnEdit.type = "button";
@@ -2420,7 +2539,13 @@ function renderContentCompBadges(l){
       + `&domaine=${encodeURIComponent(_dom)}`;
 
     const data = await portal.apiJson(url);
-    _items = Array.isArray(data?.items) ? data.items : [];
+    const localItems = Array.isArray(data?.items) ? data.items : [];
+    const remoteItems = await loadRemoteLmsOnlyItems(portal);
+
+    _items = [
+      ...localItems,
+      ...remoteItems
+    ];
 
     renderList();
   }
