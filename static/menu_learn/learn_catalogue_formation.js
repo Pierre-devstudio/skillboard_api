@@ -8,6 +8,7 @@
   let _items = [];
   let _lmsRemoteItems = [];
   let _lmsImportPreview = null;
+  let _pendingLmsImportLink = null;
   let _refs = null;
 
   let _roleCode = "user";
@@ -497,6 +498,113 @@ function iconPdf(){
     `).join("");
   }
 
+  function clearPendingLmsImport(){
+    _pendingLmsImportLink = null;
+
+    const sub = byId("formModalSub");
+    if (sub){
+      sub.style.display = "none";
+      sub.textContent = "";
+    }
+  }
+
+  function setPendingLmsImportFromPreview(data){
+    const preview = data?.preview || {};
+    const remote = preview.remote || {};
+
+    _pendingLmsImportLink = {
+      provider_code: "lara",
+      external_id: String(remote.external_id || "").trim(),
+      external_url: String(remote.external_url || "").trim(),
+      remote_title: String(remote.titre || "").trim(),
+      remote_code: String(remote.code || "").trim(),
+      custom_fields: remote.custom_fields || {}
+    };
+
+    if (!_pendingLmsImportLink.external_id){
+      _pendingLmsImportLink = null;
+    }
+  }
+
+  function showLmsImportSubLabel(){
+    const sub = byId("formModalSub");
+    if (!sub) return;
+
+    if (!_pendingLmsImportLink){
+      sub.style.display = "none";
+      sub.textContent = "";
+      return;
+    }
+
+    sub.style.display = "";
+    sub.textContent = [
+      "Brouillon issu de Lära",
+      _pendingLmsImportLink.remote_code ? `Code LMS : ${_pendingLmsImportLink.remote_code}` : "",
+      _pendingLmsImportLink.external_id ? `ID : ${_pendingLmsImportLink.external_id}` : ""
+    ].filter(Boolean).join(" • ");
+  }
+
+  function fillCreateModalFromLmsPreview(data){
+    const preview = data?.preview || {};
+    const draft = preview.draft || {};
+
+    setCatalogueFieldValue("formTitre", draft.titre || "");
+    setSelectValue("formEtat", draft.etat || "à valider");
+    setSelectValue("formType", normalizeTypeFormation(draft.type_formation || "Non Certifiante"));
+    setFieldValue("formObsType", "");
+    syncObsTypeFormation();
+
+    setFieldValue("formDuree", draft.duree ?? "");
+    setFieldValue("formTarif", draft.tarif_mini ?? "");
+    setSelectValue("formDomaine", "");
+    setSelectValue("formFournisseur", "");
+
+    setCatalogueFieldValue("formPresentation", draft.presentation || "");
+    setFieldValue("formPublic", draft.public_cible || "");
+    setCatalogueFieldValue("formObjectifs", draft.objectifs || "");
+    setFieldValue("formAttestation", "");
+
+    _selectedModalites = [];
+    _selectedPeda = [];
+    _selectedEval = [];
+    _selectedCompStag = [];
+    _selectedCompForm = [];
+    _prerequis = [];
+    _detailContenus = [];
+    _detailPlans = [];
+    _pendingImportContenus = [];
+    _pendingCompStagCreate = [];
+    _pendingCompFormCreate = [];
+
+    renderRefChecks();
+    renderPrerequis();
+    renderCompetences();
+    renderContenus();
+    renderPlans();
+
+    setTab("identite");
+    showLmsImportSubLabel();
+  }
+
+  async function startCreateFromLmsPreview(){
+    if (!_lmsImportPreview){
+      window.portal?.showAlert?.("error", "Aucune prévisualisation LMS disponible.");
+      return;
+    }
+
+    setPendingLmsImportFromPreview(_lmsImportPreview);
+
+    if (!_pendingLmsImportLink?.external_id){
+      window.portal?.showAlert?.("error", "Identifiant Lära manquant, impossible de préparer la création.");
+      return;
+    }
+
+    closeModal("modalLmsImportPreview");
+
+    await openCreate(window.portal, { fromLms:true });
+    fillCreateModalFromLmsPreview(_lmsImportPreview);
+  }
+
   function renderLmsImportPreview(data){
     const preview = data?.preview || {};
     const remote = preview.remote || {};
@@ -555,8 +663,8 @@ function iconPdf(){
 
     const btnCreate = byId("btnLmsPreviewCreate");
     if (btnCreate){
-      btnCreate.disabled = true;
-      btnCreate.title = "Création Novoskill câblée à l’étape suivante.";
+      btnCreate.disabled = false;
+      btnCreate.title = "Préremplir le modal de création Novoskill.";
     }
   }
 
@@ -3382,9 +3490,13 @@ function renderContentCompBadges(l){
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-    async function openCreate(portal){
+    async function openCreate(portal, options = {}){
         if (!isSupervisor()) return;
         setSuccess("");
+
+        if (!options.fromLms){
+            clearPendingLmsImport();
+        }
 
         await ensureRefs(portal);
 
@@ -3439,6 +3551,7 @@ function renderContentCompBadges(l){
     async function openEdit(portal, it){
         if (!isSupervisor()) return;
         setSuccess("");
+        clearPendingLmsImport();
 
         try{
         await ensureRefs(portal);
@@ -3595,8 +3708,15 @@ function renderContentCompBadges(l){
     );
     }
 
+    let successMessage = "Enregistré avec succès";
+
+    if (_modalMode === "edit" && _editingId && _pendingLmsImportLink){
+        await linkCreatedFormationToRemoteLms(portal);
+        successMessage = "Formation créée et rattachée à Lära";
+    }
+
     window.portal.showAlert("", "");
-    setSuccess("Enregistré avec succès");
+    setSuccess(successMessage);
 
     await loadList(portal);
   }
@@ -3696,7 +3816,39 @@ function renderContentCompBadges(l){
         win.document.close();
         }
 
-        
+
+    async function linkCreatedFormationToRemoteLms(portal){
+        if (!_pendingLmsImportLink || !_editingId){
+            return null;
+        }
+
+        const effectifId = getEffectifId();
+
+        const payload = {
+            external_id: _pendingLmsImportLink.external_id,
+            external_url: _pendingLmsImportLink.external_url || null,
+            remote_title: _pendingLmsImportLink.remote_title || null,
+            remote_code: _pendingLmsImportLink.remote_code || null,
+            custom_fields: _pendingLmsImportLink.custom_fields || {}
+        };
+
+        const res = await portal.apiJson(
+            `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+            + `/${encodeURIComponent(_editingId)}`
+            + `/lms/link_remote`,
+            {
+                method: "POST",
+                headers: { "Content-Type":"application/json" },
+                body: JSON.stringify(payload)
+            }
+        );
+
+        _pendingLmsImportLink = null;
+        showLmsImportSubLabel();
+
+        return res;
+    }        
+
     async function publishFormationLms(it){
         const effectifId = getEffectifId();
         const formId = String(it?.id_form || "").trim();
@@ -4027,8 +4179,12 @@ iframe{width:100%;height:100%;border:0;display:block}
       closeModal("modalLmsImportPreview");
     });
 
-    byId("btnLmsPreviewCreate")?.addEventListener("click", () => {
-      window.portal?.showAlert?.("error", "Création de la fiche Novoskill branchée à l’étape suivante.");
+    byId("btnLmsPreviewCreate")?.addEventListener("click", async () => {
+      try{
+        await startCreateFromLmsPreview();
+      } catch(e){
+        window.portal?.showAlert?.("error", getErrorMessage(e));
+      }
     });
 
     const bNew = byId("btnFormNew");
@@ -4100,11 +4256,13 @@ iframe{width:100%;height:100%;border:0;display:block}
 
     byId("btnFormX")?.addEventListener("click", () => {
     setSuccess("");
+    if (_modalMode === "create") clearPendingLmsImport();
     closeModal("modalFormEdit");
     });
 
     byId("btnFormCancel")?.addEventListener("click", () => {
     setSuccess("");
+    if (_modalMode === "create") clearPendingLmsImport();
     closeModal("modalFormEdit");
     });
 

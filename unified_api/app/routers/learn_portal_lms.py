@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from typing import Optional, Any
 from psycopg.rows import dict_row
+from pydantic import BaseModel
 import hashlib
 import json
 import re
@@ -21,6 +22,12 @@ from app.learn_connectors_lms import lara as lara_connector
 
 router = APIRouter()
 
+class LmsRemoteLinkPayload(BaseModel):
+    external_id: str
+    external_url: Optional[str] = None
+    remote_title: Optional[str] = None
+    remote_code: Optional[str] = None
+    custom_fields: Optional[dict] = None
 
 def _lms_html_hash(html_payload: str) -> str:
     return hashlib.sha256(str(html_payload or "").encode("utf-8")).hexdigest()
@@ -262,6 +269,155 @@ def _lms_write_publication_success(
 
     return cur.fetchone() or {}
 
+def _lms_publication_row_by_external(
+    cur,
+    oid: str,
+    id_lms_config: str,
+    external_id: str,
+) -> Optional[dict]:
+    cur.execute(
+        """
+        SELECT
+          id_publication,
+          id_owner,
+          id_form,
+          id_lms_config,
+          provider_code,
+          external_id,
+          external_url,
+          last_sync_at,
+          sync_status,
+          sync_error,
+          html_hash,
+          archive,
+          created_at AS date_creation,
+          updated_at AS date_modification
+        FROM public.tbl_learn_lms_publication
+        WHERE id_owner = %s
+          AND id_lms_config = %s
+          AND external_id = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (oid, id_lms_config, external_id),
+    )
+
+    return cur.fetchone()
+
+
+def _lms_write_publication_linked(
+    cur,
+    oid: str,
+    id_form: str,
+    id_lms_config: str,
+    provider_code: str,
+    external_id: str,
+    external_url: Optional[str],
+    html_hash: str,
+) -> dict:
+    row = _lms_publication_row(cur, oid, id_form, id_lms_config)
+
+    if row:
+        cur.execute(
+            """
+            UPDATE public.tbl_learn_lms_publication
+            SET provider_code = %s,
+                external_id = %s,
+                external_url = COALESCE(%s, external_url),
+                last_sync_at = NOW(),
+                sync_status = 'linked',
+                sync_error = NULL,
+                html_hash = %s,
+                archive = FALSE,
+                updated_at = NOW()
+            WHERE id_publication = %s
+              AND id_owner = %s
+            RETURNING
+              id_publication,
+              id_owner,
+              id_form,
+              id_lms_config,
+              provider_code,
+              external_id,
+              external_url,
+              last_sync_at,
+              sync_status,
+              sync_error,
+              html_hash,
+              archive,
+              created_at AS date_creation,
+              updated_at AS date_modification
+            """,
+            (
+                provider_code,
+                external_id,
+                external_url,
+                html_hash,
+                row.get("id_publication"),
+                oid,
+            ),
+        )
+    else:
+        cur.execute(
+            """
+            INSERT INTO public.tbl_learn_lms_publication
+              (
+                id_publication,
+                id_owner,
+                id_form,
+                id_lms_config,
+                provider_code,
+                external_id,
+                external_url,
+                last_sync_at,
+                sync_status,
+                sync_error,
+                html_hash,
+                archive,
+                created_at,
+                updated_at
+              )
+            VALUES
+              (
+                gen_random_uuid()::text,
+                %s, %s, %s, %s,
+                %s, %s,
+                NOW(),
+                'linked',
+                NULL,
+                %s,
+                FALSE,
+                NOW(),
+                NOW()
+              )
+            RETURNING
+              id_publication,
+              id_owner,
+              id_form,
+              id_lms_config,
+              provider_code,
+              external_id,
+              external_url,
+              last_sync_at,
+              sync_status,
+              sync_error,
+              html_hash,
+              archive,
+              created_at AS date_creation,
+              updated_at AS date_modification
+            """,
+            (
+                oid,
+                id_form,
+                id_lms_config,
+                provider_code,
+                external_id,
+                external_url,
+                html_hash,
+            ),
+        )
+
+    return cur.fetchone() or {}
 
 def _lms_write_publication_error(
     cur,
@@ -592,6 +748,85 @@ def learn_formations_lms_remote_preview(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"learn/formations lms remote preview error: {e}")
+
+@router.post("/learn/formations/{id_effectif}/{id_form}/lms/link_remote")
+def learn_formation_lms_link_remote(
+    id_effectif: str,
+    id_form: str,
+    payload: LmsRemoteLinkPayload,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        external_id = str(payload.external_id or "").strip()
+
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+
+        if not external_id:
+            raise HTTPException(status_code=400, detail="Identifiant LMS manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                _learn_require_min_role(profile, "supervisor")
+                oid = (profile.get("id_owner") or "").strip()
+
+                cfg = learn_lms_fetch_active_config(cur, oid, with_secret=True)
+
+                if not cfg or cfg.get("provider_code") != "lara":
+                    raise HTTPException(status_code=400, detail="Aucun connecteur Lära actif.")
+
+                id_lms_config = str(cfg.get("id_lms_config") or "").strip()
+                if not id_lms_config:
+                    raise HTTPException(status_code=400, detail="Configuration LMS invalide.")
+
+                existing_external = _lms_publication_row_by_external(
+                    cur,
+                    oid,
+                    id_lms_config,
+                    external_id,
+                )
+
+                if existing_external and str(existing_external.get("id_form") or "") != fid:
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Cette formation Lära est déjà rattachée à une autre fiche Novoskill.",
+                    )
+
+                form = _fetch_form_detail(cur, oid, fid)
+                html_payload = _build_formation_lms_html(form)
+                html_hash = _lms_html_hash(html_payload)
+
+                saved = _lms_write_publication_linked(
+                    cur,
+                    oid,
+                    fid,
+                    id_lms_config,
+                    "lara",
+                    external_id,
+                    payload.external_url,
+                    html_hash,
+                )
+
+                conn.commit()
+
+        return {
+            "ok": True,
+            "provider_code": "lara",
+            "external_id": external_id,
+            "external_url": payload.external_url,
+            "publication": saved,
+            "message": "Formation Novoskill rattachée à la formation Lära.",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations lms link remote error: {e}")
 
 @router.get("/learn/formations/{id_effectif}/{id_form}/lms/status")
 def learn_formation_lms_status(id_effectif: str, id_form: str, request: Request):
