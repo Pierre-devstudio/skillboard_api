@@ -1,15 +1,12 @@
 from fastapi import APIRouter, HTTPException, Request
-from psycopg.rows import dict_row
 from typing import Optional, Any
+from psycopg.rows import dict_row
 import hashlib
 import json
 
 from app.routers.skills_portal_common import get_conn
 from app.routers.learn_portal_common import learn_require_user
-from app.routers.learn_portal_informations import (
-    learn_lms_fetch_active_config,
-    learn_lms_resolve_lara_defaults,
-)
+from app.routers.learn_portal_informations import learn_lms_fetch_active_config
 from app.routers.learn_portal_formations import (
     _build_formation_lms_html,
     _fetch_form_detail,
@@ -17,17 +14,11 @@ from app.routers.learn_portal_formations import (
     _learn_require_profile,
     _role_rank,
 )
-from app.learn_connectors_lms.lara import (
-    lara_get_workspace_url,
-    lara_publish_formation,
-)
+from app.learn_connectors_lms import lara as lara_connector
+
 
 router = APIRouter()
 
-
-# ======================================================
-# Publication LMS - stockage Novoskill
-# ======================================================
 
 def _lms_html_hash(html_payload: str) -> str:
     return hashlib.sha256(str(html_payload or "").encode("utf-8")).hexdigest()
@@ -298,10 +289,6 @@ def _lms_write_publication_error(
     return cur.fetchone() or {}
 
 
-# ======================================================
-# Routes LMS exposées au front catalogue formation
-# ======================================================
-
 @router.get("/learn/formations/{id_effectif}/{id_form}/lms/status")
 def learn_formation_lms_status(id_effectif: str, id_form: str, request: Request):
     auth = request.headers.get("Authorization", "")
@@ -387,54 +374,36 @@ def learn_formation_lms_publish(id_effectif: str, id_form: str, request: Request
                 form = _fetch_form_detail(cur, oid, fid)
                 html_payload = _build_formation_lms_html(form)
                 html_hash = _lms_html_hash(html_payload)
-
-                resolved = learn_lms_resolve_lara_defaults(cfg)
                 existing = _lms_publication_row(cur, oid, fid, id_lms_config)
 
-                api_base = cfg.get("base_url") or ""
-                secret = cfg.get("secret_json") or {}
-                api_id = secret.get("api_id") or ""
-
-                external_id = str((existing or {}).get("external_id") or "").strip()
-
-                publish_result = lara_publish_formation(
-                    api_base=api_base,
-                    api_id=api_id,
+                publish_result = lara_connector.publish_formation(
                     form=form,
                     html_payload=html_payload,
                     cfg=cfg,
-                    resolved=resolved,
-                    external_id=external_id,
+                    existing_publication=existing,
                 )
 
-                api_result = publish_result.get("api_result") or {}
-                action = publish_result.get("action") or ("update" if external_id else "create")
-                external_id = str(publish_result.get("external_id") or external_id or "").strip()
-
-                if not api_result.get("ok") or not external_id:
+                if not publish_result.get("ok"):
                     saved = _lms_write_publication_error(
                         cur,
                         oid,
                         fid,
                         id_lms_config,
                         "lara",
-                        external_id or None,
+                        publish_result.get("external_id"),
                         html_hash,
-                        api_result,
+                        publish_result.get("response") or publish_result,
                     )
                     conn.commit()
 
                     raise HTTPException(status_code=400, detail={
                         "message": "Publication Lära impossible.",
                         "publication": saved,
-                        "response": api_result,
+                        "response": publish_result.get("response") or publish_result,
                     })
 
-                external_url = str((existing or {}).get("external_url") or "").strip()
-
-                geturl_result = lara_get_workspace_url(api_base, api_id, external_id)
-                if (geturl_result.get("api_result") or {}).get("ok"):
-                    external_url = geturl_result.get("external_url") or external_url
+                external_id = publish_result.get("external_id")
+                external_url = publish_result.get("external_url")
 
                 saved = _lms_write_publication_success(
                     cur,
@@ -452,8 +421,8 @@ def learn_formation_lms_publish(id_effectif: str, id_form: str, request: Request
         return {
             "ok": True,
             "provider_code": "lara",
-            "action": action,
-            "action_label": "mise à jour" if action == "update" else "créée",
+            "action": publish_result.get("action"),
+            "action_label": publish_result.get("action_label"),
             "external_id": external_id,
             "external_url": external_url,
             "publication": saved,

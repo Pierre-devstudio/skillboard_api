@@ -6,17 +6,18 @@ from app.routers.learn_portal_informations import (
     learn_lms_extract_url,
     learn_lms_extract_workspace_id,
     learn_lms_keywords,
+    learn_lms_resolve_lara_defaults,
     learn_lms_safe_int,
     learn_lms_short_description,
 )
 
 
-def lara_form_name(form: dict) -> str:
+def _lara_form_name(form: dict) -> str:
     titre = str(form.get("titre") or "").strip() or "Formation"
     return titre[:180].strip()
 
 
-def lara_config_json(cfg: dict) -> dict:
+def _lara_config_json(cfg: dict) -> dict:
     raw = (cfg or {}).get("config_json") or {}
 
     if isinstance(raw, dict):
@@ -32,8 +33,8 @@ def lara_config_json(cfg: dict) -> dict:
     return {}
 
 
-def lara_code_custom_field_name(cfg: dict) -> str:
-    cfg_json = lara_config_json(cfg)
+def _lara_code_custom_field_name(cfg: dict) -> str:
+    cfg_json = _lara_config_json(cfg)
 
     field_name = (
         cfg_json.get("code_form_field")
@@ -46,9 +47,9 @@ def lara_code_custom_field_name(cfg: dict) -> str:
     return str(field_name or "").strip()
 
 
-def lara_form_custom_fields(form: dict, cfg: dict) -> dict:
+def _lara_form_custom_fields(form: dict, cfg: dict) -> dict:
     code = str(form.get("code") or "").strip()
-    field_name = lara_code_custom_field_name(cfg)
+    field_name = _lara_code_custom_field_name(cfg)
 
     if not code or not field_name:
         return {}
@@ -58,7 +59,7 @@ def lara_form_custom_fields(form: dict, cfg: dict) -> dict:
     }
 
 
-def lara_drop_custom_fields_if_rejected(api_result: dict) -> bool:
+def _lara_drop_custom_fields_if_rejected(api_result: dict) -> bool:
     if not api_result or api_result.get("ok"):
         return False
 
@@ -92,13 +93,13 @@ def lara_drop_custom_fields_if_rejected(api_result: dict) -> bool:
     )
 
 
-def lara_post_with_custom_field_fallback(api_base: str, api_id: str, path: str, payload: dict) -> dict:
+def _lara_post_with_custom_field_fallback(api_base: str, api_id: str, path: str, payload: dict) -> dict:
     api_result = learn_lms_api_post(api_base, api_id, path, payload)
 
     if (
         api_result.get("ok")
         or "customFields" not in payload
-        or not lara_drop_custom_fields_if_rejected(api_result)
+        or not _lara_drop_custom_fields_if_rejected(api_result)
     ):
         return api_result
 
@@ -108,13 +109,13 @@ def lara_post_with_custom_field_fallback(api_base: str, api_id: str, path: str, 
     return learn_lms_api_post(api_base, api_id, path, retry_payload)
 
 
-def lara_payload_common(form: dict, html_payload: str, cfg: dict, resolved: dict) -> dict:
-    cfg_json = lara_config_json(cfg)
+def _lara_payload_common(form: dict, html_payload: str, cfg: dict, resolved: dict) -> dict:
+    cfg_json = _lara_config_json(cfg)
     visibility_type = learn_lms_safe_int(cfg_json.get("visibility_type"), 3)
     language = learn_lms_safe_int(cfg_json.get("language"), 3)
 
     payload = {
-        "name": lara_form_name(form),
+        "name": _lara_form_name(form),
         "categoryId": None,
         "coverId": None,
         "visibilityType": visibility_type,
@@ -142,72 +143,73 @@ def lara_payload_common(form: dict, html_payload: str, cfg: dict, resolved: dict
         "autodeclarationPresenceActivitiesRequired": False,
     }
 
-    custom_fields = lara_form_custom_fields(form, cfg)
+    custom_fields = _lara_form_custom_fields(form, cfg)
     if custom_fields:
         payload["customFields"] = custom_fields
 
     return payload
 
 
-def lara_update_payload(form: dict, html_payload: str, cfg: dict, external_id: str) -> dict:
-    payload = {
-        "id": external_id,
-        "name": lara_form_name(form),
-        "description": html_payload,
-        "shortDescription": learn_lms_short_description(
-            form.get("presentation") or form.get("objectifs") or form.get("titre") or "",
-            200,
-        ),
-        "keywords": learn_lms_keywords(form),
-    }
-
-    custom_fields = lara_form_custom_fields(form, cfg)
-    if custom_fields:
-        payload["customFields"] = custom_fields
-
-    return payload
-
-
-def lara_publish_formation(
-    api_base: str,
-    api_id: str,
+def publish_formation(
     form: dict,
     html_payload: str,
     cfg: dict,
-    resolved: dict,
-    external_id: Optional[str] = None,
+    existing_publication: Optional[dict] = None,
 ) -> dict:
-    existing_external_id = str(external_id or "").strip()
+    resolved = learn_lms_resolve_lara_defaults(cfg)
 
-    if existing_external_id:
-        payload = lara_update_payload(form, html_payload, cfg, existing_external_id)
-        api_result = lara_post_with_custom_field_fallback(api_base, api_id, "workspace/edit", payload)
-        return {
-            "action": "update",
-            "external_id": existing_external_id,
-            "payload": payload,
-            "api_result": api_result,
+    api_base = cfg.get("base_url") or ""
+    secret = cfg.get("secret_json") or {}
+    api_id = secret.get("api_id") or ""
+
+    external_id = str((existing_publication or {}).get("external_id") or "").strip()
+    external_url = str((existing_publication or {}).get("external_url") or "").strip()
+    action = "update" if external_id else "create"
+
+    if external_id:
+        payload = {
+            "id": external_id,
+            "name": _lara_form_name(form),
+            "description": html_payload,
+            "shortDescription": learn_lms_short_description(
+                form.get("presentation") or form.get("objectifs") or form.get("titre") or "",
+                200,
+            ),
+            "keywords": learn_lms_keywords(form),
         }
 
-    payload = lara_payload_common(form, html_payload, cfg, resolved)
-    api_result = lara_post_with_custom_field_fallback(api_base, api_id, "workspace/create", payload)
+        custom_fields = _lara_form_custom_fields(form, cfg)
+        if custom_fields:
+            payload["customFields"] = custom_fields
 
-    created_external_id = ""
-    if api_result.get("ok"):
-        created_external_id = learn_lms_extract_workspace_id(api_result.get("json")) or ""
+        api_result = _lara_post_with_custom_field_fallback(api_base, api_id, "workspace/edit", payload)
+    else:
+        payload = _lara_payload_common(form, html_payload, cfg, resolved)
+        api_result = _lara_post_with_custom_field_fallback(api_base, api_id, "workspace/create", payload)
+
+        if api_result.get("ok"):
+            external_id = learn_lms_extract_workspace_id(api_result.get("json"))
+
+    if not api_result.get("ok") or not external_id:
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "action": action,
+            "external_id": external_id or None,
+            "external_url": external_url or None,
+            "response": api_result,
+        }
+
+    geturl_result = learn_lms_api_post(api_base, api_id, "workspace/geturl", {"id": external_id})
+    if geturl_result.get("ok"):
+        external_url = learn_lms_extract_url(geturl_result.get("json")) or external_url
 
     return {
-        "action": "create",
-        "external_id": created_external_id,
-        "payload": payload,
-        "api_result": api_result,
-    }
-
-
-def lara_get_workspace_url(api_base: str, api_id: str, external_id: str) -> dict:
-    result = learn_lms_api_post(api_base, api_id, "workspace/geturl", {"id": external_id})
-
-    return {
-        "api_result": result,
-        "external_url": learn_lms_extract_url(result.get("json")) if result.get("ok") else "",
+        "ok": True,
+        "provider_code": "lara",
+        "action": action,
+        "action_label": "mise à jour" if action == "update" else "créée",
+        "external_id": external_id,
+        "external_url": external_url,
+        "response": api_result,
     }
