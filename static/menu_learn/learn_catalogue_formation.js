@@ -45,6 +45,13 @@
   let _pendingCompStagCreate = [];
   let _pendingCompFormCreate = [];
 
+  let _compCreateTarget = "stagiaire";
+  let _compCreatePendingIndex = null;
+  let _compDomainItems = [];
+  let _compDomainsLoaded = false;
+  let _compCrit = null;
+  let _compCritEditIdx = null;
+
   let _planMode = "create";
   let _planEditId = null;
   let _planBlocks = [];
@@ -356,6 +363,15 @@ function iconPdf(){
         <path d="M19 6l-1 14H6L5 6"/>
         <path d="M10 11v6"/>
         <path d="M14 11v6"/>
+      </svg>
+    `;
+  }
+
+  function iconPlus(){
+    return `
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 5v14"/>
+        <path d="M5 12h14"/>
       </svg>
     `;
   }
@@ -945,6 +961,616 @@ function iconPdf(){
     return dom;
     }
 
+    async function ensureCompetenceDomains(portal){
+        if (_compDomainsLoaded) return;
+
+        const effectifId = getEffectifId();
+        const r = await portal.apiJson(`${portal.apiBase}/learn/competences/${encodeURIComponent(effectifId)}/domaines`);
+
+        _compDomainItems = Array.isArray(r?.items) ? r.items : [];
+        _compDomainsLoaded = true;
+    }
+
+    function fillCompDomainSelect(selectedId){
+        const sel = byId("compDomaine");
+        if (!sel) return;
+
+        const keep = (selectedId ?? sel.value ?? "").toString().trim();
+
+        sel.innerHTML = "";
+
+        const opt0 = document.createElement("option");
+        opt0.value = "";
+        opt0.textContent = "—";
+        sel.appendChild(opt0);
+
+        (_compDomainItems || []).forEach(d => {
+            const id = (d.id_domaine_competence || "").toString().trim();
+            if (!id) return;
+
+            const label = (d.titre_court || d.titre || id).toString().trim();
+
+            const opt = document.createElement("option");
+            opt.value = id;
+            opt.textContent = label;
+            opt.title = (d.titre || label || "").toString();
+
+            sel.appendChild(opt);
+        });
+
+        sel.value = keep || "";
+    }
+
+    function fillCompAiDomainSelect(selectedId){
+        const sel = byId("compAiDomaine");
+        if (!sel) return;
+
+        const keep = (selectedId ?? sel.value ?? "").toString().trim();
+
+        sel.innerHTML = "";
+
+        const opt0 = document.createElement("option");
+        opt0.value = "";
+        opt0.textContent = "—";
+        sel.appendChild(opt0);
+
+        (_compDomainItems || []).forEach(d => {
+            const id = (d.id_domaine_competence || "").toString().trim();
+            if (!id) return;
+
+            const label = (d.titre_court || d.titre || id).toString().trim();
+
+            const opt = document.createElement("option");
+            opt.value = id;
+            opt.textContent = label;
+
+            sel.appendChild(opt);
+        });
+
+        sel.value = keep || "";
+    }
+
+    function compEmptyCrit(){
+        return { Nom:"", Eval:["", "", "", ""] };
+    }
+
+    function compResetCrit(){
+        _compCrit = [compEmptyCrit(), compEmptyCrit(), compEmptyCrit(), compEmptyCrit()];
+        _compCritEditIdx = null;
+        compHideCritEditor();
+        compRenderCritList();
+    }
+
+    function compParseGrilleObject(v){
+        if (!v) return null;
+        if (typeof v === "object") return v;
+
+        if (typeof v === "string"){
+            try { return JSON.parse(v); } catch(_) { return null; }
+        }
+
+        return null;
+    }
+
+    function compLoadCritFromJson(grille){
+        const g = compParseGrilleObject(grille) || {};
+        _compCrit = [compEmptyCrit(), compEmptyCrit(), compEmptyCrit(), compEmptyCrit()];
+
+        for (let i = 1; i <= 4; i++){
+            const k = "Critere" + i;
+            const node = g[k] || {};
+            const ev = Array.isArray(node.Eval) ? node.Eval : [];
+
+            _compCrit[i - 1] = {
+                Nom: (node.Nom || "").toString(),
+                Eval: [
+                    (ev[0] || "").toString(),
+                    (ev[1] || "").toString(),
+                    (ev[2] || "").toString(),
+                    (ev[3] || "").toString()
+                ]
+            };
+        }
+
+        _compCritEditIdx = null;
+        compHideCritEditor();
+        compRenderCritList();
+    }
+
+    function compBuildGrilleJson(){
+        const out = {};
+
+        for (let i = 1; i <= 4; i++){
+            const c = (_compCrit && _compCrit[i - 1]) ? _compCrit[i - 1] : compEmptyCrit();
+
+            out["Critere" + i] = {
+                Nom: (c.Nom || "").toString(),
+                Eval: [
+                    (c.Eval?.[0] || "").toString(),
+                    (c.Eval?.[1] || "").toString(),
+                    (c.Eval?.[2] || "").toString(),
+                    (c.Eval?.[3] || "").toString()
+                ]
+            };
+        }
+
+        return out;
+    }
+
+    function compUsedCritCount(){
+        if (!_compCrit) return 0;
+        return _compCrit.filter(c => (c?.Nom || "").trim()).length;
+    }
+
+    function compNextEmptyCritIndex(){
+        if (!_compCrit) return 0;
+
+        for (let i = 0; i < 4; i++){
+            const c = _compCrit[i];
+            const hasNom = (c?.Nom || "").trim().length > 0;
+            const hasEval = (c?.Eval || []).some(x => (x || "").trim().length > 0);
+
+            if (!hasNom && !hasEval) return i;
+        }
+
+        return -1;
+    }
+
+    function compShowCritEditor(idx){
+        _compCritEditIdx = idx;
+
+        const ed = byId("compCritEditor");
+        if (!ed) return;
+
+        const title = byId("compCritEditorTitle");
+        if (title) title.textContent = `Critère ${idx + 1}`;
+
+        const c = _compCrit[idx] || compEmptyCrit();
+
+        byId("compCritNom").value = c.Nom || "";
+        byId("compCritEval1").value = c.Eval?.[0] || "";
+        byId("compCritEval2").value = c.Eval?.[1] || "";
+        byId("compCritEval3").value = c.Eval?.[2] || "";
+        byId("compCritEval4").value = c.Eval?.[3] || "";
+
+        ed.style.display = "";
+    }
+
+    function compHideCritEditor(){
+        const ed = byId("compCritEditor");
+        if (ed) ed.style.display = "none";
+        _compCritEditIdx = null;
+    }
+
+    function compRenderCritList(){
+        const host = byId("compCritList");
+        const btnAdd = byId("btnCompAddCrit");
+
+        if (!host) return;
+        if (!_compCrit) _compCrit = [compEmptyCrit(), compEmptyCrit(), compEmptyCrit(), compEmptyCrit()];
+
+        host.innerHTML = "";
+
+        const used = compUsedCritCount();
+
+        if (btnAdd){
+            btnAdd.disabled = used >= 4 || !isSupervisor();
+            btnAdd.style.opacity = btnAdd.disabled ? ".6" : "";
+            btnAdd.title = btnAdd.disabled ? "Maximum 4 critères." : "";
+        }
+
+        for (let i = 0; i < 4; i++){
+            const c = _compCrit[i];
+            const nom = (c?.Nom || "").trim();
+
+            if (!nom) continue;
+
+            const acc = document.createElement("div");
+            acc.className = "sb-acc";
+
+            const head = document.createElement("button");
+            head.type = "button";
+            head.className = "sb-acc-head";
+            head.addEventListener("click", () => acc.classList.toggle("is-open"));
+
+            const t = document.createElement("div");
+            t.className = "sb-acc-title";
+            t.textContent = `Critère ${i + 1} – ${nom}`;
+
+            head.appendChild(t);
+
+            const body = document.createElement("div");
+            body.className = "sb-acc-body";
+
+            const ul = document.createElement("div");
+            ul.className = "sb-crit-evals";
+
+            ["Niveau 1", "Niveau 2", "Niveau 3", "Niveau 4"].forEach((label, k) => {
+                const row = document.createElement("div");
+                row.className = "sb-crit-eval-row";
+
+                const lab = document.createElement("div");
+                lab.className = "label";
+                lab.textContent = label;
+
+                const txt = document.createElement("div");
+                txt.textContent = (c.Eval?.[k] || "").toString();
+
+                row.appendChild(lab);
+                row.appendChild(txt);
+
+                ul.appendChild(row);
+            });
+
+            body.appendChild(ul);
+
+            if (isSupervisor()){
+                const actions = document.createElement("div");
+                actions.className = "sb-acc-actions";
+
+                const btnEdit = document.createElement("button");
+                btnEdit.type = "button";
+                btnEdit.className = "sb-btn sb-btn--soft sb-btn--xs";
+                btnEdit.textContent = "Modifier";
+                btnEdit.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    compShowCritEditor(i);
+                    acc.classList.add("is-open");
+                });
+
+                actions.appendChild(btnEdit);
+                body.appendChild(actions);
+            }
+
+            acc.appendChild(head);
+            acc.appendChild(body);
+
+            host.appendChild(acc);
+        }
+
+        if (!host.children.length){
+            const empty = document.createElement("div");
+            empty.className = "card-sub";
+            empty.textContent = "Aucun critère. Ajoute au moins 1 critère.";
+            host.appendChild(empty);
+        }
+    }
+
+    function compSaveCritFromEditor(portal){
+        if (_compCritEditIdx === null || _compCritEditIdx === undefined) return;
+
+        const nom = (byId("compCritNom").value || "").trim();
+        const e1 = (byId("compCritEval1").value || "").trim();
+        const e2 = (byId("compCritEval2").value || "").trim();
+        const e3 = (byId("compCritEval3").value || "").trim();
+        const e4 = (byId("compCritEval4").value || "").trim();
+
+        if (!nom){
+            portal.showAlert("error", "Nom du critère obligatoire.");
+            return;
+        }
+
+        if (!e1 || !e2 || !e3 || !e4){
+            portal.showAlert("error", "Les 4 niveaux d’évaluation sont obligatoires.");
+            return;
+        }
+
+        _compCrit[_compCritEditIdx] = { Nom: nom, Eval:[e1, e2, e3, e4] };
+
+        compHideCritEditor();
+        compRenderCritList();
+    }
+
+    function compValidateCritBeforeSave(portal){
+        if (!_compCrit) _compCrit = [compEmptyCrit(), compEmptyCrit(), compEmptyCrit(), compEmptyCrit()];
+
+        if (compUsedCritCount() < 1){
+            portal.showAlert("error", "Ajoute au moins 1 critère d’évaluation.");
+            return false;
+        }
+
+        for (let i = 0; i < 4; i++){
+            const c = _compCrit[i];
+            const nom = (c?.Nom || "").trim();
+            const ev = c?.Eval || ["", "", "", ""];
+            const anyEval = ev.some(x => (x || "").trim().length > 0);
+
+            if (!nom && !anyEval) continue;
+
+            if (!nom){
+                portal.showAlert("error", `Critère ${i + 1} : nom obligatoire.`);
+                return false;
+            }
+
+            for (let k = 0; k < 4; k++){
+                if (!(ev[k] || "").trim()){
+                    portal.showAlert("error", `Critère ${i + 1} : niveau ${k + 1} obligatoire.`);
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    function buildCompetenceAiContext(target, proposal){
+        return [
+            `Formation : ${readCatalogueField("formTitre") || "Non renseignée"}`,
+            `Rôle de la compétence : ${target === "formateur" ? "compétence requise pour le formateur" : "compétence visée pour les stagiaires"}`,
+            `Compétence proposée : ${(proposal?.source || "").trim()}`,
+            readCatalogueField("formObjectifs") ? `Objectif pédagogique : ${readCatalogueField("formObjectifs")}` : "",
+            readCatalogueField("formPresentation") ? `Présentation : ${readCatalogueField("formPresentation")}` : "",
+            (byId("formPublic")?.value || "").trim() ? `Public cible : ${(byId("formPublic")?.value || "").trim()}` : ""
+        ].filter(Boolean).join("\n\n");
+    }
+
+    async function openPendingCompetenceCreate(target, idx, proposal){
+        if (!isSupervisor()) return;
+
+        await ensureCompetenceDomains(window.portal);
+
+        _compCreateTarget = target === "formateur" ? "formateur" : "stagiaire";
+        _compCreatePendingIndex = idx;
+
+        const title = (proposal?.source || "").trim();
+
+        const badge = byId("compModalBadge");
+        if (badge){
+            badge.style.display = "none";
+            badge.textContent = "";
+        }
+
+        byId("compModalTitle").textContent = "Créer une compétence";
+
+        const sub = byId("compModalSub");
+        if (sub){
+            sub.textContent = _compCreateTarget === "formateur"
+                ? "Création depuis les compétences requises pour le formateur."
+                : "Création depuis les compétences visées pour les stagiaires.";
+            sub.style.display = "";
+        }
+
+        byId("compIntitule").value = title;
+        byId("compEtat").value = "à valider";
+        byId("compDesc").value = "";
+        byId("compNivA").value = "";
+        byId("compNivB").value = "";
+        byId("compNivC").value = "";
+
+        fillCompDomainSelect("");
+        fillCompAiDomainSelect("");
+
+        if (byId("compAiObjectif")) byId("compAiObjectif").value = title;
+        if (byId("compAiContexte")) byId("compAiContexte").value = buildCompetenceAiContext(_compCreateTarget, proposal);
+        if (byId("compAiDocument")) byId("compAiDocument").value = "";
+        if (byId("compAiNbCrit")) byId("compAiNbCrit").value = "3";
+
+        compResetCrit();
+
+        openModal("modalCompEdit");
+    }
+
+    function closePendingCompetenceCreate(){
+        _compCreatePendingIndex = null;
+        closeModal("modalCompEdit");
+    }
+
+    function removePendingCreatedCompetence(){
+        const list = _compCreateTarget === "formateur" ? _pendingCompFormCreate : _pendingCompStagCreate;
+        const idx = Number.isInteger(_compCreatePendingIndex) ? _compCreatePendingIndex : -1;
+
+        if (idx >= 0 && idx < list.length){
+            list.splice(idx, 1);
+        }
+
+        _compCreatePendingIndex = null;
+    }
+
+    function upsertCompetenceRef(c){
+        if (!c?.id_comp) return;
+
+        if (!_refs) _refs = {};
+        if (!Array.isArray(_refs.competences)) _refs.competences = [];
+
+        const id = String(c.id_comp || "").trim();
+
+        _refs.competences = _refs.competences.filter(x => String(x?.id_comp || "").trim() !== id);
+        _refs.competences.push(c);
+
+        _refs.competences.sort((a, b) => {
+            return String(a?.intitule || "").localeCompare(String(b?.intitule || ""), "fr", { sensitivity:"base" });
+        });
+    }
+
+    async function savePendingCompetence(portal){
+        if (!isSupervisor()) return;
+
+        const effectifId = getEffectifId();
+
+        const title = (byId("compIntitule").value || "").trim();
+        const dom = (byId("compDomaine").value || "").trim();
+        const etat = (byId("compEtat").value || "à valider").trim();
+        const desc = (byId("compDesc").value || "").trim();
+        const a = (byId("compNivA").value || "").trim();
+        const b = (byId("compNivB").value || "").trim();
+        const c = (byId("compNivC").value || "").trim();
+
+        if (!title){
+            portal.showAlert("error", "Intitulé obligatoire.");
+            return;
+        }
+
+        if (!compValidateCritBeforeSave(portal)) return;
+
+        const payload = {
+            intitule: title,
+            domaine: dom || null,
+            etat: etat || null,
+            description: desc || null,
+            niveaua: a || null,
+            niveaub: b || null,
+            niveauc: c || null,
+            grille_evaluation: compBuildGrilleJson()
+        };
+
+        const created = await portal.apiJson(
+            `${portal.apiBase}/learn/competences/${encodeURIComponent(effectifId)}`,
+            {
+                method: "POST",
+                headers: { "Content-Type":"application/json" },
+                body: JSON.stringify(payload)
+            }
+        );
+
+        const idComp = String(created?.id_comp || "").trim();
+        if (!idComp){
+            throw new Error("Compétence créée, mais identifiant non retourné.");
+        }
+
+        const detail = await portal.apiJson(
+            `${portal.apiBase}/learn/competences/${encodeURIComponent(effectifId)}/${encodeURIComponent(idComp)}`
+        );
+
+        upsertCompetenceRef(detail);
+
+        if (_compCreateTarget === "formateur"){
+            const set = new Set(_selectedCompForm);
+            set.add(idComp);
+            _selectedCompForm = Array.from(set);
+        } else {
+            const set = new Set(_selectedCompStag);
+            set.add(idComp);
+            _selectedCompStag = Array.from(set);
+        }
+
+        removePendingCreatedCompetence();
+        closePendingCompetenceCreate();
+
+        renderCompetences();
+        setSuccess("Compétence créée et rattachée à la formation");
+    }
+
+    function openPendingCompAiModal(){
+        const obj = byId("compAiObjectif");
+        const title = (byId("compIntitule")?.value || "").trim();
+
+        if (obj && !obj.value.trim()){
+            obj.value = title;
+        }
+
+        const ctx = byId("compAiContexte");
+        if (ctx && !ctx.value.trim()){
+            ctx.value = buildCompetenceAiContext(_compCreateTarget, { source:title });
+        }
+
+        fillCompAiDomainSelect(byId("compDomaine")?.value || "");
+
+        const nbSel = byId("compAiNbCrit");
+        if (nbSel) nbSel.value = "3";
+
+        openModal("modalCompAi");
+    }
+
+    function closePendingCompAiModal(){
+        closeModal("modalCompAi");
+    }
+
+    async function generatePendingCompAiDraft(portal){
+        const objectif = (byId("compAiObjectif")?.value || "").trim();
+        const contexte = (byId("compAiContexte")?.value || "").trim();
+        const dom = (byId("compAiDomaine")?.value || "").trim();
+        const file = byId("compAiDocument")?.files?.[0] || null;
+
+        let nb = parseInt((byId("compAiNbCrit")?.value || "3").trim(), 10);
+        if (![2, 3, 4].includes(nb)) nb = 3;
+
+        if (!objectif){
+            portal.showAlert("error", "Objectif obligatoire.");
+            return;
+        }
+
+        const effectifId = getEffectifId();
+
+        const btn = byId("btnCompAiGenerate");
+        if (btn){
+            btn.disabled = true;
+            btn.style.opacity = ".6";
+            btn.textContent = "Génération…";
+        }
+
+        try{
+            let draft;
+
+            if (file){
+                const fd = new FormData();
+                fd.append("objectif", objectif);
+                fd.append("contexte", contexte || "");
+                fd.append("domaine_id", dom || "");
+                fd.append("nb_criteres", String(nb));
+                fd.append("document", file);
+
+                draft = await portal.apiJson(
+                    `${portal.apiBase}/learn/competences/${encodeURIComponent(effectifId)}/draft/ai-document`,
+                    {
+                        method: "POST",
+                        body: fd
+                    }
+                );
+            } else {
+                draft = await portal.apiJson(
+                    `${portal.apiBase}/learn/competences/${encodeURIComponent(effectifId)}/draft/ai`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type":"application/json" },
+                        body: JSON.stringify({
+                            objectif: objectif,
+                            contexte: contexte || null,
+                            domaine_id: dom || null,
+                            nb_criteres: nb
+                        })
+                    }
+                );
+            }
+
+            if (draft?.intitule) byId("compIntitule").value = String(draft.intitule);
+            if (draft?.description !== undefined) byId("compDesc").value = String(draft.description || "");
+            if (draft?.niveaua !== undefined) byId("compNivA").value = String(draft.niveaua || "");
+            if (draft?.niveaub !== undefined) byId("compNivB").value = String(draft.niveaub || "");
+            if (draft?.niveauc !== undefined) byId("compNivC").value = String(draft.niveauc || "");
+
+            await ensureCompetenceDomains(portal);
+
+            fillCompDomainSelect(draft?.domaine_id || "");
+            compLoadCritFromJson(draft?.grille_evaluation || null);
+
+            closePendingCompAiModal();
+
+            portal.showAlert("", "");
+
+        } catch(e){
+            portal.showAlert("error", getErrorMessage(e));
+        } finally {
+            if (btn){
+                btn.disabled = false;
+                btn.style.opacity = "";
+                btn.textContent = "Générer";
+            }
+        }
+    }
+
+    function bindCompMaxLen(id, max){
+        const el = byId(id);
+        if (!el) return;
+
+        el.setAttribute("maxlength", String(max));
+        el.addEventListener("input", () => {
+            if (el.value.length > max){
+                el.value = el.value.slice(0, max);
+            }
+        });
+    }
+
     function renderSelectedCompetenceList(hostId, selected, target){
         const host = byId(hostId);
         if (!host) return;
@@ -1071,6 +1697,25 @@ function iconPdf(){
 
             const actions = document.createElement("div");
             actions.className = "sb-icon-actions";
+
+            const btnCreate = document.createElement("button");
+            btnCreate.type = "button";
+            btnCreate.className = "sb-icon-btn sb-icon-btn--lms";
+            btnCreate.title = "Créer la compétence";
+            btnCreate.setAttribute("aria-label", "Créer la compétence");
+            btnCreate.innerHTML = iconPlus();
+            btnCreate.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            try{
+                await openPendingCompetenceCreate(target, idx, p);
+            } catch(err){
+                window.portal.showAlert("error", getErrorMessage(err));
+            }
+            });
+
+            actions.appendChild(btnCreate);
 
             const btnRemove = document.createElement("button");
             btnRemove.type = "button";
@@ -4230,6 +4875,58 @@ iframe{width:100%;height:100%;border:0;display:block}
         window.portal?.showAlert?.("error", getErrorMessage(e));
       }
     });
+
+    byId("btnCompX")?.addEventListener("click", closePendingCompetenceCreate);
+    byId("btnCompCancel")?.addEventListener("click", closePendingCompetenceCreate);
+
+    byId("btnCompSave")?.addEventListener("click", async () => {
+      try{
+        await savePendingCompetence(portal);
+      } catch(e){
+        portal.showAlert("error", getErrorMessage(e));
+      }
+    });
+
+    byId("btnCompAi")?.addEventListener("click", async () => {
+      try{
+        await ensureCompetenceDomains(portal);
+        openPendingCompAiModal();
+      } catch(e){
+        portal.showAlert("error", getErrorMessage(e));
+      }
+    });
+
+    byId("btnCompAiX")?.addEventListener("click", closePendingCompAiModal);
+    byId("btnCompAiCancel")?.addEventListener("click", closePendingCompAiModal);
+    byId("btnCompAiGenerate")?.addEventListener("click", async () => {
+      await generatePendingCompAiDraft(portal);
+    });
+
+    byId("btnCompAddCrit")?.addEventListener("click", () => {
+      const idx = compNextEmptyCritIndex();
+      if (idx < 0) return;
+      compShowCritEditor(idx);
+    });
+
+    byId("btnCompCritSave")?.addEventListener("click", () => {
+      try{
+        compSaveCritFromEditor(portal);
+      } catch(e){
+        portal.showAlert("error", getErrorMessage(e));
+      }
+    });
+
+    byId("btnCompCritCancel")?.addEventListener("click", compHideCritEditor);
+
+    compResetCrit();
+
+    bindCompMaxLen("compNivA", 230);
+    bindCompMaxLen("compNivB", 230);
+    bindCompMaxLen("compNivC", 230);
+    bindCompMaxLen("compCritEval1", 120);
+    bindCompMaxLen("compCritEval2", 120);
+    bindCompMaxLen("compCritEval3", 120);
+    bindCompMaxLen("compCritEval4", 120);
 
     const bNew = byId("btnFormNew");
 
