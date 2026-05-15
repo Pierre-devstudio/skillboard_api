@@ -1,8 +1,8 @@
 (function () {
   let _bound = false;
   let _config = null;
-  let _laraworkspacetypes = [];
-  let _selectedlararecoverytypeids = new set();
+  let _laraWorkspaceTypes = [];
+  let _selectedLaraRecoveryTypeIds = new Set();
 
   function byId(id){ return document.getElementById(id); }
 
