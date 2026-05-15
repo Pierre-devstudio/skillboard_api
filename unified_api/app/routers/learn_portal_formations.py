@@ -9,7 +9,6 @@ import re
 import unicodedata
 import html
 import os
-import hashlib
 from difflib import SequenceMatcher
 
 from reportlab.lib import colors
@@ -21,16 +20,6 @@ from reportlab.lib.styles import ParagraphStyle
 from app.routers.skills_portal_common import get_conn
 from app.routers.learn_portal_common import learn_require_user, learn_fetch_profile
 from app.routers.skills_portal_pdf_common import build_pdf_document, build_pdf_styles
-from app.routers.learn_portal_informations import (
-    learn_lms_api_post,
-    learn_lms_extract_url,
-    learn_lms_extract_workspace_id,
-    learn_lms_fetch_active_config,
-    learn_lms_keywords,
-    learn_lms_resolve_lara_defaults,
-    learn_lms_safe_int,
-    learn_lms_short_description,
-)
 
 try:
     from openai import OpenAI
@@ -127,34 +116,12 @@ def _jsonb_param(value: Any) -> str:
     return json.dumps(arr, ensure_ascii=False)
 
 
-FORMATION_TITLE_MAX = 90
-FORMATION_PRESENTATION_MAX = 625
-FORMATION_OBJECTIF_MAX = 550
-FORMATION_PREREQ_MAX = 65
-
-
 def _clean_text(value: Any, max_len: int = 20000) -> str:
     txt = str(value or "").replace("\x00", " ").strip()
     txt = re.sub(r"\r\n?", "\n", txt)
     txt = re.sub(r"[ \t]+", " ", txt)
     if len(txt) > max_len:
         txt = txt[:max_len].rsplit(" ", 1)[0].strip()
-    return txt
-
-
-def _limit_catalogue_text(value: Any, max_len: int) -> str:
-    txt = str(value or "").replace("\x00", " ").strip()
-    txt = html.unescape(txt)
-    txt = re.sub(r"(?i)<\s*br\s*/?\s*>", " ", txt)
-    txt = re.sub(r"(?i)</\s*p\s*>", " ", txt)
-    txt = re.sub(r"<[^>]+>", " ", txt)
-    txt = re.sub(r"\r\n?", "\n", txt)
-    txt = re.sub(r"\s+", " ", txt).strip()
-
-    if len(txt) > max_len:
-        cut = txt[:max_len].rsplit(" ", 1)[0].strip()
-        txt = cut if cut else txt[:max_len].strip()
-
     return txt
 
 
@@ -785,7 +752,7 @@ def _sync_formation_prerequis(cur, oid: str, id_form: str, prerequis: Optional[l
         else:
             item = raw.dict()
 
-        titre = _limit_catalogue_text(item.get("titre"), FORMATION_PREREQ_MAX)
+        titre = _clean_text(item.get("titre"), 800)
         if not titre:
             continue
 
@@ -1440,7 +1407,7 @@ def _normalize_import_prerequis(raw_items: Any) -> list:
     seen = set()
 
     def add_item(titre: Any, r1: Any = "Oui", r2: Any = "Non", r3: Any = ""):
-        clean_titre = _limit_catalogue_text(titre, FORMATION_PREREQ_MAX)
+        clean_titre = _clean_text(titre, 800)
         if not clean_titre:
             return
 
@@ -1569,11 +1536,7 @@ def _analyse_import_document_with_ai(doc_text: str, filename: str) -> dict:
         "Le champ titre contient le prérequis lui-même. "
         "Les champs r1, r2, r3 sont uniquement des réponses d’auto-positionnement, jamais des prérequis. "
         "Pour un prérequis oui/non, utilise r1='Oui', r2='Non', r3=''. "
-        "Chaque titre de prérequis ne doit jamais dépasser 65 caractères. "
         "Le type_formation doit être l'une des valeurs: Certifiante, Diplomante, Non Certifiante. "
-        "Contraintes catalogue impératives : le titre ne dépasse jamais 90 caractères, "
-        "la présentation ne dépasse jamais 625 caractères et doit être un seul paragraphe sans retour ligne, "
-        "l'objectif pédagogique ne dépasse jamais 550 caractères et doit être un seul paragraphe sans retour ligne. "
         "Si une information est absente, renvoie une chaîne vide, null ou une liste vide."
     )
 
@@ -1694,11 +1657,10 @@ def _analyse_generate_formation_with_ai(
     system_prompt = (
         "Tu génères une fiche formation structurée pour Novoskill Learn. "
         "Règles impératives : zéro marketing, rédaction opérationnelle, pédagogique, sobre et exploitable. "
-        "Le titre commence par un verbe d'action et ne dépasse jamais 90 caractères. "
-        "La présentation est un texte rédigé avec une bonne syntaxe, sans liste, sans retour ligne, et ne dépasse jamais 625 caractères. "
+        "Le titre commence par un verbe d'action. "
+        "La présentation est un texte rédigé avec une bonne syntaxe, sans liste. "
         "L'objectif pédagogique est la finalité globale de la formation et doit être formulé dans l'esprit : "
         "À la fin de la formation, le stagiaire/l'apprenant sera capable de... "
-        "Cet objectif pédagogique ne doit jamais dépasser 550 caractères et ne doit contenir aucun retour ligne. "
         "Ne confonds pas objectif pédagogique et compétences visées. Les compétences visées sont des capacités opérationnelles observables. "
         "Les contenus sont des briques réutilisables indépendantes de la modalité. "
         "Chaque contenu doit comporter un titre clair, un objectif court et un champ contenu détaillé. "
@@ -1707,7 +1669,6 @@ def _analyse_generate_formation_with_ai(
         "Ne génère jamais de plan pédagogique, ni de déroulé jour par jour. "
         "Ne demande pas et ne déduis pas une modalité de réalisation : la modalité sera traitée dans le plan pédagogique. "
         "Les prérequis doivent être évaluables. Chaque prérequis est un élément distinct avec titre + réponses Oui/Non et r3 optionnelle. "
-        "Chaque titre de prérequis ne doit jamais dépasser 65 caractères. "
         "Les compétences formateur doivent inclure des compétences d'animation/évaluation/apprentissage et des compétences métier liées au contenu ; "
         "on considère que le formateur possède un niveau avancé ou expert. "
         "Si un contexte est fourni, rends la formation spécifique à ce contexte. Si aucun contexte n'est fourni, génère une formation générique et réutilisable. "
@@ -1961,10 +1922,10 @@ async def learn_formations_import_document(
 
         out = {
             "filename": filename,
-            "titre": _limit_catalogue_text(draft.get("titre"), FORMATION_TITLE_MAX),
-            "presentation": _limit_catalogue_text(draft.get("presentation"), FORMATION_PRESENTATION_MAX),
+            "titre": _clean_text(draft.get("titre"), 500),
+            "presentation": _clean_text(draft.get("presentation"), 6000),
             "public_cible": _clean_text(draft.get("public_cible"), 3000),
-            "objectifs": _limit_catalogue_text(draft.get("objectifs"), FORMATION_OBJECTIF_MAX),
+            "objectifs": _clean_text(draft.get("objectifs"), 5000),
             "type_formation": _normalize_type_formation(draft.get("type_formation")),
             "obs_type_form": _clean_text(draft.get("obs_type_form"), 500),
             "duree": _safe_float(draft.get("duree")),
@@ -2095,10 +2056,10 @@ async def learn_formations_generate_ai(
         duree_recommandee = _safe_float(draft.get("duree_recommandee"))
 
         out = {
-            "titre": _limit_catalogue_text(draft.get("titre"), FORMATION_TITLE_MAX),
-            "presentation": _limit_catalogue_text(draft.get("presentation"), FORMATION_PRESENTATION_MAX),
+            "titre": _clean_text(draft.get("titre"), 500),
+            "presentation": _clean_text(draft.get("presentation"), 6000),
             "public_cible": _clean_text(draft.get("public_cible"), 3000),
-            "objectifs": _limit_catalogue_text(draft.get("objectif_pedagogique"), FORMATION_OBJECTIF_MAX),
+            "objectifs": _clean_text(draft.get("objectif_pedagogique"), 5000),
             "type_formation": _normalize_type_formation(draft.get("type_formation")),
             "obs_type_form": _clean_text(draft.get("obs_type_form"), 500),
             "duree": duree_recommandee,
@@ -2407,7 +2368,7 @@ def learn_formation_create(id_effectif: str, payload: FormationPayload, request:
     u = learn_require_user(auth)
 
     try:
-        titre = _limit_catalogue_text(payload.titre, FORMATION_TITLE_MAX)
+        titre = (payload.titre or "").strip()
         if not titre:
             raise HTTPException(status_code=400, detail="Titre obligatoire.")
 
@@ -2469,9 +2430,9 @@ def learn_formation_create(id_effectif: str, payload: FormationPayload, request:
                         _normalize_type_formation(payload.type_formation),
                         _clean_text(payload.obs_type_form),
                         _safe_int(payload.duree),
-                        _limit_catalogue_text(payload.objectifs, FORMATION_OBJECTIF_MAX),
+                        _clean_text(payload.objectifs),
                         _clean_text(payload.public_cible),
-                        _limit_catalogue_text(payload.presentation, FORMATION_PRESENTATION_MAX),
+                        _clean_text(payload.presentation),
                         _jsonb_param(payload.modalites),
                         _jsonb_param(payload.methode_peda),
                         _jsonb_param(payload.methode_eval),
@@ -2523,7 +2484,7 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
                 vals = []
 
                 if "titre" in patch_fields:
-                    titre = _limit_catalogue_text(payload.titre, FORMATION_TITLE_MAX)
+                    titre = (payload.titre or "").strip()
                     if not titre:
                         raise HTTPException(status_code=400, detail="Titre obligatoire.")
                     cols.append("titre = %s")
@@ -2547,7 +2508,7 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
 
                 if "objectifs" in patch_fields:
                     cols.append("objectifs = %s")
-                    vals.append(_limit_catalogue_text(payload.objectifs, FORMATION_OBJECTIF_MAX))
+                    vals.append(_clean_text(payload.objectifs))
 
                 if "public_cible" in patch_fields:
                     cols.append("public_cible = %s")
@@ -2555,7 +2516,7 @@ def learn_formation_update(id_effectif: str, id_form: str, payload: FormationUpd
 
                 if "presentation" in patch_fields:
                     cols.append("presentation = %s")
-                    vals.append(_limit_catalogue_text(payload.presentation, FORMATION_PRESENTATION_MAX))
+                    vals.append(_clean_text(payload.presentation))
 
                 if "modalites" in patch_fields:
                     cols.append("modalites = %s::jsonb")
@@ -3652,7 +3613,7 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
         )
 
     def draw_code(c, code: str):
-        draw_center_text(c, code, 694, 33, 70, 44, code_white_style)
+        draw_center_text(c, code, 700, 33, 70, 44, code_white_style)
 
     def draw_bullet_list(
         c,
@@ -3740,8 +3701,6 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
         row_gap: float = 4.0,
     ) -> float:
         current_top = top
-        code_w = 66.0
-        code_inner_w = 62.0
 
         for item in rows[:max_rows]:
             code = clean_txt(item.get("code"))
@@ -3750,7 +3709,7 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
                 continue
 
             text_h = measure_paragraph_height(titre, comp_title_style, title_width)
-            row_h = max(24.0, text_h + 7.0)
+            row_h = max(26.0, text_h + 8.0)
 
             if code:
                 c.saveState()
@@ -3758,13 +3717,13 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
                 c.rect(
                     x_pt(x_code),
                     y_pt_from_top(current_top, row_h),
-                    w_pt(code_w),
+                    w_pt(73),
                     h_pt(row_h - 1),
                     stroke=0,
                     fill=1,
                 )
                 c.restoreState()
-                draw_center_text(c, code, x_code + 2, current_top, code_inner_w, row_h, comp_code_style)
+                draw_center_text(c, code, x_code + 2, current_top, 69, row_h, comp_code_style)
 
             draw_paragraph_box(
                 c,
@@ -3894,8 +3853,8 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     objective_style = ParagraphStyle(
         "LearnTplObjective",
         fontName="Helvetica",
-        fontSize=9,
-        leading=11,
+        fontSize=10,
+        leading=12,
         textColor=BLACK,
         alignment=TA_JUSTIFY,
     )
@@ -3934,8 +3893,8 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     comp_code_style = ParagraphStyle(
         "LearnTplCompCode",
         fontName="Helvetica",
-        fontSize=8,
-        leading=9,
+        fontSize=9,
+        leading=10,
         textColor=WHITE,
         alignment=TA_CENTER,
     )
@@ -3976,9 +3935,9 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     # Données préparées
     # ------------------------------------------------------------------
     code_label = clean_txt(form.get("code")) or "FC"
-    title_label = _limit_catalogue_text(form.get("titre"), FORMATION_TITLE_MAX) or "Formation"
-    presentation = _limit_catalogue_text(form.get("presentation"), FORMATION_PRESENTATION_MAX)
-    objective = _limit_catalogue_text(form.get("objectifs"), FORMATION_OBJECTIF_MAX)
+    title_label = clean_txt(form.get("titre")) or "Formation"
+    presentation = clean_txt(form.get("presentation"))
+    objective = clean_txt(form.get("objectifs"))
 
     public_items = cap_with_marker_strings(
         lines_from_text(form.get("public_cible")),
@@ -4037,13 +3996,13 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     draw_paragraph_box(c, presentation, 35, 126, 720, 96, presentation_style, valign="top")
     draw_bullet_list(c, public_items, 35, 258, 365, 112, public_style, bullet_radius=1.6, bullet_gap=10.0, item_gap=2.6)
     draw_paragraph_box(c, objective, 35, 405, 382, 146, objective_style, valign="top")
-    draw_comp_rows(c, comp_stag_page1, 29, 105, 592, 326, max_rows=6)
-    draw_bullet_list(c, prerequis_items, 35, 819, 365, 100, body_small_style)
+    draw_comp_rows(c, comp_stag_page1, 29, 116, 593, 315, max_rows=6)
+    draw_bullet_list(c, prerequis_items, 35, 809, 365, 110, body_small_style)
     draw_bullet_list(c, attestation_items, 35, 983, 365, 85, body_small_style, bullet_radius=1.7, bullet_gap=10.0, item_gap=3.0)
 
-    draw_center_text(c, duree_label, 548, 354, 143, 24, info_big_style)
+    draw_center_text(c, duree_label, 548, 334, 143, 24, info_big_style)
     draw_modalite_boxes(c, modalites_items, 551, 419)
-    draw_center_text(c, tarif_label, 548, 633, 143, 26, info_big_style)
+    draw_center_text(c, tarif_label, 548, 609, 143, 26, info_big_style)
 
     c.showPage()
 
@@ -4087,7 +4046,7 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
     draw_bullet_list(c, methode_peda_items, 78, 373, 235, 165, body_style)
     draw_bullet_list(c, methode_eval_items, 448, 373, 235, 165, body_style)
 
-    draw_comp_rows(c, comp_form_page4, 28, 104, 651, 610, max_rows=6)
+    draw_comp_rows(c, comp_form_page4, 28, 114, 651, 600, max_rows=6)
 
     # Contacts déjà présents dans la trame PNG : aucune surimpression ici.
     c.showPage()
@@ -4106,11 +4065,11 @@ def _build_formation_template_pdf_bytes(form: dict, logo_bytes: Optional[bytes] 
             draw_owner_logo(c, top=1042, max_w=230, max_h=58)
 
             used_stag = min(10, len(stag_remaining))
-            draw_comp_rows(c, stag_remaining[:used_stag], 40, 114, 244, 330, max_rows=used_stag)
+            draw_comp_rows(c, stag_remaining[:used_stag], 40, 124, 244, 320, max_rows=used_stag)
             stag_remaining = stag_remaining[used_stag:]
 
             used_form = min(10, len(form_remaining))
-            draw_comp_rows(c, form_remaining[:used_form], 40, 114, 577, 330, max_rows=used_form)
+            draw_comp_rows(c, form_remaining[:used_form], 40, 124, 577, 320, max_rows=used_form)
             form_remaining = form_remaining[used_form:]
 
             c.showPage()
@@ -4166,342 +4125,319 @@ def _lms_items(items: list, label_fn=None) -> str:
 
 
 def _build_formation_lms_html(form: dict) -> str:
-    """
-    Génère un HTML autonome pour insertion LMS.
-
-    Objectif : rendu public plus attractif qu'une fiche brute, sans JS,
-    avec styles inline prioritaires pour mieux survivre aux éditeurs LMS.
-    """
-    CONTACT_NAME = "Pierre BIDABE"
-    CONTACT_EMAIL = "formation@jmbconsultant.fr"
-    CONTACT_PHONE = "06 72 11 42 21"
-    WEBSITE_URL = "www.jmbconsultant.fr"
-
-    HANDICAP_NAME = "Jean-Marie BIDABE"
-    HANDICAP_EMAIL = "jm.bidabe@jmbconsultant.fr"
-    HANDICAP_PHONE = "06 08 31 25 90"
-
     code = _lms_text(form.get("code"), "FC")
-    titre_raw = _limit_catalogue_text(form.get("titre"), FORMATION_TITLE_MAX) or "Formation"
-    titre = _lms_esc(titre_raw)
-    presentation = _lms_esc(_limit_catalogue_text(form.get("presentation"), FORMATION_PRESENTATION_MAX) or "—")
-    objectif = _lms_esc(_limit_catalogue_text(form.get("objectifs"), FORMATION_OBJECTIF_MAX) or "—")
-
+    titre = _lms_text(form.get("titre"), "Formation")
     domaine = _lms_text(form.get("domaine_titre_court") or form.get("domaine_titre"))
     fournisseur = _lms_text(form.get("fournisseur_nom"))
     duree = _lms_esc(_pdf_hours(form.get("duree")))
     tarif = _lms_esc(_pdf_money(form.get("tarif_mini")))
-    type_formation = _lms_text(form.get("type_formation"))
 
-    def ref_label(item: Any) -> str:
-        if isinstance(item, dict):
-            return str(item.get("titre") or item.get("titre_court") or item.get("intitule") or item.get("code") or "").strip()
-        return str(item or "").strip()
+    prereq_html = _lms_items(form.get("prerequis") or [], lambda p: p.get("titre") or "")
+    public_html = _lms_items(_pdf_lines(form.get("public_cible")))
 
-    def list_card_items(items: list, label_fn=None) -> str:
-        rows = []
+    comp_stag_html = _lms_items(
+        form.get("competences_stagiaires_items") or [],
+        lambda c: " – ".join([x for x in [c.get("code"), c.get("intitule")] if x])
+    )
+    comp_form_html = _lms_items(
+        form.get("competences_formateurs_items") or [],
+        lambda c: " – ".join([x for x in [c.get("code"), c.get("intitule")] if x])
+    )
 
-        for item in items or []:
-            if label_fn:
-                label = label_fn(item)
-            else:
-                label = ref_label(item)
-
-            label = str(label or "").strip()
-            if label:
-                rows.append(
-                    f'<li style="margin:6px 0;padding-left:2px;color:#1f2937;">{_lms_esc(label)}</li>'
-                )
-
-        if not rows:
-            return '<p style="margin:0;color:#64748b;">—</p>'
-
-        return (
-            '<ul style="margin:8px 0 0 18px;padding:0;line-height:1.45;">'
-            + "".join(rows)
-            + '</ul>'
-        )
-
-    def chip(label: Any, tone: str = "blue") -> str:
-        txt = _lms_esc(str(label or "").strip())
-        if not txt:
-            return ""
-
-        if tone == "pink":
-            bg = "#fce7ff"
-            bd = "#f0abfc"
-            fg = "#a21caf"
-        elif tone == "orange":
-            bg = "#fff7ed"
-            bd = "#fed7aa"
-            fg = "#c2410c"
-        else:
-            bg = "#eff6ff"
-            bd = "#bfdbfe"
-            fg = "#075985"
-
-        return (
-            f'<span style="display:inline-block;margin:3px 5px 3px 0;padding:5px 9px;'
-            f'border:1px solid {bd};border-radius:999px;background:{bg};color:{fg};'
-            f'font-size:12px;font-weight:700;line-height:1.15;">{txt}</span>'
-        )
-
-    def comp_chip(c: dict, tone: str = "blue") -> str:
-        code_txt = str(c.get("code") or "").strip()
-        title_txt = str(c.get("intitule") or c.get("titre") or "").strip()
-
-        if not code_txt and not title_txt:
-            return ""
-
-        if tone == "orange":
-            badge_bg = "#ea580c"
-            badge_border = "#c2410c"
-            title_color = "#c2410c"
-        else:
-            badge_bg = "#0369a1"
-            badge_border = "#075985"
-            title_color = "#075985"
-
-        code_html = ""
-        if code_txt:
-            code_html = (
-                f'<span style="display:inline-block;flex:0 0 auto;'
-                f'background:{badge_bg};border:1px solid {badge_border};color:#ffffff;'
-                f'border-radius:999px;padding:4px 8px;font-size:11px;font-weight:800;'
-                f'line-height:1.1;">{_lms_esc(code_txt)}</span>'
-            )
-
-        title_html = ""
-        if title_txt:
-            title_html = (
-                f'<span style="display:inline-block;color:{title_color};font-size:12px;'
-                f'font-weight:700;line-height:1.25;">{_lms_esc(title_txt)}</span>'
-            )
-
-        return (
-            f'<span style="display:flex;align-items:center;gap:8px;margin:5px 0;'
-            f'padding:6px 8px;border-radius:999px;">'
-            f'{code_html}{title_html}'
-            f'</span>'
-        )
-
-    def metric_card(label: str, value: str, highlight: bool = False) -> str:
-        bg = "#ffffff" if not highlight else "#fce7ff"
-        bd = "#e5e7eb" if not highlight else "#f0abfc"
-        fg = "#111827" if not highlight else "#a21caf"
-        return f'''
-          <div style="background:{bg};border:1px solid {bd};border-radius:16px;padding:14px;min-height:78px;">
-            <div style="font-size:12px;color:#64748b;margin-bottom:6px;">{_lms_esc(label)}</div>
-            <div style="font-size:18px;font-weight:800;color:{fg};line-height:1.2;">{value}</div>
-          </div>
-        '''
-
-    def soft_card(title: str, body_html: str, icon: str = "") -> str:
-        return f'''
-          <article style="background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;padding:18px;box-shadow:0 8px 24px rgba(15,23,42,.06);">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-              <h3 style="margin:0;color:#a21caf;font-size:18px;line-height:1.25;">{_lms_esc(title)}</h3>
-            </div>
-            <div style="font-size:14px;color:#1f2937;line-height:1.55;">{body_html}</div>
-          </article>
-        '''
-
-    public_html = list_card_items(_pdf_lines(form.get("public_cible")))
-    prereq_html = list_card_items(form.get("prerequis") or [], lambda p: p.get("titre") or "")
-    modalites_html = "".join(chip(ref_label(x), tone="pink") for x in (form.get("modalites_items") or [])) or '<span style="color:#64748b;">—</span>'
-    peda_html = list_card_items(form.get("methode_peda_items") or [])
-    eval_html = list_card_items(form.get("methode_eval_items") or [])
-
-    comp_stag_html = "".join(comp_chip(c, tone="blue") for c in (form.get("competences_stagiaires_items") or []))
-    if not comp_stag_html:
-        comp_stag_html = '<span style="color:#64748b;">Aucune compétence visée renseignée.</span>'
-
-    comp_form_html = "".join(comp_chip(c, tone="orange") for c in (form.get("competences_formateurs_items") or []))
-    if not comp_form_html:
-        comp_form_html = '<span style="color:#64748b;">Aucune compétence formateur renseignée.</span>'
-
-    obs_type_html = ""
-    if form.get("obs_type_form"):
-        obs_type_html = f'''
-          <div style="margin-top:10px;padding-top:10px;border-top:1px solid #e5e7eb;">
-            <div style="font-size:12px;color:#64748b;margin-bottom:4px;">Précision</div>
-            <div style="font-size:14px;font-weight:500;color:#111827;line-height:1.35;">{_lms_text(form.get("obs_type_form"))}</div>
-          </div>
-        '''
-
-    type_card_html = f'''
-          <div style="grid-column:1 / -1;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;padding:14px;min-height:78px;">
-            <div style="font-size:12px;color:#64748b;margin-bottom:6px;">Type</div>
-            <div style="font-size:18px;font-weight:600;color:#111827;line-height:1.22;">{type_formation}</div>
-            {obs_type_html}
-          </div>
-    '''
+    modalites_html = _lms_items(form.get("modalites_items") or [])
+    peda_html = _lms_items(form.get("methode_peda_items") or [])
+    eval_html = _lms_items(form.get("methode_eval_items") or [])
 
     content_cards = []
     for idx, l in enumerate(form.get("contenus") or [], start=1):
         comp_items = l.get("competences_liees_items") or []
         badges = "".join(
-            f'<span title="{_lms_esc(c.get("intitule") or "")}" style="display:inline-block;background:#0070c0;color:#fff;border-radius:8px;padding:5px 8px;margin:2px;font-size:11px;font-weight:800;">{_lms_text(c.get("code"), "—")}</span>'
+            f'<span class="ns-lms-badge" title="{_lms_esc(c.get("intitule") or "")}">{_lms_text(c.get("code"), "—")}</span>'
             for c in comp_items
         )
 
         if not badges:
-            badges = '<span style="font-size:12px;color:#64748b;">Compétences liées à préciser</span>'
+            badges = '<span class="ns-lms-muted">Aucune compétence liée</span>'
 
-        subject_items = []
-        for subject in _pdf_content_subjects(l.get("contenu")):
-            subject_items.append(
-                f'<li style="margin:5px 0;color:#1f2937;">{_lms_esc(subject)}</li>'
-            )
-
-        subjects_html = (
-            '<ul style="margin:8px 0 0 18px;padding:0;line-height:1.45;">'
-            + "".join(subject_items)
-            + '</ul>'
-        ) if subject_items else '<p style="margin:8px 0 0 0;color:#64748b;">—</p>'
-
-        content_cards.append(f'''
-          <article style="background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;margin:0 0 16px 0;box-shadow:0 10px 26px rgba(15,23,42,.07);">
-            <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;background:linear-gradient(135deg,#fce7ff 0%,#ffffff 100%);border-bottom:1px solid #f0abfc;padding:16px 18px;">
-              <div>
-                <div style="display:inline-block;background:#e144f0;color:#fff;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800;margin-bottom:8px;">Module {idx}</div>
-                <h3 style="margin:0;color:#111827;font-size:18px;line-height:1.25;">{_lms_text(l.get("titre_sequence"), "Contenu")}</h3>
-              </div>
-              <div style="min-width:110px;text-align:right;">{badges}</div>
+        content_cards.append(f"""
+        <article class="ns-lms-content-card">
+          <div class="ns-lms-content-head">
+            <div>
+              <div class="ns-lms-content-index">Contenu {idx}</div>
+              <h3>{_lms_text(l.get("titre_sequence"), "Contenu")}</h3>
             </div>
-            <div style="padding:16px 18px 18px 18px;">
-              <p style="margin:0 0 12px 0;color:#a21caf;font-style:italic;line-height:1.45;"><strong>Objectif :</strong> {_lms_text(l.get("objectif"))}</p>
-              <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:14px;padding:13px 15px;">
-                <div style="font-weight:800;color:#111827;margin-bottom:4px;">Sujets abordés</div>
-                {subjects_html}
-              </div>
+            <div class="ns-lms-badges">{badges}</div>
+          </div>
+          <div class="ns-lms-content-body">
+            <p class="ns-lms-objective"><strong>Objectif :</strong> {_lms_text(l.get("objectif"))}</p>
+            <div class="ns-lms-subjects">
+              <strong>Sujets abordés</strong>
+              {_lms_subject_list(l.get("contenu"))}
             </div>
-          </article>
-        ''')
+          </div>
+        </article>
+        """)
 
     if not content_cards:
-        content_cards.append(
-            '<div style="background:#ffffff;border:1px dashed #cbd5e1;border-radius:16px;padding:18px;color:#64748b;">Aucun contenu détaillé n’est encore rattaché à cette formation.</div>'
-        )
+        content_cards.append('<p class="ns-lms-muted">Aucun contenu détaillé n’est encore rattaché à cette formation.</p>')
 
-    return f'''<style>
-.ns-lms-formation * {{ box-sizing:border-box; }}
-.ns-lms-formation a {{ color:inherit; }}
-@media (max-width:760px) {{
-  .ns-lms-hero-grid,
-  .ns-lms-grid-2,
-  .ns-lms-grid-3 {{ grid-template-columns:1fr !important; }}
-  .ns-lms-content-head {{ flex-direction:column !important; }}
+    obs_type = ""
+    if form.get("obs_type_form"):
+        obs_type = f"""
+        <div class="ns-lms-info-card">
+          <span>Certification / niveau reconnu</span>
+          <strong>{_lms_text(form.get("obs_type_form"))}</strong>
+        </div>
+        """
+
+    return f"""<style>
+.ns-lms-formation {{
+  --ns-accent:#ff7a35;
+  --ns-accent-soft:#fff7ed;
+  --ns-border:#e5e7eb;
+  --ns-text:#111827;
+  --ns-muted:#64748b;
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--ns-text);
+  line-height: 1.45;
+  max-width: 980px;
+  margin: 0 auto;
+}}
+.ns-lms-formation * {{
+  box-sizing: border-box;
+}}
+.ns-lms-hero {{
+  background: linear-gradient(135deg, #fff7ed 0%, #ffffff 72%);
+  border: 1px solid #fed7aa;
+  border-radius: 18px;
+  padding: 24px;
+  margin-bottom: 18px;
+}}
+.ns-lms-code {{
+  display: inline-block;
+  background: var(--ns-accent);
+  color: #fff;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}}
+.ns-lms-hero h1 {{
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.15;
+  color: var(--ns-text);
+}}
+.ns-lms-hero p {{
+  margin: 10px 0 0 0;
+  color: var(--ns-muted);
+}}
+.ns-lms-grid {{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}}
+.ns-lms-info-card,
+.ns-lms-card {{
+  border: 1px solid var(--ns-border);
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px;
+}}
+.ns-lms-info-card {{
+  background: #f8fafc;
+}}
+.ns-lms-info-card span {{
+  display: block;
+  color: var(--ns-muted);
+  font-size: 12px;
+  margin-bottom: 4px;
+}}
+.ns-lms-info-card strong {{
+  display: block;
+  font-size: 15px;
+  color: var(--ns-text);
+}}
+.ns-lms-section {{
+  margin-top: 20px;
+}}
+.ns-lms-section h2 {{
+  font-size: 18px;
+  color: #c2410c;
+  margin: 0 0 10px 0;
+}}
+.ns-lms-card h3 {{
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  color: var(--ns-text);
+}}
+.ns-lms-card p {{
+  margin: 0;
+}}
+.ns-lms-two {{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}}
+.ns-lms-three {{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}}
+.ns-lms-formation ul {{
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}}
+.ns-lms-formation li {{
+  margin: 3px 0;
+}}
+.ns-lms-content-card {{
+  border: 1px solid var(--ns-border);
+  border-radius: 16px;
+  background: #fff;
+  margin-bottom: 14px;
+  overflow: hidden;
+}}
+.ns-lms-content-head {{
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  background: var(--ns-accent-soft);
+  border-bottom: 1px solid #fed7aa;
+  padding: 14px 16px;
+}}
+.ns-lms-content-index {{
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}}
+.ns-lms-content-head h3 {{
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.25;
+}}
+.ns-lms-content-body {{
+  padding: 14px 16px 16px 16px;
+}}
+.ns-lms-objective {{
+  margin: 0 0 10px 0;
+}}
+.ns-lms-subjects strong {{
+  display: block;
+  margin-bottom: 4px;
+}}
+.ns-lms-badges {{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+  min-width: 140px;
+}}
+.ns-lms-badge {{
+  display: inline-block;
+  border: 1px solid #fed7aa;
+  background: #fff;
+  color: #9a3412;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}}
+.ns-lms-muted {{
+  color: var(--ns-muted);
+}}
+@media (max-width: 760px) {{
+  .ns-lms-grid,
+  .ns-lms-two,
+  .ns-lms-three {{
+    grid-template-columns: 1fr;
+  }}
+  .ns-lms-content-head {{
+    flex-direction: column;
+  }}
+  .ns-lms-badges {{
+    justify-content: flex-start;
+  }}
 }}
 </style>
 
-<div class="ns-lms-formation" style="font-family:Arial,Helvetica,sans-serif;color:#111827;line-height:1.5;max-width:1080px;margin:0 auto;background:#f8fafc;padding:22px;border-radius:22px;">
-  <section style="background:linear-gradient(135deg,#e144f0 0%,#a21caf 100%);border-radius:24px;padding:28px;color:#fff;box-shadow:0 18px 42px rgba(162,28,175,.24);margin-bottom:18px;">
-    <div class="ns-lms-hero-grid" style="display:grid;grid-template-columns:1.6fr .9fr;gap:22px;align-items:stretch;">
-      <div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-          <span style="display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:800;">{code}</span>
-          <span style="display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.26);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;">{domaine}</span>
-        </div>
-        <h1 style="margin:0;font-size:34px;line-height:1.12;color:#fff;">{titre}</h1>
-        <p style="margin:16px 0 0 0;font-size:16px;line-height:1.55;color:rgba(255,255,255,.92);">{presentation}</p>
-      </div>
-      <aside style="background:rgba(255,255,255,.96);border-radius:20px;padding:18px;color:#111827;box-shadow:inset 0 0 0 1px rgba(255,255,255,.45);">
-        <div style="font-size:13px;color:#64748b;margin-bottom:12px;font-weight:700;">Informations clés</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          {metric_card("Durée", duree, highlight=True)}
-          {metric_card("À partir de", tarif, highlight=True)}
-          {type_card_html}
-        </div>
-      </aside>
+<div class="ns-lms-formation">
+  <header class="ns-lms-hero">
+    <span class="ns-lms-code">{code}</span>
+    <h1>{titre}</h1>
+    <p>Fiche descriptive de formation</p>
+  </header>
+
+  <section class="ns-lms-grid">
+    <div class="ns-lms-info-card"><span>Domaine</span><strong>{domaine}</strong></div>
+    <div class="ns-lms-info-card"><span>Durée</span><strong>{duree}</strong></div>
+    <div class="ns-lms-info-card"><span>Type</span><strong>{_lms_text(form.get("type_formation"))}</strong></div>
+    <div class="ns-lms-info-card"><span>Fournisseur</span><strong>{fournisseur}</strong></div>
+    <div class="ns-lms-info-card"><span>Tarif mini</span><strong>{tarif}</strong></div>
+    <div class="ns-lms-info-card"><span>État</span><strong>{_lms_text(form.get("etat"))}</strong></div>
+    {obs_type}
+  </section>
+
+  <section class="ns-lms-section">
+    <h2>Objectif pédagogique</h2>
+    <div class="ns-lms-card">
+      <p>{_lms_nl2br(form.get("objectifs") or "—")}</p>
     </div>
   </section>
 
-  <section class="ns-lms-grid-2" style="display:grid;grid-template-columns:1.25fr .75fr;gap:16px;margin-bottom:16px;">
-    {soft_card("Objectif pédagogique", f'<p style="margin:0;">{objectif}</p>', "🎯")}
-    {soft_card("Modalités possibles", modalites_html, "🧭")}
-  </section>
-
-  <section class="ns-lms-grid-3" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:16px;">
-    {soft_card("Public visé", public_html, "👥")}
-    {soft_card("Prérequis", prereq_html, "✅")}
-    {soft_card("Organisme", f'<p style="margin:0;"><strong>{fournisseur}</strong></p>{obs_type_html}', "🏢")}
-  </section>
-
-  <section style="background:#ffffff;border:1px solid #e5e7eb;border-radius:20px;padding:20px;margin-bottom:16px;box-shadow:0 10px 26px rgba(15,23,42,.06);">
-    <h2 style="margin:0 0 12px 0;color:#a21caf;font-size:22px;line-height:1.25;">Compétences développées</h2>
-    <div class="ns-lms-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:16px;padding:15px;">
-        <h3 style="margin:0 0 10px 0;font-size:16px;color:#075985;">Pour les apprenants</h3>
-        {comp_stag_html}
-      </div>
-      <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:16px;padding:15px;">
-        <h3 style="margin:0 0 10px 0;font-size:16px;color:#c2410c;">Pour le formateur</h3>
-        {comp_form_html}
-      </div>
+  <section class="ns-lms-section">
+    <h2>Présentation</h2>
+    <div class="ns-lms-card">
+      <p>{_lms_nl2br(form.get("presentation") or "—")}</p>
     </div>
   </section>
 
-  <section class="ns-lms-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
-    {soft_card("Méthodes pédagogiques", peda_html, "🧩")}
-    {soft_card("Évaluation des acquis", eval_html, "📌")}
+  <section class="ns-lms-section ns-lms-two">
+    <div class="ns-lms-card">
+      <h3>Public cible</h3>
+      {public_html}
+    </div>
+    <div class="ns-lms-card">
+      <h3>Prérequis évaluables</h3>
+      {prereq_html}
+    </div>
   </section>
 
-  <section style="margin:20px 0 18px 0;">
-    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:12px;">
-      <div>
-        <div style="color:#e144f0;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;">Programme</div>
-        <h2 style="margin:2px 0 0 0;color:#111827;font-size:26px;line-height:1.2;">Contenu de la formation</h2>
-      </div>
+  <section class="ns-lms-section ns-lms-two">
+    <div class="ns-lms-card">
+      <h3>Compétences visées pour les stagiaires</h3>
+      {comp_stag_html}
     </div>
+    <div class="ns-lms-card">
+      <h3>Compétences requises pour le formateur</h3>
+      {comp_form_html}
+    </div>
+  </section>
+
+  <section class="ns-lms-section ns-lms-three">
+    <div class="ns-lms-card">
+      <h3>Modalités possibles</h3>
+      {modalites_html}
+    </div>
+    <div class="ns-lms-card">
+      <h3>Méthodes pédagogiques</h3>
+      {peda_html}
+    </div>
+    <div class="ns-lms-card">
+      <h3>Méthodes d’évaluation</h3>
+      {eval_html}
+    </div>
+  </section>
+
+  <section class="ns-lms-section">
+    <h2>Programme de formation</h2>
     {"".join(content_cards)}
   </section>
-
-  <section style="background:#ffffff;border:1px solid #e5e7eb;border-radius:20px;padding:18px;margin-top:18px;margin-bottom:14px;box-shadow:0 8px 22px rgba(15,23,42,.05);">
-    <div style="color:#e144f0;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Infos pratiques</div>
-
-    <div class="ns-lms-grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-      <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:16px;padding:14px;">
-        <div style="font-weight:800;color:#111827;margin-bottom:6px;">Délai d’accès</div>
-        <p style="margin:0;color:#374151;font-size:13px;line-height:1.45;">
-          Le délai d'accès entre la demande de formation et le début de prestation est estimé à environ 1 mois.
-        </p>
-      </div>
-
-      <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:16px;padding:14px;">
-        <div style="font-weight:800;color:#111827;margin-bottom:6px;">Accessibilité handicap</div>
-        <p style="margin:0;color:#374151;font-size:13px;line-height:1.45;">
-          Nos formations sont accessibles aux personnes en situation de handicap. Veuillez contacter notre référent handicap :
-          <strong>{_lms_esc(HANDICAP_NAME)}</strong> -
-          <a href="mailto:{HANDICAP_EMAIL}" style="color:#a21caf;text-decoration:underline;">{_lms_esc(HANDICAP_EMAIL)}</a> -
-          {_lms_esc(HANDICAP_PHONE)}.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <section style="background:#111827;border-radius:22px;padding:22px;color:#fff;margin-top:0;display:block;">
-    <div class="ns-lms-grid-2" style="display:grid;grid-template-columns:1.25fr .75fr;gap:18px;align-items:center;">
-      <div>
-        <h2 style="margin:0 0 8px 0;font-size:24px;line-height:1.25;color:#fff;">Vous souhaitez en savoir plus ?</h2>
-        <p style="margin:0;color:#d1d5db;line-height:1.55;">Demandez une information, une adaptation ou une étude personnalisée de cette formation.</p>
-      </div>
-
-      <div style="text-align:right;">
-        <a href="mailto:{CONTACT_EMAIL}" style="display:inline-block;background:#e144f0;color:#fff;text-decoration:none;border-radius:999px;padding:12px 18px;font-weight:800;margin-bottom:10px;">Demander des informations</a>
-
-        <div style="font-size:13px;color:#f9fafb;font-weight:700;line-height:1.45;">{_lms_esc(CONTACT_NAME)}</div>
-        <div style="font-size:13px;color:#d1d5db;line-height:1.45;">
-          <a href="mailto:{CONTACT_EMAIL}" style="color:#d1d5db;text-decoration:underline;">{_lms_esc(CONTACT_EMAIL)}</a>
-        </div>
-        <div style="font-size:13px;color:#d1d5db;line-height:1.45;">{_lms_esc(CONTACT_PHONE)}</div>
-        <div style="font-size:13px;color:#d1d5db;line-height:1.45;">
-          <a href="https://{WEBSITE_URL}" target="_blank" rel="noopener" style="color:#d1d5db;text-decoration:underline;">{_lms_esc(WEBSITE_URL)}</a>
-        </div>
-      </div>
-    </div>
-  </section>
-</div>'''
+</div>"""
 
 def _build_plan_pdf_story(form: dict, plan: dict) -> list:
     styles = build_pdf_styles()
@@ -4932,591 +4868,6 @@ def learn_formation_fiche_html_lms(id_effectif: str, id_form: str, request: Requ
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"learn/formations fiche_html_lms error: {e}")
-
-
-# ======================================================
-# Publication LMS
-# ======================================================
-
-def _lms_html_hash(html_payload: str) -> str:
-    return hashlib.sha256(str(html_payload or "").encode("utf-8")).hexdigest()
-
-
-def _lms_publication_row(cur, oid: str, id_form: str, id_lms_config: str) -> Optional[dict]:
-    cur.execute(
-        """
-        SELECT
-          id_publication,
-          id_owner,
-          id_form,
-          id_lms_config,
-          provider_code,
-          external_id,
-          external_url,
-          last_sync_at,
-          sync_status,
-          sync_error,
-          html_hash,
-          archive,
-          created_at AS date_creation,
-          updated_at AS date_modification
-        FROM public.tbl_learn_lms_publication
-        WHERE id_owner = %s
-          AND id_form = %s
-          AND id_lms_config = %s
-          AND COALESCE(archive, FALSE) = FALSE
-        LIMIT 1
-        """,
-        (oid, id_form, id_lms_config),
-    )
-
-    return cur.fetchone()
-
-
-def _lms_write_publication_success(
-    cur,
-    oid: str,
-    id_form: str,
-    id_lms_config: str,
-    provider_code: str,
-    external_id: str,
-    external_url: str,
-    html_hash: str,
-) -> dict:
-    row = _lms_publication_row(cur, oid, id_form, id_lms_config)
-
-    if row:
-        cur.execute(
-            """
-            UPDATE public.tbl_learn_lms_publication
-            SET provider_code = %s,
-                external_id = %s,
-                external_url = %s,
-                last_sync_at = NOW(),
-                sync_status = 'synced',
-                sync_error = NULL,
-                html_hash = %s,
-                archive = FALSE,
-                updated_at = NOW()
-            WHERE id_publication = %s
-              AND id_owner = %s
-            RETURNING
-              id_publication,
-              id_owner,
-              id_form,
-              id_lms_config,
-              provider_code,
-              external_id,
-              external_url,
-              last_sync_at,
-              sync_status,
-              sync_error,
-              html_hash,
-              archive,
-              created_at AS date_creation,
-              updated_at AS date_modification
-            """,
-            (
-                provider_code,
-                external_id,
-                external_url or row.get("external_url"),
-                html_hash,
-                row.get("id_publication"),
-                oid,
-            ),
-        )
-    else:
-        cur.execute(
-            """
-            INSERT INTO public.tbl_learn_lms_publication
-              (
-                id_publication,
-                id_owner,
-                id_form,
-                id_lms_config,
-                provider_code,
-                external_id,
-                external_url,
-                last_sync_at,
-                sync_status,
-                sync_error,
-                html_hash,
-                archive,
-                created_at,
-                updated_at
-              )
-            VALUES
-              (
-                gen_random_uuid()::text,
-                %s, %s, %s, %s,
-                %s, %s,
-                NOW(),
-                'synced',
-                NULL,
-                %s,
-                FALSE,
-                NOW(),
-                NOW()
-              )
-            RETURNING
-              id_publication,
-              id_owner,
-              id_form,
-              id_lms_config,
-              provider_code,
-              external_id,
-              external_url,
-              last_sync_at,
-              sync_status,
-              sync_error,
-              html_hash,
-              archive,
-              created_at AS date_creation,
-              updated_at AS date_modification
-            """,
-            (
-                oid,
-                id_form,
-                id_lms_config,
-                provider_code,
-                external_id,
-                external_url,
-                html_hash,
-            ),
-        )
-
-    return cur.fetchone() or {}
-
-
-def _lms_write_publication_error(
-    cur,
-    oid: str,
-    id_form: str,
-    id_lms_config: str,
-    provider_code: str,
-    external_id: Optional[str],
-    html_hash: str,
-    error_value: Any,
-) -> dict:
-    try:
-        err_txt = json.dumps(error_value, ensure_ascii=False)[:4000]
-    except Exception:
-        err_txt = str(error_value or "")[:4000]
-
-    row = _lms_publication_row(cur, oid, id_form, id_lms_config)
-
-    if row:
-        cur.execute(
-            """
-            UPDATE public.tbl_learn_lms_publication
-            SET provider_code = %s,
-                external_id = COALESCE(%s, external_id),
-                last_sync_at = NOW(),
-                sync_status = 'error',
-                sync_error = %s,
-                html_hash = %s,
-                archive = FALSE,
-                updated_at = NOW()
-            WHERE id_publication = %s
-              AND id_owner = %s
-            RETURNING
-              id_publication,
-              id_owner,
-              id_form,
-              id_lms_config,
-              provider_code,
-              external_id,
-              external_url,
-              last_sync_at,
-              sync_status,
-              sync_error,
-              html_hash,
-              archive,
-              created_at AS date_creation,
-              updated_at AS date_modification
-            """,
-            (
-                provider_code,
-                external_id,
-                err_txt,
-                html_hash,
-                row.get("id_publication"),
-                oid,
-            ),
-        )
-    else:
-        cur.execute(
-            """
-            INSERT INTO public.tbl_learn_lms_publication
-              (
-                id_publication,
-                id_owner,
-                id_form,
-                id_lms_config,
-                provider_code,
-                external_id,
-                external_url,
-                last_sync_at,
-                sync_status,
-                sync_error,
-                html_hash,
-                archive,
-                created_at,
-                updated_at
-              )
-            VALUES
-              (
-                gen_random_uuid()::text,
-                %s, %s, %s, %s,
-                %s, NULL,
-                NOW(),
-                'error',
-                %s,
-                %s,
-                FALSE,
-                NOW(),
-                NOW()
-              )
-            RETURNING
-              id_publication,
-              id_owner,
-              id_form,
-              id_lms_config,
-              provider_code,
-              external_id,
-              external_url,
-              last_sync_at,
-              sync_status,
-              sync_error,
-              html_hash,
-              archive,
-              created_at AS date_creation,
-              updated_at AS date_modification
-            """,
-            (
-                oid,
-                id_form,
-                id_lms_config,
-                provider_code,
-                external_id,
-                err_txt,
-                html_hash,
-            ),
-        )
-
-    return cur.fetchone() or {}
-
-
-def _lms_form_name(form: dict) -> str:
-    titre = str(form.get("titre") or "").strip() or "Formation"
-    return titre[:180].strip()
-
-
-def _lms_config_json(cfg: dict) -> dict:
-    raw = (cfg or {}).get("config_json") or {}
-
-    if isinstance(raw, dict):
-        return raw
-
-    if isinstance(raw, str):
-        try:
-            parsed = json.loads(raw)
-            return parsed if isinstance(parsed, dict) else {}
-        except Exception:
-            return {}
-
-    return {}
-
-
-def _lms_code_custom_field_name(cfg: dict) -> str:
-    cfg_json = _lms_config_json(cfg)
-
-    field_name = (
-        cfg_json.get("code_form_field")
-        or cfg_json.get("code_formation_field")
-        or cfg_json.get("custom_field_code_formation")
-        or cfg_json.get("custom_field_code_form")
-        or "Code_form"
-    )
-
-    return str(field_name or "").strip()
-
-
-def _lms_form_custom_fields(form: dict, cfg: dict) -> dict:
-    code = str(form.get("code") or "").strip()
-    field_name = _lms_code_custom_field_name(cfg)
-
-    if not code or not field_name:
-        return {}
-
-    return {
-        field_name: code
-    }
-
-
-def _lms_drop_custom_fields_if_rejected(api_result: dict) -> bool:
-    if not api_result or api_result.get("ok"):
-        return False
-
-    chunks = [
-        api_result.get("error"),
-        api_result.get("raw"),
-    ]
-
-    parsed = api_result.get("json")
-    if isinstance(parsed, dict):
-        chunks.append(parsed.get("message"))
-
-        errors = parsed.get("errors")
-        if isinstance(errors, dict):
-            chunks.extend([
-                errors.get("message"),
-                errors.get("Message"),
-                errors.get("detail"),
-            ])
-        elif isinstance(errors, str):
-            chunks.append(errors)
-
-    blob = " ".join(str(x or "") for x in chunks).lower()
-
-    return (
-        "customfield" in blob
-        or "custom field" in blob
-        or "customfields" in blob
-        or "champ personnalisé" in blob
-        or "champ personnalise" in blob
-    )
-
-
-def _lms_lara_post_with_custom_field_fallback(api_base: str, api_id: str, path: str, payload: dict) -> dict:
-    api_result = learn_lms_api_post(api_base, api_id, path, payload)
-
-    if (
-        api_result.get("ok")
-        or "customFields" not in payload
-        or not _lms_drop_custom_fields_if_rejected(api_result)
-    ):
-        return api_result
-
-    retry_payload = dict(payload)
-    retry_payload.pop("customFields", None)
-
-    return learn_lms_api_post(api_base, api_id, path, retry_payload)
-
-
-def _lms_lara_payload_common(form: dict, html_payload: str, cfg: dict, resolved: dict) -> dict:
-    cfg_json = _lms_config_json(cfg)
-    visibility_type = learn_lms_safe_int(cfg_json.get("visibility_type"), 3)
-    language = learn_lms_safe_int(cfg_json.get("language"), 3)
-
-    payload = {
-        "name": _lms_form_name(form),
-        "categoryId": None,
-        "coverId": None,
-        "visibilityType": visibility_type,
-        "maxParticipants": 0,
-        "minParticipants": 0,
-        "type": str(resolved.get("workspace_type_id") or "").strip(),
-        "providerId": str(resolved.get("provider_id") or "").strip(),
-        "language": language,
-        "description": html_payload,
-        "shortDescription": learn_lms_short_description(
-            form.get("presentation") or form.get("objectifs") or form.get("titre") or "",
-            200,
-        ),
-        "subscriptionType": 1,
-        "startDate": "0001-01-01T00:00:00",
-        "endDate": "0001-01-01T00:00:00",
-        "isOverBookingSubscription": False,
-        "authorizationType": 0,
-        "needAdminApproval": False,
-        "enrolmentType": 0,
-        "externalLink": "",
-        "keywords": learn_lms_keywords(form),
-        "showAvailableSubscriptions": False,
-        "canDeclareMultipleTimes": False,
-        "autodeclarationPresenceActivitiesRequired": False,
-    }
-
-    custom_fields = _lms_form_custom_fields(form, cfg)
-    if custom_fields:
-        payload["customFields"] = custom_fields
-
-    return payload
-
-@router.get("/learn/formations/{id_effectif}/{id_form}/lms/status")
-def learn_formation_lms_status(id_effectif: str, id_form: str, request: Request):
-    auth = request.headers.get("Authorization", "")
-    u = learn_require_user(auth)
-
-    try:
-        fid = (id_form or "").strip()
-        if not fid:
-            raise HTTPException(status_code=400, detail="id_form manquant.")
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                profile = _learn_require_profile(cur, u, id_effectif)
-                oid = (profile.get("id_owner") or "").strip()
-
-                cfg = learn_lms_fetch_active_config(cur, oid, with_secret=False)
-                if not cfg or cfg.get("provider_code") != "lara":
-                    return {
-                        "configured": False,
-                        "provider_code": "manual",
-                        "published": False,
-                        "sync_status": "not_configured",
-                        "message": "Aucun connecteur LMS actif.",
-                    }
-
-                form = _fetch_form_detail(cur, oid, fid)
-                html_payload = _build_formation_lms_html(form)
-                current_hash = _lms_html_hash(html_payload)
-
-                row = _lms_publication_row(cur, oid, fid, cfg.get("id_lms_config"))
-
-        published = bool(row and row.get("external_id"))
-        sync_status = (row or {}).get("sync_status") or "jamais_sync"
-        outdated = bool(row and row.get("html_hash") and row.get("html_hash") != current_hash)
-
-        if outdated and sync_status == "synced":
-            sync_status = "outdated"
-
-        return {
-            "configured": True,
-            "provider_code": "lara",
-            "provider_label": "Lära",
-            "published": published,
-            "external_id": (row or {}).get("external_id"),
-            "external_url": (row or {}).get("external_url"),
-            "last_sync_at": (row or {}).get("last_sync_at"),
-            "sync_status": sync_status,
-            "sync_error": (row or {}).get("sync_error"),
-            "outdated": outdated,
-            "can_publish": _role_rank(profile.get("role_code")) >= 2,
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"learn/formations lms status error: {e}")
-
-
-@router.post("/learn/formations/{id_effectif}/{id_form}/lms/publish")
-def learn_formation_lms_publish(id_effectif: str, id_form: str, request: Request):
-    auth = request.headers.get("Authorization", "")
-    u = learn_require_user(auth)
-
-    try:
-        fid = (id_form or "").strip()
-        if not fid:
-            raise HTTPException(status_code=400, detail="id_form manquant.")
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                profile = _learn_require_profile(cur, u, id_effectif)
-                _learn_require_min_role(profile, "supervisor")
-                oid = (profile.get("id_owner") or "").strip()
-
-                cfg = learn_lms_fetch_active_config(cur, oid, with_secret=True)
-                if not cfg or cfg.get("provider_code") != "lara":
-                    raise HTTPException(status_code=400, detail="Aucun connecteur Lära actif.")
-
-                id_lms_config = str(cfg.get("id_lms_config") or "").strip()
-                if not id_lms_config:
-                    raise HTTPException(status_code=400, detail="Configuration LMS invalide.")
-
-                form = _fetch_form_detail(cur, oid, fid)
-                html_payload = _build_formation_lms_html(form)
-                html_hash = _lms_html_hash(html_payload)
-
-                resolved = learn_lms_resolve_lara_defaults(cfg)
-                existing = _lms_publication_row(cur, oid, fid, id_lms_config)
-
-                api_base = cfg.get("base_url") or ""
-                secret = cfg.get("secret_json") or {}
-                api_id = secret.get("api_id") or ""
-
-                external_id = str((existing or {}).get("external_id") or "").strip()
-                action = "update" if external_id else "create"
-
-                if external_id:
-                    payload = {
-                        "id": external_id,
-                        "name": _lms_form_name(form),
-                        "description": html_payload,
-                        "shortDescription": learn_lms_short_description(
-                            form.get("presentation") or form.get("objectifs") or form.get("titre") or "",
-                            200,
-                        ),
-                        "keywords": learn_lms_keywords(form),
-                    }
-
-                    custom_fields = _lms_form_custom_fields(form, cfg)
-                    if custom_fields:
-                        payload["customFields"] = custom_fields
-
-                    api_result = _lms_lara_post_with_custom_field_fallback(api_base, api_id, "workspace/edit", payload)
-                else:
-                    payload = _lms_lara_payload_common(form, html_payload, cfg, resolved)
-                    api_result = _lms_lara_post_with_custom_field_fallback(api_base, api_id, "workspace/create", payload)
-
-                    if api_result.get("ok"):
-                        external_id = learn_lms_extract_workspace_id(api_result.get("json"))
-
-                if not api_result.get("ok") or not external_id:
-                    saved = _lms_write_publication_error(
-                        cur,
-                        oid,
-                        fid,
-                        id_lms_config,
-                        "lara",
-                        external_id or None,
-                        html_hash,
-                        api_result,
-                    )
-                    conn.commit()
-
-                    raise HTTPException(status_code=400, detail={
-                        "message": "Publication Lära impossible.",
-                        "publication": saved,
-                        "response": api_result,
-                    })
-
-                external_url = str((existing or {}).get("external_url") or "").strip()
-
-                geturl_result = learn_lms_api_post(api_base, api_id, "workspace/geturl", {"id": external_id})
-                if geturl_result.get("ok"):
-                    external_url = learn_lms_extract_url(geturl_result.get("json")) or external_url
-
-                saved = _lms_write_publication_success(
-                    cur,
-                    oid,
-                    fid,
-                    id_lms_config,
-                    "lara",
-                    external_id,
-                    external_url,
-                    html_hash,
-                )
-
-                conn.commit()
-
-        return {
-            "ok": True,
-            "provider_code": "lara",
-            "action": action,
-            "action_label": "mise à jour" if action == "update" else "créée",
-            "external_id": external_id,
-            "external_url": external_url,
-            "publication": saved,
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"learn/formations lms publish error: {e}")
-
 
 @router.get("/learn/formations/{id_effectif}/{id_form}/fiche_pdf")
 def learn_formation_fiche_pdf(id_effectif: str, id_form: str, request: Request):
