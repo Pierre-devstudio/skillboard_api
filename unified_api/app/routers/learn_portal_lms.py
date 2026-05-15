@@ -130,6 +130,8 @@ def _lms_compare_remote_with_local(remote_items: list, local_rows: list) -> tupl
             item["local_code"] = local.get("code")
             item["local_titre"] = local.get("titre")
             item["local_sync_status"] = local.get("sync_status")
+            item["type_lms_id"] = remote.get("type_lms_id")
+            item["type_lms_label"] = remote.get("type_lms_label")
             linked.append(item)
             continue
 
@@ -149,6 +151,8 @@ def _lms_compare_remote_with_local(remote_items: list, local_rows: list) -> tupl
             "external_id": remote.get("external_id"),
             "external_url": remote.get("external_url"),
             "visibility_label": remote.get("visibility_label"),
+            "type_lms_id": remote.get("type_lms_id"),
+            "type_lms_label": remote.get("type_lms_label"),
             "custom_fields": remote.get("custom_fields") or {},
             "match_status": "remote_only",
         })
@@ -595,6 +599,8 @@ def learn_formations_lms_remote(
             "provider_label": "Lära",
             "code_field": remote_result.get("code_field"),
             "workspace_type_id": remote_result.get("workspace_type_id"),
+            "recovery_type_ids": remote_result.get("recovery_type_ids") or [],
+            "workspace_types": remote_result.get("workspace_types") or [],
             "items": remote_only,
             "linked_items": linked,
             "remote_count": len(remote_items),

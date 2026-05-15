@@ -2592,6 +2592,7 @@ function renderContentCompBadges(l){
       if (lmsOnly){
         sub.textContent = [
           "Présente dans Lära",
+          it.type_lms_label ? `Type LMS : ${it.type_lms_label}` : "",
           it.visibility_label || "",
           it.external_id ? `ID ${it.external_id}` : ""
         ].filter(Boolean).join(" • ");
@@ -2618,11 +2619,11 @@ function renderContentCompBadges(l){
         lmsBadge.textContent = "LMS uniquement";
         right.appendChild(lmsBadge);
 
-        if (it.visibility_label){
-          const vis = document.createElement("span");
-          vis.className = "sb-badge sb-badge--state";
-          vis.textContent = it.visibility_label;
-          right.appendChild(vis);
+        if (it.type_lms_label){
+          const typ = document.createElement("span");
+          typ.className = "sb-badge sb-badge--state";
+          typ.textContent = it.type_lms_label;
+          right.appendChild(typ);
         }
       } else {
         const domLabel = (it.domaine_titre_court || it.domaine_titre || "").toString().trim();

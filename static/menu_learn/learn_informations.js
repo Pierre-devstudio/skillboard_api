@@ -1,6 +1,8 @@
 (function () {
   let _bound = false;
   let _config = null;
+  let _laraworkspacetypes = [];
+  let _selectedlararecoverytypeids = new set();
 
   function byId(id){ return document.getElementById(id); }
 
@@ -110,6 +112,58 @@
     box.innerHTML = htmlEsc(msg).replaceAll("\n", "<br>");
   }
 
+  function renderLaraRecoveryTypes(){
+    const host = byId("lmsRecoveryTypesList");
+    if (!host) return;
+
+    host.innerHTML = "";
+
+    if (!_laraWorkspaceTypes.length){
+      const empty = document.createElement("div");
+      empty.className = "card-sub";
+      empty.textContent = "Aucun type chargé. Si rien n’est sélectionné, tous les types exploitables seront récupérés.";
+      host.appendChild(empty);
+      return;
+    }
+
+    _laraWorkspaceTypes.forEach(t => {
+      const id = String(t?.id || "").trim();
+      if (!id) return;
+
+      const label = String(t?.label || id).trim();
+
+      const item = document.createElement("label");
+      item.className = "lf-lms-type-check";
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.value = id;
+      cb.checked = _selectedLaraRecoveryTypeIds.has(id);
+
+      cb.addEventListener("change", () => {
+        if (cb.checked) _selectedLaraRecoveryTypeIds.add(id);
+        else _selectedLaraRecoveryTypeIds.delete(id);
+      });
+
+      const span = document.createElement("span");
+      span.textContent = label;
+
+      const meta = document.createElement("small");
+      meta.textContent = t?.is_default ? "Type par défaut" : "";
+
+      item.appendChild(cb);
+      item.appendChild(span);
+      item.appendChild(meta);
+
+      host.appendChild(item);
+    });
+  }
+
+  function setLaraWorkspaceTypes(rows){
+    _laraWorkspaceTypes = Array.isArray(rows) ? rows : [];
+    renderLaraRecoveryTypes();
+  }
+
   function syncProviderUi(){
     const provider = byId("lmsProvider")?.value || "manual";
     const isLara = provider === "lara";
@@ -149,6 +203,14 @@
     if (vis) vis.value = String(_config.visibility_type || 3);
     if (lang) lang.value = String(_config.language || 3);
 
+    _selectedLaraRecoveryTypeIds = new Set(
+      Array.isArray(_config.lara_recovery_type_ids)
+        ? _config.lara_recovery_type_ids.map(x => String(x || "").trim()).filter(Boolean)
+        : []
+    );
+
+    renderLaraRecoveryTypes();
+
     if (hint){
       hint.className = `lf-lms-secret-hint ${_config.has_secret ? "is-ok" : "is-empty"}`;
       hint.textContent = _config.has_secret
@@ -177,7 +239,8 @@
       base_url: baseUrl,
       api_id: provider === "lara" ? (byId("lmsApiId")?.value || "").trim() : "",
       visibility_type: parseInt(byId("lmsVisibilityType")?.value || "3", 10),
-      language: parseInt(byId("lmsLanguage")?.value || "3", 10)
+      language: parseInt(byId("lmsLanguage")?.value || "3", 10),
+      lara_recovery_type_ids: Array.from(_selectedLaraRecoveryTypeIds)
     };
   }
 
@@ -232,14 +295,34 @@
       { method:"POST" }
     );
 
+    setLaraWorkspaceTypes(res?.workspace_types || []);
+
     setStatus(
       "ok",
       [
         res?.message || "Connexion validée.",
-        res?.workspace_type_label ? `Type : ${res.workspace_type_label}` : "",
-        res?.provider_label ? `Fournisseur : ${res.provider_label}` : ""
+        res?.workspace_type_label ? `Type publication : ${res.workspace_type_label}` : "",
+        res?.provider_label ? `Fournisseur : ${res.provider_label}` : "",
+        Array.isArray(res?.workspace_types) ? `Types récupérables : ${res.workspace_types.length}` : ""
       ].filter(Boolean).join("\n")
     );
+  }
+
+  async function loadLaraTypes(portal){
+    setStatus("info", "Lecture des types Lära…");
+
+    const effectifId = getEffectifId();
+    if (!effectifId) throw new Error("Profil Learn manquant (?id=...).");
+
+    await saveConfig(portal, { silent:true });
+
+    const res = await portal.apiJson(
+      `${portal.apiBase}/learn/informations/${encodeURIComponent(effectifId)}/lms/test`,
+      { method:"POST" }
+    );
+
+    setLaraWorkspaceTypes(res?.workspace_types || []);
+    setStatus("ok", `Types Lära chargés : ${(res?.workspace_types || []).length}`);
   }
 
   function bindOnce(portal){
@@ -269,6 +352,22 @@
         setStatus("error", msg);
         console.error("Erreur test LMS", e);
       }
+    });
+
+    byId("btnLmsLoadTypes")?.addEventListener("click", async () => {
+      try{
+        await loadLaraTypes(portal);
+      } catch(e){
+        const msg = getErrorMessage(e);
+        setStatus("error", msg);
+        console.error("Erreur chargement types LMS", e);
+      }
+    });
+
+    byId("btnLmsClearTypes")?.addEventListener("click", () => {
+      _selectedLaraRecoveryTypeIds = new Set();
+      renderLaraRecoveryTypes();
+      setStatus("info", "Aucun type sélectionné : tous les types exploitables seront récupérés.");
     });
   }
 

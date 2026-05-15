@@ -6,6 +6,7 @@ from app.routers.learn_portal_informations import (
     learn_lms_extract_url,
     learn_lms_extract_workspace_id,
     learn_lms_keywords,
+    learn_lms_localized_text,
     learn_lms_resolve_lara_defaults,
     learn_lms_safe_int,
     learn_lms_short_description,
@@ -32,6 +33,96 @@ def _lara_config_json(cfg: dict) -> dict:
 
     return {}
 
+def _lara_recovery_type_ids(cfg: dict) -> set:
+    cfg_json = _lara_config_json(cfg)
+
+    raw = (
+        cfg_json.get("lara_recovery_type_ids")
+        or cfg_json.get("recovery_type_ids")
+        or cfg_json.get("workspace_recovery_type_ids")
+        or []
+    )
+
+    if isinstance(raw, str):
+        raw = [x.strip() for x in raw.split(",")]
+
+    if not isinstance(raw, list):
+        return set()
+
+    return {
+        str(x or "").strip()
+        for x in raw
+        if str(x or "").strip()
+    }
+
+
+def _lara_workspace_type_label(row: dict) -> str:
+    return (
+        learn_lms_localized_text(row.get("name"))
+        or _lara_text(row.get("name"))
+        or str(row.get("label") or "").strip()
+        or str(row.get("id") or "").strip()
+    )
+
+
+def list_workspace_types(cfg: dict) -> dict:
+    api_base = cfg.get("base_url") or ""
+    secret = cfg.get("secret_json") or {}
+    api_id = secret.get("api_id") or ""
+
+    api_result = learn_lms_api_post(api_base, api_id, "workspace/gettypes", {})
+
+    if not api_result.get("ok"):
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "items": [],
+            "response": api_result,
+        }
+
+    rows = api_result.get("json") or []
+    if not isinstance(rows, list):
+        rows = []
+
+    items = []
+
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+
+        tid = str(row.get("id") or "").strip()
+        if not tid:
+            continue
+
+        if row.get("isActive") is False:
+            continue
+
+        items.append({
+            "id": tid,
+            "label": _lara_workspace_type_label(row),
+            "type": str(row.get("type") or "").strip(),
+            "is_default": bool(row.get("isDefault")),
+        })
+
+    return {
+        "ok": True,
+        "provider_code": "lara",
+        "items": items,
+        "response": api_result,
+    }
+
+
+def _lara_workspace_type_map(cfg: dict) -> dict:
+    result = list_workspace_types(cfg)
+
+    if not result.get("ok"):
+        return {}
+
+    return {
+        str(x.get("id") or "").strip(): x
+        for x in (result.get("items") or [])
+        if str(x.get("id") or "").strip()
+    }
 
 def _lara_code_custom_field_name(cfg: dict) -> str:
     cfg_json = _lara_config_json(cfg)
@@ -212,13 +303,17 @@ def _lara_matches_workspace_type(row: dict, workspace_type_id: str) -> bool:
     return current == expected
 
 
-def _lara_normalize_remote_workspace(row: dict, cfg: dict) -> dict:
+def _lara_normalize_remote_workspace(row: dict, cfg: dict, type_map: Optional[dict] = None) -> dict:
     custom_fields = _lara_custom_fields(row)
     code_field = _lara_code_custom_field_name(cfg)
     code_form = _lara_text(custom_fields.get(code_field))
 
     external_id = _lara_workspace_external_id(row)
     name = _lara_workspace_name(row)
+
+    type_id = _lara_workspace_type_id(row)
+    type_row = (type_map or {}).get(type_id) or {}
+    type_label = str(type_row.get("label") or "").strip() or type_id
 
     visibility_type = _lara_text(
         _lara_first(row, ("visibilityType", "visibility_type", "visibility", "visibilityId"))
@@ -236,6 +331,8 @@ def _lara_normalize_remote_workspace(row: dict, cfg: dict) -> dict:
         "short_description": _lara_text(_lara_first(row, ("shortDescription", "summary", "descriptionShort"))),
         "visibility_type": visibility_type,
         "visibility_label": _lara_visibility_label(visibility_type),
+        "type_lms_id": type_id,
+        "type_lms_label": type_label,
         "updated_at": _lara_text(_lara_first(row, ("updatedAt", "updateDate", "modifiedAt", "lastUpdateDate"))),
         "created_at": _lara_text(_lara_first(row, ("createdAt", "creationDate", "dateCreation"))),
         "custom_fields": custom_fields,
@@ -243,13 +340,12 @@ def _lara_normalize_remote_workspace(row: dict, cfg: dict) -> dict:
 
 
 def list_remote_formations(cfg: dict, q: str = "", limit: int = 500) -> dict:
-    resolved = learn_lms_resolve_lara_defaults(cfg)
-
     api_base = cfg.get("base_url") or ""
     secret = cfg.get("secret_json") or {}
     api_id = secret.get("api_id") or ""
 
-    workspace_type_id = str(resolved.get("workspace_type_id") or "").strip()
+    selected_type_ids = _lara_recovery_type_ids(cfg)
+    type_map = _lara_workspace_type_map(cfg)
 
     api_result = learn_lms_api_post(
         api_base,
@@ -278,10 +374,12 @@ def list_remote_formations(cfg: dict, q: str = "", limit: int = 500) -> dict:
         if not isinstance(row, dict):
             continue
 
-        if not _lara_matches_workspace_type(row, workspace_type_id):
+        type_id = _lara_workspace_type_id(row)
+
+        if selected_type_ids and type_id and type_id not in selected_type_ids:
             continue
 
-        item = _lara_normalize_remote_workspace(row, cfg)
+        item = _lara_normalize_remote_workspace(row, cfg, type_map)
 
         if not item.get("external_id"):
             continue
@@ -291,6 +389,7 @@ def list_remote_formations(cfg: dict, q: str = "", limit: int = 500) -> dict:
             item.get("code") or "",
             item.get("titre") or "",
             item.get("short_description") or "",
+            item.get("type_lms_label") or "",
         ]).lower()
 
         if query and query not in haystack:
@@ -304,8 +403,9 @@ def list_remote_formations(cfg: dict, q: str = "", limit: int = 500) -> dict:
     return {
         "ok": True,
         "provider_code": "lara",
-        "workspace_type_id": workspace_type_id,
         "code_field": _lara_code_custom_field_name(cfg),
+        "recovery_type_ids": sorted(selected_type_ids),
+        "workspace_types": list(type_map.values()),
         "items": items,
         "total_raw": len(raw_rows),
         "response": api_result,

@@ -110,13 +110,32 @@ def learn_lms_safe_int(value: Any, default: int = 3) -> int:
         return default
 
 
-def learn_lms_config_json(provider_code: str, visibility_type: int = 3, language: int = 3) -> dict:
+def learn_lms_config_json(
+    provider_code: str,
+    visibility_type: int = 3,
+    language: int = 3,
+    lara_recovery_type_ids: Optional[list] = None,
+) -> dict:
     if provider_code != "lara":
         return {}
+
+    clean_type_ids = []
+
+    if isinstance(lara_recovery_type_ids, list):
+        seen = set()
+
+        for x in lara_recovery_type_ids:
+            tid = str(x or "").strip()
+            if not tid or tid in seen:
+                continue
+
+            seen.add(tid)
+            clean_type_ids.append(tid)
 
     return {
         "visibility_type": learn_lms_safe_int(visibility_type, 3),
         "language": learn_lms_safe_int(language, 3),
+        "lara_recovery_type_ids": clean_type_ids,
     }
 
 
@@ -130,6 +149,7 @@ def learn_lms_public_config(row: Optional[dict]) -> dict:
             "has_secret": False,
             "visibility_type": 3,
             "language": 3,
+            "lara_recovery_type_ids": [],
             "actif": False,
         }
 
@@ -151,6 +171,11 @@ def learn_lms_public_config(row: Optional[dict]) -> dict:
         "has_secret": bool(row.get("has_secret")),
         "visibility_type": learn_lms_safe_int(cfg.get("visibility_type"), 3),
         "language": learn_lms_safe_int(cfg.get("language"), 3),
+        "lara_recovery_type_ids": [
+            str(x or "").strip()
+            for x in (cfg.get("lara_recovery_type_ids") or [])
+            if str(x or "").strip()
+        ] if isinstance(cfg.get("lara_recovery_type_ids"), list) else [],
         "actif": bool(row.get("actif")),
     }
 
@@ -496,6 +521,7 @@ class LearnLmsConfigPayload(BaseModel):
     api_id: Optional[str] = None
     visibility_type: Optional[int] = 3
     language: Optional[int] = 3
+    lara_recovery_type_ids: Optional[list] = None
 
 
 # ======================================================
@@ -536,6 +562,7 @@ def learn_informations_lms_config_save(id_effectif: str, payload: LearnLmsConfig
             provider_code,
             visibility_type=learn_lms_safe_int(payload.visibility_type, 3),
             language=learn_lms_safe_int(payload.language, 3),
+            lara_recovery_type_ids=payload.lara_recovery_type_ids,
         )
 
         if provider_code == "lara" and not base_url:
@@ -690,6 +717,28 @@ def learn_informations_lms_config_test(id_effectif: str, request: Request):
 
         resolved = learn_lms_resolve_lara_defaults(cfg)
 
+        r_types = learn_lms_api_post(cfg.get("base_url") or "", (cfg.get("secret_json") or {}).get("api_id") or "", "workspace/gettypes", {})
+        workspace_types = []
+
+        if r_types.get("ok") and isinstance(r_types.get("json"), list):
+            for row in r_types.get("json") or []:
+                if not isinstance(row, dict):
+                    continue
+
+                tid = str(row.get("id") or "").strip()
+                if not tid:
+                    continue
+
+                if row.get("isActive") is False:
+                    continue
+
+                workspace_types.append({
+                    "id": tid,
+                    "label": learn_lms_localized_text(row.get("name")) or tid,
+                    "type": str(row.get("type") or "").strip(),
+                    "is_default": bool(row.get("isDefault")),
+                })
+
         return {
             "ok": True,
             "provider_code": "lara",
@@ -698,6 +747,7 @@ def learn_informations_lms_config_test(id_effectif: str, request: Request):
             "workspace_type_label": resolved.get("workspace_type_label"),
             "provider_id": resolved.get("provider_id"),
             "provider_label": resolved.get("provider_label"),
+            "workspace_types": workspace_types,
             "message": "Connexion Lära validée.",
         }
 
