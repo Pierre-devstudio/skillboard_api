@@ -1340,10 +1340,17 @@ def learn_formation_plan_lms_publish(
                 external_id = publish_result.get("external_id")
                 external_url = publish_result.get("external_url")
 
-                sync_status = "synced" if publish_result.get("sections_write_ok") else "partial"
+                sync_status = "synced"
                 sync_error = None
 
-                if sync_status == "partial":
+                if publish_result.get("diagnostic_only"):
+                    sync_status = "partial"
+                    sync_error = json.dumps({
+                        "message": "Session Lära créée/mise à jour. Diagnostic de découpage uniquement.",
+                        "diagnostic_only": True,
+                    }, ensure_ascii=False)[:4000]
+                elif not publish_result.get("sections_write_ok"):
+                    sync_status = "partial"
                     sync_error = json.dumps({
                         "message": "Session créée/mise à jour, mais écriture des sections incomplète.",
                         "sections_failed": publish_result.get("sections_failed") or [],
@@ -1376,6 +1383,13 @@ def learn_formation_plan_lms_publish(
             "external_id": external_id,
             "external_url": external_url,
             "publication": saved,
+            "diagnostic_only": bool(publish_result.get("diagnostic_only")),
+            "diagnostic_message": publish_result.get("diagnostic_message"),
+            "session_payload": publish_result.get("session_payload"),
+            "session_response": publish_result.get("session_response"),
+            "session_detail": publish_result.get("session_detail"),
+            "resources_after": resources_after,
+            "expected_sections": publish_result.get("expected_sections") or [],
             "sections_write_attempted": publish_result.get("sections_write_attempted"),
             "sections_write_ok": publish_result.get("sections_write_ok"),
             "sections_created": publish_result.get("sections_created") or [],

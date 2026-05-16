@@ -822,6 +822,51 @@ def list_plan_sessions(cfg: dict, workspace_id: str) -> dict:
         "response": api_result,
     }
 
+def get_session_detail(cfg: dict, session_id: str) -> dict:
+    sid = str(session_id or "").strip()
+
+    if not sid:
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "item": None,
+            "response": {"error": "session_id manquant."},
+        }
+
+    api_base = cfg.get("base_url") or ""
+    secret = cfg.get("secret_json") or {}
+    api_id = secret.get("api_id") or ""
+
+    api_result = learn_lms_api_post(
+        api_base,
+        api_id,
+        "workspaceinstance/get",
+        {"id": sid},
+    )
+
+    if not api_result.get("ok"):
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "item": None,
+            "response": api_result,
+        }
+
+    raw = api_result.get("json")
+
+    item = {}
+    if isinstance(raw, dict):
+        item = raw
+    else:
+        item = {"raw": raw}
+
+    return {
+        "ok": True,
+        "provider_code": "lara",
+        "item": item,
+        "normalized": _lara_normalize_session(item),
+        "response": api_result,
+    }
 
 def get_session_resources(cfg: dict, session_id: str) -> dict:
     sid = str(session_id or "").strip()
@@ -997,6 +1042,16 @@ def publish_plan_structure(
     formation_publication: dict,
     existing_plan_publication: Optional[dict] = None,
 ) -> dict:
+    """
+    Synchronisation V1 contrôlée :
+    - crée/met à jour la session Lära correspondant au plan pédagogique ;
+    - ne tente plus de créer des ressources ou sections ;
+    - récupère le détail brut de session et la liste des ressources/sections ;
+    - laisse le backend comparer avec les blocs Novoskill.
+
+    Objectif : identifier où Lära stocke réellement le découpage visible de session,
+    sans polluer la session avec des appels API non confirmés.
+    """
     api_base = cfg.get("base_url") or ""
     secret = cfg.get("secret_json") or {}
     api_id = secret.get("api_id") or ""
@@ -1043,46 +1098,19 @@ def publish_plan_structure(
             "response": session_result,
         }
 
-    before_resources = get_session_resources(cfg, external_id)
-    existing_titles = set()
+    session_detail = get_session_detail(cfg, external_id)
+    resources_after = get_session_resources(cfg, external_id)
 
-    if before_resources.get("ok"):
-        for section in before_resources.get("sections") or []:
-            key = _lara_norm_section_title(section.get("section_title"))
-            if key:
-                existing_titles.add(key)
+    expected_sections = []
 
-    blocks = plan.get("blocs") or []
-    sections_created = []
-    sections_skipped = []
-    sections_failed = []
-
-    for idx, block in enumerate(blocks, start=1):
-        title = _lara_text(block.get("titre")) or f"Séquence {idx}"
-        key = _lara_norm_section_title(title)
-
-        if key and key in existing_titles:
-            sections_skipped.append({
-                "title": title,
-                "reason": "section déjà présente dans Lära",
-            })
-            continue
-
-        created = _lara_try_create_section_text_block(
-            api_base,
-            api_id,
-            external_id,
-            block,
-            idx,
-        )
-
-        if created.get("ok"):
-            sections_created.append(created)
-            existing_titles.add(key)
-        else:
-            sections_failed.append(created)
-
-    after_resources = get_session_resources(cfg, external_id)
+    for idx, block in enumerate(plan.get("blocs") or [], start=1):
+        expected_sections.append({
+            "position": idx,
+            "title": _lara_text(block.get("titre")) or f"Séquence {idx}",
+            "id_bloc_peda": _lara_text(block.get("id_bloc_peda")),
+            "duree": _lara_text(block.get("duree")),
+            "modalite_intervention": _lara_text(block.get("modalite_intervention")),
+        })
 
     return {
         "ok": True,
@@ -1091,12 +1119,16 @@ def publish_plan_structure(
         "action_label": "mise à jour" if action == "update" else "créée",
         "external_id": external_id,
         "external_url": external_url,
+        "session_payload": session_payload,
         "session_response": session_result,
-        "resources_before": before_resources,
-        "resources_after": after_resources,
-        "sections_write_attempted": bool(blocks),
-        "sections_write_ok": len(sections_failed) == 0,
-        "sections_created": sections_created,
-        "sections_skipped": sections_skipped,
-        "sections_failed": sections_failed,
+        "session_detail": session_detail,
+        "resources_after": resources_after,
+        "diagnostic_only": True,
+        "diagnostic_message": "Session Lära créée/mise à jour. Diagnostic de découpage uniquement, sans écriture de sections.",
+        "expected_sections": expected_sections,
+        "sections_write_attempted": False,
+        "sections_write_ok": False,
+        "sections_created": [],
+        "sections_skipped": [],
+        "sections_failed": [],
     }

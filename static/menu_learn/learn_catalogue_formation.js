@@ -3275,6 +3275,21 @@ function renderContentCompBadges(l){
     }
 
     function planLmsSuccessMessage(res){
+        if (res?.diagnostic_only){
+            const expected = Array.isArray(res?.expected_sections)
+                ? res.expected_sections.length
+                : (res?.comparison?.expected_count || 0);
+
+            const remote = res?.comparison?.remote_count ?? 0;
+
+            return [
+                "Session Lära créée/mise à jour",
+                "diagnostic disponible",
+                expected ? `${expected} bloc(s) Novoskill attendu(s)` : "",
+                `${remote} section(s) lue(s) dans Lära`
+            ].filter(Boolean).join(" • ");
+        }
+
         const created = Array.isArray(res?.sections_created) ? res.sections_created.length : 0;
         const skipped = Array.isArray(res?.sections_skipped) ? res.sections_skipped.length : 0;
         const failed = Array.isArray(res?.sections_failed) ? res.sections_failed.length : 0;
@@ -3319,13 +3334,28 @@ function renderContentCompBadges(l){
         };
 
         if (!res?.sections_write_ok){
+            const actionLabel = res?.diagnostic_only
+                ? "Diagnostic découpage session Lära"
+                : "Publication plan pédagogique vers Lära - sections non créées";
+
+            const message = res?.diagnostic_only
+                ? "Session Lära créée ou mise à jour. Diagnostic brut récupéré depuis Lära."
+                : "Session Lära créée ou mise à jour, mais les sections n’ont pas été créées.";
+
             options.report = buildErrorReport(
-                "Publication plan pédagogique vers Lära - sections non créées",
+                actionLabel,
                 {
-                    message: "Session Lära créée ou mise à jour, mais les sections n’ont pas été créées.",
+                    message: message,
                     detail: {
                         action: res?.action || null,
                         external_id: res?.external_id || null,
+                        diagnostic_only: !!res?.diagnostic_only,
+                        diagnostic_message: res?.diagnostic_message || null,
+                        session_payload: res?.session_payload || null,
+                        session_response: res?.session_response || null,
+                        session_detail: res?.session_detail || null,
+                        resources_after: res?.resources_after || null,
+                        expected_sections: res?.expected_sections || [],
                         sections_write_attempted: res?.sections_write_attempted || false,
                         sections_created: res?.sections_created || [],
                         sections_skipped: res?.sections_skipped || [],
