@@ -375,8 +375,11 @@
         el.removeAttribute("tabindex");
         delete el._errorReport;
 
-        if (cleanType === "error" && options.report){
-            el.textContent = "Erreur système, cliquez ici pour télécharger le rapport.";
+        if (options.report){
+            if (cleanType === "error"){
+                el.textContent = "Erreur système, cliquez ici pour télécharger le rapport.";
+            }
+
             el.classList.add("is-clickable");
             el._errorReport = options.report;
             el.setAttribute("role", "button");
@@ -3311,11 +3314,38 @@ function renderContentCompBadges(l){
 
         const type = res?.sections_write_ok ? "success" : "info";
 
+        const options = {
+            timeoutMs: type === "success" ? 5000 : 0
+        };
+
+        if (!res?.sections_write_ok){
+            options.report = buildErrorReport(
+                "Publication plan pédagogique vers Lära - sections non créées",
+                {
+                    message: "Session Lära créée ou mise à jour, mais les sections n’ont pas été créées.",
+                    detail: {
+                        action: res?.action || null,
+                        external_id: res?.external_id || null,
+                        sections_write_attempted: res?.sections_write_attempted || false,
+                        sections_created: res?.sections_created || [],
+                        sections_skipped: res?.sections_skipped || [],
+                        sections_failed: res?.sections_failed || [],
+                        comparison: res?.comparison || null
+                    }
+                },
+                {
+                    id_form: _editingId,
+                    id_plan_peda: p?.id_plan_peda || null,
+                    titre_plan: p?.titre || null
+                }
+            );
+        }
+
         setLocalStatus(
             "formPlanHeadStatus",
             type,
             planLmsSuccessMessage(res),
-            { timeoutMs: type === "success" ? 5000 : 0 }
+            options
         );
 
         return res;

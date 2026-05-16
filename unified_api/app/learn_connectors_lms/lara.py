@@ -971,6 +971,7 @@ def _lara_try_create_section_text_block(
         attempts.append({
             "path": path,
             "ok": bool(api_result.get("ok")),
+            "payload": payload,
             "response": api_result.get("json") or api_result.get("error") or api_result.get("raw"),
         })
 
