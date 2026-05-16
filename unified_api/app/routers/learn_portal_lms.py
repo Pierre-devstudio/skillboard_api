@@ -14,6 +14,7 @@ from app.routers.learn_portal_informations import learn_lms_fetch_active_config
 from app.routers.learn_portal_formations import (
     _build_formation_lms_html,
     _fetch_form_detail,
+    _fetch_plan_detail,
     _learn_require_min_role,
     _learn_require_profile,
     _role_rank,
@@ -909,6 +910,484 @@ def learn_formation_lms_link_remote(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"learn/formations lms link remote error: {e}")
+
+def _lms_plan_payload_hash(plan: dict) -> str:
+    clean = {
+        "id_plan_peda": plan.get("id_plan_peda"),
+        "codification": plan.get("codification"),
+        "titre": plan.get("titre"),
+        "modalite_generale": plan.get("modalite_generale"),
+        "commentaire": plan.get("commentaire"),
+        "blocs": [
+            {
+                "id_bloc_peda": b.get("id_bloc_peda"),
+                "titre": b.get("titre"),
+                "objectif": b.get("objectif"),
+                "duree": b.get("duree"),
+                "modalite_intervention": b.get("modalite_intervention"),
+                "observations": b.get("observations"),
+                "position": b.get("position"),
+            }
+            for b in (plan.get("blocs") or [])
+        ],
+    }
+
+    return hashlib.sha256(
+        json.dumps(clean, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")
+    ).hexdigest()
+
+
+def _lms_plan_publication_row(cur, oid: str, id_form: str, id_plan_peda: str, id_lms_config: str) -> Optional[dict]:
+    cur.execute(
+        """
+        SELECT
+          id_publication,
+          id_owner,
+          id_form,
+          id_plan_peda,
+          id_lms_config,
+          provider_code,
+          external_id,
+          external_url,
+          last_sync_at,
+          sync_status,
+          sync_error,
+          payload_hash,
+          archive,
+          created_at AS date_creation,
+          updated_at AS date_modification
+        FROM public.tbl_learn_lms_plan_publication
+        WHERE id_owner = %s
+          AND id_form = %s
+          AND id_plan_peda = %s
+          AND id_lms_config = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (oid, id_form, id_plan_peda, id_lms_config),
+    )
+
+    return cur.fetchone()
+
+
+def _lms_write_plan_publication_success(
+    cur,
+    oid: str,
+    id_form: str,
+    id_plan_peda: str,
+    id_lms_config: str,
+    provider_code: str,
+    external_id: str,
+    external_url: Optional[str],
+    payload_hash: str,
+    sync_status: str = "synced",
+    sync_error: Optional[str] = None,
+) -> dict:
+    row = _lms_plan_publication_row(cur, oid, id_form, id_plan_peda, id_lms_config)
+    safe_status = sync_status if sync_status in ("synced", "partial", "error") else "synced"
+
+    if row:
+        cur.execute(
+            """
+            UPDATE public.tbl_learn_lms_plan_publication
+            SET provider_code = %s,
+                external_id = %s,
+                external_url = COALESCE(%s, external_url),
+                last_sync_at = NOW(),
+                sync_status = %s,
+                sync_error = %s,
+                payload_hash = %s,
+                archive = FALSE,
+                updated_at = NOW()
+            WHERE id_publication = %s
+              AND id_owner = %s
+            RETURNING
+              id_publication,
+              id_owner,
+              id_form,
+              id_plan_peda,
+              id_lms_config,
+              provider_code,
+              external_id,
+              external_url,
+              last_sync_at,
+              sync_status,
+              sync_error,
+              payload_hash,
+              archive,
+              created_at AS date_creation,
+              updated_at AS date_modification
+            """,
+            (
+                provider_code,
+                external_id,
+                external_url,
+                safe_status,
+                sync_error,
+                payload_hash,
+                row.get("id_publication"),
+                oid,
+            ),
+        )
+    else:
+        cur.execute(
+            """
+            INSERT INTO public.tbl_learn_lms_plan_publication
+              (
+                id_publication,
+                id_owner,
+                id_form,
+                id_plan_peda,
+                id_lms_config,
+                provider_code,
+                external_id,
+                external_url,
+                last_sync_at,
+                sync_status,
+                sync_error,
+                payload_hash,
+                archive,
+                created_at,
+                updated_at
+              )
+            VALUES
+              (
+                gen_random_uuid()::text,
+                %s, %s, %s, %s,
+                %s, %s, %s,
+                NOW(),
+                %s,
+                %s,
+                %s,
+                FALSE,
+                NOW(),
+                NOW()
+              )
+            RETURNING
+              id_publication,
+              id_owner,
+              id_form,
+              id_plan_peda,
+              id_lms_config,
+              provider_code,
+              external_id,
+              external_url,
+              last_sync_at,
+              sync_status,
+              sync_error,
+              payload_hash,
+              archive,
+              created_at AS date_creation,
+              updated_at AS date_modification
+            """,
+            (
+                oid,
+                id_form,
+                id_plan_peda,
+                id_lms_config,
+                provider_code,
+                external_id,
+                external_url,
+                safe_status,
+                sync_error,
+                payload_hash,
+            ),
+        )
+
+    return cur.fetchone() or {}
+
+
+def _lms_write_plan_publication_error(
+    cur,
+    oid: str,
+    id_form: str,
+    id_plan_peda: str,
+    id_lms_config: str,
+    provider_code: str,
+    external_id: Optional[str],
+    payload_hash: str,
+    error_value: Any,
+) -> dict:
+    try:
+        err_txt = json.dumps(error_value, ensure_ascii=False)[:4000]
+    except Exception:
+        err_txt = str(error_value or "")[:4000]
+
+    return _lms_write_plan_publication_success(
+        cur,
+        oid,
+        id_form,
+        id_plan_peda,
+        id_lms_config,
+        provider_code,
+        external_id or "",
+        None,
+        payload_hash,
+        sync_status="error",
+        sync_error=err_txt,
+    )
+
+
+def _lms_norm_section_title(value: Any) -> str:
+    return " ".join(str(value or "").strip().lower().split())
+
+
+def _lms_expected_plan_sections(plan: dict) -> list:
+    out = []
+
+    for idx, b in enumerate(plan.get("blocs") or [], start=1):
+        title = str(b.get("titre") or f"Séquence {idx}").strip()
+        if not title:
+            title = f"Séquence {idx}"
+
+        out.append({
+            "title": title,
+            "position": idx,
+        })
+
+    return out
+
+
+def _lms_compare_plan_sections(plan: dict, lms_sections: list) -> dict:
+    expected = _lms_expected_plan_sections(plan)
+
+    expected_keys = [_lms_norm_section_title(x.get("title")) for x in expected]
+    remote_keys = [_lms_norm_section_title(x.get("section_title")) for x in (lms_sections or [])]
+
+    missing = [
+        expected[idx]
+        for idx, key in enumerate(expected_keys)
+        if key and key not in remote_keys
+    ]
+
+    extra = [
+        x
+        for x in (lms_sections or [])
+        if _lms_norm_section_title(x.get("section_title")) not in expected_keys
+    ]
+
+    return {
+        "expected_count": len(expected),
+        "remote_count": len(lms_sections or []),
+        "expected_sections": expected,
+        "remote_sections": lms_sections or [],
+        "missing_in_lms": missing,
+        "extra_in_lms": extra,
+        "is_conform": len(missing) == 0 and len(extra) == 0 and len(expected) == len(lms_sections or []),
+    }
+
+
+@router.get("/learn/formations/{id_effectif}/{id_form}/plans/{id_plan_peda}/lms/status")
+def learn_formation_plan_lms_status(
+    id_effectif: str,
+    id_form: str,
+    id_plan_peda: str,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        pid = (id_plan_peda or "").strip()
+
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_plan_peda manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                oid = (profile.get("id_owner") or "").strip()
+
+                cfg = learn_lms_fetch_active_config(cur, oid, with_secret=True)
+                if not cfg or cfg.get("provider_code") != "lara":
+                    return {
+                        "configured": False,
+                        "provider_code": "manual",
+                        "published": False,
+                        "message": "Aucun connecteur LMS actif.",
+                    }
+
+                id_lms_config = str(cfg.get("id_lms_config") or "").strip()
+                if not id_lms_config:
+                    raise HTTPException(status_code=400, detail="Configuration LMS invalide.")
+
+                form_pub = _lms_publication_row(cur, oid, fid, id_lms_config)
+                plan = _fetch_plan_detail(cur, oid, fid, pid)
+                plan_hash = _lms_plan_payload_hash(plan)
+                row = _lms_plan_publication_row(cur, oid, fid, pid, id_lms_config)
+
+        if not form_pub or not form_pub.get("external_id"):
+            return {
+                "configured": True,
+                "provider_code": "lara",
+                "formation_published": False,
+                "published": False,
+                "message": "Publiez d’abord la formation dans Lära.",
+            }
+
+        if not row or not row.get("external_id"):
+            return {
+                "configured": True,
+                "provider_code": "lara",
+                "formation_published": True,
+                "published": False,
+                "expected_sections": _lms_expected_plan_sections(plan),
+                "message": "Plan non envoyé dans Lära.",
+            }
+
+        resources = lara_connector.get_session_resources(cfg, row.get("external_id"))
+        compare = _lms_compare_plan_sections(plan, resources.get("sections") or [])
+
+        outdated = bool(row.get("payload_hash") and row.get("payload_hash") != plan_hash)
+
+        return {
+            "configured": True,
+            "provider_code": "lara",
+            "formation_published": True,
+            "published": True,
+            "external_id": row.get("external_id"),
+            "external_url": row.get("external_url"),
+            "sync_status": row.get("sync_status"),
+            "sync_error": row.get("sync_error"),
+            "last_sync_at": row.get("last_sync_at"),
+            "outdated": outdated,
+            "resources_ok": bool(resources.get("ok")),
+            "comparison": compare,
+            "raw_resources_response": resources.get("response") if not resources.get("ok") else None,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations plan lms status error: {e}")
+
+
+@router.post("/learn/formations/{id_effectif}/{id_form}/plans/{id_plan_peda}/lms/publish")
+def learn_formation_plan_lms_publish(
+    id_effectif: str,
+    id_form: str,
+    id_plan_peda: str,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+        pid = (id_plan_peda or "").strip()
+
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+        if not pid:
+            raise HTTPException(status_code=400, detail="id_plan_peda manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                _learn_require_min_role(profile, "supervisor")
+                oid = (profile.get("id_owner") or "").strip()
+
+                cfg = learn_lms_fetch_active_config(cur, oid, with_secret=True)
+                if not cfg or cfg.get("provider_code") != "lara":
+                    raise HTTPException(status_code=400, detail="Aucun connecteur Lära actif.")
+
+                id_lms_config = str(cfg.get("id_lms_config") or "").strip()
+                if not id_lms_config:
+                    raise HTTPException(status_code=400, detail="Configuration LMS invalide.")
+
+                form_pub = _lms_publication_row(cur, oid, fid, id_lms_config)
+
+                if not form_pub or not form_pub.get("external_id"):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Publiez d’abord la formation dans Lära avant d’envoyer un plan pédagogique.",
+                    )
+
+                plan = _fetch_plan_detail(cur, oid, fid, pid)
+                plan_hash = _lms_plan_payload_hash(plan)
+                existing_plan_pub = _lms_plan_publication_row(cur, oid, fid, pid, id_lms_config)
+
+                publish_result = lara_connector.publish_plan_structure(
+                    plan=plan,
+                    cfg=cfg,
+                    formation_publication=form_pub,
+                    existing_plan_publication=existing_plan_pub,
+                )
+
+                if not publish_result.get("ok"):
+                    saved = _lms_write_plan_publication_error(
+                        cur,
+                        oid,
+                        fid,
+                        pid,
+                        id_lms_config,
+                        "lara",
+                        publish_result.get("external_id"),
+                        plan_hash,
+                        publish_result.get("response") or publish_result,
+                    )
+                    conn.commit()
+
+                    raise HTTPException(status_code=400, detail={
+                        "message": "Publication du plan Lära impossible.",
+                        "publication": saved,
+                        "response": publish_result.get("response") or publish_result,
+                    })
+
+                external_id = publish_result.get("external_id")
+                external_url = publish_result.get("external_url")
+
+                sync_status = "synced" if publish_result.get("sections_write_ok") else "partial"
+                sync_error = None
+
+                if sync_status == "partial":
+                    sync_error = json.dumps({
+                        "message": "Session créée/mise à jour, mais écriture des sections incomplète.",
+                        "sections_failed": publish_result.get("sections_failed") or [],
+                    }, ensure_ascii=False)[:4000]
+
+                saved = _lms_write_plan_publication_success(
+                    cur,
+                    oid,
+                    fid,
+                    pid,
+                    id_lms_config,
+                    "lara",
+                    external_id,
+                    external_url,
+                    plan_hash,
+                    sync_status=sync_status,
+                    sync_error=sync_error,
+                )
+
+                conn.commit()
+
+        resources_after = publish_result.get("resources_after") or {}
+        comparison = _lms_compare_plan_sections(plan, resources_after.get("sections") or [])
+
+        return {
+            "ok": True,
+            "provider_code": "lara",
+            "action": publish_result.get("action"),
+            "action_label": publish_result.get("action_label"),
+            "external_id": external_id,
+            "external_url": external_url,
+            "publication": saved,
+            "sections_write_attempted": publish_result.get("sections_write_attempted"),
+            "sections_write_ok": publish_result.get("sections_write_ok"),
+            "sections_created": publish_result.get("sections_created") or [],
+            "sections_skipped": publish_result.get("sections_skipped") or [],
+            "sections_failed": publish_result.get("sections_failed") or [],
+            "comparison": comparison,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations plan lms publish error: {e}")
 
 @router.get("/learn/formations/{id_effectif}/{id_form}/lms/status")
 def learn_formation_lms_status(id_effectif: str, id_form: str, request: Request):

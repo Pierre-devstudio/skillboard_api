@@ -3097,9 +3097,12 @@ function renderContentCompBadges(l){
 
     async function openPlanModal(p){
         if (!_editingId){
-            window.portal.showAlert("error", "Enregistrez d’abord la fiche formation avant de créer un plan pédagogique.");
+            setLocalStatus("formPlanHeadStatus", "info", "Enregistrez d’abord la fiche formation avant de créer un plan pédagogique.");
             return;
         }
+
+        clearLocalStatus("formPlanHeadStatus");
+        clearLocalStatus("planModalStatus");
 
         await ensureRefs(window.portal);
 
@@ -3168,6 +3171,7 @@ function renderContentCompBadges(l){
         _planDragContentId = null;
         _planDragBlockId = null;
         _planDragSeq = null;
+        clearLocalStatus("planModalStatus");
     }
 
     function addPlanBlock(){
@@ -3208,16 +3212,18 @@ function renderContentCompBadges(l){
 
     async function savePlan(portal){
         if (!_editingId){
-            portal.showAlert("error", "Enregistrez d’abord la fiche formation.");
+            setLocalStatus("planModalStatus", "info", "Enregistrez d’abord la fiche formation.");
             return;
         }
 
         const payload = buildPlanPayload();
 
         if (!payload.titre){
-            portal.showAlert("error", "Titre du plan obligatoire.");
+            setLocalStatus("planModalStatus", "info", "Titre du plan obligatoire.");
             return;
         }
+
+        clearLocalStatus("planModalStatus");
 
         const effectifId = getEffectifId();
 
@@ -3250,6 +3256,71 @@ function renderContentCompBadges(l){
         setSuccess("Plan pédagogique enregistré");
     }
 
+    function planLmsFunctionalMessage(err){
+        const msg = getErrorMessage(err);
+        const clean = String(msg || "").toLowerCase();
+
+        if (
+            clean.includes("publiez d’abord la formation")
+            || clean.includes("publiez d'abord la formation")
+            || clean.includes("formation lära non publiée")
+        ){
+            return msg;
+        }
+
+        return "";
+    }
+
+    function planLmsSuccessMessage(res){
+        const created = Array.isArray(res?.sections_created) ? res.sections_created.length : 0;
+        const skipped = Array.isArray(res?.sections_skipped) ? res.sections_skipped.length : 0;
+        const failed = Array.isArray(res?.sections_failed) ? res.sections_failed.length : 0;
+
+        if (res?.sections_write_ok){
+            return [
+                "Découpage envoyé dans Lära",
+                created ? `${created} section(s) créée(s)` : "",
+                skipped ? `${skipped} déjà présente(s)` : ""
+            ].filter(Boolean).join(" • ");
+        }
+
+        return [
+            "Session Lära créée/mise à jour",
+            failed ? `${failed} section(s) non créée(s)` : "sections à vérifier"
+        ].filter(Boolean).join(" • ");
+    }
+
+    async function publishPlanLms(p){
+        const effectifId = getEffectifId();
+        const formId = String(_editingId || "").trim();
+        const planId = String(p?.id_plan_peda || "").trim();
+
+        if (!effectifId) throw new Error("Profil Learn manquant.");
+        if (!formId) throw new Error("Formation non chargée.");
+        if (!planId) throw new Error("Plan pédagogique introuvable.");
+
+        clearLocalStatus("formPlanHeadStatus");
+
+        const res = await window.portal.apiJson(
+            `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+            + `/${encodeURIComponent(formId)}`
+            + `/plans/${encodeURIComponent(planId)}`
+            + `/lms/publish`,
+            { method:"POST" }
+        );
+
+        const type = res?.sections_write_ok ? "success" : "info";
+
+        setLocalStatus(
+            "formPlanHeadStatus",
+            type,
+            planLmsSuccessMessage(res),
+            { timeoutMs: type === "success" ? 5000 : 0 }
+        );
+
+        return res;
+    }
+
     function renderPlans(){
         const host = byId("formPlansList");
         if (!host) return;
@@ -3278,6 +3349,9 @@ function renderContentCompBadges(l){
                 </div>
 
                 <div class="sb-icon-actions">
+                <button type="button" class="sb-icon-btn sb-icon-btn--lms" data-action="lms-plan" title="Envoyer / contrôler le découpage dans Lära" aria-label="Envoyer / contrôler le découpage dans Lära">
+                    ${iconLms()}
+                </button>
                 <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-action="pdf" title="Voir PDF" aria-label="Voir PDF">
                     ${iconPdf()}
                 </button>
@@ -3306,6 +3380,31 @@ function renderContentCompBadges(l){
             } catch(e){
                 window.portal.showAlert("error", getErrorMessage ? getErrorMessage(e) : (e?.message || String(e)));
             }
+            });
+
+            div.querySelector('[data-action="lms-plan"]')?.addEventListener("click", async () => {
+                try{
+                    await publishPlanLms(p);
+                } catch(e){
+                    const functional = planLmsFunctionalMessage(e);
+
+                    if (functional){
+                        setLocalStatus("formPlanHeadStatus", "info", functional);
+                        return;
+                    }
+
+                    setLocalStatus(
+                        "formPlanHeadStatus",
+                        "error",
+                        "Erreur système, cliquez ici pour télécharger le rapport.",
+                        {
+                            report: buildErrorReport("Publication plan pédagogique vers Lära", e, {
+                                id_form: _editingId,
+                                id_plan_peda: p?.id_plan_peda || null
+                            })
+                        }
+                    );
+                }
             });
 
             div.querySelector('[data-action="edit"]')?.addEventListener("click", async () => {
@@ -5226,7 +5325,17 @@ iframe{width:100%;height:100%;border:0;display:block}
     try{
         await savePlan(portal);
     } catch(e){
-        portal.showAlert("error", getErrorMessage(e));
+        setLocalStatus(
+            "planModalStatus",
+            "error",
+            "Erreur système, cliquez ici pour télécharger le rapport.",
+            {
+                report: buildErrorReport("Enregistrement plan pédagogique", e, {
+                    id_form: _editingId,
+                    id_plan_peda: _planEditId
+                })
+            }
+        );
     }
     });
 

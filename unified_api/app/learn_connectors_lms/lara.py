@@ -656,3 +656,446 @@ def publish_formation(
         "external_url": external_url,
         "response": api_result,
     }
+
+def _lara_extract_id(value: Any) -> str:
+    if isinstance(value, dict):
+        for key in ("id", "Id", "ID", "workspaceInstanceId", "workspace_instance_id"):
+            txt = _lara_text(value.get(key))
+            if txt:
+                return txt
+
+        for v in value.values():
+            txt = _lara_extract_id(v)
+            if txt:
+                return txt
+
+    if isinstance(value, list):
+        for v in value:
+            txt = _lara_extract_id(v)
+            if txt:
+                return txt
+
+    return ""
+
+
+def _lara_plan_name(plan: dict) -> str:
+    titre = str(plan.get("titre") or "").strip() or "Plan pédagogique"
+    return titre[:180].strip()
+
+
+def _lara_plan_code_custom_field_name(cfg: dict) -> str:
+    cfg_json = _lara_config_json(cfg)
+
+    field_name = (
+        cfg_json.get("code_plan_field")
+        or cfg_json.get("code_plan_peda_field")
+        or cfg_json.get("custom_field_code_plan")
+        or "Code_plan"
+    )
+
+    return str(field_name or "").strip()
+
+
+def _lara_plan_custom_fields(plan: dict, cfg: dict) -> dict:
+    code = str(plan.get("codification") or "").strip()
+    field_name = _lara_plan_code_custom_field_name(cfg)
+
+    if not code or not field_name:
+        return {}
+
+    return {
+        field_name: code
+    }
+
+
+def _lara_normalize_session(row: dict) -> dict:
+    if not isinstance(row, dict):
+        row = {}
+
+    return {
+        "external_id": _lara_text(_lara_first(row, ("id", "Id", "ID", "workspaceInstanceId"))),
+        "workspace_id": _lara_text(_lara_first(row, ("workspaceId", "workspace_id"))),
+        "name": _lara_text(_lara_first(row, ("name", "title", "label"))),
+        "start_date": _lara_text(_lara_first(row, ("startDate", "start_date"))),
+        "end_date": _lara_text(_lara_first(row, ("endDate", "end_date"))),
+        "is_hidden": bool(_lara_first(row, ("isHidden", "is_hidden"))),
+        "status": _lara_text(_lara_first(row, ("status", "state"))),
+        "last_modification_date": _lara_text(
+            _lara_first(row, ("lastModificationDate", "lastModifiedAt", "updatedAt"))
+        ),
+        "custom_fields": _lara_custom_fields(row),
+        "raw": row,
+    }
+
+
+def _lara_sections_from_resources(rows: list) -> list:
+    sections = {}
+
+    for r in rows or []:
+        if not isinstance(r, dict):
+            continue
+
+        section_title = _lara_text(r.get("sectionTitle")) or "Section"
+        try:
+            section_position = int(r.get("sectionPosition") or 999999)
+        except Exception:
+            section_position = 999999
+
+        key = f"{section_position}::{section_title}"
+
+        if key not in sections:
+            sections[key] = {
+                "section_title": section_title,
+                "section_position": section_position,
+                "resources": [],
+            }
+
+        try:
+            resource_position = int(r.get("resourcePosition") or 999999)
+        except Exception:
+            resource_position = 999999
+
+        sections[key]["resources"].append({
+            "resource_id": _lara_text(r.get("resourceId")),
+            "title": _lara_text(r.get("title")),
+            "resource_type": r.get("resourceType"),
+            "resource_position": resource_position,
+            "raw": r,
+        })
+
+    out = list(sections.values())
+    out.sort(key=lambda x: (x.get("section_position") or 999999, x.get("section_title") or ""))
+
+    for section in out:
+        section["resources"].sort(key=lambda x: (x.get("resource_position") or 999999, x.get("title") or ""))
+
+    return out
+
+
+def list_plan_sessions(cfg: dict, workspace_id: str) -> dict:
+    wid = str(workspace_id or "").strip()
+
+    if not wid:
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "items": [],
+            "response": {"error": "workspace_id manquant."},
+        }
+
+    api_base = cfg.get("base_url") or ""
+    secret = cfg.get("secret_json") or {}
+    api_id = secret.get("api_id") or ""
+
+    api_result = learn_lms_api_post(
+        api_base,
+        api_id,
+        "workspaceinstance/getlist",
+        {
+            "id": wid,
+            "filterIncludeDisabled": True,
+        },
+    )
+
+    if not api_result.get("ok"):
+        api_result = learn_lms_api_post(
+            api_base,
+            api_id,
+            "workspaceinstance/getlist",
+            {"id": wid},
+        )
+
+    if not api_result.get("ok"):
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "items": [],
+            "response": api_result,
+        }
+
+    rows = _lara_list_from_response(api_result.get("json"))
+
+    return {
+        "ok": True,
+        "provider_code": "lara",
+        "items": [_lara_normalize_session(r) for r in rows if isinstance(r, dict)],
+        "response": api_result,
+    }
+
+
+def get_session_resources(cfg: dict, session_id: str) -> dict:
+    sid = str(session_id or "").strip()
+
+    if not sid:
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "resources": [],
+            "sections": [],
+            "response": {"error": "session_id manquant."},
+        }
+
+    api_base = cfg.get("base_url") or ""
+    secret = cfg.get("secret_json") or {}
+    api_id = secret.get("api_id") or ""
+
+    api_result = learn_lms_api_post(
+        api_base,
+        api_id,
+        "workspaceinstance/getresourcelist",
+        {"id": sid},
+    )
+
+    if not api_result.get("ok"):
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "resources": [],
+            "sections": [],
+            "response": api_result,
+        }
+
+    rows = _lara_list_from_response(api_result.get("json"))
+
+    return {
+        "ok": True,
+        "provider_code": "lara",
+        "resources": rows,
+        "sections": _lara_sections_from_resources(rows),
+        "response": api_result,
+    }
+
+
+def _lara_plan_session_payload(plan: dict, workspace_id: str, cfg: dict, external_id: str = "") -> dict:
+    payload = {
+        "name": _lara_plan_name(plan),
+        "startDate": "0001-01-01T00:00:00",
+        "endDate": "0001-01-01T00:00:00",
+        "minParticipants": 0,
+        "maxParticipants": 0,
+        "isOverBookingSubscription": False,
+        "isHidden": False,
+    }
+
+    if external_id:
+        payload["id"] = external_id
+    else:
+        payload["workspaceId"] = workspace_id
+
+    custom_fields = _lara_plan_custom_fields(plan, cfg)
+    if custom_fields:
+        payload["customFields"] = custom_fields
+
+    return payload
+
+
+def _lara_plan_block_text(block: dict, idx: int) -> str:
+    parts = [
+        f"Séquence {idx}",
+        "",
+        f"Titre : {block.get('titre') or ''}",
+    ]
+
+    if block.get("objectif"):
+        parts.extend(["", f"Objectif : {block.get('objectif')}"])
+
+    if block.get("duree"):
+        parts.append(f"Durée : {block.get('duree')} h")
+
+    if block.get("modalite_intervention"):
+        parts.append(f"Modalité : {block.get('modalite_intervention')}")
+
+    seqs = block.get("sequences") or []
+    if seqs:
+        parts.extend(["", "Contenus associés :"])
+        for s in seqs:
+            titre = _lara_text(s.get("titre_sequence"))
+            if titre:
+                parts.append(f"- {titre}")
+
+    if block.get("observations"):
+        parts.extend(["", f"Observations : {block.get('observations')}"])
+
+    return "\n".join(str(x or "") for x in parts).strip()
+
+
+def _lara_norm_section_title(value: Any) -> str:
+    return " ".join(_lara_text(value).lower().split())
+
+
+def _lara_try_create_section_text_block(
+    api_base: str,
+    api_id: str,
+    session_id: str,
+    block: dict,
+    idx: int,
+) -> dict:
+    title = _lara_text(block.get("titre")) or f"Séquence {idx}"
+    content = _lara_plan_block_text(block, idx)
+
+    base_payload = {
+        "workspaceInstanceId": session_id,
+        "sessionId": session_id,
+        "id": session_id,
+        "title": title,
+        "name": title,
+        "resourceType": 9,
+        "type": 9,
+        "text": content,
+        "content": content,
+        "description": content,
+        "sectionTitle": title,
+        "sectionPosition": idx,
+        "resourcePosition": 1,
+        "completionPoints": 0,
+        "credits": 0,
+        "minParticipants": 0,
+        "maxParticipants": 0,
+        "isHidden": False,
+        "adminCode": str(block.get("id_bloc_peda") or ""),
+    }
+
+    attempts = []
+
+    candidates = [
+        ("workspaceinstanceresource/create", dict(base_payload)),
+        ("workspaceinstance/resource/create", dict(base_payload)),
+        ("workspaceinstance/addresource", dict(base_payload)),
+        ("workspaceresource/create", dict(base_payload)),
+        ("resource/create", dict(base_payload)),
+    ]
+
+    for path, payload in candidates:
+        api_result = learn_lms_api_post(api_base, api_id, path, payload)
+
+        attempts.append({
+            "path": path,
+            "ok": bool(api_result.get("ok")),
+            "response": api_result.get("json") or api_result.get("error") or api_result.get("raw"),
+        })
+
+        if api_result.get("ok"):
+            return {
+                "ok": True,
+                "path": path,
+                "title": title,
+                "response": api_result,
+                "attempts": attempts,
+            }
+
+    return {
+        "ok": False,
+        "title": title,
+        "attempts": attempts,
+    }
+
+
+def publish_plan_structure(
+    plan: dict,
+    cfg: dict,
+    formation_publication: dict,
+    existing_plan_publication: Optional[dict] = None,
+) -> dict:
+    api_base = cfg.get("base_url") or ""
+    secret = cfg.get("secret_json") or {}
+    api_id = secret.get("api_id") or ""
+
+    workspace_id = str((formation_publication or {}).get("external_id") or "").strip()
+    if not workspace_id:
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "response": {"error": "Formation Lära non publiée ou external_id manquant."},
+        }
+
+    external_id = str((existing_plan_publication or {}).get("external_id") or "").strip()
+    external_url = str((existing_plan_publication or {}).get("external_url") or "").strip()
+    action = "update" if external_id else "create"
+
+    session_payload = _lara_plan_session_payload(plan, workspace_id, cfg, external_id)
+
+    if external_id:
+        session_result = _lara_post_with_custom_field_fallback(
+            api_base,
+            api_id,
+            "workspaceinstance/edit",
+            session_payload,
+        )
+    else:
+        session_result = _lara_post_with_custom_field_fallback(
+            api_base,
+            api_id,
+            "workspaceinstance/create",
+            session_payload,
+        )
+
+        if session_result.get("ok"):
+            external_id = _lara_extract_id(session_result.get("json"))
+
+    if not session_result.get("ok") or not external_id:
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "action": action,
+            "external_id": external_id or None,
+            "external_url": external_url or None,
+            "response": session_result,
+        }
+
+    before_resources = get_session_resources(cfg, external_id)
+    existing_titles = set()
+
+    if before_resources.get("ok"):
+        for section in before_resources.get("sections") or []:
+            key = _lara_norm_section_title(section.get("section_title"))
+            if key:
+                existing_titles.add(key)
+
+    blocks = plan.get("blocs") or []
+    sections_created = []
+    sections_skipped = []
+    sections_failed = []
+
+    for idx, block in enumerate(blocks, start=1):
+        title = _lara_text(block.get("titre")) or f"Séquence {idx}"
+        key = _lara_norm_section_title(title)
+
+        if key and key in existing_titles:
+            sections_skipped.append({
+                "title": title,
+                "reason": "section déjà présente dans Lära",
+            })
+            continue
+
+        created = _lara_try_create_section_text_block(
+            api_base,
+            api_id,
+            external_id,
+            block,
+            idx,
+        )
+
+        if created.get("ok"):
+            sections_created.append(created)
+            existing_titles.add(key)
+        else:
+            sections_failed.append(created)
+
+    after_resources = get_session_resources(cfg, external_id)
+
+    return {
+        "ok": True,
+        "provider_code": "lara",
+        "action": action,
+        "action_label": "mise à jour" if action == "update" else "créée",
+        "external_id": external_id,
+        "external_url": external_url,
+        "session_response": session_result,
+        "resources_before": before_resources,
+        "resources_after": after_resources,
+        "sections_write_attempted": bool(blocks),
+        "sections_write_ok": len(sections_failed) == 0,
+        "sections_created": sections_created,
+        "sections_skipped": sections_skipped,
+        "sections_failed": sections_failed,
+    }
