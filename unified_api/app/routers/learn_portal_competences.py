@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, Response, UploadFile, Fil
 from pydantic import BaseModel
 from typing import Optional, Any
 from psycopg.rows import dict_row
+from psycopg.types.json import Json
 from io import BytesIO
 import uuid
 import os
@@ -702,7 +703,7 @@ def learn_competence_create(id_effectif: str, payload: CreateCompetencePayload, 
                         (payload.niveaua or None),
                         (payload.niveaub or None),
                         (payload.niveauc or None),
-                        _normalize_grille(payload.grille_evaluation),
+                        Json(_normalize_grille(payload.grille_evaluation)),
                         (payload.etat or "à valider"),
                     ),
                 )
@@ -886,7 +887,7 @@ def learn_competence_update(id_effectif: str, id_comp: str, payload: UpdateCompe
 
                 if "grille_evaluation" in patch_fields:
                     cols.append("grille_evaluation = %s")
-                    vals.append(_normalize_grille(payload.grille_evaluation))
+                    vals.append(Json(_normalize_grille(payload.grille_evaluation)))
 
                 if "etat" in patch_fields:
                     etat = (payload.etat or "").strip() or "à valider"

@@ -1499,6 +1499,8 @@ function iconPdf(){
             btn.textContent = "Génération…";
         }
 
+        openAiWait();
+
         try{
             let draft;
 
@@ -1551,6 +1553,8 @@ function iconPdf(){
         } catch(e){
             portal.showAlert("error", getErrorMessage(e));
         } finally {
+            closeAiWait();
+
             if (btn){
                 btn.disabled = false;
                 btn.style.opacity = "";
