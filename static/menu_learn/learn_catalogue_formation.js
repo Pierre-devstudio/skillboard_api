@@ -289,25 +289,136 @@
     if (el) el.style.display = "none";
   }
 
-    function setSuccess(msg){
-        const el = byId("formModalSuccess");
+    function clearLocalStatus(id){
+        const el = byId(id);
+        if (!el) return;
+
+        window.clearTimeout(el._hideTimer);
+        el.style.display = "none";
+        el.textContent = "";
+        el.className = "sb-local-status";
+        el.onclick = null;
+        el.removeAttribute("role");
+        el.removeAttribute("tabindex");
+        delete el._errorReport;
+    }
+
+    function buildErrorReport(action, err, extra = {}){
+        return {
+            date: new Date().toISOString(),
+            console: "Learn",
+            vue: "Catalogue formations",
+            action: action || "Action non précisée",
+            url: window.location.href,
+            userAgent: navigator.userAgent,
+            message: getErrorMessage(err),
+            detail: err?.detail ?? err?.error ?? err?.message ?? err ?? null,
+            contexte: extra || {}
+        };
+    }
+
+    function downloadErrorReport(report){
+        const safeReport = report || {};
+        const content = [
+            "NOVOSKILL - RAPPORT D'ERREUR",
+            "============================",
+            "",
+            `Date : ${safeReport.date || new Date().toISOString()}`,
+            `Console : ${safeReport.console || "Learn"}`,
+            `Vue : ${safeReport.vue || "Catalogue formations"}`,
+            `Action : ${safeReport.action || "Non précisée"}`,
+            `URL : ${safeReport.url || window.location.href}`,
+            "",
+            "Message technique :",
+            safeReport.message || "Erreur inconnue.",
+            "",
+            "Détail brut :",
+            JSON.stringify(safeReport.detail ?? {}, null, 2),
+            "",
+            "Contexte :",
+            JSON.stringify(safeReport.contexte ?? {}, null, 2),
+            "",
+            "Note : ce rapport ne contient volontairement aucun token ni clé API."
+        ].join("\n");
+
+        const blob = new Blob([content], { type:"text/plain;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `rapport_erreur_novoskill_${new Date().toISOString().slice(0,19).replaceAll(":", "-")}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function setLocalStatus(id, type, message, options = {}){
+        const el = byId(id);
         if (!el) return;
 
         window.clearTimeout(el._hideTimer);
 
-        if (!msg){
-            el.style.display = "none";
-            el.textContent = "";
+        if (!message){
+            clearLocalStatus(id);
             return;
         }
 
-        el.textContent = msg;
-        el.style.display = "inline-flex";
+        const cleanType = ["success", "info", "error"].includes(type) ? type : "info";
 
-        el._hideTimer = window.setTimeout(() => {
-            el.style.display = "none";
-            el.textContent = "";
-        }, 5000);
+        el.className = `sb-local-status sb-local-status--${cleanType}`;
+        el.textContent = message;
+        el.style.display = "inline-flex";
+        el.onclick = null;
+        el.removeAttribute("role");
+        el.removeAttribute("tabindex");
+        delete el._errorReport;
+
+        if (cleanType === "error" && options.report){
+            el.textContent = "Erreur système, cliquez ici pour télécharger le rapport.";
+            el.classList.add("is-clickable");
+            el._errorReport = options.report;
+            el.setAttribute("role", "button");
+            el.setAttribute("tabindex", "0");
+
+            el.onclick = () => downloadErrorReport(el._errorReport);
+            el.onkeydown = (ev) => {
+                if (ev.key === "Enter" || ev.key === " "){
+                    ev.preventDefault();
+                    downloadErrorReport(el._errorReport);
+                }
+            };
+        } else {
+            el.onkeydown = null;
+        }
+
+        const timeoutMs = options.timeoutMs ?? (cleanType === "success" ? 5000 : 0);
+
+        if (timeoutMs > 0){
+            el._hideTimer = window.setTimeout(() => {
+                clearLocalStatus(id);
+            }, timeoutMs);
+        }
+    }
+
+    function setSuccess(msg){
+        setLocalStatus("formModalSuccess", "success", msg || "");
+    }
+
+    function setFormInfo(msg){
+        setLocalStatus("formModalSuccess", "info", msg || "");
+    }
+
+    function setFormSystemError(action, err, extra = {}){
+        setLocalStatus(
+            "formModalSuccess",
+            "error",
+            "Erreur système, cliquez ici pour télécharger le rapport.",
+            {
+                report: buildErrorReport(action, err, extra)
+            }
+        );
     }
 
     function iconHtml(){
@@ -557,11 +668,7 @@ function iconPdf(){
     }
 
     sub.style.display = "";
-    sub.textContent = [
-      "Brouillon issu de Lära",
-      _pendingLmsImportLink.remote_code ? `Code LMS : ${_pendingLmsImportLink.remote_code}` : "",
-      _pendingLmsImportLink.external_id ? `ID : ${_pendingLmsImportLink.external_id}` : ""
-    ].filter(Boolean).join(" • ");
+    sub.textContent = "Brouillon issu de Lära";
   }
 
   function fillCreateModalFromLmsPreview(data){
@@ -608,14 +715,14 @@ function iconPdf(){
 
   async function startCreateFromLmsPreview(){
     if (!_lmsImportPreview){
-      window.portal?.showAlert?.("error", "Aucune prévisualisation LMS disponible.");
+      setLocalStatus("lmsPreviewStatus", "info", "Aucune prévisualisation LMS disponible.");
       return;
     }
 
     setPendingLmsImportFromPreview(_lmsImportPreview);
 
     if (!_pendingLmsImportLink?.external_id){
-      window.portal?.showAlert?.("error", "Identifiant Lära manquant, impossible de préparer la création.");
+      setLocalStatus("lmsPreviewStatus", "info", "Identifiant Lära manquant, impossible de préparer la création.");
       return;
     }
 
@@ -643,12 +750,10 @@ function iconPdf(){
 
     const sub = byId("lmsPreviewSub");
     if (sub){
-      sub.textContent = [
-        "Formation récupérée depuis Lära",
-        remote.external_id ? `ID ${remote.external_id}` : ""
-      ].filter(Boolean).join(" • ");
+      sub.textContent = "Formation récupérée depuis Lära.";
     }
 
+    clearLocalStatus("lmsPreviewStatus");
     renderLmsPreviewMeta(remote);
     renderLmsCustomFields(remote.custom_fields || {});
 
@@ -727,8 +832,16 @@ function iconPdf(){
     } catch(e){
       _lmsImportPreview = null;
 
-      closeModal("modalLmsImportPreview");
-      window.portal?.showAlert?.("error", getErrorMessage(e));
+      setLocalStatus(
+        "lmsPreviewStatus",
+        "error",
+        "Erreur système, cliquez ici pour télécharger le rapport.",
+        {
+          report: buildErrorReport("Lecture prévisualisation LMS", e, {
+            external_id: externalId
+          })
+        }
+      );
     }
   }
 
@@ -831,6 +944,9 @@ function iconPdf(){
 
   function setTab(tab){
     _activeTab = tab || "identite";
+    if (_activeTab !== "contenu"){
+        clearLocalStatus("formContentHeadStatus");
+    }
 
     document.querySelectorAll("#formTabs .sb-form-tab").forEach(btn => {
       btn.classList.toggle("is-active", btn.dataset.tab === _activeTab);
@@ -2285,9 +2401,12 @@ function renderContentCompBadges(l){
 
         function openContentModal(l){
         if (!_editingId){
-            window.portal.showAlert("error", "Enregistrez d’abord la fiche formation avant d’ajouter un contenu.");
+            setLocalStatus("formContentHeadStatus", "info", "Enregistrez d’abord la fiche formation avant d’ajouter un contenu structuré.");
             return;
         }
+
+        clearLocalStatus("formContentHeadStatus");
+        clearLocalStatus("formContentModalStatus");
 
         _contentEditId = l?.id_ligne_contenu || null;
         _contentCompetenceIds = getContentCompIds(l);
@@ -2306,6 +2425,7 @@ function renderContentCompBadges(l){
         closeModal("modalFormContent");
         _contentEditId = null;
         _contentCompetenceIds = [];
+        clearLocalStatus("formContentModalStatus");
         }
 
         function buildContentPayload(){
@@ -2319,16 +2439,18 @@ function renderContentCompBadges(l){
 
         async function saveContent(portal){
         if (!_editingId){
-            portal.showAlert("error", "Enregistrez d’abord la fiche formation.");
+            setLocalStatus("formContentModalStatus", "info", "Enregistrez d’abord la fiche formation.");
             return;
         }
 
         const payload = buildContentPayload();
 
         if (!payload.titre_sequence){
-            portal.showAlert("error", "Titre du contenu obligatoire.");
+            setLocalStatus("formContentModalStatus", "info", "Titre du contenu obligatoire.");
             return;
         }
+
+        clearLocalStatus("formContentModalStatus");
 
         const effectifId = getEffectifId();
         let res;
@@ -3917,6 +4039,15 @@ function renderContentCompBadges(l){
         const apply = byId("btnFormGenerateApply");
         if (apply) apply.disabled = true;
 
+        const run = byId("btnFormGenerateRun");
+        if (run){
+            run.disabled = false;
+            run.style.opacity = "";
+            run.textContent = "Générer";
+        }
+
+        clearLocalStatus("aiFormStatus");
+
         const docs = byId("aiFormDocs");
         if (docs) docs.value = "";
 
@@ -3926,7 +4057,7 @@ function renderContentCompBadges(l){
 
     function openGenerateAiModal(){
         if (_modalMode !== "create"){
-            window.portal.showAlert("error", "La génération IA est disponible uniquement lors de la création d’une formation.");
+            setFormInfo("La génération IA est disponible uniquement lors de la création d’une formation.");
             return;
         }
 
@@ -3943,6 +4074,15 @@ function renderContentCompBadges(l){
 
         const apply = byId("btnFormGenerateApply");
         if (apply) apply.disabled = true;
+
+        const run = byId("btnFormGenerateRun");
+        if (run){
+            run.disabled = false;
+            run.style.opacity = "";
+            run.textContent = "Générer";
+        }
+
+        clearLocalStatus("aiFormStatus");
 
         const docs = byId("aiFormDocs");
         if (docs) docs.value = "";
@@ -4071,10 +4211,13 @@ function renderContentCompBadges(l){
 
     async function generateFormationWithAi(portal){
         const objectif = (byId("aiFormObjectif")?.value || "").trim();
+
         if (!objectif){
-            portal.showAlert("error", "Objectif de formation obligatoire.");
+            setLocalStatus("aiFormStatus", "info", "Indiquez d’abord l’objectif de formation.");
             return;
         }
+
+        clearLocalStatus("aiFormStatus");
 
         const effectifId = getEffectifId();
         const fd = new FormData();
@@ -4087,8 +4230,18 @@ function renderContentCompBadges(l){
         const files = Array.from(byId("aiFormDocs")?.files || []);
         files.forEach(file => fd.append("documents", file));
 
+        const btn = byId("btnFormGenerateRun");
+
+        if (btn){
+            btn.disabled = true;
+            btn.style.opacity = ".6";
+            btn.textContent = "Génération…";
+        }
+
         _aiAbortController = new AbortController();
         openAiWait();
+
+        let success = false;
 
         try{
             const data = await apiJsonMultipart(
@@ -4099,13 +4252,33 @@ function renderContentCompBadges(l){
 
             _aiGenerationDraft = data;
             renderGenerationPreview(data);
+
+            success = true;
+            setLocalStatus("aiFormStatus", "success", "Génération terminée.");
+
         } catch(e){
             if (e?.name !== "AbortError"){
-            portal.showAlert("error", getErrorMessage(e));
+                setLocalStatus(
+                    "aiFormStatus",
+                    "error",
+                    "Erreur système, cliquez ici pour télécharger le rapport.",
+                    {
+                        report: buildErrorReport("Génération fiche formation IA", e, {
+                            objectif: objectif,
+                            nb_documents: files.length
+                        })
+                    }
+                );
             }
         } finally {
             _aiAbortController = null;
             closeAiWait();
+
+            if (btn){
+                btn.disabled = success;
+                btn.style.opacity = success ? ".6" : "";
+                btn.textContent = success ? "Généré" : "Générer";
+            }
         }
     }
 
@@ -5066,9 +5239,20 @@ iframe{width:100%;height:100%;border:0;display:block}
     try{
         await saveContent(portal);
     } catch(e){
-        portal.showAlert("error", e?.message || String(e));
+        setLocalStatus(
+            "formContentModalStatus",
+            "error",
+            "Erreur système, cliquez ici pour télécharger le rapport.",
+            {
+                report: buildErrorReport("Enregistrement contenu formation", e, {
+                    id_form: _editingId,
+                    id_ligne_contenu: _contentEditId
+                })
+            }
+        );
     }
     });
+
     byId("btnFormCompStagAdd")?.addEventListener("click", () => openCompPicker("stagiaire"));
     byId("btnFormCompFormAdd")?.addEventListener("click", () => openCompPicker("formateur"));
 

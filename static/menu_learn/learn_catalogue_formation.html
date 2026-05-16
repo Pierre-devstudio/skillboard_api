@@ -107,6 +107,8 @@
       </div>
 
       <div class="sb-modal-foot">
+        <span class="sb-local-status" id="lmsPreviewStatus" style="display:none;"></span>
+
         <button type="button" class="sb-btn sb-btn--accent" id="btnLmsPreviewCreate" disabled>
           Créer la fiche Novoskill
         </button>
@@ -299,9 +301,13 @@
               </div>
             </div>
 
-            <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnFormContentAdd">
-              Ajouter un contenu
-            </button>
+            <div class="sb-actions">
+              <span class="sb-local-status" id="formContentHeadStatus" style="display:none;"></span>
+
+              <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnFormContentAdd">
+                Ajouter un contenu
+              </button>
+            </div>
           </div>
 
           <div id="formContenusList" class="sb-stack sb-stack--sm"></div>
@@ -519,6 +525,8 @@
       </div>
 
       <div class="sb-modal-foot">
+        <span class="sb-local-status" id="aiFormStatus" style="display:none;"></span>
+
         <button type="button" class="sb-btn sb-btn--ai" id="btnFormGenerateRun">Générer</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormGenerateApply" disabled>Remplir la fiche</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormGenerateCancel">Annuler</button>
@@ -648,6 +656,8 @@
       </div>
 
       <div class="sb-modal-foot">
+        <span class="sb-local-status" id="formContentModalStatus" style="display:none;"></span>
+
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormContentSave">Enregistrer le contenu</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormContentCancel">Annuler</button>
       </div>
