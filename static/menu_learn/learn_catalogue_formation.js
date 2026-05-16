@@ -37,6 +37,9 @@
   let _dragContentId = null;
 
   let _detailPlans = [];
+  let _lmsPlanSessions = [];
+  let _lmsPlanStatus = null;
+
   let _importDraft = null;
   let _aiGenerationDraft = null;
   let _aiAbortController = null;
@@ -3199,6 +3202,71 @@ function renderContentCompBadges(l){
         };
     }
 
+    function ensurePlanHeadStatus(){
+        const existing = byId("formPlanHeadStatus");
+        if (existing) return existing;
+
+        const btn = byId("btnFormPlanNew");
+        const parent = btn?.parentNode;
+
+        if (!parent) return null;
+
+        const span = document.createElement("span");
+        span.className = "sb-local-status";
+        span.id = "formPlanHeadStatus";
+        span.style.display = "none";
+
+        parent.insertBefore(span, btn);
+        return span;
+    }
+
+    function enrichPlansWithLmsState(){
+        const sessions = Array.isArray(_lmsPlanSessions) ? _lmsPlanSessions : [];
+
+        (_detailPlans || []).forEach(p => {
+            const pid = String(p?.id_plan_peda || "").trim();
+            if (!pid) return;
+
+            const linked = sessions.find(s => String(s?.id_plan_peda || "").trim() === pid);
+
+            p.lms_sync_active = !!linked;
+            p.lms_external_id = linked?.external_id || null;
+            p.lms_session_name = linked?.name || null;
+            p.lms_sync_status = linked?.sync_status || null;
+            p.lms_last_sync_at = linked?.last_sync_at || null;
+        });
+    }
+
+    async function loadLmsPlanSessions(portal){
+        _lmsPlanSessions = [];
+        _lmsPlanStatus = null;
+
+        if (!_editingId) return;
+
+        const effectifId = getEffectifId();
+
+        try{
+            const data = await portal.apiJson(
+                `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+                + `/${encodeURIComponent(_editingId)}`
+                + `/lms/plans`
+            );
+
+            _lmsPlanStatus = data || null;
+            _lmsPlanSessions = Array.isArray(data?.sessions) ? data.sessions : [];
+
+            enrichPlansWithLmsState();
+        } catch(e){
+            console.warn("Lecture des sessions Lära impossible", e);
+            _lmsPlanSessions = [];
+            _lmsPlanStatus = null;
+        }
+    }
+
+    function lmsPlanSessionsOnly(){
+        return (_lmsPlanSessions || []).filter(s => !s?.linked && !s?.id_plan_peda);
+    }
+
     async function reloadFormationTechnicalDetail(portal){
         const effectifId = getEffectifId();
 
@@ -3208,6 +3276,8 @@ function renderContentCompBadges(l){
 
         _detailContenus = Array.isArray(d.contenus) ? d.contenus : [];
         _detailPlans = Array.isArray(d.plans) ? d.plans : [];
+
+        await loadLmsPlanSessions(portal);
 
         renderContenus();
         renderPlans();
@@ -3264,9 +3334,10 @@ function renderContentCompBadges(l){
         const clean = String(msg || "").toLowerCase();
 
         if (
-            clean.includes("publiez d’abord la formation")
-            || clean.includes("publiez d'abord la formation")
-            || clean.includes("formation lära non publiée")
+            clean.includes("formation non synchronisée")
+            || clean.includes("publiez d’abord")
+            || clean.includes("publiez d'abord")
+            || clean.includes("aucun connecteur")
         ){
             return msg;
         }
@@ -3274,182 +3345,108 @@ function renderContentCompBadges(l){
         return "";
     }
 
-    function planLmsSuccessMessage(res){
-        if (res?.diagnostic_only){
-            const expected = Array.isArray(res?.expected_sections)
-                ? res.expected_sections.length
-                : (res?.comparison?.expected_count || 0);
-
-            const remote = res?.comparison?.remote_count ?? 0;
-
-            return [
-                "Session Lära créée/mise à jour",
-                "diagnostic disponible",
-                expected ? `${expected} bloc(s) Novoskill attendu(s)` : "",
-                `${remote} section(s) lue(s) dans Lära`
-            ].filter(Boolean).join(" • ");
-        }
-
-        const created = Array.isArray(res?.sections_created) ? res.sections_created.length : 0;
-        const skipped = Array.isArray(res?.sections_skipped) ? res.sections_skipped.length : 0;
-        const failed = Array.isArray(res?.sections_failed) ? res.sections_failed.length : 0;
-
-        if (res?.sections_write_ok){
-            return [
-                "Découpage envoyé dans Lära",
-                created ? `${created} section(s) créée(s)` : "",
-                skipped ? `${skipped} déjà présente(s)` : ""
-            ].filter(Boolean).join(" • ");
-        }
-
-        return [
-            "Session Lära créée/mise à jour",
-            failed ? `${failed} section(s) non créée(s)` : "sections à vérifier"
-        ].filter(Boolean).join(" • ");
-    }
-
-    async function diagnoseLmsSessions(){
-        const effectifId = getEffectifId();
-        const formId = String(_editingId || "").trim();
-
-        if (!effectifId) throw new Error("Profil Learn manquant.");
-        if (!formId) throw new Error("Formation non chargée.");
-
-        clearLocalStatus("formPlanHeadStatus");
-
-        const res = await window.portal.apiJson(
-            `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
-            + `/${encodeURIComponent(formId)}`
-            + `/lms/sessions/diagnostic`
-        );
-
-        const sessions = Array.isArray(res?.sessions) ? res.sessions : [];
-
-        const sessionsWithSections = sessions.filter(s => {
-            return Array.isArray(s?.sections) && s.sections.length > 0;
-        });
-
-        const message = [
-            "Diagnostic sessions Lära disponible",
-            `${sessions.length} session(s) lue(s)`,
-            sessionsWithSections.length ? `${sessionsWithSections.length} avec section(s)` : "aucune section lue"
-        ].filter(Boolean).join(" • ");
-
-        setLocalStatus(
-            "formPlanHeadStatus",
-            "info",
-            message,
-            {
-                report: buildErrorReport(
-                    "Diagnostic complet des sessions Lära",
-                    {
-                        message: "Liste des sessions Lära et structure exposée par l’API.",
-                        detail: {
-                            workspace_id: res?.workspace_id || null,
-                            formation_publication: res?.formation_publication || null,
-                            expected_plans: res?.expected_plans || [],
-                            sessions_count: res?.sessions_count || 0,
-                            sessions: sessions,
-                            diagnostic: res?.diagnostic || null
-                        }
-                    },
-                    {
-                        id_form: _editingId
-                    }
-                )
-            }
-        );
-
-        return res;
-    }
-
     async function publishPlanLms(p){
         const effectifId = getEffectifId();
-        const formId = String(_editingId || "").trim();
         const planId = String(p?.id_plan_peda || "").trim();
 
         if (!effectifId) throw new Error("Profil Learn manquant.");
-        if (!formId) throw new Error("Formation non chargée.");
+        if (!_editingId) throw new Error("Formation non chargée.");
         if (!planId) throw new Error("Plan pédagogique introuvable.");
 
         clearLocalStatus("formPlanHeadStatus");
 
-        const res = await window.portal.apiJson(
+        await window.portal.apiJson(
             `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
-            + `/${encodeURIComponent(formId)}`
+            + `/${encodeURIComponent(_editingId)}`
             + `/plans/${encodeURIComponent(planId)}`
             + `/lms/publish`,
             { method:"POST" }
         );
 
-        const type = res?.sections_write_ok ? "success" : "info";
+        await reloadFormationTechnicalDetail(window.portal);
 
-        const options = {
-            timeoutMs: type === "success" ? 5000 : 0
-        };
+        setLocalStatus("formPlanHeadStatus", "success", "Formation et plan synchronisés avec Lära.");
+    }
 
-        if (!res?.sections_write_ok){
-            const actionLabel = res?.diagnostic_only
-                ? "Diagnostic découpage session Lära"
-                : "Publication plan pédagogique vers Lära - sections non créées";
+    async function createPlanFromLmsSession(session){
+        const effectifId = getEffectifId();
+        const externalId = String(session?.external_id || "").trim();
 
-            const message = res?.diagnostic_only
-                ? "Session Lära créée ou mise à jour. Diagnostic brut récupéré depuis Lära."
-                : "Session Lära créée ou mise à jour, mais les sections n’ont pas été créées.";
+        if (!effectifId) throw new Error("Profil Learn manquant.");
 
-            options.report = buildErrorReport(
-                actionLabel,
-                {
-                    message: message,
-                    detail: {
-                        action: res?.action || null,
-                        external_id: res?.external_id || null,
-                        diagnostic_only: !!res?.diagnostic_only,
-                        diagnostic_message: res?.diagnostic_message || null,
-                        session_payload: res?.session_payload || null,
-                        session_response: res?.session_response || null,
-                        session_detail: res?.session_detail || null,
-                        resources_after: res?.resources_after || null,
-                        expected_sections: res?.expected_sections || [],
-                        sections_write_attempted: res?.sections_write_attempted || false,
-                        sections_created: res?.sections_created || [],
-                        sections_skipped: res?.sections_skipped || [],
-                        sections_failed: res?.sections_failed || [],
-                        comparison: res?.comparison || null
-                    }
-                },
-                {
-                    id_form: _editingId,
-                    id_plan_peda: p?.id_plan_peda || null,
-                    titre_plan: p?.titre || null
-                }
-            );
+        if (!_editingId){
+            setLocalStatus("formPlanHeadStatus", "info", "Enregistrez d’abord la fiche formation.");
+            return;
         }
 
-        setLocalStatus(
-            "formPlanHeadStatus",
-            type,
-            planLmsSuccessMessage(res),
-            options
+        if (!externalId){
+            setLocalStatus("formPlanHeadStatus", "info", "Session Lära introuvable.");
+            return;
+        }
+
+        clearLocalStatus("formPlanHeadStatus");
+
+        const res = await window.portal.apiJson(
+            `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+            + `/${encodeURIComponent(_editingId)}`
+            + `/lms/sessions/${encodeURIComponent(externalId)}`
+            + `/create_plan`,
+            { method:"POST" }
         );
 
-        return res;
+        await reloadFormationTechnicalDetail(window.portal);
+
+        setLocalStatus("formPlanHeadStatus", "success", "Session Lära ajoutée comme plan Novoskill.");
+
+        if (res?.item?.id_plan_peda){
+            await openPlanModal(res.item);
+        }
     }
 
     function renderPlans(){
         const host = byId("formPlansList");
         if (!host) return;
 
+        ensurePlanHeadStatus();
+        enrichPlansWithLmsState();
+
         host.innerHTML = "";
 
-        if (!_detailPlans.length){
-            host.innerHTML = `<div class="card-sub">Aucun plan pédagogique n’est encore rattaché à cette formation.</div>`;
+        const remoteOnly = lmsPlanSessionsOnly();
+        const hasLocal = Array.isArray(_detailPlans) && _detailPlans.length > 0;
+        const hasRemote = remoteOnly.length > 0;
+
+        if (!hasLocal && !hasRemote){
+            const empty = document.createElement("div");
+            empty.className = "card-sub";
+
+            empty.textContent = _lmsPlanStatus?.published
+                ? "Aucun plan pédagogique Novoskill ni session Lära disponible."
+                : "Aucun plan pédagogique n’est encore rattaché à cette formation.";
+
+            host.appendChild(empty);
             return;
         }
 
-        _detailPlans.forEach(p => {
+        (_detailPlans || []).forEach(p => {
             const div = document.createElement("div");
             div.className = "lf-plan-card";
+
+            const syncLine = p.lms_sync_active
+                ? `<div class="lf-plan-sync-line">Synchronisation active avec Lära</div>`
+                : "";
+
+            const lmsButton = _lmsPlanStatus?.published
+                ? `
+                <button type="button" class="sb-icon-btn sb-icon-btn--lms" data-action="lms-plan" title="Synchroniser avec Lära" aria-label="Synchroniser avec Lära">
+                    ${iconSync()}
+                </button>
+                `
+                : `
+                <button type="button" class="sb-icon-btn sb-icon-btn--lms" data-action="lms-plan" title="Publier formation et plan dans Lära" aria-label="Publier formation et plan dans Lära">
+                    ${iconLms()}
+                </button>
+                `;
 
             div.innerHTML = `
             <div class="lf-plan-head">
@@ -3461,12 +3458,11 @@ function renderContentCompBadges(l){
                 <div class="card-sub" style="margin:4px 0 0 0;">
                     ${htmlEsc(p.modalite_generale || "—")} • ${htmlEsc(p.duree_totale || "0")} h • ${htmlEsc(p.nb_blocs || "0")} bloc(s)
                 </div>
+                ${syncLine}
                 </div>
 
                 <div class="sb-icon-actions">
-                <button type="button" class="sb-icon-btn sb-icon-btn--lms" data-action="lms-plan" title="Envoyer / contrôler le découpage dans Lära" aria-label="Envoyer / contrôler le découpage dans Lära">
-                    ${iconLms()}
-                </button>
+                ${isSupervisor() ? lmsButton : ""}
                 <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-action="pdf" title="Voir PDF" aria-label="Voir PDF">
                     ${iconPdf()}
                 </button>
@@ -3489,14 +3485,6 @@ function renderContentCompBadges(l){
             </div>
             `;
 
-            div.querySelector('[data-action="pdf"]')?.addEventListener("click", async () => {
-            try{
-                await openPlanPdf(p);
-            } catch(e){
-                window.portal.showAlert("error", getErrorMessage ? getErrorMessage(e) : (e?.message || String(e)));
-            }
-            });
-
             div.querySelector('[data-action="lms-plan"]')?.addEventListener("click", async () => {
                 try{
                     await publishPlanLms(p);
@@ -3513,12 +3501,20 @@ function renderContentCompBadges(l){
                         "error",
                         "Erreur système, cliquez ici pour télécharger le rapport.",
                         {
-                            report: buildErrorReport("Publication plan pédagogique vers Lära", e, {
+                            report: buildErrorReport("Synchronisation plan pédagogique vers Lära", e, {
                                 id_form: _editingId,
                                 id_plan_peda: p?.id_plan_peda || null
                             })
                         }
                     );
+                }
+            });
+
+            div.querySelector('[data-action="pdf"]')?.addEventListener("click", async () => {
+                try{
+                    await openPlanPdf(p);
+                } catch(e){
+                    window.portal.showAlert("error", getErrorMessage ? getErrorMessage(e) : (e?.message || String(e)));
                 }
             });
 
@@ -3531,7 +3527,53 @@ function renderContentCompBadges(l){
             });
 
             div.querySelector('[data-action="archive"]')?.addEventListener("click", () => {
-            openPlanArchive(p);
+                openPlanArchive(p);
+            });
+
+            host.appendChild(div);
+        });
+
+        remoteOnly.forEach(s => {
+            const div = document.createElement("div");
+            div.className = "lf-plan-card lf-plan-card--lms-only";
+
+            div.innerHTML = `
+            <div class="lf-plan-head">
+                <div class="lf-plan-head-main">
+                <div class="lf-plan-title">
+                    <span class="sb-badge sb-badge--lms-only">Lära</span>
+                    <span>${htmlEsc(s.name || "Session Lära")}</span>
+                </div>
+                <div class="card-sub" style="margin:4px 0 0 0;">
+                    Présente dans Lära • non ajoutée dans Novoskill
+                </div>
+                </div>
+
+                <div class="sb-icon-actions">
+                <button type="button" class="sb-icon-btn sb-icon-btn--lms" data-action="create-local" title="Créer le plan Novoskill" aria-label="Créer le plan Novoskill">
+                    ${iconPlus()}
+                </button>
+                </div>
+            </div>
+            `;
+
+            div.querySelector('[data-action="create-local"]')?.addEventListener("click", async () => {
+                try{
+                    await createPlanFromLmsSession(s);
+                } catch(e){
+                    setLocalStatus(
+                        "formPlanHeadStatus",
+                        "error",
+                        "Erreur système, cliquez ici pour télécharger le rapport.",
+                        {
+                            report: buildErrorReport("Création plan depuis session Lära", e, {
+                                id_form: _editingId,
+                                external_id: s?.external_id || null,
+                                session_name: s?.name || null
+                            })
+                        }
+                    );
+                }
             });
 
             host.appendChild(div);
@@ -4614,6 +4656,8 @@ function renderContentCompBadges(l){
         _prerequis = [];
         _detailContenus = [];
         _detailPlans = [];
+        _lmsPlanSessions = [];
+        _lmsPlanStatus = null;
         _pendingImportContenus = [];
         _pendingCompStagCreate = [];
         _pendingCompFormCreate = [];
@@ -4675,6 +4719,8 @@ function renderContentCompBadges(l){
         _prerequis = [];
         _detailContenus = [];
         _detailPlans = [];
+        _lmsPlanSessions = [];
+        _lmsPlanStatus = null;
 
         renderRefChecks();
         renderPrerequis();
@@ -4692,6 +4738,8 @@ function renderContentCompBadges(l){
         );
 
         fillFormationModal(d);
+        await loadLmsPlanSessions(portal);
+        renderPlans();
 
         } catch(e){
         closeModal("modalFormEdit");
@@ -5420,35 +5468,7 @@ iframe{width:100%;height:100%;border:0;display:block}
     byId("btnFormPrereqAdd")?.addEventListener("click", addPrerequis);
     byId("formType")?.addEventListener("change", syncObsTypeFormation);
 
-    byId("btnFormPlanLmsDiag")?.addEventListener("click", async () => {
-    try{
-        await diagnoseLmsSessions();
-    } catch(e){
-        const msg = getErrorMessage(e);
-        const clean = String(msg || "").toLowerCase();
-
-        if (
-            clean.includes("formation doit d’abord être liée")
-            || clean.includes("formation doit d'abord être liée")
-            || clean.includes("formation doit d’abord être publiée")
-            || clean.includes("formation doit d'abord être publiée")
-        ){
-            setLocalStatus("formPlanHeadStatus", "info", msg);
-            return;
-        }
-
-        setLocalStatus(
-            "formPlanHeadStatus",
-            "error",
-            "Erreur système, cliquez ici pour télécharger le rapport.",
-            {
-                report: buildErrorReport("Diagnostic sessions Lära", e, {
-                    id_form: _editingId
-                })
-            }
-        );
-    }
-    });    
+    byId("btnFormPlanLmsDiag")?.remove();
 
     byId("btnFormPlanNew")?.addEventListener("click", () => openPlanModal(null));
 

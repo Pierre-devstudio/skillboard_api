@@ -715,7 +715,8 @@ def _lara_normalize_session(row: dict) -> dict:
     return {
         "external_id": _lara_text(_lara_first(row, ("id", "Id", "ID", "workspaceInstanceId"))),
         "workspace_id": _lara_text(_lara_first(row, ("workspaceId", "workspace_id"))),
-        "name": _lara_text(_lara_first(row, ("name", "title", "label"))),
+        "website_id": _lara_text(_lara_first(row, ("websiteId", "website_id"))),
+        "name": _lara_text(_lara_first(row, ("name", "title", "label"))) or "Session Lära",
         "start_date": _lara_text(_lara_first(row, ("startDate", "start_date"))),
         "end_date": _lara_text(_lara_first(row, ("endDate", "end_date"))),
         "is_hidden": bool(_lara_first(row, ("isHidden", "is_hidden"))),
@@ -927,10 +928,6 @@ def _lara_plan_session_payload(plan: dict, workspace_id: str, cfg: dict, externa
     else:
         payload["workspaceId"] = workspace_id
 
-    custom_fields = _lara_plan_custom_fields(plan, cfg)
-    if custom_fields:
-        payload["customFields"] = custom_fields
-
     return payload
 
 
@@ -1035,6 +1032,93 @@ def _lara_try_create_section_text_block(
         "attempts": attempts,
     }
 
+def publish_plan_session(
+    plan: dict,
+    cfg: dict,
+    formation_publication: dict,
+    existing_plan_publication: Optional[dict] = None,
+) -> dict:
+    """
+    Synchronise un plan pédagogique Novoskill avec une session Lära.
+
+    Règle produit validée :
+    - plan pédagogique Novoskill = session Lära ;
+    - les blocs / sections ne sont pas écrits dans Lära faute d'endpoint API public fiable ;
+    - aucun diagnostic utilisateur ici ;
+    - aucun appel resource/section ici.
+    """
+    api_base = cfg.get("base_url") or ""
+    secret = cfg.get("secret_json") or {}
+    api_id = secret.get("api_id") or ""
+
+    workspace_id = str((formation_publication or {}).get("external_id") or "").strip()
+    if not workspace_id:
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "response": {"error": "Formation Lära non publiée ou external_id manquant."},
+        }
+
+    external_id = str((existing_plan_publication or {}).get("external_id") or "").strip()
+    external_url = str((existing_plan_publication or {}).get("external_url") or "").strip()
+    action = "update" if external_id else "create"
+
+    session_payload = _lara_plan_session_payload(
+        plan=plan,
+        workspace_id=workspace_id,
+        cfg=cfg,
+        external_id=external_id,
+    )
+
+    if external_id:
+        session_result = learn_lms_api_post(
+            api_base,
+            api_id,
+            "workspaceinstance/edit",
+            session_payload,
+        )
+    else:
+        session_result = learn_lms_api_post(
+            api_base,
+            api_id,
+            "workspaceinstance/create",
+            session_payload,
+        )
+
+        if session_result.get("ok"):
+            external_id = _lara_extract_id(session_result.get("json"))
+
+    if not session_result.get("ok") or not external_id:
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "action": action,
+            "external_id": external_id or None,
+            "external_url": external_url or None,
+            "response": session_result,
+            "payload": session_payload,
+        }
+
+    return {
+        "ok": True,
+        "provider_code": "lara",
+        "action": action,
+        "action_label": "mise à jour" if action == "update" else "créée",
+        "external_id": external_id,
+        "external_url": external_url,
+        "response": session_result,
+        "payload": session_payload,
+
+        # Compatibilité avec le backend actuel.
+        # Ici, "sections_write_ok" signifie : rien à écrire côté section Lära.
+        "diagnostic_only": False,
+        "sections_write_attempted": False,
+        "sections_write_ok": True,
+        "sections_created": [],
+        "sections_skipped": [],
+        "sections_failed": [],
+    }
+
 def diagnose_workspace_sessions(cfg: dict, workspace_id: str) -> dict:
     """
     Diagnostic Lära d'une formation :
@@ -1105,92 +1189,20 @@ def publish_plan_structure(
     existing_plan_publication: Optional[dict] = None,
 ) -> dict:
     """
-    Synchronisation V1 contrôlée :
-    - crée/met à jour la session Lära correspondant au plan pédagogique ;
-    - ne tente plus de créer des ressources ou sections ;
-    - récupère le détail brut de session et la liste des ressources/sections ;
-    - laisse le backend comparer avec les blocs Novoskill.
+    Alias conservé pour ne pas casser les appels existants.
 
-    Objectif : identifier où Lära stocke réellement le découpage visible de session,
-    sans polluer la session avec des appels API non confirmés.
+    Ancienne version :
+    - créait / mettait à jour une session ;
+    - lançait un diagnostic ;
+    - retournait sections_write_ok=False.
+
+    Nouvelle version :
+    - crée / met à jour uniquement la session Lära ;
+    - retourne un état de synchronisation exploitable côté utilisateur.
     """
-    api_base = cfg.get("base_url") or ""
-    secret = cfg.get("secret_json") or {}
-    api_id = secret.get("api_id") or ""
-
-    workspace_id = str((formation_publication or {}).get("external_id") or "").strip()
-    if not workspace_id:
-        return {
-            "ok": False,
-            "provider_code": "lara",
-            "response": {"error": "Formation Lära non publiée ou external_id manquant."},
-        }
-
-    external_id = str((existing_plan_publication or {}).get("external_id") or "").strip()
-    external_url = str((existing_plan_publication or {}).get("external_url") or "").strip()
-    action = "update" if external_id else "create"
-
-    session_payload = _lara_plan_session_payload(plan, workspace_id, cfg, external_id)
-
-    if external_id:
-        session_result = _lara_post_with_custom_field_fallback(
-            api_base,
-            api_id,
-            "workspaceinstance/edit",
-            session_payload,
-        )
-    else:
-        session_result = _lara_post_with_custom_field_fallback(
-            api_base,
-            api_id,
-            "workspaceinstance/create",
-            session_payload,
-        )
-
-        if session_result.get("ok"):
-            external_id = _lara_extract_id(session_result.get("json"))
-
-    if not session_result.get("ok") or not external_id:
-        return {
-            "ok": False,
-            "provider_code": "lara",
-            "action": action,
-            "external_id": external_id or None,
-            "external_url": external_url or None,
-            "response": session_result,
-        }
-
-    session_detail = get_session_detail(cfg, external_id)
-    resources_after = get_session_resources(cfg, external_id)
-
-    expected_sections = []
-
-    for idx, block in enumerate(plan.get("blocs") or [], start=1):
-        expected_sections.append({
-            "position": idx,
-            "title": _lara_text(block.get("titre")) or f"Séquence {idx}",
-            "id_bloc_peda": _lara_text(block.get("id_bloc_peda")),
-            "duree": _lara_text(block.get("duree")),
-            "modalite_intervention": _lara_text(block.get("modalite_intervention")),
-        })
-
-    return {
-        "ok": True,
-        "provider_code": "lara",
-        "action": action,
-        "action_label": "mise à jour" if action == "update" else "créée",
-        "external_id": external_id,
-        "external_url": external_url,
-        "session_payload": session_payload,
-        "session_response": session_result,
-        "session_detail": session_detail,
-        "resources_after": resources_after,
-        "diagnostic_only": True,
-        "diagnostic_message": "Session Lära créée/mise à jour. Diagnostic de découpage uniquement, sans écriture de sections.",
-        "expected_sections": expected_sections,
-        "sections_write_attempted": False,
-        "sections_write_ok": False,
-        "sections_created": [],
-        "sections_skipped": [],
-        "sections_failed": [],
-    }
+    return publish_plan_session(
+        plan=plan,
+        cfg=cfg,
+        formation_publication=formation_publication,
+        existing_plan_publication=existing_plan_publication,
+    )
