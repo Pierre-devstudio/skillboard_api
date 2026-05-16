@@ -1403,6 +1403,112 @@ def learn_formation_plan_lms_publish(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"learn/formations plan lms publish error: {e}")
 
+@router.get("/learn/formations/{id_effectif}/{id_form}/lms/sessions/diagnostic")
+def learn_formation_lms_sessions_diagnostic(
+    id_effectif: str,
+    id_form: str,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                oid = (profile.get("id_owner") or "").strip()
+
+                cfg = learn_lms_fetch_active_config(cur, oid, with_secret=True)
+
+                if not cfg or cfg.get("provider_code") != "lara":
+                    return {
+                        "ok": False,
+                        "configured": False,
+                        "provider_code": "manual",
+                        "message": "Aucun connecteur LMS actif.",
+                    }
+
+                id_lms_config = str(cfg.get("id_lms_config") or "").strip()
+                if not id_lms_config:
+                    raise HTTPException(status_code=400, detail="Configuration LMS invalide.")
+
+                form_pub = _lms_publication_row(cur, oid, fid, id_lms_config)
+
+                if not form_pub or not form_pub.get("external_id"):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="La formation doit d’abord être liée ou publiée dans Lära.",
+                    )
+
+                plan_rows = []
+                cur.execute(
+                    """
+                    SELECT
+                      p.id_plan_peda,
+                      p.codification,
+                      p.titre,
+                      COALESCE(COUNT(b.id_bloc_peda), 0) AS nb_blocs
+                    FROM public.tbl_plan_pedagogique p
+                    LEFT JOIN public.tbl_bloc_pedagogique b
+                      ON b.id_owner = p.id_owner
+                     AND b.id_plan_peda = p.id_plan_peda
+                     AND COALESCE(b.archive, FALSE) = FALSE
+                    WHERE p.id_owner = %s
+                      AND p.id_form = %s
+                      AND COALESCE(p.archive, FALSE) = FALSE
+                    GROUP BY
+                      p.id_plan_peda,
+                      p.codification,
+                      p.titre
+                    ORDER BY lower(COALESCE(p.codification, '')), lower(COALESCE(p.titre, ''))
+                    """,
+                    (oid, fid),
+                )
+                plan_rows = cur.fetchall() or []
+
+                expected_plans = []
+
+                for p in plan_rows:
+                    plan_detail = _fetch_plan_detail(cur, oid, fid, p.get("id_plan_peda"))
+                    expected_plans.append({
+                        "id_plan_peda": plan_detail.get("id_plan_peda"),
+                        "codification": plan_detail.get("codification"),
+                        "titre": plan_detail.get("titre"),
+                        "sections": _lms_expected_plan_sections(plan_detail),
+                    })
+
+        diagnostic = lara_connector.diagnose_workspace_sessions(
+            cfg=cfg,
+            workspace_id=form_pub.get("external_id"),
+        )
+
+        return {
+            "ok": bool(diagnostic.get("ok")),
+            "configured": True,
+            "provider_code": "lara",
+            "workspace_id": form_pub.get("external_id"),
+            "formation_publication": {
+                "external_id": form_pub.get("external_id"),
+                "external_url": form_pub.get("external_url"),
+                "last_sync_at": form_pub.get("last_sync_at"),
+                "sync_status": form_pub.get("sync_status"),
+            },
+            "expected_plans": expected_plans,
+            "sessions_count": diagnostic.get("sessions_count", 0),
+            "sessions": diagnostic.get("sessions") or [],
+            "diagnostic": diagnostic,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations lms sessions diagnostic error: {e}")
+
 @router.get("/learn/formations/{id_effectif}/{id_form}/lms/status")
 def learn_formation_lms_status(id_effectif: str, id_form: str, request: Request):
     auth = request.headers.get("Authorization", "")

@@ -1035,6 +1035,68 @@ def _lara_try_create_section_text_block(
         "attempts": attempts,
     }
 
+def diagnose_workspace_sessions(cfg: dict, workspace_id: str) -> dict:
+    """
+    Diagnostic Lära d'une formation :
+    - récupère toutes les sessions liées à la formation Lära ;
+    - pour chaque session, récupère le détail session ;
+    - pour chaque session, récupère la liste des éléments/sections exposées par Lära.
+
+    Objectif : comprendre où Lära expose le découpage "sectionTitle / sectionPosition"
+    sans demander à l'utilisateur de saisir un ID de session invisible.
+    """
+    wid = str(workspace_id or "").strip()
+
+    if not wid:
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "workspace_id": "",
+            "sessions": [],
+            "response": {"error": "workspace_id manquant."},
+        }
+
+    sessions_result = list_plan_sessions(cfg, wid)
+
+    if not sessions_result.get("ok"):
+        return {
+            "ok": False,
+            "provider_code": "lara",
+            "workspace_id": wid,
+            "sessions": [],
+            "sessions_response": sessions_result,
+        }
+
+    sessions = []
+
+    for s in sessions_result.get("items") or []:
+        sid = str(s.get("external_id") or "").strip()
+
+        if not sid:
+            continue
+
+        detail = get_session_detail(cfg, sid)
+        resources = get_session_resources(cfg, sid)
+
+        sessions.append({
+            "session": s,
+            "session_id": sid,
+            "session_name": s.get("name") or "",
+            "detail": detail,
+            "resources": resources,
+            "sections": resources.get("sections") or [],
+            "resources_count": len(resources.get("resources") or []),
+            "sections_count": len(resources.get("sections") or []),
+        })
+
+    return {
+        "ok": True,
+        "provider_code": "lara",
+        "workspace_id": wid,
+        "sessions_count": len(sessions),
+        "sessions": sessions,
+        "sessions_response": sessions_result,
+    }
 
 def publish_plan_structure(
     plan: dict,

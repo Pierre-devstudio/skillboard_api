@@ -3308,6 +3308,61 @@ function renderContentCompBadges(l){
         ].filter(Boolean).join(" • ");
     }
 
+    async function diagnoseLmsSessions(){
+        const effectifId = getEffectifId();
+        const formId = String(_editingId || "").trim();
+
+        if (!effectifId) throw new Error("Profil Learn manquant.");
+        if (!formId) throw new Error("Formation non chargée.");
+
+        clearLocalStatus("formPlanHeadStatus");
+
+        const res = await window.portal.apiJson(
+            `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+            + `/${encodeURIComponent(formId)}`
+            + `/lms/sessions/diagnostic`
+        );
+
+        const sessions = Array.isArray(res?.sessions) ? res.sessions : [];
+
+        const sessionsWithSections = sessions.filter(s => {
+            return Array.isArray(s?.sections) && s.sections.length > 0;
+        });
+
+        const message = [
+            "Diagnostic sessions Lära disponible",
+            `${sessions.length} session(s) lue(s)`,
+            sessionsWithSections.length ? `${sessionsWithSections.length} avec section(s)` : "aucune section lue"
+        ].filter(Boolean).join(" • ");
+
+        setLocalStatus(
+            "formPlanHeadStatus",
+            "info",
+            message,
+            {
+                report: buildErrorReport(
+                    "Diagnostic complet des sessions Lära",
+                    {
+                        message: "Liste des sessions Lära et structure exposée par l’API.",
+                        detail: {
+                            workspace_id: res?.workspace_id || null,
+                            formation_publication: res?.formation_publication || null,
+                            expected_plans: res?.expected_plans || [],
+                            sessions_count: res?.sessions_count || 0,
+                            sessions: sessions,
+                            diagnostic: res?.diagnostic || null
+                        }
+                    },
+                    {
+                        id_form: _editingId
+                    }
+                )
+            }
+        );
+
+        return res;
+    }
+
     async function publishPlanLms(p){
         const effectifId = getEffectifId();
         const formId = String(_editingId || "").trim();
@@ -5364,6 +5419,36 @@ iframe{width:100%;height:100%;border:0;display:block}
 
     byId("btnFormPrereqAdd")?.addEventListener("click", addPrerequis);
     byId("formType")?.addEventListener("change", syncObsTypeFormation);
+
+    byId("btnFormPlanLmsDiag")?.addEventListener("click", async () => {
+    try{
+        await diagnoseLmsSessions();
+    } catch(e){
+        const msg = getErrorMessage(e);
+        const clean = String(msg || "").toLowerCase();
+
+        if (
+            clean.includes("formation doit d’abord être liée")
+            || clean.includes("formation doit d'abord être liée")
+            || clean.includes("formation doit d’abord être publiée")
+            || clean.includes("formation doit d'abord être publiée")
+        ){
+            setLocalStatus("formPlanHeadStatus", "info", msg);
+            return;
+        }
+
+        setLocalStatus(
+            "formPlanHeadStatus",
+            "error",
+            "Erreur système, cliquez ici pour télécharger le rapport.",
+            {
+                report: buildErrorReport("Diagnostic sessions Lära", e, {
+                    id_form: _editingId
+                })
+            }
+        );
+    }
+    });    
 
     byId("btnFormPlanNew")?.addEventListener("click", () => openPlanModal(null));
 
