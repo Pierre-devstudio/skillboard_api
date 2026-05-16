@@ -128,31 +128,28 @@
 .sb-local-status{
   display:none;
   align-items:center;
-  max-width:420px;
+  max-width:520px;
   font-size:11px;
   font-weight:650;
   line-height:1.25;
-  border-radius:999px;
-  padding:5px 9px;
+  padding:0;
+  margin:0;
+  background:transparent;
+  border:0;
+  border-radius:0;
   white-space:normal;
 }
 
 .sb-local-status--success{
   color:#15803d;
-  background:#f0fdf4;
-  border:1px solid #86efac;
 }
 
 .sb-local-status--info{
-  color:#9a3412;
-  background:#fff7ed;
-  border:1px solid #fed7aa;
+  color:#c2410c;
 }
 
 .sb-local-status--error{
   color:#b91c1c;
-  background:#fef2f2;
-  border:1px solid #fecaca;
 }
 
 .sb-local-status.is-clickable{
