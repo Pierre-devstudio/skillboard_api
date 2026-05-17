@@ -121,6 +121,9 @@ def _lms_remote_diff_reasons(remote: dict, local: dict) -> list:
     if remote_dt and local_sync_dt and remote_dt > local_sync_dt:
         reasons.append("date_lms")
 
+    if local.get("local_changed"):
+        reasons.append("local_changed")
+
     return reasons
 
 
@@ -158,6 +161,34 @@ def _lms_local_rows_for_compare(cur, oid: str, id_lms_config: str) -> list:
 
     return cur.fetchall() or []
 
+def _lms_enrich_local_rows_with_current_hash(cur, oid: str, local_rows: list) -> list:
+    enriched = []
+
+    for row in local_rows or []:
+        item = dict(row or {})
+
+        item["current_html_hash"] = None
+        item["local_changed"] = False
+        item["local_hash_error"] = None
+
+        id_form = str(item.get("id_form") or "").strip()
+        stored_hash = str(item.get("html_hash") or "").strip()
+        external_id = str(item.get("external_id") or "").strip()
+
+        if id_form and stored_hash and external_id and not item.get("archive"):
+            try:
+                form = _fetch_form_detail(cur, oid, id_form)
+                html_payload = _build_formation_lms_html(form)
+                current_hash = _lms_html_hash(html_payload)
+
+                item["current_html_hash"] = current_hash
+                item["local_changed"] = bool(current_hash and current_hash != stored_hash)
+            except Exception as e:
+                item["local_hash_error"] = str(e)
+
+        enriched.append(item)
+
+    return enriched
 
 def _lms_compare_remote_with_local(remote_items: list, local_rows: list) -> tuple[list, list]:
     by_code = {}
@@ -192,9 +223,17 @@ def _lms_compare_remote_with_local(remote_items: list, local_rows: list) -> tupl
 
             diff_reasons = _lms_remote_diff_reasons(remote, local)
 
+            local_changed = bool(local.get("local_changed"))
+            remote_changed = "date_lms" in diff_reasons
+            semantic_diff = any(x in diff_reasons for x in ("code", "titre"))
+
             if local.get("archive") or local.get("masque"):
                 match_status = "linked_archived"
-            elif diff_reasons:
+            elif local_changed and remote_changed:
+                match_status = "diverged"
+            elif local_changed:
+                match_status = "local_changed"
+            elif remote_changed or semantic_diff:
                 match_status = "remote_changed"
             else:
                 match_status = "linked"
@@ -208,6 +247,8 @@ def _lms_compare_remote_with_local(remote_items: list, local_rows: list) -> tupl
             item["local_lms_external_id"] = local.get("external_id")
             item["local_lms_external_url"] = local.get("external_url")
             item["lms_sync_active"] = _lms_is_local_sync_active(local)
+            item["local_changed"] = local_changed
+            item["local_hash_error"] = local.get("local_hash_error")
             item["type_lms_id"] = remote.get("type_lms_id")
             item["type_lms_label"] = remote.get("type_lms_label")
 
@@ -668,6 +709,7 @@ def learn_formations_lms_remote(
                     })
 
                 local_rows = _lms_local_rows_for_compare(cur, oid, id_lms_config)
+                local_rows = _lms_enrich_local_rows_with_current_hash(cur, oid, local_rows)
 
         remote_items = remote_result.get("items") or []
         remote_only, linked = _lms_compare_remote_with_local(remote_items, local_rows)

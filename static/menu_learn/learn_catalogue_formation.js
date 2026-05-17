@@ -3433,7 +3433,7 @@ function renderContentCompBadges(l){
 
         await reloadFormationTechnicalDetail(window.portal);
 
-        setLocalStatus("formPlanHeadStatus", "success", "Formation et plan synchronisés avec Lära.");
+        setLocalStatus("formPlanHeadStatus", "success", "Formation et plan publiés dans votre LMS.");
     }
 
     async function createPlanFromLmsSession(session){
@@ -3501,17 +3501,17 @@ function renderContentCompBadges(l){
             div.className = "lf-plan-card";
 
             const syncLine = p.lms_sync_active
-                ? `<div class="lf-plan-sync-line">Synchronisation active avec Lära</div>`
+                ? `<div class="lf-plan-sync-line">Publié dans le LMS</div>`
                 : "";
 
             const lmsButton = _lmsPlanStatus?.published
                 ? `
-                <button type="button" class="sb-icon-btn sb-icon-btn--lms" data-action="lms-plan" title="Synchroniser avec Lära" aria-label="Synchroniser avec Lära">
+                <button type="button" class="sb-icon-btn sb-icon-btn--lms" data-action="lms-plan" title="Publier LMS" aria-label="Publier LMS">
                     ${iconSync()}
                 </button>
                 `
                 : `
-                <button type="button" class="sb-icon-btn sb-icon-btn--lms" data-action="lms-plan" title="Publier formation et plan dans Lära" aria-label="Publier formation et plan dans Lära">
+                <button type="button" class="sb-icon-btn sb-icon-btn--lms" data-action="lms-plan" title="Publier LMS" aria-label="Publier LMS">
                     ${iconLms()}
                 </button>
                 `;
@@ -3679,6 +3679,7 @@ function renderContentCompBadges(l){
             lms_match_status: linked.match_status || "",
             lms_sync_diff_reasons: linked.sync_diff_reasons || [],
             lms_sync_active: linked.lms_sync_active || it.lms_sync_active || false,
+            lms_local_changed: linked.local_changed || false,
             lms_sync_status: linked.local_sync_status || it.lms_sync_status || "",
             lms_external_id: linked.local_lms_external_id || it.lms_external_id || "",
             lms_external_url: linked.local_lms_external_url || it.lms_external_url || ""
@@ -3739,10 +3740,14 @@ function renderContentCompBadges(l){
                 it.nb_plans ? `${it.nb_plans} plan(s)` : "0 plan"
             ];
 
-            if (it.lms_match_status === "remote_changed"){
-                subParts.push("Écart LMS détecté");
+            if (it.lms_match_status === "diverged"){
+                subParts.push("Écart LMS à traiter");
+            } else if (it.lms_match_status === "local_changed"){
+                subParts.push("À publier LMS");
+            } else if (it.lms_match_status === "remote_changed"){
+                subParts.push("Modifié dans Lära");
             } else if (isLmsSyncActive(it)){
-                subParts.push("Synchronisation active");
+                subParts.push("Publié dans Lära");
             }
 
             sub.textContent = subParts.filter(Boolean).join(" • ");
@@ -3849,8 +3854,8 @@ function renderContentCompBadges(l){
         const btnLms = document.createElement("button");
         btnLms.type = "button";
         btnLms.className = "sb-icon-btn sb-icon-btn--lms";
-        btnLms.title = "Publier / mettre à jour dans le LMS";
-        btnLms.setAttribute("aria-label", "Publier / mettre à jour dans le LMS");
+        btnLms.title = "Publier LMS";
+        btnLms.setAttribute("aria-label", "Publier LMS");
         btnLms.innerHTML = iconLms();
         btnLms.addEventListener("click", async (e) => {
           e.preventDefault();
@@ -5114,8 +5119,8 @@ function renderContentCompBadges(l){
             setCatalogueStatus(
                 "success",
                 planIds.length > 1
-                    ? `Formation et ${planIds.length} plans synchronisés avec Lära.`
-                    : "Formation et plan synchronisés avec Lära."
+                    ? `Formation et ${planIds.length} plans publiés dans Lära.`
+                    : "Formation et plan publiés dans Lära."
             );
 
             return {
@@ -5137,9 +5142,7 @@ function renderContentCompBadges(l){
 
         setCatalogueStatus(
             "success",
-            res?.action === "update"
-                ? "Formation mise à jour dans Lära."
-                : "Formation publiée dans Lära."
+            "Formation publiée dans Lära."
         );
 
         return res;
