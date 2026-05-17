@@ -429,6 +429,38 @@
         );
     }
 
+    function ensureCatalogueStatus(){
+        let el = byId("catFormsHeadStatus");
+        if (el) return el;
+
+        const host = byId("catFormsList");
+        if (!host || !host.parentNode) return null;
+
+        el = document.createElement("span");
+        el.id = "catFormsHeadStatus";
+        el.className = "sb-local-status";
+        el.style.display = "none";
+        el.style.margin = "0 0 10px 0";
+
+        host.parentNode.insertBefore(el, host);
+
+        return el;
+    }
+
+    function setCatalogueStatus(type, message, options = {}){
+        const el = ensureCatalogueStatus();
+        if (!el) return;
+
+        setLocalStatus("catFormsHeadStatus", type, message, options);
+    }
+
+    function clearCatalogueStatus(){
+        const el = ensureCatalogueStatus();
+        if (!el) return;
+
+        clearLocalStatus("catFormsHeadStatus");
+    }
+
     function setFormSaveBusy(isBusy){
         const btn = byId("btnFormSave");
         if (!btn) return;
@@ -3827,7 +3859,19 @@ function renderContentCompBadges(l){
           try{
             await publishFormationLms(it);
           } catch(err){
-            window.portal.showAlert("error", getErrorMessage(err));
+            window.portal?.showAlert?.("", "");
+
+            setCatalogueStatus(
+              "error",
+              "Erreur système, cliquez ici pour télécharger le rapport.",
+              {
+                report: buildErrorReport("Synchronisation formation LMS depuis le catalogue", err, {
+                  id_form: it?.id_form || null,
+                  code: it?.code || null,
+                  titre: it?.titre || null
+                })
+              }
+            );
           }
         });
 
@@ -5037,29 +5081,69 @@ function renderContentCompBadges(l){
         if (!effectifId) throw new Error("Profil Learn manquant.");
         if (!formId) throw new Error("Formation introuvable.");
 
+        clearCatalogueStatus();
+        window.portal?.showAlert?.("", "");
+
+        const detail = await window.portal.apiJson(
+            `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+            + `/${encodeURIComponent(formId)}`
+        );
+
+        const plans = Array.isArray(detail?.plans) ? detail.plans : [];
+        const planIds = plans
+            .map(p => String(p?.id_plan_peda || "").trim())
+            .filter(Boolean);
+
+        if (planIds.length){
+            const results = [];
+
+            for (const planId of planIds){
+                const resPlan = await window.portal.apiJson(
+                    `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
+                    + `/${encodeURIComponent(formId)}`
+                    + `/plans/${encodeURIComponent(planId)}`
+                    + `/lms/publish`,
+                    { method:"POST" }
+                );
+
+                results.push(resPlan);
+            }
+
+            await loadList(window.portal);
+
+            setCatalogueStatus(
+                "success",
+                planIds.length > 1
+                    ? `Formation et ${planIds.length} plans synchronisés avec Lära.`
+                    : "Formation et plan synchronisés avec Lära."
+            );
+
+            return {
+                ok: true,
+                provider_code: "lara",
+                mode: "formation_with_plans",
+                plans_count: planIds.length,
+                results: results
+            };
+        }
+
         const res = await window.portal.apiJson(
             `${window.portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`
             + `/${encodeURIComponent(formId)}/lms/publish`,
             { method:"POST" }
         );
 
-        const label = res?.action === "update"
-            ? "Formation mise à jour dans Lära"
-            : "Formation publiée dans Lära";
+        await loadList(window.portal);
 
-        if (window.portal?.showAlert){
-            window.portal.showAlert("success", label);
-        }
-
-        if (res?.external_url){
-            try{
-                window.open(res.external_url, "_blank", "noopener,noreferrer");
-            } catch(_){}
-        }
+        setCatalogueStatus(
+            "success",
+            res?.action === "update"
+                ? "Formation mise à jour dans Lära."
+                : "Formation publiée dans Lära."
+        );
 
         return res;
     }
-
 
 async function copyFormationHtmlLms(it){
         const effectifId = getEffectifId();
