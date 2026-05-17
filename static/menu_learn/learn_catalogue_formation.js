@@ -48,6 +48,8 @@
   let _pendingCompStagCreate = [];
   let _pendingCompFormCreate = [];
 
+  let _formationSaveInProgress = false;
+
   let _compCreateTarget = "stagiaire";
   let _compCreatePendingIndex = null;
   let _compDomainItems = [];
@@ -425,6 +427,26 @@
                 report: buildErrorReport(action, err, extra)
             }
         );
+    }
+
+    function setFormSaveBusy(isBusy){
+        const btn = byId("btnFormSave");
+        if (!btn) return;
+
+        if (isBusy){
+            if (!btn.dataset.originalText){
+                btn.dataset.originalText = btn.textContent || "Enregistrer";
+            }
+
+            btn.disabled = true;
+            btn.style.opacity = ".6";
+            btn.textContent = "Enregistrement…";
+            return;
+        }
+
+        btn.disabled = false;
+        btn.style.opacity = "";
+        btn.textContent = btn.dataset.originalText || "Enregistrer";
     }
 
     function iconHtml(){
@@ -4770,84 +4792,101 @@ function renderContentCompBadges(l){
     };
   }
 
-  async function save(portal){
-    if (!isSupervisor()) return;
+    async function save(portal){
+        if (!isSupervisor()) return;
 
-    const effectifId = getEffectifId();
-    const payload = buildPayload();
-
-    if (!payload.titre){
-      portal.showAlert("error", "Titre obligatoire.");
-      setTab("identite");
-      return;
-    }
-
-    if (_modalMode === "create"){
-    const created = await portal.apiJson(
-        `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`,
-        {
-        method: "POST",
-        headers: { "Content-Type":"application/json" },
-        body: JSON.stringify(payload)
+        if (_formationSaveInProgress){
+        return;
         }
-    );
 
-    _modalMode = "edit";
-    _editingId = created?.id_form || _editingId;
-    syncFormModeActions();
+        _formationSaveInProgress = true;
+        setFormSaveBusy(true);
 
-    const badge = byId("formModalBadge");
-    if (badge && created?.code){
-        badge.textContent = created.code;
-        badge.style.display = "";
-    }
-    if (_editingId && _pendingImportContenus.length){
-    for (const c of _pendingImportContenus){
-        const payloadContent = {
-        titre_sequence: (c.titre_sequence || "").trim() || "Contenu",
-        objectif: (c.objectif || "").trim() || null,
-        contenu: (c.contenu || "").trim() || null,
-        competences_liees: Array.isArray(c.competences_liees) ? c.competences_liees : []
-        };
+        try{
+        const effectifId = getEffectifId();
+        const payload = buildPayload();
 
-        await portal.apiJson(
-        `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/${encodeURIComponent(_editingId)}/contenus`,
-        {
-            method: "POST",
-            headers: { "Content-Type":"application/json" },
-            body: JSON.stringify(payloadContent)
+        if (!payload.titre){
+            setFormInfo("Titre obligatoire.");
+            setTab("identite");
+            return;
         }
-        );
-    }
 
-    _pendingImportContenus = [];
-    await reloadFormationTechnicalDetail(portal);
-    }
-    } else {
-    if (!_editingId) return;
+        const wasCreate = _modalMode === "create";
+        const mustLinkLms = !!_pendingLmsImportLink;
 
-    await portal.apiJson(
-        `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/${encodeURIComponent(_editingId)}`,
-        {
-        method: "POST",
-        headers: { "Content-Type":"application/json" },
-        body: JSON.stringify(payload)
+        if (wasCreate){
+            const created = await portal.apiJson(
+            `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}`,
+            {
+                method: "POST",
+                headers: { "Content-Type":"application/json" },
+                body: JSON.stringify(payload)
+            }
+            );
+
+            _modalMode = "edit";
+            _editingId = created?.id_form || _editingId;
+            syncFormModeActions();
+
+            const badge = byId("formModalBadge");
+            if (badge && created?.code){
+            badge.textContent = created.code;
+            badge.style.display = "";
+            }
+
+            if (_editingId && _pendingImportContenus.length){
+            for (const c of _pendingImportContenus){
+                const payloadContent = {
+                titre_sequence: (c.titre_sequence || "").trim() || "Contenu",
+                objectif: (c.objectif || "").trim() || null,
+                contenu: (c.contenu || "").trim() || null,
+                competences_liees: Array.isArray(c.competences_liees) ? c.competences_liees : []
+                };
+
+                await portal.apiJson(
+                `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/${encodeURIComponent(_editingId)}/contenus`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type":"application/json" },
+                    body: JSON.stringify(payloadContent)
+                }
+                );
+            }
+
+            _pendingImportContenus = [];
+            await reloadFormationTechnicalDetail(portal);
+            }
+        } else {
+            if (!_editingId) return;
+
+            await portal.apiJson(
+            `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/${encodeURIComponent(_editingId)}`,
+            {
+                method: "POST",
+                headers: { "Content-Type":"application/json" },
+                body: JSON.stringify(payload)
+            }
+            );
         }
-    );
+
+        let successMessage = wasCreate ? "Formation créée avec succès" : "Enregistré avec succès";
+
+        if (_editingId && mustLinkLms && _pendingLmsImportLink){
+            await linkCreatedFormationToRemoteLms(portal);
+            successMessage = "Formation créée et rattachée à Lära";
+        }
+
+        window.portal.showAlert("", "");
+        setSuccess(successMessage);
+
+        await loadList(portal);
+
+        } finally {
+        _formationSaveInProgress = false;
+        setFormSaveBusy(false);
+        }
     }
-
-    let successMessage = "Enregistré avec succès";
-
-    if (_modalMode === "edit" && _editingId && _pendingLmsImportLink){
-        await linkCreatedFormationToRemoteLms(portal);
-        successMessage = "Formation créée et rattachée à Lära";
-    }
-
-    window.portal.showAlert("", "");
-    setSuccess(successMessage);
-
-    await loadList(portal);
-  }
 
   function openArchive(it){
     if (!isSupervisor()) return;
@@ -5431,7 +5470,8 @@ iframe{width:100%;height:100%;border:0;display:block}
     byId("btnFormImportApply")?.addEventListener("click", applyImportDraft);
 
     byId("btnFormAiReview")?.addEventListener("click", () => {
-      portal.showAlert("error", "La révision IA des textes sera câblée après finalisation du modal formation.");
+      window.portal?.showAlert?.("", "");
+      setFormInfo("La révision IA des textes sera ciblée après finalisation du modal formation.");
     });
 
     byId("btnFormX")?.addEventListener("click", () => {
