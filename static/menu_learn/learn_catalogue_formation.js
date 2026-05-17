@@ -4216,11 +4216,14 @@ function renderContentCompBadges(l){
 
             div.innerHTML = `
             <label class="lf-import-comp-source">
-                <input type="radio"
-                    name="${htmlEsc(radioName)}"
-                    value=""
-                    ${sourceChecked ? "checked" : ""} />
-                <span>${htmlEsc(r.source || "")}</span>
+                <span class="lf-import-match-title">
+                    <input type="radio"
+                        name="${htmlEsc(radioName)}"
+                        value=""
+                        ${sourceChecked ? "checked" : ""}
+                        style="margin:0 8px 0 0;" />
+                    ${htmlEsc(r.source || "")}
+                </span>
                 <span class="lf-import-status-pill ${statusClass}">${htmlEsc(status)}</span>
             </label>
 
