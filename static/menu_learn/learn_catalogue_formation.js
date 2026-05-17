@@ -4194,33 +4194,52 @@ function renderContentCompBadges(l){
 
             const status = r.status || "à créer";
             const statusClass = importStatusClass(status);
+            const radioName = `${hostId}_${idx}`;
+            const selectedId = (r.selected_id || "").toString().trim();
+            const sourceChecked = !selectedId;
 
-            const options = (r.matches || []).map(m => `
-            <label class="lf-import-match">
-                <input type="radio"
-                    name="${hostId}_${idx}"
-                    value="${htmlEsc(m.id_comp || "")}"
-                    ${r.selected_id === m.id_comp ? "checked" : ""} />
-                <span class="sb-badge sb-badge--comp">${htmlEsc(m.code || "—")}</span>
-                <span class="lf-import-match-title">${htmlEsc(m.intitule || "")}</span>
-                <span class="lf-import-score">${htmlEsc(m.score || 0)}%</span>
-            </label>
-            `).join("");
+            const options = (r.matches || []).map(m => {
+                const idComp = (m.id_comp || "").toString().trim();
+
+                return `
+                <label class="lf-import-match">
+                    <input type="radio"
+                        name="${htmlEsc(radioName)}"
+                        value="${htmlEsc(idComp)}"
+                        ${selectedId === idComp ? "checked" : ""} />
+                    <span class="sb-badge sb-badge--comp">${htmlEsc(m.code || "—")}</span>
+                    <span class="lf-import-match-title">${htmlEsc(m.intitule || "")}</span>
+                    <span class="lf-import-score">${htmlEsc(m.score || 0)}%</span>
+                </label>
+                `;
+            }).join("");
 
             div.innerHTML = `
-            <div class="lf-import-comp-source">
+            <label class="lf-import-comp-source">
+                <input type="radio"
+                    name="${htmlEsc(radioName)}"
+                    value=""
+                    ${sourceChecked ? "checked" : ""} />
                 <span>${htmlEsc(r.source || "")}</span>
                 <span class="lf-import-status-pill ${statusClass}">${htmlEsc(status)}</span>
-            </div>
+            </label>
+
             <div class="lf-import-matches">
                 ${options || `<div class="card-sub">Aucune compétence approchante trouvée.</div>`}
             </div>
             `;
 
-            div.querySelectorAll("input[type='radio']").forEach(rad => {
-            rad.addEventListener("change", () => {
-                r.selected_id = rad.value || null;
+            const sourceRadio = div.querySelector(`input[name="${CSS.escape(radioName)}"][value=""]`);
+            sourceRadio?.addEventListener("change", () => {
+                if (sourceRadio.checked){
+                    r.selected_id = null;
+                }
             });
+
+            div.querySelectorAll(".lf-import-matches input[type='radio']").forEach(rad => {
+                rad.addEventListener("change", () => {
+                    r.selected_id = rad.value || null;
+                });
             });
 
             host.appendChild(div);
