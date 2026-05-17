@@ -2817,6 +2817,17 @@ function renderContentCompBadges(l){
         }).join("");
     }
 
+    function updatePlanBlockSummary(card, block, idx){
+        if (!card || !block) return;
+
+        const spans = card.querySelectorAll(".lf-plan-block-summary span");
+        if (!spans || spans.length < 3) return;
+
+        spans[0].textContent = (block.titre || `Séquence ${idx + 1}`).trim();
+        spans[1].textContent = block.duree ? formatHours(block.duree) : "Durée non définie";
+        spans[2].textContent = (block.modalite_intervention || "Modalité non définie").trim();
+    }
+
     function renderPlanBlocks(){
         const host = byId("planBlockList");
         if (!host) return;
@@ -2914,17 +2925,20 @@ function renderContentCompBadges(l){
             card.querySelectorAll("[data-field]").forEach(el => {
             const field = el.dataset.field;
 
-            el.addEventListener("input", () => {
+            const syncField = () => {
                 b[field] = el.value || "";
-                if (field === "duree") updatePlanDurationUI();
-                if (field === "titre" || field === "modalite_intervention" || field === "duree") renderPlanBlocks();
-            });
 
-            el.addEventListener("change", () => {
-                b[field] = el.value || "";
-                if (field === "duree") updatePlanDurationUI();
-                if (field === "titre" || field === "modalite_intervention" || field === "duree") renderPlanBlocks();
-            });
+                if (field === "duree"){
+                    updatePlanDurationUI();
+                }
+
+                if (field === "titre" || field === "modalite_intervention" || field === "duree"){
+                    updatePlanBlockSummary(card, b, idx);
+                }
+            };
+
+            el.addEventListener("input", syncField);
+            el.addEventListener("change", syncField);
             });
 
             card.querySelector('[data-action="toggle-block"]')?.addEventListener("click", () => {
