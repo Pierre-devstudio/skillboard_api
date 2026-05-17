@@ -3433,7 +3433,7 @@ function renderContentCompBadges(l){
 
         await reloadFormationTechnicalDetail(window.portal);
 
-        setLocalStatus("formPlanHeadStatus", "success", "Formation et plan publiés dans votre LMS.");
+        setLocalStatus("formPlanHeadStatus", "success", "Formation et plan publiés dans le LMS.");
     }
 
     async function createPlanFromLmsSession(session){
@@ -3448,7 +3448,7 @@ function renderContentCompBadges(l){
         }
 
         if (!externalId){
-            setLocalStatus("formPlanHeadStatus", "info", "Session Lära introuvable.");
+            setLocalStatus("formPlanHeadStatus", "info", "Session LMS introuvable.");
             return;
         }
 
@@ -3464,7 +3464,7 @@ function renderContentCompBadges(l){
 
         await reloadFormationTechnicalDetail(window.portal);
 
-        setLocalStatus("formPlanHeadStatus", "success", "Session Lära ajoutée comme plan Novoskill.");
+        setLocalStatus("formPlanHeadStatus", "success", "Session LMS ajoutée comme plan Novoskill.");
 
         if (res?.item?.id_plan_peda){
             await openPlanModal(res.item);
@@ -3613,7 +3613,7 @@ function renderContentCompBadges(l){
                     <span>${htmlEsc(s.name || "Session Lära")}</span>
                 </div>
                 <div class="card-sub" style="margin:4px 0 0 0;">
-                    Présente dans Lära • non ajoutée dans Novoskill
+                    Présente dans le LMS • non ajoutée dans Novoskill
                 </div>
                 </div>
 
@@ -3708,7 +3708,12 @@ function renderContentCompBadges(l){
       row.className = "sb-row-card";
       if (it.archive || it.masque) row.classList.add("is-archived");
       if (lmsOnly) row.classList.add("is-lms-only");
-      if (!lmsOnly && it.lms_match_status === "remote_changed") row.classList.add("is-lms-drift");
+      if (
+        !lmsOnly
+        && ["local_changed", "remote_changed", "diverged"].includes(String(it.lms_match_status || ""))
+      ){
+        row.classList.add("is-lms-drift");
+      }
 
       const left = document.createElement("div");
       left.className = "sb-row-left";
@@ -3730,7 +3735,7 @@ function renderContentCompBadges(l){
 
         if (lmsOnly){
             sub.textContent = [
-                "Présente dans Lära",
+                "Présente dans le LMS",
                 it.type_lms_label ? `Type LMS : ${it.type_lms_label}` : ""
             ].filter(Boolean).join(" • ");
             } else {
@@ -3743,11 +3748,13 @@ function renderContentCompBadges(l){
             if (it.lms_match_status === "diverged"){
                 subParts.push("Écart LMS à traiter");
             } else if (it.lms_match_status === "local_changed"){
-                subParts.push("À publier LMS");
+                subParts.push("À publier dans le LMS");
             } else if (it.lms_match_status === "remote_changed"){
-                subParts.push("Modifié dans Lära");
+                subParts.push("Modifiée dans le LMS");
             } else if (isLmsSyncActive(it)){
-                subParts.push("Publié dans Lära");
+                subParts.push("Publiée dans le LMS");
+            } else {
+                subParts.push("Non publiée dans le LMS");
             }
 
             sub.textContent = subParts.filter(Boolean).join(" • ");
@@ -5119,8 +5126,8 @@ function renderContentCompBadges(l){
             setCatalogueStatus(
                 "success",
                 planIds.length > 1
-                    ? `Formation et ${planIds.length} plans publiés dans Lära.`
-                    : "Formation et plan publiés dans Lära."
+                    ? `Formation et ${planIds.length} plans publiés dans le LMS.`
+                    : "Formation et plan publiés dans le LMS."
             );
 
             return {
@@ -5142,7 +5149,7 @@ function renderContentCompBadges(l){
 
         setCatalogueStatus(
             "success",
-            "Formation publiée dans Lära."
+            "Formation publiée dans le LMS."
         );
 
         return res;
