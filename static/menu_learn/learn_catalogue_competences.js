@@ -679,6 +679,9 @@
     _modalMode = "create";
     _editingId = null;
 
+    const aiBtn = byId("btnCompAi");
+    if (aiBtn) aiBtn.textContent = "Concevoir avec l’IA";
+
     const b = byId("compModalBadge");
     if (b){
       b.style.display = "none";
@@ -719,6 +722,9 @@
 
     _modalMode = "edit";
     _editingId = it.id_comp;
+
+    const aibtn = byid("btncompai");
+    if (aibtn) aibtn.textcontent = "réviser avec l’ia";
 
     const b = byId("compModalBadge");
     if (b){
@@ -1122,6 +1128,17 @@ iframe{width:100%;height:100%;border:0;display:block}
 
         const nbSel = byId("compAiNbCrit");
         if (nbSel) nbSel.value = "3";
+
+        if (_modalMode === "edit") {
+          const titre = (byId("compIntitule")?.value || "").trim();
+          const description = (byId("compDesc")?.value || "").trim();
+
+          const objectifEl = byId("compAiObjectif");
+          if (objectifEl) objectifEl.value = titre;
+
+          const contexteEl = byId("compAiContexte");
+          if (contexteEl) contexteEl.value = description;
+        }
 
         openAiModal();
       } catch(e){
