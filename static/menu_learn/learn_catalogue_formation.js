@@ -622,7 +622,7 @@ function iconPdf(){
     return shouldLoadLmsLinkedState();
   }
 
-  async function loadRemoteLmsOnlyItems(portal){
+  async function loadRemoteLmsOnlyItems(portal, refreshKey){
     _lmsRemoteItems = [];
     _lmsLinkedItems = [];
 
@@ -633,13 +633,16 @@ function iconPdf(){
     const effectifId = getEffectifId();
     if (!effectifId) return [];
 
+    const safeRefreshKey = refreshKey || Date.now();
+
     const url =
       `${portal.apiBase}/learn/formations/${encodeURIComponent(effectifId)}/lms/remote`
       + `?q=${encodeURIComponent(_q || "")}`
-      + `&limit=500`;
+      + `&limit=500`
+      + `&_=${encodeURIComponent(safeRefreshKey)}`;
 
     try{
-      const data = await portal.apiJson(url);
+      const data = await portal.apiJson(url, { cache: "no-store" });
 
       if (!data?.configured){
         return [];
@@ -3957,9 +3960,18 @@ function renderContentCompBadges(l){
             + `&show=${encodeURIComponent(_show)}`
             + `&domaine=${encodeURIComponent(_dom)}`;
 
-        const data = await portal.apiJson(url);
+        const refreshKey = Math.max(
+            Date.now(),
+            Number(window.__learnCatalogueFormationDirtyAt || 0) || 0
+        );
+
+        const data = await portal.apiJson(
+            `${url}&_=${encodeURIComponent(refreshKey)}`,
+            { cache: "no-store" }
+        );
+
         const localItems = Array.isArray(data?.items) ? data.items : [];
-        const remoteItems = await loadRemoteLmsOnlyItems(portal);
+        const remoteItems = await loadRemoteLmsOnlyItems(portal, refreshKey);
 
         _items = [
             ...applyLmsLinkedStateToLocalItems(localItems),

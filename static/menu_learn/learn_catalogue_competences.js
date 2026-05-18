@@ -842,6 +842,7 @@ async function openEdit(portal, it){
 
     closeModal("modalCompEdit");
 
+    window.__learnCatalogueFormationDirtyAt = Date.now();
     window.LearnCatalogueFormation?.invalidateCaches?.();
 
     window.portal.showAlert("", "");
