@@ -367,7 +367,16 @@
         btnEdit.title = "Modifier";
         btnEdit.setAttribute("aria-label", "Modifier");
         btnEdit.innerHTML = iconEdit();
-        btnEdit.addEventListener("click", () => openEdit(window.portal, it));
+        btnEdit.addEventListener("click", async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          try {
+            await openEdit(window.portal, it);
+          } catch(err){
+            window.portal?.showAlert?.("error", err?.message || String(err));
+          }
+        });
 
         actions.appendChild(btnEdit);
 
@@ -673,7 +682,7 @@
     return true;
   }
 
-  async function openCreate(portal){
+async function openCreate(portal){
     if (!isSupervisor()) return;
 
     _modalMode = "create";
@@ -717,14 +726,20 @@
     openModal("modalCompEdit");
   }
 
-  async function openEdit(portal, it){
+
+async function openEdit(portal, it){
     if (!isSupervisor()) return;
 
-    _modalMode = "edit";
-    _editingId = it.id_comp;
+    const compId = String(it?.id_comp || "").trim();
+    if (!compId) {
+      throw new Error("Identifiant compétence introuvable.");
+    }
 
-    const aibtn = byid("btncompai");
-    if (aibtn) aibtn.textcontent = "réviser avec l’ia";
+    _modalMode = "edit";
+    _editingId = compId;
+
+    const aiBtn = byId("btnCompAi");
+    if (aiBtn) aiBtn.textContent = "Réviser avec l’IA";
 
     const b = byId("compModalBadge");
     if (b){
@@ -770,6 +785,7 @@
 
     loadCritFromJson(d?.grille_evaluation || null);
   }
+
 
   async function save(portal){
     if (!isSupervisor()) return;
@@ -1121,7 +1137,7 @@ iframe{width:100%;height:100%;border:0;display:block}
       }
     });
 
-    byId("btnCompAi")?.addEventListener("click", async () => {
+byId("btnCompAi")?.addEventListener("click", async () => {
       try{
         await ensureDomains(portal);
         fillAiDomainSelect(byId("compDomaine")?.value || "");
@@ -1138,6 +1154,12 @@ iframe{width:100%;height:100%;border:0;display:block}
 
           const contexteEl = byId("compAiContexte");
           if (contexteEl) contexteEl.value = description;
+        } else {
+          const objectifEl = byId("compAiObjectif");
+          if (objectifEl) objectifEl.value = "";
+
+          const contexteEl = byId("compAiContexte");
+          if (contexteEl) contexteEl.value = "";
         }
 
         openAiModal();
