@@ -3663,7 +3663,17 @@ function renderContentCompBadges(l){
             && ["synced", "linked", "outdated"].includes(status)
             )
         );
-        }
+    }
+
+    function isLmsOutdatedItem(it){
+        const status = String(it?.lms_sync_status || "").trim().toLowerCase();
+
+        return Boolean(
+            status === "outdated"
+            || it?.lms_local_changed
+            || ["local_changed", "diverged"].includes(String(it?.lms_match_status || ""))
+        );
+    }
 
         function applyLmsLinkedStateToLocalItems(localItems){
         const map = new Map();
@@ -3715,7 +3725,10 @@ function renderContentCompBadges(l){
       if (lmsOnly) row.classList.add("is-lms-only");
       if (
         !lmsOnly
-        && ["local_changed", "remote_changed", "diverged"].includes(String(it.lms_match_status || ""))
+        && (
+          isLmsOutdatedItem(it)
+          || ["remote_changed"].includes(String(it.lms_match_status || ""))
+        )
       ){
         row.classList.add("is-lms-drift");
       }
@@ -3752,7 +3765,7 @@ function renderContentCompBadges(l){
 
             if (it.lms_match_status === "diverged"){
                 subParts.push("Écart LMS à traiter");
-            } else if (it.lms_match_status === "local_changed"){
+            } else if (isLmsOutdatedItem(it)){
                 subParts.push("À publier dans le LMS");
             } else if (it.lms_match_status === "remote_changed"){
                 subParts.push("Modifiée dans le LMS");

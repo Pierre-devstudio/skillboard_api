@@ -550,6 +550,52 @@ def _run_ai_draft(cur, oid: str, payload: AiDraftCompetencePayload) -> dict:
 
     return data
 
+def _mark_lms_publications_outdated_for_competence(cur, oid: str, id_comp: str) -> int:
+    cid = str(id_comp or "").strip()
+    if not cid:
+        return 0
+
+    comp_json = Json([cid])
+
+    cur.execute(
+        """
+        WITH formations_touchees AS (
+            SELECT DISTINCT ff.id_form
+            FROM public.tbl_fiche_formation ff
+            WHERE ff.id_owner = %s
+              AND COALESCE(ff.archive, FALSE) = FALSE
+              AND COALESCE(ff.masque, FALSE) = FALSE
+              AND (
+                    COALESCE(ff.competences_stagiaires, '[]'::jsonb) @> %s::jsonb
+                 OR COALESCE(ff.competences_formateurs, '[]'::jsonb) @> %s::jsonb
+                 OR EXISTS (
+                    SELECT 1
+                    FROM public.tbl_contenu_ligne l
+                    WHERE l.id_owner = ff.id_owner
+                      AND l.id_form = ff.id_form
+                      AND COALESCE(l.archive, FALSE) = FALSE
+                      AND (
+                            l.id_competence = %s
+                         OR COALESCE(l.competences_liees, '[]'::jsonb) @> %s::jsonb
+                      )
+                 )
+              )
+        )
+        UPDATE public.tbl_learn_lms_publication lp
+        SET sync_status = 'outdated',
+            updated_at = NOW()
+        FROM formations_touchees ft
+        WHERE lp.id_owner = %s
+          AND lp.id_form = ft.id_form
+          AND COALESCE(lp.archive, FALSE) = FALSE
+          AND lp.external_id IS NOT NULL
+          AND COALESCE(lp.sync_status, '') IN ('synced', 'linked', 'outdated')
+        RETURNING lp.id_publication
+        """,
+        (oid, comp_json, comp_json, cid, comp_json, oid),
+    )
+
+    return len(cur.fetchall() or [])
 
 # ------------------------------------------------------
 # Endpoints
@@ -578,6 +624,8 @@ def learn_competences_domaines(id_effectif: str, request: Request):
     u = learn_require_user(auth)
 
     try:
+        outdated_publications = 0
+
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 _learn_require_profile(cur, u, id_effectif)
@@ -937,9 +985,14 @@ def learn_competence_update(id_effectif: str, id_comp: str, payload: UpdateCompe
                         tuple(vals),
                     )
 
+                    outdated_publications = _mark_lms_publications_outdated_for_competence(cur, oid, cid)
+
                     conn.commit()
 
-        return {"ok": True}
+        return {
+            "ok": True,
+            "lms_publications_outdated": outdated_publications,
+        }
 
     except HTTPException:
         raise
