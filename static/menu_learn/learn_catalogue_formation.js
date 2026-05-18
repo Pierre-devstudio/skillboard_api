@@ -11,6 +11,7 @@
   let _lmsImportPreview = null;
   let _pendingLmsImportLink = null;
   let _refs = null;
+  let _initPromise = null;
 
   let _roleCode = "user";
   let _canEdit = false;
@@ -610,18 +611,22 @@ function iconPdf(){
     return String(it?.source_kind || "") === "lms_only";
   }
 
-  function shouldLoadRemoteLmsItems(){
-    if (_dom) return false;
+  function shouldLoadLmsLinkedState(){
     if (_show === "archived") return false;
     if (_show === "validation") return false;
     return true;
+  }
+
+  function shouldAppendRemoteLmsOnlyItems(){
+    if (_dom) return false;
+    return shouldLoadLmsLinkedState();
   }
 
   async function loadRemoteLmsOnlyItems(portal){
     _lmsRemoteItems = [];
     _lmsLinkedItems = [];
 
-    if (!shouldLoadRemoteLmsItems()){
+    if (!shouldLoadLmsLinkedState()){
       return [];
     }
 
@@ -643,7 +648,7 @@ function iconPdf(){
       _lmsRemoteItems = Array.isArray(data?.items) ? data.items : [];
       _lmsLinkedItems = Array.isArray(data?.linked_items) ? data.linked_items : [];
 
-      return _lmsRemoteItems;
+      return shouldAppendRemoteLmsOnlyItems() ? _lmsRemoteItems : [];
     } catch(e){
       console.warn("Récupération formations LMS impossible", e);
       return [];
@@ -5747,21 +5752,52 @@ iframe{width:100%;height:100%;border:0;display:block}
     });
   }
 
-  async function init(){
+  async function init(portalArg, options){
     try {
       await (window.__learnAuthReady || Promise.resolve(null));
     } catch(_){}
 
-    const portal = window.portal;
+    const portal = portalArg || window.portal;
     if (!portal) return;
 
+    if (!byId("view-catalogue_formation")) return;
+
+    const opts = options || {};
+
     await ensureContext(portal);
+
+    if (opts.forceRefs) {
+      _refs = null;
+    }
+
     await ensureRefs(portal);
     bindOnce(portal);
     await loadList(portal);
   }
 
-  init().catch(e => {
+  async function onShow(portal){
+    if (_initPromise) return _initPromise;
+
+    _initPromise = init(portal, { forceRefs: true }).finally(() => {
+      _initPromise = null;
+    });
+
+    return _initPromise;
+  }
+
+  function invalidateCaches(){
+    _refs = null;
+    _items = [];
+    _lmsRemoteItems = [];
+    _lmsLinkedItems = [];
+  }
+
+  window.LearnCatalogueFormation = Object.assign(window.LearnCatalogueFormation || {}, {
+    onShow,
+    invalidateCaches
+  });
+
+  onShow(window.portal).catch(e => {
     if (window.portal && window.portal.showAlert) {
       window.portal.showAlert("error", "Erreur catalogue formations : " + (e?.message || e));
     }

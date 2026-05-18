@@ -13,7 +13,8 @@
 
   window.portal.registerMenu({
     view: "catalogue_formation",
-    htmlUrl: "/menu_learn/learn_catalogue_formation.html"
+    htmlUrl: "/menu_learn/learn_catalogue_formation.html",
+    onshow: (p) => window.learncatalogueformation?.onshow?.(p)
   });
 
   window.portal.registerMenu({

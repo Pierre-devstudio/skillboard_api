@@ -842,6 +842,8 @@ async function openEdit(portal, it){
 
     closeModal("modalCompEdit");
 
+    window.LearnCatalogueFormation?.invalidateCaches?.();
+
     window.portal.showAlert("", "");
     setSuccess("Enregistré avec succès");
 
