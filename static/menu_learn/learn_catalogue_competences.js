@@ -845,6 +845,13 @@ async function openEdit(portal, it){
     window.__learnCatalogueFormationDirtyAt = Date.now();
     window.LearnCatalogueFormation?.invalidateCaches?.();
 
+    window.dispatchEvent(new CustomEvent("learn:competence-updated", {
+      detail: {
+        id_comp: _editingId || null,
+        at: window.__learnCatalogueFormationDirtyAt
+      }
+    }));
+
     window.portal.showAlert("", "");
     setSuccess("Enregistré avec succès");
 

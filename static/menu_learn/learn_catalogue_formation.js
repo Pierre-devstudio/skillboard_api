@@ -12,6 +12,8 @@
   let _pendingLmsImportLink = null;
   let _refs = null;
   let _initPromise = null;
+  let _reloadOnNextVisible = false;
+  let _refreshPromise = null;
 
   let _roleCode = "user";
   let _canEdit = false;
@@ -5803,11 +5805,43 @@ iframe{width:100%;height:100%;border:0;display:block}
   async function onShow(portal){
     if (_initPromise) return _initPromise;
 
-    _initPromise = init(portal, { forceRefs: true }).finally(() => {
+    const forceRefs = Boolean(_reloadOnNextVisible || window.__learnCatalogueFormationDirtyAt);
+
+    _initPromise = init(portal, { forceRefs }).finally(() => {
+      _reloadOnNextVisible = false;
       _initPromise = null;
     });
 
     return _initPromise;
+  }
+
+  function isCatalogueFormationVisible(){
+    const view = byId("view-catalogue_formation");
+    if (!view) return false;
+
+    return view.style.display !== "none";
+  }
+
+  async function refreshCatalogueFormationNow(portalArg){
+    const portal = portalArg || window.portal;
+    if (!portal) return;
+
+    if (_refreshPromise) return _refreshPromise;
+
+    _refreshPromise = (async () => {
+      _refs = null;
+      _items = [];
+      _lmsRemoteItems = [];
+      _lmsLinkedItems = [];
+
+      await ensureContext(portal);
+      await ensureRefs(portal);
+      await loadList(portal);
+    })().finally(() => {
+      _refreshPromise = null;
+    });
+
+    return _refreshPromise;
   }
 
   function invalidateCaches(){
@@ -5815,12 +5849,45 @@ iframe{width:100%;height:100%;border:0;display:block}
     _items = [];
     _lmsRemoteItems = [];
     _lmsLinkedItems = [];
+    _reloadOnNextVisible = true;
   }
 
   window.LearnCatalogueFormation = Object.assign(window.LearnCatalogueFormation || {}, {
     onShow,
-    invalidateCaches
+    invalidateCaches,
+    refreshNow: refreshCatalogueFormationNow
   });
+
+  window.addEventListener("learn:competence-updated", () => {
+    invalidateCaches();
+
+    if (isCatalogueFormationVisible()) {
+      refreshCatalogueFormationNow(window.portal).catch(e => {
+        window.portal?.showAlert?.("error", e?.message || String(e));
+      });
+    }
+  });
+
+  const formationViewObserver = new MutationObserver(() => {
+    if (!_reloadOnNextVisible) return;
+    if (!isCatalogueFormationVisible()) return;
+
+    refreshCatalogueFormationNow(window.portal).catch(e => {
+      window.portal?.showAlert?.("error", e?.message || String(e));
+    });
+  });
+
+  const formationViewObserverStarter = window.setInterval(() => {
+    const view = byId("view-catalogue_formation");
+    if (!view) return;
+
+    window.clearInterval(formationViewObserverStarter);
+    formationViewObserver.observe(view, {
+      attributes: true,
+      attributeFilter: ["style", "class"]
+    });
+  }, 250);
+
 
   onShow(window.portal).catch(e => {
     if (window.portal && window.portal.showAlert) {
