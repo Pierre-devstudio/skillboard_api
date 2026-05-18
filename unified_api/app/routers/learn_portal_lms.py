@@ -543,6 +543,22 @@ def _lms_write_publication_linked(
 
     return cur.fetchone() or {}
 
+def _lms_error_blob(value: Any) -> str:
+    try:
+        return json.dumps(value, ensure_ascii=False, default=str).lower()
+    except Exception:
+        return str(value or "").lower()
+
+
+def _lms_is_not_found_error(value: Any) -> bool:
+    blob = _lms_error_blob(value)
+
+    return (
+        "not found" in blob
+        or "introuvable" in blob
+        or "404" in blob
+    )
+
 def _lms_write_publication_error(
     cur,
     oid: str,
@@ -1699,6 +1715,96 @@ def learn_formation_plan_lms_status(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"learn/formations plan lms status error: {e}")
 
+@router.post("/learn/formations/{id_effectif}/{id_form}/lms/publish")
+def learn_formation_lms_publish(
+    id_effectif: str,
+    id_form: str,
+    request: Request,
+):
+    auth = request.headers.get("Authorization", "")
+    u = learn_require_user(auth)
+
+    try:
+        fid = (id_form or "").strip()
+
+        if not fid:
+            raise HTTPException(status_code=400, detail="id_form manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                profile = _learn_require_profile(cur, u, id_effectif)
+                _learn_require_min_role(profile, "supervisor")
+                oid = (profile.get("id_owner") or "").strip()
+
+                cfg = learn_lms_fetch_active_config(cur, oid, with_secret=True)
+
+                if not cfg or cfg.get("provider_code") != "lara":
+                    raise HTTPException(status_code=400, detail="Aucun connecteur Lära actif.")
+
+                id_lms_config = str(cfg.get("id_lms_config") or "").strip()
+                if not id_lms_config:
+                    raise HTTPException(status_code=400, detail="Configuration LMS invalide.")
+
+                form = _fetch_form_detail(cur, oid, fid)
+                html_payload = _build_formation_lms_html(form)
+                html_hash = _lms_html_hash(html_payload)
+                existing_form_pub = _lms_publication_row(cur, oid, fid, id_lms_config)
+
+                form_result = lara_connector.publish_formation(
+                    form=form,
+                    html_payload=html_payload,
+                    cfg=cfg,
+                    existing_publication=existing_form_pub,
+                )
+
+                if not form_result.get("ok"):
+                    saved_form_error = _lms_write_publication_error(
+                        cur,
+                        oid,
+                        fid,
+                        id_lms_config,
+                        "lara",
+                        form_result.get("external_id"),
+                        html_hash,
+                        form_result.get("response") or form_result,
+                    )
+                    conn.commit()
+
+                    raise HTTPException(status_code=400, detail={
+                        "message": "Synchronisation de la formation Lära impossible.",
+                        "publication": saved_form_error,
+                        "response": form_result.get("response") or form_result,
+                    })
+
+                form_pub = _lms_write_publication_success(
+                    cur,
+                    oid,
+                    fid,
+                    id_lms_config,
+                    "lara",
+                    form_result.get("external_id"),
+                    form_result.get("external_url"),
+                    html_hash,
+                )
+
+                conn.commit()
+
+        return {
+            "ok": True,
+            "provider_code": "lara",
+            "formation": {
+                "action": form_result.get("action"),
+                "external_id": form_result.get("external_id"),
+                "external_url": form_result.get("external_url"),
+                "publication": form_pub,
+            },
+            "message": "Formation synchronisée avec Lära.",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"learn/formations lms publish error: {e}")
 
 @router.post("/learn/formations/{id_effectif}/{id_form}/plans/{id_plan_peda}/lms/publish")
 def learn_formation_plan_lms_publish(
