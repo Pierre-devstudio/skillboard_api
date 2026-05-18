@@ -358,6 +358,11 @@ def _resolve_competences(cur, oid: str, ids: list) -> list:
           c.id_comp,
           c.code,
           c.intitule,
+          c.description,
+          c.niveaua,
+          c.niveaub,
+          c.niveauc,
+          c.grille_evaluation,
           c.domaine,
           dc.titre_court AS domaine_titre_court,
           dc.titre AS domaine_titre,
@@ -4180,6 +4185,60 @@ def _lms_items(items: list, label_fn=None) -> str:
 
     return "<ul>" + "".join(rows) + "</ul>"
 
+def _lms_competences_signature(form: dict) -> str:
+    """
+    Construit une empreinte technique des compétences réellement rattachées
+    à la fiche formation.
+
+    Cette empreinte est injectée en commentaire HTML dans l'export LMS afin que
+    le hash de conformité bouge quand le contenu d'une compétence liée évolue,
+    même si son id_comp reste identique et même si son détail n'est pas affiché
+    dans le rendu public LMS.
+    """
+    by_id = {}
+
+    def add_comp(comp: Any) -> None:
+        if not isinstance(comp, dict):
+            return
+
+        cid = str(comp.get("id_comp") or "").strip()
+        if not cid:
+            return
+
+        by_id[cid] = {
+            "id_comp": cid,
+            "code": comp.get("code") or "",
+            "intitule": comp.get("intitule") or comp.get("titre") or "",
+            "description": comp.get("description") or "",
+            "niveaua": comp.get("niveaua") or "",
+            "niveaub": comp.get("niveaub") or "",
+            "niveauc": comp.get("niveauc") or "",
+            "grille_evaluation": comp.get("grille_evaluation") or None,
+            "domaine": comp.get("domaine") or "",
+            "domaine_titre_court": comp.get("domaine_titre_court") or "",
+            "etat": comp.get("etat") or "",
+        }
+
+    for comp in form.get("competences_stagiaires_items") or []:
+        add_comp(comp)
+
+    for comp in form.get("competences_formateurs_items") or []:
+        add_comp(comp)
+
+    for ligne in form.get("contenus") or []:
+        if not isinstance(ligne, dict):
+            continue
+        for comp in ligne.get("competences_liees_items") or []:
+            add_comp(comp)
+
+    payload = [
+        by_id[cid]
+        for cid in sorted(by_id.keys())
+    ]
+
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
+    return raw.replace("--", "- -")
+
 
 def _build_formation_lms_html(form: dict) -> str:
     """
@@ -4208,6 +4267,7 @@ def _build_formation_lms_html(form: dict) -> str:
     duree = _lms_esc(_pdf_hours(form.get("duree")))
     tarif = _lms_esc(_pdf_money(form.get("tarif_mini")))
     type_formation = _lms_text(form.get("type_formation"))
+    competence_signature = _lms_competences_signature(form)
 
     def ref_label(item: Any) -> str:
         if isinstance(item, dict):
@@ -4400,7 +4460,8 @@ def _build_formation_lms_html(form: dict) -> str:
             '<div style="background:#ffffff;border:1px dashed #cbd5e1;border-radius:16px;padding:18px;color:#64748b;">Aucun contenu détaillé n’est encore rattaché à cette formation.</div>'
         )
 
-    return f'''<style>
+    return f'''<!-- novoskill_competence_signature: {competence_signature} -->
+<style>
 .ns-lms-formation * {{ box-sizing:border-box; }}
 .ns-lms-formation a {{ color:inherit; }}
 @media (max-width:760px) {{
