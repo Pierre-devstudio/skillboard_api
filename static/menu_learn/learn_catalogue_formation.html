@@ -701,37 +701,37 @@
     </div>
   </div>
 
-  <div class="sb-modal sb-modal--above" id="modalCompEdit" style="display:none;">
+  <div class="sb-modal sb-modal--above" id="modalFormCompEdit" style="display:none;">
     <div class="sb-modal-card">
       <div class="sb-modal-head">
         <div style="min-width:0;">
           <div style="display:flex; align-items:center; gap:8px; min-width:0;">
-            <span id="compModalBadge" class="sb-badge sb-badge--comp" style="display:none;"></span>
-            <div class="card-title" id="compModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Compétence</div>
+            <span id="formCompModalBadge" class="sb-badge sb-badge--comp" style="display:none;"></span>
+            <div class="card-title" id="formCompModalTitle" style="margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Compétence</div>
           </div>
-          <div class="card-sub" id="compModalSub" style="margin:4px 0 0 0; display:none;"></div>
+          <div class="card-sub" id="formCompModalSub" style="margin:4px 0 0 0; display:none;"></div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnCompX" aria-label="Fermer">×</button>
+        <button type="button" class="sb-modal-x" id="btnFormCompX" aria-label="Fermer">×</button>
       </div>
 
       <div class="sb-modal-body">
         <div class="row">
           <div class="info-item" style="flex:2; min-width:260px;">
             <div class="label">Intitulé</div>
-            <input type="text" id="compIntitule" />
+            <input type="text" id="formCompIntitule" />
           </div>
         </div>
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:240px;">
             <div class="label">Domaine</div>
-            <select id="compDomaine">
+            <select id="formCompDomaine">
               <option value="">—</option>
             </select>
           </div>
           <div class="info-item" style="flex:1; min-width:240px;">
             <div class="label">État</div>
-            <select id="compEtat">
+            <select id="formCompEtat">
               <option value="active">active</option>
               <option value="à valider">à valider</option>
               <option value="valide">valide</option>
@@ -742,22 +742,22 @@
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
             <div class="label">Description</div>
-            <textarea id="compDesc" rows="3" class="sb-ctrl"></textarea>
+            <textarea id="formCompDesc" rows="3" class="sb-ctrl"></textarea>
           </div>
         </div>
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
             <div class="label">Niveau A</div>
-            <textarea id="compNivA" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
+            <textarea id="formCompNivA" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
           </div>
           <div class="info-item" style="flex:1; min-width:260px;">
             <div class="label">Niveau B</div>
-            <textarea id="compNivB" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
+            <textarea id="formCompNivB" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
           </div>
           <div class="info-item" style="flex:1; min-width:260px;">
             <div class="label">Niveau C</div>
-            <textarea id="compNivC" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
+            <textarea id="formCompNivC" rows="3" maxlength="230" class="sb-textarea--md sb-textarea--niv"></textarea>
           </div>
         </div>
 
@@ -765,45 +765,45 @@
           <div class="info-item" style="flex:1; min-width:260px;">
             <div class="sb-field-head">
               <div class="label" style="margin:0;">Grille d’évaluation</div>
-              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnCompAddCrit">Ajouter un critère</button>
+              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnFormCompAddCrit">Ajouter un critère</button>
             </div>
 
-            <div class="sb-crit-editor" id="compCritEditor" style="display:none;">
-              <div class="card-sub" id="compCritEditorTitle" style="margin:0 0 10px 0;">Critère</div>
+            <div class="sb-crit-editor" id="formCompCritEditor" style="display:none;">
+              <div class="card-sub" id="formCompCritEditorTitle" style="margin:0 0 10px 0;">Critère</div>
 
               <div class="row">
                 <div class="info-item" style="flex:1; min-width:260px;">
                   <div class="label">Nom du critère</div>
-                  <input type="text" id="compCritNom" />
+                  <input type="text" id="formCompCritNom" />
                 </div>
               </div>
 
               <div class="sb-crit-evals">
                 <div class="sb-crit-eval-row">
                   <div class="label">Niveau 1</div>
-                  <input type="text" id="compCritEval1" maxlength="120" class="sb-ctrl" />
+                  <input type="text" id="formCompCritEval1" maxlength="120" class="sb-ctrl" />
                 </div>
                 <div class="sb-crit-eval-row">
                   <div class="label">Niveau 2</div>
-                  <input type="text" id="compCritEval2" maxlength="120" class="sb-ctrl" />
+                  <input type="text" id="formCompCritEval2" maxlength="120" class="sb-ctrl" />
                 </div>
                 <div class="sb-crit-eval-row">
                   <div class="label">Niveau 3</div>
-                  <input type="text" id="compCritEval3" maxlength="120" class="sb-ctrl" />
+                  <input type="text" id="formCompCritEval3" maxlength="120" class="sb-ctrl" />
                 </div>
                 <div class="sb-crit-eval-row">
                   <div class="label">Niveau 4</div>
-                  <input type="text" id="compCritEval4" maxlength="120" class="sb-ctrl" />
+                  <input type="text" id="formCompCritEval4" maxlength="120" class="sb-ctrl" />
                 </div>
               </div>
 
               <div class="sb-acc-actions">
-                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnCompCritSave">Enregistrer</button>
-                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnCompCritCancel">Annuler</button>
+                <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnFormCompCritSave">Enregistrer</button>
+                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnFormCompCritCancel">Annuler</button>
               </div>
             </div>
 
-            <div class="sb-stack sb-stack--xs" id="compCritList"></div>
+            <div class="sb-stack sb-stack--xs" id="formCompCritList"></div>
 
             <div class="card-sub" style="margin:8px 0 0 0;">
               1 à 4 critères. Chaque critère doit contenir 4 niveaux d’évaluation.
@@ -813,14 +813,14 @@
       </div>
 
       <div class="sb-modal-foot">
-        <button type="button" class="sb-btn sb-btn--ai" id="btnCompAi">Concevoir avec l’IA</button>
-        <button type="button" class="sb-btn sb-btn--accent" id="btnCompSave">Enregistrer</button>
-        <button type="button" class="sb-btn sb-btn--soft" id="btnCompCancel">Annuler</button>
+        <button type="button" class="sb-btn sb-btn--ai" id="btnFormCompAi">Concevoir avec l’IA</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnFormCompSave">Enregistrer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnFormCompCancel">Annuler</button>
       </div>
     </div>
   </div>
 
-  <div class="sb-modal sb-modal--above" id="modalCompAi" style="display:none;">
+  <div class="sb-modal sb-modal--above" id="modalFormCompAi" style="display:none;">
     <div class="sb-modal-card">
       <div class="sb-modal-head">
         <div>
@@ -829,28 +829,28 @@
             L’IA propose un brouillon. Vous validez et ajustez avant d’enregistrer.
           </div>
         </div>
-        <button type="button" class="sb-modal-x" id="btnCompAiX" aria-label="Fermer">×</button>
+        <button type="button" class="sb-modal-x" id="btnFormCompAiX" aria-label="Fermer">×</button>
       </div>
 
       <div class="sb-modal-body">
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
             <div class="label">Objectif de la compétence</div>
-            <textarea id="compAiObjectif" rows="3" placeholder="Ex : Analyser et structurer des données avec une aide IA"></textarea>
+            <textarea id="formCompAiObjectif" rows="3" placeholder="Ex : Analyser et structurer des données avec une aide IA"></textarea>
           </div>
         </div>
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
             <div class="label">Contexte</div>
-            <textarea id="compAiContexte" rows="3" placeholder="Contexte métier, public visé, outils, contraintes…"></textarea>
+            <textarea id="formCompAiContexte" rows="3" placeholder="Contexte métier, public visé, outils, contraintes…"></textarea>
           </div>
         </div>
 
         <div class="row">
           <div class="info-item" style="flex:1; min-width:240px;">
             <div class="label">Domaine</div>
-            <select id="compAiDomaine">
+            <select id="formCompAiDomaine">
               <option value="">—</option>
             </select>
             <div class="card-sub" style="margin:6px 0 0 0;">Si vous choisissez un domaine, l’IA sera contrainte de le respecter.</div>
@@ -858,7 +858,7 @@
 
           <div class="info-item" style="flex:1; min-width:220px;">
             <div class="label">Nombre de critères</div>
-            <select id="compAiNbCrit">
+            <select id="formCompAiNbCrit">
               <option value="2">2 critères</option>
               <option value="3" selected>3 critères</option>
               <option value="4">4 critères</option>
@@ -869,15 +869,15 @@
         <div class="row">
           <div class="info-item" style="flex:1; min-width:260px;">
             <div class="label">Document à analyser</div>
-            <input type="file" id="compAiDocument" accept=".pdf,.docx,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/csv" />
+            <input type="file" id="formCompAiDocument" accept=".pdf,.docx,.txt,.md,.csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/csv" />
             <div class="card-sub" style="margin:6px 0 0 0;">Formats acceptés : PDF, DOCX, TXT, MD, CSV. Le document sert uniquement de contexte de génération.</div>
           </div>
         </div>
       </div>
 
       <div class="sb-modal-foot">
-        <button type="button" class="sb-btn sb-btn--accent" id="btnCompAiGenerate">Générer</button>
-        <button type="button" class="sb-btn sb-btn--soft" id="btnCompAiCancel">Annuler</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnFormCompAiGenerate">Générer</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnFormCompAiCancel">Annuler</button>
       </div>
     </div>
   </div>

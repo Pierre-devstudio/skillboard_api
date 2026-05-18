@@ -1148,7 +1148,7 @@ function iconPdf(){
     }
 
     function fillCompDomainSelect(selectedId){
-        const sel = byId("compDomaine");
+        const sel = byId("formCompDomaine");
         if (!sel) return;
 
         const keep = (selectedId ?? sel.value ?? "").toString().trim();
@@ -1178,7 +1178,7 @@ function iconPdf(){
     }
 
     function fillCompAiDomainSelect(selectedId){
-        const sel = byId("compAiDomaine");
+        const sel = byId("formCompAiDomaine");
         if (!sel) return;
 
         const keep = (selectedId ?? sel.value ?? "").toString().trim();
@@ -1295,32 +1295,32 @@ function iconPdf(){
     function compShowCritEditor(idx){
         _compCritEditIdx = idx;
 
-        const ed = byId("compCritEditor");
+        const ed = byId("formCompCritEditor");
         if (!ed) return;
 
-        const title = byId("compCritEditorTitle");
+        const title = byId("formCompCritEditorTitle");
         if (title) title.textContent = `Critère ${idx + 1}`;
 
         const c = _compCrit[idx] || compEmptyCrit();
 
-        byId("compCritNom").value = c.Nom || "";
-        byId("compCritEval1").value = c.Eval?.[0] || "";
-        byId("compCritEval2").value = c.Eval?.[1] || "";
-        byId("compCritEval3").value = c.Eval?.[2] || "";
-        byId("compCritEval4").value = c.Eval?.[3] || "";
+        byId("formCompCritNom").value = c.Nom || "";
+        byId("formCompCritEval1").value = c.Eval?.[0] || "";
+        byId("formCompCritEval2").value = c.Eval?.[1] || "";
+        byId("formCompCritEval3").value = c.Eval?.[2] || "";
+        byId("formCompCritEval4").value = c.Eval?.[3] || "";
 
         ed.style.display = "";
     }
 
     function compHideCritEditor(){
-        const ed = byId("compCritEditor");
+        const ed = byId("formCompCritEditor");
         if (ed) ed.style.display = "none";
         _compCritEditIdx = null;
     }
 
     function compRenderCritList(){
-        const host = byId("compCritList");
-        const btnAdd = byId("btnCompAddCrit");
+        const host = byId("formCompCritList");
+        const btnAdd = byId("btnFormCompAddCrit");
 
         if (!host) return;
         if (!_compCrit) _compCrit = [compEmptyCrit(), compEmptyCrit(), compEmptyCrit(), compEmptyCrit()];
@@ -1416,11 +1416,11 @@ function iconPdf(){
     function compSaveCritFromEditor(portal){
         if (_compCritEditIdx === null || _compCritEditIdx === undefined) return;
 
-        const nom = (byId("compCritNom").value || "").trim();
-        const e1 = (byId("compCritEval1").value || "").trim();
-        const e2 = (byId("compCritEval2").value || "").trim();
-        const e3 = (byId("compCritEval3").value || "").trim();
-        const e4 = (byId("compCritEval4").value || "").trim();
+        const nom = (byId("formCompCritNom").value || "").trim();
+        const e1 = (byId("formCompCritEval1").value || "").trim();
+        const e2 = (byId("formCompCritEval2").value || "").trim();
+        const e3 = (byId("formCompCritEval3").value || "").trim();
+        const e4 = (byId("formCompCritEval4").value || "").trim();
 
         if (!nom){
             portal.showAlert("error", "Nom du critère obligatoire.");
@@ -1491,15 +1491,15 @@ function iconPdf(){
 
         const title = (proposal?.source || "").trim();
 
-        const badge = byId("compModalBadge");
+        const badge = byId("formCompModalBadge");
         if (badge){
             badge.style.display = "none";
             badge.textContent = "";
         }
 
-        byId("compModalTitle").textContent = "Créer une compétence";
+        byId("formCompModalTitle").textContent = "Créer une compétence";
 
-        const sub = byId("compModalSub");
+        const sub = byId("formCompModalSub");
         if (sub){
             sub.textContent = _compCreateTarget === "formateur"
                 ? "Création depuis les compétences requises pour le formateur."
@@ -1507,29 +1507,29 @@ function iconPdf(){
             sub.style.display = "";
         }
 
-        byId("compIntitule").value = title;
-        byId("compEtat").value = "à valider";
-        byId("compDesc").value = "";
-        byId("compNivA").value = "";
-        byId("compNivB").value = "";
-        byId("compNivC").value = "";
+        byId("formCompIntitule").value = title;
+        byId("formCompEtat").value = "à valider";
+        byId("formCompDesc").value = "";
+        byId("formCompNivA").value = "";
+        byId("formCompNivB").value = "";
+        byId("formCompNivC").value = "";
 
         fillCompDomainSelect("");
         fillCompAiDomainSelect("");
 
-        if (byId("compAiObjectif")) byId("compAiObjectif").value = title;
-        if (byId("compAiContexte")) byId("compAiContexte").value = buildCompetenceAiContext(_compCreateTarget, proposal);
-        if (byId("compAiDocument")) byId("compAiDocument").value = "";
-        if (byId("compAiNbCrit")) byId("compAiNbCrit").value = "3";
+        if (byId("formCompAiObjectif")) byId("formCompAiObjectif").value = title;
+        if (byId("formCompAiContexte")) byId("formCompAiContexte").value = buildCompetenceAiContext(_compCreateTarget, proposal);
+        if (byId("formCompAiDocument")) byId("formCompAiDocument").value = "";
+        if (byId("formCompAiNbCrit")) byId("formCompAiNbCrit").value = "3";
 
         compResetCrit();
 
-        openModal("modalCompEdit");
+        openModal("modalFormCompEdit");
     }
 
     function closePendingCompetenceCreate(){
         _compCreatePendingIndex = null;
-        closeModal("modalCompEdit");
+        closeModal("modalFormCompEdit");
     }
 
     function removePendingCreatedCompetence(){
@@ -1564,13 +1564,13 @@ function iconPdf(){
 
         const effectifId = getEffectifId();
 
-        const title = (byId("compIntitule").value || "").trim();
-        const dom = (byId("compDomaine").value || "").trim();
-        const etat = (byId("compEtat").value || "à valider").trim();
-        const desc = (byId("compDesc").value || "").trim();
-        const a = (byId("compNivA").value || "").trim();
-        const b = (byId("compNivB").value || "").trim();
-        const c = (byId("compNivC").value || "").trim();
+        const title = (byId("formCompIntitule").value || "").trim();
+        const dom = (byId("formCompDomaine").value || "").trim();
+        const etat = (byId("formCompEtat").value || "à valider").trim();
+        const desc = (byId("formCompDesc").value || "").trim();
+        const a = (byId("formCompNivA").value || "").trim();
+        const b = (byId("formCompNivB").value || "").trim();
+        const c = (byId("formCompNivC").value || "").trim();
 
         if (!title){
             portal.showAlert("error", "Intitulé obligatoire.");
@@ -1628,37 +1628,37 @@ function iconPdf(){
     }
 
     function openPendingCompAiModal(){
-        const obj = byId("compAiObjectif");
-        const title = (byId("compIntitule")?.value || "").trim();
+        const obj = byId("formCompAiObjectif");
+        const title = (byId("formCompIntitule")?.value || "").trim();
 
         if (obj && !obj.value.trim()){
             obj.value = title;
         }
 
-        const ctx = byId("compAiContexte");
+        const ctx = byId("formCompAiContexte");
         if (ctx && !ctx.value.trim()){
             ctx.value = buildCompetenceAiContext(_compCreateTarget, { source:title });
         }
 
-        fillCompAiDomainSelect(byId("compDomaine")?.value || "");
+        fillCompAiDomainSelect(byId("formCompDomaine")?.value || "");
 
-        const nbSel = byId("compAiNbCrit");
+        const nbSel = byId("formCompAiNbCrit");
         if (nbSel) nbSel.value = "3";
 
-        openModal("modalCompAi");
+        openModal("modalFormCompAi");
     }
 
     function closePendingCompAiModal(){
-        closeModal("modalCompAi");
+        closeModal("modalFormCompAi");
     }
 
     async function generatePendingCompAiDraft(portal){
-        const objectif = (byId("compAiObjectif")?.value || "").trim();
-        const contexte = (byId("compAiContexte")?.value || "").trim();
-        const dom = (byId("compAiDomaine")?.value || "").trim();
-        const file = byId("compAiDocument")?.files?.[0] || null;
+        const objectif = (byId("formCompAiObjectif")?.value || "").trim();
+        const contexte = (byId("formCompAiContexte")?.value || "").trim();
+        const dom = (byId("formCompAiDomaine")?.value || "").trim();
+        const file = byId("formCompAiDocument")?.files?.[0] || null;
 
-        let nb = parseInt((byId("compAiNbCrit")?.value || "3").trim(), 10);
+        let nb = parseInt((byId("formCompAiNbCrit")?.value || "3").trim(), 10);
         if (![2, 3, 4].includes(nb)) nb = 3;
 
         if (!objectif){
@@ -1668,7 +1668,7 @@ function iconPdf(){
 
         const effectifId = getEffectifId();
 
-        const btn = byId("btnCompAiGenerate");
+        const btn = byId("btnFormCompAiGenerate");
         if (btn){
             btn.disabled = true;
             btn.style.opacity = ".6";
@@ -1711,11 +1711,11 @@ function iconPdf(){
                 );
             }
 
-            if (draft?.intitule) byId("compIntitule").value = String(draft.intitule);
-            if (draft?.description !== undefined) byId("compDesc").value = String(draft.description || "");
-            if (draft?.niveaua !== undefined) byId("compNivA").value = String(draft.niveaua || "");
-            if (draft?.niveaub !== undefined) byId("compNivB").value = String(draft.niveaub || "");
-            if (draft?.niveauc !== undefined) byId("compNivC").value = String(draft.niveauc || "");
+            if (draft?.intitule) byId("formCompIntitule").value = String(draft.intitule);
+            if (draft?.description !== undefined) byId("formCompDesc").value = String(draft.description || "");
+            if (draft?.niveaua !== undefined) byId("formCompNivA").value = String(draft.niveaua || "");
+            if (draft?.niveaub !== undefined) byId("formCompNivB").value = String(draft.niveaub || "");
+            if (draft?.niveauc !== undefined) byId("formCompNivC").value = String(draft.niveauc || "");
 
             await ensureCompetenceDomains(portal);
 
@@ -5484,10 +5484,10 @@ iframe{width:100%;height:100%;border:0;display:block}
       }
     });
 
-    byId("btnCompX")?.addEventListener("click", closePendingCompetenceCreate);
-    byId("btnCompCancel")?.addEventListener("click", closePendingCompetenceCreate);
+    byId("btnFormCompX")?.addEventListener("click", closePendingCompetenceCreate);
+    byId("btnFormCompCancel")?.addEventListener("click", closePendingCompetenceCreate);
 
-    byId("btnCompSave")?.addEventListener("click", async () => {
+    byId("btnFormCompSave")?.addEventListener("click", async () => {
       try{
         await savePendingCompetence(portal);
       } catch(e){
@@ -5495,7 +5495,7 @@ iframe{width:100%;height:100%;border:0;display:block}
       }
     });
 
-    byId("btnCompAi")?.addEventListener("click", async () => {
+    byId("btnFormCompAi")?.addEventListener("click", async () => {
       try{
         await ensureCompetenceDomains(portal);
         openPendingCompAiModal();
@@ -5504,19 +5504,19 @@ iframe{width:100%;height:100%;border:0;display:block}
       }
     });
 
-    byId("btnCompAiX")?.addEventListener("click", closePendingCompAiModal);
-    byId("btnCompAiCancel")?.addEventListener("click", closePendingCompAiModal);
-    byId("btnCompAiGenerate")?.addEventListener("click", async () => {
+    byId("btnFormCompAiX")?.addEventListener("click", closePendingCompAiModal);
+    byId("btnFormCompAiCancel")?.addEventListener("click", closePendingCompAiModal);
+    byId("btnFormCompAiGenerate")?.addEventListener("click", async () => {
       await generatePendingCompAiDraft(portal);
     });
 
-    byId("btnCompAddCrit")?.addEventListener("click", () => {
+    byId("btnFormCompAddCrit")?.addEventListener("click", () => {
       const idx = compNextEmptyCritIndex();
       if (idx < 0) return;
       compShowCritEditor(idx);
     });
 
-    byId("btnCompCritSave")?.addEventListener("click", () => {
+    byId("btnFormCompCritSave")?.addEventListener("click", () => {
       try{
         compSaveCritFromEditor(portal);
       } catch(e){
@@ -5524,17 +5524,17 @@ iframe{width:100%;height:100%;border:0;display:block}
       }
     });
 
-    byId("btnCompCritCancel")?.addEventListener("click", compHideCritEditor);
+    byId("btnFormCompCritCancel")?.addEventListener("click", compHideCritEditor);
 
     compResetCrit();
 
-    bindCompMaxLen("compNivA", 230);
-    bindCompMaxLen("compNivB", 230);
-    bindCompMaxLen("compNivC", 230);
-    bindCompMaxLen("compCritEval1", 120);
-    bindCompMaxLen("compCritEval2", 120);
-    bindCompMaxLen("compCritEval3", 120);
-    bindCompMaxLen("compCritEval4", 120);
+    bindCompMaxLen("formCompNivA", 230);
+    bindCompMaxLen("formCompNivB", 230);
+    bindCompMaxLen("formCompNivC", 230);
+    bindCompMaxLen("formCompCritEval1", 120);
+    bindCompMaxLen("formCompCritEval2", 120);
+    bindCompMaxLen("formCompCritEval3", 120);
+    bindCompMaxLen("formCompCritEval4", 120);
 
     const bNew = byId("btnFormNew");
 
