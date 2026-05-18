@@ -15,8 +15,29 @@
   let _archiveId = null;
   let _crit = null;
   let _critEditIdx = null;
+  let _initPromise = null;
 
   function byId(id){ return document.getElementById(id); }
+
+  function delay(ms){
+    return new Promise(resolve => window.setTimeout(resolve, ms));
+  }
+
+  async function waitLearnAuthReady(){
+    try {
+      const p = window.__learnAuthReady;
+      if (p && typeof p.then === "function") {
+        await p.catch(() => null);
+        return;
+      }
+
+      const started = Date.now();
+
+      while (!window.PortalAuthCommon && (Date.now() - started) < 5000) {
+        await delay(50);
+      }
+    } catch(_){}
+  }
 
   function getEffectifId(){
     const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
@@ -1069,6 +1090,11 @@ iframe{width:100%;height:100%;border:0;display:block}
 
   function bindOnce(portal){
     if (_bound) return;
+
+    if (!byId("view-catalogue_competences") || !byId("btnCompNew")) {
+      return;
+    }
+
     _bound = true;
 
     const bNew = byId("btnCompNew");
@@ -1174,20 +1200,38 @@ iframe{width:100%;height:100%;border:0;display:block}
     bindMaxLen("compCritEval4", 120);
   }
 
-  async function init(){
-    try {
-      await (window.__learnAuthReady || Promise.resolve(null));
-    } catch(_){}
+  async function init(portalArg){
+    await waitLearnAuthReady();
 
-    const portal = window.portal;
+    const portal = portalArg || window.portal;
     if (!portal) return;
 
+    if (!byId("view-catalogue_competences")) return;
+
     await ensureContext(portal);
+
+    const bNew = byId("btnCompNew");
+    if (bNew) bNew.style.display = isSupervisor() ? "" : "none";
+
     bindOnce(portal);
     await loadList(portal);
   }
 
-  init().catch(e => {
+  async function onShow(portal){
+    if (_initPromise) return _initPromise;
+
+    _initPromise = init(portal).finally(() => {
+      _initPromise = null;
+    });
+
+    return _initPromise;
+  }
+
+  window.LearnCatalogueCompetences = Object.assign(window.LearnCatalogueCompetences || {}, {
+    onShow
+  });
+
+  onShow(window.portal).catch(e => {
     if (window.portal && window.portal.showAlert) {
       window.portal.showAlert("error", "Erreur catalogue compétences : " + (e?.message || e));
     }

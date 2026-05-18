@@ -18,7 +18,8 @@
 
   window.portal.registerMenu({
     view: "catalogue_competences",
-    htmlUrl: "/menu_learn/learn_catalogue_competences.html"
+    htmlUrl: "/menu_learn/learn_catalogue_competences.html",
+    onShow: (p) => window.LearnCatalogueCompetences?.onShow?.(p)
   });
 
   const COMING_SOON = "/menu_learn/learn_coming_soon.html";
