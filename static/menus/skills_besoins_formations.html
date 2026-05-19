@@ -1,102 +1,59 @@
 <section id="view-besoins-formations" style="display:none;">
-  <div class="card">
-    <div class="card-title">Besoins & formations</div>
-    <div class="card-sub">
-      Transformez les signaux de fragilité en besoins de formation exploitables par Studio.
+  <div class="card bf-hero">
+    <div>
+      <div class="card-title">Besoins & formations</div>
+      <div class="card-sub">
+        Lecture manager : qui doit monter en compétence, sur quoi, avec quelle priorité et quelle suite côté Studio.
+      </div>
+    </div>
+    <div id="bfDestinationText" class="bf-destination">Destination Studio : —</div>
+  </div>
+
+  <div class="card bf-toolbar">
+    <div class="bf-filters">
+      <div class="bf-field">
+        <label class="sb-label" for="bfServiceSelect">Service</label>
+        <select id="bfServiceSelect" class="sb-select">
+          <option value="__ALL__">Tous les services</option>
+        </select>
+      </div>
+
+      <div class="bf-field">
+        <label class="sb-label" for="bfStatutSelect">Statut</label>
+        <select id="bfStatutSelect" class="sb-select">
+          <option value="tous">Tous les besoins</option>
+          <option value="a_envoyer">À envoyer</option>
+          <option value="envoye_studio">Envoyés au Studio</option>
+          <option value="pris_en_charge">Pris en charge</option>
+          <option value="traite">Traités</option>
+        </select>
+      </div>
+
+      <div class="bf-field bf-field--range">
+        <label class="sb-label" for="bfFragiliteRange">Fragilité min. <strong id="bfFragiliteValue">0</strong></label>
+        <input type="range" id="bfFragiliteRange" min="0" max="100" step="5" value="0">
+      </div>
+
+      <div class="bf-field bf-field--range">
+        <label class="sb-label" for="bfCriticiteRange">Criticité min. <strong id="bfCriticiteValue">70</strong></label>
+        <input type="range" id="bfCriticiteRange" min="0" max="100" step="5" value="70">
+      </div>
+
+      <button type="button" class="sb-btn sb-btn--init" id="btnBfReset">Réinitialiser</button>
+    </div>
+
+    <div class="bf-mini-kpis" id="bfMiniKpis">
+      <span class="bf-mini-kpi"><strong>—</strong><span>besoins</span></span>
+      <span class="bf-mini-kpi"><strong>—</strong><span>collaborateurs</span></span>
+      <span class="bf-mini-kpi"><strong>—</strong><span>postes</span></span>
     </div>
   </div>
 
-  <div class="sb-split">
-    <div class="sb-col">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:6px;">Filtres</div>
-        <div class="card-sub" style="margin:0;">Le besoin reste dynamique : risque actuel, horizon 5 ans et indisponibilités.</div>
-
-        <div class="sb-stack" style="margin-top:12px;">
-          <div class="info-item">
-            <label class="sb-label" for="bfServiceSelect">Service</label>
-            <select id="bfServiceSelect" class="sb-select">
-              <option value="__ALL__">Tous les services</option>
-            </select>
-          </div>
-
-          <div class="info-item">
-            <label class="sb-label" for="bfStatutSelect">Statut</label>
-            <select id="bfStatutSelect" class="sb-select">
-              <option value="tous">Tous les besoins</option>
-              <option value="a_envoyer">À envoyer</option>
-              <option value="envoye_studio">Envoyés au Studio</option>
-              <option value="pris_en_charge">Pris en charge</option>
-              <option value="traite">Traités</option>
-            </select>
-          </div>
-
-          <div class="info-item">
-            <div class="label">Fragilité minimale</div>
-            <div class="sb-filter-slider">
-              <input type="range" id="bfFragiliteRange" min="0" max="100" step="5" value="0" aria-label="Fragilité minimale">
-              <div class="sb-filter-slider__meta">
-                <span>Afficher si score ≥</span>
-                <strong id="bfFragiliteValue">0</strong>
-              </div>
-            </div>
-          </div>
-
-          <div class="info-item">
-            <div class="label">Criticité minimale</div>
-            <div class="sb-filter-slider">
-              <input type="range" id="bfCriticiteRange" min="0" max="100" step="5" value="70" aria-label="Criticité minimale">
-              <div class="sb-filter-slider__meta">
-                <span>Compétences requises si criticité ≥</span>
-                <strong id="bfCriticiteValue">70</strong>
-              </div>
-            </div>
-          </div>
-
-          <div class="info-item">
-            <div class="label">Horizon d’anticipation</div>
-            <div class="value">5 ans</div>
-          </div>
-
-          <div class="info-item">
-            <button type="button" class="sb-btn sb-btn--init sb-btn--block" id="btnBfReset">Réinitialiser les filtres</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="sb-col">
-      <div class="bf-kpis">
-        <div class="card bf-kpi">
-          <div class="label">À envoyer</div>
-          <div class="value" id="bfKpiAEnvoyer">—</div>
-        </div>
-        <div class="card bf-kpi">
-          <div class="label">Envoyés Studio</div>
-          <div class="value" id="bfKpiEnvoyes">—</div>
-        </div>
-        <div class="card bf-kpi">
-          <div class="label">Formation existante</div>
-          <div class="value" id="bfKpiFormation">—</div>
-        </div>
-        <div class="card bf-kpi">
-          <div class="label">Risque 5 ans</div>
-          <div class="value" id="bfKpi5Ans">—</div>
-        </div>
-      </div>
-
-      <div class="card bf-destination-card">
-        <div class="card-title" style="margin-bottom:4px;">Destination Studio</div>
-        <div class="card-sub" id="bfDestinationText" style="margin:0;">—</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card" style="margin-top:12px;">
+  <div class="card bf-main-card">
     <div class="bf-list-head">
       <div>
-        <div class="card-title" style="margin-bottom:6px;">Besoins détectés</div>
-        <div class="card-sub" id="bfMeta" style="margin:0;">Chargement…</div>
+        <div class="card-title">Besoins par poste et collaborateur</div>
+        <div class="card-sub" id="bfMeta">Chargement…</div>
       </div>
       <div class="bf-actions">
         <span id="bfActionMsg" class="bf-action-msg"></span>
@@ -105,7 +62,7 @@
       </div>
     </div>
 
-    <div id="bfTableWrap" class="bf-table-wrap" style="margin-top:12px;">
+    <div id="bfListWrap" class="bf-list-wrap">
       <div class="card-sub">Chargement des besoins…</div>
     </div>
   </div>

@@ -1,7 +1,7 @@
 /* ======================================================
    static/menus/skills_besoins_formations.js
-   - Besoins & formations Insights
-   - MVP: signaux dynamiques -> demande envoyée Studio
+   Besoins & formations Insights
+   Lecture manager : poste -> collaborateur -> compétences
    ====================================================== */
 (function () {
   let _bound = false;
@@ -30,6 +30,11 @@
     if (typeof e === "string") return e;
     if (e.message) return e.message;
     try { return JSON.stringify(e); } catch (_) { return String(e); }
+  }
+
+  function num(v) {
+    const n = Number(v || 0);
+    return isNaN(n) ? 0 : n;
   }
 
   function clampInt(v, min, max, defv) {
@@ -124,11 +129,19 @@
     _servicesLoaded = true;
   }
 
-  function priorityClass(p) {
+  function priorityRank(p) {
     const s = (p || "").toString().toLowerCase();
-    if (s.includes("urgent")) return "bf-prio--urgent";
-    if (s.includes("sécur") || s.includes("secur")) return "bf-prio--secure";
-    if (s.includes("anticip")) return "bf-prio--anticipate";
+    if (s.includes("urgent")) return 4;
+    if (s.includes("sécur") || s.includes("secur")) return 3;
+    if (s.includes("anticip")) return 2;
+    return 1;
+  }
+
+  function priorityClass(p) {
+    const r = priorityRank(p);
+    if (r === 4) return "bf-prio--urgent";
+    if (r === 3) return "bf-prio--secure";
+    if (r === 2) return "bf-prio--anticipate";
     return "bf-prio--watch";
   }
 
@@ -141,21 +154,15 @@
     return "";
   }
 
-  function num(v) {
-    const n = Number(v || 0);
-    return isNaN(n) ? 0 : n;
-  }
-
   function renderDestination(dest) {
     const el = byId("bfDestinationText");
     if (!el) return;
 
     if (dest && dest.can_send) {
-      const learn = dest.learn_actif ? "Learn actif" : "Learn non actif";
       el.innerHTML = `
         <span class="sb-badge sb-badge--success">Studio actif</span>
         <span>${escapeHtml(dest.nom_owner || dest.id_owner || "Studio")}</span>
-        <span class="sb-badge">${escapeHtml(learn)}</span>
+        <span class="sb-badge">${escapeHtml(dest.learn_actif ? "Learn actif" : "Learn non actif")}</span>
       `;
       return;
     }
@@ -166,126 +173,226 @@
     `;
   }
 
-  function renderKpis(kpis) {
+  function renderMiniKpis(kpis) {
     const k = kpis || {};
-    setText("bfKpiAEnvoyer", k.a_envoyer ?? 0, "0");
-    setText("bfKpiEnvoyes", k.envoye_studio ?? 0, "0");
-    setText("bfKpiFormation", k.formation_existante ?? 0, "0");
-    setText("bfKpi5Ans", k.risque_5_ans ?? 0, "0");
+    const el = byId("bfMiniKpis");
+    if (!el) return;
+    el.innerHTML = `
+      <span class="bf-mini-kpi"><strong>${escapeHtml(k.total ?? 0)}</strong><span>besoins</span></span>
+      <span class="bf-mini-kpi"><strong>${escapeHtml(k.collaborateurs ?? 0)}</strong><span>collaborateurs</span></span>
+      <span class="bf-mini-kpi"><strong>${escapeHtml(k.postes ?? 0)}</strong><span>postes</span></span>
+      <span class="bf-mini-kpi"><strong>${escapeHtml(k.risque_5_ans ?? 0)}</strong><span>risque 5 ans</span></span>
+      <span class="bf-mini-kpi"><strong>${escapeHtml(k.formation_existante ?? 0)}</strong><span>formations connues</span></span>
+    `;
   }
 
   function rowKey(item) {
-    return `${item.id_comp || ""}@@${item.id_poste || ""}`;
+    return `${item.id_comp || ""}@@${item.id_poste || ""}@@${item.id_effectif_concerne || ""}`;
+  }
+
+  function labelCode(item) {
+    return item.code_competence || item.code || "—";
+  }
+
+  function labelCompetence(item) {
+    return item.intitule_competence || item.intitule || "Compétence";
+  }
+
+  function labelCollaborateur(item) {
+    return item.collaborateur_nom_complet || [item.prenom_effectif, item.nom_effectif].filter(Boolean).join(" ") || "Besoin collectif";
+  }
+
+  function labelPoste(item) {
+    return item.intitule_poste || "Poste non précisé";
+  }
+
+  function groupItems(items) {
+    const postes = new Map();
+
+    (items || []).forEach(item => {
+      const posteKey = item.id_poste || `poste:${labelPoste(item)}`;
+      if (!postes.has(posteKey)) {
+        postes.set(posteKey, {
+          key: posteKey,
+          title: labelPoste(item),
+          code_poste: item.code_poste || "",
+          service: item.nom_service || "Service non précisé",
+          items: [],
+          people: new Map(),
+          score: 0,
+          priority: item.priorite || "À surveiller"
+        });
+      }
+
+      const poste = postes.get(posteKey);
+      poste.items.push(item);
+      poste.score = Math.max(poste.score, num(item.score_anticipation || item.indice_fragilite));
+      if (priorityRank(item.priorite) > priorityRank(poste.priority)) poste.priority = item.priorite;
+
+      const personKey = item.id_effectif_concerne || `collectif:${posteKey}`;
+      if (!poste.people.has(personKey)) {
+        poste.people.set(personKey, {
+          key: personKey,
+          title: labelCollaborateur(item),
+          type: item.id_effectif_concerne ? "individuel" : "collectif",
+          items: [],
+          score: 0,
+          priority: item.priorite || "À surveiller"
+        });
+      }
+      const person = poste.people.get(personKey);
+      person.items.push(item);
+      person.score = Math.max(person.score, num(item.score_anticipation || item.indice_fragilite));
+      if (priorityRank(item.priorite) > priorityRank(person.priority)) person.priority = item.priorite;
+    });
+
+    return Array.from(postes.values()).sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.title.localeCompare(b.title);
+    });
+  }
+
+  function formationBadge(item) {
+    const n = num(item.nb_formations_existantes);
+    if (n > 0) return `<span class="sb-badge sb-badge--success">${n} formation${n > 1 ? "s" : ""}</span>`;
+    return `<span class="sb-badge">À vérifier</span>`;
+  }
+
+  function levelHtml(item) {
+    const current = item.niveau_actuel || "Non évalué";
+    const expected = item.niveau_requis || item.niveau_attendu || "—";
+    return `
+      <span class="bf-level"><span>Actuel</span><strong>${escapeHtml(current)}</strong></span>
+      <span class="bf-level"><span>Attendu</span><strong>${escapeHtml(expected)}</strong></span>
+    `;
   }
 
   function indicatorHtml(item) {
     const score = num(item.score_anticipation || item.indice_fragilite);
     const crit = num(item.criticite);
-    const toTrain = item.nb_personnes_a_former;
-    const titulaire = item.nb_titulaires_poste;
     const future = num(item.nb_sorties_prevues) + num(item.nb_retraites_estimees);
-    const indispo = num(item.nb_indispos_actuelles);
-
+    const indispo = num(item.nb_indispos_actuelles) + num(item.collaborateur_indisponible);
     const parts = [
-      `<span class="sb-badge">Score ${score}%</span>`,
-      `<span class="sb-badge">Crit. ${crit}</span>`
+      `<span class="bf-chip">Score ${score}%</span>`,
+      `<span class="bf-chip">Crit. ${crit}</span>`
     ];
+    if (future > 0) parts.push(`<span class="bf-chip bf-chip--warn">Risque 5 ans ${future}</span>`);
+    if (indispo > 0) parts.push(`<span class="bf-chip bf-chip--danger">Indispo</span>`);
+    if (item.is_signal_actuel === false) parts.push(`<span class="bf-chip">Historisé</span>`);
+    return parts.join("");
+  }
 
-    if (toTrain !== null && toTrain !== undefined) {
-      parts.push(`<span class="sb-badge">À former ${escapeHtml(toTrain)}/${escapeHtml(titulaire ?? "—")}</span>`);
-    }
-    if (future > 0) parts.push(`<span class="sb-badge sb-badge--warning">Risque 5 ans ${future}</span>`);
-    if (indispo > 0) parts.push(`<span class="sb-badge sb-badge--danger">Indispo ${indispo}</span>`);
-    if (item.is_signal_actuel === false) parts.push(`<span class="sb-badge">Signal historisé</span>`);
-
-    return `<div class="bf-badges">${parts.join("")}</div>`;
+  function renderNeedRow(item, canSend) {
+    const isSendable = canSend && item.statut === "a_envoyer";
+    return `
+      <div class="bf-need-row" data-bf-key="${escapeHtml(rowKey(item))}" data-id-comp="${escapeHtml(item.id_comp || "")}" data-id-poste="${escapeHtml(item.id_poste || "")}" data-id-effectif="${escapeHtml(item.id_effectif_concerne || "")}">
+        <div class="bf-need-check"><input type="checkbox" class="bf-row-check" ${isSendable ? "" : "disabled"}></div>
+        <div class="bf-need-content">
+          <div class="bf-need-titleline">
+            <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(labelCode(item))}</span>
+            <strong>${escapeHtml(labelCompetence(item))}</strong>
+          </div>
+          <div class="bf-need-detail">
+            <span>${escapeHtml(item.motif_priorite || "À analyser")}</span>
+            <span class="bf-dot">•</span>
+            <span>${escapeHtml(item.priorite || "À surveiller")}</span>
+          </div>
+        </div>
+        <div class="bf-need-levels">${levelHtml(item)}</div>
+        <div class="bf-need-indicators">${indicatorHtml(item)}</div>
+        <div class="bf-need-formation">${formationBadge(item)}</div>
+        <div class="bf-need-status"><span class="sb-badge ${statutClass(item.statut)}">${escapeHtml(item.statut_label || "—")}</span></div>
+        <div class="bf-need-comment"><textarea class="sb-ctrl bf-comment" rows="2" placeholder="Commentaire" ${isSendable ? "" : "disabled"}>${escapeHtml(item.commentaire_client || "")}</textarea></div>
+        <div class="bf-need-action"><button type="button" class="sb-btn sb-btn--xs bf-send-one" ${isSendable ? "" : "disabled"}>Envoyer</button></div>
+      </div>
+    `;
   }
 
   function renderRows(items, destination) {
-    const wrap = byId("bfTableWrap");
+    const wrap = byId("bfListWrap");
     if (!wrap) return;
 
     const list = Array.isArray(items) ? items : [];
     if (!list.length) {
-      wrap.innerHTML = `<div class="card-sub">Aucun besoin ne correspond aux filtres.</div>`;
+      wrap.innerHTML = `<div class="bf-empty">Aucun besoin ne correspond aux filtres.</div>`;
       return;
     }
 
     const canSend = !!destination?.can_send;
+    const postes = groupItems(list);
 
-    wrap.innerHTML = `
-      <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover bf-table">
-        <thead>
-          <tr>
-            <th style="width:34px;"><input type="checkbox" id="bfCheckAll" ${canSend ? "" : "disabled"}></th>
-            <th>Besoin</th>
-            <th>Qui ?</th>
-            <th>Priorité</th>
-            <th>Indicateurs</th>
-            <th>Formation</th>
-            <th>Statut</th>
-            <th>Commentaire</th>
-            <th style="width:110px;">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${list.map((item) => {
-            const key = rowKey(item);
-            const isSendable = canSend && item.statut === "a_envoyer";
-            const code = item.code || "—";
-            const comp = item.intitule || "Compétence";
-            const poste = item.intitule_poste || "Poste non précisé";
-            const niv = item.niveau_requis ? `Niveau attendu ${item.niveau_requis}` : "Niveau attendu non précisé";
-            const formCount = num(item.nb_formations_existantes);
-            const formation = formCount > 0
-              ? `<span class="sb-badge sb-badge--success">${formCount} formation${formCount > 1 ? "s" : ""}</span>`
-              : `<span class="sb-badge">À vérifier</span>`;
-            return `
-              <tr data-bf-key="${escapeHtml(key)}" data-id-comp="${escapeHtml(item.id_comp || "")}" data-id-poste="${escapeHtml(item.id_poste || "")}">
-                <td><input type="checkbox" class="bf-row-check" ${isSendable ? "" : "disabled"}></td>
-                <td>
-                  <div class="bf-need-main">
-                    <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>
-                    <span class="bf-need-title">${escapeHtml(comp)}</span>
-                  </div>
-                  <div class="bf-need-sub">${escapeHtml(niv)}</div>
-                </td>
-                <td>
-                  <div class="bf-poste">${escapeHtml(poste)}</div>
-                  <div class="bf-need-sub">${escapeHtml(item.nom_service || "Tous services / non précisé")}</div>
-                </td>
-                <td>
-                  <span class="bf-prio ${priorityClass(item.priorite)}">${escapeHtml(item.priorite || "À surveiller")}</span>
-                  <div class="bf-need-sub">${escapeHtml(item.motif_priorite || "—")}</div>
-                </td>
-                <td>${indicatorHtml(item)}</td>
-                <td>${formation}</td>
-                <td><span class="sb-badge ${statutClass(item.statut)}">${escapeHtml(item.statut_label || "—")}</span></td>
-                <td>
-                  <textarea class="sb-ctrl bf-comment" rows="2" placeholder="Commentaire optionnel" ${isSendable ? "" : "disabled"}>${escapeHtml(item.commentaire_client || "")}</textarea>
-                </td>
-                <td>
-                  <button type="button" class="sb-btn sb-btn--xs bf-send-one" ${isSendable ? "" : "disabled"}>Envoyer</button>
-                </td>
-              </tr>
-            `;
-          }).join("")}
-        </tbody>
-      </table>
-    `;
-
-    const checkAll = byId("bfCheckAll");
-    if (checkAll) {
-      checkAll.addEventListener("change", () => {
-        wrap.querySelectorAll(".bf-row-check:not(:disabled)").forEach(cb => { cb.checked = checkAll.checked; });
+    wrap.innerHTML = postes.map(poste => {
+      const people = Array.from(poste.people.values()).sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.title.localeCompare(b.title);
       });
-    }
+      const sendable = poste.items.filter(x => x.statut === "a_envoyer").length;
+      const collabCount = people.filter(p => p.type === "individuel").length;
+      return `
+        <article class="bf-poste-card">
+          <header class="bf-poste-head">
+            <div class="bf-group-check"><input type="checkbox" class="bf-poste-check" ${canSend && sendable ? "" : "disabled"}></div>
+            <div class="bf-poste-title">
+              <div>
+                ${poste.code_poste ? `<span class="sb-badge sb-badge--poste-soft">${escapeHtml(poste.code_poste)}</span>` : ""}
+                <strong>${escapeHtml(poste.title)}</strong>
+              </div>
+              <span>${escapeHtml(poste.service)} · ${collabCount} collaborateur${collabCount > 1 ? "s" : ""} · ${poste.items.length} besoin${poste.items.length > 1 ? "s" : ""}</span>
+            </div>
+            <div class="bf-poste-meta">
+              <span class="bf-prio ${priorityClass(poste.priority)}">${escapeHtml(poste.priority || "À surveiller")}</span>
+              <span class="bf-chip">Score max ${poste.score}%</span>
+            </div>
+          </header>
+          <div class="bf-people-list">
+            ${people.map(person => `
+              <section class="bf-person-card">
+                <div class="bf-person-head">
+                  <div class="bf-group-check"><input type="checkbox" class="bf-person-check" ${canSend && person.items.some(x => x.statut === "a_envoyer") ? "" : "disabled"}></div>
+                  <div class="bf-person-title">
+                    <strong>${escapeHtml(person.title)}</strong>
+                    <span>${person.type === "collectif" ? "Besoin collectif / renfort à identifier" : "Collaborateur concerné"}</span>
+                  </div>
+                  <div class="bf-person-meta">
+                    <span class="bf-chip">${person.items.length} compétence${person.items.length > 1 ? "s" : ""}</span>
+                    <span class="bf-prio ${priorityClass(person.priority)}">${escapeHtml(person.priority || "À surveiller")}</span>
+                  </div>
+                </div>
+                <div class="bf-needs-list">
+                  ${person.items.map(item => renderNeedRow(item, canSend)).join("")}
+                </div>
+              </section>
+            `).join("")}
+          </div>
+        </article>
+      `;
+    }).join("");
+
+    bindRenderedActions(wrap);
+  }
+
+  function bindRenderedActions(wrap) {
+    wrap.querySelectorAll(".bf-poste-check").forEach(cb => {
+      cb.addEventListener("change", () => {
+        const card = cb.closest(".bf-poste-card");
+        if (!card) return;
+        card.querySelectorAll(".bf-row-check:not(:disabled), .bf-person-check:not(:disabled)").forEach(x => { x.checked = cb.checked; });
+      });
+    });
+
+    wrap.querySelectorAll(".bf-person-check").forEach(cb => {
+      cb.addEventListener("change", () => {
+        const card = cb.closest(".bf-person-card");
+        if (!card) return;
+        card.querySelectorAll(".bf-row-check:not(:disabled)").forEach(x => { x.checked = cb.checked; });
+      });
+    });
 
     wrap.querySelectorAll(".bf-send-one").forEach(btn => {
       btn.addEventListener("click", async () => {
-        const tr = btn.closest("tr[data-bf-key]");
-        if (!tr) return;
-        await sendRows([tr]);
+        const row = btn.closest(".bf-need-row");
+        if (!row) return;
+        await sendRows([row]);
       });
     });
   }
@@ -293,7 +400,7 @@
   function render(data) {
     _lastData = data || {};
     renderDestination(_lastData.destination || {});
-    renderKpis(_lastData.kpis || {});
+    renderMiniKpis(_lastData.kpis || {});
 
     const count = Array.isArray(_lastData.items) ? _lastData.items.length : 0;
     const scope = _lastData.scope?.nom_service || "Tous les services";
@@ -315,15 +422,15 @@
       qs.set("statut", f.statut || "tous");
       qs.set("fragilite_min", String(f.fragilite_min));
       qs.set("criticite_min", String(f.criticite_min));
-      qs.set("limit", "200");
+      qs.set("limit", "300");
 
       const data = await _portal.apiJson(`${_portal.apiBase}/skills/besoins-formations/${encodeURIComponent(_portal.contactId)}?${qs.toString()}`);
       render(data);
       setMsg("", "");
     } catch (e) {
       setMsg("Erreur système, impossible de charger les besoins.", "error");
-      const wrap = byId("bfTableWrap");
-      if (wrap) wrap.innerHTML = `<div class="card-sub">${escapeHtml(errMsg(e))}</div>`;
+      const wrap = byId("bfListWrap");
+      if (wrap) wrap.innerHTML = `<div class="bf-empty">${escapeHtml(errMsg(e))}</div>`;
       console.error(e);
     } finally {
       _loading = false;
@@ -331,10 +438,10 @@
   }
 
   function selectedRows() {
-    const wrap = byId("bfTableWrap");
+    const wrap = byId("bfListWrap");
     if (!wrap) return [];
-    return Array.from(wrap.querySelectorAll("tr[data-bf-key]")).filter(tr => {
-      const cb = tr.querySelector(".bf-row-check");
+    return Array.from(wrap.querySelectorAll(".bf-need-row")).filter(row => {
+      const cb = row.querySelector(".bf-row-check");
       return cb && cb.checked && !cb.disabled;
     });
   }
@@ -348,10 +455,11 @@
     }
 
     const payload = {
-      items: list.map(tr => ({
-        id_comp: tr.getAttribute("data-id-comp") || "",
-        id_poste: tr.getAttribute("data-id-poste") || null,
-        commentaire_client: tr.querySelector(".bf-comment")?.value || ""
+      items: list.map(row => ({
+        id_comp: row.getAttribute("data-id-comp") || "",
+        id_poste: row.getAttribute("data-id-poste") || null,
+        id_effectif_concerne: row.getAttribute("data-id-effectif") || null,
+        commentaire_client: row.querySelector(".bf-comment")?.value || ""
       })).filter(x => x.id_comp)
     };
 
