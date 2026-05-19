@@ -110,18 +110,26 @@
   });
 
   portal.registerMenu({
+    view: "besoins-formations",
+    htmlUrl: "/menus/skills_besoins_formations.html",
+    jsUrl: "/menus/skills_besoins_formations.js",
+    onShow: (p) => window.SkillsBesoinsFormations?.onShow?.(p),
+  });
+
+  portal.registerMenu({
     view: "entretien-performance",
     htmlUrl: "/menus/skills_entretien_performance.html",
     jsUrl: "/menus/skills_entretien_performance.js",
     onShow: (p) => window.SkillsEntretienPerformance?.onShow?.(p),
   });
 
+
+
   // Placeholders (pour éviter les clics “vides”)
   const COMING_SOON = "/menus/skills_coming_soon.html";
 
   portal.registerMenu({ view: "simulations-rh", htmlUrl: COMING_SOON });
   portal.registerMenu({ view: "plan-actions", htmlUrl: COMING_SOON });
-  portal.registerMenu({ view: "besoins-formations", htmlUrl: COMING_SOON });
   portal.registerMenu({ view: "abonnement-facturation", htmlUrl: COMING_SOON });
   portal.registerMenu({ view: "accompagnement", htmlUrl: COMING_SOON });
 
