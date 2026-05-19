@@ -27,11 +27,15 @@ class BesoinFormationSendItem(BaseModel):
     id_comp: str
     id_poste: Optional[str] = None
     id_effectif_concerne: Optional[str] = None
-    commentaire_client: Optional[str] = None
 
 
 class BesoinFormationSendPayload(BaseModel):
     items: List[BesoinFormationSendItem]
+    delai_souhaite: Optional[str] = None
+    periode_souhaitee: Optional[str] = None
+    precision_periode: Optional[str] = None
+    modalites_souhaitees: List[str] = []
+    commentaire_manager: Optional[str] = None
 
 
 def _s(v: Any) -> str:
@@ -68,12 +72,27 @@ def _scope_dict(scope) -> Dict[str, Any]:
     return scope.model_dump() if hasattr(scope, "model_dump") else scope.dict()
 
 
+def _delai_from_score(score: int) -> str:
+    if score >= 80:
+        return "Dès que possible"
+    if score >= 65:
+        return "Sous 3 mois"
+    if score >= 45:
+        return "Sous 6 mois"
+    return "Sous 12 mois"
+
+
+def _priority_from_score(score: int) -> str:
+    if score >= 80:
+        return "Urgent"
+    if score >= 65:
+        return "À sécuriser"
+    if score >= 45:
+        return "À anticiper"
+    return "À surveiller"
+
+
 def _resolve_destination(cur, id_ent: str) -> Dict[str, Any]:
-    """
-    Destination MVP:
-    1) Studio gestionnaire de l'entreprise si présent.
-    2) Sinon owner propre de l'entreprise.
-    """
     cur.execute(
         """
         SELECT COALESCE(NULLIF(e.id_owner_gestionnaire, ''), e.id_ent) AS id_owner
@@ -149,7 +168,14 @@ def _resolve_destination(cur, id_ent: str) -> Dict[str, Any]:
     }
 
 
-def _fetch_current(cur, id_ent: str, id_service: Optional[str], criticite_min: int, id_owner_dest: str, limit: int) -> List[Dict[str, Any]]:
+def _fetch_current(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    criticite_min: int,
+    id_owner_dest: str,
+    limit: int,
+) -> List[Dict[str, Any]]:
     cte_sql, cte_params = _build_scope_cte(id_ent, id_service)
 
     sql = f"""
@@ -168,7 +194,10 @@ def _fetch_current(cur, id_ent: str, id_service: Optional[str], criticite_min: i
             UPPER(TRIM(COALESCE(fpc.niveau_requis, ''))) AS niveau_requis,
             COALESCE(fpc.poids_criticite, 0)::int AS criticite,
             CASE UPPER(TRIM(COALESCE(fpc.niveau_requis, '')))
-                WHEN 'C' THEN 3 WHEN 'B' THEN 2 WHEN 'A' THEN 1 ELSE 0
+                WHEN 'C' THEN 3
+                WHEN 'B' THEN 2
+                WHEN 'A' THEN 1
+                ELSE 0
             END AS niveau_requis_score
         FROM public.tbl_fiche_poste_competence fpc
         JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
@@ -182,7 +211,7 @@ def _fetch_current(cur, id_ent: str, id_service: Optional[str], criticite_min: i
           AND COALESCE(fp.actif, TRUE) = TRUE
           AND COALESCE(fpc.masque, FALSE) = FALSE
           AND COALESCE(c.masque, FALSE) = FALSE
-          AND COALESCE(c.etat, 'active') = 'active'
+          AND LOWER(COALESCE(c.etat, 'valide')) NOT IN ('archive', 'archivé', 'inactif', 'masque', 'masqué')
           AND COALESCE(fpc.poids_criticite, 0)::int >= %s
           AND UPPER(TRIM(COALESCE(fpc.niveau_requis, ''))) IN ('A', 'B', 'C')
     ),
@@ -199,6 +228,7 @@ def _fetch_current(cur, id_ent: str, id_service: Optional[str], criticite_min: i
         JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
         WHERE COALESCE(e.archive, FALSE) = FALSE
           AND COALESCE(e.statut_actif, TRUE) = TRUE
+          AND e.id_poste_actuel IS NOT NULL
     ),
     eval_comp AS (
         SELECT
@@ -260,14 +290,14 @@ def _fetch_current(cur, id_ent: str, id_service: Optional[str], criticite_min: i
                ON ff.id_owner = %s
               AND COALESCE(ff.archive, FALSE) = FALSE
               AND COALESCE(ff.masque, FALSE) = FALSE
-              AND COALESCE(ff.etat, 'active') = 'active'
+              AND LOWER(COALESCE(ff.etat, 'valide')) NOT IN ('archive', 'archivé', 'inactif', 'masque', 'masqué')
               AND (
                     COALESCE(ff.competences_stagiaires, '[]'::jsonb) @> jsonb_build_array(r.id_comp)
                  OR COALESCE(ff.competences_formateurs, '[]'::jsonb) @> jsonb_build_array(r.id_comp)
               )
         GROUP BY r.id_comp
     ),
-    base_individuelle AS (
+    base AS (
         SELECT
             'individuel'::text AS besoin_type,
             r.id_poste,
@@ -293,7 +323,6 @@ def _fetch_current(cur, id_ent: str, id_service: Optional[str], criticite_min: i
             COALESCE(p.nb_retraites_estimees, 0)::int AS nb_retraites_estimees,
             COALESCE(p.nb_indispos_actuelles, 0)::int AS nb_indispos_actuelles,
             CASE WHEN bn.id_effectif IS NOT NULL THEN 1 ELSE 0 END AS collaborateur_indisponible,
-            1::int AS nb_personnes_a_former,
             COALESCE(fc.nb_formations_existantes, 0)::int AS nb_formations_existantes
         FROM req r
         JOIN effectifs_poste ep ON ep.id_poste_actuel = r.id_poste
@@ -303,71 +332,33 @@ def _fetch_current(cur, id_ent: str, id_service: Optional[str], criticite_min: i
         LEFT JOIN formation_counts fc ON fc.id_comp = r.id_comp
         WHERE COALESCE(ev.niveau_actuel_score, 0) < r.niveau_requis_score
     ),
-    base_collective AS (
-        SELECT
-            'collectif'::text AS besoin_type,
-            r.id_poste,
-            r.code_poste,
-            r.intitule_poste,
-            r.id_service,
-            r.nom_service,
-            NULL::text AS id_effectif_concerne,
-            NULL::text AS nom_effectif,
-            NULL::text AS prenom_effectif,
-            r.id_comp,
-            r.code_competence,
-            r.intitule_competence,
-            r.niveau_requis,
-            r.niveau_requis_score,
-            'Renfort à identifier'::text AS niveau_actuel,
-            0::int AS niveau_actuel_score,
-            r.niveau_requis_score AS ecart_niveau,
-            r.criticite,
-            COALESCE(p.nb_porteurs, 0)::int AS nb_porteurs,
-            COALESCE(p.nb_porteurs_dispo, 0)::int AS nb_porteurs_dispo,
-            COALESCE(p.nb_sorties_prevues, 0)::int AS nb_sorties_prevues,
-            COALESCE(p.nb_retraites_estimees, 0)::int AS nb_retraites_estimees,
-            COALESCE(p.nb_indispos_actuelles, 0)::int AS nb_indispos_actuelles,
-            0::int AS collaborateur_indisponible,
-            0::int AS nb_personnes_a_former,
-            COALESCE(fc.nb_formations_existantes, 0)::int AS nb_formations_existantes
-        FROM req r
-        LEFT JOIN effectifs_poste ep ON ep.id_poste_actuel = r.id_poste
-        LEFT JOIN porteurs p ON p.id_comp = r.id_comp
-        LEFT JOIN formation_counts fc ON fc.id_comp = r.id_comp
-        GROUP BY r.id_poste, r.code_poste, r.intitule_poste, r.id_service, r.nom_service,
-                 r.id_comp, r.code_competence, r.intitule_competence, r.niveau_requis,
-                 r.niveau_requis_score, r.criticite,
-                 p.nb_porteurs, p.nb_porteurs_dispo, p.nb_sorties_prevues, p.nb_retraites_estimees,
-                 p.nb_indispos_actuelles, fc.nb_formations_existantes
-        HAVING COUNT(ep.id_effectif) = 0
-            OR COALESCE(MAX(p.nb_porteurs), 0) <= 1
-            OR COALESCE(MAX(p.nb_porteurs_dispo), 0) = 0
-            OR (COALESCE(MAX(p.nb_sorties_prevues), 0) + COALESCE(MAX(p.nb_retraites_estimees), 0)) > 0
-    ),
-    base AS (
-        SELECT * FROM base_individuelle
-        UNION ALL
-        SELECT * FROM base_collective
-    ),
     scored AS (
         SELECT
             b.*,
             LEAST(100, GREATEST(0, ROUND(
-                0.30 * CASE WHEN b.niveau_requis_score <= 0 THEN 0 ELSE (100.0 * b.ecart_niveau / NULLIF(b.niveau_requis_score, 0)) END
+                0.35 * CASE
+                    WHEN b.niveau_requis_score <= 0 THEN 0
+                    ELSE (100.0 * b.ecart_niveau / NULLIF(b.niveau_requis_score, 0))
+                END
               + 0.25 * b.criticite
-              + 0.20 * CASE WHEN b.nb_porteurs <= 0 THEN 100
-                            WHEN b.nb_porteurs = 1 THEN 85
-                            WHEN (b.nb_sorties_prevues + b.nb_retraites_estimees) >= b.nb_porteurs THEN 95
-                            ELSE 100.0 * (b.nb_sorties_prevues + b.nb_retraites_estimees) / NULLIF(b.nb_porteurs, 0) END
-              + 0.15 * CASE WHEN b.nb_porteurs <= 0 THEN 100
-                            WHEN b.nb_porteurs_dispo <= 0 THEN 95
-                            WHEN b.nb_indispos_actuelles > 0 OR b.collaborateur_indisponible = 1 THEN 70
-                            ELSE 0 END
-              + 0.10 * CASE WHEN b.nb_porteurs <= 0 THEN 100
-                            WHEN b.nb_porteurs = 1 THEN 80
-                            WHEN b.nb_porteurs = 2 THEN 50
-                            ELSE 15 END
+              + 0.20 * CASE
+                    WHEN b.nb_porteurs <= 0 THEN 100
+                    WHEN b.nb_porteurs = 1 THEN 85
+                    WHEN (b.nb_sorties_prevues + b.nb_retraites_estimees) >= b.nb_porteurs THEN 95
+                    ELSE 100.0 * (b.nb_sorties_prevues + b.nb_retraites_estimees) / NULLIF(b.nb_porteurs, 0)
+                END
+              + 0.10 * CASE
+                    WHEN b.nb_porteurs <= 0 THEN 100
+                    WHEN b.nb_porteurs_dispo <= 0 THEN 95
+                    WHEN b.nb_indispos_actuelles > 0 OR b.collaborateur_indisponible = 1 THEN 70
+                    ELSE 0
+                END
+              + 0.10 * CASE
+                    WHEN b.nb_porteurs <= 0 THEN 100
+                    WHEN b.nb_porteurs = 1 THEN 80
+                    WHEN b.nb_porteurs = 2 THEN 50
+                    ELSE 15
+                END
             )))::int AS score_anticipation
         FROM base b
     )
@@ -378,9 +369,11 @@ def _fetch_current(cur, id_ent: str, id_service: Optional[str], criticite_min: i
              WHEN s.score_anticipation >= 65 THEN 'À sécuriser'
              WHEN s.score_anticipation >= 45 THEN 'À anticiper'
              ELSE 'À surveiller' END AS priorite,
-        CASE WHEN s.besoin_type = 'collectif' AND s.nb_porteurs <= 0 THEN 'Aucun porteur identifié'
-             WHEN s.besoin_type = 'collectif' AND s.nb_porteurs <= 1 THEN 'Renfort collectif à organiser'
-             WHEN s.collaborateur_indisponible = 1 THEN 'Collaborateur indisponible actuellement'
+        CASE WHEN s.score_anticipation >= 80 THEN 'Dès que possible'
+             WHEN s.score_anticipation >= 65 THEN 'Sous 3 mois'
+             WHEN s.score_anticipation >= 45 THEN 'Sous 6 mois'
+             ELSE 'Sous 12 mois' END AS delai_recommande,
+        CASE WHEN s.collaborateur_indisponible = 1 THEN 'Collaborateur indisponible actuellement'
              WHEN s.nb_porteurs_dispo <= 0 THEN 'Porteurs indisponibles actuellement'
              WHEN (s.nb_sorties_prevues + s.nb_retraites_estimees) > 0 THEN 'Risque de sortie à horizon 5 ans'
              WHEN s.ecart_niveau > 0 THEN 'Écart entre niveau actuel et niveau attendu'
@@ -388,7 +381,7 @@ def _fetch_current(cur, id_ent: str, id_service: Optional[str], criticite_min: i
              ELSE 'À surveiller' END AS motif_priorite,
         (s.nb_formations_existantes > 0) AS formation_existante
     FROM scored s
-    ORDER BY s.score_anticipation DESC, s.criticite DESC, s.intitule_poste, s.nom_effectif, s.prenom_effectif, s.code_competence
+    ORDER BY s.score_anticipation DESC, s.criticite DESC, s.nom_effectif, s.prenom_effectif, s.code_competence
     LIMIT %s
     """
     cur.execute(sql, tuple(cte_params + [id_ent, criticite_min, id_owner_dest or "", limit]))
@@ -397,8 +390,6 @@ def _fetch_current(cur, id_ent: str, id_service: Optional[str], criticite_min: i
         r["source_type"] = "analyse_competences"
         r["is_signal_actuel"] = True
         r["collaborateur_nom_complet"] = " ".join([_s(r.get("prenom_effectif")), _s(r.get("nom_effectif"))]).strip()
-        if not r["collaborateur_nom_complet"]:
-            r["collaborateur_nom_complet"] = "Besoin collectif"
     return rows
 
 
@@ -412,6 +403,8 @@ def _fetch_demandes(cur, id_ent: str, id_owner_dest: str) -> List[Dict[str, Any]
         WHERE id_ent_source = %s
           AND id_owner_destinataire = %s
           AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(besoin_type, 'individuel') = 'individuel'
+          AND id_effectif_concerne IS NOT NULL
         ORDER BY created_at DESC
         """,
         (id_ent, id_owner_dest),
@@ -431,20 +424,29 @@ def _merge(current: List[Dict[str, Any]], demandes: List[Dict[str, Any]], statut
             d_by_key[key] = d
 
     rows, seen = [], set()
+
     for c in current:
         if _i(c.get("score_anticipation")) < fragilite_min:
             continue
+
         key = _key(c)
         seen.add(key)
         d = d_by_key.get(key)
         statut = _s(d.get("statut")) if d else "a_envoyer"
+
         if statut_filter != "tous" and statut != statut_filter:
             continue
+
         item = dict(c)
         item.update({
             "id_besoin_formation": d.get("id_besoin_formation") if d else None,
             "statut": statut,
             "statut_label": _label_statut(statut),
+            "delai_souhaite": d.get("delai_souhaite") if d else None,
+            "periode_souhaitee": d.get("periode_souhaitee") if d else None,
+            "precision_periode": d.get("precision_periode") if d else None,
+            "modalites_souhaitees": d.get("modalites_souhaitees") if d else [],
+            "commentaire_manager": d.get("commentaire_manager") if d else "",
             "commentaire_client": d.get("commentaire_client") if d else "",
             "created_at": d.get("created_at") if d else None,
             "updated_at": d.get("updated_at") if d else None,
@@ -455,12 +457,14 @@ def _merge(current: List[Dict[str, Any]], demandes: List[Dict[str, Any]], statut
         key = _key(d)
         if key in seen:
             continue
+
         statut = _s(d.get("statut")) or STATUT_ENVOYE
         if statut_filter not in ("tous", statut):
             continue
+
         rows.append({
             "id_besoin_formation": d.get("id_besoin_formation"),
-            "besoin_type": d.get("besoin_type") or ("individuel" if d.get("id_effectif_concerne") else "collectif"),
+            "besoin_type": "individuel",
             "id_comp": d.get("id_comp"),
             "code_competence": d.get("code_competence"),
             "intitule_competence": d.get("intitule_competence"),
@@ -472,14 +476,19 @@ def _merge(current: List[Dict[str, Any]], demandes: List[Dict[str, Any]], statut
             "id_effectif_concerne": d.get("id_effectif_concerne"),
             "nom_effectif": d.get("nom_effectif"),
             "prenom_effectif": d.get("prenom_effectif"),
-            "collaborateur_nom_complet": (" ".join([_s(d.get("prenom_effectif")), _s(d.get("nom_effectif"))]).strip() or "Besoin collectif"),
+            "collaborateur_nom_complet": (" ".join([_s(d.get("prenom_effectif")), _s(d.get("nom_effectif"))]).strip()),
             "niveau_requis": d.get("niveau_attendu"),
             "niveau_actuel": d.get("niveau_actuel"),
             "ecart_niveau": _i(d.get("ecart_niveau")),
             "criticite": _i(d.get("criticite")),
             "indice_fragilite": _i(d.get("indice_fragilite")),
             "score_anticipation": _i(d.get("score_anticipation")),
-            "priorite": d.get("priorite") or "À suivre",
+            "priorite": d.get("priorite") or _priority_from_score(_i(d.get("score_anticipation"))),
+            "delai_recommande": d.get("delai_recommande") or _delai_from_score(_i(d.get("score_anticipation"))),
+            "delai_souhaite": d.get("delai_souhaite"),
+            "periode_souhaitee": d.get("periode_souhaitee"),
+            "precision_periode": d.get("precision_periode"),
+            "modalites_souhaitees": d.get("modalites_souhaitees") or [],
             "motif_priorite": d.get("motif_priorite") or "Demande déjà émise",
             "nb_formations_existantes": _i(d.get("nb_formations_existantes")),
             "formation_existante": bool(d.get("formation_existante")),
@@ -487,17 +496,22 @@ def _merge(current: List[Dict[str, Any]], demandes: List[Dict[str, Any]], statut
             "is_signal_actuel": False,
             "statut": statut,
             "statut_label": _label_statut(statut),
+            "commentaire_manager": d.get("commentaire_manager") or d.get("commentaire_client") or "",
             "commentaire_client": d.get("commentaire_client") or "",
             "created_at": d.get("created_at"),
             "updated_at": d.get("updated_at"),
         })
 
-    rows.sort(key=lambda x: (0 if x.get("statut") == "a_envoyer" else 1, str(x.get("intitule_poste") or ""), str(x.get("collaborateur_nom_complet") or ""), -_i(x.get("score_anticipation"))))
-    postes = {(_s(x.get("id_poste")) or _s(x.get("intitule_poste"))) for x in rows}
+    rows.sort(key=lambda x: (
+        str(x.get("collaborateur_nom_complet") or ""),
+        0 if x.get("statut") == "a_envoyer" else 1,
+        -_i(x.get("score_anticipation")),
+        str(x.get("intitule_competence") or ""),
+    ))
+
     collabs = {_s(x.get("id_effectif_concerne")) for x in rows if _s(x.get("id_effectif_concerne"))}
     kpis = {
         "total": len(rows),
-        "postes": len([p for p in postes if p]),
         "collaborateurs": len(collabs),
         "a_envoyer": sum(1 for x in rows if x.get("statut") == "a_envoyer"),
         "envoye_studio": sum(1 for x in rows if x.get("statut") == STATUT_ENVOYE),
@@ -527,9 +541,11 @@ def get_besoins_formations(
                 scope = _fetch_service_label(cur, id_ent, _s(id_service) or None)
                 dest = _resolve_destination(cur, id_ent)
                 id_owner_dest = _s(dest.get("id_owner"))
+
                 current = _fetch_current(cur, id_ent, scope.id_service, criticite_min, id_owner_dest, limit)
                 demandes = _fetch_demandes(cur, id_ent, id_owner_dest)
                 items, kpis = _merge(current, demandes, _filter_statut(statut), fragilite_min)
+
                 return {
                     "scope": _scope_dict(scope),
                     "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
@@ -559,12 +575,20 @@ def envoyer_besoins_formations(id_contact: str, payload: BesoinFormationSendPayl
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
                 dest = _resolve_destination(cur, id_ent)
+
                 if not dest.get("can_send"):
                     raise HTTPException(status_code=400, detail=dest.get("reason") or "Studio destinataire indisponible.")
 
                 id_owner_dest = _s(dest.get("id_owner"))
                 current = _fetch_current(cur, id_ent, None, 0, id_owner_dest, 800)
                 by_key = {_key(x): x for x in current}
+
+                delai_souhaite = _s(payload.delai_souhaite)
+                periode_souhaitee = _s(payload.periode_souhaitee)
+                precision_periode = _s(payload.precision_periode)
+                commentaire_manager = _s(payload.commentaire_manager)
+                modalites = [m.strip() for m in (payload.modalites_souhaitees or []) if _s(m)]
+                modalites_json = json.dumps(modalites, ensure_ascii=False)
 
                 created, updated, skipped = 0, 0, 0
                 saved_items = []
@@ -573,20 +597,22 @@ def envoyer_besoins_formations(id_contact: str, payload: BesoinFormationSendPayl
                     id_comp = _s(p.id_comp)
                     id_poste = _s(p.id_poste)
                     id_effectif_concerne = _s(p.id_effectif_concerne)
+
                     signal = by_key.get((id_comp, id_poste, id_effectif_concerne))
-                    if not id_comp or not signal:
+                    if not id_comp or not id_effectif_concerne or not signal:
                         skipped += 1
                         continue
 
-                    commentaire = _s(p.commentaire_client)
+                    final_delai = delai_souhaite or signal.get("delai_recommande") or _delai_from_score(_i(signal.get("score_anticipation")))
+
                     payload_signal = json.dumps({
                         "source": "analyse_competences",
                         "captured_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
                         "id_ent": id_ent,
-                        "besoin_type": signal.get("besoin_type"),
+                        "besoin_type": "individuel",
                         "id_comp": id_comp,
                         "id_poste": id_poste or None,
-                        "id_effectif_concerne": id_effectif_concerne or None,
+                        "id_effectif_concerne": id_effectif_concerne,
                         "code_competence": signal.get("code_competence"),
                         "intitule_competence": signal.get("intitule_competence"),
                         "intitule_poste": signal.get("intitule_poste"),
@@ -596,6 +622,11 @@ def envoyer_besoins_formations(id_contact: str, payload: BesoinFormationSendPayl
                         "ecart_niveau": _i(signal.get("ecart_niveau")),
                         "criticite": _i(signal.get("criticite")),
                         "score_anticipation": _i(signal.get("score_anticipation")),
+                        "delai_souhaite": final_delai,
+                        "periode_souhaitee": periode_souhaitee,
+                        "precision_periode": precision_periode,
+                        "modalites_souhaitees": modalites,
+                        "commentaire_manager": commentaire_manager,
                         "nb_porteurs": _i(signal.get("nb_porteurs")),
                         "nb_porteurs_dispo": _i(signal.get("nb_porteurs_dispo")),
                         "nb_sorties_prevues": _i(signal.get("nb_sorties_prevues")),
@@ -617,36 +648,16 @@ def envoyer_besoins_formations(id_contact: str, payload: BesoinFormationSendPayl
                         ORDER BY created_at DESC
                         LIMIT 1
                         """,
-                        (id_ent, id_owner_dest, id_comp, id_poste or None, id_effectif_concerne or None),
+                        (id_ent, id_owner_dest, id_comp, id_poste or None, id_effectif_concerne),
                     )
                     existing = cur.fetchone()
-
-                    update_values = (
-                        commentaire,
-                        commentaire,
-                        payload_signal,
-                        signal.get("besoin_type"),
-                        signal.get("code_poste"),
-                        signal.get("nom_effectif"),
-                        signal.get("prenom_effectif"),
-                        signal.get("niveau_actuel"),
-                        _i(signal.get("ecart_niveau")),
-                        _i(signal.get("indice_fragilite")),
-                        _i(signal.get("score_anticipation")),
-                        _i(signal.get("criticite")),
-                        signal.get("priorite"),
-                        signal.get("motif_priorite"),
-                        bool(signal.get("formation_existante")),
-                        _i(signal.get("nb_formations_existantes")),
-                    )
 
                     if existing:
                         cur.execute(
                             """
                             UPDATE public.tbl_insights_besoin_formation
-                            SET commentaire_client = CASE WHEN %s <> '' THEN %s ELSE commentaire_client END,
-                                payload_signal = %s::jsonb,
-                                besoin_type = %s,
+                            SET payload_signal = %s::jsonb,
+                                besoin_type = 'individuel',
                                 code_poste = %s,
                                 nom_effectif = %s,
                                 prenom_effectif = %s,
@@ -656,14 +667,43 @@ def envoyer_besoins_formations(id_contact: str, payload: BesoinFormationSendPayl
                                 score_anticipation = %s,
                                 criticite = %s,
                                 priorite = %s,
+                                delai_recommande = %s,
+                                delai_souhaite = %s,
+                                periode_souhaitee = %s,
+                                precision_periode = %s,
+                                modalites_souhaitees = %s::jsonb,
                                 motif_priorite = %s,
+                                commentaire_client = %s,
+                                commentaire_manager = %s,
                                 formation_existante = %s,
                                 nb_formations_existantes = %s,
                                 updated_at = NOW()
                             WHERE id_besoin_formation = %s
                             RETURNING id_besoin_formation, statut
                             """,
-                            (*update_values, existing.get("id_besoin_formation")),
+                            (
+                                payload_signal,
+                                signal.get("code_poste"),
+                                signal.get("nom_effectif"),
+                                signal.get("prenom_effectif"),
+                                signal.get("niveau_actuel"),
+                                _i(signal.get("ecart_niveau")),
+                                _i(signal.get("indice_fragilite")),
+                                _i(signal.get("score_anticipation")),
+                                _i(signal.get("criticite")),
+                                signal.get("priorite"),
+                                signal.get("delai_recommande"),
+                                final_delai,
+                                periode_souhaitee,
+                                precision_periode,
+                                modalites_json,
+                                signal.get("motif_priorite"),
+                                commentaire_manager,
+                                commentaire_manager,
+                                bool(signal.get("formation_existante")),
+                                _i(signal.get("nb_formations_existantes")),
+                                existing.get("id_besoin_formation"),
+                            ),
                         )
                         updated += 1
                     else:
@@ -676,35 +716,41 @@ def envoyer_besoins_formations(id_contact: str, payload: BesoinFormationSendPayl
                                 id_poste, code_poste, intitule_poste, id_service, nom_service,
                                 id_effectif_concerne, nom_effectif, prenom_effectif,
                                 niveau_attendu, niveau_actuel, ecart_niveau,
-                                criticite, indice_fragilite, score_anticipation, priorite, motif_priorite,
-                                commentaire_client, formation_existante, nb_formations_existantes,
+                                criticite, indice_fragilite, score_anticipation, priorite,
+                                delai_recommande, delai_souhaite, periode_souhaitee, precision_periode, modalites_souhaitees,
+                                motif_priorite, commentaire_client, commentaire_manager,
+                                formation_existante, nb_formations_existantes,
                                 statut, payload_signal, archive, created_at, updated_at
                             ) VALUES (
                                 %s, %s, %s, %s,
-                                'insights', 'analyse_competences', %s,
+                                'insights', 'analyse_competences', 'individuel',
                                 %s, %s, %s,
                                 %s, %s, %s, %s, %s,
                                 %s, %s, %s,
                                 %s, %s, %s,
-                                %s, %s, %s, %s, %s,
+                                %s, %s, %s, %s,
+                                %s, %s, %s, %s, %s::jsonb,
                                 %s, %s, %s,
+                                %s, %s,
                                 'envoye_studio', %s::jsonb, FALSE, NOW(), NOW()
                             )
                             RETURNING id_besoin_formation, statut
                             """,
                             (
                                 str(uuid.uuid4()), id_owner_dest, id_ent, id_contact,
-                                signal.get("besoin_type"),
                                 id_comp, signal.get("code_competence"), signal.get("intitule_competence"),
                                 signal.get("id_poste"), signal.get("code_poste"), signal.get("intitule_poste"), signal.get("id_service"), signal.get("nom_service"),
                                 signal.get("id_effectif_concerne"), signal.get("nom_effectif"), signal.get("prenom_effectif"),
                                 signal.get("niveau_requis"), signal.get("niveau_actuel"), _i(signal.get("ecart_niveau")),
-                                _i(signal.get("criticite")), _i(signal.get("indice_fragilite")), _i(signal.get("score_anticipation")), signal.get("priorite"), signal.get("motif_priorite"),
-                                commentaire, bool(signal.get("formation_existante")), _i(signal.get("nb_formations_existantes")),
+                                _i(signal.get("criticite")), _i(signal.get("indice_fragilite")), _i(signal.get("score_anticipation")), signal.get("priorite"),
+                                signal.get("delai_recommande"), final_delai, periode_souhaitee, precision_periode, modalites_json,
+                                signal.get("motif_priorite"), commentaire_manager, commentaire_manager,
+                                bool(signal.get("formation_existante")), _i(signal.get("nb_formations_existantes")),
                                 payload_signal,
                             ),
                         )
                         created += 1
+
                     saved_items.append(cur.fetchone() or {})
 
                 conn.commit()

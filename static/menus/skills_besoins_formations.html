@@ -3,7 +3,7 @@
     <div>
       <div class="card-title">Besoins & formations</div>
       <div class="card-sub">
-        Lecture manager : qui doit monter en compétence, sur quoi, avec quelle priorité et quelle suite côté Studio.
+        Validez les besoins individuels de montée en compétences avant transmission au Studio.
       </div>
     </div>
     <div id="bfDestinationText" class="bf-destination">Destination Studio : —</div>
@@ -30,7 +30,7 @@
       </div>
 
       <div class="bf-field bf-field--range">
-        <label class="sb-label" for="bfFragiliteRange">Fragilité min. <strong id="bfFragiliteValue">0</strong></label>
+        <label class="sb-label" for="bfFragiliteRange">Urgence min. <strong id="bfFragiliteValue">0</strong></label>
         <input type="range" id="bfFragiliteRange" min="0" max="100" step="5" value="0">
       </div>
 
@@ -45,25 +45,107 @@
     <div class="bf-mini-kpis" id="bfMiniKpis">
       <span class="bf-mini-kpi"><strong>—</strong><span>besoins</span></span>
       <span class="bf-mini-kpi"><strong>—</strong><span>collaborateurs</span></span>
-      <span class="bf-mini-kpi"><strong>—</strong><span>postes</span></span>
     </div>
   </div>
 
   <div class="card bf-main-card">
     <div class="bf-list-head">
       <div>
-        <div class="card-title">Besoins par poste et collaborateur</div>
+        <div class="card-title">Arbitrage manager</div>
         <div class="card-sub" id="bfMeta">Chargement…</div>
       </div>
       <div class="bf-actions">
         <span id="bfActionMsg" class="bf-action-msg"></span>
         <button type="button" class="sb-btn sb-btn--soft" id="btnBfRefresh">Rafraîchir</button>
-        <button type="button" class="sb-btn sb-btn--accent" id="btnBfSendSelected">Envoyer la sélection au Studio</button>
       </div>
     </div>
 
+    <div class="bf-table-head">
+      <div>Qui ?</div>
+      <div>Besoin</div>
+      <div>Délai</div>
+      <div>Statut</div>
+      <div>Commentaire</div>
+      <div>Action</div>
+    </div>
+
     <div id="bfListWrap" class="bf-list-wrap">
-      <div class="card-sub">Chargement des besoins…</div>
+      <div class="bf-empty">Chargement des besoins…</div>
+    </div>
+  </div>
+
+  <div id="bfSendModal" class="bf-modal" hidden>
+    <div class="bf-modal__backdrop" data-bf-close></div>
+    <div class="bf-modal__panel" role="dialog" aria-modal="true" aria-labelledby="bfModalTitle">
+      <div class="bf-modal__head">
+        <div>
+          <div id="bfModalTitle" class="bf-modal__title">Préparer l’envoi au Studio</div>
+          <div id="bfModalSub" class="bf-modal__sub">—</div>
+        </div>
+        <button type="button" class="bf-modal__close" data-bf-close>×</button>
+      </div>
+
+      <div class="bf-modal__body">
+        <div class="bf-modal-grid">
+          <div class="bf-modal-card bf-modal-card--wide">
+            <div class="bf-modal-card__title">Compétences concernées</div>
+            <div id="bfModalCompetences" class="bf-modal-competences"></div>
+          </div>
+
+          <div class="bf-modal-card">
+            <div class="bf-modal-card__title">Période souhaitée</div>
+
+            <label class="bf-form-label" for="bfModalDelai">Sous combien de temps ?</label>
+            <select id="bfModalDelai" class="sb-select">
+              <option value="Dès que possible">Dès que possible</option>
+              <option value="Sous 3 mois">Sous 3 mois</option>
+              <option value="Sous 6 mois">Sous 6 mois</option>
+              <option value="Sous 12 mois">Sous 12 mois</option>
+              <option value="À anticiper sur 24 mois">À anticiper sur 24 mois</option>
+            </select>
+
+            <label class="bf-form-label" for="bfModalPeriode">Période préférée</label>
+            <select id="bfModalPeriode" class="sb-select">
+              <option value="">Non précisée</option>
+              <option value="Dès que possible">Dès que possible</option>
+              <option value="Premier trimestre">Premier trimestre</option>
+              <option value="Deuxième trimestre">Deuxième trimestre</option>
+              <option value="Troisième trimestre">Troisième trimestre</option>
+              <option value="Quatrième trimestre">Quatrième trimestre</option>
+              <option value="Second semestre">Second semestre</option>
+              <option value="Année prochaine">Année prochaine</option>
+              <option value="Période libre">Période libre</option>
+            </select>
+
+            <label class="bf-form-label" for="bfModalPrecision">Précision utile</label>
+            <textarea id="bfModalPrecision" class="sb-ctrl bf-modal-textarea" rows="3" placeholder="Ex : éviter juillet/août, période forte activité, préférence matin…"></textarea>
+          </div>
+
+          <div class="bf-modal-card">
+            <div class="bf-modal-card__title">Modalités souhaitées</div>
+            <div class="bf-check-list">
+              <label><input type="checkbox" value="Présentiel"> Présentiel</label>
+              <label><input type="checkbox" value="Distanciel"> Distanciel</label>
+              <label><input type="checkbox" value="Hybride"> Hybride</label>
+              <label><input type="checkbox" value="AFEST / situation de travail"> AFEST / situation de travail</label>
+              <label><input type="checkbox" value="Tutorat interne"> Tutorat interne</label>
+              <label><input type="checkbox" value="E-learning"> E-learning</label>
+              <label><input type="checkbox" value="Pas de préférence"> Pas de préférence</label>
+            </div>
+          </div>
+
+          <div class="bf-modal-card bf-modal-card--wide">
+            <div class="bf-modal-card__title">Commentaire manager</div>
+            <textarea id="bfModalCommentaire" class="sb-ctrl bf-modal-textarea" rows="4" placeholder="Objectif opérationnel, contexte terrain, contraintes planning, urgence réelle…"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="bf-modal__foot">
+        <span id="bfModalMsg" class="bf-action-msg"></span>
+        <button type="button" class="sb-btn sb-btn--soft" data-bf-close>Annuler</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnBfConfirmSend">Envoyer au Studio</button>
+      </div>
     </div>
   </div>
 </section>

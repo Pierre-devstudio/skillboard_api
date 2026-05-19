@@ -1,7 +1,7 @@
 /* ======================================================
    static/menus/skills_besoins_formations.js
    Besoins & formations Insights
-   Lecture manager : poste -> collaborateur -> compétences
+   Vue individuelle sobre : qui / quoi / délai / statut / commentaire / action
    ====================================================== */
 (function () {
   let _bound = false;
@@ -9,6 +9,7 @@
   let _portal = null;
   let _lastData = null;
   let _loading = false;
+  let _modalGroup = null;
 
   const STORE_SERVICE = "sb_bf_service";
   const STORE_STATUT = "sb_bf_statut";
@@ -49,8 +50,8 @@
     el.textContent = (value === null || value === undefined || value === "") ? fallback : String(value);
   }
 
-  function setMsg(text, type) {
-    const el = byId("bfActionMsg");
+  function setMsg(text, type, targetId = "bfActionMsg") {
+    const el = byId(targetId);
     if (!el) return;
     el.textContent = text || "";
     el.className = "bf-action-msg" + (type ? " bf-action-msg--" + type : "");
@@ -129,6 +130,14 @@
     _servicesLoaded = true;
   }
 
+  function scoreDelay(items) {
+    const maxScore = Math.max(...items.map(x => num(x.score_anticipation || x.indice_fragilite)), 0);
+    if (maxScore >= 80) return "Dès que possible";
+    if (maxScore >= 65) return "Sous 3 mois";
+    if (maxScore >= 45) return "Sous 6 mois";
+    return "Sous 12 mois";
+  }
+
   function priorityRank(p) {
     const s = (p || "").toString().toLowerCase();
     if (s.includes("urgent")) return 4;
@@ -137,12 +146,37 @@
     return 1;
   }
 
-  function priorityClass(p) {
-    const r = priorityRank(p);
-    if (r === 4) return "bf-prio--urgent";
-    if (r === 3) return "bf-prio--secure";
-    if (r === 2) return "bf-prio--anticipate";
-    return "bf-prio--watch";
+  function bestPriority(items) {
+    let best = "À surveiller";
+    (items || []).forEach(item => {
+      if (priorityRank(item.priorite) > priorityRank(best)) best = item.priorite || best;
+    });
+    return best;
+  }
+
+  function statusSummary(items) {
+    const list = items || [];
+    if (!list.length) return { code: "a_envoyer", label: "À envoyer" };
+
+    const statuses = new Set(list.map(x => x.statut || "a_envoyer"));
+    if (statuses.size === 1) {
+      const s = list[0].statut || "a_envoyer";
+      return { code: s, label: list[0].statut_label || labelStatut(s) };
+    }
+
+    if (statuses.has("a_envoyer")) return { code: "a_envoyer", label: "Partiel" };
+    if (statuses.has("pris_en_charge")) return { code: "pris_en_charge", label: "Pris en charge" };
+    if (statuses.has("envoye_studio")) return { code: "envoye_studio", label: "Envoyé au Studio" };
+    return { code: "traite", label: "Traité" };
+  }
+
+  function labelStatut(s) {
+    return {
+      a_envoyer: "À envoyer",
+      envoye_studio: "Envoyé au Studio",
+      pris_en_charge: "Pris en charge",
+      traite: "Traité"
+    }[s] || "—";
   }
 
   function statutClass(statut) {
@@ -160,6 +194,7 @@
 
     if (dest && dest.can_send) {
       el.innerHTML = `
+        <span class="bf-destination-label">Destination</span>
         <span class="sb-badge sb-badge--success">Studio actif</span>
         <span>${escapeHtml(dest.nom_owner || dest.id_owner || "Studio")}</span>
         <span class="sb-badge">${escapeHtml(dest.learn_actif ? "Learn actif" : "Learn non actif")}</span>
@@ -168,6 +203,7 @@
     }
 
     el.innerHTML = `
+      <span class="bf-destination-label">Destination</span>
       <span class="sb-badge sb-badge--danger">Envoi bloqué</span>
       <span>${escapeHtml(dest?.reason || "Aucun Studio destinataire configuré.")}</span>
     `;
@@ -180,14 +216,9 @@
     el.innerHTML = `
       <span class="bf-mini-kpi"><strong>${escapeHtml(k.total ?? 0)}</strong><span>besoins</span></span>
       <span class="bf-mini-kpi"><strong>${escapeHtml(k.collaborateurs ?? 0)}</strong><span>collaborateurs</span></span>
-      <span class="bf-mini-kpi"><strong>${escapeHtml(k.postes ?? 0)}</strong><span>postes</span></span>
+      <span class="bf-mini-kpi"><strong>${escapeHtml(k.a_envoyer ?? 0)}</strong><span>à envoyer</span></span>
       <span class="bf-mini-kpi"><strong>${escapeHtml(k.risque_5_ans ?? 0)}</strong><span>risque 5 ans</span></span>
-      <span class="bf-mini-kpi"><strong>${escapeHtml(k.formation_existante ?? 0)}</strong><span>formations connues</span></span>
     `;
-  }
-
-  function rowKey(item) {
-    return `${item.id_comp || ""}@@${item.id_poste || ""}@@${item.id_effectif_concerne || ""}`;
   }
 
   function labelCode(item) {
@@ -199,113 +230,54 @@
   }
 
   function labelCollaborateur(item) {
-    return item.collaborateur_nom_complet || [item.prenom_effectif, item.nom_effectif].filter(Boolean).join(" ") || "Besoin collectif";
+    return item.collaborateur_nom_complet || [item.prenom_effectif, item.nom_effectif].filter(Boolean).join(" ") || "Collaborateur";
   }
 
   function labelPoste(item) {
     return item.intitule_poste || "Poste non précisé";
   }
 
-  function groupItems(items) {
-    const postes = new Map();
+  function groupByCollaborateur(items) {
+    const map = new Map();
 
     (items || []).forEach(item => {
-      const posteKey = item.id_poste || `poste:${labelPoste(item)}`;
-      if (!postes.has(posteKey)) {
-        postes.set(posteKey, {
-          key: posteKey,
-          title: labelPoste(item),
-          code_poste: item.code_poste || "",
-          service: item.nom_service || "Service non précisé",
+      const key = item.id_effectif_concerne || `collab:${labelCollaborateur(item)}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          id_effectif_concerne: item.id_effectif_concerne || "",
+          nom: labelCollaborateur(item),
+          poste: labelPoste(item),
+          service: item.nom_service || "",
           items: [],
-          people: new Map(),
-          score: 0,
-          priority: item.priorite || "À surveiller"
         });
       }
-
-      const poste = postes.get(posteKey);
-      poste.items.push(item);
-      poste.score = Math.max(poste.score, num(item.score_anticipation || item.indice_fragilite));
-      if (priorityRank(item.priorite) > priorityRank(poste.priority)) poste.priority = item.priorite;
-
-      const personKey = item.id_effectif_concerne || `collectif:${posteKey}`;
-      if (!poste.people.has(personKey)) {
-        poste.people.set(personKey, {
-          key: personKey,
-          title: labelCollaborateur(item),
-          type: item.id_effectif_concerne ? "individuel" : "collectif",
-          items: [],
-          score: 0,
-          priority: item.priorite || "À surveiller"
-        });
-      }
-      const person = poste.people.get(personKey);
-      person.items.push(item);
-      person.score = Math.max(person.score, num(item.score_anticipation || item.indice_fragilite));
-      if (priorityRank(item.priorite) > priorityRank(person.priority)) person.priority = item.priorite;
+      map.get(key).items.push(item);
     });
 
-    return Array.from(postes.values()).sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      return a.title.localeCompare(b.title);
-    });
+    return Array.from(map.values()).sort((a, b) => a.nom.localeCompare(b.nom));
   }
 
-  function formationBadge(item) {
-    const n = num(item.nb_formations_existantes);
-    if (n > 0) return `<span class="sb-badge sb-badge--success">${n} formation${n > 1 ? "s" : ""}</span>`;
-    return `<span class="sb-badge">À vérifier</span>`;
+  function commentSummary(items) {
+    const txt = (items || [])
+      .map(x => x.commentaire_manager || x.commentaire_client || "")
+      .find(x => String(x || "").trim());
+    return txt || "—";
   }
 
-  function levelHtml(item) {
-    const current = item.niveau_actuel || "Non évalué";
-    const expected = item.niveau_requis || item.niveau_attendu || "—";
-    return `
-      <span class="bf-level"><span>Actuel</span><strong>${escapeHtml(current)}</strong></span>
-      <span class="bf-level"><span>Attendu</span><strong>${escapeHtml(expected)}</strong></span>
-    `;
-  }
+  function skillsSummary(items) {
+    const list = (items || []).slice(0, 3);
+    const html = list.map(item => `
+      <span class="bf-skill-chip" title="${escapeHtml(labelCompetence(item))}">
+        ${escapeHtml(labelCode(item))} · ${escapeHtml(labelCompetence(item))}
+      </span>
+    `).join("");
 
-  function indicatorHtml(item) {
-    const score = num(item.score_anticipation || item.indice_fragilite);
-    const crit = num(item.criticite);
-    const future = num(item.nb_sorties_prevues) + num(item.nb_retraites_estimees);
-    const indispo = num(item.nb_indispos_actuelles) + num(item.collaborateur_indisponible);
-    const parts = [
-      `<span class="bf-chip">Score ${score}%</span>`,
-      `<span class="bf-chip">Crit. ${crit}</span>`
-    ];
-    if (future > 0) parts.push(`<span class="bf-chip bf-chip--warn">Risque 5 ans ${future}</span>`);
-    if (indispo > 0) parts.push(`<span class="bf-chip bf-chip--danger">Indispo</span>`);
-    if (item.is_signal_actuel === false) parts.push(`<span class="bf-chip">Historisé</span>`);
-    return parts.join("");
-  }
+    const more = (items || []).length > 3
+      ? `<span class="bf-skill-more">+${items.length - 3}</span>`
+      : "";
 
-  function renderNeedRow(item, canSend) {
-    const isSendable = canSend && item.statut === "a_envoyer";
-    return `
-      <div class="bf-need-row" data-bf-key="${escapeHtml(rowKey(item))}" data-id-comp="${escapeHtml(item.id_comp || "")}" data-id-poste="${escapeHtml(item.id_poste || "")}" data-id-effectif="${escapeHtml(item.id_effectif_concerne || "")}">
-        <div class="bf-need-check"><input type="checkbox" class="bf-row-check" ${isSendable ? "" : "disabled"}></div>
-        <div class="bf-need-content">
-          <div class="bf-need-titleline">
-            <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(labelCode(item))}</span>
-            <strong>${escapeHtml(labelCompetence(item))}</strong>
-          </div>
-          <div class="bf-need-detail">
-            <span>${escapeHtml(item.motif_priorite || "À analyser")}</span>
-            <span class="bf-dot">•</span>
-            <span>${escapeHtml(item.priorite || "À surveiller")}</span>
-          </div>
-        </div>
-        <div class="bf-need-levels">${levelHtml(item)}</div>
-        <div class="bf-need-indicators">${indicatorHtml(item)}</div>
-        <div class="bf-need-formation">${formationBadge(item)}</div>
-        <div class="bf-need-status"><span class="sb-badge ${statutClass(item.statut)}">${escapeHtml(item.statut_label || "—")}</span></div>
-        <div class="bf-need-comment"><textarea class="sb-ctrl bf-comment" rows="2" placeholder="Commentaire" ${isSendable ? "" : "disabled"}>${escapeHtml(item.commentaire_client || "")}</textarea></div>
-        <div class="bf-need-action"><button type="button" class="sb-btn sb-btn--xs bf-send-one" ${isSendable ? "" : "disabled"}>Envoyer</button></div>
-      </div>
-    `;
+    return html + more;
   }
 
   function renderRows(items, destination) {
@@ -314,87 +286,214 @@
 
     const list = Array.isArray(items) ? items : [];
     if (!list.length) {
-      wrap.innerHTML = `<div class="bf-empty">Aucun besoin ne correspond aux filtres.</div>`;
+      wrap.innerHTML = `<div class="bf-empty">Aucun besoin individuel ne correspond aux filtres.</div>`;
       return;
     }
 
     const canSend = !!destination?.can_send;
-    const postes = groupItems(list);
+    const groups = groupByCollaborateur(list);
 
-    wrap.innerHTML = postes.map(poste => {
-      const people = Array.from(poste.people.values()).sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        return a.title.localeCompare(b.title);
-      });
-      const sendable = poste.items.filter(x => x.statut === "a_envoyer").length;
-      const collabCount = people.filter(p => p.type === "individuel").length;
+    wrap.innerHTML = groups.map(group => {
+      const st = statusSummary(group.items);
+      const sendableCount = group.items.filter(x => x.statut === "a_envoyer").length;
+      const delay = scoreDelay(group.items);
+      const prio = bestPriority(group.items);
+      const actionDisabled = !canSend || sendableCount <= 0;
+
       return `
-        <article class="bf-poste-card">
-          <header class="bf-poste-head">
-            <div class="bf-group-check"><input type="checkbox" class="bf-poste-check" ${canSend && sendable ? "" : "disabled"}></div>
-            <div class="bf-poste-title">
-              <div>
-                ${poste.code_poste ? `<span class="sb-badge sb-badge--poste-soft">${escapeHtml(poste.code_poste)}</span>` : ""}
-                <strong>${escapeHtml(poste.title)}</strong>
-              </div>
-              <span>${escapeHtml(poste.service)} · ${collabCount} collaborateur${collabCount > 1 ? "s" : ""} · ${poste.items.length} besoin${poste.items.length > 1 ? "s" : ""}</span>
-            </div>
-            <div class="bf-poste-meta">
-              <span class="bf-prio ${priorityClass(poste.priority)}">${escapeHtml(poste.priority || "À surveiller")}</span>
-              <span class="bf-chip">Score max ${poste.score}%</span>
-            </div>
-          </header>
-          <div class="bf-people-list">
-            ${people.map(person => `
-              <section class="bf-person-card">
-                <div class="bf-person-head">
-                  <div class="bf-group-check"><input type="checkbox" class="bf-person-check" ${canSend && person.items.some(x => x.statut === "a_envoyer") ? "" : "disabled"}></div>
-                  <div class="bf-person-title">
-                    <strong>${escapeHtml(person.title)}</strong>
-                    <span>${person.type === "collectif" ? "Besoin collectif / renfort à identifier" : "Collaborateur concerné"}</span>
-                  </div>
-                  <div class="bf-person-meta">
-                    <span class="bf-chip">${person.items.length} compétence${person.items.length > 1 ? "s" : ""}</span>
-                    <span class="bf-prio ${priorityClass(person.priority)}">${escapeHtml(person.priority || "À surveiller")}</span>
-                  </div>
-                </div>
-                <div class="bf-needs-list">
-                  ${person.items.map(item => renderNeedRow(item, canSend)).join("")}
-                </div>
-              </section>
-            `).join("")}
+        <article class="bf-person-row" data-bf-group="${escapeHtml(group.key)}">
+          <div class="bf-cell bf-cell--who">
+            <div class="bf-person-name">${escapeHtml(group.nom)}</div>
+            <div class="bf-person-poste">${escapeHtml(group.poste)}</div>
+          </div>
+
+          <div class="bf-cell bf-cell--need">
+            <div class="bf-need-count">${group.items.length} compétence${group.items.length > 1 ? "s" : ""} à renforcer</div>
+            <div class="bf-skill-list">${skillsSummary(group.items)}</div>
+          </div>
+
+          <div class="bf-cell bf-cell--delay">
+            <span class="bf-delay">${escapeHtml(delay)}</span>
+            <span class="bf-prio">${escapeHtml(prio)}</span>
+          </div>
+
+          <div class="bf-cell bf-cell--status">
+            <span class="sb-badge ${statutClass(st.code)}">${escapeHtml(st.label)}</span>
+          </div>
+
+          <div class="bf-cell bf-cell--comment" title="${escapeHtml(commentSummary(group.items))}">
+            ${escapeHtml(commentSummary(group.items))}
+          </div>
+
+          <div class="bf-cell bf-cell--action">
+            <button type="button" class="sb-btn sb-btn--soft bf-detail-btn">Détail</button>
+            <button type="button" class="sb-btn sb-btn--accent bf-send-btn" ${actionDisabled ? "disabled" : ""}>Préparer</button>
           </div>
         </article>
       `;
     }).join("");
 
-    bindRenderedActions(wrap);
+    wrap.querySelectorAll(".bf-detail-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const row = btn.closest(".bf-person-row");
+        const group = row ? groups.find(g => g.key === row.getAttribute("data-bf-group")) : null;
+        if (group) openSendModal(group, false);
+      });
+    });
+
+    wrap.querySelectorAll(".bf-send-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const row = btn.closest(".bf-person-row");
+        const group = row ? groups.find(g => g.key === row.getAttribute("data-bf-group")) : null;
+        if (group) openSendModal(group, true);
+      });
+    });
   }
 
-  function bindRenderedActions(wrap) {
-    wrap.querySelectorAll(".bf-poste-check").forEach(cb => {
-      cb.addEventListener("change", () => {
-        const card = cb.closest(".bf-poste-card");
-        if (!card) return;
-        card.querySelectorAll(".bf-row-check:not(:disabled), .bf-person-check:not(:disabled)").forEach(x => { x.checked = cb.checked; });
-      });
-    });
+  function levelLabel(v) {
+    return v || "Non évalué";
+  }
 
-    wrap.querySelectorAll(".bf-person-check").forEach(cb => {
-      cb.addEventListener("change", () => {
-        const card = cb.closest(".bf-person-card");
-        if (!card) return;
-        card.querySelectorAll(".bf-row-check:not(:disabled)").forEach(x => { x.checked = cb.checked; });
-      });
-    });
+  function competenceDetailHtml(item, allowCheck) {
+    const checked = item.statut === "a_envoyer" ? "checked" : "";
+    const disabled = item.statut === "a_envoyer" && allowCheck ? "" : "disabled";
+    const risk5 = num(item.nb_sorties_prevues) + num(item.nb_retraites_estimees);
+    const formation = num(item.nb_formations_existantes) > 0
+      ? `${num(item.nb_formations_existantes)} formation${num(item.nb_formations_existantes) > 1 ? "s" : ""} connue${num(item.nb_formations_existantes) > 1 ? "s" : ""}`
+      : "Formation à vérifier";
 
-    wrap.querySelectorAll(".bf-send-one").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const row = btn.closest(".bf-need-row");
-        if (!row) return;
-        await sendRows([row]);
+    return `
+      <div class="bf-comp-row" data-id-comp="${escapeHtml(item.id_comp || "")}" data-id-poste="${escapeHtml(item.id_poste || "")}" data-id-effectif="${escapeHtml(item.id_effectif_concerne || "")}">
+        <label class="bf-comp-check">
+          <input type="checkbox" class="bf-comp-select" ${checked} ${disabled}>
+        </label>
+
+        <div class="bf-comp-main">
+          <div class="bf-comp-title">
+            <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(labelCode(item))}</span>
+            <strong>${escapeHtml(labelCompetence(item))}</strong>
+          </div>
+          <div class="bf-comp-sub">${escapeHtml(item.motif_priorite || "Besoin détecté")}</div>
+        </div>
+
+        <div class="bf-comp-levels">
+          <span><small>Actuel</small><strong>${escapeHtml(levelLabel(item.niveau_actuel))}</strong></span>
+          <span><small>Attendu</small><strong>${escapeHtml(item.niveau_requis || item.niveau_attendu || "—")}</strong></span>
+        </div>
+
+        <div class="bf-comp-meta">
+          <span>Score ${escapeHtml(item.score_anticipation || item.indice_fragilite || 0)}%</span>
+          <span>Crit. ${escapeHtml(item.criticite || 0)}</span>
+          ${risk5 > 0 ? `<span>Risque 5 ans</span>` : ""}
+          <span>${escapeHtml(formation)}</span>
+          <span>${escapeHtml(item.statut_label || "À envoyer")}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function openSendModal(group, sendMode) {
+    _modalGroup = group;
+
+    const modal = byId("bfSendModal");
+    if (!modal) return;
+
+    const sendable = group.items.filter(x => x.statut === "a_envoyer");
+    const selectedItems = sendMode ? sendable : group.items;
+    const defaultDelay = scoreDelay(group.items);
+    const existingComment = commentSummary(group.items);
+    const comment = existingComment === "—" ? "" : existingComment;
+
+    setText("bfModalTitle", sendMode ? "Préparer l’envoi au Studio" : "Détail du besoin collaborateur");
+    setText("bfModalSub", `${group.nom} · ${group.poste}`);
+
+    const compWrap = byId("bfModalCompetences");
+    if (compWrap) {
+      compWrap.innerHTML = selectedItems.map(item => competenceDetailHtml(item, sendMode)).join("");
+    }
+
+    const delai = byId("bfModalDelai");
+    if (delai) delai.value = Array.from(delai.options).some(o => o.value === defaultDelay) ? defaultDelay : "Sous 6 mois";
+
+    const periode = byId("bfModalPeriode");
+    if (periode) periode.value = "";
+
+    const precision = byId("bfModalPrecision");
+    if (precision) precision.value = "";
+
+    const commentaire = byId("bfModalCommentaire");
+    if (commentaire) commentaire.value = comment;
+
+    modal.querySelectorAll(".bf-check-list input[type='checkbox']").forEach(cb => { cb.checked = false; });
+    setMsg("", "", "bfModalMsg");
+
+    const confirm = byId("btnBfConfirmSend");
+    if (confirm) confirm.style.display = sendMode ? "" : "none";
+
+    modal.hidden = false;
+    document.body.classList.add("bf-modal-open");
+  }
+
+  function closeModal() {
+    const modal = byId("bfSendModal");
+    if (modal) modal.hidden = true;
+    document.body.classList.remove("bf-modal-open");
+    _modalGroup = null;
+  }
+
+  function selectedModalItems() {
+    const modal = byId("bfSendModal");
+    if (!modal) return [];
+
+    return Array.from(modal.querySelectorAll(".bf-comp-row")).filter(row => {
+      const cb = row.querySelector(".bf-comp-select");
+      return cb && cb.checked && !cb.disabled;
+    }).map(row => ({
+      id_comp: row.getAttribute("data-id-comp") || "",
+      id_poste: row.getAttribute("data-id-poste") || null,
+      id_effectif_concerne: row.getAttribute("data-id-effectif") || null,
+    })).filter(x => x.id_comp && x.id_effectif_concerne);
+  }
+
+  async function confirmModalSend() {
+    if (!_portal || !_modalGroup) return;
+
+    const items = selectedModalItems();
+    if (!items.length) {
+      setMsg("Aucune compétence sélectionnée.", "warning", "bfModalMsg");
+      return;
+    }
+
+    const modal = byId("bfSendModal");
+    const modalites = modal
+      ? Array.from(modal.querySelectorAll(".bf-check-list input[type='checkbox']:checked")).map(cb => cb.value)
+      : [];
+
+    const payload = {
+      items,
+      delai_souhaite: byId("bfModalDelai")?.value || "",
+      periode_souhaitee: byId("bfModalPeriode")?.value || "",
+      precision_periode: byId("bfModalPrecision")?.value || "",
+      modalites_souhaitees: modalites,
+      commentaire_manager: byId("bfModalCommentaire")?.value || ""
+    };
+
+    setMsg("Envoi au Studio…", "info", "bfModalMsg");
+
+    try {
+      const res = await _portal.apiJson(`${_portal.apiBase}/skills/besoins-formations/${encodeURIComponent(_portal.contactId)}/envoyer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
       });
-    });
+
+      closeModal();
+      await refresh();
+      setMsg(res?.message || "Besoin envoyé au Studio.", "success");
+    } catch (e) {
+      setMsg(errMsg(e), "error", "bfModalMsg");
+      console.error(e);
+    }
   }
 
   function render(data) {
@@ -404,7 +503,7 @@
 
     const count = Array.isArray(_lastData.items) ? _lastData.items.length : 0;
     const scope = _lastData.scope?.nom_service || "Tous les services";
-    setText("bfMeta", `${count} besoin(s) affiché(s) · ${scope}`);
+    setText("bfMeta", `${count} besoin(s) individuel(s) affiché(s) · ${scope}`);
     renderRows(_lastData.items || [], _lastData.destination || {});
   }
 
@@ -437,53 +536,6 @@
     }
   }
 
-  function selectedRows() {
-    const wrap = byId("bfListWrap");
-    if (!wrap) return [];
-    return Array.from(wrap.querySelectorAll(".bf-need-row")).filter(row => {
-      const cb = row.querySelector(".bf-row-check");
-      return cb && cb.checked && !cb.disabled;
-    });
-  }
-
-  async function sendRows(rows) {
-    if (!_portal) return;
-    const list = Array.isArray(rows) ? rows : [];
-    if (!list.length) {
-      setMsg("Sélectionne au moins un besoin à envoyer.", "warning");
-      return;
-    }
-
-    const payload = {
-      items: list.map(row => ({
-        id_comp: row.getAttribute("data-id-comp") || "",
-        id_poste: row.getAttribute("data-id-poste") || null,
-        id_effectif_concerne: row.getAttribute("data-id-effectif") || null,
-        commentaire_client: row.querySelector(".bf-comment")?.value || ""
-      })).filter(x => x.id_comp)
-    };
-
-    if (!payload.items.length) {
-      setMsg("Aucun besoin exploitable dans la sélection.", "warning");
-      return;
-    }
-
-    setMsg("Envoi au Studio…", "info");
-    try {
-      const res = await _portal.apiJson(`${_portal.apiBase}/skills/besoins-formations/${encodeURIComponent(_portal.contactId)}/envoyer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const okMsg = res?.message || "Besoin envoyé au Studio.";
-      await refresh();
-      setMsg(okMsg, "success");
-    } catch (e) {
-      setMsg(errMsg(e), "error");
-      console.error(e);
-    }
-  }
-
   function bindOnce() {
     if (_bound) return;
     _bound = true;
@@ -506,12 +558,16 @@
       btnReset.addEventListener("click", async () => {
         const selService = byId("bfServiceSelect");
         if (selService) selService.value = window.portal.serviceFilter.ALL_ID || "__ALL__";
+
         const selStatut = byId("bfStatutSelect");
         if (selStatut) selStatut.value = "tous";
+
         const frag = byId("bfFragiliteRange");
         if (frag) frag.value = "0";
+
         const crit = byId("bfCriticiteRange");
         if (crit) crit.value = "70";
+
         applyFilterLabels();
         await refresh();
       });
@@ -520,8 +576,16 @@
     const btnRefresh = byId("btnBfRefresh");
     if (btnRefresh) btnRefresh.addEventListener("click", refresh);
 
-    const btnSend = byId("btnBfSendSelected");
-    if (btnSend) btnSend.addEventListener("click", async () => sendRows(selectedRows()));
+    const btnConfirm = byId("btnBfConfirmSend");
+    if (btnConfirm) btnConfirm.addEventListener("click", confirmModalSend);
+
+    document.addEventListener("click", (e) => {
+      if (e.target && e.target.matches("[data-bf-close]")) closeModal();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !byId("bfSendModal")?.hidden) closeModal();
+    });
   }
 
   window.SkillsBesoinsFormations = {
