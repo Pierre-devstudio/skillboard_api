@@ -299,52 +299,80 @@
       const delay = scoreDelay(group.items);
       const prio = bestPriority(group.items);
       const actionDisabled = !canSend || sendableCount <= 0;
+      const comment = commentSummary(group.items);
 
       return `
-        <article class="bf-person-row" data-bf-group="${escapeHtml(group.key)}">
-          <div class="bf-cell bf-cell--who">
-            <div class="bf-person-name">${escapeHtml(group.nom)}</div>
-            <div class="bf-person-poste">${escapeHtml(group.poste)}</div>
-          </div>
+        <article class="bf-person-card" data-bf-group="${escapeHtml(group.key)}">
+          <button type="button" class="bf-person-row bf-accordion-toggle" aria-expanded="false">
+            <div class="bf-cell bf-cell--who">
+              <div class="bf-person-name">${escapeHtml(group.nom)}</div>
+              <div class="bf-person-poste">${escapeHtml(group.poste)}</div>
+            </div>
 
-          <div class="bf-cell bf-cell--need">
-            <div class="bf-need-count">${group.items.length} compétence${group.items.length > 1 ? "s" : ""} à renforcer</div>
-            <div class="bf-skill-list">${skillsSummary(group.items)}</div>
-          </div>
+            <div class="bf-cell bf-cell--need">
+              <div class="bf-need-count">${group.items.length} compétence${group.items.length > 1 ? "s" : ""} à renforcer</div>
+              <div class="bf-need-preview">Voir le détail des compétences</div>
+            </div>
 
-          <div class="bf-cell bf-cell--delay">
-            <span class="bf-delay">${escapeHtml(delay)}</span>
-            <span class="bf-prio">${escapeHtml(prio)}</span>
-          </div>
+            <div class="bf-cell bf-cell--delay">
+              <span class="bf-delay">${escapeHtml(delay)}</span>
+              <span class="bf-prio">${escapeHtml(prio)}</span>
+            </div>
 
-          <div class="bf-cell bf-cell--status">
-            <span class="sb-badge ${statutClass(st.code)}">${escapeHtml(st.label)}</span>
-          </div>
+            <div class="bf-cell bf-cell--status">
+              <span class="sb-badge ${statutClass(st.code)}">${escapeHtml(st.label)}</span>
+            </div>
 
-          <div class="bf-cell bf-cell--comment" title="${escapeHtml(commentSummary(group.items))}">
-            ${escapeHtml(commentSummary(group.items))}
-          </div>
+            <div class="bf-cell bf-cell--comment" title="${escapeHtml(comment)}">
+              ${escapeHtml(comment)}
+            </div>
 
-          <div class="bf-cell bf-cell--action">
-            <button type="button" class="sb-btn sb-btn--soft bf-detail-btn">Détail</button>
-            <button type="button" class="sb-btn sb-btn--accent bf-send-btn" ${actionDisabled ? "disabled" : ""}>Préparer</button>
+            <div class="bf-cell bf-cell--action">
+              <span class="bf-accordion-icon">⌄</span>
+            </div>
+          </button>
+
+          <div class="bf-accordion-panel" hidden>
+            <div class="bf-accordion-inner">
+              <div class="bf-competence-list">
+                ${group.items.map(item => `
+                  <div class="bf-competence-line">
+                    <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(labelCode(item))}</span>
+                    <span>${escapeHtml(labelCompetence(item))}</span>
+                  </div>
+                `).join("")}
+              </div>
+
+              <div class="bf-accordion-actions">
+                <button type="button" class="sb-btn sb-btn--accent bf-send-btn" ${actionDisabled ? "disabled" : ""}>
+                  Préparer l’envoi
+                </button>
+              </div>
+            </div>
           </div>
         </article>
       `;
     }).join("");
 
-    wrap.querySelectorAll(".bf-detail-btn").forEach(btn => {
+    wrap.querySelectorAll(".bf-accordion-toggle").forEach(btn => {
       btn.addEventListener("click", () => {
-        const row = btn.closest(".bf-person-row");
-        const group = row ? groups.find(g => g.key === row.getAttribute("data-bf-group")) : null;
-        if (group) openSendModal(group, false);
+        const card = btn.closest(".bf-person-card");
+        if (!card) return;
+
+        const panel = card.querySelector(".bf-accordion-panel");
+        const icon = card.querySelector(".bf-accordion-icon");
+        const isOpen = btn.getAttribute("aria-expanded") === "true";
+
+        btn.setAttribute("aria-expanded", isOpen ? "false" : "true");
+        if (panel) panel.hidden = isOpen;
+        if (icon) icon.textContent = isOpen ? "⌄" : "⌃";
       });
     });
 
     wrap.querySelectorAll(".bf-send-btn").forEach(btn => {
       btn.addEventListener("click", () => {
-        const row = btn.closest(".bf-person-row");
-        const group = row ? groups.find(g => g.key === row.getAttribute("data-bf-group")) : null;
+        const card = btn.closest(".bf-person-card");
+        const group = card ? groups.find(g => g.key === card.getAttribute("data-bf-group")) : null;
         if (group) openSendModal(group, true);
       });
     });

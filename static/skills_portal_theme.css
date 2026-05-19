@@ -3562,17 +3562,7 @@ body{
 #view-besoins-formations .bf-action-msg--info{ color:var(--sb-gray-500); }
 
 #view-besoins-formations .bf-table-head{
-  display:grid;
-  grid-template-columns: minmax(190px,.9fr) minmax(260px,1.35fr) 130px 120px minmax(170px,.85fr) 150px;
-  gap:10px;
-  padding:8px 12px;
-  border:1px solid var(--sb-gray-200);
-  border-radius:12px;
-  background:#fafafa;
-  color:var(--sb-gray-500);
-  font-size:11px;
-  font-weight:700;
-  text-transform:none;
+  display:none;
 }
 
 #view-besoins-formations .bf-list-wrap{
@@ -3591,21 +3581,33 @@ body{
   font-size:12px;
 }
 
-#view-besoins-formations .bf-person-row{
-  display:grid;
-  grid-template-columns: minmax(190px,.9fr) minmax(260px,1.35fr) 130px 120px minmax(170px,.85fr) 150px;
-  gap:10px;
-  align-items:center;
-  padding:10px 12px;
+#view-besoins-formations .bf-person-card{
   border:1px solid var(--sb-gray-200);
   border-radius:14px;
   background:#fff;
-  transition:background .15s ease, border-color .15s ease;
+  overflow:hidden;
+  transition:border-color .15s ease, background .15s ease;
+}
+
+#view-besoins-formations .bf-person-card:hover{
+  border-color:color-mix(in srgb, var(--accent) 32%, var(--sb-gray-200));
+}
+
+#view-besoins-formations .bf-person-row{
+  width:100%;
+  display:grid;
+  grid-template-columns: minmax(210px,.95fr) minmax(220px,1.1fr) 130px 120px minmax(170px,.8fr) 40px;
+  gap:10px;
+  align-items:center;
+  padding:11px 12px;
+  border:0;
+  background:#fff;
+  text-align:left;
+  cursor:pointer;
 }
 
 #view-besoins-formations .bf-person-row:hover{
   background:#fcfcfc;
-  border-color:color-mix(in srgb, var(--accent) 35%, var(--sb-gray-200));
 }
 
 #view-besoins-formations .bf-cell{
@@ -3710,13 +3712,85 @@ body{
 #view-besoins-formations .bf-cell--action{
   display:flex;
   align-items:center;
-  justify-content:flex-end;
-  gap:6px;
+  justify-content:center;
 }
 
 #view-besoins-formations .bf-cell--action .sb-btn{
   min-height:30px;
   padding:0 10px;
+  font-size:12px;
+  font-weight:700;
+}
+
+#view-besoins-formations .bf-need-preview{
+  margin-top:3px;
+  color:var(--sb-gray-500);
+  font-size:11px;
+  font-weight:500;
+}
+
+#view-besoins-formations .bf-accordion-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:26px;
+  height:26px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:9px;
+  background:#fff;
+  color:var(--sb-gray-600);
+  font-size:14px;
+  font-weight:700;
+  line-height:1;
+}
+
+#view-besoins-formations .bf-accordion-panel{
+  border-top:1px solid var(--sb-gray-200);
+  background:#fafafa;
+}
+
+#view-besoins-formations .bf-accordion-inner{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  padding:10px 12px 12px;
+}
+
+#view-besoins-formations .bf-competence-list{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width:0;
+}
+
+#view-besoins-formations .bf-competence-line{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  color:var(--sb-gray-800);
+  font-size:12px;
+  line-height:1.25;
+}
+
+#view-besoins-formations .bf-competence-line span:last-child{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#view-besoins-formations .bf-accordion-actions{
+  display:flex;
+  align-items:flex-start;
+  justify-content:flex-end;
+  flex-shrink:0;
+}
+
+#view-besoins-formations .bf-accordion-actions .sb-btn{
+  min-height:30px;
+  padding:0 12px;
   font-size:12px;
   font-weight:700;
 }
@@ -3974,8 +4048,25 @@ body.bf-modal-open{
   }
 
   #view-besoins-formations .bf-person-row{
-    grid-template-columns:1fr;
+    grid-template-columns:1fr 32px;
     gap:8px;
+  }
+
+  #view-besoins-formations .bf-person-row .bf-cell{
+    grid-column:1;
+  }
+
+  #view-besoins-formations .bf-person-row .bf-cell--action{
+    grid-column:2;
+    grid-row:1;
+  }
+
+  #view-besoins-formations .bf-accordion-inner{
+    flex-direction:column;
+  }
+
+  #view-besoins-formations .bf-accordion-actions{
+    justify-content:flex-start;
   }
 
   #view-besoins-formations .bf-cell--action{
