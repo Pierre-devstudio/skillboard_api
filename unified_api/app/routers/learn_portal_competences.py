@@ -280,7 +280,7 @@ def _normalize_grille(grille: Any) -> dict:
     else:
         grille_obj = {}
 
-    out = {}
+    rows = []
 
     for i in range(1, 5):
         key = f"Critere{i}"
@@ -291,13 +291,30 @@ def _normalize_grille(grille: Any) -> dict:
 
         ev = node.get("Eval") if isinstance(node.get("Eval"), list) else []
 
-        out[key] = {
-            "Nom": str(node.get("Nom") or "").strip(),
-            "Eval": [
-                str(ev[j] if j < len(ev) and ev[j] is not None else "").strip()
-                for j in range(4)
-            ],
-        }
+        nom = str(node.get("Nom") or "").strip()
+        evals = [
+            str(ev[j] if j < len(ev) and ev[j] is not None else "").strip()
+            for j in range(4)
+        ]
+
+        if not nom:
+            continue
+
+        rows.append({
+            "Nom": nom,
+            "Eval": evals,
+        })
+
+    out = {}
+
+    for i in range(1, 5):
+        if i <= len(rows):
+            out[f"Critere{i}"] = rows[i - 1]
+        else:
+            out[f"Critere{i}"] = {
+                "Nom": "",
+                "Eval": ["", "", "", ""],
+            }
 
     return out
 
@@ -406,7 +423,7 @@ def _run_ai_draft(cur, oid: str, payload: AiDraftCompetencePayload) -> dict:
     except Exception:
         nb = 3
 
-    if nb not in (2, 3, 4):
+    if nb not in (1, 2, 3, 4):
         nb = 3
 
     model = (os.getenv("OPENAI_MODEL_COMP_DRAFT") or "gpt-4o-mini").strip()

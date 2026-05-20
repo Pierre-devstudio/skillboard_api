@@ -432,6 +432,45 @@
         );
     }
 
+    function clearCompModalStatus(){
+        clearLocalStatus("formCompModalStatus");
+    }
+
+    function setCompModalInfo(message){
+        setLocalStatus("formCompModalStatus", "info", message || "");
+    }
+
+    function setCompModalSystemError(action, err, extra = {}){
+        setLocalStatus(
+            "formCompModalStatus",
+            "error",
+            "Erreur système, cliquez ici pour télécharger le rapport.",
+            {
+                report: buildErrorReport(action, err, extra)
+            }
+        );
+    }
+
+    function clearCompAiStatus(){
+        clearLocalStatus("formCompAiStatus");
+    }
+
+    function setCompAiInfo(message){
+        setLocalStatus("formCompAiStatus", "info", message || "");
+    }
+
+    function setCompAiSystemError(action, err, extra = {}){
+        setLocalStatus(
+            "formCompAiStatus",
+            "error",
+            "Erreur système, cliquez ici pour télécharger le rapport.",
+            {
+                report: buildErrorReport(action, err, extra)
+            }
+        );
+    }
+
+
     function ensureCatalogueStatus(){
         let el = byId("catFormsHeadStatus");
         if (el) return el;
@@ -1238,25 +1277,54 @@ function iconPdf(){
         return null;
     }
 
+    function compNormalizeCritItem(raw){
+        const node = raw || {};
+        const ev = Array.isArray(node.Eval) ? node.Eval : [];
+
+        const nom = (node.Nom || "").toString().trim();
+        const evals = [
+            (ev[0] || "").toString().trim(),
+            (ev[1] || "").toString().trim(),
+            (ev[2] || "").toString().trim(),
+            (ev[3] || "").toString().trim()
+        ];
+
+        if (!nom){
+            return compEmptyCrit();
+        }
+
+        return { Nom: nom, Eval: evals };
+    }
+
+    function compCompactCrits(){
+        const rows = Array.isArray(_compCrit) ? _compCrit : [];
+
+        const used = rows
+            .map(compNormalizeCritItem)
+            .filter(c => (c.Nom || "").trim());
+
+        _compCrit = [
+            ...used.slice(0, 4),
+            compEmptyCrit(),
+            compEmptyCrit(),
+            compEmptyCrit(),
+            compEmptyCrit()
+        ].slice(0, 4);
+
+        return used.slice(0, 4);
+    }
+
+
     function compLoadCritFromJson(grille){
         const g = compParseGrilleObject(grille) || {};
         _compCrit = [compEmptyCrit(), compEmptyCrit(), compEmptyCrit(), compEmptyCrit()];
 
         for (let i = 1; i <= 4; i++){
             const k = "Critere" + i;
-            const node = g[k] || {};
-            const ev = Array.isArray(node.Eval) ? node.Eval : [];
-
-            _compCrit[i - 1] = {
-                Nom: (node.Nom || "").toString(),
-                Eval: [
-                    (ev[0] || "").toString(),
-                    (ev[1] || "").toString(),
-                    (ev[2] || "").toString(),
-                    (ev[3] || "").toString()
-                ]
-            };
+            _compCrit[i - 1] = compNormalizeCritItem(g[k] || {});
         }
+
+        compCompactCrits();
 
         _compCritEditIdx = null;
         compHideCritEditor();
@@ -1264,18 +1332,19 @@ function iconPdf(){
     }
 
     function compBuildGrilleJson(){
+        const used = compCompactCrits();
         const out = {};
 
         for (let i = 1; i <= 4; i++){
-            const c = (_compCrit && _compCrit[i - 1]) ? _compCrit[i - 1] : compEmptyCrit();
+            const c = used[i - 1] || compEmptyCrit();
 
             out["Critere" + i] = {
-                Nom: (c.Nom || "").toString(),
+                Nom: (c.Nom || "").toString().trim(),
                 Eval: [
-                    (c.Eval?.[0] || "").toString(),
-                    (c.Eval?.[1] || "").toString(),
-                    (c.Eval?.[2] || "").toString(),
-                    (c.Eval?.[3] || "").toString()
+                    (c.Eval?.[0] || "").toString().trim(),
+                    (c.Eval?.[1] || "").toString().trim(),
+                    (c.Eval?.[2] || "").toString().trim(),
+                    (c.Eval?.[3] || "").toString().trim()
                 ]
             };
         }
@@ -1284,8 +1353,7 @@ function iconPdf(){
     }
 
     function compUsedCritCount(){
-        if (!_compCrit) return 0;
-        return _compCrit.filter(c => (c?.Nom || "").trim()).length;
+        return compCompactCrits().length;
     }
 
     function compNextEmptyCritIndex(){
@@ -1426,6 +1494,8 @@ function iconPdf(){
     function compSaveCritFromEditor(portal){
         if (_compCritEditIdx === null || _compCritEditIdx === undefined) return;
 
+        clearCompModalStatus();
+
         const nom = (byId("formCompCritNom").value || "").trim();
         const e1 = (byId("formCompCritEval1").value || "").trim();
         const e2 = (byId("formCompCritEval2").value || "").trim();
@@ -1433,45 +1503,37 @@ function iconPdf(){
         const e4 = (byId("formCompCritEval4").value || "").trim();
 
         if (!nom){
-            portal.showAlert("error", "Nom du critère obligatoire.");
+            setCompModalInfo("Nom du critère obligatoire.");
             return;
         }
 
         if (!e1 || !e2 || !e3 || !e4){
-            portal.showAlert("error", "Les 4 niveaux d’évaluation sont obligatoires.");
+            setCompModalInfo("Les 4 niveaux d’évaluation sont obligatoires.");
             return;
         }
 
         _compCrit[_compCritEditIdx] = { Nom: nom, Eval:[e1, e2, e3, e4] };
+        compCompactCrits();
 
         compHideCritEditor();
         compRenderCritList();
     }
 
     function compValidateCritBeforeSave(portal){
-        if (!_compCrit) _compCrit = [compEmptyCrit(), compEmptyCrit(), compEmptyCrit(), compEmptyCrit()];
+        const used = compCompactCrits();
 
-        if (compUsedCritCount() < 1){
-            portal.showAlert("error", "Ajoute au moins 1 critère d’évaluation.");
+        if (used.length < 1){
+            setCompModalInfo("Ajoute au moins 1 critère d’évaluation.");
             return false;
         }
 
-        for (let i = 0; i < 4; i++){
-            const c = _compCrit[i];
-            const nom = (c?.Nom || "").trim();
+        for (let i = 0; i < used.length; i++){
+            const c = used[i];
             const ev = c?.Eval || ["", "", "", ""];
-            const anyEval = ev.some(x => (x || "").trim().length > 0);
-
-            if (!nom && !anyEval) continue;
-
-            if (!nom){
-                portal.showAlert("error", `Critère ${i + 1} : nom obligatoire.`);
-                return false;
-            }
 
             for (let k = 0; k < 4; k++){
                 if (!(ev[k] || "").trim()){
-                    portal.showAlert("error", `Critère ${i + 1} : niveau ${k + 1} obligatoire.`);
+                    setCompModalInfo(`Critère ${i + 1} : niveau ${k + 1} obligatoire.`);
                     return false;
                 }
             }
@@ -1533,12 +1595,16 @@ function iconPdf(){
         if (byId("formCompAiNbCrit")) byId("formCompAiNbCrit").value = "3";
 
         compResetCrit();
+        clearCompModalStatus();
+        clearCompAiStatus();
 
         openModal("modalFormCompEdit");
     }
 
     function closePendingCompetenceCreate(){
         _compCreatePendingIndex = null;
+        clearCompModalStatus();
+        clearCompAiStatus();
         closeModal("modalFormCompEdit");
     }
 
@@ -1582,8 +1648,10 @@ function iconPdf(){
         const b = (byId("formCompNivB").value || "").trim();
         const c = (byId("formCompNivC").value || "").trim();
 
+        clearCompModalStatus();
+
         if (!title){
-            portal.showAlert("error", "Intitulé obligatoire.");
+            setCompModalInfo("Intitulé obligatoire.");
             return;
         }
 
@@ -1655,10 +1723,12 @@ function iconPdf(){
         const nbSel = byId("formCompAiNbCrit");
         if (nbSel) nbSel.value = "3";
 
+        clearCompAiStatus();
         openModal("modalFormCompAi");
     }
 
     function closePendingCompAiModal(){
+        clearCompAiStatus();
         closeModal("modalFormCompAi");
     }
 
@@ -1669,10 +1739,12 @@ function iconPdf(){
         const file = byId("formCompAiDocument")?.files?.[0] || null;
 
         let nb = parseInt((byId("formCompAiNbCrit")?.value || "3").trim(), 10);
-        if (![2, 3, 4].includes(nb)) nb = 3;
+        if (![1, 2, 3, 4].includes(nb)) nb = 3;
+
+        clearCompAiStatus();
 
         if (!objectif){
-            portal.showAlert("error", "Objectif obligatoire.");
+            setCompAiInfo("Objectif obligatoire.");
             return;
         }
 
@@ -1734,10 +1806,11 @@ function iconPdf(){
 
             closePendingCompAiModal();
 
-            portal.showAlert("", "");
-
         } catch(e){
-            portal.showAlert("error", getErrorMessage(e));
+            setCompAiSystemError("Génération IA d’une compétence depuis une fiche formation", e, {
+                nb_criteres: nb,
+                has_document: !!file
+            });
         } finally {
             closeAiWait();
 
@@ -5523,7 +5596,7 @@ iframe{width:100%;height:100%;border:0;display:block}
       try{
         await savePendingCompetence(portal);
       } catch(e){
-        portal.showAlert("error", getErrorMessage(e));
+        setCompModalSystemError("Création compétence depuis une fiche formation", e);
       }
     });
 
@@ -5532,7 +5605,7 @@ iframe{width:100%;height:100%;border:0;display:block}
         await ensureCompetenceDomains(portal);
         openPendingCompAiModal();
       } catch(e){
-        portal.showAlert("error", getErrorMessage(e));
+        setCompModalSystemError("Ouverture génération IA compétence", e);
       }
     });
 
@@ -5552,7 +5625,7 @@ iframe{width:100%;height:100%;border:0;display:block}
       try{
         compSaveCritFromEditor(portal);
       } catch(e){
-        portal.showAlert("error", getErrorMessage(e));
+        setCompModalSystemError("Enregistrement critère compétence", e);
       }
     });
 

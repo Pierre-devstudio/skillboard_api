@@ -813,6 +813,7 @@
       </div>
 
       <div class="sb-modal-foot">
+        <span class="sb-local-status" id="formCompModalStatus" style="display:none;"></span>
         <button type="button" class="sb-btn sb-btn--ai" id="btnFormCompAi">Concevoir avec l’IA</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormCompSave">Enregistrer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormCompCancel">Annuler</button>
@@ -859,6 +860,7 @@
           <div class="info-item" style="flex:1; min-width:220px;">
             <div class="label">Nombre de critères</div>
             <select id="formCompAiNbCrit">
+              <option value="1">1 critère</option>
               <option value="2">2 critères</option>
               <option value="3" selected>3 critères</option>
               <option value="4">4 critères</option>
@@ -876,6 +878,7 @@
       </div>
 
       <div class="sb-modal-foot">
+        <span class="sb-local-status" id="formCompAiStatus" style="display:none;"></span>
         <button type="button" class="sb-btn sb-btn--accent" id="btnFormCompAiGenerate">Générer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnFormCompAiCancel">Annuler</button>
       </div>
