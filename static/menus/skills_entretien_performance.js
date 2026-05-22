@@ -63,6 +63,7 @@
   function _epGetCovWeightedFlag() {
     // on cherche large (selon ids possibles)
     const chk =
+      $("ep_chkPondere") ||
       $("ep_covChkWeight") ||
       $("ep_covChkWeighted") ||
       $("ep_covChkCrit") ||
@@ -106,7 +107,7 @@
       return;
     }
 
-    const poste = (covRoot.poste_intitule || covRoot.poste || cov.poste || "").toString().trim();
+    const poste = (covRoot.intitule_poste || covRoot.poste_intitule || covRoot.poste || cov.poste || "").toString().trim();
     const modeTxt = weighted ? "Pondéré par criticité" : "Non pondéré";
     if (info) info.textContent = [poste ? `Poste : ${poste}` : "", modeTxt].filter(Boolean).join(" • ");
 
@@ -363,8 +364,7 @@
     setText("ep_compLastEval", "");
 
     setText("ep_scoreRaw", "—");
-    setText("ep_scoreCoef", "—");
-    setText("ep_score24", "—");
+    setText("ep_scorePct", "—");
     setText("ep_levelABC", "—");
 
     for (let i = 1; i <= 4; i++) {
@@ -377,20 +377,16 @@
       setDisabled(`ep_critCom${i}`, true);
     }
 
+    const method = $("ep_selEvalMethod");
+    if (method) method.value = "Entretien de performance";
+    setDisabled("ep_selEvalMethod", true);
+
     const obs = $("ep_txtObservation");
     if (obs) obs.value = "";
     setDisabled("ep_txtObservation", true);
 
     setDisabled("ep_btnSave", true);
-    setDisabled("ep_btnFinalize", true);
-    setDisabled("ep_btnGenerateSummary", true);
 
-    const listSum = $("ep_listSummary");
-    if (listSum) listSum.innerHTML = "";
-
-    const txtGlobal = $("ep_txtGlobalNotes");
-    if (txtGlobal) txtGlobal.value = "";
-    setDisabled("ep_txtGlobalNotes", true);
 
     clearSaveInlineMsg();
   }
@@ -579,13 +575,9 @@
       setDisabled(`ep_critCom${i}`, true);
     }
     setDisabled("ep_txtObservation", true);
+    setDisabled("ep_selEvalMethod", true);
 
     setDisabled("ep_btnSave", true);
-    setDisabled("ep_btnSaveNext", true);
-    setDisabled("ep_btnMarkReview", true);
-    setDisabled("ep_btnFinalize", true);
-    setDisabled("ep_btnGenerateSummary", true);
-    setDisabled("ep_txtGlobalNotes", true);
 
     if (!scopeOk) setText("ep_ctxService", "—");
 
@@ -695,7 +687,7 @@
       // petite jauge vide pour éviter un “grand trou”
       const svg = $("ep_svgGauge");
       if (svg) {
-        renderGauge(svg, 0, 1, 0, 0, 0);
+        renderGauge(svg, 0);
       }
     } finally {
       state._covLoading = false;
@@ -713,54 +705,25 @@
     const svg = $("ep_svgGauge");
     if (!svg) return;
 
-    // jauge bornée comme demandé (min/max théoriques)
-    const gMin = Number(pack.gauge_min ?? 0);
-    const gMax = Number(pack.gauge_max ?? 1);
+    const pctAttendus = Number(pack.pct_attendus ?? 0);
+    const pctMax = Number(pack.pct_max ?? 0);
 
-    const expMin = Number(pack.expected_min ?? 0);
-    const expMax = Number(pack.expected_max ?? 0);
-    const score = Number(pack.score ?? 0);
-
-    // Needle: clamp pour rester dans les limites de jauge
-    const needle = Math.max(gMin, Math.min(gMax, score));
-
-    renderGauge(svg, gMin, gMax, expMin, expMax, needle);
-
-    // % sous jauge (avec le score réel, pas le needle clampé)
-    const pct1 = (expMax > 0) ? ((score / expMax) * 100) : null;
-    const pct2 = (gMax > 0) ? ((score / gMax) * 100) : null;
+    renderGauge(svg, pctAttendus);
 
     const pctPoste = $("ep_covPctPoste");
-    const pctMax = $("ep_covPctMax");
+    const pctMaxEl = $("ep_covPctMax");
 
-    if (pctPoste) pctPoste.textContent = (pct1 === null || !isFinite(pct1)) ? "—" : `${Math.round(pct1)}%`;
-    if (pctMax) pctMax.textContent = (pct2 === null || !isFinite(pct2)) ? "—" : `${Math.round(pct2)}%`;
+    if (pctPoste) pctPoste.textContent = Number.isFinite(pctAttendus) ? `${Math.round(pctAttendus)}%` : "—";
+    if (pctMaxEl) pctMaxEl.textContent = Number.isFinite(pctMax) ? `${Math.round(pctMax)}%` : "—";
   }
 
-  function renderGauge(svg, gaugeMin, gaugeMax, expectedMin, expectedMax, value) {
-    // Normalisation des bornes (au cas où l’API renvoie inversé)
-    let gMin = Number(gaugeMin ?? 0);
-    let gMax = Number(gaugeMax ?? 1);
-    if (!isFinite(gMin)) gMin = 0;
-    if (!isFinite(gMax)) gMax = 1;
-    if (gMax < gMin) { const t = gMin; gMin = gMax; gMax = t; }
+  function renderGauge(svg, pctValue) {
+    let pct = Number(pctValue ?? 0);
+    if (!Number.isFinite(pct)) pct = 0;
+    pct = Math.max(0, Math.min(100, pct));
 
-    let eMin = Number(expectedMin ?? 0);
-    let eMax = Number(expectedMax ?? 0);
-    if (!isFinite(eMin)) eMin = 0;
-    if (!isFinite(eMax)) eMax = 0;
-    if (eMax < eMin) { const t = eMin; eMin = eMax; eMax = t; }
-
-    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-    const range = Math.max(1e-9, (gMax - gMin));
-
-    const tFromValue = (v) => (clamp(v, gMin, gMax) - gMin) / range;
-
-    // IMPORTANT:
-    // On travaille en repère SVG natif (Y vers le bas)
-    // 0° = droite, 90° = bas, 180° = gauche, 270° = haut
-    // Pour une jauge "compteur vitesse" (arc du haut) : 180° -> 360° (via 270°)
-    const angleFromT = (t) => 180 + (180 * t); // 180 (gauche) -> 360 (droite) en passant par 270 (haut)
+    const tFromPct = (v) => Math.max(0, Math.min(1, Number(v || 0) / 100));
+    const angleFromT = (t) => 180 + (180 * t);
 
     const cx = 120;
     const cy = 120;
@@ -771,56 +734,51 @@
       const rad = (angleDeg * Math.PI) / 180;
       return {
         x: cx + (radius * Math.cos(rad)),
-        y: cy + (radius * Math.sin(rad)), // SVG natif: +sin => vers le bas
+        y: cy + (radius * Math.sin(rad)),
       };
     };
 
     const arcPath = (a1, a2) => {
-      // On force le sens "gauche->droite" sur 180° (arc du haut)
-      // Si inversé, on swap
       if (a2 < a1) { const t = a1; a1 = a2; a2 = t; }
-
       const p1 = polar(a1, r);
       const p2 = polar(a2, r);
-
       const diff = Math.abs(a2 - a1);
       const large = (diff <= 180) ? "0" : "1";
-
-      // sweep=1 => suit l’augmentation d’angle en SVG (sens horaire en coordonnées écran)
-      // ici 180->360 passe par 270 (haut), donc c’est bien le demi-cercle du haut.
-      const sweep = "1";
-
-      return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} ${sweep} ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+      return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
     };
 
-    // Background arc (haut) : 180 -> 360
-    const bgD = arcPath(180, 360);
+    const a0 = angleFromT(0.0);
+    const a1 = angleFromT(0.5);
+    const a2 = angleFromT(0.8);
+    const a3 = angleFromT(1.0);
 
-    // Zone attendue
-    const tExpMin = tFromValue(eMin);
-    const tExpMax = tFromValue(eMax);
-    const aExpMin = angleFromT(tExpMin);
-    const aExpMax = angleFromT(tExpMax);
-
-    const zoneOk = isFinite(aExpMin) && isFinite(aExpMax) && (Math.abs(aExpMin - aExpMax) > 0.0001);
-    const zoneD = zoneOk ? arcPath(aExpMin, aExpMax) : "";
-
-    // Aiguille
-    const aNeedle = angleFromT(tFromValue(clamp(Number(value ?? 0), gMin, gMax)));
+    const aNeedle = angleFromT(tFromPct(pct));
     const pNeedle = polar(aNeedle, rNeedle);
 
     svg.innerHTML = `
-      <path d="${bgD}"
-            stroke="rgba(0,0,0,.15)"
-            stroke-width="14"
+      <path d="${arcPath(180, 360)}"
+            stroke="rgba(0,0,0,.10)"
+            stroke-width="16"
             fill="none"
             stroke-linecap="round"></path>
 
-      ${zoneOk ? `<path d="${zoneD}"
+      <path d="${arcPath(a0, a1)}"
             stroke="var(--accent)"
             stroke-width="14"
             fill="none"
-            stroke-linecap="round"></path>` : ""}
+            stroke-linecap="butt"></path>
+
+      <path d="${arcPath(a1, a2)}"
+            stroke="#f59e0b"
+            stroke-width="14"
+            fill="none"
+            stroke-linecap="butt"></path>
+
+      <path d="${arcPath(a2, a3)}"
+            stroke="#16a34a"
+            stroke-width="14"
+            fill="none"
+            stroke-linecap="butt"></path>
 
       <line x1="${cx}" y1="${cy}" x2="${pNeedle.x.toFixed(2)}" y2="${pNeedle.y.toFixed(2)}"
             stroke="rgba(0,0,0,.65)"
@@ -894,12 +852,15 @@
 
       const right = document.createElement("div");
       right.className = "sb-tree-meta";
-      right.textContent = ""; // plus de matricule, plus de poste
-
+      right.textContent = [
+        (c.intitule_poste || "").toString().trim(),
+        (c.nom_service || "").toString().trim()
+      ].filter(Boolean).join(" • ");
 
       const item = document.createElement("div");
       item.className = "sb-tree-item";
       item.appendChild(left);
+      if (right.textContent) item.appendChild(right);
     
       item.addEventListener("click", async () => {
         // sélection visuelle
@@ -1008,40 +969,50 @@
 
 
 
-            // Col: code + intitulé ellipsis
+            // Col: compétence enrichie
             const tdComp = document.createElement("td");
 
             const rowWrap = document.createElement("div");
-            rowWrap.style.display = "flex";
-            rowWrap.style.alignItems = "center";
-            rowWrap.style.gap = "8px";
-            rowWrap.style.minWidth = "0";
+            rowWrap.className = "ep-comp-row";
+
+            const top = document.createElement("div");
+            top.className = "ep-comp-row-top";
 
             const badge = document.createElement("span");
-            badge.className = x._neverAudited ? "sb-badge" : "sb-badge sb-badge-accent";
+            badge.className = x._neverAudited ? "sb-badge ep-badge-never" : "sb-badge sb-badge-accent";
             badge.textContent = (x.code || "").toString().trim();
 
-            // Badge rouge si jamais auditée
             if (x._neverAudited) {
-              badge.style.background = "#d11a2a";
-              badge.style.borderColor = "#d11a2a";
-              badge.style.color = "#fff";
               badge.title = "Jamais auditée";
             }
 
             const title = document.createElement("span");
+            title.className = "ep-comp-row-title";
             title.textContent = (x.intitule || "").toString().trim();
-            title.title = title.textContent; // tooltip = texte complet
-            title.style.display = "block";
-            title.style.minWidth = "0";
-            title.style.flex = "1";
-            title.style.fontSize = "13px";
-            title.style.whiteSpace = "nowrap";
-            title.style.overflow = "hidden";
-            title.style.textOverflow = "ellipsis";
+            title.title = title.textContent;
 
-            rowWrap.appendChild(badge);
-            rowWrap.appendChild(title);
+            top.appendChild(badge);
+            top.appendChild(title);
+
+            const meta = document.createElement("div");
+            meta.className = "ep-comp-row-meta";
+
+            const niveau = (x.niveau_actuel || "").toString().trim();
+            const last = (x.date_derniere_eval || "").toString().trim();
+            const critPct = Number(tr.dataset.critPct || 0);
+
+            const niveauTxt = niveau ? "Niveau : " + niveau : "Niveau : —";
+            const lastTxt = last ? "Dernière éval : " + last : "Jamais évaluée";
+            const critTxt = "Criticité : " + (Number.isFinite(critPct) ? Math.round(critPct) : 0) + "%";
+
+            [niveauTxt, lastTxt, critTxt].forEach(txt => {
+              const span = document.createElement("span");
+              span.textContent = txt;
+              meta.appendChild(span);
+            });
+
+            rowWrap.appendChild(top);
+            rowWrap.appendChild(meta);
             tdComp.appendChild(rowWrap);
 
             tr.appendChild(tdComp);
@@ -1301,19 +1272,16 @@
 
 
                 // Coef + affichage score (placeholder, calcul plus tard sur saisie)
-                const coef = (nbEnabled === 1) ? 6 : (nbEnabled === 2) ? 3 : (nbEnabled === 3) ? 2 : (nbEnabled === 4) ? 1.5 : "—";
-                setText("ep_scoreCoef", String(coef));
                 setText("ep_scoreRaw", "—");
-                setText("ep_score24", "—");
+                setText("ep_scorePct", "—");
                 setText("ep_levelABC", "—");
 
                 // Déverrouillage global
+                setDisabled("ep_selEvalMethod", false);
                 setDisabled("ep_txtObservation", false);
 
                 setDisabled("ep_btnSave", false);
-                setDisabled("ep_btnSaveNext", false);
-                setDisabled("ep_btnMarkReview", false);
-
+            
               } catch (e) {
                 _portal && _portal.showAlert("error", "Détail compétence", String(e?.message || e));
               }
@@ -1681,7 +1649,8 @@
                 const compTitle = [code, intitule].filter(Boolean).join(" — ") || "—";
 
                 const score = (x.resultat_eval ?? "");
-                const scoreTxt = (score === null || score === undefined || score === "") ? "—" : String(score);
+                const pct = _score24ToMasteryPct(score);
+                const scoreTxt = (pct === null) ? "—" : `${pct} %`;
 
                 const niveau = niveauFromScore(score);
 
@@ -1729,7 +1698,7 @@
                 const btn = tr.querySelector('button[data-obs="1"]');
                 if (btn) {
                   btn.addEventListener("click", () => {
-                    const meta = `${dateTxt} • ${evalTxt} • score ${scoreTxt} • ${niveau}`;
+                    const meta = `${dateTxt} • ${evalTxt} • maîtrise ${scoreTxt} • ${niveau}`;
                     openObs(compTitle, meta, obs);
                   });
                 }
@@ -1823,82 +1792,81 @@
         }
 
         // ======================================================
-        // Scoring live (Somme brute / Coef / Score /24 / Niveau)
+        // Scoring live (Somme / Maîtrise % / Niveau)
         // ======================================================
         const computeCoef = (n) => {
-        if (n === 4) return 1.5;
-        if (n === 3) return 2;
-        if (n === 2) return 3;
-        if (n === 1) return 6;
-        return null;
+          if (n === 4) return 1.5;
+          if (n === 3) return 2;
+          if (n === 2) return 3;
+          if (n === 1) return 6;
+          return null;
         };
 
         const computeLevel = (score24) => {
-        if (score24 >= 6 && score24 <= 9) return "A (Initial)";
-        if (score24 >= 10 && score24 <= 18) return "B (Avancé)";
-        if (score24 >= 19 && score24 <= 24) return "C (Expert)";
-        return "—";
+          if (score24 >= 6 && score24 <= 9) return "Initial";
+          if (score24 >= 10 && score24 <= 18) return "Avancé";
+          if (score24 >= 19 && score24 <= 24) return "Expert";
+          return "—";
+        };
+
+        const score24ToMasteryPct = (score24) => {
+          const n = Number(score24);
+          if (!Number.isFinite(n)) return null;
+          return Math.max(0, Math.min(100, Math.round((n / 24) * 100)));
         };
 
         const recalcScore = () => {
-        // Pas de compétence sélectionnée -> on ne calcule rien
-        if (!state.selectedCompetenceId) return;
+          if (!state.selectedCompetenceId) return;
 
-        let enabledCount = 0;
-        let sum = 0;
-        let filledCount = 0;
+          let enabledCount = 0;
+          let sum = 0;
+          let filledCount = 0;
 
-        for (let i = 1; i <= 4; i++) {
+          for (let i = 1; i <= 4; i++) {
             const labelEl = $(`ep_critLabel${i}`);
             const tr = labelEl ? labelEl.closest("tr") : null;
             const sel = $(`ep_critNote${i}`);
 
-            // Critère actif = ligne visible + select non désactivé
             const isVisible = !tr || tr.style.display !== "none";
             const isEnabled = !!sel && !sel.disabled && isVisible;
-
             if (!isEnabled) continue;
 
             enabledCount++;
 
             const v = (sel.value || "").toString().trim();
             if (v) {
-            const n = parseInt(v, 10);
-            if (!Number.isNaN(n)) sum += n;
-            filledCount++;
+              const n = parseInt(v, 10);
+              if (!Number.isNaN(n)) sum += n;
+              filledCount++;
             }
-        }
+          }
 
-        const coef = computeCoef(enabledCount);
-        setText("ep_scoreCoef", coef ? String(coef) : "—");
-
-        // Si aucune note encore saisie: on garde propre
-        if (filledCount === 0) {
+          if (filledCount === 0) {
             setText("ep_scoreRaw", "—");
-            setText("ep_score24", "—");
+            setText("ep_scorePct", "—");
             setText("ep_levelABC", "—");
             return;
-        }
+          }
 
-        setText("ep_scoreRaw", String(sum));
+          setText("ep_scoreRaw", String(sum));
 
-        const score24 = coef ? Math.round(sum * coef * 10) / 10 : null;
-        setText("ep_score24", (score24 !== null) ? String(score24) : "—");
+          const coef = computeCoef(enabledCount);
+          const score24 = coef ? Math.round(sum * coef * 10) / 10 : null;
+          const masteryPct = score24ToMasteryPct(score24);
+          setText("ep_scorePct", masteryPct === null ? "—" : `${masteryPct} %`);
 
-        // Niveau: seulement quand toutes les notes des critères actifs sont renseignées
-        if (enabledCount > 0 && filledCount === enabledCount && score24 !== null) {
+          if (enabledCount > 0 && filledCount === enabledCount && score24 !== null) {
             setText("ep_levelABC", computeLevel(score24));
-        } else {
+          } else {
             setText("ep_levelABC", "—");
-        }
+          }
         };
 
-        // Bind notes (une fois) : toute modification de note déclenche le recalcul
         for (let i = 1; i <= 4; i++) {
-        const sel = $(`ep_critNote${i}`);
-        if (!sel) continue;
-        sel.addEventListener("change", recalcScore);
-        sel.addEventListener("input", recalcScore);
+          const sel = $(`ep_critNote${i}`);
+          if (!sel) continue;
+          sel.addEventListener("change", recalcScore);
+          sel.addEventListener("input", recalcScore);
         }
 
         // ======================================================
@@ -1958,12 +1926,6 @@
           });
         }
 
-        
-        const btnFinalize = $("ep_btnFinalize");
-        if (btnFinalize) btnFinalize.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Finalisation (à implémenter)."));
-
-        const btnGen = $("ep_btnGenerateSummary");
-        if (btnGen) btnGen.addEventListener("click", () => _portal && _portal.showAlert("", "Squelette", "Génération synthèse (à implémenter)."));
 
   }
 
@@ -2038,6 +2000,12 @@
     return "Initial"; // fallback (cas tordu)
   }
 
+  function _score24ToMasteryPct(score24) {
+    const n = Number(score24);
+    if (!Number.isFinite(n)) return null;
+    return Math.max(0, Math.min(100, Math.round((n / 24) * 100)));
+  }
+
   async function saveCurrentAudit() {
     // On a besoin d’un collaborateur + d’une compétence sélectionnée
     const id_effectif_competence =
@@ -2080,13 +2048,14 @@
     const { coef, score24 } = _computeScore24(sum, enabled.length);
     const niveau_actuel = _levelFromScore24(score24);
 
-    // Alignement UI (si tes champs existent)
+    // Alignement UI : affichage métier en pourcentage (24/24 = 100%)
+    const masteryPct = _score24ToMasteryPct(score24);
     if (document.getElementById("ep_scoreRaw")) document.getElementById("ep_scoreRaw").textContent = String(sum);
-    if (document.getElementById("ep_scoreCoef")) document.getElementById("ep_scoreCoef").textContent = String(coef);
-    if (document.getElementById("ep_score24")) document.getElementById("ep_score24").textContent = String(score24);
+    if (document.getElementById("ep_scorePct")) document.getElementById("ep_scorePct").textContent = masteryPct === null ? "—" : `${masteryPct} %`;
     if (document.getElementById("ep_levelABC")) document.getElementById("ep_levelABC").textContent = niveau_actuel;
 
     const observation = (document.getElementById("ep_txtObservation")?.value || "").trim();
+    const methode_eval = (document.getElementById("ep_selEvalMethod")?.value || "Entretien de performance").trim() || "Entretien de performance";
 
     const payload = {
       id_effectif_competence,
@@ -2099,7 +2068,7 @@
         niveau: x.niveau,
         commentaire: x.commentaire
       })),
-      methode_eval: "Entretien de performance",
+      methode_eval,
     };
 
     const url = `${_portal.apiBase}/skills/entretien-performance/audit/${encodeURIComponent(_portal.contactId)}`;
