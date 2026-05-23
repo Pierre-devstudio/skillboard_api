@@ -266,6 +266,87 @@ def _fetch_effectif_context(cur, id_ent: str, id_effectif: str) -> Dict[str, Any
         raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
     return row
 
+def _ensure_effectif_competences_for_poste(cur, id_effectif: str, id_poste: Optional[str]) -> None:
+    """
+    Aligne la checklist d'entretien sur les compétences attendues du poste actuel.
+
+    Problème corrigé :
+    - la checklist part de tbl_effectif_client_competence ;
+    - si une compétence requise par le poste n'est pas encore rattachée au collaborateur,
+      elle n'apparaît pas dans l'entretien ;
+    - or l'entretien doit auditer les compétences du poste, pas seulement les compétences
+      déjà présentes sur la fiche collaborateur.
+
+    On crée donc les lignes manquantes sans audit, sans niveau, actives et non archivées.
+    """
+    id_eff = (id_effectif or "").strip()
+    id_pos = (id_poste or "").strip()
+
+    if not id_eff or not id_pos:
+        return
+
+    cur.execute(
+        """
+        SELECT DISTINCT
+            fpc.id_competence AS id_comp
+        FROM public.tbl_fiche_poste_competence fpc
+        JOIN public.tbl_competence c
+          ON c.id_comp = fpc.id_competence
+         AND COALESCE(c.masque, FALSE) = FALSE
+         AND COALESCE(c.etat, 'valide') <> 'inactive'
+        WHERE fpc.id_poste = %s
+          AND COALESCE(fpc.id_competence, '') <> ''
+          AND NOT EXISTS (
+              SELECT 1
+              FROM public.tbl_effectif_client_competence ec
+              WHERE ec.id_effectif_client = %s
+                AND ec.id_comp = fpc.id_competence
+                AND COALESCE(ec.archive, FALSE) = FALSE
+          )
+        """,
+        (id_pos, id_eff),
+    )
+
+    missing = cur.fetchall() or []
+
+    for r in missing:
+        id_comp = (r.get("id_comp") or "").strip()
+        if not id_comp:
+            continue
+
+        cur.execute(
+            """
+            INSERT INTO public.tbl_effectif_client_competence
+            (
+                id_effectif_competence,
+                id_effectif_client,
+                id_comp,
+                niveau_actuel,
+                id_dernier_audit,
+                actif,
+                archive,
+                date_derniere_eval,
+                date_creation,
+                dernier_update
+            )
+            VALUES
+            (
+                %s, %s, %s,
+                NULL,
+                NULL,
+                TRUE,
+                FALSE,
+                NULL,
+                CURRENT_DATE,
+                NOW()
+            )
+            """,
+            (
+                str(uuid4()),
+                id_eff,
+                id_comp,
+            ),
+        )
 
 def _get_scoring_config() -> ScoringConfig:
     # Règle Skillboard (historique): pondération = 6 / nb_criteres, score final sur 24
@@ -502,6 +583,7 @@ def get_effectif_checklist(id_contact: str, id_effectif: str, request: Request):
 
                 eff = _fetch_effectif_context(cur, id_ent, id_effectif)
                 id_poste = eff.get("id_poste_actuel")
+                _ensure_effectif_competences_for_poste(cur, id_effectif, id_poste)                
 
                 cur.execute(
                     """

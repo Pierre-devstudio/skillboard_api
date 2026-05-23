@@ -1060,9 +1060,8 @@
             const tr = document.createElement("tr");
             tr.dataset.idEffectifCompetence = x.id_effectif_competence || "";
             tr.dataset.idComp = x.id_comp || "";
-            const _pctRaw = (x && x.poids_criticite_pct !== undefined && x.poids_criticite_pct !== null) ? x.poids_criticite_pct : 0;
-            const _pct = parseFloat(String(_pctRaw).replace(",", "."));
-            tr.dataset.critPct = String(isNaN(_pct) ? 0 : _pct);
+            const _pct = getEpCritPctValue(x?.poids_criticite_pct);
+            tr.dataset.critPct = String(_pct);
 
 
 
@@ -1437,6 +1436,12 @@
     });
   }
 
+  function getEpCritPctValue(value) {
+    const raw = (value ?? "0").toString().trim().replace(",", ".");
+    const n = parseFloat(raw);
+    return Number.isFinite(n) ? n : 0;
+  }
+
   function bindCriticiteSliderOnce() {
     const rng = $("ep_rngCriticite");
     if (!rng) return;
@@ -1459,15 +1464,17 @@
     state._critSeuil = seuil;
     if (valEl) valEl.textContent = String(seuil);
 
-    // Filtrage DOM (chaque ligne doit avoir tr.dataset.critPct)
+    const EPS = 0.0001;
+
+    // Filtrage DOM : seuil inclusif, donc 75 affiche bien 75.
     Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
-      const pct = Number(tr.dataset.critPct || 0);
-      tr.style.display = (pct >= seuil) ? "" : "none";
+      const pct = getEpCritPctValue(tr.dataset.critPct);
+      tr.style.display = (pct + EPS >= seuil) ? "" : "none";
     });
 
     // Compteurs / KPI basés sur la liste complète en mémoire
     const all = Array.isArray(state._checklistAll) ? state._checklistAll : [];
-    const filtered = all.filter(x => Number(x.poids_criticite_pct || 0) >= seuil);
+    const filtered = all.filter(x => getEpCritPctValue(x?.poids_criticite_pct) + EPS >= seuil);
 
     const total = all.length;
     const shown = filtered.length;
