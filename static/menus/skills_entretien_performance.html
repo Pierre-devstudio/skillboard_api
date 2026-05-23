@@ -8,8 +8,7 @@
     </div>
 
     <div class="sb-actions ep-page-actions">
-      <button class="btn-secondary" id="ep_btnHelpScoring" type="button">Règles de scoring</button>
-      <button class="btn-secondary" id="ep_btnHistoryGlobal" type="button">Historique</button>
+      <button class="btn-secondary" id="ep_btnHelpScoring" type="button">Règles de scoring</button>      
     </div>
   </div>
 
@@ -36,7 +35,9 @@
             </div>
           </div>
 
-          <button type="button" class="btn-secondary" id="ep_btnScopeReset">Réinitialiser</button>
+          <button type="button" class="sb-btn sb-btn--init sb-btn--block ep-reset-filters-btn" id="ep_btnScopeReset">
+            Réinitialiser les filtres
+          </button>
         </div>
       </div>
 
@@ -105,8 +106,8 @@
         </div>
 
         <div class="card-body ep-summary-body">
-          <div class="card-sub" id="ep_covHint">
-            Sélectionne un collaborateur pour afficher la synthèse.
+          <div class="ep-summary-empty" id="ep_covHint">
+            La synthèse apparaîtra après sélection d'un collaborateur
           </div>
 
           <div id="ep_covWrap" class="ep-summary-wrap" style="display:none;">
@@ -114,6 +115,16 @@
               <div class="ep-summary-label">Collaborateur</div>
               <div class="ep-summary-name" id="ep_ctxCollaborateur">—</div>
               <div class="ep-summary-role" id="ep_ctxPoste">—</div>
+
+              <div class="ep-summary-actions">
+                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnHistoryGlobal">
+                  Historique des entretiens
+                </button>
+
+                <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnReportPdf">
+                  Générer un rapport PDF
+                </button>
+              </div>
 
               <div id="ep_ctxMatricule" style="display:none;">—</div>
               <div id="ep_ctxService" style="display:none;">—</div>

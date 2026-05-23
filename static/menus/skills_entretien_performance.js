@@ -537,6 +537,7 @@
   function applyUiLockedState() {
     const scopeOk = !!state.serviceId;
     const collabOk = scopeOk && !!state.selectedCollaborateurId;
+    setDisabled("ep_btnReportPdf", !collabOk);
 
     const txtSearchCollab = $("ep_txtSearchCollab");
     if (txtSearchCollab) txtSearchCollab.disabled = !scopeOk;
@@ -603,7 +604,7 @@
 
     if (hint) {
       hint.style.display = "";
-      hint.textContent = "Sélectionne un collaborateur pour afficher la couverture du poste.";
+      hint.textContent = "La synthèse apparaîtra après sélection d'un collaborateur";
     }
     if (wrap) wrap.style.display = "none";
     if (svg) svg.innerHTML = "";
@@ -1665,6 +1666,32 @@
         // Header actions
         const btnHelp = $("ep_btnHelpScoring");
         if (btnHelp) btnHelp.addEventListener("click", () => openModal("modalEpScoring"));
+
+        const btnReportPdf = $("ep_btnReportPdf");
+        if (btnReportPdf) {
+          btnReportPdf.addEventListener("click", () => {
+            if (!state.selectedCollaborateurId || !_portal) {
+              _portal && _portal.showAlert("warning", "Sélectionne un collaborateur avant de générer le rapport PDF.");
+              return;
+            }
+
+            /*
+              Bouton prêt côté front.
+              La route backend dédiée sera à créer quand le contenu exact du rapport sera validé.
+              Endpoint cible prévu :
+              GET /skills/entretien-performance/rapport-pdf/{id_contact}/{id_effectif}?criticite_min=XX
+            */
+            const params = new URLSearchParams();
+            params.set("criticite_min", String(getEpCriticiteSeuil()));
+
+            const url = `${_portal.apiBase}/skills/entretien-performance/rapport-pdf/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}?${params.toString()}`;
+
+            const win = window.open(url, "_blank", "noopener");
+            if (!win) {
+              _portal.showAlert("warning", "Le navigateur a bloqué l'ouverture du PDF.");
+            }
+          });
+        }
 
         const btnHist = $("ep_btnHistoryGlobal");
         if (btnHist) {

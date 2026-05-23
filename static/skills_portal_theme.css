@@ -5030,3 +5030,74 @@ body.bf-modal-open{
   line-height:1.35;
   color:var(--sb-gray-700);
 }
+
+/* ======================================================
+   Entretien performance — synthèse collaborateur / actions
+   ====================================================== */
+
+#view-entretien-performance .ep-summary-head{
+  padding-right:38px;
+}
+
+#view-entretien-performance .ep-summary-help-wrap{
+  top:6px;
+  right:10px;
+}
+
+#view-entretien-performance .ep-summary-body{
+  min-height:190px;
+}
+
+#view-entretien-performance .ep-summary-empty{
+  min-height:150px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  color:var(--sb-gray-500);
+  font-size:13px;
+  font-weight:600;
+  line-height:1.3;
+}
+
+#view-entretien-performance .ep-summary-wrap{
+  align-items:center;
+}
+
+#view-entretien-performance .ep-summary-person{
+  align-self:start;
+  padding-top:18px;
+}
+
+#view-entretien-performance .ep-summary-label{
+  margin-bottom:3px;
+}
+
+#view-entretien-performance .ep-summary-name{
+  font-size:16px;
+  font-weight:650;
+  line-height:1.15;
+}
+
+#view-entretien-performance .ep-summary-role{
+  margin-top:3px;
+  font-size:12px;
+  font-weight:500;
+  color:var(--sb-gray-700);
+}
+
+#view-entretien-performance .ep-summary-actions{
+  margin-top:12px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+#view-entretien-performance .ep-summary-actions .sb-btn{
+  white-space:nowrap;
+}
+
+#view-entretien-performance .ep-reset-filters-btn{
+  margin-top:4px;
+}
