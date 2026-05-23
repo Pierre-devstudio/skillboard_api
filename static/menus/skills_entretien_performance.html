@@ -92,7 +92,7 @@
 
           <label class="sb-switch ep-coverage-switch">
             <input type="checkbox" id="ep_chkPondere" />
-            <span>Vue priorisée</span>
+            <span>Prise en compte de la criticité minimale</span>
           </label>
         </div>
 
@@ -105,30 +105,12 @@
             <div class="ep-summary-person">
               <div class="ep-summary-label">Collaborateur</div>
               <div class="ep-summary-name" id="ep_ctxCollaborateur">—</div>
-
               <div class="ep-summary-role" id="ep_ctxPoste">—</div>
 
-              <div class="ep-summary-grid">
-                <div class="ep-summary-item">
-                  <span>Matricule</span>
-                  <strong id="ep_ctxMatricule">—</strong>
-                </div>
-
-                <div class="ep-summary-item">
-                  <span>Structure interne</span>
-                  <strong id="ep_ctxService">—</strong>
-                </div>
-
-                <div class="ep-summary-item">
-                  <span>Date</span>
-                  <strong id="ep_ctxDate">—</strong>
-                </div>
-
-                <div class="ep-summary-item">
-                  <span>À auditer</span>
-                  <strong id="ep_kpiToDo">0</strong>
-                </div>
-              </div>
+              <div id="ep_ctxMatricule" style="display:none;">—</div>
+              <div id="ep_ctxService" style="display:none;">—</div>
+              <div id="ep_ctxDate" style="display:none;">—</div>
+              <div id="ep_kpiToDo" style="display:none;">0</div>
             </div>
 
             <div class="ep-summary-gauge">
@@ -142,8 +124,8 @@
 
             <div class="ep-summary-score">
               <div class="ep-summary-score-value" id="ep_covPctPoste">—</div>
-              <div class="ep-summary-score-label">Couverture du poste</div>
-              <div class="card-sub ep-summary-score-hint">Jauge détaillée au clic</div>
+              <div class="ep-summary-score-label">Maîtrise du poste</div>
+              <div class="card-sub ep-summary-score-hint">Détail au clic</div>
               <div id="ep_covPctMax" style="display:none;">—</div>
             </div>
           </div>

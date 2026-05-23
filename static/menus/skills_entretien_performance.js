@@ -695,12 +695,10 @@
     const svg = $("ep_svgGauge");
     if (!svg) return;
 
-    const gMin = Number(pack.gauge_min ?? 0);
-    const gMax = Number(pack.gauge_max ?? 0);
-    const score = Number(pack.score ?? 0);
+    const pctMaitrise = Number(pack.pct_attendus ?? NaN);
 
-    if (!Number.isFinite(gMin) || !Number.isFinite(gMax) || !Number.isFinite(score) || gMax <= gMin) {
-      renderGauge(svg, 0, 1, 0);
+    if (!Number.isFinite(pctMaitrise)) {
+      renderGauge(svg, 0, 100, 0);
 
       const pctPoste = $("ep_covPctPoste");
       const pctMaxEl = $("ep_covPctMax");
@@ -710,21 +708,25 @@
       return;
     }
 
-    const needle = Math.max(gMin, Math.min(gMax, score));
-    renderGauge(svg, gMin, gMax, needle);
+    const pct = Math.max(0, Math.min(100, pctMaitrise));
 
-    const pctAttendus = Number(pack.pct_attendus ?? NaN);
-    const pctMax = Number(pack.pct_max ?? NaN);
+    /*
+      Important :
+      La jauge doit représenter le même indicateur que le chiffre affiché.
+      Avant, l’aiguille utilisait score/gauge_min/gauge_max alors que le texte affichait pct_attendus.
+      Résultat : 53% pouvait apparaître visuellement très bas.
+    */
+    renderGauge(svg, 0, 100, pct);
 
     const pctPoste = $("ep_covPctPoste");
     const pctMaxEl = $("ep_covPctMax");
 
     if (pctPoste) {
-      pctPoste.textContent = Number.isFinite(pctAttendus) ? `${Math.round(pctAttendus)}%` : "—";
+      pctPoste.textContent = `${Math.round(pct)}%`;
     }
 
     if (pctMaxEl) {
-      pctMaxEl.textContent = Number.isFinite(pctMax) ? `${Math.round(pctMax)}%` : "—";
+      pctMaxEl.textContent = "—";
     }
   }
 

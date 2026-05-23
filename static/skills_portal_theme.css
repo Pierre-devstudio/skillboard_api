@@ -4851,8 +4851,8 @@ body.bf-modal-open{
 
 #view-entretien-performance .ep-summary-name{
   color:var(--sb-gray-900);
-  font-size:18px;
-  font-weight:800;
+  font-size:17px;
+  font-weight:600;
   line-height:1.15;
   white-space:nowrap;
   overflow:hidden;
@@ -4863,7 +4863,7 @@ body.bf-modal-open{
   margin-top:4px;
   color:var(--sb-gray-700);
   font-size:13px;
-  font-weight:600;
+  font-weight:500;
   line-height:1.25;
   white-space:nowrap;
   overflow:hidden;
@@ -4972,4 +4972,16 @@ body.bf-modal-open{
     max-width:220px;
     justify-self:center;
   }
+}
+
+/* Entretien performance — synthèse collaborateur : ajustements UI */
+#view-entretien-performance .ep-summary-head .ep-coverage-switch{
+  gap:6px;
+}
+
+#view-entretien-performance .ep-summary-head .ep-coverage-switch span{
+  font-size:12px;
+  font-weight:600;
+  color:var(--sb-gray-700);
+  line-height:1.2;
 }
