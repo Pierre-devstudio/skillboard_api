@@ -926,7 +926,12 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
     "/skills/entretien-performance/couverture-poste-actuel/{id_contact}/{id_effectif}",
     response_model=CouverturePosteResponse,
 )
-def ep_get_couverture_poste_actuel(id_contact: str, id_effectif: str, request: Request):
+def ep_get_couverture_poste_actuel(
+    id_contact: str,
+    id_effectif: str,
+    request: Request,
+    criticite_min: float = Query(default=0.0, ge=0.0, le=100.0),
+):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
@@ -934,67 +939,76 @@ def ep_get_couverture_poste_actuel(id_contact: str, id_effectif: str, request: R
                 # Sécurité + périmètre entreprise via contact
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
 
-
                 # Contexte effectif (inclut poste actuel + intitulé poste)
                 eff = _fetch_effectif_context(cur, id_ent, id_effectif)
 
                 id_poste = (eff.get("id_poste_actuel") or "").strip()
                 intitule_poste = (eff.get("intitule_poste") or "").strip() or None
 
-                # Poste non renseigné -> réponse vide mais propre
-                if not id_poste:
-                    empty_variant = {
-                        "ponderer": False,
+                seuil_criticite = max(0.0, min(100.0, float(criticite_min or 0.0)))
+
+                def _empty_variant(ponderer: bool = True):
+                    return {
+                        "ponderer": ponderer,
                         "gauge_min": 0.0,
-                        "gauge_max": 0.0,
+                        "gauge_max": 100.0,
                         "expected_min": 0.0,
-                        "expected_max": 0.0,
+                        "expected_max": 100.0,
                         "score": 0.0,
                         "pct_attendus": 0.0,
                         "pct_max": 0.0,
                         "details": [],
                     }
+
+                # Poste non renseigné -> réponse vide mais propre
+                if not id_poste:
                     return {
                         "id_effectif": id_effectif,
                         "id_poste": None,
                         "intitule_poste": None,
                         "nb_competences": 0,
-                        "plain": {**empty_variant, "ponderer": False},
-                        "weighted": {**empty_variant, "ponderer": True},
+                        "plain": _empty_variant(False),
+                        "weighted": _empty_variant(True),
                         "message": "Poste actuel non renseigné pour ce collaborateur.",
                     }
 
-                # --- mapping min/max attendus par niveau requis ---
-                # A: [6 ; 10[
-                # B: [10 ; 19[
-                # C: [19 ; 24]
-                def _range_lvl(niv: str):
+                # Cible de maîtrise = borne haute continue du niveau attendu.
+                # A: [6 ; 10[  => 100% à 10
+                # B: [10 ; 19[ => 100% à 19
+                # C: [19 ; 24] => 100% à 24
+                def _target_lvl(niv: str) -> float:
                     n = (niv or "").strip().upper()
                     if n == "A":
-                        return 6.0, 10.0
+                        return 10.0
                     if n == "B":
-                        return 10.0, 19.0
+                        return 19.0
                     if n == "C":
-                        return 19.0, 24.0
-                    return 6.0, 24.0
+                        return 24.0
+                    return 24.0
 
-                def _w(v):
+                def _crit_pct(v) -> float:
                     try:
-                        x = int(v)
-                        return x if x > 0 else 1
+                        x = float(v)
                     except Exception:
-                        return 1
+                        return 1.0
 
-                def _pct(num, den):
-                    if den is None:
-                        return 0.0
+                    if x <= 0:
+                        return 1.0
+                    if x <= 1.0:
+                        return x * 100.0
+                    return x
+
+                def _safe_score(v) -> float:
                     try:
-                        denf = float(den)
-                        if denf <= 0:
-                            return 0.0
-                        return (float(num) / denf) * 100.0
+                        x = float(v)
                     except Exception:
                         return 0.0
+                    return max(0.0, x)
+
+                def _attainment(score: float, target: float) -> float:
+                    if target <= 0:
+                        return 0.0
+                    return max(0.0, min(float(score) / float(target), 1.0))
 
                 # --- attendus poste + score salarié (dernier audit via id_dernier_audit) ---
                 cur.execute(
@@ -1012,6 +1026,7 @@ def ep_get_couverture_poste_actuel(id_contact: str, id_effectif: str, request: R
                     JOIN public.tbl_competence c
                       ON c.id_comp = fp.id_competence
                      AND COALESCE(c.masque, FALSE) = FALSE
+                     AND COALESCE(c.etat, 'valide') <> 'inactive'
                     LEFT JOIN public.tbl_effectif_client_competence ec
                       ON ec.id_effectif_client = %s
                      AND ec.id_comp = fp.id_competence
@@ -1026,36 +1041,29 @@ def ep_get_couverture_poste_actuel(id_contact: str, id_effectif: str, request: R
                 )
                 rows = cur.fetchall() or []
 
-                details = []
-                weights = []
-                tmp = []
-
-                n = 0
-                sum_exp_min = 0.0
-                sum_exp_max = 0.0
-                sum_score = 0.0
+                details: List[Dict[str, Any]] = []
+                weighted_sum = 0.0
+                weight_total = 0.0
 
                 for r in rows:
                     id_comp = (r.get("id_comp") or "").strip()
                     if not id_comp:
                         continue
 
-                    n += 1
+                    crit_pct = _crit_pct(r.get("poids_criticite"))
 
-                    w_raw = _w(r.get("poids_criticite"))
-                    weights.append(w_raw)
+                    # Le seuil de criticité filtre le périmètre de calcul.
+                    if crit_pct + 0.0001 < seuil_criticite:
+                        continue
 
-                    try:
-                        sc = float(r.get("resultat_eval")) if r.get("resultat_eval") is not None else 0.0
-                    except Exception:
-                        sc = 0.0
+                    score = _safe_score(r.get("resultat_eval"))
+                    target = _target_lvl(r.get("niveau_requis"))
+                    attainment = _attainment(score, target)
 
-                    # compétence jamais évaluée = 0 (déjà géré par fallback)
-                    exp_min, exp_max = _range_lvl(r.get("niveau_requis"))
-
-                    sum_exp_min += exp_min
-                    sum_exp_max += exp_max
-                    sum_score += sc
+                    # La criticité du poste pondère toujours le calcul.
+                    weight = max(crit_pct, 1.0)
+                    weighted_sum += weight * attainment
+                    weight_total += weight
 
                     details.append(
                         {
@@ -1063,90 +1071,53 @@ def ep_get_couverture_poste_actuel(id_contact: str, id_effectif: str, request: R
                             "code": (r.get("code") or "").strip(),
                             "intitule": (r.get("intitule") or "").strip(),
                             "niveau_requis": (r.get("niveau_requis") or "").strip(),
-                            "poids_criticite": w_raw,
-                            "score": round(sc, 1),
+                            "poids_criticite": int(round(crit_pct)),
+                            "score": round(score, 1),
                             "date_audit": str(r["date_audit"]) if r.get("date_audit") else None,
                             "methode_eval": r.get("methode_eval"),
                         }
                     )
 
-                    tmp.append((w_raw, exp_min, exp_max, sc))
+                n = len(details)
 
-                gauge_min = float(n) * 6.0
-                gauge_max = float(n) * 24.0
-
-                # Aucun attendu sur le poste
                 if n == 0:
-                    empty_variant = {
-                        "ponderer": False,
-                        "gauge_min": 0.0,
-                        "gauge_max": 0.0,
-                        "expected_min": 0.0,
-                        "expected_max": 0.0,
-                        "score": 0.0,
-                        "pct_attendus": 0.0,
-                        "pct_max": 0.0,
-                        "details": [],
-                    }
                     return {
                         "id_effectif": id_effectif,
                         "id_poste": id_poste,
                         "intitule_poste": intitule_poste,
                         "nb_competences": 0,
-                        "plain": {**empty_variant, "ponderer": False},
-                        "weighted": {**empty_variant, "ponderer": True},
-                        "message": "Aucune compétence attendue n'est valorisée sur ce poste.",
+                        "plain": _empty_variant(False),
+                        "weighted": _empty_variant(True),
+                        "message": "Aucune compétence attendue n'est retenue avec le seuil de criticité défini.",
                     }
 
-                # --- weighted (normalisé) : somme(wn)=n pour garder gauge_min/max inchangés ---
-                w_sum = float(sum(weights)) if weights else 0.0
+                maitrise_pct = 0.0
+                if weight_total > 0:
+                    maitrise_pct = max(0.0, min(100.0, (weighted_sum / weight_total) * 100.0))
 
-                def _wnorm(wr: float):
-                    if w_sum <= 0:
-                        return 1.0
-                    return (float(wr) * float(n)) / w_sum
-
-                w_exp_min = 0.0
-                w_exp_max = 0.0
-                w_score = 0.0
-
-                for w_raw, exp_min, exp_max, sc in tmp:
-                    wn = _wnorm(w_raw)
-                    w_exp_min += exp_min * wn
-                    w_exp_max += exp_max * wn
-                    w_score += sc * wn
-
-                plain = {
-                    "ponderer": False,
-                    "gauge_min": round(gauge_min, 1),
-                    "gauge_max": round(gauge_max, 1),
-                    "expected_min": round(sum_exp_min, 1),
-                    "expected_max": round(sum_exp_max, 1),
-                    "score": round(sum_score, 1),
-                    "pct_attendus": round(_pct(sum_score, sum_exp_max), 1),
-                    "pct_max": round(_pct(sum_score, gauge_max), 1),
-                    "details": details,
-                }
-
-                weighted = {
+                variant_weighted = {
                     "ponderer": True,
-                    "gauge_min": round(gauge_min, 1),
-                    "gauge_max": round(gauge_max, 1),
-                    "expected_min": round(w_exp_min, 1),
-                    "expected_max": round(w_exp_max, 1),
-                    "score": round(w_score, 1),
-                    "pct_attendus": round(_pct(w_score, w_exp_max), 1),
-                    "pct_max": round(_pct(w_score, gauge_max), 1),
+                    "gauge_min": 0.0,
+                    "gauge_max": 100.0,
+                    "expected_min": 0.0,
+                    "expected_max": 100.0,
+                    "score": round(maitrise_pct, 1),
+                    "pct_attendus": round(maitrise_pct, 1),
+                    "pct_max": round(maitrise_pct, 1),
                     "details": details,
                 }
+
+                # Compat front : on renvoie la même lecture dans plain et weighted.
+                # La criticité est désormais toujours prise en compte ; le seuil filtre le périmètre.
+                variant_plain = {**variant_weighted, "ponderer": False}
 
                 return {
                     "id_effectif": id_effectif,
                     "id_poste": id_poste,
                     "intitule_poste": intitule_poste,
                     "nb_competences": n,
-                    "plain": plain,
-                    "weighted": weighted,
+                    "plain": variant_plain,
+                    "weighted": variant_weighted,
                     "message": None,
                 }
 

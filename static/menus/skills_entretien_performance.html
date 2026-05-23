@@ -90,10 +90,18 @@
             <div class="card-title">Synthèse collaborateur</div>
           </div>
 
-          <label class="sb-switch ep-coverage-switch">
-            <input type="checkbox" id="ep_chkPondere" />
-            <span>Prise en compte de la criticité minimale</span>
-          </label>
+          <div class="ep-summary-help-wrap">
+            <button type="button" class="ep-priority-help ep-summary-help" id="ep_btnSummaryHelp" aria-label="Comprendre la jauge">?</button>
+
+            <div class="ep-summary-help-pop" aria-hidden="true">
+              <div class="ep-priority-pop-title">Maîtrise du poste</div>
+              <div class="ep-summary-help-text">
+                Cette jauge montre dans quelle mesure le collaborateur maîtrise les compétences attendues de son poste, en donnant plus de poids aux compétences les plus critiques.
+                <br><br>
+                Les compétences sous le seuil de criticité défini ne sont pas prises en compte.
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="card-body ep-summary-body">

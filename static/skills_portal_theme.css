@@ -4985,3 +4985,48 @@ body.bf-modal-open{
   color:var(--sb-gray-700);
   line-height:1.2;
 }
+
+/* ======================================================
+   Entretien performance — aide jauge synthèse
+   ====================================================== */
+
+#view-entretien-performance .ep-summary-card{
+  position:relative;
+}
+
+#view-entretien-performance .ep-summary-head{
+  position:relative;
+  padding-right:34px;
+}
+
+#view-entretien-performance .ep-summary-help-wrap{
+  position:absolute;
+  top:12px;
+  right:12px;
+  z-index:30;
+}
+
+#view-entretien-performance .ep-summary-help-pop{
+  position:absolute;
+  top:34px;
+  right:0;
+  z-index:60;
+  width:310px;
+  display:none;
+  padding:10px 12px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:#fff;
+  box-shadow:0 12px 28px rgba(17,24,39,.16);
+}
+
+#view-entretien-performance .ep-summary-help-wrap:hover .ep-summary-help-pop,
+#view-entretien-performance .ep-summary-help-wrap:focus-within .ep-summary-help-pop{
+  display:block;
+}
+
+#view-entretien-performance .ep-summary-help-text{
+  font-size:12px;
+  line-height:1.35;
+  color:var(--sb-gray-700);
+}

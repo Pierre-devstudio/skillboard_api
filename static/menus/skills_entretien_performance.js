@@ -61,15 +61,7 @@
   // Couverture poste: modal détail (réutilise state._covData)
   // ------------------------------------------------------
   function _epGetCovWeightedFlag() {
-    // on cherche large (selon ids possibles)
-    const chk =
-      $("ep_chkPondere") ||
-      $("ep_covChkWeight") ||
-      $("ep_covChkWeighted") ||
-      $("ep_covChkCrit") ||
-      $("ep_chkCovWeighted") ||
-      document.querySelector("#ep_covWrap input[type='checkbox']");
-    return chk ? !!chk.checked : false;
+    return true;
   }
 
   function _epLevelFromScore24(score) {
@@ -600,13 +592,6 @@
   function bindCouverturePosteOnce() {
     if (state._covBound) return;
     state._covBound = true;
-
-    const chk = $("ep_chkPondere");
-    if (chk) {
-      chk.addEventListener("change", () => {
-        renderCouverturePoste();
-      });
-    }
   }
 
   function resetCouverturePosteUI() {
@@ -644,8 +629,12 @@
   }
 
   function getCouvertureMode() {
-    const chk = $("ep_chkPondere");
-    return (chk && chk.checked) ? "weighted" : "plain";
+    return "weighted";
+  }
+
+  function getEpCriticiteSeuil() {
+    const rng = $("ep_rngCriticite");
+    return Math.max(0, Math.min(100, getEpCritPctValue(rng?.value || 0)));
   }
 
   async function refreshCouverturePosteActuel(force) {
@@ -658,9 +647,10 @@
     state._covLoading = true;
 
     try {
-      // Endpoint à ajouter côté API (on le fera ensuite) :
-      // GET /skills/entretien-performance/couverture-poste-actuel/{id_contact}/{id_effectif}
-      const url = `${_portal.apiBase}/skills/entretien-performance/couverture-poste-actuel/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}`;
+      const params = new URLSearchParams();
+      params.set("criticite_min", String(getEpCriticiteSeuil()));
+
+      const url = `${_portal.apiBase}/skills/entretien-performance/couverture-poste-actuel/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}?${params.toString()}`;
       const data = await _portal.apiJson(url);
 
       state._covData = data || null;
@@ -677,7 +667,7 @@
       // petite jauge vide pour éviter un “grand trou”
       const svg = $("ep_svgGauge");
       if (svg) {
-        renderGauge(svg, 0, 1, 0, 0, 0);
+        renderGauge(svg, 0, 100, 0);
       }
     } finally {
       state._covLoading = false;
@@ -688,8 +678,7 @@
     const data = state._covData;
     if (!data) return;
 
-    const mode = getCouvertureMode();
-    const pack = (mode === "weighted") ? (data.weighted || null) : (data.plain || null);
+    const pack = data.weighted || data.plain || null;
     if (!pack) return;
 
     const svg = $("ep_svgGauge");
@@ -710,24 +699,14 @@
 
     const pct = Math.max(0, Math.min(100, pctMaitrise));
 
-    /*
-      Important :
-      La jauge doit représenter le même indicateur que le chiffre affiché.
-      Avant, l’aiguille utilisait score/gauge_min/gauge_max alors que le texte affichait pct_attendus.
-      Résultat : 53% pouvait apparaître visuellement très bas.
-    */
+    // Le chiffre affiché et l'aiguille utilisent strictement le même pourcentage.
     renderGauge(svg, 0, 100, pct);
 
     const pctPoste = $("ep_covPctPoste");
     const pctMaxEl = $("ep_covPctMax");
 
-    if (pctPoste) {
-      pctPoste.textContent = `${Math.round(pct)}%`;
-    }
-
-    if (pctMaxEl) {
-      pctMaxEl.textContent = "—";
-    }
+    if (pctPoste) pctPoste.textContent = `${Math.round(pct)}%`;
+    if (pctMaxEl) pctMaxEl.textContent = "—";
   }
 
   function renderGauge(svg, gaugeMin, gaugeMax, value) {
@@ -800,25 +779,25 @@
     svg.innerHTML = `
       <path d="${arcPath(180, 360)}"
             stroke="rgba(0,0,0,.10)"
-            stroke-width="16"
+            stroke-width="18"
             fill="none"
             stroke-linecap="round"></path>
 
       <path d="${arcPath(a0, a1)}"
             stroke="var(--accent)"
-            stroke-width="14"
+            stroke-width="16"
             fill="none"
             stroke-linecap="butt"></path>
 
       <path d="${arcPath(a1, a2)}"
             stroke="#f59e0b"
-            stroke-width="14"
+            stroke-width="16"
             fill="none"
             stroke-linecap="butt"></path>
 
       <path d="${arcPath(a2, a3)}"
             stroke="#16a34a"
-            stroke-width="14"
+            stroke-width="16"
             fill="none"
             stroke-linecap="butt"></path>
 
@@ -1444,6 +1423,18 @@
     return Number.isFinite(n) ? n : 0;
   }
 
+  function scheduleCouverturePosteRefresh() {
+    if (!state.selectedCollaborateurId) return;
+
+    if (state._covRefreshTimer) clearTimeout(state._covRefreshTimer);
+
+    state._covRefreshTimer = setTimeout(() => {
+      state._covData = null;
+      state._covLastKey = null;
+      refreshCouverturePosteActuel(true);
+    }, 220);
+  }
+
   function bindCriticiteSliderOnce() {
     const rng = $("ep_rngCriticite");
     if (!rng) return;
@@ -1453,6 +1444,7 @@
 
     rng.addEventListener("input", () => {
       applyChecklistCriticiteFilter();
+      scheduleCouverturePosteRefresh();
     });
   }
 
