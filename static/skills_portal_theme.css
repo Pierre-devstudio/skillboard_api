@@ -2722,6 +2722,14 @@ body{
   gap: 6px;
 }
 
+#view-entretien-performance #ep_cardPerimetre .ep-crit-slider--perimetre{
+  margin-top:2px;
+}
+
+#view-entretien-performance #ep_cardPerimetre .ep-crit-slider--perimetre input[type="range"]{
+  width:100%;
+}
+
 #view-entretien-performance .ep-crit-slider input[type="range"]{
   width: 100%;
 }
@@ -4540,7 +4548,6 @@ body.bf-modal-open{
 #view-entretien-performance .ep-comp-card{
   display:flex;
   flex-direction:column;
-  gap:6px;
   padding:10px 12px;
   border:1px solid var(--sb-gray-200);
   border-left:5px solid var(--sb-gray-300);
@@ -4580,15 +4587,30 @@ body.bf-modal-open{
   text-overflow:ellipsis;
 }
 
-#view-entretien-performance .ep-comp-meta{
-  display:flex;
+#view-entretien-performance .ep-comp-level-badge{
+  flex:0 0 auto;
+}
+
+#view-entretien-performance .ep-comp-edit-btn{
+  flex:0 0 auto;
+  width:30px;
+  height:30px;
+  padding:0;
+  display:inline-flex;
   align-items:center;
-  gap:12px;
-  flex-wrap:wrap;
-  color:var(--sb-gray-500);
-  font-size:12px;
-  font-weight:500;
-  padding-left:2px;
+  justify-content:center;
+  border-radius:9px;
+}
+
+#view-entretien-performance .ep-comp-edit-btn svg{
+  width:15px;
+  height:15px;
+}
+
+#view-entretien-performance .ep-comp-edit-btn:hover{
+  border-color:color-mix(in srgb, var(--accent) 35%, var(--sb-gray-300));
+  background:color-mix(in srgb, var(--accent) 7%, #ffffff);
+  color:var(--accent);
 }
 
 #modalEpEvaluation .ep-eval-modal-card{

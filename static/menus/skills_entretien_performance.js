@@ -438,15 +438,16 @@
   function _setRowAuditedVisual(tr) {
     if (!tr) return;
 
-    const badge = tr.querySelector("span.sb-badge");
-    if (!badge) return;
+    const card = tr.querySelector(".ep-comp-card");
+    if (card) card.classList.remove("ep-comp-card--never");
 
-    // repasse en badge normal (accent)
-    badge.className = "sb-badge sb-badge-accent";
-    badge.style.background = "";
-    badge.style.borderColor = "";
-    badge.style.color = "";
-    badge.title = "";
+    const levelTxt = (document.getElementById("ep_levelABC")?.textContent || "").toString().trim();
+    const levelBadge = tr.querySelector(".ep-comp-level-badge");
+
+    if (levelBadge && levelTxt && levelTxt !== "—") {
+      levelBadge.textContent = levelTxt;
+      levelBadge.className = `sb-badge ep-comp-level-badge ${getEpLevelBadgeClass(levelTxt)}`;
+    }
   }
 
   function _recalcKpiToDoFallbackFromDOM() {
@@ -456,17 +457,7 @@
     const rows = Array.from(tbody.querySelectorAll("tr"));
     const total = rows.length;
 
-    // “jamais auditée” = badge rouge (title) OU style rouge (selon implémentation)
-    const never = rows.filter(r => {
-      const b = r.querySelector("span.sb-badge");
-      if (!b) return false;
-      const t = (b.title || "").toLowerCase();
-      if (t.includes("jamais")) return true;
-
-      // fallback: rouge inline
-      const bg = (b.style.background || "").toLowerCase();
-      return bg === "#d11a2a" || bg.includes("rgb(209");
-    }).length;
+    const never = rows.filter(r => !!r.querySelector(".ep-comp-card--never")).length;
 
     setText("ep_compCount", String(total));
     setText("ep_kpiToDo", `${never} / ${total}`);
@@ -836,7 +827,7 @@
       <circle cx="${cx}" cy="${cy}" r="6" fill="rgba(0,0,0,.65)"></circle>
     `;
   }
-  
+
   async function loadBootstrap() {
     if (!_portal) return;
 
@@ -901,6 +892,17 @@
     if (priority === "ok") return 2;
     return 3;
   }
+
+  function getEpLevelBadgeClass(label) {
+    const v = (label || "").toString().trim().toLowerCase();
+
+    if (!v || v === "—") return "sb-badge-niv";
+    if (v.includes("initial") || v === "a") return "sb-badge-niv sb-badge-niv-a";
+    if (v.includes("avancé") || v.includes("avance") || v === "b") return "sb-badge-niv sb-badge-niv-b";
+    if (v.includes("expert") || v === "c") return "sb-badge-niv sb-badge-niv-c";
+
+    return "sb-badge-niv";
+  }  
 
   function renderCollaborateurs(list) {
     const wrap = $("ep_listCollaborateurs");
@@ -1063,7 +1065,8 @@
 
 
 
-            // Col: carte compétence lisible (détail dans le modal, pas dans la liste)
+            // Col: carte compétence compacte
+            // Ligne = badge compétence + titre + niveau + bouton évaluer
             const tdComp = document.createElement("td");
 
             const rowWrap = document.createElement("div");
@@ -1074,7 +1077,7 @@
             top.className = "ep-comp-card-top";
 
             const badge = document.createElement("span");
-            badge.className = "sb-badge sb-badge-accent ep-comp-code";
+            badge.className = "sb-badge sb-badge-ref-comp-code ep-comp-code";
             badge.textContent = (x.code || "").toString().trim();
 
             const title = document.createElement("span");
@@ -1082,26 +1085,38 @@
             title.textContent = (x.intitule || "").toString().trim();
             title.title = title.textContent;
 
+            const niveau = (x.niveau_actuel || "").toString().trim();
+            const levelBadge = document.createElement("span");
+            levelBadge.className = `sb-badge ep-comp-level-badge ${getEpLevelBadgeClass(niveau)}`;
+            levelBadge.textContent = niveau || "—";
+            levelBadge.title = "Niveau actuel";
+
+            const iconEdit = `
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
+              </svg>
+            `;
+
+            const btnEdit = document.createElement("button");
+            btnEdit.type = "button";
+            btnEdit.className = "sb-icon-btn ep-comp-edit-btn";
+            btnEdit.title = "Évaluer la compétence";
+            btnEdit.setAttribute("aria-label", "Évaluer la compétence");
+            btnEdit.innerHTML = iconEdit;
+
+            btnEdit.addEventListener("click", (ev) => {
+              ev.preventDefault();
+              ev.stopPropagation();
+              tr.click();
+            });
+
             top.appendChild(badge);
             top.appendChild(title);
-
-            const meta = document.createElement("div");
-            meta.className = "ep-comp-meta";
-
-            const niveau = (x.niveau_actuel || "").toString().trim();
-            const critPct = Number(tr.dataset.critPct || 0);
-
-            const levelSpan = document.createElement("span");
-            levelSpan.textContent = niveau ? `Niveau : ${niveau}` : "Niveau : —";
-
-            const critSpan = document.createElement("span");
-            critSpan.textContent = `Criticité : ${Number.isFinite(critPct) ? Math.round(critPct) : 0}%`;
-
-            meta.appendChild(levelSpan);
-            meta.appendChild(critSpan);
+            top.appendChild(levelBadge);
+            top.appendChild(btnEdit);
 
             rowWrap.appendChild(top);
-            rowWrap.appendChild(meta);
             tdComp.appendChild(rowWrap);
 
             tr.appendChild(tdComp);

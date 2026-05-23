@@ -62,6 +62,14 @@
             </select>
           </div>
 
+          <div class="ep-crit-slider ep-crit-slider--perimetre">
+            <label class="sb-label" for="ep_rngCriticite">Criticité minimale</label>
+            <input type="range" id="ep_rngCriticite" min="0" max="100" step="1" value="0" />
+            <div class="ep-crit-slider-meta">
+              <span class="card-sub">Seuil : <b><span id="ep_rngCriticiteVal">0</span>%</b></span>
+            </div>
+          </div>
+
           <button type="button" class="btn-secondary" id="ep_btnScopeReset">Réinitialiser</button>
         </div>
       </div>
@@ -157,23 +165,12 @@
 
       <div class="card ep-panel-card ep-competence-panel">
         <div class="card-header ep-competence-head">
-          <div>
-            <div class="card-title">Compétences à auditer</div>
-            <div class="card-sub">Clique sur une compétence pour ouvrir la grille d’évaluation.</div>
-          </div>
-          <div class="card-sub" id="ep_compCount">0</div>
+          <div class="card-title">Compétences à auditer</div>
+          <div id="ep_compCount" style="display:none;">0</div>
         </div>
 
         <div class="card-body">
-          <div class="ep-competence-toolbar">
-            <div class="ep-crit-slider">
-              <label class="sb-label" for="ep_rngCriticite">Criticité minimale</label>
-              <input type="range" id="ep_rngCriticite" min="0" max="100" step="1" value="0" />
-              <div class="ep-crit-slider-meta">
-                <span class="card-sub">Seuil : <b><span id="ep_rngCriticiteVal">0</span>%</b></span>
-              </div>
-            </div>
-          </div>
+          <!-- Filtre criticité déplacé dans la carte Périmètre -->
 
           <div class="table-wrap ep-comp-table-wrap">
             <table class="sb-table" id="ep_tblCompetences">
