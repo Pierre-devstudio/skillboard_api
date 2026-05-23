@@ -325,9 +325,7 @@ def _ensure_effectif_competences_for_poste(cur, id_effectif: str, id_poste: Opti
                 id_dernier_audit,
                 actif,
                 archive,
-                date_derniere_eval,
-                date_creation,
-                dernier_update
+                date_derniere_eval
             )
             VALUES
             (
@@ -336,9 +334,7 @@ def _ensure_effectif_competences_for_poste(cur, id_effectif: str, id_poste: Opti
                 NULL,
                 TRUE,
                 FALSE,
-                NULL,
-                CURRENT_DATE,
-                NOW()
+                NULL
             )
             """,
             (
