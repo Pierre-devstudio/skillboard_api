@@ -349,6 +349,24 @@
   }
 
   function resetEvaluationPanel() {
+
+    const evalModal = $("modalEpEvaluation");
+    if (evalModal) evalModal.classList.remove("is-history-readonly");
+
+    const titleEl = $("ep_compTitle");
+    if (titleEl) {
+      titleEl.innerHTML = "";
+      titleEl.textContent = "—";
+    }
+
+    const domEl = $("ep_compDomain");
+    if (domEl) {
+      domEl.textContent = "";
+      domEl.className = "sb-badge";
+      domEl.removeAttribute("style");
+      domEl.style.display = "inline-block";
+    }
+  
     setText("ep_evalHint", "Sélectionne une compétence.");
     setText("ep_compTitle", "—");
     setText("ep_compDomain", "");
@@ -2296,12 +2314,24 @@
                 .filter(c => c.code_critere && c.niveau !== null && c.niveau !== undefined);
             };
 
-            const loadCritereLabels = async (idComp) => {
+            const loadEvaluationReferentielData = async (idComp) => {
               const fallback = {
-                Critere1: "Critère 1",
-                Critere2: "Critère 2",
-                Critere3: "Critère 3",
-                Critere4: "Critère 4"
+                labels: {
+                  Critere1: "Critère 1",
+                  Critere2: "Critère 2",
+                  Critere3: "Critère 3",
+                  Critere4: "Critère 4"
+                },
+                evals: {
+                  Critere1: [],
+                  Critere2: [],
+                  Critere3: [],
+                  Critere4: []
+                },
+                domaine: {
+                  label: "",
+                  couleur: ""
+                }
               };
 
               if (!idComp || !_portal) return fallback;
@@ -2319,7 +2349,24 @@
                   state._compDetailCache[idComp] = detail;
                 }
 
-                const grid = detail?.competence?.grille_evaluation || null;
+                const comp = detail?.competence || {};
+                const grid = comp?.grille_evaluation || null;
+
+                const dom = comp?.domaine || null;
+                const domLabel = dom
+                  ? (dom.titre_court || dom.titre || dom.id_domaine_competence || "")
+                  : "";
+
+                const domColorRaw = dom?.couleur || "";
+                const domColor = (typeof epNormalizeColor === "function")
+                  ? epNormalizeColor(domColorRaw)
+                  : (domColorRaw || "").toString().trim();
+
+                fallback.domaine = {
+                  label: (domLabel || "").toString().trim(),
+                  couleur: domColor
+                };
+
                 if (!grid || typeof grid !== "object") return fallback;
 
                 const keys = Object.keys(grid).sort((a, b) => {
@@ -2332,8 +2379,13 @@
 
                 keys.slice(0, 4).forEach((k, idx) => {
                   const crit = grid[k] || {};
+                  const codeCrit = `Critere${idx + 1}`;
+
                   const label = (crit.Nom ?? crit.nom ?? "").toString().trim();
-                  if (label) fallback[`Critere${idx + 1}`] = label;
+                  if (label) fallback.labels[codeCrit] = label;
+
+                  const evalsRaw = Array.isArray(crit.Eval || crit.eval) ? (crit.Eval || crit.eval) : [];
+                  fallback.evals[codeCrit] = evalsRaw.map(v => (v ?? "").toString().trim());
                 });
 
                 return fallback;
@@ -2372,9 +2424,48 @@
 
               resetEvaluationPanel();
 
-              setText("ep_evalHint", `Historique du ${lastDate} · ${group.evalTxt}`);
-              setText("ep_compTitle", [code, intitule].filter(Boolean).join(" — ") || "—");
-              setText("ep_compDomain", "");
+              const evalModal = $("modalEpEvaluation");
+              if (evalModal) evalModal.classList.add("is-history-readonly");
+
+              setText("ep_evalHint", `Historique du ${lastDate} · évalué par : ${group.evalTxt}`);
+
+              const refData = await loadEvaluationReferentielData(x.id_comp);
+
+              const titleEl = $("ep_compTitle");
+              if (titleEl) {
+                titleEl.innerHTML = "";
+
+                if (code) {
+                  const badge = document.createElement("span");
+                  badge.className = "sb-badge sb-badge-ref-comp-code ep-eval-title-code";
+                  badge.textContent = code;
+                  titleEl.appendChild(badge);
+                }
+
+              const titleText = document.createElement("span");
+                titleText.className = "ep-eval-title-text";
+                titleText.textContent = intitule || "—";
+                titleEl.appendChild(titleText);
+              }
+
+              const domEl = $("ep_compDomain");
+              if (domEl) {
+                const domLabel = (refData?.domaine?.label || "").toString().trim();
+                const domColor = (refData?.domaine?.couleur || "").toString().trim();
+
+                if (domLabel) {
+                  domEl.textContent = domLabel;
+                  domEl.className = "sb-badge-domaine ep-domain-badge";
+                  domEl.style.setProperty("--dom-color", domColor || "#9ca3af");
+                  domEl.style.display = "inline-flex";
+                } else {
+                  domEl.textContent = "";
+                  domEl.className = "sb-badge";
+                  domEl.removeAttribute("style");
+                  domEl.style.display = "none";
+                }
+              }
+
               setText("ep_compCurrent", niveau);
               setText("ep_compLastEval", lastDate ? `Dernière éval : ${lastDate}` : "");
 
@@ -2395,7 +2486,6 @@
               setDisabled("ep_txtObservation", true);
 
               const criteres = extractHistoryCriteres(x);
-              const labels = await loadCritereLabels(x.id_comp);
 
               for (let i = 1; i <= 4; i++) {
                 const labelEl = $(`ep_critLabel${i}`);
@@ -2417,7 +2507,33 @@
                 }
 
                 if (row) row.style.display = "";
-                if (labelEl) labelEl.textContent = labels[codeCrit] || `Critère ${i}`;
+                if (labelEl) {
+                  labelEl.innerHTML = "";
+
+                  const labelText = refData?.labels?.[codeCrit] || `Critère ${i}`;
+                  const evalsAll = Array.isArray(refData?.evals?.[codeCrit]) ? refData.evals[codeCrit] : [];
+
+                  const spanTxt = document.createElement("span");
+                  spanTxt.textContent = labelText;
+                  labelEl.appendChild(spanTxt);
+
+                  const btn = document.createElement("button");
+                  btn.type = "button";
+                  btn.className = "ep-crit-help";
+                  btn.textContent = "i";
+                  btn.title = "Guide de notation";
+                  btn.setAttribute("aria-label", "Guide de notation");
+
+                  btn.addEventListener("click", (ev) => {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+
+                    const selectedNote = crit?.niveau ? String(crit.niveau) : "";
+                    openGuidePopover(btn, i, labelText, evalsAll, selectedNote);
+                  });
+
+                  labelEl.appendChild(btn);
+                }
 
                 if (note) note.value = String(crit.niveau || "");
                 if (com) com.value = crit.commentaire || "";

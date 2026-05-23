@@ -5552,3 +5552,105 @@ body.bf-modal-open{
     justify-content:flex-start;
   }
 }
+
+/* ======================================================
+   Entretien performance — Modal évaluation / historique
+   ====================================================== */
+
+#modalEpEvaluation.is-history-readonly .ep-skill-current{
+  display:none;
+}
+
+#modalEpEvaluation.is-history-readonly .ep-skill-head{
+  grid-template-columns:1fr;
+}
+
+#modalEpEvaluation .ep-skill-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+  font-size:15px;
+  font-weight:600;
+  line-height:1.25;
+}
+
+#modalEpEvaluation .ep-eval-title-code{
+  flex:0 0 auto;
+}
+
+#modalEpEvaluation .ep-eval-title-text{
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#modalEpEvaluation .ep-domain-badge{
+  --dom-color:#9ca3af;
+  border-color:var(--dom-color);
+  background:color-mix(in srgb, var(--dom-color) 10%, #ffffff);
+  color:var(--sb-gray-900);
+}
+
+#modalEpEvaluation .ep-domain-badge::before{
+  background:var(--dom-color);
+}
+
+#modalEpEvaluation .ep-score-card .value{
+  font-size:16px;
+  font-weight:650;
+}
+
+#modalEpEvaluation .ep-skill-level{
+  font-size:15px;
+  font-weight:650;
+}
+
+#modalEpEvaluation .ep-crit-help{
+  margin-left:10px;
+  width:22px;
+  height:22px;
+  border-radius:999px;
+  border:1px solid var(--sb-gray-300);
+  background:#fff;
+  color:var(--sb-gray-900);
+  font-weight:700;
+  font-size:13px;
+  line-height:20px;
+  padding:0;
+  cursor:pointer;
+}
+
+#modalEpEvaluation .ep-crit-help:hover,
+#modalEpEvaluation .ep-crit-help:focus{
+  border-color:var(--accent);
+  color:var(--accent);
+  outline:none;
+  box-shadow:0 0 0 3px rgba(var(--sb-accent-rgb), .14);
+}
+
+#modalEpEvaluation #btnEpEvaluationModalClose{
+  border-color:var(--sb-soft-border);
+  background:var(--sb-soft-bg);
+  color:var(--sb-gray-900);
+}
+
+#modalEpEvaluation #btnEpEvaluationModalClose:hover{
+  background:var(--sb-soft-bg-hover);
+}
+
+#modalEpEvaluation #ep_btnSave{
+  background:var(--accent);
+  border-color:var(--accent);
+  color:#fff;
+}
+
+#modalEpEvaluation #ep_btnSave:hover:not(:disabled){
+  filter:brightness(.92);
+}
+
+#modalEpEvaluation #ep_btnSave:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
