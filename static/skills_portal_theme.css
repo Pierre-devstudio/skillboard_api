@@ -4579,12 +4579,13 @@ body.bf-modal-open{
   align-items:flex-start;
   gap:12px;
   padding-right:34px;
+  min-height:30px;
 }
 
 #view-entretien-performance .ep-priority-help-wrap{
   position:absolute;
-  top:12px;
-  right:12px;
+  top:-2px;
+  right:0;
   z-index:20;
 }
 
