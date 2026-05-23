@@ -4,7 +4,7 @@
   <div class="card ep-page-head">
     <div style="min-width:0;">
       <div class="card-title">Entretiens & évaluations</div>
-      <div class="card-sub">Évaluer les compétences, tracer les audits et visualiser la couverture du poste actuel.</div>
+      <div class="card-sub">Piloter les entretiens, identifier les compétences à auditer et tracer les évaluations.</div>
     </div>
 
     <div class="sb-actions ep-page-actions">
@@ -13,7 +13,6 @@
     </div>
   </div>
 
-  <!-- Contexte entretien compact -->
   <div class="card ep-context-card">
     <div class="ep-context-main">
       <div class="ep-context-person">
@@ -26,14 +25,17 @@
           <div class="label">Matricule</div>
           <div class="value" id="ep_ctxMatricule">—</div>
         </div>
+
         <div class="ep-context-item">
           <div class="label">Poste</div>
           <div class="value" id="ep_ctxPoste">—</div>
         </div>
+
         <div class="ep-context-item">
           <div class="label">Structure interne</div>
           <div class="value" id="ep_ctxService">—</div>
         </div>
+
         <div class="ep-context-item">
           <div class="label">Date</div>
           <div class="value" id="ep_ctxDate">—</div>
@@ -42,17 +44,15 @@
     </div>
 
     <div class="ep-context-kpi">
-      <div class="label">Compétences jamais auditées</div>
+      <div class="label">À auditer</div>
       <div class="value" id="ep_kpiToDo">0</div>
     </div>
   </div>
 
   <div class="ep-main-layout">
-    <!-- Colonne gauche : sélection + checklist -->
     <div class="ep-left-col">
-      <div class="card" id="ep_cardPerimetre">
+      <div class="card ep-panel-card" id="ep_cardPerimetre">
         <div class="card-title">Périmètre</div>
-        <div class="card-sub">Choisir la population à auditer.</div>
 
         <div class="ep-filter-stack">
           <div class="info-item" style="min-width:0;">
@@ -68,9 +68,7 @@
 
       <div class="card ep-panel-card ep-collab-panel">
         <div class="card-header ep-collab-head">
-          <div>
-            <div class="card-title">Collaborateurs à évaluer</div>
-          </div>
+          <div class="card-title">Collaborateurs à évaluer</div>
 
           <div class="ep-priority-help-wrap">
             <button type="button" class="ep-priority-help" id="ep_btnPriorityHelp" aria-label="Légende des priorités">?</button>
@@ -106,54 +104,17 @@
           </div>
 
           <div class="sb-list ep-collab-list" id="ep_listCollaborateurs"></div>
-        </div>
-      </div>
-
-      <div class="card ep-panel-card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">Compétences à auditer</div>
-            <div class="card-sub">Prioriser les compétences utiles au poste actuel.</div>
-          </div>
-          <div class="card-sub" id="ep_compCount">0</div>
-        </div>
-
-        <div class="card-body">
-          <div class="sb-field">
-            <label class="sb-label" for="ep_rngCriticite">Criticité minimale</label>
-            <div class="ep-crit-slider">
-              <input type="range" id="ep_rngCriticite" min="0" max="100" step="1" value="0" />
-              <div class="ep-crit-slider-meta">
-                <span class="card-sub">Seuil : <b><span id="ep_rngCriticiteVal">0</span>%</b></span>
-              </div>
-            </div>
-          </div>
-
-          <div class="table-wrap ep-comp-table-wrap">
-            <table class="sb-table" id="ep_tblCompetences">
-              <thead>
-                <tr>
-                  <th>Compétence</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-
-          <div class="card-sub ep-legend-line">
-            <span class="ep-dot ep-dot--danger"></span> Jamais auditée
-          </div>
+          <div id="ep_collabCount" style="display:none;">0</div>
         </div>
       </div>
     </div>
 
-    <!-- Zone principale : couverture + évaluation -->
     <div class="ep-work-col">
-      <div class="card" id="ep_cardCouverturePoste">
+      <div class="card ep-panel-card" id="ep_cardCouverturePoste">
         <div class="card-header ep-coverage-head">
           <div>
             <div class="card-title">Couverture du poste actuel</div>
-            <div class="card-sub">Lecture synthétique des compétences détenues face aux attendus du poste.</div>
+            <div class="card-sub">État des compétences détenues face aux attendus du poste.</div>
           </div>
 
           <label class="sb-switch ep-coverage-switch">
@@ -177,6 +138,7 @@
                 <div class="label">Couverture des attendus</div>
                 <div class="value" id="ep_covPctPoste">—</div>
               </div>
+
               <div class="ep-mini-kpi">
                 <div class="label">Couverture maximale</div>
                 <div class="value" id="ep_covPctMax">—</div>
@@ -193,145 +155,177 @@
         </div>
       </div>
 
-      <div class="card ep-eval-card" id="ep_cardEvaluation">
-        <div class="card-header">
+      <div class="card ep-panel-card ep-competence-panel">
+        <div class="card-header ep-competence-head">
           <div>
-            <div class="card-title">Évaluation de la compétence</div>
-            <div class="card-sub" id="ep_evalHint">Sélectionne une compétence dans la liste de gauche.</div>
+            <div class="card-title">Compétences à auditer</div>
+            <div class="card-sub">Clique sur une compétence pour ouvrir la grille d’évaluation.</div>
           </div>
+          <div class="card-sub" id="ep_compCount">0</div>
         </div>
 
         <div class="card-body">
-          <div class="ep-skill-head">
-            <div class="ep-skill-main">
-              <div class="sb-label"><b>Compétence</b></div>
-              <div class="ep-skill-title" id="ep_compTitle">—</div>
-              <div style="margin-top:8px;">
-                <span class="sb-badge" id="ep_compDomain" style="display:inline-block;"></span>
+          <div class="ep-competence-toolbar">
+            <div class="ep-crit-slider">
+              <label class="sb-label" for="ep_rngCriticite">Criticité minimale</label>
+              <input type="range" id="ep_rngCriticite" min="0" max="100" step="1" value="0" />
+              <div class="ep-crit-slider-meta">
+                <span class="card-sub">Seuil : <b><span id="ep_rngCriticiteVal">0</span>%</b></span>
               </div>
             </div>
-
-            <div class="ep-skill-current">
-              <div class="sb-label"><b>Niveau actuel</b></div>
-              <div class="ep-skill-level" id="ep_compCurrent">—</div>
-              <div class="card-sub" id="ep_compLastEval"></div>
-            </div>
           </div>
 
-          <hr class="sb-sep" />
-
-          <div class="card-sub ep-eval-instruction">
-            Notez uniquement les critères affichés. La maîtrise est exprimée en pourcentage, avec 24/24 = 100%.
-          </div>
-
-          <div class="table-wrap ep-criteria-wrap">
-            <table class="sb-table sb-table--airy" id="ep_tblCriteres">
+          <div class="table-wrap ep-comp-table-wrap">
+            <table class="sb-table" id="ep_tblCompetences">
               <thead>
                 <tr>
-                  <th style="width:58%;">Critère</th>
-                  <th style="width:14%;">Note</th>
-                  <th style="width:28%;">Commentaire</th>
+                  <th>Compétence</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr data-crit="1">
-                  <td><span id="ep_critLabel1">—</span></td>
-                  <td>
-                    <select id="ep_critNote1" disabled>
-                      <option value="">—</option>
-                      <option value="1">1</option>
-                      <option value="2">2</option>
-                      <option value="3">3</option>
-                      <option value="4">4</option>
-                    </select>
-                  </td>
-                  <td><textarea id="ep_critCom1" class="ep-crit-comment" rows="2" disabled></textarea></td>
-                </tr>
-
-                <tr data-crit="2">
-                  <td><span id="ep_critLabel2">—</span></td>
-                  <td>
-                    <select id="ep_critNote2" disabled>
-                      <option value="">—</option>
-                      <option value="1">1</option>
-                      <option value="2">2</option>
-                      <option value="3">3</option>
-                      <option value="4">4</option>
-                    </select>
-                  </td>
-                  <td><textarea id="ep_critCom2" class="ep-crit-comment" rows="2" disabled></textarea></td>
-                </tr>
-
-                <tr data-crit="3">
-                  <td><span id="ep_critLabel3">—</span></td>
-                  <td>
-                    <select id="ep_critNote3" disabled>
-                      <option value="">—</option>
-                      <option value="1">1</option>
-                      <option value="2">2</option>
-                      <option value="3">3</option>
-                      <option value="4">4</option>
-                    </select>
-                  </td>
-                  <td><textarea id="ep_critCom3" class="ep-crit-comment" rows="2" disabled></textarea></td>
-                </tr>
-
-                <tr data-crit="4">
-                  <td><span id="ep_critLabel4">—</span></td>
-                  <td>
-                    <select id="ep_critNote4" disabled>
-                      <option value="">—</option>
-                      <option value="1">1</option>
-                      <option value="2">2</option>
-                      <option value="3">3</option>
-                      <option value="4">4</option>
-                    </select>
-                  </td>
-                  <td><textarea id="ep_critCom4" class="ep-crit-comment" rows="2" disabled></textarea></td>
-                </tr>
-              </tbody>
+              <tbody></tbody>
             </table>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-          <div class="ep-score-grid">
-            <div class="ep-score-card ep-score-card--method">
-              <div class="label">Méthode d’évaluation</div>
-              <select id="ep_selEvalMethod" disabled>
-                <option value="Entretien de performance" selected>Entretien de performance</option>
-                <option value="Observation en situation de travail">Observation en situation de travail</option>
-                <option value="Entretien professionnel">Entretien professionnel</option>
-                <option value="Retour manager / tuteur">Retour manager / tuteur</option>
-                <option value="Retour formation">Retour formation</option>
-                <option value="Examen / Certification">Examen / Certification</option>
-              </select>
-            </div>
+  <div class="modal" id="modalEpEvaluation" aria-hidden="true">
+    <div class="modal-card ep-eval-modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="card-title" style="margin:0;">Évaluer la compétence</div>
+          <div class="card-sub" id="ep_evalHint" style="margin-top:2px;">Sélectionne une compétence.</div>
+        </div>
+        <button type="button" class="modal-x" id="btnCloseEpEvaluationModalX" aria-label="Fermer">×</button>
+      </div>
 
-            <div class="ep-score-card">
-              <div class="label">Somme des notes</div>
-              <div class="value" id="ep_scoreRaw">—</div>
-            </div>
-
-            <div class="ep-score-card">
-              <div class="label">Maîtrise</div>
-              <div class="value" id="ep_scorePct">—</div>
-            </div>
-
-            <div class="ep-score-card">
-              <div class="label">Niveau</div>
-              <div class="value" id="ep_levelABC">—</div>
+      <div class="modal-body">
+        <div class="ep-skill-head">
+          <div class="ep-skill-main">
+            <div class="sb-label"><b>Compétence</b></div>
+            <div class="ep-skill-title" id="ep_compTitle">—</div>
+            <div style="margin-top:8px;">
+              <span class="sb-badge" id="ep_compDomain" style="display:inline-block;"></span>
             </div>
           </div>
 
-          <div class="sb-field ep-observation-field">
-            <label class="sb-label" for="ep_txtObservation">Observation</label>
-            <textarea id="ep_txtObservation" rows="4" placeholder="Faits observables, exemples, contexte..." disabled></textarea>
-          </div>
-
-          <div class="sb-actions ep-save-actions">
-            <div id="ep_saveMsg" class="card-sub" style="margin:0; display:none;"></div>
-            <button class="btn-secondary" id="ep_btnSave" type="button" disabled>Enregistrer</button>
+          <div class="ep-skill-current">
+            <div class="sb-label"><b>Niveau actuel</b></div>
+            <div class="ep-skill-level" id="ep_compCurrent">—</div>
+            <div class="card-sub" id="ep_compLastEval"></div>
           </div>
         </div>
+
+        <hr class="sb-sep" />
+
+        <div class="card-sub ep-eval-instruction">
+          Notez uniquement les critères affichés. Le résultat est exprimé en maîtrise : 24/24 = 100%.
+        </div>
+
+        <div class="table-wrap ep-criteria-wrap">
+          <table class="sb-table sb-table--airy" id="ep_tblCriteres">
+            <thead>
+              <tr>
+                <th style="width:58%;">Critère</th>
+                <th style="width:14%;">Note</th>
+                <th style="width:28%;">Commentaire</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-crit="1">
+                <td><span id="ep_critLabel1">—</span></td>
+                <td>
+                  <select id="ep_critNote1" disabled>
+                    <option value="">—</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                </td>
+                <td><textarea id="ep_critCom1" class="ep-crit-comment" rows="2" disabled></textarea></td>
+              </tr>
+
+              <tr data-crit="2">
+                <td><span id="ep_critLabel2">—</span></td>
+                <td>
+                  <select id="ep_critNote2" disabled>
+                    <option value="">—</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                </td>
+                <td><textarea id="ep_critCom2" class="ep-crit-comment" rows="2" disabled></textarea></td>
+              </tr>
+
+              <tr data-crit="3">
+                <td><span id="ep_critLabel3">—</span></td>
+                <td>
+                  <select id="ep_critNote3" disabled>
+                    <option value="">—</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                </td>
+                <td><textarea id="ep_critCom3" class="ep-crit-comment" rows="2" disabled></textarea></td>
+              </tr>
+
+              <tr data-crit="4">
+                <td><span id="ep_critLabel4">—</span></td>
+                <td>
+                  <select id="ep_critNote4" disabled>
+                    <option value="">—</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
+                </td>
+                <td><textarea id="ep_critCom4" class="ep-crit-comment" rows="2" disabled></textarea></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="ep-score-grid">
+          <div class="ep-score-card ep-score-card--method">
+            <div class="label">Méthode d’évaluation</div>
+            <select id="ep_selEvalMethod" disabled>
+              <option value="Entretien de performance" selected>Entretien de performance</option>
+              <option value="Observation en situation de travail">Observation en situation de travail</option>
+              <option value="Entretien professionnel">Entretien professionnel</option>
+              <option value="Retour manager / tuteur">Retour manager / tuteur</option>
+              <option value="Retour formation">Retour formation</option>
+              <option value="Examen / Certification">Examen / Certification</option>
+            </select>
+          </div>
+
+          <div class="ep-score-card">
+            <div class="label">Maîtrise</div>
+            <div class="value" id="ep_scorePct">—</div>
+          </div>
+
+          <div class="ep-score-card">
+            <div class="label">Niveau</div>
+            <div class="value" id="ep_levelABC">—</div>
+          </div>
+        </div>
+
+        <div class="sb-field ep-observation-field">
+          <label class="sb-label" for="ep_txtObservation">Observation</label>
+          <textarea id="ep_txtObservation" rows="4" placeholder="Faits observables, exemples, contexte..." disabled></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer ep-eval-modal-footer">
+        <div id="ep_saveMsg" class="card-sub" style="margin:0; display:none;"></div>
+        <button type="button" class="btn-secondary" id="btnEpEvaluationModalClose">Annuler</button>
+        <button class="btn-secondary" id="ep_btnSave" type="button" disabled>Enregistrer</button>
       </div>
     </div>
   </div>
@@ -374,7 +368,7 @@
               <tr>
                 <th>Niveau</th>
                 <th>Libellé</th>
-                <th>Plage de score interne</th>
+                <th>Plage interne</th>
                 <th>Lecture maîtrise</th>
               </tr>
             </thead>
@@ -392,7 +386,6 @@
       </div>
     </div>
   </div>
-
 
   <!-- Modal: historique (placeholder) -->
   <div class="modal" id="modalEpHistory" aria-hidden="true">

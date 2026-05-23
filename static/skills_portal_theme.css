@@ -4106,22 +4106,25 @@ body.bf-modal-open{
     max-height:calc(100vh - 20px);
   }
 }
+
 /* ======================================================
-   Entretien de performance — refonte lisibilité
+   Entretien performance — refonte pilotage + modal évaluation
    ====================================================== */
+
 #view-entretien-performance{
-  --ep-gap: 12px;
+  --ep-priority-high:#7c3aed;
 }
 
 #view-entretien-performance .ep-page-head{
   display:flex;
   align-items:flex-start;
   justify-content:space-between;
-  gap:16px;
+  gap:14px;
 }
 
 #view-entretien-performance .ep-page-actions{
   flex:0 0 auto;
+  justify-content:flex-end;
 }
 
 #view-entretien-performance .ep-context-card{
@@ -4129,7 +4132,7 @@ body.bf-modal-open{
   display:flex;
   align-items:stretch;
   justify-content:space-between;
-  gap:14px;
+  gap:12px;
 }
 
 #view-entretien-performance .ep-context-main{
@@ -4141,7 +4144,7 @@ body.bf-modal-open{
 }
 
 #view-entretien-performance .ep-context-person{
-  flex:0 0 240px;
+  flex:0 0 230px;
   min-width:0;
   border-right:1px solid var(--sb-gray-200);
   padding-right:14px;
@@ -4149,51 +4152,55 @@ body.bf-modal-open{
 
 #view-entretien-performance .ep-context-name{
   margin-top:4px;
+  font-size:16px;
+  font-weight:800;
   color:var(--sb-gray-900);
-  font-size:15px;
-  font-weight:700;
-  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 #view-entretien-performance .ep-context-grid{
   flex:1 1 auto;
-  min-width:0;
   display:grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns:repeat(4, minmax(0, 1fr));
   gap:10px;
-}
-
-#view-entretien-performance .ep-context-item,
-#view-entretien-performance .ep-context-kpi{
   min-width:0;
-  border:1px solid var(--sb-gray-200);
-  border-radius:12px;
-  padding:10px 12px;
-  background:#fff;
 }
 
-#view-entretien-performance .ep-context-item .value,
-#view-entretien-performance .ep-context-kpi .value{
-  margin-top:4px;
-  color:var(--sb-gray-900);
+#view-entretien-performance .ep-context-item{
+  min-width:0;
+}
+
+#view-entretien-performance .ep-context-item .value{
+  margin-top:3px;
   font-size:13px;
-  font-weight:700;
-  line-height:1.25;
-  min-width:0;
+  font-weight:600;
+  color:var(--sb-gray-900);
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
 }
 
 #view-entretien-performance .ep-context-kpi{
-  flex:0 0 190px;
-  background: color-mix(in srgb, var(--accent) 5%, #ffffff);
+  flex:0 0 130px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:#fff;
+  padding:10px 12px;
+}
+
+#view-entretien-performance .ep-context-kpi .value{
+  margin-top:4px;
+  font-size:18px;
+  font-weight:800;
+  color:var(--accent);
 }
 
 #view-entretien-performance .ep-main-layout{
   margin-top:12px;
   display:grid;
-  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  grid-template-columns:360px minmax(0, 1fr);
   gap:12px;
   align-items:start;
 }
@@ -4207,368 +4214,15 @@ body.bf-modal-open{
 }
 
 #view-entretien-performance .ep-filter-stack{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  margin-top:12px;
-}
-
-#view-entretien-performance .ep-filter-stack #ep_btnScopeReset{
-  width:100%;
-  margin-left:0;
-}
-
-#view-entretien-performance .ep-panel-card .card-header{
-  align-items:flex-start;
-}
-
-#view-entretien-performance .ep-collab-list{
   margin-top:10px;
-  max-height:230px;
-  overflow:auto;
-}
-
-#view-entretien-performance #ep_listCollaborateurs.sb-tree{
   display:flex;
   flex-direction:column;
-  gap:6px;
-}
-
-#view-entretien-performance #ep_listCollaborateurs .sb-tree-item{
-  display:flex;
-  flex-direction:column;
-  align-items:flex-start;
-  gap:3px;
-  padding:9px 10px;
-  border:1px solid var(--sb-gray-200);
-  border-radius:12px;
-  background:#fff;
-  cursor:pointer;
-}
-
-#view-entretien-performance #ep_listCollaborateurs .sb-tree-item:hover{
-  background: color-mix(in srgb, var(--accent) 4%, #ffffff);
-}
-
-#view-entretien-performance #ep_listCollaborateurs .sb-tree-item.active{
-  border-color: color-mix(in srgb, var(--accent) 55%, var(--sb-gray-300));
-  background: color-mix(in srgb, var(--accent) 7%, #ffffff);
-}
-
-#view-entretien-performance #ep_listCollaborateurs .sb-tree-name{
-  font-size:13px;
-  font-weight:700;
-  color:var(--sb-gray-900);
-  line-height:1.2;
-}
-
-#view-entretien-performance #ep_listCollaborateurs .sb-tree-meta{
-  font-size:12px;
-  color:var(--sb-gray-500);
-  line-height:1.25;
-}
-
-#view-entretien-performance .ep-comp-table-wrap{
-  margin-top:10px;
-  max-height:420px;
-  overflow:auto;
-}
-
-#view-entretien-performance #ep_tblCompetences thead{
-  display:none;
-}
-
-#view-entretien-performance #ep_tblCompetences,
-#view-entretien-performance #ep_tblCompetences tbody,
-#view-entretien-performance #ep_tblCompetences tr,
-#view-entretien-performance #ep_tblCompetences td{
-  display:block;
-  width:100%;
-}
-
-#view-entretien-performance #ep_tblCompetences tr{
-  margin-bottom:8px;
-  border:1px solid var(--sb-gray-200);
-  border-radius:12px;
-  background:#fff;
-  cursor:pointer;
-  overflow:hidden;
-}
-
-#view-entretien-performance #ep_tblCompetences tr:hover{
-  background: color-mix(in srgb, var(--accent) 4%, #ffffff);
-}
-
-#view-entretien-performance #ep_tblCompetences tr.active{
-  border-color: color-mix(in srgb, var(--accent) 60%, var(--sb-gray-300));
-  background: color-mix(in srgb, var(--accent) 7%, #ffffff);
-}
-
-#view-entretien-performance #ep_tblCompetences td{
-  padding:9px 10px;
-  border:0;
-}
-
-#view-entretien-performance .ep-comp-row{
-  min-width:0;
-}
-
-#view-entretien-performance .ep-comp-row-top{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  min-width:0;
-}
-
-#view-entretien-performance .ep-comp-row-title{
-  flex:1 1 auto;
-  min-width:0;
-  color:var(--sb-gray-900);
-  font-size:13px;
-  font-weight:600;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-
-#view-entretien-performance .ep-comp-row-meta{
-  margin-top:6px;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex-wrap:wrap;
-  color:var(--sb-gray-500);
-  font-size:11px;
-  line-height:1.2;
-}
-
-#view-entretien-performance .ep-badge-never{
-  background:var(--sb-danger) !important;
-  border-color:var(--sb-danger) !important;
-  color:#fff !important;
-}
-
-#view-entretien-performance .ep-legend-line{
-  margin-top:8px;
-  display:flex;
-  align-items:center;
-  gap:6px;
-}
-
-#view-entretien-performance .ep-dot{
-  width:8px;
-  height:8px;
-  border-radius:999px;
-  display:inline-block;
-}
-
-#view-entretien-performance .ep-dot--danger{
-  background:var(--sb-danger);
-}
-
-#view-entretien-performance .ep-coverage-head{
-  align-items:flex-start;
-}
-
-#view-entretien-performance .ep-coverage-switch{
-  flex:0 0 auto;
-  margin-top:2px;
-}
-
-#view-entretien-performance .ep-coverage-wrap{
-  display:grid;
-  grid-template-columns: minmax(220px, 300px) minmax(220px, 1fr);
-  gap:14px;
-  align-items:center;
-}
-
-#view-entretien-performance .ep-coverage-gauge svg{
-  width:100%;
-  max-width:300px;
-  height:auto;
-  display:block;
-  cursor:pointer;
-}
-
-#view-entretien-performance .ep-coverage-kpis{
-  display:grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap:10px;
 }
 
-#view-entretien-performance .ep-mini-kpi,
-#view-entretien-performance .ep-score-card{
-  border:1px solid var(--sb-gray-200);
-  border-radius:12px;
-  padding:10px 12px;
-  background:#fff;
+#view-entretien-performance .ep-panel-card{
+  margin:0;
 }
-
-#view-entretien-performance .ep-mini-kpi .value,
-#view-entretien-performance .ep-score-card .value{
-  margin-top:6px;
-  color:var(--sb-gray-900);
-  font-size:16px;
-  font-weight:700;
-  line-height:1.1;
-}
-
-#view-entretien-performance .ep-coverage-legend{
-  grid-column:1 / -1;
-  display:flex;
-  align-items:center;
-  gap:12px;
-  flex-wrap:wrap;
-  color:var(--sb-gray-500);
-  font-size:12px;
-}
-
-#view-entretien-performance .ep-coverage-legend span{
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-}
-
-#view-entretien-performance .ep-leg{
-  width:10px;
-  height:10px;
-  border-radius:999px;
-  display:inline-block;
-}
-
-#view-entretien-performance .ep-leg--bad{ background:var(--accent); }
-#view-entretien-performance .ep-leg--warn{ background:#f59e0b; }
-#view-entretien-performance .ep-leg--ok{ background:#16a34a; }
-
-#view-entretien-performance .ep-skill-head{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:16px;
-}
-
-#view-entretien-performance .ep-skill-main{
-  min-width:0;
-  flex:1 1 auto;
-}
-
-#view-entretien-performance .ep-skill-title{
-  color:var(--sb-gray-900);
-  font-size:15px;
-  font-weight:700;
-  line-height:1.35;
-}
-
-#view-entretien-performance .ep-skill-current{
-  flex:0 0 210px;
-  min-width:190px;
-  border:1px solid var(--sb-gray-200);
-  border-radius:12px;
-  padding:10px 12px;
-  background:#fff;
-}
-
-#view-entretien-performance .ep-skill-level{
-  margin-top:4px;
-  font-weight:700;
-  color:var(--sb-gray-900);
-}
-
-#view-entretien-performance #ep_cardEvaluation .sb-sep{
-  margin:14px 0;
-}
-
-#view-entretien-performance .ep-eval-instruction{
-  margin-bottom:8px;
-}
-
-#view-entretien-performance .ep-criteria-wrap .sb-table th{
-  font-weight:600;
-}
-
-#view-entretien-performance .ep-criteria-wrap .sb-table td{
-  vertical-align:middle;
-}
-
-#view-entretien-performance .ep-crit-comment{
-  width:100%;
-  min-height:44px;
-  border:1px solid var(--sb-gray-300);
-  border-radius:10px;
-  padding:8px 10px;
-  font-family:inherit;
-  font-size:13px;
-  resize:vertical;
-  box-sizing:border-box;
-}
-
-#view-entretien-performance .ep-score-grid{
-  margin-top:12px;
-  display:grid;
-  grid-template-columns: 1.2fr repeat(3, minmax(130px, .7fr));
-  gap:10px;
-}
-
-#view-entretien-performance .ep-score-card select{
-  width:100%;
-  margin-top:6px;
-  border:1px solid var(--sb-gray-300);
-  border-radius:10px;
-  padding:8px 10px;
-  font-family:inherit;
-  font-size:13px;
-  background:#fff;
-  color:var(--sb-gray-900);
-  box-sizing:border-box;
-}
-
-#view-entretien-performance .ep-observation-field{
-  margin-top:12px;
-}
-
-#view-entretien-performance .ep-save-actions{
-  margin-top:12px;
-  justify-content:flex-end;
-}
-
-@media (max-width: 1180px){
-  #view-entretien-performance .ep-context-card,
-  #view-entretien-performance .ep-context-main,
-  #view-entretien-performance .ep-skill-head{
-    flex-direction:column;
-  }
-
-  #view-entretien-performance .ep-context-person,
-  #view-entretien-performance .ep-skill-current{
-    flex:1 1 auto;
-    width:100%;
-    border-right:0;
-    padding-right:0;
-  }
-
-  #view-entretien-performance .ep-context-grid{
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  #view-entretien-performance .ep-context-kpi{
-    flex:1 1 auto;
-  }
-}
-
-@media (max-width: 980px){
-  #view-entretien-performance .ep-main-layout{
-    grid-template-columns:1fr;
-  }
-
-  #view-entretien-performance .ep-coverage-wrap,
-  #view-entretien-performance .ep-score-grid{
-    grid-template-columns:1fr;
-  }
-}
-
-/* ======================================================
-   Entretien performance — liste collaborateurs priorisée
-   ====================================================== */
 
 #view-entretien-performance .ep-collab-panel{
   position:relative;
@@ -4653,10 +4307,6 @@ body.bf-modal-open{
   flex:0 0 4px;
 }
 
-#view-entretien-performance{
-  --ep-priority-high:#7c3aed;
-}
-
 #view-entretien-performance .ep-priority-line--high{ background:var(--ep-priority-high); }
 #view-entretien-performance .ep-priority-line--plan{ background:var(--sb-warning); }
 #view-entretien-performance .ep-priority-line--ok{ background:var(--sb-success); }
@@ -4691,7 +4341,8 @@ body.bf-modal-open{
 
 #view-entretien-performance .ep-collab-list{
   margin-top:10px;
-  max-height:360px;
+  max-height:calc(100vh - 365px);
+  min-height:260px;
   overflow:auto;
   padding-right:2px;
 }
@@ -4758,4 +4409,342 @@ body.bf-modal-open{
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
+}
+
+#view-entretien-performance .ep-coverage-head{
+  align-items:flex-start;
+}
+
+#view-entretien-performance .ep-coverage-switch{
+  flex:0 0 auto;
+}
+
+#view-entretien-performance .ep-coverage-wrap{
+  display:grid;
+  grid-template-columns:320px minmax(220px, 1fr);
+  gap:14px;
+  align-items:center;
+}
+
+#view-entretien-performance .ep-coverage-gauge{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+#view-entretien-performance .ep-coverage-gauge svg{
+  width:100%;
+  max-width:320px;
+  height:auto;
+  display:block;
+}
+
+#view-entretien-performance .ep-coverage-kpis{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px;
+}
+
+#view-entretien-performance .ep-mini-kpi{
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  padding:10px 12px;
+  background:#fff;
+}
+
+#view-entretien-performance .ep-mini-kpi .value{
+  margin-top:4px;
+  font-size:20px;
+  font-weight:800;
+  color:var(--sb-gray-900);
+}
+
+#view-entretien-performance .ep-coverage-legend{
+  grid-column:1 / -1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:12px;
+  font-size:12px;
+  color:var(--sb-gray-500);
+}
+
+#view-entretien-performance .ep-coverage-legend span{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+}
+
+#view-entretien-performance .ep-leg{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  display:inline-block;
+}
+
+#view-entretien-performance .ep-leg--bad{ background:var(--accent); }
+#view-entretien-performance .ep-leg--warn{ background:var(--sb-warning); }
+#view-entretien-performance .ep-leg--ok{ background:var(--sb-success); }
+
+#view-entretien-performance .ep-competence-head{
+  align-items:flex-start;
+}
+
+#view-entretien-performance .ep-competence-toolbar{
+  display:flex;
+  align-items:flex-end;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+#view-entretien-performance .ep-competence-toolbar .ep-crit-slider{
+  max-width:360px;
+  width:100%;
+}
+
+#view-entretien-performance .ep-comp-table-wrap{
+  max-height:calc(100vh - 430px);
+  min-height:320px;
+  overflow:auto;
+  border:0;
+  background:transparent;
+}
+
+#view-entretien-performance #ep_tblCompetences{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0 8px;
+}
+
+#view-entretien-performance #ep_tblCompetences thead{
+  display:none;
+}
+
+#view-entretien-performance #ep_tblCompetences tbody tr{
+  cursor:pointer;
+}
+
+#view-entretien-performance #ep_tblCompetences tbody td{
+  padding:0;
+  border:0;
+}
+
+#view-entretien-performance #ep_tblCompetences tbody tr.active .ep-comp-card{
+  border-color:color-mix(in srgb, var(--accent) 55%, var(--sb-gray-300));
+  border-left-color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 6%, #ffffff);
+  box-shadow:0 6px 14px rgba(17,24,39,.06);
+}
+
+#view-entretien-performance .ep-comp-card{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  padding:10px 12px;
+  border:1px solid var(--sb-gray-200);
+  border-left:5px solid var(--sb-gray-300);
+  border-radius:13px;
+  background:#fff;
+  min-width:0;
+}
+
+#view-entretien-performance .ep-comp-card--never{
+  border-left-color:var(--ep-priority-high);
+}
+
+#view-entretien-performance .ep-comp-card:hover{
+  background:color-mix(in srgb, var(--accent) 4%, #ffffff);
+}
+
+#view-entretien-performance .ep-comp-card-top{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+
+#view-entretien-performance .ep-comp-code{
+  flex:0 0 auto;
+}
+
+#view-entretien-performance .ep-comp-title{
+  min-width:0;
+  flex:1 1 auto;
+  color:var(--sb-gray-900);
+  font-size:14px;
+  font-weight:700;
+  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#view-entretien-performance .ep-comp-meta{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+  color:var(--sb-gray-500);
+  font-size:12px;
+  font-weight:500;
+  padding-left:2px;
+}
+
+#modalEpEvaluation .ep-eval-modal-card{
+  width:min(1000px, calc(100vw - 36px));
+}
+
+#modalEpEvaluation .modal-body{
+  padding:14px;
+}
+
+#modalEpEvaluation .ep-skill-head{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) 220px;
+  gap:14px;
+  align-items:start;
+}
+
+#modalEpEvaluation .ep-skill-title{
+  margin-top:3px;
+  color:var(--sb-gray-900);
+  font-size:16px;
+  font-weight:800;
+  line-height:1.25;
+}
+
+#modalEpEvaluation .ep-skill-current{
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  padding:10px 12px;
+  background:#fff;
+}
+
+#modalEpEvaluation .ep-skill-level{
+  margin-top:4px;
+  font-size:16px;
+  font-weight:800;
+  color:var(--sb-gray-900);
+}
+
+#modalEpEvaluation .ep-eval-instruction{
+  margin-bottom:10px;
+}
+
+#modalEpEvaluation .ep-criteria-wrap{
+  max-height:360px;
+  overflow:auto;
+}
+
+#modalEpEvaluation #ep_tblCriteres select{
+  width:100%;
+  min-height:34px;
+  border:1px solid var(--sb-gray-300);
+  border-radius:10px;
+  background:#fff;
+  color:var(--sb-gray-900);
+  padding:6px 8px;
+}
+
+#modalEpEvaluation .ep-crit-comment{
+  width:100%;
+  min-height:48px;
+  box-sizing:border-box;
+  border:1px solid var(--sb-gray-300);
+  border-radius:10px;
+  background:#fff;
+  color:var(--sb-gray-900);
+  padding:7px 9px;
+  font-family:inherit;
+  font-size:13px;
+  resize:vertical;
+}
+
+#modalEpEvaluation .ep-score-grid{
+  display:grid;
+  grid-template-columns:minmax(220px, 1.5fr) repeat(2, minmax(130px, .75fr));
+  gap:10px;
+  margin-top:12px;
+}
+
+#modalEpEvaluation .ep-score-card{
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  padding:10px 12px;
+  background:#fff;
+}
+
+#modalEpEvaluation .ep-score-card select{
+  width:100%;
+  margin-top:4px;
+  min-height:34px;
+  border:1px solid var(--sb-gray-300);
+  border-radius:10px;
+  background:#fff;
+  padding:6px 8px;
+}
+
+#modalEpEvaluation .ep-score-card .value{
+  margin-top:4px;
+  font-size:18px;
+  font-weight:800;
+  color:var(--sb-gray-900);
+}
+
+#modalEpEvaluation .ep-observation-field{
+  margin-top:12px;
+}
+
+#modalEpEvaluation #ep_txtObservation{
+  width:100%;
+  box-sizing:border-box;
+  border:1px solid var(--sb-gray-300);
+  border-radius:12px;
+  padding:10px 12px;
+  font-family:inherit;
+  font-size:13px;
+  color:var(--sb-gray-900);
+  resize:vertical;
+}
+
+#modalEpEvaluation .ep-eval-modal-footer{
+  justify-content:space-between;
+  align-items:center;
+}
+
+#modalEpEvaluation .ep-eval-modal-footer #ep_saveMsg{
+  margin-right:auto !important;
+}
+
+@media (max-width: 1050px){
+  #view-entretien-performance .ep-main-layout{
+    grid-template-columns:1fr;
+  }
+
+  #view-entretien-performance .ep-context-card,
+  #view-entretien-performance .ep-context-main{
+    flex-direction:column;
+  }
+
+  #view-entretien-performance .ep-context-person{
+    flex:0 0 auto;
+    border-right:0;
+    border-bottom:1px solid var(--sb-gray-200);
+    padding-right:0;
+    padding-bottom:10px;
+  }
+
+  #view-entretien-performance .ep-context-grid{
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+  }
+
+  #view-entretien-performance .ep-coverage-wrap{
+    grid-template-columns:1fr;
+  }
+
+  #modalEpEvaluation .ep-skill-head,
+  #modalEpEvaluation .ep-score-grid{
+    grid-template-columns:1fr;
+  }
 }

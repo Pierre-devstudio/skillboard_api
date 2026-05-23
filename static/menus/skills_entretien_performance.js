@@ -63,7 +63,6 @@
   function _epGetCovWeightedFlag() {
     // on cherche large (selon ids possibles)
     const chk =
-      $("ep_chkPondere") ||
       $("ep_covChkWeight") ||
       $("ep_covChkWeighted") ||
       $("ep_covChkCrit") ||
@@ -107,7 +106,7 @@
       return;
     }
 
-    const poste = (covRoot.intitule_poste || covRoot.poste_intitule || covRoot.poste || cov.poste || "").toString().trim();
+    const poste = (covRoot.poste_intitule || covRoot.poste || cov.poste || "").toString().trim();
     const modeTxt = weighted ? "Pondéré par criticité" : "Non pondéré";
     if (info) info.textContent = [poste ? `Poste : ${poste}` : "", modeTxt].filter(Boolean).join(" • ");
 
@@ -357,7 +356,7 @@
   }
 
   function resetEvaluationPanel() {
-    setText("ep_evalHint", "Sélectionne une compétence dans la liste de gauche.");
+    setText("ep_evalHint", "Sélectionne une compétence.");
     setText("ep_compTitle", "—");
     setText("ep_compDomain", "");
     setText("ep_compCurrent", "—");
@@ -386,7 +385,6 @@
     setDisabled("ep_txtObservation", true);
 
     setDisabled("ep_btnSave", true);
-
 
     clearSaveInlineMsg();
   }
@@ -574,8 +572,8 @@
       setDisabled(`ep_critNote${i}`, true);
       setDisabled(`ep_critCom${i}`, true);
     }
-    setDisabled("ep_txtObservation", true);
     setDisabled("ep_selEvalMethod", true);
+    setDisabled("ep_txtObservation", true);
 
     setDisabled("ep_btnSave", true);
 
@@ -687,7 +685,7 @@
       // petite jauge vide pour éviter un “grand trou”
       const svg = $("ep_svgGauge");
       if (svg) {
-        renderGauge(svg, 0);
+        renderGauge(svg, 0, 1, 0, 0, 0);
       }
     } finally {
       state._covLoading = false;
@@ -705,25 +703,54 @@
     const svg = $("ep_svgGauge");
     if (!svg) return;
 
-    const pctAttendus = Number(pack.pct_attendus ?? 0);
-    const pctMax = Number(pack.pct_max ?? 0);
+    // jauge bornée comme demandé (min/max théoriques)
+    const gMin = Number(pack.gauge_min ?? 0);
+    const gMax = Number(pack.gauge_max ?? 1);
 
-    renderGauge(svg, pctAttendus);
+    const expMin = Number(pack.expected_min ?? 0);
+    const expMax = Number(pack.expected_max ?? 0);
+    const score = Number(pack.score ?? 0);
+
+    // Needle: clamp pour rester dans les limites de jauge
+    const needle = Math.max(gMin, Math.min(gMax, score));
+
+    renderGauge(svg, gMin, gMax, expMin, expMax, needle);
+
+    // % sous jauge (avec le score réel, pas le needle clampé)
+    const pct1 = (expMax > 0) ? ((score / expMax) * 100) : null;
+    const pct2 = (gMax > 0) ? ((score / gMax) * 100) : null;
 
     const pctPoste = $("ep_covPctPoste");
-    const pctMaxEl = $("ep_covPctMax");
+    const pctMax = $("ep_covPctMax");
 
-    if (pctPoste) pctPoste.textContent = Number.isFinite(pctAttendus) ? `${Math.round(pctAttendus)}%` : "—";
-    if (pctMaxEl) pctMaxEl.textContent = Number.isFinite(pctMax) ? `${Math.round(pctMax)}%` : "—";
+    if (pctPoste) pctPoste.textContent = (pct1 === null || !isFinite(pct1)) ? "—" : `${Math.round(pct1)}%`;
+    if (pctMax) pctMax.textContent = (pct2 === null || !isFinite(pct2)) ? "—" : `${Math.round(pct2)}%`;
   }
 
-  function renderGauge(svg, pctValue) {
-    let pct = Number(pctValue ?? 0);
-    if (!Number.isFinite(pct)) pct = 0;
-    pct = Math.max(0, Math.min(100, pct));
+  function renderGauge(svg, gaugeMin, gaugeMax, expectedMin, expectedMax, value) {
+    // Normalisation des bornes (au cas où l’API renvoie inversé)
+    let gMin = Number(gaugeMin ?? 0);
+    let gMax = Number(gaugeMax ?? 1);
+    if (!isFinite(gMin)) gMin = 0;
+    if (!isFinite(gMax)) gMax = 1;
+    if (gMax < gMin) { const t = gMin; gMin = gMax; gMax = t; }
 
-    const tFromPct = (v) => Math.max(0, Math.min(1, Number(v || 0) / 100));
-    const angleFromT = (t) => 180 + (180 * t);
+    let eMin = Number(expectedMin ?? 0);
+    let eMax = Number(expectedMax ?? 0);
+    if (!isFinite(eMin)) eMin = 0;
+    if (!isFinite(eMax)) eMax = 0;
+    if (eMax < eMin) { const t = eMin; eMin = eMax; eMax = t; }
+
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const range = Math.max(1e-9, (gMax - gMin));
+
+    const tFromValue = (v) => (clamp(v, gMin, gMax) - gMin) / range;
+
+    // IMPORTANT:
+    // On travaille en repère SVG natif (Y vers le bas)
+    // 0° = droite, 90° = bas, 180° = gauche, 270° = haut
+    // Pour une jauge "compteur vitesse" (arc du haut) : 180° -> 360° (via 270°)
+    const angleFromT = (t) => 180 + (180 * t); // 180 (gauche) -> 360 (droite) en passant par 270 (haut)
 
     const cx = 120;
     const cy = 120;
@@ -734,51 +761,56 @@
       const rad = (angleDeg * Math.PI) / 180;
       return {
         x: cx + (radius * Math.cos(rad)),
-        y: cy + (radius * Math.sin(rad)),
+        y: cy + (radius * Math.sin(rad)), // SVG natif: +sin => vers le bas
       };
     };
 
     const arcPath = (a1, a2) => {
+      // On force le sens "gauche->droite" sur 180° (arc du haut)
+      // Si inversé, on swap
       if (a2 < a1) { const t = a1; a1 = a2; a2 = t; }
+
       const p1 = polar(a1, r);
       const p2 = polar(a2, r);
+
       const diff = Math.abs(a2 - a1);
       const large = (diff <= 180) ? "0" : "1";
-      return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+
+      // sweep=1 => suit l’augmentation d’angle en SVG (sens horaire en coordonnées écran)
+      // ici 180->360 passe par 270 (haut), donc c’est bien le demi-cercle du haut.
+      const sweep = "1";
+
+      return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} ${sweep} ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
     };
 
-    const a0 = angleFromT(0.0);
-    const a1 = angleFromT(0.5);
-    const a2 = angleFromT(0.8);
-    const a3 = angleFromT(1.0);
+    // Background arc (haut) : 180 -> 360
+    const bgD = arcPath(180, 360);
 
-    const aNeedle = angleFromT(tFromPct(pct));
+    // Zone attendue
+    const tExpMin = tFromValue(eMin);
+    const tExpMax = tFromValue(eMax);
+    const aExpMin = angleFromT(tExpMin);
+    const aExpMax = angleFromT(tExpMax);
+
+    const zoneOk = isFinite(aExpMin) && isFinite(aExpMax) && (Math.abs(aExpMin - aExpMax) > 0.0001);
+    const zoneD = zoneOk ? arcPath(aExpMin, aExpMax) : "";
+
+    // Aiguille
+    const aNeedle = angleFromT(tFromValue(clamp(Number(value ?? 0), gMin, gMax)));
     const pNeedle = polar(aNeedle, rNeedle);
 
     svg.innerHTML = `
-      <path d="${arcPath(180, 360)}"
-            stroke="rgba(0,0,0,.10)"
-            stroke-width="16"
+      <path d="${bgD}"
+            stroke="rgba(0,0,0,.15)"
+            stroke-width="14"
             fill="none"
             stroke-linecap="round"></path>
 
-      <path d="${arcPath(a0, a1)}"
+      ${zoneOk ? `<path d="${zoneD}"
             stroke="var(--accent)"
             stroke-width="14"
             fill="none"
-            stroke-linecap="butt"></path>
-
-      <path d="${arcPath(a1, a2)}"
-            stroke="#f59e0b"
-            stroke-width="14"
-            fill="none"
-            stroke-linecap="butt"></path>
-
-      <path d="${arcPath(a2, a3)}"
-            stroke="#16a34a"
-            stroke-width="14"
-            fill="none"
-            stroke-linecap="butt"></path>
+            stroke-linecap="round"></path>` : ""}
 
       <line x1="${cx}" y1="${cy}" x2="${pNeedle.x.toFixed(2)}" y2="${pNeedle.y.toFixed(2)}"
             stroke="rgba(0,0,0,.65)"
@@ -874,6 +906,8 @@
 
       return na.localeCompare(nb, "fr", { sensitivity: "base" });
     });
+
+    setText("ep_collabCount", String(arr.length));
 
     wrap.classList.remove("sb-tree");
     wrap.classList.add("ep-collab-stack");
@@ -1013,25 +1047,22 @@
 
 
 
-            // Col: compétence enrichie
+            // Col: carte compétence lisible (détail dans le modal, pas dans la liste)
             const tdComp = document.createElement("td");
 
             const rowWrap = document.createElement("div");
-            rowWrap.className = "ep-comp-row";
+            rowWrap.className = "ep-comp-card";
+            if (x._neverAudited) rowWrap.classList.add("ep-comp-card--never");
 
             const top = document.createElement("div");
-            top.className = "ep-comp-row-top";
+            top.className = "ep-comp-card-top";
 
             const badge = document.createElement("span");
-            badge.className = x._neverAudited ? "sb-badge ep-badge-never" : "sb-badge sb-badge-accent";
+            badge.className = "sb-badge sb-badge-accent ep-comp-code";
             badge.textContent = (x.code || "").toString().trim();
 
-            if (x._neverAudited) {
-              badge.title = "Jamais auditée";
-            }
-
             const title = document.createElement("span");
-            title.className = "ep-comp-row-title";
+            title.className = "ep-comp-title";
             title.textContent = (x.intitule || "").toString().trim();
             title.title = title.textContent;
 
@@ -1039,21 +1070,19 @@
             top.appendChild(title);
 
             const meta = document.createElement("div");
-            meta.className = "ep-comp-row-meta";
+            meta.className = "ep-comp-meta";
 
             const niveau = (x.niveau_actuel || "").toString().trim();
-            const last = (x.date_derniere_eval || "").toString().trim();
             const critPct = Number(tr.dataset.critPct || 0);
 
-            const niveauTxt = niveau ? "Niveau : " + niveau : "Niveau : —";
-            const lastTxt = last ? "Dernière éval : " + last : "Jamais évaluée";
-            const critTxt = "Criticité : " + (Number.isFinite(critPct) ? Math.round(critPct) : 0) + "%";
+            const levelSpan = document.createElement("span");
+            levelSpan.textContent = niveau ? `Niveau : ${niveau}` : "Niveau : —";
 
-            [niveauTxt, lastTxt, critTxt].forEach(txt => {
-              const span = document.createElement("span");
-              span.textContent = txt;
-              meta.appendChild(span);
-            });
+            const critSpan = document.createElement("span");
+            critSpan.textContent = `Criticité : ${Number.isFinite(critPct) ? Math.round(critPct) : 0}%`;
+
+            meta.appendChild(levelSpan);
+            meta.appendChild(critSpan);
 
             rowWrap.appendChild(top);
             rowWrap.appendChild(meta);
@@ -1072,6 +1101,7 @@
               state.selectedEffectifCompetenceId = x.id_effectif_competence || null;
 
               clearSaveInlineMsg();
+              openModal("modalEpEvaluation");
 
               // En-tête évaluation (avec niveau + dernière éval)
               setText("ep_evalHint", "Évaluation en cours.");
@@ -1315,7 +1345,7 @@
 
 
 
-                // Coef + affichage score (placeholder, calcul plus tard sur saisie)
+                // Affichage résultat (le calcul reste interne sur 24, l'utilisateur voit une maîtrise %)
                 setText("ep_scoreRaw", "—");
                 setText("ep_scorePct", "—");
                 setText("ep_levelABC", "—");
@@ -1325,7 +1355,7 @@
                 setDisabled("ep_txtObservation", false);
 
                 setDisabled("ep_btnSave", false);
-            
+
               } catch (e) {
                 _portal && _portal.showAlert("error", "Détail compétence", String(e?.message || e));
               }
@@ -1478,22 +1508,18 @@
       pop.setAttribute("aria-hidden", "true");
     };
 
-    const toggle = (ev) => {
+    btn.addEventListener("click", (ev) => {
       ev.preventDefault();
       ev.stopPropagation();
 
       const opened = pop.classList.toggle("is-open");
       pop.setAttribute("aria-hidden", opened ? "false" : "true");
-    };
-
-    btn.addEventListener("click", toggle);
+    });
 
     document.addEventListener("click", (ev) => {
       if (!pop.classList.contains("is-open")) return;
-
       const target = ev.target;
       if (target === btn || btn.contains(target) || pop.contains(target)) return;
-
       close();
     });
 
@@ -1530,6 +1556,20 @@
         _bound = true;
 
         bindPriorityHelpOnce();
+
+        // Modal évaluation (standard)
+        const modalEval = $("modalEpEvaluation");
+        const btnXEval = $("btnCloseEpEvaluationModalX");
+        const btnCloseEval = $("btnEpEvaluationModalClose");
+        const closeEval = () => closeModal("modalEpEvaluation");
+
+        if (btnXEval) btnXEval.addEventListener("click", closeEval);
+        if (btnCloseEval) btnCloseEval.addEventListener("click", closeEval);
+        if (modalEval) {
+          modalEval.addEventListener("click", (e) => {
+            if (e.target === modalEval) closeEval();
+          });
+        }
 
         // Modal Scoring (standard)
         const modalScoring = $("modalEpScoring");
@@ -1735,8 +1775,7 @@
                 const compTitle = [code, intitule].filter(Boolean).join(" — ") || "—";
 
                 const score = (x.resultat_eval ?? "");
-                const pct = _score24ToMasteryPct(score);
-                const scoreTxt = (pct === null) ? "—" : `${pct} %`;
+                const scoreTxt = (score === null || score === undefined || score === "") ? "—" : String(score);
 
                 const niveau = niveauFromScore(score);
 
@@ -1784,7 +1823,7 @@
                 const btn = tr.querySelector('button[data-obs="1"]');
                 if (btn) {
                   btn.addEventListener("click", () => {
-                    const meta = `${dateTxt} • ${evalTxt} • maîtrise ${scoreTxt} • ${niveau}`;
+                    const meta = `${dateTxt} • ${evalTxt} • score ${scoreTxt} • ${niveau}`;
                     openObs(compTitle, meta, obs);
                   });
                 }
@@ -1878,81 +1917,84 @@
         }
 
         // ======================================================
-        // Scoring live (Somme / Maîtrise % / Niveau)
+        // Scoring live (affichage métier : maîtrise %, calcul interne sur 24)
         // ======================================================
         const computeCoef = (n) => {
-          if (n === 4) return 1.5;
-          if (n === 3) return 2;
-          if (n === 2) return 3;
-          if (n === 1) return 6;
-          return null;
+        if (n === 4) return 1.5;
+        if (n === 3) return 2;
+        if (n === 2) return 3;
+        if (n === 1) return 6;
+        return null;
         };
 
         const computeLevel = (score24) => {
-          if (score24 >= 6 && score24 <= 9) return "Initial";
-          if (score24 >= 10 && score24 <= 18) return "Avancé";
-          if (score24 >= 19 && score24 <= 24) return "Expert";
-          return "—";
+        if (score24 >= 6 && score24 <= 9) return "Initial";
+        if (score24 >= 10 && score24 <= 18) return "Avancé";
+        if (score24 >= 19 && score24 <= 24) return "Expert";
+        return "—";
         };
 
-        const score24ToMasteryPct = (score24) => {
-          const n = Number(score24);
-          if (!Number.isFinite(n)) return null;
-          return Math.max(0, Math.min(100, Math.round((n / 24) * 100)));
+        const computePct = (score24) => {
+        const s = Number(score24);
+        if (!Number.isFinite(s)) return null;
+        return Math.max(0, Math.min(100, Math.round((s / 24) * 100)));
         };
 
         const recalcScore = () => {
-          if (!state.selectedCompetenceId) return;
+        if (!state.selectedCompetenceId) return;
 
-          let enabledCount = 0;
-          let sum = 0;
-          let filledCount = 0;
+        let enabledCount = 0;
+        let sum = 0;
+        let filledCount = 0;
 
-          for (let i = 1; i <= 4; i++) {
+        for (let i = 1; i <= 4; i++) {
             const labelEl = $(`ep_critLabel${i}`);
             const tr = labelEl ? labelEl.closest("tr") : null;
             const sel = $(`ep_critNote${i}`);
 
             const isVisible = !tr || tr.style.display !== "none";
             const isEnabled = !!sel && !sel.disabled && isVisible;
+
             if (!isEnabled) continue;
 
             enabledCount++;
 
             const v = (sel.value || "").toString().trim();
             if (v) {
-              const n = parseInt(v, 10);
-              if (!Number.isNaN(n)) sum += n;
-              filledCount++;
+            const n = parseInt(v, 10);
+            if (!Number.isNaN(n)) sum += n;
+            filledCount++;
             }
-          }
+        }
 
-          if (filledCount === 0) {
+        if (filledCount === 0) {
             setText("ep_scoreRaw", "—");
             setText("ep_scorePct", "—");
             setText("ep_levelABC", "—");
             return;
-          }
+        }
 
-          setText("ep_scoreRaw", String(sum));
+        setText("ep_scoreRaw", String(sum));
 
-          const coef = computeCoef(enabledCount);
-          const score24 = coef ? Math.round(sum * coef * 10) / 10 : null;
-          const masteryPct = score24ToMasteryPct(score24);
-          setText("ep_scorePct", masteryPct === null ? "—" : `${masteryPct} %`);
+        const coef = computeCoef(enabledCount);
+        const score24 = coef ? Math.round(sum * coef * 10) / 10 : null;
+        const pct = computePct(score24);
 
-          if (enabledCount > 0 && filledCount === enabledCount && score24 !== null) {
+        if (enabledCount > 0 && filledCount === enabledCount && score24 !== null && pct !== null) {
+            setText("ep_scorePct", `${pct}%`);
             setText("ep_levelABC", computeLevel(score24));
-          } else {
+        } else {
+            setText("ep_scorePct", "—");
             setText("ep_levelABC", "—");
-          }
+        }
         };
 
+        // Bind notes (une fois) : toute modification de note déclenche le recalcul
         for (let i = 1; i <= 4; i++) {
-          const sel = $(`ep_critNote${i}`);
-          if (!sel) continue;
-          sel.addEventListener("change", recalcScore);
-          sel.addEventListener("input", recalcScore);
+        const sel = $(`ep_critNote${i}`);
+        if (!sel) continue;
+        sel.addEventListener("change", recalcScore);
+        sel.addEventListener("input", recalcScore);
         }
 
         // ======================================================
@@ -2086,12 +2128,6 @@
     return "Initial"; // fallback (cas tordu)
   }
 
-  function _score24ToMasteryPct(score24) {
-    const n = Number(score24);
-    if (!Number.isFinite(n)) return null;
-    return Math.max(0, Math.min(100, Math.round((n / 24) * 100)));
-  }
-
   async function saveCurrentAudit() {
     // On a besoin d’un collaborateur + d’une compétence sélectionnée
     const id_effectif_competence =
@@ -2134,14 +2170,13 @@
     const { coef, score24 } = _computeScore24(sum, enabled.length);
     const niveau_actuel = _levelFromScore24(score24);
 
-    // Alignement UI : affichage métier en pourcentage (24/24 = 100%)
-    const masteryPct = _score24ToMasteryPct(score24);
+    // Alignement UI : résultat affiché en pourcentage de maîtrise
+    const pct = Math.max(0, Math.min(100, Math.round((score24 / 24) * 100)));
     if (document.getElementById("ep_scoreRaw")) document.getElementById("ep_scoreRaw").textContent = String(sum);
-    if (document.getElementById("ep_scorePct")) document.getElementById("ep_scorePct").textContent = masteryPct === null ? "—" : `${masteryPct} %`;
+    if (document.getElementById("ep_scorePct")) document.getElementById("ep_scorePct").textContent = `${pct}%`;
     if (document.getElementById("ep_levelABC")) document.getElementById("ep_levelABC").textContent = niveau_actuel;
 
     const observation = (document.getElementById("ep_txtObservation")?.value || "").trim();
-    const methode_eval = (document.getElementById("ep_selEvalMethod")?.value || "Entretien de performance").trim() || "Entretien de performance";
 
     const payload = {
       id_effectif_competence,
@@ -2154,7 +2189,7 @@
         niveau: x.niveau,
         commentaire: x.commentaire
       })),
-      methode_eval,
+      methode_eval: (document.getElementById("ep_selEvalMethod")?.value || "Entretien de performance").trim(),
     };
 
     const url = `${_portal.apiBase}/skills/entretien-performance/audit/${encodeURIComponent(_portal.contactId)}`;
