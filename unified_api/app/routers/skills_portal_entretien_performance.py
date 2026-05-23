@@ -263,12 +263,27 @@ def get_entretien_performance_progression(
                         COALESCE(NULLIF(fp.poids_criticite,0),1) AS poids_criticite,
                         c.code,
                         c.intitule,
-                        COALESCE(NULLIF(TRIM(c.domaine), ''), 'Sans domaine') AS domaine
+
+                        COALESCE(NULLIF(TRIM(c.domaine), ''), 'Sans domaine') AS domaine_id,
+
+                        COALESCE(
+                            NULLIF(TRIM(dc.titre_court), ''),
+                            NULLIF(TRIM(c.domaine), ''),
+                            'Sans domaine'
+                        ) AS domaine_titre,
+
+                        dc.couleur::text AS domaine_couleur
+
                     FROM public.tbl_fiche_poste_competence fp
+
                     JOIN public.tbl_competence c
                       ON c.id_comp = fp.id_competence
                      AND COALESCE(c.masque, FALSE) = FALSE
                      AND COALESCE(c.etat, 'valide') <> 'inactive'
+
+                    LEFT JOIN public.tbl_domaine_competence dc
+                      ON dc.id_domaine_competence = c.domaine
+
                     WHERE fp.id_poste = %s
                     ORDER BY c.code, c.intitule
                     """,
@@ -290,11 +305,17 @@ def get_entretien_performance_progression(
                     if crit + 0.0001 < seuil:
                         continue
 
+                    domaine_id = (r.get("domaine_id") or "Sans domaine").strip()
+                    domaine_titre = (r.get("domaine_titre") or domaine_id or "Sans domaine").strip()
+                    domaine_couleur = (r.get("domaine_couleur") or "").strip()
+
                     expected[id_comp] = {
                         "id_comp": id_comp,
                         "code": (r.get("code") or "").strip(),
                         "intitule": (r.get("intitule") or "").strip(),
-                        "domaine": (r.get("domaine") or "Sans domaine").strip(),
+                        "domaine_id": domaine_id,
+                        "domaine": domaine_titre,
+                        "domaine_couleur": domaine_couleur,
                         "niveau_requis": (r.get("niveau_requis") or "").strip(),
                         "criticite": crit,
                         "target": _target_lvl(r.get("niveau_requis")),
@@ -430,7 +451,7 @@ def get_entretien_performance_progression(
                         if idc not in known_scores:
                             continue
 
-                        dom = meta["domaine"] or "Sans domaine"
+                        dom = meta["domaine_id"] or "Sans domaine"
                         val = _attainment_pct(known_scores[idc], meta["target"])
                         w = max(float(meta["criticite"]), 1.0)
 
@@ -488,15 +509,34 @@ def get_entretien_performance_progression(
                         }
                     )
 
+                domaine_meta = {}
+
+                for meta in expected.values():
+                    did = meta.get("domaine_id") or "Sans domaine"
+
+                    if did not in domaine_meta:
+                        domaine_meta[did] = {
+                            "id": did,
+                            "label": meta.get("domaine") or did,
+                            "couleur": meta.get("domaine_couleur") or None,
+                        }
+
                 domaines_out = []
-                for dom, pts in sorted(domain_points.items(), key=lambda kv: kv[0].lower()):
+
+                for dom, pts in sorted(
+                    domain_points.items(),
+                    key=lambda kv: (domaine_meta.get(kv[0], {}).get("label") or kv[0]).lower()
+                ):
                     if not pts:
                         continue
 
+                    meta = domaine_meta.get(dom, {"id": dom, "label": dom, "couleur": None})
+
                     domaines_out.append(
                         {
-                            "id": dom,
-                            "label": dom,
+                            "id": meta.get("id") or dom,
+                            "label": meta.get("label") or dom,
+                            "couleur": meta.get("couleur"),
                             "points": pts,
                             "last_date": pts[-1]["date"] if pts else None,
                         }

@@ -949,6 +949,25 @@
         state.selectedCollaborateurId = c.id_effectif || null;
         state.selectedCompetenceId = null;
 
+        // Progression : données dépendantes du collaborateur.
+        // Sans reset, le modal garde la courbe du précédent collaborateur.
+        state._progressData = null;
+        state._progressVisible = {};
+        state._progressLoadedKey = "";
+        state._progressLoadingKey = "";
+
+        const progWrap = $("ep_progTableWrap");
+        const progCanvas = $("ep_progChart");
+
+        if (progWrap) {
+          progWrap.innerHTML = `<div class="ep-history-empty">Ouvre l’onglet Progression pour charger les données du collaborateur sélectionné.</div>`;
+        }
+
+        if (progCanvas) {
+          const ctx = progCanvas.getContext("2d");
+          if (ctx) ctx.clearRect(0, 0, progCanvas.width, progCanvas.height);
+        }
+
         clearCompetences();
         resetEvaluationPanel();
 
@@ -965,6 +984,10 @@
 
         // Lance le calcul (asynchrone, ne bloque pas le reste du chargement)
         refreshCouverturePosteActuel(true);
+
+        if ($("modalEpHistory")?.classList.contains("show") && $("ep_histPanelProgression")?.classList.contains("is-active")) {
+          loadProgressionData();
+        }
 
 
         try {
@@ -1617,6 +1640,29 @@
     return Number.isNaN(d.getTime()) ? 0 : d.getTime();
   }
 
+  function epNormalizeColor(raw) {
+    if (raw === null || raw === undefined) return "";
+
+    const s = raw.toString().trim();
+    if (!s) return "";
+
+    if (s.startsWith("#") || s.startsWith("rgb") || s.startsWith("hsl") || s.startsWith("var(")) {
+      return s;
+    }
+
+    if (/^-?\d+$/.test(s)) {
+      const n = parseInt(s, 10);
+      const u = (n >>> 0);
+      const r = (u >> 16) & 255;
+      const g = (u >> 8) & 255;
+      const b = u & 255;
+
+      return "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
+    }
+
+    return s;
+  }
+
   function epColorForKey(key) {
     let h = 0;
     const s = String(key || "x");
@@ -1697,8 +1743,18 @@
     if (histPanel) histPanel.classList.toggle("is-active", !isProgression);
     if (progPanel) progPanel.classList.toggle("is-active", isProgression);
 
-    if (isProgression && !state._progressData) {
-      loadProgressionData();
+    if (isProgression) {
+      const currentKey = [
+        state.selectedCollaborateurId || "",
+        getEpCriticiteSeuil(),
+        ($("ep_progMethod")?.value || "").toString().trim()
+      ].join("|");
+
+      if (!state._progressData || state._progressLoadedKey !== currentKey) {
+        loadProgressionData();
+      } else {
+        renderProgression();
+      }
     }
   }
 
@@ -1717,19 +1773,32 @@
 
     if (wrap) wrap.innerHTML = `<div class="ep-history-empty">Chargement de la progression…</div>`;
 
+    const selectedId = (state.selectedCollaborateurId || "").toString().trim();
+    const method = ($("ep_progMethod")?.value || "").toString().trim();
+    const seuil = getEpCriticiteSeuil();
+
+    const loadKey = [selectedId, seuil, method].join("|");
+    state._progressLoadingKey = loadKey;
+
     try {
       const params = new URLSearchParams();
-      params.set("criticite_min", String(getEpCriticiteSeuil()));
+      params.set("criticite_min", String(seuil));
 
-      const method = ($("ep_progMethod")?.value || "").toString().trim();
       if (method) params.set("methode_eval", method);
 
-      const url = `${_portal.apiBase}/skills/entretien-performance/progression/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}?${params.toString()}`;
+      const url = `${_portal.apiBase}/skills/entretien-performance/progression/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(selectedId)}?${params.toString()}`;
       const data = await _portal.apiJson(url);
 
+      // Si l'utilisateur a changé de collaborateur pendant l'appel API,
+      // on ignore la réponse obsolète. Sinon, merveille : les courbes voyagent entre salariés.
+      if (state._progressLoadingKey !== loadKey || state.selectedCollaborateurId !== selectedId) {
+        return;
+      }
+
       state._progressData = data || {};
+      state._progressLoadedKey = loadKey;
       state._progView = state._progView || "competences";
-      state._progressVisible = state._progressVisible || {};
+      state._progressVisible = {};
 
       const sel = $("ep_progMethod");
       if (sel && Array.isArray(data?.methodes)) {
@@ -1760,7 +1829,7 @@
       return (Array.isArray(data.domaines) ? data.domaines : []).map(s => ({
         ...s,
         _kind: "domaines",
-        _color: epColorForKey(`dom-${s.id || s.label}`),
+        _color: epNormalizeColor(s.couleur || s.domaine_couleur || s.color) || epColorForKey(`dom-${s.id || s.label}`),
       }));
     }
 
@@ -1832,7 +1901,7 @@
 
       const title = view === "competences" && s.code
         ? `${s.code} — ${s.label || ""}`
-        : (s.label || "—");
+        : (s.label || s.titre || s.id || "—");
 
       return `
         <tr>
