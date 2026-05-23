@@ -557,6 +557,66 @@ textarea.sb-ctrl{
 
 .sb-btn--init:hover{ filter: brightness(0.92); }
 
+/* -------- Icon buttons standard -------- */
+/* Aligné sur Studio : petits boutons carrés sobres, utilisés pour voir/modifier/document/archive */
+.sb-icon-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:6px;
+}
+
+.sb-icon-btn{
+  width:30px;
+  height:30px;
+  padding:0;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid #d1d5db;
+  border-radius:6px;
+  background:#fff;
+  color:#334155;
+  cursor:pointer;
+  box-sizing:border-box;
+}
+
+.sb-icon-btn:hover{
+  background:#f8fafc;
+  border-color:#94a3b8;
+  color:#111827;
+}
+
+.sb-icon-btn svg{
+  width:14px;
+  height:14px;
+  display:block;
+}
+
+.sb-icon-btn--danger{
+  background:#fff5f5;
+  border-color:#f1b5b0;
+  color:#b42318;
+}
+
+.sb-icon-btn--danger:hover{
+  background:#feeceb;
+  border-color:#e58f88;
+  color:#912018;
+}
+
+.sb-icon-btn--doc{
+  background:#eef4ff;
+  border-color:#9db3e8;
+  color:#28407a;
+  box-shadow: inset 0 0 0 1px rgba(53,92,170,.08);
+}
+
+.sb-icon-btn--doc:hover{
+  background:#e0ebff;
+  border-color:#6f8fd0;
+  color:#1e3570;
+}
+
 /* -------- Analyse: filtre criticité (slider dédié) -------- */
 .sb-filter-slider{
   display:flex;
@@ -4593,24 +4653,6 @@ body.bf-modal-open{
 
 #view-entretien-performance .ep-comp-edit-btn{
   flex:0 0 auto;
-  width:30px;
-  height:30px;
-  padding:0;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  border-radius:9px;
-}
-
-#view-entretien-performance .ep-comp-edit-btn svg{
-  width:15px;
-  height:15px;
-}
-
-#view-entretien-performance .ep-comp-edit-btn:hover{
-  border-color:color-mix(in srgb, var(--accent) 35%, var(--sb-gray-300));
-  background:color-mix(in srgb, var(--accent) 7%, #ffffff);
-  color:var(--accent);
 }
 
 #modalEpEvaluation .ep-eval-modal-card{
