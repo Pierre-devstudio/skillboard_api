@@ -4570,15 +4570,22 @@ body.bf-modal-open{
    Entretien performance — liste collaborateurs priorisée
    ====================================================== */
 
+#view-entretien-performance .ep-collab-panel{
+  position:relative;
+}
+
 #view-entretien-performance .ep-collab-panel .ep-collab-head{
   position:relative;
   align-items:flex-start;
   gap:12px;
+  padding-right:34px;
 }
 
 #view-entretien-performance .ep-priority-help-wrap{
-  position:relative;
-  flex:0 0 auto;
+  position:absolute;
+  top:12px;
+  right:12px;
+  z-index:20;
 }
 
 #view-entretien-performance .ep-priority-help{
@@ -4645,7 +4652,11 @@ body.bf-modal-open{
   flex:0 0 4px;
 }
 
-#view-entretien-performance .ep-priority-line--high{ background:var(--sb-danger); }
+#view-entretien-performance{
+  --ep-priority-high:#7c3aed;
+}
+
+#view-entretien-performance .ep-priority-line--high{ background:var(--ep-priority-high); }
 #view-entretien-performance .ep-priority-line--plan{ background:var(--sb-warning); }
 #view-entretien-performance .ep-priority-line--ok{ background:var(--sb-success); }
 #view-entretien-performance .ep-priority-line--none{ background:var(--sb-gray-300); }
@@ -4717,7 +4728,7 @@ body.bf-modal-open{
   box-shadow:0 6px 14px rgba(17,24,39,.06);
 }
 
-#view-entretien-performance .ep-collab-card--high{ border-left-color:var(--sb-danger); }
+#view-entretien-performance .ep-collab-card--high{ border-left-color:var(--ep-priority-high); }
 #view-entretien-performance .ep-collab-card--plan{ border-left-color:var(--sb-warning); }
 #view-entretien-performance .ep-collab-card--ok{ border-left-color:var(--sb-success); }
 #view-entretien-performance .ep-collab-card--none{ border-left-color:var(--sb-gray-300); }
