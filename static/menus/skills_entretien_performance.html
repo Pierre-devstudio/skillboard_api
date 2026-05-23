@@ -386,28 +386,62 @@
 
       <div class="modal-body ep-history-body">
 
-        <div class="ep-history-filters">
-          <div class="sb-field ep-history-search">
-            <label class="sb-label" for="ep_histSearch">Recherche</label>
-            <input id="ep_histSearch" class="sb-ctrl" placeholder="Code, compétence, observation..." autocomplete="off" />
-          </div>
-
-          <div class="sb-field">
-            <label class="sb-label" for="ep_histSelEvaluateur">Évaluateur</label>
-            <select id="ep_histSelEvaluateur" class="sb-select">
-              <option value="">Tous</option>
-            </select>
-          </div>
-
-          <div class="sb-field">
-            <label class="sb-label" for="ep_histSelMethode">Méthode</label>
-            <select id="ep_histSelMethode" class="sb-select">
-              <option value="">Toutes</option>
-            </select>
-          </div>
+        <div class="ep-history-tabs">
+          <button type="button" class="ep-history-tab is-active" id="ep_histTabHistorique" data-tab="historique">
+            Historique
+          </button>
+          <button type="button" class="ep-history-tab" id="ep_histTabProgression" data-tab="progression">
+            Progression
+          </button>
         </div>
 
-        <div id="ep_historyTimeline" class="ep-history-timeline"></div>
+        <div class="ep-history-panel is-active" id="ep_histPanelHistorique">
+          <div class="ep-history-filters">
+            <div class="sb-field ep-history-search">
+              <label class="sb-label" for="ep_histSearch">Recherche</label>
+              <input id="ep_histSearch" class="sb-ctrl" placeholder="Code, compétence, observation..." autocomplete="off" />
+            </div>
+
+            <div class="sb-field">
+              <label class="sb-label" for="ep_histSelEvaluateur">Évaluateur</label>
+              <select id="ep_histSelEvaluateur" class="sb-select">
+                <option value="">Tous</option>
+              </select>
+            </div>
+
+            <div class="sb-field">
+              <label class="sb-label" for="ep_histSelMethode">Méthode</label>
+              <select id="ep_histSelMethode" class="sb-select">
+                <option value="">Toutes</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="ep_historyTimeline" class="ep-history-timeline"></div>
+        </div>
+
+        <div class="ep-history-panel" id="ep_histPanelProgression">
+          <div class="ep-prog-toolbar">
+            <div class="sb-field ep-prog-method">
+              <label class="sb-label" for="ep_progMethod">Méthode prise en compte</label>
+              <select id="ep_progMethod" class="sb-select">
+                <option value="">Toutes les méthodes</option>
+              </select>
+            </div>
+
+            <div class="ep-prog-viewbar">
+              <button type="button" class="ep-prog-view is-active" data-view="competences">Compétences</button>
+              <button type="button" class="ep-prog-view" data-view="domaines">Domaines</button>
+              <button type="button" class="ep-prog-view" data-view="poste">Maîtrise du poste</button>
+            </div>
+          </div>
+
+          <div class="ep-prog-chart-card">
+            <canvas id="ep_progChart" width="980" height="320"></canvas>
+          </div>
+
+          <div id="ep_progTableWrap" class="ep-prog-table-wrap"></div>
+        </div>
       </div>
 
       <div class="modal-footer">

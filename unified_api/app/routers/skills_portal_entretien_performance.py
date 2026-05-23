@@ -171,6 +171,357 @@ class CollaborateurListItem(BaseModel):
     mois_depuis_derniere_eval: Optional[int] = None
     priorite_eval: Optional[str] = None    
 
+
+# ======================================================
+# Progression collaborateur
+# ======================================================
+
+@router.get("/skills/entretien-performance/progression/{id_contact}/{id_effectif}")
+def get_entretien_performance_progression(
+    id_contact: str,
+    id_effectif: str,
+    request: Request,
+    criticite_min: float = Query(default=0.0, ge=0.0, le=100.0),
+    methode_eval: Optional[str] = Query(default=None),
+):
+    """
+    Progression dans le temps :
+    - par compétence
+    - par domaine
+    - maîtrise du poste
+
+    Règle métier :
+    à chaque date d'audit, on reconstruit l'état connu.
+    Le dernier point correspond toujours à l'état actuel à la date du jour.
+    """
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                eff = _fetch_effectif_context(cur, id_ent, id_effectif)
+                id_poste = (eff.get("id_poste_actuel") or "").strip()
+
+                seuil = max(0.0, min(100.0, float(criticite_min or 0.0)))
+                methode = (methode_eval or "").strip()
+
+                if not id_poste:
+                    return {
+                        "id_effectif": id_effectif,
+                        "id_poste": None,
+                        "criticite_min": seuil,
+                        "methode_eval": methode,
+                        "methodes": [],
+                        "competences": [],
+                        "domaines": [],
+                        "poste": {"label": "Maîtrise du poste", "points": []},
+                        "message": "Poste actuel non renseigné pour ce collaborateur.",
+                    }
+
+                def _crit_pct(v) -> float:
+                    try:
+                        x = float(v)
+                    except Exception:
+                        return 1.0
+
+                    if x <= 0:
+                        return 1.0
+                    if x <= 1.0:
+                        return x * 100.0
+                    return x
+
+                def _target_lvl(niv: str) -> float:
+                    n = (niv or "").strip().upper()
+
+                    if n in ["A", "INITIAL"]:
+                        return 10.0
+                    if n in ["B", "AVANCE", "AVANCÉ"]:
+                        return 19.0
+                    if n in ["C", "EXPERT"]:
+                        return 24.0
+
+                    return 24.0
+
+                def _safe_score(v) -> float:
+                    try:
+                        x = float(v)
+                    except Exception:
+                        return 0.0
+                    return max(0.0, min(24.0, x))
+
+                def _attainment_pct(score: float, target: float) -> float:
+                    if target <= 0:
+                        return 0.0
+                    return max(0.0, min((float(score) / float(target)) * 100.0, 100.0))
+
+                # Compétences attendues du poste, filtrées par criticité minimale
+                cur.execute(
+                    """
+                    SELECT
+                        fp.id_competence AS id_comp,
+                        fp.niveau_requis,
+                        COALESCE(NULLIF(fp.poids_criticite,0),1) AS poids_criticite,
+                        c.code,
+                        c.intitule,
+                        COALESCE(NULLIF(TRIM(c.domaine), ''), 'Sans domaine') AS domaine
+                    FROM public.tbl_fiche_poste_competence fp
+                    JOIN public.tbl_competence c
+                      ON c.id_comp = fp.id_competence
+                     AND COALESCE(c.masque, FALSE) = FALSE
+                     AND COALESCE(c.etat, 'valide') <> 'inactive'
+                    WHERE fp.id_poste = %s
+                    ORDER BY c.code, c.intitule
+                    """,
+                    (id_poste,),
+                )
+
+                expected_rows = cur.fetchall() or []
+
+                expected = {}
+                comp_ids = []
+
+                for r in expected_rows:
+                    id_comp = (r.get("id_comp") or "").strip()
+                    if not id_comp:
+                        continue
+
+                    crit = _crit_pct(r.get("poids_criticite"))
+
+                    if crit + 0.0001 < seuil:
+                        continue
+
+                    expected[id_comp] = {
+                        "id_comp": id_comp,
+                        "code": (r.get("code") or "").strip(),
+                        "intitule": (r.get("intitule") or "").strip(),
+                        "domaine": (r.get("domaine") or "Sans domaine").strip(),
+                        "niveau_requis": (r.get("niveau_requis") or "").strip(),
+                        "criticite": crit,
+                        "target": _target_lvl(r.get("niveau_requis")),
+                    }
+                    comp_ids.append(id_comp)
+
+                # Méthodes disponibles
+                cur.execute(
+                    """
+                    SELECT DISTINCT
+                        COALESCE(NULLIF(TRIM(a.methode_eval), ''), 'Non renseignée') AS methode_eval
+                    FROM public.tbl_effectif_client_audit_competence a
+                    JOIN public.tbl_effectif_client_competence ec
+                      ON ec.id_effectif_competence = a.id_effectif_competence
+                    JOIN public.tbl_effectif_client e
+                      ON e.id_effectif = ec.id_effectif_client
+                    WHERE ec.id_effectif_client = %s
+                      AND e.id_ent = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.statut_actif, TRUE) = TRUE
+                      AND ec.archive = FALSE
+                      AND ec.actif = TRUE
+                    ORDER BY 1
+                    """,
+                    (id_effectif, id_ent),
+                )
+                methodes = [
+                    (r.get("methode_eval") or "").strip()
+                    for r in (cur.fetchall() or [])
+                    if (r.get("methode_eval") or "").strip()
+                ]
+
+                if not comp_ids:
+                    return {
+                        "id_effectif": id_effectif,
+                        "id_poste": id_poste,
+                        "criticite_min": seuil,
+                        "methode_eval": methode,
+                        "methodes": methodes,
+                        "competences": [],
+                        "domaines": [],
+                        "poste": {"label": "Maîtrise du poste", "points": []},
+                        "message": "Aucune compétence retenue avec le seuil de criticité défini.",
+                    }
+
+                placeholders = ",".join(["%s"] * len(comp_ids))
+                params: List[Any] = [id_effectif, id_ent, *comp_ids]
+
+                method_sql = ""
+                if methode:
+                    method_sql = " AND COALESCE(NULLIF(TRIM(a.methode_eval), ''), 'Non renseignée') = %s "
+                    params.append(methode)
+
+                cur.execute(
+                    f"""
+                    SELECT
+                        ec.id_comp,
+                        a.date_audit,
+                        a.resultat_eval,
+                        COALESCE(NULLIF(TRIM(a.methode_eval), ''), 'Non renseignée') AS methode_eval
+                    FROM public.tbl_effectif_client_audit_competence a
+                    JOIN public.tbl_effectif_client_competence ec
+                      ON ec.id_effectif_competence = a.id_effectif_competence
+                    JOIN public.tbl_effectif_client e
+                      ON e.id_effectif = ec.id_effectif_client
+                    WHERE ec.id_effectif_client = %s
+                      AND e.id_ent = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.statut_actif, TRUE) = TRUE
+                      AND ec.archive = FALSE
+                      AND ec.actif = TRUE
+                      AND ec.id_comp IN ({placeholders})
+                      AND a.date_audit IS NOT NULL
+                      {method_sql}
+                    ORDER BY a.date_audit ASC, ec.id_comp ASC
+                    """,
+                    tuple(params),
+                )
+
+                audit_rows = cur.fetchall() or []
+
+                audits_by_date: Dict[str, List[Dict[str, Any]]] = {}
+                for r in audit_rows:
+                    d = str(r["date_audit"]) if r.get("date_audit") else ""
+                    if not d:
+                        continue
+
+                    audits_by_date.setdefault(d, []).append(
+                        {
+                            "id_comp": r.get("id_comp"),
+                            "score": _safe_score(r.get("resultat_eval")),
+                            "methode_eval": r.get("methode_eval"),
+                        }
+                    )
+
+                dates = sorted(audits_by_date.keys())
+                today = str(date.today())
+
+                if today not in dates:
+                    dates.append(today)
+
+                # Dernier état connu par compétence
+                known_scores: Dict[str, float] = {}
+
+                comp_points: Dict[str, List[Dict[str, Any]]] = {idc: [] for idc in comp_ids}
+                domain_points: Dict[str, List[Dict[str, Any]]] = {}
+                poste_points: List[Dict[str, Any]] = []
+
+                for d in dates:
+                    for a in audits_by_date.get(d, []):
+                        idc = (a.get("id_comp") or "").strip()
+                        if idc in expected:
+                            known_scores[idc] = _safe_score(a.get("score"))
+
+                    # Courbes compétences : on ne commence la courbe qu'à partir du premier audit connu
+                    for idc, meta in expected.items():
+                        if idc not in known_scores:
+                            continue
+
+                        val = _attainment_pct(known_scores[idc], meta["target"])
+                        comp_points[idc].append(
+                            {
+                                "date": d,
+                                "value": round(val, 1),
+                                "score": round(known_scores[idc], 1),
+                            }
+                        )
+
+                    # Courbes domaines : moyenne pondérée des compétences connues du domaine
+                    domain_acc: Dict[str, Dict[str, float]] = {}
+
+                    for idc, meta in expected.items():
+                        if idc not in known_scores:
+                            continue
+
+                        dom = meta["domaine"] or "Sans domaine"
+                        val = _attainment_pct(known_scores[idc], meta["target"])
+                        w = max(float(meta["criticite"]), 1.0)
+
+                        if dom not in domain_acc:
+                            domain_acc[dom] = {"num": 0.0, "den": 0.0}
+
+                        domain_acc[dom]["num"] += val * w
+                        domain_acc[dom]["den"] += w
+
+                    for dom, acc in domain_acc.items():
+                        if acc["den"] <= 0:
+                            continue
+
+                        domain_points.setdefault(dom, []).append(
+                            {
+                                "date": d,
+                                "value": round(acc["num"] / acc["den"], 1),
+                            }
+                        )
+
+                    # Maîtrise du poste : toutes les compétences retenues comptent.
+                    # Jamais évaluée = 0.
+                    p_num = 0.0
+                    p_den = 0.0
+
+                    for idc, meta in expected.items():
+                        score = known_scores.get(idc, 0.0)
+                        val = _attainment_pct(score, meta["target"])
+                        w = max(float(meta["criticite"]), 1.0)
+
+                        p_num += val * w
+                        p_den += w
+
+                    poste_points.append(
+                        {
+                            "date": d,
+                            "value": round((p_num / p_den) if p_den > 0 else 0.0, 1),
+                        }
+                    )
+
+                competences_out = []
+                for idc, meta in expected.items():
+                    pts = comp_points.get(idc) or []
+                    if not pts:
+                        continue
+
+                    competences_out.append(
+                        {
+                            "id": idc,
+                            "code": meta["code"],
+                            "label": meta["intitule"],
+                            "domaine": meta["domaine"],
+                            "points": pts,
+                            "last_date": pts[-1]["date"] if pts else None,
+                        }
+                    )
+
+                domaines_out = []
+                for dom, pts in sorted(domain_points.items(), key=lambda kv: kv[0].lower()):
+                    if not pts:
+                        continue
+
+                    domaines_out.append(
+                        {
+                            "id": dom,
+                            "label": dom,
+                            "points": pts,
+                            "last_date": pts[-1]["date"] if pts else None,
+                        }
+                    )
+
+                return {
+                    "id_effectif": id_effectif,
+                    "id_poste": id_poste,
+                    "criticite_min": seuil,
+                    "methode_eval": methode,
+                    "methodes": methodes,
+                    "competences": competences_out,
+                    "domaines": domaines_out,
+                    "poste": {
+                        "label": "Maîtrise du poste",
+                        "points": poste_points,
+                    },
+                    "message": None,
+                }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
 # ======================================================
 # Couverture poste actuel (jauge)
 # ======================================================

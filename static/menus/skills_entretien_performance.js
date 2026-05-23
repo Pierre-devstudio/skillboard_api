@@ -1446,6 +1446,13 @@
     rng.addEventListener("input", () => {
       applyChecklistCriticiteFilter();
       scheduleCouverturePosteRefresh();
+
+      if ($("modalEpHistory")?.classList.contains("show")) {
+        state._progressData = null;
+        if ($("ep_histPanelProgression")?.classList.contains("is-active")) {
+          loadProgressionData();
+        }
+      }
     });
   }
 
@@ -1585,6 +1592,443 @@
     await onScopeChanged();
   }
 
+  function epEsc(s) {
+    return String(s ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function epFormatDateFR(v) {
+    if (!v) return "—";
+    try {
+      const d = new Date(v);
+      if (Number.isNaN(d.getTime())) return String(v);
+      return d.toLocaleDateString("fr-FR");
+    } catch {
+      return String(v);
+    }
+  }
+
+  function epDateTime(v) {
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+  }
+
+  function epColorForKey(key) {
+    let h = 0;
+    const s = String(key || "x");
+
+    for (let i = 0; i < s.length; i++) {
+      h = ((h << 5) - h) + s.charCodeAt(i);
+      h |= 0;
+    }
+
+    const hue = Math.abs(h) % 360;
+    return `hsl(${hue}, 68%, 42%)`;
+  }
+
+  function epTrendFromPoints(points) {
+    const pts = Array.isArray(points) ? points.filter(p => Number.isFinite(Number(p.value))) : [];
+    if (pts.length < 2) return "stable";
+
+    const first = Number(pts[0].value);
+    const last = Number(pts[pts.length - 1].value);
+    const delta = last - first;
+
+    if (delta > 1) return "up";
+    if (delta < -1) return "down";
+    return "stable";
+  }
+
+  function epTrendIcon(trend) {
+    if (trend === "up") return `<span class="ep-trend ep-trend--up" title="Progression">↗</span>`;
+    if (trend === "down") return `<span class="ep-trend ep-trend--down" title="Régression">↘</span>`;
+    return `<span class="ep-trend ep-trend--stable" title="Stable">→</span>`;
+  }
+
+  function bindHistoryTabsOnce() {
+    if (state._histTabsBound) return;
+    state._histTabsBound = true;
+
+    const tabs = document.querySelectorAll("#modalEpHistory .ep-history-tab");
+    tabs.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.tab || "historique";
+        setHistoryTab(tab);
+      });
+    });
+
+    const viewBtns = document.querySelectorAll("#modalEpHistory .ep-prog-view");
+    viewBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const view = btn.dataset.view || "competences";
+        state._progView = view;
+
+        viewBtns.forEach(b => b.classList.remove("is-active"));
+        btn.classList.add("is-active");
+
+        renderProgression();
+      });
+    });
+
+    const selMethod = $("ep_progMethod");
+    if (selMethod) {
+      selMethod.addEventListener("change", () => {
+        state._progressData = null;
+        state._progressVisible = {};
+        loadProgressionData();
+      });
+    }
+  }
+
+  function setHistoryTab(tab) {
+    const isProgression = tab === "progression";
+
+    document.querySelectorAll("#modalEpHistory .ep-history-tab").forEach(b => {
+      b.classList.toggle("is-active", (b.dataset.tab || "") === tab);
+    });
+
+    const histPanel = $("ep_histPanelHistorique");
+    const progPanel = $("ep_histPanelProgression");
+
+    if (histPanel) histPanel.classList.toggle("is-active", !isProgression);
+    if (progPanel) progPanel.classList.toggle("is-active", isProgression);
+
+    if (isProgression && !state._progressData) {
+      loadProgressionData();
+    }
+  }
+
+  async function loadProgressionData() {
+    const wrap = $("ep_progTableWrap");
+    const canvas = $("ep_progChart");
+
+    if (!state.selectedCollaborateurId || !_portal) {
+      if (wrap) wrap.innerHTML = `<div class="ep-history-empty">Sélectionne un collaborateur pour afficher la progression.</div>`;
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        ctx && ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      return;
+    }
+
+    if (wrap) wrap.innerHTML = `<div class="ep-history-empty">Chargement de la progression…</div>`;
+
+    try {
+      const params = new URLSearchParams();
+      params.set("criticite_min", String(getEpCriticiteSeuil()));
+
+      const method = ($("ep_progMethod")?.value || "").toString().trim();
+      if (method) params.set("methode_eval", method);
+
+      const url = `${_portal.apiBase}/skills/entretien-performance/progression/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}?${params.toString()}`;
+      const data = await _portal.apiJson(url);
+
+      state._progressData = data || {};
+      state._progView = state._progView || "competences";
+      state._progressVisible = state._progressVisible || {};
+
+      const sel = $("ep_progMethod");
+      if (sel && Array.isArray(data?.methodes)) {
+        const current = sel.value || "";
+        sel.innerHTML = `<option value="">Toutes les méthodes</option>`;
+
+        data.methodes.forEach(m => {
+          const opt = document.createElement("option");
+          opt.value = m;
+          opt.textContent = m;
+          sel.appendChild(opt);
+        });
+
+        if (current && data.methodes.includes(current)) sel.value = current;
+      }
+
+      renderProgression();
+    } catch (e) {
+      if (wrap) wrap.innerHTML = `<div class="ep-history-empty">Impossible de charger la progression : ${epEsc(e?.message || e)}</div>`;
+    }
+  }
+
+  function getProgressionSeriesForView() {
+    const data = state._progressData || {};
+    const view = state._progView || "competences";
+
+    if (view === "domaines") {
+      return (Array.isArray(data.domaines) ? data.domaines : []).map(s => ({
+        ...s,
+        _kind: "domaines",
+        _color: epColorForKey(`dom-${s.id || s.label}`),
+      }));
+    }
+
+    if (view === "poste") {
+      const poste = data.poste || {};
+      return [{
+        id: "poste",
+        label: poste.label || "Maîtrise du poste",
+        points: Array.isArray(poste.points) ? poste.points : [],
+        _kind: "poste",
+        _color: "var(--accent)",
+      }];
+    }
+
+    return (Array.isArray(data.competences) ? data.competences : []).map(s => ({
+      ...s,
+      _kind: "competences",
+      _color: epColorForKey(`comp-${s.id || s.code || s.label}`),
+    }));
+  }
+
+  function renderProgression() {
+    const wrap = $("ep_progTableWrap");
+    const series = getProgressionSeriesForView();
+    const view = state._progView || "competences";
+
+    if (!wrap) return;
+
+    if (!series.length || !series.some(s => Array.isArray(s.points) && s.points.length)) {
+      renderProgressionChart([]);
+      wrap.innerHTML = `<div class="ep-history-empty">Aucune donnée de progression disponible avec les filtres actuels.</div>`;
+      return;
+    }
+
+    state._progressVisible = state._progressVisible || {};
+
+    series.forEach(s => {
+      const id = String(s.id || s.label || "");
+      if (!(id in state._progressVisible)) state._progressVisible[id] = true;
+    });
+
+    const visibleSeries = series.filter(s => {
+      const id = String(s.id || s.label || "");
+      return view === "poste" || state._progressVisible[id] !== false;
+    });
+
+    renderProgressionChart(visibleSeries);
+
+    if (view === "poste") {
+      renderProgressionPosteTable(series[0]);
+    } else {
+      renderProgressionLegendTable(series, view);
+    }
+  }
+
+  function renderProgressionLegendTable(series, view) {
+    const wrap = $("ep_progTableWrap");
+    if (!wrap) return;
+
+    const labelHeader = view === "domaines" ? "Domaine" : "Compétence";
+    const lastHeader = view === "domaines" ? "Dernière évolution" : "Dernière éval.";
+
+    const rows = series.map(s => {
+      const id = String(s.id || s.label || "");
+      const checked = state._progressVisible?.[id] !== false;
+      const color = s._color || epColorForKey(id);
+      const trend = epTrendFromPoints(s.points);
+      const last = s.last_date || (s.points?.length ? s.points[s.points.length - 1].date : "");
+
+      const title = view === "competences" && s.code
+        ? `${s.code} — ${s.label || ""}`
+        : (s.label || "—");
+
+      return `
+        <tr>
+          <td class="col-center">
+            <input type="checkbox" class="ep-prog-visible" data-id="${epEsc(id)}" ${checked ? "checked" : ""} />
+          </td>
+          <td class="col-center">
+            <span class="ep-curve-dot" style="background:${epEsc(color)};"></span>
+          </td>
+          <td>
+            <div class="ep-prog-label" title="${epEsc(title)}">${epEsc(title)}</div>
+          </td>
+          <td class="col-center">${epTrendIcon(trend)}</td>
+          <td class="col-center">${epEsc(epFormatDateFR(last))}</td>
+        </tr>
+      `;
+    }).join("");
+
+    wrap.innerHTML = `
+      <div class="table-wrap">
+        <table class="sb-table ep-prog-table">
+          <thead>
+            <tr>
+              <th class="col-center" style="width:80px;">Afficher</th>
+              <th class="col-center" style="width:70px;">Courbe</th>
+              <th>${epEsc(labelHeader)}</th>
+              <th class="col-center" style="width:90px;">Tendance</th>
+              <th class="col-center" style="width:130px;">${epEsc(lastHeader)}</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+
+    wrap.querySelectorAll(".ep-prog-visible").forEach(chk => {
+      chk.addEventListener("change", () => {
+        const id = chk.dataset.id || "";
+        state._progressVisible[id] = chk.checked;
+        renderProgression();
+      });
+    });
+  }
+
+  function renderProgressionPosteTable(serie) {
+    const wrap = $("ep_progTableWrap");
+    if (!wrap) return;
+
+    const pts = Array.isArray(serie?.points) ? serie.points : [];
+
+    const rows = pts.map(p => `
+      <tr>
+        <td>${epEsc(epFormatDateFR(p.date))}</td>
+        <td class="col-center"><strong>${epEsc(Math.round(Number(p.value || 0)))}%</strong></td>
+      </tr>
+    `).join("");
+
+    wrap.innerHTML = `
+      <div class="table-wrap">
+        <table class="sb-table ep-prog-table ep-prog-table--poste">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th class="col-center" style="width:160px;">Maîtrise du poste</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderProgressionChart(series) {
+    const canvas = $("ep_progChart");
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    const padL = 46;
+    const padR = 18;
+    const padT = 18;
+    const padB = 38;
+
+    const plotW = w - padL - padR;
+    const plotH = h - padT - padB;
+
+    const allPoints = [];
+    series.forEach(s => {
+      (s.points || []).forEach(p => {
+        const t = epDateTime(p.date);
+        const v = Number(p.value);
+
+        if (t && Number.isFinite(v)) {
+          allPoints.push({ t, v });
+        }
+      });
+    });
+
+    if (!allPoints.length) {
+      ctx.fillStyle = "#6b7280";
+      ctx.font = "13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Aucune donnée à afficher.", w / 2, h / 2);
+      return;
+    }
+
+    let minT = Math.min(...allPoints.map(p => p.t));
+    let maxT = Math.max(...allPoints.map(p => p.t));
+
+    if (minT === maxT) {
+      minT -= 86400000;
+      maxT += 86400000;
+    }
+
+    const xOf = (date) => {
+      const t = epDateTime(date);
+      return padL + ((t - minT) / (maxT - minT)) * plotW;
+    };
+
+    const yOf = (value) => {
+      const v = Math.max(0, Math.min(100, Number(value || 0)));
+      return padT + plotH - (v / 100) * plotH;
+    };
+
+    ctx.strokeStyle = "#e5e7eb";
+    ctx.lineWidth = 1;
+    ctx.fillStyle = "#6b7280";
+    ctx.font = "11px sans-serif";
+    ctx.textAlign = "right";
+
+    [0, 25, 50, 75, 100].forEach(v => {
+      const y = yOf(v);
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(w - padR, y);
+      ctx.stroke();
+      ctx.fillText(`${v}%`, padL - 8, y + 4);
+    });
+
+    ctx.strokeStyle = "#d1d5db";
+    ctx.beginPath();
+    ctx.moveTo(padL, padT);
+    ctx.lineTo(padL, h - padB);
+    ctx.lineTo(w - padR, h - padB);
+    ctx.stroke();
+
+    const minDate = new Date(minT);
+    const maxDate = new Date(maxT);
+    ctx.fillStyle = "#6b7280";
+    ctx.textAlign = "left";
+    ctx.fillText(minDate.toLocaleDateString("fr-FR"), padL, h - 12);
+    ctx.textAlign = "right";
+    ctx.fillText(maxDate.toLocaleDateString("fr-FR"), w - padR, h - 12);
+
+    series.forEach(s => {
+      const pts = (s.points || [])
+        .filter(p => epDateTime(p.date) && Number.isFinite(Number(p.value)))
+        .sort((a, b) => epDateTime(a.date) - epDateTime(b.date));
+
+      if (!pts.length) return;
+
+      const color = s._color || epColorForKey(s.id || s.label);
+
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = 2.2;
+
+      ctx.beginPath();
+
+      pts.forEach((p, idx) => {
+        const x = xOf(p.date);
+        const y = yOf(p.value);
+
+        if (idx === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+
+      ctx.stroke();
+
+      pts.forEach(p => {
+        const x = xOf(p.date);
+        const y = yOf(p.value);
+
+        ctx.beginPath();
+        ctx.arc(x, y, 3.4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    });
+  }
+
   function bindOnce() {
         if (_bound) return;
         _bound = true;
@@ -1697,6 +2141,8 @@
         if (btnHist) {
           btnHist.addEventListener("click", async () => {
             openModal("modalEpHistory");
+            bindHistoryTabsOnce();
+            setHistoryTab("historique");
 
             const timeline = $("ep_historyTimeline");
             const txtSearch = $("ep_histSearch");
@@ -1846,7 +2292,7 @@
             };
 
             const openHistoryEvaluationDetail = async (x, group) => {
-              closeModal("modalEpHistory");
+              
 
               const code = (x.code || "").toString().trim();
               const intitule = (x.intitule || "").toString().trim();

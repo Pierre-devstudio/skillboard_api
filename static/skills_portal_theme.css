@@ -5383,3 +5383,172 @@ body.bf-modal-open{
 #view-entretien-performance .ep-history-comp-row{
   grid-template-columns:minmax(0, 1fr) auto;
 }
+
+/* ======================================================
+   Entretien performance — Historique / Progression
+   ====================================================== */
+
+#modalEpHistory{
+  z-index:10020;
+}
+
+#modalEpEvaluation{
+  z-index:10040;
+}
+
+#view-entretien-performance .ep-history-tabs{
+  display:flex;
+  gap:8px;
+  margin-bottom:12px;
+}
+
+#view-entretien-performance .ep-history-tab{
+  height:30px;
+  padding:0 12px;
+  border:1px solid var(--sb-gray-300);
+  border-radius:10px;
+  background:#fff;
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+#view-entretien-performance .ep-history-tab.is-active{
+  background:var(--accent);
+  border-color:var(--accent);
+  color:#fff;
+}
+
+#view-entretien-performance .ep-history-panel{
+  display:none;
+}
+
+#view-entretien-performance .ep-history-panel.is-active{
+  display:block;
+}
+
+#view-entretien-performance .ep-prog-toolbar{
+  display:grid;
+  grid-template-columns:minmax(260px, 320px) 1fr;
+  gap:12px;
+  align-items:end;
+  margin-bottom:12px;
+  padding:10px 12px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:var(--sb-gray-50);
+}
+
+#view-entretien-performance .ep-prog-toolbar .sb-field{
+  margin:0;
+}
+
+#view-entretien-performance .ep-prog-viewbar{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+#view-entretien-performance .ep-prog-view{
+  height:30px;
+  padding:0 11px;
+  border:1px solid var(--sb-gray-300);
+  border-radius:10px;
+  background:#fff;
+  color:var(--sb-gray-900);
+  font-size:12px;
+  font-weight:650;
+  cursor:pointer;
+}
+
+#view-entretien-performance .ep-prog-view.is-active{
+  border-color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 8%, #ffffff);
+  color:var(--accent);
+}
+
+#view-entretien-performance .ep-prog-chart-card{
+  border:1px solid var(--sb-gray-200);
+  border-radius:13px;
+  background:#fff;
+  padding:10px 12px;
+  margin-bottom:12px;
+}
+
+#view-entretien-performance #ep_progChart{
+  display:block;
+  width:100%;
+  height:auto;
+}
+
+#view-entretien-performance .ep-prog-table-wrap{
+  margin-top:8px;
+}
+
+#view-entretien-performance .ep-prog-table td,
+#view-entretien-performance .ep-prog-table th{
+  vertical-align:middle;
+}
+
+#view-entretien-performance .ep-prog-label{
+  min-width:0;
+  max-width:100%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:13px;
+  font-weight:600;
+  color:var(--sb-gray-900);
+}
+
+#view-entretien-performance .ep-curve-dot{
+  display:inline-block;
+  width:12px;
+  height:12px;
+  border-radius:999px;
+  border:1px solid rgba(0,0,0,.12);
+}
+
+#view-entretien-performance .ep-trend{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:24px;
+  height:24px;
+  border-radius:999px;
+  font-size:16px;
+  font-weight:900;
+  line-height:1;
+}
+
+#view-entretien-performance .ep-trend--up{
+  color:#15803d;
+  background:rgba(22,163,74,.10);
+}
+
+#view-entretien-performance .ep-trend--down{
+  color:#b91c1c;
+  background:rgba(220,38,38,.10);
+}
+
+#view-entretien-performance .ep-trend--stable{
+  color:#6b7280;
+  background:rgba(107,114,128,.12);
+}
+
+#view-entretien-performance .ep-prog-table--poste td:first-child{
+  font-weight:600;
+}
+
+@media (max-width:900px){
+  #view-entretien-performance .ep-prog-toolbar{
+    grid-template-columns:1fr;
+  }
+
+  #view-entretien-performance .ep-prog-viewbar{
+    justify-content:flex-start;
+  }
+}
