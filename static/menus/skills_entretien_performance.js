@@ -703,54 +703,61 @@
     const svg = $("ep_svgGauge");
     if (!svg) return;
 
-    // jauge bornée comme demandé (min/max théoriques)
     const gMin = Number(pack.gauge_min ?? 0);
-    const gMax = Number(pack.gauge_max ?? 1);
-
-    const expMin = Number(pack.expected_min ?? 0);
-    const expMax = Number(pack.expected_max ?? 0);
+    const gMax = Number(pack.gauge_max ?? 0);
     const score = Number(pack.score ?? 0);
 
-    // Needle: clamp pour rester dans les limites de jauge
+    if (!Number.isFinite(gMin) || !Number.isFinite(gMax) || !Number.isFinite(score) || gMax <= gMin) {
+      renderGauge(svg, 0, 1, 0);
+
+      const pctPoste = $("ep_covPctPoste");
+      const pctMaxEl = $("ep_covPctMax");
+
+      if (pctPoste) pctPoste.textContent = "—";
+      if (pctMaxEl) pctMaxEl.textContent = "—";
+      return;
+    }
+
     const needle = Math.max(gMin, Math.min(gMax, score));
+    renderGauge(svg, gMin, gMax, needle);
 
-    renderGauge(svg, gMin, gMax, expMin, expMax, needle);
-
-    // % sous jauge (avec le score réel, pas le needle clampé)
-    const pct1 = (expMax > 0) ? ((score / expMax) * 100) : null;
-    const pct2 = (gMax > 0) ? ((score / gMax) * 100) : null;
+    const pctAttendus = Number(pack.pct_attendus ?? NaN);
+    const pctMax = Number(pack.pct_max ?? NaN);
 
     const pctPoste = $("ep_covPctPoste");
-    const pctMax = $("ep_covPctMax");
+    const pctMaxEl = $("ep_covPctMax");
 
-    if (pctPoste) pctPoste.textContent = (pct1 === null || !isFinite(pct1)) ? "—" : `${Math.round(pct1)}%`;
-    if (pctMax) pctMax.textContent = (pct2 === null || !isFinite(pct2)) ? "—" : `${Math.round(pct2)}%`;
+    if (pctPoste) {
+      pctPoste.textContent = Number.isFinite(pctAttendus) ? `${Math.round(pctAttendus)}%` : "—";
+    }
+
+    if (pctMaxEl) {
+      pctMaxEl.textContent = Number.isFinite(pctMax) ? `${Math.round(pctMax)}%` : "—";
+    }
   }
 
-  function renderGauge(svg, gaugeMin, gaugeMax, expectedMin, expectedMax, value) {
-    // Normalisation des bornes (au cas où l’API renvoie inversé)
+  function renderGauge(svg, gaugeMin, gaugeMax, value) {
     let gMin = Number(gaugeMin ?? 0);
     let gMax = Number(gaugeMax ?? 1);
-    if (!isFinite(gMin)) gMin = 0;
-    if (!isFinite(gMax)) gMax = 1;
-    if (gMax < gMin) { const t = gMin; gMin = gMax; gMax = t; }
 
-    let eMin = Number(expectedMin ?? 0);
-    let eMax = Number(expectedMax ?? 0);
-    if (!isFinite(eMin)) eMin = 0;
-    if (!isFinite(eMax)) eMax = 0;
-    if (eMax < eMin) { const t = eMin; eMin = eMax; eMax = t; }
+    if (!Number.isFinite(gMin)) gMin = 0;
+    if (!Number.isFinite(gMax)) gMax = 1;
+
+    if (gMax < gMin) {
+      const tmp = gMin;
+      gMin = gMax;
+      gMax = tmp;
+    }
 
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
     const range = Math.max(1e-9, (gMax - gMin));
 
-    const tFromValue = (v) => (clamp(v, gMin, gMax) - gMin) / range;
+    const tFromValue = (v) => {
+      const n = Number(v ?? gMin);
+      return (clamp(Number.isFinite(n) ? n : gMin, gMin, gMax) - gMin) / range;
+    };
 
-    // IMPORTANT:
-    // On travaille en repère SVG natif (Y vers le bas)
-    // 0° = droite, 90° = bas, 180° = gauche, 270° = haut
-    // Pour une jauge "compteur vitesse" (arc du haut) : 180° -> 360° (via 270°)
-    const angleFromT = (t) => 180 + (180 * t); // 180 (gauche) -> 360 (droite) en passant par 270 (haut)
+    const angleFromT = (t) => 180 + (180 * t);
 
     const cx = 120;
     const cy = 120;
@@ -761,56 +768,65 @@
       const rad = (angleDeg * Math.PI) / 180;
       return {
         x: cx + (radius * Math.cos(rad)),
-        y: cy + (radius * Math.sin(rad)), // SVG natif: +sin => vers le bas
+        y: cy + (radius * Math.sin(rad)),
       };
     };
 
     const arcPath = (a1, a2) => {
-      // On force le sens "gauche->droite" sur 180° (arc du haut)
-      // Si inversé, on swap
-      if (a2 < a1) { const t = a1; a1 = a2; a2 = t; }
+      if (a2 < a1) {
+        const tmp = a1;
+        a1 = a2;
+        a2 = tmp;
+      }
 
       const p1 = polar(a1, r);
       const p2 = polar(a2, r);
-
       const diff = Math.abs(a2 - a1);
       const large = (diff <= 180) ? "0" : "1";
 
-      // sweep=1 => suit l’augmentation d’angle en SVG (sens horaire en coordonnées écran)
-      // ici 180->360 passe par 270 (haut), donc c’est bien le demi-cercle du haut.
-      const sweep = "1";
-
-      return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} ${sweep} ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
+      return `M ${p1.x.toFixed(2)} ${p1.y.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${p2.x.toFixed(2)} ${p2.y.toFixed(2)}`;
     };
 
-    // Background arc (haut) : 180 -> 360
-    const bgD = arcPath(180, 360);
+    /*
+      Même logique que la jauge dashboard :
+      - rouge : zone basse
+      - orange : zone intermédiaire
+      - vert : zone conforme
+      On n'affiche pas une progression partielle.
+      On affiche une vraie jauge de lecture.
+    */
+    const a0 = angleFromT(0.0);
+    const a1 = angleFromT(0.2);
+    const a2 = angleFromT(0.5);
+    const a3 = angleFromT(1.0);
 
-    // Zone attendue
-    const tExpMin = tFromValue(eMin);
-    const tExpMax = tFromValue(eMax);
-    const aExpMin = angleFromT(tExpMin);
-    const aExpMax = angleFromT(tExpMax);
-
-    const zoneOk = isFinite(aExpMin) && isFinite(aExpMax) && (Math.abs(aExpMin - aExpMax) > 0.0001);
-    const zoneD = zoneOk ? arcPath(aExpMin, aExpMax) : "";
-
-    // Aiguille
-    const aNeedle = angleFromT(tFromValue(clamp(Number(value ?? 0), gMin, gMax)));
+    const aNeedle = angleFromT(tFromValue(value));
     const pNeedle = polar(aNeedle, rNeedle);
 
     svg.innerHTML = `
-      <path d="${bgD}"
-            stroke="rgba(0,0,0,.15)"
-            stroke-width="14"
+      <path d="${arcPath(180, 360)}"
+            stroke="rgba(0,0,0,.10)"
+            stroke-width="16"
             fill="none"
             stroke-linecap="round"></path>
 
-      ${zoneOk ? `<path d="${zoneD}"
+      <path d="${arcPath(a0, a1)}"
             stroke="var(--accent)"
             stroke-width="14"
             fill="none"
-            stroke-linecap="round"></path>` : ""}
+            stroke-linecap="butt"></path>
+
+      <path d="${arcPath(a1, a2)}"
+            stroke="#f59e0b"
+            stroke-width="14"
+            fill="none"
+            stroke-linecap="butt"></path>
+
+      <path d="${arcPath(a2, a3)}"
+            stroke="#16a34a"
+            stroke-width="14"
+            fill="none"
+            stroke-linecap="butt"></path>
 
       <line x1="${cx}" y1="${cy}" x2="${pNeedle.x.toFixed(2)}" y2="${pNeedle.y.toFixed(2)}"
             stroke="rgba(0,0,0,.65)"
@@ -820,7 +836,7 @@
       <circle cx="${cx}" cy="${cy}" r="6" fill="rgba(0,0,0,.65)"></circle>
     `;
   }
-
+  
   async function loadBootstrap() {
     if (!_portal) return;
 
