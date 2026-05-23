@@ -13,41 +13,7 @@
     </div>
   </div>
 
-  <div class="card ep-context-card">
-    <div class="ep-context-main">
-      <div class="ep-context-person">
-        <div class="label">Collaborateur</div>
-        <div class="ep-context-name" id="ep_ctxCollaborateur">—</div>
-      </div>
-
-      <div class="ep-context-grid">
-        <div class="ep-context-item">
-          <div class="label">Matricule</div>
-          <div class="value" id="ep_ctxMatricule">—</div>
-        </div>
-
-        <div class="ep-context-item">
-          <div class="label">Poste</div>
-          <div class="value" id="ep_ctxPoste">—</div>
-        </div>
-
-        <div class="ep-context-item">
-          <div class="label">Structure interne</div>
-          <div class="value" id="ep_ctxService">—</div>
-        </div>
-
-        <div class="ep-context-item">
-          <div class="label">Date</div>
-          <div class="value" id="ep_ctxDate">—</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="ep-context-kpi">
-      <div class="label">À auditer</div>
-      <div class="value" id="ep_kpiToDo">0</div>
-    </div>
-  </div>
+  <!-- Synthèse collaborateur intégrée à la carte Couverture du poste actuel -->
 
   <div class="ep-main-layout">
     <div class="ep-left-col">
@@ -118,46 +84,67 @@
     </div>
 
     <div class="ep-work-col">
-      <div class="card ep-panel-card" id="ep_cardCouverturePoste">
-        <div class="card-header ep-coverage-head">
+      <div class="card ep-panel-card ep-summary-card" id="ep_cardCouverturePoste">
+        <div class="card-header ep-summary-head">
           <div>
-            <div class="card-title">Couverture du poste actuel</div>
-            <div class="card-sub">État des compétences détenues face aux attendus du poste.</div>
+            <div class="card-title">Synthèse collaborateur</div>
           </div>
 
           <label class="sb-switch ep-coverage-switch">
             <input type="checkbox" id="ep_chkPondere" />
-            <span>Pondérer par criticité</span>
+            <span>Vue priorisée</span>
           </label>
         </div>
 
-        <div class="card-body">
+        <div class="card-body ep-summary-body">
           <div class="card-sub" id="ep_covHint">
-            Sélectionne un collaborateur pour afficher la couverture du poste.
+            Sélectionne un collaborateur pour afficher la synthèse.
           </div>
 
-          <div id="ep_covWrap" class="ep-coverage-wrap" style="display:none;">
-            <div class="ep-coverage-gauge">
+          <div id="ep_covWrap" class="ep-summary-wrap" style="display:none;">
+            <div class="ep-summary-person">
+              <div class="ep-summary-label">Collaborateur</div>
+              <div class="ep-summary-name" id="ep_ctxCollaborateur">—</div>
+
+              <div class="ep-summary-role" id="ep_ctxPoste">—</div>
+
+              <div class="ep-summary-grid">
+                <div class="ep-summary-item">
+                  <span>Matricule</span>
+                  <strong id="ep_ctxMatricule">—</strong>
+                </div>
+
+                <div class="ep-summary-item">
+                  <span>Structure interne</span>
+                  <strong id="ep_ctxService">—</strong>
+                </div>
+
+                <div class="ep-summary-item">
+                  <span>Date</span>
+                  <strong id="ep_ctxDate">—</strong>
+                </div>
+
+                <div class="ep-summary-item">
+                  <span>À auditer</span>
+                  <strong id="ep_kpiToDo">0</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="ep-summary-gauge">
               <svg id="ep_svgGauge" viewBox="0 0 240 150" aria-label="Couverture du poste actuel"></svg>
-            </div>
-
-            <div class="ep-coverage-kpis">
-              <div class="ep-mini-kpi">
-                <div class="label">Couverture des attendus</div>
-                <div class="value" id="ep_covPctPoste">—</div>
-              </div>
-
-              <div class="ep-mini-kpi">
-                <div class="label">Couverture maximale</div>
-                <div class="value" id="ep_covPctMax">—</div>
+              <div class="ep-coverage-legend">
+                <span><i class="ep-leg ep-leg--bad"></i>Écart fort</span>
+                <span><i class="ep-leg ep-leg--warn"></i>À renforcer</span>
+                <span><i class="ep-leg ep-leg--ok"></i>Conforme</span>
               </div>
             </div>
 
-            <div class="ep-coverage-legend">
-              <span><i class="ep-leg ep-leg--bad"></i>Écart fort</span>
-              <span><i class="ep-leg ep-leg--warn"></i>À renforcer</span>
-              <span><i class="ep-leg ep-leg--ok"></i>Conforme</span>
-              <span class="card-sub">Cliquer sur la jauge pour le détail.</span>
+            <div class="ep-summary-score">
+              <div class="ep-summary-score-value" id="ep_covPctPoste">—</div>
+              <div class="ep-summary-score-label">Couverture du poste</div>
+              <div class="card-sub ep-summary-score-hint">Jauge détaillée au clic</div>
+              <div id="ep_covPctMax" style="display:none;">—</div>
             </div>
           </div>
         </div>

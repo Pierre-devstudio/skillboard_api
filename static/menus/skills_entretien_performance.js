@@ -63,6 +63,7 @@
   function _epGetCovWeightedFlag() {
     // on cherche large (selon ids possibles)
     const chk =
+      $("ep_chkPondere") ||
       $("ep_covChkWeight") ||
       $("ep_covChkWeighted") ||
       $("ep_covChkCrit") ||

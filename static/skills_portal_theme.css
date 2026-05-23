@@ -4812,3 +4812,164 @@ body.bf-modal-open{
     grid-template-columns:1fr;
   }
 }
+
+/* ======================================================
+   Entretien performance — Synthèse collaborateur + couverture
+   ====================================================== */
+
+#view-entretien-performance .ep-summary-card{
+  margin:0;
+}
+
+#view-entretien-performance .ep-summary-head{
+  align-items:center;
+  min-height:30px;
+}
+
+#view-entretien-performance .ep-summary-body{
+  padding-top:10px;
+}
+
+#view-entretien-performance .ep-summary-wrap{
+  display:grid;
+  grid-template-columns:minmax(260px, 1fr) minmax(260px, 320px) 150px;
+  gap:14px;
+  align-items:center;
+}
+
+#view-entretien-performance .ep-summary-person{
+  min-width:0;
+}
+
+#view-entretien-performance .ep-summary-label{
+  color:var(--sb-gray-500);
+  font-size:11px;
+  font-weight:700;
+  line-height:1.1;
+  margin-bottom:4px;
+}
+
+#view-entretien-performance .ep-summary-name{
+  color:var(--sb-gray-900);
+  font-size:18px;
+  font-weight:800;
+  line-height:1.15;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#view-entretien-performance .ep-summary-role{
+  margin-top:4px;
+  color:var(--sb-gray-700);
+  font-size:13px;
+  font-weight:600;
+  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#view-entretien-performance .ep-summary-grid{
+  margin-top:10px;
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:8px 12px;
+}
+
+#view-entretien-performance .ep-summary-item{
+  min-width:0;
+}
+
+#view-entretien-performance .ep-summary-item span{
+  display:block;
+  color:var(--sb-gray-500);
+  font-size:11px;
+  font-weight:600;
+  line-height:1.15;
+}
+
+#view-entretien-performance .ep-summary-item strong{
+  display:block;
+  margin-top:2px;
+  color:var(--sb-gray-900);
+  font-size:12px;
+  font-weight:800;
+  line-height:1.2;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#view-entretien-performance .ep-summary-gauge{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+}
+
+#view-entretien-performance .ep-summary-gauge svg{
+  width:100%;
+  max-width:300px;
+  height:auto;
+  display:block;
+  cursor:pointer;
+}
+
+#view-entretien-performance .ep-summary-gauge .ep-coverage-legend{
+  margin-top:-4px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  flex-wrap:wrap;
+  color:var(--sb-gray-500);
+  font-size:11px;
+}
+
+#view-entretien-performance .ep-summary-score{
+  min-width:0;
+  padding:10px 12px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:#fff;
+  text-align:center;
+}
+
+#view-entretien-performance .ep-summary-score-value{
+  color:var(--accent);
+  font-size:28px;
+  font-weight:900;
+  line-height:1;
+}
+
+#view-entretien-performance .ep-summary-score-label{
+  margin-top:6px;
+  color:var(--sb-gray-900);
+  font-size:12px;
+  font-weight:800;
+  line-height:1.15;
+}
+
+#view-entretien-performance .ep-summary-score-hint{
+  margin-top:6px;
+  font-size:11px;
+  line-height:1.2;
+}
+
+/* on neutralise les anciens blocs KPI de couverture si une ancienne structure traîne encore */
+#view-entretien-performance .ep-coverage-kpis{
+  display:none;
+}
+
+@media (max-width:1180px){
+  #view-entretien-performance .ep-summary-wrap{
+    grid-template-columns:1fr;
+  }
+
+  #view-entretien-performance .ep-summary-score{
+    max-width:220px;
+    justify-self:center;
+  }
+}
