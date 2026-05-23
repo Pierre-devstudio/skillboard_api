@@ -1698,12 +1698,13 @@
           btnHist.addEventListener("click", async () => {
             openModal("modalEpHistory");
 
-            const tbody = $("ep_tblHistory")?.querySelector("tbody");
+            const timeline = $("ep_historyTimeline");
+            const summary = $("ep_historySummary");
             const txtSearch = $("ep_histSearch");
             const selEval = $("ep_histSelEvaluateur");
             const selMeth = $("ep_histSelMethode");
 
-            if (!tbody) return;
+            if (!timeline) return;
 
             const esc = (s) => String(s ?? "")
               .replaceAll("&", "&amp;")
@@ -1712,33 +1713,33 @@
               .replaceAll('"', "&quot;")
               .replaceAll("'", "&#39;");
 
-            const setRowMessage = (msg) => {
-              tbody.innerHTML = `<tr><td colspan="5" style="padding:10px; color:#6b7280;">${esc(msg)}</td></tr>`;
-            };
-
             const formatDateFR = (v) => {
               if (!v) return "—";
               try {
                 const d = new Date(v);
-                if (isNaN(d.getTime())) return String(v);
+                if (Number.isNaN(d.getTime())) return String(v);
                 return d.toLocaleDateString("fr-FR");
               } catch {
                 return String(v);
               }
             };
 
+            const dateSortValue = (v) => {
+              if (!v) return 0;
+              const d = new Date(v);
+              return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+            };
+
+            const scoreToPct = (score) => {
+              const s = Number(score);
+              if (!Number.isFinite(s)) return null;
+              return Math.max(0, Math.min(100, Math.round((s / 24) * 100)));
+            };
+
             const niveauFromScore = (score) => {
               const s = Number(score);
-              if (!isFinite(s)) return "—";
+              if (!Number.isFinite(s)) return "—";
 
-              // Si tu as le scoring bootstrap, on l’utilise
-              const niveaux = state.scoring?.niveaux;
-              if (Array.isArray(niveaux) && niveaux.length) {
-                const hit = niveaux.find(n => s >= Number(n.min) && s <= Number(n.max));
-                if (hit) return (hit.libelle || hit.code || "—");
-              }
-
-              // fallback règles Skillboard
               if (s >= 19) return "Expert";
               if (s >= 10) return "Avancé";
               if (s >= 6) return "Initial";
@@ -1748,7 +1749,32 @@
             const getEvalKey = (x) => (x?.nom_evaluateur || x?.id_evaluateur || "Non affecté").toString().trim() || "Non affecté";
             const getMethKey = (x) => (x?.methode_eval || "Non renseignée").toString().trim() || "Non renseignée";
 
-            // Bind modal observation (une fois)
+            const setHistoryMessage = (msg) => {
+              timeline.innerHTML = `<div class="ep-history-empty">${esc(msg)}</div>`;
+
+              if (summary) {
+                summary.innerHTML = `<div class="ep-history-empty-inline">${esc(msg)}</div>`;
+              }
+            };
+
+            const fillSelect = (sel, firstLabel, values) => {
+              if (!sel) return;
+
+              const current = (sel.value || "").toString();
+              sel.innerHTML = `<option value="">${esc(firstLabel)}</option>`;
+
+              values.forEach(v => {
+                const opt = document.createElement("option");
+                opt.value = v;
+                opt.textContent = v;
+                sel.appendChild(opt);
+              });
+
+              if (current && values.includes(current)) sel.value = current;
+              else sel.value = "";
+            };
+
+            // Bind modal observation une seule fois
             if (!state._histObsBound) {
               state._histObsBound = true;
 
@@ -1770,125 +1796,215 @@
               const t = $("ep_histObsTitle");
               const m = $("ep_histObsMeta");
               const b = $("ep_histObsText");
+
               if (t) t.textContent = title || "Observation";
               if (m) m.textContent = meta || "";
               if (b) b.textContent = text || "";
+
               openModal("modalEpHistoryObs");
             };
 
             if (!state.selectedCollaborateurId) {
-              setRowMessage("Sélectionne un collaborateur pour afficher l’historique.");
+              setHistoryMessage("Sélectionne un collaborateur pour afficher l’historique.");
               return;
             }
 
-            setRowMessage("Chargement…");
+            setHistoryMessage("Chargement…");
 
-            // 1) Charger data
             let rows = [];
             try {
               const url = `${_portal.apiBase}/skills/entretien-performance/historique/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}`;
               const data = await _portal.apiJson(url);
+
               rows = Array.isArray(data) ? data : [];
               state._historyAll = rows;
             } catch (e) {
-              setRowMessage("Impossible de charger l’historique : " + String(e?.message || e));
+              setHistoryMessage("Impossible de charger l’historique : " + String(e?.message || e));
               return;
             }
 
-            // 2) Remplir selects Evaluateur / Méthode
-            const fillSelect = (sel, firstLabel, values) => {
-              if (!sel) return;
-              const current = (sel.value || "").toString();
-              sel.innerHTML = `<option value="">${esc(firstLabel)}</option>`;
-              values.forEach(v => {
-                const opt = document.createElement("option");
-                opt.value = v;
-                opt.textContent = v;
-                sel.appendChild(opt);
-              });
-              // restore si possible
-              if (current && values.includes(current)) sel.value = current;
-              else sel.value = "";
-            };
-
-            const evals = Array.from(new Set(rows.map(getEvalKey))).sort((a,b)=>a.localeCompare(b, "fr"));
-            const meths = Array.from(new Set(rows.map(getMethKey))).sort((a,b)=>a.localeCompare(b, "fr"));
+            const evals = Array.from(new Set(rows.map(getEvalKey))).sort((a, b) => a.localeCompare(b, "fr"));
+            const meths = Array.from(new Set(rows.map(getMethKey))).sort((a, b) => a.localeCompare(b, "fr"));
 
             fillSelect(selEval, "Tous", evals);
             fillSelect(selMeth, "Toutes", meths);
 
-            // 3) Render + filtres
-            const render = (list) => {
-              if (!list.length) {
-                setRowMessage("Aucun audit trouvé.");
-                return;
-              }
-
-              tbody.innerHTML = "";
+            const buildGroups = (list) => {
+              const map = new Map();
 
               list.forEach(x => {
-                const dateTxt = formatDateFR(x.date_audit);
+                const dateRaw = (x.date_audit || "").toString().trim();
                 const evalTxt = getEvalKey(x);
+                const methTxt = getMethKey(x);
 
-                const code = (x.code || "").toString().trim();
-                const intitule = (x.intitule || "").toString().trim();
-                const compTitle = [code, intitule].filter(Boolean).join(" — ") || "—";
+                const key = `${dateRaw}||${evalTxt}||${methTxt}`;
 
-                const score = (x.resultat_eval ?? "");
-                const scoreTxt = (score === null || score === undefined || score === "") ? "—" : String(score);
-
-                const niveau = niveauFromScore(score);
-
-                const obs = (x.observation || "").toString().trim();
-                const hasObs = !!obs;
-
-                const tdComp = `
-                  <div style="min-width:0;">
-                    <div style="line-height:1; margin-bottom:6px;">
-                      ${code ? `<span class="sb-badge">${esc(code)}</span>` : ""}
-                    </div>
-
-                    <div title="${esc(intitule || compTitle)}"
-                        style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                      ${esc(intitule || "—")}
-                    </div>
-                  </div>
-                `;
-
-                const tdNiveau = `
-                  <span class="sb-badge">${esc(niveau)}</span>
-                `;
-
-                const tdObs = hasObs
-                  ? `<button type="button" class="btn-secondary" style="padding:4px 10px; font-size:12px;" data-obs="1">Voir</button>`
-                  : "";
-
-                const tr = document.createElement("tr");
-                const tdResult = `
-                  <div style="line-height:1.1; text-align:center;">
-                    <div style="font-weight:700;">${esc(scoreTxt)}</div>
-                    <div style="margin-top:6px; display:flex; justify-content:center;">${tdNiveau}</div>
-                  </div>
-                `;
-
-                tr.innerHTML = `
-                  <td>${esc(dateTxt)}</td>
-                  <td>${esc(evalTxt)}</td>
-                  <td>${tdComp}</td>
-                  <td>${tdResult}</td>
-                  <td>${tdObs}</td>
-                `;
-
-                // Clic "Voir" observation
-                const btn = tr.querySelector('button[data-obs="1"]');
-                if (btn) {
-                  btn.addEventListener("click", () => {
-                    const meta = `${dateTxt} • ${evalTxt} • score ${scoreTxt} • ${niveau}`;
-                    openObs(compTitle, meta, obs);
+                if (!map.has(key)) {
+                  map.set(key, {
+                    key,
+                    dateRaw,
+                    dateTxt: formatDateFR(dateRaw),
+                    evalTxt,
+                    methTxt,
+                    rows: [],
                   });
                 }
 
-                tbody.appendChild(tr);
+                map.get(key).rows.push(x);
+              });
+
+              return Array.from(map.values()).sort((a, b) => {
+                const da = dateSortValue(a.dateRaw);
+                const db = dateSortValue(b.dateRaw);
+                if (db !== da) return db - da;
+
+                return `${a.evalTxt} ${a.methTxt}`.localeCompare(`${b.evalTxt} ${b.methTxt}`, "fr", { sensitivity: "base" });
+              });
+            };
+
+            const renderSummary = (groups, sourceRows) => {
+              if (!summary) return;
+
+              if (!sourceRows.length) {
+                summary.innerHTML = `<div class="ep-history-empty-inline">Aucun audit trouvé.</div>`;
+                return;
+              }
+
+              const last = groups[0] || null;
+              const scores = sourceRows
+                .map(x => scoreToPct(x.resultat_eval))
+                .filter(v => v !== null);
+
+              const avg = scores.length
+                ? `${Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)}%`
+                : "—";
+
+              summary.innerHTML = `
+                <div class="ep-history-summary-card">
+                  <div class="ep-history-kpi">
+                    <span>Dernier entretien</span>
+                    <strong>${esc(last?.dateTxt || "—")}</strong>
+                  </div>
+
+                  <div class="ep-history-kpi">
+                    <span>Évaluateur</span>
+                    <strong>${esc(last?.evalTxt || "—")}</strong>
+                  </div>
+
+                  <div class="ep-history-kpi">
+                    <span>Compétences évaluées</span>
+                    <strong>${esc(String(sourceRows.length))}</strong>
+                  </div>
+
+                  <div class="ep-history-kpi">
+                    <span>Maîtrise moyenne</span>
+                    <strong>${esc(avg)}</strong>
+                  </div>
+                </div>
+              `;
+            };
+
+            const render = (list) => {
+              if (!list.length) {
+                renderSummary([], []);
+                timeline.innerHTML = `<div class="ep-history-empty">Aucun audit trouvé.</div>`;
+                return;
+              }
+
+              const groups = buildGroups(list);
+              renderSummary(groups, list);
+
+              timeline.innerHTML = "";
+
+              groups.forEach((g, idx) => {
+                const scores = g.rows
+                  .map(x => scoreToPct(x.resultat_eval))
+                  .filter(v => v !== null);
+
+                const avg = scores.length
+                  ? `${Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)}%`
+                  : "—";
+
+                const hasObs = g.rows.some(x => (x.observation || "").toString().trim());
+
+                const item = document.createElement("div");
+                item.className = "ep-history-group";
+
+                const head = document.createElement("button");
+                head.type = "button";
+                head.className = "ep-history-group-head";
+                head.innerHTML = `
+                  <div class="ep-history-group-main">
+                    <div class="ep-history-group-title">
+                      ${esc(g.dateTxt)} · ${esc(g.methTxt)}
+                    </div>
+                    <div class="ep-history-group-sub">
+                      ${esc(g.evalTxt)} · ${g.rows.length} compétence(s) évaluée(s)
+                    </div>
+                  </div>
+
+                  <div class="ep-history-group-right">
+                    <span class="ep-history-avg">${esc(avg)}</span>
+                    ${hasObs ? `<span class="ep-history-dot" title="Observation présente"></span>` : ""}
+                    <span class="ep-history-chevron">⌄</span>
+                  </div>
+                `;
+
+                const body = document.createElement("div");
+                body.className = "ep-history-group-body";
+
+                if (idx === 0) {
+                  head.classList.add("is-open");
+                  body.classList.add("is-open");
+                }
+
+                g.rows.forEach(x => {
+                  const code = (x.code || "").toString().trim();
+                  const intitule = (x.intitule || "").toString().trim();
+                  const compTitle = [code, intitule].filter(Boolean).join(" — ") || "Compétence";
+
+                  const pct = scoreToPct(x.resultat_eval);
+                  const pctTxt = (pct === null) ? "—" : `${pct}%`;
+                  const niveau = niveauFromScore(x.resultat_eval);
+                  const obs = (x.observation || "").toString().trim();
+
+                  const row = document.createElement("div");
+                  row.className = "ep-history-comp-row";
+                  row.innerHTML = `
+                    <div class="ep-history-comp-main">
+                      ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ""}
+                      <span class="ep-history-comp-title" title="${esc(intitule || compTitle)}">${esc(intitule || "—")}</span>
+                    </div>
+
+                    <div class="ep-history-comp-result">
+                      <span class="ep-history-pct">${esc(pctTxt)}</span>
+                      <span class="sb-badge ${esc(getEpLevelBadgeClass(niveau))}">${esc(niveau)}</span>
+                      ${obs ? `<button type="button" class="sb-btn sb-btn--xs sb-btn--soft" data-obs="1">Observation</button>` : ""}
+                    </div>
+                  `;
+
+                  const btnObs = row.querySelector('button[data-obs="1"]');
+                  if (btnObs) {
+                    btnObs.addEventListener("click", (ev) => {
+                      ev.preventDefault();
+                      ev.stopPropagation();
+
+                      const meta = `${g.dateTxt} · ${g.evalTxt} · ${g.methTxt} · ${pctTxt} · ${niveau}`;
+                      openObs(compTitle, meta, obs);
+                    });
+                  }
+
+                  body.appendChild(row);
+                });
+
+                head.addEventListener("click", () => {
+                  const opened = body.classList.toggle("is-open");
+                  head.classList.toggle("is-open", opened);
+                });
+
+                item.appendChild(head);
+                item.appendChild(body);
+                timeline.appendChild(item);
               });
             };
 
@@ -1906,12 +2022,14 @@
 
                 if (q) {
                   const hay = [
-                    (x.code || ""),
-                    (x.intitule || ""),
-                    (x.observation || ""),
+                    x.code || "",
+                    x.intitule || "",
+                    x.observation || "",
                     evalKey,
-                    methKey
+                    methKey,
+                    formatDateFR(x.date_audit || ""),
                   ].join(" ").toLowerCase();
+
                   if (!hay.includes(q)) return false;
                 }
 
@@ -1921,12 +2039,10 @@
               render(filtered);
             };
 
-            // Events filtres (on remplace, pas d’empilement)
             if (txtSearch) txtSearch.oninput = () => applyFilters();
             if (selEval) selEval.onchange = () => applyFilters();
             if (selMeth) selMeth.onchange = () => applyFilters();
 
-            // Initial render
             applyFilters();
           });
         }

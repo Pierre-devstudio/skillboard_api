@@ -372,56 +372,47 @@
     </div>
   </div>
 
-  <!-- Modal: historique (placeholder) -->
+  <!-- Modal: historique des entretiens -->
   <div class="modal" id="modalEpHistory" aria-hidden="true">
-    <div class="modal-card" style="width:calc(100vw - 80px); max-width:1200px;">
+    <div class="modal-card ep-history-modal-card">
       <div class="modal-header">
-        <div style="font-weight:600;">Historique</div>
+        <div style="min-width:0;">
+          <div class="sb-modal-title">Historique des entretiens</div>
+          <div class="card-sub" style="margin-top:2px;">
+            Évaluations réalisées pour le collaborateur sélectionné.
+          </div>
+        </div>
+
         <button type="button" class="modal-x" id="btnCloseEpHistoryModalX" aria-label="Fermer">×</button>
       </div>
 
-      <div class="modal-body" style="font-size:13px;">
-        <div class="card-sub" style="margin-top:0;">
-          Historique des audits et/ou de l’entretien.
+      <div class="modal-body ep-history-body">
+        <div class="ep-history-summary" id="ep_historySummary">
+          <div class="ep-history-empty-inline">Sélectionne un collaborateur pour afficher l’historique.</div>
         </div>
 
-        <!-- Filtres -->
-        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:flex-end;">
-          <div style="flex:1; min-width:240px;">
-            <div class="sb-label">Recherche</div>
-            <input id="ep_histSearch" placeholder="Code, intitulé, mots-clés..." />
+        <div class="ep-history-filters">
+          <div class="sb-field ep-history-search">
+            <label class="sb-label" for="ep_histSearch">Recherche</label>
+            <input id="ep_histSearch" class="sb-ctrl" placeholder="Code, compétence, observation..." autocomplete="off" />
           </div>
 
-          <div style="min-width:200px;">
-            <div class="sb-label">Évaluateur</div>
-            <select id="ep_histSelEvaluateur">
+          <div class="sb-field">
+            <label class="sb-label" for="ep_histSelEvaluateur">Évaluateur</label>
+            <select id="ep_histSelEvaluateur" class="sb-select">
               <option value="">Tous</option>
             </select>
           </div>
 
-          <div style="min-width:220px;">
-            <div class="sb-label">Méthode</div>
-            <select id="ep_histSelMethode">
+          <div class="sb-field">
+            <label class="sb-label" for="ep_histSelMethode">Méthode</label>
+            <select id="ep_histSelMethode" class="sb-select">
               <option value="">Toutes</option>
             </select>
           </div>
         </div>
 
-        <!-- Tableau -->
-        <div class="table-wrap" style="margin-top:10px; font-size:13px;">
-          <table class="sb-table" id="ep_tblHistory">
-            <thead>
-              <tr>
-                <th style="width:90px;">Date</th>
-                <th style="width:170px;">Évaluateur</th>
-                <th>Compétence</th>
-                <th style="width:140px; text-align:center;">Résultat</th>
-                <th style="width:110px;">Observation</th>
-              </tr>
-            </thead>
-            <tbody></tbody>
-          </table>
-        </div>
+        <div id="ep_historyTimeline" class="ep-history-timeline"></div>
       </div>
 
       <div class="modal-footer">

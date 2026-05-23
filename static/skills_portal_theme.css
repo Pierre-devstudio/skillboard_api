@@ -5101,3 +5101,254 @@ body.bf-modal-open{
 #view-entretien-performance .ep-reset-filters-btn{
   margin-top:4px;
 }
+
+/* ======================================================
+   Entretien performance — Modal historique des entretiens
+   ====================================================== */
+
+#view-entretien-performance .ep-history-modal-card{
+  width:min(1180px, calc(100vw - 48px)) !important;
+}
+
+#view-entretien-performance .ep-history-body{
+  font-size:13px;
+  padding:14px;
+}
+
+#view-entretien-performance .ep-history-summary{
+  margin-bottom:12px;
+}
+
+#view-entretien-performance .ep-history-summary-card{
+  display:grid;
+  grid-template-columns:repeat(4, minmax(0, 1fr));
+  gap:10px;
+}
+
+#view-entretien-performance .ep-history-kpi{
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  padding:10px 12px;
+  background:#fff;
+  min-width:0;
+}
+
+#view-entretien-performance .ep-history-kpi span{
+  display:block;
+  color:var(--sb-gray-500);
+  font-size:11px;
+  font-weight:600;
+  line-height:1.15;
+}
+
+#view-entretien-performance .ep-history-kpi strong{
+  display:block;
+  margin-top:4px;
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:750;
+  line-height:1.2;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#view-entretien-performance .ep-history-filters{
+  display:grid;
+  grid-template-columns:minmax(260px, 1fr) 220px 240px;
+  gap:10px;
+  align-items:end;
+  margin-bottom:12px;
+  padding:10px 12px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:var(--sb-gray-50);
+}
+
+#view-entretien-performance .ep-history-filters .sb-field{
+  margin:0;
+  min-width:0;
+}
+
+#view-entretien-performance .ep-history-timeline{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+#view-entretien-performance .ep-history-empty,
+#view-entretien-performance .ep-history-empty-inline{
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:#fff;
+  color:var(--sb-gray-500);
+  font-size:13px;
+  font-weight:600;
+  text-align:center;
+  padding:18px 14px;
+}
+
+#view-entretien-performance .ep-history-empty-inline{
+  padding:14px;
+}
+
+#view-entretien-performance .ep-history-group{
+  border:1px solid var(--sb-gray-200);
+  border-radius:13px;
+  background:#fff;
+  overflow:hidden;
+}
+
+#view-entretien-performance .ep-history-group-head{
+  width:100%;
+  border:0;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:12px 14px;
+  text-align:left;
+  cursor:pointer;
+  font-family:inherit;
+}
+
+#view-entretien-performance .ep-history-group-head:hover{
+  background:color-mix(in srgb, var(--accent) 4%, #ffffff);
+}
+
+#view-entretien-performance .ep-history-group-head.is-open{
+  background:color-mix(in srgb, var(--accent) 5%, #ffffff);
+  border-bottom:1px solid var(--sb-gray-200);
+}
+
+#view-entretien-performance .ep-history-group-main{
+  min-width:0;
+}
+
+#view-entretien-performance .ep-history-group-title{
+  color:var(--sb-gray-900);
+  font-size:14px;
+  font-weight:750;
+  line-height:1.2;
+}
+
+#view-entretien-performance .ep-history-group-sub{
+  margin-top:3px;
+  color:var(--sb-gray-500);
+  font-size:12px;
+  font-weight:500;
+  line-height:1.2;
+}
+
+#view-entretien-performance .ep-history-group-right{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+#view-entretien-performance .ep-history-avg{
+  min-width:58px;
+  text-align:center;
+  border:1px solid color-mix(in srgb, var(--accent) 28%, var(--sb-gray-200));
+  border-radius:999px;
+  padding:4px 10px;
+  color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 5%, #ffffff);
+  font-size:12px;
+  font-weight:850;
+}
+
+#view-entretien-performance .ep-history-dot{
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  background:var(--sb-warning);
+}
+
+#view-entretien-performance .ep-history-chevron{
+  color:var(--sb-gray-500);
+  font-size:14px;
+  transform:rotate(0deg);
+  transition:transform .12s ease;
+}
+
+#view-entretien-performance .ep-history-group-head.is-open .ep-history-chevron{
+  transform:rotate(180deg);
+}
+
+#view-entretien-performance .ep-history-group-body{
+  display:none;
+  padding:8px 10px 10px 10px;
+  background:#fff;
+}
+
+#view-entretien-performance .ep-history-group-body.is-open{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+#view-entretien-performance .ep-history-comp-row{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) auto;
+  gap:12px;
+  align-items:center;
+  padding:9px 10px;
+  border:1px solid var(--sb-gray-100);
+  border-radius:11px;
+  background:#fff;
+}
+
+#view-entretien-performance .ep-history-comp-row:hover{
+  background:var(--sb-gray-50);
+}
+
+#view-entretien-performance .ep-history-comp-main{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+
+#view-entretien-performance .ep-history-comp-title{
+  min-width:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:650;
+}
+
+#view-entretien-performance .ep-history-comp-result{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+#view-entretien-performance .ep-history-pct{
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:850;
+  min-width:42px;
+  text-align:right;
+}
+
+@media (max-width:900px){
+  #view-entretien-performance .ep-history-summary-card,
+  #view-entretien-performance .ep-history-filters{
+    grid-template-columns:1fr;
+  }
+
+  #view-entretien-performance .ep-history-comp-row{
+    grid-template-columns:1fr;
+  }
+
+  #view-entretien-performance .ep-history-comp-result{
+    justify-content:flex-start;
+  }
+}
