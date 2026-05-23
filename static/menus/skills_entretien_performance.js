@@ -829,42 +829,86 @@
   }
 
 
+  function getCollaborateurPriority(c) {
+    const raw = (c?.priorite_eval || "").toString().trim().toLowerCase();
+    if (["high", "haute", "priorite", "priorité", "priorite_haute", "priorité haute"].includes(raw)) return "high";
+    if (["plan", "planning", "a_planifier", "à planifier", "planifier"].includes(raw)) return "plan";
+    if (["ok", "a_jour", "à jour", "done"].includes(raw)) return "ok";
+    if (["none", "aucune", "empty"].includes(raw)) return "none";
+
+    const total = Number(c?.nb_competences_total ?? 0);
+    const never = Number(c?.nb_competences_jamais_auditees ?? 0);
+    const months = Number(c?.mois_depuis_derniere_eval ?? 0);
+    const last = (c?.date_derniere_eval || "").toString().trim();
+
+    if (total <= 0) return "none";
+    if (never > 0 || !last) return "high";
+    if (Number.isFinite(months) && months >= 12) return "plan";
+    return "ok";
+  }
+
+  function getCollaborateurPriorityRank(priority) {
+    if (priority === "high") return 0;
+    if (priority === "plan") return 1;
+    if (priority === "ok") return 2;
+    return 3;
+  }
+
   function renderCollaborateurs(list) {
     const wrap = $("ep_listCollaborateurs");
     if (!wrap) return;
 
     wrap.innerHTML = "";
 
-    const arr = Array.isArray(list) ? list : [];
-    setText("ep_collabCount", String(arr.length));
+    const arr = (Array.isArray(list) ? list : []).slice().sort((a, b) => {
+      const pa = getCollaborateurPriority(a);
+      const pb = getCollaborateurPriority(b);
 
-    // petit “style gratuit”: on réutilise le pattern sb-tree (déjà dans portal_common.css)
-    wrap.classList.add("sb-tree");
+      const ra = getCollaborateurPriorityRank(pa);
+      const rb = getCollaborateurPriorityRank(pb);
+
+      if (ra !== rb) return ra - rb;
+
+      const na = `${(a?.nom_effectif || "").toString()} ${(a?.prenom_effectif || "").toString()}`.trim();
+      const nb = `${(b?.nom_effectif || "").toString()} ${(b?.prenom_effectif || "").toString()}`.trim();
+
+      return na.localeCompare(nb, "fr", { sensitivity: "base" });
+    });
+
+    wrap.classList.remove("sb-tree");
+    wrap.classList.add("ep-collab-stack");
 
     arr.forEach(c => {
       const prenom = (c.prenom_effectif || "").toString().trim();
       const nom = (c.nom_effectif || "").toString().trim().toUpperCase();
       const name = `${nom} ${prenom}`.trim() || "Collaborateur";
+      const poste = (c.intitule_poste || "Poste non renseigné").toString().trim();
+      const priority = getCollaborateurPriority(c);
+
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = `ep-collab-card ep-collab-card--${priority}`;
+      item.dataset.priority = priority;
+      item.title = poste ? `${name} - ${poste}` : name;
 
       const left = document.createElement("div");
-      left.className = "sb-tree-name";
-      left.textContent = name;
+      left.className = "ep-collab-card-main";
 
-      const right = document.createElement("div");
-      right.className = "sb-tree-meta";
-      right.textContent = [
-        (c.intitule_poste || "").toString().trim(),
-        (c.nom_service || "").toString().trim()
-      ].filter(Boolean).join(" • ");
+      const nameEl = document.createElement("div");
+      nameEl.className = "ep-collab-card-name";
+      nameEl.textContent = name;
 
-      const item = document.createElement("div");
-      item.className = "sb-tree-item";
+      const roleEl = document.createElement("div");
+      roleEl.className = "ep-collab-card-role";
+      roleEl.textContent = poste;
+
+      left.appendChild(nameEl);
+      left.appendChild(roleEl);
       item.appendChild(left);
-      if (right.textContent) item.appendChild(right);
-    
+
       item.addEventListener("click", async () => {
         // sélection visuelle
-        wrap.querySelectorAll(".sb-tree-item.active").forEach(x => x.classList.remove("active"));
+        wrap.querySelectorAll(".ep-collab-card.active").forEach(x => x.classList.remove("active"));
         item.classList.add("active");
 
         state.selectedCollaborateurId = c.id_effectif || null;
@@ -1421,6 +1465,46 @@
     }
   }
 
+  function bindPriorityHelpOnce() {
+    const btn = $("ep_btnPriorityHelp");
+    const pop = $("ep_priorityHelpPop");
+
+    if (!btn || !pop || state._priorityHelpBound) return;
+
+    state._priorityHelpBound = true;
+
+    const close = () => {
+      pop.classList.remove("is-open");
+      pop.setAttribute("aria-hidden", "true");
+    };
+
+    const toggle = (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      const opened = pop.classList.toggle("is-open");
+      pop.setAttribute("aria-hidden", opened ? "false" : "true");
+    };
+
+    btn.addEventListener("click", toggle);
+
+    document.addEventListener("click", (ev) => {
+      if (!pop.classList.contains("is-open")) return;
+
+      const target = ev.target;
+      if (target === btn || btn.contains(target) || pop.contains(target)) return;
+
+      close();
+    });
+
+    document.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape") close();
+    });
+
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+  }
+
   async function resetScope() {
     state.serviceId = window.portal.serviceFilter.ALL_ID;
     state.population = "team";
@@ -1444,6 +1528,8 @@
   function bindOnce() {
         if (_bound) return;
         _bound = true;
+
+        bindPriorityHelpOnce();
 
         // Modal Scoring (standard)
         const modalScoring = $("modalEpScoring");

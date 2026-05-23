@@ -66,19 +66,44 @@
         </div>
       </div>
 
-      <div class="card ep-panel-card">
-        <div class="card-header">
+      <div class="card ep-panel-card ep-collab-panel">
+        <div class="card-header ep-collab-head">
           <div>
-            <div class="card-title">Collaborateurs</div>
-            <div class="card-sub">Sélectionner la personne évaluée.</div>
+            <div class="card-title">Collaborateurs à évaluer</div>
+            <div class="card-sub">Priorisés selon l’urgence d’évaluation.</div>
           </div>
-          <div class="card-sub" id="ep_collabCount">0</div>
+
+          <div class="ep-priority-help-wrap">
+            <button type="button" class="ep-priority-help" id="ep_btnPriorityHelp" aria-label="Légende des priorités">?</button>
+            <div class="ep-priority-pop" id="ep_priorityHelpPop" aria-hidden="true">
+              <div class="ep-priority-pop-title">Légende</div>
+
+              <div class="ep-priority-pop-row">
+                <span class="ep-priority-line ep-priority-line--high"></span>
+                <span>À traiter en priorité</span>
+              </div>
+
+              <div class="ep-priority-pop-row">
+                <span class="ep-priority-line ep-priority-line--plan"></span>
+                <span>À planifier</span>
+              </div>
+
+              <div class="ep-priority-pop-row">
+                <span class="ep-priority-line ep-priority-line--ok"></span>
+                <span>À jour</span>
+              </div>
+
+              <div class="ep-priority-pop-row">
+                <span class="ep-priority-line ep-priority-line--none"></span>
+                <span>Aucune compétence active</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="card-body">
-          <div class="sb-field">
-            <label class="sb-label" for="ep_txtSearchCollab">Recherche</label>
-            <input id="ep_txtSearchCollab" placeholder="Nom, prénom, code..." />
+          <div class="ep-search-field">
+            <input id="ep_txtSearchCollab" class="ep-search-input" placeholder="Rechercher un collaborateur" autocomplete="off" />
           </div>
 
           <div class="sb-list ep-collab-list" id="ep_listCollaborateurs"></div>

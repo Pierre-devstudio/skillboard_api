@@ -161,6 +161,12 @@ class CollaborateurListItem(BaseModel):
 
     ismanager: Optional[bool] = None
 
+    nb_competences_total: int = 0
+    nb_competences_jamais_auditees: int = 0
+    date_derniere_eval: Optional[str] = None
+    mois_depuis_derniere_eval: Optional[int] = None
+    priorite_eval: Optional[str] = None    
+
 # ======================================================
 # Couverture poste actuel (jauge)
 # ======================================================
@@ -372,6 +378,21 @@ def get_entretien_performance_collaborateurs(
 
                 cur.execute(
                     f"""
+                    WITH comp_eval AS (
+                        SELECT
+                            ec.id_effectif_client,
+                            COUNT(ec.id_effectif_competence)::int AS nb_competences_total,
+                            SUM(CASE WHEN ec.date_derniere_eval IS NULL THEN 1 ELSE 0 END)::int AS nb_competences_jamais_auditees,
+                            MAX(ec.date_derniere_eval) AS date_derniere_eval
+                        FROM public.tbl_effectif_client_competence ec
+                        JOIN public.tbl_competence c
+                          ON c.id_comp = ec.id_comp
+                         AND COALESCE(c.masque, FALSE) = FALSE
+                         AND COALESCE(c.etat, 'valide') <> 'inactive'
+                        WHERE ec.actif = TRUE
+                          AND ec.archive = FALSE
+                        GROUP BY ec.id_effectif_client
+                    )
                     SELECT
                         e.id_effectif,
                         e.nom_effectif,
@@ -381,15 +402,56 @@ def get_entretien_performance_collaborateurs(
                         o.nom_service,
                         e.id_poste_actuel,
                         fp.intitule_poste,
-                        e.ismanager
+                        e.ismanager,
+
+                        COALESCE(comp.nb_competences_total, 0)::int AS nb_competences_total,
+                        COALESCE(comp.nb_competences_jamais_auditees, 0)::int AS nb_competences_jamais_auditees,
+                        comp.date_derniere_eval::text AS date_derniere_eval,
+
+                        CASE
+                            WHEN comp.date_derniere_eval IS NULL THEN NULL
+                            ELSE (
+                                EXTRACT(YEAR FROM age(CURRENT_DATE, comp.date_derniere_eval))::int * 12
+                                + EXTRACT(MONTH FROM age(CURRENT_DATE, comp.date_derniere_eval))::int
+                            )
+                        END AS mois_depuis_derniere_eval,
+
+                        CASE
+                            WHEN COALESCE(comp.nb_competences_total, 0) = 0 THEN 'none'
+                            WHEN COALESCE(comp.nb_competences_jamais_auditees, 0) > 0 THEN 'high'
+                            WHEN comp.date_derniere_eval IS NULL THEN 'high'
+                            WHEN comp.date_derniere_eval < (CURRENT_DATE - INTERVAL '12 months') THEN 'plan'
+                            ELSE 'ok'
+                        END AS priorite_eval
+
                     FROM public.tbl_effectif_client e
+
                     LEFT JOIN public.tbl_entreprise_organigramme o
-                        ON o.id_service = e.id_service
+                        ON o.id_ent = e.id_ent
+                       AND o.id_service = e.id_service
+                       AND COALESCE(o.archive, FALSE) = FALSE
+
                     LEFT JOIN public.tbl_fiche_poste fp
                         ON fp.id_poste = e.id_poste_actuel
+                       AND fp.id_ent = e.id_ent
                        AND COALESCE(fp.actif, TRUE) = TRUE
+
+                    LEFT JOIN comp_eval comp
+                        ON comp.id_effectif_client = e.id_effectif
+
                     WHERE {where_sql}
-                    ORDER BY e.nom_effectif, e.prenom_effectif
+
+                    ORDER BY
+                        CASE
+                            WHEN COALESCE(comp.nb_competences_total, 0) = 0 THEN 3
+                            WHEN COALESCE(comp.nb_competences_jamais_auditees, 0) > 0 THEN 0
+                            WHEN comp.date_derniere_eval IS NULL THEN 0
+                            WHEN comp.date_derniere_eval < (CURRENT_DATE - INTERVAL '12 months') THEN 1
+                            ELSE 2
+                        END,
+                        e.nom_effectif,
+                        e.prenom_effectif
+
                     LIMIT %s
                     """,
                     tuple([*params, limit]),
@@ -407,6 +469,11 @@ def get_entretien_performance_collaborateurs(
                         id_poste_actuel=r.get("id_poste_actuel"),
                         intitule_poste=r.get("intitule_poste"),
                         ismanager=r.get("ismanager"),
+                        nb_competences_total=int(r.get("nb_competences_total") or 0),
+                        nb_competences_jamais_auditees=int(r.get("nb_competences_jamais_auditees") or 0),
+                        date_derniere_eval=r.get("date_derniere_eval"),
+                        mois_depuis_derniere_eval=r.get("mois_depuis_derniere_eval"),
+                        priorite_eval=r.get("priorite_eval"),
                     )
                     for r in rows
                 ]
