@@ -1699,12 +1699,17 @@
             openModal("modalEpHistory");
 
             const timeline = $("ep_historyTimeline");
-            const summary = $("ep_historySummary");
             const txtSearch = $("ep_histSearch");
             const selEval = $("ep_histSelEvaluateur");
             const selMeth = $("ep_histSelMethode");
+            const histName = $("ep_histCollaborateurName");
 
             if (!timeline) return;
+
+            const currentCollabName = ($("ep_ctxCollaborateur")?.textContent || "").toString().trim();
+            if (histName) histName.textContent = currentCollabName && currentCollabName !== "—"
+              ? currentCollabName
+              : "Collaborateur sélectionné";
 
             const esc = (s) => String(s ?? "")
               .replaceAll("&", "&amp;")
@@ -1730,12 +1735,6 @@
               return Number.isNaN(d.getTime()) ? 0 : d.getTime();
             };
 
-            const scoreToPct = (score) => {
-              const s = Number(score);
-              if (!Number.isFinite(s)) return null;
-              return Math.max(0, Math.min(100, Math.round((s / 24) * 100)));
-            };
-
             const niveauFromScore = (score) => {
               const s = Number(score);
               if (!Number.isFinite(s)) return "—";
@@ -1751,10 +1750,6 @@
 
             const setHistoryMessage = (msg) => {
               timeline.innerHTML = `<div class="ep-history-empty">${esc(msg)}</div>`;
-
-              if (summary) {
-                summary.innerHTML = `<div class="ep-history-empty-inline">${esc(msg)}</div>`;
-              }
             };
 
             const fillSelect = (sel, firstLabel, values) => {
@@ -1774,34 +1769,152 @@
               else sel.value = "";
             };
 
-            // Bind modal observation une seule fois
-            if (!state._histObsBound) {
-              state._histObsBound = true;
+            const extractHistoryCriteres = (x) => {
+              const detail = x?.detail_eval && typeof x.detail_eval === "object" ? x.detail_eval : {};
+              const criteres = Array.isArray(detail.criteres) ? detail.criteres : [];
+              return criteres
+                .map(c => ({
+                  code_critere: (c.code_critere || "").toString().trim(),
+                  niveau: c.niveau,
+                  commentaire: (c.commentaire || "").toString()
+                }))
+                .filter(c => c.code_critere && c.niveau !== null && c.niveau !== undefined);
+            };
 
-              const closeObs = () => closeModal("modalEpHistoryObs");
-              const btnX = $("btnCloseEpHistoryObsModalX");
-              const btnClose = $("btnEpHistoryObsModalClose");
-              const modalObs = $("modalEpHistoryObs");
+            const loadCritereLabels = async (idComp) => {
+              const fallback = {
+                Critere1: "Critère 1",
+                Critere2: "Critère 2",
+                Critere3: "Critère 3",
+                Critere4: "Critère 4"
+              };
 
-              if (btnX) btnX.addEventListener("click", closeObs);
-              if (btnClose) btnClose.addEventListener("click", closeObs);
-              if (modalObs) {
-                modalObs.addEventListener("click", (e) => {
-                  if (e.target === modalObs) closeObs();
+              if (!idComp || !_portal) return fallback;
+
+              const idService = (state.selectedCollaborateurServiceId || state.serviceId || "").toString().trim();
+              if (!idService || idService === "__ALL__") return fallback;
+
+              try {
+                state._compDetailCache = state._compDetailCache || {};
+                let detail = state._compDetailCache[idComp];
+
+                if (!detail) {
+                  const url = `${_portal.apiBase}/skills/referentiel/competence/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(idService)}/${encodeURIComponent(idComp)}`;
+                  detail = await _portal.apiJson(url);
+                  state._compDetailCache[idComp] = detail;
+                }
+
+                const grid = detail?.competence?.grille_evaluation || null;
+                if (!grid || typeof grid !== "object") return fallback;
+
+                const keys = Object.keys(grid).sort((a, b) => {
+                  const ma = String(a).match(/(\d+)/);
+                  const mb = String(b).match(/(\d+)/);
+                  const na = ma ? parseInt(ma[1], 10) : 999;
+                  const nb = mb ? parseInt(mb[1], 10) : 999;
+                  return na - nb;
                 });
+
+                keys.slice(0, 4).forEach((k, idx) => {
+                  const crit = grid[k] || {};
+                  const label = (crit.Nom ?? crit.nom ?? "").toString().trim();
+                  if (label) fallback[`Critere${idx + 1}`] = label;
+                });
+
+                return fallback;
+              } catch (_) {
+                return fallback;
               }
-            }
+            };
 
-            const openObs = (title, meta, text) => {
-              const t = $("ep_histObsTitle");
-              const m = $("ep_histObsMeta");
-              const b = $("ep_histObsText");
+            const setSelectValueOrAdd = (selectId, value) => {
+              const sel = $(selectId);
+              if (!sel) return;
 
-              if (t) t.textContent = title || "Observation";
-              if (m) m.textContent = meta || "";
-              if (b) b.textContent = text || "";
+              const v = (value || "").toString().trim();
+              if (!v) return;
 
-              openModal("modalEpHistoryObs");
+              const exists = Array.from(sel.options).some(o => o.value === v);
+              if (!exists) {
+                const opt = document.createElement("option");
+                opt.value = v;
+                opt.textContent = v;
+                sel.appendChild(opt);
+              }
+
+              sel.value = v;
+            };
+
+            const openHistoryEvaluationDetail = async (x, group) => {
+              closeModal("modalEpHistory");
+
+              const code = (x.code || "").toString().trim();
+              const intitule = (x.intitule || "").toString().trim();
+              const niveau = niveauFromScore(x.resultat_eval);
+              const lastDate = formatDateFR(x.date_audit);
+              const method = getMethKey(x);
+              const obs = (x.observation || "").toString();
+
+              resetEvaluationPanel();
+
+              setText("ep_evalHint", `Historique du ${lastDate} · ${group.evalTxt}`);
+              setText("ep_compTitle", [code, intitule].filter(Boolean).join(" — ") || "—");
+              setText("ep_compDomain", "");
+              setText("ep_compCurrent", niveau);
+              setText("ep_compLastEval", lastDate ? `Dernière éval : ${lastDate}` : "");
+
+              setText("ep_levelABC", niveau);
+
+              const score = Number(x.resultat_eval);
+              const pct = Number.isFinite(score)
+                ? Math.max(0, Math.min(100, Math.round((score / 24) * 100)))
+                : null;
+
+              setText("ep_scorePct", pct === null ? "—" : `${pct}%`);
+
+              setSelectValueOrAdd("ep_selEvalMethod", method);
+              setDisabled("ep_selEvalMethod", true);
+
+              const obsEl = $("ep_txtObservation");
+              if (obsEl) obsEl.value = obs || "";
+              setDisabled("ep_txtObservation", true);
+
+              const criteres = extractHistoryCriteres(x);
+              const labels = await loadCritereLabels(x.id_comp);
+
+              for (let i = 1; i <= 4; i++) {
+                const labelEl = $(`ep_critLabel${i}`);
+                const row = labelEl ? labelEl.closest("tr") : null;
+                const note = $(`ep_critNote${i}`);
+                const com = $(`ep_critCom${i}`);
+
+                const codeCrit = `Critere${i}`;
+                const crit = criteres.find(c => c.code_critere === codeCrit);
+
+                if (!crit) {
+                  if (row) row.style.display = "none";
+                  if (labelEl) labelEl.textContent = "";
+                  if (note) note.value = "";
+                  if (com) com.value = "";
+                  setDisabled(`ep_critNote${i}`, true);
+                  setDisabled(`ep_critCom${i}`, true);
+                  continue;
+                }
+
+                if (row) row.style.display = "";
+                if (labelEl) labelEl.textContent = labels[codeCrit] || `Critère ${i}`;
+
+                if (note) note.value = String(crit.niveau || "");
+                if (com) com.value = crit.commentaire || "";
+
+                setDisabled(`ep_critNote${i}`, true);
+                setDisabled(`ep_critCom${i}`, true);
+              }
+
+              setDisabled("ep_btnSave", true);
+              clearSaveInlineMsg();
+
+              openModal("modalEpEvaluation");
             };
 
             if (!state.selectedCollaborateurId) {
@@ -1862,69 +1975,16 @@
               });
             };
 
-            const renderSummary = (groups, sourceRows) => {
-              if (!summary) return;
-
-              if (!sourceRows.length) {
-                summary.innerHTML = `<div class="ep-history-empty-inline">Aucun audit trouvé.</div>`;
-                return;
-              }
-
-              const last = groups[0] || null;
-              const scores = sourceRows
-                .map(x => scoreToPct(x.resultat_eval))
-                .filter(v => v !== null);
-
-              const avg = scores.length
-                ? `${Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)}%`
-                : "—";
-
-              summary.innerHTML = `
-                <div class="ep-history-summary-card">
-                  <div class="ep-history-kpi">
-                    <span>Dernier entretien</span>
-                    <strong>${esc(last?.dateTxt || "—")}</strong>
-                  </div>
-
-                  <div class="ep-history-kpi">
-                    <span>Évaluateur</span>
-                    <strong>${esc(last?.evalTxt || "—")}</strong>
-                  </div>
-
-                  <div class="ep-history-kpi">
-                    <span>Compétences évaluées</span>
-                    <strong>${esc(String(sourceRows.length))}</strong>
-                  </div>
-
-                  <div class="ep-history-kpi">
-                    <span>Maîtrise moyenne</span>
-                    <strong>${esc(avg)}</strong>
-                  </div>
-                </div>
-              `;
-            };
-
             const render = (list) => {
               if (!list.length) {
-                renderSummary([], []);
                 timeline.innerHTML = `<div class="ep-history-empty">Aucun audit trouvé.</div>`;
                 return;
               }
 
               const groups = buildGroups(list);
-              renderSummary(groups, list);
-
               timeline.innerHTML = "";
 
               groups.forEach((g, idx) => {
-                const scores = g.rows
-                  .map(x => scoreToPct(x.resultat_eval))
-                  .filter(v => v !== null);
-
-                const avg = scores.length
-                  ? `${Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)}%`
-                  : "—";
-
                 const hasObs = g.rows.some(x => (x.observation || "").toString().trim());
 
                 const item = document.createElement("div");
@@ -1944,7 +2004,6 @@
                   </div>
 
                   <div class="ep-history-group-right">
-                    <span class="ep-history-avg">${esc(avg)}</span>
                     ${hasObs ? `<span class="ep-history-dot" title="Observation présente"></span>` : ""}
                     <span class="ep-history-chevron">⌄</span>
                   </div>
@@ -1961,36 +2020,37 @@
                 g.rows.forEach(x => {
                   const code = (x.code || "").toString().trim();
                   const intitule = (x.intitule || "").toString().trim();
-                  const compTitle = [code, intitule].filter(Boolean).join(" — ") || "Compétence";
-
-                  const pct = scoreToPct(x.resultat_eval);
-                  const pctTxt = (pct === null) ? "—" : `${pct}%`;
                   const niveau = niveauFromScore(x.resultat_eval);
-                  const obs = (x.observation || "").toString().trim();
+
+                  const iconEye = `
+                    <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                  `;
 
                   const row = document.createElement("div");
                   row.className = "ep-history-comp-row";
                   row.innerHTML = `
                     <div class="ep-history-comp-main">
                       ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${esc(code)}</span>` : ""}
-                      <span class="ep-history-comp-title" title="${esc(intitule || compTitle)}">${esc(intitule || "—")}</span>
+                      <span class="ep-history-comp-title" title="${esc(intitule)}">${esc(intitule || "—")}</span>
                     </div>
 
                     <div class="ep-history-comp-result">
-                      <span class="ep-history-pct">${esc(pctTxt)}</span>
                       <span class="sb-badge ${esc(getEpLevelBadgeClass(niveau))}">${esc(niveau)}</span>
-                      ${obs ? `<button type="button" class="sb-btn sb-btn--xs sb-btn--soft" data-obs="1">Observation</button>` : ""}
+                      <button type="button" class="sb-icon-btn ep-history-view-btn" title="Voir la grille d'évaluation" aria-label="Voir la grille d'évaluation" data-view="1">
+                        ${iconEye}
+                      </button>
                     </div>
                   `;
 
-                  const btnObs = row.querySelector('button[data-obs="1"]');
-                  if (btnObs) {
-                    btnObs.addEventListener("click", (ev) => {
+                  const btnView = row.querySelector('button[data-view="1"]');
+                  if (btnView) {
+                    btnView.addEventListener("click", async (ev) => {
                       ev.preventDefault();
                       ev.stopPropagation();
-
-                      const meta = `${g.dateTxt} · ${g.evalTxt} · ${g.methTxt} · ${pctTxt} · ${niveau}`;
-                      openObs(compTitle, meta, obs);
+                      await openHistoryEvaluationDetail(x, g);
                     });
                   }
 

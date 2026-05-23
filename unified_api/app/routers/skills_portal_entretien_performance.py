@@ -137,6 +137,10 @@ class AuditHistoryItem(BaseModel):
     observation: Optional[str] = None
     methode_eval: Optional[str] = None
 
+    id_audit_competence: Optional[str] = None
+    id_effectif_competence: Optional[str] = None
+    detail_eval: Optional[Dict[str, Any]] = None
+
 # ======================================================
 # Constantes
 # ======================================================
@@ -865,11 +869,14 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
                 cur.execute(
                     """
                     SELECT
+                        a.id_audit_competence,
+                        a.id_effectif_competence,
                         a.date_audit,
                         a.id_evaluateur,
                         a.nom_evaluateur,
                         a.methode_eval,
                         a.resultat_eval,
+                        a.detail_eval,
                         a.observation,
 
                         c.id_comp,
@@ -893,13 +900,27 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
                 out: List[AuditHistoryItem] = []
 
                 for r in rows:
+                    detail_eval = r.get("detail_eval")
+
+                    if isinstance(detail_eval, str):
+                        try:
+                            detail_eval = json.loads(detail_eval)
+                        except Exception:
+                            detail_eval = None
+
+                    if not isinstance(detail_eval, dict):
+                        detail_eval = None
+
                     out.append(
                         AuditHistoryItem(
+                            id_audit_competence=r.get("id_audit_competence"),
+                            id_effectif_competence=r.get("id_effectif_competence"),
                             date_audit=str(r["date_audit"]) if r.get("date_audit") else None,
                             id_evaluateur=r.get("id_evaluateur"),
                             nom_evaluateur=r.get("nom_evaluateur"),
                             methode_eval=r.get("methode_eval"),
                             resultat_eval=float(r["resultat_eval"]) if r.get("resultat_eval") is not None else None,
+                            detail_eval=detail_eval,
                             observation=r.get("observation"),
                             id_comp=r.get("id_comp"),
                             code=r.get("code"),

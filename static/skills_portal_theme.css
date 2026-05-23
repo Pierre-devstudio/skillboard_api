@@ -5352,3 +5352,34 @@ body.bf-modal-open{
     justify-content:flex-start;
   }
 }
+
+/* ======================================================
+   Entretien performance — Historique : allègement
+   ====================================================== */
+
+#view-entretien-performance .ep-history-summary,
+#view-entretien-performance .ep-history-avg,
+#view-entretien-performance .ep-history-pct{
+  display:none !important;
+}
+
+#view-entretien-performance .ep-history-group-right{
+  min-width:34px;
+}
+
+#view-entretien-performance .ep-history-comp-result{
+  min-width:88px;
+}
+
+#view-entretien-performance .ep-history-view-btn{
+  flex:0 0 auto;
+}
+
+#view-entretien-performance .ep-history-view-btn svg{
+  width:15px;
+  height:15px;
+}
+
+#view-entretien-performance .ep-history-comp-row{
+  grid-template-columns:minmax(0, 1fr) auto;
+}
