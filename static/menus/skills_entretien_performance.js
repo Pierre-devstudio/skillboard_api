@@ -23,6 +23,9 @@
     selectedCollaborateurServiceId: "",
     selectedCompetenceId: null,
     scoring: null,
+    selectedEntretienId: null,
+    activeEntretienId: null,
+    _entretiensList: [],
   };
 
 
@@ -1582,6 +1585,328 @@
     await onScopeChanged();
   }
 
+  function epSetInlineMsg(id, type, text) {
+    const msg = $(id);
+    if (!msg) return;
+
+    msg.textContent = text || "";
+    msg.classList.remove(
+      "is-visible",
+      "sb-inline-msg--success",
+      "sb-inline-msg--info",
+      "sb-inline-msg--danger"
+    );
+
+    if (!text) return;
+
+    msg.classList.add("is-visible", `sb-inline-msg--${type || "info"}`);
+  }
+
+  function epGetValue(id) {
+    return ($(id)?.value || "").toString().trim();
+  }
+
+  function epSetValue(id, value) {
+    const el = $(id);
+    if (el) el.value = (value === null || value === undefined) ? "" : String(value);
+  }
+
+  function epTodayIso() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function epCurrentCollabName() {
+    const v = ($("ep_ctxCollaborateur")?.textContent || "").toString().trim();
+    return v && v !== "—" ? v : "Collaborateur sélectionné";
+  }
+
+  function epSetActiveEntretien(entretien) {
+    state.activeEntretienId = entretien?.id_entretien || null;
+
+    const lbl = $("ep_entretienActiveLabel");
+    if (!lbl) return;
+
+    if (!state.activeEntretienId) {
+      lbl.style.display = "none";
+      lbl.textContent = "";
+      return;
+    }
+
+    const type = entretien?.type_entretien || "Entretien individuel";
+    const statut = entretien?.statut || "brouillon";
+    lbl.style.display = "";
+    lbl.textContent = `${type} en cours · ${statut}`;
+  }
+
+  function resetEntretienModal() {
+    state.selectedEntretienId = null;
+
+    epSetValue("ep_entretienId", "");
+    epSetValue("ep_entretienType", "Entretien individuel");
+    epSetValue("ep_entretienStatut", "brouillon");
+    epSetValue("ep_entretienDatePrevue", epTodayIso());
+    epSetValue("ep_entretienDateRealisee", "");
+    epSetValue("ep_entretienPeriodeDebut", "");
+    epSetValue("ep_entretienPeriodeFin", "");
+
+    [
+      "ep_entretienBilanMissions",
+      "ep_entretienBilanReussites",
+      "ep_entretienBilanDifficultes",
+      "ep_entretienBilanContexte",
+      "ep_entretienObjectifs",
+      "ep_entretienIndicateurs",
+      "ep_entretienMoyens",
+      "ep_entretienEcheances",
+      "ep_entretienBesoinsFormation",
+      "ep_entretienSouhaits",
+      "ep_entretienEvolution",
+      "ep_entretienAccompagnement",
+      "ep_entretienActions",
+      "ep_entretienDocuments",
+      "ep_entretienSyntheseManager",
+      "ep_entretienSyntheseCollaborateur",
+      "ep_entretienAccords",
+      "ep_entretienDesaccords",
+    ].forEach(id => epSetValue(id, ""));
+
+    setText("ep_entretienModalTitle", "Entretien individuel");
+    setText("ep_entretienModalSub", epCurrentCollabName());
+
+    epSetInlineMsg("ep_entretienMsg", "info", "");
+  }
+
+  function fillEntretienModal(entretien) {
+    resetEntretienModal();
+
+    if (!entretien) return;
+
+    state.selectedEntretienId = entretien.id_entretien || null;
+
+    epSetValue("ep_entretienId", entretien.id_entretien || "");
+    epSetValue("ep_entretienType", entretien.type_entretien || "Entretien individuel");
+    epSetValue("ep_entretienStatut", entretien.statut || "brouillon");
+    epSetValue("ep_entretienDatePrevue", entretien.date_prevue || "");
+    epSetValue("ep_entretienDateRealisee", entretien.date_realisee || "");
+    epSetValue("ep_entretienPeriodeDebut", entretien.periode_debut || "");
+    epSetValue("ep_entretienPeriodeFin", entretien.periode_fin || "");
+
+    const bilan = entretien.bilan || {};
+    epSetValue("ep_entretienBilanMissions", bilan.missions || "");
+    epSetValue("ep_entretienBilanReussites", bilan.reussites || "");
+    epSetValue("ep_entretienBilanDifficultes", bilan.difficultes || "");
+    epSetValue("ep_entretienBilanContexte", bilan.contexte || "");
+
+    const objectifs = entretien.objectifs || {};
+    epSetValue("ep_entretienObjectifs", objectifs.objectifs || "");
+    epSetValue("ep_entretienIndicateurs", objectifs.indicateurs || "");
+    epSetValue("ep_entretienMoyens", objectifs.moyens || "");
+    epSetValue("ep_entretienEcheances", objectifs.echeances || "");
+
+    const dev = entretien.developpement || {};
+    epSetValue("ep_entretienBesoinsFormation", dev.besoins_formation || "");
+    epSetValue("ep_entretienSouhaits", dev.souhaits || "");
+    epSetValue("ep_entretienEvolution", dev.evolution || "");
+    epSetValue("ep_entretienAccompagnement", dev.accompagnement || "");
+
+    const actions = entretien.plan_actions || {};
+    epSetValue("ep_entretienActions", actions.actions || "");
+
+    const documents = entretien.documents || {};
+    epSetValue("ep_entretienDocuments", documents.references || "");
+
+    const synthese = entretien.synthese || {};
+    epSetValue("ep_entretienSyntheseManager", synthese.manager || "");
+    epSetValue("ep_entretienSyntheseCollaborateur", synthese.collaborateur || "");
+    epSetValue("ep_entretienAccords", synthese.points_accord || "");
+    epSetValue("ep_entretienDesaccords", synthese.points_desaccord || "");
+
+    setText("ep_entretienModalTitle", entretien.type_entretien || "Entretien individuel");
+    setText("ep_entretienModalSub", epCurrentCollabName());
+  }
+
+  function buildEntretienPayload() {
+    return {
+      type_entretien: epGetValue("ep_entretienType") || "Entretien individuel",
+      statut: epGetValue("ep_entretienStatut") || "brouillon",
+      date_prevue: epGetValue("ep_entretienDatePrevue") || null,
+      date_realisee: epGetValue("ep_entretienDateRealisee") || null,
+      periode_debut: epGetValue("ep_entretienPeriodeDebut") || null,
+      periode_fin: epGetValue("ep_entretienPeriodeFin") || null,
+
+      bilan: {
+        missions: epGetValue("ep_entretienBilanMissions"),
+        reussites: epGetValue("ep_entretienBilanReussites"),
+        difficultes: epGetValue("ep_entretienBilanDifficultes"),
+        contexte: epGetValue("ep_entretienBilanContexte"),
+      },
+
+      objectifs: {
+        objectifs: epGetValue("ep_entretienObjectifs"),
+        indicateurs: epGetValue("ep_entretienIndicateurs"),
+        moyens: epGetValue("ep_entretienMoyens"),
+        echeances: epGetValue("ep_entretienEcheances"),
+      },
+
+      developpement: {
+        besoins_formation: epGetValue("ep_entretienBesoinsFormation"),
+        souhaits: epGetValue("ep_entretienSouhaits"),
+        evolution: epGetValue("ep_entretienEvolution"),
+        accompagnement: epGetValue("ep_entretienAccompagnement"),
+      },
+
+      plan_actions: {
+        actions: epGetValue("ep_entretienActions"),
+      },
+
+      documents: {
+        references: epGetValue("ep_entretienDocuments"),
+      },
+
+      synthese: {
+        manager: epGetValue("ep_entretienSyntheseManager"),
+        collaborateur: epGetValue("ep_entretienSyntheseCollaborateur"),
+        points_accord: epGetValue("ep_entretienAccords"),
+        points_desaccord: epGetValue("ep_entretienDesaccords"),
+      },
+    };
+  }
+
+  async function loadEntretiensIndividuels() {
+    const wrap = $("ep_entretienList");
+    if (!state.selectedCollaborateurId || !_portal) {
+      if (wrap) wrap.innerHTML = `<div class="ep-history-empty">Sélectionne un collaborateur pour afficher ses entretiens individuels.</div>`;
+      return [];
+    }
+
+    if (wrap) wrap.innerHTML = `<div class="ep-history-empty">Chargement des entretiens individuels…</div>`;
+
+    const url = `${_portal.apiBase}/skills/entretien-performance/entretiens/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}`;
+    const data = await _portal.apiJson(url);
+
+    state._entretiensList = Array.isArray(data) ? data : [];
+    renderEntretiensIndividuels(state._entretiensList);
+
+    return state._entretiensList;
+  }
+
+  function renderEntretiensIndividuels(list) {
+    const wrap = $("ep_entretienList");
+    if (!wrap) return;
+
+    const arr = Array.isArray(list) ? list : [];
+
+    if (!arr.length) {
+      wrap.innerHTML = `<div class="ep-history-empty">Aucun entretien individuel enregistré pour ce collaborateur.</div>`;
+      return;
+    }
+
+    wrap.innerHTML = "";
+
+    arr.forEach(entretien => {
+      const card = document.createElement("div");
+      card.className = "ep-entretien-row";
+
+      const dateTxt = entretien.date_realisee || entretien.date_prevue || entretien.created_at || "—";
+      const statut = entretien.statut || "brouillon";
+
+      card.innerHTML = `
+        <div class="ep-entretien-row-main">
+          <div class="ep-entretien-row-title">${epEsc(entretien.type_entretien || "Entretien individuel")}</div>
+          <div class="ep-entretien-row-sub">
+            ${epEsc(epFormatDateFR(dateTxt))} · ${epEsc(statut)}
+          </div>
+        </div>
+
+        <div class="ep-entretien-row-actions">
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="open">Ouvrir</button>
+          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-act="active">Utiliser pour les évaluations</button>
+          <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-act="pdf" title="Rapport PDF" aria-label="Rapport PDF">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <path d="M14 2v6h6"></path>
+            </svg>
+          </button>
+        </div>
+      `;
+
+      card.querySelector('[data-act="open"]')?.addEventListener("click", () => {
+        openEntretienModal(entretien);
+      });
+
+      card.querySelector('[data-act="active"]')?.addEventListener("click", () => {
+        epSetActiveEntretien(entretien);
+      });
+
+      card.querySelector('[data-act="pdf"]')?.addEventListener("click", () => {
+        openEntretienPdf(entretien.id_entretien);
+      });
+
+      wrap.appendChild(card);
+    });
+  }
+
+  function openEntretienModal(entretien) {
+    if (!state.selectedCollaborateurId) {
+      _portal && _portal.showAlert("warning", "Sélectionne un collaborateur avant de préparer un entretien individuel.");
+      return;
+    }
+
+    fillEntretienModal(entretien || null);
+    openModal("modalEpEntretien");
+  }
+
+  async function saveEntretienIndividuel() {
+    if (!state.selectedCollaborateurId || !_portal) {
+      epSetInlineMsg("ep_entretienMsg", "danger", "Sélectionne un collaborateur avant d'enregistrer.");
+      return;
+    }
+
+    const idEntretien = epGetValue("ep_entretienId");
+    const payload = buildEntretienPayload();
+
+    try {
+      epSetInlineMsg("ep_entretienMsg", "info", "Enregistrement…");
+
+      const isUpdate = !!idEntretien;
+
+      const url = isUpdate
+        ? `${_portal.apiBase}/skills/entretien-performance/entretien/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(idEntretien)}`
+        : `${_portal.apiBase}/skills/entretien-performance/entretien/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}`;
+
+      const saved = await _portal.apiJson(url, {
+        method: isUpdate ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      fillEntretienModal(saved);
+      epSetActiveEntretien(saved);
+      epSetInlineMsg("ep_entretienMsg", "success", "Entretien enregistré");
+
+      await loadEntretiensIndividuels();
+    } catch (e) {
+      const raw = String(e?.message || e || "").replace(/^Erreur serveur\s*:\s*/i, "").trim();
+      epSetInlineMsg("ep_entretienMsg", "danger", raw || "Erreur lors de l'enregistrement.");
+    }
+  }
+
+  function openEntretienPdf(idEntretien) {
+    const id = (idEntretien || epGetValue("ep_entretienId") || "").toString().trim();
+
+    if (!id || !_portal) {
+      epSetInlineMsg("ep_entretienMsg", "danger", "Enregistre l'entretien avant de générer le rapport.");
+      return;
+    }
+
+    const url = `${_portal.apiBase}/skills/entretien-performance/entretien/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(id)}/rapport-pdf`;
+    const win = window.open(url, "_blank", "noopener");
+
+    if (!win) {
+      epSetInlineMsg("ep_entretienMsg", "danger", "Le navigateur a bloqué l'ouverture du PDF.");
+    }
+  }
+
   function epEsc(s) {
     return String(s ?? "")
       .replaceAll("&", "&amp;")
@@ -1699,6 +2024,7 @@
 
   function setHistoryTab(tab) {
     const isProgression = tab === "progression";
+    const isEntretiens = tab === "entretiens";
 
     document.querySelectorAll("#modalEpHistory .ep-history-tab").forEach(b => {
       b.classList.toggle("is-active", (b.dataset.tab || "") === tab);
@@ -1706,9 +2032,11 @@
 
     const histPanel = $("ep_histPanelHistorique");
     const progPanel = $("ep_histPanelProgression");
+    const entretiensPanel = $("ep_histPanelEntretiens");
 
-    if (histPanel) histPanel.classList.toggle("is-active", !isProgression);
+    if (histPanel) histPanel.classList.toggle("is-active", !isProgression && !isEntretiens);
     if (progPanel) progPanel.classList.toggle("is-active", isProgression);
+    if (entretiensPanel) entretiensPanel.classList.toggle("is-active", isEntretiens);
 
     if (isProgression) {
       const currentKey = [
@@ -1722,6 +2050,10 @@
       } else {
         renderProgression();
       }
+    }
+
+    if (isEntretiens) {
+      loadEntretiensIndividuels();
     }
   }
 
@@ -2146,6 +2478,47 @@
         // Header actions
         const btnHelp = $("ep_btnHelpScoring");
         if (btnHelp) btnHelp.addEventListener("click", () => openModal("modalEpScoring"));
+
+        const btnEntretien = $("ep_btnEntretienIndividuel");
+        if (btnEntretien) {
+          btnEntretien.addEventListener("click", () => {
+            openEntretienModal(null);
+          });
+        }
+
+        const btnNewEntretienHistory = $("ep_btnNewEntretienFromHistory");
+        if (btnNewEntretienHistory) {
+          btnNewEntretienHistory.addEventListener("click", () => {
+            openEntretienModal(null);
+          });
+        }
+
+        const btnSaveEntretien = $("ep_btnSaveEntretien");
+        if (btnSaveEntretien) {
+          btnSaveEntretien.addEventListener("click", () => {
+            saveEntretienIndividuel();
+          });
+        }
+
+        const btnEntretienPdf = $("ep_btnEntretienPdf");
+        if (btnEntretienPdf) {
+          btnEntretienPdf.addEventListener("click", () => {
+            openEntretienPdf();
+          });
+        }
+
+        const modalEntretien = $("modalEpEntretien");
+        const btnXEntretien = $("btnCloseEpEntretienModalX");
+        const btnCloseEntretien = $("btnEpEntretienModalClose");
+        const closeEntretien = () => closeModal("modalEpEntretien");
+
+        if (btnXEntretien) btnXEntretien.addEventListener("click", closeEntretien);
+        if (btnCloseEntretien) btnCloseEntretien.addEventListener("click", closeEntretien);
+        if (modalEntretien) {
+          modalEntretien.addEventListener("click", (e) => {
+            if (e.target === modalEntretien) closeEntretien();
+          });
+        }
 
         const btnReportPdf = $("ep_btnReportPdf");
         if (btnReportPdf) {
@@ -3023,6 +3396,7 @@
     const payload = {
       id_effectif_competence,
       id_comp,
+      id_entretien_individuel: state.activeEntretienId || null,
       resultat_eval: score24,
       niveau_actuel,
       observation: observation || null,
