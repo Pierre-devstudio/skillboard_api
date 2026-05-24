@@ -5700,3 +5700,36 @@ body.bf-modal-open{
 #modalEpEvaluation .ep-domain-badge::before{
   background:var(--dom-color);
 }
+
+/* ======================================================
+   CORE — Messages inline standard
+   ====================================================== */
+
+.sb-inline-msg{
+  display:none;
+  margin:0;
+  padding:0;
+  border:0;
+  background:transparent;
+  font-size:12px;
+  font-weight:600;
+  line-height:1.25;
+  white-space:normal;
+}
+
+.sb-inline-msg--success{
+  color:var(--reading-accent);
+}
+
+.sb-inline-msg--info{
+  color:var(--sb-info);
+}
+
+.sb-inline-msg--danger{
+  color:var(--accent);
+}
+
+.sb-inline-msg.is-visible{
+  display:inline-flex;
+  align-items:center;
+}

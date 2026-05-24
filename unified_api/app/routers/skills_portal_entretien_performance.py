@@ -975,7 +975,12 @@ def get_effectif_checklist(id_contact: str, id_effectif: str, request: Request):
 
                 eff = _fetch_effectif_context(cur, id_ent, id_effectif)
                 id_poste = eff.get("id_poste_actuel")
-                _ensure_effectif_competences_for_poste(cur, id_effectif, id_poste)                
+                _ensure_effectif_competences_for_poste(cur, id_effectif, id_poste)
+
+                # Les lignes compétence manquantes peuvent être créées juste au-dessus.
+                # On commit explicitement avant de renvoyer la checklist, sinon le front
+                # peut afficher une ligne que la route POST d'enregistrement ne retrouvera pas ensuite.
+                conn.commit()
 
                 cur.execute(
                     """
@@ -1025,8 +1030,8 @@ def get_effectif_checklist(id_contact: str, id_effectif: str, request: Request):
                       AND e.id_ent = %s
                       AND COALESCE(e.archive, FALSE) = FALSE
                       AND COALESCE(e.statut_actif, TRUE) = TRUE
-                      AND ec.actif = TRUE
-                      AND ec.archive = FALSE
+                      AND COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
                       AND COALESCE(c.masque, FALSE) = FALSE
                       AND COALESCE(c.etat, 'valide') <> 'inactive'
                     ORDER BY c.code, c.intitule

@@ -452,17 +452,13 @@
     const msg = $("ep_saveInlineMsg") || $("ep_saveMsg");
     if (!msg) return;
 
-    msg.style.display = "none";
     msg.textContent = "";
-
-    // reset styles inline (sinon ça “colle” au prochain affichage)
-    msg.style.fontWeight = "";
-    msg.style.whiteSpace = "";
-    msg.style.padding = "";
-    msg.style.borderRadius = "";
-    msg.style.border = "";
-    msg.style.background = "";
-    msg.style.color = "";
+    msg.classList.remove(
+      "is-visible",
+      "sb-inline-msg--success",
+      "sb-inline-msg--info",
+      "sb-inline-msg--danger"
+    );
   }
 
   function _formatDateFR(v) {
@@ -2860,17 +2856,17 @@
             const setMsg = (isOk, text) => {
               if (!msg) return;
 
-              msg.style.display = "inline";
               msg.textContent = text || "";
+              msg.classList.remove(
+                "sb-inline-msg--success",
+                "sb-inline-msg--info",
+                "sb-inline-msg--danger"
+              );
 
-              // Label simple dans le footer du modal : pas de badge, pas de fond, pas de bordure.
-              msg.style.fontWeight = "600";
-              msg.style.whiteSpace = "normal";
-              msg.style.padding = "0";
-              msg.style.borderRadius = "0";
-              msg.style.border = "0";
-              msg.style.background = "transparent";
-              msg.style.color = isOk ? "var(--reading-accent)" : "var(--accent)";
+              msg.classList.add(
+                "is-visible",
+                isOk ? "sb-inline-msg--success" : "sb-inline-msg--danger"
+              );
             };
 
             const clearMsg = () => {
