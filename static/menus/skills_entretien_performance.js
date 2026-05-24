@@ -163,7 +163,7 @@
     pop.id = "ep_popGuide";
     pop.className = "card";
     pop.style.position = "fixed";
-    pop.style.zIndex = "9999";
+    pop.style.zIndex = "10080";
     pop.style.display = "none";
     pop.style.maxWidth = "460px";
     pop.style.padding = "12px";
@@ -241,7 +241,7 @@
             line.style.padding = "8px 10px";
             line.style.border = "1px solid #e5e7eb";
             line.style.borderRadius = "10px";
-            line.style.cursor = "pointer";
+            line.style.cursor = (noteSelect && !noteSelect.disabled) ? "pointer" : "default";
 
             // surlignage de la note sélectionnée
             if (String(selectedNote || "") === String(i)) {
@@ -267,13 +267,17 @@
 
             // Clic = on pousse la note dans le select du critère
             line.addEventListener("click", () => {
-            if (noteSelect && !noteSelect.disabled) {
-                noteSelect.value = String(i);
-                // déclenche les listeners éventuels (recalcul / score, etc.)
-                noteSelect.dispatchEvent(new Event("input", { bubbles: true }));
-                noteSelect.dispatchEvent(new Event("change", { bubbles: true }));
-            }
-            closeGuidePopover();
+              if (!noteSelect || noteSelect.disabled) {
+                return;
+              }
+
+              noteSelect.value = String(i);
+
+              // déclenche les listeners éventuels (recalcul / score, etc.)
+              noteSelect.dispatchEvent(new Event("input", { bubbles: true }));
+              noteSelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+              closeGuidePopover();
             });
 
             if (body) body.appendChild(line);
@@ -349,9 +353,10 @@
   }
 
   function resetEvaluationPanel() {
+    state._historyAuditEditing = null;
 
     const evalModal = $("modalEpEvaluation");
-    if (evalModal) evalModal.classList.remove("is-history-readonly");
+    if (evalModal) evalModal.classList.remove("is-history-readonly", "is-history-editable");
 
     const titleEl = $("ep_compTitle");
     if (titleEl) {
@@ -2424,8 +2429,26 @@
 
               resetEvaluationPanel();
 
+              const canEditHistoryAudit =
+                !!x.modifiable ||
+                String(x.id_evaluateur || "").trim() === String(_portal?.contactId || "").trim();
+
+              state._historyAuditEditing = {
+                id_audit_competence: (x.id_audit_competence || "").toString().trim(),
+                id_effectif_competence: (x.id_effectif_competence || "").toString().trim(),
+                id_comp: (x.id_comp || "").toString().trim(),
+                canEdit: !!canEditHistoryAudit,
+                row: x,
+              };
+
+              state.selectedEffectifCompetenceId = state._historyAuditEditing.id_effectif_competence;
+              state.selectedCompetenceId = state._historyAuditEditing.id_comp;
+
               const evalModal = $("modalEpEvaluation");
-              if (evalModal) evalModal.classList.add("is-history-readonly");
+              if (evalModal) {
+                evalModal.classList.add("is-history-readonly");
+                evalModal.classList.toggle("is-history-editable", !!canEditHistoryAudit);
+              }
 
               setText("ep_evalHint", `Historique du ${lastDate} · évalué par : ${group.evalTxt}`);
 
@@ -2479,11 +2502,11 @@
               setText("ep_scorePct", pct === null ? "—" : `${pct}%`);
 
               setSelectValueOrAdd("ep_selEvalMethod", method);
-              setDisabled("ep_selEvalMethod", true);
+              setDisabled("ep_selEvalMethod", !canEditHistoryAudit);
 
               const obsEl = $("ep_txtObservation");
               if (obsEl) obsEl.value = obs || "";
-              setDisabled("ep_txtObservation", true);
+              setDisabled("ep_txtObservation", !canEditHistoryAudit);
 
               const criteres = extractHistoryCriteres(x);
 
@@ -2538,11 +2561,11 @@
                 if (note) note.value = String(crit.niveau || "");
                 if (com) com.value = crit.commentaire || "";
 
-                setDisabled(`ep_critNote${i}`, true);
-                setDisabled(`ep_critCom${i}`, true);
+                setDisabled(`ep_critNote${i}`, !canEditHistoryAudit);
+                setDisabled(`ep_critCom${i}`, !canEditHistoryAudit);
               }
 
-              setDisabled("ep_btnSave", true);
+              setDisabled("ep_btnSave", !canEditHistoryAudit);
               clearSaveInlineMsg();
 
               openModal("modalEpEvaluation");
@@ -2910,7 +2933,8 @@
               const saved = await saveCurrentAudit();
               await afterAuditSavedRefresh(saved);
 
-              setMsg(true, "Audit enregistré avec succès");
+              const isHistoryUpdate = !!state._historyAuditEditing?.id_audit_competence;
+              setMsg(true, isHistoryUpdate ? "Évaluation mise à jour" : "Audit enregistré avec succès");
             } catch (e) {
               const reason = String(e?.message || e || "").trim();
               setMsg(false, `Échec de l'enregistrement - ${reason || "raison inconnue"}`);
@@ -3059,12 +3083,35 @@
       methode_eval: (document.getElementById("ep_selEvalMethod")?.value || "Entretien de performance").trim(),
     };
 
-    const url = `${_portal.apiBase}/skills/entretien-performance/audit/${encodeURIComponent(_portal.contactId)}`;
-    return await _portal.apiJson(url, {
-      method: "POST",
+    const histEdit = state._historyAuditEditing || null;
+    const auditId = (histEdit?.id_audit_competence || "").toString().trim();
+
+    const isHistoryUpdate = !!auditId && histEdit.canEdit === true;
+
+    const url = isHistoryUpdate
+      ? `${_portal.apiBase}/skills/entretien-performance/audit/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(auditId)}`
+      : `${_portal.apiBase}/skills/entretien-performance/audit/${encodeURIComponent(_portal.contactId)}`;
+
+    const saved = await _portal.apiJson(url, {
+      method: isHistoryUpdate ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+
+    if (isHistoryUpdate && histEdit.row) {
+      histEdit.row.resultat_eval = score24;
+      histEdit.row.niveau_actuel = niveau_actuel;
+      histEdit.row.observation = payload.observation;
+      histEdit.row.methode_eval = payload.methode_eval;
+      histEdit.row.detail_eval = {
+        criteres: payload.criteres,
+      };
+
+      state._progressData = null;
+      state._progressLoadedKey = "";
+    }
+
+    return saved;
   }
 
   window.SkillsEntretienPerformance = { onShow };

@@ -140,6 +140,7 @@ class AuditHistoryItem(BaseModel):
     id_audit_competence: Optional[str] = None
     id_effectif_competence: Optional[str] = None
     detail_eval: Optional[Dict[str, Any]] = None
+    modifiable: bool = False
 
 # ======================================================
 # Constantes
@@ -1225,6 +1226,143 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload, 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
+@router.put(
+    "/skills/entretien-performance/audit/{id_contact}/{id_audit_competence}",
+    response_model=AuditSaveResponse,
+)
+def update_entretien_competence_audit(
+    id_contact: str,
+    id_audit_competence: str,
+    payload: AuditSavePayload,
+    request: Request,
+):
+    """
+    Modifie un audit compétence existant.
+
+    Règles :
+    - seul l'évaluateur d'origine peut modifier son audit ;
+    - aucune nouvelle ligne d'audit n'est créée ;
+    - si l'audit modifié est le dernier audit actif de la ligne compétence,
+      le niveau actuel du collaborateur est remis à jour.
+    """
+    try:
+        niveau_ok = payload.niveau_actuel in ["Initial", "Avancé", "Expert"]
+        if not niveau_ok:
+            raise HTTPException(status_code=400, detail="niveau_actuel invalide (Initial/Avancé/Expert attendu).")
+
+        if not payload.criteres or len(payload.criteres) > 4:
+            raise HTTPException(status_code=400, detail="Liste de critères invalide.")
+
+        for c in payload.criteres:
+            if c.niveau < 1 or c.niveau > 4:
+                raise HTTPException(status_code=400, detail="Note critère invalide (1..4).")
+            if c.code_critere not in ["Critere1", "Critere2", "Critere3", "Critere4"]:
+                raise HTTPException(status_code=400, detail="code_critere invalide (Critere1..4).")
+
+        id_audit = (id_audit_competence or "").strip()
+        if not id_audit:
+            raise HTTPException(status_code=400, detail="id_audit_competence manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                cur.execute(
+                    """
+                    SELECT
+                        a.id_audit_competence,
+                        a.id_effectif_competence,
+                        a.date_audit,
+                        a.id_evaluateur,
+                        ec.id_effectif_client,
+                        ec.id_comp,
+                        ec.id_dernier_audit
+                    FROM public.tbl_effectif_client_audit_competence a
+                    JOIN public.tbl_effectif_client_competence ec
+                      ON ec.id_effectif_competence = a.id_effectif_competence
+                    JOIN public.tbl_effectif_client e
+                      ON e.id_effectif = ec.id_effectif_client
+                    WHERE a.id_audit_competence = %s
+                      AND e.id_ent = %s
+                      AND COALESCE(e.archive, FALSE) = FALSE
+                      AND COALESCE(e.statut_actif, TRUE) = TRUE
+                      AND ec.actif = TRUE
+                      AND ec.archive = FALSE
+                    """,
+                    (id_audit, id_ent),
+                )
+
+                row = cur.fetchone()
+                if row is None:
+                    raise HTTPException(status_code=404, detail="Audit compétence introuvable ou hors périmètre.")
+
+                if str(row.get("id_evaluateur") or "").strip() != str(id_contact or "").strip():
+                    raise HTTPException(status_code=403, detail="Seul l'évaluateur d'origine peut modifier cet audit.")
+
+                if payload.id_effectif_competence and payload.id_effectif_competence != row.get("id_effectif_competence"):
+                    raise HTTPException(status_code=400, detail="id_effectif_competence ne correspond pas à l'audit.")
+
+                if payload.id_comp and payload.id_comp != row.get("id_comp"):
+                    raise HTTPException(status_code=400, detail="id_comp ne correspond pas à l'audit.")
+
+                detail_eval = {
+                    "criteres": [
+                        {
+                            "niveau": int(c.niveau),
+                            "code_critere": c.code_critere,
+                            **({"commentaire": (c.commentaire or "").strip()} if (c.commentaire or "").strip() else {}),
+                        }
+                        for c in payload.criteres
+                    ]
+                }
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_effectif_client_audit_competence
+                    SET
+                        methode_eval = %s,
+                        resultat_eval = %s,
+                        detail_eval = %s::jsonb,
+                        observation = %s
+                    WHERE id_audit_competence = %s
+                    """,
+                    (
+                        payload.methode_eval,
+                        round(float(payload.resultat_eval), 1),
+                        json.dumps(detail_eval, ensure_ascii=False),
+                        (payload.observation or None),
+                        id_audit,
+                    ),
+                )
+
+                if str(row.get("id_dernier_audit") or "").strip() == id_audit:
+                    cur.execute(
+                        """
+                        UPDATE public.tbl_effectif_client_competence
+                        SET
+                            niveau_actuel = %s,
+                            date_derniere_eval = %s
+                        WHERE id_effectif_competence = %s
+                        """,
+                        (
+                            payload.niveau_actuel,
+                            row.get("date_audit"),
+                            row.get("id_effectif_competence"),
+                        ),
+                    )
+
+                conn.commit()
+
+                return AuditSaveResponse(
+                    id_audit_competence=id_audit,
+                    date_audit=str(row["date_audit"]) if row.get("date_audit") else str(date.today()),
+                )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
 # ======================================================
 # Historique (audits compétences par collaborateur)
 # ======================================================
@@ -1316,6 +1454,10 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
                             id_comp=r.get("id_comp"),
                             code=r.get("code"),
                             intitule=r.get("intitule"),
+                            modifiable=(
+                                str(r.get("id_evaluateur") or "").strip()
+                                == str(id_contact or "").strip()
+                            ),
                         )
                     )
 
