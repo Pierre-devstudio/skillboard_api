@@ -2859,15 +2859,18 @@
 
             const setMsg = (isOk, text) => {
               if (!msg) return;
-              msg.style.display = "inline-block";
+
+              msg.style.display = "inline";
               msg.textContent = text || "";
+
+              // Label simple dans le footer du modal : pas de badge, pas de fond, pas de bordure.
               msg.style.fontWeight = "600";
-              msg.style.whiteSpace = "nowrap";
-              msg.style.padding = "6px 10px";
-              msg.style.borderRadius = "10px";
-              msg.style.border = "1px solid " + (isOk ? "#0a7a2f" : "#b42318");
-              msg.style.background = isOk ? "rgba(10,122,47,.08)" : "rgba(180,35,24,.08)";
-              msg.style.color = isOk ? "#0a7a2f" : "#b42318";
+              msg.style.whiteSpace = "normal";
+              msg.style.padding = "0";
+              msg.style.borderRadius = "0";
+              msg.style.border = "0";
+              msg.style.background = "transparent";
+              msg.style.color = isOk ? "var(--reading-accent)" : "var(--accent)";
             };
 
             const clearMsg = () => {
@@ -2884,8 +2887,12 @@
               const isHistoryUpdate = !!state._historyAuditEditing?.id_audit_competence;
               setMsg(true, isHistoryUpdate ? "Évaluation mise à jour" : "Audit enregistré avec succès");
             } catch (e) {
-              const reason = String(e?.message || e || "").trim();
-              setMsg(false, `Échec de l'enregistrement - ${reason || "raison inconnue"}`);
+              const rawReason = String(e?.message || e || "").trim();
+              const cleanReason = rawReason
+                .replace(/^Erreur serveur\s*:\s*/i, "")
+                .trim();
+
+              setMsg(false, `Échec de l'enregistrement : ${cleanReason || "raison inconnue"}`);
             } finally {
               btnSave.disabled = false;
             }

@@ -1112,9 +1112,9 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload, 
                     JOIN public.tbl_effectif_client e
                       ON e.id_effectif = ec.id_effectif_client
                     WHERE ec.id_effectif_competence = %s
-                      AND ec.actif = TRUE
-                      AND ec.archive = FALSE
-                      AND e.archive = FALSE
+                      AND COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND COALESCE(e.archive, FALSE) = FALSE
                       AND COALESCE(e.statut_actif, TRUE) = TRUE
                       AND e.id_ent = %s
                     """,
@@ -1286,8 +1286,8 @@ def update_entretien_competence_audit(
                       AND e.id_ent = %s
                       AND COALESCE(e.archive, FALSE) = FALSE
                       AND COALESCE(e.statut_actif, TRUE) = TRUE
-                      AND ec.actif = TRUE
-                      AND ec.archive = FALSE
+                      AND COALESCE(ec.actif, TRUE) = TRUE
+                      AND COALESCE(ec.archive, FALSE) = FALSE
                     """,
                     (id_audit, id_ent),
                 )
