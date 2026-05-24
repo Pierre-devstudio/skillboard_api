@@ -5865,3 +5865,265 @@ body.bf-modal-open{
     justify-content:flex-start;
   }
 }
+
+/* ======================================================
+   Entretien performance — Entretien individuel guidé
+   ====================================================== */
+
+#modalEpEntretien{
+  z-index:10050;
+}
+
+#modalEpEntretien .ep-entretien-modal-card{
+  width:min(1180px, calc(100vw - 48px)) !important;
+}
+
+#modalEpEntretien .ep-entretien-body{
+  padding:14px;
+}
+
+#modalEpEntretien .ep-entretien-topgrid{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:12px;
+}
+
+#modalEpEntretien .ep-entretien-tabs{
+  display:flex;
+  gap:8px;
+  margin:14px 0 12px 0;
+  flex-wrap:wrap;
+}
+
+#modalEpEntretien .ep-entretien-tab{
+  height:30px;
+  padding:0 12px;
+  border:1px solid var(--sb-gray-300);
+  border-radius:10px;
+  background:#fff;
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+#modalEpEntretien .ep-entretien-tab.is-active{
+  background:var(--accent);
+  border-color:var(--accent);
+  color:#fff;
+}
+
+#modalEpEntretien .ep-entretien-panel{
+  display:none;
+}
+
+#modalEpEntretien .ep-entretien-panel.is-active{
+  display:block;
+}
+
+#modalEpEntretien .ep-entretien-section{
+  margin-top:12px;
+  padding:12px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:13px;
+  background:#fff;
+}
+
+#modalEpEntretien .ep-entretien-section-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+#modalEpEntretien .ep-entretien-section-title{
+  font-size:13px;
+  font-weight:700;
+  color:var(--sb-gray-900);
+}
+
+#modalEpEntretien .ep-entretien-grid{
+  display:grid;
+  gap:12px;
+}
+
+#modalEpEntretien .ep-entretien-grid--two{
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+}
+
+#modalEpEntretien textarea.sb-ctrl{
+  min-height:86px;
+}
+
+#modalEpEntretien .ep-entretien-crit-filter{
+  min-width:220px;
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:6px 8px;
+  align-items:center;
+}
+
+#modalEpEntretien .ep-entretien-crit-filter .sb-label{
+  grid-column:1 / -1;
+  margin:0;
+}
+
+#modalEpEntretien .ep-entretien-crit-filter input[type="range"]{
+  width:100%;
+  accent-color:var(--reading-accent);
+}
+
+#modalEpEntretien .ep-entretien-comp-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+#modalEpEntretien .ep-entretien-empty{
+  padding:12px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  color:var(--sb-gray-500);
+  font-size:13px;
+  text-align:center;
+}
+
+#modalEpEntretien .ep-entretien-comp-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:9px 10px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:#fff;
+}
+
+#modalEpEntretien .ep-entretien-comp-main{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+
+#modalEpEntretien .ep-entretien-comp-main input{
+  width:15px;
+  height:15px;
+}
+
+#modalEpEntretien .ep-entretien-comp-title{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:13px;
+  font-weight:600;
+  color:var(--sb-gray-900);
+}
+
+#modalEpEntretien .ep-entretien-comp-meta{
+  display:flex;
+  align-items:center;
+  gap:7px;
+}
+
+#modalEpEntretien .ep-entretien-catalogue-search{
+  width:min(320px, 100%);
+}
+
+#modalEpEntretien .ep-entretien-catalogue-results{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-bottom:8px;
+}
+
+#modalEpEntretien .ep-entretien-catalogue-item{
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:10px;
+  background:#fff;
+  cursor:pointer;
+  text-align:left;
+}
+
+#modalEpEntretien .ep-entretien-catalogue-item:hover{
+  background:var(--sb-gray-50);
+}
+
+#modalEpEntretien .ep-entretien-doc-upload{
+  display:grid;
+  grid-template-columns:220px 1fr auto;
+  gap:10px;
+  align-items:center;
+}
+
+#modalEpEntretien .ep-entretien-doc-list{
+  margin-top:10px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+#modalEpEntretien .ep-entretien-doc-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 10px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:10px;
+  background:#fff;
+  font-size:13px;
+}
+
+#modalEpEntretien .ep-entretien-sign-check{
+  margin-top:12px;
+}
+
+#modalEpEntretien #ep_entretienMsg{
+  margin-right:auto;
+}
+
+#view-entretien-performance .ep-entretien-status--a-realiser{
+  border-color:var(--sb-warning);
+  color:var(--sb-warning);
+  background:transparent;
+}
+
+#view-entretien-performance .ep-entretien-status--en-cours{
+  border-color:var(--sb-info);
+  color:var(--sb-info);
+  background:transparent;
+}
+
+#view-entretien-performance .ep-entretien-status--a-signer{
+  border-color:var(--accent);
+  color:var(--accent);
+  background:transparent;
+}
+
+#view-entretien-performance .ep-entretien-status--termine{
+  border-color:var(--reading-accent);
+  color:var(--reading-accent);
+  background:transparent;
+}
+
+@media (max-width:900px){
+  #modalEpEntretien .ep-entretien-topgrid,
+  #modalEpEntretien .ep-entretien-grid--two,
+  #modalEpEntretien .ep-entretien-doc-upload{
+    grid-template-columns:1fr;
+  }
+
+  #modalEpEntretien .ep-entretien-section-head,
+  #modalEpEntretien .ep-entretien-comp-row{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+}

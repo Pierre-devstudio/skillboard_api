@@ -468,7 +468,7 @@
     </div>
   </div>
 
-    <!-- Modal: entretien individuel -->
+  <!-- Modal: entretien individuel -->
   <div class="modal" id="modalEpEntretien" aria-hidden="true">
     <div class="modal-card ep-entretien-modal-card">
       <div class="modal-header">
@@ -483,7 +483,7 @@
       <div class="modal-body ep-entretien-body">
         <input type="hidden" id="ep_entretienId" />
 
-        <div class="ep-entretien-grid">
+        <div class="ep-entretien-topgrid">
           <div class="sb-field">
             <label class="sb-label" for="ep_entretienType">Type</label>
             <select id="ep_entretienType" class="sb-select">
@@ -498,10 +498,10 @@
           <div class="sb-field">
             <label class="sb-label" for="ep_entretienStatut">Statut</label>
             <select id="ep_entretienStatut" class="sb-select">
-              <option value="brouillon">Brouillon</option>
-              <option value="préparation">Préparation</option>
-              <option value="réalisé">Réalisé</option>
-              <option value="validé">Validé</option>
+              <option value="à réaliser">À réaliser</option>
+              <option value="en cours">En cours</option>
+              <option value="à signer">À signer</option>
+              <option value="terminé">Terminé</option>
             </select>
           </div>
 
@@ -526,123 +526,130 @@
           </div>
         </div>
 
-        <div class="ep-entretien-section">
-          <div class="ep-entretien-section-title">Bilan de la période</div>
+        <div class="ep-entretien-tabs">
+          <button type="button" class="ep-entretien-tab is-active" data-panel="preparation">Préparation</button>
+          <button type="button" class="ep-entretien-tab" data-panel="competences">Compétences</button>
+          <button type="button" class="ep-entretien-tab" data-panel="realisation">Réalisation</button>
+          <button type="button" class="ep-entretien-tab" data-panel="documents">Documents</button>
+        </div>
 
-          <div class="ep-entretien-grid ep-entretien-grid--two">
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienBilanMissions">Missions réalisées</label>
-              <textarea id="ep_entretienBilanMissions" class="sb-ctrl" rows="3"></textarea>
-            </div>
+        <div class="ep-entretien-panel is-active" id="ep_entretienPanelPreparation">
+          <div class="ep-entretien-section">
+            <div class="ep-entretien-section-title">Préparation manager</div>
 
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienBilanReussites">Réussites / faits marquants</label>
-              <textarea id="ep_entretienBilanReussites" class="sb-ctrl" rows="3"></textarea>
-            </div>
+            <div class="ep-entretien-grid ep-entretien-grid--two">
+              <div class="sb-field">
+                <label class="sb-label" for="ep_entretienPrepNotes">Notes préparatoires</label>
+                <textarea id="ep_entretienPrepNotes" class="sb-ctrl" rows="4"></textarea>
+              </div>
 
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienBilanDifficultes">Difficultés rencontrées</label>
-              <textarea id="ep_entretienBilanDifficultes" class="sb-ctrl" rows="3"></textarea>
-            </div>
-
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienBilanContexte">Organisation / conditions de travail</label>
-              <textarea id="ep_entretienBilanContexte" class="sb-ctrl" rows="3"></textarea>
+              <div class="sb-field">
+                <label class="sb-label" for="ep_entretienPrepPoints">Points à aborder</label>
+                <textarea id="ep_entretienPrepPoints" class="sb-ctrl" rows="4"></textarea>
+              </div>
             </div>
           </div>
         </div>
 
-        <div class="ep-entretien-section">
-          <div class="ep-entretien-section-title">Objectifs</div>
+        <div class="ep-entretien-panel" id="ep_entretienPanelCompetences">
+          <div class="ep-entretien-section">
+            <div class="ep-entretien-section-head">
+              <div class="ep-entretien-section-title">Compétences requises au poste</div>
 
-          <div class="ep-entretien-grid ep-entretien-grid--two">
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienObjectifs">Objectifs à venir</label>
-              <textarea id="ep_entretienObjectifs" class="sb-ctrl" rows="3"></textarea>
+              <div class="ep-entretien-crit-filter">
+                <label class="sb-label" for="ep_entretienCriticite">Criticité minimale</label>
+                <input type="range" id="ep_entretienCriticite" min="0" max="100" step="1" value="0" />
+                <span><span id="ep_entretienCriticiteVal">0</span>%</span>
+              </div>
             </div>
 
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienIndicateurs">Indicateurs / attendus</label>
-              <textarea id="ep_entretienIndicateurs" class="sb-ctrl" rows="3"></textarea>
+            <div id="ep_entretienCompPoste" class="ep-entretien-comp-list"></div>
+          </div>
+
+          <div class="ep-entretien-section">
+            <div class="ep-entretien-section-title">Compétences détenues hors poste</div>
+            <div id="ep_entretienCompHorsPoste" class="ep-entretien-comp-list"></div>
+          </div>
+
+          <div class="ep-entretien-section">
+            <div class="ep-entretien-section-head">
+              <div class="ep-entretien-section-title">Compétences à développer ou explorer</div>
+
+              <div class="ep-entretien-catalogue-search">
+                <input id="ep_entretienCatalogueSearch" class="sb-ctrl" placeholder="Rechercher dans le catalogue" autocomplete="off" />
+              </div>
             </div>
 
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienMoyens">Moyens nécessaires</label>
-              <textarea id="ep_entretienMoyens" class="sb-ctrl" rows="3"></textarea>
-            </div>
-
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienEcheances">Échéances</label>
-              <textarea id="ep_entretienEcheances" class="sb-ctrl" rows="3"></textarea>
-            </div>
+            <div id="ep_entretienCatalogueResults" class="ep-entretien-catalogue-results"></div>
+            <div id="ep_entretienCompDevelop" class="ep-entretien-comp-list" style="margin-top:10px;"></div>
           </div>
         </div>
 
-        <div class="ep-entretien-section">
-          <div class="ep-entretien-section-title">Développement</div>
+        <div class="ep-entretien-panel" id="ep_entretienPanelRealisation">
+          <div class="ep-entretien-section">
+            <div class="ep-entretien-section-title">Réalisation</div>
 
-          <div class="ep-entretien-grid ep-entretien-grid--two">
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienBesoinsFormation">Besoins de formation</label>
-              <textarea id="ep_entretienBesoinsFormation" class="sb-ctrl" rows="3"></textarea>
+            <div class="ep-entretien-grid ep-entretien-grid--two">
+              <div class="sb-field">
+                <label class="sb-label" for="ep_entretienBilan">Bilan de la période</label>
+                <textarea id="ep_entretienBilan" class="sb-ctrl" rows="4"></textarea>
+              </div>
+
+              <div class="sb-field">
+                <label class="sb-label" for="ep_entretienObjectifs">Objectifs à venir</label>
+                <textarea id="ep_entretienObjectifs" class="sb-ctrl" rows="4"></textarea>
+              </div>
+
+              <div class="sb-field">
+                <label class="sb-label" for="ep_entretienDeveloppement">Développement / formation / mobilité</label>
+                <textarea id="ep_entretienDeveloppement" class="sb-ctrl" rows="4"></textarea>
+              </div>
+
+              <div class="sb-field">
+                <label class="sb-label" for="ep_entretienPlanActions">Plan d’action</label>
+                <textarea id="ep_entretienPlanActions" class="sb-ctrl" rows="4"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="ep-entretien-section">
+            <div class="ep-entretien-section-title">Synthèse</div>
+
+            <div class="ep-entretien-grid ep-entretien-grid--two">
+              <div class="sb-field">
+                <label class="sb-label" for="ep_entretienSyntheseManager">Synthèse manager</label>
+                <textarea id="ep_entretienSyntheseManager" class="sb-ctrl" rows="4"></textarea>
+              </div>
+
+              <div class="sb-field">
+                <label class="sb-label" for="ep_entretienSyntheseCollaborateur">Commentaire collaborateur</label>
+                <textarea id="ep_entretienSyntheseCollaborateur" class="sb-ctrl" rows="4"></textarea>
+              </div>
             </div>
 
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienSouhaits">Souhaits du collaborateur</label>
-              <textarea id="ep_entretienSouhaits" class="sb-ctrl" rows="3"></textarea>
-            </div>
-
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienEvolution">Évolution / mobilité</label>
-              <textarea id="ep_entretienEvolution" class="sb-ctrl" rows="3"></textarea>
-            </div>
-
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienAccompagnement">Accompagnement / tutorat / transmission</label>
-              <textarea id="ep_entretienAccompagnement" class="sb-ctrl" rows="3"></textarea>
-            </div>
+            <label class="sb-check ep-entretien-sign-check">
+              <input type="checkbox" id="ep_entretienSigne" />
+              <span>Entretien signé ou validation obtenue</span>
+            </label>
           </div>
         </div>
 
-        <div class="ep-entretien-section">
-          <div class="ep-entretien-section-title">Plan d’action et documents</div>
+        <div class="ep-entretien-panel" id="ep_entretienPanelDocuments">
+          <div class="ep-entretien-section">
+            <div class="ep-entretien-section-title">Document d’entretien réalisé</div>
 
-          <div class="ep-entretien-grid ep-entretien-grid--two">
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienActions">Actions décidées</label>
-              <textarea id="ep_entretienActions" class="sb-ctrl" rows="4" placeholder="Action / responsable / échéance / statut"></textarea>
+            <div class="ep-entretien-doc-upload">
+              <select id="ep_entretienDocType" class="sb-select">
+                <option value="document_entretien">Document d’entretien</option>
+                <option value="document_signe">Document signé</option>
+                <option value="document_preparatoire">Document préparatoire</option>
+              </select>
+
+              <input id="ep_entretienDocFile" class="sb-ctrl" type="file" />
+              <button type="button" class="sb-btn sb-btn--soft" id="ep_btnUploadEntretienDoc">Importer</button>
             </div>
 
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienDocuments">Documents associés</label>
-              <textarea id="ep_entretienDocuments" class="sb-ctrl" rows="4" placeholder="Nom du document, lien, commentaire..."></textarea>
-            </div>
-          </div>
-        </div>
-
-        <div class="ep-entretien-section">
-          <div class="ep-entretien-section-title">Synthèse</div>
-
-          <div class="ep-entretien-grid ep-entretien-grid--two">
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienSyntheseManager">Synthèse manager</label>
-              <textarea id="ep_entretienSyntheseManager" class="sb-ctrl" rows="4"></textarea>
-            </div>
-
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienSyntheseCollaborateur">Commentaire collaborateur</label>
-              <textarea id="ep_entretienSyntheseCollaborateur" class="sb-ctrl" rows="4"></textarea>
-            </div>
-
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienAccords">Points d’accord</label>
-              <textarea id="ep_entretienAccords" class="sb-ctrl" rows="3"></textarea>
-            </div>
-
-            <div class="sb-field">
-              <label class="sb-label" for="ep_entretienDesaccords">Points de désaccord</label>
-              <textarea id="ep_entretienDesaccords" class="sb-ctrl" rows="3"></textarea>
-            </div>
+            <div id="ep_entretienDocList" class="ep-entretien-doc-list"></div>
           </div>
         </div>
       </div>
@@ -652,7 +659,9 @@
 
         <button type="button" class="sb-btn sb-btn--soft" id="btnEpEntretienModalClose">Annuler</button>
         <button type="button" class="sb-btn sb-btn--soft" id="ep_btnEntretienPdf">Rapport PDF</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="ep_btnEntretienSigner">À signer</button>
         <button type="button" class="sb-btn sb-btn--accent" id="ep_btnSaveEntretien">Enregistrer</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="ep_btnEntretienTerminer">Terminer</button>
       </div>
     </div>
   </div>

@@ -1,6 +1,6 @@
 # unified_api/app/routers/skills_portal_entretien_performance.py
 
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from uuid import uuid4
@@ -120,7 +120,7 @@ class AuditSavePayload(BaseModel):
     criteres: List[AuditCritereItem]
     methode_eval: Optional[str] = "Entretien de performance"
     id_entretien_individuel: Optional[str] = None
-
+    role_competence_entretien: Optional[str] = None
 
 class AuditSaveResponse(BaseModel):
     id_audit_competence: str
@@ -146,19 +146,25 @@ class AuditHistoryItem(BaseModel):
 
 class EntretienIndividuelPayload(BaseModel):
     type_entretien: Optional[str] = "Entretien individuel"
-    statut: Optional[str] = "brouillon"
+    statut: Optional[str] = "à réaliser"
 
     date_prevue: Optional[str] = None
     date_realisee: Optional[str] = None
     periode_debut: Optional[str] = None
     periode_fin: Optional[str] = None
 
+    # Nouvelle structure
+    preparation: Optional[Dict[str, Any]] = None
+    realisation: Optional[Dict[str, Any]] = None
+    competences_entretien: Optional[List[Dict[str, Any]]] = None
+    documents: Optional[Dict[str, Any]] = None
+    synthese: Optional[Dict[str, Any]] = None
+
+    # Compat ancienne structure : conservée pour éviter de casser un appel encore ancien.
     bilan: Optional[Dict[str, Any]] = None
     objectifs: Optional[Dict[str, Any]] = None
     developpement: Optional[Dict[str, Any]] = None
     plan_actions: Optional[Dict[str, Any]] = None
-    documents: Optional[Dict[str, Any]] = None
-    synthese: Optional[Dict[str, Any]] = None
 
 
 class EntretienIndividuelItem(BaseModel):
@@ -174,15 +180,28 @@ class EntretienIndividuelItem(BaseModel):
     periode_debut: Optional[str] = None
     periode_fin: Optional[str] = None
 
-    bilan: Dict[str, Any] = {}
-    objectifs: Dict[str, Any] = {}
-    developpement: Dict[str, Any] = {}
-    plan_actions: Dict[str, Any] = {}
+    preparation: Dict[str, Any] = {}
+    realisation: Dict[str, Any] = {}
+    competences_entretien: List[Dict[str, Any]] = []
     documents: Dict[str, Any] = {}
     synthese: Dict[str, Any] = {}
 
+    nb_documents: int = 0
+
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+
+
+class CatalogueCompetenceItem(BaseModel):
+    id_comp: str
+    code: Optional[str] = None
+    intitule: str
+    domaine: Optional[str] = None
+    domaine_couleur: Optional[str] = None
+
+
+class EnsureEffectifCompetencePayload(BaseModel):
+    id_comp: str
 
 # ======================================================
 # Constantes
@@ -795,6 +814,18 @@ def _ep_json_dict(value) -> Dict[str, Any]:
 
     return {}
 
+def _ep_json_list(value) -> List[Dict[str, Any]]:
+    if isinstance(value, list):
+        return [x for x in value if isinstance(x, dict)]
+
+    if isinstance(value, str) and value.strip():
+        try:
+            parsed = json.loads(value)
+            return [x for x in parsed if isinstance(x, dict)] if isinstance(parsed, list) else []
+        except Exception:
+            return []
+
+    return []
 
 def _ep_parse_date(value: Optional[str], field_name: str):
     raw = (value or "").strip()
@@ -808,53 +839,99 @@ def _ep_parse_date(value: Optional[str], field_name: str):
 
 
 def _ep_valid_entretien_statut(value: Optional[str]) -> str:
-    statut = (value or "brouillon").strip().lower()
-
-    allowed = {
-        "brouillon",
-        "préparation",
-        "preparation",
-        "réalisé",
-        "realise",
-        "validé",
-        "valide",
-        "archivé",
-        "archive",
-    }
-
-    if statut not in allowed:
-        raise HTTPException(status_code=400, detail="Statut entretien invalide.")
+    statut = (value or "à réaliser").strip().lower()
 
     mapping = {
-        "preparation": "préparation",
-        "realise": "réalisé",
-        "valide": "validé",
+        "brouillon": "à réaliser",
+        "préparation": "à réaliser",
+        "preparation": "à réaliser",
+
+        "à réaliser": "à réaliser",
+        "a réaliser": "à réaliser",
+        "à realiser": "à réaliser",
+        "a realiser": "à réaliser",
+
+        "en cours": "en cours",
+
+        "à signer": "à signer",
+        "a signer": "à signer",
+
+        "terminé": "terminé",
+        "termine": "terminé",
+
+        "validé": "terminé",
+        "valide": "terminé",
+
+        "archivé": "archivé",
         "archive": "archivé",
     }
 
-    return mapping.get(statut, statut)
+    if statut not in mapping:
+        raise HTTPException(status_code=400, detail="Statut entretien invalide.")
+
+    return mapping[statut]
 
 
 def _ep_entretien_item_from_row(r) -> EntretienIndividuelItem:
+    preparation = _ep_json_dict(r.get("preparation"))
+    realisation = _ep_json_dict(r.get("realisation"))
+    competences_entretien = _ep_json_list(r.get("competences_entretien"))
+
+    # Compat ancienne structure : si les nouvelles colonnes sont vides,
+    # on reconstruit une lecture minimale depuis les anciens champs.
+    if not realisation:
+        realisation = {
+            "bilan": _ep_json_dict(r.get("bilan")),
+            "objectifs": _ep_json_dict(r.get("objectifs")),
+            "developpement": _ep_json_dict(r.get("developpement")),
+            "plan_actions": _ep_json_dict(r.get("plan_actions")),
+        }
+
     return EntretienIndividuelItem(
         id_entretien=r["id_entretien"],
         id_effectif_client=r["id_effectif_client"],
         id_manager=r.get("id_manager"),
         type_entretien=r.get("type_entretien") or "Entretien individuel",
-        statut=r.get("statut") or "brouillon",
+        statut=r.get("statut") or "à réaliser",
         date_prevue=str(r["date_prevue"]) if r.get("date_prevue") else None,
         date_realisee=str(r["date_realisee"]) if r.get("date_realisee") else None,
         periode_debut=str(r["periode_debut"]) if r.get("periode_debut") else None,
         periode_fin=str(r["periode_fin"]) if r.get("periode_fin") else None,
-        bilan=_ep_json_dict(r.get("bilan")),
-        objectifs=_ep_json_dict(r.get("objectifs")),
-        developpement=_ep_json_dict(r.get("developpement")),
-        plan_actions=_ep_json_dict(r.get("plan_actions")),
+        preparation=preparation,
+        realisation=realisation,
+        competences_entretien=competences_entretien,
         documents=_ep_json_dict(r.get("documents")),
         synthese=_ep_json_dict(r.get("synthese")),
+        nb_documents=int(r.get("nb_documents") or 0),
         created_at=str(r["created_at"]) if r.get("created_at") else None,
         updated_at=str(r["updated_at"]) if r.get("updated_at") else None,
     )
+
+def _ep_payload_realisation(payload: EntretienIndividuelPayload) -> Dict[str, Any]:
+    """
+    Construit la nouvelle structure realisation.
+    Compatible avec les anciens champs bilan/objectifs/developpement/plan_actions.
+    """
+    if isinstance(payload.realisation, dict):
+        return payload.realisation
+
+    return {
+        "bilan": payload.bilan or {},
+        "objectifs": payload.objectifs or {},
+        "developpement": payload.developpement or {},
+        "plan_actions": payload.plan_actions or {},
+    }
+
+
+def _ep_payload_preparation(payload: EntretienIndividuelPayload) -> Dict[str, Any]:
+    return payload.preparation or {}
+
+
+def _ep_payload_competences(payload: EntretienIndividuelPayload) -> List[Dict[str, Any]]:
+    if isinstance(payload.competences_entretien, list):
+        return [x for x in payload.competences_entretien if isinstance(x, dict)]
+
+    return []
 
 def _get_scoring_config() -> ScoringConfig:
     # Règle Skillboard (historique): pondération = 6 / nb_criteres, score final sur 24
@@ -1221,14 +1298,23 @@ def ep_list_entretiens_individuels(
                         date_realisee,
                         periode_debut,
                         periode_fin,
+                        preparation,
+                        realisation,
+                        competences_entretien,
+                        documents,
+                        synthese,
                         bilan,
                         objectifs,
                         developpement,
                         plan_actions,
-                        documents,
-                        synthese,
                         created_at,
-                        updated_at
+                        updated_at,
+                        (
+                            SELECT COUNT(*)::int
+                            FROM public.tbl_entretien_individuel_document d
+                            WHERE d.id_entretien = tbl_entretien_individuel.id_entretien
+                            AND COALESCE(d.archive, FALSE) = FALSE
+                        ) AS nb_documents
                     FROM public.tbl_entretien_individuel
                     WHERE id_ent = %s
                       AND id_effectif_client = %s
@@ -1275,14 +1361,23 @@ def ep_get_entretien_individuel(
                         date_realisee,
                         periode_debut,
                         periode_fin,
+                        preparation,
+                        realisation,
+                        competences_entretien,
+                        documents,
+                        synthese,
                         bilan,
                         objectifs,
                         developpement,
                         plan_actions,
-                        documents,
-                        synthese,
                         created_at,
-                        updated_at
+                        updated_at,
+                        (
+                            SELECT COUNT(*)::int
+                            FROM public.tbl_entretien_individuel_document d
+                            WHERE d.id_entretien = tbl_entretien_individuel.id_entretien
+                            AND COALESCE(d.archive, FALSE) = FALSE
+                        ) AS nb_documents
                     FROM public.tbl_entretien_individuel
                     WHERE id_entretien = %s
                       AND id_ent = %s
@@ -1336,22 +1431,31 @@ def ep_create_entretien_individuel(
                         date_realisee,
                         periode_debut,
                         periode_fin,
+                        preparation,
+                        realisation,
+                        competences_entretien,
+                        documents,
+                        synthese,
                         bilan,
                         objectifs,
                         developpement,
                         plan_actions,
-                        documents,
-                        synthese,
-                        archive,
                         created_at,
-                        updated_at
+                        updated_at,
+                        (
+                            SELECT COUNT(*)::int
+                            FROM public.tbl_entretien_individuel_document d
+                            WHERE d.id_entretien = tbl_entretien_individuel.id_entretien
+                            AND COALESCE(d.archive, FALSE) = FALSE
+                        ) AS nb_documents
                     )
                     VALUES
                     (
                         %s, %s, %s, %s,
                         %s, %s,
                         %s, %s, %s, %s,
-                        %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb,
+                        %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb,
+                        %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb,
                         FALSE,
                         NOW(),
                         NOW()
@@ -1366,14 +1470,23 @@ def ep_create_entretien_individuel(
                         date_realisee,
                         periode_debut,
                         periode_fin,
+                        preparation,
+                        realisation,
+                        competences_entretien,
+                        documents,
+                        synthese,
                         bilan,
                         objectifs,
                         developpement,
                         plan_actions,
-                        documents,
-                        synthese,
                         created_at,
-                        updated_at
+                        updated_at,
+                        (
+                            SELECT COUNT(*)::int
+                            FROM public.tbl_entretien_individuel_document d
+                            WHERE d.id_entretien = tbl_entretien_individuel.id_entretien
+                            AND COALESCE(d.archive, FALSE) = FALSE
+                        ) AS nb_documents
                     """,
                     (
                         id_entretien,
@@ -1386,12 +1499,17 @@ def ep_create_entretien_individuel(
                         _ep_parse_date(payload.date_realisee, "date_realisee"),
                         _ep_parse_date(payload.periode_debut, "periode_debut"),
                         _ep_parse_date(payload.periode_fin, "periode_fin"),
+                        json.dumps(_ep_payload_preparation(payload), ensure_ascii=False),
+                        json.dumps(_ep_payload_realisation(payload), ensure_ascii=False),
+                        json.dumps(_ep_payload_competences(payload), ensure_ascii=False),
+                        json.dumps(payload.documents or {}, ensure_ascii=False),
+                        json.dumps(payload.synthese or {}, ensure_ascii=False),
+
+                        # Compat ancienne structure
                         json.dumps(payload.bilan or {}, ensure_ascii=False),
                         json.dumps(payload.objectifs or {}, ensure_ascii=False),
                         json.dumps(payload.developpement or {}, ensure_ascii=False),
                         json.dumps(payload.plan_actions or {}, ensure_ascii=False),
-                        json.dumps(payload.documents or {}, ensure_ascii=False),
-                        json.dumps(payload.synthese or {}, ensure_ascii=False),
                     ),
                 )
 
@@ -1447,12 +1565,18 @@ def ep_update_entretien_individuel(
                         date_realisee = %s,
                         periode_debut = %s,
                         periode_fin = %s,
+                        preparation = %s::jsonb,
+                        realisation = %s::jsonb,
+                        competences_entretien = %s::jsonb,
+                        documents = %s::jsonb,
+                        synthese = %s::jsonb,
+
+                        -- Compat ancienne structure
                         bilan = %s::jsonb,
                         objectifs = %s::jsonb,
                         developpement = %s::jsonb,
                         plan_actions = %s::jsonb,
-                        documents = %s::jsonb,
-                        synthese = %s::jsonb,
+
                         updated_at = NOW()
                     WHERE id_entretien = %s
                       AND id_ent = %s
@@ -1467,14 +1591,23 @@ def ep_update_entretien_individuel(
                         date_realisee,
                         periode_debut,
                         periode_fin,
+                        preparation,
+                        realisation,
+                        competences_entretien,
+                        documents,
+                        synthese,
                         bilan,
                         objectifs,
                         developpement,
                         plan_actions,
-                        documents,
-                        synthese,
                         created_at,
-                        updated_at
+                        updated_at,
+                        (
+                            SELECT COUNT(*)::int
+                            FROM public.tbl_entretien_individuel_document d
+                            WHERE d.id_entretien = tbl_entretien_individuel.id_entretien
+                            AND COALESCE(d.archive, FALSE) = FALSE
+                        ) AS nb_documents
                     """,
                     (
                         (payload.type_entretien or "Entretien individuel").strip() or "Entretien individuel",
@@ -1483,12 +1616,17 @@ def ep_update_entretien_individuel(
                         _ep_parse_date(payload.date_realisee, "date_realisee"),
                         _ep_parse_date(payload.periode_debut, "periode_debut"),
                         _ep_parse_date(payload.periode_fin, "periode_fin"),
+                        json.dumps(_ep_payload_preparation(payload), ensure_ascii=False),
+                        json.dumps(_ep_payload_realisation(payload), ensure_ascii=False),
+                        json.dumps(_ep_payload_competences(payload), ensure_ascii=False),
+                        json.dumps(payload.documents or {}, ensure_ascii=False),
+                        json.dumps(payload.synthese or {}, ensure_ascii=False),
+
+                        # Compat ancienne structure
                         json.dumps(payload.bilan or {}, ensure_ascii=False),
                         json.dumps(payload.objectifs or {}, ensure_ascii=False),
                         json.dumps(payload.developpement or {}, ensure_ascii=False),
                         json.dumps(payload.plan_actions or {}, ensure_ascii=False),
-                        json.dumps(payload.documents or {}, ensure_ascii=False),
-                        json.dumps(payload.synthese or {}, ensure_ascii=False),
                         id_entretien,
                         id_ent,
                     ),
@@ -1544,6 +1682,265 @@ def ep_archive_entretien_individuel(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
+@router.get(
+    "/skills/entretien-performance/catalogue-competences/{id_contact}",
+    response_model=List[CatalogueCompetenceItem],
+)
+def ep_catalogue_competences(
+    id_contact: str,
+    request: Request,
+    q: Optional[str] = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                _resolve_id_ent_for_request(cur, id_contact, request)
+
+                where_sql = [
+                    "COALESCE(c.masque, FALSE) = FALSE",
+                    "COALESCE(c.etat, 'valide') <> 'inactive'",
+                ]
+                params: List[Any] = []
+
+                if q and q.strip():
+                    like = f"%{q.strip()}%"
+                    where_sql.append("(COALESCE(c.code,'') ILIKE %s OR COALESCE(c.intitule,'') ILIKE %s)")
+                    params.extend([like, like])
+
+                cur.execute(
+                    f"""
+                    SELECT
+                        c.id_comp,
+                        c.code,
+                        c.intitule,
+                        COALESCE(NULLIF(TRIM(dc.titre_court), ''), NULLIF(TRIM(c.domaine), ''), 'Sans domaine') AS domaine,
+                        dc.couleur::text AS domaine_couleur
+                    FROM public.tbl_competence c
+                    LEFT JOIN public.tbl_domaine_competence dc
+                      ON dc.id_domaine_competence = c.domaine
+                    WHERE {" AND ".join(where_sql)}
+                    ORDER BY c.code, c.intitule
+                    LIMIT %s
+                    """,
+                    tuple([*params, limit]),
+                )
+
+                rows = cur.fetchall() or []
+
+                return [
+                    CatalogueCompetenceItem(
+                        id_comp=r["id_comp"],
+                        code=r.get("code"),
+                        intitule=r.get("intitule") or "",
+                        domaine=r.get("domaine"),
+                        domaine_couleur=r.get("domaine_couleur"),
+                    )
+                    for r in rows
+                ]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+@router.post(
+    "/skills/entretien-performance/effectif-competence/{id_contact}/{id_effectif}",
+)
+def ep_ensure_effectif_competence(
+    id_contact: str,
+    id_effectif: str,
+    payload: EnsureEffectifCompetencePayload,
+    request: Request,
+):
+    try:
+        id_comp = (payload.id_comp or "").strip()
+        if not id_comp:
+            raise HTTPException(status_code=400, detail="id_comp manquant.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                _fetch_effectif_context(cur, id_ent, id_effectif)
+
+                cur.execute(
+                    """
+                    SELECT id_effectif_competence
+                    FROM public.tbl_effectif_client_competence
+                    WHERE id_effectif_client = %s
+                      AND id_comp = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    LIMIT 1
+                    """,
+                    (id_effectif, id_comp),
+                )
+
+                row = cur.fetchone()
+                if row:
+                    return {"id_effectif_competence": row["id_effectif_competence"]}
+
+                id_effectif_competence = str(uuid4())
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_effectif_client_competence
+                    (
+                        id_effectif_competence,
+                        id_effectif_client,
+                        id_comp,
+                        niveau_actuel,
+                        id_dernier_audit,
+                        actif,
+                        archive,
+                        date_derniere_eval
+                    )
+                    VALUES (%s, %s, %s, NULL, NULL, TRUE, FALSE, NULL)
+                    """,
+                    (id_effectif_competence, id_effectif, id_comp),
+                )
+
+                conn.commit()
+
+                return {"id_effectif_competence": id_effectif_competence}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+@router.post(
+    "/skills/entretien-performance/entretien/{id_contact}/{id_entretien}/document",
+)
+def ep_upload_entretien_document(
+    id_contact: str,
+    id_entretien: str,
+    request: Request,
+    type_document: str = Form(default="document_entretien"),
+    file: UploadFile = File(...),
+):
+    try:
+        if not file:
+            raise HTTPException(status_code=400, detail="Fichier manquant.")
+
+        content = file.file.read()
+        if not content:
+            raise HTTPException(status_code=400, detail="Fichier vide.")
+
+        if len(content) > 10 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail="Fichier trop volumineux. Limite : 10 Mo.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                cur.execute(
+                    """
+                    SELECT id_entretien
+                    FROM public.tbl_entretien_individuel
+                    WHERE id_entretien = %s
+                      AND id_ent = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    """,
+                    (id_entretien, id_ent),
+                )
+
+                if cur.fetchone() is None:
+                    raise HTTPException(status_code=404, detail="Entretien individuel introuvable.")
+
+                id_document = str(uuid4())
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_entretien_individuel_document
+                    (
+                        id_document,
+                        id_entretien,
+                        id_ent,
+                        type_document,
+                        nom_fichier,
+                        mime_type,
+                        taille_octets,
+                        fichier,
+                        archive,
+                        created_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, FALSE, NOW())
+                    """,
+                    (
+                        id_document,
+                        id_entretien,
+                        id_ent,
+                        (type_document or "document_entretien").strip() or "document_entretien",
+                        file.filename or "document",
+                        file.content_type,
+                        len(content),
+                        content,
+                    ),
+                )
+
+                conn.commit()
+
+                return {
+                    "ok": True,
+                    "id_document": id_document,
+                    "nom_fichier": file.filename,
+                }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+@router.get(
+    "/skills/entretien-performance/entretien/{id_contact}/{id_entretien}/documents",
+)
+def ep_list_entretien_documents(
+    id_contact: str,
+    id_entretien: str,
+    request: Request,
+):
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                cur.execute(
+                    """
+                    SELECT
+                        id_document,
+                        type_document,
+                        nom_fichier,
+                        mime_type,
+                        taille_octets,
+                        created_at
+                    FROM public.tbl_entretien_individuel_document
+                    WHERE id_entretien = %s
+                      AND id_ent = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    ORDER BY created_at DESC
+                    """,
+                    (id_entretien, id_ent),
+                )
+
+                rows = cur.fetchall() or []
+                return [
+                    {
+                        "id_document": r.get("id_document"),
+                        "type_document": r.get("type_document"),
+                        "nom_fichier": r.get("nom_fichier"),
+                        "mime_type": r.get("mime_type"),
+                        "taille_octets": r.get("taille_octets"),
+                        "created_at": str(r["created_at"]) if r.get("created_at") else None,
+                    }
+                    for r in rows
+                ]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
 @router.get(
     "/skills/entretien-performance/entretien/{id_contact}/{id_entretien}/rapport-pdf",
@@ -1781,7 +2178,10 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload, 
                 if payload.id_comp and payload.id_comp != row.get("id_comp"):
                     raise HTTPException(status_code=400, detail="id_comp ne correspond pas à la ligne effectif_competence.")
                 
+
+                
                 id_entretien_individuel = (payload.id_entretien_individuel or "").strip() or None
+                role_competence_entretien = (payload.role_competence_entretien or "").strip() or None
 
                 if id_entretien_individuel:
                     cur.execute(
@@ -1799,6 +2199,12 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload, 
                             row.get("id_effectif_client"),
                         ),
                     )
+
+                    if cur.fetchone() is None:
+                        raise HTTPException(
+                            status_code=400,
+                            detail="L'entretien individuel sélectionné ne correspond pas au collaborateur.",
+                        )
 
                     if cur.fetchone() is None:
                         raise HTTPException(
@@ -1852,6 +2258,7 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload, 
                         detail_eval,
                         observation,
                         id_entretien_individuel,
+                        role_competence_entretien,
                         nametable_evaluateur,
                         nom_evaluateur
                     )
@@ -1860,7 +2267,8 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload, 
                         %s, %s, %s,
                         %s, %s, %s,
                         %s::jsonb, %s,
-                        %s, %s, %s
+                        %s, %s,
+                        %s, %s
                     )
                     """,
                     (
@@ -1873,6 +2281,7 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload, 
                         json.dumps(detail_eval, ensure_ascii=False),
                         (payload.observation or None),
                         id_entretien_individuel,
+                        role_competence_entretien,
                         "tbl_effectif_client",
                         nom_eval,
                     ),
