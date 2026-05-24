@@ -352,6 +352,51 @@
     setText("ep_kpiReview", "0");
   }
 
+  function renderEvalCompetenceTitle(code, intitule) {
+    const titleEl = $("ep_compTitle");
+    if (!titleEl) return;
+
+    const c = (code || "").toString().trim();
+    const t = (intitule || "").toString().trim();
+
+    titleEl.innerHTML = "";
+
+    if (c) {
+      const badge = document.createElement("span");
+      badge.className = "sb-badge sb-badge-ref-comp-code ep-eval-title-code";
+      badge.textContent = c;
+      titleEl.appendChild(badge);
+    }
+
+    const txt = document.createElement("span");
+    txt.className = "ep-eval-title-text";
+    txt.textContent = t || "—";
+    titleEl.appendChild(txt);
+  }
+
+  function renderEvalDomainBadge(label, rawColor) {
+    const domEl = $("ep_compDomain");
+    if (!domEl) return;
+
+    const txt = (label || "").toString().trim();
+    const color = epNormalizeColor(rawColor || "") || "#9ca3af";
+
+    domEl.textContent = "";
+    domEl.removeAttribute("style");
+
+    if (!txt) {
+      domEl.className = "sb-badge-domaine ep-domain-badge";
+      domEl.style.display = "none";
+      domEl.style.removeProperty("--dom-color");
+      return;
+    }
+
+    domEl.className = "sb-badge-domaine ep-domain-badge";
+    domEl.textContent = txt;
+    domEl.style.setProperty("--dom-color", color);
+    domEl.style.display = "inline-flex";
+  }
+
   function resetEvaluationPanel() {
     state._historyAuditEditing = null;
 
@@ -364,13 +409,7 @@
       titleEl.textContent = "—";
     }
 
-    const domEl = $("ep_compDomain");
-    if (domEl) {
-      domEl.textContent = "";
-      domEl.className = "sb-badge";
-      domEl.removeAttribute("style");
-      domEl.style.display = "inline-block";
-    }
+    renderEvalDomainBadge("", "");
   
     setText("ep_evalHint", "Sélectionne une compétence.");
     setText("ep_compTitle", "—");
@@ -1159,34 +1198,18 @@
               state.selectedCompetenceId = x.id_comp || null;
               state.selectedEffectifCompetenceId = x.id_effectif_competence || null;
 
+              state._historyAuditEditing = null;
+
+              const evalModal = $("modalEpEvaluation");
+              if (evalModal) evalModal.classList.remove("is-history-readonly", "is-history-editable");
+
               clearSaveInlineMsg();
               openModal("modalEpEvaluation");
 
-              // En-tête évaluation (avec niveau + dernière éval)
+              // En-tête évaluation
               setText("ep_evalHint", "Évaluation en cours.");
-              setText("ep_compTitle", `${(x.code || "").toString().trim()} — ${(x.intitule || "").toString().trim()}`.trim() || "—");
-              const domEl = $("ep_compDomain");
-              if (domEl) {
-                const dom = (x.domaine || "").toString().trim();
-                domEl.textContent = dom || "";
-
-                // Couleur domaine: on réutilise le helper portail s'il existe (même logique que les autres pages)
-                if (window.SB && typeof window.SB.getDomainColor === "function") {
-                  const col = window.SB.getDomainColor(dom);
-                  if (col) {
-                    domEl.style.background = col;
-                    domEl.style.borderColor = col;
-                    domEl.style.color = "#fff";
-                  }
-                }
-              }
-
-
-              setText("ep_compCurrent", (x.niveau_actuel || "—").toString().trim() || "—");
-
-              const last = (x.date_derniere_eval || "").toString().trim();
-              const lastEl = $("ep_compLastEval");
-              if (lastEl) lastEl.textContent = last ? `Dernière éval : ${last}` : "Jamais évaluée";
+              renderEvalCompetenceTitle(x.code, x.intitule);
+              renderEvalDomainBadge("", "");
 
               // reset champs saisie
               for (let i = 1; i <= 4; i++) {
@@ -1223,89 +1246,14 @@
                 const comp = detail?.competence || {};
                 const grid = comp?.grille_evaluation || null;
 
-                // Domaine (si le référentiel renvoie un objet domaine)
+                // Domaine : badge standard domaine avec rond couleur + fond soft + bordure couleur
                 const dom = comp?.domaine || null;
 
-                // même logique que skills_referentiel_competence.js : int ARGB signé (WinForms) -> #RRGGBB
-                const normalizeColor = (raw) => {
-                if (raw === null || raw === undefined) return "";
-                const s = raw.toString().trim();
-                if (!s) return "";
+                const domLabel = dom
+                  ? (dom.titre_court || dom.titre || dom.id_domaine_competence || "")
+                  : (x.domaine || "");
 
-                // déjà du CSS
-                if (s.startsWith("#") || s.startsWith("rgb") || s.startsWith("hsl")) return s;
-
-                // WinForms: int ARGB signé (ex: -256)
-                if (/^-?\d+$/.test(s)) {
-                    const n = parseInt(s, 10);
-                    const u = (n >>> 0);
-                    const r = (u >> 16) & 255;
-                    const g = (u >> 8) & 255;
-                    const b = u & 255;
-                    return "#" + [r, g, b].map(x => x.toString(16).padStart(2, "0")).join("");
-                }
-
-                // sinon on laisse passer ("red", "var(--x)", etc.)
-                return s;
-                };
-
-                if (domEl) {
-                const label = dom ? (dom.titre_court || dom.titre || dom.id_domaine_competence || "") : (x.domaine || "");
-                domEl.textContent = (label || "").toString().trim();
-
-                // reset style (évite de garder la couleur précédente)
-                domEl.style.background = "";
-                domEl.style.border = "";
-                domEl.style.color = "";
-                domEl.style.display = "";
-                domEl.style.padding = "";
-                domEl.style.borderRadius = "";
-                domEl.style.fontSize = "";
-                domEl.style.lineHeight = "";
-
-                const col = normalizeColor(dom?.couleur);
-                if (col) {
-                    // rendu “badge” même si ton élément est un <div class="card-sub">
-                    domEl.style.display = "inline-block";
-                    domEl.style.padding = "3px 8px";
-                    domEl.style.borderRadius = "999px";
-                    domEl.style.border = `1px solid ${col}`;
-                    domEl.style.background = col;
-                        // Texte auto (noir/blanc) selon la luminosité du fond
-                    const pickTextColor = (bg) => {
-                    const s = (bg || "").toString().trim();
-                    let r = 0, g = 0, b = 0;
-
-                    if (s.startsWith("#")) {
-                        const hex = s.slice(1);
-                        if (hex.length === 6) {
-                        r = parseInt(hex.slice(0, 2), 16);
-                        g = parseInt(hex.slice(2, 4), 16);
-                        b = parseInt(hex.slice(4, 6), 16);
-                        }
-                    } else if (s.startsWith("rgb")) {
-                        const m = s.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i);
-                        if (m) {
-                        r = parseInt(m[1], 10);
-                        g = parseInt(m[2], 10);
-                        b = parseInt(m[3], 10);
-                        }
-                    } else {
-                        // couleur non parsable (nom CSS, var(), etc.) -> on évite le blanc par défaut
-                        return "#111";
-                    }
-
-                    // luminance (0..255)
-                    const lum = (r * 299 + g * 587 + b * 114) / 1000;
-                    return lum >= 160 ? "#111" : "#fff";
-                    };
-
-                    domEl.style.color = pickTextColor(col);
-
-                    domEl.style.fontSize = "12px";
-                    domEl.style.lineHeight = "18px";
-                }
-                }
+                renderEvalDomainBadge(domLabel, dom?.couleur || "");
 
 
                 // Critères: on prend jusqu’à 4 critères renseignés
