@@ -46,13 +46,13 @@ def get_portal_config(space: str):
         }
 
     if s == "people":
-        supabase_url = os.getenv("PEOPLE_SUPABASE_URL", "") or ""
-        supabase_anon = os.getenv("PEOPLE_SUPABASE_ANON_KEY", "") or ""
+        supabase_url = os.getenv("PEOPLE_SUPABASE_URL", "") or os.getenv("SKILLS_SUPABASE_URL", "") or ""
+        supabase_anon = os.getenv("PEOPLE_SUPABASE_ANON_KEY", "") or os.getenv("SKILLS_SUPABASE_ANON_KEY", "") or ""
 
         if not supabase_url or not supabase_anon:
             raise HTTPException(
                 status_code=500,
-                detail="Config People manquante: PEOPLE_SUPABASE_URL / PEOPLE_SUPABASE_ANON_KEY",
+                detail="Config People manquante: PEOPLE_SUPABASE_URL / PEOPLE_SUPABASE_ANON_KEY (ou fallback Skills)",
             )
 
         return {

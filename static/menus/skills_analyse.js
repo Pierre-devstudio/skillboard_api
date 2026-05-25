@@ -1578,7 +1578,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     const html = `
       <div class="modal" id="modalMatchPerson" aria-hidden="true">
-        <div class="modal-card" style="max-width:1120px; width:min(1120px, 96vw); max-height:92vh; display:flex; flex-direction:column;">
+        <div class="modal-card modal-card--wide">
           <div class="modal-header">
             <div style="display:flex; flex-direction:column; gap:2px; min-width:0;">
               <div class="modal-title" style="display:flex; gap:8px; align-items:center; min-width:0;">
@@ -1594,7 +1594,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
 
 
-          <div class="modal-body" id="matchPersonModalBody" style="overflow:auto; flex:1; padding:14px 16px;">
+          <div class="modal-body" id="matchPersonModalBody">
             <div class="card" style="padding:12px; margin:0;">
               <div class="card-sub" style="margin:0;">Chargement…</div>
             </div>
@@ -3046,7 +3046,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     const html = `
       <div class="modal" id="modalAnalyseCompetence" aria-hidden="true">
-        <div class="modal-card" style="max-width:1120px; width:min(1120px, 96vw); max-height:92vh; display:flex; flex-direction:column;">
+        <div class="modal-card modal-card--wide">
           <div class="modal-header">
             <div id="analyseCompModalTitle" class="sb-modal-titleline">
               <span class="sb-badge sb-badge-ref-comp-code" id="analyseCompModalTitleCode" style="display:none;"></span>
@@ -3055,7 +3055,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             <button type="button" class="modal-x" id="analyseCompModalCloseBtn" aria-label="Fermer">×</button>
           </div>
 
-          <div class="modal-body" style="overflow:auto; flex:1; padding:14px 16px;">
+          <div class="modal-body">
             <div class="card-sub" id="analyseCompModalSub" style="margin-top:0;"></div>
             <div id="analyseCompModalBody" style="margin-top:12px;"></div>
           </div>
@@ -7585,13 +7585,13 @@ function bindOnce(portal) {
 
     const html = `
       <div class="modal" id="modalRiskEvol3m" aria-hidden="true">
-        <div class="modal-card" style="max-width:980px; width:min(980px, 96vw); max-height:92vh; display:flex; flex-direction:column;">
+        <div class="modal-card modal-card--wide">
           <div class="modal-header">
             <div style="font-weight:600;" id="riskEvol3mModalTitle">Évolution</div>
             <button type="button" class="modal-x" id="btnCloseRiskEvol3mModal" aria-label="Fermer">×</button>
           </div>
 
-          <div class="modal-body" id="riskEvol3mModalBody" style="overflow:auto; flex:1; padding:14px 16px;">
+          <div class="modal-body" id="riskEvol3mModalBody">
             <div class="card" style="padding:12px; margin:0;">
               <div class="card-sub" style="margin:0;">Chargement…</div>
             </div>

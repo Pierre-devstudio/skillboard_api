@@ -20,8 +20,7 @@
   window.__peopleAuthReady = null;
 
   async function loadConfig() {
-    // People réutilise pour l’instant la même auth Supabase que Skills
-    const url = `${API_BASE}/portal/config/skills`;
+    const url = `${API_BASE}/portal/config/people`;
     const r = await fetch(url);
     const data = await r.json().catch(() => null);
     if (!r.ok) return null;

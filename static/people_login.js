@@ -20,7 +20,7 @@
   }
 
   async function loadConfig() {
-    const url = `${API_BASE}/portal/config/skills`;
+    const url = `${API_BASE}/portal/config/people`;
     const r = await fetch(url);
     const data = await r.json().catch(() => null);
 

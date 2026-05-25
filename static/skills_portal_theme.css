@@ -2835,6 +2835,27 @@ body{
   flex-direction:column;
 }
 
+/* Tailles standard de modals Insights */
+.modal .modal-card.modal-card--small,
+.modal .modal-card.sb-modal-card--small{
+  width:min(420px, 92vw);
+}
+
+.modal .modal-card.modal-card--medium,
+.modal .modal-card.sb-modal-card--medium{
+  width:min(720px, 94vw);
+}
+
+.modal .modal-card.modal-card--wide,
+.modal .modal-card.sb-modal-card--wide{
+  width:min(1120px, 96vw);
+}
+
+.modal .modal-card.modal-card--xl,
+.modal .modal-card.sb-modal-card--xl{
+  width:min(1320px, 97vw);
+}
+
 .modal .modal-header{
   display:flex;
   align-items:center;
