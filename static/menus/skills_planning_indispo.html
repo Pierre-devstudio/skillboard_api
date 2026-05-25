@@ -9,8 +9,8 @@
       </div>
 
       <div class="row" style="gap:10px; flex-wrap:wrap; justify-content:flex-end;">
-        <button type="button" class="btn-secondary" id="btnPlanBack">Retour aux collaborateurs</button>
-        <button type="button" class="btn-secondary" id="btnPlanAdd">Ajouter des indisponibilités</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnPlanBack">Retour aux collaborateurs</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnPlanAdd">Ajouter des indisponibilités</button>
       </div>
     </div>
   </div>
@@ -44,7 +44,7 @@
           </div>
 
           <div class="info-item" style="min-width:0;">
-            <button type="button" class="btn-secondary" id="btnPlanReset" style="margin-left:0; width:100%;">
+            <button type="button" class="sb-btn sb-btn--init sb-btn--block" id="btnPlanReset">
               Réinitialiser
             </button>
           </div>
@@ -65,9 +65,9 @@
           <div class="card-title" id="planMonthLabel" style="margin:0;">—</div>
 
           <div class="row" style="gap:8px; flex-wrap:wrap; justify-content:flex-end;">
-            <button type="button" class="btn-secondary" id="btnPlanPrev">◀</button>
-            <button type="button" class="btn-secondary" id="btnPlanToday">Aujourd’hui</button>
-            <button type="button" class="btn-secondary" id="btnPlanNext">▶</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnPlanPrev">◀</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnPlanToday">Aujourd’hui</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnPlanNext">▶</button>
           </div>
         </div>
 
@@ -78,7 +78,7 @@
 
   <!-- Modal ajout batch indisponibilités -->
   <div class="modal" id="modalBreakBatch" aria-hidden="true">
-    <div class="modal-card" style="max-width:760px;">
+    <div class="modal-card modal-card--medium">
         <div class="modal-header">
             <div style="font-weight:600;">Ajouter des indisponibilités</div>
             <button type="button" class="modal-x" id="btnCloseBreakBatch" aria-label="Fermer">×</button>
@@ -96,7 +96,7 @@
             </div>
 
             <div class="info-item" style="min-width:220px;">
-                <button type="button" class="btn-secondary" id="btnBreakBatchAddRow" style="margin-left:0; width:100%;">
+                <button type="button" class="sb-btn sb-btn--soft sb-btn--block" id="btnBreakBatchAddRow">
                 + Ajouter une ligne
                 </button>
             </div>
@@ -116,19 +116,19 @@
             </table>
             </div>
 
-            <div id="breakBatchError" class="card-sub" style="display:none; margin-top:10px; color:#b91c1c;"></div>
+            <div id="breakBatchError" class="sb-inline-msg sb-inline-msg--danger" aria-live="polite"></div>
         </div>
 
         <div class="modal-footer">
-            <button type="button" class="btn-secondary" id="btnBreakBatchCancel">Annuler</button>
-            <button type="button" class="btn-secondary" id="btnBreakBatchSave">Enregistrer</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnBreakBatchCancel">Annuler</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnBreakBatchSave">Enregistrer</button>
         </div>
     </div>
   </div>
 
     <!-- Modal édition indisponibilité (modifier période / supprimer) -->
   <div class="modal" id="modalBreakEdit" aria-hidden="true">
-    <div class="modal-card" style="max-width:640px;">
+    <div class="modal-card modal-card--medium">
       <div class="modal-header">
         <div style="font-weight:600;">Indisponibilité</div>
         <button type="button" class="modal-x" id="btnCloseBreakEdit" aria-label="Fermer">×</button>
@@ -170,12 +170,12 @@
 
         <input type="hidden" id="breakEditId">
 
-        <div id="breakEditError" class="card-sub" style="display:none; margin-top:10px; color:#b91c1c;"></div>
+        <div id="breakEditError" class="sb-inline-msg sb-inline-msg--danger" aria-live="polite"></div>
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="btn-secondary" id="btnBreakEditCancel">Annuler</button>
-        <button type="button" class="btn-secondary" id="btnBreakEditSave">Valider</button>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnBreakEditCancel">Annuler</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnBreakEditSave">Valider</button>
       </div>
     </div>
   </div>

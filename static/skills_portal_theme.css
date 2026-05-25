@@ -5755,6 +5755,10 @@ body.bf-modal-open{
   align-items:center;
 }
 
+.modal .sb-inline-msg.is-visible{
+  margin-top:10px;
+}
+
 /* ======================================================
    Entretien performance — Entretien individuel
    ====================================================== */

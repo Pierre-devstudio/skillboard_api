@@ -358,13 +358,15 @@
   function showBatchError(msg) {
     const box = byId("breakBatchError");
     if (!box) return;
+
     if (!msg) {
-      box.style.display = "none";
+      box.classList.remove("is-visible");
       box.textContent = "";
       return;
     }
-    box.style.display = "block";
+
     box.textContent = msg;
+    box.classList.add("is-visible");
   }
 
   function openModalBreakBatch() {
@@ -403,7 +405,13 @@
       <td><input type="date" class="sb-batch-date" data-k="end" value="${escapeHtml(d2)}"></td>
       <td><span class="sb-batch-status">—</span></td>
       <td class="col-center">
-        <button type="button" class="btn-secondary sb-batch-del" title="Supprimer">×</button>
+        <button type="button" class="sb-icon-btn sb-icon-btn--danger sb-batch-del" title="Retirer" aria-label="Retirer">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18"></path>
+            <path d="M8 6V4h8v2"></path>
+            <path d="M19 6l-1 14H6L5 6"></path>
+          </svg>
+        </button>
       </td>
     `;
 
@@ -696,13 +704,15 @@
 
     const showEditError = (msg) => {
       if (!editErr) return;
+
       if (!msg) {
-        editErr.style.display = "none";
+        editErr.classList.remove("is-visible");
         editErr.textContent = "";
         return;
       }
-      editErr.style.display = "block";
+
       editErr.textContent = msg;
+      editErr.classList.add("is-visible");
     };
 
     const openEditModal = (b) => {
