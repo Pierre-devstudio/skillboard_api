@@ -1932,6 +1932,15 @@
             ${role === "poste" ? `<span class="sb-badge">${Math.round(Number(item.poids_criticite_pct || 0))}%</span>` : ""}
             ${niveau ? `<span class="sb-badge ${getEpLevelBadgeClass(niveau)}">${epEsc(niveau)}</span>` : ""}
             ${checked ? `
+            ${item.source === "catalogue" ? `
+              <button type="button" class="sb-icon-btn sb-icon-btn--danger" data-remove="1" title="Retirer" aria-label="Retirer">
+                <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 6h18"></path>
+                  <path d="M8 6V4h8v2"></path>
+                  <path d="M19 6l-1 14H6L5 6"></path>
+                </svg>
+              </button>
+            ` : ""}
               <button type="button" class="sb-icon-btn ep-entretien-eval-btn" data-eval="1" title="Évaluer" aria-label="Évaluer">
                 <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 20h9"/>
@@ -1944,6 +1953,14 @@
 
         row.querySelector('[data-check="1"]')?.addEventListener("change", (ev) => {
           item.selectionnee = !!ev.target.checked;
+          epRenderEntretienCompetences();
+        });
+
+        row.querySelector('[data-remove="1"]')?.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+
+          d.competences_entretien = (d.competences_entretien || []).filter(x => x !== item);
           epRenderEntretienCompetences();
         });
 
@@ -2093,11 +2110,48 @@
     });
   }
 
-  async function epSearchCatalogue() {
-    const wrap = $("ep_entretienCatalogueResults");
+  function epCatalogueUiForRole(role) {
+    if (role === "detenue_hors_poste") {
+      return {
+        boxId: "ep_addCompHorsPosteBox",
+        inputId: "ep_entretienCatalogueHorsPosteSearch",
+        resultsId: "ep_entretienCatalogueHorsPosteResults",
+        role: "detenue_hors_poste"
+      };
+    }
+
+    return {
+      boxId: "ep_addCompDevelopBox",
+      inputId: "ep_entretienCatalogueDevelopSearch",
+      resultsId: "ep_entretienCatalogueDevelopResults",
+      role: "a_developper"
+    };
+  }
+
+  function epToggleCatalogueBox(role) {
+    const ui = epCatalogueUiForRole(role);
+    const box = $(ui.boxId);
+    const input = $(ui.inputId);
+    const results = $(ui.resultsId);
+
+    if (!box) return;
+
+    const isOpen = box.style.display !== "none";
+    box.style.display = isOpen ? "none" : "";
+
+    if (results) results.innerHTML = "";
+    if (input) {
+      input.value = "";
+      if (!isOpen) input.focus();
+    }
+  }
+
+  async function epSearchCatalogueForRole(role) {
+    const ui = epCatalogueUiForRole(role);
+    const wrap = $(ui.resultsId);
     if (!wrap || !_portal) return;
 
-    const q = epGetValue("ep_entretienCatalogueSearch");
+    const q = epGetValue(ui.inputId);
     if (!q || q.length < 2) {
       wrap.innerHTML = "";
       return;
@@ -2106,6 +2160,11 @@
     const url = `${_portal.apiBase}/skills/entretien-performance/catalogue-competences/${encodeURIComponent(_portal.contactId)}?q=${encodeURIComponent(q)}&limit=20`;
     const data = await _portal.apiJson(url);
     const list = Array.isArray(data) ? data : [];
+
+    if (!list.length) {
+      wrap.innerHTML = `<div class="ep-entretien-empty">Aucun résultat</div>`;
+      return;
+    }
 
     wrap.innerHTML = "";
 
@@ -2122,7 +2181,13 @@
         const d = state._entretienDraft || epDefaultEntretienDraft();
         state._entretienDraft = d;
 
-        const exists = (d.competences_entretien || []).some(x => x.role === "a_developper" && x.id_comp === c.id_comp);
+        d.competences_entretien = Array.isArray(d.competences_entretien)
+          ? d.competences_entretien
+          : [];
+
+        const exists = d.competences_entretien.some(x =>
+          x.role === ui.role && x.id_comp === c.id_comp
+        );
 
         if (!exists) {
           d.competences_entretien.push({
@@ -2131,13 +2196,14 @@
             code: c.code || "",
             intitule: c.intitule || "",
             domaine: c.domaine || "",
-            role: "a_developper",
+            role: ui.role,
+            source: "catalogue",
             selectionnee: true,
             motif: "",
           });
         }
 
-        epSetValue("ep_entretienCatalogueSearch", "");
+        epSetValue(ui.inputId, "");
         wrap.innerHTML = "";
         epRenderEntretienCompetences();
       });
@@ -2995,12 +3061,35 @@
           rngEntCrit.addEventListener("input", epRenderEntretienCompetences);
         }
 
-        const searchCatalogue = $("ep_entretienCatalogueSearch");
-        if (searchCatalogue) {
+        const btnAddHorsPoste = $("ep_btnAddCompHorsPoste");
+        if (btnAddHorsPoste) {
+          btnAddHorsPoste.addEventListener("click", () => {
+            epToggleCatalogueBox("detenue_hors_poste");
+          });
+        }
+
+        const btnAddDevelop = $("ep_btnAddCompDevelop");
+        if (btnAddDevelop) {
+          btnAddDevelop.addEventListener("click", () => {
+            epToggleCatalogueBox("a_developper");
+          });
+        }
+
+        const searchHorsPoste = $("ep_entretienCatalogueHorsPosteSearch");
+        if (searchHorsPoste) {
           let timer = null;
-          searchCatalogue.addEventListener("input", () => {
+          searchHorsPoste.addEventListener("input", () => {
             if (timer) clearTimeout(timer);
-            timer = setTimeout(epSearchCatalogue, 250);
+            timer = setTimeout(() => epSearchCatalogueForRole("detenue_hors_poste"), 250);
+          });
+        }
+
+        const searchDevelop = $("ep_entretienCatalogueDevelopSearch");
+        if (searchDevelop) {
+          let timer = null;
+          searchDevelop.addEventListener("input", () => {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(() => epSearchCatalogueForRole("a_developper"), 250);
           });
         }
 

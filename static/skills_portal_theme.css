@@ -6127,3 +6127,30 @@ body.bf-modal-open{
     flex-direction:column;
   }
 }
+
+/* ======================================================
+   Entretien individuel — ajout compétences catalogue
+   ====================================================== */
+
+#modalEpEntretien .ep-entretien-addbox{
+  margin:10px 0 12px 0;
+  padding:10px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:var(--sb-gray-50);
+}
+
+#modalEpEntretien .ep-entretien-addbox .sb-ctrl{
+  background:#fff;
+}
+
+#modalEpEntretien .ep-entretien-comp-meta .sb-icon-btn--danger{
+  width:26px;
+  height:26px;
+  border-radius:6px;
+}
+
+#modalEpEntretien .ep-entretien-comp-meta .sb-icon-btn--danger svg{
+  width:13px;
+  height:13px;
+}

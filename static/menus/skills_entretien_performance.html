@@ -567,7 +567,19 @@
           </div>
 
           <div class="ep-entretien-section">
-            <div class="ep-entretien-section-title">Compétences détenues hors poste</div>
+            <div class="ep-entretien-section-head">
+              <div class="ep-entretien-section-title">Compétences détenues hors poste</div>
+
+              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnAddCompHorsPoste">
+                Ajouter une compétence
+              </button>
+            </div>
+
+            <div class="ep-entretien-addbox" id="ep_addCompHorsPosteBox" style="display:none;">
+              <input id="ep_entretienCatalogueHorsPosteSearch" class="sb-ctrl" placeholder="Rechercher dans le catalogue" autocomplete="off" />
+              <div id="ep_entretienCatalogueHorsPosteResults" class="ep-entretien-catalogue-results"></div>
+            </div>
+
             <div id="ep_entretienCompHorsPoste" class="ep-entretien-comp-list"></div>
           </div>
 
@@ -575,12 +587,16 @@
             <div class="ep-entretien-section-head">
               <div class="ep-entretien-section-title">Compétences à développer ou explorer</div>
 
-              <div class="ep-entretien-catalogue-search">
-                <input id="ep_entretienCatalogueSearch" class="sb-ctrl" placeholder="Rechercher dans le catalogue" autocomplete="off" />
-              </div>
+              <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="ep_btnAddCompDevelop">
+                Ajouter une compétence
+              </button>
             </div>
 
-            <div id="ep_entretienCatalogueResults" class="ep-entretien-catalogue-results"></div>
+            <div class="ep-entretien-addbox" id="ep_addCompDevelopBox" style="display:none;">
+              <input id="ep_entretienCatalogueDevelopSearch" class="sb-ctrl" placeholder="Rechercher dans le catalogue" autocomplete="off" />
+              <div id="ep_entretienCatalogueDevelopResults" class="ep-entretien-catalogue-results"></div>
+            </div>
+
             <div id="ep_entretienCompDevelop" class="ep-entretien-comp-list" style="margin-top:10px;"></div>
           </div>
         </div>
