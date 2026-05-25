@@ -7,66 +7,14 @@ from psycopg.rows import dict_row
 from app.routers.skills_portal_common import (
     get_conn,
     fetch_contact_with_entreprise,
-    skills_require_user,
-    skills_validate_enterprise,
+    resolve_insights_effectif_for_request,
 )
 
 router = APIRouter()
 
-def _pick_effectif_for_ent(cur, id_ent: str) -> str:
-    """
-    Choisit un effectif "représentant" pour une entreprise:
-    - priorité: manager
-    - sinon: premier effectif non archivé
-    """
-    cur.execute(
-        """
-        SELECT id_effectif
-        FROM public.tbl_effectif_client
-        WHERE id_ent = %s
-          AND COALESCE(archive, FALSE) = FALSE
-        ORDER BY
-          COALESCE(ismanager, FALSE) DESC,
-          nom_effectif NULLS LAST,
-          prenom_effectif NULLS LAST
-        LIMIT 1
-        """,
-        (id_ent,),
-    )
-    r = cur.fetchone()
-    if not r or not r.get("id_effectif"):
-        raise HTTPException(status_code=404, detail="Aucun effectif actif trouvé pour cette entreprise.")
-    return r["id_effectif"]
-
 
 def _resolve_effectif_for_request(cur, id_contact: str, request: Request) -> str:
-    """
-    Résolution de l'effectif utilisé par le dashboard:
-    - Si header X-Ent-Id présent => mode super-admin (Supabase auth obligatoire)
-      -> valide entreprise Skills, puis choisit un effectif de cette entreprise
-    - Sinon => legacy: id_contact = id_effectif (compat)
-    """
-    x_ent = ""
-    try:
-        x_ent = (request.headers.get("X-Ent-Id") or "").strip()
-    except Exception:
-        x_ent = ""
-
-    if x_ent:
-        auth = ""
-        try:
-            auth = request.headers.get("Authorization", "")
-        except Exception:
-            auth = ""
-
-        u = skills_require_user(auth)
-        if not u.get("is_super_admin"):
-            raise HTTPException(status_code=403, detail="Accès refusé (X-Ent-Id réservé super-admin).")
-
-        ent = skills_validate_enterprise(cur, x_ent)
-        return _pick_effectif_for_ent(cur, ent.get("id_ent"))
-
-    return id_contact
+    return resolve_insights_effectif_for_request(cur, id_contact, request)
 
 class SkillsContext(BaseModel):
     id_contact: str
@@ -74,9 +22,6 @@ class SkillsContext(BaseModel):
     prenom: Optional[str] = None
     nom: str
 
-class DashboardBanner(BaseModel):
-    titre: Optional[str] = None
-    message: str = ""
 
 class AgePyramidBand(BaseModel):
     label: str
@@ -350,80 +295,7 @@ def get_skills_context(id_contact: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-    
-
-@router.get(
-    "/skills/dashboard/banner/{id_contact}",
-    response_model=DashboardBanner,
-)
-def get_dashboard_banner(id_contact: str, request: Request):
-    """
-    Bandeau d'information du dashboard.
-    - Si aucun contenu => message vide (le front masque le bandeau)
-    - Si tbl_publicite n'existe pas encore => message vide (squelette safe)
-    """
-    try:
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
-
-                # On tente de récupérer l'entreprise (selon ce que renvoie fetch_contact_with_entreprise)
-                id_entreprise = None
-                if isinstance(row_ent, dict):
-                    id_entreprise = row_ent.get("id_entreprise")
-                if not id_entreprise and isinstance(row_contact, dict):
-                    id_entreprise = row_contact.get("id_entreprise")
-
-                # Squelette: si pas d'entreprise => rien à afficher
-                if not id_entreprise:
-                    return DashboardBanner()
-
-                # IMPORTANT: tant que tbl_publicite n'existe pas, on ne casse rien.
-                try:
-                    cur.execute(
-                        """
-                        SELECT
-                            titre,
-                            message
-                        FROM tbl_publicite
-                        WHERE archive = FALSE
-                          AND (id_entreprise IS NULL OR id_entreprise = %s)
-                          AND (date_debut IS NULL OR date_debut <= NOW())
-                          AND (date_fin   IS NULL OR date_fin   >= NOW())
-                        ORDER BY
-                            COALESCE(ordre_affichage, 999999) ASC,
-                            date_creation DESC NULLS LAST
-                        LIMIT 1
-                        """,
-                        (id_entreprise,),
-                    )
-                    row = cur.fetchone()
-                except Exception:
-                    # table/colonnes pas prêtes => bandeau invisible
-                    row = None
-
-        if not row:
-            return DashboardBanner()
-
-        titre = (row.get("titre") or None)
-        message = (row.get("message") or "")
-        message = str(message).strip()
-
-        # si vide => le front masque
-        if not message:
-            return DashboardBanner()
-
-        return DashboardBanner(
-            titre=str(titre).strip() if titre else None,
-            message=message,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-    
+        
 
 @router.get(
     "/skills/dashboard/age-pyramid/{id_contact}",

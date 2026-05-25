@@ -5,7 +5,6 @@ import requests
 # People réutilise pour l’instant la même auth Supabase que Skills
 PEOPLE_SUPABASE_URL = os.getenv("SKILLS_SUPABASE_URL") or ""
 PEOPLE_SUPABASE_ANON_KEY = os.getenv("SKILLS_SUPABASE_ANON_KEY") or ""
-PEOPLE_SUPER_ADMIN_EMAILS = os.getenv("SKILLS_SUPER_ADMIN_EMAILS", "") or ""
 
 
 def _people_is_super_admin(email: str) -> bool:

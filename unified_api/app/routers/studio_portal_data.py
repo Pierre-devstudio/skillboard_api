@@ -148,7 +148,7 @@ class UpdateContactPayload(BaseModel):
     telephone: Optional[str] = None
     telephone2: Optional[str] = None
     observations: Optional[str] = None
-    # role: lecture seule (tbl_studio_user_access.role_code) => NON modifiable ici
+    # role: lecture seule (tbl_novoskill_user_access.role_code) => NON modifiable ici
 
 
 def _build_patch_set(payload) -> Dict[str, Any]:
@@ -461,7 +461,7 @@ def _fetch_org(cur, oid: str) -> dict:
 
 def _fetch_contact(cur, oid: str, email_session: str) -> dict:
     """
-    Contact connecté: résolu via tbl_studio_user_access (email + owner).
+    Contact connecté: résolu via tbl_novoskill_user_access (email + owner).
     On retourne une fiche "vendable" (pas d'IDs internes).
     """
     email = (email_session or "").strip()
@@ -621,7 +621,7 @@ def get_studio_vos_donnees(id_owner: str, request: Request):
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, id_owner)
 
-                # Vérifie que l'owner Studio existe (tbl_studio_owner, archive=FALSE)
+                # Vérifie que l'owner Studio existe (tbl_novoskill_owner, archive=FALSE)
                 studio_fetch_owner(cur, oid)
 
                 org = _fetch_org(cur, oid)

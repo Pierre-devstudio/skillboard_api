@@ -44,9 +44,6 @@ SP_SITE_ID = os.getenv("SP_SITE_ID")
 SKILLS_SUPABASE_URL = os.getenv("SKILLS_SUPABASE_URL")
 SKILLS_SUPABASE_ANON_KEY = os.getenv("SKILLS_SUPABASE_ANON_KEY")
 
-# Emails super admin (séparés par virgule)
-# Exemple: "pierre@xxx.fr, admin@xxx.fr"
-SKILLS_SUPER_ADMIN_EMAILS = os.getenv("SKILLS_SUPER_ADMIN_EMAILS", "")
 
 
 # ======================================================
@@ -781,14 +778,9 @@ def fetch_effectif_with_entreprise(cur, id_effectif: str):
 # - Validation "pratique" via /auth/v1/user (pas de JWT local)
 # ======================================================
 def _skills_is_super_admin(email: str) -> bool:
-    e = (email or "").strip().lower()
-    if not e:
-        return False
-    raw = (SKILLS_SUPER_ADMIN_EMAILS or "").strip()
-    if not raw:
-        return False
-    allowed = [x.strip().lower() for x in raw.split(",") if x.strip()]
-    return e in allowed
+    # Le bypass super-admin par variable serveur est abandonné.
+    # Les accès Insights doivent passer par tbl_novoskill_user_access.
+    return False
 
 
 def _skills_extract_bearer_token(authorization: str) -> str:
@@ -943,6 +935,79 @@ def resolve_insights_context(cur, id_effectif: str) -> dict:
         "id_service": row_eff.get("id_service"),
     }
 
+def resolve_insights_effectif_for_request(cur, id_contact: str, request) -> str:
+    """
+    Résout et sécurise l'effectif Insights demandé par une route legacy.
+
+    Règles:
+    - token Supabase obligatoire ;
+    - accès actif dans tbl_novoskill_user_access avec console_code='insights' ;
+    - id_contact doit correspondre à l'effectif autorisé ou à l'email de l'effectif miroir.
+    """
+    eff_id = (id_contact or "").strip()
+    if not eff_id:
+        raise HTTPException(status_code=400, detail="id_contact manquant.")
+
+    auth = ""
+    try:
+        auth = request.headers.get("Authorization", "")
+    except Exception:
+        auth = ""
+
+    user = skills_require_user(auth)
+    email = (user.get("email") or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=401, detail="Email utilisateur introuvable.")
+
+    row_eff, _row_ent = fetch_effectif_with_entreprise(cur, eff_id)
+    eff_email = (row_eff.get("email_effectif") or "").strip().lower()
+
+    cur.execute(
+        """
+        SELECT
+            id_access,
+            id_owner,
+            lower(COALESCE(user_ref_type, '')) AS user_ref_type,
+            id_user_ref,
+            role_code,
+            statut_access
+        FROM public.tbl_novoskill_user_access
+        WHERE lower(email) = lower(%s)
+          AND console_code = 'insights'
+          AND lower(COALESCE(user_ref_type, '')) IN ('effectif_client', 'utilisateur')
+          AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') <> 'suspendu'
+        """,
+        (email,),
+    )
+    rows = cur.fetchall() or []
+
+    for row in rows:
+        ref_type = (row.get("user_ref_type") or "").strip().lower()
+        ref_id = (row.get("id_user_ref") or "").strip()
+
+        if ref_type == "effectif_client" and ref_id == eff_id:
+            return eff_id
+
+        # Cas mon entreprise : l'accès peut pointer tbl_utilisateur,
+        # tandis que le portail Insights travaille avec l'effectif miroir.
+        if ref_type == "utilisateur":
+            if ref_id == eff_id:
+                return eff_id
+            if eff_email and eff_email == email:
+                return eff_id
+
+    raise HTTPException(status_code=403, detail="Accès Insights refusé pour cet effectif.")
+
+
+def resolve_insights_id_ent_for_request(cur, id_contact: str, request) -> str:
+    """
+    Résout l'entreprise Insights à partir de l'effectif sécurisé.
+    Remplace les anciens resolveurs avec X-Ent-Id / super-admin.
+    """
+    eff_id = resolve_insights_effectif_for_request(cur, id_contact, request)
+    ctx = resolve_insights_context(cur, eff_id)
+    return ctx["id_ent"]
 
 def fetch_contact_with_entreprise(cur, id_contact: str):
     """

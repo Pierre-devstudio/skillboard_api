@@ -8,8 +8,7 @@ from psycopg.rows import dict_row
 from app.routers.skills_portal_common import (
     get_conn,
     fetch_contact_with_entreprise,
-    skills_require_user,
-    skills_validate_enterprise,
+    resolve_insights_effectif_for_request,
 )
 
 router = APIRouter()
@@ -116,61 +115,9 @@ class RefApeResponse(BaseModel):
 # ======================================================
 # Helpers
 # ======================================================
-def _pick_effectif_for_ent(cur, id_ent: str) -> str:
-    """
-    Choisit un effectif "représentant" pour une entreprise:
-    - priorité: manager
-    - sinon: premier effectif non archivé
-    """
-    cur.execute(
-        """
-        SELECT id_effectif
-        FROM public.tbl_effectif_client
-        WHERE id_ent = %s
-          AND COALESCE(archive, FALSE) = FALSE
-        ORDER BY
-          COALESCE(ismanager, FALSE) DESC,
-          nom_effectif NULLS LAST,
-          prenom_effectif NULLS LAST
-        LIMIT 1
-        """,
-        (id_ent,),
-    )
-    r = cur.fetchone()
-    if not r or not r.get("id_effectif"):
-        raise HTTPException(status_code=404, detail="Aucun effectif actif trouvé pour cette entreprise.")
-    return r["id_effectif"]
-
 
 def _resolve_effectif_for_request(cur, id_contact: str, request: Request) -> str:
-    """
-    Résolution de l'effectif utilisé pour afficher/modifier la page Informations:
-    - Si header X-Ent-Id présent => mode super-admin (Supabase auth obligatoire)
-      -> on valide l'entreprise Skills, puis on choisit un effectif de cette entreprise
-    - Sinon => legacy: id_contact = id_effectif (compat)
-    """
-    x_ent = ""
-    try:
-        x_ent = (request.headers.get("X-Ent-Id") or "").strip()
-    except Exception:
-        x_ent = ""
-
-    if x_ent:
-        auth = ""
-        try:
-            auth = request.headers.get("Authorization", "")
-        except Exception:
-            auth = ""
-
-        u = skills_require_user(auth)
-        if not u.get("is_super_admin"):
-            raise HTTPException(status_code=403, detail="Accès refusé (X-Ent-Id réservé super-admin).")
-
-        ent = skills_validate_enterprise(cur, x_ent)  # valide périmètre skills + masque
-        return _pick_effectif_for_ent(cur, ent.get("id_ent"))
-
-    # legacy
-    return id_contact
+    return resolve_insights_effectif_for_request(cur, id_contact, request)
 
 def _build_patch_set(payload) -> Dict[str, Any]:
     """

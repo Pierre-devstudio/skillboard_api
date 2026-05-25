@@ -181,14 +181,7 @@
     const token = data?.session?.access_token || "";
     const ctx = await _fetchPortalContextFromApi(token);
 
-    // Super-admin: pas besoin d'id_effectif
-    if (ctx && ctx.is_super_admin) {
-      contactId = "__superadmin__";
-      setContactId(contactId);
-      return { user, session: data?.session || null, contactId };
-    }
-
-    // User client: mapping DB -> id_effectif
+    // Mapping DB -> id_owner (Studio) ou id_effectif (autres consoles)
     const wantedKey = (_cfg.portalKey === "studio") ? "id_owner" : "id_effectif";
     if (ctx && ctx[wantedKey]) {
       contactId = String(ctx[wantedKey]).trim();
@@ -232,12 +225,6 @@
     const session = await getSession().catch(() => null);
     const token = session?.access_token || "";
     const ctx = await _fetchPortalContextFromApi(token);
-
-    if (ctx && ctx.is_super_admin) {
-      contactId = "__superadmin__";
-      setContactId(contactId);
-      return contactId;
-    }
 
     const wantedKey = (_cfg.portalKey === "studio") ? "id_owner" : "id_effectif";
     if (ctx && ctx[wantedKey]) {

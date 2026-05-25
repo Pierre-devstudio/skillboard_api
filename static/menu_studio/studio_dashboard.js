@@ -23,7 +23,7 @@
     if (!token) return null;
 
     const idOwner = getOwnerId();
-    if (!idOwner || idOwner === "__superadmin__") return null;
+    if (!idOwner) return null;
 
     const r = await fetch(`${API_BASE}/studio/context/${encodeURIComponent(idOwner)}`, {
       headers: { "Authorization": `Bearer ${token}` }

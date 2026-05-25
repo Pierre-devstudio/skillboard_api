@@ -4,19 +4,13 @@ import requests
 
 STUDIO_SUPABASE_URL = os.getenv("STUDIO_SUPABASE_URL") or ""
 STUDIO_SUPABASE_ANON_KEY = os.getenv("STUDIO_SUPABASE_ANON_KEY") or ""
-STUDIO_SUPER_ADMIN_EMAILS = os.getenv("STUDIO_SUPER_ADMIN_EMAILS", "") or ""
+
 
 
 def _studio_is_super_admin(email: str) -> bool:
-    e = (email or "").strip().lower()
-    if not e:
-        return False
-    raw = (STUDIO_SUPER_ADMIN_EMAILS or "").strip()
-    if not raw:
-        return False
-    allowed = [x.strip().lower() for x in raw.split(",") if x.strip()]
-    return e in allowed
-
+    # Le bypass super-admin par variable serveur est abandonné.
+    # Les accès Studio doivent passer par tbl_novoskill_user_access.
+    return False
 
 def _studio_extract_bearer_token(authorization: str) -> str:
     a = (authorization or "").strip()

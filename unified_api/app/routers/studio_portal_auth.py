@@ -9,16 +9,6 @@ router = APIRouter()
 
 STUDIO_SUPABASE_URL = os.getenv("STUDIO_SUPABASE_URL") or ""
 STUDIO_SUPABASE_ANON_KEY = os.getenv("STUDIO_SUPABASE_ANON_KEY") or ""
-STUDIO_SUPER_ADMIN_EMAILS = os.getenv("STUDIO_SUPER_ADMIN_EMAILS") or ""
-
-
-def _super_admin_list():
-    lst = []
-    for s in (STUDIO_SUPER_ADMIN_EMAILS or "").split(","):
-        v = (s or "").strip().lower()
-        if v:
-            lst.append(v)
-    return lst
 
 
 def _require_env():
@@ -80,12 +70,12 @@ def studio_auth_context(request: Request):
     """
     Contexte Studio depuis l'identité Supabase:
     - email
-    - is_super_admin
-    - id_owner (si rattaché via tbl_studio_user_access)
+    - is_super_admin (désactivé : les accès passent par tbl_novoskill_user_access)
+    - id_owner (si rattaché via tbl_novoskill_user_access)
     """
     token = _get_bearer_token(request)
     email = _supabase_get_user_email(token)
-    is_super = email in _super_admin_list()
+    is_super = False
 
     with get_conn() as conn:
         with conn.cursor(row_factory=dict_row) as cur:

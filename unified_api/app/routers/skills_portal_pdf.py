@@ -3,10 +3,10 @@ from psycopg.rows import dict_row
 
 from app.routers.skills_portal_common import (
     get_conn,
-    resolve_insights_context,
-    skills_require_user,
+    resolve_insights_id_ent_for_request,
     skills_validate_enterprise,
 )
+
 from app.routers.skills_portal_pdf_common import (
     build_fiche_poste_simple_story,
     build_pdf_document,
@@ -16,29 +16,7 @@ router = APIRouter()
 
 
 def _resolve_id_ent_for_request(cur, id_contact: str, request: Request) -> str:
-    x_ent = ""
-    try:
-        x_ent = (request.headers.get("X-Ent-Id") or "").strip()
-    except Exception:
-        x_ent = ""
-
-    if x_ent:
-        auth = ""
-        try:
-            auth = request.headers.get("Authorization", "")
-        except Exception:
-            auth = ""
-
-        u = skills_require_user(auth)
-        if not u.get("is_super_admin"):
-            raise HTTPException(status_code=403, detail="Accès refusé (X-Ent-Id réservé super-admin).")
-
-        ent = skills_validate_enterprise(cur, x_ent)
-        return ent.get("id_ent")
-
-    ctx = resolve_insights_context(cur, id_contact)
-    return ctx["id_ent"]
-
+    return resolve_insights_id_ent_for_request(cur, id_contact, request)
 
 @router.get("/skills/pdf/fiche-poste-simple/{id_contact}")
 def get_fiche_poste_simple_pdf(

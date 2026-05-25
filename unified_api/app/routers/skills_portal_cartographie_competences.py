@@ -7,9 +7,7 @@ from psycopg.rows import dict_row
 
 from app.routers.skills_portal_common import (
     get_conn,
-    resolve_insights_context,
-    skills_require_user,
-    skills_validate_enterprise,
+    resolve_insights_id_ent_for_request,
 )
 
 
@@ -70,33 +68,7 @@ class CartographieMatriceResponse(BaseModel):
 # Helpers
 # ======================================================
 def _resolve_id_ent_for_request(cur, id_contact: str, request: Request) -> str:
-    """
-    Résolution entreprise:
-    - Si header X-Ent-Id présent => mode super-admin (Supabase auth obligatoire)
-    - Sinon => legacy via resolve_insights_context (id_contact = id_effectif)
-    """
-    x_ent = ""
-    try:
-        x_ent = (request.headers.get("X-Ent-Id") or "").strip()
-    except Exception:
-        x_ent = ""
-
-    if x_ent:
-        auth = ""
-        try:
-            auth = request.headers.get("Authorization", "")
-        except Exception:
-            auth = ""
-
-        u = skills_require_user(auth)
-        if not u.get("is_super_admin"):
-            raise HTTPException(status_code=403, detail="Accès refusé (X-Ent-Id réservé super-admin).")
-
-        ent = skills_validate_enterprise(cur, x_ent)
-        return ent.get("id_ent")
-
-    ctx = resolve_insights_context(cur, id_contact)  # legacy
-    return ctx["id_ent"]
+    return resolve_insights_id_ent_for_request(cur, id_contact, request)
 
 def _normalize_etat(etat: Optional[str]) -> Optional[str]:
     if etat is None:

@@ -6,9 +6,7 @@ from psycopg.rows import dict_row
 
 from app.routers.skills_portal_common import (
     get_conn,
-    resolve_insights_context,
-    skills_require_user,
-    skills_validate_enterprise,
+    resolve_insights_id_ent_for_request,
 )
 
 import html as _html
@@ -73,36 +71,7 @@ ServiceNode.model_rebuild()
 # Helpers
 # ======================================================
 def _resolve_id_ent_for_request(cur, id_contact: str, request: Request) -> str:
-    """
-    Résolution de l'entreprise:
-    - Si header X-Ent-Id présent => mode super-admin (Supabase auth obligatoire)
-    - Sinon => legacy (id_contact = id_effectif) via resolve_insights_context
-    """
-    x_ent = ""
-    try:
-        x_ent = (request.headers.get("X-Ent-Id") or "").strip()
-    except Exception:
-        x_ent = ""
-
-    # Mode super-admin (impersonation)
-    if x_ent:
-        auth = ""
-        try:
-            auth = request.headers.get("Authorization", "")
-        except Exception:
-            auth = ""
-
-        u = skills_require_user(auth)
-        if not u.get("is_super_admin"):
-            raise HTTPException(status_code=403, detail="Accès refusé (X-Ent-Id réservé super-admin).")
-
-        # Validation entreprise éligible Skills
-        ent = skills_validate_enterprise(cur, x_ent)
-        return ent.get("id_ent")
-
-    # Legacy (inchangé)
-    ctx = resolve_insights_context(cur, id_contact)  # id_contact = id_effectif (compat)
-    return ctx["id_ent"]
+    return resolve_insights_id_ent_for_request(cur, id_contact, request)
 
 def _build_tree(flat_services: List[Dict], counts_by_service: Dict[str, Dict[str, int]]) -> List[ServiceNode]:
     nodes: Dict[str, ServiceNode] = {}
