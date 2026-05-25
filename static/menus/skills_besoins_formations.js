@@ -53,11 +53,29 @@
   function setMsg(text, type, targetId = "bfActionMsg") {
     const el = byId(targetId);
     if (!el) return;
+
+    const normalizedType = type === "error" ? "danger" : (type || "");
+    const finalType = normalizedType === "warning" ? "info" : normalizedType;
+
     el.textContent = text || "";
-    el.className = "bf-action-msg" + (type ? " bf-action-msg--" + type : "");
-    if (text && type === "success") {
+    el.className = "sb-inline-msg";
+
+    if (finalType) {
+      el.classList.add("sb-inline-msg--" + finalType);
+    }
+
+    if (text) {
+      el.classList.add("is-visible");
+    } else {
+      el.classList.remove("is-visible");
+    }
+
+    if (text && finalType === "success") {
       window.setTimeout(() => {
-        if (el.textContent === text) el.textContent = "";
+        if (el.textContent === text) {
+          el.textContent = "";
+          el.className = "sb-inline-msg";
+        }
       }, 5000);
     }
   }
@@ -458,14 +476,12 @@
     const confirm = byId("btnBfConfirmSend");
     if (confirm) confirm.style.display = sendMode ? "" : "none";
 
-    modal.hidden = false;
-    document.body.classList.add("bf-modal-open");
+    modal.classList.add("show");
   }
 
   function closeModal() {
     const modal = byId("bfSendModal");
-    if (modal) modal.hidden = true;
-    document.body.classList.remove("bf-modal-open");
+    if (modal) modal.classList.remove("show");
     _modalGroup = null;
   }
 
@@ -608,11 +624,11 @@
     if (btnConfirm) btnConfirm.addEventListener("click", confirmModalSend);
 
     document.addEventListener("click", (e) => {
-      if (e.target && e.target.matches("[data-bf-close]")) closeModal();
+      if (e.target && e.target.closest("[data-bf-close]")) closeModal();
     });
 
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && !byId("bfSendModal")?.hidden) closeModal();
+      if (e.key === "Escape" && byId("bfSendModal")?.classList.contains("show")) closeModal();
     });
   }
 

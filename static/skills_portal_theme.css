@@ -2883,8 +2883,13 @@ body{
   padding:12px 14px;
   border-top:1px solid #e5e7eb;
   display:flex;
+  align-items:center;
   justify-content:flex-end;
   gap:10px;
+}
+
+.modal .modal-footer .sb-inline-msg{
+  margin-right:auto;
 }
 
 
@@ -3639,16 +3644,7 @@ body{
   flex-wrap:wrap;
 }
 
-#view-besoins-formations .bf-action-msg{
-  font-size:12px;
-  font-weight:600;
-  color:var(--sb-gray-500);
-}
 
-#view-besoins-formations .bf-action-msg--success{ color:var(--sb-success); }
-#view-besoins-formations .bf-action-msg--error{ color:var(--sb-danger); }
-#view-besoins-formations .bf-action-msg--warning{ color:var(--sb-warning); }
-#view-besoins-formations .bf-action-msg--info{ color:var(--sb-gray-500); }
 
 #view-besoins-formations .bf-table-head{
   display:none;
@@ -3884,80 +3880,6 @@ body{
   font-weight:700;
 }
 
-body.bf-modal-open{
-  overflow:hidden;
-}
-
-#view-besoins-formations .bf-modal[hidden]{
-  display:none;
-}
-
-#view-besoins-formations .bf-modal{
-  position:fixed;
-  inset:0;
-  z-index:9999;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:22px;
-}
-
-#view-besoins-formations .bf-modal__backdrop{
-  position:absolute;
-  inset:0;
-  background:rgba(17,24,39,.45);
-}
-
-#view-besoins-formations .bf-modal__panel{
-  position:relative;
-  width:min(980px, calc(100vw - 44px));
-  max-height:calc(100vh - 44px);
-  display:flex;
-  flex-direction:column;
-  border-radius:18px;
-  background:#fff;
-  box-shadow:0 20px 60px rgba(0,0,0,.24);
-  overflow:hidden;
-}
-
-#view-besoins-formations .bf-modal__head{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:12px;
-  padding:16px 18px;
-  border-bottom:1px solid var(--sb-gray-200);
-}
-
-#view-besoins-formations .bf-modal__title{
-  color:var(--sb-gray-900);
-  font-size:16px;
-  font-weight:700;
-  line-height:1.25;
-}
-
-#view-besoins-formations .bf-modal__sub{
-  margin-top:3px;
-  color:var(--sb-gray-500);
-  font-size:12px;
-}
-
-#view-besoins-formations .bf-modal__close{
-  width:30px;
-  height:30px;
-  border:1px solid var(--sb-gray-200);
-  border-radius:10px;
-  background:#fff;
-  color:var(--sb-gray-700);
-  font-size:20px;
-  line-height:1;
-  cursor:pointer;
-}
-
-#view-besoins-formations .bf-modal__body{
-  padding:16px 18px;
-  overflow:auto;
-}
 
 #view-besoins-formations .bf-modal-grid{
   display:grid;

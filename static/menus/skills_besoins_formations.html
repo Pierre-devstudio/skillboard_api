@@ -55,7 +55,7 @@
         <div class="card-sub" id="bfMeta">Chargement…</div>
       </div>
       <div class="bf-actions">
-        <span id="bfActionMsg" class="bf-action-msg"></span>
+        <span id="bfActionMsg" class="sb-inline-msg" aria-live="polite"></span>
         <button type="button" class="sb-btn sb-btn--soft" id="btnBfRefresh">Rafraîchir</button>
       </div>
     </div>
@@ -66,18 +66,17 @@
     </div>
   </div>
 
-  <div id="bfSendModal" class="bf-modal" hidden>
-    <div class="bf-modal__backdrop" data-bf-close></div>
-    <div class="bf-modal__panel" role="dialog" aria-modal="true" aria-labelledby="bfModalTitle">
-      <div class="bf-modal__head">
+  <div id="bfSendModal" class="modal">
+    <div class="modal-card modal-card--wide" role="dialog" aria-modal="true" aria-labelledby="bfModalTitle">
+      <div class="modal-header">
         <div>
-          <div id="bfModalTitle" class="bf-modal__title">Préparer l’envoi au Studio</div>
-          <div id="bfModalSub" class="bf-modal__sub">—</div>
+          <div id="bfModalTitle" class="card-title">Préparer l’envoi au Studio</div>
+          <div id="bfModalSub" class="card-sub">—</div>
         </div>
-        <button type="button" class="bf-modal__close" data-bf-close>×</button>
+        <button type="button" class="modal-x" data-bf-close>×</button>
       </div>
 
-      <div class="bf-modal__body">
+      <div class="modal-body">
         <div class="bf-modal-grid">
           <div class="bf-modal-card bf-modal-card--wide">
             <div class="bf-modal-card__title">Compétences concernées</div>
@@ -133,10 +132,10 @@
         </div>
       </div>
 
-      <div class="bf-modal__foot">
-        <span id="bfModalMsg" class="bf-action-msg"></span>
+      <div class="modal-footer">
+        <span id="bfModalMsg" class="sb-inline-msg" aria-live="polite"></span>
         <button type="button" class="sb-btn sb-btn--soft" data-bf-close>Annuler</button>
-        <button type="button" class="sb-btn sb-btn--accent" id="btnBfConfirmSend">Envoyer au Studio</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="btnBfConfirmSend">Envoyer</button>
       </div>
     </div>
   </div>
