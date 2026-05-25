@@ -2606,9 +2606,6 @@ body{
 /* ======================================================
    Votre organisation — Modal Poste
    ====================================================== */
-#modalOrgPoste .modal-card{
-  width: min(980px, calc(100vw - 24px));
-}
 
 #orgPosteCompTable td{
   vertical-align:top;
@@ -2880,6 +2877,23 @@ body{
 
 .sb-modal-content{
   margin-top:12px;
+}
+
+.modal .modal-header.modal-header--top{
+  align-items:flex-start;
+}
+
+.sb-modal-headstack{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  min-width:0;
+  flex:1;
+}
+
+.sb-card-compact{
+  padding:12px;
+  margin:0;
 }
 
 .modal .modal-footer{
@@ -3495,7 +3509,7 @@ body{
   border-top: 1px solid #e5e7eb;
 }
 
-#modalDashDetail .sb-dash-pager .btn-secondary{
+#modalDashDetail .sb-dash-pager .sb-btn{
   padding: 6px 10px;
   font-size: 12px;
 }
@@ -3517,7 +3531,7 @@ body{
 #modalDashDetail .sb-dash-tab--active{
   border-color: var(--accent);
   color: var(--accent);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 /* =========================

@@ -51,234 +51,233 @@
   </div>
 
 
-<!-- ======================================================
-     Modal Poste (Votre organisation) — Squelette 3 onglets
-     ====================================================== -->
-<div id="modalOrgPoste" class="modal" aria-hidden="true">
-  <div class="modal-card">
+  <!-- ======================================================
+      Modal Poste (Votre organisation) — Squelette 3 onglets
+      ====================================================== -->
+  <div id="modalOrgPoste" class="modal" aria-hidden="true">
+    <div class="modal-card modal-card--xl">
+      <div class="modal-header modal-header--top">
+        <div class="sb-modal-headstack">
+          <div class="sb-modal-titleline">
+            <span id="orgPosteModalBadge" class="sb-badge sb-badge-ref-poste-code" style="display:none;"></span>
+            <div id="orgPosteModalTitle" class="sb-title-text">Poste</div>
+          </div>
 
-    <div class="modal-header" style="align-items:flex-start;">
-      <div style="display:flex; flex-direction:column; gap:10px; min-width:0; flex:1;">
-        <div class="sb-modal-titleline">
-          <span id="orgPosteModalBadge" class="sb-badge sb-badge-ref-poste-code" style="display:none;"></span>
-          <div id="orgPosteModalTitle" class="sb-title-text">Poste</div>
+          <div class="sb-segbar" id="orgPosteTabbar">
+            <button type="button" class="sb-btn sb-btn--soft" data-tab="def">Définition</button>
+            <button type="button" class="sb-btn sb-btn--soft" data-tab="exi">Exigences</button>
+            <button type="button" class="sb-btn sb-btn--soft" data-tab="rh">Paramétrage RH</button>
+          </div>
         </div>
 
-        <div class="sb-segbar" id="orgPosteTabbar">
-          <button type="button" class="sb-btn sb-btn--soft" data-tab="def">Définition</button>
-          <button type="button" class="sb-btn sb-btn--soft" data-tab="exi">Exigences</button>
-          <button type="button" class="sb-btn sb-btn--soft" data-tab="rh">Paramétrage RH</button>
-        </div>
+        <button type="button" class="modal-x" id="orgPosteModalX" aria-label="Fermer">×</button>
       </div>
 
-      <button type="button" class="modal-x" id="orgPosteModalX" aria-label="Fermer">×</button>
-    </div>
-
-    <div class="modal-body">
-      <!-- Définition -->
-      <div class="sb-tab-panel is-active" data-panel="def">
-        <div class="card org-poste-def-card" style="padding:12px; margin:0;">
-          <div class="org-poste-def-head">
-            <div class="card-title" style="margin:0;">Définition du poste</div>
-            <span id="orgPosteDefRespBadge" class="sb-badge sb-badge-resp" style="display:none;">Responsable</span>
-          </div>
-
-          <div id="orgPosteDefMissionWrap" class="sb-field" style="margin-top:10px; display:none;">
-            <div class="label">Mission principale</div>
-            <div id="orgPosteDefMission" class="value"></div>
-          </div>
-
-          <div id="orgPosteDefRespWrap" class="sb-field text-block" style="margin-top:10px; display:none;">
-            <div class="label">Responsabilités</div>
-            <div id="orgPosteDefResp" class="value sb-richtext sb-richtext-readonly"></div>
-          </div>
-
-          <div id="orgPosteDefEmpty" class="card-sub" style="margin-top:10px; display:none;">
-            Aucune description renseignée.
-          </div>
-
-          <div id="orgPosteDefDate" class="org-poste-def-date" style="display:none;"></div>
-        </div>
-      </div>
-
-
-      <!-- Exigences -->
-      <div class="sb-tab-panel" data-panel="exi">
-        <div class="card org-bloc" id="orgPosteBlocContraintes">
-          <div class="card-title">Contraintes</div>
-
-          <div class="sb-form-grid">
-            <div class="sb-field">
-              <div class="label">Niveau d’étude minimum requis</div>
-              <select id="orgCtrEduMin" disabled></select>
+      <div class="modal-body">
+        <!-- Définition -->
+        <div class="sb-tab-panel is-active" data-panel="def">
+          <div class="card org-poste-def-card sb-card-compact">
+            <div class="org-poste-def-head">
+              <div class="card-title" style="margin:0;">Définition du poste</div>
+              <span id="orgPosteDefRespBadge" class="sb-badge sb-badge-resp" style="display:none;">Responsable</span>
             </div>
 
-            <div class="sb-field">
-              <div class="label">Domaine du diplôme (NSF)</div>
-              <select id="orgCtrNsfGroupe" disabled></select>
+            <div id="orgPosteDefMissionWrap" class="sb-field" style="margin-top:10px; display:none;">
+              <div class="label">Mission principale</div>
+              <div id="orgPosteDefMission" class="value"></div>
             </div>
 
-            <div class="sb-field org-span-2">
-              <label class="sb-check">
-                <input type="checkbox" id="orgCtrNsfOblig" disabled />
-                <span>Correspondance du diplôme impérative</span>
-              </label>
+            <div id="orgPosteDefRespWrap" class="sb-field text-block" style="margin-top:10px; display:none;">
+              <div class="label">Responsabilités</div>
+              <div id="orgPosteDefResp" class="value sb-richtext sb-richtext-readonly"></div>
             </div>
 
-            <div class="sb-field">
-              <div class="label">Mobilité</div>
-              <select id="orgCtrMobilite" disabled></select>
+            <div id="orgPosteDefEmpty" class="card-sub" style="margin-top:10px; display:none;">
+              Aucune description renseignée.
             </div>
 
-            <div class="sb-field">
-              <div class="label">Risques physiques</div>
-              <select id="orgCtrRisquePhys" disabled></select>
-              <div class="sb-help" id="orgCtrRisquePhysHelp" style="display:none;"></div>
-            </div>
-
-
-            <div class="sb-field org-span-2">
-              <div class="label">Perspectives d’évolution</div>
-              <select id="orgCtrPerspEvol" disabled></select>
-            </div>
-
-            <div class="sb-field">
-              <div class="label">Niveau de contraintes</div>
-              <select id="orgCtrNivContrainte" disabled></select>
-              <div class="sb-help" id="orgCtrNivContrainteHelp" style="display:none;"></div>
-            </div>
-
-
-            <div class="sb-field sb-span-2">
-              <div class="label">Détails des contraintes</div>
-              <textarea id="orgCtrDetailContrainte" class="sb-ctrl" rows="4" disabled></textarea>
-            </div>
+            <div id="orgPosteDefDate" class="org-poste-def-date" style="display:none;"></div>
           </div>
         </div>
 
 
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">Compétences requises</div>
+        <!-- Exigences -->
+        <div class="sb-tab-panel" data-panel="exi">
+          <div class="card org-bloc" id="orgPosteBlocContraintes">
+            <div class="card-title">Contraintes</div>
 
-          <div class="table-wrap" style="margin-top:10px;">
-            <table class="sb-table" id="orgPosteCompTable">
-              <thead>
-                <tr>
-                  <th style="width:80px; text-align:center;">Code</th>
-                  <th>Compétence</th>
-                  <th style="width:90px;">Niveau requis</th>
-                  <th style="width:80px; text-align:center;">Criticité</th>
-                  <th style="width:40px;" class="col-center">Ind.</th>
-                </tr>
-              </thead>
-              <tbody id="orgPosteCompTbody"></tbody>
-            </table>
-          </div>
+            <div class="sb-form-grid">
+              <div class="sb-field">
+                <div class="label">Niveau d’étude minimum requis</div>
+                <select id="orgCtrEduMin" disabled></select>
+              </div>
 
-          <div class="card-sub" id="orgPosteCompEmpty" style="display:none; margin-top:10px;">
-            Aucune compétence requise pour ce poste.
-          </div>
-        </div>
+              <div class="sb-field">
+                <div class="label">Domaine du diplôme (NSF)</div>
+                <select id="orgCtrNsfGroupe" disabled></select>
+              </div>
+
+              <div class="sb-field org-span-2">
+                <label class="sb-check">
+                  <input type="checkbox" id="orgCtrNsfOblig" disabled />
+                  <span>Correspondance du diplôme impérative</span>
+                </label>
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Mobilité</div>
+                <select id="orgCtrMobilite" disabled></select>
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Risques physiques</div>
+                <select id="orgCtrRisquePhys" disabled></select>
+                <div class="sb-help" id="orgCtrRisquePhysHelp" style="display:none;"></div>
+              </div>
 
 
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">Certifications requises</div>
+              <div class="sb-field org-span-2">
+                <div class="label">Perspectives d’évolution</div>
+                <select id="orgCtrPerspEvol" disabled></select>
+              </div>
 
-          <div class="table-wrap" style="margin-top:10px;">
-            <table class="sb-table" id="orgPosteCertTable">
-              <thead>
-                <tr>
-                  <th>Certification</th>
-                  <th style="width:160px;">Catégorie</th>
-                  <th style="width:40px;" class="col-center">Ind.</th>
-                </tr>
-              </thead>
-              <tbody id="orgPosteCertTbody"></tbody>
-            </table>
-          </div>
+              <div class="sb-field">
+                <div class="label">Niveau de contraintes</div>
+                <select id="orgCtrNivContrainte" disabled></select>
+                <div class="sb-help" id="orgCtrNivContrainteHelp" style="display:none;"></div>
+              </div>
 
-          <div class="card-sub" id="orgPosteCertEmpty" style="display:none; margin-top:10px;">
-            Aucune certification requise pour ce poste.
-          </div>
-        </div>
 
-      </div>
-
-      <!-- Paramétrage RH -->
-      <div class="sb-tab-panel" data-panel="rh">
-        <div class="card org-bloc" id="orgPosteBlocRh">
-          <div class="org-poste-rh-head">
-            <div class="card-title" style="margin:0;">Paramétrage RH</div>
-
-            <div class="sb-actions org-poste-rh-actions">
-              <span id="orgRhLockBadge" class="sb-badge sb-badge-rh-lock" style="display:none;">Modifié par le client</span>
-
-              <div class="sb-actions org-rh-btns">
-                <button type="button" class="sb-btn sb-btn--accent" id="orgRhBtnEdit">Modifier</button>
-                <button type="button" class="sb-btn sb-btn--accent" id="orgRhBtnSave" style="display:none;">Enregistrer</button>
-                <button type="button" class="sb-btn sb-btn--soft" id="orgRhBtnCancel" style="display:none;">Annuler</button>
+              <div class="sb-field sb-span-2">
+                <div class="label">Détails des contraintes</div>
+                <textarea id="orgCtrDetailContrainte" class="sb-ctrl" rows="4" disabled></textarea>
               </div>
             </div>
           </div>
 
-          <div class="sb-form-grid org-rh-grid">
-            <div class="sb-field">
-              <div class="label">Statut du poste</div>
-              <select id="orgRhStatut" disabled></select>
+
+          <div class="card sb-card-compact">
+            <div class="card-title" style="margin-bottom:6px;">Compétences requises</div>
+
+            <div class="table-wrap" style="margin-top:10px;">
+              <table class="sb-table" id="orgPosteCompTable">
+                <thead>
+                  <tr>
+                    <th style="width:80px; text-align:center;">Code</th>
+                    <th>Compétence</th>
+                    <th style="width:90px;">Niveau requis</th>
+                    <th style="width:80px; text-align:center;">Criticité</th>
+                    <th style="width:40px;" class="col-center">Ind.</th>
+                  </tr>
+                </thead>
+                <tbody id="orgPosteCompTbody"></tbody>
+              </table>
             </div>
 
-            <div class="sb-field">
-              <div class="label">Criticité du poste</div>
-              <select id="orgRhCriticite" disabled></select>
+            <div class="card-sub" id="orgPosteCompEmpty" style="display:none; margin-top:10px;">
+              Aucune compétence requise pour ce poste.
+            </div>
+          </div>
+
+
+          <div class="card sb-card-compact">
+            <div class="card-title" style="margin-bottom:6px;">Certifications requises</div>
+
+            <div class="table-wrap" style="margin-top:10px;">
+              <table class="sb-table" id="orgPosteCertTable">
+                <thead>
+                  <tr>
+                    <th>Certification</th>
+                    <th style="width:160px;">Catégorie</th>
+                    <th style="width:40px;" class="col-center">Ind.</th>
+                  </tr>
+                </thead>
+                <tbody id="orgPosteCertTbody"></tbody>
+              </table>
             </div>
 
-            <div class="sb-field">
-              <div class="label">Stratégie de pourvoi</div>
-              <select id="orgRhStrategie" disabled></select>
+            <div class="card-sub" id="orgPosteCertEmpty" style="display:none; margin-top:10px;">
+              Aucune certification requise pour ce poste.
             </div>
+          </div>
 
-            <div class="sb-field">
-              <div class="label">Nb titulaires cible</div>
-              <div class="sb-stepper" aria-label="Nb titulaires cible">
-                <button type="button" class="sb-stepper-btn" id="orgRhNbMinus" disabled>-</button>
-                <input id="orgRhNbTitulaires" type="number" min="0" step="1" disabled />
-                <button type="button" class="sb-stepper-btn" id="orgRhNbPlus" disabled>+</button>
+        </div>
+
+        <!-- Paramétrage RH -->
+        <div class="sb-tab-panel" data-panel="rh">
+          <div class="card org-bloc" id="orgPosteBlocRh">
+            <div class="org-poste-rh-head">
+              <div class="card-title" style="margin:0;">Paramétrage RH</div>
+
+              <div class="sb-actions org-poste-rh-actions">
+                <span id="orgRhLockBadge" class="sb-badge sb-badge-rh-lock" style="display:none;">Modifié par le client</span>
+
+                <div class="sb-actions org-rh-btns">
+                  <button type="button" class="sb-btn sb-btn--accent" id="orgRhBtnEdit">Modifier</button>
+                  <button type="button" class="sb-btn sb-btn--accent" id="orgRhBtnSave" style="display:none;">Enregistrer</button>
+                  <button type="button" class="sb-btn sb-btn--soft" id="orgRhBtnCancel" style="display:none;">Annuler</button>
+                </div>
               </div>
             </div>
 
-            <div class="sb-field">
-              <div class="label">Début de validité</div>
-              <input id="orgRhDateDebut" type="date" class="sb-date" disabled />
-            </div>
+            <div class="sb-form-grid org-rh-grid">
+              <div class="sb-field">
+                <div class="label">Statut du poste</div>
+                <select id="orgRhStatut" disabled></select>
+              </div>
 
-            <div class="sb-field">
-              <div class="label">Fin de validité</div>
-              <input id="orgRhDateFin" type="date" class="sb-date" disabled />
-            </div>
+              <div class="sb-field">
+                <div class="label">Criticité du poste</div>
+                <select id="orgRhCriticite" disabled></select>
+              </div>
 
-            <div class="sb-field">
-              <div class="label">Source</div>
-              <input id="orgRhSource" type="text" disabled />
-            </div>
+              <div class="sb-field">
+                <div class="label">Stratégie de pourvoi</div>
+                <select id="orgRhStrategie" disabled></select>
+              </div>
 
-            <div class="sb-field">
-              <div class="label">Dernière mise à jour</div>
-              <input id="orgRhDateMaj" type="text" disabled />
-            </div>
+              <div class="sb-field">
+                <div class="label">Nb titulaires cible</div>
+                <div class="sb-stepper" aria-label="Nb titulaires cible">
+                  <button type="button" class="sb-stepper-btn" id="orgRhNbMinus" disabled>-</button>
+                  <input id="orgRhNbTitulaires" type="number" min="0" step="1" disabled />
+                  <button type="button" class="sb-stepper-btn" id="orgRhNbPlus" disabled>+</button>
+                </div>
+              </div>
 
-            <div class="sb-field sb-span-2">
-              <div class="label">Commentaire</div>
-              <textarea id="orgRhCommentaire" rows="3" disabled></textarea>
+              <div class="sb-field">
+                <div class="label">Début de validité</div>
+                <input id="orgRhDateDebut" type="date" class="sb-date" disabled />
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Fin de validité</div>
+                <input id="orgRhDateFin" type="date" class="sb-date" disabled />
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Source</div>
+                <input id="orgRhSource" type="text" disabled />
+              </div>
+
+              <div class="sb-field">
+                <div class="label">Dernière mise à jour</div>
+                <input id="orgRhDateMaj" type="text" disabled />
+              </div>
+
+              <div class="sb-field sb-span-2">
+                <div class="label">Commentaire</div>
+                <textarea id="orgRhCommentaire" rows="3" disabled></textarea>
+              </div>
             </div>
           </div>
         </div>
+      </div> 
+      
+      <div class="modal-footer">
+        <button type="button" class="sb-btn sb-btn--soft" id="orgPosteModalClose">Fermer</button>
       </div>
-    </div> 
-    
-    <div class="modal-footer">
-      <button type="button" class="sb-btn sb-btn--soft" id="orgPosteModalClose">Fermer</button>
-    </div>
 
+    </div>
   </div>
-</div>
 </section>

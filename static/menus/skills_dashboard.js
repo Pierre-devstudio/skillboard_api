@@ -808,8 +808,8 @@
         <div class="sb-dash-pager">
           <div class="sb-muted">Page : ${Math.floor(curOffset / curLimit) + 1} / ${Math.max(1, Math.ceil(total / curLimit))}</div>
           <div>
-            <button type="button" class="btn-secondary" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
-            <button type="button" class="btn-secondary" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
           </div>
         </div>
       `;
@@ -929,8 +929,8 @@
         <div class="sb-dash-pager">
           <div class="sb-muted">Page : ${Math.floor(curOffset / curLimit) + 1} / ${Math.max(1, Math.ceil(total / curLimit))}</div>
           <div>
-            <button type="button" class="btn-secondary" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
-            <button type="button" class="btn-secondary" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
           </div>
         </div>
       `;
@@ -1051,8 +1051,8 @@
         <div class="sb-dash-pager">
           <div class="sb-muted">Page : ${Math.floor(curOffset / curLimit) + 1} / ${Math.max(1, Math.ceil(total / curLimit))}</div>
           <div>
-            <button type="button" class="btn-secondary" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
-            <button type="button" class="btn-secondary" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
           </div>
         </div>
       `;
@@ -1191,8 +1191,8 @@
         <div class="sb-dash-pager">
           <div class="sb-muted">Page : ${Math.floor(curOffset / curLimit) + 1} / ${Math.max(1, Math.ceil(totalSessions / curLimit))}</div>
           <div>
-            <button type="button" class="btn-secondary" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
-            <button type="button" class="btn-secondary" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
           </div>
         </div>
       `;
@@ -1241,8 +1241,8 @@
 
     const tabsHtml = (active) => `
       <div class="sb-dash-tabs">
-        <button type="button" class="btn-secondary sb-dash-tab ${active === "seniors" ? "sb-dash-tab--active" : ""}" data-age-tab="seniors">Seniors (≥58)</button>
-        <button type="button" class="btn-secondary sb-dash-tab ${active === "trans" ? "sb-dash-tab--active" : ""}" data-age-tab="trans">Transmission en danger</button>
+        <button type="button" class="sb-btn sb-btn--soft sb-dash-tab ${active === "seniors" ? "sb-dash-tab--active" : ""}" data-age-tab="seniors">Seniors (≥58)</button>
+        <button type="button" class="sb-btn sb-btn--soft sb-dash-tab ${active === "trans" ? "sb-dash-tab--active" : ""}" data-age-tab="trans">Transmission en danger</button>
       </div>
       <div id="dashAgeTabContent"></div>
     `;
@@ -1321,8 +1321,8 @@
         <div class="sb-dash-pager">
           <div class="sb-muted">Page : ${Math.floor(curOffset / curLimit) + 1} / ${Math.max(1, Math.ceil(total / curLimit))}</div>
           <div>
-            <button type="button" class="btn-secondary" id="btnDashAgePrev" ${canPrev ? "" : "disabled"}>Précédent</button>
-            <button type="button" class="btn-secondary" id="btnDashAgeNext" ${canNext ? "" : "disabled"}>Suivant</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnDashAgePrev" ${canPrev ? "" : "disabled"}>Précédent</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnDashAgeNext" ${canNext ? "" : "disabled"}>Suivant</button>
           </div>
         </div>
       `;
@@ -1376,8 +1376,8 @@
 
     const tabsHtml = (active) => `
       <div class="sb-dash-tabs">
-        <button type="button" class="btn-secondary sb-dash-tab ${active === "seniors" ? "sb-dash-tab--active" : ""}" data-age-tab="seniors">Seniors (≥58)</button>
-        <button type="button" class="btn-secondary sb-dash-tab ${active === "trans" ? "sb-dash-tab--active" : ""}" data-age-tab="trans">Transmission en danger</button>
+        <button type="button" class="sb-btn sb-btn--soft sb-dash-tab ${active === "seniors" ? "sb-dash-tab--active" : ""}" data-age-tab="seniors">Seniors (≥58)</button>
+        <button type="button" class="sb-btn sb-btn--soft sb-dash-tab ${active === "trans" ? "sb-dash-tab--active" : ""}" data-age-tab="trans">Transmission en danger</button>
       </div>
       <div id="dashAgeTabContent"></div>
     `;
@@ -1457,8 +1457,8 @@
         <div class="sb-dash-pager">
           <div class="sb-muted">Page : ${Math.floor(curOffset / curLimit) + 1} / ${Math.max(1, Math.ceil(total / curLimit))}</div>
           <div>
-            <button type="button" class="btn-secondary" id="btnDashAgePrev" ${canPrev ? "" : "disabled"}>Précédent</button>
-            <button type="button" class="btn-secondary" id="btnDashAgeNext" ${canNext ? "" : "disabled"}>Suivant</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnDashAgePrev" ${canPrev ? "" : "disabled"}>Précédent</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnDashAgeNext" ${canNext ? "" : "disabled"}>Suivant</button>
           </div>
         </div>
       `;
@@ -1586,8 +1586,8 @@
         <div class="sb-dash-pager">
           <div class="sb-muted">Page : ${Math.floor(curOffset / curLimit) + 1} / ${Math.max(1, Math.ceil(total / curLimit))}</div>
           <div>
-            <button type="button" class="btn-secondary" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
-            <button type="button" class="btn-secondary" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnDashDetailPrev" ${canPrev ? "" : "disabled"}>Précédent</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnDashDetailNext" ${canNext ? "" : "disabled"}>Suivant</button>
           </div>
         </div>
       `;

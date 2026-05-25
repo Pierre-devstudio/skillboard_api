@@ -214,7 +214,14 @@
         <td style="white-space:nowrap;">${escapeHtml(validite)}</td>
         <td class="col-center" style="white-space:nowrap;">${escapeHtml(it.niveau_exigence_max || "—")}</td>
         <td class="col-center col-postes">${it.nb_postes_concernes ?? 0}</td>
-        <td class="col-center col-detail"><button type="button" class="btn-secondary btn-xs" data-action="detail">Détail</button></td>
+        <td class="col-center col-detail">
+          <button type="button" class="sb-icon-btn" data-action="detail" title="Voir le détail" aria-label="Voir le détail">
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </button>
+        </td>
       `;
 
       body.appendChild(tr);
