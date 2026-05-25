@@ -88,7 +88,12 @@
   <script src="/skills_portal_auth.js"></script>
   <script src="/skills_portal.js"></script>
   <script>
-    window.portal.init();
+    (async () => {
+      try {
+        await (window.__skillsAuthReady || Promise.resolve(null));
+      } catch (_) {}
+      window.portal.init();
+    })();
   </script>
 </body>
 </html>

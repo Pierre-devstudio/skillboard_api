@@ -135,6 +135,10 @@
 
   window.addEventListener("DOMContentLoaded", async () => {
     try {
+      await (window.__skillsAuthReady || Promise.resolve(null));
+    } catch (_) {}
+
+    try {
       await portal.ensureContext();
     } catch (_) {}
 

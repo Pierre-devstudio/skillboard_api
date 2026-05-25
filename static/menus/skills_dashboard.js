@@ -1746,6 +1746,8 @@
   window.SkillsDashboard = {
     onShow: async (portal) => {
       try {
+        await (window.__skillsAuthReady || Promise.resolve(null));
+
         portal.showAlert("", "");
 
         // Contexte + topbar sont déjà centralisés dans portal.ensureContext()

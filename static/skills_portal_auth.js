@@ -65,6 +65,10 @@
     }
   }
 
+  // Démarrage immédiat de l'auth pour éviter que le portail lance une vue
+  // avant que Supabase soit initialisé.
+  initAuth().catch(() => {});
+
   async function ensurePortalEntry() {
     const id = (getQueryParam("id") || "").trim();
     if (id) {
