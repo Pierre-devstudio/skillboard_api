@@ -180,10 +180,10 @@
 
   <!-- Modal détail collaborateur (squelette pour la suite) -->
   <div class="modal" id="modalCollaborateur" aria-hidden="true">
-    <div class="modal-card">
+    <div class="modal-card modal-card--xl">
       <div class="modal-header">
         <div class="sb-collab-modal-head">
-          <div style="font-weight:600;" id="collabModalTitle">Collaborateur</div>
+          <div class="card-title" id="collabModalTitle">Collaborateur</div>
           <div id="collabModalBadges" class="sb-collab-modal-badges"></div>
         </div>
 
@@ -191,8 +191,8 @@
       </div>
 
       <div class="modal-body">
-        <div class="card-sub" id="collabModalSub" style="margin-top:0;">Détail du collaborateur.</div>
-        <div id="collabModalBody" style="margin-top:12px;"></div>
+        <div class="card-sub" id="collabModalSub">Détail du collaborateur.</div>
+        <div id="collabModalBody" class="sb-modal-content"></div>
       </div>
       <div class="modal-footer">
         <button type="button" class="sb-btn sb-btn--soft" id="btnCollabModalClose">Fermer</button>

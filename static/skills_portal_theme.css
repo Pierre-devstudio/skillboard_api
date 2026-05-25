@@ -1809,9 +1809,7 @@ textarea.sb-ctrl{
   display: flex;
   flex-direction: column;
 
-  /* élargissement modal détail référentiel */
-  width: 920px;
-  max-width: calc(100vw - 40px);
+
 }
 
 
@@ -2701,10 +2699,7 @@ body{
   text-overflow: ellipsis;
 }
 
-/* Modal Collaborateur: plus large */
-#modalCollaborateur .modal-card{
-  width: min(1280px, calc(100vw - 32px)) !important;
-}
+
 
 /* ======================================================
    Modal Collaborateur - Onglet Historique
@@ -2877,6 +2872,14 @@ body{
 .modal .modal-body{
   padding:14px;
   overflow:auto;
+}
+
+.modal .modal-body > .card-sub:first-child{
+  margin-top:0;
+}
+
+.sb-modal-content{
+  margin-top:12px;
 }
 
 .modal .modal-footer{
@@ -3442,10 +3445,6 @@ body{
   }
 }
 
-/* Dashboard — Modal détail KPI */
-#modalDashDetail .modal-card{
-  width: min(900px, calc(100vw - 24px));
-}
 
 #modalDashDetailBody{
   max-height: min(60vh, 560px);

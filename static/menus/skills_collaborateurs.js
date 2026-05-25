@@ -562,14 +562,14 @@
         m.setAttribute("aria-hidden", "true");
 
         m.innerHTML = `
-          <div class="modal-card">
+          <div class="modal-card modal-card--medium">
             <div class="modal-header">
-              <div style="font-weight:600;" id="jmbDetailTitle">Détail formation</div>
+              <div class="card-title" id="jmbDetailTitle">Détail formation</div>
               <button type="button" class="modal-x" id="btnCloseJmbDetailModal" aria-label="Fermer">×</button>
             </div>
             <div class="modal-body">
-              <div class="card-sub" style="margin-top:0;" id="jmbDetailSub">Détail à venir</div>
-              <div id="jmbDetailBody" style="margin-top:12px;">
+              <div class="card-sub" id="jmbDetailSub">Détail à venir</div>
+              <div id="jmbDetailBody" class="sb-modal-content">
                 <div class="card-sub" style="margin:0;">Contenu du détail non implémenté (volontairement).</div>
               </div>
             </div>
