@@ -1608,9 +1608,74 @@
     return ($(id)?.value || "").toString().trim();
   }
 
+  function epHumanizeJsonKey(key) {
+    const k = (key || "").toString().trim();
+
+    const labels = {
+      missions: "Missions",
+      reussites: "Réussites",
+      difficultes: "Difficultés",
+      contexte: "Organisation / conditions de travail",
+
+      objectifs: "Objectifs",
+      indicateurs: "Indicateurs / attendus",
+      moyens: "Moyens nécessaires",
+      echeances: "Échéances",
+
+      besoins_formation: "Besoins de formation",
+      souhaits: "Souhaits du collaborateur",
+      evolution: "Évolution / mobilité",
+      accompagnement: "Accompagnement",
+
+      actions: "Actions",
+      references: "Documents"
+    };
+
+    if (labels[k]) return labels[k];
+
+    return k
+      .replaceAll("_", " ")
+      .replace(/^\p{L}/u, c => c.toUpperCase());
+  }
+
+  function epTextFromValue(value) {
+    if (value === null || value === undefined) return "";
+
+    if (typeof value === "string") {
+      return value === "[object Object]" ? "" : value;
+    }
+
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+
+    if (Array.isArray(value)) {
+      return value
+        .map(v => epTextFromValue(v))
+        .map(v => v.trim())
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    if (typeof value === "object") {
+      return Object.entries(value)
+        .map(([key, val]) => {
+          const txt = epTextFromValue(val).trim();
+          if (!txt) return "";
+          return `${epHumanizeJsonKey(key)} : ${txt}`;
+        })
+        .filter(Boolean)
+        .join("\n");
+    }
+
+    return "";
+  }
+
   function epSetValue(id, value) {
     const el = $(id);
-    if (el) el.value = (value === null || value === undefined) ? "" : String(value);
+    if (!el) return;
+
+    el.value = epTextFromValue(value);
   }
 
   function epTodayIso() {

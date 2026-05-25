@@ -827,6 +827,74 @@ def _ep_json_list(value) -> List[Dict[str, Any]]:
 
     return []
 
+def _ep_humanize_json_key(key: str) -> str:
+    labels = {
+        "missions": "Missions",
+        "reussites": "Réussites",
+        "difficultes": "Difficultés",
+        "contexte": "Organisation / conditions de travail",
+
+        "objectifs": "Objectifs",
+        "indicateurs": "Indicateurs / attendus",
+        "moyens": "Moyens nécessaires",
+        "echeances": "Échéances",
+
+        "besoins_formation": "Besoins de formation",
+        "souhaits": "Souhaits du collaborateur",
+        "evolution": "Évolution / mobilité",
+        "accompagnement": "Accompagnement",
+
+        "actions": "Actions",
+        "references": "Documents",
+    }
+
+    k = (key or "").strip()
+    if not k:
+        return ""
+
+    if k in labels:
+        return labels[k]
+
+    return k.replace("_", " ").strip().capitalize()
+
+
+def _ep_json_to_text(value) -> str:
+    if value is None:
+        return ""
+
+    if isinstance(value, str):
+        return "" if value.strip() == "[object Object]" else value.strip()
+
+    if isinstance(value, (int, float, bool)):
+        return str(value)
+
+    if isinstance(value, list):
+        parts = [
+            _ep_json_to_text(v).strip()
+            for v in value
+        ]
+
+        return "\n".join([p for p in parts if p])
+
+    if isinstance(value, dict):
+        parts = []
+
+        for k, v in value.items():
+            txt = _ep_json_to_text(v).strip()
+            if not txt:
+                continue
+
+            label = _ep_humanize_json_key(k)
+            parts.append(f"{label} : {txt}" if label else txt)
+
+        return "\n".join(parts)
+
+    return ""
+
+
+def _ep_is_empty_json_value(value) -> bool:
+    return value is None or value == "" or value == {} or value == []
+
 def _ep_parse_date(value: Optional[str], field_name: str):
     raw = (value or "").strip()
     if not raw:
@@ -874,18 +942,38 @@ def _ep_valid_entretien_statut(value: Optional[str]) -> str:
 
 def _ep_entretien_item_from_row(r) -> EntretienIndividuelItem:
     preparation = _ep_json_dict(r.get("preparation"))
-    realisation = _ep_json_dict(r.get("realisation"))
+    realisation_raw = _ep_json_dict(r.get("realisation"))
     competences_entretien = _ep_json_list(r.get("competences_entretien"))
 
-    # Compat ancienne structure : si les nouvelles colonnes sont vides,
-    # on reconstruit une lecture minimale depuis les anciens champs.
-    if not realisation:
-        realisation = {
-            "bilan": _ep_json_dict(r.get("bilan")),
-            "objectifs": _ep_json_dict(r.get("objectifs")),
-            "developpement": _ep_json_dict(r.get("developpement")),
-            "plan_actions": _ep_json_dict(r.get("plan_actions")),
-        }
+    old_bilan = _ep_json_dict(r.get("bilan"))
+    old_objectifs = _ep_json_dict(r.get("objectifs"))
+    old_developpement = _ep_json_dict(r.get("developpement"))
+    old_plan_actions = _ep_json_dict(r.get("plan_actions"))
+
+    # L'UI actuelle de l'onglet Réalisation attend 4 champs texte.
+    # Les anciennes colonnes sont des JSONB structurés, donc on les convertit proprement.
+    realisation = {
+        "bilan": _ep_json_to_text(
+            realisation_raw.get("bilan")
+            if not _ep_is_empty_json_value(realisation_raw.get("bilan"))
+            else old_bilan
+        ),
+        "objectifs": _ep_json_to_text(
+            realisation_raw.get("objectifs")
+            if not _ep_is_empty_json_value(realisation_raw.get("objectifs"))
+            else old_objectifs
+        ),
+        "developpement": _ep_json_to_text(
+            realisation_raw.get("developpement")
+            if not _ep_is_empty_json_value(realisation_raw.get("developpement"))
+            else old_developpement
+        ),
+        "plan_actions": _ep_json_to_text(
+            realisation_raw.get("plan_actions")
+            if not _ep_is_empty_json_value(realisation_raw.get("plan_actions"))
+            else old_plan_actions
+        ),
+    }
 
     return EntretienIndividuelItem(
         id_entretien=r["id_entretien"],
