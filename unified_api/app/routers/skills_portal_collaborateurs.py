@@ -70,9 +70,9 @@ class CollaborateurIdentification(BaseModel):
     nom_effectif: str
     prenom_effectif: str
 
-    # Civilité (base: M / F / NULL)
-    civilite_effectif: Optional[str] = None  # "M" / "F" / None
-    civilite_label: Optional[str] = None     # "M" / "Mme" / "Autre"
+    # Civilité (base Studio: M. / Mme / NULL ; legacy toléré: M / F)
+    civilite_effectif: Optional[str] = None  # "M." / "Mme" / None
+    civilite_label: Optional[str] = None     # "M." / "Mme" / "-"
 
     # Contact (déjà affiché)
     email_effectif: Optional[str] = None
@@ -120,7 +120,7 @@ class CollaborateurIdentification(BaseModel):
 
 class CollaborateurIdentificationUpdate(BaseModel):
     # Bloc 1
-    civilite_label: Optional[str] = None   # "M" / "Mme" / "Autre"
+    civilite_label: Optional[str] = None   # "M." / "Mme" / "-"
     nom_effectif: Optional[str] = None
     prenom_effectif: Optional[str] = None
     adresse_effectif: Optional[str] = None
@@ -278,6 +278,50 @@ def _normalize_id_service(id_service: Optional[str]) -> Optional[str]:
         return None
     v = (id_service or "").strip()
     return v if v else None
+
+def _civilite_label_from_db(v: Optional[str]) -> str:
+    """
+    Civilité affichée dans Insights.
+    Alignement Studio :
+    - M.  => homme
+    - Mme => femme
+    - -   => non renseigné / neutre
+    Tolère les anciennes valeurs M / F / Monsieur / Madame.
+    """
+    s = (str(v).strip() if v is not None else "")
+    if not s:
+        return "-"
+
+    key = (
+        s.upper()
+        .replace("\u00a0", "")
+        .replace(" ", "")
+        .replace(".", "")
+    )
+
+    if key in ("M", "MR", "MONSIEUR"):
+        return "M."
+
+    if key in ("F", "MME", "MADAME", "MLLE", "MADEMOISELLE"):
+        return "Mme"
+
+    return "-"
+
+
+def _civilite_db_from_label(v: Optional[str]) -> Optional[str]:
+    """
+    Valeur enregistrée en base depuis Insights.
+    On se cale sur Studio : M. / Mme / NULL.
+    """
+    label = _civilite_label_from_db(v)
+
+    if label == "M.":
+        return "M."
+
+    if label == "Mme":
+        return "Mme"
+
+    return None
 
 # ------------------------
 # Breaks helpers
@@ -895,18 +939,9 @@ def get_collaborateur_identification(id_contact: str, id_effectif: str, request:
         if r is None:
             raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
         
-        # Civilité: base M / F / NULL  -> UI M / Mme / Autre
-        civ_raw = r.get("civilite_effectif")
-        civ = (str(civ_raw).strip().upper() if civ_raw is not None else None)
-        if civ not in ("M", "F"):
-            civ = None
-
-        if civ == "M":
-            civ_label = "M"
-        elif civ == "F":
-            civ_label = "Mme"
-        else:
-            civ_label = "Autre"
+        # Civilité: Studio M. / Mme / NULL ; legacy M / F toléré
+        civ_label = _civilite_label_from_db(r.get("civilite_effectif"))
+        civ = _civilite_db_from_label(civ_label)
 
 
         # Matricule: matricule_interne sinon code_effectif
@@ -1044,7 +1079,7 @@ def update_collaborateur_identification(
     """
     Mise à jour des informations Identification (mode édition).
     Règles:
-    - civilite_label UI ("M"/"Mme"/"Autre") => DB civilite_effectif ("M"/"F"/NULL)
+    - civilite_label UI ("M."/"Mme"/"-") => DB civilite_effectif ("M."/"Mme"/NULL)
     - matricule: toujours enregistré dans ec.matricule_interne
     - domaine_education: stocke le TITRE (string)
     """
@@ -1060,14 +1095,8 @@ def update_collaborateur_identification(
             v = _trim(v)
             return v  # psycopg gère le cast si la colonne est date/timestamp
 
-        # Civilité
-        civ_label = _trim(payload.civilite_label)
-        if civ_label == "M":
-            civ_db = "M"
-        elif civ_label == "Mme":
-            civ_db = "F"
-        else:
-            civ_db = None
+        # Civilité : alignement Studio
+        civ_db = _civilite_db_from_label(payload.civilite_label)
 
         # Motif sortie: on stocke la catégorie uniquement
         motif = _trim(payload.motif_sortie)

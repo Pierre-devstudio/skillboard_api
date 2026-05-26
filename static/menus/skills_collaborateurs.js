@@ -53,7 +53,22 @@
     return `${dd}/${mm}/${yyyy}`;
   }
 
-    function pad2(n) { return String(n).padStart(2, "0"); }
+  function normalizeCiviliteLabel(value) {
+    const raw = (value ?? "").toString().trim();
+    if (!raw) return "-";
+
+    const key = raw
+      .toUpperCase()
+      .replace(/\s+/g, "")
+      .replace(/\./g, "");
+
+    if (["M", "MR", "MONSIEUR"].includes(key)) return "M.";
+    if (["F", "MME", "MADAME", "MLLE", "MADEMOISELLE"].includes(key)) return "Mme";
+
+    return "-";
+  }
+
+  function pad2(n) { return String(n).padStart(2, "0"); }
 
   function toDateOnly(d) {
     const x = (d instanceof Date) ? d : new Date(d);
@@ -807,8 +822,8 @@
               if (headerBadges) headerBadges.innerHTML = badgesHtml;
 
 
-              // Civilité: priorité label renvoyé par l’API
-              const civLabel = (d.civilite_label || "").toString().trim() || "Autre";
+              // Civilité: alignement Studio (M. / Mme / -)
+              const civLabel = normalizeCiviliteLabel(d.civilite_label || d.civilite_effectif);
 
               // Préparation valeurs dates (input type=date attend YYYY-MM-DD)
               const dateEntree = (d.date_entree_entreprise_effectif || "").toString().slice(0, 10);
@@ -859,9 +874,9 @@
                     <div class="sb-field">
                       <div class="sb-label">Civilité</div>
                       <select class="sb-select" id="collabCiv" disabled>
-                        <option value="M"${civLabel === "M" ? " selected" : ""}>M</option>
+                        <option value="M."${civLabel === "M." ? " selected" : ""}>M.</option>
                         <option value="Mme"${civLabel === "Mme" ? " selected" : ""}>Mme</option>
-                        <option value="Autre"${civLabel === "Autre" ? " selected" : ""}>Autre</option>
+                        <option value="-"${civLabel === "-" ? " selected" : ""}>-</option>
                       </select>
                     </div>
 
