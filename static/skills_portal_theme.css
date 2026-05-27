@@ -6096,20 +6096,8 @@ body{
 }
 
 /* ======================================================
-   Entretien individuel — ajout compétences catalogue
+   Entretien individuel — sélection compétences catalogue
    ====================================================== */
-
-#modalEpEntretien .ep-entretien-addbox{
-  margin:10px 0 12px 0;
-  padding:10px;
-  border:1px solid var(--sb-gray-200);
-  border-radius:12px;
-  background:var(--sb-gray-50);
-}
-
-#modalEpEntretien .ep-entretien-addbox .sb-ctrl{
-  background:#fff;
-}
 
 #modalEpEntretien .ep-entretien-comp-meta .sb-icon-btn--danger{
   width:26px;
@@ -6120,6 +6108,128 @@ body{
 #modalEpEntretien .ep-entretien-comp-meta .sb-icon-btn--danger svg{
   width:13px;
   height:13px;
+}
+
+#modalEpCatalogueCompetences{
+  z-index:10070;
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-modal-card{
+  width:min(860px, calc(100vw - 48px));
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-modal-body{
+  padding:14px;
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-toolbar{
+  display:grid;
+  grid-template-columns:minmax(260px, 1fr) minmax(220px, 280px);
+  gap:12px;
+  align-items:end;
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-info{
+  margin-top:10px;
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-list{
+  margin-top:10px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  max-height:420px;
+  overflow:auto;
+  padding-right:4px;
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-row{
+  display:grid;
+  grid-template-columns:18px minmax(0, 1fr) auto;
+  align-items:center;
+  gap:10px;
+  padding:9px 10px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:#fff;
+  cursor:pointer;
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-row:hover{
+  background:var(--sb-gray-50);
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-row.is-disabled{
+  opacity:.62;
+  cursor:default;
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-row input[type="checkbox"]{
+  width:15px;
+  height:15px;
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-row-main{
+  min-width:0;
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-row-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  font-size:13px;
+  font-weight:700;
+  color:var(--sb-gray-900);
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-row-title > span:last-child{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-row-sub{
+  margin-top:4px;
+  color:var(--sb-gray-500);
+  font-size:12px;
+  font-weight:500;
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-row-state{
+  color:var(--sb-gray-500);
+  font-size:12px;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+#modalEpCatalogueCompetences .ep-catalogue-empty{
+  padding:14px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:#fff;
+  color:var(--sb-gray-500);
+  font-size:13px;
+  text-align:center;
+}
+
+#modalEpCatalogueCompetences #ep_catalogueMsg{
+  margin-right:auto;
+}
+
+@media (max-width:720px){
+  #modalEpCatalogueCompetences .ep-catalogue-toolbar{
+    grid-template-columns:1fr;
+  }
+
+  #modalEpCatalogueCompetences .ep-catalogue-row{
+    grid-template-columns:18px minmax(0, 1fr);
+  }
+
+  #modalEpCatalogueCompetences .ep-catalogue-row-state{
+    grid-column:2;
+  }
 }
 
 /* Mode guidé entretien : préparation / réalisation */

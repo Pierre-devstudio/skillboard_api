@@ -29,6 +29,9 @@
     _entretienAuditContext: null,
     _entretienModalMode: "preparation",
     _entretienDocFile: null,
+    _entretienCatalogueRole: "",
+    _entretienCatalogueAll: null,
+    _entretienCatalogueSelected: new Set(),
   };
 
 
@@ -2289,106 +2292,286 @@
     });
   }
 
-  function epCatalogueUiForRole(role) {
-    if (role === "detenue_hors_poste") {
-      return {
-        boxId: "ep_addCompHorsPosteBox",
-        inputId: "ep_entretienCatalogueHorsPosteSearch",
-        resultsId: "ep_entretienCatalogueHorsPosteResults",
-        role: "detenue_hors_poste"
-      };
-    }
-
-    return {
-      boxId: "ep_addCompDevelopBox",
-      inputId: "ep_entretienCatalogueDevelopSearch",
-      resultsId: "ep_entretienCatalogueDevelopResults",
-      role: "a_developper"
-    };
+  function epCatalogueRoleLabel(role) {
+    return role === "detenue_hors_poste"
+      ? "Compétences détenues hors poste"
+      : "Compétences à développer ou explorer";
   }
 
-  function epToggleCatalogueBox(role) {
-    const ui = epCatalogueUiForRole(role);
-    const box = $(ui.boxId);
-    const input = $(ui.inputId);
-    const results = $(ui.resultsId);
-
-    if (!box) return;
-
-    const isOpen = box.style.display !== "none";
-    box.style.display = isOpen ? "none" : "";
-
-    if (results) results.innerHTML = "";
-    if (input) {
-      input.value = "";
-      if (!isOpen) input.focus();
-    }
+  function epCatalogueRoleSubLabel(role) {
+    return role === "detenue_hors_poste"
+      ? "Ajoute une ou plusieurs compétences détenues par le collaborateur, hors référentiel du poste."
+      : "Ajoute une ou plusieurs compétences à développer, explorer ou sécuriser pendant l'entretien.";
   }
 
-  async function epSearchCatalogueForRole(role) {
-    const ui = epCatalogueUiForRole(role);
-    const wrap = $(ui.resultsId);
-    if (!wrap || !_portal) return;
+  function epCatalogueNormalizeText(value) {
+    return (value || "")
+      .toString()
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }
 
-    const q = epGetValue(ui.inputId);
-    if (!q || q.length < 2) {
-      wrap.innerHTML = "";
-      return;
+  function epCatalogueExistingIdsForRole(role) {
+    const d = state._entretienDraft || null;
+    const list = Array.isArray(d?.competences_entretien) ? d.competences_entretien : [];
+
+    return new Set(
+      list
+        .filter(x => x && x.role === role)
+        .map(x => (x.id_comp || "").toString().trim())
+        .filter(Boolean)
+    );
+  }
+
+  function epCatalogueSetMsg(type, text) {
+    epSetInlineMsg("ep_catalogueMsg", type || "info", text || "");
+  }
+
+  async function epLoadCatalogueCompetences() {
+    if (Array.isArray(state._entretienCatalogueAll)) {
+      return state._entretienCatalogueAll;
     }
 
-    const url = `${_portal.apiBase}/skills/entretien-performance/catalogue-competences/${encodeURIComponent(_portal.contactId)}?q=${encodeURIComponent(q)}&limit=20`;
+    if (!_portal) return [];
+
+    const url = `${_portal.apiBase}/skills/entretien-performance/catalogue-competences/${encodeURIComponent(_portal.contactId)}?limit=500`;
     const data = await _portal.apiJson(url);
     const list = Array.isArray(data) ? data : [];
 
-    if (!list.length) {
-      wrap.innerHTML = `<div class="ep-entretien-empty">Aucun résultat</div>`;
+    state._entretienCatalogueAll = list
+      .map(c => ({
+        id_comp: (c.id_comp || "").toString().trim(),
+        code: (c.code || "").toString().trim(),
+        intitule: (c.intitule || "").toString().trim(),
+        domaine: (c.domaine || "Sans domaine").toString().trim() || "Sans domaine",
+        domaine_couleur: (c.domaine_couleur || "").toString().trim(),
+      }))
+      .filter(c => c.id_comp);
+
+    return state._entretienCatalogueAll;
+  }
+
+  function epFillCatalogueDomainFilter(list) {
+    const sel = $("ep_catalogueDomaine");
+    if (!sel) return;
+
+    const current = sel.value || "";
+    const domaines = Array.from(new Set(
+      (Array.isArray(list) ? list : [])
+        .map(c => (c.domaine || "Sans domaine").toString().trim() || "Sans domaine")
+    )).sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
+
+    sel.innerHTML = `<option value="">Tous les domaines</option>`;
+
+    domaines.forEach(d => {
+      const opt = document.createElement("option");
+      opt.value = d;
+      opt.textContent = d;
+      sel.appendChild(opt);
+    });
+
+    if (current && domaines.includes(current)) {
+      sel.value = current;
+    }
+  }
+
+  function epRenderCatalogueCompetenceModal() {
+    const wrap = $("ep_catalogueList");
+    const info = $("ep_catalogueInfo");
+    const addBtn = $("ep_btnCatalogueAddSelection");
+
+    if (!wrap) return;
+
+    const role = state._entretienCatalogueRole || "a_developper";
+    const existingIds = epCatalogueExistingIdsForRole(role);
+    const selected = state._entretienCatalogueSelected instanceof Set
+      ? state._entretienCatalogueSelected
+      : new Set();
+
+    const q = epCatalogueNormalizeText(epGetValue("ep_catalogueSearch"));
+    const domaine = (epGetValue("ep_catalogueDomaine") || "").toString().trim();
+
+    const all = Array.isArray(state._entretienCatalogueAll) ? state._entretienCatalogueAll : [];
+    const filtered = all.filter(c => {
+      if (domaine && (c.domaine || "Sans domaine") !== domaine) return false;
+      if (!q) return true;
+
+      const hay = epCatalogueNormalizeText(`${c.code} ${c.intitule} ${c.domaine}`);
+      return hay.includes(q);
+    });
+
+    if (info) {
+      info.textContent = filtered.length
+        ? `${filtered.length} compétence(s) affichée(s). Les compétences déjà ajoutées dans cette section sont verrouillées.`
+        : "Aucune compétence ne correspond aux filtres.";
+    }
+
+    if (addBtn) {
+      addBtn.disabled = selected.size === 0;
+      addBtn.textContent = selected.size > 0
+        ? `Ajouter la sélection (${selected.size})`
+        : "Ajouter la sélection";
+    }
+
+    if (!filtered.length) {
+      wrap.innerHTML = `<div class="ep-catalogue-empty">Aucune compétence trouvée.</div>`;
       return;
     }
 
     wrap.innerHTML = "";
 
-    list.forEach(c => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "ep-entretien-catalogue-item";
-      btn.innerHTML = `
+    filtered.forEach(c => {
+      const already = existingIds.has(c.id_comp);
+      const isChecked = selected.has(c.id_comp);
+
+      const row = document.createElement("label");
+      row.className = "ep-catalogue-row";
+      row.classList.toggle("is-disabled", already);
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = c.id_comp;
+      checkbox.checked = isChecked && !already;
+      checkbox.disabled = already;
+
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) selected.add(c.id_comp);
+        else selected.delete(c.id_comp);
+        state._entretienCatalogueSelected = selected;
+        epRenderCatalogueCompetenceModal();
+      });
+
+      const main = document.createElement("div");
+      main.className = "ep-catalogue-row-main";
+
+      const title = document.createElement("div");
+      title.className = "ep-catalogue-row-title";
+      title.innerHTML = `
         <span class="sb-badge sb-badge-ref-comp-code">${epEsc(c.code || "—")}</span>
         <span>${epEsc(c.intitule || "—")}</span>
       `;
 
-      btn.addEventListener("click", () => {
-        const d = state._entretienDraft || epDefaultEntretienDraft();
-        state._entretienDraft = d;
+      const sub = document.createElement("div");
+      sub.className = "ep-catalogue-row-sub";
+      sub.textContent = c.domaine || "Sans domaine";
 
-        d.competences_entretien = Array.isArray(d.competences_entretien)
-          ? d.competences_entretien
-          : [];
+      main.appendChild(title);
+      main.appendChild(sub);
 
-        const exists = d.competences_entretien.some(x =>
-          x.role === ui.role && x.id_comp === c.id_comp
-        );
+      const stateTxt = document.createElement("div");
+      stateTxt.className = "ep-catalogue-row-state";
+      stateTxt.textContent = already ? "Déjà ajoutée" : "";
 
-        if (!exists) {
-          d.competences_entretien.push({
-            id_comp: c.id_comp,
-            id_effectif_competence: "",
-            code: c.code || "",
-            intitule: c.intitule || "",
-            domaine: c.domaine || "",
-            role: ui.role,
-            source: "catalogue",
-            selectionnee: true,
-            motif: "",
-          });
-        }
+      row.appendChild(checkbox);
+      row.appendChild(main);
+      row.appendChild(stateTxt);
 
-        epSetValue(ui.inputId, "");
-        wrap.innerHTML = "";
-        epRenderEntretienCompetences();
+      wrap.appendChild(row);
+    });
+  }
+
+  async function epOpenCatalogueCompetenceModal(role) {
+    const d = state._entretienDraft || epDefaultEntretienDraft();
+    state._entretienDraft = d;
+    d.competences_entretien = Array.isArray(d.competences_entretien) ? d.competences_entretien : [];
+
+    state._entretienCatalogueRole = role === "detenue_hors_poste" ? "detenue_hors_poste" : "a_developper";
+    state._entretienCatalogueSelected = new Set();
+
+    setText("ep_catalogueModalTitle", "Ajouter des compétences");
+    setText("ep_catalogueModalSub", epCatalogueRoleSubLabel(state._entretienCatalogueRole));
+    epCatalogueSetMsg("info", "");
+
+    const search = $("ep_catalogueSearch");
+    if (search) search.value = "";
+
+    const domaine = $("ep_catalogueDomaine");
+    if (domaine) domaine.value = "";
+
+    const wrap = $("ep_catalogueList");
+    if (wrap) wrap.innerHTML = `<div class="ep-catalogue-empty">Chargement du catalogue...</div>`;
+
+    const addBtn = $("ep_btnCatalogueAddSelection");
+    if (addBtn) {
+      addBtn.disabled = true;
+      addBtn.textContent = "Ajouter la sélection";
+    }
+
+    openModal("modalEpCatalogueCompetences");
+
+    try {
+      const list = await epLoadCatalogueCompetences();
+      epFillCatalogueDomainFilter(list);
+      epRenderCatalogueCompetenceModal();
+      if (search) search.focus();
+    } catch (e) {
+      if (wrap) wrap.innerHTML = `<div class="ep-catalogue-empty">Impossible de charger le catalogue.</div>`;
+      epCatalogueSetMsg("danger", String(e?.message || e));
+    }
+  }
+
+  function epCloseCatalogueCompetenceModal() {
+    closeModal("modalEpCatalogueCompetences");
+    state._entretienCatalogueRole = "";
+    state._entretienCatalogueSelected = new Set();
+    epCatalogueSetMsg("info", "");
+  }
+
+  function epAddCatalogueSelectionToEntretien() {
+    const role = state._entretienCatalogueRole || "a_developper";
+    const selected = state._entretienCatalogueSelected instanceof Set
+      ? Array.from(state._entretienCatalogueSelected)
+      : [];
+
+    if (!selected.length) {
+      epCatalogueSetMsg("info", "Sélectionne au moins une compétence.");
+      return;
+    }
+
+    const d = state._entretienDraft || epDefaultEntretienDraft();
+    state._entretienDraft = d;
+    d.competences_entretien = Array.isArray(d.competences_entretien) ? d.competences_entretien : [];
+
+    const existingIds = epCatalogueExistingIdsForRole(role);
+    const all = Array.isArray(state._entretienCatalogueAll) ? state._entretienCatalogueAll : [];
+    const byId = new Map(all.map(c => [c.id_comp, c]));
+
+    let added = 0;
+
+    selected.forEach(idComp => {
+      if (!idComp || existingIds.has(idComp)) return;
+
+      const c = byId.get(idComp);
+      if (!c) return;
+
+      d.competences_entretien.push({
+        id_comp: c.id_comp,
+        id_effectif_competence: "",
+        code: c.code || "",
+        intitule: c.intitule || "",
+        domaine: c.domaine || "",
+        domaine_couleur: c.domaine_couleur || "",
+        role,
+        source: "catalogue",
+        selectionnee: true,
+        motif: "",
       });
 
-      wrap.appendChild(btn);
+      added += 1;
     });
+
+    if (!added) {
+      epCatalogueSetMsg("info", "Aucune nouvelle compétence à ajouter.");
+      epRenderCatalogueCompetenceModal();
+      return;
+    }
+
+    epRenderEntretienCompetences();
+    epCloseCatalogueCompetenceModal();
+    epSetEntretienTab("competences");
+    epSetInlineMsg("ep_entretienMsg", "success", `${added} compétence(s) ajoutée(s) dans ${epCatalogueRoleLabel(role).toLowerCase()}.`);
   }
 
   async function epEnsureEffectifCompetence(idComp) {
@@ -3299,32 +3482,41 @@
         const btnAddHorsPoste = $("ep_btnAddCompHorsPoste");
         if (btnAddHorsPoste) {
           btnAddHorsPoste.addEventListener("click", () => {
-            epToggleCatalogueBox("detenue_hors_poste");
+            epOpenCatalogueCompetenceModal("detenue_hors_poste");
           });
         }
 
         const btnAddDevelop = $("ep_btnAddCompDevelop");
         if (btnAddDevelop) {
           btnAddDevelop.addEventListener("click", () => {
-            epToggleCatalogueBox("a_developper");
+            epOpenCatalogueCompetenceModal("a_developper");
           });
         }
 
-        const searchHorsPoste = $("ep_entretienCatalogueHorsPosteSearch");
-        if (searchHorsPoste) {
-          let timer = null;
-          searchHorsPoste.addEventListener("input", () => {
-            if (timer) clearTimeout(timer);
-            timer = setTimeout(() => epSearchCatalogueForRole("detenue_hors_poste"), 250);
-          });
+        const catalogueSearch = $("ep_catalogueSearch");
+        if (catalogueSearch) {
+          catalogueSearch.addEventListener("input", epRenderCatalogueCompetenceModal);
         }
 
-        const searchDevelop = $("ep_entretienCatalogueDevelopSearch");
-        if (searchDevelop) {
-          let timer = null;
-          searchDevelop.addEventListener("input", () => {
-            if (timer) clearTimeout(timer);
-            timer = setTimeout(() => epSearchCatalogueForRole("a_developper"), 250);
+        const catalogueDomaine = $("ep_catalogueDomaine");
+        if (catalogueDomaine) {
+          catalogueDomaine.addEventListener("change", epRenderCatalogueCompetenceModal);
+        }
+
+        const btnCatalogueAddSelection = $("ep_btnCatalogueAddSelection");
+        if (btnCatalogueAddSelection) {
+          btnCatalogueAddSelection.addEventListener("click", epAddCatalogueSelectionToEntretien);
+        }
+
+        const btnCloseCatalogueX = $("btnCloseEpCatalogueModalX");
+        const btnCloseCatalogue = $("btnEpCatalogueModalClose");
+        const modalCatalogue = $("modalEpCatalogueCompetences");
+
+        if (btnCloseCatalogueX) btnCloseCatalogueX.addEventListener("click", epCloseCatalogueCompetenceModal);
+        if (btnCloseCatalogue) btnCloseCatalogue.addEventListener("click", epCloseCatalogueCompetenceModal);
+        if (modalCatalogue) {
+          modalCatalogue.addEventListener("click", (e) => {
+            if (e.target === modalCatalogue) epCloseCatalogueCompetenceModal();
           });
         }
 

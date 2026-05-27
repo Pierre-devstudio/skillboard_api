@@ -585,10 +585,6 @@
               </button>
             </div>
 
-            <div class="ep-entretien-addbox" id="ep_addCompHorsPosteBox" style="display:none;">
-              <input id="ep_entretienCatalogueHorsPosteSearch" class="sb-ctrl" placeholder="Rechercher dans le catalogue" autocomplete="off" />
-              <div id="ep_entretienCatalogueHorsPosteResults" class="ep-entretien-catalogue-results"></div>
-            </div>
 
             <div id="ep_entretienCompHorsPoste" class="ep-entretien-comp-list"></div>
           </div>
@@ -602,10 +598,6 @@
               </button>
             </div>
 
-            <div class="ep-entretien-addbox" id="ep_addCompDevelopBox" style="display:none;">
-              <input id="ep_entretienCatalogueDevelopSearch" class="sb-ctrl" placeholder="Rechercher dans le catalogue" autocomplete="off" />
-              <div id="ep_entretienCatalogueDevelopResults" class="ep-entretien-catalogue-results"></div>
-            </div>
 
             <div id="ep_entretienCompDevelop" class="ep-entretien-comp-list" style="margin-top:10px;"></div>
           </div>
@@ -694,6 +686,47 @@
 
         <button type="button" class="sb-btn sb-btn--soft" id="btnEpEntretienModalClose">Annuler</button>
         <button type="button" class="sb-btn sb-btn--accent" id="ep_btnSaveEntretien">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Modal: sélection compétences catalogue -->
+  <div class="modal" id="modalEpCatalogueCompetences" aria-hidden="true">
+    <div class="modal-card ep-catalogue-modal-card">
+      <div class="modal-header">
+        <div style="min-width:0;">
+          <div class="sb-modal-title" id="ep_catalogueModalTitle">Ajouter des compétences</div>
+          <div class="card-sub" id="ep_catalogueModalSub" style="margin-top:2px;">Catalogue de compétences</div>
+        </div>
+
+        <button type="button" class="modal-x" id="btnCloseEpCatalogueModalX" aria-label="Fermer">×</button>
+      </div>
+
+      <div class="modal-body ep-catalogue-modal-body">
+        <div class="ep-catalogue-toolbar">
+          <div class="sb-field ep-catalogue-search-field">
+            <label class="sb-label" for="ep_catalogueSearch">Recherche</label>
+            <input id="ep_catalogueSearch" class="sb-ctrl" placeholder="Code, intitulé, domaine..." autocomplete="off" />
+          </div>
+
+          <div class="sb-field ep-catalogue-domain-field">
+            <label class="sb-label" for="ep_catalogueDomaine">Domaine</label>
+            <select id="ep_catalogueDomaine" class="sb-select">
+              <option value="">Tous les domaines</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="ep_catalogueInfo" class="card-sub ep-catalogue-info">Sélectionne les compétences à ajouter.</div>
+
+        <div id="ep_catalogueList" class="ep-catalogue-list"></div>
+      </div>
+
+      <div class="modal-footer ep-catalogue-footer">
+        <div id="ep_catalogueMsg" class="sb-inline-msg" aria-live="polite"></div>
+        <button type="button" class="sb-btn sb-btn--soft" id="btnEpCatalogueModalClose">Annuler</button>
+        <button type="button" class="sb-btn sb-btn--accent" id="ep_btnCatalogueAddSelection" disabled>Ajouter la sélection</button>
       </div>
     </div>
   </div>

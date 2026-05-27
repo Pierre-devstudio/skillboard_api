@@ -1772,7 +1772,7 @@ def ep_catalogue_competences(
     id_contact: str,
     request: Request,
     q: Optional[str] = Query(default=None),
-    limit: int = Query(default=50, ge=1, le=100),
+    limit: int = Query(default=500, ge=1, le=500),
 ):
     try:
         with get_conn() as conn:
