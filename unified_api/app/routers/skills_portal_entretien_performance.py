@@ -1521,14 +1521,9 @@ def ep_create_entretien_individuel(
                         objectifs,
                         developpement,
                         plan_actions,
+                        archive,
                         created_at,
-                        updated_at,
-                        (
-                            SELECT COUNT(*)::int
-                            FROM public.tbl_entretien_individuel_document d
-                            WHERE d.id_entretien = tbl_entretien_individuel.id_entretien
-                            AND COALESCE(d.archive, FALSE) = FALSE
-                        ) AS nb_documents
+                        updated_at
                     )
                     VALUES
                     (
