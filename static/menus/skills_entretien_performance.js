@@ -1737,8 +1737,8 @@
       toggle.setAttribute("aria-checked", checked ? "true" : "false");
     }
 
-    const label = $("ep_entretienStatutToggleLabel");
-    if (label) label.textContent = statut === "en cours" ? "En cours" : "À réaliser";
+    // Libellés fixes dans l'UI : "À réaliser" à gauche, "En cours" à droite.
+    // Le switch seul porte l'état.
   }
 
   function epGetEntretienMode() {
@@ -1755,11 +1755,15 @@
       modal.classList.toggle("is-realisation-mode", !isPreparation);
     }
 
+    const statutModebar = document.querySelector("#modalEpEntretien .ep-entretien-modebar");
     const statutField = document.querySelector("#modalEpEntretien .ep-entretien-field-statut");
     const dateRealiseeField = document.querySelector("#modalEpEntretien .ep-entretien-field-date-realisee");
+    const entretienCritFilter = document.querySelector("#modalEpEntretien .ep-entretien-crit-filter");
 
+    if (statutModebar) statutModebar.style.display = isPreparation ? "none" : "flex";
     if (statutField) statutField.style.display = isPreparation ? "none" : "";
     if (dateRealiseeField) dateRealiseeField.style.display = isPreparation ? "none" : "";
+    if (entretienCritFilter) entretienCritFilter.style.display = isPreparation ? "" : "none";
 
     document.querySelectorAll("#modalEpEntretien .ep-entretien-tab").forEach(btn => {
       const panel = btn.dataset.panel || "";
@@ -1975,13 +1979,27 @@
     const val = $("ep_entretienCriticiteVal");
     if (val) val.textContent = String(seuil);
 
+    const isPreparation = epGetEntretienMode() === "preparation";
+    const EPS = 0.0001;
+
+    if (isPreparation && Array.isArray(d.competences_entretien)) {
+      d.competences_entretien.forEach(item => {
+        if (!item || item.role !== "poste") return;
+
+        const crit = getEpCritPctValue(item.poids_criticite_pct);
+        if (crit + EPS < seuil) {
+          item.selectionnee = false;
+        }
+      });
+    }
+
     const renderList = (id, role) => {
       const wrap = $(id);
       if (!wrap) return;
 
       const list = (d.competences_entretien || [])
         .filter(x => x.role === role)
-        .filter(x => role !== "poste" || Number(x.poids_criticite_pct || 0) >= seuil);
+        .filter(x => role !== "poste" || !isPreparation || getEpCritPctValue(x.poids_criticite_pct) + EPS >= seuil);
 
       if (!list.length) {
         wrap.innerHTML = `<div class="ep-entretien-empty">Aucune compétence</div>`;
@@ -1995,7 +2013,9 @@
         row.className = "ep-entretien-comp-row";
 
         const checked = item.selectionnee !== false;
-        const canEvaluate = state._entretienModalMode === "realisation";
+        row.classList.toggle("is-unchecked", !checked);
+
+        const canEvaluate = epGetEntretienMode() === "realisation" && checked;
         const niveau = (item.niveau_actuel || "").toString().trim();
 
         row.innerHTML = `
@@ -2385,6 +2405,11 @@
 
   async function epOpenEvaluationFromEntretien(item) {
     if (!item || !item.id_comp) return;
+
+    if (item.selectionnee === false) {
+      epSetInlineMsg("ep_entretienMsg", "info", "Coche la compétence avant de l'évaluer.");
+      return;
+    }
 
     const idEntretien = epGetValue("ep_entretienId");
 

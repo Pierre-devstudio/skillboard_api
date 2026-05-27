@@ -483,6 +483,26 @@
       <div class="modal-body ep-entretien-body">
         <input type="hidden" id="ep_entretienId" />
 
+        <div class="ep-entretien-modebar">
+          <div class="ep-entretien-field-statut">
+            <select id="ep_entretienStatut" class="sb-select ep-entretien-statut-native" aria-hidden="true" tabindex="-1">
+              <option value="à réaliser">À réaliser</option>
+              <option value="en cours">En cours</option>
+              <option value="à signer 2/2">À signer 2/2</option>
+              <option value="à signer 1/2">À signer 1/2</option>
+              <option value="terminé">Terminé</option>
+            </select>
+
+            <div class="ep-status-toggle-wrap" aria-label="Avancement de l'entretien">
+              <span class="ep-status-toggle-side">À réaliser</span>
+              <button type="button" class="ep-switch" id="ep_entretienStatutToggle" role="switch" aria-checked="true" aria-label="Basculer le statut de l'entretien">
+                <span class="ep-switch-knob"></span>
+              </button>
+              <span class="ep-status-toggle-side" id="ep_entretienStatutToggleLabel">En cours</span>
+            </div>
+          </div>
+        </div>
+
         <div class="ep-entretien-topgrid">
           <div class="sb-field">
             <label class="sb-label" for="ep_entretienType">Type</label>
@@ -493,25 +513,6 @@
               <option value="Point manager">Point manager</option>
               <option value="Revue de poste">Revue de poste</option>
             </select>
-          </div>
-
-          <div class="sb-field ep-entretien-field-statut">
-            <label class="sb-label" for="ep_entretienStatutToggle">Avancement</label>
-            <select id="ep_entretienStatut" class="sb-select ep-entretien-statut-native" aria-hidden="true" tabindex="-1">
-              <option value="à réaliser">À réaliser</option>
-              <option value="en cours">En cours</option>
-              <option value="à signer 2/2">À signer 2/2</option>
-              <option value="à signer 1/2">À signer 1/2</option>
-              <option value="terminé">Terminé</option>
-            </select>
-
-            <div class="ep-status-toggle-wrap">
-              <span class="ep-status-toggle-side">À réaliser</span>
-              <button type="button" class="ep-switch" id="ep_entretienStatutToggle" role="switch" aria-checked="true" aria-label="Basculer le statut de l'entretien">
-                <span class="ep-switch-knob"></span>
-              </button>
-              <span class="ep-status-toggle-side" id="ep_entretienStatutToggleLabel">En cours</span>
-            </div>
           </div>
 
           <div class="sb-field">
