@@ -27,6 +27,8 @@
     _entretiensList: [],
     _entretienDraft: null,
     _entretienAuditContext: null,
+    _entretienModalMode: "preparation",
+    _entretienDocFile: null,
   };
 
 
@@ -1710,6 +1712,74 @@
     return v && v !== "—" ? v : "Collaborateur sélectionné";
   }
 
+  function epNormalizeEntretienStatut(value) {
+    const v = (value || "").toString().trim().toLowerCase();
+
+    if (["en cours", "encours"].includes(v)) return "en cours";
+    if (["à signer 2/2", "a signer 2/2", "à signer", "a signer"].includes(v)) return "à signer 2/2";
+    if (["à signer 1/2", "a signer 1/2"].includes(v)) return "à signer 1/2";
+    if (["terminé", "termine"].includes(v)) return "terminé";
+    if (["archivé", "archive"].includes(v)) return "archivé";
+
+    return "à réaliser";
+  }
+
+  function epSetEntretienStatutValue(value) {
+    const statut = epNormalizeEntretienStatut(value);
+    const sel = $("ep_entretienStatut");
+
+    if (sel) sel.value = statut;
+
+    const toggle = $("ep_entretienStatutToggle");
+    if (toggle) {
+      const checked = statut === "en cours";
+      toggle.classList.toggle("is-on", checked);
+      toggle.setAttribute("aria-checked", checked ? "true" : "false");
+    }
+
+    const label = $("ep_entretienStatutToggleLabel");
+    if (label) label.textContent = statut === "en cours" ? "En cours" : "À réaliser";
+  }
+
+  function epGetEntretienMode() {
+    return state._entretienModalMode === "realisation" ? "realisation" : "preparation";
+  }
+
+  function epApplyEntretienMode() {
+    const mode = epGetEntretienMode();
+    const isPreparation = mode === "preparation";
+
+    const modal = $("modalEpEntretien");
+    if (modal) {
+      modal.classList.toggle("is-preparation-mode", isPreparation);
+      modal.classList.toggle("is-realisation-mode", !isPreparation);
+    }
+
+    const statutField = document.querySelector("#modalEpEntretien .ep-entretien-field-statut");
+    const dateRealiseeField = document.querySelector("#modalEpEntretien .ep-entretien-field-date-realisee");
+
+    if (statutField) statutField.style.display = isPreparation ? "none" : "";
+    if (dateRealiseeField) dateRealiseeField.style.display = isPreparation ? "none" : "";
+
+    document.querySelectorAll("#modalEpEntretien .ep-entretien-tab").forEach(btn => {
+      const panel = btn.dataset.panel || "";
+      const hide = isPreparation && (panel === "realisation" || panel === "documents");
+      btn.style.display = hide ? "none" : "";
+    });
+
+    const currentPanel = document.querySelector("#modalEpEntretien .ep-entretien-tab.is-active")?.dataset?.panel || "";
+    if (isPreparation && (currentPanel === "realisation" || currentPanel === "documents")) {
+      epSetEntretienTab("preparation");
+    }
+
+    if (isPreparation) {
+      epSetEntretienStatutValue("à réaliser");
+    } else {
+      const current = epNormalizeEntretienStatut(epGetValue("ep_entretienStatut"));
+      epSetEntretienStatutValue(current === "à réaliser" ? "en cours" : current);
+    }
+  }
+
   function epSetEntretienTab(panel) {
     const p = panel || "preparation";
 
@@ -1826,9 +1896,11 @@
     return d;
   }
 
-  function fillEntretienModal(entretien) {
+  function fillEntretienModal(entretien, modeOverride) {
     const d = epPrepareEntretienDraft(entretien || null);
+    const mode = modeOverride || state._entretienModalMode || (d.id_entretien ? "realisation" : "preparation");
 
+    state._entretienModalMode = mode === "realisation" ? "realisation" : "preparation";
     state._entretienDraft = d;
     state.selectedEntretienId = d.id_entretien || null;
 
@@ -1850,12 +1922,14 @@
 
     epSetValue("ep_entretienSyntheseManager", d.synthese?.manager || "");
     epSetValue("ep_entretienSyntheseCollaborateur", d.synthese?.collaborateur || "");
+    epSetEntretienDocFile(null);
 
     setText("ep_entretienModalTitle", d.id_entretien ? (d.type_entretien || "Entretien individuel") : "Préparer un entretien individuel");
     setText("ep_entretienModalSub", epCurrentCollabName());
 
     epSetInlineMsg("ep_entretienMsg", "info", "");
-    epSetEntretienTab("preparation");
+    epApplyEntretienMode();
+    epSetEntretienTab(state._entretienModalMode === "realisation" ? "competences" : "preparation");
     epRenderEntretienCompetences();
     epLoadEntretienDocuments();
   }
@@ -1921,6 +1995,7 @@
         row.className = "ep-entretien-comp-row";
 
         const checked = item.selectionnee !== false;
+        const canEvaluate = state._entretienModalMode === "realisation";
         const niveau = (item.niveau_actuel || "").toString().trim();
 
         row.innerHTML = `
@@ -1943,12 +2018,14 @@
                 </svg>
               </button>
             ` : ""}
+            ${canEvaluate ? `
               <button type="button" class="sb-icon-btn ep-entretien-eval-btn" data-eval="1" title="Évaluer" aria-label="Évaluer">
                 <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M12 20h9"/>
                   <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>
                 </svg>
               </button>
+            ` : ""}
             ` : ""}
           </div>
         `;
@@ -1979,13 +2056,15 @@
     renderList("ep_entretienCompDevelop", "a_developper");
   }
 
-  function openEntretienModal(entretien) {
+  function openEntretienModal(entretien, modeOverride) {
     if (!state.selectedCollaborateurId) {
       _portal && _portal.showAlert("warning", "Sélectionne un collaborateur.");
       return;
     }
 
-    fillEntretienModal(entretien || null);
+    const mode = modeOverride || (entretien ? "realisation" : "preparation");
+
+    fillEntretienModal(entretien || null, mode);
     openModal("modalEpEntretien");
   }
 
@@ -2008,7 +2087,7 @@
       body: JSON.stringify(payload),
     });
 
-    fillEntretienModal(saved);
+    fillEntretienModal(saved, state._entretienModalMode);
     await loadEntretiensIndividuels();
     return saved;
   }
@@ -2020,7 +2099,7 @@
       const refreshed = await _portal.apiJson(
         `${_portal.apiBase}/skills/entretien-performance/entretien/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(idEntretien)}`
       );
-      fillEntretienModal(refreshed);
+      fillEntretienModal(refreshed, state._entretienModalMode);
     }
 
     epSetInlineMsg("ep_entretienMsg", "success", message || "Entretien enregistré");
@@ -2033,9 +2112,34 @@
       return;
     }
 
-    const statut = (epGetValue("ep_entretienStatut") || "").toLowerCase().trim();
-    if (["à signer 1/2", "a signer 1/2", "terminé", "termine"].includes(statut)) {
+    if (state._entretienModalMode === "preparation") {
+      try {
+        epSetInlineMsg("ep_entretienMsg", "info", "Enregistrement de la préparation…");
+        await saveEntretienOnly("à réaliser");
+        epSetInlineMsg("ep_entretienMsg", "success", "Préparation enregistrée. Entretien à réaliser.");
+      } catch (e) {
+        const raw = String(e?.message || e || "").replace(/^Erreur serveur\s*:\s*/i, "").trim();
+        epSetInlineMsg("ep_entretienMsg", "danger", raw || "Erreur lors de l'enregistrement.");
+      }
+      return;
+    }
+
+    const statut = epNormalizeEntretienStatut(epGetValue("ep_entretienStatut"));
+
+    if (["à signer 1/2", "à signer 2/2", "terminé"].includes(statut)) {
       epSetInlineMsg("ep_entretienMsg", "danger", "Entretien déjà engagé dans le circuit de signature : modification bloquée.");
+      return;
+    }
+
+    if (statut === "à réaliser") {
+      try {
+        epSetInlineMsg("ep_entretienMsg", "info", "Enregistrement de l'entretien…");
+        await saveEntretienOnly("à réaliser");
+        epSetInlineMsg("ep_entretienMsg", "success", "Entretien enregistré en statut à réaliser.");
+      } catch (e) {
+        const raw = String(e?.message || e || "").replace(/^Erreur serveur\s*:\s*/i, "").trim();
+        epSetInlineMsg("ep_entretienMsg", "danger", raw || "Erreur lors de l'enregistrement.");
+      }
       return;
     }
 
@@ -2154,7 +2258,7 @@
       `;
 
       card.querySelector('[data-act="open"]')?.addEventListener("click", () => {
-        openEntretienModal(entretien);
+        openEntretienModal(entretien, "realisation");
       });
 
       card.querySelector('[data-act="pdf"]')?.addEventListener("click", () => {
@@ -2462,6 +2566,72 @@
     }
   }
 
+  function epSetEntretienDocFile(file) {
+    state._entretienDocFile = file || null;
+
+    const nameEl = $("ep_entretienDocDropName");
+    if (nameEl) {
+      nameEl.textContent = file ? file.name : "Cliquez ou déposez un fichier ici";
+    }
+
+    const drop = $("ep_entretienDocDrop");
+    if (drop) drop.classList.toggle("has-file", !!file);
+  }
+
+  function epBindEntretienDropzoneOnce() {
+    if (state._entretienDropzoneBound) return;
+    state._entretienDropzoneBound = true;
+
+    const drop = $("ep_entretienDocDrop");
+    const input = $("ep_entretienDocFile");
+    if (!drop || !input) return;
+
+    const openPicker = () => input.click();
+
+    drop.addEventListener("click", openPicker);
+    drop.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") {
+        ev.preventDefault();
+        openPicker();
+      }
+    });
+
+    input.addEventListener("change", () => {
+      epSetEntretienDocFile(input.files?.[0] || null);
+    });
+
+    ["dragenter", "dragover"].forEach(evtName => {
+      drop.addEventListener(evtName, (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        drop.classList.add("is-dragover");
+      });
+    });
+
+    ["dragleave", "drop"].forEach(evtName => {
+      drop.addEventListener(evtName, (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        drop.classList.remove("is-dragover");
+      });
+    });
+
+    drop.addEventListener("drop", (ev) => {
+      const file = ev.dataTransfer?.files?.[0] || null;
+      if (!file) return;
+
+      epSetEntretienDocFile(file);
+
+      try {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+      } catch (_) {
+        // Certains navigateurs verrouillent input.files. Le state prend le relais.
+      }
+    });
+  }
+
   async function epUploadEntretienDocument() {
     const idEntretien = epGetValue("ep_entretienId");
     const fileInput = $("ep_entretienDocFile");
@@ -2471,9 +2641,9 @@
       return;
     }
 
-    const file = fileInput?.files?.[0] || null;
+    const file = state._entretienDocFile || fileInput?.files?.[0] || null;
     if (!file) {
-      epSetInlineMsg("ep_entretienMsg", "danger", "Sélectionne un fichier.");
+      epSetInlineMsg("ep_entretienMsg", "danger", "Sélectionne ou dépose un fichier.");
       return;
     }
 
@@ -2491,6 +2661,7 @@
       });
 
       if (fileInput) fileInput.value = "";
+      epSetEntretienDocFile(null);
       epSetInlineMsg("ep_entretienMsg", "success", "Document importé");
       await epLoadEntretienDocuments();
 
@@ -3075,14 +3246,14 @@
         const btnEntretien = $("ep_btnEntretienIndividuel");
         if (btnEntretien) {
           btnEntretien.addEventListener("click", () => {
-            openEntretienModal(null);
+            openEntretienModal(null, "preparation");
           });
         }
 
         const btnNewEntretienHistory = $("ep_btnNewEntretienFromHistory");
         if (btnNewEntretienHistory) {
           btnNewEntretienHistory.addEventListener("click", () => {
-            openEntretienModal(null);
+            openEntretienModal(null, "preparation");
           });
         }
 
@@ -3135,6 +3306,16 @@
         const btnUploadDoc = $("ep_btnUploadEntretienDoc");
         if (btnUploadDoc) {
           btnUploadDoc.addEventListener("click", epUploadEntretienDocument);
+        }
+
+        epBindEntretienDropzoneOnce();
+
+        const statutToggle = $("ep_entretienStatutToggle");
+        if (statutToggle) {
+          statutToggle.addEventListener("click", () => {
+            const next = statutToggle.classList.contains("is-on") ? "à réaliser" : "en cours";
+            epSetEntretienStatutValue(next);
+          });
         }
 
         const modalEntretien = $("modalEpEntretien");
