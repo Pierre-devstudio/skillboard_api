@@ -2354,13 +2354,8 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload, 
                         ),
                     )
 
-                    if cur.fetchone() is None:
-                        raise HTTPException(
-                            status_code=400,
-                            detail="L'entretien individuel sélectionné ne correspond pas au collaborateur.",
-                        )
-
-                    if cur.fetchone() is None:
+                    entretien_row = cur.fetchone()
+                    if entretien_row is None:
                         raise HTTPException(
                             status_code=400,
                             detail="L'entretien individuel sélectionné est introuvable ou ne correspond pas au collaborateur.",
