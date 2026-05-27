@@ -6114,3 +6114,131 @@ body{
   width:13px;
   height:13px;
 }
+/* ======================================================
+   CORE — Validation électronique
+   ====================================================== */
+
+#modalValidationElectronique{
+  z-index:10080;
+}
+
+#modalValidationElectronique .ve-modal-card{
+  width:min(720px, 94vw);
+}
+
+#modalValidationElectronique .ve-modal-body{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+#modalValidationElectronique .ve-intro{
+  padding:10px 12px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:12px;
+  background:var(--sb-gray-50);
+}
+
+#modalValidationElectronique .ve-intro-title{
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:700;
+}
+
+#modalValidationElectronique .ve-intro-text{
+  margin-top:3px;
+  color:var(--sb-gray-500);
+  font-size:12px;
+  line-height:1.35;
+}
+
+#modalValidationElectronique .ve-toggle{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+#modalValidationElectronique .ve-toggle-btn{
+  height:30px;
+  padding:0 12px;
+  border:1px solid var(--sb-gray-300);
+  border-radius:10px;
+  background:#fff;
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+#modalValidationElectronique .ve-toggle-btn.is-active{
+  background:var(--accent);
+  border-color:var(--accent);
+  color:#fff;
+}
+
+#modalValidationElectronique .ve-panel{
+  display:none;
+  padding:12px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:13px;
+  background:#fff;
+}
+
+#modalValidationElectronique .ve-panel.is-active{
+  display:block;
+}
+
+#modalValidationElectronique .ve-sign-canvas{
+  width:100%;
+  height:170px;
+  margin-top:8px;
+  border:1px dashed var(--sb-gray-300);
+  border-radius:12px;
+  background:#fff;
+  touch-action:none;
+}
+
+#modalValidationElectronique .ve-panel-actions{
+  margin-top:8px;
+  display:flex;
+  justify-content:flex-end;
+}
+
+#modalValidationElectronique .ve-generated-sign{
+  min-height:118px;
+  margin-top:8px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:1px dashed var(--sb-gray-300);
+  border-radius:12px;
+  background:#fff;
+  color:var(--sb-gray-900);
+  font-family:"Brush Script MT", "Segoe Script", cursive;
+  font-size:46px;
+  line-height:1.1;
+}
+
+#modalValidationElectronique .ve-slider-box{
+  padding:12px;
+  border:1px solid var(--sb-gray-200);
+  border-radius:13px;
+  background:#fff;
+}
+
+#modalValidationElectronique #ve_confirmSlider{
+  width:100%;
+  margin-top:8px;
+  accent-color:var(--accent);
+}
+
+#modalValidationElectronique .ve-footer #ve_msg{
+  margin-right:auto;
+}
+
+#view-entretien-performance .ep-entretien-status--a-signer-1-2,
+#view-entretien-performance .ep-entretien-status--a-signer-2-2{
+  border-color:var(--accent);
+  color:var(--accent);
+  background:transparent;
+}

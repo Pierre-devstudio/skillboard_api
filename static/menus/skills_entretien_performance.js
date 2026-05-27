@@ -1731,7 +1731,6 @@
       synthese: {
         manager: "",
         collaborateur: "",
-        signe: false,
       },
       nb_documents: 0,
     };
@@ -1829,9 +1828,6 @@
     epSetValue("ep_entretienSyntheseManager", d.synthese?.manager || "");
     epSetValue("ep_entretienSyntheseCollaborateur", d.synthese?.collaborateur || "");
 
-    const chk = $("ep_entretienSigne");
-    if (chk) chk.checked = !!d.synthese?.signe;
-
     setText("ep_entretienModalTitle", d.id_entretien ? (d.type_entretien || "Entretien individuel") : "Préparer un entretien individuel");
     setText("ep_entretienModalSub", epCurrentCollabName());
 
@@ -1839,13 +1835,10 @@
     epSetEntretienTab("preparation");
     epRenderEntretienCompetences();
     epLoadEntretienDocuments();
-    epRefreshEntretienFooterState();
   }
 
   function buildEntretienPayload(statutOverride) {
     const d = state._entretienDraft || epDefaultEntretienDraft();
-
-    const signe = !!$("ep_entretienSigne")?.checked;
 
     return {
       type_entretien: epGetValue("ep_entretienType") || "Entretien individuel",
@@ -1873,22 +1866,8 @@
       synthese: {
         manager: epGetValue("ep_entretienSyntheseManager"),
         collaborateur: epGetValue("ep_entretienSyntheseCollaborateur"),
-        signe,
       },
     };
-  }
-
-  function epRefreshEntretienFooterState() {
-    const idEntretien = epGetValue("ep_entretienId");
-    const statut = epGetValue("ep_entretienStatut");
-
-    const btnPdf = $("ep_btnEntretienPdf");
-    const btnSigner = $("ep_btnEntretienSigner");
-    const btnTerminer = $("ep_btnEntretienTerminer");
-
-    if (btnPdf) btnPdf.disabled = !idEntretien || !["à signer", "terminé"].includes(statut);
-    if (btnSigner) btnSigner.disabled = !idEntretien;
-    if (btnTerminer) btnTerminer.disabled = !idEntretien;
   }
 
   function epRenderEntretienCompetences() {
@@ -1987,37 +1966,89 @@
     openModal("modalEpEntretien");
   }
 
-  async function saveEntretienIndividuel(statutOverride) {
+  async function saveEntretienOnly(statutOverride) {
+    if (!state.selectedCollaborateurId || !_portal) {
+      throw new Error("Sélectionne un collaborateur.");
+    }
+
+    const idEntretien = epGetValue("ep_entretienId");
+    const payload = buildEntretienPayload(statutOverride);
+    const isUpdate = !!idEntretien;
+
+    const url = isUpdate
+      ? `${_portal.apiBase}/skills/entretien-performance/entretien/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(idEntretien)}`
+      : `${_portal.apiBase}/skills/entretien-performance/entretien/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}`;
+
+    const saved = await _portal.apiJson(url, {
+      method: isUpdate ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    fillEntretienModal(saved);
+    await loadEntretiensIndividuels();
+    return saved;
+  }
+
+  async function epRefreshEntretienAfterValidation(message) {
+    const idEntretien = epGetValue("ep_entretienId");
+
+    if (idEntretien && _portal) {
+      const refreshed = await _portal.apiJson(
+        `${_portal.apiBase}/skills/entretien-performance/entretien/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(idEntretien)}`
+      );
+      fillEntretienModal(refreshed);
+    }
+
+    epSetInlineMsg("ep_entretienMsg", "success", message || "Entretien enregistré");
+    await loadEntretiensIndividuels();
+  }
+
+  async function openEntretienValidationFlow() {
     if (!state.selectedCollaborateurId || !_portal) {
       epSetInlineMsg("ep_entretienMsg", "danger", "Sélectionne un collaborateur.");
       return;
     }
 
-    const idEntretien = epGetValue("ep_entretienId");
-    const payload = buildEntretienPayload(statutOverride);
+    const statut = (epGetValue("ep_entretienStatut") || "").toLowerCase().trim();
+    if (["à signer 1/2", "a signer 1/2", "terminé", "termine"].includes(statut)) {
+      epSetInlineMsg("ep_entretienMsg", "danger", "Entretien déjà engagé dans le circuit de signature : modification bloquée.");
+      return;
+    }
+
+    if (!window.NovoskillValidationElectronique || typeof window.NovoskillValidationElectronique.open !== "function") {
+      epSetInlineMsg("ep_entretienMsg", "danger", "Composant de validation électronique indisponible.");
+      return;
+    }
+
+    const evaluatorName = (document.getElementById("topbarName")?.textContent || "").trim() || "Évaluateur";
 
     try {
-      epSetInlineMsg("ep_entretienMsg", "info", "Enregistrement…");
-
-      const isUpdate = !!idEntretien;
-
-      const url = isUpdate
-        ? `${_portal.apiBase}/skills/entretien-performance/entretien/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(idEntretien)}`
-        : `${_portal.apiBase}/skills/entretien-performance/entretien/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}`;
-
-      const saved = await _portal.apiJson(url, {
-        method: isUpdate ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      await window.NovoskillValidationElectronique.open({
+        apiBase: _portal.apiBase,
+        apiJson: _portal.apiJson,
+        contactId: _portal.contactId,
+        documentId: epGetValue("ep_entretienId"),
+        typeDocument: "entretien_individuel",
+        typeSignataire: "evaluateur",
+        signataireName: evaluatorName,
+        title: "Validation électronique de l’entretien",
+        subtitle: `Évaluateur : ${evaluatorName}`,
+        saveDocument: async (statutSignature) => saveEntretienOnly(statutSignature || "à signer 2/2"),
+        payloadValidation: {
+          source: "insights",
+          workflow: "entretien_individuel",
+        },
+        onLater: async () => {
+          await epRefreshEntretienAfterValidation("Entretien enregistré — signature à finaliser");
+        },
+        onSigned: async () => {
+          await epRefreshEntretienAfterValidation("Entretien enregistré et validation électronique enregistrée");
+        },
       });
-
-      fillEntretienModal(saved);
-      epSetInlineMsg("ep_entretienMsg", "success", "Entretien enregistré");
-      await loadEntretiensIndividuels();
-
     } catch (e) {
       const raw = String(e?.message || e || "").replace(/^Erreur serveur\s*:\s*/i, "").trim();
-      epSetInlineMsg("ep_entretienMsg", "danger", raw || "Erreur lors de l'enregistrement.");
+      epSetInlineMsg("ep_entretienMsg", "danger", raw || "Erreur lors de l'ouverture de la validation électronique.");
     }
   }
 
@@ -2078,7 +2109,8 @@
         .toLowerCase()
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
-        .replace(/\s+/g, "-");
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
 
       card.innerHTML = `
         <div class="ep-entretien-row-main">
@@ -3032,24 +3064,7 @@
 
         const btnSaveEntretien = $("ep_btnSaveEntretien");
         if (btnSaveEntretien) {
-          btnSaveEntretien.addEventListener("click", () => {
-            saveEntretienIndividuel();
-          });
-        }
-
-        const btnSigner = $("ep_btnEntretienSigner");
-        if (btnSigner) {
-          btnSigner.addEventListener("click", () => {
-            saveEntretienIndividuel("à signer");
-          });
-        }
-
-        const btnTerminer = $("ep_btnEntretienTerminer");
-        if (btnTerminer) {
-          btnTerminer.addEventListener("click", () => {
-            const signed = !!$("ep_entretienSigne")?.checked;
-            saveEntretienIndividuel(signed ? "terminé" : "à signer");
-          });
+          btnSaveEntretien.addEventListener("click", openEntretienValidationFlow);
         }
 
         document.querySelectorAll("#modalEpEntretien .ep-entretien-tab").forEach(btn => {
@@ -3096,13 +3111,6 @@
         const btnUploadDoc = $("ep_btnUploadEntretienDoc");
         if (btnUploadDoc) {
           btnUploadDoc.addEventListener("click", epUploadEntretienDocument);
-        }
-
-        const btnEntretienPdf = $("ep_btnEntretienPdf");
-        if (btnEntretienPdf) {
-          btnEntretienPdf.addEventListener("click", () => {
-            openEntretienPdf();
-          });
         }
 
         const modalEntretien = $("modalEpEntretien");

@@ -500,7 +500,8 @@
             <select id="ep_entretienStatut" class="sb-select">
               <option value="à réaliser">À réaliser</option>
               <option value="en cours">En cours</option>
-              <option value="à signer">À signer</option>
+              <option value="à signer 2/2">À signer 2/2</option>
+              <option value="à signer 1/2">À signer 1/2</option>
               <option value="terminé">Terminé</option>
             </select>
           </div>
@@ -643,10 +644,6 @@
               </div>
             </div>
 
-            <label class="sb-check ep-entretien-sign-check">
-              <input type="checkbox" id="ep_entretienSigne" />
-              <span>Entretien signé ou validation obtenue</span>
-            </label>
           </div>
         </div>
 
@@ -674,10 +671,7 @@
         <div id="ep_entretienMsg" class="sb-inline-msg" aria-live="polite"></div>
 
         <button type="button" class="sb-btn sb-btn--soft" id="btnEpEntretienModalClose">Annuler</button>
-        <button type="button" class="sb-btn sb-btn--soft" id="ep_btnEntretienPdf">Rapport PDF</button>
-        <button type="button" class="sb-btn sb-btn--soft" id="ep_btnEntretienSigner">À signer</button>
         <button type="button" class="sb-btn sb-btn--accent" id="ep_btnSaveEntretien">Enregistrer</button>
-        <button type="button" class="sb-btn sb-btn--accent" id="ep_btnEntretienTerminer">Terminer</button>
       </div>
     </div>
   </div>

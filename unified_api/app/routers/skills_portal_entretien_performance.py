@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Any
 from uuid import uuid4
 from datetime import date
 import json
+import base64
 from io import BytesIO
 
 from psycopg.rows import dict_row
@@ -893,8 +894,12 @@ def _ep_valid_entretien_statut(value: Optional[str]) -> str:
 
         "en cours": "en cours",
 
-        "à signer": "à signer",
-        "a signer": "à signer",
+        "à signer": "à signer 2/2",
+        "a signer": "à signer 2/2",
+        "à signer 2/2": "à signer 2/2",
+        "a signer 2/2": "à signer 2/2",
+        "à signer 1/2": "à signer 1/2",
+        "a signer 1/2": "à signer 1/2",
 
         "terminé": "terminé",
         "termine": "terminé",
@@ -992,6 +997,22 @@ def _ep_payload_competences(payload: EntretienIndividuelPayload) -> List[Dict[st
         return [x for x in payload.competences_entretien if isinstance(x, dict)]
 
     return []
+
+
+def _ep_has_active_validation(cur, id_ent: str, id_entretien: str) -> bool:
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_validations_electroniques
+        WHERE type_document = 'entretien_individuel'
+          AND id_document_ref = %s
+          AND id_ent = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (id_entretien, id_ent),
+    )
+    return cur.fetchone() is not None
 
 def _get_scoring_config() -> ScoringConfig:
     # Règle Skillboard (historique): pondération = 6 / nb_criteres, score final sur 24
@@ -1613,6 +1634,12 @@ def ep_update_entretien_individuel(
                 if cur.fetchone() is None:
                     raise HTTPException(status_code=404, detail="Entretien individuel introuvable.")
 
+                if _ep_has_active_validation(cur, id_ent, id_entretien):
+                    raise HTTPException(
+                        status_code=409,
+                        detail="Entretien déjà signé : modification bloquée. Réouverture/versionnement à traiter dans un flux dédié.",
+                    )
+
                 statut = _ep_valid_entretien_statut(payload.statut)
 
                 cur.execute(
@@ -2046,9 +2073,37 @@ def ep_entretien_individuel_pdf(
                 if row is None:
                     raise HTTPException(status_code=404, detail="Entretien individuel introuvable.")
 
+                cur.execute(
+                    """
+                    SELECT
+                        id_validation,
+                        type_signataire,
+                        nom_signataire,
+                        prenom_signataire,
+                        mode_validation,
+                        signature_image,
+                        date_validation
+                    FROM public.tbl_validations_electroniques
+                    WHERE type_document = 'entretien_individuel'
+                      AND id_document_ref = %s
+                      AND id_ent = %s
+                      AND COALESCE(archive, FALSE) = FALSE
+                    ORDER BY
+                        CASE lower(type_signataire)
+                            WHEN 'evaluateur' THEN 1
+                            WHEN 'collaborateur' THEN 2
+                            ELSE 9
+                        END,
+                        date_validation ASC
+                    """,
+                    (id_entretien, id_ent),
+                )
+                validation_rows = cur.fetchall() or []
+
                 try:
                     from reportlab.lib.pagesizes import A4
                     from reportlab.pdfgen import canvas
+                    from reportlab.lib.utils import ImageReader
                 except Exception:
                     raise HTTPException(status_code=500, detail="Module PDF indisponible côté serveur.")
 
@@ -2123,6 +2178,43 @@ def ep_entretien_individuel_pdf(
 
                         _write_text(f"{label} : {value}")
 
+                def _write_validation_signature(vrow):
+                    nonlocal y
+
+                    if y < 125:
+                        pdf.showPage()
+                        y = height - 48
+
+                    role = (vrow.get("type_signataire") or "signataire").strip().capitalize()
+                    signataire = " ".join([
+                        (vrow.get("prenom_signataire") or "").strip(),
+                        (vrow.get("nom_signataire") or "").strip(),
+                    ]).strip() or "—"
+                    signed_at = str(vrow.get("date_validation") or "—")
+                    ident = str(vrow.get("id_validation") or "—")
+
+                    pdf.setFont("Helvetica-Bold", 9)
+                    pdf.drawString(margin_x, y, f"{role} : {signataire}")
+                    y -= 12
+                    pdf.setFont("Helvetica", 8)
+                    pdf.drawString(margin_x, y, f"Validation électronique : {signed_at} — Identifiant : {ident}")
+                    y -= 10
+
+                    raw_img = str(vrow.get("signature_image") or "").strip()
+                    try:
+                        if raw_img.startswith("data:image/png;base64,"):
+                            raw_img = raw_img.split(",", 1)[1].strip()
+                        img_bytes = base64.b64decode(raw_img, validate=True)
+                        img = ImageReader(BytesIO(img_bytes))
+                        pdf.drawImage(img, margin_x, y - 45, width=170, height=45, preserveAspectRatio=True, mask='auto')
+                        y -= 55
+                    except Exception:
+                        pdf.setFont("Helvetica-Oblique", 8)
+                        pdf.drawString(margin_x, y, "Signature image indisponible")
+                        y -= 14
+
+                    y -= 6
+
                 nom = " ".join(
                     [
                         (row.get("prenom_effectif") or "").strip(),
@@ -2159,6 +2251,13 @@ def ep_entretien_individuel_pdf(
 
                 _section("Synthèse")
                 _write_dict(_ep_json_dict(row.get("synthese")))
+
+                _section("Validations électroniques")
+                if validation_rows:
+                    for vrow in validation_rows:
+                        _write_validation_signature(vrow)
+                else:
+                    _write_text("Aucune validation électronique enregistrée.")
 
                 pdf.save()
 
