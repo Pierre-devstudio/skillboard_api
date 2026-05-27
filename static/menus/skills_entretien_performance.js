@@ -569,6 +569,29 @@
       _setRowAuditedVisual(tr);
     }
 
+    if (idEc && state._entretienDraft && Array.isArray(state._entretienDraft.competences_entretien)) {
+      const idComp = (state.selectedCompetenceId || "").toString().trim();
+
+      state._entretienDraft.competences_entretien.forEach(item => {
+        if (!item) return;
+
+        const itemEc = (item.id_effectif_competence || "").toString().trim();
+        const itemComp = (item.id_comp || "").toString().trim();
+
+        const sameEffectifCompetence = itemEc && itemEc === idEc;
+        const sameCompetenceWithoutEffectifLink = !itemEc && idComp && itemComp === idComp;
+
+        if (!sameEffectifCompetence && !sameCompetenceWithoutEffectifLink) return;
+
+        item.id_effectif_competence = idEc;
+        item.date_derniere_eval = dateTxt;
+
+        if (levelTxt && levelTxt !== "—") {
+          item.niveau_actuel = levelTxt;
+        }
+      });
+    }
+
     // 4) KPI “à faire” (jamais auditées)
     _recalcKpiToDoPreferState();
 
@@ -2284,8 +2307,9 @@
 
     const existingRow = document.querySelector(`#ep_tblCompetences tbody tr[data-id-effectif-competence="${CSS.escape(idEc)}"]`);
     if (existingRow) {
-      existingRow.click();
-      return;
+      const tb = $("ep_tblCompetences")?.querySelector("tbody");
+      if (tb) tb.querySelectorAll("tr.active").forEach(r => r.classList.remove("active"));
+      existingRow.classList.add("active");
     }
 
     await epOpenEvaluationStandalone({
@@ -3856,24 +3880,25 @@
               clearMsg();
               btnSave.disabled = true;
 
+              const entretienAuditContext = state._entretienAuditContext
+                ? { ...state._entretienAuditContext }
+                : null;
+
+              const isHistoryUpdate = !!state._historyAuditEditing?.id_audit_competence;
+
               const saved = await saveCurrentAudit();
               await afterAuditSavedRefresh(saved);
 
-              if (state._entretienAuditContext?.id_entretien) {
-                setTimeout(() => {
-                  closeModal("modalEpEvaluation");
-
-                  const currentEntretien = (state._entretiensList || [])
-                    .find(e => e.id_entretien === state._entretienAuditContext.id_entretien);
-
-                  if (currentEntretien) {
-                    openEntretienModal(currentEntretien);
-                    epSetEntretienTab("competences");
-                  }
-                }, 450);
+              if (entretienAuditContext?.id_entretien && !isHistoryUpdate) {
+                closeModal("modalEpEvaluation");
+                openModal("modalEpEntretien");
+                epRenderEntretienCompetences();
+                epSetEntretienTab("competences");
+                epSetInlineMsg("ep_entretienMsg", "success", "Compétence évaluée. Tu peux poursuivre les autres évaluations.");
+                state._entretienAuditContext = null;
+                return;
               }
 
-              const isHistoryUpdate = !!state._historyAuditEditing?.id_audit_competence;
               setMsg(true, isHistoryUpdate ? "Évaluation mise à jour" : "Audit enregistré avec succès");
             } catch (e) {
               const rawReason = String(e?.message || e || "").trim();
