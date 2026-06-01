@@ -423,13 +423,11 @@ def _compute_poste_fragility_record(
     dependance_score = min(15, (6 * nb_dep_zero) + (3 * nb_dep_one))
     transmission_score = _score_transmission(pool_total, pool_eligible)
 
-    # Score métier prioritaire : une compétence critique non tenue doit peser fort.
-    # La formule historique _calc_fragility_score donne 85 pour une criticité non couverte,
-    # ce qui évite les faux postes à 0 % quand les compétences existent mais ne sont pas évaluées.
+    # Doctrine unique, mais sans surpondération brutale :
+    # une compétence déclarée mais non évaluée ne couvre pas le poste,
+    # mais le score reste celui du modèle additif utilisé par le détail poste.
     nb_fragilites = nb_non_tenues + nb_dep_zero + nb_dep_one
-    competence_score = _calc_fragility_score(nb_non_tenues, nb_dep_zero, nb_fragilites)
-    additive_score = structure_score + efficacite_score + dependance_score
-    base_score = max(competence_score, additive_score)
+    base_score = structure_score + efficacite_score + dependance_score
     if rupture:
         score = 100
     else:
@@ -1138,14 +1136,9 @@ def get_analyse_summary(
 
                     JOIN effectifs_valid ev ON ev.id_effectif = ec.id_effectif_client
 
-                    LEFT JOIN public.tbl_effectif_client_audit_competence a
-                      ON a.id_audit_competence = ec.id_dernier_audit
-                     AND a.id_effectif_competence = ec.id_effectif_competence
-
                     WHERE COALESCE(ec.actif, TRUE) = TRUE
 
                       AND COALESCE(ec.archive, FALSE) = FALSE
-                      AND (ec.date_derniere_eval IS NOT NULL OR a.resultat_eval IS NOT NULL)
 
                     GROUP BY ec.id_comp
 
@@ -1161,14 +1154,9 @@ def get_analyse_summary(
 
                       ON ec.id_effectif_client = l.id_effectif
 
-                    LEFT JOIN public.tbl_effectif_client_audit_competence a
-                      ON a.id_audit_competence = ec.id_dernier_audit
-                     AND a.id_effectif_competence = ec.id_effectif_competence
-
                     WHERE COALESCE(ec.actif, TRUE) = TRUE
 
                       AND COALESCE(ec.archive, FALSE) = FALSE
-                      AND (ec.date_derniere_eval IS NOT NULL OR a.resultat_eval IS NOT NULL)
 
                     GROUP BY l.y, ec.id_comp
 
@@ -4499,8 +4487,8 @@ def get_analyse_risques_poste_diagnostic(
                             END AS act_rank,
 
                             CASE
+                              WHEN a.id_audit_competence IS NOT NULL AND a.resultat_eval IS NOT NULL THEN TRUE
                               WHEN ec.date_derniere_eval IS NOT NULL THEN TRUE
-                              WHEN a.id_audit_competence IS NOT NULL THEN TRUE
                               ELSE FALSE
                             END AS is_evaluee,
 
@@ -4602,14 +4590,13 @@ def get_analyse_risques_poste_diagnostic(
                     n_ok_tit = int(r.get("nb_ok_titulaires") or 0)
                     n_relais = max(n_ok - n_ok_tit, 0)
 
-                    missing_presence = 0
-                    underlevel_missing = 0
+                    missing_validated = 0
+                    declared_but_not_validated = 0
                     total_missing = 0
                     if besoin_local > 0:
-                        missing_presence = max(besoin_local - n_tit_any, 0)
-                        covered_by_presence = min(n_tit_any, besoin_local)
-                        underlevel_missing = max(covered_by_presence - n_ok_tit, 0)
                         total_missing = max(besoin_local - n_ok_tit, 0)
+                        missing_validated = total_missing
+                        declared_but_not_validated = max(min(n_tit_any, besoin_local) - n_ok_tit, 0)
 
                     if total_missing > 0:
                         nb0 += 1
@@ -4626,11 +4613,11 @@ def get_analyse_risques_poste_diagnostic(
                             )
                         )
 
-                    if missing_presence > 0:
-                        structure_missing_units += missing_presence
+                    if missing_validated > 0:
+                        structure_missing_units += missing_validated
 
-                    if underlevel_missing > 0:
-                        efficiency_missing_units += underlevel_missing
+                    if declared_but_not_validated > 0:
+                        efficiency_missing_units += declared_but_not_validated
 
                     if total_missing > 0:
                         eff_items.append(
