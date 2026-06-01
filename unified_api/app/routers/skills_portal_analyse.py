@@ -451,7 +451,7 @@ def _compute_poste_fragility_record(
         "score_efficacite": efficacite_score,
         "score_dependance": dependance_score,
         "score_transmission": transmission_score,
-        "score_competences": competence_score,
+        "score_competences": base_score,
         "base_score": base_score,
         "indice_fragilite": int(score),
         "is_fragile": bool(rupture or base_score > 0),
