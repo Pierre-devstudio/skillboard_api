@@ -570,6 +570,11 @@ def _fetch_postes_fragility_records_at(
                 ELSE 0
             END AS act_rank,
             CASE
+                WHEN ec.date_derniere_eval IS NOT NULL THEN TRUE
+                WHEN a.id_audit_competence IS NOT NULL THEN TRUE
+                ELSE FALSE
+            END AS is_evaluee,
+            CASE
               WHEN (
                 r.edu_min_rank = 0
                 OR (
@@ -590,6 +595,9 @@ def _fetch_postes_fragility_records_at(
             END AS is_eligible
         FROM req r
         JOIN public.tbl_effectif_client_competence ec ON ec.id_comp = r.id_comp
+        LEFT JOIN public.tbl_effectif_client_audit_competence a
+          ON a.id_audit_competence = ec.id_dernier_audit
+         AND a.id_effectif_competence = ec.id_effectif_competence
         JOIN pool_all_effectifs pe ON pe.id_effectif = ec.id_effectif_client
         WHERE COALESCE(ec.actif, TRUE) = TRUE
           AND COALESCE(ec.archive, FALSE) = FALSE
@@ -598,8 +606,8 @@ def _fetch_postes_fragility_records_at(
         SELECT
             *,
             CASE
-                WHEN req_rank > 0 THEN (act_rank >= req_rank)
-                ELSE (act_rank > 0)
+                WHEN req_rank > 0 THEN (is_evaluee AND act_rank >= req_rank)
+                ELSE (is_evaluee AND act_rank > 0)
             END AS is_ok
         FROM ec_raw
     )
