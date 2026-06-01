@@ -5467,9 +5467,9 @@ function renderDetail(mode) {
                 : "";
 
               const presTitle = [
-                `Porteurs nominaux: ${P}`,
+                `Porteurs validés: ${P}`,
                 `Besoin total: ${B}`,
-                Number.isFinite(Pd) ? `Disponibles aujourd’hui: ${Pd}` : null,
+                Number.isFinite(Pd) ? `Validés disponibles aujourd’hui: ${Pd}` : null,
                 (r.nb_experts !== null && r.nb_experts !== undefined) ? `Experts: ${Number(r.nb_experts || 0)} (dispo: ${Number(r.nb_experts_dispo || 0)})` : null
               ].filter(Boolean).join(" | ");
 
@@ -5507,7 +5507,7 @@ function renderDetail(mode) {
                             style="padding:6px 10px; font-size:12px; line-height:1;">
                       Voir détail
                     </button>
-                  </td
+                  </td>
                 </tr>
               `;
             }).join("")}

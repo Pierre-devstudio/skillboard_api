@@ -651,8 +651,9 @@ def _fetch_postes_fragility_records(
                 ELSE 0
             END AS act_rank,
             CASE
-                WHEN a.id_audit_competence IS NOT NULL AND a.resultat_eval IS NOT NULL THEN TRUE
-                WHEN ec.date_derniere_eval IS NOT NULL THEN TRUE
+                WHEN a.resultat_eval IS NOT NULL
+                 AND (a.date_audit IS NOT NULL OR ec.date_derniere_eval IS NOT NULL OR a.id_audit_competence IS NOT NULL)
+                THEN TRUE
                 ELSE FALSE
             END AS is_evaluee,
             CASE
@@ -733,6 +734,381 @@ def _fetch_postes_fragility_records(
     )
     return records
 
+
+
+def _competence_state_label(etat: str) -> str:
+    return {
+        "AUCUN_TITULAIRE": "Poste non tenu",
+        "COUVERTURE_ABSENTE": "Aucun porteur déclaré",
+        "COUVERTURE_NON_CONFIRMEE": "À évaluer",
+        "NIVEAU_INSUFFISANT": "Niveau insuffisant",
+        "DEPENDANCE": "Dépendance",
+        "COUVERTURE_VALIDEE": "Couverture validée",
+    }.get(etat or "", "À qualifier")
+
+
+def _competence_action_label(etat: str) -> str:
+    return {
+        "AUCUN_TITULAIRE": "Affecter un titulaire ou arbitrer le poste",
+        "COUVERTURE_ABSENTE": "Identifier un porteur interne ou recruter",
+        "COUVERTURE_NON_CONFIRMEE": "Évaluer en priorité",
+        "NIVEAU_INSUFFISANT": "Former / accompagner",
+        "DEPENDANCE": "Organiser une doublure ou une transmission",
+        "COUVERTURE_VALIDEE": "Surveiller",
+    }.get(etat or "", "Analyser")
+
+
+def _competence_state_risk(etat: str) -> int:
+    return {
+        "AUCUN_TITULAIRE": 100,
+        "COUVERTURE_ABSENTE": 100,
+        "COUVERTURE_NON_CONFIRMEE": 85,
+        "NIVEAU_INSUFFISANT": 70,
+        "DEPENDANCE": 60,
+        "COUVERTURE_VALIDEE": 0,
+    }.get(etat or "", 0)
+
+
+def _competence_priorite_from_score(score: int) -> str:
+    s = _clamp_int(score, 0, 100)
+    if s >= 75:
+        return "P1"
+    if s >= 50:
+        return "P2"
+    return "P3"
+
+
+def _build_competence_causes_from_counts(counts: Dict[str, int]) -> List[Dict[str, Any]]:
+    return [
+        {
+            "code": "COUVERTURE_ABSENTE",
+            "titre": "Couverture absente",
+            "count": int(counts.get("AUCUN_TITULAIRE", 0) or 0) + int(counts.get("COUVERTURE_ABSENTE", 0) or 0),
+            "lecture": "Aucun porteur confirmé ne couvre cette compétence sur une partie des postes concernés.",
+            "action": "Identifier un porteur interne, affecter un titulaire ou préparer un recrutement ciblé.",
+        },
+        {
+            "code": "COUVERTURE_NON_CONFIRMEE",
+            "titre": "Couverture non confirmée",
+            "count": int(counts.get("COUVERTURE_NON_CONFIRMEE", 0) or 0),
+            "lecture": "La compétence est déclarée dans le profil, mais aucune évaluation exploitable ne confirme le niveau attendu.",
+            "action": "Planifier une évaluation avant de considérer le poste sécurisé.",
+        },
+        {
+            "code": "NIVEAU_INSUFFISANT",
+            "titre": "Écart de maîtrise",
+            "count": int(counts.get("NIVEAU_INSUFFISANT", 0) or 0),
+            "lecture": "La compétence est évaluée, mais le niveau constaté ne couvre pas le niveau requis.",
+            "action": "Prévoir une formation, un accompagnement ou une montée en compétence ciblée.",
+        },
+        {
+            "code": "DEPENDANCE",
+            "titre": "Dépendance / transmission",
+            "count": int(counts.get("DEPENDANCE", 0) or 0),
+            "lecture": "La compétence est validée, mais elle repose sur un seul porteur confirmé.",
+            "action": "Organiser une doublure ou un transfert de savoir-faire.",
+        },
+    ]
+
+
+def _fetch_competence_fragility_records(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    criticite_min: int,
+    comp_id: Optional[str] = None,
+    limit: int = 200,
+) -> List[Dict[str, Any]]:
+    """
+    Source unique pour la table "Compétences critiques" et le modal détail compétence.
+
+    Doctrine:
+    - compétence déclarée seule ≠ couverture validée;
+    - couverture validée = compétence évaluée et niveau actuel >= niveau requis;
+    - l'indice affiché dans la table et dans le modal est calculé depuis les mêmes états par poste.
+    """
+    cte_sql, cte_params = _build_scope_cte(id_ent, id_service)
+
+    comp_filter_sql = ""
+    comp_filter_params: List[Any] = []
+    if comp_id:
+        comp_filter_sql = "AND c.id_comp = %s"
+        comp_filter_params.append(comp_id)
+
+    sql = f"""
+    WITH
+    {cte_sql},
+    req AS (
+        SELECT DISTINCT
+            fp.id_poste,
+            fp.codif_poste,
+            COALESCE(fp.codif_client, '') AS codif_client,
+            fp.intitule_poste,
+            fp.id_service,
+            COALESCE(o.nom_service, '') AS nom_service,
+            c.id_comp,
+            c.code,
+            c.intitule,
+            c.description,
+            c.domaine AS id_domaine_competence,
+            d.titre AS domaine_titre,
+            d.titre_court AS domaine_titre_court,
+            d.couleur AS domaine_couleur,
+            COALESCE(fpc.niveau_requis, '')::text AS niveau_requis,
+            COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite,
+            COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible
+        FROM postes_scope ps
+        JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
+        JOIN public.tbl_fiche_poste_competence fpc ON fpc.id_poste = fp.id_poste
+        JOIN public.tbl_competence c
+          ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+        LEFT JOIN public.tbl_entreprise_organigramme o
+          ON o.id_ent = fp.id_ent
+         AND o.id_service = fp.id_service
+         AND COALESCE(o.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_domaine_competence d
+          ON d.id_domaine_competence = c.domaine
+         AND COALESCE(d.masque, FALSE) = FALSE
+        LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = fp.id_poste
+        WHERE fp.id_ent = %s
+          AND COALESCE(fp.actif, TRUE) = TRUE
+          AND c.etat = 'active'
+          AND COALESCE(c.masque, FALSE) = FALSE
+          AND COALESCE(fpc.masque, FALSE) = FALSE
+          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+          {comp_filter_sql}
+    ),
+    effectifs_dispo AS (
+        SELECT
+            e.id_effectif,
+            e.prenom_effectif,
+            e.nom_effectif,
+            e.id_service,
+            e.id_poste_actuel
+        FROM effectifs_scope es
+        JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
+          AND NOT EXISTS (
+            SELECT 1
+            FROM public.tbl_effectif_client_break b
+            WHERE b.id_effectif = e.id_effectif
+              AND COALESCE(b.archive, FALSE) = FALSE
+              AND b.date_debut <= CURRENT_DATE
+              AND b.date_fin >= CURRENT_DATE
+          )
+    ),
+    titulaires_count AS (
+        SELECT id_poste_actuel AS id_poste, COUNT(DISTINCT id_effectif)::int AS nb_titulaires
+        FROM effectifs_dispo
+        WHERE COALESCE(id_poste_actuel, '') <> ''
+        GROUP BY id_poste_actuel
+    )
+    SELECT
+        r.*,
+        COALESCE(tc.nb_titulaires, 0)::int AS nb_titulaires,
+        e.id_effectif,
+        e.prenom_effectif,
+        e.nom_effectif,
+        ec.id_effectif_competence,
+        ec.niveau_actuel,
+        ec.date_derniere_eval,
+        a.id_audit_competence,
+        a.date_audit,
+        a.resultat_eval
+    FROM req r
+    LEFT JOIN titulaires_count tc ON tc.id_poste = r.id_poste
+    LEFT JOIN effectifs_dispo e ON e.id_poste_actuel = r.id_poste
+    LEFT JOIN public.tbl_effectif_client_competence ec
+      ON ec.id_effectif_client = e.id_effectif
+     AND ec.id_comp = r.id_comp
+     AND COALESCE(ec.actif, TRUE) = TRUE
+     AND COALESCE(ec.archive, FALSE) = FALSE
+    LEFT JOIN public.tbl_effectif_client_audit_competence a
+      ON a.id_audit_competence = ec.id_dernier_audit
+     AND a.id_effectif_competence = ec.id_effectif_competence
+    ORDER BY r.code, r.poids_criticite DESC, r.codif_poste, e.nom_effectif, e.prenom_effectif
+    """
+    cur.execute(sql, tuple(cte_params + [id_ent, int(criticite_min)] + comp_filter_params))
+    raw_rows = [dict(r) for r in (cur.fetchall() or [])]
+    if not raw_rows:
+        return []
+
+    def _is_evaluee_row(r: Dict[str, Any]) -> bool:
+        return bool(r.get("resultat_eval") is not None and (r.get("date_audit") is not None or r.get("date_derniere_eval") is not None or r.get("id_audit_competence") is not None))
+
+    poste_map: Dict[Tuple[str, str], Dict[str, Any]] = {}
+    for r in raw_rows:
+        key = (str(r.get("id_comp") or ""), str(r.get("id_poste") or ""))
+        p = poste_map.get(key)
+        if not p:
+            nb_tit = max(_safe_int(r.get("nb_titulaires"), 0), 0)
+            nb_cible_raw = _safe_int(r.get("nb_titulaires_cible"), 1)
+            nb_cible = nb_cible_raw if nb_cible_raw > 0 else (nb_tit if nb_tit > 0 else 1)
+            p = {
+                "id_comp": r.get("id_comp"),
+                "code": r.get("code"),
+                "intitule": r.get("intitule"),
+                "description": r.get("description"),
+                "id_domaine_competence": r.get("id_domaine_competence"),
+                "domaine_titre": r.get("domaine_titre"),
+                "domaine_titre_court": r.get("domaine_titre_court"),
+                "domaine_couleur": r.get("domaine_couleur"),
+                "id_poste": r.get("id_poste"),
+                "codif_poste": r.get("codif_poste"),
+                "codif_client": r.get("codif_client"),
+                "intitule_poste": r.get("intitule_poste"),
+                "id_service": r.get("id_service"),
+                "nom_service": r.get("nom_service"),
+                "niveau_requis": r.get("niveau_requis"),
+                "poids_criticite": _safe_int(r.get("poids_criticite"), 0),
+                "nb_titulaires": nb_tit,
+                "besoin_poste": max(nb_cible, 1),
+                "rows": [],
+            }
+            poste_map[key] = p
+        p["rows"].append(r)
+
+    comp_map: Dict[str, Dict[str, Any]] = {}
+    for p in poste_map.values():
+        req_rank = _niveau_rank(p.get("niveau_requis"))
+        nb_tit = max(_safe_int(p.get("nb_titulaires"), 0), 0)
+        besoin_poste = max(_safe_int(p.get("besoin_poste"), 1), 1)
+
+        nb_declares = 0
+        nb_evalues = 0
+        nb_valides = 0
+        nb_non_evalues = 0
+        nb_insuffisants = 0
+
+        for r in p.get("rows") or []:
+            if not r.get("id_effectif"):
+                continue
+            if not r.get("id_effectif_competence"):
+                continue
+            nb_declares += 1
+            is_eval = _is_evaluee_row(r)
+            act_rank = _niveau_rank(r.get("niveau_actuel"))
+            if not is_eval:
+                nb_non_evalues += 1
+                continue
+            nb_evalues += 1
+            if req_rank > 0 and act_rank >= req_rank:
+                nb_valides += 1
+            elif act_rank > 0:
+                nb_insuffisants += 1
+            else:
+                nb_non_evalues += 1
+
+        if nb_tit <= 0:
+            etat = "AUCUN_TITULAIRE"
+        elif nb_valides >= besoin_poste:
+            etat = "DEPENDANCE" if nb_valides == 1 else "COUVERTURE_VALIDEE"
+        elif nb_declares <= 0:
+            etat = "COUVERTURE_ABSENTE"
+        elif nb_non_evalues > 0:
+            etat = "COUVERTURE_NON_CONFIRMEE"
+        elif nb_insuffisants > 0:
+            etat = "NIVEAU_INSUFFISANT"
+        else:
+            etat = "COUVERTURE_ABSENTE"
+
+        p["nb_porteurs_declares"] = nb_declares
+        p["nb_porteurs_evalues"] = nb_evalues
+        p["nb_porteurs_valides"] = nb_valides
+        p["nb_porteurs_non_evalues"] = nb_non_evalues
+        p["nb_porteurs_insuffisants"] = nb_insuffisants
+        p["etat_couverture"] = etat
+        p["etat_couverture_label"] = _competence_state_label(etat)
+        p["action_rh"] = _competence_action_label(etat)
+        p["risque_ligne"] = _competence_state_risk(etat)
+
+        cid = str(p.get("id_comp") or "")
+        c = comp_map.get(cid)
+        if not c:
+            c = {
+                "id_comp": p.get("id_comp"),
+                "code": p.get("code"),
+                "intitule": p.get("intitule"),
+                "description": p.get("description"),
+                "id_domaine_competence": p.get("id_domaine_competence"),
+                "domaine_titre": p.get("domaine_titre"),
+                "domaine_titre_court": p.get("domaine_titre_court"),
+                "domaine_couleur": p.get("domaine_couleur"),
+                "postes": [],
+                "counts": defaultdict(int),
+                "poids_total": 0,
+                "score_weighted": 0,
+                "nb_porteurs_declares_set": set(),
+                "nb_porteurs_evalues_set": set(),
+                "nb_porteurs_valides_set": set(),
+            }
+            comp_map[cid] = c
+
+        c["postes"].append({k: v for k, v in p.items() if k != "rows"})
+        c["counts"][etat] += 1
+        poids = max(_safe_int(p.get("poids_criticite"), 0), 1)
+        c["poids_total"] += poids
+        c["score_weighted"] += _competence_state_risk(etat) * poids
+
+        for r in p.get("rows") or []:
+            eid = str(r.get("id_effectif") or "")
+            if not eid or not r.get("id_effectif_competence"):
+                continue
+            c["nb_porteurs_declares_set"].add(eid)
+            is_eval = _is_evaluee_row(r)
+            act_rank = _niveau_rank(r.get("niveau_actuel"))
+            if is_eval:
+                c["nb_porteurs_evalues_set"].add(eid)
+            if is_eval and _niveau_rank(p.get("niveau_requis")) > 0 and act_rank >= _niveau_rank(p.get("niveau_requis")):
+                c["nb_porteurs_valides_set"].add(eid)
+
+    records: List[Dict[str, Any]] = []
+    for c in comp_map.values():
+        poids_total = max(_safe_int(c.get("poids_total"), 0), 1)
+        indice = _clamp_int(round(float(c.get("score_weighted") or 0) / float(poids_total)), 0, 100)
+        counts = dict(c.get("counts") or {})
+        nb_postes = len(c.get("postes") or [])
+        max_criticite = max([_safe_int(p.get("poids_criticite"), 0) for p in c.get("postes") or []] or [0])
+        besoin_total = sum(max(_safe_int(p.get("besoin_poste"), 1), 1) for p in c.get("postes") or [])
+        nb_postes_crit_80 = sum(1 for p in c.get("postes") or [] if _safe_int(p.get("poids_criticite"), 0) >= 80)
+
+        rec = {
+            "id_comp": c.get("id_comp"),
+            "code": c.get("code"),
+            "intitule": c.get("intitule"),
+            "description": c.get("description"),
+            "id_domaine_competence": c.get("id_domaine_competence"),
+            "domaine_titre": c.get("domaine_titre"),
+            "domaine_titre_court": c.get("domaine_titre_court"),
+            "domaine_couleur": c.get("domaine_couleur"),
+            "nb_postes_impactes": nb_postes,
+            "besoin_total": besoin_total,
+            "nb_porteurs": len(c.get("nb_porteurs_valides_set") or set()),
+            "nb_porteurs_dispo": len(c.get("nb_porteurs_valides_set") or set()),
+            "nb_porteurs_declares": len(c.get("nb_porteurs_declares_set") or set()),
+            "nb_porteurs_evalues": len(c.get("nb_porteurs_evalues_set") or set()),
+            "nb_porteurs_valides": len(c.get("nb_porteurs_valides_set") or set()),
+            "nb_experts": 0,
+            "nb_experts_dispo": 0,
+            "criticite_max": max_criticite,
+            "max_criticite": max_criticite,
+            "nb_postes_crit_80": nb_postes_crit_80,
+            "indice_fragilite": indice,
+            "priorite": _competence_priorite_from_score(indice),
+            "priorite_score": indice,
+            "nb_postes_couverture_absente": int(counts.get("AUCUN_TITULAIRE", 0) or 0) + int(counts.get("COUVERTURE_ABSENTE", 0) or 0),
+            "nb_postes_non_confirmee": int(counts.get("COUVERTURE_NON_CONFIRMEE", 0) or 0),
+            "nb_postes_niveau_insuffisant": int(counts.get("NIVEAU_INSUFFISANT", 0) or 0),
+            "nb_postes_dependance": int(counts.get("DEPENDANCE", 0) or 0),
+            "nb_postes_valides": int(counts.get("COUVERTURE_VALIDEE", 0) or 0),
+            "causes": _build_competence_causes_from_counts(counts),
+            "postes": c.get("postes") or [],
+        }
+        records.append(rec)
+
+    records.sort(key=lambda r: (-(r.get("priorite_score") or 0), -(r.get("nb_postes_impactes") or 0), str(r.get("code") or "")))
+    return records[:max(1, int(limit or 200))]
 
 def _bucket_porteurs(n: Optional[int]) -> int:
     x = int(n or 0)
@@ -848,7 +1224,8 @@ def get_analyse_summary(
                     WHERE COALESCE(ec.actif, TRUE) = TRUE
                       AND COALESCE(ec.archive, FALSE) = FALSE
                       AND COALESCE(ec.id_comp, '') <> ''
-                      AND (ec.date_derniere_eval IS NOT NULL OR a.resultat_eval IS NOT NULL)
+                      AND a.resultat_eval IS NOT NULL
+                      AND (a.date_audit IS NOT NULL OR ec.date_derniere_eval IS NOT NULL OR a.id_audit_competence IS NOT NULL)
                     GROUP BY ec.id_comp
                 ),
                 porteurs_dispo AS (
@@ -932,13 +1309,20 @@ def get_analyse_summary(
                 cur.execute(sql_risques, tuple(cte_params + [CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN]))
                 rk = cur.fetchone() or {}
 
-                # Les KPI Risques doivent raconter la même chose que la table des postes fragiles.
-                # On les reconstruit donc depuis _fetch_postes_fragility_records(), qui applique la doctrine unique :
-                # compétence déclarée ≠ compétence validée. La requête SQL ci-dessus reste transitoire pour compatibilité,
-                # mais elle ne pilote plus les compteurs affichés.
-                comp_critiques_sans_porteur = sum(int(r.get("nb_critiques_sans_porteur") or 0) for r in postes_fragiles_records)
-                comp_porteur_unique = sum(int(r.get("nb_critiques_porteur_unique") or 0) for r in postes_fragiles_records)
-                comp_critiques_fragiles = sum(int(r.get("nb_critiques_fragiles") or 0) for r in postes_fragiles_records)
+                # Les KPI compétences doivent raconter la même chose que la table "Compétences critiques".
+                # Source unique: _fetch_competence_fragility_records().
+                comp_records = _fetch_competence_fragility_records(
+                    cur,
+                    id_ent,
+                    scope.id_service,
+                    CRITICITE_MIN,
+                    comp_id=None,
+                    limit=2000,
+                )
+                comp_records_fragiles = [r for r in comp_records if int(r.get("indice_fragilite") or 0) > 0]
+                comp_critiques_sans_porteur = len([r for r in comp_records if int(r.get("nb_postes_couverture_absente") or 0) > 0])
+                comp_porteur_unique = len([r for r in comp_records if int(r.get("nb_postes_dependance") or 0) > 0])
+                comp_critiques_fragiles = len(comp_records_fragiles)
                 comp_critiques_tombent_zero_auj = int(rk.get("comp_critiques_tombent_zero_auj") or 0)
 
                 # ---------------------------
@@ -3348,7 +3732,8 @@ def get_analyse_risques_detail(
                     WHERE COALESCE(ec.actif, TRUE) = TRUE
                       AND COALESCE(ec.archive, FALSE) = FALSE
                       AND COALESCE(ec.id_comp, '') <> ''
-                      AND (ec.date_derniere_eval IS NOT NULL OR a.resultat_eval IS NOT NULL)
+                      AND a.resultat_eval IS NOT NULL
+                      AND (a.date_audit IS NOT NULL OR ec.date_derniere_eval IS NOT NULL OR a.id_audit_competence IS NOT NULL)
                     GROUP BY ec.id_comp
                 )
 
@@ -3391,359 +3776,56 @@ def get_analyse_risques_detail(
                             nb_couvertures_non_confirmees=int(r.get("nb_couvertures_non_confirmees") or 0),
                         ))
                 # ---------------------------
-                # KPI: Critiques fragiles (≤ 1 porteur en nominal)
+                # KPI: Compétences critiques fragiles
                 # ---------------------------
-                elif k == "critiques-fragiles":
-                    sql = base_cte + """
-                    ,
-                    req_crit AS (
-                        SELECT DISTINCT
-                            r.id_poste,
-                            r.id_comp,
-                            r.poids_criticite
-                        FROM req r
-                        WHERE r.poids_criticite >= %s
-                    ),
-
-                    titulaires AS (
-                        SELECT
-                            e.id_poste_actuel AS id_poste,
-                            COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
-                        FROM public.tbl_effectif_client e
-                        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-                        WHERE COALESCE(e.archive, FALSE) = FALSE
-                          AND COALESCE(e.id_poste_actuel, '') <> ''
-                        GROUP BY e.id_poste_actuel
-                    ),
-
-                    poste_need AS (
-                        SELECT
-                            ps.id_poste,
-                            CASE
-                                WHEN prh.nb_titulaires_cible IS NOT NULL AND prh.nb_titulaires_cible::int > 0
-                                    THEN prh.nb_titulaires_cible::int
-                                WHEN COALESCE(t.nb_titulaires, 0)::int > 0
-                                    THEN COALESCE(t.nb_titulaires, 0)::int
-                                ELSE 1
-                            END AS besoin_poste
-                        FROM postes_scope ps
-                        LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = ps.id_poste
-                        LEFT JOIN titulaires t ON t.id_poste = ps.id_poste
-                    ),
-
-                    comp_need AS (
-                        SELECT
-                            rc.id_comp,
-                            MAX(rc.poids_criticite)::int AS criticite_max,
-                            COUNT(DISTINCT rc.id_poste)::int AS nb_postes_impactes,
-                            SUM(pn.besoin_poste)::int AS besoin_total,
-                            SUM(CASE WHEN rc.poids_criticite >= 80 THEN 1 ELSE 0 END)::int AS nb_postes_crit_80
-                        FROM req_crit rc
-                        JOIN poste_need pn ON pn.id_poste = rc.id_poste
-                        GROUP BY rc.id_comp
-                    ),
-
-                    experts AS (
-                        SELECT
-                            ec.id_comp,
-                            COUNT(DISTINCT ec.id_effectif_client)::int AS nb_experts
-                        FROM public.tbl_effectif_client_competence ec
-                        JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
-                        WHERE COALESCE(ec.actif, TRUE) = TRUE
-                          AND COALESCE(ec.archive, FALSE) = FALSE
-                          AND COALESCE(ec.id_comp, '') <> ''
-                          AND (
-                            CASE
-                              WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
-                                THEN trim(ec.niveau_actuel)::int
-                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
-                              ELSE 0
-                            END
-                          ) >= 3
-                        GROUP BY ec.id_comp
-                    ),
-
-                    experts_dispo AS (
-                        SELECT
-                            ec.id_comp,
-                            COUNT(DISTINCT ec.id_effectif_client)::int AS nb_experts
-                        FROM public.tbl_effectif_client_competence ec
-                        JOIN effectifs_dispo ed ON ed.id_effectif = ec.id_effectif_client
-                        WHERE COALESCE(ec.actif, TRUE) = TRUE
-                          AND COALESCE(ec.archive, FALSE) = FALSE
-                          AND COALESCE(ec.id_comp, '') <> ''
-                          AND (
-                            CASE
-                              WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
-                                THEN trim(ec.niveau_actuel)::int
-                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
-                              ELSE 0
-                            END
-                          ) >= 3
-                        GROUP BY ec.id_comp
-                    ),
-
-                    comp_agg AS (
-                        SELECT
-                            cn.id_comp,
-                            cn.nb_postes_impactes,
-                            cn.besoin_total,
-                            cn.criticite_max,
-                            cn.nb_postes_crit_80,
-
-                            COALESCE(p.nb_porteurs, 0)::int AS nb_porteurs,
-                            COALESCE(pd.nb_porteurs, 0)::int AS nb_porteurs_dispo,
-
-                            COALESCE(ex.nb_experts, 0)::int AS nb_experts,
-                            COALESCE(exd.nb_experts, 0)::int AS nb_experts_dispo
-                        FROM comp_need cn
-                        LEFT JOIN porteurs p ON p.id_comp = cn.id_comp
-                        LEFT JOIN porteurs_dispo pd ON pd.id_comp = cn.id_comp
-                        LEFT JOIN experts ex ON ex.id_comp = cn.id_comp
-                        LEFT JOIN experts_dispo exd ON exd.id_comp = cn.id_comp
-                        WHERE COALESCE(p.nb_porteurs, 0) <= 1
+                elif k in ("critiques-fragiles", "critiques-sans-porteur", "porteur-unique"):
+                    # Source unique: même calcul pour la table, les KPI et le modal compétence.
+                    records = _fetch_competence_fragility_records(
+                        cur,
+                        id_ent,
+                        scope.id_service,
+                        criticite_min,
+                        comp_id=None,
+                        limit=limit,
                     )
-                    SELECT
-                        c.id_comp,
-                        c.code,
-                        c.intitule,
-                        c.grille_evaluation,
-                        c.domaine AS id_domaine_competence,
-                        d.titre,
-                        d.titre_court,
-                        d.couleur,
 
-                        ca.nb_postes_impactes,
-                        ca.nb_porteurs,
-                        ca.nb_porteurs_dispo,
-                        ca.nb_experts,
-                        ca.nb_experts_dispo,
-                        ca.besoin_total,
-                        ca.criticite_max,
-                        ca.nb_postes_crit_80
-                    FROM comp_agg ca
-                    JOIN public.tbl_competence c ON c.id_comp = ca.id_comp
-                    LEFT JOIN public.tbl_domaine_competence d
-                      ON d.id_domaine_competence = c.domaine
-                    ORDER BY
-                        ca.nb_porteurs ASC,
-                        ca.nb_porteurs_dispo ASC,
-                        ca.nb_postes_impactes DESC,
-                        ca.criticite_max DESC,
-                        c.code
-                    LIMIT %s
-                    """
+                    if k == "critiques-sans-porteur":
+                        records = [r for r in records if int(r.get("nb_postes_couverture_absente") or 0) > 0]
+                    elif k == "porteur-unique":
+                        records = [r for r in records if int(r.get("nb_postes_dependance") or 0) > 0]
+                    else:
+                        records = [r for r in records if int(r.get("indice_fragilite") or 0) > 0]
 
-                    cur.execute(sql, tuple(cte_params + [ref_mois, criticite_min, limit]))
-                    rows = cur.fetchall() or []
-
-                    def _clamp(v: float, lo: float, hi: float) -> float:
-                        return max(lo, min(hi, v))
-
-                    for r in rows:
-                        B = int(r.get("besoin_total") or 0)
-                        B = B if B > 0 else 1
-
-                        P = int(r.get("nb_porteurs") or 0)
-                        Pd = int(r.get("nb_porteurs_dispo") or 0)
-
-                        Pe = int(r.get("nb_experts") or 0)
-                        Ped = int(r.get("nb_experts_dispo") or 0)
-
-                        N = int(r.get("nb_postes_impactes") or 0)
-                        Cmax = int(r.get("criticite_max") or 0)
-                        N80 = int(r.get("nb_postes_crit_80") or 0)
-
-                        # Sous-scores (0..1)
-                        S_cov = _clamp(1.0 - (P / float(B)), 0.0, 1.0)
-
-                        if P == 0:
-                            S_dep = 1.00
-                        elif P == 1:
-                            S_dep = 0.80
-                        elif P == 2:
-                            S_dep = 0.50
-                        elif P == 3:
-                            S_dep = 0.25
-                        else:
-                            S_dep = 0.00
-
-                        if Pe == 0:
-                            S_exp = 1.00
-                        elif Pe == 1:
-                            S_exp = 0.70
-                        else:
-                            S_exp = 0.00
-
-                        S_expo = min(1.0, N / 5.0)
-                        S_sev = 0.7 * (Cmax / 100.0) + 0.3 * min(1.0, N80 / 3.0)
-
-                        base = 100.0 * (
-                            0.35 * S_cov
-                            + 0.15 * S_dep
-                            + 0.15 * S_exp
-                            + 0.10 * S_expo
-                            + 0.25 * S_sev
-                        )
-
-                        bonus = 0.0
-                        if P > 0 and Pd == 0:
-                            bonus += 20.0
-                        if Pe > 0 and Ped == 0:
-                            bonus += 10.0
-
-                        indice = int(round(_clamp(base + bonus, 0.0, 100.0)))
-
-                        if indice >= 75:
-                            prio = "P1"
-                        elif indice >= 50:
-                            prio = "P2"
-                        else:
-                            prio = "P3"
-
+                    for r in records[:limit]:
                         items.append(AnalyseRisqueItem(
                             id_comp=r.get("id_comp"),
                             code=r.get("code"),
                             intitule=r.get("intitule"),
                             id_domaine_competence=r.get("id_domaine_competence"),
-                            domaine_titre=r.get("titre"),
-                            domaine_titre_court=r.get("titre_court"),
-                            domaine_couleur=r.get("couleur"),
-
-                            nb_postes_impactes=N,
-                            nb_porteurs=P,
-                            nb_porteurs_dispo=Pd,
-
-                            besoin_total=B,
-                            nb_experts=Pe,
-                            nb_experts_dispo=Ped,
-                            criticite_max=Cmax,
-                            nb_postes_crit_80=N80,
-
-                            max_criticite=Cmax,          # compat existant
-                            indice_fragilite=indice,     # 0..100 (règle métier)
-                            priorite=prio,
-                            priorite_score=indice,       # tri simple
-                        ))
-
-                    # Tri DRH-friendly: d’abord les plus urgentes
-                    items.sort(key=lambda x: (-(x.priorite_score or 0), -(x.nb_postes_impactes or 0), (x.code or "")))
-
-
-
-                # ---------------------------
-                # KPI: Critiques sans porteur
-                # ---------------------------
-                elif k == "critiques-sans-porteur":
-                    sql = base_cte + """
-                    ,
-                    comp_agg AS (
-                        SELECT
-                            r.id_comp,
-                            MAX(r.poids_criticite)::int AS max_criticite,
-                            COUNT(DISTINCT r.id_poste)::int AS nb_postes_impactes,
-                            COALESCE(p.nb_porteurs, 0)::int AS nb_porteurs
-                        FROM req r
-                        LEFT JOIN porteurs p ON p.id_comp = r.id_comp
-                        WHERE r.poids_criticite >= %s
-                          AND COALESCE(p.nb_porteurs, 0) = 0
-                        GROUP BY r.id_comp, COALESCE(p.nb_porteurs, 0)
-                    )
-                    SELECT
-                        c.id_comp,
-                        c.code,
-                        c.intitule,
-                        c.grille_evaluation,
-                        c.domaine AS id_domaine_competence,
-                        d.titre,
-                        d.titre_court,
-                        d.couleur,
-                        ca.nb_postes_impactes,
-                        ca.nb_porteurs,
-                        ca.max_criticite
-                    FROM comp_agg ca
-                    JOIN public.tbl_competence c ON c.id_comp = ca.id_comp
-                    LEFT JOIN public.tbl_domaine_competence d
-                      ON d.id_domaine_competence = c.domaine
-                    ORDER BY
-                        ca.nb_postes_impactes DESC,
-                        ca.max_criticite DESC,
-                        c.code
-                    LIMIT %s
-                    """
-                    cur.execute(sql, tuple(cte_params + [ref_mois, criticite_min, limit]))
-                    rows = cur.fetchall() or []
-                    for r in rows:
-                        items.append(AnalyseRisqueItem(
-                            id_comp=r.get("id_comp"),
-                            code=r.get("code"),
-                            intitule=r.get("intitule"),
-                            id_domaine_competence=r.get("id_domaine_competence"),
-                            domaine_titre=r.get("titre"),
-                            domaine_titre_court=r.get("titre_court"),
-                            domaine_couleur=r.get("couleur"),
+                            domaine_titre=r.get("domaine_titre"),
+                            domaine_titre_court=r.get("domaine_titre_court"),
+                            domaine_couleur=r.get("domaine_couleur"),
                             nb_postes_impactes=int(r.get("nb_postes_impactes") or 0),
                             nb_porteurs=int(r.get("nb_porteurs") or 0),
+                            nb_porteurs_dispo=int(r.get("nb_porteurs_dispo") or 0),
+                            besoin_total=int(r.get("besoin_total") or 0),
+                            nb_experts=int(r.get("nb_experts") or 0),
+                            nb_experts_dispo=int(r.get("nb_experts_dispo") or 0),
+                            criticite_max=int(r.get("criticite_max") or 0),
                             max_criticite=int(r.get("max_criticite") or 0),
+                            nb_postes_crit_80=int(r.get("nb_postes_crit_80") or 0),
+                            indice_fragilite=int(r.get("indice_fragilite") or 0),
+                            priorite=r.get("priorite"),
+                            priorite_score=int(r.get("priorite_score") or 0),
                         ))
 
-                # ---------------------------
-                # KPI: Porteur unique
-                # ---------------------------
-                else:
-                    sql = base_cte + """
-                    ,
-                    comp_agg AS (
-                        SELECT
-                            r.id_comp,
-                            MAX(r.poids_criticite)::int AS max_criticite,
-                            COUNT(DISTINCT r.id_poste)::int AS nb_postes_impactes,
-                            COALESCE(p.nb_porteurs, 0)::int AS nb_porteurs
-                        FROM req r
-                        LEFT JOIN porteurs p ON p.id_comp = r.id_comp
-                        WHERE r.poids_criticite >= %s
-                          AND COALESCE(p.nb_porteurs, 0) = 1
-                        GROUP BY r.id_comp, COALESCE(p.nb_porteurs, 0)
+                    return AnalyseRisquesDetailResponse(
+                        scope=scope,
+                        kpi=k,
+                        criticite_min=int(criticite_min),
+                        updated_at=datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                        items=items,
                     )
-                    SELECT
-                        c.id_comp,
-                        c.code,
-                        c.intitule,
-                        c.grille_evaluation,
-                        c.domaine AS id_domaine_competence,
-                        d.titre,
-                        d.titre_court,
-                        d.couleur,
-                        ca.nb_postes_impactes,
-                        ca.nb_porteurs,
-                        ca.max_criticite
-                    FROM comp_agg ca
-                    JOIN public.tbl_competence c ON c.id_comp = ca.id_comp
-                    LEFT JOIN public.tbl_domaine_competence d
-                      ON d.id_domaine_competence = c.domaine
-                    ORDER BY
-                        ca.nb_postes_impactes DESC,
-                        ca.max_criticite DESC,
-                        c.code
-                    LIMIT %s
-                    """
-                    cur.execute(sql, tuple(cte_params + [ref_mois, criticite_min, limit]))
-                    rows = cur.fetchall() or []
-                    for r in rows:
-                        items.append(AnalyseRisqueItem(
-                            id_comp=r.get("id_comp"),
-                            code=r.get("code"),
-                            intitule=r.get("intitule"),
-                            id_domaine_competence=r.get("id_domaine_competence"),
-                            domaine_titre=r.get("titre"),
-                            domaine_titre_court=r.get("titre_court"),
-                            domaine_couleur=r.get("couleur"),
-                            nb_postes_impactes=int(r.get("nb_postes_impactes") or 0),
-                            nb_porteurs=int(r.get("nb_porteurs") or 0),
-                            max_criticite=int(r.get("max_criticite") or 0),
-                        ))
 
                 return AnalyseRisquesDetailResponse(
                     scope=scope,
@@ -6069,7 +6151,8 @@ def get_risque_competence_detail(
                     WHERE ec.id_comp = %s
                       AND COALESCE(ec.actif, TRUE) = TRUE
                       AND COALESCE(ec.archive, FALSE) = FALSE
-                      AND (ec.date_derniere_eval IS NOT NULL OR a.resultat_eval IS NOT NULL)
+                      AND a.resultat_eval IS NOT NULL
+                      AND (a.date_audit IS NOT NULL OR ec.date_derniere_eval IS NOT NULL OR a.id_audit_competence IS NOT NULL)
                 ),
                 experts_nominal AS (
                     SELECT COUNT(DISTINCT ec.id_effectif_client)::int AS nb_experts
@@ -6240,6 +6323,64 @@ def get_risque_competence_detail(
                     priorite = "P2"
                 else:
                     priorite = "P3"
+
+                # Alignement final modal <-> table : même source que /risques/detail?kpi=critiques-fragiles.
+                comp_records_modal = _fetch_competence_fragility_records(
+                    cur,
+                    id_ent,
+                    scope.get("id_service") if isinstance(scope, dict) else None,
+                    criticite_min,
+                    comp_id=comp_id,
+                    limit=1,
+                )
+                if comp_records_modal:
+                    cr = comp_records_modal[0]
+                    indice = int(cr.get("indice_fragilite") or 0)
+                    priorite = cr.get("priorite") or _competence_priorite_from_score(indice)
+                    causes = cr.get("causes") or _build_competence_causes_from_counts({})
+                    nb_postes = int(cr.get("nb_postes_impactes") or 0)
+                    nb_porteurs = int(cr.get("nb_porteurs") or 0)
+                    B = int(cr.get("besoin_total") or 0) or 1
+                    Pd = int(cr.get("nb_porteurs_dispo") or 0)
+                    Pe = int(cr.get("nb_experts") or 0)
+                    Ped = int(cr.get("nb_experts_dispo") or 0)
+                    Cmax = int(cr.get("criticite_max") or 0)
+                    N80 = int(cr.get("nb_postes_crit_80") or 0)
+                    nb_postes_sans_porteur = int(cr.get("nb_postes_couverture_absente") or 0)
+                    nb_postes_porteur_unique = int(cr.get("nb_postes_dependance") or 0)
+
+                    competence_detail_stats.update({
+                        "nb_postes_impactes": int(cr.get("nb_postes_impactes") or 0),
+                        "nb_postes_couverture_absente": int(cr.get("nb_postes_couverture_absente") or 0),
+                        "nb_postes_non_confirmee": int(cr.get("nb_postes_non_confirmee") or 0),
+                        "nb_postes_niveau_insuffisant": int(cr.get("nb_postes_niveau_insuffisant") or 0),
+                        "nb_postes_dependance": int(cr.get("nb_postes_dependance") or 0),
+                        "nb_postes_valides": int(cr.get("nb_postes_valides") or 0),
+                        "nb_porteurs_declares": int(cr.get("nb_porteurs_declares") or 0),
+                        "nb_porteurs_evalues": int(cr.get("nb_porteurs_evalues") or 0),
+                        "nb_porteurs_non_evalues": max(int(cr.get("nb_porteurs_declares") or 0) - int(cr.get("nb_porteurs_evalues") or 0), 0),
+                        "nb_porteurs_valides": int(cr.get("nb_porteurs_valides") or 0),
+                        "besoin_total": int(cr.get("besoin_total") or 0),
+                        "criticite_max": int(cr.get("criticite_max") or 0),
+                        "indice_fragilite": indice,
+                        "priorite": priorite,
+                    })
+
+                    postes_state = {str(p.get("id_poste") or ""): p for p in (cr.get("postes") or [])}
+                    for p in postes:
+                        st = postes_state.get(str(p.get("id_poste") or ""))
+                        if st:
+                            p.update({
+                                "besoin_poste": st.get("besoin_poste"),
+                                "nb_porteurs_declares": st.get("nb_porteurs_declares"),
+                                "nb_porteurs_evalues": st.get("nb_porteurs_evalues"),
+                                "nb_porteurs_valides": st.get("nb_porteurs_valides"),
+                                "nb_porteurs_non_evalues": st.get("nb_porteurs_non_evalues"),
+                                "nb_porteurs_insuffisants": st.get("nb_porteurs_insuffisants"),
+                                "etat_couverture": st.get("etat_couverture"),
+                                "etat_couverture_label": st.get("etat_couverture_label"),
+                                "action_rh": st.get("action_rh"),
+                            })
 
                 # IMPORTANT : l'indice affiché dans la table "Compétences critiques"
                 # est calculé par la requête de détail risques (formule DRH historique :
