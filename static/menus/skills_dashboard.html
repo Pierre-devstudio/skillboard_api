@@ -9,10 +9,17 @@
     </div>
 
     <div class="sb-dashboard-scope" id="dashboardScopeWrap">
-      <label for="dashboardServiceFilter">Données prises en compte :</label>
-      <select id="dashboardServiceFilter" class="sb-dashboard-service-select" aria-label="Données prises en compte">
-        <option value="">Tout</option>
-      </select>
+      <div class="sb-dashboard-scope-field">
+        <label for="dashboardServiceFilter">Données prises en compte :</label>
+        <select id="dashboardServiceFilter" class="sb-dashboard-service-select" aria-label="Données prises en compte">
+          <option value="">Tout</option>
+        </select>
+      </div>
+
+      <div class="sb-dashboard-crit-field">
+        <label for="dashboardCriticiteFilter">Criticité prise en compte : <strong id="dashboardCriticiteValue">≥ 70</strong></label>
+        <input id="dashboardCriticiteFilter" class="sb-dashboard-crit-range" type="range" min="0" max="100" step="5" value="70" aria-label="Criticité minimale prise en compte">
+      </div>
     </div>
   </div>
 
@@ -23,13 +30,18 @@
           <div class="sb-risk-title">Santé globale</div>
           <div class="sb-risk-sub" id="dashHealthScope">Périmètre : —</div>
         </div>
+        <div class="sb-risk-card-actions">
+          <button type="button" class="sb-dash-round-btn" data-dash-help="health" aria-label="Comprendre Santé globale">?</button>
+          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="analyse" aria-label="Voir le détail Santé globale">▦</button>
+        </div>
       </div>
 
       <div class="sb-health-gauge-wrap">
         <svg id="dashHealthGauge" class="sb-health-gauge" viewBox="0 0 260 170" aria-label="Jauge santé globale"></svg>
         <div class="sb-health-pct" id="dashHealthPct">—%</div>
       </div>
-      <div class="sb-risk-note" id="dashHealthNote">Chargement…</div>
+      <div class="sb-health-status" id="dashHealthStatus">—</div>
+      <div class="sb-risk-note is-empty" id="dashHealthNote"></div>
     </div>
 
     <div class="card sb-risk-card sb-risk-card--timeline">
@@ -37,6 +49,10 @@
         <div>
           <div class="sb-risk-title">Évolution des risques</div>
           <div class="sb-risk-sub">Indice de fragilité, mois par mois</div>
+        </div>
+        <div class="sb-risk-card-actions">
+          <button type="button" class="sb-dash-round-btn" data-dash-help="timeline" aria-label="Comprendre Évolution des risques">?</button>
+          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="analyse" aria-label="Voir l’analyse des risques">▦</button>
         </div>
       </div>
       <div class="sb-risk-timeline" id="dashRiskTimeline">
@@ -48,7 +64,10 @@
       <div class="sb-risk-card-head">
         <div>
           <div class="sb-risk-title">Postes à surveiller</div>
-          <div class="sb-risk-sub" id="dashPostesSub">—</div>
+        </div>
+        <div class="sb-risk-card-actions">
+          <button type="button" class="sb-dash-round-btn" data-dash-help="postes" aria-label="Comprendre Postes à surveiller">?</button>
+          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="analyse" aria-label="Voir l’analyse des postes">▦</button>
         </div>
       </div>
       <div class="sb-watch-wrap">
@@ -62,7 +81,10 @@
       <div class="sb-risk-card-head">
         <div>
           <div class="sb-risk-title">Capacité de transmission</div>
-          <div class="sb-risk-sub">Transmission des savoir-faire par poste</div>
+        </div>
+        <div class="sb-risk-card-actions">
+          <button type="button" class="sb-dash-round-btn" data-dash-help="transmission" aria-label="Comprendre Capacité de transmission">?</button>
+          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="analyse" aria-label="Voir l’analyse de transmission">▦</button>
         </div>
       </div>
       <div class="sb-ring-risk-wrap">
@@ -72,21 +94,22 @@
           <div class="sb-ring-risk-label">capacité</div>
         </div>
       </div>
-      <div class="sb-risk-note" id="dashTransmissionNote">—</div>
     </div>
 
     <div class="card sb-risk-card">
       <div class="sb-risk-card-head">
         <div>
-          <div class="sb-risk-title">Fiabilité</div>
-          <div class="sb-risk-sub">Données mises à jour sur 6 mois</div>
+          <div class="sb-risk-title">Fiabilité des données analysées</div>
+        </div>
+        <div class="sb-risk-card-actions">
+          <button type="button" class="sb-dash-round-btn" data-dash-help="reliability" aria-label="Comprendre Fiabilité des données analysées">?</button>
+          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="entretien" aria-label="Voir les évaluations">▦</button>
         </div>
       </div>
       <div class="sb-reliability-wrap">
         <div class="sb-reliability-bars" id="dashReliabilityBars" aria-label="Fiabilité des données"></div>
         <div class="sb-reliability-pct" id="dashReliabilityPct">—%</div>
       </div>
-      <div class="sb-risk-note" id="dashReliabilityNote">—</div>
     </div>
 
     <div class="card sb-risk-card sb-risk-card--actions">
@@ -95,10 +118,63 @@
           <div class="sb-risk-title">Risques sans action</div>
           <div class="sb-risk-sub">Postes en danger sans formation planifiée ni entretien préparé</div>
         </div>
-        <div class="sb-risk-count" id="dashNoActionCount">—</div>
+        <div class="sb-risk-card-actions">
+          <div class="sb-risk-count" id="dashNoActionCount">—</div>
+          <button type="button" class="sb-dash-round-btn" data-dash-help="noaction" aria-label="Comprendre Risques sans action">?</button>
+          <button type="button" class="sb-dash-round-btn sb-dash-round-btn--report" data-dash-report="noaction" aria-label="Voir le détail des risques sans action">▦</button>
+        </div>
       </div>
       <div class="sb-noaction-list" id="dashNoActionList">
         <div class="sb-risk-loading">Chargement…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="dashboardInfoModal" aria-hidden="true">
+    <div class="modal-card sb-modal-card--medium">
+      <div class="modal-header">
+        <div class="sb-modal-title" id="dashboardInfoTitle">Information</div>
+        <button type="button" class="modal-x" id="dashboardInfoClose" aria-label="Fermer">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="sb-dashboard-info-text" id="dashboardInfoBody"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="sb-btn sb-btn--soft" id="dashboardInfoClose2">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="dashboardNoActionModal" aria-hidden="true">
+    <div class="modal-card sb-modal-card--wide">
+      <div class="modal-header">
+        <div>
+          <div class="sb-modal-title">Risques sans action</div>
+          <div class="card-sub">Postes en danger sans action de sécurisation identifiée sur le périmètre affiché.</div>
+        </div>
+        <button type="button" class="modal-x" id="dashboardNoActionClose" aria-label="Fermer">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="sb-dashboard-table-wrap">
+          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-dashboard-detail-table">
+            <thead>
+              <tr>
+                <th>Poste</th>
+                <th>Service</th>
+                <th class="col-center">Criticité poste</th>
+                <th class="col-center">Titulaires</th>
+                <th class="col-center">Indice</th>
+                <th>Points d’attention</th>
+              </tr>
+            </thead>
+            <tbody id="dashboardNoActionRows">
+              <tr><td colspan="6" class="sb-muted">Aucune donnée.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="sb-btn sb-btn--soft" id="dashboardNoActionClose2">Fermer</button>
       </div>
     </div>
   </div>

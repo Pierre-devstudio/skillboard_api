@@ -5,6 +5,37 @@
 
 (function () {
   const ALL_SERVICES_VALUE = "__ALL__";
+  const DEFAULT_CRITICITE_MIN = 70;
+
+  let _portal = null;
+  let _lastData = null;
+
+  const HELP_TEXTS = {
+    health: {
+      title: "Santé globale",
+      body: "Cet indicateur présente le niveau global de couverture des compétences attendues sur les postes du périmètre sélectionné. Il sert à lire rapidement l’état général de maîtrise de l’organisation ou du service affiché."
+    },
+    timeline: {
+      title: "Évolution des risques",
+      body: "Ce graphique montre l’évolution mensuelle de l’indice de fragilité des postes. Il s’appuie sur les données connues dans Novoskill, dont les sorties prévues et les indisponibilités enregistrées."
+    },
+    postes: {
+      title: "Postes à surveiller",
+      body: "Cette carte répartit les postes du périmètre entre postes en danger, postes à surveiller et postes stabilisés. Elle permet de voir immédiatement la part de l’organisation sous vigilance."
+    },
+    transmission: {
+      title: "Capacité de transmission",
+      body: "Cet indicateur mesure la capacité à transmettre les savoir-faire nécessaires pour réaliser l’ensemble des tâches des postes du périmètre. Une capacité faible signale un risque de perte de savoir-faire."
+    },
+    reliability: {
+      title: "Fiabilité des données analysées",
+      body: "Cet indicateur mesure la fraîcheur des données utilisées pour établir le diagnostic. Les données sont considérées comme fraîches lorsqu’elles ont été mises à jour depuis moins de 6 mois."
+    },
+    noaction: {
+      title: "Risques sans action",
+      body: "Cette carte liste les postes en danger pour lesquels aucune action de sécurisation n’est identifiée dans Novoskill : formation planifiée, entretien préparé ou autre levier de sécurisation modélisé."
+    }
+  };
 
   function byId(id) { return document.getElementById(id); }
 
@@ -38,6 +69,25 @@
     return `hsl(${hue} 70% 44%)`;
   }
 
+  function currentCriticiteMin() {
+    const el = byId("dashboardCriticiteFilter");
+    return clamp(el?.value ?? DEFAULT_CRITICITE_MIN, 0, 100);
+  }
+
+  function updateCriticiteLabel(value) {
+    const label = byId("dashboardCriticiteValue");
+    if (label) label.textContent = `≥ ${Math.round(clamp(value, 0, 100))}`;
+  }
+
+  function healthStatus(pct) {
+    const p = clamp(pct, 0, 100);
+    if (p >= 92) return { label: "Robuste", cls: "sb-health-status--robust" };
+    if (p >= 80) return { label: "Solide", cls: "sb-health-status--solid" };
+    if (p >= 65) return { label: "Correct", cls: "sb-health-status--ok" };
+    if (p >= 50) return { label: "Sous vigilance", cls: "sb-health-status--watch" };
+    return { label: "Fragile", cls: "sb-health-status--danger" };
+  }
+
   function renderWelcome(ctx) {
     const prenom = (ctx?.prenom || "").toString().trim();
     const elPrenom = byId("welcomePrenom");
@@ -63,6 +113,7 @@
     const pctEl = byId("dashHealthPct");
     const note = byId("dashHealthNote");
     const scope = byId("dashHealthScope");
+    const statusEl = byId("dashHealthStatus");
     if (!svg) return;
 
     const pct = clamp(data?.pct ?? 0, 0, 100);
@@ -79,11 +130,19 @@
     `;
 
     if (pctEl) pctEl.textContent = pctTxt(pct, 0);
+    if (scope) scope.textContent = data?.scope_label ? `Périmètre : ${data.scope_label}` : "Périmètre : —";
+
+    if (statusEl) {
+      const st = healthStatus(pct);
+      statusEl.className = `sb-health-status ${st.cls}`;
+      statusEl.textContent = st.label;
+    }
+
     if (note) {
       const nb = Number(data?.nb_items || 0);
-      note.textContent = nb > 0 ? `${nb.toLocaleString("fr-FR")} point(s) compétences pris en compte` : "Aucune donnée exploitable sur ce périmètre.";
+      note.textContent = nb > 0 ? "" : "Aucune donnée exploitable sur ce périmètre.";
+      note.classList.toggle("is-empty", nb > 0);
     }
-    if (scope) scope.textContent = data?.scope_label ? `Périmètre : ${data.scope_label}` : "Périmètre : —";
   }
 
   function renderTimeline(points) {
@@ -108,7 +167,7 @@
           <div class="sb-risk-timeline-bar-wrap">
             <div class="sb-risk-timeline-bar" style="height:${h}px; background:${color};"></div>
           </div>
-          <div class="sb-risk-timeline-value">${Math.round(val)}</div>
+          <div class="sb-risk-timeline-value">${Math.round(val)}%</div>
           <div class="sb-risk-timeline-label">${idx === 0 ? "Auj." : label}</div>
         </div>
       `;
@@ -128,7 +187,6 @@
   function renderPostesWatch(data) {
     const svg = byId("dashPostesPie");
     const legend = byId("dashPostesLegend");
-    const sub = byId("dashPostesSub");
     const critical = byId("dashCriticalDanger");
     if (!svg) return;
 
@@ -140,7 +198,6 @@
     if (!total) {
       svg.innerHTML = `<circle cx="80" cy="80" r="62" class="sb-watch-empty"></circle>`;
       if (legend) legend.innerHTML = `<div class="sb-risk-loading">Aucun poste actif.</div>`;
-      if (sub) sub.textContent = "Aucun poste actif";
       if (critical) critical.textContent = "0 poste critique détecté";
       return;
     }
@@ -161,7 +218,6 @@
         <div><span class="sb-dot sb-dot--stable"></span>${stable} stabilisés</div>
       `;
     }
-    if (sub) sub.textContent = `${danger + watch} poste(s) sous vigilance`;
     if (critical) {
       const n = Number(data?.postes_critiques_danger || 0);
       critical.textContent = `${n} poste(s) critique(s) détecté(s) dans les postes en danger`;
@@ -185,21 +241,13 @@
     const pct = clamp(data?.pct ?? 0, 0, 100);
     renderRiskRing(byId("dashTransmissionRing"), pct, "sb-risk-ring");
     const pctEl = byId("dashTransmissionPct");
-    const note = byId("dashTransmissionNote");
     if (pctEl) pctEl.textContent = pctTxt(pct, 0);
-    if (note) {
-      const ok = Number(data?.postes_transmissibles || 0);
-      const total = Number(data?.postes_total || 0);
-      const risk = Number(data?.postes_risque || 0);
-      note.textContent = total > 0 ? `${ok} / ${total} poste(s) transmissibles · ${risk} à risque` : "Aucun poste actif.";
-    }
   }
 
   function renderReliability(data) {
     const pct = clamp(data?.pct ?? 0, 0, 100);
     const bars = byId("dashReliabilityBars");
     const pctEl = byId("dashReliabilityPct");
-    const note = byId("dashReliabilityNote");
 
     const filled = pct >= 85 ? 5 : pct >= 70 ? 4 : pct >= 50 ? 3 : pct >= 25 ? 2 : pct > 0 ? 1 : 0;
     if (bars) {
@@ -208,11 +256,11 @@
       `).join("");
     }
     if (pctEl) pctEl.textContent = pctTxt(pct, 0);
-    if (note) {
-      const fresh = Number(data?.fresh_items || 0);
-      const total = Number(data?.total_items || 0);
-      note.textContent = total > 0 ? `${fresh.toLocaleString("fr-FR")} / ${total.toLocaleString("fr-FR")} donnée(s) fraîches` : "Aucune donnée d’évaluation exploitable.";
-    }
+  }
+
+  function posteBadge(r) {
+    const code = (r?.codif_client || r?.codif_poste || "").toString().trim();
+    return code ? `<span class="sb-badge sb-badge-ref-poste-code">${esc(code)}</span>` : "";
   }
 
   function renderNoAction(data) {
@@ -229,32 +277,66 @@
       return;
     }
 
-    list.innerHTML = rows.map(r => {
-      const code = (r?.codif_poste || r?.codif_client || "").toString().trim();
+    list.innerHTML = rows.slice(0, 6).map(r => {
       const title = (r?.intitule_poste || "Poste").toString().trim();
       const service = (r?.nom_service || "Service non renseigné").toString().trim();
-      const score = clamp(r?.indice_fragilite ?? 0, 0, 100);
-      const frag = Number(r?.nb_critiques_fragiles || 0);
       return `
         <div class="sb-noaction-row">
           <div class="sb-noaction-main">
-            <div class="sb-noaction-title">${code ? `<span class="sb-badge">${esc(code)}</span>` : ""}<span>${esc(title)}</span></div>
-            <div class="sb-noaction-meta">${esc(service)} · ${frag} fragilité(s) critique(s)</div>
+            <div class="sb-noaction-title">${posteBadge(r)}<span>${esc(title)}</span></div>
+            <div class="sb-noaction-meta">${esc(service)} · Aucune action identifiée</div>
           </div>
-          <div class="sb-noaction-score" style="--risk-color:${riskColor(score, false)}">${Math.round(score)}%</div>
         </div>
       `;
     }).join("");
   }
 
+  function renderNoActionModal() {
+    const tbody = byId("dashboardNoActionRows");
+    if (!tbody) return;
+    const rows = Array.isArray(_lastData?.risks_without_action?.items) ? _lastData.risks_without_action.items : [];
+
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="sb-muted">Aucun poste en danger sans action identifiée.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+      const title = (r?.intitule_poste || "Poste").toString().trim();
+      const service = (r?.nom_service || "Service non renseigné").toString().trim();
+      const criticite = Number(r?.criticite_poste || 0);
+      const titulaires = `${Number(r?.nb_titulaires || 0)} / ${Number(r?.nb_titulaires_cible || 0)}`;
+      const indice = clamp(r?.indice_fragilite ?? 0, 0, 100);
+      const points = [];
+      if (Number(r?.nb_critiques_sans_porteur || 0) > 0) points.push(`${Number(r.nb_critiques_sans_porteur)} critique(s) sans porteur`);
+      if (Number(r?.nb_critiques_sans_releve || 0) > 0) points.push(`${Number(r.nb_critiques_sans_releve)} critique(s) sans relève`);
+      if (Number(r?.nb_critiques_fragiles || 0) > 0) points.push(`${Number(r.nb_critiques_fragiles)} fragilité(s) critique(s)`);
+      return `
+        <tr>
+          <td><div class="sb-dashboard-poste-cell">${posteBadge(r)}<span>${esc(title)}</span></div></td>
+          <td>${esc(service)}</td>
+          <td class="col-center">${criticite || "—"}</td>
+          <td class="col-center">${esc(titulaires)}</td>
+          <td class="col-center"><span class="sb-badge sb-badge--danger">${Math.round(indice)}%</span></td>
+          <td>${esc(points.length ? points.join(" · ") : "Aucune action de sécurisation identifiée")}</td>
+        </tr>
+      `;
+    }).join("");
+  }
+
   function setLoading() {
-    const ids = ["dashHealthNote", "dashRiskTimeline", "dashPostesLegend", "dashTransmissionNote", "dashReliabilityNote", "dashNoActionList"];
+    const ids = ["dashRiskTimeline", "dashPostesLegend", "dashNoActionList"];
     ids.forEach(id => {
       const el = byId(id);
       if (!el) return;
-      if (id === "dashRiskTimeline" || id === "dashNoActionList") el.innerHTML = `<div class="sb-risk-loading">Chargement…</div>`;
-      else el.textContent = "Chargement…";
+      el.innerHTML = `<div class="sb-risk-loading">Chargement…</div>`;
     });
+
+    const healthNote = byId("dashHealthNote");
+    if (healthNote) {
+      healthNote.textContent = "";
+      healthNote.classList.add("is-empty");
+    }
   }
 
   function applyServiceOptions(data, requestedValue) {
@@ -282,8 +364,17 @@
     select.classList.toggle("is-locked", locked);
   }
 
-  function renderDashboard(data, requestedValue) {
+  function applyCriticiteValue(data, requestedValue) {
+    const input = byId("dashboardCriticiteFilter");
+    const value = clamp(data?.filters?.criticite_min ?? requestedValue ?? DEFAULT_CRITICITE_MIN, 0, 100);
+    if (input) input.value = String(Math.round(value));
+    updateCriticiteLabel(value);
+  }
+
+  function renderDashboard(data, requestedValue, requestedCriticite) {
+    _lastData = data || {};
     applyServiceOptions(data, requestedValue);
+    applyCriticiteValue(data, requestedCriticite);
     renderHealthGauge(data?.health || {});
     renderTimeline(data?.risk_timeline || []);
     renderPostesWatch(data?.postes_watch || {});
@@ -292,13 +383,55 @@
     renderNoAction(data?.risks_without_action || {});
   }
 
-  async function loadDashboard(portal, serviceValue) {
+  async function loadDashboard(portal, serviceValue, criticiteMin) {
     setLoading();
     const selected = (serviceValue || "").toString().trim();
-    const qs = selected && selected !== ALL_SERVICES_VALUE ? `?id_service=${encodeURIComponent(selected)}` : "";
+    const criticite = clamp(criticiteMin ?? currentCriticiteMin(), 0, 100);
+    const params = new URLSearchParams();
+    if (selected && selected !== ALL_SERVICES_VALUE) params.set("id_service", selected);
+    params.set("criticite_min", String(Math.round(criticite)));
+    const qs = params.toString() ? `?${params.toString()}` : "";
     const url = `${portal.apiBase}/skills/dashboard/risk-overview/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
-    renderDashboard(data, selected || ALL_SERVICES_VALUE);
+    renderDashboard(data, selected || ALL_SERVICES_VALUE, criticite);
+  }
+
+  function openModal(id) {
+    const modal = byId(id);
+    if (!modal) return;
+    modal.classList.add("show");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  function closeModal(id) {
+    const modal = byId(id);
+    if (!modal) return;
+    modal.classList.remove("show");
+    modal.setAttribute("aria-hidden", "true");
+  }
+
+  function openInfo(kind) {
+    const cfg = HELP_TEXTS[kind];
+    if (!cfg) return;
+    const title = byId("dashboardInfoTitle");
+    const body = byId("dashboardInfoBody");
+    if (title) title.textContent = cfg.title;
+    if (body) body.textContent = cfg.body;
+    openModal("dashboardInfoModal");
+  }
+
+  async function openReport(target) {
+    if (target === "noaction") {
+      renderNoActionModal();
+      openModal("dashboardNoActionModal");
+      return;
+    }
+    if (!_portal?.switchView) return;
+    if (target === "entretien") {
+      await _portal.switchView("entretien-performance");
+      return;
+    }
+    await _portal.switchView("analyse-competences");
   }
 
   function bindServiceFilter(portal) {
@@ -307,22 +440,73 @@
     select._sbDashboardBound = true;
     select.addEventListener("change", async () => {
       try {
-        await loadDashboard(portal, select.value || ALL_SERVICES_VALUE);
+        await loadDashboard(portal, select.value || ALL_SERVICES_VALUE, currentCriticiteMin());
       } catch (e) {
         portal.showAlert("error", "Erreur dashboard : " + (e?.message || e));
       }
     });
   }
 
+  function bindCriticiteFilter(portal) {
+    const input = byId("dashboardCriticiteFilter");
+    if (!input || input._sbDashboardBound) return;
+    input._sbDashboardBound = true;
+    input.addEventListener("input", () => updateCriticiteLabel(input.value));
+    input.addEventListener("change", async () => {
+      try {
+        await loadDashboard(portal, byId("dashboardServiceFilter")?.value || ALL_SERVICES_VALUE, currentCriticiteMin());
+      } catch (e) {
+        portal.showAlert("error", "Erreur dashboard : " + (e?.message || e));
+      }
+    });
+  }
+
+  function bindDashboardActions() {
+    const root = byId("view-dashboard");
+    if (!root || root._sbDashboardActionsBound) return;
+    root._sbDashboardActionsBound = true;
+
+    root.addEventListener("click", async (e) => {
+      const helpBtn = e.target.closest("[data-dash-help]");
+      if (helpBtn) {
+        openInfo(helpBtn.getAttribute("data-dash-help"));
+        return;
+      }
+
+      const reportBtn = e.target.closest("[data-dash-report]");
+      if (reportBtn) {
+        try {
+          await openReport(reportBtn.getAttribute("data-dash-report"));
+        } catch (err) {
+          _portal?.showAlert?.("error", "Erreur ouverture du détail : " + (err?.message || err));
+        }
+      }
+    });
+
+    ["dashboardInfoClose", "dashboardInfoClose2"].forEach(id => {
+      const btn = byId(id);
+      if (btn) btn.addEventListener("click", () => closeModal("dashboardInfoModal"));
+    });
+
+    ["dashboardNoActionClose", "dashboardNoActionClose2"].forEach(id => {
+      const btn = byId(id);
+      if (btn) btn.addEventListener("click", () => closeModal("dashboardNoActionModal"));
+    });
+  }
+
   window.SkillsDashboard = {
     onShow: async (portal) => {
       try {
+        _portal = portal;
         await (window.__skillsAuthReady || Promise.resolve(null));
         portal.showAlert("", "");
         const ctx = portal.context || await portal.ensureContext();
         renderWelcome(ctx);
         bindServiceFilter(portal);
-        await loadDashboard(portal, ALL_SERVICES_VALUE);
+        bindCriticiteFilter(portal);
+        bindDashboardActions();
+        updateCriticiteLabel(currentCriticiteMin());
+        await loadDashboard(portal, ALL_SERVICES_VALUE, currentCriticiteMin());
       } catch (e) {
         portal.showAlert("error", "Erreur de chargement du dashboard : " + (e?.message || e));
       }

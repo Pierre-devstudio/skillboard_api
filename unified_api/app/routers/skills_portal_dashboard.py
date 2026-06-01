@@ -25,7 +25,7 @@ DASHBOARD_DANGER_MIN = 60
 DASHBOARD_WATCH_MIN = 1
 DASHBOARD_CRITICAL_POSTE_MIN = 3
 DASHBOARD_RELIABILITY_MONTHS = 6
-DASHBOARD_NO_ACTION_LIMIT = 12
+DASHBOARD_NO_ACTION_LIMIT = 100
 
 
 # ======================================================
@@ -54,6 +54,10 @@ class DashboardAccess(BaseModel):
 class DashboardScope(BaseModel):
     id_service: Optional[str] = None
     nom_service: str = "Tous les services"
+
+
+class DashboardFilters(BaseModel):
+    criticite_min: int = CRITICITE_MIN_DEFAULT
 
 
 class DashboardHealth(BaseModel):
@@ -102,7 +106,12 @@ class DashboardRiskWithoutActionRow(BaseModel):
     intitule_poste: str
     nom_service: Optional[str] = None
     indice_fragilite: int = 0
+    criticite_poste: int = 0
+    nb_titulaires: int = 0
+    nb_titulaires_cible: int = 0
     nb_critiques_fragiles: int = 0
+    nb_critiques_sans_porteur: int = 0
+    nb_critiques_sans_releve: int = 0
 
 
 class DashboardRisksWithoutAction(BaseModel):
@@ -114,6 +123,7 @@ class DashboardRiskOverview(BaseModel):
     access: DashboardAccess
     scope: DashboardScope
     services: List[DashboardServiceOption]
+    filters: DashboardFilters
     health: DashboardHealth
     risk_timeline: List[DashboardRiskTimelinePoint]
     postes_watch: DashboardPostesWatch
@@ -271,6 +281,14 @@ def _is_watch_record(r: Dict[str, Any]) -> bool:
     return DASHBOARD_WATCH_MIN <= s < DASHBOARD_DANGER_MIN
 
 
+def _normalize_criticite_min(v: Optional[int]) -> int:
+    try:
+        n = int(v if v is not None else CRITICITE_MIN_DEFAULT)
+    except Exception:
+        n = CRITICITE_MIN_DEFAULT
+    return max(0, min(100, n))
+
+
 # ======================================================
 # Calculs
 # ======================================================
@@ -294,7 +312,7 @@ def _enrich_records_poste_criticite(cur, records: List[Dict[str, Any]]) -> None:
         pid = str(r.get("id_poste") or "")
         r["criticite_poste"] = int(mp.get(pid, r.get("criticite_poste") or 2))
 
-def _compute_health(cur, id_ent: str, scope: DashboardScope) -> DashboardHealth:
+def _compute_health(cur, id_ent: str, scope: DashboardScope, criticite_min: int) -> DashboardHealth:
     cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
     cur.execute(
         f"""
@@ -341,7 +359,7 @@ def _compute_health(cur, id_ent: str, scope: DashboardScope) -> DashboardHealth:
           ON a.id_audit_competence = ec.id_dernier_audit
          AND a.id_effectif_competence = ec.id_effectif_competence
         """,
-        tuple(cte_params + [CRITICITE_MIN_DEFAULT]),
+        tuple(cte_params + [int(criticite_min)]),
     )
     row = cur.fetchone() or {}
     score = float(row.get("score") or 0.0)
@@ -628,12 +646,12 @@ def _fetch_postes_fragility_records_at(
     return records
 
 
-def _compute_timeline(cur, id_ent: str, scope: DashboardScope, current_records: List[Dict[str, Any]]) -> List[DashboardRiskTimelinePoint]:
+def _compute_timeline(cur, id_ent: str, scope: DashboardScope, current_records: List[Dict[str, Any]], criticite_min: int) -> List[DashboardRiskTimelinePoint]:
     today = date.today()
     out: List[DashboardRiskTimelinePoint] = []
     for i in range(13):
         d = _month_add(today, i)
-        records = current_records if i == 0 else _fetch_postes_fragility_records_at(cur, id_ent, scope.id_service, CRITICITE_MIN_DEFAULT, d)
+        records = current_records if i == 0 else _fetch_postes_fragility_records_at(cur, id_ent, scope.id_service, int(criticite_min), d)
         fragile = [r for r in records if bool(r.get("is_fragile"))]
         out.append(
             DashboardRiskTimelinePoint(
@@ -686,7 +704,7 @@ def _compute_transmission(records: List[Dict[str, Any]]) -> DashboardTransmissio
     )
 
 
-def _compute_reliability(cur, id_ent: str, scope: DashboardScope) -> DashboardReliability:
+def _compute_reliability(cur, id_ent: str, scope: DashboardScope, criticite_min: int) -> DashboardReliability:
     cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
     cur.execute(
         f"""
@@ -727,7 +745,7 @@ def _compute_reliability(cur, id_ent: str, scope: DashboardScope) -> DashboardRe
             SUM(CASE WHEN last_eval >= (CURRENT_DATE - INTERVAL '6 months') THEN 1 ELSE 0 END)::int AS fresh_items
         FROM items
         """,
-        tuple(cte_params + [CRITICITE_MIN_DEFAULT]),
+        tuple(cte_params + [int(criticite_min)]),
     )
     row = cur.fetchone() or {}
     total = int(row.get("total_items") or 0)
@@ -806,7 +824,12 @@ def _compute_risks_without_action(cur, id_ent: str, scope: DashboardScope, recor
             intitule_poste=r.get("intitule_poste") or "Poste",
             nom_service=r.get("nom_service"),
             indice_fragilite=int(r.get("indice_fragilite") or 0),
+            criticite_poste=int(r.get("criticite_poste") or 0),
+            nb_titulaires=int(r.get("nb_titulaires") or 0),
+            nb_titulaires_cible=int(r.get("nb_titulaires_cible") or 0),
             nb_critiques_fragiles=int(r.get("nb_critiques_fragiles") or 0),
+            nb_critiques_sans_porteur=int(r.get("nb_critiques_sans_porteur") or 0),
+            nb_critiques_sans_releve=int(r.get("nb_critiques_sans_releve") or 0),
         )
         for r in rows[:DASHBOARD_NO_ACTION_LIMIT]
     ]
@@ -840,31 +863,33 @@ def get_skills_context(id_contact: str, request: Request):
 
 
 @router.get("/skills/dashboard/risk-overview/{id_contact}", response_model=DashboardRiskOverview)
-def get_dashboard_risk_overview(id_contact: str, request: Request, id_service: Optional[str] = None):
+def get_dashboard_risk_overview(id_contact: str, request: Request, id_service: Optional[str] = None, criticite_min: Optional[int] = None):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent, access, scope, services = _dashboard_context(cur, id_contact, request, id_service)
+                criticite = _normalize_criticite_min(criticite_min)
 
                 current_records = _fetch_postes_fragility_records(
                     cur,
                     id_ent,
                     scope.id_service,
-                    CRITICITE_MIN_DEFAULT,
+                    criticite,
                 )
                 _enrich_records_poste_criticite(cur, current_records)
 
-                health = _compute_health(cur, id_ent, scope)
-                risk_timeline = _compute_timeline(cur, id_ent, scope, current_records)
+                health = _compute_health(cur, id_ent, scope, criticite)
+                risk_timeline = _compute_timeline(cur, id_ent, scope, current_records, criticite)
                 postes_watch = _compute_postes_watch(current_records)
                 transmission = _compute_transmission(current_records)
-                reliability = _compute_reliability(cur, id_ent, scope)
+                reliability = _compute_reliability(cur, id_ent, scope, criticite)
                 risks_without_action = _compute_risks_without_action(cur, id_ent, scope, current_records)
 
         return DashboardRiskOverview(
             access=access,
             scope=scope,
             services=services,
+            filters=DashboardFilters(criticite_min=criticite),
             health=health,
             risk_timeline=risk_timeline,
             postes_watch=postes_watch,
