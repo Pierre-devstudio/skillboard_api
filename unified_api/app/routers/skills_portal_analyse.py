@@ -2685,14 +2685,14 @@ def get_analyse_previsions_postes_rouges_modal(
     limit_voisins: int = Query(default=20, ge=5, le=200),
 ):
     """
-    Modal Poste rouge: Synthèse + Causes (compétences) + Porteurs à risque + Couverture & alternatives + Postes voisins
+    Détail RH d'un poste impacté par les prévisions.
+    La route renvoie une lecture poste -> compétences -> porteurs sortants/restants,
+    sans exposer de SQL technique côté utilisateur.
     """
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
-
-
                 id_poste = (id_poste or "").strip()
                 if not id_poste:
                     raise HTTPException(status_code=400, detail="id_poste manquant.")
@@ -2700,11 +2700,12 @@ def get_analyse_previsions_postes_rouges_modal(
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
                 cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
 
-                # Poste (sécurise appartenance entreprise)
                 cur.execute(
                     """
                     SELECT
                         fp.id_poste,
+                        fp.codif_poste,
+                        fp.codif_client,
                         fp.intitule_poste,
                         fp.id_service,
                         COALESCE(o.nom_service,'') AS nom_service,
@@ -2713,40 +2714,30 @@ def get_analyse_previsions_postes_rouges_modal(
                     FROM public.tbl_fiche_poste fp
                     LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = fp.id_poste
                     LEFT JOIN public.tbl_entreprise_organigramme o
-                        ON o.id_ent = fp.id_ent
-                        AND o.id_service = fp.id_service
-                        AND o.archive = FALSE
+                      ON o.id_ent = fp.id_ent
+                     AND o.id_service = fp.id_service
+                     AND COALESCE(o.archive, FALSE) = FALSE
                     WHERE fp.id_ent = %s
-                        AND fp.id_poste = %s
-                        AND COALESCE(fp.actif, TRUE) = TRUE
+                      AND fp.id_poste = %s
+                      AND COALESCE(fp.actif, TRUE) = TRUE
                     LIMIT 1
                     """,
                     (id_ent, id_poste),
                 )
                 poste_row = cur.fetchone()
-                nb_titulaires_cible = int((poste_row or {}).get("nb_titulaires_cible") or 1)
                 if not poste_row:
                     return {
                         "scope": scope.model_dump() if hasattr(scope, "model_dump") else scope,
                         "horizon_years": int(horizon_years),
                         "criticite_min": int(criticite_min),
                         "poste": {"id_poste": id_poste, "intitule_poste": "—", "nom_service": "—"},
-                        "kpis": {
-                            "future_fragiles": 0,
-                            "future_sans_porteur": 0,
-                            "future_porteur_unique": 0,
-                            "next_exit_date": None,
-                        },
+                        "kpis": {},
                         "causes": [],
                         "sortants": [],
                         "couverture": [],
                         "voisins": [],
-                        
                     }
 
-                # =========
-                # CTE commun
-                # =========
                 base_cte = f"""
                 WITH
                 {cte_sql},
@@ -2769,7 +2760,7 @@ def get_analyse_previsions_postes_rouges_modal(
                       AND COALESCE(e.is_temp, FALSE) = FALSE
                       AND COALESCE(e.statut_actif, TRUE) = TRUE
                 ),
-                effectifs_exit AS (
+                effectifs_h AS (
                     SELECT
                         ev.*,
                         CASE
@@ -2796,754 +2787,345 @@ def get_analyse_previsions_postes_rouges_modal(
                         CASE
                             WHEN COALESCE(ev.havedatefin, FALSE) = FALSE THEN 'Retraite estimée'
                             ELSE NULLIF(BTRIM(COALESCE(ev.motif_sortie, '')), '')
-                        END AS raison_sortie
-                    FROM effectifs_valid ev
-                ),
-                effectifs_h AS (
-                    SELECT
-                        ee.*,
+                        END AS raison_sortie,
                         CASE
-                          WHEN ee.exit_date IS NOT NULL
-                           AND ee.exit_date >= CURRENT_DATE
-                           AND ee.exit_date < (CURRENT_DATE + (%s::int * interval '1 year'))
+                          WHEN (
+                            CASE
+                                WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                                WHEN ev.retraite_annee IS NOT NULL THEN make_date(ev.retraite_annee, ev.m_entree, 1)
+                                ELSE NULL
+                            END
+                          ) IS NOT NULL
+                          AND (
+                            CASE
+                                WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                                WHEN ev.retraite_annee IS NOT NULL THEN make_date(ev.retraite_annee, ev.m_entree, 1)
+                                ELSE NULL
+                            END
+                          ) >= CURRENT_DATE
+                          AND (
+                            CASE
+                                WHEN ev.havedatefin = TRUE AND ev.date_sortie_prevue IS NOT NULL THEN ev.date_sortie_prevue
+                                WHEN ev.retraite_annee IS NOT NULL THEN make_date(ev.retraite_annee, ev.m_entree, 1)
+                                ELSE NULL
+                            END
+                          ) < (CURRENT_DATE + (%s::int * interval '1 year'))
                           THEN TRUE ELSE FALSE
                         END AS is_sortant
-                    FROM effectifs_exit ee
-                )
-                """
-
-                titulaires_sql = f"""
-                {base_cte}
-                SELECT
-                    COUNT(DISTINCT eh.id_effectif) FILTER (WHERE eh.id_poste_actuel = %s)::int AS nb_titulaires_now,
-                    COUNT(DISTINCT eh.id_effectif) FILTER (WHERE eh.id_poste_actuel = %s AND COALESCE(eh.is_sortant,FALSE)=FALSE)::int AS nb_titulaires_horizon
-                FROM effectifs_h eh
-                """
-                cur.execute(titulaires_sql, tuple(cte_params + [horizon_years, id_poste, id_poste]))
-                trow = cur.fetchone() or {}
-                nb_titulaires_now = int(trow.get("nb_titulaires_now") or 0)
-                nb_titulaires_horizon = int(trow.get("nb_titulaires_horizon") or 0)
-
-                # ======================================
-                # 1) Couverture par compétence du poste
-                # ======================================
-                cov_sql = f"""
-                {base_cte},
+                    FROM effectifs_valid ev
+                ),
                 req AS (
                     SELECT
-                        fp.id_poste,
-                        fp.intitule_poste,
-                        fp.id_service,
                         cp.id_competence AS id_comp,
-                        cp.poids_criticite::int AS criticite,
-                        COALESCE(cp.niveau_requis,'')::text AS niveau_requis
-                    FROM public.tbl_fiche_poste fp
-                    JOIN public.tbl_fiche_poste_competence cp ON cp.id_poste = fp.id_poste
-                    WHERE fp.id_ent = %s
-                      AND fp.id_poste = %s
-                      AND COALESCE(fp.actif, TRUE) = TRUE
+                        COALESCE(cp.poids_criticite, 0)::int AS criticite,
+                        COALESCE(cp.niveau_requis, '')::text AS niveau_requis,
+                        CASE
+                            WHEN UPPER(TRIM(COALESCE(cp.niveau_requis,''))) = 'A' THEN 1
+                            WHEN UPPER(TRIM(COALESCE(cp.niveau_requis,''))) = 'B' THEN 2
+                            WHEN UPPER(TRIM(COALESCE(cp.niveau_requis,''))) = 'C' THEN 3
+                            ELSE 0
+                        END AS req_rank
+                    FROM public.tbl_fiche_poste_competence cp
+                    WHERE cp.id_poste = %s
                       AND COALESCE(cp.masque, FALSE) = FALSE
-                      AND COALESCE(cp.poids_criticite,0) >= %s
+                      AND COALESCE(cp.poids_criticite, 0)::int >= %s
                 ),
-                cov AS (
+                carriers AS (
                     SELECT
-                        r.id_poste,
-                        r.intitule_poste,
-                        r.id_service,
                         r.id_comp,
                         r.criticite,
                         r.niveau_requis,
-
-                        COUNT(DISTINCT eh.id_effectif) FILTER (
-                            WHERE
-                                ec.id_effectif_client IS NOT NULL
-                                AND COALESCE(ec.niveau_actuel,'') <> ''
-                                AND (
-                                    (r.niveau_requis = '' )
-                                    OR (
-                                      r.niveau_requis = 'A' AND (
-                                        CASE
-                                          WHEN upper(ec.niveau_actuel) IN ('C','EXPERT','MAITRISE','MAÎTRISE','SENIOR') THEN 'C'
-                                          WHEN upper(ec.niveau_actuel) IN ('B','CONFIRME','CONFIRMÉ','INTERMEDIAIRE','INTERMÉDIAIRE') THEN 'B'
-                                          WHEN upper(ec.niveau_actuel) IN ('A','DEBUTANT','DÉBUTANT','JUNIOR') THEN 'A'
-                                          ELSE upper(ec.niveau_actuel)
-                                        END
-                                      ) IN ('A','B','C')
-                                    )
-                                    OR (
-                                      r.niveau_requis = 'B' AND (
-                                        CASE
-                                          WHEN upper(ec.niveau_actuel) IN ('C','EXPERT','MAITRISE','MAÎTRISE','SENIOR') THEN 'C'
-                                          WHEN upper(ec.niveau_actuel) IN ('B','CONFIRME','CONFIRMÉ','INTERMEDIAIRE','INTERMÉDIAIRE') THEN 'B'
-                                          WHEN upper(ec.niveau_actuel) IN ('A','DEBUTANT','DÉBUTANT','JUNIOR') THEN 'A'
-                                          ELSE upper(ec.niveau_actuel)
-                                        END
-                                      ) IN ('B','C')
-                                    )
-                                    OR (
-                                      r.niveau_requis = 'C' AND (
-                                        CASE
-                                          WHEN upper(ec.niveau_actuel) IN ('C','EXPERT','MAITRISE','MAÎTRISE','SENIOR') THEN 'C'
-                                          WHEN upper(ec.niveau_actuel) IN ('B','CONFIRME','CONFIRMÉ','INTERMEDIAIRE','INTERMÉDIAIRE') THEN 'B'
-                                          WHEN upper(ec.niveau_actuel) IN ('A','DEBUTANT','DÉBUTANT','JUNIOR') THEN 'A'
-                                          ELSE upper(ec.niveau_actuel)
-                                        END
-                                      ) IN ('C')
-                                    )
-                                )
-                        ) AS nb_now,
-
-                        COUNT(DISTINCT eh.id_effectif) FILTER (
-                            WHERE
-                                ec.id_effectif_client IS NOT NULL
-                                AND COALESCE(ec.niveau_actuel,'') <> ''
-                                AND COALESCE(eh.is_sortant, FALSE) = FALSE
-                                AND (
-                                    (r.niveau_requis = '' )
-                                    OR (
-                                      r.niveau_requis = 'A' AND (
-                                        CASE
-                                          WHEN upper(ec.niveau_actuel) IN ('C','EXPERT','MAITRISE','MAÎTRISE','SENIOR') THEN 'C'
-                                          WHEN upper(ec.niveau_actuel) IN ('B','CONFIRME','CONFIRMÉ','INTERMEDIAIRE','INTERMÉDIAIRE') THEN 'B'
-                                          WHEN upper(ec.niveau_actuel) IN ('A','DEBUTANT','DÉBUTANT','JUNIOR') THEN 'A'
-                                          ELSE upper(ec.niveau_actuel)
-                                        END
-                                      ) IN ('A','B','C')
-                                    )
-                                    OR (
-                                      r.niveau_requis = 'B' AND (
-                                        CASE
-                                          WHEN upper(ec.niveau_actuel) IN ('C','EXPERT','MAITRISE','MAÎTRISE','SENIOR') THEN 'C'
-                                          WHEN upper(ec.niveau_actuel) IN ('B','CONFIRME','CONFIRMÉ','INTERMEDIAIRE','INTERMÉDIAIRE') THEN 'B'
-                                          WHEN upper(ec.niveau_actuel) IN ('A','DEBUTANT','DÉBUTANT','JUNIOR') THEN 'A'
-                                          ELSE upper(ec.niveau_actuel)
-                                        END
-                                      ) IN ('B','C')
-                                    )
-                                    OR (
-                                      r.niveau_requis = 'C' AND (
-                                        CASE
-                                          WHEN upper(ec.niveau_actuel) IN ('C','EXPERT','MAITRISE','MAÎTRISE','SENIOR') THEN 'C'
-                                          WHEN upper(ec.niveau_actuel) IN ('B','CONFIRME','CONFIRMÉ','INTERMEDIAIRE','INTERMÉDIAIRE') THEN 'B'
-                                          WHEN upper(ec.niveau_actuel) IN ('A','DEBUTANT','DÉBUTANT','JUNIOR') THEN 'A'
-                                          ELSE upper(ec.niveau_actuel)
-                                        END
-                                      ) IN ('C')
-                                    )
-                                )
-                        ) AS nb_remain,
-
-                        COUNT(DISTINCT eh.id_effectif) FILTER (
-                            WHERE
-                                ec.id_effectif_client IS NOT NULL
-                            AND COALESCE(ec.niveau_actuel,'') <> ''
-                            AND (
-                                (r.niveau_requis = '' )
-                                OR (r.niveau_requis = 'A' AND (...) )
-                                OR (r.niveau_requis = 'B' AND (...) )
-                                OR (r.niveau_requis = 'C' AND (...) )
-                                )
-                            AND eh.id_poste_actuel = r.id_poste
-                        ) AS nb_now_titulaires,
-
-                            COUNT(DISTINCT eh.id_effectif) FILTER (
-                            WHERE
-                                ec.id_effectif_client IS NOT NULL
-                            AND COALESCE(ec.niveau_actuel,'') <> ''
-                            AND COALESCE(eh.is_sortant, FALSE) = FALSE
-                            AND (
-                                CASE
-                                    WHEN (
-                                    CASE
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
-                                        ELSE 0
-                                    END
-                                    ) > 0
-                                    THEN
-                                    (
-                                        CASE
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
-                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
-                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
-                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
-                                        ELSE 0
-                                        END
-                                    ) >= (
-                                        CASE
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
-                                        ELSE 0
-                                        END
-                                    )
-                                    ELSE
-                                    (
-                                        CASE
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
-                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
-                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
-                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
-                                        ELSE 0
-                                        END
-                                    ) > 0
-                                END
-                                )
-                            AND eh.id_poste_actuel = r.id_poste
-                        ) AS nb_remain_titulaires,
-
-                        MIN(eh.exit_date) FILTER (WHERE COALESCE(eh.is_sortant, FALSE) = TRUE) AS next_exit_comp
-
+                        r.req_rank,
+                        eh.id_effectif,
+                        eh.prenom_effectif,
+                        eh.nom_effectif,
+                        eh.id_service,
+                        eh.id_poste_actuel,
+                        eh.exit_date,
+                        eh.raison_sortie,
+                        eh.is_sortant,
+                        COALESCE(ec.niveau_actuel, '')::text AS niveau_actuel,
+                        CASE
+                            WHEN UPPER(TRIM(COALESCE(ec.niveau_actuel,''))) = 'A' THEN 1
+                            WHEN UPPER(TRIM(COALESCE(ec.niveau_actuel,''))) = 'B' THEN 2
+                            WHEN UPPER(TRIM(COALESCE(ec.niveau_actuel,''))) = 'C' THEN 3
+                            WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                            WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                            WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
+                            WHEN TRIM(COALESCE(ec.niveau_actuel,'')) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
+                            ELSE 0
+                        END AS niveau_rank
                     FROM req r
                     LEFT JOIN public.tbl_effectif_client_competence ec
                       ON ec.id_comp = r.id_comp
-                    LEFT JOIN effectifs_h eh
-                      ON eh.id_effectif = ec.id_effectif_client
-                    GROUP BY r.id_poste, r.intitule_poste, r.id_service, r.id_comp, r.criticite, r.niveau_requis
+                     AND COALESCE(ec.actif, TRUE) = TRUE
+                     AND COALESCE(ec.archive, FALSE) = FALSE
+                    LEFT JOIN effectifs_h eh ON eh.id_effectif = ec.id_effectif_client
+                    WHERE ec.id_effectif_client IS NOT NULL
+                ),
+                carriers_ok AS (
+                    SELECT *
+                    FROM carriers
+                    WHERE id_effectif IS NOT NULL
+                      AND niveau_rank > 0
+                      AND (req_rank = 0 OR niveau_rank >= req_rank)
+                ),
+                cov AS (
+                    SELECT
+                        r.id_comp,
+                        r.criticite,
+                        r.niveau_requis,
+                        COUNT(DISTINCT c.id_effectif)::int AS nb_now,
+                        COUNT(DISTINCT c.id_effectif) FILTER (WHERE COALESCE(c.is_sortant, FALSE) = FALSE)::int AS nb_remain,
+                        COUNT(DISTINCT c.id_effectif) FILTER (WHERE c.id_poste_actuel = %s)::int AS nb_now_titulaires,
+                        COUNT(DISTINCT c.id_effectif) FILTER (WHERE COALESCE(c.is_sortant, FALSE) = FALSE AND c.id_poste_actuel = %s)::int AS nb_remain_titulaires,
+                        COUNT(DISTINCT c.id_effectif) FILTER (WHERE COALESCE(c.is_sortant, FALSE) = TRUE)::int AS nb_sortants,
+                        MIN(c.exit_date) FILTER (WHERE COALESCE(c.is_sortant, FALSE) = TRUE) AS next_exit_comp
+                    FROM req r
+                    LEFT JOIN carriers_ok c ON c.id_comp = r.id_comp
+                    GROUP BY r.id_comp, r.criticite, r.niveau_requis
                 )
-                SELECT
-                    c.id_comp,
-                    c.criticite,
-                    c.niveau_requis,
-                    c.nb_now,
-                    c.nb_remain,
-                    c.next_exit_comp,
-                    c.nb_now_titulaires,
-                    c.nb_remain_titulaires,
+                """
 
+                summary_sql = f"""
+                {base_cte}
+                SELECT
+                    COUNT(DISTINCT eh.id_effectif) FILTER (WHERE eh.id_poste_actuel = %s)::int AS nb_titulaires_now,
+                    COUNT(DISTINCT eh.id_effectif) FILTER (WHERE eh.id_poste_actuel = %s AND COALESCE(eh.is_sortant, FALSE)=FALSE)::int AS nb_titulaires_horizon,
+                    COALESCE(SUM(c.criticite), 0)::numeric AS poids_total,
+                    COALESCE(SUM(CASE WHEN c.nb_now > 0 THEN c.criticite ELSE 0 END), 0)::numeric AS poids_now,
+                    COALESCE(SUM(CASE WHEN c.nb_remain > 0 THEN c.criticite ELSE 0 END), 0)::numeric AS poids_future,
+                    SUM(CASE WHEN c.nb_now = 0 THEN 1 ELSE 0 END)::int AS now_sans_porteur,
+                    SUM(CASE WHEN c.nb_now = 1 THEN 1 ELSE 0 END)::int AS now_porteur_unique,
+                    SUM(CASE WHEN c.nb_now >= 2 AND GREATEST(c.nb_now - c.nb_now_titulaires, 0) = 0 THEN 1 ELSE 0 END)::int AS now_sans_releve,
+                    SUM(CASE WHEN c.nb_remain = 0 THEN 1 ELSE 0 END)::int AS future_sans_porteur,
+                    SUM(CASE WHEN c.nb_remain = 1 THEN 1 ELSE 0 END)::int AS future_porteur_unique,
+                    SUM(CASE WHEN c.nb_remain >= 2 AND GREATEST(c.nb_remain - c.nb_remain_titulaires, 0) = 0 THEN 1 ELSE 0 END)::int AS future_sans_releve,
+                    COUNT(*) FILTER (WHERE c.nb_remain <= 1 OR c.nb_remain < c.nb_now)::int AS future_fragiles,
+                    MIN(c.next_exit_comp) AS next_exit_date
+                FROM cov c
+                CROSS JOIN effectifs_h eh
+                """
+                cur.execute(summary_sql, tuple(cte_params + [horizon_years, id_poste, criticite_min, id_poste, id_poste, id_poste, id_poste]))
+                k = cur.fetchone() or {}
+                poids_total = float(k.get("poids_total") or 0)
+                poids_now = float(k.get("poids_now") or 0)
+                poids_future = float(k.get("poids_future") or 0)
+                couverture_now = round((poids_now / poids_total * 100.0), 1) if poids_total > 0 else 0.0
+                couverture_future = round((poids_future / poids_total * 100.0), 1) if poids_total > 0 else 0.0
+
+                causes_sql = f"""
+                {base_cte}
+                SELECT
+                    cov.id_comp,
+                    cov.criticite,
+                    cov.niveau_requis,
+                    cov.nb_now,
+                    cov.nb_remain,
+                    cov.nb_now_titulaires,
+                    cov.nb_remain_titulaires,
+                    cov.nb_sortants,
+                    cov.next_exit_comp,
                     comp.code,
                     comp.intitule,
                     comp.domaine AS id_domaine_competence,
                     COALESCE(d.titre,'') AS domaine_titre,
                     COALESCE(d.titre_court,'') AS domaine_titre_court,
                     d.couleur AS domaine_couleur
-
-                FROM cov c
-                JOIN public.tbl_competence comp ON comp.id_comp = c.id_comp
+                FROM cov
+                JOIN public.tbl_competence comp ON comp.id_comp = cov.id_comp
                 LEFT JOIN public.tbl_domaine_competence d ON d.id_domaine_competence = comp.domaine
-                ORDER BY c.criticite DESC, c.nb_remain ASC, c.next_exit_comp NULLS LAST, comp.code ASC
+                WHERE cov.nb_remain <= 1 OR cov.nb_remain < cov.nb_now
+                ORDER BY cov.nb_remain ASC, cov.criticite DESC, cov.next_exit_comp NULLS LAST, comp.code ASC
                 """
+                cur.execute(causes_sql, tuple(cte_params + [horizon_years, id_poste, criticite_min, id_poste, id_poste]))
+                cause_rows = cur.fetchall() or []
 
-                cov_params = tuple(
-                    cte_params
-                    + [
-                        horizon_years,   # effectifs_h
-                        id_ent,          # req fp.id_ent
-                        id_poste,        # req fp.id_poste
-                        criticite_min,   # criticite min
-                    ]
-                )
-                cur.execute(cov_sql, cov_params)
-                cov_rows = cur.fetchall() or []
-
-                # KPIs poste
-                future_fragiles = 0
-                future_sans_porteur = 0
-                future_porteur_unique = 0
-                next_exit_date = None
-                now_sans_porteur = 0
-                now_porteur_unique = 0
-                now_sans_releve = 0
-                now_releve_faible = 0
-
-                future_sans_releve = 0
-                future_releve_faible = 0
-
-                causes = []
-                for r in cov_rows:
-                    nb_remain = int(r.get("nb_remain") or 0)
-                    nb_now = int(r.get("nb_now") or 0)
-                    nb_now_tit = int(r.get("nb_now_titulaires") or 0)
-                    nb_remain_tit = int(r.get("nb_remain_titulaires") or 0)
-
-                    # NOW
-                    if nb_now == 0:
-                        now_sans_porteur += 1
-                    elif nb_now == 1:
-                        now_porteur_unique += 1
-                    elif nb_now >= 2:
-                        rel = max(nb_now - nb_now_tit, 0)
-                        if rel == 0:
-                            now_sans_releve += 1
-                        elif rel == 1:
-                            now_releve_faible += 1
-
-                    # HORIZON
-                    if nb_remain >= 2:
-                        relh = max(nb_remain - nb_remain_tit, 0)
-                        if relh == 0:
-                            future_sans_releve += 1
-                        elif relh == 1:
-                            future_releve_faible += 1
-                    nx = r.get("next_exit_comp")
-                    if hasattr(nx, "isoformat"):
-                        nx = nx.isoformat()
-
-                    is_fragile = (nb_remain <= 1)
-                    if is_fragile:
-                        future_fragiles += 1
-                        if nb_remain == 0:
-                            future_sans_porteur += 1
-                        elif nb_remain == 1:
-                            future_porteur_unique += 1
-
-                        if nx:
-                            if (next_exit_date is None) or (str(nx) < str(next_exit_date)):
-                                next_exit_date = nx
-
-                        causes.append({
-                            "id_competence": (r.get("id_comp") or "").strip(),
-                            "code": (r.get("code") or "").strip() or "—",
-                            "intitule": (r.get("intitule") or "").strip() or "—",
-                            "criticite": int(r.get("criticite") or 0),
-                            "niveau_requis": (r.get("niveau_requis") or "").strip() or "",
-                            "nb_now": nb_now,
-                            "nb_remain": nb_remain,
-                            "next_exit_date": nx,
-                            "domaine_titre": (r.get("domaine_titre") or "").strip() or "—",
-                            "domaine_titre_court": (r.get("domaine_titre_court") or "").strip() or "—",
-                            "domaine_couleur": r.get("domaine_couleur"),
-                            "impact_type": ("Sans porteur" if nb_remain == 0 else "Porteur unique"),
-                        })
-
-                # ======================
-                # 2) Porteurs à risque
-                # ======================
-                sortants_sql = f"""
-                {base_cte},
-                req AS (
-                    SELECT
-                        cp.id_competence AS id_comp,
-                        cp.poids_criticite::int AS criticite,
-                        COALESCE(cp.niveau_requis,'')::text AS niveau_requis
-                    FROM public.tbl_fiche_poste_competence cp
-                    WHERE cp.id_poste = %s
-                      AND COALESCE(cp.masque, FALSE) = FALSE
-                      AND COALESCE(cp.poids_criticite,0) >= %s
-                ),
-                cov AS (
-                    SELECT
-                        r.id_comp,
-                        r.criticite,
-                        r.niveau_requis,
-                        COUNT(DISTINCT eh.id_effectif) FILTER (
-                            WHERE ec.id_effectif_client IS NOT NULL
-                              AND COALESCE(ec.niveau_actuel,'') <> ''
-                              AND COALESCE(eh.is_sortant, FALSE) = FALSE
-                              AND (
-                                CASE
-                                    WHEN (
-                                    CASE
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
-                                        ELSE 0
-                                    END
-                                    ) > 0
-                                    THEN
-                                    (
-                                        CASE
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
-                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
-                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
-                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
-                                        ELSE 0
-                                        END
-                                    ) >= (
-                                        CASE
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
-                                        ELSE 0
-                                        END
-                                    )
-                                    ELSE
-                                    (
-                                        CASE
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
-                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
-                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
-                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
-                                        ELSE 0
-                                        END
-                                    ) > 0
-                                END
-                                )
-                        ) AS nb_remain
-                    FROM req r
-                    LEFT JOIN public.tbl_effectif_client_competence ec
-                      ON ec.id_comp = r.id_comp
-                    LEFT JOIN effectifs_h eh
-                      ON eh.id_effectif = ec.id_effectif_client
-                    GROUP BY r.id_comp, r.criticite, r.niveau_requis
-                ),
-                causes AS (
-                    SELECT * FROM cov WHERE nb_remain <= 1
-                )
-                SELECT
-                    eh.id_effectif,
-                    eh.prenom_effectif,
-                    eh.nom_effectif,
-                    eh.exit_date,
-                    eh.raison_sortie,
-                    COALESCE(o.nom_service,'') AS nom_service,
-                    COALESCE(p.intitule_poste,'') AS intitule_poste,
-
-                    comp.id_comp AS id_competence,
-                    comp.code,
-                    comp.intitule,
-                    comp.domaine AS id_domaine_competence,
-
-                    COALESCE(ec.niveau_actuel,'')::text AS niveau_actuel,
-                    cs.criticite,
-                    cs.niveau_requis
-
-                FROM causes cs
-                JOIN public.tbl_effectif_client_competence ec ON ec.id_comp = cs.id_comp
-                JOIN effectifs_h eh ON eh.id_effectif = ec.id_effectif_client
-                JOIN public.tbl_competence comp ON comp.id_comp = cs.id_comp
-                LEFT JOIN public.tbl_entreprise_organigramme o
-                  ON o.id_ent = %s
-                 AND o.id_service = eh.id_service
-                 AND o.archive = FALSE
-                LEFT JOIN public.tbl_fiche_poste p
-                  ON p.id_poste = eh.id_poste_actuel
-                WHERE COALESCE(eh.is_sortant, FALSE) = TRUE
-                ORDER BY eh.exit_date ASC NULLS LAST, eh.nom_effectif ASC, eh.prenom_effectif ASC, comp.code ASC
-                LIMIT %s
-                """
-
-                sort_params = tuple(
-                    cte_params
-                    + [
-                        horizon_years,    # effectifs_h
-                        id_poste,         # req
-                        criticite_min,    # req criticite
-                        id_ent,           # organigramme
-                        limit_sortants,
-                    ]
-                )
-                cur.execute(sortants_sql, sort_params)
-                sort_rows = cur.fetchall() or []
-
-                def _fmt(d):
-                    return d.isoformat() if hasattr(d, "isoformat") else d
+                affected_ids = [r.get("id_comp") for r in cause_rows if r.get("id_comp")]
 
                 sortants = []
-                for r in sort_rows:
-                    full = (f"{(r.get('prenom_effectif') or '').strip()} {(r.get('nom_effectif') or '').strip()}").strip() or "—"
-                    sortants.append({
-                        "full": full,
-                        "exit_date": _fmt(r.get("exit_date")),
-                        "raison_sortie": (r.get("raison_sortie") or "").strip() or None,
-                        "nom_service": (r.get("nom_service") or "").strip() or "—",
-                        "intitule_poste": (r.get("intitule_poste") or "").strip() or "—",
-                        "id_competence": (r.get("id_competence") or "").strip(),
-                        "code": (r.get("code") or "").strip() or "—",
-                        "intitule": (r.get("intitule") or "").strip() or "—",
-                        "niveau_actuel": (r.get("niveau_actuel") or "").strip() or None,
-                        "criticite": int(r.get("criticite") or 0),
-                        "niveau_requis": (r.get("niveau_requis") or "").strip() or "",
-                    })
-
-                # ======================
-                # 3) Couverture restants
-                # ======================
-                couverture_sql = f"""
-                {base_cte},
-                req AS (
-                    SELECT
-                        cp.id_competence AS id_comp,
-                        cp.poids_criticite::int AS criticite,
-                        COALESCE(cp.niveau_requis,'')::text AS niveau_requis
-                    FROM public.tbl_fiche_poste_competence cp
-                    WHERE cp.id_poste = %s
-                      AND COALESCE(cp.masque, FALSE) = FALSE
-                      AND COALESCE(cp.poids_criticite,0) >= %s
-                ),
-                cov AS (
-                    SELECT
-                        r.id_comp,
-                        r.criticite,
-                        r.niveau_requis,
-                        COUNT(DISTINCT eh.id_effectif) FILTER (
-                            WHERE ec.id_effectif_client IS NOT NULL
-                              AND COALESCE(ec.niveau_actuel,'') <> ''
-                              AND COALESCE(eh.is_sortant, FALSE) = FALSE
-                              AND (
-                                CASE
-                                    WHEN (
-                                    CASE
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
-                                        ELSE 0
-                                    END
-                                    ) > 0
-                                    THEN
-                                    (
-                                        CASE
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
-                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
-                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
-                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
-                                        ELSE 0
-                                        END
-                                    ) >= (
-                                        CASE
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
-                                        WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
-                                        ELSE 0
-                                        END
-                                    )
-                                    ELSE
-                                    (
-                                        CASE
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
-                                        WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                                        WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
-                                        WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
-                                        WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
-                                        WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
-                                        ELSE 0
-                                        END
-                                    ) > 0
-                                END
-                                )
-                        ) AS nb_remain
-                    FROM req r
-                    LEFT JOIN public.tbl_effectif_client_competence ec
-                      ON ec.id_comp = r.id_comp
-                    LEFT JOIN effectifs_h eh
-                      ON eh.id_effectif = ec.id_effectif_client
-                    GROUP BY r.id_comp, r.criticite, r.niveau_requis
-                ),
-                causes AS (
-                    SELECT * FROM cov WHERE nb_remain <= 1
-                )
-                SELECT
-                    cs.id_comp,
-                    cs.criticite,
-                    cs.niveau_requis,
-                    cs.nb_remain,
-
-                    comp.code,
-                    comp.intitule,
-                    comp.domaine AS id_domaine_competence,
-
-                    eh.id_effectif,
-                    eh.prenom_effectif,
-                    eh.nom_effectif,
-                    COALESCE(o.nom_service,'') AS nom_service,
-                    COALESCE(p.intitule_poste,'') AS intitule_poste,
-                    COALESCE(ec.niveau_actuel,'')::text AS niveau_actuel
-
-                FROM causes cs
-                LEFT JOIN public.tbl_effectif_client_competence ec ON ec.id_comp = cs.id_comp
-                LEFT JOIN effectifs_h eh ON eh.id_effectif = ec.id_effectif_client
-                LEFT JOIN public.tbl_competence comp ON comp.id_comp = cs.id_comp
-                LEFT JOIN public.tbl_entreprise_organigramme o
-                  ON o.id_ent = %s
-                 AND o.id_service = eh.id_service
-                 AND o.archive = FALSE
-                LEFT JOIN public.tbl_fiche_poste p
-                  ON p.id_poste = eh.id_poste_actuel
-                WHERE COALESCE(eh.is_sortant, FALSE) = FALSE
-                ORDER BY comp.code ASC, eh.nom_effectif ASC, eh.prenom_effectif ASC
-                LIMIT %s
-                """
-
-                cov_params2 = tuple(
-                    cte_params
-                    + [
-                        horizon_years,
-                        id_poste,
-                        criticite_min,
-                        id_ent,
-                        limit_couverture,
-                    ]
-                )
-                cur.execute(couverture_sql, cov_params2)
-                cov2_rows = cur.fetchall() or []
-
                 couverture = []
-                for r in cov2_rows:
-                    full = (f"{(r.get('prenom_effectif') or '').strip()} {(r.get('nom_effectif') or '').strip()}").strip() or "—"
-                    couverture.append({
-                        "id_competence": (r.get("id_comp") or "").strip(),
+                voisins = []
+
+                if affected_ids:
+                    sortants_sql = f"""
+                    {base_cte}
+                    SELECT
+                        eh.id_effectif,
+                        eh.prenom_effectif,
+                        eh.nom_effectif,
+                        eh.exit_date,
+                        eh.raison_sortie,
+                        COALESCE(o.nom_service,'') AS nom_service,
+                        COALESCE(p.intitule_poste,'') AS intitule_poste,
+                        comp.id_comp AS id_competence,
+                        comp.code,
+                        comp.intitule,
+                        COALESCE(ec.niveau_actuel,'')::text AS niveau_actuel,
+                        r.criticite,
+                        r.niveau_requis
+                    FROM req r
+                    JOIN public.tbl_effectif_client_competence ec
+                      ON ec.id_comp = r.id_comp
+                     AND COALESCE(ec.actif, TRUE) = TRUE
+                     AND COALESCE(ec.archive, FALSE) = FALSE
+                    JOIN effectifs_h eh ON eh.id_effectif = ec.id_effectif_client
+                    JOIN public.tbl_competence comp ON comp.id_comp = r.id_comp
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = eh.id_service
+                     AND COALESCE(o.archive, FALSE) = FALSE
+                    LEFT JOIN public.tbl_fiche_poste p ON p.id_poste = eh.id_poste_actuel
+                    WHERE r.id_comp = ANY(%s)
+                      AND COALESCE(eh.is_sortant, FALSE) = TRUE
+                    ORDER BY eh.exit_date ASC NULLS LAST, eh.nom_effectif ASC, comp.code ASC
+                    LIMIT %s
+                    """
+                    cur.execute(sortants_sql, tuple(cte_params + [horizon_years, id_poste, criticite_min, id_ent, affected_ids, limit_sortants]))
+                    for r in cur.fetchall() or []:
+                        sortants.append({
+                            "id_effectif": r.get("id_effectif"),
+                            "full": (f"{(r.get('prenom_effectif') or '').strip()} {(r.get('nom_effectif') or '').strip()}").strip() or "—",
+                            "exit_date": r.get("exit_date").isoformat() if hasattr(r.get("exit_date"), "isoformat") else r.get("exit_date"),
+                            "raison_sortie": (r.get("raison_sortie") or "").strip() or None,
+                            "nom_service": (r.get("nom_service") or "").strip() or "—",
+                            "intitule_poste": (r.get("intitule_poste") or "").strip() or "—",
+                            "id_competence": r.get("id_competence"),
+                            "code": (r.get("code") or "").strip() or "—",
+                            "intitule": (r.get("intitule") or "").strip() or "—",
+                            "niveau_actuel": (r.get("niveau_actuel") or "").strip() or None,
+                            "criticite": int(r.get("criticite") or 0),
+                            "niveau_requis": (r.get("niveau_requis") or "").strip(),
+                        })
+
+                    couverture_sql = f"""
+                    {base_cte}
+                    SELECT
+                        eh.id_effectif,
+                        eh.prenom_effectif,
+                        eh.nom_effectif,
+                        COALESCE(o.nom_service,'') AS nom_service,
+                        COALESCE(p.intitule_poste,'') AS intitule_poste,
+                        comp.id_comp AS id_competence,
+                        comp.code,
+                        comp.intitule,
+                        COALESCE(ec.niveau_actuel,'')::text AS niveau_actuel,
+                        r.criticite,
+                        r.niveau_requis
+                    FROM req r
+                    JOIN public.tbl_effectif_client_competence ec
+                      ON ec.id_comp = r.id_comp
+                     AND COALESCE(ec.actif, TRUE) = TRUE
+                     AND COALESCE(ec.archive, FALSE) = FALSE
+                    JOIN effectifs_h eh ON eh.id_effectif = ec.id_effectif_client
+                    JOIN public.tbl_competence comp ON comp.id_comp = r.id_comp
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = eh.id_service
+                     AND COALESCE(o.archive, FALSE) = FALSE
+                    LEFT JOIN public.tbl_fiche_poste p ON p.id_poste = eh.id_poste_actuel
+                    WHERE r.id_comp = ANY(%s)
+                      AND COALESCE(eh.is_sortant, FALSE) = FALSE
+                    ORDER BY comp.code ASC, eh.nom_effectif ASC, eh.prenom_effectif ASC
+                    LIMIT %s
+                    """
+                    cur.execute(couverture_sql, tuple(cte_params + [horizon_years, id_poste, criticite_min, id_ent, affected_ids, limit_couverture]))
+                    for r in cur.fetchall() or []:
+                        couverture.append({
+                            "id_effectif": r.get("id_effectif"),
+                            "full": (f"{(r.get('prenom_effectif') or '').strip()} {(r.get('nom_effectif') or '').strip()}").strip() or "—",
+                            "nom_service": (r.get("nom_service") or "").strip() or "—",
+                            "intitule_poste": (r.get("intitule_poste") or "").strip() or "—",
+                            "id_competence": r.get("id_competence"),
+                            "code": (r.get("code") or "").strip() or "—",
+                            "comp_code": (r.get("code") or "").strip() or "—",
+                            "intitule": (r.get("intitule") or "").strip() or "—",
+                            "niveau_actuel": (r.get("niveau_actuel") or "").strip() or None,
+                            "niveau": (r.get("niveau_actuel") or "").strip() or None,
+                            "criticite": int(r.get("criticite") or 0),
+                            "niveau_requis": (r.get("niveau_requis") or "").strip(),
+                        })
+
+                    voisins_sql = """
+                    SELECT
+                        fp.id_poste,
+                        fp.intitule_poste,
+                        COALESCE(o.nom_service,'') AS nom_service,
+                        COUNT(DISTINCT fpc.id_competence)::int AS nb_competences_communes
+                    FROM public.tbl_fiche_poste_competence fpc
+                    JOIN public.tbl_fiche_poste fp
+                      ON fp.id_poste = fpc.id_poste
+                     AND fp.id_ent = %s
+                     AND COALESCE(fp.actif, TRUE) = TRUE
+                    LEFT JOIN public.tbl_entreprise_organigramme o
+                      ON o.id_ent = %s
+                     AND o.id_service = fp.id_service
+                     AND COALESCE(o.archive, FALSE) = FALSE
+                    WHERE fpc.id_competence = ANY(%s)
+                      AND fpc.id_poste <> %s
+                      AND COALESCE(fpc.masque, FALSE) = FALSE
+                    GROUP BY fp.id_poste, fp.intitule_poste, o.nom_service
+                    ORDER BY nb_competences_communes DESC, fp.intitule_poste ASC
+                    LIMIT %s
+                    """
+                    cur.execute(voisins_sql, (id_ent, id_ent, affected_ids, id_poste, limit_voisins))
+                    voisins = [dict(r) for r in (cur.fetchall() or [])]
+
+                causes = []
+                for r in cause_rows:
+                    causes.append({
+                        "id_comp": r.get("id_comp"),
+                        "id_competence": r.get("id_comp"),
                         "code": (r.get("code") or "").strip() or "—",
                         "intitule": (r.get("intitule") or "").strip() or "—",
+                        "id_domaine_competence": r.get("id_domaine_competence"),
+                        "domaine_titre": r.get("domaine_titre"),
+                        "domaine_titre_court": r.get("domaine_titre_court"),
+                        "domaine_couleur": r.get("domaine_couleur"),
                         "criticite": int(r.get("criticite") or 0),
-                        "niveau_requis": (r.get("niveau_requis") or "").strip() or "",
+                        "niveau_requis": (r.get("niveau_requis") or "").strip(),
+                        "nb_now": int(r.get("nb_now") or 0),
                         "nb_remain": int(r.get("nb_remain") or 0),
-
-                        "full": full,
-                        "nom_service": (r.get("nom_service") or "").strip() or "—",
-                        "intitule_poste": (r.get("intitule_poste") or "").strip() or "—",
-                        "niveau_actuel": (r.get("niveau_actuel") or "").strip() or None,
+                        "nb_now_titulaires": int(r.get("nb_now_titulaires") or 0),
+                        "nb_remain_titulaires": int(r.get("nb_remain_titulaires") or 0),
+                        "nb_sortants": int(r.get("nb_sortants") or 0),
+                        "next_exit_comp": r.get("next_exit_comp").isoformat() if hasattr(r.get("next_exit_comp"), "isoformat") else r.get("next_exit_comp"),
                     })
 
-                # ======================
-                # 4) Postes voisins (similarité exigences)
-                # ======================
-                voisins_sql = """
-                WITH base_set AS (
-                  SELECT DISTINCT cp.id_competence AS id_comp
-                  FROM public.tbl_fiche_poste_competence cp
-                  WHERE cp.id_poste = %s
-                    AND COALESCE(cp.masque, FALSE) = FALSE
-                      AND COALESCE(cp.poids_criticite,0) >= %s
-                ),
-                base_cnt AS (
-                  SELECT COUNT(*)::int AS n FROM base_set
-                ),
-                other AS (
-                  SELECT fp.id_poste, fp.intitule_poste, fp.id_service
-                  FROM public.tbl_fiche_poste fp
-                  WHERE fp.id_ent = %s
-                    AND COALESCE(fp.actif, TRUE) = TRUE
-                    AND fp.id_poste <> %s
-                ),
-                other_set AS (
-                  SELECT o.id_poste, cp.id_competence AS id_comp
-                  FROM other o
-                  JOIN public.tbl_fiche_poste_competence cp ON cp.id_poste = o.id_poste
-                  WHERE COALESCE(cp.poids_criticite,0) >= %s
-                ),
-                other_cnt AS (
-                  SELECT id_poste, COUNT(DISTINCT id_comp)::int AS n
-                  FROM other_set
-                  GROUP BY id_poste
-                ),
-                inter AS (
-                  SELECT os.id_poste, COUNT(DISTINCT os.id_comp)::int AS inter_n
-                  FROM other_set os
-                  JOIN base_set bs ON bs.id_comp = os.id_comp
-                  GROUP BY os.id_poste
-                )
-                SELECT
-                  o.id_poste,
-                  o.intitule_poste,
-                  o.id_service,
-                  COALESCE(org.nom_service,'') AS nom_service,
-                  COALESCE(i.inter_n,0)::int AS overlap,
-                  bc.n AS base_n,
-                  oc.n AS other_n,
-                  CASE
-                    WHEN (bc.n + oc.n - COALESCE(i.inter_n,0)) > 0
-                    THEN (COALESCE(i.inter_n,0)::numeric / (bc.n + oc.n - COALESCE(i.inter_n,0))::numeric)
-                    ELSE 0
-                  END AS jaccard
-                FROM other o
-                CROSS JOIN base_cnt bc
-                LEFT JOIN other_cnt oc ON oc.id_poste = o.id_poste
-                LEFT JOIN inter i ON i.id_poste = o.id_poste
-                LEFT JOIN public.tbl_entreprise_organigramme org
-                  ON org.id_ent = %s
-                 AND org.id_service = o.id_service
-                 AND org.archive = FALSE
-                WHERE COALESCE(i.inter_n,0) > 0
-                ORDER BY overlap DESC, jaccard DESC, o.intitule_poste ASC
-                LIMIT %s
-                """
-                cur.execute(
-                    voisins_sql,
-                    (
-                        id_poste,
-                        criticite_min,
-                        id_ent,
-                        id_poste,
-                        criticite_min,
-                        id_ent,
-                        limit_voisins,
-                    ),
-                )
-                voisins_rows = cur.fetchall() or []
-                voisins = []
-                for r in voisins_rows:
-                    voisins.append({
-                        "id_poste": (r.get("id_poste") or "").strip(),
-                        "intitule_poste": (r.get("intitule_poste") or "").strip() or "—",
-                        "nom_service": (r.get("nom_service") or "").strip() or "—",
-                        "overlap": int(r.get("overlap") or 0),
-                        "jaccard": float(r.get("jaccard") or 0),
-                    })
-
-
-                def _clamp(v, lo, hi):
-                    return max(lo, min(hi, v))
-
-                def _calc_indice(nb0, nb1, nr0, nr1, titulaires, cible):
-                    if int(titulaires or 0) <= 0:
-                        return 100
-                    c = int(cible or 1)
-                    if c <= 0:
-                        c = 1
-                    ratio = _clamp(float(titulaires) / float(c), 0.0, 1.0)
-                    w0, w1, wr0, wr1 = 0.90, 0.65, 0.35, 0.18
-                    prod = (pow(1-w0, int(nb0 or 0)) * pow(1-w1, int(nb1 or 0)) * pow(1-wr0, int(nr0 or 0)) * pow(1-wr1, int(nr1 or 0)))
-                    risk = 1.0 - (prod * pow(ratio, 2))
-                    return int(round(_clamp(risk * 100.0, 0.0, 100.0)))
-
-                indice_now = _calc_indice(now_sans_porteur, now_porteur_unique, now_sans_releve, now_releve_faible, nb_titulaires_now, nb_titulaires_cible)
-                indice_h = _calc_indice(future_sans_porteur, future_porteur_unique, future_sans_releve, future_releve_faible, nb_titulaires_horizon, nb_titulaires_cible)
-                delta = int(indice_h - indice_now)
-
-                if nb_titulaires_horizon <= 0 and nb_titulaires_cible > 0:
-                    priorite_label = "Critique"
-                elif indice_h >= 75:
-                    priorite_label = "Élevée"
-                elif indice_h >= 45:
-                    priorite_label = "Modérée"
-                else:
-                    priorite_label = "Faible"
-
+                next_exit = k.get("next_exit_date")
                 return {
                     "scope": scope.model_dump() if hasattr(scope, "model_dump") else scope,
                     "horizon_years": int(horizon_years),
                     "criticite_min": int(criticite_min),
-                    "updated_at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
                     "poste": {
-                        "id_poste": (poste_row.get("id_poste") or "").strip(),
-                        "intitule_poste": (poste_row.get("intitule_poste") or "").strip() or "—",
-                        "nom_service": (poste_row.get("nom_service") or "").strip() or "—",
+                        "id_poste": poste_row.get("id_poste"),
+                        "codif_poste": poste_row.get("codif_poste"),
+                        "codif_client": poste_row.get("codif_client"),
+                        "intitule_poste": poste_row.get("intitule_poste"),
+                        "id_service": poste_row.get("id_service"),
+                        "nom_service": poste_row.get("nom_service"),
+                        "nb_titulaires_cible": int(poste_row.get("nb_titulaires_cible") or 1),
+                        "statut_poste": poste_row.get("statut_poste"),
                     },
                     "kpis": {
-                        "future_fragiles": int(future_fragiles),
-                        "future_sans_porteur": int(future_sans_porteur),
-                        "future_porteur_unique": int(future_porteur_unique),
-                        "next_exit_date": next_exit_date,
+                        "nb_titulaires_now": int(k.get("nb_titulaires_now") or 0),
+                        "nb_titulaires_horizon": int(k.get("nb_titulaires_horizon") or 0),
+                        "nb_titulaires_cible": int(poste_row.get("nb_titulaires_cible") or 1),
+                        "couverture_now": couverture_now,
+                        "couverture_future": couverture_future,
+                        "future_fragiles": int(k.get("future_fragiles") or 0),
+                        "future_sans_porteur": int(k.get("future_sans_porteur") or 0),
+                        "future_porteur_unique": int(k.get("future_porteur_unique") or 0),
+                        "future_sans_releve": int(k.get("future_sans_releve") or 0),
+                        "now_sans_porteur": int(k.get("now_sans_porteur") or 0),
+                        "now_porteur_unique": int(k.get("now_porteur_unique") or 0),
+                        "now_sans_releve": int(k.get("now_sans_releve") or 0),
+                        "next_exit_date": next_exit.isoformat() if hasattr(next_exit, "isoformat") else next_exit,
                     },
                     "causes": causes,
                     "sortants": sortants,
                     "couverture": couverture,
                     "voisins": voisins,
-                    "nb_titulaires_now": nb_titulaires_now,
-                    "nb_titulaires_horizon": nb_titulaires_horizon,
-                    "nb_titulaires_cible": nb_titulaires_cible,
-                    "future_sans_releve": int(future_sans_releve),
-                    "future_releve_faible": int(future_releve_faible),
-                    "indice_fragilite_horizon": int(indice_h),
-                    "delta_fragilite": int(delta),
-                    "priorite_label": priorite_label,
                 }
 
     except HTTPException:
@@ -3551,70 +3133,6 @@ def get_analyse_previsions_postes_rouges_modal(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
-
-    
-# ======================================================
-# Models: Détail Risques
-# ======================================================
-class AnalyseRisqueItem(BaseModel):
-    # Poste (pour "postes-fragiles")
-    id_poste: Optional[str] = None
-    codif_poste: Optional[str] = None
-    codif_client: Optional[str] = None
-    intitule_poste: Optional[str] = None
-    id_service: Optional[str] = None
-    nom_service: Optional[str] = None
-
-    nb_critiques_fragiles: Optional[int] = None
-    nb_critiques_sans_porteur: Optional[int] = None
-    nb_critiques_porteur_unique: Optional[int] = None
-    nb_titulaires: Optional[int] = None
-
-    nb_critiques_sans_releve: Optional[int] = None
-    nb_critiques_releve_faible: Optional[int] = None
-    nb_titulaires_cible: Optional[int] = None
-    gap_titulaires: Optional[int] = None
-    indice_fragilite: Optional[int] = None
-
-
-    # Compétence (pour "critiques-sans-porteur" et "porteur-unique")
-    id_comp: Optional[str] = None
-    code: Optional[str] = None
-    intitule: Optional[str] = None
-
-    id_domaine_competence: Optional[str] = None
-    domaine_titre: Optional[str] = None
-    domaine_titre_court: Optional[str] = None
-    domaine_couleur: Optional[str] = None
-
-    nb_postes_impactes: Optional[int] = None
-    nb_porteurs: Optional[int] = None
-    nb_porteurs_dispo: Optional[int] = None
-    max_criticite: Optional[int] = None
-
-    # Enrichissement "critiques-fragiles" (KPI 2)
-    besoin_total: Optional[int] = None
-    nb_experts: Optional[int] = None
-    nb_experts_dispo: Optional[int] = None
-    criticite_max: Optional[int] = None
-    nb_postes_crit_80: Optional[int] = None
-
-    priorite: Optional[str] = None
-    priorite_score: Optional[int] = None
-
-
-
-class AnalyseRisquesDetailResponse(BaseModel):
-    scope: ServiceScope
-    kpi: str
-    criticite_min: int
-    updated_at: str
-    items: list[AnalyseRisqueItem]
-
-
-# ======================================================
-# Endpoint: Détail Risques (selon KPI)
-# ======================================================
 @router.get(
     "/skills/analyse/risques/detail/{id_contact}",
     response_model=AnalyseRisquesDetailResponse,
