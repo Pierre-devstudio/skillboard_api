@@ -329,8 +329,8 @@ def _compute_health(cur, id_ent: str, scope: DashboardScope, criticite_min: int)
         SELECT
             COALESCE(SUM(
                 CASE upper(trim(COALESCE(fpc.niveau_requis, '')))
-                    WHEN 'A' THEN 9
-                    WHEN 'B' THEN 18
+                    WHEN 'A' THEN 10
+                    WHEN 'B' THEN 19
                     WHEN 'C' THEN 24
                     ELSE 0
                 END
@@ -338,8 +338,8 @@ def _compute_health(cur, id_ent: str, scope: DashboardScope, criticite_min: int)
             COALESCE(SUM(LEAST(
                 COALESCE(a.resultat_eval, 0),
                 CASE upper(trim(COALESCE(fpc.niveau_requis, '')))
-                    WHEN 'A' THEN 9
-                    WHEN 'B' THEN 18
+                    WHEN 'A' THEN 10
+                    WHEN 'B' THEN 19
                     WHEN 'C' THEN 24
                     ELSE 0
                 END
@@ -570,8 +570,8 @@ def _fetch_postes_fragility_records_at(
                 ELSE 0
             END AS act_rank,
             CASE
+                WHEN a.id_audit_competence IS NOT NULL AND a.resultat_eval IS NOT NULL THEN TRUE
                 WHEN ec.date_derniere_eval IS NOT NULL THEN TRUE
-                WHEN a.id_audit_competence IS NOT NULL THEN TRUE
                 ELSE FALSE
             END AS is_evaluee,
             CASE

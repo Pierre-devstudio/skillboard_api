@@ -5148,8 +5148,9 @@ function renderDetail(mode) {
                 ? null
                 : Number(r.nb_titulaires);
 
+              const isNonAnalyse = !!r.is_non_analyse || Number(r.nb_competences_analysees || 0) <= 0;
               const score = clamp(Number(r.indice_fragilite || 0), 0, 100);
-              const prio  = priorityLabel(score);
+              const prio  = isNonAnalyse ? "NA" : priorityLabel(score);
 
 
               return `
@@ -5164,9 +5165,11 @@ function renderDetail(mode) {
                   </td>
                   <td>${escapeHtml(svc)}</td>
 
-                  <td class="col-center" title="Indice fragilité (0-100)">${scoreChip(score)}</td>
+                  <td class="col-center" title="${isNonAnalyse ? "Aucune compétence ne correspond au seuil de criticité sélectionné" : "Indice fragilité (0-100)"}">
+                    ${isNonAnalyse ? '<span class="sb-badge">Non analysé</span>' : scoreChip(score)}
+                  </td>
 
-                  <td class="col-center">${priorityPill(prio, score)}</td>
+                  <td class="col-center">${isNonAnalyse ? '<span class="sb-badge">Hors seuil</span>' : priorityPill(prio, score)}</td>
 
                   <td class="col-center">
                     <button type="button"

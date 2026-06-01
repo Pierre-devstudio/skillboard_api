@@ -370,6 +370,7 @@ def _compute_poste_fragility_record(
     gap = max(nb_cible - nb_titulaires, 0)
     rupture = (nb_titulaires <= 0 and nb_cible >= 1)
     besoin_local = max(min(nb_titulaires, nb_cible), 0)
+    nb_competences_analysees = len(comp_rows or [])
 
     pool_total = 0
     pool_eligible = 0
@@ -386,6 +387,7 @@ def _compute_poste_fragility_record(
     nb_dep_one = 0
     structure_missing_units = 0
     efficiency_missing_units = 0
+    nb_couvertures_non_confirmees = 0
 
     for c in comp_rows or []:
         nb_tit_any = max(_safe_int(c.get("nb_tit_any"), 0), 0)
@@ -398,14 +400,16 @@ def _compute_poste_fragility_record(
         if nb_tit_ok < besoin_local:
             nb_non_tenues += 1
 
-        missing_presence = max(besoin_local - nb_tit_any, 0)
-        if missing_presence > 0:
-            structure_missing_units += missing_presence
+        # Doctrine unique : seule une compétence évaluée et suffisante couvre le poste.
+        # Une compétence simplement déclarée dans le profil ne sécurise pas le poste.
+        missing_validated = max(besoin_local - nb_tit_ok, 0)
+        if missing_validated > 0:
+            structure_missing_units += missing_validated
 
-        covered_by_presence = min(nb_tit_any, besoin_local)
-        underlevel_missing = max(covered_by_presence - nb_tit_ok, 0)
-        if underlevel_missing > 0:
-            efficiency_missing_units += underlevel_missing
+        declared_but_not_validated = max(min(nb_tit_any, besoin_local) - nb_tit_ok, 0)
+        if declared_but_not_validated > 0:
+            efficiency_missing_units += declared_but_not_validated
+            nb_couvertures_non_confirmees += declared_but_not_validated
 
         if nb_tit_ok >= besoin_local:
             relais_ok = max(nb_ok_all - nb_tit_ok, 0)
@@ -419,7 +423,13 @@ def _compute_poste_fragility_record(
     dependance_score = min(15, (6 * nb_dep_zero) + (3 * nb_dep_one))
     transmission_score = _score_transmission(pool_total, pool_eligible)
 
-    base_score = structure_score + efficacite_score + dependance_score
+    # Score métier prioritaire : une compétence critique non tenue doit peser fort.
+    # La formule historique _calc_fragility_score donne 85 pour une criticité non couverte,
+    # ce qui évite les faux postes à 0 % quand les compétences existent mais ne sont pas évaluées.
+    nb_fragilites = nb_non_tenues + nb_dep_zero + nb_dep_one
+    competence_score = _calc_fragility_score(nb_non_tenues, nb_dep_zero, nb_fragilites)
+    additive_score = structure_score + efficacite_score + dependance_score
+    base_score = max(competence_score, additive_score)
     if rupture:
         score = 100
     else:
@@ -431,15 +441,19 @@ def _compute_poste_fragility_record(
         "gap_titulaires": gap,
         "pool_total": pool_total,
         "pool_eligible": pool_eligible,
+        "nb_competences_analysees": nb_competences_analysees,
+        "is_non_analyse": bool(nb_competences_analysees <= 0 and not rupture),
+        "nb_couvertures_non_confirmees": nb_couvertures_non_confirmees,
         "nb_critiques_sans_porteur": nb_non_tenues,
         "nb_critiques_porteur_unique": nb_dep_zero,
-        "nb_critiques_fragiles": nb_non_tenues + nb_dep_zero + nb_dep_one,
+        "nb_critiques_fragiles": nb_fragilites,
         "nb_critiques_sans_releve": nb_dep_zero,
         "nb_critiques_releve_faible": nb_dep_one,
         "score_structurel": structure_score,
         "score_efficacite": efficacite_score,
         "score_dependance": dependance_score,
         "score_transmission": transmission_score,
+        "score_competences": competence_score,
         "base_score": base_score,
         "indice_fragilite": int(score),
         "is_fragile": bool(rupture or base_score > 0),
@@ -597,6 +611,7 @@ def _fetch_postes_fragility_records(
           ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
         WHERE c.etat = 'active'
           AND COALESCE(c.masque, FALSE) = FALSE
+          AND COALESCE(fpc.masque, FALSE) = FALSE
           AND COALESCE(fpc.poids_criticite, 0)::int >= %s
     ),
     pool_all_effectifs AS (
@@ -638,8 +653,8 @@ def _fetch_postes_fragility_records(
                 ELSE 0
             END AS act_rank,
             CASE
+                WHEN a.id_audit_competence IS NOT NULL AND a.resultat_eval IS NOT NULL THEN TRUE
                 WHEN ec.date_derniere_eval IS NOT NULL THEN TRUE
-                WHEN a.id_audit_competence IS NOT NULL THEN TRUE
                 ELSE FALSE
             END AS is_evaluee,
             CASE
@@ -823,15 +838,19 @@ def get_analyse_summary(
                       )
                 ),
                 porteurs AS (
-                    -- Nominal (structurel): sans prendre en compte les indisponibilités
+                    -- Nominal (structurel) : uniquement les porteurs évalués.
                     SELECT
                         ec.id_comp,
                         COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
                     FROM public.tbl_effectif_client_competence ec
                     JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
+                    LEFT JOIN public.tbl_effectif_client_audit_competence a
+                      ON a.id_audit_competence = ec.id_dernier_audit
+                     AND a.id_effectif_competence = ec.id_effectif_competence
                     WHERE COALESCE(ec.actif, TRUE) = TRUE
                       AND COALESCE(ec.archive, FALSE) = FALSE
                       AND COALESCE(ec.id_comp, '') <> ''
+                      AND (ec.date_derniere_eval IS NOT NULL OR a.resultat_eval IS NOT NULL)
                     GROUP BY ec.id_comp
                 ),
                 porteurs_dispo AS (
@@ -915,9 +934,13 @@ def get_analyse_summary(
                 cur.execute(sql_risques, tuple(cte_params + [CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN, CRITICITE_MIN]))
                 rk = cur.fetchone() or {}
 
-                comp_critiques_sans_porteur = int(rk.get("comp_critiques_sans_porteur") or 0)
-                comp_porteur_unique = int(rk.get("comp_porteur_unique") or 0)
-                comp_critiques_fragiles = int(rk.get("comp_critiques_fragiles") or 0)
+                # Les KPI Risques doivent raconter la même chose que la table des postes fragiles.
+                # On les reconstruit donc depuis _fetch_postes_fragility_records(), qui applique la doctrine unique :
+                # compétence déclarée ≠ compétence validée. La requête SQL ci-dessus reste transitoire pour compatibilité,
+                # mais elle ne pilote plus les compteurs affichés.
+                comp_critiques_sans_porteur = sum(int(r.get("nb_critiques_sans_porteur") or 0) for r in postes_fragiles_records)
+                comp_porteur_unique = sum(int(r.get("nb_critiques_porteur_unique") or 0) for r in postes_fragiles_records)
+                comp_critiques_fragiles = sum(int(r.get("nb_critiques_fragiles") or 0) for r in postes_fragiles_records)
                 comp_critiques_tombent_zero_auj = int(rk.get("comp_critiques_tombent_zero_auj") or 0)
 
                 # ---------------------------
@@ -1115,9 +1138,14 @@ def get_analyse_summary(
 
                     JOIN effectifs_valid ev ON ev.id_effectif = ec.id_effectif_client
 
+                    LEFT JOIN public.tbl_effectif_client_audit_competence a
+                      ON a.id_audit_competence = ec.id_dernier_audit
+                     AND a.id_effectif_competence = ec.id_effectif_competence
+
                     WHERE COALESCE(ec.actif, TRUE) = TRUE
 
                       AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND (ec.date_derniere_eval IS NOT NULL OR a.resultat_eval IS NOT NULL)
 
                     GROUP BY ec.id_comp
 
@@ -1133,9 +1161,14 @@ def get_analyse_summary(
 
                       ON ec.id_effectif_client = l.id_effectif
 
+                    LEFT JOIN public.tbl_effectif_client_audit_competence a
+                      ON a.id_audit_competence = ec.id_dernier_audit
+                     AND a.id_effectif_competence = ec.id_effectif_competence
+
                     WHERE COALESCE(ec.actif, TRUE) = TRUE
 
                       AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND (ec.date_derniere_eval IS NOT NULL OR a.resultat_eval IS NOT NULL)
 
                     GROUP BY l.y, ec.id_comp
 
@@ -3184,6 +3217,9 @@ class AnalyseRisqueItem(BaseModel):
     nb_titulaires_cible: Optional[int] = None
     gap_titulaires: Optional[int] = None
     indice_fragilite: Optional[int] = None
+    nb_competences_analysees: Optional[int] = None
+    is_non_analyse: Optional[bool] = None
+    nb_couvertures_non_confirmees: Optional[int] = None
 
     # Compétence (pour les KPI compétences)
     id_comp: Optional[str] = None
@@ -3282,6 +3318,7 @@ def get_analyse_risques_detail(
                     WHERE
                         c.etat = 'active'
                         AND COALESCE(c.masque, FALSE) = FALSE
+                        AND COALESCE(fpc.masque, FALSE) = FALSE
                 ),
                 effectifs_dispo AS (
                     -- "Aujourd'hui": on enlève les effectifs en indisponibilité en cours
@@ -3311,15 +3348,19 @@ def get_analyse_risques_detail(
                     GROUP BY ec.id_comp
                 ),
                 porteurs_dispo AS (
-                    -- Aujourd'hui: porteurs dispo (exclusion des breaks en cours)
+                    -- Aujourd'hui : porteurs évalués disponibles (exclusion des breaks en cours).
                     SELECT
                         ec.id_comp,
                         COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
                     FROM public.tbl_effectif_client_competence ec
                     JOIN effectifs_dispo ed ON ed.id_effectif = ec.id_effectif_client
+                    LEFT JOIN public.tbl_effectif_client_audit_competence a
+                      ON a.id_audit_competence = ec.id_dernier_audit
+                     AND a.id_effectif_competence = ec.id_effectif_competence
                     WHERE COALESCE(ec.actif, TRUE) = TRUE
                       AND COALESCE(ec.archive, FALSE) = FALSE
                       AND COALESCE(ec.id_comp, '') <> ''
+                      AND (ec.date_derniere_eval IS NOT NULL OR a.resultat_eval IS NOT NULL)
                     GROUP BY ec.id_comp
                 )
 
@@ -3357,6 +3398,9 @@ def get_analyse_risques_detail(
                             nb_titulaires_cible=int(r.get("nb_titulaires_cible") or 1),
                             gap_titulaires=int(r.get("gap_titulaires") or 0),
                             indice_fragilite=int(r.get("indice_fragilite") or 0),
+                            nb_competences_analysees=int(r.get("nb_competences_analysees") or 0),
+                            is_non_analyse=bool(r.get("is_non_analyse") or False),
+                            nb_couvertures_non_confirmees=int(r.get("nb_couvertures_non_confirmees") or 0),
                         ))
                 # ---------------------------
                 # KPI: Critiques fragiles (≤ 1 porteur en nominal)
