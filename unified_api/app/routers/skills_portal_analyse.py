@@ -2981,7 +2981,19 @@ def get_analyse_previsions_postes_rouges_modal(
                     ORDER BY eh.exit_date ASC NULLS LAST, eh.nom_effectif ASC, comp.code ASC
                     LIMIT %s
                     """
-                    cur.execute(sortants_sql, tuple(cte_params + [horizon_years, id_poste, criticite_min, id_ent, affected_ids, limit_sortants]))
+                    cur.execute(
+                        sortants_sql,
+                        tuple(cte_params + [
+                            horizon_years,
+                            id_poste,
+                            criticite_min,
+                            id_poste,
+                            id_poste,
+                            id_ent,
+                            affected_ids,
+                            limit_sortants,
+                        ])
+                    )
                     for r in cur.fetchall() or []:
                         sortants.append({
                             "id_effectif": r.get("id_effectif"),
@@ -3029,7 +3041,19 @@ def get_analyse_previsions_postes_rouges_modal(
                     ORDER BY comp.code ASC, eh.nom_effectif ASC, eh.prenom_effectif ASC
                     LIMIT %s
                     """
-                    cur.execute(couverture_sql, tuple(cte_params + [horizon_years, id_poste, criticite_min, id_ent, affected_ids, limit_couverture]))
+                    cur.execute(
+                        couverture_sql,
+                        tuple(cte_params + [
+                            horizon_years,
+                            id_poste,
+                            criticite_min,
+                            id_poste,
+                            id_poste,
+                            id_ent,
+                            affected_ids,
+                            limit_couverture,
+                        ])
+                    )
                     for r in cur.fetchall() or []:
                         couverture.append({
                             "id_effectif": r.get("id_effectif"),
