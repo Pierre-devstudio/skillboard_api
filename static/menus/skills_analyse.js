@@ -3289,6 +3289,177 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       `;
     };
 
+    // Nouveau détail compétence : le backend renvoie les états RH, le front n'invente plus le calcul.
+    if (Array.isArray(data?.causes)) {
+      const scopeObj = data?.scope || {};
+      const scopeLabel = (typeof scopeObj === "object")
+        ? (scopeObj.nom_service || "Tous les services")
+        : (scopeObj || "Tous les services");
+
+      const badgeState = (code, label) => {
+        const c = String(code || "");
+        const cls = c === "COUVERTURE_VALIDEE" ? "sb-badge--success"
+          : c === "DEPENDANCE" ? "sb-badge--warning"
+          : c === "COUVERTURE_NON_CONFIRMEE" ? "sb-badge--info"
+          : "sb-badge--danger";
+        return `<span class="sb-badge ${cls}">${esc(label || "À qualifier")}</span>`;
+      };
+
+      const codePoste = (p) => (p?.codif_client && String(p.codif_client).trim())
+        ? String(p.codif_client).trim()
+        : String(p?.codif_poste || "").trim();
+
+      const dateEvalTxt = (r) => {
+        const d = (r?.date_derniere_eval || r?.date_audit || "").toString().slice(0, 10);
+        return d ? formatDateFr(d) : "—";
+      };
+
+      const postesRows = postes.map((p) => `
+        <tr>
+          <td style="white-space:nowrap;"><span class="sb-badge sb-badge-ref-poste-code">${esc(codePoste(p) || "—")}</span></td>
+          <td class="sb-fs-13 sb-fw-700">${esc(p?.intitule_poste || "")}</td>
+          <td class="sb-fs-13">${esc(p?.nom_service || "—")}</td>
+          <td style="text-align:center;">${nivBadgeHtml(p?.niveau_requis)}</td>
+          <td style="text-align:center;">${critBadgeHtml(p?.poids_criticite)}</td>
+          <td style="text-align:center;">${esc(String(p?.nb_porteurs_declares ?? 0))}</td>
+          <td style="text-align:center;">${esc(String(p?.nb_porteurs_evalues ?? 0))}</td>
+          <td style="text-align:center;">${esc(String(p?.nb_porteurs_valides ?? 0))}</td>
+          <td>${badgeState(p?.etat_couverture, p?.etat_couverture_label)}</td>
+          <td class="sb-fs-13">${esc(p?.action_rh || "Analyser")}</td>
+        </tr>
+      `).join("");
+
+      const porteursRows = porteurs.map((r) => {
+        const full = `${(r?.prenom_effectif || "").toString().trim()} ${(r?.nom_effectif || "").toString().trim()}`.trim() || "—";
+        const c = String(r?.statut_rh || "");
+        const cls = c === "EVALUE" ? "sb-badge--success"
+          : c === "INDISPONIBLE" ? "sb-badge--warning"
+          : "sb-badge--info";
+        return `
+          <tr>
+            <td class="sb-fs-13 sb-fw-700">${esc(full)}</td>
+            <td class="sb-fs-13">${esc(r?.intitule_poste || "—")}</td>
+            <td class="sb-fs-13">${esc(r?.nom_service || "—")}</td>
+            <td style="text-align:center;">${nivBadgeHtml(r?.niveau_actuel)}</td>
+            <td style="text-align:center;">${esc(dateEvalTxt(r))}</td>
+            <td><span class="sb-badge ${cls}">${esc(r?.statut_rh_label || "À évaluer")}</span></td>
+          </tr>
+        `;
+      }).join("");
+
+      const causesHtml = (data.causes || []).filter(c => Number(c?.count || 0) > 0).map((c, idx) => `
+        <div class="sb-accordion">
+          <button type="button" class="sb-acc-head sb-btn sb-btn--soft ${idx === 0 ? "is-open" : ""}">
+            <span style="display:flex;align-items:center;gap:10px;">
+              <span>${esc(c?.titre || "Cause")}</span>
+              <span class="sb-badge">${esc(String(c?.count || 0))}</span>
+            </span>
+            <span class="sb-acc-chevron">▾</span>
+          </button>
+          <div class="sb-acc-body">
+            <div class="card-sub" style="margin:0 0 8px 0;"><b>Lecture RH :</b> ${esc(c?.lecture || "—")}</div>
+            <div class="card-sub" style="margin:0;"><b>Action :</b> ${esc(c?.action || "—")}</div>
+          </div>
+        </div>
+      `).join("") || `<div class="card-sub" style="margin:0;">Aucune cause critique détectée sur le périmètre et le seuil sélectionnés.</div>`;
+
+      const lectureRh = (() => {
+        const absent = Number(stats?.nb_postes_couverture_absente || 0);
+        const nonConf = Number(stats?.nb_postes_non_confirmee || 0);
+        const insuff = Number(stats?.nb_postes_niveau_insuffisant || 0);
+        const dep = Number(stats?.nb_postes_dependance || 0);
+        const total = Number(stats?.nb_postes_impactes || postes.length || 0);
+        if (!total) return "Cette compétence n’est pas requise sur les postes du périmètre ou du seuil sélectionné.";
+        if (absent > 0) return "Cette compétence expose des postes car aucun porteur déclaré ne couvre une partie du besoin.";
+        if (nonConf > 0) return "Cette compétence est déclarée, mais le niveau attendu n’est pas confirmé par une évaluation exploitable.";
+        if (insuff > 0) return "Cette compétence est évaluée, mais le niveau constaté reste insuffisant sur une partie des postes concernés.";
+        if (dep > 0) return "Cette compétence est validée, mais elle repose sur trop peu de porteurs confirmés.";
+        return "Cette compétence est couverte au niveau requis sur le périmètre analysé.";
+      })();
+
+      host.innerHTML = `
+        <div class="card" style="padding:12px; margin:0;">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:260px;">
+              <div class="card-title" style="margin-bottom:8px;">Lecture RH</div>
+              <div class="card-sub" style="margin:0 0 10px 0;">${esc(lectureRh)}</div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <span class="sb-badge">Service : ${esc(scopeLabel)}</span>
+                <span class="sb-badge">Criticité min : ${esc(String(critMinSafe))}</span>
+                <span class="sb-badge">Postes concernés : ${esc(String(stats?.nb_postes_impactes ?? postes.length))}</span>
+                <span class="sb-badge">Porteurs déclarés : ${esc(String(stats?.nb_porteurs_declares ?? porteurs.length))}</span>
+                <span class="sb-badge">Porteurs évalués : ${esc(String(stats?.nb_porteurs_evalues ?? 0))}</span>
+                <span class="sb-badge">Porteurs validés : ${esc(String(stats?.nb_porteurs_valides ?? 0))}</span>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+              ${ring(scoreSafe)}
+              ${priorityPill(prioLabel, scoreSafe)}
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <div class="card-title" style="margin-bottom:8px;">Causes racines</div>
+          ${causesHtml}
+        </div>
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <div class="card-title" style="margin-bottom:8px;">Postes concernés</div>
+          <div style="overflow:auto;">
+            <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" style="margin:0; min-width:980px;">
+              <thead>
+                <tr>
+                  <th style="width:110px;">Poste</th>
+                  <th>Intitulé</th>
+                  <th style="width:160px;">Service</th>
+                  <th style="width:110px; text-align:center;">Niveau requis</th>
+                  <th style="width:90px; text-align:center;">Criticité</th>
+                  <th style="width:90px; text-align:center;">Déclarés</th>
+                  <th style="width:90px; text-align:center;">Évalués</th>
+                  <th style="width:90px; text-align:center;">Validés</th>
+                  <th style="width:160px;">État RH</th>
+                  <th style="width:190px;">Action</th>
+                </tr>
+              </thead>
+              <tbody>${postesRows || `<tr><td colspan="10" class="sb-muted">Aucun poste concerné.</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <div class="card-title" style="margin-bottom:8px;">Porteurs identifiés</div>
+          <div style="overflow:auto;">
+            <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" style="margin:0; min-width:760px;">
+              <thead>
+                <tr>
+                  <th>Collaborateur</th>
+                  <th>Poste actuel</th>
+                  <th style="width:150px;">Service</th>
+                  <th style="width:120px; text-align:center;">Niveau déclaré</th>
+                  <th style="width:130px; text-align:center;">Dernière éval.</th>
+                  <th style="width:150px;">Statut</th>
+                </tr>
+              </thead>
+              <tbody>${porteursRows || `<tr><td colspan="6" class="sb-muted">Aucun porteur déclaré sur le périmètre.</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      host.querySelectorAll(".sb-acc-head").forEach((btnAcc) => {
+        const body = btnAcc.nextElementSibling;
+        if (body) body.style.display = btnAcc.classList.contains("is-open") ? "" : "none";
+        btnAcc.addEventListener("click", () => {
+          btnAcc.classList.toggle("is-open");
+          const b = btnAcc.nextElementSibling;
+          if (b) b.style.display = btnAcc.classList.contains("is-open") ? "" : "none";
+        });
+      });
+
+      return;
+    }
+
     // -------- données sous-couverture (besoin vs porteurs >= niveau) --------
     const need = { A: 0, B: 0, C: 0 };
     const have = { A: 0, B: 0, C: 0 };

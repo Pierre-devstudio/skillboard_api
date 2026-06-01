@@ -5632,6 +5632,7 @@ def get_risque_competence_detail(
                     AND COALESCE(p.actif, TRUE) = TRUE
                     AND {svc_filter_poste}
                     AND c.id_comp = %s
+                    AND COALESCE(fpc.masque, FALSE) = FALSE
                     AND COALESCE(fpc.poids_criticite, 0) >= %s
                 ORDER BY
                     COALESCE(pc.nb_porteurs,0) ASC,
@@ -5649,7 +5650,7 @@ def get_risque_competence_detail(
                 params_postes.extend([comp_id, criticite_min, limit_postes])
 
                 cur.execute(sql_postes, tuple(params_postes))
-                postes = cur.fetchall() or []
+                postes = [dict(r) for r in (cur.fetchall() or [])]
 
                 # --- Porteurs (tous porteurs dans le périmètre)
                 sql_porteurs = f"""
@@ -5658,7 +5659,18 @@ def get_risque_competence_detail(
                     e.id_effectif,
                     e.prenom_effectif,
                     e.nom_effectif,
+                    ec.id_effectif_competence,
                     ec.niveau_actuel,
+                    ec.date_derniere_eval,
+                    ec.id_dernier_audit,
+                    ac.id_audit_competence,
+                    ac.date_audit,
+                    ac.resultat_eval,
+                    CASE
+                        WHEN ec.date_derniere_eval IS NOT NULL THEN TRUE
+                        WHEN ac.id_audit_competence IS NOT NULL THEN TRUE
+                        ELSE FALSE
+                    END AS is_evaluee,
 
                     CASE WHEN br.date_fin_indispo IS NULL THEN FALSE ELSE TRUE END AS is_indispo,
                     br.date_fin_indispo,
@@ -5672,6 +5684,9 @@ def get_risque_competence_detail(
                 FROM public.tbl_effectif_client_competence ec
                 JOIN public.tbl_effectif_client e
                   ON e.id_effectif = ec.id_effectif_client
+                LEFT JOIN public.tbl_effectif_client_audit_competence ac
+                  ON ac.id_audit_competence = ec.id_dernier_audit
+                 AND ac.id_effectif_competence = ec.id_effectif_competence
                 LEFT JOIN public.tbl_entreprise_organigramme o
                   ON o.id_ent = e.id_ent
                  AND o.id_service = e.id_service
@@ -5707,12 +5722,11 @@ def get_risque_competence_detail(
                 params_porteurs.append(limit_porteurs)
 
                 cur.execute(sql_porteurs, tuple(params_porteurs))
-                porteurs = cur.fetchall() or []
+                porteurs = [dict(r) for r in (cur.fetchall() or [])]
 
-                                # --- Niveaux (pour le graphique besoin vs possédé)
+                # --- Niveaux et états RH (calculés côté backend, le front affiche seulement)
                 def _niv_key(v: Any) -> str:
                     s = (v or "").strip().upper()
-                    # normalisation minimaliste (Avancé/É etc.)
                     s = (
                         s.replace("É", "E").replace("È", "E").replace("Ê", "E").replace("Ë", "E")
                          .replace("À", "A").replace("Â", "A").replace("Ä", "A")
@@ -5721,46 +5735,157 @@ def get_risque_competence_detail(
                          .replace("Û", "U").replace("Ü", "U")
                          .replace("Ç", "C")
                     )
-
                     if not s:
                         return ""
-
                     if "-" in s:
                         last = s.split("-")[-1].strip()
                         if last in ("A", "B", "C"):
                             return last
-
                     if s in ("A", "B", "C"):
                         return s
-
                     if "EXPERT" in s:
                         return "C"
                     if "AVANCE" in s:
                         return "B"
                     if "INITIAL" in s or "INIT" in s:
                         return "A"
-
                     return ""
 
-                besoin = {"A": 0, "B": 0, "C": 0}
-                for p in postes:
-                    k = _niv_key(p.get("niveau_requis"))
-                    if not k:
-                        continue
-                    try:
-                        w = int(p.get("besoin_poste") or 1)
-                    except Exception:
-                        w = 1
-                    if w < 1:
-                        w = 1
-                    besoin[k] += w
+                def _niv_rank_local(v: Any) -> int:
+                    k = _niv_key(v)
+                    if k == "A":
+                        return 1
+                    if k == "B":
+                        return 2
+                    if k == "C":
+                        return 3
+                    return 0
 
-                porteurs_niv = {"A": 0, "B": 0, "C": 0}
+                def _truthy(v: Any) -> bool:
+                    return v is True or v == 1 or str(v or "").strip().lower() in ("t", "true", "1", "oui", "yes")
+
+                def _is_evaluee_row(r: Dict[str, Any]) -> bool:
+                    return bool(r.get("date_derniere_eval") or r.get("id_audit_competence") or r.get("date_audit") or _truthy(r.get("is_evaluee")))
+
+                def _is_indispo_row(r: Dict[str, Any]) -> bool:
+                    return bool(r.get("date_fin_indispo") or _truthy(r.get("is_indispo")))
+
+                def _coverage_state_label(etat: str) -> str:
+                    return {
+                        "COUVERTURE_ABSENTE": "Aucun porteur déclaré",
+                        "COUVERTURE_NON_CONFIRMEE": "À évaluer",
+                        "NIVEAU_INSUFFISANT": "Niveau insuffisant",
+                        "DEPENDANCE": "Dépendance",
+                        "COUVERTURE_VALIDEE": "Couverture validée",
+                    }.get(etat or "", "À qualifier")
+
+                def _coverage_action_label(etat: str) -> str:
+                    return {
+                        "COUVERTURE_ABSENTE": "Identifier un porteur ou recruter",
+                        "COUVERTURE_NON_CONFIRMEE": "Évaluer en priorité",
+                        "NIVEAU_INSUFFISANT": "Former / accompagner",
+                        "DEPENDANCE": "Organiser une doublure",
+                        "COUVERTURE_VALIDEE": "Surveiller",
+                    }.get(etat or "", "Analyser")
+
+                porteurs_by_poste: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
                 for r in porteurs:
-                    k = _niv_key(r.get("niveau_actuel"))
-                    if not k:
+                    pid = str(r.get("id_poste_actuel") or "").strip()
+                    if pid:
+                        porteurs_by_poste[pid].append(r)
+
+                    rang = _niv_rank_local(r.get("niveau_actuel"))
+                    is_eval = _is_evaluee_row(r)
+                    is_indispo = _is_indispo_row(r)
+                    if is_indispo:
+                        statut_rh = "INDISPONIBLE"
+                        statut_rh_label = "Indisponible"
+                    elif not is_eval:
+                        statut_rh = "A_EVALUER"
+                        statut_rh_label = "À évaluer"
+                    elif rang <= 0:
+                        statut_rh = "EVALUATION_INEXPLOITABLE"
+                        statut_rh_label = "Évaluation inexploitable"
+                    else:
+                        statut_rh = "EVALUE"
+                        statut_rh_label = "Évalué"
+
+                    r["niveau_code"] = _niv_key(r.get("niveau_actuel"))
+                    r["niveau_rank"] = rang
+                    r["is_evaluee"] = is_eval
+                    r["is_indispo"] = is_indispo
+                    r["statut_rh"] = statut_rh
+                    r["statut_rh_label"] = statut_rh_label
+
+                besoin = {"A": 0, "B": 0, "C": 0}
+                porteurs_niv = {"A": 0, "B": 0, "C": 0}
+
+                nb_postes_absent = 0
+                nb_postes_non_confirme = 0
+                nb_postes_insuffisant = 0
+                nb_postes_dependance = 0
+                nb_postes_valides = 0
+                nb_valides_total = 0
+
+                for p in postes:
+                    pid = str(p.get("id_poste") or "").strip()
+                    req_rank = _niv_rank_local(p.get("niveau_requis"))
+                    req_key = _niv_key(p.get("niveau_requis"))
+                    besoin_poste = max(_safe_int(p.get("besoin_poste"), 1), 1)
+                    if req_key:
+                        besoin[req_key] += besoin_poste
+
+                    related = porteurs_by_poste.get(pid, [])
+                    nb_declares = len(related)
+                    nb_evalues = sum(1 for r in related if r.get("is_evaluee") and not r.get("is_indispo"))
+                    nb_valides = sum(
+                        1 for r in related
+                        if r.get("is_evaluee") and not r.get("is_indispo") and req_rank > 0 and _safe_int(r.get("niveau_rank"), 0) >= req_rank
+                    )
+                    nb_non_evalues = sum(1 for r in related if not r.get("is_evaluee"))
+                    nb_insuffisants = sum(
+                        1 for r in related
+                        if r.get("is_evaluee") and not r.get("is_indispo") and req_rank > 0 and 0 < _safe_int(r.get("niveau_rank"), 0) < req_rank
+                    )
+
+                    if nb_declares <= 0:
+                        etat = "COUVERTURE_ABSENTE"
+                        nb_postes_absent += 1
+                    elif nb_valides >= besoin_poste:
+                        if nb_valides == 1:
+                            etat = "DEPENDANCE"
+                            nb_postes_dependance += 1
+                        else:
+                            etat = "COUVERTURE_VALIDEE"
+                            nb_postes_valides += 1
+                    elif nb_non_evalues > 0:
+                        etat = "COUVERTURE_NON_CONFIRMEE"
+                        nb_postes_non_confirme += 1
+                    elif nb_insuffisants > 0:
+                        etat = "NIVEAU_INSUFFISANT"
+                        nb_postes_insuffisant += 1
+                    else:
+                        etat = "COUVERTURE_ABSENTE"
+                        nb_postes_absent += 1
+
+                    p["besoin_poste"] = besoin_poste
+                    p["nb_porteurs_declares"] = nb_declares
+                    p["nb_porteurs_evalues"] = nb_evalues
+                    p["nb_porteurs_valides"] = nb_valides
+                    p["nb_porteurs_non_evalues"] = nb_non_evalues
+                    p["nb_porteurs_insuffisants"] = nb_insuffisants
+                    p["etat_couverture"] = etat
+                    p["etat_couverture_label"] = _coverage_state_label(etat)
+                    p["action_rh"] = _coverage_action_label(etat)
+
+                    nb_valides_total += nb_valides
+
+                for r in porteurs:
+                    if not r.get("is_evaluee") or r.get("is_indispo"):
                         continue
-                    porteurs_niv[k] += 1
+                    k = r.get("niveau_code") or ""
+                    if k in porteurs_niv:
+                        porteurs_niv[k] += 1
 
                 porteurs_ge = {
                     "A": porteurs_niv["A"] + porteurs_niv["B"] + porteurs_niv["C"],
@@ -5770,6 +5895,64 @@ def get_risque_competence_detail(
 
                 niveaux = {"besoin": besoin, "porteurs": porteurs_niv, "porteurs_ge": porteurs_ge}
 
+                causes = [
+                    {
+                        "code": "COUVERTURE_ABSENTE",
+                        "titre": "Couverture absente",
+                        "count": nb_postes_absent,
+                        "lecture": "Aucun porteur déclaré ne couvre cette compétence sur les postes concernés.",
+                        "action": "Identifier un porteur interne ou préparer un recrutement ciblé.",
+                    },
+                    {
+                        "code": "COUVERTURE_NON_CONFIRMEE",
+                        "titre": "Couverture non confirmée",
+                        "count": nb_postes_non_confirme,
+                        "lecture": "La compétence est déclarée, mais aucune évaluation exploitable ne confirme le niveau attendu.",
+                        "action": "Planifier une évaluation avant de considérer le poste sécurisé.",
+                    },
+                    {
+                        "code": "NIVEAU_INSUFFISANT",
+                        "titre": "Écart de maîtrise",
+                        "count": nb_postes_insuffisant,
+                        "lecture": "La compétence est évaluée, mais le niveau constaté ne couvre pas le niveau requis.",
+                        "action": "Prévoir formation, accompagnement ou montée en compétence ciblée.",
+                    },
+                    {
+                        "code": "DEPENDANCE",
+                        "titre": "Dépendance / transmission",
+                        "count": nb_postes_dependance,
+                        "lecture": "La compétence est validée, mais repose sur un seul porteur confirmé.",
+                        "action": "Organiser une doublure ou un transfert de savoir-faire.",
+                    },
+                ]
+
+                nb_postes_total_detail = len(postes)
+                nb_postes_fragiles_detail = nb_postes_absent + nb_postes_non_confirme + nb_postes_insuffisant + nb_postes_dependance
+                indice_detail = _calc_fragility_score(nb_postes_absent, nb_postes_dependance, nb_postes_fragiles_detail)
+                if nb_postes_non_confirme > 0:
+                    indice_detail = max(indice_detail, min(90, 30 + (10 * nb_postes_non_confirme)))
+                if nb_postes_insuffisant > 0:
+                    indice_detail = max(indice_detail, min(92, 45 + (10 * nb_postes_insuffisant)))
+                indice_detail = _clamp_int(indice_detail, 0, 100)
+
+                priorite_detail = "P1" if indice_detail >= 75 else "P2" if indice_detail >= 50 else "P3"
+
+                competence_detail_stats = {
+                    "nb_postes_impactes": nb_postes_total_detail,
+                    "nb_postes_couverture_absente": nb_postes_absent,
+                    "nb_postes_non_confirmee": nb_postes_non_confirme,
+                    "nb_postes_niveau_insuffisant": nb_postes_insuffisant,
+                    "nb_postes_dependance": nb_postes_dependance,
+                    "nb_postes_valides": nb_postes_valides,
+                    "nb_porteurs_declares": len(porteurs),
+                    "nb_porteurs_evalues": sum(1 for r in porteurs if r.get("is_evaluee")),
+                    "nb_porteurs_non_evalues": sum(1 for r in porteurs if not r.get("is_evaluee")),
+                    "nb_porteurs_valides": nb_valides_total,
+                    "besoin_total": sum(max(_safe_int(p.get("besoin_poste"), 1), 1) for p in postes),
+                    "criticite_max": max([_safe_int(p.get("poids_criticite"), 0) for p in postes] or [0]),
+                    "indice_fragilite": indice_detail,
+                    "priorite": priorite_detail,
+                }
 
                 # --- Diagnostic DRH fiable (indépendant des LIMIT) + Indice/Priorité
                 other_ctes = f"""
@@ -6054,6 +6237,23 @@ def get_risque_competence_detail(
                 else:
                     priorite = "P3"
 
+                # Le détail compétence doit rester aligné sur la doctrine RH :
+                # déclarée != évaluée != validée au niveau requis.
+                if competence_detail_stats:
+                    B = int(competence_detail_stats.get("besoin_total") or 0)
+                    P = int(competence_detail_stats.get("nb_porteurs_declares") or 0)
+                    Pd = int(competence_detail_stats.get("nb_porteurs_evalues") or 0)
+                    Pe = int(porteurs_niv.get("C") or 0)
+                    Ped = Pe
+                    N = int(competence_detail_stats.get("nb_postes_impactes") or 0)
+                    Cmax = int(competence_detail_stats.get("criticite_max") or 0)
+                    N80 = sum(1 for p in postes if _safe_int(p.get("poids_criticite"), 0) >= 80)
+                    nb_postes = N
+                    nb_porteurs = P
+                    nb_postes_sans_porteur = int(competence_detail_stats.get("nb_postes_couverture_absente") or 0)
+                    nb_postes_porteur_unique = int(competence_detail_stats.get("nb_postes_dependance") or 0)
+                    indice = int(competence_detail_stats.get("indice_fragilite") or 0)
+                    priorite = str(competence_detail_stats.get("priorite") or priorite)
 
                 return {
                     "scope": scope,
@@ -6091,8 +6291,18 @@ def get_risque_competence_detail(
 
                         "indice_fragilite": indice,
                         "priorite": priorite,
+                        "nb_postes_couverture_absente": competence_detail_stats.get("nb_postes_couverture_absente", 0),
+                        "nb_postes_non_confirmee": competence_detail_stats.get("nb_postes_non_confirmee", 0),
+                        "nb_postes_niveau_insuffisant": competence_detail_stats.get("nb_postes_niveau_insuffisant", 0),
+                        "nb_postes_dependance": competence_detail_stats.get("nb_postes_dependance", 0),
+                        "nb_postes_valides": competence_detail_stats.get("nb_postes_valides", 0),
+                        "nb_porteurs_declares": competence_detail_stats.get("nb_porteurs_declares", 0),
+                        "nb_porteurs_evalues": competence_detail_stats.get("nb_porteurs_evalues", 0),
+                        "nb_porteurs_non_evalues": competence_detail_stats.get("nb_porteurs_non_evalues", 0),
+                        "nb_porteurs_valides": competence_detail_stats.get("nb_porteurs_valides", 0),
                     },
 
+                    "causes": causes,
                     "postes": postes,
                     "porteurs": porteurs,
                 }
