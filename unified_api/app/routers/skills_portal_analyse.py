@@ -1077,7 +1077,7 @@ def get_analyse_summary(
 
                 req_crit AS (
 
-                    SELECT DISTINCT id_poste, id_comp
+                    SELECT DISTINCT id_poste, id_comp, poids_crit, poids_calc
 
                     FROM req_all
 
@@ -1229,9 +1229,7 @@ def get_analyse_summary(
 
                     ) x
 
-                    WHERE x.cov_now >= %s
-
-                      AND x.cov_future < %s
+                    WHERE x.cov_future < x.cov_now
 
                     GROUP BY y
 
@@ -1260,7 +1258,7 @@ def get_analyse_summary(
                 """
 
 
-                cur.execute(sql_prev, tuple(cte_params + [HORIZON_MAX, CRITICITE_MIN, COVERAGE_RED, COVERAGE_RED]))
+                cur.execute(sql_prev, tuple(cte_params + [HORIZON_MAX, CRITICITE_MIN]))
 
                 prev_rows = cur.fetchall() or []
 
@@ -2597,9 +2595,15 @@ def get_analyse_previsions_postes_rouges_detail(
                   ON o.id_ent = %s
                  AND o.id_service = s.id_service
                  AND COALESCE(o.archive, FALSE) = FALSE
-                WHERE s.couverture_now >= %s
-                  AND s.couverture_future < %s
-                ORDER BY s.couverture_future ASC, s.intitule_poste ASC
+                WHERE (
+                    s.couverture_future < s.couverture_now
+                    OR COALESCE(th.nb_titulaires_horizon, 0) < COALESCE(tn.nb_titulaires_now, 0)
+                    OR s.future_sans_porteur > s.now_sans_porteur
+                    OR s.future_porteur_unique > s.now_porteur_unique
+                    OR s.future_sans_releve > s.now_sans_releve
+                    OR s.future_releve_faible > s.now_releve_faible
+                  )
+                ORDER BY s.couverture_future ASC, (s.couverture_now - s.couverture_future) DESC, s.intitule_poste ASC
                 LIMIT %s
                 """
 
@@ -2611,8 +2615,6 @@ def get_analyse_previsions_postes_rouges_detail(
                         criticite_min,
                         id_ent,
                         id_ent,
-                        COVERAGE_RED,
-                        COVERAGE_RED,
                         limit,
                     ]
                 )
@@ -2840,6 +2842,7 @@ def get_analyse_previsions_postes_rouges_modal(
                     WHERE fp.id_ent = %s
                       AND fp.id_poste = %s
                       AND COALESCE(fp.actif, TRUE) = TRUE
+                      AND COALESCE(cp.masque, FALSE) = FALSE
                       AND COALESCE(cp.poids_criticite,0) >= %s
                 ),
                 cov AS (
@@ -3122,6 +3125,7 @@ def get_analyse_previsions_postes_rouges_modal(
                         COALESCE(cp.niveau_requis,'')::text AS niveau_requis
                     FROM public.tbl_fiche_poste_competence cp
                     WHERE cp.id_poste = %s
+                      AND COALESCE(cp.masque, FALSE) = FALSE
                       AND COALESCE(cp.poids_criticite,0) >= %s
                 ),
                 cov AS (
@@ -3267,6 +3271,7 @@ def get_analyse_previsions_postes_rouges_modal(
                         COALESCE(cp.niveau_requis,'')::text AS niveau_requis
                     FROM public.tbl_fiche_poste_competence cp
                     WHERE cp.id_poste = %s
+                      AND COALESCE(cp.masque, FALSE) = FALSE
                       AND COALESCE(cp.poids_criticite,0) >= %s
                 ),
                 cov AS (
@@ -3404,7 +3409,8 @@ def get_analyse_previsions_postes_rouges_modal(
                   SELECT DISTINCT cp.id_competence AS id_comp
                   FROM public.tbl_fiche_poste_competence cp
                   WHERE cp.id_poste = %s
-                    AND COALESCE(cp.poids_criticite,0) >= %s
+                    AND COALESCE(cp.masque, FALSE) = FALSE
+                      AND COALESCE(cp.poids_criticite,0) >= %s
                 ),
                 base_cnt AS (
                   SELECT COUNT(*)::int AS n FROM base_set

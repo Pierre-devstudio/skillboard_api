@@ -4889,84 +4889,88 @@ function renderDetail(mode) {
             return `<span class="sb-badge ${mod}" title="Évolution vs aujourd’hui">${escapeHtml(txt)}</span>`;
           }
 
+          function covBadge(now, future) {
+            const n = Number.isFinite(Number(now)) ? Math.round(Number(now)) : null;
+            const f = Number.isFinite(Number(future)) ? Math.round(Number(future)) : null;
+            if (n === null && f === null) return `<span class="card-sub">—</span>`;
+            const delta = (f ?? 0) - (n ?? 0);
+            const cls = delta < 0 ? "sb-badge--danger" : "sb-badge--success";
+            const txt = `${n ?? "—"}% → ${f ?? "—"}%`;
+            return `<span class="sb-badge ${cls}" title="Couverture actuelle puis couverture projetée">${escapeHtml(txt)}</span>`;
+          }
+
+          function situationText(r) {
+            const tNow = Number(r.nb_titulaires_now || 0);
+            const tH = Number(r.nb_titulaires_horizon || 0);
+            const cible = Number(r.nb_titulaires_cible || 1);
+            const sans = Number(r.future_sans_porteur || 0);
+            const unique = Number(r.future_porteur_unique || 0);
+            const sansRel = Number(r.future_sans_releve || 0);
+            const parts = [];
+            if (tH < tNow) parts.push(`${tNow - tH} titulaire(s) sortant(s)`);
+            if (tH < cible) parts.push(`effectif cible non tenu (${tH}/${cible})`);
+            if (sans > 0) parts.push(`${sans} compétence(s) sans porteur`);
+            if (unique > 0) parts.push(`${unique} compétence(s) à porteur unique`);
+            if (sansRel > 0) parts.push(`${sansRel} compétence(s) sans relais interne`);
+            return parts.length ? parts.join(" · ") : "Couverture dégradée sur l’horizon sélectionné";
+          }
+
+          function actionText(r) {
+            const sans = Number(r.future_sans_porteur || 0);
+            const unique = Number(r.future_porteur_unique || 0);
+            const rel = Number(r.future_sans_releve || 0);
+            if (sans > 0) return "Décider vite : recrutement, mobilité ou formation ciblée.";
+            if (unique > 0 || rel > 0) return "Sécuriser : binôme, transmission et montée en compétence.";
+            return "Contrôler la couverture et préparer un plan de relève.";
+          }
+
           const rowsHtml = items.map(r => {
             const idPoste = (r.id_poste || "").toString().trim();
             const poste = (r.intitule_poste || "—").toString().trim();
             const svc = (r.nom_service || "—").toString().trim();
-
             const codifClient = (r.codif_client || "").toString().trim();
             const codifPoste  = (r.codif_poste || "").toString().trim();
             const codeAffiche = codifClient || codifPoste;
-
-            const fH  = Number(r.future_fragiles || 0);
-            const spH = Number(r.future_sans_porteur || 0);
-            const puH = Number(r.future_porteur_unique || 0);
-
-            const f0  = Number(r.now_fragiles || 0);
-            const sp0 = Number(r.now_sans_porteur || 0);
-            const pu0 = Number(r.now_porteur_unique || 0);
-
-            const nbTit = (r.nb_titulaires === null || r.nb_titulaires === undefined) ? null : Number(r.nb_titulaires);
-
+            const covNow = (r.couverture_now !== null && r.couverture_now !== undefined) ? Number(r.couverture_now) : null;
+            const covH = (r.couverture_future !== null && r.couverture_future !== undefined) ? Number(r.couverture_future) : null;
             const scoreH = (r.indice_fragilite_horizon !== null && r.indice_fragilite_horizon !== undefined)
               ? clamp(Number(r.indice_fragilite_horizon || 0), 0, 100)
-              : calcFragilityScore(spH, puH, fH, nbTit);
-
-            const score0 = (r.indice_fragilite_now !== null && r.indice_fragilite_now !== undefined)
-              ? clamp(Number(r.indice_fragilite_now || 0), 0, 100)
-              : calcFragilityScore(sp0, pu0, f0, nbTit);
-
-            const delta = (r.delta_fragilite !== null && r.delta_fragilite !== undefined)
-              ? Number(r.delta_fragilite || 0)
-              : (scoreH - score0);
-
-            const prio = (r.priorite_label || "").toString().trim() || priorityLabel(scoreH);
+              : null;
+            const prio = (r.priorite_label || "").toString().trim() || (scoreH !== null ? priorityLabel(scoreH) : "À traiter");
 
             return `
               <tr class="prev-red-poste-row" data-id_poste="${escapeHtml(idPoste)}">
                 <td class="prev-red-open" style="cursor:pointer;">
-                  <div style="display:flex; gap:8px; align-items:center; min-width:0;">
+                  <div class="sb-prev-poste-cell">
                     <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(codeAffiche || "—")}</span>
-                    <span style="font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(poste)}</span>
+                    <div class="sb-prev-poste-text">
+                      <strong>${escapeHtml(poste)}</strong>
+                      <span>${escapeHtml(svc)}</span>
+                    </div>
                   </div>
                 </td>
-                <td>${escapeHtml(svc)}</td>
-                <td class="col-center" title="Indice fragilité projeté (0-100)">${scoreChip(scoreH)}</td>
-                <td class="col-center">${deltaBadge(delta)}</td>
-                <td class="col-center">${priorityPill(prio, scoreH)}</td>
+                <td>${escapeHtml(situationText(r))}</td>
+                <td class="col-center">${covBadge(covNow, covH)}</td>
+                <td class="col-center">${priorityPill(prio, scoreH ?? 70)}</td>
+                <td>${escapeHtml(actionText(r))}</td>
                 <td class="col-center">
-                  <button type="button" class="btn-secondary prev-red-open" style="padding:6px 10px; font-size:12px; line-height:1;">Voir analyse</button>
+                  <button type="button" class="sb-btn sb-btn--xs sb-btn--soft prev-red-open">Voir détail</button>
                 </td>
               </tr>
             `;
           }).join("");
 
           box.innerHTML = `
-            <div class="table-wrap sb-tip-host" style="margin-top:10px;">
-              <table class="sb-table" id="tblPrevPostesImpactes">
+            <div class="sb-prev-table-wrap">
+              <table class="sb-table sb-table--airy sb-table--hover sb-prev-table" id="tblPrevPostesImpactes">
                 <thead>
                   <tr>
-                    <th>Poste</th>
-                    <th style="width:180px;">Service</th>
-
-                    <th class="col-center" style="width:220px;">
-                      <span class="sb-th-with-tip">
-                        <span>Indice<br>de fragilité</span>
-                        <span class="sb-iinfo"
-                              data-sbtip="fragility-index"
-                              tabindex="0"
-                              role="button"
-                              aria-label="Informations sur l'indice de fragilité">i</span>
-                      </span>
-                    </th>
-
-                    <th class="col-center" style="width:140px; line-height:1.1;">Évolution<br>(vs aujourd’hui)</th>
-
-                    <th class="col-center" style="width:130px; white-space:normal; line-height:1.1;">
-                      Priorité de<br>traitement
-                    </th>
-
-                    <th class="col-center" style="width:140px;">Action</th>
+                    <th>Poste concerné</th>
+                    <th>Situation RH projetée</th>
+                    <th class="col-center" style="width:150px;">Couverture</th>
+                    <th class="col-center" style="width:140px;">Priorité</th>
+                    <th>Décision à préparer</th>
+                    <th class="col-center" style="width:120px;">Détail</th>
                   </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
@@ -7187,15 +7191,15 @@ function bindOnce(portal) {
 
     function _decisionText(futureFragiles, futureSans, futureUnique) {
       if (futureSans > 0) {
-        return "Décision RH: risque de rupture (sans couverture). Priorité: sécurisation immédiate (recrutement / mobilité / externalisation) + plan de transfert.";
+        return "Lecture RH : le poste perd une couverture critique. Préparer une décision de sécurisation : recrutement, mobilité, formation ciblée ou relais externe.";
       }
       if (futureUnique > 0) {
-        return "Décision RH: dépendance forte (couverture unique). Priorité: double portage + transfert de savoir + montée en compétences d’un binôme.";
+        return "Lecture RH : le poste reste couvert, mais dépend trop fortement d’une seule personne. Préparer un binôme et un transfert de savoir.";
       }
       if (futureFragiles > 0) {
-        return "Décision RH: fragilité à court terme. Priorité: plan de montée en compétences, ajustement staffing, prévention des sorties.";
+        return "Lecture RH : le poste présente une fragilité à horizon. Priorité à la montée en compétence et à la confirmation des relais internes.";
       }
-      return "Décision RH: pas de bascule rouge détectée sur l’horizon (selon périmètre).";
+      return "Lecture RH : aucun point de rupture majeur détecté sur l’horizon, mais la couverture doit être suivie.";
     }
 
     // ---------- fetch modal ----------
@@ -7286,7 +7290,7 @@ function bindOnce(portal) {
         const svc = (poste.nom_service || posteSvc || "—").toString().trim();
 
         if (title) title.textContent = intit;
-        if (sub) sub.textContent = `Bascule rouge à horizon ${horizon} an${horizon > 1 ? "s" : ""} (périmètre filtré)`;
+        if (sub) sub.textContent = `Projection RH à horizon ${horizon} an${horizon > 1 ? "s" : ""} (périmètre filtré)`;
 
         const fFrag = _num(kpis.future_fragiles ?? data?.future_fragiles ?? seedFutureFrag);
         const fSans = _num(kpis.future_sans_porteur ?? data?.future_sans_porteur ?? seedFutureSans);
@@ -7309,33 +7313,55 @@ function bindOnce(portal) {
 
         // --- Synthèse
         if (paneSyn) {
-          const top = causes.slice(0, 5).map(c => {
+          const top = causes.slice(0, 4).map(c => {
             const code = (c.code || "—").toString().trim();
             const itit = (c.intitule || c.intitule_competence || "—").toString().trim();
             const crit = _num(c.criticite ?? c.poids_criticite);
             const now = _num(c.nb_now ?? c.porteurs_now);
             const rem = _num(c.nb_remain ?? c.porteurs_remain);
-            return `<li style="margin:2px 0;"><b>${escapeHtml(code)}</b> ${escapeHtml(itit)} • Crit:${escapeHtml(String(crit || "—"))} • Porteurs: ${escapeHtml(String(now))} → ${escapeHtml(String(rem))}</li>`;
+            const compKey = (c.id_comp || c.id_competence || code || "").toString().trim();
+            return `
+              <div class="sb-prev-impact-line prev-poste-red-comp-row" data-comp-key="${escapeHtml(compKey)}">
+                <span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>
+                <div class="sb-prev-impact-main">
+                  <strong>${escapeHtml(itit)}</strong>
+                  <span>Criticité ${escapeHtml(String(crit || "—"))} · porteurs ${escapeHtml(String(now))} → ${escapeHtml(String(rem))}</span>
+                </div>
+              </div>
+            `;
           }).join("");
 
+          const horizonTxt = `${horizon} an${horizon > 1 ? "s" : ""}`;
           paneSyn.innerHTML = `
-            <div class="card" style="padding:12px; margin:0;">
-              <div class="card-title" style="margin-bottom:6px;">Contexte</div>
-              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                <span class="sb-badge">${escapeHtml(svc)}</span>
-                <span class="sb-badge">Fragiles (horizon) : ${escapeHtml(String(fFrag || 0))}</span>
-                <span class="sb-badge">Sans couverture : ${escapeHtml(String(fSans || 0))}</span>
-                <span class="sb-badge">Couverture unique : ${escapeHtml(String(fUniq || 0))}</span>
+            <div class="sb-prev-modal-grid">
+              <div class="sb-prev-modal-card sb-prev-modal-card--wide">
+                <div class="sb-prev-modal-title">Ce qu’il faut comprendre</div>
+                <div class="sb-prev-reading">
+                  À horizon <strong>${escapeHtml(horizonTxt)}</strong>, ce poste peut perdre une partie de sa capacité opérationnelle. La lecture porte sur les compétences critiques du poste et les personnes qui les couvrent aujourd’hui.
+                </div>
               </div>
 
-              <div class="card-sub" style="margin-top:10px;">
-                <b>Lecture RH:</b> le poste bascule en rouge car des compétences critiques perdent leur couverture sur l’horizon.
-                Objectif: sécuriser (double portage, transfert, formation) ou décider (mobilité/recrutement).
+              <div class="sb-prev-modal-card">
+                <div class="label">Compétences fragilisées</div>
+                <div class="value">${escapeHtml(String(fFrag || 0))}</div>
+                <div class="card-sub">Compétences critiques qui nécessitent une vigilance.</div>
               </div>
 
-              <div style="margin-top:10px;">
-                <div class="label" style="margin-bottom:6px;">Top causes (aperçu)</div>
-                ${top ? `<ul style="margin:0; padding-left:18px;">${top}</ul>` : `<div class="card-sub" style="margin:0;">Aucune cause détaillée fournie.</div>`}
+              <div class="sb-prev-modal-card">
+                <div class="label">Sans porteur à horizon</div>
+                <div class="value">${escapeHtml(String(fSans || 0))}</div>
+                <div class="card-sub">Risque de rupture de savoir-faire.</div>
+              </div>
+
+              <div class="sb-prev-modal-card">
+                <div class="label">Porteur unique à horizon</div>
+                <div class="value">${escapeHtml(String(fUniq || 0))}</div>
+                <div class="card-sub">Dépendance à une seule personne.</div>
+              </div>
+
+              <div class="sb-prev-modal-card sb-prev-modal-card--wide">
+                <div class="sb-prev-modal-title">Causes principales</div>
+                ${top || `<div class="card-sub" style="margin:0;">Aucune cause détaillée disponible.</div>`}
               </div>
             </div>
           `;
