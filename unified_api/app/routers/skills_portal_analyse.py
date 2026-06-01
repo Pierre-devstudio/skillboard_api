@@ -6063,9 +6063,13 @@ def get_risque_competence_detail(
                     SELECT COUNT(DISTINCT ec.id_effectif_client)::int AS nb_porteurs
                     FROM public.tbl_effectif_client_competence ec
                     JOIN effectifs_dispo es ON es.id_effectif = ec.id_effectif_client
+                    LEFT JOIN public.tbl_effectif_client_audit_competence a
+                      ON a.id_audit_competence = ec.id_dernier_audit
+                     AND a.id_effectif_competence = ec.id_effectif_competence
                     WHERE ec.id_comp = %s
                       AND COALESCE(ec.actif, TRUE) = TRUE
                       AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND (ec.date_derniere_eval IS NOT NULL OR a.resultat_eval IS NOT NULL)
                 ),
                 experts_nominal AS (
                     SELECT COUNT(DISTINCT ec.id_effectif_client)::int AS nb_experts
@@ -6237,23 +6241,13 @@ def get_risque_competence_detail(
                 else:
                     priorite = "P3"
 
-                # Le détail compétence doit rester aligné sur la doctrine RH :
-                # déclarée != évaluée != validée au niveau requis.
-                if competence_detail_stats:
-                    B = int(competence_detail_stats.get("besoin_total") or 0)
-                    P = int(competence_detail_stats.get("nb_porteurs_declares") or 0)
-                    Pd = int(competence_detail_stats.get("nb_porteurs_evalues") or 0)
-                    Pe = int(porteurs_niv.get("C") or 0)
-                    Ped = Pe
-                    N = int(competence_detail_stats.get("nb_postes_impactes") or 0)
-                    Cmax = int(competence_detail_stats.get("criticite_max") or 0)
-                    N80 = sum(1 for p in postes if _safe_int(p.get("poids_criticite"), 0) >= 80)
-                    nb_postes = N
-                    nb_porteurs = P
-                    nb_postes_sans_porteur = int(competence_detail_stats.get("nb_postes_couverture_absente") or 0)
-                    nb_postes_porteur_unique = int(competence_detail_stats.get("nb_postes_dependance") or 0)
-                    indice = int(competence_detail_stats.get("indice_fragilite") or 0)
-                    priorite = str(competence_detail_stats.get("priorite") or priorite)
+                # IMPORTANT : l'indice affiché dans la table "Compétences critiques"
+                # est calculé par la requête de détail risques (formule DRH historique :
+                # besoin total, porteurs nominaux, disponibilité, exposition, sévérité).
+                # Le bloc competence_detail_stats sert uniquement à enrichir le modal
+                # avec la lecture RH par poste (absente / non confirmée / insuffisante / dépendance).
+                # Il ne doit jamais écraser indice/priorité, sinon la table et le modal
+                # racontent deux vérités différentes. Oui, on a déjà donné, c'était pénible.
 
                 return {
                     "scope": scope,
@@ -6300,6 +6294,11 @@ def get_risque_competence_detail(
                         "nb_porteurs_evalues": competence_detail_stats.get("nb_porteurs_evalues", 0),
                         "nb_porteurs_non_evalues": competence_detail_stats.get("nb_porteurs_non_evalues", 0),
                         "nb_porteurs_valides": competence_detail_stats.get("nb_porteurs_valides", 0),
+
+                        # Score informatif calculé depuis les états RH du modal.
+                        # Ne pilote pas l'indice affiché, qui reste aligné avec la table.
+                        "indice_fragilite_detail_rh": competence_detail_stats.get("indice_fragilite", 0),
+                        "priorite_detail_rh": competence_detail_stats.get("priorite", None),
                     },
 
                     "causes": causes,
