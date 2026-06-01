@@ -3133,6 +3133,60 @@ def get_analyse_previsions_postes_rouges_modal(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
+class AnalyseRisqueItem(BaseModel):
+    # Poste
+    id_poste: Optional[str] = None
+    codif_poste: Optional[str] = None
+    codif_client: Optional[str] = None
+    intitule_poste: Optional[str] = None
+    id_service: Optional[str] = None
+    nom_service: Optional[str] = None
+
+    nb_critiques_fragiles: Optional[int] = None
+    nb_critiques_sans_porteur: Optional[int] = None
+    nb_critiques_porteur_unique: Optional[int] = None
+    nb_titulaires: Optional[int] = None
+
+    nb_critiques_sans_releve: Optional[int] = None
+    nb_critiques_releve_faible: Optional[int] = None
+    nb_titulaires_cible: Optional[int] = None
+    gap_titulaires: Optional[int] = None
+    indice_fragilite: Optional[int] = None
+
+    # Compétence (pour les KPI compétences)
+    id_comp: Optional[str] = None
+    code: Optional[str] = None
+    intitule: Optional[str] = None
+
+    id_domaine_competence: Optional[str] = None
+    domaine_titre: Optional[str] = None
+    domaine_titre_court: Optional[str] = None
+    domaine_couleur: Optional[str] = None
+
+    nb_postes_impactes: Optional[int] = None
+    nb_porteurs: Optional[int] = None
+    nb_porteurs_dispo: Optional[int] = None
+    max_criticite: Optional[int] = None
+
+    # Enrichissement critiques fragiles
+    besoin_total: Optional[int] = None
+    nb_experts: Optional[int] = None
+    nb_experts_dispo: Optional[int] = None
+    criticite_max: Optional[int] = None
+    nb_postes_crit_80: Optional[int] = None
+
+    priorite: Optional[str] = None
+    priorite_score: Optional[int] = None
+
+
+class AnalyseRisquesDetailResponse(BaseModel):
+    scope: ServiceScope
+    kpi: str
+    criticite_min: int
+    updated_at: str
+    items: list[AnalyseRisqueItem]
+
+
 @router.get(
     "/skills/analyse/risques/detail/{id_contact}",
     response_model=AnalyseRisquesDetailResponse,
