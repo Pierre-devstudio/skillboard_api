@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple, Any
 import re
 import uuid
 from datetime import date
@@ -14,10 +14,31 @@ from app.routers.skills_portal_common import (
     get_conn,
     resolve_insights_id_ent_for_request,
 )
+from app.routers.skills_portal_pdf_common import (
+    build_pdf_document,
+    build_competence_pdf_story,
+)
 
 router = APIRouter()
 
 SERVICE_NON_LIE = "__NON_LIE__"
+
+
+def _pdf_safe_filename_part(v: Any, max_len: int = 120) -> str:
+    s = str(v or "").strip()
+    s = re.sub(r"[\\/:*?\"<>|]+", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return (s[:max_len].strip() or "document")
+
+
+def _pdf_latin1_safe(v: Any) -> str:
+    s = str(v or "")
+    return s.encode("latin-1", "replace").decode("latin-1")
+
+
+def _filename_header_value(filename: str) -> str:
+    # Content-Disposition filename= doit rester compatible latin-1.
+    return _pdf_latin1_safe(filename).replace('"', "'")
 
 
 # ======================================================
@@ -1480,6 +1501,145 @@ def get_collaborateur_competences(id_contact: str, id_effectif: str, request: Re
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
+
+
+@router.get("/skills/collaborateurs/competences/fiche_pdf/{id_contact}/{id_effectif}/{id_comp}")
+def get_collaborateur_competence_fiche_pdf(id_contact: str, id_effectif: str, id_comp: str, request: Request):
+    """
+    PDF fiche compétence depuis Insights / Vos collaborateurs.
+    Réutilise la trame commune déjà utilisée côté Studio/Learn.
+
+    Sécurité :
+    - id_contact résout le périmètre Insights via le token ;
+    - le collaborateur doit appartenir à l'entreprise résolue ;
+    - la compétence doit être soit requise par le poste actuel, soit détenue par le collaborateur.
+    """
+    try:
+        comp_id = (id_comp or "").strip()
+        if not comp_id:
+            raise HTTPException(status_code=400, detail="Compétence introuvable.")
+
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+
+                cur.execute(
+                    """
+                    SELECT
+                        ec.id_effectif,
+                        ec.id_poste_actuel,
+                        COALESCE(e.nom_ent, me.nom_ent, 'Novoskill Insights') AS nom_ent
+                    FROM public.tbl_effectif_client ec
+                    LEFT JOIN public.tbl_entreprise e
+                      ON e.id_ent = ec.id_ent
+                    LEFT JOIN public.tbl_mon_entreprise me
+                      ON me.id_mon_ent = ec.id_ent
+                    WHERE ec.id_ent = %s
+                      AND ec.id_effectif = %s
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                    LIMIT 1
+                    """,
+                    (id_ent, id_effectif),
+                )
+                eff = cur.fetchone() or {}
+                if not eff:
+                    raise HTTPException(status_code=404, detail="Collaborateur introuvable.")
+
+                id_poste = (eff.get("id_poste_actuel") or "").strip()
+
+                cur.execute(
+                    """
+                    WITH visible AS (
+                        SELECT fpc.id_competence AS id_comp
+                        FROM public.tbl_fiche_poste_competence fpc
+                        WHERE fpc.id_poste = %s
+                          AND COALESCE(fpc.masque, FALSE) = FALSE
+
+                        UNION
+
+                        SELECT ecc.id_comp
+                        FROM public.tbl_effectif_client_competence ecc
+                        WHERE ecc.id_effectif_client = %s
+                          AND COALESCE(ecc.actif, TRUE) = TRUE
+                          AND COALESCE(ecc.archive, FALSE) = FALSE
+                    )
+                    SELECT
+                        c.id_comp,
+                        c.code,
+                        c.intitule,
+                        c.description,
+                        c.domaine,
+                        c.niveaua,
+                        c.niveaub,
+                        c.niveauc,
+                        c.grille_evaluation,
+                        dc.titre_court AS domaine_titre_court,
+                        dc.titre AS domaine_titre
+                    FROM public.tbl_competence c
+                    JOIN visible v ON v.id_comp = c.id_comp
+                    LEFT JOIN public.tbl_domaine_competence dc
+                      ON dc.id_domaine_competence = c.domaine
+                     AND COALESCE(dc.masque, FALSE) = FALSE
+                    WHERE c.id_comp = %s
+                      AND COALESCE(c.masque, FALSE) = FALSE
+                      AND COALESCE(c.etat, 'active') IN ('active', 'valide', 'à valider')
+                    LIMIT 1
+                    """,
+                    (id_poste, id_effectif, comp_id),
+                )
+                row = cur.fetchone() or {}
+                if not row:
+                    raise HTTPException(status_code=404, detail="Compétence introuvable pour ce collaborateur.")
+
+                header_right = (eff.get("nom_ent") or "Novoskill Insights").strip()
+
+        skill = {
+            "id_comp": row.get("id_comp"),
+            "code": (row.get("code") or "").strip(),
+            "intitule": (row.get("intitule") or "").strip(),
+            "description": row.get("description") or "",
+            "niveaua": row.get("niveaua") or "",
+            "niveaub": row.get("niveaub") or "",
+            "niveauc": row.get("niveauc") or "",
+            "grille_evaluation": row.get("grille_evaluation"),
+            "domaine": row.get("domaine") or "",
+            "domaine_titre": (
+                (row.get("domaine_titre_court") or "").strip()
+                or (row.get("domaine_titre") or "").strip()
+            ),
+        }
+
+        code_label = skill.get("code") or "Compétence"
+        intitule_label = skill.get("intitule") or "Compétence"
+        filename = _filename_header_value(
+            f"Fiche compétence {_pdf_safe_filename_part(code_label, 32)} - {_pdf_safe_filename_part(intitule_label, 80)}.pdf"
+        )
+
+        pdf_bytes = build_pdf_document(
+            build_competence_pdf_story(skill),
+            meta={
+                "title": _pdf_latin1_safe(f"Fiche compétence - {code_label} - {intitule_label}"),
+                "doc_label": _pdf_latin1_safe("Fiche compétence"),
+                "footer_left": _pdf_latin1_safe("Novoskill Insights • Fiche compétence"),
+                "header_right": _pdf_latin1_safe(header_right),
+                "header_right_font_name": "Helvetica-Bold",
+                "header_right_font_size": 10.5,
+            },
+        )
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'inline; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur génération fiche compétence : {e}")
     
 
 

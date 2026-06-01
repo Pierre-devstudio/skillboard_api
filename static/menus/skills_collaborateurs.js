@@ -260,6 +260,76 @@
     return await window.portal.apiJson(url);
   }
 
+  async function fetchCollaborateurCompetencePdfBlob(id_contact, id_effectif, id_comp) {
+    const url = `${API_BASE}/skills/collaborateurs/competences/fiche_pdf/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_effectif)}/${encodeURIComponent(id_comp)}`;
+
+    const headers = new Headers();
+    try {
+      if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
+        const session = await window.PortalAuthCommon.getSession();
+        const token = session?.access_token ? String(session.access_token) : "";
+        if (token) headers.set("Authorization", `Bearer ${token}`);
+      }
+    } catch (_) {}
+
+    const resp = await fetch(url, { headers });
+    if (!resp.ok) {
+      let msg = `Erreur PDF (${resp.status})`;
+      try {
+        const ct = (resp.headers.get("content-type") || "").toLowerCase();
+        if (ct.includes("application/json")) {
+          const js = await resp.json();
+          msg = js?.detail || js?.message || JSON.stringify(js);
+        } else {
+          msg = await resp.text() || msg;
+        }
+      } catch (_) {}
+      throw new Error(msg);
+    }
+
+    return await resp.blob();
+  }
+
+  function renderPdfBlobInWindow(popupWin, blob, title) {
+    const win = popupWin && !popupWin.closed ? popupWin : window.open("about:blank", "_blank");
+    if (!win) throw new Error("Ouverture du PDF bloquée par le navigateur.");
+
+    const blobUrl = URL.createObjectURL(blob);
+    const safeTitle = escapeHtml(title || "Fiche compétence");
+
+    win.document.open();
+    win.document.write(`<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>${safeTitle}</title>
+  <style>
+    html,body{height:100%;margin:0;background:#f3f4f6;}
+    iframe{width:100%;height:100%;border:0;background:#fff;}
+  </style>
+</head>
+<body>
+  <iframe src="${blobUrl}" title="${safeTitle}"></iframe>
+</body>
+</html>`);
+    win.document.close();
+
+    const revoke = () => {
+      try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+    };
+    try { win.addEventListener("beforeunload", revoke, { once: true }); } catch (_) {}
+    setTimeout(revoke, 5 * 60 * 1000);
+  }
+
+  async function openCollaborateurCompetencePdf(id_contact, id_effectif, item, popupWin) {
+    const compId = String(item?.id_comp || "").trim();
+    if (!id_contact || !id_effectif || !compId) throw new Error("Compétence introuvable.");
+
+    const title = `Fiche compétence - ${String(item?.code || "").trim() ? `${String(item.code).trim()} - ` : ""}${String(item?.intitule || "").trim() || "Compétence"}`;
+    const blob = await fetchCollaborateurCompetencePdfBlob(id_contact, id_effectif, compId);
+    renderPdfBlobInWindow(popupWin, blob, title);
+  }
+
   async function loadCertifications(id_contact, id_effectif) {
     const url = `${API_BASE}/skills/collaborateurs/certifications/${encodeURIComponent(id_contact)}/${encodeURIComponent(id_effectif)}`;
     return await window.portal.apiJson(url);
@@ -1396,67 +1466,131 @@
                 if (!host) return;
 
                 const items = Array.isArray(data?.items) ? data.items : [];
+                const requiredItems = items.filter(x => !!x?.is_required);
+                const otherItems = items.filter(x => !x?.is_required);
 
                 if (items.length === 0) {
                   host.innerHTML = `<div class="card-sub" style="margin:0;">Aucune compétence trouvée.</div>`;
                   return;
                 }
 
-                const badge = (txt) => `<span class="sb-badge">${escapeHtml(txt)}</span>`;
+                const levelLabel = (v) => {
+                  const s = (v || "").toString().trim();
+                  if (!s) return "–";
+                  const k = s.toLowerCase();
+                  if (k === "a" || k === "initial") return "Initial";
+                  if (k === "b" || k === "avance" || k === "avancé" || k === "avancee" || k === "avancée") return "Avancé";
+                  if (k === "c" || k === "expert") return "Expert";
+                  return s;
+                };
 
-                const fmtDate = (d) => formatDateFR(d);
+                const levelClass = (v) => {
+                  const k = (v || "").toString().trim().toLowerCase();
+                  if (k === "a" || k === "initial") return "sb-badge-niv-a";
+                  if (k === "b" || k === "avance" || k === "avancé" || k === "avancee" || k === "avancée") return "sb-badge-niv-b";
+                  if (k === "c" || k === "expert") return "sb-badge-niv-c";
+                  return "";
+                };
 
-                const rows = items.map(x => {
-                  const cur = (x.niveau_actuel || "").trim();
-                  const d = formatDateFR(x.date_derniere_eval);
-
-                  const isReq = !!x.is_required;
-
-                  const domTitleRaw = (x.domaine_titre || "").toString().trim();
-                  const domTitle = domTitleRaw ? domTitleRaw : "Domaine";
-                  const domColorRaw = (x.domaine_couleur || "").toString().trim();
+                const renderDomainBadge = (x) => {
+                  const domTitleRaw = (x?.domaine_titre || "").toString().trim();
+                  const domTitle = domTitleRaw || "Domaine";
+                  const domColorRaw = (x?.domaine_couleur || "").toString().trim();
                   const domStyle = domColorRaw ? ` style="--dom-color:${escapeHtml(domColorRaw)}"` : "";
+                  return `<span class="sb-badge-domaine sb-badge-domaine--soft"${domStyle}>${escapeHtml(domTitle)}</span>`;
+                };
 
-                  const badges = [];
-                  if (x.code) badges.push(`<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(x.code)}</span>`);
-                  if (isReq) badges.push(`<span class="sb-badge">Requis</span>`);
-                  badges.push(`<span class="sb-badge sb-badge-domaine"${domStyle}>${escapeHtml(domTitle)}</span>`);
+                const renderRows = (rows) => {
+                  if (!rows.length) {
+                    return `<tr><td colspan="4" class="sb-collab-skill-empty">Aucune compétence dans cette catégorie.</td></tr>`;
+                  }
 
-                  return `
-                    <tr>
-                      <td>
-                        <div class="sb-comp-title">${escapeHtml(x.intitule || "")}</div>
-                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:6px;">
-                          ${badges.join("")}
-                        </div>
-                      </td>
-                      <td style="text-align:center;">${escapeHtml(cur || "–")}</td>
-                      <td style="text-align:center;">${escapeHtml(d)}</td>
-                    </tr>
-                  `;
-                }).join("");
+                  return rows.map(x => {
+                    const cur = levelLabel(x.niveau_actuel);
+                    const d = formatDateFR(x.date_derniere_eval);
+                    const code = (x.code || "").toString().trim();
+                    const title = (x.intitule || "").toString().trim();
+                    const levelCls = levelClass(x.niveau_actuel);
 
-                host.innerHTML = `
-                  <div class="card-sub" style="margin:10px 0 10px 0;">
-                    Poste actuel: <strong>${escapeHtml(data.intitule_poste || "–")}</strong>
-                  </div>
+                    return `
+                      <tr>
+                        <td>
+                          <div class="sb-collab-skill-titleline">
+                            ${code ? `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code)}</span>` : ""}
+                            <span class="sb-collab-skill-title">${escapeHtml(title || "Compétence")}</span>
+                          </div>
+                          <div class="sb-collab-skill-domain">${renderDomainBadge(x)}</div>
+                        </td>
+                        <td class="col-center">
+                          <span class="sb-badge sb-badge-niv ${escapeHtml(levelCls)}">${escapeHtml(cur)}</span>
+                        </td>
+                        <td class="col-center">${escapeHtml(d)}</td>
+                        <td class="col-center">
+                          <button type="button" class="sb-icon-btn sb-icon-btn--doc" data-skill-pdf="${escapeHtml(x.id_comp || "")}" title="Voir la fiche compétence PDF" aria-label="Voir la fiche compétence PDF">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    `;
+                  }).join("");
+                };
 
-                  <div class="sb-table-wrap">
-                    <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover">
-                      <thead>
-                        <tr>
-                          <th>Compétence</th>
-                          <th style="width:90px; text-align:center;">Niv. Actuel</th>
-                          <th style="width:140px; text-align:center;">Dernière éval.</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        ${rows}
-                      </tbody>
-                    </table>
+                const renderTable = (title, rows, modifier) => `
+                  <div class="sb-collab-skill-section ${modifier || ""}">
+                    <div class="sb-collab-skill-section-head">
+                      <div class="sb-collab-skill-section-title">${escapeHtml(title)}</div>
+                      <span class="sb-badge">${rows.length}</span>
+                    </div>
+                    <div class="sb-table-wrap">
+                      <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover sb-collab-skills-table">
+                        <thead>
+                          <tr>
+                            <th>Compétence</th>
+                            <th class="col-center" style="width:110px;">Niveau</th>
+                            <th class="col-center" style="width:130px;">Dernière éval.</th>
+                            <th class="col-center" style="width:62px;">PDF</th>
+                          </tr>
+                        </thead>
+                        <tbody>${renderRows(rows)}</tbody>
+                      </table>
+                    </div>
                   </div>
                 `;
 
+                host.innerHTML = `
+                  <div class="card-sub sb-collab-skill-poste">
+                    Poste actuel : <strong>${escapeHtml(data.intitule_poste || "–")}</strong>
+                  </div>
+                  ${renderTable("Compétences requises par le poste", requiredItems, "sb-collab-skill-section--required")}
+                  ${renderTable("Autres compétences détenues", otherItems, "sb-collab-skill-section--other")}
+                `;
+
+                const id_contact = window.portal?.contactId;
+                const id_effectif = it?.id_effectif;
+
+                host.querySelectorAll("[data-skill-pdf]").forEach(btn => {
+                  btn.addEventListener("click", async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const compId = btn.getAttribute("data-skill-pdf") || "";
+                    const item = items.find(x => String(x?.id_comp || "").trim() === compId) || null;
+                    const popupWin = window.open("about:blank", "_blank");
+                    if (popupWin) {
+                      popupWin.document.write("<p style='font-family:Arial,sans-serif;padding:16px;'>Génération du PDF…</p>");
+                    }
+
+                    try {
+                      btn.disabled = true;
+                      await openCollaborateurCompetencePdf(id_contact, id_effectif, item, popupWin);
+                    } catch (err) {
+                      try { if (popupWin && !popupWin.closed) popupWin.close(); } catch (_) {}
+                      window.portal?.showAlert?.("error", "Erreur PDF compétence : " + (err?.message || err));
+                    } finally {
+                      btn.disabled = false;
+                    }
+                  });
+                });
               };
 
               const loadSkillsIfNeeded = () => {

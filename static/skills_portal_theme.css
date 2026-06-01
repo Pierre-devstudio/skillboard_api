@@ -2719,6 +2719,100 @@ body{
   text-overflow: ellipsis;
 }
 
+/* Modal Collaborateur - Onglet Compétences : tables style Studio */
+#modalCollaborateur .sb-collab-skill-poste{
+  margin:0 0 12px 0;
+  font-size:12px;
+  color:var(--sb-gray-500);
+}
+
+#modalCollaborateur .sb-collab-skill-section{
+  border:1px solid var(--sb-gray-200);
+  border-radius:14px;
+  background:#ffffff;
+  overflow:hidden;
+  margin-top:12px;
+}
+
+#modalCollaborateur .sb-collab-skill-section:first-of-type{
+  margin-top:0;
+}
+
+#modalCollaborateur .sb-collab-skill-section-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  border-bottom:1px solid var(--sb-gray-200);
+  background:var(--sb-gray-50);
+}
+
+#modalCollaborateur .sb-collab-skill-section-title{
+  font-size:13px;
+  font-weight:650;
+  color:var(--sb-gray-900);
+  line-height:1.2;
+}
+
+#modalCollaborateur .sb-collab-skills-table thead th{
+  font-weight:600;
+  font-size:12px;
+}
+
+#modalCollaborateur .sb-collab-skills-table tbody td{
+  font-size:13px;
+  vertical-align:middle;
+}
+
+#modalCollaborateur .sb-collab-skill-titleline{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+
+#modalCollaborateur .sb-collab-skill-title{
+  min-width:0;
+  color:var(--sb-gray-900);
+  font-size:13px;
+  font-weight:600;
+  line-height:1.25;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+#modalCollaborateur .sb-collab-skill-domain{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-top:6px;
+}
+
+#modalCollaborateur .sb-badge-domaine--soft{
+  border-color:var(--dom-color, var(--sb-gray-300));
+  background:color-mix(in srgb, var(--dom-color, #9ca3af) 10%, #ffffff);
+  color:var(--sb-gray-900);
+  font-weight:600;
+}
+
+#modalCollaborateur .sb-badge-domaine--soft::before{
+  background:var(--dom-color, #9ca3af);
+}
+
+#modalCollaborateur .sb-collab-skill-empty{
+  padding:14px 16px !important;
+  color:var(--sb-gray-500);
+  font-size:12px;
+  text-align:center;
+}
+
+@media (max-width: 760px){
+  #modalCollaborateur .sb-collab-skills-table{
+    min-width:720px;
+  }
+}
 
 
 /* ======================================================
