@@ -1392,13 +1392,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     const url = `${apiBase}/skills/analyse/previsions/sorties/detail/${encodeURIComponent(id_contact)}?${qs.toString()}`;
 
-    const res = await fetch(url, { headers: { "Accept": "application/json" } });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
-    }
-
-    return await res.json();
+    return await analyseApiJson(portal, url);
   }
 
   // ======================================================
@@ -1451,6 +1445,43 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     };
   }
 
+  async function analyseApiJson(portal, url, options) {
+    const p = portal || _portalref || window.portal || window.PortalCommon || null;
+
+    if (p && typeof p.apiJson === "function") {
+      return await p.apiJson(url, options);
+    }
+
+    const opts = options ? Object.assign({}, options) : {};
+    const headers = new Headers(opts.headers || {});
+    if (!headers.has("Accept")) headers.set("Accept", "application/json");
+
+    try {
+      if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
+        const session = await window.PortalAuthCommon.getSession();
+        const token = session?.access_token ? String(session.access_token) : "";
+        if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
+      }
+    } catch (_) {
+      /* fallback sans session : l'API renverra l'erreur utile */
+    }
+
+    opts.headers = headers;
+
+    const res = await fetch(url, opts);
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    const body = ct.includes("application/json") ? await res.json() : await res.text();
+
+    if (!res.ok) {
+      const detail = typeof body === "string"
+        ? body
+        : (body && (body.detail || body.message)) || JSON.stringify(body);
+      throw new Error(detail || `HTTP ${res.status}`);
+    }
+
+    return body;
+  }
+
   function buildAnalysePdfUrl(portal, docKey, id_poste) {
     const ctx = getPortalContext(portal);
     const posteId = String(id_poste || "").trim();
@@ -1500,13 +1531,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     const url = `${ctx.apiBase}/skills/analyse/previsions/critiques/detail/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
 
-    const res = await fetch(url, { headers: { "Accept": "application/json" } });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
-    }
-
-    const data = await res.json();
+    const data = await analyseApiJson(portal, url);
     syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
     return data;
   }
@@ -1526,13 +1551,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     const url = `${portalCtx.apiBase}/skills/analyse/previsions/postes-rouges/detail/${encodeURIComponent(portalCtx.id_contact)}?${qs.toString()}`;
 
-    const res = await fetch(url, { headers: { "Accept": "application/json" } });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
-    }
-
-    const data = await res.json();
+    const data = await analyseApiJson(portal, url);
     syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
     return data;
   }
@@ -1560,14 +1579,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     const url = `${ctx.apiBase}/skills/analyse/previsions/postes-rouges/modal/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
 
-    const res = await fetch(url, { headers: { "Accept": "application/json" } });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
-    }
-      const data = await res.json();
-      syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
-      return data;
+    const data = await analyseApiJson(portal, url);
+    syncCriticiteMinFromResponse(data, { commit: false, persist: false, refreshUi: false });
+    return data;
   }
 
 
@@ -5845,12 +5859,7 @@ function renderDetail(mode) {
 
     const url = `${ctx.apiBase}/skills/analyse/previsions/critiques/modal/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
 
-    const res = await fetch(url, { headers: { "Accept": "application/json" } });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
-    }
-    return await res.json();
+    return await analyseApiJson(portal, url);
   }
 
 
@@ -6952,12 +6961,7 @@ function bindOnce(portal) {
     // Endpoint à brancher côté API (prochaine étape backend)
     const url = `${apiBase}/skills/analyse/previsions/critiques/detail/${encodeURIComponent(id_contact)}/${encodeURIComponent(compKey)}?${qs.toString()}`;
 
-    const res = await fetch(url, { headers: { "Accept": "application/json" } });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
-    }
-    return await res.json();
+    return await analyseApiJson(portal, url);
   }
 
   async function showPrevCritDetailModal(portal, tr, compKey, horizon, id_service) {
@@ -7209,12 +7213,7 @@ function bindOnce(portal) {
       // GET /skills/analyse/previsions/postes-rouges/modal/{id_contact}?id_poste=...&horizon_years=...&id_service=...
       const url = `${ctx.apiBase}/skills/analyse/previsions/postes-rouges/modal/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
 
-      const res = await fetch(url, { headers: { "Accept": "application/json" } });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(`${res.status} ${res.statusText}${txt ? " - " + txt : ""}`);
-      }
-      return await res.json();
+      return await analyseApiJson(portal, url);
     }
 
     // ---------- render modal ----------
