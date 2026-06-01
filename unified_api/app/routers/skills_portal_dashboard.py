@@ -1,7 +1,8 @@
+from datetime import date, timedelta
+from typing import Any, Dict, List, Optional, Tuple
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from typing import Optional, List
-
 from psycopg.rows import dict_row
 
 from app.routers.skills_portal_common import (
@@ -9,2285 +10,868 @@ from app.routers.skills_portal_common import (
     fetch_contact_with_entreprise,
     resolve_insights_effectif_for_request,
 )
+from app.routers.skills_portal_analyse import (
+    CRITICITE_MIN_DEFAULT,
+    NON_LIE_ID,
+    _build_scope_cte,
+    _compute_poste_fragility_record,
+    _fetch_postes_fragility_records,
+    _fetch_service_label,
+)
 
 router = APIRouter()
 
+DASHBOARD_DANGER_MIN = 60
+DASHBOARD_WATCH_MIN = 1
+DASHBOARD_CRITICAL_POSTE_MIN = 3
+DASHBOARD_RELIABILITY_MONTHS = 6
+DASHBOARD_NO_ACTION_LIMIT = 12
 
-def _resolve_effectif_for_request(cur, id_contact: str, request: Request) -> str:
-    return resolve_insights_effectif_for_request(cur, id_contact, request)
 
+# ======================================================
+# Modèles
+# ======================================================
 class SkillsContext(BaseModel):
     id_contact: str
     civilite: Optional[str] = None
     prenom: Optional[str] = None
     nom: str
+    role_code: Optional[str] = None
+    id_service: Optional[str] = None
 
 
-class AgePyramidBand(BaseModel):
-    label: str
-    femmes: int = 0
-    hommes: int = 0
+class DashboardServiceOption(BaseModel):
+    id_service: Optional[str] = None
+    nom_service: str
 
 
-class AgePyramidResponse(BaseModel):
-    bands: List[AgePyramidBand]
+class DashboardAccess(BaseModel):
+    role_code: str = "user"
+    locked_service: bool = True
+    id_service_user: Optional[str] = None
 
-    # Meta (on garde, même si on ne l'affiche plus côté UI)
-    total_actifs: int = 0
-    unknown_birth: int = 0
-    unknown_gender: int = 0
 
-    # KPI — seuils
-    seuil_senior: int = 58
-    seuil_junior: int = 35
+class DashboardScope(BaseModel):
+    id_service: Optional[str] = None
+    nom_service: str = "Tous les services"
 
-    # KPI 1 — Risque de sortie (58+), dénominateur = actifs avec date naissance
-    risk_sortie_pct: float = 0.0
-    risk_sortie_count: int = 0
-    risk_sortie_total: int = 0
 
-    # KPI 2 — Capacité de relève = <35 / 58+ (sur actifs avec date naissance)
-    releve_ratio: Optional[float] = None
-    releve_junior: int = 0
-    releve_senior: int = 0
-
-    # KPI 3 — Transmission en danger (Experts majoritairement 58+)
-    transmission_pct: float = 0.0
-    transmission_comp_danger: int = 0
-    transmission_comp_total: int = 0
-
-class GlobalGaugeResponse(BaseModel):
-    # Limites jauge = somme des seuils min/max requis (A/B/C) sur les compétences critiques (poids > 80)
-    gauge_min: float = 0.0
-    gauge_max: float = 0.0
-
-    # Position aiguille = somme des scores (dernier audit), audit manquant => 0
+class DashboardHealth(BaseModel):
+    pct: float = 0.0
     score: float = 0.0
-
-    # Volume de calcul (nb de lignes "compétence requise" agrégées)
+    max_score: float = 0.0
     nb_items: int = 0
+    scope_label: str = "Tous les services"
 
-    # Périmètre futur (droits): si renseigné, jauge calculée uniquement sur ce service
-    id_service_scope: Optional[str] = None
 
-class NoTraining12mResponse(BaseModel):
-    pct_no_training_12m: float = 0.0
-    count_no_training_12m: int = 0
-    total_effectif: int = 0
-    id_service_scope: Optional[str] = None
-
-class NoPerformance12mResponse(BaseModel):
-    pct_no_perf_12m: float = 0.0
-    count_no_perf_12m: int = 0
-    total_effectif: int = 0
-    seuil_couverture: float = 0.7
-    id_service_scope: Optional[str] = None
-
-class UpcomingTrainingItem(BaseModel):
-    id_action_formation: str
+class DashboardRiskTimelinePoint(BaseModel):
+    date_ref: str
     label: str
-    date_debut_formation: Optional[str] = None
-    date_fin_formation: Optional[str] = None
-    nb_participants: int = 0
+    indice_fragilite: int = 0
+    nb_postes_fragiles: int = 0
+    nb_postes_total: int = 0
 
 
-class UpcomingTrainingsResponse(BaseModel):
+class DashboardPostesWatch(BaseModel):
+    total_postes: int = 0
+    postes_danger: int = 0
+    postes_surveillance: int = 0
+    postes_stables: int = 0
+    postes_critiques_danger: int = 0
+
+
+class DashboardTransmission(BaseModel):
+    pct: float = 0.0
+    postes_total: int = 0
+    postes_transmissibles: int = 0
+    postes_risque: int = 0
+
+
+class DashboardReliability(BaseModel):
+    pct: float = 0.0
+    fresh_items: int = 0
+    stale_items: int = 0
+    total_items: int = 0
+    seuil_mois: int = DASHBOARD_RELIABILITY_MONTHS
+
+
+class DashboardRiskWithoutActionRow(BaseModel):
+    id_poste: str
+    codif_poste: Optional[str] = None
+    codif_client: Optional[str] = None
+    intitule_poste: str
+    nom_service: Optional[str] = None
+    indice_fragilite: int = 0
+    nb_critiques_fragiles: int = 0
+
+
+class DashboardRisksWithoutAction(BaseModel):
     total: int = 0
-    items: List[UpcomingTrainingItem] = []
-    id_service_scope: Optional[str] = None
-
-class CertExpiringItem(BaseModel):
-    date_expiration: str
-    certification: str
-    nb_personnes: int = 0
+    items: List[DashboardRiskWithoutActionRow] = []
 
 
-class CertExpiringResponse(BaseModel):
-    days: int = 60
-
-    # Badge = total "instances" à renouveler (somme des personnes sur toutes lignes)
-    total_instances: int = 0
-
-    # Pour le "+N autres" (nb de lignes agrégées date+certif)
-    total_groups: int = 0
-
-    items: List[CertExpiringItem] = []
-    id_service_scope: Optional[str] = None
-
-class NoPerformance12mDetailRow(BaseModel):
-    id_effectif: str
-    nom: str
-    prenom: str
-    service: Optional[str] = None
-    poste: Optional[str] = None
-
-    couverture_pct: float = 0.0
-    nb_comp_total: int = 0
-    nb_comp_auditees_12m: int = 0
-    date_dernier_audit: Optional[str] = None
+class DashboardRiskOverview(BaseModel):
+    access: DashboardAccess
+    scope: DashboardScope
+    services: List[DashboardServiceOption]
+    health: DashboardHealth
+    risk_timeline: List[DashboardRiskTimelinePoint]
+    postes_watch: DashboardPostesWatch
+    transmission: DashboardTransmission
+    reliability: DashboardReliability
+    risks_without_action: DashboardRisksWithoutAction
 
 
-class NoPerformance12mDetailResponse(BaseModel):
-    total: int = 0
-    limit: int = 50
-    offset: int = 0
-    seuil_couverture: float = 0.7
-
-    rows: List[NoPerformance12mDetailRow] = []
-    id_service_scope: Optional[str] = None
-
-class NoTraining12mDetailRow(BaseModel):
-    id_effectif: str
-    nom: str
-    prenom: str
-    service: Optional[str] = None
-    poste: Optional[str] = None
-
-    date_derniere_formation: Optional[str] = None
-    jours_depuis_derniere_formation: Optional[int] = None
+# ======================================================
+# Helpers contexte / scope
+# ======================================================
+def _resolve_effectif_for_request(cur, id_contact: str, request: Request) -> str:
+    return resolve_insights_effectif_for_request(cur, id_contact, request)
 
 
-class NoTraining12mDetailResponse(BaseModel):
-    total: int = 0                 # nb de salariés concernés (sans formation 12m)
-    total_effectif: int = 0        # effectif actif (périmètre)
-    limit: int = 50
-    offset: int = 0
-    periode_mois: int = 12
-
-    rows: List[NoTraining12mDetailRow] = []
-    id_service_scope: Optional[str] = None
-
-class CertExpiringDetailRow(BaseModel):
-    date_expiration: str
-    jours_avant_expiration: int = 0
-    certification: str
-
-    id_effectif: str
-    nom: str
-    prenom: str
-    service: Optional[str] = None
-    poste: Optional[str] = None
+def _normalize_role_code(v: Any) -> str:
+    s = str(v or "").strip().lower()
+    if s in ("admin", "administrator", "administrateur"):
+        return "admin"
+    if s in ("supervisor", "superviseur", "manager"):
+        return "supervisor"
+    return "user"
 
 
-class CertExpiringDetailResponse(BaseModel):
-    days: int = 60
-    total: int = 0
-    limit: int = 50
-    offset: int = 0
-
-    rows: List[CertExpiringDetailRow] = []
-    id_service_scope: Optional[str] = None
-
-class UpcomingTrainingParticipant(BaseModel):
-    id_effectif: str
-    nom: str
-    prenom: str
-    service: Optional[str] = None
-    poste: Optional[str] = None
+def _role_rank(role_code: str) -> int:
+    r = _normalize_role_code(role_code)
+    if r == "admin":
+        return 0
+    if r == "supervisor":
+        return 1
+    return 2
 
 
-class UpcomingTrainingSessionDetail(BaseModel):
-    id_action_formation: str
-    label: str
-    date_debut_formation: Optional[str] = None
-    date_fin_formation: Optional[str] = None
-    nb_participants: int = 0
-    participants: List[UpcomingTrainingParticipant] = []
+def _fetch_role_for_request(cur, id_effectif: str, request: Request) -> str:
+    email = ""
+    try:
+        auth = request.headers.get("Authorization", "")
+        from app.routers.skills_portal_common import skills_require_user
+        u = skills_require_user(auth)
+        email = (u.get("email") or "").strip().lower()
+    except Exception:
+        email = ""
+
+    if not email:
+        return "user"
+
+    cur.execute(
+        """
+        SELECT role_code
+        FROM public.tbl_novoskill_user_access
+        WHERE lower(email) = lower(%s)
+          AND console_code = 'insights'
+          AND lower(COALESCE(user_ref_type, '')) IN ('effectif_client', 'utilisateur')
+          AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_access, 'actif') <> 'suspendu'
+        ORDER BY
+          CASE lower(COALESCE(role_code, ''))
+            WHEN 'admin' THEN 0
+            WHEN 'supervisor' THEN 1
+            WHEN 'superviseur' THEN 1
+            WHEN 'user' THEN 2
+            ELSE 9
+          END,
+          id_access DESC
+        LIMIT 1
+        """,
+        (email,),
+    )
+    row = cur.fetchone() or {}
+    return _normalize_role_code(row.get("role_code"))
 
 
-class UpcomingTrainingsDetailResponse(BaseModel):
-    total_sessions: int = 0
-    limit: int = 20
-    offset: int = 0
-    items: List[UpcomingTrainingSessionDetail] = []
-    id_service_scope: Optional[str] = None
+def _service_options(cur, id_ent: str, access: DashboardAccess, scope: DashboardScope) -> List[DashboardServiceOption]:
+    if access.locked_service:
+        return [DashboardServiceOption(id_service=scope.id_service, nom_service=scope.nom_service)]
 
-class AgePyramidSeniorRow(BaseModel):
-    id_effectif: str
-    nom: str
-    prenom: str
-    age: int = 0
+    cur.execute(
+        """
+        SELECT o.id_service, o.nom_service
+        FROM public.tbl_entreprise_organigramme o
+        WHERE o.id_ent = %s
+          AND COALESCE(o.archive, FALSE) = FALSE
+        ORDER BY lower(o.nom_service), o.nom_service
+        """,
+        (id_ent,),
+    )
+    rows = cur.fetchall() or []
 
-    service: Optional[str] = None
-    poste: Optional[str] = None
-
-    date_naissance: Optional[str] = None
-    retraite_estimee: Optional[int] = None
-    nb_comp_expert: int = 0
-
-
-class AgePyramidSeniorsDetailResponse(BaseModel):
-    age_min: int = 58
-    total: int = 0
-    limit: int = 50
-    offset: int = 0
-    rows: List[AgePyramidSeniorRow] = []
-    id_service_scope: Optional[str] = None
+    out = [DashboardServiceOption(id_service=None, nom_service="Tout")]
+    out.extend(
+        DashboardServiceOption(
+            id_service=r.get("id_service"),
+            nom_service=r.get("nom_service") or "Service",
+        )
+        for r in rows
+    )
+    out.append(DashboardServiceOption(id_service=NON_LIE_ID, nom_service="Non liés (sans service)"))
+    return out
 
 
-class TransmissionDangerRow(BaseModel):
-    id_comp: str
-    code_comp: Optional[str] = None
-    competence: str
+def _dashboard_context(cur, id_contact: str, request: Request, requested_service: Optional[str]) -> Tuple[str, DashboardAccess, DashboardScope, List[DashboardServiceOption]]:
+    eff_id = _resolve_effectif_for_request(cur, id_contact, request)
+    row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
 
-    id_effectif: str
-    nom: str
-    prenom: str
-    age: int = 0
+    id_ent = (row_contact.get("id_ent") or row_ent.get("id_ent") or "").strip()
+    if not id_ent:
+        raise HTTPException(status_code=403, detail="Entreprise Insights introuvable.")
 
-    service: Optional[str] = None
-    poste: Optional[str] = None
+    role = _fetch_role_for_request(cur, eff_id, request)
+    id_service_user = (row_contact.get("id_service") or "").strip() or None
 
+    is_global_allowed = role in ("admin", "supervisor")
+    locked = not is_global_allowed
 
-class TransmissionDangerDetailResponse(BaseModel):
-    age_min: int = 58
-    total: int = 0
-    limit: int = 50
-    offset: int = 0
-    rows: List[TransmissionDangerRow] = []
-    id_service_scope: Optional[str] = None
+    if locked:
+        effective_service = id_service_user or NON_LIE_ID
+    else:
+        rs = (requested_service or "").strip()
+        effective_service = None if not rs or rs == "__ALL__" else rs
 
-class GlobalGaugeNonCoveredRow(BaseModel):
-    id_comp: str
-    code_comp: Optional[str] = None
-    competence: str = ""
-
-    requis_max_niveau: str = ""      # A/B/C
-    requis_max_seuil: int = 0        # 9/18/24
-
-    meilleur_reel: int = 0           # max resultat_eval sur la pop, sinon 0
-    ecart: int = 0                   # requis_max_seuil - meilleur_reel
-
-    nb_postes_critiques: int = 0     # nb postes (poids_criticite >= 80) concernés
+    scope_raw = _fetch_service_label(cur, id_ent, effective_service)
+    scope = DashboardScope(
+        id_service=scope_raw.id_service,
+        nom_service=scope_raw.nom_service,
+    )
+    access = DashboardAccess(
+        role_code=role,
+        locked_service=locked,
+        id_service_user=id_service_user,
+    )
+    services = _service_options(cur, id_ent, access, scope)
+    return id_ent, access, scope, services
 
 
-class GlobalGaugeNonCoveredDetailResponse(BaseModel):
-    total: int = 0
-    limit: int = 50
-    offset: int = 0
-    rows: List[GlobalGaugeNonCoveredRow] = []
-    id_service_scope: Optional[str] = None
+def _month_add(base: date, months: int) -> date:
+    month = base.month - 1 + months
+    year = base.year + month // 12
+    month = month % 12 + 1
+    day = min(base.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
+    return date(year, month, day)
 
 
-@router.get(
-    "/skills/context/{id_contact}",
-    response_model=SkillsContext,
-)
+def _avg_fragility(records: List[Dict[str, Any]]) -> int:
+    if not records:
+        return 0
+    return int(round(sum(int(r.get("indice_fragilite") or 0) for r in records) / float(len(records))))
+
+
+def _is_danger_record(r: Dict[str, Any]) -> bool:
+    return int(r.get("indice_fragilite") or 0) >= DASHBOARD_DANGER_MIN
+
+
+def _is_watch_record(r: Dict[str, Any]) -> bool:
+    s = int(r.get("indice_fragilite") or 0)
+    return DASHBOARD_WATCH_MIN <= s < DASHBOARD_DANGER_MIN
+
+
+# ======================================================
+# Calculs
+# ======================================================
+
+
+def _enrich_records_poste_criticite(cur, records: List[Dict[str, Any]]) -> None:
+    ids = [str(r.get("id_poste") or "").strip() for r in (records or []) if str(r.get("id_poste") or "").strip()]
+    if not ids:
+        return
+
+    cur.execute(
+        """
+        SELECT id_poste, COALESCE(criticite_poste, 2)::int AS criticite_poste
+        FROM public.tbl_fiche_poste_param_rh
+        WHERE id_poste = ANY(%s)
+        """,
+        (ids,),
+    )
+    mp = {str(r.get("id_poste") or ""): int(r.get("criticite_poste") or 2) for r in (cur.fetchall() or [])}
+    for r in records:
+        pid = str(r.get("id_poste") or "")
+        r["criticite_poste"] = int(mp.get(pid, r.get("criticite_poste") or 2))
+
+def _compute_health(cur, id_ent: str, scope: DashboardScope) -> DashboardHealth:
+    cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
+    cur.execute(
+        f"""
+        WITH
+        {cte_sql},
+        eff AS (
+            SELECT e.id_effectif, e.id_poste_actuel
+            FROM effectifs_scope es
+            JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+            WHERE COALESCE(e.archive, FALSE) = FALSE
+              AND COALESCE(e.statut_actif, TRUE) = TRUE
+              AND COALESCE(e.id_poste_actuel, '') <> ''
+        )
+        SELECT
+            COALESCE(SUM(
+                CASE upper(trim(COALESCE(fpc.niveau_requis, '')))
+                    WHEN 'A' THEN 9
+                    WHEN 'B' THEN 18
+                    WHEN 'C' THEN 24
+                    ELSE 0
+                END
+            ), 0)::numeric AS max_score,
+            COALESCE(SUM(LEAST(
+                COALESCE(a.resultat_eval, 0),
+                CASE upper(trim(COALESCE(fpc.niveau_requis, '')))
+                    WHEN 'A' THEN 9
+                    WHEN 'B' THEN 18
+                    WHEN 'C' THEN 24
+                    ELSE 0
+                END
+            )), 0)::numeric AS score,
+            COUNT(*)::int AS nb_items
+        FROM eff
+        JOIN public.tbl_fiche_poste_competence fpc
+          ON fpc.id_poste = eff.id_poste_actuel
+         AND COALESCE(fpc.masque, FALSE) = FALSE
+         AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+        LEFT JOIN public.tbl_effectif_client_competence ec
+          ON ec.id_effectif_client = eff.id_effectif
+         AND ec.id_comp = fpc.id_competence
+         AND COALESCE(ec.actif, TRUE) = TRUE
+         AND COALESCE(ec.archive, FALSE) = FALSE
+        LEFT JOIN public.tbl_effectif_client_audit_competence a
+          ON a.id_audit_competence = ec.id_dernier_audit
+         AND a.id_effectif_competence = ec.id_effectif_competence
+        """,
+        tuple(cte_params + [CRITICITE_MIN_DEFAULT]),
+    )
+    row = cur.fetchone() or {}
+    score = float(row.get("score") or 0.0)
+    max_score = float(row.get("max_score") or 0.0)
+    pct = round((score / max_score * 100.0), 1) if max_score > 0 else 0.0
+    return DashboardHealth(
+        pct=pct,
+        score=score,
+        max_score=max_score,
+        nb_items=int(row.get("nb_items") or 0),
+        scope_label=scope.nom_service,
+    )
+
+
+def _fetch_postes_fragility_records_at(
+    cur,
+    id_ent: str,
+    id_service: Optional[str],
+    criticite_min: int,
+    as_of: date,
+) -> List[Dict[str, Any]]:
+    cte_sql, cte_params = _build_scope_cte(id_ent, id_service)
+
+    sql_postes = f"""
+    WITH
+    {cte_sql},
+    effectifs_dispo AS (
+        SELECT es.id_effectif
+        FROM effectifs_scope es
+        JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
+          AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > %s)
+          AND NOT EXISTS (
+            SELECT 1
+            FROM public.tbl_effectif_client_break b
+            WHERE b.id_effectif = e.id_effectif
+              AND COALESCE(b.archive, FALSE) = FALSE
+              AND b.date_debut <= %s
+              AND b.date_fin >= %s
+          )
+    ),
+    titulaires AS (
+        SELECT
+            e.id_poste_actuel AS id_poste,
+            COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
+        FROM public.tbl_effectif_client e
+        JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.id_poste_actuel, '') <> ''
+        GROUP BY e.id_poste_actuel
+    )
+    SELECT
+        fp.id_poste,
+        fp.codif_poste,
+        fp.codif_client,
+        fp.intitule_poste,
+        fp.id_service,
+        COALESCE(o.nom_service, '') AS nom_service,
+        COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
+        COALESCE(prh.statut_poste, 'actif')::text AS statut_poste,
+        COALESCE(prh.criticite_poste, 2)::int AS criticite_poste,
+        CASE
+            WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$'
+                THEN trim(fp.niveau_education_minimum)::int
+            ELSE 0
+        END AS edu_min_rank,
+        (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
+        COALESCE(nd.titre, '')::text AS nsf_domaine_titre,
+        COALESCE(t.nb_titulaires, 0)::int AS nb_titulaires
+    FROM postes_scope ps
+    JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
+    LEFT JOIN public.tbl_entreprise_organigramme o
+      ON o.id_ent = %s
+     AND o.id_service = fp.id_service
+     AND COALESCE(o.archive, FALSE) = FALSE
+    LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = fp.id_poste
+    LEFT JOIN public.tbl_nsf_domaine nd ON nd.code = fp.nsf_domaine_code
+    LEFT JOIN titulaires t ON t.id_poste = fp.id_poste
+    """
+    cur.execute(sql_postes, tuple(cte_params + [as_of, as_of, as_of, id_ent]))
+    poste_rows = cur.fetchall() or []
+    if not poste_rows:
+        return []
+
+    postes_map: Dict[str, Dict[str, Any]] = {str(r.get("id_poste") or ""): dict(r) for r in poste_rows}
+
+    sql_emps = f"""
+    WITH
+    {cte_sql},
+    effectifs_dispo AS (
+        SELECT es.id_effectif
+        FROM effectifs_scope es
+        JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
+          AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > %s)
+          AND NOT EXISTS (
+            SELECT 1
+            FROM public.tbl_effectif_client_break b
+            WHERE b.id_effectif = e.id_effectif
+              AND COALESCE(b.archive, FALSE) = FALSE
+              AND b.date_debut <= %s
+              AND b.date_fin >= %s
+          )
+    )
+    SELECT
+        e.id_effectif,
+        e.id_poste_actuel,
+        COALESCE(e.niveau_education, '') AS niveau_education,
+        COALESCE(e.domaine_education, '') AS domaine_education
+    FROM public.tbl_effectif_client e
+    JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
+    WHERE COALESCE(e.archive, FALSE) = FALSE
+    """
+    cur.execute(sql_emps, tuple(cte_params + [as_of, as_of, as_of]))
+    employees = [dict(r) for r in (cur.fetchall() or [])]
+
+    sql_comp = f"""
+    WITH
+    {cte_sql},
+    effectifs_dispo AS (
+        SELECT es.id_effectif
+        FROM effectifs_scope es
+        JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
+          AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > %s)
+          AND NOT EXISTS (
+            SELECT 1
+            FROM public.tbl_effectif_client_break b
+            WHERE b.id_effectif = e.id_effectif
+              AND COALESCE(b.archive, FALSE) = FALSE
+              AND b.date_debut <= %s
+              AND b.date_fin >= %s
+          )
+    ),
+    poste_info AS (
+        SELECT
+            fp.id_poste,
+            CASE
+                WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$'
+                    THEN trim(fp.niveau_education_minimum)::int
+                ELSE 0
+            END AS edu_min_rank,
+            (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
+            COALESCE(nd.titre, '')::text AS nsf_domaine_titre
+        FROM postes_scope ps
+        JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
+        LEFT JOIN public.tbl_nsf_domaine nd ON nd.code = fp.nsf_domaine_code
+    ),
+    req AS (
+        SELECT DISTINCT
+            pi.id_poste,
+            c.id_comp,
+            c.code,
+            c.intitule,
+            COALESCE(fpc.niveau_requis, '')::text AS niveau_requis,
+            COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite,
+            pi.edu_min_rank,
+            pi.nsf_domain_required,
+            pi.nsf_domaine_titre
+        FROM poste_info pi
+        JOIN public.tbl_fiche_poste_competence fpc ON fpc.id_poste = pi.id_poste
+        JOIN public.tbl_competence c
+          ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+        WHERE c.etat = 'active'
+          AND COALESCE(c.masque, FALSE) = FALSE
+          AND COALESCE(fpc.masque, FALSE) = FALSE
+          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+    ),
+    pool_all_effectifs AS (
+        SELECT
+            e.id_effectif,
+            e.id_poste_actuel,
+            COALESCE(e.niveau_education, '') AS niveau_education,
+            COALESCE(e.domaine_education, '') AS domaine_education
+        FROM public.tbl_effectif_client e
+        JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+    ),
+    ec_raw AS (
+        SELECT
+            r.id_poste,
+            r.id_comp,
+            r.code,
+            r.intitule,
+            r.poids_criticite,
+            r.niveau_requis,
+            pe.id_effectif,
+            pe.id_poste_actuel,
+            CASE upper(trim(COALESCE(r.niveau_requis, '')))
+                WHEN 'A' THEN 1
+                WHEN 'B' THEN 2
+                WHEN 'C' THEN 3
+                ELSE 0
+            END AS req_rank,
+            CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
+                WHEN 'a' THEN 1
+                WHEN 'initial' THEN 1
+                WHEN 'b' THEN 2
+                WHEN 'avance' THEN 2
+                WHEN 'avancé' THEN 2
+                WHEN 'avancee' THEN 2
+                WHEN 'avancée' THEN 2
+                WHEN 'c' THEN 3
+                WHEN 'expert' THEN 3
+                ELSE 0
+            END AS act_rank,
+            CASE
+              WHEN (
+                r.edu_min_rank = 0
+                OR (
+                  CASE
+                    WHEN trim(COALESCE(pe.niveau_education, '')) ~ '^[0-9]+$' THEN trim(pe.niveau_education)::int
+                    ELSE 0
+                  END
+                ) >= r.edu_min_rank
+              )
+              AND (
+                r.nsf_domain_required = FALSE
+                OR (
+                  lower(trim(COALESCE(pe.domaine_education, ''))) = lower(trim(COALESCE(r.nsf_domaine_titre, '')))
+                  AND COALESCE(r.nsf_domaine_titre, '') <> ''
+                )
+              )
+              THEN TRUE ELSE FALSE
+            END AS is_eligible
+        FROM req r
+        JOIN public.tbl_effectif_client_competence ec ON ec.id_comp = r.id_comp
+        JOIN pool_all_effectifs pe ON pe.id_effectif = ec.id_effectif_client
+        WHERE COALESCE(ec.actif, TRUE) = TRUE
+          AND COALESCE(ec.archive, FALSE) = FALSE
+    ),
+    ec_ok AS (
+        SELECT
+            *,
+            CASE
+                WHEN req_rank > 0 THEN (act_rank >= req_rank)
+                ELSE (act_rank > 0)
+            END AS is_ok
+        FROM ec_raw
+    )
+    SELECT
+        r.id_poste,
+        r.id_comp,
+        r.code,
+        r.intitule,
+        r.poids_criticite,
+        r.niveau_requis,
+        COUNT(DISTINCT CASE WHEN eok.id_poste_actuel = r.id_poste THEN eok.id_effectif END)::int AS nb_tit_any,
+        COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible AND eok.id_poste_actuel = r.id_poste THEN eok.id_effectif END)::int AS nb_tit_ok,
+        COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible THEN eok.id_effectif END)::int AS nb_ok_all
+    FROM req r
+    LEFT JOIN ec_ok eok ON eok.id_poste = r.id_poste AND eok.id_comp = r.id_comp
+    GROUP BY r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis
+    """
+    cur.execute(sql_comp, tuple(cte_params + [as_of, as_of, as_of, int(criticite_min)]))
+    comp_rows = cur.fetchall() or []
+
+    comp_by_poste: Dict[str, List[Dict[str, Any]]] = {}
+    for r in comp_rows:
+        comp_by_poste.setdefault(str(r.get("id_poste") or ""), []).append(dict(r))
+
+    records: List[Dict[str, Any]] = []
+    for poste_id, poste in postes_map.items():
+        rec = _compute_poste_fragility_record(poste, comp_by_poste.get(poste_id, []), employees)
+        if rec.get("is_excluded"):
+            continue
+        records.append(rec)
+
+    records.sort(
+        key=lambda r: (
+            -int(r.get("indice_fragilite") or 0),
+            int(r.get("nb_titulaires") or 0),
+            -int(r.get("nb_critiques_sans_porteur") or 0),
+            -int(r.get("gap_titulaires") or 0),
+            -int(r.get("nb_critiques_porteur_unique") or 0),
+            -int(r.get("nb_critiques_sans_releve") or 0),
+            str(r.get("codif_poste") or ""),
+            str(r.get("intitule_poste") or ""),
+        )
+    )
+    return records
+
+
+def _compute_timeline(cur, id_ent: str, scope: DashboardScope, current_records: List[Dict[str, Any]]) -> List[DashboardRiskTimelinePoint]:
+    today = date.today()
+    out: List[DashboardRiskTimelinePoint] = []
+    for i in range(13):
+        d = _month_add(today, i)
+        records = current_records if i == 0 else _fetch_postes_fragility_records_at(cur, id_ent, scope.id_service, CRITICITE_MIN_DEFAULT, d)
+        fragile = [r for r in records if bool(r.get("is_fragile"))]
+        out.append(
+            DashboardRiskTimelinePoint(
+                date_ref=d.isoformat(),
+                label=d.strftime("%m/%y"),
+                indice_fragilite=_avg_fragility(records),
+                nb_postes_fragiles=len(fragile),
+                nb_postes_total=len(records),
+            )
+        )
+    return out
+
+
+def _compute_postes_watch(records: List[Dict[str, Any]]) -> DashboardPostesWatch:
+    total = len(records)
+    danger = [r for r in records if _is_danger_record(r)]
+    watch = [r for r in records if _is_watch_record(r)]
+    stable = max(total - len(danger) - len(watch), 0)
+    critical_danger = [r for r in danger if int(r.get("criticite_poste") or 2) >= DASHBOARD_CRITICAL_POSTE_MIN]
+    return DashboardPostesWatch(
+        total_postes=total,
+        postes_danger=len(danger),
+        postes_surveillance=len(watch),
+        postes_stables=stable,
+        postes_critiques_danger=len(critical_danger),
+    )
+
+
+def _compute_transmission(records: List[Dict[str, Any]]) -> DashboardTransmission:
+    total = len(records)
+    ok = 0
+    risk = 0
+    for r in records:
+        rupture = bool(r.get("rupture"))
+        sans_releve = int(r.get("nb_critiques_sans_releve") or 0)
+        releve_faible = int(r.get("nb_critiques_releve_faible") or 0)
+        pool_eligible = int(r.get("pool_eligible") or 0)
+        besoin_local = int(r.get("besoin_local") or 0)
+        transmissible = (not rupture) and besoin_local > 0 and pool_eligible > 0 and sans_releve == 0 and releve_faible == 0
+        if transmissible:
+            ok += 1
+        else:
+            risk += 1
+    pct = round((ok / total * 100.0), 1) if total else 0.0
+    return DashboardTransmission(
+        pct=pct,
+        postes_total=total,
+        postes_transmissibles=ok,
+        postes_risque=risk,
+    )
+
+
+def _compute_reliability(cur, id_ent: str, scope: DashboardScope) -> DashboardReliability:
+    cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
+    cur.execute(
+        f"""
+        WITH
+        {cte_sql},
+        eff AS (
+            SELECT e.id_effectif, e.id_poste_actuel
+            FROM effectifs_scope es
+            JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+            WHERE COALESCE(e.archive, FALSE) = FALSE
+              AND COALESCE(e.statut_actif, TRUE) = TRUE
+              AND COALESCE(e.id_poste_actuel, '') <> ''
+        ),
+        items AS (
+            SELECT
+                eff.id_effectif,
+                fpc.id_competence,
+                GREATEST(
+                    COALESCE(ec.date_derniere_eval, DATE '1900-01-01'),
+                    COALESCE(a.date_audit, DATE '1900-01-01')
+                ) AS last_eval
+            FROM eff
+            JOIN public.tbl_fiche_poste_competence fpc
+              ON fpc.id_poste = eff.id_poste_actuel
+             AND COALESCE(fpc.masque, FALSE) = FALSE
+             AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+            LEFT JOIN public.tbl_effectif_client_competence ec
+              ON ec.id_effectif_client = eff.id_effectif
+             AND ec.id_comp = fpc.id_competence
+             AND COALESCE(ec.actif, TRUE) = TRUE
+             AND COALESCE(ec.archive, FALSE) = FALSE
+            LEFT JOIN public.tbl_effectif_client_audit_competence a
+              ON a.id_audit_competence = ec.id_dernier_audit
+             AND a.id_effectif_competence = ec.id_effectif_competence
+        )
+        SELECT
+            COUNT(*)::int AS total_items,
+            SUM(CASE WHEN last_eval >= (CURRENT_DATE - INTERVAL '6 months') THEN 1 ELSE 0 END)::int AS fresh_items
+        FROM items
+        """,
+        tuple(cte_params + [CRITICITE_MIN_DEFAULT]),
+    )
+    row = cur.fetchone() or {}
+    total = int(row.get("total_items") or 0)
+    fresh = int(row.get("fresh_items") or 0)
+    stale = max(total - fresh, 0)
+    pct = round((fresh / total * 100.0), 1) if total else 0.0
+    return DashboardReliability(
+        pct=pct,
+        fresh_items=fresh,
+        stale_items=stale,
+        total_items=total,
+        seuil_mois=DASHBOARD_RELIABILITY_MONTHS,
+    )
+
+
+def _fetch_postes_with_action(cur, id_ent: str, scope: DashboardScope) -> set:
+    cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
+    cur.execute(
+        f"""
+        WITH
+        {cte_sql},
+        eff AS (
+            SELECT e.id_effectif, e.id_poste_actuel
+            FROM effectifs_scope es
+            JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+            WHERE COALESCE(e.archive, FALSE) = FALSE
+              AND COALESCE(e.statut_actif, TRUE) = TRUE
+              AND COALESCE(e.id_poste_actuel, '') <> ''
+        ),
+        formation_action AS (
+            SELECT DISTINCT e.id_poste_actuel AS id_poste
+            FROM eff e
+            JOIN public.tbl_action_formation_effectif afe
+              ON afe.id_effectif = e.id_effectif
+             AND COALESCE(afe.archive, FALSE) = FALSE
+            JOIN public.tbl_action_formation af
+              ON af.id_action_formation = afe.id_action_formation
+             AND COALESCE(af.archive, FALSE) = FALSE
+            WHERE COALESCE(af.etat_action, '') NOT IN ('annulée', 'annulee', 'annulé', 'annule')
+              AND (af.date_fin_formation IS NULL OR af.date_fin_formation >= CURRENT_DATE)
+        ),
+        entretien_action AS (
+            SELECT DISTINCT e.id_poste_actuel AS id_poste
+            FROM eff e
+            JOIN public.tbl_entretien_individuel ei
+              ON ei.id_effectif_client = e.id_effectif
+             AND COALESCE(ei.archive, FALSE) = FALSE
+            WHERE lower(COALESCE(ei.statut, '')) IN ('à réaliser', 'a réaliser', 'en cours', 'en-cours', 'à signer 1/2', 'a signer 1/2')
+        )
+        SELECT id_poste FROM formation_action
+        UNION
+        SELECT id_poste FROM entretien_action
+        """,
+        tuple(cte_params),
+    )
+    rows = cur.fetchall() or []
+    return {str(r.get("id_poste") or "") for r in rows if r.get("id_poste")}
+
+
+def _compute_risks_without_action(cur, id_ent: str, scope: DashboardScope, records: List[Dict[str, Any]]) -> DashboardRisksWithoutAction:
+    action_postes = _fetch_postes_with_action(cur, id_ent, scope)
+    rows = []
+    for r in records:
+        id_poste = str(r.get("id_poste") or "").strip()
+        if not id_poste or id_poste in action_postes:
+            continue
+        if not _is_danger_record(r):
+            continue
+        rows.append(r)
+
+    items = [
+        DashboardRiskWithoutActionRow(
+            id_poste=str(r.get("id_poste") or ""),
+            codif_poste=r.get("codif_poste"),
+            codif_client=r.get("codif_client"),
+            intitule_poste=r.get("intitule_poste") or "Poste",
+            nom_service=r.get("nom_service"),
+            indice_fragilite=int(r.get("indice_fragilite") or 0),
+            nb_critiques_fragiles=int(r.get("nb_critiques_fragiles") or 0),
+        )
+        for r in rows[:DASHBOARD_NO_ACTION_LIMIT]
+    ]
+    return DashboardRisksWithoutAction(total=len(rows), items=items)
+
+
+# ======================================================
+# Routes
+# ======================================================
+@router.get("/skills/context/{id_contact}", response_model=SkillsContext)
 def get_skills_context(id_contact: str, request: Request):
-    """
-    Contexte minimal pour le dashboard / topbar :
-    id_contact, civilité, prénom, nom.
-    """
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 eff_id = _resolve_effectif_for_request(cur, id_contact, request)
                 row_contact, _ = fetch_contact_with_entreprise(cur, eff_id)
+                role = _fetch_role_for_request(cur, eff_id, request)
 
         return SkillsContext(
             id_contact=row_contact["id_contact"],
             civilite=row_contact.get("civ_ca"),
             prenom=row_contact.get("prenom_ca"),
             nom=row_contact["nom_ca"],
+            role_code=role,
+            id_service=row_contact.get("id_service"),
         )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-        
-
-@router.get(
-    "/skills/dashboard/age-pyramid/{id_contact}",
-    response_model=AgePyramidResponse,
-)
-def get_dashboard_age_pyramid(id_contact: str, request: Request):
-    """
-    Pyramide des âges (actifs uniquement).
-    - Femmes (F) à gauche
-    - Hommes (M) à droite
-    - Tranches affichées du bas (<25) vers le haut (60+)
-      => on renvoie dans l'ordre: 60+, 55-59, 45-54, 35-44, 25-34, <25
-    """
-    try:
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
-
-                # fetch_contact_with_entreprise fournit id_ent (pas id_entreprise)
-                id_ent = None
-                if isinstance(row_contact, dict):
-                    id_ent = row_contact.get("id_ent")
-                if not id_ent and isinstance(row_ent, dict):
-                    id_ent = row_ent.get("id_ent")
-
-                if not id_ent:
-                    return AgePyramidResponse(bands=[])
-
-                # Meta qualité de données
-                cur.execute(
-                    """
-                    SELECT
-                        COUNT(*)::int AS total_actifs,
-                        SUM(CASE WHEN date_naissance_effectif IS NULL THEN 1 ELSE 0 END)::int AS unknown_birth,
-                        SUM(
-                            CASE
-                                WHEN date_naissance_effectif IS NOT NULL
-                                 AND (civilite_effectif IS NULL OR civilite_effectif NOT IN ('M','F'))
-                                THEN 1 ELSE 0
-                            END
-                        )::int AS unknown_gender
-                    FROM public.tbl_effectif_client
-                    WHERE id_ent = %s
-                      AND archive = FALSE
-                      AND statut_actif = TRUE
-                    """,
-                    (id_ent,),
-                )
-                meta = cur.fetchone() or {}
-
-                                # KPI ÂGE (dénominateur robuste = actifs avec date naissance)
-                cur.execute(
-                    """
-                    WITH base AS (
-                        SELECT
-                            EXTRACT(YEAR FROM age(CURRENT_DATE, date_naissance_effectif))::int AS age
-                        FROM public.tbl_effectif_client
-                        WHERE id_ent = %s
-                          AND archive = FALSE
-                          AND statut_actif = TRUE
-                          AND date_naissance_effectif IS NOT NULL
-                    )
-                    SELECT
-                        COUNT(*)::int AS total_age_known,
-                        SUM(CASE WHEN age >= 58 THEN 1 ELSE 0 END)::int AS seniors_58,
-                        SUM(CASE WHEN age < 35 THEN 1 ELSE 0 END)::int AS juniors_under35
-                    FROM base
-                    WHERE age IS NOT NULL AND age >= 0
-                    """,
-                    (id_ent,),
-                )
-                age_kpis = cur.fetchone() or {}
-
-                # KPI TRANSMISSION (Experts "niveau_actuel" = 'Expert')
-                cur.execute(
-                    """
-                    WITH experts AS (
-                        SELECT
-                            ecc.id_comp,
-                            EXTRACT(YEAR FROM age(CURRENT_DATE, e.date_naissance_effectif))::int AS age
-                        FROM public.tbl_effectif_client_competence ecc
-                        JOIN public.tbl_effectif_client e
-                          ON e.id_effectif = ecc.id_effectif_client
-                        JOIN public.tbl_competence c
-                          ON c.id_comp = ecc.id_comp
-                        WHERE e.id_ent = %s
-                          AND e.archive = FALSE
-                          AND e.statut_actif = TRUE
-                          AND e.date_naissance_effectif IS NOT NULL
-                          AND ecc.actif = TRUE
-                          AND ecc.archive = FALSE
-                          AND ecc.niveau_actuel = 'Expert'
-                          AND COALESCE(c.masque, FALSE) = FALSE
-                          AND COALESCE(c.etat, 'active') = 'active'
-                    ),
-                    agg AS (
-                        SELECT
-                            id_comp,
-                            COUNT(*)::int AS total_experts,
-                            SUM(CASE WHEN age >= 58 THEN 1 ELSE 0 END)::int AS experts_58
-                        FROM experts
-                        WHERE age IS NOT NULL AND age >= 0
-                        GROUP BY id_comp
-                    )
-                    SELECT
-                        COUNT(*)::int AS total_comp_with_experts,
-                        SUM(CASE WHEN experts_58 * 2 > total_experts THEN 1 ELSE 0 END)::int AS comp_in_danger
-                    FROM agg
-                    """,
-                    (id_ent,),
-                )
-                trans_kpis = cur.fetchone() or {}
-
-
-                # Comptage par tranches
-                cur.execute(
-                    """
-                    WITH base AS (
-                        SELECT
-                            civilite_effectif,
-                            EXTRACT(YEAR FROM age(CURRENT_DATE, date_naissance_effectif))::int AS age
-                        FROM public.tbl_effectif_client
-                        WHERE id_ent = %s
-                          AND archive = FALSE
-                          AND statut_actif = TRUE
-                          AND date_naissance_effectif IS NOT NULL
-                    ),
-                    binned AS (
-                        SELECT
-                            CASE
-                                WHEN age < 25 THEN '<25'
-                                WHEN age BETWEEN 25 AND 34 THEN '25-34'
-                                WHEN age BETWEEN 35 AND 44 THEN '35-44'
-                                WHEN age BETWEEN 45 AND 54 THEN '45-54'
-                                WHEN age BETWEEN 55 AND 59 THEN '55-59'
-                                ELSE '60+'
-                            END AS tranche,
-                            civilite_effectif
-                        FROM base
-                        WHERE age IS NOT NULL AND age >= 0
-                    )
-                    SELECT
-                        tranche,
-                        SUM(CASE WHEN civilite_effectif = 'F' THEN 1 ELSE 0 END)::int AS femmes,
-                        SUM(CASE WHEN civilite_effectif = 'M' THEN 1 ELSE 0 END)::int AS hommes
-                    FROM binned
-                    GROUP BY tranche
-                    """,
-                    (id_ent,),
-                )
-                rows = cur.fetchall() or []
-
-        # Normalisation + ordre d'affichage (haut -> bas)
-        order = ["60+", "55-59", "45-54", "35-44", "25-34", "<25"]
-        by_tranche = {k: {"femmes": 0, "hommes": 0} for k in order}
-
-        for r in rows:
-            t = r.get("tranche")
-            if t in by_tranche:
-                by_tranche[t]["femmes"] = int(r.get("femmes") or 0)
-                by_tranche[t]["hommes"] = int(r.get("hommes") or 0)
-
-        bands = [
-            AgePyramidBand(label=t, femmes=by_tranche[t]["femmes"], hommes=by_tranche[t]["hommes"])
-            for t in order
-        ]
-
-        total_age_known = int(age_kpis.get("total_age_known") or 0)
-        seniors_58 = int(age_kpis.get("seniors_58") or 0)
-        juniors_under35 = int(age_kpis.get("juniors_under35") or 0)
-
-        risk_sortie_pct = round((seniors_58 / total_age_known) * 100.0, 1) if total_age_known else 0.0
-        releve_ratio = round((juniors_under35 / seniors_58), 2) if seniors_58 else None
-
-        comp_total = int(trans_kpis.get("total_comp_with_experts") or 0)
-        comp_danger = int(trans_kpis.get("comp_in_danger") or 0)
-        transmission_pct = round((comp_danger / comp_total) * 100.0, 1) if comp_total else 0.0
-
-        return AgePyramidResponse(
-            bands=bands,
-
-            total_actifs=int(meta.get("total_actifs") or 0),
-            unknown_birth=int(meta.get("unknown_birth") or 0),
-            unknown_gender=int(meta.get("unknown_gender") or 0),
-
-            seuil_senior=58,
-            seuil_junior=35,
-
-            risk_sortie_pct=risk_sortie_pct,
-            risk_sortie_count=seniors_58,
-            risk_sortie_total=total_age_known,
-
-            releve_ratio=releve_ratio,
-            releve_junior=juniors_under35,
-            releve_senior=seniors_58,
-
-            transmission_pct=transmission_pct,
-            transmission_comp_danger=comp_danger,
-            transmission_comp_total=comp_total,
-        )
-
-
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
-@router.get(
-    "/skills/dashboard/global-gauge/{id_contact}",
-    response_model=GlobalGaugeResponse,
-)
-def get_dashboard_global_gauge(id_contact: str, request: Request, id_service: Optional[str] = None):
-    """
-    Jauge "État global compétences vs attentes"
-    - Périmètre actuel: entreprise entière
-    - Périmètre futur (droits):
-        * si id_service fourni -> filtre sur tbl_effectif_client.id_service
-        * sinon -> tout id_ent
-    Règles:
-    - Effectifs: statut_actif = TRUE, archive = FALSE, poste actuel requis (id_poste_actuel non null)
-    - Compétences pointées: tbl_fiche_poste_competence.poids_criticite > 80 sur le poste actuel
-    - Limites jauge: somme des seuils min/max selon niveau requis (A=6-9, B=10-18, C=19-24)
-    - Aiguille: somme des resultat_eval du dernier audit (via id_dernier_audit), manquant => 0
-    """
+
+@router.get("/skills/dashboard/risk-overview/{id_contact}", response_model=DashboardRiskOverview)
+def get_dashboard_risk_overview(id_contact: str, request: Request, id_service: Optional[str] = None):
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
-                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
+                id_ent, access, scope, services = _dashboard_context(cur, id_contact, request, id_service)
 
-                # id_ent = périmètre entreprise
-                id_ent = None
-                if isinstance(row_contact, dict):
-                    id_ent = row_contact.get("id_ent")
-                if not id_ent and isinstance(row_ent, dict):
-                    id_ent = row_ent.get("id_ent")
-
-                if not id_ent:
-                    return GlobalGaugeResponse()
-
-                service_filter_sql = ""
-                params = [id_ent]
-
-                if id_service:
-                    service_filter_sql = " AND e.id_service = %s "
-                    params.append(id_service)
-
-                cur.execute(
-                    f"""
-                    WITH eff AS (
-                        SELECT e.id_effectif, e.id_poste_actuel
-                        FROM public.tbl_effectif_client e
-                        WHERE e.id_ent = %s
-                          AND e.archive = FALSE
-                          AND e.statut_actif = TRUE
-                          AND e.id_poste_actuel IS NOT NULL
-                          {service_filter_sql}
-                    )
-                    SELECT
-                        COALESCE(SUM(
-                            CASE fpc.niveau_requis
-                                WHEN 'A' THEN 6
-                                WHEN 'B' THEN 10
-                                WHEN 'C' THEN 19
-                                ELSE 0
-                            END
-                        ), 0)::numeric AS gauge_min,
-
-                        COALESCE(SUM(
-                            CASE fpc.niveau_requis
-                                WHEN 'A' THEN 9
-                                WHEN 'B' THEN 18
-                                WHEN 'C' THEN 24
-                                ELSE 0
-                            END
-                        ), 0)::numeric AS gauge_max,
-
-                        COALESCE(SUM(COALESCE(a.resultat_eval, 0)), 0)::numeric AS score_sum,
-
-                        COUNT(*)::int AS nb_items
-                    FROM eff
-                    JOIN public.tbl_fiche_poste_competence fpc
-                      ON fpc.id_poste = eff.id_poste_actuel
-                     AND fpc.poids_criticite > 80
-                    LEFT JOIN public.tbl_effectif_client_competence ec
-                      ON ec.id_effectif_client = eff.id_effectif
-                     AND ec.id_comp = fpc.id_competence
-                     AND ec.actif = TRUE
-                     AND ec.archive = FALSE
-                    LEFT JOIN public.tbl_effectif_client_audit_competence a
-                      ON a.id_audit_competence = ec.id_dernier_audit
-                     AND a.id_effectif_competence = ec.id_effectif_competence
-                    """,
-                    tuple(params),
+                current_records = _fetch_postes_fragility_records(
+                    cur,
+                    id_ent,
+                    scope.id_service,
+                    CRITICITE_MIN_DEFAULT,
                 )
+                _enrich_records_poste_criticite(cur, current_records)
 
-                row = cur.fetchone() or {}
+                health = _compute_health(cur, id_ent, scope)
+                risk_timeline = _compute_timeline(cur, id_ent, scope, current_records)
+                postes_watch = _compute_postes_watch(current_records)
+                transmission = _compute_transmission(current_records)
+                reliability = _compute_reliability(cur, id_ent, scope)
+                risks_without_action = _compute_risks_without_action(cur, id_ent, scope, current_records)
 
-        gmin = float(row.get("gauge_min") or 0.0)
-        gmax = float(row.get("gauge_max") or 0.0)
-        score = float(row.get("score_sum") or 0.0)
-        nb = int(row.get("nb_items") or 0)
-
-        return GlobalGaugeResponse(
-            gauge_min=gmin,
-            gauge_max=gmax,
-            score=score,
-            nb_items=nb,
-            id_service_scope=id_service.strip() if isinstance(id_service, str) and id_service.strip() else None,
+        return DashboardRiskOverview(
+            access=access,
+            scope=scope,
+            services=services,
+            health=health,
+            risk_timeline=risk_timeline,
+            postes_watch=postes_watch,
+            transmission=transmission,
+            reliability=reliability,
+            risks_without_action=risks_without_action,
         )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-
-@router.get(
-    "/skills/dashboard/no-training-12m/{id_contact}",
-    response_model=NoTraining12mResponse,
-)
-def get_dashboard_no_training_12m(id_contact: str, request: Request, id_service: Optional[str] = None):
-    """
-    KPI: % de l'effectif actif sans formation depuis 12 mois (toutes sources)
-    Source vérité: tbl_effectif_client_historique_formation
-    (les formations JMB doivent y être synchronisées via id_action_formation_effectif)
-
-    Règles:
-    - Population: statut_actif = TRUE, archive = FALSE, id_poste_actuel NON NULL (comme demandé)
-    - Périmètre futur droits: si id_service fourni -> filtre e.id_service = id_service
-    - Sans formation 12 mois: aucune ligne non archivée avec date_formation >= CURRENT_DATE - interval '12 months'
-    """
-    try:
-        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
-
-                id_ent = None
-                if isinstance(row_contact, dict):
-                    id_ent = row_contact.get("id_ent")
-                if not id_ent and isinstance(row_ent, dict):
-                    id_ent = row_ent.get("id_ent")
-
-                if not id_ent:
-                    return NoTraining12mResponse()
-
-                cur.execute(
-                    """
-                    WITH eff AS (
-                        SELECT e.id_effectif
-                        FROM public.tbl_effectif_client e
-                        WHERE e.id_ent = %s
-                          AND e.archive = FALSE
-                          AND e.statut_actif = TRUE
-                          AND e.id_poste_actuel IS NOT NULL
-                          AND (%s::text IS NULL OR e.id_service = %s::text)
-
-                    ),
-                    last_train AS (
-                        SELECT
-                            h.id_effectif,
-                            MAX(h.date_formation) AS last_date
-                        FROM public.tbl_effectif_client_historique_formation h
-                        JOIN eff ON eff.id_effectif = h.id_effectif
-                        WHERE h.archive = FALSE
-                        GROUP BY h.id_effectif
-                    )
-                    SELECT
-                        (SELECT COUNT(*) FROM eff)::int AS total_effectif,
-                        (SELECT COUNT(*)
-                         FROM eff e
-                         LEFT JOIN last_train lt ON lt.id_effectif = e.id_effectif
-                         WHERE lt.last_date IS NULL
-                            OR lt.last_date < (CURRENT_DATE - INTERVAL '12 months')
-                        )::int AS count_no_training_12m
-                    """,
-                    (id_ent, id_service_clean, id_service_clean),
-                )
-
-                row = cur.fetchone() or {}
-
-        total_eff = int(row.get("total_effectif") or 0)
-        count_no = int(row.get("count_no_training_12m") or 0)
-        pct = round((count_no / total_eff) * 100.0, 1) if total_eff else 0.0
-
-        return NoTraining12mResponse(
-            pct_no_training_12m=pct,
-            count_no_training_12m=count_no,
-            total_effectif=total_eff,
-            id_service_scope=id_service_clean,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-
-@router.get(
-    "/skills/dashboard/no-performance-12m/{id_contact}",
-    response_model=NoPerformance12mResponse,
-)
-def get_dashboard_no_performance_12m(id_contact: str, request: Request, id_service: Optional[str] = None):
-    """
-    KPI: % de salariés (actifs) n'ayant pas eu de "point performance" depuis 12 mois.
-
-    Option A (robuste) :
-    - "Point performance OK" si couverture >= 70% des compétences actives du salarié
-      ont un audit (dernier audit) dans les 12 derniers mois.
-    - Audit manquant => non compté (donc couverture baisse)
-    - Si salarié a 0 compétence active => considéré "pas de point" (couverture = 0)
-
-    Règles population:
-    - statut_actif = TRUE
-    - archive = FALSE
-    - id_poste_actuel IS NOT NULL
-    - périmètre futur droits : si id_service fourni => filtre e.id_service
-    """
-    try:
-        seuil = 0.7
-        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
-
-                id_ent = None
-                if isinstance(row_contact, dict):
-                    id_ent = row_contact.get("id_ent")
-                if not id_ent and isinstance(row_ent, dict):
-                    id_ent = row_ent.get("id_ent")
-
-                if not id_ent:
-                    return NoPerformance12mResponse(seuil_couverture=seuil)
-
-                cur.execute(
-                    """
-                    WITH eff AS (
-                        SELECT e.id_effectif
-                        FROM public.tbl_effectif_client e
-                        WHERE e.id_ent = %s
-                          AND e.archive = FALSE
-                          AND e.statut_actif = TRUE
-                          AND e.id_poste_actuel IS NOT NULL
-                          AND (%s::text IS NULL OR e.id_service = %s::text)
-                    ),
-                    comp AS (
-                        SELECT
-                            ecc.id_effectif_client AS id_effectif,
-                            ecc.id_effectif_competence,
-                            ecc.id_dernier_audit
-                        FROM public.tbl_effectif_client_competence ecc
-                        JOIN eff ON eff.id_effectif = ecc.id_effectif_client
-                        WHERE ecc.actif = TRUE
-                          AND ecc.archive = FALSE
-                    ),
-                    last_audit AS (
-                        SELECT
-                            c.id_effectif,
-                            c.id_effectif_competence,
-                            a.date_audit
-                        FROM comp c
-                        LEFT JOIN public.tbl_effectif_client_audit_competence a
-                          ON a.id_audit_competence = c.id_dernier_audit
-                         AND a.id_effectif_competence = c.id_effectif_competence
-                    ),
-                    agg AS (
-                        SELECT
-                            e.id_effectif,
-                            COUNT(c.id_effectif_competence)::int AS total_comp,
-                            SUM(
-                                CASE
-                                    WHEN la.date_audit >= (CURRENT_DATE - INTERVAL '12 months') THEN 1
-                                    ELSE 0
-                                END
-                            )::int AS audited_12m
-                        FROM eff e
-                        LEFT JOIN comp c ON c.id_effectif = e.id_effectif
-                        LEFT JOIN last_audit la ON la.id_effectif_competence = c.id_effectif_competence
-                        GROUP BY e.id_effectif
-                    )
-                    SELECT
-                        COUNT(*)::int AS total_effectif,
-                        SUM(
-                            CASE
-                                WHEN total_comp <= 0 THEN 1
-                                WHEN (audited_12m::numeric / NULLIF(total_comp, 0)) < %s THEN 1
-                                ELSE 0
-                            END
-                        )::int AS count_no_perf_12m
-                    FROM agg
-                    """,
-                    (id_ent, id_service_clean, id_service_clean, seuil),
-                )
-
-                row = cur.fetchone() or {}
-
-        total_eff = int(row.get("total_effectif") or 0)
-        count_no = int(row.get("count_no_perf_12m") or 0)
-        pct = round((count_no / total_eff) * 100.0, 1) if total_eff else 0.0
-
-        return NoPerformance12mResponse(
-            pct_no_perf_12m=pct,
-            count_no_perf_12m=count_no,
-            total_effectif=total_eff,
-            seuil_couverture=seuil,
-            id_service_scope=id_service_clean,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-
-@router.get(
-    "/skills/dashboard/upcoming-trainings/{id_contact}",
-    response_model=UpcomingTrainingsResponse,
-)
-def get_dashboard_upcoming_trainings(id_contact: str, request: Request, id_service: Optional[str] = None):
-    """
-    Dashboard — Formations à venir
-    - Programmée si l'entreprise (id_ent) est présente dans tbl_action_formation_entreprises
-    - Dates dans tbl_action_formation
-    - Participants via tbl_action_formation_effectif (archive=false)
-    - Périmètre futur (droits): si id_service fourni -> on ne garde que les formations
-      ayant au moins 1 participant de ce service, et le compteur participants est filtré service.
-    """
-    try:
-        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
-
-                id_ent = None
-                if isinstance(row_contact, dict):
-                    id_ent = row_contact.get("id_ent")
-                if not id_ent and isinstance(row_ent, dict):
-                    id_ent = row_ent.get("id_ent")
-
-                if not id_ent:
-                    return UpcomingTrainingsResponse()
-
-                cur.execute(
-                    """
-                    WITH base AS (
-                        SELECT DISTINCT
-                            a.id_action_formation,
-                            a.date_debut_formation,
-                            a.date_fin_formation,
-                            COALESCE(NULLIF(a.code_action_formation, ''), a.id_action_formation) AS label
-                        FROM public.tbl_action_formation a
-                        JOIN public.tbl_action_formation_entreprises ae
-                          ON ae.id_action_formation = a.id_action_formation
-                         AND ae.id_ent = %s
-                        WHERE COALESCE(a.archive, FALSE) = FALSE
-                          AND COALESCE(a.date_fin_formation, a.date_debut_formation) IS NOT NULL
-                          AND COALESCE(a.date_fin_formation, a.date_debut_formation) >= CURRENT_DATE
-                    ),
-                    scoped AS (
-                        SELECT
-                            b.id_action_formation,
-                            b.date_debut_formation,
-                            b.date_fin_formation,
-                            b.label,
-                            COUNT(e.id_effectif)::int AS nb_participants
-                        FROM base b
-                        LEFT JOIN public.tbl_action_formation_effectif afe
-                          ON afe.id_action_formation = b.id_action_formation
-                         AND COALESCE(afe.archive, FALSE) = FALSE
-                        LEFT JOIN public.tbl_effectif_client e
-                          ON e.id_effectif = afe.id_effectif
-                         AND e.archive = FALSE
-                         AND e.statut_actif = TRUE
-                         AND (%s::text IS NULL OR e.id_service = %s::text)
-                        GROUP BY b.id_action_formation, b.date_debut_formation, b.date_fin_formation, b.label
-                        HAVING (%s::text IS NULL OR COUNT(e.id_effectif) > 0)
-                    )
-                    SELECT
-                        s.id_action_formation,
-                        s.date_debut_formation,
-                        s.date_fin_formation,
-                        s.label,
-                        s.nb_participants,
-                        COUNT(*) OVER()::int AS total
-                    FROM scoped s
-                    ORDER BY COALESCE(s.date_debut_formation, s.date_fin_formation) ASC
-                    LIMIT 3
-                    """,
-                    (id_ent, id_service_clean, id_service_clean, id_service_clean),
-                )
-
-                rows = cur.fetchall() or []
-
-        items: List[UpcomingTrainingItem] = []
-        total = 0
-
-        for r in rows:
-            total = int(r.get("total") or 0)
-            items.append(
-                UpcomingTrainingItem(
-                    id_action_formation=r["id_action_formation"],
-                    label=r.get("label") or r["id_action_formation"],
-                    date_debut_formation=str(r["date_debut_formation"]) if r.get("date_debut_formation") else None,
-                    date_fin_formation=str(r["date_fin_formation"]) if r.get("date_fin_formation") else None,
-                    nb_participants=int(r.get("nb_participants") or 0),
-                )
-            )
-
-        return UpcomingTrainingsResponse(
-            total=total,
-            items=items,
-            id_service_scope=id_service_clean,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-@router.get(
-    "/skills/dashboard/certifs-expiring/{id_contact}",
-    response_model=CertExpiringResponse,
-)
-def get_dashboard_certifs_expiring(id_contact: str, request: Request, days: int = 60, id_service: Optional[str] = None):
-    """
-    Dashboard — Certifications à renouveler
-    - Badge: total des certifications à renouveler (instances = nb personnes à traiter)
-    - Micro-liste (3): date expiration + certification + X pers.
-    - Périmètre futur (droits): si id_service fourni -> filtre effectif sur ce service
-
-    Règles population (cohérence dashboard):
-    - effectif actif: statut_actif = TRUE
-    - archive = FALSE
-    - id_poste_actuel NON NULL
-    - certif détenue: tbl_effectif_client_certification.archive = FALSE
-    - date_expiration non NULL, entre aujourd'hui et (aujourd'hui + days)
-    - certif masquée: ignorée (tbl_certification.masque = FALSE)
-    """
-    try:
-        days = int(days or 60)
-        if days <= 0:
-            days = 60
-
-        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
-
-                id_ent = None
-                if isinstance(row_contact, dict):
-                    id_ent = row_contact.get("id_ent")
-                if not id_ent and isinstance(row_ent, dict):
-                    id_ent = row_ent.get("id_ent")
-
-                if not id_ent:
-                    return CertExpiringResponse(days=days)
-
-                cur.execute(
-                    """
-                    WITH eff AS (
-                        SELECT e.id_effectif
-                        FROM public.tbl_effectif_client e
-                        WHERE e.id_ent = %s
-                          AND e.archive = FALSE
-                          AND e.statut_actif = TRUE
-                          AND e.id_poste_actuel IS NOT NULL
-                          AND (%s::text IS NULL OR e.id_service = %s::text)
-                    ),
-                    base AS (
-                        SELECT
-                            ec.id_effectif,
-                            ec.id_certification,
-                            ec.date_expiration::date AS date_expiration
-                        FROM public.tbl_effectif_client_certification ec
-                        JOIN eff ON eff.id_effectif = ec.id_effectif
-                        WHERE ec.archive = FALSE
-                          AND ec.date_expiration IS NOT NULL
-                          AND ec.date_expiration >= CURRENT_DATE
-                          AND ec.date_expiration < (CURRENT_DATE + (%s * INTERVAL '1 day'))
-                    ),
-                    agg AS (
-                        SELECT
-                            b.date_expiration,
-                            c.nom_certification,
-                            COUNT(DISTINCT b.id_effectif)::int AS nb_personnes
-                        FROM base b
-                        JOIN public.tbl_certification c
-                          ON c.id_certification = b.id_certification
-                         AND COALESCE(c.masque, FALSE) = FALSE
-                        GROUP BY b.date_expiration, c.nom_certification
-                    )
-                    SELECT
-                        a.date_expiration,
-                        a.nom_certification,
-                        a.nb_personnes,
-                        SUM(a.nb_personnes) OVER()::int AS total_instances,
-                        COUNT(*) OVER()::int AS total_groups
-                    FROM agg a
-                    ORDER BY a.date_expiration ASC, a.nom_certification ASC
-                    LIMIT 3
-                    """,
-                    (id_ent, id_service_clean, id_service_clean, days),
-                )
-
-                rows = cur.fetchall() or []
-
-        items: List[CertExpiringItem] = []
-        total_instances = 0
-        total_groups = 0
-
-        for r in rows:
-            total_instances = int(r.get("total_instances") or 0)
-            total_groups = int(r.get("total_groups") or 0)
-            items.append(
-                CertExpiringItem(
-                    date_expiration=str(r["date_expiration"]),
-                    certification=str(r.get("nom_certification") or "").strip() or "Certification",
-                    nb_personnes=int(r.get("nb_personnes") or 0),
-                )
-            )
-
-        return CertExpiringResponse(
-            days=days,
-            total_instances=total_instances,
-            total_groups=total_groups,
-            items=items,
-            id_service_scope=id_service_clean,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-
-@router.get(
-    "/skills/dashboard/no-performance-12m/detail/{id_contact}",
-    response_model=NoPerformance12mDetailResponse,
-)
-def get_dashboard_no_performance_12m_detail(
-    id_contact: str,
-    request: Request,
-    limit: int = 50,
-    offset: int = 0,
-    id_service: Optional[str] = None,
-):
-    """
-    Détail paginé — salariés "sans point performance" depuis 12 mois (Option A)
-    Point performance OK si couverture >= 70% des compétences actives auditées < 12 mois.
-    """
-    try:
-        seuil = 0.7
-
-        try:
-            limit = int(limit or 50)
-        except Exception:
-            limit = 50
-
-        try:
-            offset = int(offset or 0)
-        except Exception:
-            offset = 0
-
-        if limit < 1:
-            limit = 50
-        if limit > 200:
-            limit = 200
-        if offset < 0:
-            offset = 0
-
-        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
-
-                id_ent = None
-                if isinstance(row_contact, dict):
-                    id_ent = row_contact.get("id_ent")
-                if not id_ent and isinstance(row_ent, dict):
-                    id_ent = row_ent.get("id_ent")
-
-                if not id_ent:
-                    return NoPerformance12mDetailResponse(
-                        total=0,
-                        limit=limit,
-                        offset=offset,
-                        seuil_couverture=seuil,
-                        rows=[],
-                        id_service_scope=id_service_clean,
-                    )
-
-                cur.execute(
-                    """
-                    WITH eff AS (
-                        SELECT
-                            e.id_effectif,
-                            e.nom_effectif,
-                            e.prenom_effectif,
-                            e.id_service,
-                            e.id_poste_actuel
-                        FROM public.tbl_effectif_client e
-                        WHERE e.id_ent = %s
-                          AND e.archive = FALSE
-                          AND e.statut_actif = TRUE
-                          AND e.id_poste_actuel IS NOT NULL
-                          AND (%s::text IS NULL OR e.id_service = %s::text)
-                    ),
-                    comp AS (
-                        SELECT
-                            ecc.id_effectif_client AS id_effectif,
-                            ecc.id_effectif_competence,
-                            ecc.id_dernier_audit
-                        FROM public.tbl_effectif_client_competence ecc
-                        JOIN eff ON eff.id_effectif = ecc.id_effectif_client
-                        WHERE ecc.actif = TRUE
-                          AND ecc.archive = FALSE
-                    ),
-                    last_audit AS (
-                        SELECT
-                            c.id_effectif,
-                            c.id_effectif_competence,
-                            a.date_audit
-                        FROM comp c
-                        LEFT JOIN public.tbl_effectif_client_audit_competence a
-                          ON a.id_audit_competence = c.id_dernier_audit
-                         AND a.id_effectif_competence = c.id_effectif_competence
-                    ),
-                    agg AS (
-                        SELECT
-                            e.id_effectif,
-                            e.nom_effectif,
-                            e.prenom_effectif,
-                            e.id_service,
-                            e.id_poste_actuel,
-                            COUNT(c.id_effectif_competence)::int AS total_comp,
-                            SUM(
-                                CASE
-                                    WHEN la.date_audit >= (CURRENT_DATE - INTERVAL '12 months') THEN 1
-                                    ELSE 0
-                                END
-                            )::int AS audited_12m,
-                            MAX(la.date_audit) AS date_dernier_audit
-                        FROM eff e
-                        LEFT JOIN comp c ON c.id_effectif = e.id_effectif
-                        LEFT JOIN last_audit la ON la.id_effectif_competence = c.id_effectif_competence
-                        GROUP BY e.id_effectif, e.nom_effectif, e.prenom_effectif, e.id_service, e.id_poste_actuel
-                    ),
-                    filtered AS (
-                        SELECT
-                            a.*,
-                            CASE
-                                WHEN a.total_comp <= 0 THEN 0.0
-                                ELSE ROUND((a.audited_12m::numeric / NULLIF(a.total_comp, 0)) * 100.0, 1)
-                            END AS couverture_pct
-                        FROM agg a
-                        WHERE a.total_comp <= 0
-                           OR (a.audited_12m::numeric / NULLIF(a.total_comp, 0)) < %s
-                    )
-                    SELECT
-                        f.id_effectif,
-                        f.nom_effectif,
-                        f.prenom_effectif,
-                        o.nom_service,
-                        p.intitule_poste,
-                        f.total_comp,
-                        f.audited_12m,
-                        f.date_dernier_audit,
-                        f.couverture_pct,
-                        COUNT(*) OVER()::int AS total
-                    FROM filtered f
-                    LEFT JOIN public.tbl_entreprise_organigramme o
-                      ON o.id_service = f.id_service
-                     AND o.archive = FALSE
-                    LEFT JOIN public.tbl_fiche_poste p
-                      ON p.id_poste = f.id_poste_actuel
-                     AND COALESCE(p.actif, TRUE) = TRUE
-                    ORDER BY f.couverture_pct ASC,
-                             f.date_dernier_audit ASC NULLS FIRST,
-                             f.nom_effectif ASC,
-                             f.prenom_effectif ASC
-                    LIMIT %s OFFSET %s
-                    """,
-                    (id_ent, id_service_clean, id_service_clean, seuil, limit, offset),
-                )
-
-                rows = cur.fetchall() or []
-
-        total = int(rows[0].get("total") or 0) if rows else 0
-
-        out_rows: List[NoPerformance12mDetailRow] = []
-        for r in rows:
-            out_rows.append(
-                NoPerformance12mDetailRow(
-                    id_effectif=str(r["id_effectif"]),
-                    nom=str(r.get("nom_effectif") or ""),
-                    prenom=str(r.get("prenom_effectif") or ""),
-                    service=(str(r.get("nom_service")) if r.get("nom_service") else None),
-                    poste=(str(r.get("intitule_poste")) if r.get("intitule_poste") else None),
-                    couverture_pct=float(r.get("couverture_pct") or 0.0),
-                    nb_comp_total=int(r.get("total_comp") or 0),
-                    nb_comp_auditees_12m=int(r.get("audited_12m") or 0),
-                    date_dernier_audit=(str(r["date_dernier_audit"]) if r.get("date_dernier_audit") else None),
-                )
-            )
-
-        return NoPerformance12mDetailResponse(
-            total=total,
-            limit=limit,
-            offset=offset,
-            seuil_couverture=seuil,
-            rows=out_rows,
-            id_service_scope=id_service_clean,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-
-@router.get(
-    "/skills/dashboard/no-training-12m/detail/{id_contact}",
-    response_model=NoTraining12mDetailResponse,
-)
-def get_dashboard_no_training_12m_detail(
-    id_contact: str,
-    request: Request,
-    limit: int = 50,
-    offset: int = 0,
-    id_service: Optional[str] = None,
-):
-    """
-    Détail paginé — salariés sans formation depuis 12 mois.
-    Source: tbl_effectif_client_historique_formation (formations internes/externe saisies)
-    Règles population:
-      - statut_actif = TRUE
-      - archive = FALSE
-      - id_poste_actuel IS NOT NULL
-      - périmètre futur: id_service (si fourni)
-    """
-    try:
-        periode_mois = 12
-
-        try:
-            limit = int(limit or 50)
-        except Exception:
-            limit = 50
-
-        try:
-            offset = int(offset or 0)
-        except Exception:
-            offset = 0
-
-        if limit < 1:
-            limit = 50
-        if limit > 200:
-            limit = 200
-        if offset < 0:
-            offset = 0
-
-        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
-
-
-                id_ent = None
-                if isinstance(row_contact, dict):
-                    id_ent = row_contact.get("id_ent")
-                if not id_ent and isinstance(row_ent, dict):
-                    id_ent = row_ent.get("id_ent")
-
-                if not id_ent:
-                    return NoTraining12mDetailResponse(
-                        total=0,
-                        total_effectif=0,
-                        limit=limit,
-                        offset=offset,
-                        periode_mois=periode_mois,
-                        rows=[],
-                        id_service_scope=id_service_clean,
-                    )
-
-                # Totaux (même si aucune ligne “concernée”)
-                cur.execute(
-                    """
-                    WITH eff AS (
-                        SELECT e.id_effectif
-                        FROM public.tbl_effectif_client e
-                        WHERE e.id_ent = %s
-                          AND e.archive = FALSE
-                          AND e.statut_actif = TRUE
-                          AND e.id_poste_actuel IS NOT NULL
-                          AND (%s::text IS NULL OR e.id_service = %s::text)
-                    ),
-                    last_train AS (
-                        SELECT
-                            h.id_effectif,
-                            MAX(h.date_formation)::date AS date_derniere_formation
-                        FROM public.tbl_effectif_client_historique_formation h
-                        JOIN eff ON eff.id_effectif = h.id_effectif
-                        WHERE h.archive = FALSE
-                          AND h.id_ent = %s
-                        GROUP BY h.id_effectif
-                    ),
-                    filt AS (
-                        SELECT
-                            eff.id_effectif,
-                            lt.date_derniere_formation
-                        FROM eff
-                        LEFT JOIN last_train lt ON lt.id_effectif = eff.id_effectif
-                        WHERE lt.date_derniere_formation IS NULL
-                           OR lt.date_derniere_formation < (CURRENT_DATE - INTERVAL '12 months')
-                    )
-                    SELECT
-                        (SELECT COUNT(*) FROM eff)::int AS total_effectif,
-                        (SELECT COUNT(*) FROM filt)::int AS total_concernes
-                    """,
-                    (id_ent, id_service_clean, id_service_clean, id_ent),
-                )
-                tot = cur.fetchone() or {}
-                total_effectif = int(tot.get("total_effectif") or 0)
-                total_concernes = int(tot.get("total_concernes") or 0)
-
-                # Détail paginé
-                cur.execute(
-                    """
-                    WITH eff AS (
-                        SELECT
-                            e.id_effectif,
-                            e.nom_effectif,
-                            e.prenom_effectif,
-                            e.id_service,
-                            e.id_poste_actuel
-                        FROM public.tbl_effectif_client e
-                        WHERE e.id_ent = %s
-                          AND e.archive = FALSE
-                          AND e.statut_actif = TRUE
-                          AND e.id_poste_actuel IS NOT NULL
-                          AND (%s::text IS NULL OR e.id_service = %s::text)
-                    ),
-                    last_train AS (
-                        SELECT
-                            h.id_effectif,
-                            MAX(h.date_formation)::date AS date_derniere_formation
-                        FROM public.tbl_effectif_client_historique_formation h
-                        JOIN eff ON eff.id_effectif = h.id_effectif
-                        WHERE h.archive = FALSE
-                          AND h.id_ent = %s
-                        GROUP BY h.id_effectif
-                    ),
-                    filt AS (
-                        SELECT
-                            e.*,
-                            lt.date_derniere_formation,
-                            CASE
-                                WHEN lt.date_derniere_formation IS NULL THEN NULL
-                                ELSE (CURRENT_DATE - lt.date_derniere_formation)::int
-                            END AS jours_depuis
-                        FROM eff e
-                        LEFT JOIN last_train lt ON lt.id_effectif = e.id_effectif
-                        WHERE lt.date_derniere_formation IS NULL
-                           OR lt.date_derniere_formation < (CURRENT_DATE - INTERVAL '12 months')
-                    )
-                    SELECT
-                        f.id_effectif,
-                        f.nom_effectif,
-                        f.prenom_effectif,
-                        o.nom_service,
-                        p.intitule_poste,
-                        f.date_derniere_formation,
-                        f.jours_depuis
-                    FROM filt f
-                    LEFT JOIN public.tbl_entreprise_organigramme o
-                      ON o.id_service = f.id_service
-                     AND o.archive = FALSE
-                    LEFT JOIN public.tbl_fiche_poste p
-                      ON p.id_poste = f.id_poste_actuel
-                     AND COALESCE(p.actif, TRUE) = TRUE
-                    ORDER BY f.date_derniere_formation ASC NULLS FIRST,
-                             f.nom_effectif ASC,
-                             f.prenom_effectif ASC
-                    LIMIT %s OFFSET %s
-                    """,
-                    (id_ent, id_service_clean, id_service_clean, id_ent, limit, offset),
-                )
-
-                rows = cur.fetchall() or []
-
-        out_rows: List[NoTraining12mDetailRow] = []
-        for r in rows:
-            out_rows.append(
-                NoTraining12mDetailRow(
-                    id_effectif=str(r["id_effectif"]),
-                    nom=str(r.get("nom_effectif") or ""),
-                    prenom=str(r.get("prenom_effectif") or ""),
-                    service=(str(r.get("nom_service")) if r.get("nom_service") else None),
-                    poste=(str(r.get("intitule_poste")) if r.get("intitule_poste") else None),
-                    date_derniere_formation=(str(r["date_derniere_formation"]) if r.get("date_derniere_formation") else None),
-                    jours_depuis_derniere_formation=(int(r["jours_depuis"]) if r.get("jours_depuis") is not None else None),
-                )
-            )
-
-        return NoTraining12mDetailResponse(
-            total=total_concernes,
-            total_effectif=total_effectif,
-            limit=limit,
-            offset=offset,
-            periode_mois=periode_mois,
-            rows=out_rows,
-            id_service_scope=id_service_clean,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-
-@router.get(
-    "/skills/dashboard/certifs-expiring/detail/{id_contact}",
-    response_model=CertExpiringDetailResponse,
-)
-def get_dashboard_certifs_expiring_detail(
-    id_contact: str,
-    request: Request,
-    days: int = 60,
-    limit: int = 50,
-    offset: int = 0,
-    id_service: Optional[str] = None,
-):
-    """
-    Détail paginé — liste nominative des certifications qui expirent sous X jours.
-    """
-    try:
-        days = int(days or 60)
-        if days <= 0:
-            days = 60
-
-        try:
-            limit = int(limit or 50)
-        except Exception:
-            limit = 50
-
-        try:
-            offset = int(offset or 0)
-        except Exception:
-            offset = 0
-
-        if limit < 1:
-            limit = 50
-        if limit > 200:
-            limit = 200
-        if offset < 0:
-            offset = 0
-
-        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
-
-
-                id_ent = None
-                if isinstance(row_contact, dict):
-                    id_ent = row_contact.get("id_ent")
-                if not id_ent and isinstance(row_ent, dict):
-                    id_ent = row_ent.get("id_ent")
-
-                if not id_ent:
-                    return CertExpiringDetailResponse(days=days, total=0, limit=limit, offset=offset, rows=[])
-
-                # Total (pour pagination)
-                cur.execute(
-                    """
-                    WITH eff AS (
-                        SELECT e.id_effectif
-                        FROM public.tbl_effectif_client e
-                        WHERE e.id_ent = %s
-                          AND e.archive = FALSE
-                          AND e.statut_actif = TRUE
-                          AND e.id_poste_actuel IS NOT NULL
-                          AND (%s::text IS NULL OR e.id_service = %s::text)
-                    ),
-                    base AS (
-                        SELECT
-                            ec.id_effectif,
-                            ec.id_certification,
-                            ec.date_expiration::date AS date_expiration
-                        FROM public.tbl_effectif_client_certification ec
-                        JOIN eff ON eff.id_effectif = ec.id_effectif
-                        WHERE ec.archive = FALSE
-                          AND ec.date_expiration IS NOT NULL
-                          AND ec.date_expiration >= CURRENT_DATE
-                          AND ec.date_expiration < (CURRENT_DATE + (%s * INTERVAL '1 day'))
-                    )
-                    SELECT COUNT(*)::int AS total
-                    FROM base b
-                    JOIN public.tbl_certification c
-                      ON c.id_certification = b.id_certification
-                     AND COALESCE(c.masque, FALSE) = FALSE
-                    """,
-                    (id_ent, id_service_clean, id_service_clean, days),
-                )
-                total = int((cur.fetchone() or {}).get("total") or 0)
-
-                # Détail paginé
-                cur.execute(
-                    """
-                    WITH eff AS (
-                        SELECT
-                            e.id_effectif,
-                            e.nom_effectif,
-                            e.prenom_effectif,
-                            e.id_service,
-                            e.id_poste_actuel
-                        FROM public.tbl_effectif_client e
-                        WHERE e.id_ent = %s
-                          AND e.archive = FALSE
-                          AND e.statut_actif = TRUE
-                          AND e.id_poste_actuel IS NOT NULL
-                          AND (%s::text IS NULL OR e.id_service = %s::text)
-                    ),
-                    base AS (
-                        SELECT
-                            ec.id_effectif,
-                            ec.id_certification,
-                            ec.date_expiration::date AS date_expiration
-                        FROM public.tbl_effectif_client_certification ec
-                        JOIN eff ON eff.id_effectif = ec.id_effectif
-                        WHERE ec.archive = FALSE
-                          AND ec.date_expiration IS NOT NULL
-                          AND ec.date_expiration >= CURRENT_DATE
-                          AND ec.date_expiration < (CURRENT_DATE + (%s * INTERVAL '1 day'))
-                    )
-                    SELECT
-                        b.date_expiration,
-                        (b.date_expiration - CURRENT_DATE)::int AS jours_avant_expiration,
-                        c.nom_certification,
-                        e.id_effectif,
-                        e.nom_effectif,
-                        e.prenom_effectif,
-                        o.nom_service,
-                        p.intitule_poste
-                    FROM base b
-                    JOIN public.tbl_certification c
-                      ON c.id_certification = b.id_certification
-                     AND COALESCE(c.masque, FALSE) = FALSE
-                    JOIN eff e
-                      ON e.id_effectif = b.id_effectif
-                    LEFT JOIN public.tbl_entreprise_organigramme o
-                      ON o.id_service = e.id_service
-                     AND o.archive = FALSE
-                    LEFT JOIN public.tbl_fiche_poste p
-                      ON p.id_poste = e.id_poste_actuel
-                     AND COALESCE(p.actif, TRUE) = TRUE
-                    ORDER BY b.date_expiration ASC, c.nom_certification ASC, e.nom_effectif ASC, e.prenom_effectif ASC
-                    LIMIT %s OFFSET %s
-                    """,
-                    (id_ent, id_service_clean, id_service_clean, days, limit, offset),
-                )
-
-                rows = cur.fetchall() or []
-
-        out_rows: List[CertExpiringDetailRow] = []
-        for r in rows:
-            out_rows.append(
-                CertExpiringDetailRow(
-                    date_expiration=str(r["date_expiration"]),
-                    jours_avant_expiration=int(r.get("jours_avant_expiration") or 0),
-                    certification=str(r.get("nom_certification") or "").strip() or "Certification",
-                    id_effectif=str(r["id_effectif"]),
-                    nom=str(r.get("nom_effectif") or ""),
-                    prenom=str(r.get("prenom_effectif") or ""),
-                    service=(str(r.get("nom_service")) if r.get("nom_service") else None),
-                    poste=(str(r.get("intitule_poste")) if r.get("intitule_poste") else None),
-                )
-            )
-
-        return CertExpiringDetailResponse(
-            days=days,
-            total=total,
-            limit=limit,
-            offset=offset,
-            rows=out_rows,
-            id_service_scope=id_service_clean,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-
-@router.get(
-    "/skills/dashboard/upcoming-trainings/detail/{id_contact}",
-    response_model=UpcomingTrainingsDetailResponse,
-)
-def get_dashboard_upcoming_trainings_detail(
-    id_contact: str,
-    request: Request,
-    limit: int = 20,
-    offset: int = 0,
-    id_service: Optional[str] = None,
-):
-    """
-    Détail paginé — Formations à venir + participants.
-    - Même logique de périmètre que le résumé: si id_service fourni -> on garde seulement
-      les sessions ayant au moins 1 participant de ce service + participants filtrés service.
-    """
-    try:
-        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
-
-        try:
-            limit = int(limit or 20)
-        except Exception:
-            limit = 20
-
-        try:
-            offset = int(offset or 0)
-        except Exception:
-            offset = 0
-
-        if limit < 1:
-            limit = 20
-        if limit > 100:
-            limit = 100
-        if offset < 0:
-            offset = 0
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
-
-
-                id_ent = None
-                if isinstance(row_contact, dict):
-                    id_ent = row_contact.get("id_ent")
-                if not id_ent and isinstance(row_ent, dict):
-                    id_ent = row_ent.get("id_ent")
-
-                if not id_ent:
-                    return UpcomingTrainingsDetailResponse(limit=limit, offset=offset, items=[], total_sessions=0)
-
-                # 1) Sessions paginées
-                cur.execute(
-                    """
-                    WITH base AS (
-                        SELECT DISTINCT
-                            a.id_action_formation,
-                            a.date_debut_formation,
-                            a.date_fin_formation,
-                            COALESCE(NULLIF(a.code_action_formation, ''), a.id_action_formation) AS label
-                        FROM public.tbl_action_formation a
-                        JOIN public.tbl_action_formation_entreprises ae
-                          ON ae.id_action_formation = a.id_action_formation
-                         AND ae.id_ent = %s
-                        WHERE COALESCE(a.archive, FALSE) = FALSE
-                          AND COALESCE(a.date_fin_formation, a.date_debut_formation) IS NOT NULL
-                          AND COALESCE(a.date_fin_formation, a.date_debut_formation) >= CURRENT_DATE
-                    ),
-                    scoped AS (
-                        SELECT
-                            b.id_action_formation,
-                            b.date_debut_formation,
-                            b.date_fin_formation,
-                            b.label,
-                            COUNT(e.id_effectif)::int AS nb_participants
-                        FROM base b
-                        LEFT JOIN public.tbl_action_formation_effectif afe
-                          ON afe.id_action_formation = b.id_action_formation
-                         AND COALESCE(afe.archive, FALSE) = FALSE
-                        LEFT JOIN public.tbl_effectif_client e
-                          ON e.id_effectif = afe.id_effectif
-                         AND e.archive = FALSE
-                         AND e.statut_actif = TRUE
-                         AND e.id_poste_actuel IS NOT NULL
-                         AND (%s::text IS NULL OR e.id_service = %s::text)
-                        GROUP BY b.id_action_formation, b.date_debut_formation, b.date_fin_formation, b.label
-                        HAVING (%s::text IS NULL OR COUNT(e.id_effectif) > 0)
-                    )
-                    SELECT
-                        s.id_action_formation,
-                        s.date_debut_formation,
-                        s.date_fin_formation,
-                        s.label,
-                        s.nb_participants,
-                        COUNT(*) OVER()::int AS total_sessions
-                    FROM scoped s
-                    ORDER BY COALESCE(s.date_debut_formation, s.date_fin_formation) ASC
-                    LIMIT %s OFFSET %s
-                    """,
-                    (id_ent, id_service_clean, id_service_clean, id_service_clean, limit, offset),
-                )
-
-                session_rows = cur.fetchall() or []
-                total_sessions = int(session_rows[0].get("total_sessions") or 0) if session_rows else 0
-
-                if not session_rows:
-                    return UpcomingTrainingsDetailResponse(
-                        total_sessions=0,
-                        limit=limit,
-                        offset=offset,
-                        items=[],
-                        id_service_scope=id_service_clean,
-                    )
-
-                session_ids = [r["id_action_formation"] for r in session_rows if r.get("id_action_formation")]
-
-                # 2) Participants pour les sessions de la page
-                participants_by_session = {}
-                if session_ids:
-                    cur.execute(
-                        """
-                        SELECT
-                            afe.id_action_formation,
-                            e.id_effectif,
-                            e.nom_effectif,
-                            e.prenom_effectif,
-                            o.nom_service,
-                            p.intitule_poste
-                        FROM public.tbl_action_formation_effectif afe
-                        JOIN public.tbl_effectif_client e
-                          ON e.id_effectif = afe.id_effectif
-                         AND e.archive = FALSE
-                         AND e.statut_actif = TRUE
-                         AND e.id_poste_actuel IS NOT NULL
-                         AND (%s::text IS NULL OR e.id_service = %s::text)
-                        LEFT JOIN public.tbl_entreprise_organigramme o
-                          ON o.id_service = e.id_service
-                         AND o.archive = FALSE
-                        LEFT JOIN public.tbl_fiche_poste p
-                          ON p.id_poste = e.id_poste_actuel
-                         AND COALESCE(p.actif, TRUE) = TRUE
-                        WHERE COALESCE(afe.archive, FALSE) = FALSE
-                          AND afe.id_action_formation = ANY(%s)
-                        ORDER BY afe.id_action_formation ASC, e.nom_effectif ASC, e.prenom_effectif ASC
-                        """,
-                        (id_service_clean, id_service_clean, session_ids),
-                    )
-
-                    part_rows = cur.fetchall() or []
-                    for pr in part_rows:
-                        sid = pr.get("id_action_formation")
-                        if not sid:
-                            continue
-                        participants_by_session.setdefault(sid, []).append(
-                            UpcomingTrainingParticipant(
-                                id_effectif=str(pr["id_effectif"]),
-                                nom=str(pr.get("nom_effectif") or ""),
-                                prenom=str(pr.get("prenom_effectif") or ""),
-                                service=(str(pr.get("nom_service")) if pr.get("nom_service") else None),
-                                poste=(str(pr.get("intitule_poste")) if pr.get("intitule_poste") else None),
-                            )
-                        )
-
-        items: List[UpcomingTrainingSessionDetail] = []
-        for r in session_rows:
-            sid = str(r["id_action_formation"])
-            items.append(
-                UpcomingTrainingSessionDetail(
-                    id_action_formation=sid,
-                    label=str(r.get("label") or "").strip() or sid,
-                    date_debut_formation=(str(r["date_debut_formation"]) if r.get("date_debut_formation") else None),
-                    date_fin_formation=(str(r["date_fin_formation"]) if r.get("date_fin_formation") else None),
-                    nb_participants=int(r.get("nb_participants") or 0),
-                    participants=participants_by_session.get(sid, []),
-                )
-            )
-
-        return UpcomingTrainingsDetailResponse(
-            total_sessions=total_sessions,
-            limit=limit,
-            offset=offset,
-            items=items,
-            id_service_scope=id_service_clean,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-
-@router.get(
-    "/skills/dashboard/age-pyramid/detail-seniors/{id_contact}",
-    response_model=AgePyramidSeniorsDetailResponse,
-)
-def get_dashboard_age_pyramid_detail_seniors(
-    id_contact: str,
-    request: Request,
-    age_min: int = 58,
-    limit: int = 50,
-    offset: int = 0,
-    id_service: Optional[str] = None,
-):
-    """
-    Détail paginé — liste des seniors (>= age_min) + nb compétences Expert.
-    Population:
-      - statut_actif=TRUE, archive=FALSE, id_poste_actuel NOT NULL, date_naissance NOT NULL
-    """
-    try:
-        try:
-            age_min = int(age_min or 58)
-        except Exception:
-            age_min = 58
-        if age_min < 0:
-            age_min = 58
-
-        try:
-            limit = int(limit or 50)
-        except Exception:
-            limit = 50
-        try:
-            offset = int(offset or 0)
-        except Exception:
-            offset = 0
-
-        if limit < 1:
-            limit = 50
-        if limit > 200:
-            limit = 200
-        if offset < 0:
-            offset = 0
-
-        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
-
-
-                id_ent = None
-                if isinstance(row_contact, dict):
-                    id_ent = row_contact.get("id_ent")
-                if not id_ent and isinstance(row_ent, dict):
-                    id_ent = row_ent.get("id_ent")
-
-                if not id_ent:
-                    return AgePyramidSeniorsDetailResponse(
-                        age_min=age_min, total=0, limit=limit, offset=offset, rows=[], id_service_scope=id_service_clean
-                    )
-
-                cur.execute(
-                    """
-                    WITH eff AS (
-                        SELECT
-                            e.id_effectif,
-                            e.nom_effectif,
-                            e.prenom_effectif,
-                            e.date_naissance_effectif,
-                            e.retraite_estimee,
-                            e.id_service,
-                            e.id_poste_actuel
-                        FROM public.tbl_effectif_client e
-                        WHERE e.id_ent = %s
-                          AND e.archive = FALSE
-                          AND e.statut_actif = TRUE
-                          AND e.id_poste_actuel IS NOT NULL
-                          AND e.date_naissance_effectif IS NOT NULL
-                          AND (%s::text IS NULL OR e.id_service = %s::text)
-                    ),
-                    seniors AS (
-                        SELECT
-                            ef.*,
-                            EXTRACT(YEAR FROM AGE(CURRENT_DATE, ef.date_naissance_effectif))::int AS age
-                        FROM eff ef
-                        WHERE EXTRACT(YEAR FROM AGE(CURRENT_DATE, ef.date_naissance_effectif))::int >= %s
-                    ),
-                    expcnt AS (
-                        SELECT
-                            ecc.id_effectif_client AS id_effectif,
-                            COUNT(*)::int AS nb_comp_expert
-                        FROM public.tbl_effectif_client_competence ecc
-                        JOIN seniors s ON s.id_effectif = ecc.id_effectif_client
-                        WHERE ecc.actif = TRUE
-                          AND ecc.archive = FALSE
-                          AND ecc.niveau_actuel = 'Expert'
-                        GROUP BY ecc.id_effectif_client
-                    )
-                    SELECT
-                        s.id_effectif,
-                        s.nom_effectif,
-                        s.prenom_effectif,
-                        s.age,
-                        s.date_naissance_effectif,
-                        s.retraite_estimee,
-                        o.nom_service,
-                        p.intitule_poste,
-                        COALESCE(ex.nb_comp_expert, 0)::int AS nb_comp_expert,
-                        COUNT(*) OVER()::int AS total
-                    FROM seniors s
-                    LEFT JOIN expcnt ex ON ex.id_effectif = s.id_effectif
-                    LEFT JOIN public.tbl_entreprise_organigramme o
-                      ON o.id_service = s.id_service
-                     AND o.archive = FALSE
-                    LEFT JOIN public.tbl_fiche_poste p
-                      ON p.id_poste = s.id_poste_actuel
-                     AND COALESCE(p.actif, TRUE) = TRUE
-                    ORDER BY s.age DESC, s.nom_effectif ASC, s.prenom_effectif ASC
-                    LIMIT %s OFFSET %s
-                    """,
-                    (id_ent, id_service_clean, id_service_clean, age_min, limit, offset),
-                )
-
-                rows = cur.fetchall() or []
-
-        total = int(rows[0].get("total") or 0) if rows else 0
-
-        out_rows: List[AgePyramidSeniorRow] = []
-        for r in rows:
-            out_rows.append(
-                AgePyramidSeniorRow(
-                    id_effectif=str(r["id_effectif"]),
-                    nom=str(r.get("nom_effectif") or ""),
-                    prenom=str(r.get("prenom_effectif") or ""),
-                    age=int(r.get("age") or 0),
-                    service=(str(r.get("nom_service")) if r.get("nom_service") else None),
-                    poste=(str(r.get("intitule_poste")) if r.get("intitule_poste") else None),
-                    date_naissance=(str(r["date_naissance_effectif"]) if r.get("date_naissance_effectif") else None),
-                    retraite_estimee=(int(r["retraite_estimee"]) if r.get("retraite_estimee") is not None else None),
-                    nb_comp_expert=int(r.get("nb_comp_expert") or 0),
-                )
-            )
-
-        return AgePyramidSeniorsDetailResponse(
-            age_min=age_min,
-            total=total,
-            limit=limit,
-            offset=offset,
-            rows=out_rows,
-            id_service_scope=id_service_clean,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-
-@router.get(
-    "/skills/dashboard/age-pyramid/detail-transmission-danger/{id_contact}",
-    response_model=TransmissionDangerDetailResponse,
-)
-def get_dashboard_age_pyramid_detail_transmission_danger(
-    id_contact: str,
-    request: Request,
-    age_min: int = 58,
-    limit: int = 50,
-    offset: int = 0,
-    id_service: Optional[str] = None,
-):
-    """
-    Détail paginé — "Transmission en danger"
-    Règle :
-      - on prend les compétences avec des experts (niveau_actuel='Expert')
-      - une compétence est "en danger" si la majorité stricte de ses experts sont seniors (>= age_min)
-      - on liste ensuite les experts seniors (>= age_min) sur ces compétences
-    Population (cohérence dashboard) :
-      - statut_actif=TRUE, archive=FALSE, id_poste_actuel NOT NULL, date_naissance NOT NULL
-      - périmètre futur : id_service (si fourni)
-    """
-    try:
-        try:
-            age_min = int(age_min or 58)
-        except Exception:
-            age_min = 58
-        if age_min < 0:
-            age_min = 58
-
-        try:
-            limit = int(limit or 50)
-        except Exception:
-            limit = 50
-        try:
-            offset = int(offset or 0)
-        except Exception:
-            offset = 0
-
-        if limit < 1:
-            limit = 50
-        if limit > 200:
-            limit = 200
-        if offset < 0:
-            offset = 0
-
-        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
-
-
-                id_ent = None
-                if isinstance(row_contact, dict):
-                    id_ent = row_contact.get("id_ent")
-                if not id_ent and isinstance(row_ent, dict):
-                    id_ent = row_ent.get("id_ent")
-
-                if not id_ent:
-                    return TransmissionDangerDetailResponse(
-                        age_min=age_min, total=0, limit=limit, offset=offset, rows=[], id_service_scope=id_service_clean
-                    )
-
-                cur.execute(
-                    """
-                    WITH experts AS (
-                        SELECT
-                            ecc.id_comp,
-                            c.code AS code_comp,
-                            c.intitule AS competence,
-                            e.id_effectif,
-                            e.nom_effectif,
-                            e.prenom_effectif,
-                            EXTRACT(YEAR FROM age(CURRENT_DATE, e.date_naissance_effectif))::int AS age,
-                            e.id_service,
-                            e.id_poste_actuel
-                        FROM public.tbl_effectif_client_competence ecc
-                        JOIN public.tbl_effectif_client e
-                          ON e.id_effectif = ecc.id_effectif_client
-                        JOIN public.tbl_competence c
-                          ON c.id_comp = ecc.id_comp
-                        WHERE e.id_ent = %s
-                          AND e.archive = FALSE
-                          AND e.statut_actif = TRUE
-                          AND e.id_poste_actuel IS NOT NULL
-                          AND e.date_naissance_effectif IS NOT NULL
-                          AND (%s::text IS NULL OR e.id_service = %s::text)
-                          AND ecc.actif = TRUE
-                          AND ecc.archive = FALSE
-                          AND ecc.niveau_actuel = 'Expert'
-                          AND COALESCE(c.masque, FALSE) = FALSE
-                          AND COALESCE(c.etat, 'active') <> 'inactive'
-                    ),
-                    agg AS (
-                        SELECT
-                            id_comp,
-                            COUNT(*)::int AS total_experts,
-                            SUM(CASE WHEN age >= %s THEN 1 ELSE 0 END)::int AS experts_seniors
-                        FROM experts
-                        WHERE age IS NOT NULL AND age >= 0
-                        GROUP BY id_comp
-                    ),
-                    danger_comp AS (
-                        SELECT id_comp
-                        FROM agg
-                        WHERE experts_seniors * 2 > total_experts
-                    ),
-                    danger_rows AS (
-                        SELECT *
-                        FROM experts
-                        WHERE age IS NOT NULL
-                          AND age >= %s
-                          AND id_comp IN (SELECT id_comp FROM danger_comp)
-                    )
-                    SELECT
-                        dr.id_comp,
-                        dr.code_comp,
-                        dr.competence,
-                        dr.id_effectif,
-                        dr.nom_effectif,
-                        dr.prenom_effectif,
-                        dr.age,
-                        o.nom_service,
-                        p.intitule_poste,
-                        COUNT(*) OVER()::int AS total
-                    FROM danger_rows dr
-                    LEFT JOIN public.tbl_entreprise_organigramme o
-                      ON o.id_service = dr.id_service
-                     AND o.archive = FALSE
-                    LEFT JOIN public.tbl_fiche_poste p
-                      ON p.id_poste = dr.id_poste_actuel
-                     AND COALESCE(p.actif, TRUE) = TRUE
-                    ORDER BY dr.competence ASC, dr.nom_effectif ASC, dr.prenom_effectif ASC
-                    LIMIT %s OFFSET %s
-                    """,
-                    (id_ent, id_service_clean, id_service_clean, age_min, age_min, limit, offset),
-                )
-
-                rows = cur.fetchall() or []
-
-        total = int(rows[0].get("total") or 0) if rows else 0
-
-        out_rows: List[TransmissionDangerRow] = []
-        for r in rows:
-            out_rows.append(
-                TransmissionDangerRow(
-                    id_comp=str(r["id_comp"]),
-                    code_comp=(str(r.get("code_comp")) if r.get("code_comp") else None),
-                    competence=str(r.get("competence") or "Compétence"),
-                    id_effectif=str(r["id_effectif"]),
-                    nom=str(r.get("nom_effectif") or ""),
-                    prenom=str(r.get("prenom_effectif") or ""),
-                    age=int(r.get("age") or 0),
-                    service=(str(r.get("nom_service")) if r.get("nom_service") else None),
-                    poste=(str(r.get("intitule_poste")) if r.get("intitule_poste") else None),
-                )
-            )
-
-        return TransmissionDangerDetailResponse(
-            age_min=age_min,
-            total=total,
-            limit=limit,
-            offset=offset,
-            rows=out_rows,
-            id_service_scope=id_service_clean,
-        )
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
-
-@router.get(
-    "/skills/dashboard/global-gauge/detail-non-covered/{id_contact}",
-    response_model=GlobalGaugeNonCoveredDetailResponse,
-)
-def get_dashboard_global_gauge_detail_non_covered(
-    id_contact: str,
-    request: Request,
-    limit: int = 50,
-    offset: int = 0,
-    id_service: Optional[str] = None,
-):
-    """
-    Détail paginé — "Compétences critiques (poids_criticite >= 80) non couvertes"
-    Définition "non couverte" :
-      - meilleur niveau réel constaté (max resultat_eval dernier audit sur la population) < niveau requis max (borne haute A=9,B=18,C=24)
-    Population :
-      - statut_actif = TRUE
-      - archive = FALSE
-      - id_poste_actuel IS NOT NULL
-    Périmètre :
-      - entreprise entière (id_ent depuis contact)
-      - futur : filtre id_service si fourni
-    """
-    try:
-        try:
-            limit = int(limit or 50)
-        except Exception:
-            limit = 50
-
-        try:
-            offset = int(offset or 0)
-        except Exception:
-            offset = 0
-
-        if limit < 1:
-            limit = 50
-        if limit > 200:
-            limit = 200
-        if offset < 0:
-            offset = 0
-
-        id_service_clean = id_service.strip() if isinstance(id_service, str) and id_service.strip() else None
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                eff_id = _resolve_effectif_for_request(cur, id_contact, request)
-                row_contact, row_ent = fetch_contact_with_entreprise(cur, eff_id)
-
-
-                id_ent = None
-                if isinstance(row_contact, dict):
-                    id_ent = row_contact.get("id_ent")
-                if not id_ent and isinstance(row_ent, dict):
-                    id_ent = row_ent.get("id_ent")
-
-                if not id_ent:
-                    return GlobalGaugeNonCoveredDetailResponse(
-                        total=0,
-                        limit=limit,
-                        offset=offset,
-                        rows=[],
-                        id_service_scope=id_service_clean,
-                    )
-
-                cur.execute(
-                    """
-                    WITH eff AS (
-                        SELECT e.id_effectif, e.id_poste_actuel
-                        FROM public.tbl_effectif_client e
-                        WHERE e.id_ent = %s
-                          AND e.archive = FALSE
-                          AND e.statut_actif = TRUE
-                          AND e.id_poste_actuel IS NOT NULL
-                          AND (%s::text IS NULL OR e.id_service = %s::text)
-                    ),
-                    crit AS (
-                        SELECT
-                            fpc.id_competence,
-                            MAX(
-                                CASE fpc.niveau_requis
-                                    WHEN 'A' THEN 9
-                                    WHEN 'B' THEN 18
-                                    WHEN 'C' THEN 24
-                                    ELSE 0
-                                END
-                            )::int AS requis_max_seuil,
-                            COUNT(DISTINCT eff.id_poste_actuel)::int AS nb_postes_critiques
-                        FROM eff
-                        JOIN public.tbl_fiche_poste_competence fpc
-                          ON fpc.id_poste = eff.id_poste_actuel
-                         AND fpc.poids_criticite >= 80
-                        GROUP BY fpc.id_competence
-                    ),
-                    real AS (
-                        SELECT
-                            crit.id_competence,
-                            COALESCE(MAX(COALESCE(a.resultat_eval, 0)), 0)::int AS meilleur_reel
-                        FROM crit
-                        LEFT JOIN public.tbl_effectif_client_competence ec
-                          ON ec.id_comp = crit.id_competence
-                         AND ec.actif = TRUE
-                         AND ec.archive = FALSE
-                         AND EXISTS (
-                            SELECT 1 FROM eff e2 WHERE e2.id_effectif = ec.id_effectif_client
-                         )
-                        LEFT JOIN public.tbl_effectif_client_audit_competence a
-                          ON a.id_audit_competence = ec.id_dernier_audit
-                         AND a.id_effectif_competence = ec.id_effectif_competence
-                        GROUP BY crit.id_competence
-                    )
-                    SELECT
-                        crit.id_competence AS id_comp,
-                        c.code AS code_comp,
-                        c.intitule AS competence,
-
-                        CASE crit.requis_max_seuil
-                            WHEN 9 THEN 'A'
-                            WHEN 18 THEN 'B'
-                            WHEN 24 THEN 'C'
-                            ELSE ''
-                        END AS requis_max_niveau,
-                        crit.requis_max_seuil,
-
-                        COALESCE(real.meilleur_reel, 0)::int AS meilleur_reel,
-                        (crit.requis_max_seuil - COALESCE(real.meilleur_reel, 0))::int AS ecart,
-                        crit.nb_postes_critiques,
-
-                        COUNT(*) OVER()::int AS total
-                    FROM crit
-                    LEFT JOIN real ON real.id_competence = crit.id_competence
-                    LEFT JOIN public.tbl_competence c
-                      ON c.id_comp = crit.id_competence
-                    WHERE COALESCE(real.meilleur_reel, 0) < crit.requis_max_seuil
-                    ORDER BY
-                        (crit.requis_max_seuil - COALESCE(real.meilleur_reel, 0)) DESC,
-                        crit.requis_max_seuil DESC,
-                        COALESCE(c.intitule, '') ASC
-                    LIMIT %s OFFSET %s
-                    """,
-                    (id_ent, id_service_clean, id_service_clean, limit, offset),
-                )
-
-                rows = cur.fetchall() or []
-
-        total = int(rows[0].get("total") or 0) if rows else 0
-
-        out_rows: List[GlobalGaugeNonCoveredRow] = []
-        for r in rows:
-            out_rows.append(
-                GlobalGaugeNonCoveredRow(
-                    id_comp=str(r.get("id_comp") or ""),
-                    code_comp=(str(r.get("code_comp")) if r.get("code_comp") else None),
-                    competence=str(r.get("competence") or ""),
-
-                    requis_max_niveau=str(r.get("requis_max_niveau") or ""),
-                    requis_max_seuil=int(r.get("requis_max_seuil") or 0),
-
-                    meilleur_reel=int(r.get("meilleur_reel") or 0),
-                    ecart=int(r.get("ecart") or 0),
-                    nb_postes_critiques=int(r.get("nb_postes_critiques") or 0),
-                )
-            )
-
-        return GlobalGaugeNonCoveredDetailResponse(
-            total=total,
-            limit=limit,
-            offset=offset,
-            rows=out_rows,
-            id_service_scope=id_service_clean,
-        )
-
     except HTTPException:
         raise
     except Exception as e:

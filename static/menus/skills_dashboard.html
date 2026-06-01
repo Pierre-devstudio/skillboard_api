@@ -1,229 +1,105 @@
 <section id="view-dashboard">
-  <div style="text-align:center; margin-bottom:16px;">
+  <div class="sb-dashboard-logo-wrap">
     <img src="/Logo_NOVOSKILL.png" alt="Novoskill" class="sb-logo">
   </div>
 
-  <!-- Bienvenue -->
-  <div class="card">
-    <div class="card-title" id="welcomeTitle">
-      Bienvenue <span id="welcomePrenom"></span>
+  <div class="card sb-dashboard-hero">
+    <div class="sb-dashboard-hero-main">
+      <div class="card-title" id="welcomeTitle">Bienvenue <span id="welcomePrenom"></span></div>
     </div>
-    <div class="card-sub" id="welcomeIntro">
-      Cet espace vous permet de piloter votre démarche Skills: organisation, référentiel, cartographie, risques, actions et documents.
+
+    <div class="sb-dashboard-scope" id="dashboardScopeWrap">
+      <label for="dashboardServiceFilter">Données prises en compte :</label>
+      <select id="dashboardServiceFilter" class="sb-dashboard-service-select" aria-label="Données prises en compte">
+        <option value="">Tout</option>
+      </select>
     </div>
   </div>
 
-  <!-- KPI rapides (2 lignes de 3 tuiles) -->
-  <div class="sb-dash-grid" id="dashKpiGrid">
-    <div class="card sb-dash-tile" data-kpi="pyramide-ages">
-      <div class="sb-dash-tile-title">Pyramide des âges</div>
-
-      <div class="sb-dash-tile-sub">
-
-        <div class="sb-agepyr" id="agePyramid">
-
-          <div class="sb-agepyr-head">
-            <span class="sb-agepyr-leg sb-agepyr-leg--f">Femmes</span>
-            <span class="sb-agepyr-leg sb-agepyr-leg--m">Hommes</span>
-          </div>
-
-          <div class="sb-agepyr-body" id="agePyramidBody">
-            <div class="card-sub" style="margin:0;">Chargement…</div>
-          </div>
-
-          <div class="sb-agepyr-foot" id="agePyramidNote" style="display:none;">
-
-            <!-- KPI sous la pyramide -->
-            <div class="sb-agepyr-kpis" id="agePyramidKpis">
-
-              <div class="sb-agepyr-kpi sb-agepyr-kpi--risk">
-                <div class="sb-agepyr-kpi-label">Risque de sortie (58+)</div>
-                <div class="sb-agepyr-kpi-value" id="kpiRiskSortie">–</div>
-                <div class="sb-agepyr-kpi-sub" id="kpiRiskSortieSub"></div>
-              </div>
-
-              <div class="sb-agepyr-kpi sb-agepyr-kpi--relay">
-                <div class="sb-agepyr-kpi-label">Capacité de relève</div>
-                <div class="sb-agepyr-kpi-value" id="kpiCapaciteReleve">–</div>
-                <div class="sb-agepyr-kpi-sub" id="kpiCapaciteReleveSub"></div>
-              </div>
-
-              <div class="sb-agepyr-kpi sb-agepyr-kpi--trans">
-                <div class="sb-agepyr-kpi-label">Transmission en danger</div>
-                <div class="sb-agepyr-kpi-value" id="kpiTransmissionDanger">–</div>
-                <div class="sb-agepyr-kpi-sub">Experts (C) proches de sortie</div>
-              </div>
-
-            </div>
-
-            <!-- Qualité de données (optionnel) -->
-            <div class="sb-agepyr-quality" id="agePyramidQuality"></div>
-
-          </div>
-
-
-        </div>
-
-      </div>
-
-    </div>
-
-    <div class="card sb-dash-tile" data-kpi="etat-global">
-      <div class="sb-dash-tile-title sb-dash-tile-title--with-tip">
-        <span>État global compétences vs attentes</span>
-
-        <span class="sb-tip" tabindex="0" aria-label="Informations jauge">
-          <span class="sb-tip-ico">i</span>
-
-          <span class="sb-tip-box">
-            <div class="sb-tip-title">Lecture</div>
-
-            <div class="sb-tip-line"><span class="sb-tip-dot sb-tip-dot--r"></span> Rouge : écart fort</div>
-            <div class="sb-tip-line"><span class="sb-tip-dot sb-tip-dot--y"></span> Orange : à renforcer</div>
-            <div class="sb-tip-line"><span class="sb-tip-dot sb-tip-dot--g"></span> Vert : conforme</div>
-
-            <div class="sb-tip-sep"></div>
-            <div class="sb-tip-mini">Compétences : postes actuels, criticité &gt; 80.</div>
-            <div class="sb-tip-mini">Score : somme des derniers audits (manquant = 0).</div>
-            <div class="sb-tip-mini">Périmètre : entreprise (puis service selon droits).</div>
-          </span>
-        </span>
-      </div>
-
-
-      <div class="sb-dash-tile-sub">
-        <div class="sb-globalgauge" id="globalGauge">
-          <svg id="globalGaugeSvg"
-              viewBox="0 0 240 150"
-              class="sb-globalgauge-svg"
-              aria-label="Jauge état global compétences vs attentes">
-          </svg>
-
-          <div class="sb-globalgauge-meta">
-            <div class="sb-globalgauge-legend">
-              <span class="sb-legend-item"><span class="sb-legend-dot sb-legend-dot--r"></span> Écart fort</span>
-              <span class="sb-legend-item"><span class="sb-legend-dot sb-legend-dot--y"></span> À renforcer</span>
-              <span class="sb-legend-item"><span class="sb-legend-dot sb-legend-dot--g"></span> Conforme</span>
-            </div>
-
-            <div class="sb-globalgauge-scope" id="globalGaugeScope">Périmètre : Entreprise</div>
-          </div>
-
-
-          <div class="card-sub sb-globalgauge-note" id="globalGaugeNote">
-            Chargement…
-          </div>
-        </div>
-      </div>
-    </div>
-
-
-    <div class="card sb-dash-tile" data-kpi="sans-formation-12m">
-      <div class="sb-dash-tile-title">Sans formation depuis 12 mois</div>
-
-      <div class="sb-dash-tile-sub">
-        <div class="sb-ring" id="noTrain12mRing">
-
-          <svg class="sb-ring-svg" id="noTrain12mSvg" viewBox="0 0 120 120" aria-label="Sans formation depuis 12 mois">
-            <!-- cercle de fond + progression injectés en JS -->
-          </svg>
-
-          <div class="sb-ring-center">
-            <div class="sb-ring-pct" id="noTrain12mPct">–%</div>
-            <div class="sb-ring-sub" id="noTrain12mSub"></div>
-          </div>
-
-          <div class="card-sub sb-ring-note" id="noTrain12mNote">Chargement…</div>
-
-        </div>
-      </div>
-    </div>
-
-    <div class="card sb-dash-tile" data-kpi="sans-point-performance-12m">
-      <div class="sb-dash-tile-title">Sans point performance depuis 12 mois</div>
-
-      <div class="sb-dash-tile-sub">
-        <div class="sb-ring" id="noPerf12mRing">
-
-          <svg class="sb-ring-svg" id="noPerf12mSvg" viewBox="0 0 120 120" aria-label="Sans point performance depuis 12 mois">
-            <!-- cercle de fond + progression injectés en JS -->
-          </svg>
-
-          <div class="sb-ring-center">
-            <div class="sb-ring-pct" id="noPerf12mPct">–%</div>
-            <div class="sb-ring-sub" id="noPerf12mSub"></div>
-          </div>
-
-          <div class="card-sub sb-ring-note" id="noPerf12mNote">Chargement…</div>
-
-        </div>
-      </div>
-    </div>
-
-    <div class="card sb-dash-tile" data-kpi="formations-programmees">
-      <div class="sb-dash-tile-title">
-        Formations à venir
-        <span class="sb-uptrain-badge" id="upTrainBadge" style="display:none;"></span>
-      </div>
-
-      <div class="sb-dash-tile-sub">
-        <div class="sb-uptrain" id="upTrainRoot">
-
-          <div class="sb-uptrain-list" id="upTrainList">
-            <div class="card-sub" style="margin:0;">Chargement…</div>
-          </div>
-
-          <div class="sb-uptrain-more" id="upTrainMore" style="display:none;"></div>
-
-          <div class="card-sub sb-uptrain-note" id="upTrainNote" style="display:none;"></div>
-
-        </div>
-      </div>
-    </div>
-
-
-    <div class="card sb-dash-tile" data-kpi="certifications-renouveler-60j">
-      <div class="sb-dash-tile-title">
-        Certifications à renouveler (60 jours)
-        <span class="sb-uptrain-badge" id="certExpBadge" style="display:none;"></span>
-      </div>
-
-      <div class="sb-dash-tile-sub">
-        <div class="sb-uptrain" id="certExpRoot">
-
-          <div class="sb-uptrain-list" id="certExpList">
-            <div class="card-sub" style="margin:0;">Chargement…</div>
-          </div>
-
-          <div class="sb-uptrain-more" id="certExpMore" style="display:none;"></div>
-          <div class="card-sub sb-uptrain-note" id="certExpNote" style="display:none;"></div>
-
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-    <!-- Modal détail KPI (Dashboard) -->
-  <div class="modal" id="modalDashDetail" aria-hidden="true">
-    <div class="modal-card modal-card--wide" role="dialog" aria-modal="true" aria-labelledby="modalDashDetailTitle">
-      <div class="modal-header">
+  <div class="sb-dashboard-layout" id="dashboardRiskRoot">
+    <div class="card sb-risk-card sb-risk-card--health">
+      <div class="sb-risk-card-head">
         <div>
-          <div class="card-title" id="modalDashDetailTitle">Détail</div>
-          <div class="card-sub" id="modalDashDetailSub"></div>
+          <div class="sb-risk-title">Santé globale</div>
+          <div class="sb-risk-sub" id="dashHealthScope">Périmètre : —</div>
         </div>
-
-        <button type="button" class="modal-x" id="btnDashDetailClose" aria-label="Fermer">×</button>
       </div>
 
-      <div class="modal-body" id="modalDashDetailBody">
-        <div class="card-sub" style="margin:0;">Chargement…</div>
+      <div class="sb-health-gauge-wrap">
+        <svg id="dashHealthGauge" class="sb-health-gauge" viewBox="0 0 260 170" aria-label="Jauge santé globale"></svg>
+        <div class="sb-health-pct" id="dashHealthPct">—%</div>
       </div>
+      <div class="sb-risk-note" id="dashHealthNote">Chargement…</div>
+    </div>
 
-      <div class="modal-footer">
-        <button type="button" class="sb-btn sb-btn--soft" id="btnDashDetailClose2">Fermer</button>
+    <div class="card sb-risk-card sb-risk-card--timeline">
+      <div class="sb-risk-card-head">
+        <div>
+          <div class="sb-risk-title">Évolution des risques</div>
+          <div class="sb-risk-sub">Indice de fragilité, mois par mois</div>
+        </div>
+      </div>
+      <div class="sb-risk-timeline" id="dashRiskTimeline">
+        <div class="sb-risk-loading">Chargement…</div>
+      </div>
+    </div>
+
+    <div class="card sb-risk-card">
+      <div class="sb-risk-card-head">
+        <div>
+          <div class="sb-risk-title">Postes à surveiller</div>
+          <div class="sb-risk-sub" id="dashPostesSub">—</div>
+        </div>
+      </div>
+      <div class="sb-watch-wrap">
+        <svg id="dashPostesPie" class="sb-watch-pie" viewBox="0 0 160 160" aria-label="Répartition des postes à surveiller"></svg>
+        <div class="sb-watch-legend" id="dashPostesLegend"></div>
+      </div>
+      <div class="sb-risk-note sb-risk-note--strong" id="dashCriticalDanger">—</div>
+    </div>
+
+    <div class="card sb-risk-card">
+      <div class="sb-risk-card-head">
+        <div>
+          <div class="sb-risk-title">Capacité de transmission</div>
+          <div class="sb-risk-sub">Transmission des savoir-faire par poste</div>
+        </div>
+      </div>
+      <div class="sb-ring-risk-wrap">
+        <svg id="dashTransmissionRing" class="sb-risk-ring" viewBox="0 0 150 150" aria-label="Capacité de transmission"></svg>
+        <div class="sb-ring-risk-center">
+          <div class="sb-ring-risk-pct" id="dashTransmissionPct">—%</div>
+          <div class="sb-ring-risk-label">capacité</div>
+        </div>
+      </div>
+      <div class="sb-risk-note" id="dashTransmissionNote">—</div>
+    </div>
+
+    <div class="card sb-risk-card">
+      <div class="sb-risk-card-head">
+        <div>
+          <div class="sb-risk-title">Fiabilité</div>
+          <div class="sb-risk-sub">Données mises à jour sur 6 mois</div>
+        </div>
+      </div>
+      <div class="sb-reliability-wrap">
+        <div class="sb-reliability-bars" id="dashReliabilityBars" aria-label="Fiabilité des données"></div>
+        <div class="sb-reliability-pct" id="dashReliabilityPct">—%</div>
+      </div>
+      <div class="sb-risk-note" id="dashReliabilityNote">—</div>
+    </div>
+
+    <div class="card sb-risk-card sb-risk-card--actions">
+      <div class="sb-risk-card-head">
+        <div>
+          <div class="sb-risk-title">Risques sans action</div>
+          <div class="sb-risk-sub">Postes en danger sans formation planifiée ni entretien préparé</div>
+        </div>
+        <div class="sb-risk-count" id="dashNoActionCount">—</div>
+      </div>
+      <div class="sb-noaction-list" id="dashNoActionList">
+        <div class="sb-risk-loading">Chargement…</div>
       </div>
     </div>
   </div>
-
 </section>
