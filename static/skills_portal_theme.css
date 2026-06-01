@@ -2611,6 +2611,29 @@ body{
   vertical-align:top;
 }
 
+/* Modal Poste - Définition : mission et responsabilités en pleine largeur */
+#modalOrgPoste .org-poste-def-card{
+  width:100%;
+  box-sizing:border-box;
+}
+
+#modalOrgPoste #orgPosteDefMissionWrap,
+#modalOrgPoste #orgPosteDefRespWrap{
+  width:100%;
+  max-width:none;
+}
+
+#modalOrgPoste #orgPosteDefMission,
+#modalOrgPoste #orgPosteDefResp{
+  width:100%;
+  max-width:none;
+  box-sizing:border-box;
+}
+
+#modalOrgPoste #orgPosteDefRespWrap.text-block{
+  max-width:none;
+}
+
 /* Modal poste - table compétences : texte compétence un poil plus petit */
 #orgPosteCompTable td:nth-child(2){
   font-size: 13px;
