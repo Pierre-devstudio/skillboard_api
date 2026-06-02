@@ -10,3 +10,6 @@ __pycache__/
 # OS trash
 Thumbs.db
 .DS_Store
+
+# Audits locaux / exports Supabase
+_local_audit/

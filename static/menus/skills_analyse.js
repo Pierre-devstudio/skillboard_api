@@ -836,9 +836,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   const depLim = cDep.filter(x => String(x?.type_risque || "").toUpperCase() !== "SANS_RELAIS");
 
   const dependancePoints = Math.min(15, (depSans.length * 6) + (depLim.length * 3));
-  const dependanceSharePct = (s > 0)
-    ? Math.min(100, Math.round((dependancePoints / s) * 100))
-    : 0;
 
   const depRiskLabel = (r) =>
     (String(r?.type_risque || "").toUpperCase() === "SANS_RELAIS")
@@ -935,7 +932,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     `;
   };
 
-  const structureScore = (() => {
+  const structureScoreFallback = (() => {
     if (!hasStruct) return 0;
 
     const nbT = Number(cStruct?.nb_titulaires || 0);
@@ -946,14 +943,19 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return Math.min(45, Math.max(gapT, 0) * 15);
   })();
 
-  const structureSharePct = (s > 0)
-    ? Math.min(100, Math.round((structureScore / s) * 100))
-    : 0;
-
-  const isStructureRupture = structureScore >= 100;
+  const isStructureRupture = structureScoreFallback >= 100;
   const showSecondaryRiskShare = !isStructureRupture;
 
-  const efficaciteScore = (() => {
+  const transmissionScoreFallback = (() => {
+    const total = Number(cTrans?.pool_total || 0);
+    const elig = Number(cTrans?.pool_eligible || 0);
+    if (total <= 0) return 0;
+    if (elig <= 0) return 5;
+    if (elig < total) return 3;
+    return 0;
+  })();
+
+  const efficaciteScoreFallback = (() => {
     if (!hasEff) return 0;
     const raw = cEff.reduce((acc, r) => {
       const nDef = Number(r?.nb_en_defaut || 0);
@@ -962,10 +964,33 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return Math.min(30, raw);
   })();
 
-  const efficaciteSharePct = (s > 0)
-    ? Math.min(100, Math.round((efficaciteScore / s) * 100))
-    : 0;
+  const getBackendScore = (key, fallback) => {
+    const raw = Number(comp?.[key]);
+    return Number.isFinite(raw) ? Math.max(0, raw) : Math.max(0, Number(fallback || 0));
+  };
 
+  const componentScores = {
+    structure: getBackendScore("score_structurel", structureScoreFallback),
+    dependance: getBackendScore("score_dependance", dependancePoints),
+    transmission: getBackendScore("score_transmission", transmissionScoreFallback),
+    efficacite: getBackendScore("score_efficacite", efficaciteScoreFallback)
+  };
+
+  const visibleComponentTotal =
+    (hasStruct ? componentScores.structure : 0) +
+    (hasDep ? componentScores.dependance : 0) +
+    (hasTrans ? componentScores.transmission : 0) +
+    (hasEff ? componentScores.efficacite : 0);
+
+  const shareOfVisibleCauses = (value) => {
+    if (visibleComponentTotal <= 0) return 0;
+    return Math.max(0, Math.round((Number(value || 0) / visibleComponentTotal) * 100));
+  };
+
+  const structureSharePct = shareOfVisibleCauses(componentScores.structure);
+  const dependanceSharePct = shareOfVisibleCauses(componentScores.dependance);
+  const transmissionSharePct = shareOfVisibleCauses(componentScores.transmission);
+  const efficaciteSharePct = shareOfVisibleCauses(componentScores.efficacite);
 
   const structureBody = (() => {
     if (!hasStruct) return "";
@@ -1002,19 +1027,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       ${renderDepTable(cDep)}
     `;
   })();
-
-  const transmissionScore = (() => {
-    const total = Number(cTrans?.pool_total || 0);
-    const elig = Number(cTrans?.pool_eligible || 0);
-    if (total <= 0) return 0;
-    if (elig <= 0) return 5;
-    if (elig < total) return 3;
-    return 0;
-  })();
-
-  const transmissionSharePct = (s > 0)
-    ? Math.min(100, Math.round((transmissionScore / s) * 100))
-    : 0;
 
   const transmissionBody = (() => {
     if (!hasTrans) return "";

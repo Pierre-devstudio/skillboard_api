@@ -385,7 +385,6 @@ def _compute_poste_fragility_record(
     nb_non_tenues = 0
     nb_dep_zero = 0
     nb_dep_one = 0
-    structure_missing_units = 0
     efficiency_missing_units = 0
     nb_couvertures_non_confirmees = 0
 
@@ -401,14 +400,15 @@ def _compute_poste_fragility_record(
             nb_non_tenues += 1
 
         # Doctrine unique : seule une compétence évaluée et suffisante couvre le poste.
-        # Une compétence simplement déclarée dans le profil ne sécurise pas le poste.
+        # Les écarts de compétences relèvent du risque d’efficacité, pas du risque structurel.
+        # Structure = tenue du poste / cible de titulaires.
+        # Efficacité = couverture métier non confirmée ou insuffisante.
         missing_validated = max(besoin_local - nb_tit_ok, 0)
         if missing_validated > 0:
-            structure_missing_units += missing_validated
+            efficiency_missing_units += missing_validated
 
         declared_but_not_validated = max(min(nb_tit_any, besoin_local) - nb_tit_ok, 0)
         if declared_but_not_validated > 0:
-            efficiency_missing_units += declared_but_not_validated
             nb_couvertures_non_confirmees += declared_but_not_validated
 
         if nb_tit_ok >= besoin_local:
@@ -418,19 +418,24 @@ def _compute_poste_fragility_record(
             elif relais_ok == 1:
                 nb_dep_one += 1
 
-    structure_score = min(45, _score_structure_gap(gap) + (15 * structure_missing_units))
+    structure_score = _score_structure_gap(gap)
     efficacite_score = min(30, 8 * efficiency_missing_units)
     dependance_score = min(15, (6 * nb_dep_zero) + (3 * nb_dep_one))
     transmission_score = _score_transmission(pool_total, pool_eligible)
 
-    # Doctrine unique, mais sans surpondération brutale :
-    # une compétence déclarée mais non évaluée ne couvre pas le poste,
-    # mais le score reste celui du modèle additif utilisé par le détail poste.
     nb_fragilites = nb_non_tenues + nb_dep_zero + nb_dep_one
-    base_score = structure_score + efficacite_score + dependance_score
+
     if rupture:
+        # Poste non tenu = rupture structurelle. Les autres composantes ne doivent pas
+        # venir brouiller la lecture des causes.
+        structure_score = 100
+        efficacite_score = 0
+        dependance_score = 0
+        transmission_score = 0
+        base_score = 100
         score = 100
     else:
+        base_score = structure_score + efficacite_score + dependance_score
         score = min(95, base_score + (transmission_score if base_score > 0 else 0))
 
     row.update({
@@ -3968,6 +3973,14 @@ class AnalysePosteFragiliteComposantes(BaseModel):
     nb_titulaires: int = 0
     nb_titulaires_cible: int = 1
 
+    # Scores composantes renvoyés par le backend.
+    # Le front les utilise pour afficher des parts de causes cohérentes avec l’indice.
+    score_structurel: int = 0
+    score_efficacite: int = 0
+    score_dependance: int = 0
+    score_transmission: int = 0
+    score_total: int = 0
+
 
 class AnalysePosteDiagnosticConditions(BaseModel):
     # “lisible dirigeant”, pas du jargon technique
@@ -4526,6 +4539,7 @@ def get_analyse_risques_poste_diagnostic(
                         WHERE fpc.id_poste = %s
                           AND c.etat = 'active'
                           AND COALESCE(c.masque, FALSE) = FALSE
+                          AND COALESCE(fpc.masque, FALSE) = FALSE
                           AND COALESCE(fpc.poids_criticite, 0)::int >= %s
                     ),
                     pool_all_effectifs AS (
@@ -4569,8 +4583,9 @@ def get_analyse_risques_poste_diagnostic(
                             END AS act_rank,
 
                             CASE
-                              WHEN a.id_audit_competence IS NOT NULL AND a.resultat_eval IS NOT NULL THEN TRUE
-                              WHEN ec.date_derniere_eval IS NOT NULL THEN TRUE
+                              WHEN a.resultat_eval IS NOT NULL
+                               AND (a.date_audit IS NOT NULL OR ec.date_derniere_eval IS NOT NULL OR a.id_audit_competence IS NOT NULL)
+                              THEN TRUE
                               ELSE FALSE
                             END AS is_evaluee,
 
@@ -4657,7 +4672,6 @@ def get_analyse_risques_poste_diagnostic(
                 nb1 = 0
                 nb_r0 = 0
                 nb_r1 = 0
-                structure_missing_units = 0
                 efficiency_missing_units = 0
 
                 candidates: list[AnalysePosteTopRisqueItem] = []
@@ -4696,10 +4710,8 @@ def get_analyse_risques_poste_diagnostic(
                         )
 
                     if missing_validated > 0:
-                        structure_missing_units += missing_validated
-
-                    if declared_but_not_validated > 0:
-                        efficiency_missing_units += declared_but_not_validated
+                        # Un écart de compétence relève du risque d’efficacité, pas du risque structurel.
+                        efficiency_missing_units += missing_validated
 
                     if total_missing > 0:
                         eff_items.append(
@@ -4770,15 +4782,20 @@ def get_analyse_risques_poste_diagnostic(
                 nb_total_fragiles = nb0 + nb1 + nb_r0 + nb_r1
                 nb_evenements = nb_total_fragiles + (1 if gap > 0 else 0)
 
-                structure_score = min(45, _score_structure_gap(gap) + (15 * structure_missing_units))
+                structure_score = _score_structure_gap(gap)
                 efficacite_score = min(30, 8 * efficiency_missing_units)
                 dependance_score = min(15, (6 * nb_r0) + (3 * nb_r1))
                 transmission_score = _score_transmission(pool_total, pool_eligible)
-                base_score = structure_score + efficacite_score + dependance_score
 
                 if nb_titulaires <= 0 and int(nb_cible or 1) >= 1:
+                    structure_score = 100
+                    efficacite_score = 0
+                    dependance_score = 0
+                    transmission_score = 0
+                    base_score = 100
                     score = 100
                 else:
+                    base_score = structure_score + efficacite_score + dependance_score
                     score = min(95, base_score + (transmission_score if base_score > 0 else 0))
 
                 order = {"NON_COUVERTE": 0, "SANS_RELEVE": 1, "RELEVE_FAIBLE": 2}
@@ -4877,6 +4894,12 @@ def get_analyse_risques_poste_diagnostic(
 
                     nb_titulaires=nb_titulaires,
                     nb_titulaires_cible=nb_cible,
+
+                    score_structurel=int(structure_score),
+                    score_efficacite=int(efficacite_score),
+                    score_dependance=int(dependance_score),
+                    score_transmission=int(transmission_score),
+                    score_total=int(score),
                 )
 
                 return AnalysePosteDiagnosticResponse(
