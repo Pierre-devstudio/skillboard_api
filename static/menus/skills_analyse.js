@@ -832,10 +832,47 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return `<span class="sb-badge">${escapeHtml(k || "—")}</span>`;
   };
 
+  const critScoreBand = (v) => {
+    const n = Number(v || 0);
+    if (n >= 90) return 4;
+    if (n >= 80) return 3;
+    if (n >= 70) return 2;
+    if (n >= 50) return 1;
+    return 0;
+  };
+
+  const scoreEfficaciteUnit = (v) => {
+    const b = critScoreBand(v);
+    if (b >= 4) return 15;
+    if (b === 3) return 12;
+    if (b === 2) return 10;
+    if (b === 1) return 8;
+    return 6;
+  };
+
+  const scoreDependanceUnit = (v, relaisFaible) => {
+    const b = critScoreBand(v);
+    if (relaisFaible) {
+      if (b >= 4) return 10;
+      if (b === 3) return 8;
+      if (b === 2) return 6;
+      if (b === 1) return 4;
+      return 3;
+    }
+    if (b >= 4) return 18;
+    if (b === 3) return 14;
+    if (b === 2) return 10;
+    if (b === 1) return 8;
+    return 6;
+  };
+
   const depSans = cDep.filter(x => String(x?.type_risque || "").toUpperCase() === "SANS_RELAIS");
   const depLim = cDep.filter(x => String(x?.type_risque || "").toUpperCase() !== "SANS_RELAIS");
 
-  const dependancePoints = Math.min(15, (depSans.length * 6) + (depLim.length * 3));
+  const dependancePoints = Math.min(25,
+    depSans.reduce((acc, x) => acc + scoreDependanceUnit(x?.poids_criticite, false), 0) +
+    depLim.reduce((acc, x) => acc + scoreDependanceUnit(x?.poids_criticite, true), 0)
+  );
 
   const depRiskLabel = (r) =>
     (String(r?.type_risque || "").toUpperCase() === "SANS_RELAIS")
@@ -959,9 +996,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     if (!hasEff) return 0;
     const raw = cEff.reduce((acc, r) => {
       const nDef = Number(r?.nb_en_defaut || 0);
-      return acc + (Math.max(nDef, 0) * 8);
+      return acc + (Math.max(nDef, 0) * scoreEfficaciteUnit(r?.poids_criticite));
     }, 0);
-    return Math.min(30, raw);
+    return Math.min(45, raw);
   })();
 
   const getBackendScore = (key, fallback) => {

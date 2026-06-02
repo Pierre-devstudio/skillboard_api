@@ -342,6 +342,71 @@ def _score_transmission(pool_total: Any, pool_eligible: Any) -> int:
     return 0
 
 
+def _criticite_score_band(value: Any) -> int:
+    """
+    Convertit la criticité en palier de risque.
+    Utilisé uniquement pour pondérer les composantes de fragilité poste,
+    afin qu'une compétence à 72 ne pèse pas comme une compétence à 20.
+    """
+    n = _safe_int(value, 0)
+    if n >= 90:
+        return 4
+    if n >= 80:
+        return 3
+    if n >= 70:
+        return 2
+    if n >= 50:
+        return 1
+    return 0
+
+
+def _score_efficacite_unit(poids_criticite: Any) -> int:
+    """
+    Points par unité de couverture métier manquante.
+    Cible métier: 4 écarts sur des compétences critiques doivent sortir autour
+    de 40-45 points, pas être écrasés dans un petit risque périphérique.
+    """
+    band = _criticite_score_band(poids_criticite)
+    if band >= 4:
+        return 15
+    if band == 3:
+        return 12
+    if band == 2:
+        return 10
+    if band == 1:
+        return 8
+    return 6
+
+
+def _score_dependance_unit(poids_criticite: Any, relais_faible: bool = False) -> int:
+    """
+    Points pour une dépendance sur compétence déjà couverte.
+    - aucun renfort immédiat pèse fortement, surtout sur criticité élevée ;
+    - un relais faible pèse moins, mais reste visible.
+    """
+    band = _criticite_score_band(poids_criticite)
+    if relais_faible:
+        if band >= 4:
+            return 10
+        if band == 3:
+            return 8
+        if band == 2:
+            return 6
+        if band == 1:
+            return 4
+        return 3
+
+    if band >= 4:
+        return 18
+    if band == 3:
+        return 14
+    if band == 2:
+        return 10
+    if band == 1:
+        return 8
+    return 6
+
+
 def _employee_matches_poste_constraints(emp: Dict[str, Any], poste: Dict[str, Any]) -> bool:
     edu_min_rank = max(_safe_int(poste.get("edu_min_rank"), 0), 0)
     if edu_min_rank > 0 and _education_rank(emp.get("niveau_education")) < edu_min_rank:
@@ -386,6 +451,8 @@ def _compute_poste_fragility_record(
     nb_dep_zero = 0
     nb_dep_one = 0
     efficiency_missing_units = 0
+    efficiency_points = 0
+    dependance_points = 0
     nb_couvertures_non_confirmees = 0
 
     for c in comp_rows or []:
@@ -406,6 +473,7 @@ def _compute_poste_fragility_record(
         missing_validated = max(besoin_local - nb_tit_ok, 0)
         if missing_validated > 0:
             efficiency_missing_units += missing_validated
+            efficiency_points += missing_validated * _score_efficacite_unit(c.get("poids_criticite"))
 
         declared_but_not_validated = max(min(nb_tit_any, besoin_local) - nb_tit_ok, 0)
         if declared_but_not_validated > 0:
@@ -415,12 +483,14 @@ def _compute_poste_fragility_record(
             relais_ok = max(nb_ok_all - nb_tit_ok, 0)
             if relais_ok <= 0:
                 nb_dep_zero += 1
+                dependance_points += _score_dependance_unit(c.get("poids_criticite"), relais_faible=False)
             elif relais_ok == 1:
                 nb_dep_one += 1
+                dependance_points += _score_dependance_unit(c.get("poids_criticite"), relais_faible=True)
 
     structure_score = _score_structure_gap(gap)
-    efficacite_score = min(30, 8 * efficiency_missing_units)
-    dependance_score = min(15, (6 * nb_dep_zero) + (3 * nb_dep_one))
+    efficacite_score = min(45, efficiency_points)
+    dependance_score = min(25, dependance_points)
     transmission_score = _score_transmission(pool_total, pool_eligible)
 
     nb_fragilites = nb_non_tenues + nb_dep_zero + nb_dep_one
@@ -4673,6 +4743,8 @@ def get_analyse_risques_poste_diagnostic(
                 nb_r0 = 0
                 nb_r1 = 0
                 efficiency_missing_units = 0
+                efficiency_points = 0
+                dependance_points = 0
 
                 candidates: list[AnalysePosteTopRisqueItem] = []
                 dep_items: list[AnalysePosteDependanceItem] = []
@@ -4712,6 +4784,7 @@ def get_analyse_risques_poste_diagnostic(
                     if missing_validated > 0:
                         # Un écart de compétence relève du risque d’efficacité, pas du risque structurel.
                         efficiency_missing_units += missing_validated
+                        efficiency_points += missing_validated * _score_efficacite_unit(r.get("poids_criticite"))
 
                     if total_missing > 0:
                         eff_items.append(
@@ -4730,6 +4803,7 @@ def get_analyse_risques_poste_diagnostic(
                         if n_relais <= 0:
                             nb1 += 1
                             nb_r0 += 1
+                            dependance_points += _score_dependance_unit(r.get("poids_criticite"), relais_faible=False)
                             dep_items.append(
                                 AnalysePosteDependanceItem(
                                     id_comp=r.get("id_comp"),
@@ -4755,6 +4829,7 @@ def get_analyse_risques_poste_diagnostic(
                             )
                         elif n_relais == 1:
                             nb_r1 += 1
+                            dependance_points += _score_dependance_unit(r.get("poids_criticite"), relais_faible=True)
                             dep_items.append(
                                 AnalysePosteDependanceItem(
                                     id_comp=r.get("id_comp"),
@@ -4783,8 +4858,8 @@ def get_analyse_risques_poste_diagnostic(
                 nb_evenements = nb_total_fragiles + (1 if gap > 0 else 0)
 
                 structure_score = _score_structure_gap(gap)
-                efficacite_score = min(30, 8 * efficiency_missing_units)
-                dependance_score = min(15, (6 * nb_r0) + (3 * nb_r1))
+                efficacite_score = min(45, efficiency_points)
+                dependance_score = min(25, dependance_points)
                 transmission_score = _score_transmission(pool_total, pool_eligible)
 
                 if nb_titulaires <= 0 and int(nb_cible or 1) >= 1:
