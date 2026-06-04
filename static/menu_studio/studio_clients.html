@@ -203,11 +203,13 @@
                 </div>
                 <div class="sb-field">
                   <label class="sb-label" for="frm_cp_ent">Code postal</label>
-                  <input type="text" class="sb-ctrl" id="frm_cp_ent" maxlength="10" />
+                  <input type="text" class="sb-ctrl" id="frm_cp_ent" list="frm_cp_ent_list" inputmode="numeric" autocomplete="off" maxlength="10" />
+                  <datalist id="frm_cp_ent_list"></datalist>
                 </div>
                 <div class="sb-field">
                   <label class="sb-label" for="frm_ville_ent">Ville</label>
-                  <input type="text" class="sb-ctrl" id="frm_ville_ent" />
+                  <input type="text" class="sb-ctrl" id="frm_ville_ent" list="frm_ville_ent_list" autocomplete="off" />
+                  <datalist id="frm_ville_ent_list"></datalist>
                 </div>
                 <div class="sb-field sb-span-2">
                   <label class="sb-label" for="frm_pays_ent">Pays</label>

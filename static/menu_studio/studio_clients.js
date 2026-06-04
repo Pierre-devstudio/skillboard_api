@@ -1323,6 +1323,214 @@
     await loadList(portal, _commercialClientId);
   }
 
+
+  // PATCH Studio clients CP/Ville - 2026-06
+  let _clientPostalAssistTimer = null;
+  let _clientPostalAssistSeq = 0;
+
+  function normalizeClientPostalCode(value){
+    return (value || "").toString().replace(/\D+/g, "").slice(0, 5);
+  }
+
+  function normalizeClientCity(value){
+    return (value || "").toString().trim().toUpperCase();
+  }
+
+  function clearClientPostalDatalists(){
+    const cpList = byId("frm_cp_ent_list");
+    const cityList = byId("frm_ville_ent_list");
+    if (cpList) cpList.innerHTML = "";
+    if (cityList) cityList.innerHTML = "";
+  }
+
+  function setClientDatalistOptions(listId, items, valueKey, labelKey){
+    const list = byId(listId);
+    if (!list) return;
+
+    list.innerHTML = "";
+    const seen = new Set();
+
+    (items || []).forEach(item => {
+      const value = (item?.[valueKey] || "").toString().trim();
+      const label = (item?.[labelKey] || "").toString().trim();
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+
+      const opt = document.createElement("option");
+      opt.value = value;
+      if (label && label !== value) opt.label = label;
+      list.appendChild(opt);
+    });
+  }
+
+  async function fetchClientPostalRows(portal, params){
+    const ownerId = getOwnerId();
+    if (!ownerId || !portal?.apiJson || !portal?.apiBase) return [];
+
+    const qs = new URLSearchParams();
+    if (params?.code_postal) qs.set("code_postal", params.code_postal);
+    if (params?.ville) qs.set("ville", params.ville);
+    qs.set("limit", String(params?.limit || 20));
+
+    const data = await portal.apiJson(
+      `${portal.apiBase}/studio/referentiels/codes-postaux/${encodeURIComponent(ownerId)}?${qs.toString()}`
+    );
+
+    return Array.isArray(data?.items) ? data.items : [];
+  }
+
+  function applyClientPostalRowsFromCode(cpValue, rows){
+    const cpEl = byId("frm_cp_ent");
+    const cityEl = byId("frm_ville_ent");
+    if (!cpEl || !cityEl) return;
+
+    const exactRows = (rows || []).filter(r => ((r.code_postal || "").toString().trim() === cpValue));
+    const cityRows = exactRows.length ? exactRows : rows;
+
+    setClientDatalistOptions("frm_cp_ent_list", rows, "code_postal", "ville");
+    setClientDatalistOptions("frm_ville_ent_list", cityRows, "ville", "code_postal");
+
+    const villes = [...new Set(
+      (cityRows || [])
+        .map(r => normalizeClientCity(r.ville))
+        .filter(Boolean)
+    )];
+
+    if (cpValue.length === 5) {
+      if (villes.length === 1) {
+        cityEl.value = villes[0];
+      } else if (villes.length > 1) {
+        const current = normalizeClientCity(cityEl.value);
+        cityEl.value = current && villes.includes(current) ? current : "";
+      }
+    }
+  }
+
+  function applyClientPostalRowsFromCity(cityValue, rows){
+    const cpEl = byId("frm_cp_ent");
+    const cityEl = byId("frm_ville_ent");
+    if (!cpEl || !cityEl) return;
+
+    cityEl.value = cityValue;
+
+    const exactRows = (rows || []).filter(r => normalizeClientCity(r.ville) === cityValue);
+    const cpRows = exactRows.length ? exactRows : rows;
+
+    setClientDatalistOptions("frm_ville_ent_list", rows, "ville", "code_postal");
+    setClientDatalistOptions("frm_cp_ent_list", cpRows, "code_postal", "ville");
+
+    const cps = [...new Set(
+      (cpRows || [])
+        .map(r => normalizeClientPostalCode(r.code_postal))
+        .filter(Boolean)
+    )];
+
+    if (cps.length === 1) {
+      cpEl.value = cps[0];
+    } else if (cps.length > 1) {
+      const current = normalizeClientPostalCode(cpEl.value);
+      cpEl.value = current && cps.includes(current) ? current : "";
+    }
+  }
+
+  function scheduleClientPostalLookup(portal, source){
+    clearTimeout(_clientPostalAssistTimer);
+
+    _clientPostalAssistTimer = setTimeout(async () => {
+      const seq = ++_clientPostalAssistSeq;
+      const cpEl = byId("frm_cp_ent");
+      const cityEl = byId("frm_ville_ent");
+      if (!cpEl || !cityEl) return;
+
+      cpEl.value = normalizeClientPostalCode(cpEl.value);
+      cityEl.value = normalizeClientCity(cityEl.value);
+
+      const cpValue = cpEl.value;
+      const cityValue = cityEl.value;
+
+      try {
+        if (source === "cp") {
+          if (!cpValue) {
+            clearClientPostalDatalists();
+            return;
+          }
+
+          const rows = await fetchClientPostalRows(portal, { code_postal: cpValue, limit: 20 });
+          if (seq !== _clientPostalAssistSeq) return;
+          applyClientPostalRowsFromCode(cpValue, rows);
+          return;
+        }
+
+        if (!cityValue || cityValue.length < 2) {
+          clearClientPostalDatalists();
+          return;
+        }
+
+        const rows = await fetchClientPostalRows(portal, { ville: cityValue, limit: 20 });
+        if (seq !== _clientPostalAssistSeq) return;
+        applyClientPostalRowsFromCity(cityValue, rows);
+      } catch (_) {
+        // Lookup référentiel silencieux : pas de message d'erreur dans le modal pour une aide de saisie.
+      }
+    }, 180);
+  }
+
+  function queueClientPostalLookupFromCurrentValues(portal){
+    const cpValue = normalizeClientPostalCode(byId("frm_cp_ent")?.value);
+    const cityValue = normalizeClientCity(byId("frm_ville_ent")?.value);
+
+    if (cpValue.length === 5) {
+      scheduleClientPostalLookup(portal, "cp");
+      return;
+    }
+    if (cityValue.length >= 2) {
+      scheduleClientPostalLookup(portal, "ville");
+      return;
+    }
+    clearClientPostalDatalists();
+  }
+
+  function bindClientPostalAssist(portal){
+    const cpEl = byId("frm_cp_ent");
+    const cityEl = byId("frm_ville_ent");
+    if (!cpEl || !cityEl) return;
+    if (cpEl.dataset.clientPostalBound === "1") return;
+
+    cpEl.dataset.clientPostalBound = "1";
+    cityEl.dataset.clientPostalBound = "1";
+
+    cpEl.addEventListener("input", () => {
+      cpEl.value = normalizeClientPostalCode(cpEl.value);
+      scheduleClientPostalLookup(portal, "cp");
+    });
+
+    cpEl.addEventListener("change", () => {
+      cpEl.value = normalizeClientPostalCode(cpEl.value);
+      scheduleClientPostalLookup(portal, "cp");
+    });
+
+    cityEl.addEventListener("input", () => {
+      cityEl.value = normalizeClientCity(cityEl.value);
+      scheduleClientPostalLookup(portal, "ville");
+    });
+
+    cityEl.addEventListener("change", () => {
+      cityEl.value = normalizeClientCity(cityEl.value);
+      scheduleClientPostalLookup(portal, "ville");
+    });
+
+    cityEl.addEventListener("blur", () => {
+      cityEl.value = normalizeClientCity(cityEl.value);
+    });
+  }
+
+  function normalizeClientPostalFieldsBeforeSave(){
+    const cpEl = byId("frm_cp_ent");
+    const cityEl = byId("frm_ville_ent");
+    if (cpEl) cpEl.value = normalizeClientPostalCode(cpEl.value);
+    if (cityEl) cityEl.value = normalizeClientCity(cityEl.value);
+  }
+
   function clearModalHints(){
     const idccHint = byId("frm_idcc_hint");
     const apeHint = byId("frm_ape_hint");
@@ -1414,8 +1622,8 @@
       code_ape_ent: normalizeValue(byId("frm_code_ape_ent")?.value),
       adresse_ent: normalizeValue(byId("frm_adresse_ent")?.value),
       adresse_cplt_ent: normalizeValue(byId("frm_adresse_cplt_ent")?.value),
-      cp_ent: normalizeValue(byId("frm_cp_ent")?.value),
-      ville_ent: normalizeValue(byId("frm_ville_ent")?.value),
+      cp_ent: normalizeClientPostalCode(byId("frm_cp_ent")?.value),
+      ville_ent: normalizeClientCity(byId("frm_ville_ent")?.value),
       pays_ent: normalizeValue(byId("frm_pays_ent")?.value),
       telephone_ent: normalizeValue(byId("frm_telephone_ent")?.value),
       email_ent: normalizeValue(byId("frm_email_ent")?.value),
