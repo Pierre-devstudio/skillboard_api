@@ -1,8 +1,52 @@
 <section id="view-competences">
-  <div class="card">
-    <div class="card-title">Vos compétences</div>
-    <div class="card-sub">
-      La page est ouverte. Le contenu fonctionnel sera ajouté ensuite.
+  <div class="pp-page-head pp-page-head-row">
+    <div>
+      <div class="pp-eyebrow">Capital compétences</div>
+      <h1>Vos compétences</h1>
+      <p>Compétences attendues sur le poste et compétences complémentaires détenues.</p>
+    </div>
+    <button class="sb-btn sb-btn--accent" id="ppBtnOpenCompModal">Ajouter une autre compétence</button>
+  </div>
+
+  <div class="pp-grid pp-grid-2">
+    <div class="card pp-card">
+      <div class="card-title">Compétences actuelles sur le poste</div>
+      <div class="pp-list" id="ppPosteComps"></div>
+    </div>
+    <div class="card pp-card">
+      <div class="card-title">Autres compétences détenues</div>
+      <div class="pp-list" id="ppOtherComps"></div>
+    </div>
+  </div>
+
+  <div class="pp-modal-backdrop" id="ppCompModal" style="display:none;">
+    <div class="pp-modal-card">
+      <div class="pp-modal-head">
+        <div>
+          <div class="pp-modal-title">Ajouter une compétence complémentaire</div>
+          <div class="pp-modal-sub">Sélection depuis le catalogue de compétences de l’entreprise.</div>
+        </div>
+        <button class="pp-modal-x" id="ppCompClose">×</button>
+      </div>
+      <div class="pp-modal-body">
+        <div class="pp-form-grid pp-form-grid-3">
+          <label class="pp-span-2">Recherche<input type="text" id="ppCompSearch" placeholder="Rechercher une compétence..."></label>
+          <label>Niveau actuel
+            <select id="ppCompLevel">
+              <option value="">Non précisé</option>
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+            </select>
+          </label>
+        </div>
+        <div class="pp-list pp-select-list" id="ppCatalogueList"></div>
+      </div>
+      <div class="pp-modal-foot">
+        <span class="pp-inline-msg" id="ppCompMsg"></span>
+        <button class="sb-btn sb-btn--soft" id="ppCompCancel">Annuler</button>
+        <button class="sb-btn sb-btn--accent" id="ppCompAdd" disabled>Ajouter</button>
+      </div>
     </div>
   </div>
 </section>

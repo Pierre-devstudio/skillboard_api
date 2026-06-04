@@ -1,8 +1,23 @@
-<section id="view-auto-evaluation">
-  <div class="card">
-    <div class="card-title">Auto-évaluation</div>
-    <div class="card-sub">
-      La page est ouverte. Le contenu fonctionnel sera ajouté ensuite.
+<section id="view-auto_evaluation">
+  <div class="pp-page-head pp-page-head-row">
+    <div>
+      <div class="pp-eyebrow">Préparation entretien</div>
+      <h1>Auto-évaluation</h1>
+      <p>Préparation personnelle sur les compétences attendues au poste.</p>
+    </div>
+    <button class="sb-btn sb-btn--accent" id="ppAutoSave">Enregistrer l’auto-évaluation</button>
+  </div>
+
+  <div class="card pp-card">
+    <div class="card-title">Compétences à préparer</div>
+    <div class="pp-list" id="ppAutoList"></div>
+  </div>
+
+  <div class="card pp-card">
+    <div class="card-title">Commentaire général</div>
+    <textarea id="ppAutoComment" placeholder="Points à aborder pendant l’entretien, besoins de formation, envies d’évolution..."></textarea>
+    <div class="pp-actions-end">
+      <span class="pp-inline-msg" id="ppAutoMsg"></span>
     </div>
   </div>
 </section>

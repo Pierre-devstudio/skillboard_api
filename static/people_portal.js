@@ -1,40 +1,13 @@
 (function () {
   const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
 
-  window.portal.registerMenu({
-    view: "dashboard",
-    htmlUrl: "/menu_people/people_dashboard.html"
-  });
-
-  window.portal.registerMenu({
-    view: "informations",
-    htmlUrl: "/menu_people/people_informations.html"
-  });
-
-  window.portal.registerMenu({
-    view: "calendrier",
-    htmlUrl: "/menu_people/people_calendrier.html"
-  });
-
-  window.portal.registerMenu({
-    view: "parcours",
-    htmlUrl: "/menu_people/people_parcours.html"
-  });
-
-  window.portal.registerMenu({
-    view: "competences",
-    htmlUrl: "/menu_people/people_competences.html"
-  });
-
-  window.portal.registerMenu({
-    view: "auto_evaluation",
-    htmlUrl: "/menu_people/people_auto_evaluation.html"
-  });
-
-  window.portal.registerMenu({
-    view: "formations",
-    htmlUrl: "/menu_people/people_formations.html"
-  });
+  window.portal.registerMenu({ view: "dashboard", htmlUrl: "/menu_people/people_dashboard.html" });
+  window.portal.registerMenu({ view: "informations", htmlUrl: "/menu_people/people_informations.html" });
+  window.portal.registerMenu({ view: "calendrier", htmlUrl: "/menu_people/people_calendrier.html" });
+  window.portal.registerMenu({ view: "parcours", htmlUrl: "/menu_people/people_parcours.html" });
+  window.portal.registerMenu({ view: "competences", htmlUrl: "/menu_people/people_competences.html" });
+  window.portal.registerMenu({ view: "auto_evaluation", htmlUrl: "/menu_people/people_auto_evaluation.html" });
+  window.portal.registerMenu({ view: "formations", htmlUrl: "/menu_people/people_formations.html" });
 
   function byId(id){ return document.getElementById(id); }
 
@@ -48,6 +21,59 @@
     if (fullName && ent) return `${fullName} - ${ent}`;
     return fullName || ent || "Profil";
   }
+
+  function getEffectifId() {
+    const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
+    if (pid) return pid;
+    const qid = new URL(window.location.href).searchParams.get("id");
+    return (qid || "").trim();
+  }
+
+  function escapeHtml(v) {
+    return String(v ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+  }
+
+  function fmtDate(v) {
+    const s = String(v || "").slice(0, 10);
+    if (!s) return "-";
+    const parts = s.split("-");
+    if (parts.length !== 3) return escapeHtml(s);
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+
+  function levelLabel(v) {
+    const s = String(v || "").trim();
+    return s || "-";
+  }
+
+  function itemEmpty(text) {
+    return `<div class="pp-empty">${escapeHtml(text || "Aucune donnée disponible.")}</div>`;
+  }
+
+  async function api(path, options) {
+    await (window.__peopleAuthReady || Promise.resolve(null));
+    return window.portal.apiJson(`${API_BASE}${path}`, options || {});
+  }
+
+  function infoRow(label, value) {
+    return `<div class="pp-info-row"><div class="pp-info-label">${escapeHtml(label)}</div><div class="pp-info-value">${escapeHtml(value || "-")}</div></div>`;
+  }
+
+  function badge(text, kind) {
+    return `<span class="pp-badge ${kind ? `pp-badge--${kind}` : ""}">${escapeHtml(text || "-")}</span>`;
+  }
+
+  window.PeoplePortal = {
+    API_BASE,
+    getEffectifId,
+    api,
+    escapeHtml,
+    fmtDate,
+    levelLabel,
+    itemEmpty,
+    infoRow,
+    badge
+  };
 
   async function tryFillTopbar() {
     const info = byId("topbarInfo");
@@ -64,34 +90,22 @@
       const token = session?.access_token || "";
       if (!token) return;
 
-      const rMe = await fetch(`${API_BASE}/people/me`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
+      const rMe = await fetch(`${API_BASE}/people/me`, { headers: { "Authorization": `Bearer ${token}` } });
       const me = await rMe.json().catch(() => null);
 
-      if (rMe.ok && me) {
-        if (info) info.textContent = (me.email || "");
-      }
+      if (rMe.ok && me && info) info.textContent = (me.email || "");
 
-      const rScope = await fetch(`${API_BASE}/people/me/scope`, {
-        headers: { "Authorization": `Bearer ${token}` }
-      });
+      const rScope = await fetch(`${API_BASE}/people/me/scope`, { headers: { "Authorization": `Bearer ${token}` } });
       const scope = await rScope.json().catch(() => null);
 
       let currentProfile = null;
 
       if (rScope.ok && scope && Array.isArray(scope.profiles) && scope.profiles.length) {
-        const currentId = (new URL(window.location.href).searchParams.get("id") || "").trim();
-        currentProfile = currentId
-          ? scope.profiles.find(p => p && p.id_effectif === currentId)
-          : null;
-
+        const currentId = getEffectifId();
+        currentProfile = currentId ? scope.profiles.find(p => p && p.id_effectif === currentId) : null;
         currentProfile = currentProfile || scope.profiles[0] || null;
 
-        const fullName = currentProfile
-          ? [currentProfile.prenom || "", currentProfile.nom || ""].join(" ").trim()
-          : "";
-
+        const fullName = currentProfile ? [currentProfile.prenom || "", currentProfile.nom || ""].join(" ").trim() : "";
         if (name) name.textContent = fullName || "People";
 
         if (sel) {
@@ -101,9 +115,7 @@
               const opt = document.createElement("option");
               opt.value = p.id_effectif || "";
               opt.textContent = formatProfileLabel(p);
-              if ((p.id_effectif || "") === (currentProfile?.id_effectif || "")) {
-                opt.selected = true;
-              }
+              if ((p.id_effectif || "") === (currentProfile?.id_effectif || "")) opt.selected = true;
               sel.appendChild(opt);
             });
 
@@ -121,8 +133,7 @@
         if (name) name.textContent = "People";
         if (sel) sel.style.display = "none";
       }
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   window.addEventListener("DOMContentLoaded", async () => {

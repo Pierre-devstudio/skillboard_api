@@ -1,66 +1,62 @@
 (function () {
-  const API_BASE = window.PORTAL_API_BASE || "https://skillboard-services.onrender.com";
+  const P = window.PeoplePortal;
+  if (!P) return;
 
-  function byId(id) { return document.getElementById(id); }
+  function byId(id){ return document.getElementById(id); }
 
-  function getEffectifId() {
-    const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
-    if (pid) return pid;
-
-    const qid = new URL(window.location.href).searchParams.get("id");
-    return (qid || "").trim();
+  function scoreRow(r) {
+    const score = (() => {
+      const req = String(r.niveau_requis || "").trim();
+      const cur = String(r.niveau_actuel || "").trim();
+      const map = { A: 1, B: 2, C: 3, I: 2, AV: 3 };
+      const s = map[cur] || 0;
+      const q = map[req] || 1;
+      return s ? Math.min(100, Math.round((s / q) * 100)) : 0;
+    })();
+    return `<div class="pp-list-row">
+      <div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.escapeHtml(r.code || "")} · Niveau requis ${P.levelLabel(r.niveau_requis)} · Actuel ${P.levelLabel(r.niveau_actuel)}</div></div>
+      <div class="pp-progress"><span style="width:${score}%"></span></div>
+    </div>`;
   }
 
-  async function fetchContext() {
-    await (window.__peopleAuthReady || Promise.resolve(null));
-
-    if (!window.PortalAuthCommon) return null;
-
-    const session = await window.PortalAuthCommon.getSession().catch(() => null);
-    const token = session?.access_token || "";
-    if (!token) return null;
-
-    const idEffectif = getEffectifId();
-    if (!idEffectif) return null;
-
-    const r = await fetch(`${API_BASE}/people/context/${encodeURIComponent(idEffectif)}`, {
-      headers: { "Authorization": `Bearer ${token}` }
-    });
-
-    const data = await r.json().catch(() => null);
-    if (!r.ok) return null;
-    return data;
-  }
-
-  async function applyWelcome() {
-    const prenomEl = byId("welcomePrenom");
-    const commaEl = byId("welcomeComma");
-    const titleEl = byId("welcomeTitle");
-    const introEl = byId("welcomeIntro");
-
-    if (!titleEl) return;
-
-    const ctx = await fetchContext();
-    const prenom = (ctx?.prenom || "").toString().trim();
-    const ent = (ctx?.nom_owner || "").toString().trim();
-
-    if (!prenom) {
-      if (prenomEl) prenomEl.textContent = "";
-      if (commaEl) commaEl.style.display = "none";
-      titleEl.textContent = "Bienvenue";
-    } else {
-      if (prenomEl) prenomEl.textContent = prenom;
-      if (commaEl) commaEl.style.display = "";
+  async function load() {
+    const id = P.getEffectifId();
+    if (!id) return;
+    const data = await P.api(`/people/demo/dashboard/${encodeURIComponent(id)}`).catch(err => ({ error: err.message }));
+    if (data.error) {
+      const target = byId("ppDashProfile");
+      if (target) target.innerHTML = P.itemEmpty(data.error);
+      return;
     }
 
-    if (introEl) {
-      if (ent) {
-        introEl.textContent = `Cet espace vous permet d’accéder à vos informations People pour ${ent}.`;
-      } else {
-        introEl.textContent = "Cet espace vous permet d’accéder à vos informations People.";
-      }
+    const p = data.profile || {};
+    const k = data.kpis || {};
+
+    const prenom = (p.prenom || "").trim();
+    const prenomEl = byId("ppDashPrenom");
+    if (prenomEl) prenomEl.textContent = prenom || "";
+    const intro = byId("ppDashIntro");
+    if (intro) intro.textContent = `Votre espace personnel pour ${p.nom_owner || "votre entreprise"}.`;
+
+    byId("ppDashMastery").textContent = `${k.maitrise_poste ?? 0}%`;
+    byId("ppDashComps").textContent = k.nb_competences ?? 0;
+    byId("ppDashForms").textContent = k.nb_formations_programmees ?? 0;
+    byId("ppDashBreaks").textContent = k.nb_indisponibilites ?? 0;
+
+    const prof = byId("ppDashProfile");
+    if (prof) {
+      prof.innerHTML = [
+        P.infoRow("Entreprise", p.nom_owner),
+        P.infoRow("Service", p.nom_service),
+        P.infoRow("Poste", p.intitule_poste),
+        P.infoRow("Dernière évaluation", k.derniere_evaluation ? P.fmtDate(k.derniere_evaluation) : "Non renseignée")
+      ].join("");
     }
+
+    const list = byId("ppDashCompetences");
+    const rows = data.competences_prioritaires || [];
+    if (list) list.innerHTML = rows.length ? rows.map(scoreRow).join("") : P.itemEmpty("Aucune compétence prioritaire trouvée sur le poste.");
   }
 
-  applyWelcome();
+  load();
 })();

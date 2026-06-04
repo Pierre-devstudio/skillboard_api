@@ -1,32 +1,29 @@
 <section id="view-dashboard">
-  <div style="text-align:center; margin-bottom:16px;">
-    <img src="/Logo_NOVOSKILL.png" alt="Novoskill" class="sb-logo">
+  <div class="pp-hero">
+    <div>
+      <div class="pp-eyebrow">Console People</div>
+      <h1>Bienvenue <span id="ppDashPrenom"></span></h1>
+      <p id="ppDashIntro">Votre espace personnel pour suivre votre poste, vos compétences, vos formations et vos prochaines étapes.</p>
+    </div>
+    <img src="/Logo_NOVOSKILL.png" alt="Novoskill" class="pp-hero-logo">
   </div>
 
-  <div class="card">
-    <div class="card-title" id="welcomeTitle">
-      Bienvenue <span id="welcomePrenom"></span><span id="welcomeComma">,</span>
-    </div>
-    <div class="card-sub" id="welcomeIntro">
-      Cet espace vous permettra de suivre votre parcours, vos compétences et vos formations.
-    </div>
-    <div class="pp-card-note">
-      La console People est ouverte. Le contenu fonctionnel détaillé sera branché ensuite.
-    </div>
+  <div class="pp-grid pp-grid-4" id="ppDashKpis">
+    <div class="pp-kpi-card"><div class="pp-kpi-label">Maîtrise du poste</div><div class="pp-kpi-big" id="ppDashMastery">-</div></div>
+    <div class="pp-kpi-card"><div class="pp-kpi-label">Compétences suivies</div><div class="pp-kpi-big" id="ppDashComps">-</div></div>
+    <div class="pp-kpi-card"><div class="pp-kpi-label">Formations programmées</div><div class="pp-kpi-big" id="ppDashForms">-</div></div>
+    <div class="pp-kpi-card"><div class="pp-kpi-label">Indisponibilités</div><div class="pp-kpi-big" id="ppDashBreaks">-</div></div>
   </div>
 
-  <div class="pp-kpi-grid">
-    <div class="pp-kpi">
-      <div class="pp-kpi-title">Vos informations</div>
-      <div class="pp-kpi-value">Disponibles dans le menu</div>
+  <div class="pp-grid pp-grid-2">
+    <div class="card pp-card">
+      <div class="card-title">Situation actuelle</div>
+      <div class="pp-info-list" id="ppDashProfile"></div>
     </div>
-    <div class="pp-kpi">
-      <div class="pp-kpi-title">Vos compétences</div>
-      <div class="pp-kpi-value">Espace prêt</div>
-    </div>
-    <div class="pp-kpi">
-      <div class="pp-kpi-title">Vos formations</div>
-      <div class="pp-kpi-value">Espace prêt</div>
+
+    <div class="card pp-card">
+      <div class="card-title">Compétences prioritaires du poste</div>
+      <div class="pp-list" id="ppDashCompetences"></div>
     </div>
   </div>
 </section>
