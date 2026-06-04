@@ -1531,6 +1531,242 @@
     if (cityEl) cityEl.value = normalizeClientCity(cityEl.value);
   }
 
+
+  // PATCH Studio clients CP/Ville V2 - 2026-06
+  let _clientPostalAssistTimerV2 = null;
+  let _clientPostalAssistSeqV2 = 0;
+
+  function normalizeClientPostalCodeV2(value){
+    return (value || "").toString().replace(/\D+/g, "").slice(0, 5);
+  }
+
+  function normalizeClientCityV2(value){
+    return (value || "").toString().trim().toUpperCase();
+  }
+
+  function ensureClientPostalAssistDomV2(){
+    const cpEl = byId("frm_cp_ent");
+    const cityEl = byId("frm_ville_ent");
+    if (!cpEl || !cityEl) return false;
+
+    cpEl.setAttribute("list", "frm_cp_ent_list");
+    cpEl.setAttribute("inputmode", "numeric");
+    cpEl.setAttribute("autocomplete", "off");
+    cityEl.setAttribute("list", "frm_ville_ent_list");
+    cityEl.setAttribute("autocomplete", "off");
+
+    if (!byId("frm_cp_ent_list")) {
+      const list = document.createElement("datalist");
+      list.id = "frm_cp_ent_list";
+      cpEl.insertAdjacentElement("afterend", list);
+    }
+
+    if (!byId("frm_ville_ent_list")) {
+      const list = document.createElement("datalist");
+      list.id = "frm_ville_ent_list";
+      cityEl.insertAdjacentElement("afterend", list);
+    }
+
+    return true;
+  }
+
+  function clearClientPostalDatalistsV2(){
+    const cpList = byId("frm_cp_ent_list");
+    const cityList = byId("frm_ville_ent_list");
+    if (cpList) cpList.innerHTML = "";
+    if (cityList) cityList.innerHTML = "";
+  }
+
+  function setClientDatalistOptionsV2(listId, items, valueKey, labelKey){
+    const list = byId(listId);
+    if (!list) return;
+
+    list.innerHTML = "";
+    const seen = new Set();
+
+    (items || []).forEach(item => {
+      const value = (item?.[valueKey] || "").toString().trim();
+      const label = (item?.[labelKey] || "").toString().trim();
+      if (!value || seen.has(value)) return;
+      seen.add(value);
+
+      const opt = document.createElement("option");
+      opt.value = value;
+      if (label && label !== value) opt.label = label;
+      list.appendChild(opt);
+    });
+  }
+
+  async function fetchClientPostalRowsV2(params){
+    const ownerId = getOwnerId();
+    const portalRef = window.portal || {};
+    if (!ownerId || typeof portalRef.apiJson !== "function") return [];
+
+    const qs = new URLSearchParams();
+    if (params?.code_postal) qs.set("code_postal", params.code_postal);
+    if (params?.ville) qs.set("ville", params.ville);
+    qs.set("limit", String(params?.limit || 20));
+
+    const apiBase = (portalRef.apiBase || window.PORTAL_API_BASE || "").toString().replace(/\/$/, "");
+    const url = `${apiBase}/studio/referentiels/codes-postaux/${encodeURIComponent(ownerId)}?${qs.toString()}`;
+    const data = await portalRef.apiJson(url);
+    return Array.isArray(data?.items) ? data.items : [];
+  }
+
+  function applyClientPostalRowsFromCodeV2(cpValue, rows){
+    const cpEl = byId("frm_cp_ent");
+    const cityEl = byId("frm_ville_ent");
+    if (!cpEl || !cityEl) return;
+
+    const exactRows = (rows || []).filter(r => ((r.code_postal || "").toString().trim() === cpValue));
+    const cityRows = exactRows.length ? exactRows : rows;
+
+    setClientDatalistOptionsV2("frm_cp_ent_list", rows, "code_postal", "ville");
+    setClientDatalistOptionsV2("frm_ville_ent_list", cityRows, "ville", "code_postal");
+
+    const villes = [...new Set((cityRows || []).map(r => normalizeClientCityV2(r.ville)).filter(Boolean))];
+
+    if (cpValue.length === 5) {
+      if (villes.length === 1) {
+        cityEl.value = villes[0];
+      } else if (villes.length > 1) {
+        const current = normalizeClientCityV2(cityEl.value);
+        cityEl.value = current && villes.includes(current) ? current : "";
+      }
+    }
+  }
+
+  function applyClientPostalRowsFromCityV2(cityValue, rows){
+    const cpEl = byId("frm_cp_ent");
+    const cityEl = byId("frm_ville_ent");
+    if (!cpEl || !cityEl) return;
+
+    cityEl.value = cityValue;
+
+    const exactRows = (rows || []).filter(r => normalizeClientCityV2(r.ville) === cityValue);
+    const cpRows = exactRows.length ? exactRows : rows;
+
+    setClientDatalistOptionsV2("frm_ville_ent_list", rows, "ville", "code_postal");
+    setClientDatalistOptionsV2("frm_cp_ent_list", cpRows, "code_postal", "ville");
+
+    const cps = [...new Set((cpRows || []).map(r => normalizeClientPostalCodeV2(r.code_postal)).filter(Boolean))];
+
+    if (cps.length === 1) {
+      cpEl.value = cps[0];
+    } else if (cps.length > 1) {
+      const current = normalizeClientPostalCodeV2(cpEl.value);
+      cpEl.value = current && cps.includes(current) ? current : "";
+    }
+  }
+
+  function scheduleClientPostalLookupV2(source){
+    clearTimeout(_clientPostalAssistTimerV2);
+
+    _clientPostalAssistTimerV2 = setTimeout(async () => {
+      const seq = ++_clientPostalAssistSeqV2;
+      const cpEl = byId("frm_cp_ent");
+      const cityEl = byId("frm_ville_ent");
+      if (!cpEl || !cityEl) return;
+
+      cpEl.value = normalizeClientPostalCodeV2(cpEl.value);
+      cityEl.value = normalizeClientCityV2(cityEl.value);
+
+      const cpValue = cpEl.value;
+      const cityValue = cityEl.value;
+
+      try {
+        if (source === "cp") {
+          if (!cpValue) {
+            clearClientPostalDatalistsV2();
+            return;
+          }
+
+          const rows = await fetchClientPostalRowsV2({ code_postal: cpValue, limit: 20 });
+          if (seq !== _clientPostalAssistSeqV2) return;
+          applyClientPostalRowsFromCodeV2(cpValue, rows);
+          return;
+        }
+
+        if (!cityValue || cityValue.length < 2) {
+          clearClientPostalDatalistsV2();
+          return;
+        }
+
+        const rows = await fetchClientPostalRowsV2({ ville: cityValue, limit: 20 });
+        if (seq !== _clientPostalAssistSeqV2) return;
+        applyClientPostalRowsFromCityV2(cityValue, rows);
+      } catch (e) {
+        console.warn("Lookup CP/Ville client indisponible", e);
+      }
+    }, 180);
+  }
+
+  function queueClientPostalLookupFromCurrentValuesV2(){
+    if (!ensureClientPostalAssistDomV2()) return;
+
+    const cpEl = byId("frm_cp_ent");
+    const cityEl = byId("frm_ville_ent");
+    if (!cpEl || !cityEl) return;
+
+    cpEl.value = normalizeClientPostalCodeV2(cpEl.value);
+    cityEl.value = normalizeClientCityV2(cityEl.value);
+
+    if (cpEl.value) {
+      scheduleClientPostalLookupV2("cp");
+      return;
+    }
+
+    if (cityEl.value) {
+      scheduleClientPostalLookupV2("ville");
+      return;
+    }
+
+    clearClientPostalDatalistsV2();
+  }
+
+  function bindClientPostalAssistV2(){
+    if (!ensureClientPostalAssistDomV2()) return;
+
+    const cpEl = byId("frm_cp_ent");
+    const cityEl = byId("frm_ville_ent");
+    if (!cpEl || !cityEl) return;
+    if (cpEl.dataset.clientPostalBoundV2 === "1") return;
+
+    cpEl.dataset.clientPostalBoundV2 = "1";
+    cityEl.dataset.clientPostalBoundV2 = "1";
+
+    cpEl.addEventListener("input", () => {
+      cpEl.value = normalizeClientPostalCodeV2(cpEl.value);
+      scheduleClientPostalLookupV2("cp");
+    });
+
+    cpEl.addEventListener("change", () => {
+      cpEl.value = normalizeClientPostalCodeV2(cpEl.value);
+      scheduleClientPostalLookupV2("cp");
+    });
+
+    cityEl.addEventListener("input", () => {
+      cityEl.value = normalizeClientCityV2(cityEl.value);
+      scheduleClientPostalLookupV2("ville");
+    });
+
+    cityEl.addEventListener("change", () => {
+      cityEl.value = normalizeClientCityV2(cityEl.value);
+      scheduleClientPostalLookupV2("ville");
+    });
+
+    cityEl.addEventListener("blur", () => {
+      cityEl.value = normalizeClientCityV2(cityEl.value);
+    });
+  }
+
+  function normalizeClientPostalFieldsBeforeSaveV2(){
+    const cpEl = byId("frm_cp_ent");
+    const cityEl = byId("frm_ville_ent");
+    if (cpEl) cpEl.value = normalizeClientPostalCodeV2(cpEl.value);
+    if (cityEl) cityEl.value = normalizeClientCityV2(cityEl.value);
+  }
+
   function clearModalHints(){
     const idccHint = byId("frm_idcc_hint");
     const apeHint = byId("frm_ape_hint");
@@ -1600,7 +1836,9 @@
     renderClientContacts();
     byId("clientModal").style.display = "flex";
 
-    if (_modalClientId) {
+        bindClientPostalAssistV2();
+    queueClientPostalLookupFromCurrentValuesV2();
+if (_modalClientId) {
       await refreshClientModalLinkedData(portal);
     }
   }
@@ -1622,8 +1860,8 @@
       code_ape_ent: normalizeValue(byId("frm_code_ape_ent")?.value),
       adresse_ent: normalizeValue(byId("frm_adresse_ent")?.value),
       adresse_cplt_ent: normalizeValue(byId("frm_adresse_cplt_ent")?.value),
-      cp_ent: normalizeClientPostalCode(byId("frm_cp_ent")?.value),
-      ville_ent: normalizeClientCity(byId("frm_ville_ent")?.value),
+      cp_ent: normalizeClientPostalCodeV2(byId("frm_cp_ent")?.value),
+      ville_ent: normalizeClientCityV2(byId("frm_ville_ent")?.value),
       pays_ent: normalizeValue(byId("frm_pays_ent")?.value),
       telephone_ent: normalizeValue(byId("frm_telephone_ent")?.value),
       email_ent: normalizeValue(byId("frm_email_ent")?.value),
