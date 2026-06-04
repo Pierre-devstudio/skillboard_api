@@ -2498,28 +2498,25 @@
 }
 
 .sb-client-tabbar{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
+  margin:0;
   padding:0 16px 10px 16px;
   border-bottom:1px solid rgba(17,24,39,.08);
 }
 
-.sb-client-tab{
-  border:1px solid rgba(var(--sb-accent-rgb), .45);
-  background:rgba(var(--sb-accent-rgb), .16);
-  color:#111827;
-  border-radius:999px;
-  padding:8px 12px;
-  font-size:12px;
-  font-weight:700;
-  cursor:pointer;
+.sb-client-tabbar [data-client-tab]{
+  border-color:rgba(var(--sb-accent-rgb), .55);
 }
 
-.sb-client-tab.is-active{
+.sb-client-tabbar [data-client-tab].is-active{
   background:var(--accent);
   border-color:var(--accent);
   color:#111827;
+  box-shadow:none;
+}
+
+.sb-client-modal-card .sb-modal-x{
+  border:none;
+  box-shadow:none;
 }
 
 .sb-client-panel{
@@ -2623,3 +2620,32 @@
     width:100%;
   }
 }
+
+/* PATCH Studio clients modal UI - 2026-06 */
+#clientModalSub.is-hidden {
+  display:none !important;
+}
+
+.sb-client-tabbar {
+  margin:0;
+  padding:0 16px 10px 16px;
+  border-bottom:1px solid rgba(17,24,39,.08);
+}
+
+.sb-client-tabbar [data-client-tab] {
+  border-color:rgba(var(--sb-accent-rgb), .35);
+}
+
+.sb-client-tabbar [data-client-tab].is-active {
+  background:var(--accent);
+  border-color:var(--accent);
+  color:#111827;
+  box-shadow:none;
+}
+
+.sb-client-modal-card .sb-modal-x,
+#btnClientModalClose {
+  border:none !important;
+  box-shadow:none !important;
+}
+

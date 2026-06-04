@@ -108,15 +108,15 @@
       <div class="sb-modal-head">
         <div>
           <div class="card-title" id="clientModalTitle">Client</div>
-          <div class="card-sub" id="clientModalSub">Création ou mise à jour de la fiche entreprise.</div>
+          <div class="card-sub is-hidden" id="clientModalSub"></div>
         </div>
         <button type="button" class="sb-modal-x" id="btnClientModalClose" aria-label="Fermer">×</button>
       </div>
 
-      <div class="sb-client-tabbar" role="tablist" aria-label="Fiche client">
-        <button type="button" class="sb-client-tab is-active" data-client-tab="identification">Identification</button>
-        <button type="button" class="sb-client-tab" data-client-tab="references">Références et profil structurel</button>
-        <button type="button" class="sb-client-tab" data-client-tab="contacts">Contacts</button>
+      <div class="sb-segbar sb-client-tabbar" role="tablist" aria-label="Fiche client">
+        <button type="button" class="sb-btn sb-btn--soft is-active" data-client-tab="identification">Identification</button>
+        <button type="button" class="sb-btn sb-btn--soft" data-client-tab="references">Références et profil structurel</button>
+        <button type="button" class="sb-btn sb-btn--soft" data-client-tab="contacts">Contacts</button>
       </div>
 
       <div class="sb-modal-body sb-client-modal-body">
@@ -250,7 +250,6 @@
                   <select class="sb-select" id="frm_id_opco">
                     <option value="">-</option>
                   </select>
-                  <div class="sb-help" id="frm_opco_hint">—</div>
                 </div>
                 <div class="sb-field">
                   <label class="sb-label">Site web OPCO</label>

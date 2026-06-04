@@ -202,7 +202,6 @@
 
   function setOpcoHintFromCurrent(){
     const sel = byId("frm_id_opco");
-    const hint = byId("frm_opco_hint");
     if (!sel || !hint) return;
     const id = sel.value || "";
     if (!id) {
@@ -1333,9 +1332,10 @@
   }
 
   function clearModalHints(){
-    byId("frm_idcc_hint").textContent = "—";
-    byId("frm_ape_hint").textContent = "—";
-    byId("frm_opco_hint").textContent = "—";
+    const idccHint = byId("frm_idcc_hint");
+    const apeHint = byId("frm_ape_hint");
+    if (idccHint) idccHint.textContent = "—";
+    if (apeHint) apeHint.textContent = "—";
   }
 
   async function refreshClientModalLinkedData(portal){
@@ -1394,7 +1394,6 @@
     clearModalHints();
     if (detail?.idcc) byId("frm_idcc_hint").textContent = detail.idcc_libelle || "—";
     if (detail?.code_ape_ent) byId("frm_ape_hint").textContent = detail.code_ape_intitule || "—";
-    if (detail?.opco_nom) byId("frm_opco_hint").textContent = detail.opco_nom || "—";
     updateOpcoSiteLink();
 
     renderClientLogoLocked();
