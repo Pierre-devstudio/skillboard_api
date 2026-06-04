@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from psycopg.rows import dict_row
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from uuid import uuid4
 import re
 import json
@@ -79,6 +79,21 @@ class ClientPayload(BaseModel):
     group_ok: Optional[bool] = None
     profil_structurel: Optional[str] = None
     type_structure: Optional[str] = None
+
+
+class ContactPayload(BaseModel):
+    civ_ca: Optional[str] = None
+    nom_ca: Optional[str] = None
+    prenom_ca: Optional[str] = None
+    role_ca: Optional[str] = None
+    tel_ca: Optional[str] = None
+    tel2_ca: Optional[str] = None
+    mail_ca: Optional[str] = None
+    obs_ca: Optional[str] = None
+    est_principal: Optional[bool] = None
+
+class ContactsFromEffectifsPayload(BaseModel):
+    effectif_ids: List[str] = []
 
 class CommercialPayload(BaseModel):
     offer_code: Optional[str] = None
@@ -1455,6 +1470,485 @@ def update_studio_client(id_owner: str, id_ent: str, payload: ClientPayload, req
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/clients/update error: {e}")
 
+
+
+
+def _normalize_civilite_contact(value: Any) -> str:
+    v = str(value or "-").strip()
+    if v not in ("Mme", "M.", "-"):
+        return "-"
+    return v
+
+
+def _normalize_email(value: Any) -> Optional[str]:
+    v = _normalize_text(value)
+    return v.lower() if v else None
+
+
+def _normalize_nom(value: Any) -> Optional[str]:
+    v = _normalize_text(value)
+    return v.upper() if v else None
+
+
+def _normalize_prenom(value: Any) -> Optional[str]:
+    v = _normalize_text(value)
+    if not v:
+        return None
+    return v[:1].upper() + v[1:].lower()
+
+
+def _contact_row_to_dict(row: dict) -> dict:
+    return {
+        "id_contact": row.get("id_contact"),
+        "id_effectif_client": row.get("id_effectif_client"),
+        "civ_ca": row.get("civ_ca"),
+        "nom_ca": row.get("nom_ca"),
+        "prenom_ca": row.get("prenom_ca"),
+        "role_ca": row.get("role_ca"),
+        "tel_ca": row.get("tel_ca"),
+        "tel2_ca": row.get("tel2_ca"),
+        "mail_ca": row.get("mail_ca"),
+        "obs_ca": row.get("obs_ca"),
+        "est_principal": bool(row.get("est_principal")),
+        "source_contact": "effectif" if row.get("id_effectif_client") else "manuel",
+    }
+
+
+def _fetch_client_contacts(cur, id_ent: str) -> list:
+    cur.execute(
+        """
+        SELECT
+            id_contact,
+            id_effectif_client,
+            civ_ca,
+            nom_ca,
+            prenom_ca,
+            role_ca,
+            tel_ca,
+            tel2_ca,
+            mail_ca,
+            obs_ca,
+            COALESCE(est_principal, FALSE) AS est_principal
+        FROM public.tbl_contact
+        WHERE code_ent = %s
+          AND COALESCE(masque, FALSE) = FALSE
+        ORDER BY COALESCE(est_principal, FALSE) DESC,
+                 lower(COALESCE(nom_ca, '')),
+                 lower(COALESCE(prenom_ca, '')),
+                 id_contact
+        """,
+        (id_ent,),
+    )
+    return [_contact_row_to_dict(r) for r in (cur.fetchall() or [])]
+
+
+def _ensure_contact_scope(cur, id_ent: str, id_contact: str) -> dict:
+    cur.execute(
+        """
+        SELECT
+            id_contact,
+            id_effectif_client,
+            civ_ca,
+            nom_ca,
+            prenom_ca,
+            role_ca,
+            tel_ca,
+            tel2_ca,
+            mail_ca,
+            obs_ca,
+            COALESCE(est_principal, FALSE) AS est_principal
+        FROM public.tbl_contact
+        WHERE id_contact = %s
+          AND code_ent = %s
+          AND COALESCE(masque, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (id_contact, id_ent),
+    )
+    row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Contact introuvable.")
+    return row
+
+
+def _set_unique_principal_contact(cur, id_ent: str, id_contact: Optional[str] = None) -> None:
+    cur.execute(
+        """
+        UPDATE public.tbl_contact
+        SET est_principal = FALSE
+        WHERE code_ent = %s
+          AND COALESCE(masque, FALSE) = FALSE
+          AND (%s IS NULL OR id_contact <> %s)
+        """,
+        (id_ent, id_contact, id_contact),
+    )
+
+
+def _build_contact_values(payload: ContactPayload) -> dict:
+    nom = _normalize_nom(payload.nom_ca)
+    prenom = _normalize_prenom(payload.prenom_ca)
+    if not nom:
+        raise HTTPException(status_code=400, detail="Le nom du contact est obligatoire.")
+    if not prenom:
+        raise HTTPException(status_code=400, detail="Le prénom du contact est obligatoire.")
+
+    return {
+        "civ_ca": _normalize_civilite_contact(payload.civ_ca),
+        "nom_ca": nom,
+        "prenom_ca": prenom,
+        "role_ca": _normalize_text(payload.role_ca),
+        "tel_ca": _normalize_text(payload.tel_ca),
+        "tel2_ca": _normalize_text(payload.tel2_ca),
+        "mail_ca": _normalize_email(payload.mail_ca),
+        "obs_ca": _normalize_text(payload.obs_ca),
+        "est_principal": _normalize_bool(payload.est_principal),
+    }
+
+
+def _sync_linked_effectif_from_contact(cur, id_ent: str, id_effectif: Optional[str], values: dict) -> None:
+    if not id_effectif:
+        return
+    cur.execute(
+        """
+        UPDATE public.tbl_effectif_client
+        SET civilite_effectif = %s,
+            nom_effectif = %s,
+            prenom_effectif = %s,
+            email_effectif = %s,
+            telephone_effectif = %s,
+            telephone2_effectif = %s,
+            dernier_update = NOW()
+        WHERE id_effectif = %s
+          AND id_ent = %s
+          AND COALESCE(archive, FALSE) = FALSE
+        """,
+        (
+            values.get("civ_ca"),
+            values.get("nom_ca"),
+            values.get("prenom_ca"),
+            values.get("mail_ca"),
+            values.get("tel_ca"),
+            values.get("tel2_ca"),
+            id_effectif,
+            id_ent,
+        ),
+    )
+
+
+@router.get("/studio/clients/{id_owner}/{id_ent}/contacts")
+def get_studio_client_contacts(id_owner: str, id_ent: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "supervisor")
+                if not _structure_exists_for_owner(cur, oid, id_ent):
+                    raise HTTPException(status_code=404, detail="Structure introuvable.")
+                return {"items": _fetch_client_contacts(cur, id_ent)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/contacts error: {e}")
+
+
+@router.get("/studio/clients/{id_owner}/{id_ent}/contacts/effectifs-disponibles")
+def get_studio_client_contact_effectifs(id_owner: str, id_ent: str, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "supervisor")
+                if not _structure_exists_for_owner(cur, oid, id_ent):
+                    raise HTTPException(status_code=404, detail="Structure introuvable.")
+
+                cur.execute(
+                    """
+                    SELECT
+                        ec.id_effectif,
+                        ec.civilite_effectif,
+                        ec.nom_effectif,
+                        ec.prenom_effectif,
+                        ec.email_effectif,
+                        ec.telephone_effectif,
+                        ec.telephone2_effectif,
+                        COALESCE(fp.intitule_poste, '') AS role_effectif
+                    FROM public.tbl_effectif_client ec
+                    LEFT JOIN public.tbl_fiche_poste fp
+                      ON fp.id_poste = ec.id_poste_actuel
+                     AND COALESCE(fp.actif, TRUE) = TRUE
+                    WHERE ec.id_ent = %s
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND COALESCE(ec.statut_actif, TRUE) = TRUE
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM public.tbl_contact c
+                          WHERE c.code_ent = ec.id_ent
+                            AND COALESCE(c.masque, FALSE) = FALSE
+                            AND (
+                                c.id_effectif_client = ec.id_effectif
+                                OR (
+                                    c.mail_ca IS NOT NULL
+                                    AND ec.email_effectif IS NOT NULL
+                                    AND lower(c.mail_ca) = lower(ec.email_effectif)
+                                )
+                            )
+                      )
+                    ORDER BY lower(ec.nom_effectif), lower(ec.prenom_effectif), ec.id_effectif
+                    """,
+                    (id_ent,),
+                )
+                rows = cur.fetchall() or []
+                items = []
+                for r in rows:
+                    items.append({
+                        "id_effectif": r.get("id_effectif"),
+                        "civilite_effectif": r.get("civilite_effectif"),
+                        "nom_effectif": r.get("nom_effectif"),
+                        "prenom_effectif": r.get("prenom_effectif"),
+                        "email_effectif": r.get("email_effectif"),
+                        "telephone_effectif": r.get("telephone_effectif"),
+                        "telephone2_effectif": r.get("telephone2_effectif"),
+                        "role_effectif": r.get("role_effectif"),
+                    })
+                return {"items": items}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/contacts/effectifs error: {e}")
+
+
+@router.post("/studio/clients/{id_owner}/{id_ent}/contacts/from-effectifs")
+def create_studio_client_contacts_from_effectifs(id_owner: str, id_ent: str, payload: ContactsFromEffectifsPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    ids = [str(x or "").strip() for x in (payload.effectif_ids or []) if str(x or "").strip()]
+    ids = list(dict.fromkeys(ids))
+    if not ids:
+        raise HTTPException(status_code=400, detail="Aucun effectif sélectionné.")
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "supervisor")
+                if not _structure_exists_for_owner(cur, oid, id_ent):
+                    raise HTTPException(status_code=404, detail="Structure introuvable.")
+
+                cur.execute(
+                    """
+                    SELECT
+                        ec.id_effectif,
+                        ec.civilite_effectif,
+                        ec.nom_effectif,
+                        ec.prenom_effectif,
+                        ec.email_effectif,
+                        ec.telephone_effectif,
+                        ec.telephone2_effectif,
+                        COALESCE(fp.intitule_poste, '') AS role_effectif
+                    FROM public.tbl_effectif_client ec
+                    LEFT JOIN public.tbl_fiche_poste fp
+                      ON fp.id_poste = ec.id_poste_actuel
+                     AND COALESCE(fp.actif, TRUE) = TRUE
+                    WHERE ec.id_ent = %s
+                      AND ec.id_effectif = ANY(%s)
+                      AND COALESCE(ec.archive, FALSE) = FALSE
+                      AND COALESCE(ec.statut_actif, TRUE) = TRUE
+                    """,
+                    (id_ent, ids),
+                )
+                rows = cur.fetchall() or []
+                if not rows:
+                    raise HTTPException(status_code=400, detail="Aucun effectif actif éligible.")
+
+                for r in rows:
+                    cur.execute(
+                        """
+                        SELECT 1
+                        FROM public.tbl_contact c
+                        WHERE c.code_ent = %s
+                          AND COALESCE(c.masque, FALSE) = FALSE
+                          AND (
+                              c.id_effectif_client = %s
+                              OR (
+                                  c.mail_ca IS NOT NULL
+                                  AND %s IS NOT NULL
+                                  AND lower(c.mail_ca) = lower(%s)
+                              )
+                          )
+                        LIMIT 1
+                        """,
+                        (id_ent, r.get("id_effectif"), r.get("email_effectif"), r.get("email_effectif")),
+                    )
+                    if cur.fetchone() is not None:
+                        continue
+
+                    cur.execute(
+                        """
+                        INSERT INTO public.tbl_contact
+                            (id_contact, code_ent, civ_ca, nom_ca, prenom_ca, role_ca, tel_ca, tel2_ca, mail_ca, obs_ca, created_at, masque, est_principal, id_effectif_client)
+                        VALUES
+                            (%s, %s, %s, %s, %s, %s, %s, %s, %s, NULL, CURRENT_DATE, FALSE, FALSE, %s)
+                        """,
+                        (
+                            str(uuid4()),
+                            id_ent,
+                            _normalize_civilite_contact(r.get("civilite_effectif")),
+                            _normalize_nom(r.get("nom_effectif")),
+                            _normalize_prenom(r.get("prenom_effectif")),
+                            _normalize_text(r.get("role_effectif")),
+                            _normalize_text(r.get("telephone_effectif")),
+                            _normalize_text(r.get("telephone2_effectif")),
+                            _normalize_email(r.get("email_effectif")),
+                            r.get("id_effectif"),
+                        ),
+                    )
+
+                conn.commit()
+                return {"items": _fetch_client_contacts(cur, id_ent)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/contacts/from-effectifs error: {e}")
+
+
+@router.post("/studio/clients/{id_owner}/{id_ent}/contacts/manual")
+def create_studio_client_contact_manual(id_owner: str, id_ent: str, payload: ContactPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        values = _build_contact_values(payload)
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "supervisor")
+                if not _structure_exists_for_owner(cur, oid, id_ent):
+                    raise HTTPException(status_code=404, detail="Structure introuvable.")
+
+                if values.get("est_principal"):
+                    _set_unique_principal_contact(cur, id_ent)
+
+                id_effectif = str(uuid4())
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_effectif_client
+                        (id_effectif, id_ent, nom_effectif, prenom_effectif, civilite_effectif,
+                         email_effectif, telephone_effectif, telephone2_effectif, statut_actif,
+                         archive, date_creation, dernier_update, is_temp)
+                    VALUES
+                        (%s, %s, %s, %s, %s, %s, %s, %s, TRUE, FALSE, CURRENT_DATE, NOW(), FALSE)
+                    """,
+                    (
+                        id_effectif,
+                        id_ent,
+                        values.get("nom_ca"),
+                        values.get("prenom_ca"),
+                        values.get("civ_ca"),
+                        values.get("mail_ca"),
+                        values.get("tel_ca"),
+                        values.get("tel2_ca"),
+                    ),
+                )
+
+                cur.execute(
+                    """
+                    INSERT INTO public.tbl_contact
+                        (id_contact, code_ent, civ_ca, nom_ca, prenom_ca, role_ca, tel_ca, tel2_ca, mail_ca, obs_ca, created_at, masque, est_principal, id_effectif_client)
+                    VALUES
+                        (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_DATE, FALSE, %s, %s)
+                    """,
+                    (
+                        str(uuid4()),
+                        id_ent,
+                        values.get("civ_ca"),
+                        values.get("nom_ca"),
+                        values.get("prenom_ca"),
+                        values.get("role_ca"),
+                        values.get("tel_ca"),
+                        values.get("tel2_ca"),
+                        values.get("mail_ca"),
+                        values.get("obs_ca"),
+                        values.get("est_principal"),
+                        id_effectif,
+                    ),
+                )
+
+                conn.commit()
+                return {"items": _fetch_client_contacts(cur, id_ent)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/contacts/manual error: {e}")
+
+
+@router.post("/studio/clients/{id_owner}/{id_ent}/contacts/{id_contact}")
+def update_studio_client_contact(id_owner: str, id_ent: str, id_contact: str, payload: ContactPayload, request: Request):
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        values = _build_contact_values(payload)
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "supervisor")
+                if not _structure_exists_for_owner(cur, oid, id_ent):
+                    raise HTTPException(status_code=404, detail="Structure introuvable.")
+
+                row = _ensure_contact_scope(cur, id_ent, id_contact)
+                if values.get("est_principal"):
+                    _set_unique_principal_contact(cur, id_ent, id_contact)
+
+                cur.execute(
+                    """
+                    UPDATE public.tbl_contact
+                    SET civ_ca = %s,
+                        nom_ca = %s,
+                        prenom_ca = %s,
+                        role_ca = %s,
+                        tel_ca = %s,
+                        tel2_ca = %s,
+                        mail_ca = %s,
+                        obs_ca = %s,
+                        est_principal = %s
+                    WHERE id_contact = %s
+                      AND code_ent = %s
+                      AND COALESCE(masque, FALSE) = FALSE
+                    """,
+                    (
+                        values.get("civ_ca"),
+                        values.get("nom_ca"),
+                        values.get("prenom_ca"),
+                        values.get("role_ca"),
+                        values.get("tel_ca"),
+                        values.get("tel2_ca"),
+                        values.get("mail_ca"),
+                        values.get("obs_ca"),
+                        values.get("est_principal"),
+                        id_contact,
+                        id_ent,
+                    ),
+                )
+
+                _sync_linked_effectif_from_contact(cur, id_ent, row.get("id_effectif_client"), values)
+                conn.commit()
+                return {"items": _fetch_client_contacts(cur, id_ent)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/contacts/update error: {e}")
 
 @router.post("/studio/clients/{id_owner}/{id_ent}/archive")
 def archive_studio_client(id_owner: str, id_ent: str, request: Request):

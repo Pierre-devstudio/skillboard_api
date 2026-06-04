@@ -2484,3 +2484,142 @@
   font-weight:700;
   line-height:1;
 }
+/* ======================================================
+   Studio CLIENTS – modal fiche client / site
+   ====================================================== */
+
+.sb-client-modal-card{
+  width:min(1120px, calc(100vw - 28px));
+  max-height:calc(100vh - 28px);
+}
+
+.sb-client-modal-body{
+  padding-top:10px;
+}
+
+.sb-client-tabbar{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  padding:0 16px 10px 16px;
+  border-bottom:1px solid rgba(17,24,39,.08);
+}
+
+.sb-client-tab{
+  border:1px solid rgba(var(--sb-accent-rgb), .45);
+  background:rgba(var(--sb-accent-rgb), .16);
+  color:#111827;
+  border-radius:999px;
+  padding:8px 12px;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.sb-client-tab.is-active{
+  background:var(--accent);
+  border-color:var(--accent);
+  color:#111827;
+}
+
+.sb-client-panel{
+  display:none;
+}
+
+.sb-client-panel.is-active{
+  display:block;
+}
+
+.sb-client-modal-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.sb-client-modal-section{
+  border:1px solid rgba(17,24,39,.08);
+  border-radius:14px;
+}
+
+.sb-client-modal-section .card-title{
+  margin:0;
+  font-size:15px;
+}
+
+.sb-client-read-value{
+  min-height:38px;
+  display:flex;
+  align-items:center;
+  padding:8px 10px;
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:10px;
+  background:#f8fafc;
+  box-sizing:border-box;
+  color:#475569;
+  font-size:13px;
+}
+
+.sb-client-inline-link{
+  color:#111827;
+  font-weight:700;
+  text-decoration:none;
+}
+
+.sb-client-inline-link:hover{
+  text-decoration:underline;
+}
+
+.sb-client-logo-card .sb-logo-preview{
+  width:220px;
+}
+
+.sb-client-contact-locked{
+  margin-top:10px;
+  padding:10px 12px;
+  border:1px solid rgba(var(--sb-accent-rgb), .40);
+  border-radius:12px;
+  background:rgba(var(--sb-accent-rgb), .12);
+  color:#475569;
+  font-size:13px;
+}
+
+.sb-client-contact-table td,
+.sb-client-contact-select-table td{
+  font-size:13px;
+}
+
+.sb-client-contact-name{
+  font-weight:600;
+  color:#111827;
+}
+
+.sb-client-contact-modal-card{
+  width:min(980px, calc(100vw - 28px));
+  max-height:calc(100vh - 28px);
+}
+
+.sb-save-inline-msg.is-error{
+  color:#b42318;
+}
+
+@media (max-width: 960px){
+  .sb-client-modal-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+@media (max-width: 720px){
+  .sb-client-tabbar{
+    padding-left:12px;
+    padding-right:12px;
+  }
+
+  .sb-client-tab{
+    flex:1 1 100%;
+    justify-content:center;
+  }
+
+  .sb-client-logo-card .sb-logo-preview{
+    width:100%;
+  }
+}

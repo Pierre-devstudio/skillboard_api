@@ -20,6 +20,13 @@
   let _commercialOffers = [];
   let _commercialClientId = null;
   let _commercialHasRights = false;
+  let _clientLogoMeta = { has_logo: false };
+  let _clientLogoBlobUrl = "";
+  let _clientContacts = [];
+  let _contactAvailableEffectifs = [];
+  let _contactManualVisible = false;
+  let _editingContactId = null;
+  let _publicLookupLoading = false;
 
   function byId(id){ return document.getElementById(id); }
 
@@ -106,22 +113,35 @@
     return digits.slice(0, 2) + "." + digits.slice(2);
   }
 
+  function isHoldingProfile(value){
+    const v = (value || "").toString().trim().toLowerCase();
+    return v === "holding_multi_entreprise" || v === "holding_multi_entreprise_multi_site";
+  }
+
   function syncGroupFields(){
-    const enabled = !!byId("frm_group_ok")?.checked;
+    const profil = byId("frm_profil_structurel")?.value || "";
+    const canUseGroup = isHoldingProfile(profil);
+    const group = byId("frm_group_ok");
+    const enabled = canUseGroup && !!group?.checked;
     const nom = byId("frm_nom_groupe");
     const type = byId("frm_type_groupe");
     const tete = byId("frm_tete_groupe");
-    const wrapNom = byId("frmGroupNomWrap");
-    const wrapType = byId("frmGroupTypeWrap");
+    const fields = Array.from(document.querySelectorAll(".js-client-group-field"));
 
+    if (group) {
+      group.disabled = !canUseGroup;
+      if (!canUseGroup) group.checked = false;
+    }
     if (nom) nom.disabled = !enabled;
     if (type) type.disabled = !enabled;
     if (tete) {
       tete.disabled = !enabled;
       if (!enabled) tete.checked = false;
     }
-    if (wrapNom) wrapNom.style.opacity = enabled ? "1" : ".6";
-    if (wrapType) wrapType.style.opacity = enabled ? "1" : ".6";
+
+    fields.forEach(el => {
+      el.style.opacity = canUseGroup ? "1" : ".55";
+    });
 
     if (!enabled) {
       if (nom) nom.value = "";
@@ -129,16 +149,47 @@
     }
   }
 
+
   async function loadRefOpco(portal){
     if (_refOpco) return _refOpco;
-    _refOpco = await portal.apiJson(`${portal.apiBase}/studio/referentiels/opco`);
+    const data = await portal.apiJson(`${portal.apiBase}/studio/referentiels/opco/${encodeURIComponent(getOwnerId())}`);
+    _refOpco = Array.isArray(data?.items) ? data.items : (Array.isArray(data) ? data : []);
     return _refOpco;
+  }
+
+  function normalizeWebUrl(value){
+    const raw = (value || "").toString().trim();
+    if (!raw) return "";
+    if (/^https?:\/\//i.test(raw)) return raw;
+    return `https://${raw}`;
+  }
+
+  function updateOpcoSiteLink(){
+    const sel = byId("frm_id_opco");
+    const link = byId("frm_opco_site_link");
+    const empty = byId("frm_opco_site_empty");
+    if (!sel || !link || !empty) return;
+
+    const id = sel.value || "";
+    const item = (_refOpco || []).find(x => (x.id_opco || "") === id);
+    const url = normalizeWebUrl(item?.site_web || "");
+
+    if (!url) {
+      link.href = "#";
+      link.classList.add("is-hidden");
+      empty.classList.remove("is-hidden");
+      return;
+    }
+
+    link.href = url;
+    link.classList.remove("is-hidden");
+    empty.classList.add("is-hidden");
   }
 
   function renderOpcoSelect(list, selectedId){
     const sel = byId("frm_id_opco");
     if (!sel) return;
-    sel.innerHTML = `<option value="">(Non renseigné)</option>`;
+    sel.innerHTML = `<option value="">-</option>`;
     (list || []).forEach(it => {
       const opt = document.createElement("option");
       opt.value = it.id_opco;
@@ -156,10 +207,12 @@
     const id = sel.value || "";
     if (!id) {
       hint.textContent = "—";
+      updateOpcoSiteLink();
       return;
     }
     const item = (_refOpco || []).find(x => x.id_opco === id);
     hint.textContent = item ? (item.nom_opco || "—") : "—";
+    updateOpcoSiteLink();
   }
 
   async function lookupIdcc(portal, idcc){
@@ -192,6 +245,485 @@
     } catch (_) {
       hint.textContent = "Code APE invalide ou introuvable";
     }
+  }
+
+
+  function setClientInlineMsg(id, msg, isError){
+    const el = byId(id);
+    if (!el) return;
+    el.textContent = msg || "";
+    el.classList.toggle("is-error", !!isError);
+  }
+
+  function setClientTab(tab){
+    const safe = tab || "identification";
+    document.querySelectorAll("#clientModal [data-client-tab]").forEach(btn => {
+      btn.classList.toggle("is-active", btn.dataset.clientTab === safe);
+    });
+    document.querySelectorAll("#clientModal [data-client-panel]").forEach(panel => {
+      panel.classList.toggle("is-active", panel.dataset.clientPanel === safe);
+    });
+  }
+
+  function normalizeSiretSiren(value){
+    return (value || "").toString().replace(/\D+/g, "").slice(0, 14);
+  }
+
+  function setInputValueIfPresent(id, value){
+    const el = byId(id);
+    const v = (value ?? "").toString().trim();
+    if (!el || !v) return;
+    el.value = v;
+  }
+
+  function setSelectValueIfPresent(id, value){
+    const el = byId(id);
+    const v = (value ?? "").toString().trim();
+    if (!el || !v) return;
+    el.value = v;
+  }
+
+  function buildPublicClientQuery(){
+    const siret = normalizeSiretSiren(byId("frm_siret_ent")?.value);
+    if (siret.length === 14 || siret.length === 9) return siret;
+    return (byId("frm_nom_ent")?.value || "").toString().trim();
+  }
+
+  async function fetchPublicCompanyData(portal, query){
+    const qs = new URLSearchParams();
+    qs.set("q", query);
+    const data = await portal.apiJson(
+      `${portal.apiBase}/studio/referentiels/entreprises-publiques/${encodeURIComponent(getOwnerId())}?${qs.toString()}`
+    );
+    return data?.item || null;
+  }
+
+  function applyPublicCompanyToClientForm(item){
+    if (!item) return;
+
+    setInputValueIfPresent("frm_nom_ent", item.nom_ent);
+    setInputValueIfPresent("frm_siret_ent", item.siret_ent);
+    setInputValueIfPresent("frm_date_creation", item.date_creation);
+    setSelectValueIfPresent("frm_effectif_ent", item.effectif_ent);
+
+    setInputValueIfPresent("frm_adresse_ent", item.adresse_ent);
+    setInputValueIfPresent("frm_adresse_cplt_ent", item.adresse_cplt_ent);
+    setInputValueIfPresent("frm_cp_ent", item.cp_ent);
+    setInputValueIfPresent("frm_ville_ent", item.ville_ent);
+    setInputValueIfPresent("frm_pays_ent", item.pays_ent);
+
+    setInputValueIfPresent("frm_idcc", item.idcc);
+    byId("frm_idcc_hint").textContent = item.idcc_libelle || "—";
+    setInputValueIfPresent("frm_code_ape_ent", formatApeInput(item.code_ape_ent));
+    byId("frm_ape_hint").textContent = item.code_ape_intitule || "—";
+  }
+
+  async function loadPublicCompanyIntoClientForm(portal){
+    if (_publicLookupLoading) return;
+
+    const query = buildPublicClientQuery();
+    if (!query) {
+      setClientInlineMsg("clientModalSaveMsg", "Renseigne au moins un SIRET, un SIREN ou un nom avant de charger les données officielles.", true);
+      return;
+    }
+
+    const btn = byId("btnClientLoadPublicData");
+    const initialText = btn?.textContent || "Charger les données officielles";
+
+    try {
+      _publicLookupLoading = true;
+      setClientInlineMsg("clientModalSaveMsg", "", false);
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Chargement...";
+      }
+
+      const item = await fetchPublicCompanyData(portal, query);
+      if (!item) throw new Error("Aucune donnée publique récupérable.");
+
+      applyPublicCompanyToClientForm(item);
+      setClientTab("identification");
+    } catch (e) {
+      setClientInlineMsg("clientModalSaveMsg", e.message || "Impossible de charger les données officielles.", true);
+    } finally {
+      _publicLookupLoading = false;
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = initialText;
+      }
+    }
+  }
+
+  async function getStudioAccessToken(){
+    try {
+      if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
+        const session = await window.PortalAuthCommon.getSession();
+        return session && session.access_token ? String(session.access_token) : "";
+      }
+    } catch (_) {}
+    return "";
+  }
+
+  async function fetchWithStudioAuth(url, options){
+    const opts = Object.assign({}, options || {});
+    const headers = new Headers(opts.headers || {});
+    const token = await getStudioAccessToken();
+    if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`);
+    opts.headers = headers;
+    const resp = await fetch(url, opts);
+    if (!resp.ok) {
+      let msg = `Erreur HTTP ${resp.status}`;
+      try {
+        const data = await resp.json();
+        msg = data?.detail || data?.message || msg;
+      } catch (_) {}
+      throw new Error(msg);
+    }
+    return resp;
+  }
+
+  function clearClientLogoBlob(){
+    if (_clientLogoBlobUrl) {
+      try { URL.revokeObjectURL(_clientLogoBlobUrl); } catch (_) {}
+      _clientLogoBlobUrl = "";
+    }
+  }
+
+  function formatLogoBytes(size){
+    const n = Number(size || 0);
+    if (!n) return "";
+    if (n < 1024) return `${n} o`;
+    if (n < 1024 * 1024) return `${Math.round(n / 1024)} Ko`;
+    return `${(n / (1024 * 1024)).toFixed(1)} Mo`;
+  }
+
+  function renderClientLogoLocked(){
+    const img = byId("clientLogoImg");
+    const empty = byId("clientLogoEmpty");
+    const meta = byId("clientLogoMeta");
+    clearClientLogoBlob();
+    if (img) {
+      img.removeAttribute("src");
+      img.style.display = "none";
+    }
+    if (empty) {
+      empty.textContent = _modalClientId ? "Aucun logo enregistré." : "Enregistrez d’abord la structure pour importer un logo.";
+      empty.style.display = "block";
+    }
+    if (meta) meta.textContent = _modalClientId ? "Le logo sera réutilisé dans les sorties PDF de cette structure." : "Logo disponible après le premier enregistrement.";
+    const disabled = !_modalClientId;
+    if (byId("btnClientUploadLogo")) byId("btnClientUploadLogo").disabled = disabled;
+    if (byId("btnClientRemoveLogo")) byId("btnClientRemoveLogo").disabled = disabled || !_clientLogoMeta?.has_logo;
+  }
+
+  async function loadClientLogoMeta(portal){
+    if (!_modalClientId) {
+      _clientLogoMeta = { has_logo: false };
+      renderClientLogoLocked();
+      return _clientLogoMeta;
+    }
+
+    try {
+      _clientLogoMeta = await portal.apiJson(
+        `${portal.apiBase}/studio/data/client-logo-meta/${encodeURIComponent(getOwnerId())}/${encodeURIComponent(_modalClientId)}`
+      );
+    } catch (_) {
+      _clientLogoMeta = { has_logo: false };
+    }
+    return _clientLogoMeta;
+  }
+
+  async function renderClientLogo(portal){
+    const img = byId("clientLogoImg");
+    const empty = byId("clientLogoEmpty");
+    const meta = byId("clientLogoMeta");
+    renderClientLogoLocked();
+
+    if (!_modalClientId || !_clientLogoMeta?.has_logo) return;
+
+    if (empty) {
+      empty.textContent = "Chargement du logo…";
+      empty.style.display = "block";
+    }
+
+    try {
+      const stamp = encodeURIComponent(_clientLogoMeta.date_maj || Date.now());
+      const resp = await fetchWithStudioAuth(
+        `${portal.apiBase}/studio/data/client-logo/${encodeURIComponent(getOwnerId())}/${encodeURIComponent(_modalClientId)}?v=${stamp}`
+      );
+      const blob = await resp.blob();
+      clearClientLogoBlob();
+      _clientLogoBlobUrl = URL.createObjectURL(blob);
+      if (img) {
+        img.src = _clientLogoBlobUrl;
+        img.style.display = "block";
+      }
+      if (empty) empty.style.display = "none";
+
+      const parts = [];
+      if (_clientLogoMeta.filename) parts.push(_clientLogoMeta.filename);
+      if (_clientLogoMeta.mime_type) parts.push(String(_clientLogoMeta.mime_type).replace("image/", "").toUpperCase());
+      if (_clientLogoMeta.size_bytes) parts.push(formatLogoBytes(_clientLogoMeta.size_bytes));
+      if (meta) meta.textContent = parts.length ? parts.join(" · ") : "Logo enregistré.";
+    } catch (e) {
+      if (empty) {
+        empty.textContent = e.message || "Impossible d’afficher le logo.";
+        empty.style.display = "block";
+      }
+    }
+  }
+
+  async function refreshClientLogo(portal){
+    await loadClientLogoMeta(portal);
+    await renderClientLogo(portal);
+  }
+
+  async function uploadClientLogo(portal, file){
+    if (!_modalClientId || !file) return;
+    const name = (file.name || "").toLowerCase();
+    const type = (file.type || "").toLowerCase();
+    const okType = type === "image/png" || type === "image/jpeg" || name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg");
+    if (!okType) throw new Error("Format logo non supporté. Utilise un fichier PNG ou JPG.");
+    if (file.size > 2 * 1024 * 1024) throw new Error("Logo trop lourd. Limite : 2 Mo.");
+
+    const fd = new FormData();
+    fd.append("file", file, file.name || "logo");
+    const resp = await fetchWithStudioAuth(
+      `${portal.apiBase}/studio/data/client-logo/${encodeURIComponent(getOwnerId())}/${encodeURIComponent(_modalClientId)}`,
+      { method: "POST", body: fd }
+    );
+    const data = await resp.json().catch(() => null);
+    _clientLogoMeta = data?.logo || { has_logo: true };
+    await renderClientLogo(portal);
+  }
+
+  async function removeClientLogo(portal){
+    if (!_modalClientId) return;
+    const resp = await fetchWithStudioAuth(
+      `${portal.apiBase}/studio/data/client-logo/${encodeURIComponent(getOwnerId())}/${encodeURIComponent(_modalClientId)}/archive`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }
+    );
+    const data = await resp.json().catch(() => null);
+    _clientLogoMeta = data?.logo || { has_logo: false };
+    await renderClientLogo(portal);
+  }
+
+  function fullContactName(c){
+    return [c.civ_ca, c.prenom_ca, c.nom_ca].filter(Boolean).join(" ").trim() || "—";
+  }
+
+  function renderClientContacts(){
+    const locked = byId("clientContactsLocked");
+    const wrap = byId("clientContactsTableWrap");
+    const btn = byId("btnClientContactAdd");
+    const sub = byId("clientContactsSub");
+    const body = byId("clientContactsBody");
+    const hasId = !!_modalClientId;
+
+    if (locked) locked.classList.toggle("is-hidden", hasId);
+    if (wrap) wrap.classList.toggle("is-hidden", !hasId);
+    if (btn) btn.disabled = !hasId;
+    if (sub) sub.textContent = hasId ? `${_clientContacts.length} contact(s) administratif(s).` : "Enregistrez d’abord la structure pour ajouter des contacts.";
+    if (!body) return;
+
+    if (!hasId) {
+      body.innerHTML = "";
+      return;
+    }
+
+    if (!_clientContacts.length) {
+      body.innerHTML = `<tr><td colspan="5" class="muted">Aucun contact administratif enregistré.</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = _clientContacts.map(c => {
+      const telParts = [c.tel_ca, c.tel2_ca].filter(Boolean).map(esc);
+      const coord = [c.mail_ca ? esc(c.mail_ca) : "", telParts.join(" / ")].filter(Boolean).join("<br>") || "—";
+      const principal = c.est_principal ? `<span class="sb-badge sb-badge--accent-soft">Contact principal</span>` : `<span class="muted">—</span>`;
+      return `
+        <tr data-contact-id="${esc(c.id_contact)}">
+          <td><div class="sb-client-contact-name">${esc(fullContactName(c))}</div></td>
+          <td>${esc(c.role_ca || "—")}</td>
+          <td>${coord}</td>
+          <td>${principal}</td>
+          <td class="sb-table-action-cell">
+            <div class="sb-icon-actions">
+              <button type="button" class="sb-icon-btn" data-contact-action="edit" data-id="${esc(c.id_contact)}" title="Modifier" aria-label="Modifier">
+                ${getPencilIconSvg()}
+              </button>
+            </div>
+          </td>
+        </tr>`;
+    }).join("");
+  }
+
+  async function loadClientContacts(portal){
+    if (!_modalClientId) {
+      _clientContacts = [];
+      renderClientContacts();
+      return;
+    }
+    const data = await portal.apiJson(
+      `${portal.apiBase}/studio/clients/${encodeURIComponent(getOwnerId())}/${encodeURIComponent(_modalClientId)}/contacts`
+    );
+    _clientContacts = Array.isArray(data?.items) ? data.items : [];
+    renderClientContacts();
+  }
+
+  function renderContactEffectifChoices(){
+    const body = byId("clientContactEffectifBody");
+    if (!body) return;
+    const q = (byId("clientContactSearch")?.value || "").toString().trim().toLowerCase();
+    const rows = (_contactAvailableEffectifs || []).filter(it => {
+      if (!q) return true;
+      return [it.nom_effectif, it.prenom_effectif, it.email_effectif, it.role_effectif]
+        .join(" ").toLowerCase().includes(q);
+    });
+
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="4" class="muted">Aucun effectif disponible.</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = rows.map(it => `
+      <tr>
+        <td><input type="checkbox" class="js-contact-effectif-check" value="${esc(it.id_effectif)}" /></td>
+        <td>${esc([it.prenom_effectif, it.nom_effectif].filter(Boolean).join(" ") || "—")}</td>
+        <td>${esc(it.role_effectif || "—")}</td>
+        <td>${esc(it.email_effectif || "—")}</td>
+      </tr>
+    `).join("");
+  }
+
+  async function loadContactAvailableEffectifs(portal){
+    const data = await portal.apiJson(
+      `${portal.apiBase}/studio/clients/${encodeURIComponent(getOwnerId())}/${encodeURIComponent(_modalClientId)}/contacts/effectifs-disponibles`
+    );
+    _contactAvailableEffectifs = Array.isArray(data?.items) ? data.items : [];
+    renderContactEffectifChoices();
+  }
+
+  function setContactManualVisible(visible){
+    _contactManualVisible = !!visible;
+    byId("clientContactManualCard")?.classList.toggle("is-hidden", !_contactManualVisible);
+    byId("btnClientContactAddSelected")?.classList.toggle("is-hidden", _contactManualVisible);
+    byId("btnClientContactManualSave")?.classList.toggle("is-hidden", !_contactManualVisible);
+    const btn = byId("btnClientContactManualToggle");
+    if (btn) btn.textContent = _contactManualVisible ? "Revenir à la sélection" : "Créer manuellement";
+  }
+
+  function clearManualContactForm(){
+    setValueOrEmpty("contactManualCivilite", "-");
+    ["contactManualNom", "contactManualPrenom", "contactManualRole", "contactManualTel", "contactManualTel2", "contactManualMail", "contactManualObs"].forEach(id => setValueOrEmpty(id, ""));
+    if (byId("contactManualPrincipal")) byId("contactManualPrincipal").checked = false;
+  }
+
+  async function openContactAddModal(portal){
+    if (!_modalClientId) return;
+    setClientInlineMsg("clientContactAddMsg", "", false);
+    clearManualContactForm();
+    setContactManualVisible(false);
+    byId("clientContactSearch").value = "";
+    byId("clientContactAddModal").style.display = "flex";
+    await loadContactAvailableEffectifs(portal);
+  }
+
+  function closeContactAddModal(){
+    byId("clientContactAddModal").style.display = "none";
+  }
+
+  async function addSelectedEffectifsAsContacts(portal){
+    const ids = Array.from(document.querySelectorAll(".js-contact-effectif-check:checked"))
+      .map(x => (x.value || "").trim()).filter(Boolean);
+    if (!ids.length) {
+      setClientInlineMsg("clientContactAddMsg", "Sélectionne au moins un effectif.", true);
+      return;
+    }
+    await portal.apiJson(
+      `${portal.apiBase}/studio/clients/${encodeURIComponent(getOwnerId())}/${encodeURIComponent(_modalClientId)}/contacts/from-effectifs`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ effectif_ids: ids }) }
+    );
+    closeContactAddModal();
+    await loadClientContacts(portal);
+  }
+
+  function collectManualContactPayload(){
+    return {
+      civ_ca: normalizeValue(byId("contactManualCivilite")?.value) || "-",
+      nom_ca: normalizeValue(byId("contactManualNom")?.value),
+      prenom_ca: normalizeValue(byId("contactManualPrenom")?.value),
+      role_ca: normalizeValue(byId("contactManualRole")?.value),
+      tel_ca: normalizeValue(byId("contactManualTel")?.value),
+      tel2_ca: normalizeValue(byId("contactManualTel2")?.value),
+      mail_ca: normalizeValue(byId("contactManualMail")?.value),
+      obs_ca: normalizeValue(byId("contactManualObs")?.value),
+      est_principal: !!byId("contactManualPrincipal")?.checked,
+    };
+  }
+
+  async function createManualContact(portal){
+    const payload = collectManualContactPayload();
+    if (!payload.nom_ca || !payload.prenom_ca) {
+      setClientInlineMsg("clientContactAddMsg", "Nom et prénom sont obligatoires.", true);
+      return;
+    }
+    await portal.apiJson(
+      `${portal.apiBase}/studio/clients/${encodeURIComponent(getOwnerId())}/${encodeURIComponent(_modalClientId)}/contacts/manual`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }
+    );
+    closeContactAddModal();
+    await loadClientContacts(portal);
+  }
+
+  function openContactEditModal(idContact){
+    const c = (_clientContacts || []).find(x => x.id_contact === idContact);
+    if (!c) return;
+    _editingContactId = idContact;
+    setClientInlineMsg("clientContactEditMsg", "", false);
+    setValueOrEmpty("contactEditCivilite", c.civ_ca || "-");
+    setValueOrEmpty("contactEditNom", c.nom_ca || "");
+    setValueOrEmpty("contactEditPrenom", c.prenom_ca || "");
+    setValueOrEmpty("contactEditRole", c.role_ca || "");
+    setValueOrEmpty("contactEditTel", c.tel_ca || "");
+    setValueOrEmpty("contactEditTel2", c.tel2_ca || "");
+    setValueOrEmpty("contactEditMail", c.mail_ca || "");
+    setValueOrEmpty("contactEditObs", c.obs_ca || "");
+    if (byId("contactEditPrincipal")) byId("contactEditPrincipal").checked = !!c.est_principal;
+    byId("clientContactEditModal").style.display = "flex";
+  }
+
+  function closeContactEditModal(){
+    _editingContactId = null;
+    byId("clientContactEditModal").style.display = "none";
+  }
+
+  function collectEditContactPayload(){
+    return {
+      civ_ca: normalizeValue(byId("contactEditCivilite")?.value) || "-",
+      nom_ca: normalizeValue(byId("contactEditNom")?.value),
+      prenom_ca: normalizeValue(byId("contactEditPrenom")?.value),
+      role_ca: normalizeValue(byId("contactEditRole")?.value),
+      tel_ca: normalizeValue(byId("contactEditTel")?.value),
+      tel2_ca: normalizeValue(byId("contactEditTel2")?.value),
+      mail_ca: normalizeValue(byId("contactEditMail")?.value),
+      obs_ca: normalizeValue(byId("contactEditObs")?.value),
+      est_principal: !!byId("contactEditPrincipal")?.checked,
+    };
+  }
+
+  async function saveContactEdit(portal){
+    if (!_editingContactId) return;
+    const payload = collectEditContactPayload();
+    if (!payload.nom_ca || !payload.prenom_ca) {
+      setClientInlineMsg("clientContactEditMsg", "Nom et prénom sont obligatoires.", true);
+      return;
+    }
+    await portal.apiJson(
+      `${portal.apiBase}/studio/clients/${encodeURIComponent(getOwnerId())}/${encodeURIComponent(_modalClientId)}/contacts/${encodeURIComponent(_editingContactId)}`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }
+    );
+    closeContactEditModal();
+    await loadClientContacts(portal);
   }
 
     function renderOwnerCapability(){
@@ -230,8 +762,9 @@
 
   function renderSectionTitle(){
     const el = byId("clientsSectionTitle");
-    if (!el) return;
-    el.textContent = isOwnerMultiSite() ? "Liste des sites" : "Carnet client";
+    if (el) el.textContent = isOwnerMultiSite() ? "Liste des sites" : "Carnet client";
+    const btn = byId("btnClientCreate");
+    if (btn) btn.textContent = isOwnerMultiSite() ? "Ajouter un site" : "Ajouter un client";
   }
 
   function refreshToggleAllButton(totalFiltered){
@@ -805,14 +1338,29 @@
     byId("frm_opco_hint").textContent = "—";
   }
 
+  async function refreshClientModalLinkedData(portal){
+    await Promise.all([
+      refreshClientLogo(portal).catch(() => renderClientLogoLocked()),
+      loadClientContacts(portal).catch(() => {
+        _clientContacts = [];
+        renderClientContacts();
+      }),
+    ]);
+  }
+
   async function openModal(portal, mode, detail){
     _modalMode = mode || "create";
     _modalClientId = detail?.id_ent || null;
+    _clientContacts = [];
+    _clientLogoMeta = { has_logo: false };
+    setClientInlineMsg("clientModalSaveMsg", "", false);
+    setClientTab("identification");
 
-    byId("clientModalTitle").textContent = _modalMode === "create" ? "Ajouter un client" : "Modifier le client";
+    const label = isOwnerMultiSite() ? "site" : "client";
+    byId("clientModalTitle").textContent = _modalMode === "create" ? `Ajouter un ${label}` : `Modifier le ${label}`;
     byId("clientModalSub").textContent = _modalMode === "create"
-      ? "Création d’une fiche entreprise cliente rattachée à l’owner courant."
-      : "Mise à jour de la fiche entreprise cliente.";
+      ? "Création d’une fiche structure rattachée à l’owner courant. Logo et contacts seront disponibles après le premier enregistrement."
+      : "Mise à jour de la fiche structure.";
 
     setValueOrEmpty("frm_nom_ent", detail?.nom_ent);
     setValueOrEmpty("frm_siret_ent", detail?.siret_ent);
@@ -830,6 +1378,7 @@
     setValueOrEmpty("frm_email_ent", detail?.email_ent);
     setValueOrEmpty("frm_site_web", detail?.site_web);
     setValueOrEmpty("frm_num_tva_ent", detail?.num_tva_ent);
+    setValueOrEmpty("frm_profil_structurel", detail?.profil_structurel);
     setValueOrEmpty("frm_nom_groupe", detail?.nom_groupe);
     setValueOrEmpty("frm_type_groupe", detail?.type_groupe);
 
@@ -846,11 +1395,20 @@
     if (detail?.idcc) byId("frm_idcc_hint").textContent = detail.idcc_libelle || "—";
     if (detail?.code_ape_ent) byId("frm_ape_hint").textContent = detail.code_ape_intitule || "—";
     if (detail?.opco_nom) byId("frm_opco_hint").textContent = detail.opco_nom || "—";
+    updateOpcoSiteLink();
 
+    renderClientLogoLocked();
+    renderClientContacts();
     byId("clientModal").style.display = "flex";
+
+    if (_modalClientId) {
+      await refreshClientModalLinkedData(portal);
+    }
   }
 
+
   function closeModal(){
+    clearClientLogoBlob();
     byId("clientModal").style.display = "none";
   }
 
@@ -873,6 +1431,7 @@
       site_web: normalizeValue(byId("frm_site_web")?.value),
       num_tva_ent: normalizeValue(byId("frm_num_tva_ent")?.value),
       id_opco: normalizeValue(byId("frm_id_opco")?.value),
+      profil_structurel: normalizeValue(byId("frm_profil_structurel")?.value),
       group_ok: !!byId("frm_group_ok")?.checked,
       tete_groupe: !!byId("frm_tete_groupe")?.checked,
       nom_groupe: normalizeValue(byId("frm_nom_groupe")?.value),
@@ -884,7 +1443,8 @@
     const ownerId = getOwnerId();
     const payload = collectFormPayload();
     if (!payload.nom_ent) {
-      portal.showAlert("error", "Le nom de l’entreprise est obligatoire.");
+      setClientInlineMsg("clientModalSaveMsg", "Le nom de l’entreprise est obligatoire.", true);
+      setClientTab("identification");
       return;
     }
 
@@ -899,6 +1459,10 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
+        _modalMode = "edit";
+        _modalClientId = detail?.id_ent || null;
+        byId("clientModalTitle").textContent = isOwnerMultiSite() ? "Modifier le site" : "Modifier le client";
+        byId("clientModalSub").textContent = "Structure enregistrée. Logo et contacts sont maintenant disponibles.";
       } else {
         detail = await portal.apiJson(`${portal.apiBase}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(_modalClientId)}`, {
           method: "POST",
@@ -907,15 +1471,18 @@
         });
       }
 
-      closeModal();
+      setClientInlineMsg("clientModalSaveMsg", "Enregistré avec succès", false);
       portal.showAlert("", "");
       await loadList(portal, detail?.id_ent || _modalClientId);
+      await refreshClientModalLinkedData(portal);
+      window.setTimeout(() => setClientInlineMsg("clientModalSaveMsg", "", false), 5000);
     } catch (e) {
-      portal.showAlert("error", e.message || String(e));
+      setClientInlineMsg("clientModalSaveMsg", e.message || String(e), true);
     } finally {
       if (btn) btn.disabled = false;
     }
   }
+
 
   async function archiveSelected(portal){
     if (!_selectedId || !_selectedDetail) return;
@@ -1019,6 +1586,73 @@
     byId("btnClientModalCancel")?.addEventListener("click", closeModal);
     byId("btnClientModalSave")?.addEventListener("click", async () => { await saveModal(portal); });
 
+    document.querySelectorAll("#clientModal [data-client-tab]").forEach(btn => {
+      btn.addEventListener("click", () => setClientTab(btn.dataset.clientTab || "identification"));
+    });
+
+    byId("btnClientLoadPublicData")?.addEventListener("click", async () => {
+      await loadPublicCompanyIntoClientForm(portal);
+    });
+
+    byId("btnClientUploadLogo")?.addEventListener("click", () => {
+      if (!_modalClientId) return;
+      byId("clientLogoFileInput")?.click();
+    });
+
+    byId("clientLogoFileInput")?.addEventListener("change", async (ev) => {
+      const file = ev.target?.files?.[0] || null;
+      if (!file) return;
+      try {
+        setClientInlineMsg("clientModalSaveMsg", "", false);
+        await uploadClientLogo(portal, file);
+      } catch (e) {
+        setClientInlineMsg("clientModalSaveMsg", e.message || "Erreur lors de l’import du logo.", true);
+      } finally {
+        ev.target.value = "";
+      }
+    });
+
+    byId("btnClientRemoveLogo")?.addEventListener("click", async () => {
+      if (!_modalClientId) return;
+      try {
+        setClientInlineMsg("clientModalSaveMsg", "", false);
+        await removeClientLogo(portal);
+      } catch (e) {
+        setClientInlineMsg("clientModalSaveMsg", e.message || "Erreur lors du retrait du logo.", true);
+      }
+    });
+
+    byId("btnClientContactAdd")?.addEventListener("click", async () => {
+      try { await openContactAddModal(portal); }
+      catch (e) { setClientInlineMsg("clientModalSaveMsg", e.message || String(e), true); }
+    });
+
+    byId("clientContactsBody")?.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-contact-action]");
+      if (!btn) return;
+      if (btn.dataset.contactAction === "edit") openContactEditModal(btn.dataset.id || "");
+    });
+
+    byId("btnClientContactAddClose")?.addEventListener("click", closeContactAddModal);
+    byId("btnClientContactAddCancel")?.addEventListener("click", closeContactAddModal);
+    byId("btnClientContactManualToggle")?.addEventListener("click", () => setContactManualVisible(!_contactManualVisible));
+    byId("clientContactSearch")?.addEventListener("input", renderContactEffectifChoices);
+    byId("btnClientContactAddSelected")?.addEventListener("click", async () => {
+      try { await addSelectedEffectifsAsContacts(portal); }
+      catch (e) { setClientInlineMsg("clientContactAddMsg", e.message || String(e), true); }
+    });
+    byId("btnClientContactManualSave")?.addEventListener("click", async () => {
+      try { await createManualContact(portal); }
+      catch (e) { setClientInlineMsg("clientContactAddMsg", e.message || String(e), true); }
+    });
+
+    byId("btnClientContactEditClose")?.addEventListener("click", closeContactEditModal);
+    byId("btnClientContactEditCancel")?.addEventListener("click", closeContactEditModal);
+    byId("btnClientContactEditSave")?.addEventListener("click", async () => {
+      try { await saveContactEdit(portal); }
+      catch (e) { setClientInlineMsg("clientContactEditMsg", e.message || String(e), true); }
+    });
+
     byId("btnClientCommercialClose")?.addEventListener("click", closeCommercialModal);
     byId("btnClientCommercialCancel")?.addEventListener("click", closeCommercialModal);
     byId("btnClientCommercialSave")?.addEventListener("click", async () => {
@@ -1047,6 +1681,7 @@
       adjustStepperInput(targetId, delta);
     });
 
+    byId("frm_profil_structurel")?.addEventListener("change", syncGroupFields);
     byId("frm_group_ok")?.addEventListener("change", syncGroupFields);
     byId("frm_tete_groupe")?.addEventListener("change", syncGroupFields);
     byId("frm_id_opco")?.addEventListener("change", setOpcoHintFromCurrent);
@@ -1067,6 +1702,13 @@
       tel.addEventListener("input", () => formatPhoneInput(tel));
       tel.addEventListener("blur", () => formatPhoneInput(tel));
     }
+
+    ["contactManualTel", "contactManualTel2", "contactEditTel", "contactEditTel2"].forEach(id => {
+      const el = byId(id);
+      if (!el) return;
+      el.addEventListener("input", () => formatPhoneInput(el));
+      el.addEventListener("blur", () => formatPhoneInput(el));
+    });
 
     window.addEventListener("focus", () => {
       refreshListOnReturn(portal).catch((e) => {
