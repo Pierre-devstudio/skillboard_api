@@ -1572,17 +1572,33 @@ def _ensure_contact_scope(cur, id_ent: str, id_contact: str) -> dict:
 
 
 def _set_unique_principal_contact(cur, id_ent: str, id_contact: Optional[str] = None) -> None:
+    """
+    Garantit un seul contact principal actif par entreprise.
+    On évite le pattern SQL (%s IS NULL OR ...), car PostgreSQL ne peut pas typer
+    un paramètre NULL utilisé uniquement dans un test IS NULL.
+    """
+    if id_contact:
+        cur.execute(
+            """
+            UPDATE public.tbl_contact
+            SET est_principal = FALSE
+            WHERE code_ent = %s
+              AND COALESCE(masque, FALSE) = FALSE
+              AND id_contact <> %s
+            """,
+            (id_ent, id_contact),
+        )
+        return
+
     cur.execute(
         """
         UPDATE public.tbl_contact
         SET est_principal = FALSE
         WHERE code_ent = %s
           AND COALESCE(masque, FALSE) = FALSE
-          AND (%s IS NULL OR id_contact <> %s)
         """,
-        (id_ent, id_contact, id_contact),
+        (id_ent,),
     )
-
 
 def _build_contact_values(payload: ContactPayload) -> dict:
     nom = _normalize_nom(payload.nom_ca)
