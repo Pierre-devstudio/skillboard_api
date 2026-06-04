@@ -202,15 +202,7 @@
 
   function setOpcoHintFromCurrent(){
     const sel = byId("frm_id_opco");
-    if (!sel || !hint) return;
-    const id = sel.value || "";
-    if (!id) {
-      hint.textContent = "—";
-      updateOpcoSiteLink();
-      return;
-    }
-    const item = (_refOpco || []).find(x => x.id_opco === id);
-    hint.textContent = item ? (item.nom_opco || "—") : "—";
+    if (!sel) return;
     updateOpcoSiteLink();
   }
 
