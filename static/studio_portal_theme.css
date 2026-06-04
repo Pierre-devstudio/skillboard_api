@@ -2649,3 +2649,8 @@
   box-shadow:none !important;
 }
 
+/* PATCH Studio clients modal - suppression ligne header 2026-06 */
+.sb-client-modal-card .sb-modal-head {
+  border-bottom:none !important;
+}
+
