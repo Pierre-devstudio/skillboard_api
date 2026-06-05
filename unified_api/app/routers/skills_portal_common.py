@@ -1101,7 +1101,7 @@ def resolve_studio_embedded_id_ent_for_request(cur, id_contact: str, request) ->
             actor_id = ref_id
             cur.execute(
                 """
-                SELECT ut_prenom, ut_nom, email
+                SELECT ut_prenom, ut_nom, ut_mail
                 FROM public.tbl_utilisateur
                 WHERE id_utilisateur = %s
                   AND COALESCE(archive, FALSE) = FALSE
@@ -1112,7 +1112,7 @@ def resolve_studio_embedded_id_ent_for_request(cur, id_contact: str, request) ->
             r = cur.fetchone() or {}
             actor_name = " ".join(
                 [x for x in [(r.get("ut_prenom") or "").strip(), (r.get("ut_nom") or "").strip()] if x]
-            ).strip() or (r.get("email") or email or actor_id)
+            ).strip() or (r.get("ut_mail") or email or actor_id)
 
         try:
             request.state.novoskill_embedded_studio = {
