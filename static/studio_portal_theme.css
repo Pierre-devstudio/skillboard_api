@@ -2726,3 +2726,15 @@
 .studio-dash-signal span.is-active{ background:#48c248; }
 .studio-dash-empty{ color:#64748b; font-size:13px; padding:10px 0; }
 @media (max-width:760px){ .studio-dash-head{ flex-direction:column; } .studio-dash-title{ font-size:23px; } .studio-dash-filter-field,.studio-dash-filter-field--range{ min-width:100%; } .studio-dash-risk-bars{ overflow-x:auto; justify-content:flex-start; } .studio-dash-risk-bar{ flex:0 0 52px; } }
+
+
+/* ======================================================
+   Studio Dashboard adaptatif
+   - Ma structure d'abord ; supervision liée ensuite.
+   ====================================================== */
+.studio-dash-adaptive .studio-dash-section-title{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin:18px 0 10px; }
+.studio-dash-adaptive .studio-dash-section-title h2{ margin:0; font-size:1.05rem; color:var(--text, #111827); }
+.studio-dash-adaptive .studio-dash-section-title p{ margin:4px 0 0; color:var(--muted, #6b7280); font-size:.9rem; }
+.studio-dash-adaptive .studio-dash-linked{ margin-top:20px; }
+.studio-dash-adaptive .studio-dash-mini-row[data-scope]{ cursor:pointer; }
+.studio-dash-adaptive .studio-dash-mini-row[data-scope]:hover{ transform:translateY(-1px); }
