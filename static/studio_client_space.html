@@ -561,9 +561,14 @@
       <template id="tplOrgWorkspace"></template>
 
       <section class="cs-section" data-section="evaluations">
-        <div class="cs-card cs-placeholder">
-          <div class="cs-card-title">Évaluation des compétences</div>
-          <div class="cs-placeholder-text">Cette rubrique accueillera les entretiens et évaluations de compétences du client.</div>
+        <!-- Entretiens & évaluations Insights embarqués dans Studio.
+             Important : cette zone réutilise /menus/skills_entretien_performance.html + skills_entretien_performance.js.
+             Ne pas recréer une page Studio parallèle : les évaluations, entretiens et historiques doivent rester portés par le moteur Insights. -->
+        <div class="cs-evaluations-insights-mount" id="csEvaluationsInsightsMount">
+          <div class="cs-card">
+            <div class="cs-card-title">Chargement des évaluations…</div>
+            <div class="cs-card-sub">Initialisation des entretiens & évaluations sur le périmètre courant.</div>
+          </div>
         </div>
       </section>
 

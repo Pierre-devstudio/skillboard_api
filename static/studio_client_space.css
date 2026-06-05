@@ -862,3 +862,27 @@ a{
 .cs-insights-dashboard-mount #view-dashboard .sb-dashboard-org-field{
   min-width:240px;
 }
+
+
+/* ======================================================
+   Entretiens & évaluations Insights embarqués dans Studio
+   - Le bloc garde les styles Insights, même si le thème global Studio surcharge --accent en jaune.
+   ====================================================== */
+.cs-evaluations-insights-mount{
+  width:100%;
+}
+
+.cs-evaluations-insights-mount #view-entretien-performance{
+  display:block;
+  --accent:#c1272d;
+  --sb-accent-rgb:193,39,45;
+  --sb-ring-accent:0 0 0 3px rgba(193,39,45,0.18);
+}
+
+.cs-evaluations-insights-mount #view-entretien-performance.is-embedded-studio .ep-page-head{
+  margin-top:0;
+}
+
+.cs-evaluations-insights-mount #view-entretien-performance .ep-organisation-field{
+  min-width:240px;
+}

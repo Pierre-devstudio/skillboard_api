@@ -1000,11 +1000,151 @@ def resolve_insights_effectif_for_request(cur, id_contact: str, request) -> str:
     raise HTTPException(status_code=403, detail="Accès Insights refusé pour cet effectif.")
 
 
+def resolve_studio_embedded_id_ent_for_request(cur, id_contact: str, request) -> Optional[str]:
+    """
+    Résout un périmètre /skills/... appelé depuis Studio > Espace de gestion.
+
+    Contrat front :
+    - studio_embedded=1
+    - id_owner=<owner Studio>
+    - id_ent=<client/site analysé>
+    - Authorization: Bearer <token Studio>
+
+    Cette passerelle permet de réutiliser les routes Insights sans conditionner
+    l'affichage ou l'écriture à insights_actif. Le contrôle d'accès reste serveur.
+    """
+    try:
+        qp = getattr(request, "query_params", {}) or {}
+        embedded = (qp.get("studio_embedded") or "").strip().lower()
+        if embedded not in ("1", "true", "yes", "studio"):
+            return None
+
+        id_owner = (qp.get("id_owner") or id_contact or "").strip()
+        id_ent = (qp.get("id_ent") or qp.get("studio_id_ent") or "").strip()
+        if not id_owner or not id_ent:
+            raise HTTPException(status_code=400, detail="Contexte Studio embarqué incomplet.")
+
+        from app.routers.studio_portal_common import (
+            studio_require_user,
+            studio_fetch_owner,
+            studio_fetch_role_code,
+            studio_role_rank,
+        )
+
+        auth = request.headers.get("Authorization", "")
+        user = studio_require_user(auth)
+        email = (user.get("email") or "").strip()
+
+        if not user.get("is_super_admin"):
+            meta = user.get("user_metadata") or {}
+            meta_owner = (meta.get("id_owner") or "").strip()
+            if meta_owner and meta_owner != id_owner:
+                raise HTTPException(status_code=403, detail="Accès Studio refusé pour cet owner.")
+
+            cur.execute(
+                """
+                SELECT 1
+                FROM public.tbl_novoskill_user_access
+                WHERE lower(email) = lower(%s)
+                  AND id_owner = %s
+                  AND console_code = 'studio'
+                  AND COALESCE(archive, FALSE) = FALSE
+                  AND COALESCE(statut_access, 'actif') <> 'suspendu'
+                LIMIT 1
+                """,
+                (email, id_owner),
+            )
+            if cur.fetchone() is None:
+                raise HTTPException(status_code=403, detail="Accès Studio refusé.")
+
+        studio_fetch_owner(cur, id_owner)
+        role_code = studio_fetch_role_code(cur, email, id_owner, bool(user.get("is_super_admin")))
+        if studio_role_rank(role_code) < studio_role_rank("supervisor"):
+            raise HTTPException(status_code=403, detail="Accès Studio insuffisant pour les évaluations.")
+
+        cur.execute(
+            """
+            SELECT 1
+            FROM public.tbl_entreprise
+            WHERE id_ent = %s
+              AND id_owner_gestionnaire = %s
+              AND COALESCE(masque, FALSE) = FALSE
+            LIMIT 1
+            """,
+            (id_ent, id_owner),
+        )
+        if cur.fetchone() is None:
+            raise HTTPException(status_code=404, detail="Structure Studio introuvable ou hors périmètre.")
+
+        actor_id = (user.get("id") or "").strip()
+        actor_name = email or actor_id or "Utilisateur Studio"
+        actor_source = "tbl_utilisateur"
+
+        cur.execute(
+            """
+            SELECT lower(COALESCE(user_ref_type, '')) AS user_ref_type, id_user_ref
+            FROM public.tbl_novoskill_user_access
+            WHERE lower(email) = lower(%s)
+              AND id_owner = %s
+              AND console_code = 'studio'
+              AND COALESCE(archive, FALSE) = FALSE
+              AND COALESCE(statut_access, 'actif') <> 'suspendu'
+            LIMIT 1
+            """,
+            (email, id_owner),
+        )
+        access_row = cur.fetchone() or {}
+        ref_type = (access_row.get("user_ref_type") or "").strip().lower()
+        ref_id = (access_row.get("id_user_ref") or "").strip()
+
+        if ref_type == "utilisateur" and ref_id:
+            actor_id = ref_id
+            cur.execute(
+                """
+                SELECT ut_prenom, ut_nom, email
+                FROM public.tbl_utilisateur
+                WHERE id_utilisateur = %s
+                  AND COALESCE(archive, FALSE) = FALSE
+                LIMIT 1
+                """,
+                (ref_id,),
+            )
+            r = cur.fetchone() or {}
+            actor_name = " ".join(
+                [x for x in [(r.get("ut_prenom") or "").strip(), (r.get("ut_nom") or "").strip()] if x]
+            ).strip() or (r.get("email") or email or actor_id)
+
+        try:
+            request.state.novoskill_embedded_studio = {
+                "id_owner": id_owner,
+                "id_ent": id_ent,
+                "role_code": role_code,
+                "email": email,
+                "id_evaluateur": actor_id,
+                "nametable_evaluateur": actor_source,
+                "nom_evaluateur": actor_name,
+            }
+        except Exception:
+            pass
+
+        return id_ent
+
+    except HTTPException:
+        raise
+
+
 def resolve_insights_id_ent_for_request(cur, id_contact: str, request) -> str:
     """
     Résout l'entreprise Insights à partir de l'effectif sécurisé.
     Remplace les anciens resolveurs avec X-Ent-Id / super-admin.
+
+    Cette fonction accepte aussi le mode embarqué Studio, utilisé par
+    Studio > Espace de gestion pour réutiliser les routes Insights sans activer insights_actif.
     """
+    studio_id_ent = resolve_studio_embedded_id_ent_for_request(cur, id_contact, request)
+    if studio_id_ent:
+        return studio_id_ent
+
     eff_id = resolve_insights_effectif_for_request(cur, id_contact, request)
     ctx = resolve_insights_context(cur, eff_id)
     return ctx["id_ent"]

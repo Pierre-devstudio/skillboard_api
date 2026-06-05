@@ -2,6 +2,11 @@
    static/menus/skills_entretien_performance.js
    - Menu "Entretien de performance"
    - Squelette + chargement périmètre (services) + collaborateurs
+   - Réutilisé aussi en mode embarqué dans Studio > Espace de gestion.
+   - Toute évolution de cette page doit préserver :
+     1) l'accès Insights classique /skills/entretien-performance/... ;
+     2) l'accès Studio embarqué avec contexte id_owner + id_ent ;
+     3) la traçabilité évaluateur : tbl_effectif_client côté Insights, tbl_utilisateur côté Studio.
    ====================================================== */
 (function () {
   "use strict";
@@ -47,6 +52,96 @@
   function setDisabled(id, disabled) {
     const el = $(id);
     if (el) el.disabled = !!disabled;
+  }
+
+  function normalizeEmbeddedOrganisationOptions(portal) {
+    const rows = Array.isArray(portal?.evaluationOrganisations) ? portal.evaluationOrganisations : [];
+    return rows
+      .map(r => ({
+        id_ent: (r?.id_ent || r?.id || "").toString().trim(),
+        label: (r?.label || r?.nom_ent || "Organisation").toString().trim(),
+        depth: Number(r?.depth || 0) || 0,
+        type_entreprise: (r?.type_entreprise || "").toString().trim(),
+      }))
+      .filter(r => r.id_ent);
+  }
+
+  function applyEmbeddedOrganisationOptions(portal) {
+    const wrap = $("ep_orgWrap");
+    const select = $("ep_selOrganisation");
+    if (!wrap || !select) return;
+
+    const rows = normalizeEmbeddedOrganisationOptions(portal);
+    if (rows.length <= 1) {
+      wrap.style.display = "none";
+      select.innerHTML = "";
+      if (rows.length === 1) {
+        const opt = document.createElement("option");
+        opt.value = rows[0].id_ent;
+        opt.textContent = rows[0].label;
+        select.appendChild(opt);
+        select.value = rows[0].id_ent;
+      }
+      return;
+    }
+
+    const requested = (portal?.evaluationOrganisationValue || rows[0]?.id_ent || "").toString().trim();
+    select.innerHTML = "";
+    rows.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r.id_ent;
+      const indent = r.depth > 0 ? `${"— ".repeat(Math.min(r.depth, 4))}` : "";
+      const type = r.type_entreprise ? ` · ${r.type_entreprise}` : "";
+      opt.textContent = `${indent}${r.label}${type}`;
+      select.appendChild(opt);
+    });
+
+    select.value = rows.some(r => r.id_ent === requested) ? requested : rows[0].id_ent;
+    wrap.style.display = "";
+  }
+
+  function currentEmbeddedOrganisationValue(portal) {
+    const select = $("ep_selOrganisation");
+    const fallback = (portal?.evaluationOrganisationValue || portal?.evaluationEntId || "").toString().trim();
+    return (select?.value || fallback || "").toString().trim();
+  }
+
+  function bindEmbeddedOrganisationFilterOnce(portal) {
+    const select = $("ep_selOrganisation");
+    if (!select || state._embeddedOrgBound) return;
+
+    state._embeddedOrgBound = true;
+    select.addEventListener("change", async () => {
+      try {
+        const idEnt = currentEmbeddedOrganisationValue(portal);
+        if (typeof portal?.onEvaluationOrganisationChange === "function") {
+          await portal.onEvaluationOrganisationChange(idEnt);
+        }
+
+        localStorage.removeItem(LS_KEY_SERVICE);
+        state.serviceId = "";
+        state.population = "team";
+        state.selectedCollaborateurId = null;
+        state.selectedCollaborateurServiceId = "";
+        state.selectedCompetenceId = null;
+        state.selectedEntretienId = null;
+
+        clearCollaborateurs();
+        clearCompetences();
+        resetContextPanel();
+        resetEvaluationPanel();
+        applyUiLockedState();
+
+        await loadServices();
+        const selService = $("ep_selService");
+        state.serviceId = (selService?.value || "").trim();
+        if (state.serviceId) {
+          await loadCollaborateurs();
+        }
+      } catch (e) {
+        portal?.showAlert?.("error", "Erreur changement organisation : " + String(e?.message || e));
+      }
+    });
   }
 
   function openModal(modalId) {
@@ -2211,7 +2306,16 @@
     }
 
     const url = `${_portal.apiBase}/skills/entretien-performance/entretien/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(id)}/rapport-pdf`;
-    const win = window.open(url, "_blank", "noopener");
+
+    if (typeof _portal.openApiPdf === "function") {
+      _portal.openApiPdf(url).catch(e => {
+        epSetInlineMsg("ep_entretienMsg", "danger", String(e?.message || e || "Impossible d'ouvrir le PDF."));
+      });
+      return;
+    }
+
+    const finalUrl = typeof _portal.decorateApiUrl === "function" ? _portal.decorateApiUrl(url) : url;
+    const win = window.open(finalUrl, "_blank", "noopener");
 
     if (!win) {
       epSetInlineMsg("ep_entretienMsg", "danger", "Le navigateur a bloqué l'ouverture du PDF.");
@@ -3567,7 +3671,15 @@
 
             const url = `${_portal.apiBase}/skills/entretien-performance/rapport-pdf/${encodeURIComponent(_portal.contactId)}/${encodeURIComponent(state.selectedCollaborateurId)}?${params.toString()}`;
 
-            const win = window.open(url, "_blank", "noopener");
+            if (typeof _portal.openApiPdf === "function") {
+              _portal.openApiPdf(url).catch(e => {
+                _portal.showAlert("warning", String(e?.message || e || "Impossible d'ouvrir le PDF."));
+              });
+              return;
+            }
+
+            const finalUrl = typeof _portal.decorateApiUrl === "function" ? _portal.decorateApiUrl(url) : url;
+            const win = window.open(finalUrl, "_blank", "noopener");
             if (!win) {
               _portal.showAlert("warning", "Le navigateur a bloqué l'ouverture du PDF.");
             }
@@ -4327,6 +4439,9 @@
     resetEvaluationPanel();
     applyUiLockedState();
     applyFocusMode();
+
+    applyEmbeddedOrganisationOptions(portal);
+    bindEmbeddedOrganisationFilterOnce(portal);
 
     await loadBootstrap();
 

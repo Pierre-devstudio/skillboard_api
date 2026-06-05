@@ -1,4 +1,8 @@
 # unified_api/app/routers/skills_portal_entretien_performance.py
+#
+# Attention : cette API est utilisée par la console Insights ET par Studio > Espace de gestion
+# en mode embarqué. Les évolutions doivent préserver le contexte studio_embedded=1
+# et la traçabilité évaluateur tbl_utilisateur côté Studio.
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response, UploadFile, File, Form
 from pydantic import BaseModel
@@ -663,6 +667,44 @@ class CouverturePosteResponse(BaseModel):
 # ======================================================
 def _resolve_id_ent_for_request(cur, id_contact: str, request: Request) -> str:
     return resolve_insights_id_ent_for_request(cur, id_contact, request)
+
+def _ep_current_actor_context(cur, id_contact: str, request: Request) -> Dict[str, Optional[str]]:
+    """
+    Retourne l'acteur qui écrit l'évaluation / l'entretien.
+    - Insights classique : acteur = effectif connecté, source tbl_effectif_client.
+    - Studio embarqué : acteur = utilisateur Studio, source tbl_utilisateur.
+    """
+    studio_ctx = getattr(getattr(request, "state", None), "novoskill_embedded_studio", None)
+    if isinstance(studio_ctx, dict) and studio_ctx.get("id_evaluateur"):
+        return {
+            "id_evaluateur": (studio_ctx.get("id_evaluateur") or "").strip(),
+            "nametable_evaluateur": (studio_ctx.get("nametable_evaluateur") or "tbl_utilisateur").strip() or "tbl_utilisateur",
+            "nom_evaluateur": (studio_ctx.get("nom_evaluateur") or "").strip() or None,
+        }
+
+    cur.execute(
+        """
+        SELECT
+            ec.nom_effectif,
+            ec.prenom_effectif
+        FROM public.tbl_effectif_client ec
+        WHERE ec.id_effectif = %s
+          AND COALESCE(ec.archive, FALSE) = FALSE
+        LIMIT 1
+        """,
+        (id_contact,),
+    )
+    ev = cur.fetchone() or {}
+    nom_eval = " ".join(
+        [x for x in [(ev.get("prenom_effectif") or "").strip(), (ev.get("nom_effectif") or "").strip()] if x]
+    ).strip() or None
+
+    return {
+        "id_evaluateur": (id_contact or "").strip(),
+        "nametable_evaluateur": "tbl_effectif_client",
+        "nom_evaluateur": nom_eval,
+    }
+
 
 def _fetch_effectif_context(cur, id_ent: str, id_effectif: str) -> Dict[str, Any]:
     cur.execute(
@@ -1493,6 +1535,8 @@ def ep_create_entretien_individuel(
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                actor_ctx = _ep_current_actor_context(cur, id_contact, request)
+                id_manager = (actor_ctx.get("id_evaluateur") or id_contact or "").strip()
                 _fetch_effectif_context(cur, id_ent, id_effectif)
 
                 id_entretien = str(uuid4())
@@ -1568,7 +1612,7 @@ def ep_create_entretien_individuel(
                         id_entretien,
                         id_ent,
                         id_effectif,
-                        id_contact,
+                        id_manager,
                         (payload.type_entretien or "Entretien individuel").strip() or "Entretien individuel",
                         statut,
                         _ep_parse_date(payload.date_prevue, "date_prevue"),
@@ -2364,24 +2408,10 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload, 
                 id_audit = str(uuid4())
                 today = date.today()
 
-                # Evaluateur = effectif (celui qui est connecté)
-                cur.execute(
-                    """
-                    SELECT
-                        ec.nom_effectif,
-                        ec.prenom_effectif
-                    FROM public.tbl_effectif_client ec
-                    WHERE ec.id_effectif = %s
-                    AND COALESCE(ec.archive, FALSE) = FALSE
-                    LIMIT 1
-                    """,
-                    (id_contact,),
-                )
-                ev = cur.fetchone() or {}
-                nom_eval = " ".join(
-                    [x for x in [(ev.get("prenom_effectif") or "").strip(), (ev.get("nom_effectif") or "").strip()] if x]
-                ).strip() or None
-
+                actor_ctx = _ep_current_actor_context(cur, id_contact, request)
+                id_evaluateur = (actor_ctx.get("id_evaluateur") or id_contact or "").strip()
+                nametable_evaluateur = (actor_ctx.get("nametable_evaluateur") or "tbl_effectif_client").strip()
+                nom_eval = actor_ctx.get("nom_evaluateur")
 
                 detail_eval = {
                     "criteres": [
@@ -2424,14 +2454,14 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload, 
                         id_audit,
                         payload.id_effectif_competence,
                         today,
-                        id_contact,
+                        id_evaluateur,
                         payload.methode_eval,
                         round(float(payload.resultat_eval), 1),
                         json.dumps(detail_eval, ensure_ascii=False),
                         (payload.observation or None),
                         id_entretien_individuel,
                         role_competence_entretien,
-                        "tbl_effectif_client",
+                        nametable_evaluateur,
                         nom_eval,
                     ),
                 )
@@ -2505,6 +2535,9 @@ def update_entretien_competence_audit(
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                actor_ctx = _ep_current_actor_context(cur, id_contact, request)
+                actor_id = (actor_ctx.get("id_evaluateur") or id_contact or "").strip()
+                actor_source = (actor_ctx.get("nametable_evaluateur") or "tbl_effectif_client").strip()
 
                 cur.execute(
                     """
@@ -2513,6 +2546,7 @@ def update_entretien_competence_audit(
                         a.id_effectif_competence,
                         a.date_audit,
                         a.id_evaluateur,
+                        a.nametable_evaluateur,
                         ec.id_effectif_client,
                         ec.id_comp,
                         ec.id_dernier_audit
@@ -2535,7 +2569,9 @@ def update_entretien_competence_audit(
                 if row is None:
                     raise HTTPException(status_code=404, detail="Audit compétence introuvable ou hors périmètre.")
 
-                if str(row.get("id_evaluateur") or "").strip() != str(id_contact or "").strip():
+                row_actor_id = str(row.get("id_evaluateur") or "").strip()
+                row_actor_source = str(row.get("nametable_evaluateur") or "tbl_effectif_client").strip()
+                if row_actor_id != actor_id or row_actor_source != actor_source:
                     raise HTTPException(status_code=403, detail="Seul l'évaluateur d'origine peut modifier cet audit.")
 
                 if payload.id_effectif_competence and payload.id_effectif_competence != row.get("id_effectif_competence"):
@@ -2618,6 +2654,9 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
+                actor_ctx = _ep_current_actor_context(cur, id_contact, request)
+                actor_id = (actor_ctx.get("id_evaluateur") or id_contact or "").strip()
+                actor_source = (actor_ctx.get("nametable_evaluateur") or "tbl_effectif_client").strip()
 
 
                 # Sécurité périmètre entreprise
@@ -2641,6 +2680,7 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
                         a.id_effectif_competence,
                         a.date_audit,
                         a.id_evaluateur,
+                        a.nametable_evaluateur,
                         a.nom_evaluateur,
                         a.methode_eval,
                         a.resultat_eval,
@@ -2694,8 +2734,8 @@ def get_entretien_performance_historique(id_contact: str, id_effectif_client: st
                             code=r.get("code"),
                             intitule=r.get("intitule"),
                             modifiable=(
-                                str(r.get("id_evaluateur") or "").strip()
-                                == str(id_contact or "").strip()
+                                str(r.get("id_evaluateur") or "").strip() == actor_id
+                                and str(r.get("nametable_evaluateur") or "tbl_effectif_client").strip() == actor_source
                             ),
                         )
                     )

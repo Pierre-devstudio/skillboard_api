@@ -23,6 +23,10 @@
   let _collabWorkspaceScriptPromise = null;
   let _clientLogoMeta = { has_logo: false };
   let _clientLogoBlobUrl = null;
+  let _evaluationWorkspaceReady = false;
+  let _evaluationWorkspaceLoadingPromise = null;
+  let _evaluationWorkspaceScriptPromise = null;
+  let _evaluationOrgValue = "";
   let _insightsDashboardReady = false;
   let _insightsDashboardLoadingPromise = null;
   let _insightsDashboardScriptPromise = null;
@@ -1602,12 +1606,9 @@ function bindPostalAssist(){
 
       async openDashboardReport(target){
         const t = (target || "").toString().trim().toLowerCase();
-        if (t === "entretien"){
+        if (t === "entretien" || t === "analyse"){
           setSection("evaluations");
-          return;
-        }
-        if (t === "analyse"){
-          setSection("evaluations");
+          await loadEvaluationsWorkspace();
           return;
         }
       },
@@ -1636,6 +1637,307 @@ function bindPostalAssist(){
       return await _insightsDashboardLoadingPromise;
     } finally {
       _insightsDashboardLoadingPromise = null;
+    }
+  }
+
+  // ======================================================
+  // Mode embarqué Entretiens & évaluations Insights dans Studio.
+  // Studio fournit l'auth, le périmètre client/site et le sélecteur d'organisation.
+  // Les routes restent les routes /skills/... existantes, sécurisées côté serveur
+  // par le contexte studio_embedded=1 ajouté à chaque appel.
+  // ======================================================
+  function buildEvaluationOrganisationItems(){
+    const clientId = getClientId();
+    const rootLabel = (_detail?.nom_ent || "Structure courante").toString().trim();
+    const rootType = (_detail?.type_entreprise || _detail?.owner_type_client || "").toString().trim();
+    const rows = [];
+
+    if (clientId){
+      rows.push({
+        id_ent: clientId,
+        label: rootLabel,
+        nom_ent: rootLabel,
+        type_entreprise: rootType,
+        depth: 0,
+      });
+    }
+
+    (_orgItems || []).forEach(item => {
+      const id = (item?.id_ent || "").toString().trim();
+      if (!id || id === clientId) return;
+      rows.push({
+        id_ent: id,
+        label: (item?.nom_ent || "Organisation").toString().trim(),
+        nom_ent: item?.nom_ent,
+        type_entreprise: item?.type_entreprise,
+        depth: Number(item?.depth || 0) || 1,
+      });
+    });
+
+    return rows;
+  }
+
+  function appendStudioEmbeddedScopeToSkillsUrl(rawUrl){
+    const raw = String(rawUrl || "");
+    if (!raw) return raw;
+
+    const url = new URL(raw, window.location.origin);
+    const clientId = getClientId();
+    const ownerId = getOwnerId();
+    const idEnt = (_evaluationOrgValue || clientId || "").toString().trim();
+
+    if (!ownerId || !idEnt) return url.toString();
+
+    if (url.pathname.startsWith("/skills/")){
+      url.searchParams.set("studio_embedded", "1");
+      url.searchParams.set("id_owner", ownerId);
+      url.searchParams.set("id_ent", idEnt);
+    }
+
+    return url.toString();
+  }
+
+  function normalizeStudioServiceId(value){
+    const s = (value || "").toString().trim();
+    if (!s || s === "__TOUS__") return "__ALL__";
+    return s;
+  }
+
+  function flattenStudioServicesTree(nodes, depth = 0, out = []){
+    (Array.isArray(nodes) ? nodes : []).forEach(n => {
+      const id = (n?.id_service || n?.id || "").toString().trim();
+      const name = (n?.nom_service || n?.label || n?.nom || "").toString().trim();
+      if (id && name){
+        out.push({ id_service: id, nom_service: name, depth });
+      }
+
+      const children = n?.children || n?.items || n?.enfants || [];
+      if (Array.isArray(children) && children.length){
+        flattenStudioServicesTree(children, depth + 1, out);
+      }
+    });
+    return out;
+  }
+
+  function fillStudioServiceSelect(selectId, services, params = {}){
+    const sel = byId(selectId);
+    if (!sel) return;
+
+    const SERVICE_ALL_ID = "__ALL__";
+    const SERVICE_NON_LIE_ID = "__NON_LIE__";
+    const includeAll = params.includeAll !== false;
+    const includeNonLie = params.includeNonLie === true;
+    const allowIndent = params.allowIndent !== false;
+    const labelAll = params.labelAll || "Tous les services";
+    const labelNonLie = params.labelNonLie || "Non lié";
+    const storageKey = params.storageKey || "";
+    const preferStored = storageKey ? localStorage.getItem(storageKey) : "";
+    const preferId = normalizeStudioServiceId(params.preferId || preferStored || sel.value || "");
+
+    const rows = [];
+    if (includeAll) rows.push({ id_service: SERVICE_ALL_ID, nom_service: labelAll, depth: 0 });
+
+    (Array.isArray(services) ? services : []).forEach(item => {
+      const id = normalizeStudioServiceId(item?.id_service || "");
+      const name = (item?.nom_service || "").toString().trim();
+      if (!id || id === SERVICE_ALL_ID || id === SERVICE_NON_LIE_ID || !name) return;
+      rows.push({ id_service: id, nom_service: name, depth: Number(item?.depth || 0) || 0 });
+    });
+
+    if (includeNonLie) rows.push({ id_service: SERVICE_NON_LIE_ID, nom_service: labelNonLie, depth: 0 });
+
+    sel.innerHTML = "";
+    rows.forEach(item => {
+      const opt = document.createElement("option");
+      opt.value = item.id_service;
+      const depth = Math.min(6, Number(item.depth || 0) || 0);
+      const prefix = allowIndent && depth > 0 ? "\u00A0\u00A0".repeat(depth) + "› " : "";
+      opt.textContent = prefix + item.nom_service;
+      sel.appendChild(opt);
+    });
+
+    const ids = rows.map(x => x.id_service);
+    if (ids.includes(preferId)) sel.value = preferId;
+    else if (includeAll) sel.value = SERVICE_ALL_ID;
+    else sel.value = ids[0] || "";
+
+    if (storageKey){
+      localStorage.setItem(storageKey, normalizeStudioServiceId(sel.value));
+    }
+  }
+
+  function buildStudioServiceFilter(){
+    return {
+      ALL_ID: "__ALL__",
+      NON_LIE_ID: "__NON_LIE__",
+      normalizeId: normalizeStudioServiceId,
+      isAll: value => normalizeStudioServiceId(value) === "__ALL__",
+      toQueryId: value => {
+        const v = normalizeStudioServiceId(value);
+        return v === "__ALL__" ? null : v;
+      },
+      flattenTree: flattenStudioServicesTree,
+      fillSelect: fillStudioServiceSelect,
+      async populateSelect(params = {}){
+        const portalRef = params.portal || window.portal;
+        const contactId = params.contactId || portalRef?.contactId || getOwnerId();
+        const selectId = params.selectId;
+        if (!portalRef || !contactId || !selectId) return;
+
+        const nodes = await portalRef.apiJson(
+          `${portalRef.apiBase}/skills/organisation/services/${encodeURIComponent(contactId)}`
+        );
+        const flat = flattenStudioServicesTree(Array.isArray(nodes) ? nodes : []);
+        fillStudioServiceSelect(selectId, flat, params);
+      }
+    };
+  }
+
+  async function ensureEvaluationsWorkspaceMarkup(mount){
+    if (!mount) throw new Error("csEvaluationsInsightsMount introuvable.");
+    if (mount.dataset.loaded === "1") return;
+
+    const htmlUrl = `${getInsightsMenuAssetUrl("skills_entretien_performance.html")}?v=studio-embedded-evaluations-2026-06-05`;
+    const resp = await fetch(htmlUrl, { credentials: "same-origin" });
+    if (!resp.ok) throw new Error(`Impossible de charger ${htmlUrl}`);
+
+    const html = await resp.text();
+    const host = document.createElement("div");
+    host.innerHTML = html;
+
+    const root = host.querySelector("#view-entretien-performance");
+    if (!root) throw new Error("Vue Entretiens & évaluations partagée introuvable.");
+    root.style.display = "block";
+    root.classList.add("is-embedded-studio");
+
+    mount.innerHTML = "";
+    while (host.firstChild) mount.appendChild(host.firstChild);
+    mount.dataset.loaded = "1";
+    _evaluationWorkspaceReady = true;
+  }
+
+  async function ensureEvaluationsScriptLoaded(){
+    if (window.SkillsEntretienPerformance && typeof window.SkillsEntretienPerformance.onShow === "function") return;
+    if (!_evaluationWorkspaceScriptPromise){
+      _evaluationWorkspaceScriptPromise = loadExternalScriptOnce(
+        `${getInsightsMenuAssetUrl("skills_entretien_performance.js")}?v=studio-embedded-evaluations-2026-06-05`,
+        "skills-entretien-performance-shared"
+      );
+    }
+    await _evaluationWorkspaceScriptPromise;
+    if (!window.SkillsEntretienPerformance || typeof window.SkillsEntretienPerformance.onShow !== "function"){
+      throw new Error("Initialisation Entretiens & évaluations introuvable après chargement du script partagé.");
+    }
+  }
+
+  async function openApiPdfWithStudioAuth(rawUrl){
+    const url = appendStudioEmbeddedScopeToSkillsUrl(rawUrl);
+    const resp = await fetchWithFreshStudioAuth(url, { method: "GET" }, true);
+
+    if (!resp.ok){
+      let msg = `Erreur PDF (${resp.status})`;
+      try {
+        const err = await resp.json();
+        if (err && (err.detail || err.message)) msg = String(err.detail || err.message);
+      } catch (_) {}
+      throw new Error(msg);
+    }
+
+    const blob = await resp.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const win = window.open(blobUrl, "_blank", "noopener");
+    if (!win){
+      try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+      throw new Error("Le navigateur a bloqué l'ouverture du PDF.");
+    }
+
+    setTimeout(() => {
+      try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+    }, 60000);
+  }
+
+  function buildEvaluationsPortalBridge(){
+    const ownerId = getOwnerId();
+    const clientId = getClientId();
+    const orgs = buildEvaluationOrganisationItems();
+    const allowed = new Set(orgs.map(o => o.id_ent));
+    if (!_evaluationOrgValue || !allowed.has(_evaluationOrgValue)){
+      _evaluationOrgValue = clientId;
+    }
+
+    const existingPortal = window.portal || {};
+    const bridge = Object.assign({}, existingPortal, {
+      apiBase: API_BASE,
+      contactId: ownerId,
+      embeddedMode: "studio_client_space",
+      evaluationEntId: clientId,
+      evaluationOrganisationValue: _evaluationOrgValue,
+      evaluationOrganisations: orgs,
+      context: { prenom: _context?.prenom || "" },
+      serviceFilter: buildStudioServiceFilter(),
+
+      async ensureContext(){
+        return this.context;
+      },
+
+      decorateApiUrl(url){
+        return appendStudioEmbeddedScopeToSkillsUrl(url);
+      },
+
+      async apiJson(url, options = {}){
+        const scopedUrl = appendStudioEmbeddedScopeToSkillsUrl(url);
+        const opts = Object.assign({}, options || {});
+        const resp = await fetchWithFreshStudioAuth(scopedUrl, opts, true);
+        const data = await resp.json().catch(() => null);
+
+        if (!resp.ok){
+          const detail = data?.detail || data?.message || `Erreur HTTP ${resp.status}`;
+          throw new Error(detail);
+        }
+
+        return data;
+      },
+
+      async openApiPdf(url){
+        return await openApiPdfWithStudioAuth(url);
+      },
+
+      async onEvaluationOrganisationChange(idEnt){
+        const v = (idEnt || "").toString().trim();
+        _evaluationOrgValue = v || clientId;
+      },
+
+      showAlert(type, message){
+        const msg = String(message || "").trim();
+        if (!msg){
+          setMessage("");
+          return;
+        }
+        setMessage(msg);
+      }
+    });
+
+    window.portal = bridge;
+    return bridge;
+  }
+
+  async function loadEvaluationsWorkspace(){
+    if (_evaluationWorkspaceLoadingPromise){
+      return await _evaluationWorkspaceLoadingPromise;
+    }
+
+    _evaluationWorkspaceLoadingPromise = (async () => {
+      const mount = byId("csEvaluationsInsightsMount");
+      await ensureEvaluationsWorkspaceMarkup(mount);
+      await ensureEvaluationsScriptLoaded();
+      await window.SkillsEntretienPerformance.onShow(buildEvaluationsPortalBridge());
+      _evaluationWorkspaceReady = true;
+    })();
+
+    try {
+      return await _evaluationWorkspaceLoadingPromise;
+    } finally {
+      _evaluationWorkspaceLoadingPromise = null;
     }
   }
 
@@ -1914,6 +2216,16 @@ function bindPostalAssist(){
             await loadCollaborateursWorkspace();
           } catch (e) {
             setMessage(e.message || "Erreur lors du chargement des collaborateurs.");
+          }
+          return;
+        }
+
+        if (section === "evaluations") {
+          try {
+            setMessage("");
+            await loadEvaluationsWorkspace();
+          } catch (e) {
+            setMessage(e.message || "Erreur lors du chargement des évaluations.");
           }
           return;
         }

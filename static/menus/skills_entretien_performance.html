@@ -20,6 +20,15 @@
         <div class="card-title">Périmètre</div>
 
         <div class="ep-filter-stack">
+          <!-- Mode embarqué Studio : alimenté par studio_client_space.js.
+               En console Insights classique, ce bloc reste masqué. -->
+          <div class="info-item ep-organisation-field" id="ep_orgWrap" style="min-width:0; display:none;">
+            <div class="label">Organisation analysée</div>
+            <select id="ep_selOrganisation">
+              <option value="">Structure courante</option>
+            </select>
+          </div>
+
           <div class="info-item" style="min-width:0;">
             <div class="label">Structure interne</div>
             <select id="ep_selService">
