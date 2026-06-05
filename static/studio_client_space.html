@@ -56,99 +56,13 @@
       <div class="cs-message" id="csMessage" style="display:none;"></div>
 
       <section class="cs-section is-active" data-section="dashboard">
-        <div class="cs-card">
-          <div class="cs-card-head">
-            <div>
-              <div class="cs-card-title">Vue d’ensemble</div>
-              <div class="cs-card-sub">Lecture rapide du client actuellement ouvert dans cet onglet.</div>
-            </div>
-          </div>
-
-          <div class="cs-badges" id="csClientBadges"></div>
-
-          <div class="cs-kpi-grid">
-            <div class="cs-kpi">
-              <div class="cs-kpi-label">Studio actif</div>
-              <div class="cs-kpi-value" id="dashStudioActif">—</div>
-            </div>
-            <div class="cs-kpi">
-              <div class="cs-kpi-label">Délégation Studio</div>
-              <div class="cs-kpi-value" id="dashDelegationStudio">—</div>
-            </div>
-            <div class="cs-kpi">
-              <div class="cs-kpi-label">Structure groupe</div>
-              <div class="cs-kpi-value" id="dashGroupOk">—</div>
-            </div>
-            <div class="cs-kpi">
-              <div class="cs-kpi-label">Parents liés</div>
-              <div class="cs-kpi-value" id="dashParents">—</div>
-            </div>
-            <div class="cs-kpi">
-              <div class="cs-kpi-label">Enfants liés</div>
-              <div class="cs-kpi-value" id="dashChildren">—</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="cs-grid cs-grid--2">
+        <!-- Dashboard Insights embarqué dans Studio.
+             Important : cette zone réutilise /menus/skills_dashboard.html + skills_dashboard.js.
+             Ne pas réintroduire de cartes Studio locales ici, sinon on recrée deux vérités d'indicateurs. -->
+        <div class="cs-insights-dashboard-mount" id="csInsightsDashboardMount">
           <div class="cs-card">
-            <div class="cs-card-title">Synthèse entreprise</div>
-            <div class="cs-facts">
-              <div class="cs-fact">
-                <div class="cs-fact-label">Nom entreprise</div>
-                <div class="cs-fact-value" id="sumNomEnt">—</div>
-              </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Ville</div>
-                <div class="cs-fact-value" id="sumVilleEnt">—</div>
-              </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Pays</div>
-                <div class="cs-fact-value" id="sumPaysEnt">—</div>
-              </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Effectif déclaré</div>
-                <div class="cs-fact-value" id="sumEffectifEnt">—</div>
-              </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">SIRET</div>
-                <div class="cs-fact-value" id="sumSiretEnt">—</div>
-              </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">N° entreprise</div>
-                <div class="cs-fact-value" id="sumNumEntreprise">—</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="cs-card">
-            <div class="cs-card-title">Références</div>
-            <div class="cs-facts">
-              <div class="cs-fact">
-                <div class="cs-fact-label">IDCC</div>
-                <div class="cs-fact-value" id="sumIdcc">—</div>
-              </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Libellé IDCC</div>
-                <div class="cs-fact-value" id="sumIdccLibelle">—</div>
-              </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Code APE</div>
-                <div class="cs-fact-value" id="sumCodeApe">—</div>
-              </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Intitulé APE</div>
-                <div class="cs-fact-value" id="sumCodeApeIntitule">—</div>
-              </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">OPCO</div>
-                <div class="cs-fact-value" id="sumOpcoNom">—</div>
-              </div>
-              <div class="cs-fact">
-                <div class="cs-fact-label">Owner gestionnaire</div>
-                <div class="cs-fact-value" id="sumOwnerNom">—</div>
-              </div>
-            </div>
+            <div class="cs-card-title">Chargement des indicateurs…</div>
+            <div class="cs-card-sub">Initialisation du dashboard Insights sur le périmètre courant.</div>
           </div>
         </div>
       </section>

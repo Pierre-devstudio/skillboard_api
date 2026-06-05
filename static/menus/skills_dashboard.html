@@ -9,6 +9,15 @@
     </div>
 
     <div class="sb-dashboard-scope" id="dashboardScopeWrap">
+      <!-- Mode embarqué Studio : ce sélecteur est alimenté par studio_client_space.js.
+           En console Insights classique, il reste masqué. -->
+      <div class="sb-dashboard-scope-field sb-dashboard-org-field" id="dashboardOrganisationWrap" style="display:none;">
+        <label for="dashboardOrganisationFilter">Organisation analysée :</label>
+        <select id="dashboardOrganisationFilter" class="sb-dashboard-service-select" aria-label="Organisation analysée">
+          <option value="">Structure courante</option>
+        </select>
+      </div>
+
       <div class="sb-dashboard-scope-field">
         <label for="dashboardServiceFilter">Données prises en compte :</label>
         <select id="dashboardServiceFilter" class="sb-dashboard-service-select" aria-label="Données prises en compte">

@@ -1,6 +1,11 @@
 /* ======================================================
    static/menus/skills_dashboard.js
    - Dashboard Insights : santé, risques, transmission, fiabilité
+   - Réutilisé aussi en mode embarqué dans Studio > Espace de gestion.
+   - Toute évolution du dashboard doit préserver :
+     1) la route Insights classique /skills/dashboard/...
+     2) la route Studio embarquée /studio/clients/.../dashboard/...
+     3) le sélecteur d'organisation injecté par Studio.
    ====================================================== */
 
 (function () {
@@ -88,7 +93,29 @@
     return { label: "Fragile", cls: "sb-health-status--danger" };
   }
 
-  function renderWelcome(ctx) {
+  function renderWelcome(ctx, portal) {
+    const root = byId("view-dashboard");
+    const titleEl = byId("welcomeTitle");
+    const logoWrap = root?.querySelector(".sb-dashboard-logo-wrap");
+    const embeddedTitle = (portal?.dashboardTitle || "").toString().trim();
+
+    if (root) {
+      root.classList.toggle("is-embedded-studio", portal?.embeddedMode === "studio_client_space");
+    }
+
+    if (logoWrap) {
+      logoWrap.style.display = portal?.dashboardHideLogo ? "none" : "";
+    }
+
+    if (embeddedTitle && titleEl) {
+      titleEl.textContent = embeddedTitle;
+      return;
+    }
+
+    if (titleEl && !titleEl.querySelector("#welcomePrenom")) {
+      titleEl.innerHTML = 'Bienvenue <span id="welcomePrenom"></span>';
+    }
+
     const prenom = (ctx?.prenom || "").toString().trim();
     const elPrenom = byId("welcomePrenom");
     if (!elPrenom) return;
@@ -371,6 +398,58 @@
     updateCriticiteLabel(value);
   }
 
+  function normalizeOrganisationOptions(portal) {
+    const rows = Array.isArray(portal?.dashboardOrganisations) ? portal.dashboardOrganisations : [];
+    return rows
+      .map(r => ({
+        id_ent: (r?.id_ent || r?.id || "").toString().trim(),
+        label: (r?.label || r?.nom_ent || "Organisation").toString().trim(),
+        depth: Number(r?.depth || 0) || 0,
+        type_entreprise: (r?.type_entreprise || "").toString().trim(),
+      }))
+      .filter(r => r.id_ent);
+  }
+
+  function currentOrganisationValue(portal) {
+    const select = byId("dashboardOrganisationFilter");
+    const fallback = (portal?.dashboardOrganisationValue || portal?.dashboardEntId || "").toString().trim();
+    return (select?.value || fallback || "").toString().trim();
+  }
+
+  function applyOrganisationOptions(portal) {
+    const wrap = byId("dashboardOrganisationWrap");
+    const select = byId("dashboardOrganisationFilter");
+    if (!wrap || !select) return;
+
+    const rows = normalizeOrganisationOptions(portal);
+    if (rows.length <= 1) {
+      wrap.style.display = "none";
+      select.innerHTML = "";
+      if (rows.length === 1) {
+        const opt = document.createElement("option");
+        opt.value = rows[0].id_ent;
+        opt.textContent = rows[0].label;
+        select.appendChild(opt);
+        select.value = rows[0].id_ent;
+      }
+      return;
+    }
+
+    const requested = (portal?.dashboardOrganisationValue || rows[0]?.id_ent || "").toString().trim();
+    select.innerHTML = "";
+    rows.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r.id_ent;
+      const indent = r.depth > 0 ? `${"— ".repeat(Math.min(r.depth, 4))}` : "";
+      const type = r.type_entreprise ? ` · ${r.type_entreprise}` : "";
+      opt.textContent = `${indent}${r.label}${type}`;
+      select.appendChild(opt);
+    });
+
+    select.value = rows.some(r => r.id_ent === requested) ? requested : rows[0].id_ent;
+    wrap.style.display = "flex";
+  }
+
   function renderDashboard(data, requestedValue, requestedCriticite) {
     _lastData = data || {};
     applyServiceOptions(data, requestedValue);
@@ -387,11 +466,23 @@
     setLoading();
     const selected = (serviceValue || "").toString().trim();
     const criticite = clamp(criticiteMin ?? currentCriticiteMin(), 0, 100);
-    const params = new URLSearchParams();
-    if (selected && selected !== ALL_SERVICES_VALUE) params.set("id_service", selected);
-    params.set("criticite_min", String(Math.round(criticite)));
-    const qs = params.toString() ? `?${params.toString()}` : "";
-    const url = `${portal.apiBase}/skills/dashboard/risk-overview/${encodeURIComponent(portal.contactId)}${qs}`;
+    const orgValue = currentOrganisationValue(portal);
+
+    let url = "";
+    if (typeof portal?.dashboardRiskOverviewUrl === "function") {
+      url = portal.dashboardRiskOverviewUrl({
+        id_ent: orgValue,
+        id_service: selected && selected !== ALL_SERVICES_VALUE ? selected : "",
+        criticite_min: Math.round(criticite),
+      });
+    } else {
+      const params = new URLSearchParams();
+      if (selected && selected !== ALL_SERVICES_VALUE) params.set("id_service", selected);
+      params.set("criticite_min", String(Math.round(criticite)));
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      url = `${portal.apiBase}/skills/dashboard/risk-overview/${encodeURIComponent(portal.contactId)}${qs}`;
+    }
+
     const data = await portal.apiJson(url);
     renderDashboard(data, selected || ALL_SERVICES_VALUE, criticite);
   }
@@ -426,12 +517,34 @@
       openModal("dashboardNoActionModal");
       return;
     }
+
+    if (typeof _portal?.openDashboardReport === "function") {
+      await _portal.openDashboardReport(target);
+      return;
+    }
+
     if (!_portal?.switchView) return;
     if (target === "entretien") {
       await _portal.switchView("entretien-performance");
       return;
     }
     await _portal.switchView("analyse-competences");
+  }
+
+  function bindOrganisationFilter(portal) {
+    const select = byId("dashboardOrganisationFilter");
+    if (!select || select._sbDashboardBound) return;
+    select._sbDashboardBound = true;
+    select.addEventListener("change", async () => {
+      try {
+        if (typeof portal?.onDashboardOrganisationChange === "function") {
+          await portal.onDashboardOrganisationChange(select.value || "");
+        }
+        await loadDashboard(portal, ALL_SERVICES_VALUE, currentCriticiteMin());
+      } catch (e) {
+        portal.showAlert("error", "Erreur dashboard : " + (e?.message || e));
+      }
+    });
   }
 
   function bindServiceFilter(portal) {
@@ -501,7 +614,9 @@
         await (window.__skillsAuthReady || Promise.resolve(null));
         portal.showAlert("", "");
         const ctx = portal.context || await portal.ensureContext();
-        renderWelcome(ctx);
+        renderWelcome(ctx, portal);
+        applyOrganisationOptions(portal);
+        bindOrganisationFilter(portal);
         bindServiceFilter(portal);
         bindCriticiteFilter(portal);
         bindDashboardActions();

@@ -11,7 +11,15 @@ from urllib.error import HTTPError, URLError
 from datetime import date
 
 from app.routers.skills_portal_common import get_conn
-from app.routers.studio_portal_common import studio_require_user, studio_fetch_owner, studio_require_min_role
+from app.routers.studio_portal_common import studio_require_user, studio_fetch_owner, studio_require_min_role, studio_fetch_role_code
+from app.routers.skills_portal_analyse import _fetch_service_label
+from app.routers.skills_portal_dashboard import (
+    DashboardAccess,
+    DashboardRiskOverview,
+    DashboardScope,
+    build_dashboard_risk_overview_for_scope,
+    _service_options,
+)
 
 router = APIRouter()
 
@@ -1997,6 +2005,68 @@ def archive_studio_client(id_owner: str, id_ent: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/clients/archive error: {e}")
+
+@router.get("/studio/clients/{id_owner}/{id_ent}/dashboard/risk-overview", response_model=DashboardRiskOverview)
+def get_studio_client_dashboard_risk_overview(
+    id_owner: str,
+    id_ent: str,
+    request: Request,
+    id_service: Optional[str] = None,
+    criticite_min: Optional[int] = None,
+):
+    """
+    Dashboard Insights embarqué dans Studio > Espace de gestion.
+    Important : l'authentification et le périmètre sont Studio, mais le moteur de calcul
+    reste celui du dashboard Insights via build_dashboard_risk_overview_for_scope().
+    Ne pas conditionner cette route à insights_actif : elle dépend de Studio actif.
+    """
+    auth = request.headers.get("Authorization", "")
+    u = studio_require_user(auth)
+
+    try:
+        with get_conn() as conn:
+            with conn.cursor(row_factory=dict_row) as cur:
+                oid = _require_owner_access(cur, u, id_owner)
+                studio_fetch_owner(cur, oid)
+                studio_require_min_role(cur, u, oid, "supervisor")
+
+                if not _structure_exists_for_owner(cur, oid, id_ent):
+                    raise HTTPException(status_code=404, detail="Structure introuvable.")
+
+                requested_service = (id_service or "").strip()
+                effective_service = None if not requested_service or requested_service == "__ALL__" else requested_service
+                scope_raw = _fetch_service_label(cur, id_ent, effective_service)
+                scope = DashboardScope(
+                    id_service=scope_raw.id_service,
+                    nom_service=scope_raw.nom_service,
+                )
+
+                role_code = studio_fetch_role_code(
+                    cur,
+                    (u.get("email") or ""),
+                    oid,
+                    bool(u.get("is_super_admin")),
+                )
+                access = DashboardAccess(
+                    role_code=role_code,
+                    locked_service=False,
+                    id_service_user=None,
+                )
+                services = _service_options(cur, id_ent, access, scope)
+
+                return build_dashboard_risk_overview_for_scope(
+                    cur,
+                    id_ent=id_ent,
+                    access=access,
+                    scope=scope,
+                    services=services,
+                    criticite_min=criticite_min,
+                )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"studio/clients/dashboard/risk-overview error: {e}")
+
 
 @router.get("/studio/clients/{id_owner}/{id_ent}/structures")
 def get_studio_child_structures(id_owner: str, id_ent: str, request: Request):

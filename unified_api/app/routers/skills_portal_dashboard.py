@@ -845,6 +845,56 @@ def _compute_risks_without_action(cur, id_ent: str, scope: DashboardScope, recor
 
 
 # ======================================================
+# Builder commun
+# ======================================================
+def build_dashboard_risk_overview_for_scope(
+    cur,
+    id_ent: str,
+    access: DashboardAccess,
+    scope: DashboardScope,
+    services: List[DashboardServiceOption],
+    criticite_min: Optional[int] = None,
+) -> DashboardRiskOverview:
+    """
+    Moteur unique du dashboard Insights.
+    Utilisé par :
+    - la console Insights classique (/skills/dashboard/...), avec auth Insights ;
+    - Studio > Espace de gestion en mode embarqué (/studio/clients/.../dashboard/...), avec auth Studio.
+
+    Toute évolution des indicateurs doit passer ici pour éviter deux calculs divergents.
+    """
+    criticite = _normalize_criticite_min(criticite_min)
+
+    current_records = _fetch_postes_fragility_records(
+        cur,
+        id_ent,
+        scope.id_service,
+        criticite,
+    )
+    _enrich_records_poste_criticite(cur, current_records)
+
+    health = _compute_health(cur, id_ent, scope, criticite)
+    risk_timeline = _compute_timeline(cur, id_ent, scope, current_records, criticite)
+    postes_watch = _compute_postes_watch(current_records)
+    transmission = _compute_transmission(current_records)
+    reliability = _compute_reliability(cur, id_ent, scope, criticite)
+    risks_without_action = _compute_risks_without_action(cur, id_ent, scope, current_records)
+
+    return DashboardRiskOverview(
+        access=access,
+        scope=scope,
+        services=services,
+        filters=DashboardFilters(criticite_min=criticite),
+        health=health,
+        risk_timeline=risk_timeline,
+        postes_watch=postes_watch,
+        transmission=transmission,
+        reliability=reliability,
+        risks_without_action=risks_without_action,
+    )
+
+
+# ======================================================
 # Routes
 # ======================================================
 @router.get("/skills/context/{id_contact}", response_model=SkillsContext)
@@ -876,35 +926,14 @@ def get_dashboard_risk_overview(id_contact: str, request: Request, id_service: O
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent, access, scope, services = _dashboard_context(cur, id_contact, request, id_service)
-                criticite = _normalize_criticite_min(criticite_min)
-
-                current_records = _fetch_postes_fragility_records(
+                return build_dashboard_risk_overview_for_scope(
                     cur,
-                    id_ent,
-                    scope.id_service,
-                    criticite,
+                    id_ent=id_ent,
+                    access=access,
+                    scope=scope,
+                    services=services,
+                    criticite_min=criticite_min,
                 )
-                _enrich_records_poste_criticite(cur, current_records)
-
-                health = _compute_health(cur, id_ent, scope, criticite)
-                risk_timeline = _compute_timeline(cur, id_ent, scope, current_records, criticite)
-                postes_watch = _compute_postes_watch(current_records)
-                transmission = _compute_transmission(current_records)
-                reliability = _compute_reliability(cur, id_ent, scope, criticite)
-                risks_without_action = _compute_risks_without_action(cur, id_ent, scope, current_records)
-
-        return DashboardRiskOverview(
-            access=access,
-            scope=scope,
-            services=services,
-            filters=DashboardFilters(criticite_min=criticite),
-            health=health,
-            risk_timeline=risk_timeline,
-            postes_watch=postes_watch,
-            transmission=transmission,
-            reliability=reliability,
-            risks_without_action=risks_without_action,
-        )
     except HTTPException:
         raise
     except Exception as e:

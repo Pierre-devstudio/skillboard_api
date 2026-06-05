@@ -830,3 +830,35 @@ a{
   }
 }
 
+
+
+/* ======================================================
+   Dashboard Insights embarqué dans Studio
+   - Le bloc garde les styles Insights, même si le thème global Studio surcharge --accent en jaune.
+   ====================================================== */
+.cs-insights-dashboard-mount{
+  width:100%;
+}
+
+.cs-insights-dashboard-mount #view-dashboard{
+  display:block;
+  --accent:#c1272d;
+  --sb-accent-rgb:193,39,45;
+  --sb-ring-accent:0 0 0 3px rgba(193,39,45,0.18);
+}
+
+.cs-insights-dashboard-mount #view-dashboard.is-embedded-studio .sb-dashboard-logo-wrap{
+  display:none !important;
+}
+
+.cs-insights-dashboard-mount #view-dashboard.is-embedded-studio .sb-dashboard-hero{
+  margin-top:0;
+}
+
+.cs-insights-dashboard-mount #view-dashboard .sb-dashboard-scope{
+  min-width:min(760px, 100%);
+}
+
+.cs-insights-dashboard-mount #view-dashboard .sb-dashboard-org-field{
+  min-width:240px;
+}

@@ -23,9 +23,17 @@
   let _collabWorkspaceScriptPromise = null;
   let _clientLogoMeta = { has_logo: false };
   let _clientLogoBlobUrl = null;
+  let _insightsDashboardReady = false;
+  let _insightsDashboardLoadingPromise = null;
+  let _insightsDashboardScriptPromise = null;
+  let _dashboardOrgValue = "";
 
   function getMenuStudioAssetUrl(filename){
     return new URL(`/menu_studio/${filename}`, window.location.origin).toString();
+  }
+
+  function getInsightsMenuAssetUrl(filename){
+    return new URL(`/menus/${filename}`, window.location.origin).toString();
   }
 
   function loadExternalScriptOnce(src, marker){
@@ -1468,6 +1476,169 @@ function bindPostalAssist(){
     return url.toString();
   }
 
+  // ======================================================
+  // Mode embarqué du dashboard Insights dans Studio.
+  // Le HTML/JS reste celui de /menus/skills_dashboard.* ; Studio fournit uniquement
+  // l'auth, le périmètre client/site et la route API sécurisée côté Studio.
+  // ======================================================
+  function buildDashboardOrganisationItems(){
+    const clientId = getClientId();
+    const rootLabel = (_detail?.nom_ent || "Structure courante").toString().trim();
+    const rootType = (_detail?.type_entreprise || _detail?.owner_type_client || "").toString().trim();
+    const rows = [];
+
+    if (clientId){
+      rows.push({
+        id_ent: clientId,
+        label: rootLabel,
+        nom_ent: rootLabel,
+        type_entreprise: rootType,
+        depth: 0,
+      });
+    }
+
+    (_orgItems || []).forEach(item => {
+      const id = (item?.id_ent || "").toString().trim();
+      if (!id || id === clientId) return;
+      rows.push({
+        id_ent: id,
+        label: (item?.nom_ent || "Organisation").toString().trim(),
+        nom_ent: item?.nom_ent,
+        type_entreprise: item?.type_entreprise,
+        depth: Number(item?.depth || 0) || 1,
+      });
+    });
+
+    return rows;
+  }
+
+  async function ensureInsightsDashboardMarkup(mount){
+    if (!mount) throw new Error("csInsightsDashboardMount introuvable.");
+    if (mount.dataset.loaded === "1") return;
+
+    const htmlUrl = `${getInsightsMenuAssetUrl("skills_dashboard.html")}?v=studio-embedded-2026-06-05`;
+    const resp = await fetch(htmlUrl, { credentials: "same-origin" });
+    if (!resp.ok) throw new Error(`Impossible de charger ${htmlUrl}`);
+
+    const html = await resp.text();
+    const host = document.createElement("div");
+    host.innerHTML = html;
+
+    const root = host.querySelector("#view-dashboard");
+    if (!root) throw new Error("Dashboard Insights partagé introuvable.");
+    root.classList.add("is-embedded-studio");
+
+    mount.innerHTML = "";
+    while (host.firstChild) mount.appendChild(host.firstChild);
+    mount.dataset.loaded = "1";
+  }
+
+  async function ensureInsightsDashboardScriptLoaded(){
+    if (window.SkillsDashboard && typeof window.SkillsDashboard.onShow === "function") return;
+    if (!_insightsDashboardScriptPromise){
+      _insightsDashboardScriptPromise = loadExternalScriptOnce(
+        `${getInsightsMenuAssetUrl("skills_dashboard.js")}?v=studio-embedded-2026-06-05`,
+        "skills-dashboard-shared"
+      );
+    }
+    await _insightsDashboardScriptPromise;
+    if (!window.SkillsDashboard || typeof window.SkillsDashboard.onShow !== "function"){
+      throw new Error("Initialisation dashboard Insights introuvable après chargement du script partagé.");
+    }
+  }
+
+  function buildInsightsDashboardPortalBridge(){
+    const ownerId = getOwnerId();
+    const clientId = getClientId();
+    const orgs = buildDashboardOrganisationItems();
+    const allowed = new Set(orgs.map(o => o.id_ent));
+    if (!_dashboardOrgValue || !allowed.has(_dashboardOrgValue)){
+      _dashboardOrgValue = clientId;
+    }
+
+    return {
+      apiBase: API_BASE,
+      contactId: ownerId,
+      embeddedMode: "studio_client_space",
+      dashboardTitle: "Synthèse des indicateurs",
+      dashboardHideLogo: true,
+      dashboardEntId: clientId,
+      dashboardOrganisationValue: _dashboardOrgValue,
+      dashboardOrganisations: orgs,
+      context: { prenom: "" },
+
+      async ensureContext(){
+        return this.context;
+      },
+
+      dashboardRiskOverviewUrl(args = {}){
+        const idEnt = (args.id_ent || _dashboardOrgValue || clientId || "").toString().trim();
+        const apiRoot = String(API_BASE || "").replace(/\/$/, "");
+        const url = new URL(
+          `${apiRoot}/studio/clients/${encodeURIComponent(ownerId)}/${encodeURIComponent(idEnt)}/dashboard/risk-overview`,
+          window.location.origin
+        );
+
+        const idService = (args.id_service || "").toString().trim();
+        if (idService) url.searchParams.set("id_service", idService);
+        url.searchParams.set("criticite_min", String(Math.round(Number(args.criticite_min ?? 70) || 70)));
+        return url.toString();
+      },
+
+      async apiJson(url, options = {}){
+        const resp = await fetchWithFreshStudioAuth(url, Object.assign({}, options || {}), true);
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok){
+          const detail = data?.detail || data?.message || `Erreur HTTP ${resp.status}`;
+          throw new Error(detail);
+        }
+        return data;
+      },
+
+      async onDashboardOrganisationChange(idEnt){
+        const v = (idEnt || "").toString().trim();
+        _dashboardOrgValue = v || clientId;
+      },
+
+      async openDashboardReport(target){
+        const t = (target || "").toString().trim().toLowerCase();
+        if (t === "entretien"){
+          setSection("evaluations");
+          return;
+        }
+        if (t === "analyse"){
+          setSection("evaluations");
+          return;
+        }
+      },
+
+      showAlert(type, message){
+        const msg = String(message || "").trim();
+        setMessage(msg);
+      }
+    };
+  }
+
+  async function loadInsightsDashboard(){
+    if (_insightsDashboardLoadingPromise){
+      return await _insightsDashboardLoadingPromise;
+    }
+
+    _insightsDashboardLoadingPromise = (async () => {
+      const mount = byId("csInsightsDashboardMount");
+      await ensureInsightsDashboardMarkup(mount);
+      await ensureInsightsDashboardScriptLoaded();
+      await window.SkillsDashboard.onShow(buildInsightsDashboardPortalBridge());
+      _insightsDashboardReady = true;
+    })();
+
+    try {
+      return await _insightsDashboardLoadingPromise;
+    } finally {
+      _insightsDashboardLoadingPromise = null;
+    }
+  }
+
   function ensureOrganisationPortalBridge(){
     window.__orgScopeOwnerId = getOwnerId();
     window.__orgScopeEntId = getClientId();
@@ -1716,6 +1887,16 @@ function bindPostalAssist(){
       btn.addEventListener("click", async () => {
         const section = btn.dataset.section || "dashboard";
         setSection(section);
+
+        if (section === "dashboard") {
+          try {
+            setMessage("");
+            await loadInsightsDashboard();
+          } catch (e) {
+            setMessage(e.message || "Erreur lors du chargement du dashboard.");
+          }
+          return;
+        }
 
         if (section === "organisation") {
           try {
@@ -2166,6 +2347,12 @@ function bindPostalAssist(){
     );
 
     _orgItems = Array.isArray(data?.items) ? data.items : [];
+
+    const allowedDashboardOrgs = new Set([clientId].concat(_orgItems.map(x => (x?.id_ent || "").toString().trim()).filter(Boolean)));
+    if (!_dashboardOrgValue || !allowedDashboardOrgs.has(_dashboardOrgValue)){
+      _dashboardOrgValue = clientId;
+    }
+
     ensureDefaultOrgExpandedIds(_orgItems);
     renderOrganisationSection();
   }
@@ -2327,29 +2514,14 @@ function bindPostalAssist(){
       badges.push(`<span class="cs-badge cs-badge--head">Tête de groupe</span>`);
     }
 
-    byId("csClientBadges").innerHTML = badges.join("");
+    const badgesEl = byId("csClientBadges");
+    if (badgesEl) badgesEl.innerHTML = badges.join("");
   }
 
   function renderDashboard(){
-    setText("dashStudioActif", yesNo(_detail?.studio_actif));
-    setText("dashDelegationStudio", yesNo(_detail?.gestion_acces_studio_autorisee));
-    setText("dashGroupOk", yesNo(_detail?.group_ok));
-    setText("dashParents", _detail?.nb_entites_parents);
-    setText("dashChildren", _detail?.nb_entites_enfants);
-
-    setText("sumNomEnt", _detail?.nom_ent);
-    setText("sumVilleEnt", _detail?.ville_ent);
-    setText("sumPaysEnt", _detail?.pays_ent);
-    setText("sumEffectifEnt", _detail?.effectif_ent);
-    setText("sumSiretEnt", _detail?.siret_ent);
-    setText("sumNumEntreprise", _detail?.num_entreprise);
-
-    setText("sumIdcc", _detail?.idcc);
-    setText("sumIdccLibelle", _detail?.idcc_libelle);
-    setText("sumCodeApe", _detail?.code_ape_ent);
-    setText("sumCodeApeIntitule", _detail?.code_ape_intitule);
-    setText("sumOpcoNom", _detail?.opco_nom);
-    setText("sumOwnerNom", _context?.nom_owner);
+    loadInsightsDashboard().catch(e => {
+      setMessage(e?.message || "Erreur lors du chargement du dashboard Insights.");
+    });
   }
 
   function renderIdentification(){
@@ -2542,9 +2714,9 @@ function bindPostalAssist(){
       _detail = updated || {};
       renderDynamicLabels();
       renderHeader();
-      renderDashboard();
       renderIdentification();
       await loadOrganisationData();
+      await loadInsightsDashboard();
       setFicheEditMode(false);
       setMessage("");
     } catch (e) {
@@ -2775,11 +2947,13 @@ function bindPostalAssist(){
       date_maj: null,
     };
 
+    _dashboardOrgValue = clientId;
+
     renderDynamicLabels();
     renderHeader();
-    renderDashboard();
     renderIdentification();
     await loadOrganisationData();
+    await loadInsightsDashboard();
     setFicheEditMode(false);
     setSection("dashboard");
 
