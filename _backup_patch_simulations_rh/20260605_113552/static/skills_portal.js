@@ -128,12 +128,7 @@
   // Placeholders (pour éviter les clics “vides”)
   const COMING_SOON = "/menus/skills_coming_soon.html";
 
-  portal.registerMenu({
-    view: "simulations-rh",
-    htmlUrl: "/menus/skills_simulations_rh.html",
-    jsUrl: "/menus/skills_simulations_rh.js",
-    onShow: (p) => window.SkillsSimulationsRH?.onShow?.(p),
-  });
+  portal.registerMenu({ view: "simulations-rh", htmlUrl: COMING_SOON });
   portal.registerMenu({ view: "plan-actions", htmlUrl: COMING_SOON });
   portal.registerMenu({ view: "abonnement-facturation", htmlUrl: COMING_SOON });
   portal.registerMenu({ view: "accompagnement", htmlUrl: COMING_SOON });

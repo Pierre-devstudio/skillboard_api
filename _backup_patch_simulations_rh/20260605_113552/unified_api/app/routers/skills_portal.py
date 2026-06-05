@@ -11,7 +11,6 @@ from app.routers import (
     skills_portal_referentiel_competence,
     skills_portal_cartographie_competences,
     skills_portal_analyse,
-    skills_portal_simulations,
     skills_portal_besoins_formations,
     skills_portal_entretien_performance,
     skills_portal_pdf,
@@ -157,9 +156,6 @@ for route in skills_portal_cartographie_competences.router.routes:
      app_local.router.routes.append(route)
 
 for route in skills_portal_analyse.router.routes:
-     app_local.router.routes.append(route)
-
-for route in skills_portal_simulations.router.routes:
      app_local.router.routes.append(route)
 
 for route in skills_portal_besoins_formations.router.routes:
