@@ -649,58 +649,42 @@ def _build_conseil(req: SimulationEvalRequest, current_summary: Dict[str, Any], 
     delta = after - before
     top = (impacts.get("postes_impactes") or [])[:1]
     top_label = top[0].get("intitule_poste") if top else "le périmètre analysé"
-    postes_degrades = int(impacts.get("postes_degrades") or 0)
-    postes_securises = int(impacts.get("postes_securises") or 0)
-    types = {str(h.type or "").strip() for h in req.hypotheses or []}
 
-    if delta <= -8 and postes_degrades == 0:
-        verdict = f"Le scénario réduit la fragilité moyenne du périmètre de {abs(delta)} points sans effet domino majeur détecté. L’effet principal concerne {top_label}."
-        option = "Option favorable à conserver dans le comparatif. Vérifier la cotation avant décision définitive."
-        decision = "option_favorable"
-    elif delta <= -8:
-        verdict = f"Le scénario réduit le risque global de {abs(delta)} points, mais il crée aussi une fragilité secondaire sur {postes_degrades} poste(s)."
-        option = "Option intéressante, mais à sécuriser par un relais ou une formation sur le poste dégradé."
-        decision = "option_a_securiser"
-    elif delta >= 8 or postes_degrades > postes_securises:
-        verdict = f"Le scénario augmente la fragilité moyenne du périmètre de {delta} points. Le point de vigilance principal concerne {top_label}."
-        option = "Scénario à éviter en l’état ou à compléter par une action de sécurisation immédiate."
-        decision = "risque_eleve"
+    if delta <= -8:
+        lecture = f"Le scénario réduit la fragilité moyenne du périmètre de {abs(delta)} points. L’effet principal se concentre sur {top_label}."
+        priorite = "Option intéressante à comparer avec un scénario formation ou transmission pour vérifier l’équilibre global."
+    elif delta >= 8:
+        lecture = f"Le scénario augmente la fragilité moyenne du périmètre de {delta} points. Le point de vigilance principal concerne {top_label}."
+        priorite = "Scénario à sécuriser avant décision : relais interne, formation ciblée ou renfort temporaire à prévoir."
     else:
-        verdict = f"Le scénario modifie peu la fragilité moyenne du périmètre ({delta:+d} point(s)). L’arbitrage se joue surtout sur les risques secondaires et la cotation."
-        option = "Option à comparer avec une alternative formation, mobilité ou renfort avant arbitrage."
-        decision = "a_comparer"
+        lecture = f"Le scénario modifie peu la fragilité moyenne du périmètre ({delta:+d} point(s)). L’arbitrage se joue davantage sur les risques secondaires que sur l’indicateur global."
+        priorite = "Option équilibrée à conserver dans le comparatif, surtout si son impact cotation reste maîtrisé."
 
-    if postes_degrades > 0:
-        option += " Contrôler l’effet domino avant validation."
+    if int(impacts.get("postes_degrades") or 0) > 0:
+        priorite += " Un poste se dégrade : il faut contrôler l’effet domino avant validation."
 
     alternatives = []
+    types = {str(h.type or "").strip() for h in req.hypotheses or []}
     if "mobilite_effectif" in types:
         alternatives.append("Comparer avec une montée en compétence progressive pour éviter de fragiliser le poste d’origine.")
     if "recrutement_virtuel" in types:
-        alternatives.append("Tester un profil intermédiaire + formation pour vérifier si un recrutement senior est nécessaire.")
+        alternatives.append("Tester un profil intermédiaire + formation, afin de vérifier si un recrutement senior est réellement nécessaire.")
     if "depart_effectif" in types or "absence_effectif" in types:
         alternatives.append("Ajouter un scénario de doublure interne sur les compétences critiques portées par le collaborateur concerné.")
     if "montee_competence" in types:
-        alternatives.append("Comparer avec la formation d’un second collaborateur pour limiter la dépendance à un seul relais.")
+        alternatives.append("Comparer avec une formation d’un second collaborateur pour limiter la dépendance à un seul relais.")
     if not alternatives:
-        alternatives.append("Créer une option alternative pour comparer sécurisation rapide et effort RH réel.")
+        alternatives.append("Créer un deuxième scénario plus conservateur pour mesurer l’écart réel entre sécurisation rapide et effort RH.")
 
     manquants = []
     if cotation.get("fiabilite") != "complète":
         manquants.append("Certaines cotations de poste sont absentes : finaliser les cotations dans Studio affinera la lecture financière.")
     if not (req.hypotheses or []):
-        manquants.append("Aucune situation n’a été transmise au moteur de simulation.")
-
-    impact_cotation = "Cotation complète : l’impact classification peut être intégré à l’arbitrage." if cotation.get("fiabilite") == "complète" else "Cotation partielle : l’impact financier reste à confirmer après cotation Studio."
+        manquants.append("Aucune hypothèse n’a été transmise au moteur de simulation.")
 
     return {
-        "verdict": verdict,
-        "option_recommandee": option,
-        "decision_code": decision,
-        "lecture": verdict,
-        "decision_prioritaire": option,
-        "impact_cotation": impact_cotation,
-        "risque_secondaire": "Effet domino à contrôler." if postes_degrades > 0 else "Pas d’effet domino majeur détecté.",
+        "lecture": lecture,
+        "decision_prioritaire": priorite,
         "alternatives": alternatives[:3],
         "donnees_manquantes": manquants,
     }

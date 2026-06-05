@@ -1,15 +1,15 @@
 <section id="view-simulations-rh" style="display:none;">
-  <div class="card sim-hero-card">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+  <div class="card sim2-hero-card">
+    <div class="sim2-hero-layout">
       <div>
         <div class="card-title">Simulations RH & arbitrages</div>
-        <div class="card-sub" style="margin:6px 0 0 0;">
-          Construisez un scénario simple, mesurez l’impact RH, contrôlez la cotation et comparez les options sans polluer l’écran.
+        <div class="card-sub sim2-hero-sub">
+          Préparez une décision RH : départ, absence, mobilité, formation ou recrutement. L’écran affiche le verdict, les impacts et les points à arbitrer, les détails restent repliés.
         </div>
       </div>
-      <div class="sb-actions sb-actions--end">
-        <button type="button" class="sb-btn sb-btn--soft sim-tab-btn is-active" data-sim-tab="build">Construire</button>
-        <button type="button" class="sb-btn sb-btn--soft sim-tab-btn" data-sim-tab="result">Résultat</button>
+      <div class="sb-actions sb-actions--end sim2-tabs">
+        <button type="button" class="sb-btn sb-btn--soft sim-tab-btn is-active" data-sim-tab="build">Préparer</button>
+        <button type="button" class="sb-btn sb-btn--soft sim-tab-btn" data-sim-tab="result">Verdict</button>
         <button type="button" class="sb-btn sb-btn--soft sim-tab-btn" data-sim-tab="compare">Comparer <span id="simCompareCount" class="sb-badge" style="margin-left:6px;">0</span></button>
       </div>
     </div>
@@ -18,96 +18,71 @@
   <div id="simStatus" class="sb-hint" style="display:none;"></div>
 
   <div class="sim-panel" data-sim-panel="build">
-    <div class="sb-split sim-main-grid">
-      <div class="sb-col">
+    <div class="sim2-grid-main">
+      <div class="sim2-grid-left">
         <div class="card">
-          <div class="card-title">1. Cadrer le scénario</div>
-          <div class="card-sub" style="margin:6px 0 0 0;">Le périmètre limite les postes, collaborateurs et calculs affichés.</div>
-
-          <div class="sim-form-grid" style="margin-top:12px;">
-            <div class="info-item">
-              <div class="label">Titre du scénario</div>
-              <input id="simScenarioTitle" class="sb-input" type="text" placeholder="Ex. Mobilité Julie vers ADV" />
+          <div class="sim2-section-head">
+            <div>
+              <div class="card-title">Quel arbitrage RH voulez-vous préparer ?</div>
+              <div class="card-sub sim2-muted-top">Choisissez une situation terrain. Le moteur technique travaille derrière, comme il se doit.</div>
             </div>
+          </div>
 
-            <div class="info-item">
-              <div class="label">Objectif</div>
-              <select id="simObjectiveSelect" class="sb-select">
-                <option value="securiser_poste">Sécuriser un poste</option>
-                <option value="anticiper_depart">Anticiper un départ</option>
-                <option value="preparer_mobilite">Préparer une mobilité</option>
-                <option value="reduire_dependance">Réduire une dépendance compétence</option>
-                <option value="comparer_recrutement_formation">Comparer recrutement / formation</option>
-              </select>
-            </div>
+          <div id="simObjectiveCards" class="sim2-objective-grid" aria-label="Objectifs de simulation"></div>
 
-            <div class="info-item">
-              <div class="label">Service</div>
-              <select id="simServiceSelect" class="sb-select">
-                <option value="__ALL__">Tous les services</option>
-              </select>
-            </div>
-
-            <div class="info-item">
-              <div class="label">Criticité minimale</div>
-              <div class="sb-filter-slider">
-                <input type="range" id="simCriticiteRange" min="0" max="100" step="5" value="70" aria-label="Criticité minimale">
-                <div class="sb-filter-slider__meta">
-                  <span>Compétences prises en compte si criticité ≥</span>
-                  <strong id="simCriticiteValue">70</strong>
+          <details class="sim2-details" style="margin-top:14px;">
+            <summary>Réglages du périmètre</summary>
+            <div class="sim2-detail-body">
+              <div class="sim-form-grid">
+                <div class="info-item">
+                  <div class="label">Service analysé</div>
+                  <select id="simServiceSelect" class="sb-select">
+                    <option value="__ALL__">Tous les services</option>
+                  </select>
+                </div>
+                <div class="info-item">
+                  <div class="label">Criticité minimale</div>
+                  <div class="sb-filter-slider">
+                    <input type="range" id="simCriticiteRange" min="0" max="100" step="5" value="70" aria-label="Criticité minimale">
+                    <div class="sb-filter-slider__meta">
+                      <span>Compétences prises en compte si criticité ≥</span>
+                      <strong id="simCriticiteValue">70</strong>
+                    </div>
+                  </div>
                 </div>
               </div>
+              <div class="sb-actions" style="margin-top:12px;">
+                <button type="button" class="sb-btn sb-btn--init" id="btnSimReloadOptions">Actualiser les données</button>
+              </div>
             </div>
-          </div>
-
-          <div class="sb-actions" style="margin-top:12px;">
-            <button type="button" class="sb-btn sb-btn--init" id="btnSimReloadOptions">Actualiser les données</button>
-            <button type="button" class="sb-btn sb-btn--soft" id="btnSimResetScenario">Réinitialiser</button>
-          </div>
+          </details>
         </div>
 
-        <div class="card" style="margin-top:12px;">
-          <div class="card-title">2. Ajouter une hypothèse</div>
-          <div class="card-sub" style="margin:6px 0 0 0;">Une hypothèse = une carte. Simple. Les usines à gaz sont déjà suffisamment représentées dans la société.</div>
-
-          <div class="sim-builder-card" style="margin-top:12px;">
-            <div class="info-item">
-              <div class="label">Type d’hypothèse</div>
-              <select id="simHypType" class="sb-select">
-                <option value="depart_effectif">Départ d’un collaborateur</option>
-                <option value="absence_effectif">Absence temporaire</option>
-                <option value="mobilite_effectif">Mobilité interne</option>
-                <option value="montee_competence">Montée en compétence</option>
-                <option value="recrutement_virtuel">Recrutement / renfort virtuel</option>
-              </select>
-            </div>
-
-            <div id="simHypFields" class="sim-form-grid" style="margin-top:12px;"></div>
-
-            <div class="sb-actions" style="margin-top:12px;">
-              <button type="button" class="sb-btn sb-btn--accent" id="btnSimAddHyp">Ajouter l’hypothèse</button>
-            </div>
-          </div>
-
-          <div style="margin-top:14px;">
-            <div class="label">Scénario construit</div>
-            <div id="simHypList" class="sim-hyp-list"></div>
-          </div>
-
-          <div class="sb-actions sb-actions--end" style="margin-top:14px;">
-            <button type="button" class="sb-btn sb-btn--accent" id="btnSimEvaluate">Simuler l’impact</button>
+        <div class="card sim2-builder-card" style="margin-top:12px;">
+          <div class="card-title">Situation à tester</div>
+          <div id="simBuilderIntro" class="card-sub sim2-muted-top">Sélectionnez d’abord un arbitrage.</div>
+          <div id="simDecisionBuilder" class="sim2-builder-body"></div>
+          <div class="sb-actions sb-actions--end sim2-builder-actions">
+            <button type="button" class="sb-btn sb-btn--soft" id="btnSimResetScenario">Réinitialiser</button>
+            <button type="button" class="sb-btn sb-btn--accent" id="btnSimEvaluate">Analyser l’impact</button>
           </div>
         </div>
       </div>
 
-      <div class="sb-col">
-        <div class="card sim-side-card">
-          <div class="card-title">Lecture rapide</div>
-          <div class="card-sub" style="margin:6px 0 0 0;">
-            Le résultat s’affichera ici après simulation : impact avant/après, cotation, alertes et accès aux détails repliés.
+      <div class="sim2-grid-right">
+        <div class="card sim2-side-card">
+          <div class="card-title">Scénario prêt</div>
+          <div id="simScenarioPreview" class="sim2-scenario-preview">
+            <div class="sim-empty-state">Choisissez un arbitrage pour préparer une simulation.</div>
           </div>
-          <div id="simQuickPreview" style="margin-top:12px;">
-            <div class="sim-empty-state">Aucun scénario simulé pour l’instant.</div>
+        </div>
+
+        <div class="card sim2-side-card" style="margin-top:12px;">
+          <div class="card-title">Lecture attendue</div>
+          <div id="simReadingPreview" class="sim2-reading-preview">
+            <div class="sim2-read-row"><strong>Verdict</strong><span>Risque, bénéfice et limites</span></div>
+            <div class="sim2-read-row"><strong>Cotation</strong><span>Impact classification si disponible</span></div>
+            <div class="sim2-read-row"><strong>Comparatif</strong><span>Options conservées temporairement</span></div>
           </div>
         </div>
       </div>
@@ -117,23 +92,22 @@
   <div class="sim-panel" data-sim-panel="result" style="display:none;">
     <div id="simResultContainer" class="sim-result-container">
       <div class="card">
-        <div class="card-title">Résultat</div>
-        <div class="card-sub" style="margin:6px 0 0 0;">Lancez une simulation depuis l’onglet Construire.</div>
+        <div class="card-title">Verdict RH</div>
+        <div class="card-sub sim2-muted-top">Lancez une analyse depuis l’onglet Préparer.</div>
       </div>
     </div>
   </div>
 
   <div class="sim-panel" data-sim-panel="compare" style="display:none;">
     <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+      <div class="sim2-hero-layout">
         <div>
           <div class="card-title">Comparatif temporaire</div>
-          <div class="card-sub" style="margin:6px 0 0 0;">Les scénarios ajoutés restent disponibles dans le navigateur pour comparer les arbitrages.</div>
+          <div class="card-sub sim2-muted-top">Comparez les options conservées pendant la session : effet RH, risque secondaire, cotation et décision à préparer.</div>
         </div>
         <button type="button" class="sb-btn sb-btn--soft" id="btnSimClearCompare">Vider le comparatif</button>
       </div>
     </div>
-
     <div id="simCompareContainer" style="margin-top:12px;"></div>
   </div>
 </section>
