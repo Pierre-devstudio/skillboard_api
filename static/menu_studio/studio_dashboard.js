@@ -172,7 +172,11 @@
     const mode = data.mode || "single_structure";
     const own = data.own || {};
 
-    setStatus("");
+    if (own.is_real_entity === false) {
+      setStatus("Aucune structure interne n’est rattachée à ce Studio owner : le bloc Ma structure reste volontairement vide, sans utiliser un client à la place.");
+    } else {
+      setStatus("");
+    }
     setText("studioDashTitle", mode === "network" ? "Pilotage de ma structure" : "Pilotage Studio");
     setText("studioDashSub", mode === "network" ? "Votre structure d’abord, puis les organisations liées à superviser." : "Vue synthétique des risques, demandes terrain et actions RH à mener.");
     setText("studioDashMainSectionTitle", own.nom_ent || "Ma structure");
@@ -245,7 +249,7 @@
   }
 
   const HELP = {
-    health: ["Santé de ma structure", "Indicateur calculé à partir des risques postes, des demandes ouvertes, des entretiens à relancer et de la fiabilité du référentiel."],
+    health: ["Santé de ma structure", "Indicateur principal issu du moteur du dashboard Insights sur la structure affichée. Les données Studio complètent ensuite avec les demandes, entretiens et référentiel."],
     risques: ["Services ou postes à surveiller", "La carte s’adapte au périmètre : services pour une structure complète, postes pour un service sélectionné, organisations dans le bloc de supervision."],
     demandes: ["Demandes terrain", "Besoins transmis depuis Insights, notamment les besoins formation envoyés par les managers ou issus des analyses."],
     actions: ["Actions prioritaires", "Liste ordonnée des actions à traiter : formation, transmission, entretiens ou référentiel."],

@@ -14,8 +14,11 @@ from app.routers.skills_portal_dashboard import (
     _compute_risks_without_action,
     _compute_transmission,
     _enrich_records_poste_criticite,
+    DashboardAccess,
+    build_dashboard_risk_overview_for_scope,
+    _service_options,
 )
-from app.routers.skills_portal_analyse import _fetch_postes_fragility_records
+from app.routers.skills_portal_analyse import _fetch_postes_fragility_records, _fetch_service_label
 
 router = APIRouter()
 
@@ -285,38 +288,42 @@ def _studio_norm_criticite(v) -> int:
 
 
 def _studio_fetch_owner_structure(cur, id_owner: str, nom_owner: str = "") -> Dict[str, Any]:
+    """
+    Retourne uniquement la structure propre du Studio owner.
+
+    Correctif important : l'ancien patch prenait la première entreprise liée lorsque
+    e.id_ent = id_owner n'existait pas. En multi-client, cela transformait un client
+    quelconque en "Ma structure". Petit chef-d'œuvre d'illusion comptable, donc on
+    arrête ça proprement.
+    """
     cur.execute(
         """
-        SELECT e.id_ent, e.nom_ent, e.type_entreprise, e.ville_ent, e.pays_ent, e.effectif_ent
+        SELECT e.id_ent, e.nom_ent, e.type_entreprise, e.ville_ent, e.pays_ent, e.effectif_ent,
+               TRUE AS is_real_entity
         FROM public.tbl_entreprise e
         WHERE e.id_ent = %s
-          AND e.id_owner_gestionnaire = %s
           AND COALESCE(e.masque, FALSE) = FALSE
+          AND (
+                COALESCE(NULLIF(BTRIM(e.id_owner_gestionnaire), ''), %s) = %s
+                OR e.id_owner_gestionnaire IS NULL
+              )
         LIMIT 1
         """,
-        (id_owner, id_owner),
+        (id_owner, id_owner, id_owner),
     )
     r = cur.fetchone()
     if r:
         return dict(r)
 
-    cur.execute(
-        """
-        SELECT e.id_ent, e.nom_ent, e.type_entreprise, e.ville_ent, e.pays_ent, e.effectif_ent
-        FROM public.tbl_entreprise e
-        WHERE e.id_owner_gestionnaire = %s
-          AND COALESCE(e.masque, FALSE) = FALSE
-        ORDER BY CASE WHEN e.id_ent = %s THEN 0 ELSE 1 END, lower(e.nom_ent), e.id_ent
-        LIMIT 1
-        """,
-        (id_owner, id_owner),
-    )
-    r = cur.fetchone()
-    if r:
-        return dict(r)
-
-    return {"id_ent": id_owner, "nom_ent": nom_owner or "Ma structure", "type_entreprise": "Structure", "ville_ent": None, "pays_ent": None, "effectif_ent": None}
-
+    return {
+        "id_ent": id_owner,
+        "nom_ent": nom_owner or "Ma structure",
+        "type_entreprise": "Structure gestionnaire",
+        "ville_ent": None,
+        "pays_ent": None,
+        "effectif_ent": None,
+        "is_real_entity": False,
+    }
 
 def _studio_fetch_linked_structures(cur, id_owner: str, root_id: str) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
@@ -404,6 +411,80 @@ def _studio_priority_from_risk(risk_pct: float, postes_danger: int, critical_dan
         return "surveillance", "À surveiller"
     return "stable", "Stable"
 
+
+def _studio_model_to_dict(obj) -> Dict[str, Any]:
+    if obj is None:
+        return {}
+    if isinstance(obj, dict):
+        return obj
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    if hasattr(obj, "dict"):
+        return obj.dict()
+    return dict(obj) if hasattr(obj, "items") else {}
+
+
+def _studio_fetch_insights_overview(cur, id_ent: str, id_service: Optional[str], criticite: int) -> Dict[str, Any]:
+    """
+    Appel du moteur officiel du dashboard Insights.
+    Studio ne recalcule pas les KPI principaux : il les consomme, sinon les écarts
+    Insights/Studio réapparaissent et tout le monde finit par comparer des pourcentages
+    au lieu de travailler. Passionnant, mais non.
+    """
+    scope_raw = _fetch_service_label(cur, id_ent, id_service)
+    scope = DashboardScope(
+        id_service=getattr(scope_raw, "id_service", None),
+        nom_service=getattr(scope_raw, "nom_service", None) or "Tous les services",
+    )
+    access = DashboardAccess(role_code="admin", locked_service=False, id_service_user=None)
+    services = _service_options(cur, id_ent, access, scope)
+    overview = build_dashboard_risk_overview_for_scope(
+        cur,
+        id_ent=id_ent,
+        access=access,
+        scope=scope,
+        services=services,
+        criticite_min=criticite,
+    )
+    return _studio_model_to_dict(overview)
+
+
+def _studio_empty_main_for_missing_structure(current: Dict[str, Any]) -> Dict[str, Any]:
+    label = current.get("nom_ent") or "Ma structure"
+    return {
+        "scope_label": f"{label} n'est pas encore rattachée à une structure entreprise exploitable.",
+        "risk_title": "Services à surveiller",
+        "risk_subtitle": "Aucune structure interne exploitable pour ce Studio owner.",
+        "risk_kind": "service",
+        "no_structure": True,
+        "portfolio": {
+            "postes_total": 0,
+            "postes_danger": 0,
+            "postes_surveillance": 0,
+            "postes_stables": 0,
+            "postes_critiques_danger": 0,
+            "risk_pct": 0,
+            "health_pct": 0,
+            "health_label": "Structure non créée",
+            "risques_sans_action": 0,
+            "items_danger": 0,
+            "items_surveillance": 0,
+            "items_stables": 0,
+        },
+        "risk_items": [],
+        "demandes_formation": {"ouvertes": 0, "urgentes": 0, "prises_en_charge": 0, "a_instruire": 0, "items": []},
+        "entretiens": {"a_realiser": 0, "en_cours": 0, "a_signer": 0, "ouverts": 0},
+        "referentiel": {"postes_total": 0, "postes_sans_competence": 0, "competences_sans_domaine": 0, "collaborateurs_sans_poste": 0},
+        "transmission": {"pct": 0, "postes_total": 0, "postes_transmissibles": 0, "postes_risque": 0},
+        "reliability": {"pct": 0},
+        "actions_prioritaires": [{
+            "type_action": "referentiel",
+            "priority": "surveillance",
+            "priority_label": "Structure",
+            "title": "Créer ou rattacher la structure interne",
+            "subtitle": "Le dashboard évite désormais d'utiliser un client comme 'Ma structure'. C'est mieux pour les chiffres, paraît-il.",
+        }],
+    }
 
 def _studio_records_summary(cur, id_ent: str, records: List[Dict[str, Any]], id_service: Optional[str] = None) -> Dict[str, Any]:
     nb_postes = len(records or [])
@@ -512,7 +593,7 @@ def _studio_fetch_risk_by_structure(cur, structures: List[Dict[str, Any]], criti
     total_danger = 0
     total_watch = 0
     total_stable = 0
-    total_risk_weighted = 0.0
+    total_health_weighted = 0.0
     total_transmission_ok = 0
     total_transmission_postes = 0
     total_no_action = 0
@@ -522,46 +603,60 @@ def _studio_fetch_risk_by_structure(cur, structures: List[Dict[str, Any]], criti
         if not id_ent:
             continue
         try:
-            records = _fetch_postes_fragility_records(cur, id_ent, None, criticite_min)
-            _enrich_records_poste_criticite(cur, records)
+            overview = _studio_fetch_insights_overview(cur, id_ent, None, criticite_min)
         except Exception:
-            records = []
-        summary = _studio_records_summary(cur, id_ent, records, None)
-        priority, priority_label = _studio_priority_from_risk(summary["risk_pct"], summary["postes_danger"], summary["postes_critiques_danger"])
-        tr = summary.get("transmission") or {}
-        total_postes += summary["postes_total"]
-        total_danger += summary["postes_danger"]
-        total_watch += summary["postes_surveillance"]
-        total_stable += summary["postes_stables"]
-        total_risk_weighted += summary["risk_pct"] * summary["postes_total"]
-        total_no_action += summary["risques_sans_action"]
+            overview = {}
+        health = overview.get("health") or {}
+        watch = overview.get("postes_watch") or {}
+        tr = overview.get("transmission") or {}
+        no_action = overview.get("risks_without_action") or {}
+
+        postes_total = _studio_i(watch.get("total_postes"))
+        postes_danger = _studio_i(watch.get("postes_danger"))
+        postes_watch = _studio_i(watch.get("postes_surveillance"))
+        postes_stables = _studio_i(watch.get("postes_stables"))
+        postes_critiques = _studio_i(watch.get("postes_critiques_danger"))
+        health_pct = round(_studio_f(health.get("pct")), 1)
+        risk_pct = round(max(0.0, 100.0 - health_pct), 1) if postes_total else 0.0
+        priority, priority_label = _studio_priority_from_risk(risk_pct, postes_danger, postes_critiques)
+
+        total_postes += postes_total
+        total_danger += postes_danger
+        total_watch += postes_watch
+        total_stable += postes_stables
+        total_health_weighted += health_pct * postes_total
+        total_no_action += _studio_i(no_action.get("total"))
         total_transmission_ok += _studio_i(tr.get("postes_transmissibles"))
         total_transmission_postes += _studio_i(tr.get("postes_total"))
+
         items.append({
             "kind": "structure",
             "id_ent": id_ent,
             "nom_ent": st.get("nom_ent") or "Structure",
             "type_entreprise": st.get("type_entreprise") or "Organisation",
             "ville_ent": st.get("ville_ent"),
-            "postes_total": summary["postes_total"],
-            "postes_danger": summary["postes_danger"],
-            "postes_surveillance": summary["postes_surveillance"],
-            "postes_stables": summary["postes_stables"],
-            "postes_critiques_danger": summary["postes_critiques_danger"],
-            "risques_sans_action": summary["risques_sans_action"],
-            "risk_pct": summary["risk_pct"],
-            "health_pct": summary["health_pct"],
+            "postes_total": postes_total,
+            "postes_danger": postes_danger,
+            "postes_surveillance": postes_watch,
+            "postes_stables": postes_stables,
+            "postes_critiques_danger": postes_critiques,
+            "risques_sans_action": _studio_i(no_action.get("total")),
+            "risk_pct": risk_pct,
+            "health_pct": health_pct,
             "priority": priority,
             "priority_label": priority_label,
         })
 
-    risk_avg = round(total_risk_weighted / total_postes, 1) if total_postes else 0.0
-    health_pct = max(0.0, round(100.0 - risk_avg, 1))
+    health_pct = round(total_health_weighted / total_postes, 1) if total_postes else 0.0
+    risk_avg = round(max(0.0, 100.0 - health_pct), 1) if total_postes else 0.0
     health_label = "Sous contrôle"
-    if health_pct < 40:
+    if health_pct <= 0 and total_postes == 0:
+        health_label = "Aucune donnée"
+    elif health_pct < 40:
         health_label = "Critique"
     elif health_pct < 70:
         health_label = "Sous surveillance"
+
     sorted_items = sorted(items, key=lambda x: (0 if x.get("priority") == "danger" else 1 if x.get("priority") == "surveillance" else 2, -_studio_f(x.get("risk_pct")), x.get("nom_ent") or ""))
     return {
         "items": sorted_items,
@@ -586,7 +681,6 @@ def _studio_fetch_risk_by_structure(cur, structures: List[Dict[str, Any]], criti
             "postes_risque": max(total_transmission_postes - total_transmission_ok, 0),
         },
     }
-
 
 def _studio_fetch_formation_demandes(cur, id_owner: str, id_ents: List[str], id_service: Optional[str] = None) -> Dict[str, Any]:
     if not id_ents or not _studio_has_table(cur, "tbl_insights_besoin_formation"):
@@ -794,6 +888,9 @@ def _studio_scope_options(current: Dict[str, Any], services: List[Dict[str, Any]
 
 def _studio_build_main(cur, id_owner: str, current: Dict[str, Any], perimetre: str, priorite: str, criticite: int) -> Dict[str, Any]:
     id_ent = _studio_s(current.get("id_ent")) or id_owner
+    if not bool(current.get("is_real_entity", True)):
+        return _studio_empty_main_for_missing_structure(current)
+
     services = _studio_fetch_services(cur, id_ent)
     service_id = None
     if _studio_s(perimetre).lower().startswith("service:"):
@@ -802,12 +899,50 @@ def _studio_build_main(cur, id_owner: str, current: Dict[str, Any], perimetre: s
             service_id = None
 
     try:
+        overview = _studio_fetch_insights_overview(cur, id_ent, service_id, criticite)
+    except HTTPException:
+        raise
+    except Exception:
+        overview = {}
+
+    try:
         records = _fetch_postes_fragility_records(cur, id_ent, service_id, criticite)
         _enrich_records_poste_criticite(cur, records)
     except Exception:
         records = []
 
-    portfolio = _studio_records_summary(cur, id_ent, records, service_id)
+    health = overview.get("health") or {}
+    watch = overview.get("postes_watch") or {}
+    risks_without_action = overview.get("risks_without_action") or {}
+    tr = overview.get("transmission") or {}
+    reliability = overview.get("reliability") or {}
+
+    health_pct = round(_studio_f(health.get("pct")), 1)
+    risk_pct = round(max(0.0, 100.0 - health_pct), 1) if health_pct else 0.0
+    health_label = "Sous contrôle"
+    if health_pct <= 0 and _studio_i(watch.get("total_postes")) == 0:
+        health_label = "Aucune donnée"
+    elif health_pct < 40:
+        health_label = "Critique"
+    elif health_pct < 70:
+        health_label = "Sous surveillance"
+
+    portfolio = {
+        "postes_total": _studio_i(watch.get("total_postes")),
+        "postes_danger": _studio_i(watch.get("postes_danger")),
+        "postes_surveillance": _studio_i(watch.get("postes_surveillance")),
+        "postes_stables": _studio_i(watch.get("postes_stables")),
+        "postes_critiques_danger": _studio_i(watch.get("postes_critiques_danger")),
+        "risk_pct": risk_pct,
+        "health_pct": health_pct,
+        "health_label": health_label,
+        "risques_sans_action": _studio_i(risks_without_action.get("total")),
+        "items_danger": 0,
+        "items_surveillance": 0,
+        "items_stables": 0,
+        "transmission": tr,
+    }
+
     if service_id:
         risk_items = _studio_risk_items_by_poste(records)
         service_label = next((s.get("nom_service") for s in services if _studio_s(s.get("id_service")) == service_id), "Service")
@@ -832,12 +967,11 @@ def _studio_build_main(cur, id_owner: str, current: Dict[str, Any], perimetre: s
     portfolio["items_danger"] = sum(1 for x in risk_items if x.get("priority") == "danger")
     portfolio["items_surveillance"] = sum(1 for x in risk_items if x.get("priority") == "surveillance")
     portfolio["items_stables"] = sum(1 for x in risk_items if x.get("priority") == "stable")
+
     demandes = _studio_fetch_formation_demandes(cur, id_owner, [id_ent], service_id)
     entretiens = _studio_fetch_entretiens(cur, [id_ent], service_id)
     ref = _studio_fetch_referentiel_quality(cur, id_owner, [id_ent], service_id)
-    reliability_base = max(_studio_i(ref.get("postes_total")) + _studio_i(entretiens.get("ouverts")) + _studio_i(demandes.get("ouvertes")), 1)
-    reliability_penalty = _studio_i(ref.get("postes_sans_competence")) + _studio_i(ref.get("collaborateurs_sans_poste")) + min(_studio_i(entretiens.get("ouverts")), 20)
-    reliability_pct = round(max(0.0, 100.0 - (reliability_penalty / reliability_base * 100.0)), 1)
+
     return {
         "scope_label": scope_label,
         "risk_title": risk_title,
@@ -848,11 +982,10 @@ def _studio_build_main(cur, id_owner: str, current: Dict[str, Any], perimetre: s
         "demandes_formation": demandes,
         "entretiens": entretiens,
         "referentiel": ref,
-        "transmission": portfolio.get("transmission") or {},
-        "reliability": {"pct": reliability_pct},
+        "transmission": tr,
+        "reliability": reliability,
         "actions_prioritaires": _studio_build_actions(risk_items, demandes, entretiens, ref, current.get("nom_ent") or ""),
     }
-
 
 def _studio_build_linked(cur, id_owner: str, linked_structures: List[Dict[str, Any]], priorite: str, criticite: int) -> Dict[str, Any]:
     if not linked_structures:
@@ -924,7 +1057,7 @@ def get_studio_dashboard_overview(
                 return {
                     "context": {"id_owner": ow.get("id_owner"), "nom_owner": ow.get("nom_owner")},
                     "mode": mode,
-                    "own": {"id_ent": current_id, "nom_ent": current.get("nom_ent") or ow.get("nom_owner"), "type_entreprise": current.get("type_entreprise"), "has_linked": has_linked, "linked_count": len(linked_structures)},
+                    "own": {"id_ent": current_id, "nom_ent": current.get("nom_ent") or ow.get("nom_owner"), "type_entreprise": current.get("type_entreprise"), "is_real_entity": bool(current.get("is_real_entity", True)), "has_linked": has_linked, "linked_count": len(linked_structures)},
                     "scope_options": _studio_scope_options(current, services, has_linked),
                     "filters": {"perimetre": requested_perim, "priorite": prio, "criticite_min": criticite},
                     "main": main,
