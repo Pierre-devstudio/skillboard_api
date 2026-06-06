@@ -950,147 +950,6 @@ def _resolve_actor_display_name(cur, u: dict, id_owner: str) -> str:
 
     return email
 
-
-def _resolve_studio_evaluator_ref(cur, u: dict, id_owner: str, scope_ent: Optional[str] = None) -> dict:
-    """
-    Résout l'évaluateur Studio vers une référence métier valide.
-
-    Important : ne jamais injecter l'id Supabase Auth directement dans id_evaluateur.
-    Les FK de tbl_effectif_client_audit_competence pointent vers :
-      - tbl_utilisateur.id_utilisateur
-      - tbl_effectif_client.id_effectif
-      - tbl_consultant.id_consultant
-    L'id Auth n'est pas garanti dans ces tables. Si aucune référence valide n'est trouvée,
-    on conserve le nom de l'évaluateur et on laisse id_evaluateur / nametable_evaluateur à NULL.
-    """
-    email = (u.get("email") or "").strip()
-    oid = (id_owner or "").strip()
-    ent = (scope_ent or oid).strip() or oid
-    fallback_name = _resolve_actor_display_name(cur, u, oid)
-
-    def valid_ref(table_name: str, ref_id: str) -> bool:
-        rid = (ref_id or "").strip()
-        if not rid:
-            return False
-        if table_name == "tbl_utilisateur":
-            cur.execute(
-                """
-                SELECT 1
-                FROM public.tbl_utilisateur
-                WHERE id_utilisateur = %s
-                  AND COALESCE(archive, FALSE) = FALSE
-                LIMIT 1
-                """,
-                (rid,),
-            )
-            return cur.fetchone() is not None
-        if table_name == "tbl_effectif_client":
-            cur.execute(
-                """
-                SELECT 1
-                FROM public.tbl_effectif_client
-                WHERE id_effectif = %s
-                  AND COALESCE(archive, FALSE) = FALSE
-                LIMIT 1
-                """,
-                (rid,),
-            )
-            return cur.fetchone() is not None
-        if table_name == "tbl_consultant":
-            cur.execute(
-                """
-                SELECT 1
-                FROM public.tbl_consultant
-                WHERE id_consultant = %s
-                  AND COALESCE(actif, TRUE) = TRUE
-                LIMIT 1
-                """,
-                (rid,),
-            )
-            return cur.fetchone() is not None
-        return False
-
-    def build(table_name: Optional[str], ref_id: Optional[str], display_name: Optional[str] = None) -> dict:
-        ref = (ref_id or "").strip() or None
-        table = (table_name or "").strip() or None
-        return {
-            "id_evaluateur": ref,
-            "nametable_evaluateur": table,
-            "nom_evaluateur": (display_name or fallback_name or email or "Utilisateur Studio").strip(),
-        }
-
-    # 1) Source d'accès Novoskill : c'est la référence la plus fiable.
-    if email and oid:
-        cur.execute(
-            """
-            SELECT lower(COALESCE(user_ref_type, '')) AS user_ref_type,
-                   COALESCE(id_user_ref, '') AS id_user_ref
-            FROM public.tbl_novoskill_user_access
-            WHERE lower(email) = lower(%s)
-              AND id_owner = %s
-              AND console_code = 'studio'
-              AND COALESCE(archive, FALSE) = FALSE
-              AND COALESCE(statut_access, 'actif') <> 'suspendu'
-            ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST
-            LIMIT 1
-            """,
-            (email, oid),
-        )
-        a = cur.fetchone() or {}
-        ref_type = (a.get("user_ref_type") or "").strip().lower()
-        ref_id = (a.get("id_user_ref") or "").strip()
-        table_by_type = {
-            "utilisateur": "tbl_utilisateur",
-            "effectif_client": "tbl_effectif_client",
-            "effectif": "tbl_effectif_client",
-            "consultant": "tbl_consultant",
-        }
-        table = table_by_type.get(ref_type)
-        if table and valid_ref(table, ref_id):
-            return build(table, ref_id)
-
-    # 2) Fallback utilisateur interne par email.
-    if email:
-        cur.execute(
-            """
-            SELECT id_utilisateur, ut_prenom, ut_nom, ut_mail
-            FROM public.tbl_utilisateur
-            WHERE lower(COALESCE(ut_mail, '')) = lower(%s)
-              AND COALESCE(archive, FALSE) = FALSE
-            ORDER BY dernier_update DESC NULLS LAST, date_creation DESC NULLS LAST
-            LIMIT 1
-            """,
-            (email,),
-        )
-        r = cur.fetchone() or {}
-        rid = (r.get("id_utilisateur") or "").strip()
-        if rid:
-            name = " ".join([x for x in [(r.get("ut_prenom") or "").strip(), (r.get("ut_nom") or "").strip()] if x]).strip()
-            return build("tbl_utilisateur", rid, name or r.get("ut_mail") or fallback_name)
-
-    # 3) Fallback salarié par email dans le scope exploité.
-    if email and ent:
-        cur.execute(
-            """
-            SELECT id_effectif, prenom_effectif, nom_effectif, email_effectif
-            FROM public.tbl_effectif_client
-            WHERE id_ent = %s
-              AND lower(COALESCE(email_effectif, '')) = lower(%s)
-              AND COALESCE(archive, FALSE) = FALSE
-            ORDER BY dernier_update DESC NULLS LAST, date_creation DESC NULLS LAST
-            LIMIT 1
-            """,
-            (ent, email),
-        )
-        r = cur.fetchone() or {}
-        rid = (r.get("id_effectif") or "").strip()
-        if rid:
-            name = " ".join([x for x in [(r.get("prenom_effectif") or "").strip(), (r.get("nom_effectif") or "").strip()] if x]).strip()
-            return build("tbl_effectif_client", rid, name or r.get("email_effectif") or fallback_name)
-
-    # 4) Aucun ref valide. On garde le nom, sans FK, pour éviter de bloquer l'audit.
-    return build(None, None)
-
 def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind: str, id_collaborateur: str, scope_ent: Optional[str] = None) -> dict:
     cid = (id_collaborateur or "").strip()
     if not cid:
@@ -4498,10 +4357,8 @@ def studio_collab_competence_evaluation_save(
                 id_audit = str(uuid.uuid4())
                 today = py_date.today()
 
-                actor_ref = _resolve_studio_evaluator_ref(cur, u, oid, scope_ent)
-                actor_id = actor_ref.get("id_evaluateur")
-                actor_table = actor_ref.get("nametable_evaluateur")
-                nom_eval = actor_ref.get("nom_evaluateur") or _resolve_actor_display_name(cur, u, oid)
+                actor_id = (u.get("sub") or u.get("id") or "").strip() or None
+                nom_eval = _resolve_actor_display_name(cur, u, oid)
                 methode_eval = (payload.methode_eval or "Évaluation Studio").strip() or "Évaluation Studio"
 
                 detail_eval = {
@@ -4547,7 +4404,7 @@ def studio_collab_competence_evaluation_save(
                         round(float(payload.resultat_eval), 1),
                         json.dumps(detail_eval, ensure_ascii=False),
                         (payload.observation or None),
-                        actor_table,
+                        "tbl_utilisateur",
                         nom_eval,
                     ),
                 )
