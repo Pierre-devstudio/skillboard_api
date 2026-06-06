@@ -1575,31 +1575,10 @@
   }
 
   function levelFromCollabSkillEvalScore(score24){
-    const n = Number(score24);
-    if (!Number.isFinite(n)) return '';
-    if (n <= 6) return 'A';
-    if (n <= 12) return 'B';
-    if (n <= 18) return 'C';
-    if (n <= 24) return 'D';
-    return 'D';
-  }
-
-  function collabSkillLevelLabel(value){
-    if (window.NovoskillLevels && typeof window.NovoskillLevels.label === 'function') {
-      return window.NovoskillLevels.label(value);
-    }
-    const raw = String(value || '').trim();
-    const k = raw.toUpperCase();
-    if (k === 'A') return 'Débutant';
-    if (k === 'B') return 'Intermédiaire';
-    if (k === 'C') return 'Avancé';
-    if (k === 'D') return 'Expert';
-    const low = raw.toLowerCase();
-    if (low === 'initial' || low === 'débutant' || low === 'debutant') return 'Débutant';
-    if (low === 'intermédiaire' || low === 'intermediaire') return 'Intermédiaire';
-    if (low === 'avancé' || low === 'avance' || low === 'avancée' || low === 'avancee') return 'Avancé';
-    if (low === 'expert') return 'Expert';
-    return raw || '—';
+    if (score24 >= 6 && score24 <= 9) return 'Débutant';
+    if (score24 >= 10 && score24 <= 18) return 'Intermédiaire';
+    if (score24 >= 19 && score24 <= 24) return 'Expert';
+    return '—';
   }
 
   function score24ToMasteryPct(score24){
@@ -1681,7 +1660,7 @@
     }
 
     if (filled === enabled.length) {
-      if (levelEl) levelEl.textContent = collabSkillLevelLabel(levelFromCollabSkillEvalScore(calc.score24));
+      if (levelEl) levelEl.textContent = levelFromCollabSkillEvalScore(calc.score24);
     } else {
       if (levelEl) levelEl.textContent = '—';
     }
@@ -2875,22 +2854,19 @@
     const levelMeta = (niv) => {
       const raw = String(niv || '').trim();
       const norm = raw.toUpperCase();
-      const low = raw.toLowerCase();
 
       if (!raw || raw === '—' || raw === '-') {
         return { text: '—', cls: 'sb-badge--outline-accent' };
       }
-      if (norm === 'A' || low === 'initial' || low === 'débutant' || low === 'debutant') {
-        return { text: 'Débutant', cls: 'sb-badge--niv sb-badge--niv-a' };
+
+      if (norm === 'A' || raw.toLowerCase() === 'initial') {
+        return { text: 'Initial', cls: 'sb-badge--niv sb-badge--niv-a' };
       }
-      if (norm === 'B' || low === 'intermédiaire' || low === 'intermediaire') {
-        return { text: 'Intermédiaire', cls: 'sb-badge--niv sb-badge--niv-b' };
+      if (norm === 'B' || raw.toLowerCase() === 'avancé' || raw.toLowerCase() === 'avance') {
+        return { text: 'Avancé', cls: 'sb-badge--niv sb-badge--niv-b' };
       }
-      if (norm === 'C' || low === 'avancé' || low === 'avance' || low === 'avancée' || low === 'avancee') {
-        return { text: 'Avancé', cls: 'sb-badge--niv sb-badge--niv-c' };
-      }
-      if (norm === 'D' || low === 'expert') {
-        return { text: 'Expert', cls: 'sb-badge--niv sb-badge--niv-d' };
+      if (norm === 'C' || raw.toLowerCase() === 'expert') {
+        return { text: 'Expert', cls: 'sb-badge--niv sb-badge--niv-c' };
       }
 
       return { text: raw, cls: 'sb-badge--outline-accent' };

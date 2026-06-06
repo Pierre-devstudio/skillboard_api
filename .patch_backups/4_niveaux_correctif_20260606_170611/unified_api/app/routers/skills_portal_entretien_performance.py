@@ -118,7 +118,7 @@ class AuditSavePayload(BaseModel):
     id_effectif_competence: str
     id_comp: Optional[str] = None
     resultat_eval: float                 # score /24
-    niveau_actuel: str                   # "A" | "B" | "C" | "D"
+    niveau_actuel: str                   # "Initial" | "Avancé" | "Expert"
     observation: Optional[str] = None
     criteres: List[AuditCritereItem]
     methode_eval: Optional[str] = "Entretien de performance"
@@ -128,34 +128,6 @@ class AuditSavePayload(BaseModel):
 class AuditSaveResponse(BaseModel):
     id_audit_competence: str
     date_audit: str
-
-
-def _ep_normalize_level_code(value: str) -> str:
-    raw = (value or "").strip()
-    if not raw:
-        return ""
-    up = raw.upper()
-    if up in {"A", "B", "C", "D"}:
-        return up
-    low = (
-        raw.lower()
-        .replace("é", "e")
-        .replace("è", "e")
-        .replace("ê", "e")
-        .replace("ë", "e")
-        .replace("à", "a")
-        .replace("â", "a")
-    )
-    if low in {"initial", "debutant", "débutant"} or low.startswith("deb"):
-        return "A"
-    if low in {"intermediaire", "intermédiaire"} or low.startswith("inter"):
-        return "B"
-    if low in {"avance", "avancé", "avancee", "avancée"} or low.startswith("avan"):
-        return "C"
-    if low == "expert" or low.startswith("exp"):
-        return "D"
-    return ""
-
 
 class AuditHistoryItem(BaseModel):
     date_audit: Optional[str] = None
@@ -1094,10 +1066,9 @@ def _get_scoring_config() -> ScoringConfig:
     ]
 
     niveaux = [
-        ScoringNiveau(code="A", libelle="Débutant", score_min=0.0, score_max=6.0),
-        ScoringNiveau(code="B", libelle="Intermédiaire", score_min=6.01, score_max=12.0),
-        ScoringNiveau(code="C", libelle="Avancé", score_min=12.01, score_max=18.0),
-        ScoringNiveau(code="D", libelle="Expert", score_min=18.01, score_max=24.0),
+        ScoringNiveau(code="A", libelle="Initial", score_min=6.0, score_max=9.0),
+        ScoringNiveau(code="B", libelle="Avancé", score_min=10.0, score_max=18.0),
+        ScoringNiveau(code="C", libelle="Expert", score_min=19.0, score_max=24.0),
     ]
 
     return ScoringConfig(
@@ -2361,9 +2332,9 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload, 
     """
     try:
         # validations simples (front fait déjà le gros du job)
-        niveau_actuel_code = _ep_normalize_level_code(payload.niveau_actuel)
-        if not niveau_actuel_code:
-            raise HTTPException(status_code=400, detail="niveau_actuel invalide (A/B/C/D attendu).")
+        niveau_ok = payload.niveau_actuel in ["Initial", "Avancé", "Expert"]
+        if not niveau_ok:
+            raise HTTPException(status_code=400, detail="niveau_actuel invalide (Débutant/Intermédiaire/Avancé/Expert attendu).")
 
         if not payload.criteres or len(payload.criteres) > 4:
             raise HTTPException(status_code=400, detail="Liste de critères invalide.")
@@ -2505,7 +2476,7 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload, 
                     WHERE id_effectif_competence = %s
                     """,
                     (
-                        niveau_actuel_code,
+                        payload.niveau_actuel,
                         today,
                         id_audit,
                         payload.id_effectif_competence,
@@ -2544,9 +2515,9 @@ def update_entretien_competence_audit(
       le niveau actuel du collaborateur est remis à jour.
     """
     try:
-        niveau_actuel_code = _ep_normalize_level_code(payload.niveau_actuel)
-        if not niveau_actuel_code:
-            raise HTTPException(status_code=400, detail="niveau_actuel invalide (A/B/C/D attendu).")
+        niveau_ok = payload.niveau_actuel in ["Initial", "Avancé", "Expert"]
+        if not niveau_ok:
+            raise HTTPException(status_code=400, detail="niveau_actuel invalide (Débutant/Intermédiaire/Avancé/Expert attendu).")
 
         if not payload.criteres or len(payload.criteres) > 4:
             raise HTTPException(status_code=400, detail="Liste de critères invalide.")
@@ -2649,7 +2620,7 @@ def update_entretien_competence_audit(
                         WHERE id_effectif_competence = %s
                         """,
                         (
-                            niveau_actuel_code,
+                            payload.niveau_actuel,
                             row.get("date_audit"),
                             row.get("id_effectif_competence"),
                         ),

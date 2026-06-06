@@ -3814,14 +3814,11 @@ def _pdf_niveau_education_label(v: Optional[str]) -> str:
 def _pdf_niveau_label(v: Optional[str]) -> str:
     code = (v or "").strip().upper()
     if code == "A":
-        return "Débutant"
+        return "A - Initial"
     if code == "B":
-        return "Intermédiaire"
+        return "B - Avancé"
     if code == "C":
-        return "Avancé"
-    if code == "D":
-        return "Expert"
-
+        return "C - Expert"
     return code or "—"
 
 
@@ -6207,7 +6204,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                         "domaine_titre_court": match.get("domaine_titre_court"),
                         "domaine_couleur": match.get("domaine_couleur"),
                         "recommended_level": lvl,
-                        "recommended_level_label": {"A": "Débutant", "B": "Intermédiaire", "C": "Avancé", "D": "Expert"}.get(lvl, lvl),
+                        "recommended_level_label": {"A": "Initial", "B": "Avancé", "C": "Expert"}.get(lvl, lvl),
                         "freq_usage": fu,
                         "impact_resultat": im,
                         "dependance": de,
@@ -6230,7 +6227,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                         "domaine_label": _clean_ai_comp_text(domaine_label or "", 80),
                         "domaine_couleur": domaine_couleur,
                         "recommended_level": lvl,
-                        "recommended_level_label": {"A": "Débutant", "B": "Intermédiaire", "C": "Avancé", "D": "Expert"}.get(lvl, lvl),
+                        "recommended_level_label": {"A": "Initial", "B": "Avancé", "C": "Expert"}.get(lvl, lvl),
                         "freq_usage": fu,
                         "impact_resultat": im,
                         "dependance": de,

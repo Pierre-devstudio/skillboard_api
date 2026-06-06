@@ -3248,7 +3248,6 @@ body {
             }
             if (v === "A" || raw.toLowerCase() === "initial" || raw.toLowerCase() === "débutant" || raw.toLowerCase() === "debutant") return { text: "Débutant", cls: "sb-badge--niv-a" };
             if (v === "B" || raw.toLowerCase() === "intermédiaire" || raw.toLowerCase() === "intermediaire") return { text: "Intermédiaire", cls: "sb-badge--niv-b" };
-            if (v === "B" || raw.toLowerCase() === "intermédiaire" || raw.toLowerCase() === "intermediaire") return { text: "Intermédiaire", cls: "sb-badge--niv-b" };
             if (v === "C" || raw.toLowerCase() === "avancé" || raw.toLowerCase() === "avance") return { text: "Avancé", cls: "sb-badge--niv-c" };
             if (v === "D" || raw.toLowerCase() === "expert") return { text: "Expert", cls: "sb-badge--niv-d" };
             return { text: "—", cls: "" };

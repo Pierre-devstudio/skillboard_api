@@ -1572,7 +1572,6 @@ def get_collaborateur_competence_fiche_pdf(id_contact: str, id_effectif: str, id
                         c.niveaua,
                         c.niveaub,
                         c.niveauc,
-                        c.niveaud,
                         c.grille_evaluation,
                         dc.titre_court AS domaine_titre_court,
                         dc.titre AS domaine_titre

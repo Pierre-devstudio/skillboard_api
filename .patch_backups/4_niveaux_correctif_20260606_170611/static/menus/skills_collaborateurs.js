@@ -1479,18 +1479,16 @@
                   if (!s) return "–";
                   const k = s.toLowerCase();
                   if (k === "a" || k === "initial") return "Débutant";
-                  if (k === "b" || k === "intermédiaire" || k === "intermediaire") return "Intermédiaire";
-                  if (k === "c" || k === "avance" || k === "avancé" || k === "avancee" || k === "avancée") return "Avancé";
-                  if (k === "d" || k === "expert") return "Expert";
+                  if (k === "b" || k === "avance" || k === "avancé" || k === "avancee" || k === "avancée") return "Intermédiaire";
+                  if (k === "c" || k === "expert") return "Expert";
                   return s;
                 };
 
                 const levelClass = (v) => {
                   const k = (v || "").toString().trim().toLowerCase();
                   if (k === "a" || k === "initial") return "sb-badge-niv-a";
-                  if (k === "b" || k === "intermédiaire" || k === "intermediaire") return "sb-badge-niv-b";
-                  if (k === "c" || k === "avance" || k === "avancé" || k === "avancee" || k === "avancée") return "sb-badge-niv-c";
-                  if (k === "d" || k === "expert") return "sb-badge-niv-d";
+                  if (k === "b" || k === "avance" || k === "avancé" || k === "avancee" || k === "avancée") return "sb-badge-niv-b";
+                  if (k === "c" || k === "expert") return "sb-badge-niv-c";
                   return "";
                 };
 

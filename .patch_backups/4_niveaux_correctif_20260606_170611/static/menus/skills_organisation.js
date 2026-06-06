@@ -863,10 +863,9 @@
 
     function _nivLabel(niv){
     const n = (niv || "").toString().trim().toUpperCase();
-    if (n === "A") return "Débutant";
-    if (n === "B") return "Intermédiaire";
-    if (n === "C") return "Avancé";
-    if (n === "D") return "Expert";
+    if (n === "A") return "A - Initial";
+    if (n === "B") return "B - Avancé";
+    if (n === "C") return "C - Expert";
     return n || "";
   }
 

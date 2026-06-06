@@ -2193,21 +2193,16 @@ def _normalize_skill_level_from_poste(value: Optional[str]) -> str:
          .replace("ü", "u")
     )
 
-    if s in ("d", "expert") or s.startswith("exp"):
-        return "D"
-    if s in ("c", "avance", "avancee", "advanced") or s.startswith("ava") or s.startswith("adv"):
-        return "C"
-    if s in ("b", "intermediaire") or s.startswith("inter"):
-        return "B"
-    if s in ("a", "initial", "debutant") or s.startswith("ini") or s.startswith("deb"):
-        return "A"
+    if s in ("c", "expert") or s.startswith("exp"):
+        return "Expert"
 
-    return "A"
+    if s in ("b", "avance", "advanced") or s.startswith("ava") or s.startswith("adv"):
+        return "Avancé"
 
+    if s in ("a", "initial") or s.startswith("ini"):
+        return "Initial"
 
-def _skill_level_label_from_code(value: Optional[str]) -> str:
-    code = _normalize_skill_level_from_poste(value)
-    return {"A": "Débutant", "B": "Intermédiaire", "C": "Avancé", "D": "Expert"}.get(code, "Débutant")
+    return "Initial"
 
 
 def _get_effectif_competence_columns(cur) -> set:
@@ -2600,17 +2595,15 @@ def _pdf_eval_coef_text(nb_criteres: int) -> str:
     return "1,5"
 
 
-def _pdf_level_note_range(code: str) -> str:
-    c = (code or "").upper().strip()
-    if c == "A":
-        return "0 à 25 %"
-    if c == "B":
-        return ">25 à 50 %"
-    if c == "C":
-        return ">50 à 75 %"
-    if c == "D":
-        return ">75 à 100 %"
-    return "—"
+def _pdf_level_note_range(level_code: str) -> str:
+    code = str(level_code or "").strip().upper()
+    if code == "A":
+        return "Maîtrise < 41 %"
+    if code == "B":
+        return "Maîtrise entre 41 % et 75 %"
+    if code == "C":
+        return "Maîtrise > 75 %"
+    return "Maîtrise -"
 
 
 def _build_competence_pdf_story(comp: dict) -> List:
@@ -2762,8 +2755,7 @@ def _build_competence_pdf_story(comp: dict) -> List:
 
     level_rows = [
         [
-            Paragraph("Débutant", level_head_style),
-            Paragraph("Intermédiaire", level_head_style),
+            Paragraph("Initial", level_head_style),
             Paragraph("Avancé", level_head_style),
             Paragraph("Expert", level_head_style),
         ],
@@ -2771,13 +2763,11 @@ def _build_competence_pdf_story(comp: dict) -> List:
             Paragraph(_pdf_level_note_range("A"), level_note_style),
             Paragraph(_pdf_level_note_range("B"), level_note_style),
             Paragraph(_pdf_level_note_range("C"), level_note_style),
-            Paragraph(_pdf_level_note_range("D"), level_note_style),
         ],
         [
-            Paragraph(_pdf_esc(_pdf_truncate(comp.get("niveaua"), 220) or "—"), level_body_style),
-            Paragraph(_pdf_esc(_pdf_truncate(comp.get("niveaub"), 220) or "—"), level_body_style),
-            Paragraph(_pdf_esc(_pdf_truncate(comp.get("niveauc"), 220) or "—"), level_body_style),
-            Paragraph(_pdf_esc(_pdf_truncate(comp.get("niveaud"), 220) or "—"), level_body_style),
+            Paragraph(_pdf_esc(_pdf_truncate(comp.get("niveaua"), 260) or "—"), level_body_style),
+            Paragraph(_pdf_esc(_pdf_truncate(comp.get("niveaub"), 260) or "—"), level_body_style),
+            Paragraph(_pdf_esc(_pdf_truncate(comp.get("niveauc"), 260) or "—"), level_body_style),
         ],
     ]
 
@@ -2808,7 +2798,7 @@ def _build_competence_pdf_story(comp: dict) -> List:
 
     level_table = Table(
         level_rows,
-        colWidths=[content_width / 4.0, content_width / 4.0, content_width / 4.0, content_width / 4.0],
+        colWidths=[content_width / 3.0, content_width / 3.0, content_width / 3.0],
         hAlign="LEFT",
     )
     level_table.setStyle(TableStyle([
@@ -4293,9 +4283,8 @@ def studio_collab_competence_evaluation_save(
         if not cid:
             raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
 
-        niveau_actuel_code = _normalize_skill_level_from_poste(payload.niveau_actuel)
-        if niveau_actuel_code not in ["A", "B", "C", "D"]:
-            raise HTTPException(status_code=400, detail="niveau_actuel invalide (A/B/C/D attendu).")
+        if payload.niveau_actuel not in ["Initial", "Avancé", "Expert"]:
+            raise HTTPException(status_code=400, detail="niveau_actuel invalide (Débutant/Intermédiaire/Avancé/Expert attendu).")
 
         if not payload.criteres or len(payload.criteres) > 4:
             raise HTTPException(status_code=400, detail="Liste de critères invalide.")
@@ -4406,7 +4395,7 @@ def studio_collab_competence_evaluation_save(
                     WHERE id_effectif_competence = %s
                     """,
                     (
-                        niveau_actuel_code,
+                        payload.niveau_actuel,
                         today,
                         id_audit,
                         payload.id_effectif_competence,

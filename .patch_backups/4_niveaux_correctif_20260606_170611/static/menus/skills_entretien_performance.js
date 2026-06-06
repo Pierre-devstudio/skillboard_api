@@ -171,10 +171,11 @@
   function _epLevelFromScore24(score) {
     const s = Number(score || 0);
     if (!isFinite(s) || s <= 0) return "—";
-    if (s <= 6) return "Débutant";
-    if (s <= 12) return "Intermédiaire";
-    if (s <= 18) return "Avancé";
-    return "Expert";
+    // bornes validées: A [6..10[, B [10..19[, C [19..24]
+    if (s >= 19) return "Expert";
+    if (s >= 10) return "Intermédiaire";
+    if (s >= 6) return "Débutant";
+    return "—";
   }
 
   function renderCoverageDetailModal() {
@@ -4274,10 +4275,9 @@
         };
 
         const computeLevel = (score24) => {
-        if (score24 <= 6) return "Débutant";
-        if (score24 <= 12) return "Intermédiaire";
-        if (score24 <= 18) return "Avancé";
-        if (score24 <= 24) return "Expert";
+        if (score24 >= 6 && score24 <= 9) return "Débutant";
+        if (score24 >= 10 && score24 <= 18) return "Intermédiaire";
+        if (score24 >= 19 && score24 <= 24) return "Expert";
         return "—";
         };
 
@@ -4495,25 +4495,10 @@
   }
 
   function _levelFromScore24(score24) {
-    const n = Number(score24);
-    if (!Number.isFinite(n)) return "A";
-    if (n <= 6) return "A";
-    if (n <= 12) return "B";
-    if (n <= 18) return "C";
-    if (n <= 24) return "D";
-    return "D";
-  }
-
-  function _levelLabelFromCode(value) {
-    if (window.NovoskillLevels && typeof window.NovoskillLevels.label === "function") {
-      return window.NovoskillLevels.label(value);
-    }
-    const k = String(value || "").trim().toUpperCase();
-    if (k === "A") return "Débutant";
-    if (k === "B") return "Intermédiaire";
-    if (k === "C") return "Avancé";
-    if (k === "D") return "Expert";
-    return String(value || "—");
+    if (score24 >= 6 && score24 <= 9) return "Débutant";
+    if (score24 >= 10 && score24 <= 18) return "Intermédiaire";
+    if (score24 >= 19 && score24 <= 24) return "Expert";
+    return "Débutant"; // fallback (cas tordu)
   }
 
   async function saveCurrentAudit() {
@@ -4562,7 +4547,7 @@
     const pct = Math.max(0, Math.min(100, Math.round((score24 / 24) * 100)));
     if (document.getElementById("ep_scoreRaw")) document.getElementById("ep_scoreRaw").textContent = String(sum);
     if (document.getElementById("ep_scorePct")) document.getElementById("ep_scorePct").textContent = `${pct}%`;
-    if (document.getElementById("ep_levelABC")) document.getElementById("ep_levelABC").textContent = _levelLabelFromCode(niveau_actuel);
+    if (document.getElementById("ep_levelABC")) document.getElementById("ep_levelABC").textContent = niveau_actuel;
 
     const observation = (document.getElementById("ep_txtObservation")?.value || "").trim();
 

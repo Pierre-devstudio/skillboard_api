@@ -357,17 +357,15 @@ def _pdf_comp_truncate(v: Any, max_len: int) -> str:
     return (cut or s[:max_len]).strip() + "…"
 
 
-def _pdf_comp_level_note_range(code: str) -> str:
-    c = (code or "").upper().strip()
-    if c == "A":
-        return "0 à 25 %"
-    if c == "B":
-        return ">25 à 50 %"
-    if c == "C":
-        return ">50 à 75 %"
-    if c == "D":
-        return ">75 à 100 %"
-    return "—"
+def _pdf_comp_level_note_range(level_code: str) -> str:
+    code = str(level_code or "").strip().upper()
+    if code == "A":
+        return "Maîtrise < 41 %"
+    if code == "B":
+        return "Maîtrise entre 41 % et 75 %"
+    if code == "C":
+        return "Maîtrise > 75 %"
+    return "Maîtrise -"
 
 
 def build_competence_pdf_story(comp: dict) -> List:
@@ -519,8 +517,7 @@ def build_competence_pdf_story(comp: dict) -> List:
 
     level_rows = [
         [
-            Paragraph("Débutant", level_head_style),
-            Paragraph("Intermédiaire", level_head_style),
+            Paragraph("Initial", level_head_style),
             Paragraph("Avancé", level_head_style),
             Paragraph("Expert", level_head_style),
         ],
@@ -528,13 +525,11 @@ def build_competence_pdf_story(comp: dict) -> List:
             Paragraph(_pdf_comp_level_note_range("A"), level_note_style),
             Paragraph(_pdf_comp_level_note_range("B"), level_note_style),
             Paragraph(_pdf_comp_level_note_range("C"), level_note_style),
-            Paragraph(_pdf_comp_level_note_range("D"), level_note_style),
         ],
         [
-            Paragraph(_pdf_comp_esc(_pdf_comp_truncate(comp.get("niveaua"), 220) or "—"), level_body_style),
-            Paragraph(_pdf_comp_esc(_pdf_comp_truncate(comp.get("niveaub"), 220) or "—"), level_body_style),
-            Paragraph(_pdf_comp_esc(_pdf_comp_truncate(comp.get("niveauc"), 220) or "—"), level_body_style),
-            Paragraph(_pdf_comp_esc(_pdf_comp_truncate(comp.get("niveaud"), 220) or "—"), level_body_style),
+            Paragraph(_pdf_comp_esc(_pdf_comp_truncate(comp.get("niveaua"), 260) or "—"), level_body_style),
+            Paragraph(_pdf_comp_esc(_pdf_comp_truncate(comp.get("niveaub"), 260) or "—"), level_body_style),
+            Paragraph(_pdf_comp_esc(_pdf_comp_truncate(comp.get("niveauc"), 260) or "—"), level_body_style),
         ],
     ]
 
@@ -565,7 +560,7 @@ def build_competence_pdf_story(comp: dict) -> List:
 
     level_table = Table(
         level_rows,
-        colWidths=[content_width / 4.0, content_width / 4.0, content_width / 4.0, content_width / 4.0],
+        colWidths=[content_width / 3.0, content_width / 3.0, content_width / 3.0],
         hAlign="LEFT",
     )
     level_table.setStyle(TableStyle([
