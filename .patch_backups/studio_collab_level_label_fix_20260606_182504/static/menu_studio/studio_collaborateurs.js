@@ -89,10 +89,6 @@
     return ({ A:"Débutant", B:"Intermédiaire", C:"Avancé", D:"Expert" })[k] || (String(v ?? "").trim() || "—");
   }
 
-  function collabSkillLevelLabel(v){
-    return nsLevelLabel(v);
-  }
-
   function nsLevelFromScore24(score24){
     const n = Number(score24);
     if (!Number.isFinite(n)) return "";

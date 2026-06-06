@@ -143,7 +143,7 @@
       return;
     }
 
-    const collabAssetsVersion = "2026-06-06-collab-level-label-fix";
+    const collabAssetsVersion = "2026-04-23-02";
     const htmlUrl = `${getMenuStudioAssetUrl("studio_collaborateurs.html")}?v=${encodeURIComponent(collabAssetsVersion)}`;
     const resp = await fetch(htmlUrl, { credentials: "same-origin" });
 
@@ -2137,7 +2137,7 @@ function bindPostalAssist(){
     }
 
     _collabWorkspaceScriptPromise = (async () => {
-      const collabAssetsVersion = "2026-06-06-collab-level-label-fix";
+      const collabAssetsVersion = "2026-04-23-02";
       const jsUrl = `${getMenuStudioAssetUrl("studio_collaborateurs.js")}?v=${encodeURIComponent(collabAssetsVersion)}`;
       await loadExternalScriptOnce(jsUrl, `studio_collaborateurs.js::${collabAssetsVersion}`);
 
