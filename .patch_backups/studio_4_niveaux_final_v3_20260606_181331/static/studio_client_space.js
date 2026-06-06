@@ -94,7 +94,7 @@
       return;
     }
 
-    const htmlUrl = `${getMenuStudioAssetUrl("studio_organisation.html")}?v=studio4-20260606-v2`;
+    const htmlUrl = getMenuStudioAssetUrl("studio_organisation.html");
     const resp = await fetch(htmlUrl, { credentials: "same-origin" });
 
     if (!resp.ok){
@@ -1797,7 +1797,7 @@ function bindPostalAssist(){
     if (!mount) throw new Error("csEvaluationsInsightsMount introuvable.");
     if (mount.dataset.loaded === "1") return;
 
-    const htmlUrl = `${getInsightsMenuAssetUrl("skills_entretien_performance.html")}?v=studio-embedded-evaluations-2026-06-06-v3`;
+    const htmlUrl = `${getInsightsMenuAssetUrl("skills_entretien_performance.html")}?v=studio-embedded-evaluations-2026-06-05`;
     const resp = await fetch(htmlUrl, { credentials: "same-origin" });
     if (!resp.ok) throw new Error(`Impossible de charger ${htmlUrl}`);
 
@@ -1820,7 +1820,7 @@ function bindPostalAssist(){
     if (window.SkillsEntretienPerformance && typeof window.SkillsEntretienPerformance.onShow === "function") return;
     if (!_evaluationWorkspaceScriptPromise){
       _evaluationWorkspaceScriptPromise = loadExternalScriptOnce(
-        `${getInsightsMenuAssetUrl("skills_entretien_performance.js")}?v=studio-embedded-evaluations-2026-06-06-v3`,
+        `${getInsightsMenuAssetUrl("skills_entretien_performance.js")}?v=studio-embedded-evaluations-2026-06-05`,
         "skills-entretien-performance-shared"
       );
     }
@@ -1986,8 +1986,8 @@ function bindPostalAssist(){
     if (!_orgWorkspaceScriptPromise){
       _orgWorkspaceScriptPromise = (async () => {
         await loadExternalScriptOnce(
-          `${getMenuStudioAssetUrl("studio_organisation.js")}?v=studio4-20260606-v3`,
-          "studio-organisation-shared-v4-v2"
+          getMenuStudioAssetUrl("studio_organisation.js"),
+          "studio-organisation-shared"
         );
 
         if (typeof window.__studioOrganisationInit !== "function"){

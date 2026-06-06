@@ -168,34 +168,13 @@
     return true;
   }
 
-  function _nsLevelKey4(v) {
-    const raw = String(v ?? "").trim();
-    const norm = raw.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-    if (!norm || norm === "-" || norm === "—") return "";
-    if (norm === "a" || norm.includes("initial") || norm.includes("debutant")) return "A";
-    if (norm === "b" || norm.includes("intermediaire") || norm.includes("interm")) return "B";
-    if (norm === "c" || norm.includes("avance") || norm.includes("advanced")) return "C";
-    if (norm === "d" || norm.includes("expert")) return "D";
-    return "";
-  }
-
-  function _nsLevelLabel4(v) {
-    const k = _nsLevelKey4(v);
-    return ({ A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" })[k] || (String(v ?? "").trim() || "—");
-  }
-
-  function _nsLevelCodeFromScore24(score) {
-    const s = Number(score);
-    if (!Number.isFinite(s) || s <= 0) return "";
-    if (s <= 6) return "A";
-    if (s <= 12) return "B";
-    if (s <= 18) return "C";
-    return "D";
-  }
-
   function _epLevelFromScore24(score) {
-    const code = _nsLevelCodeFromScore24(score);
-    return code ? _nsLevelLabel4(code) : "—";
+    const s = Number(score || 0);
+    if (!isFinite(s) || s <= 0) return "—";
+    if (s <= 6) return "Débutant";
+    if (s <= 12) return "Intermédiaire";
+    if (s <= 18) return "Avancé";
+    return "Expert";
   }
 
   function renderCoverageDetailModal() {

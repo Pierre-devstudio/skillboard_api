@@ -152,18 +152,13 @@ def _level_score(txt: Optional[str]) -> int:
 
 
 def _fix_abc_levels(data: dict) -> None:
-    vals = [
-        ("niveaua", data.get("niveaua") or "", _level_score(data.get("niveaua") or "")),
-        ("niveaub", data.get("niveaub") or "", _level_score(data.get("niveaub") or "")),
-        ("niveauc", data.get("niveauc") or "", _level_score(data.get("niveauc") or "")),
-        ("niveaud", data.get("niveaud") or "", _level_score(data.get("niveaud") or "")),
-    ]
-    filled = [x for x in vals if (x[1] or "").strip()]
-    if len(filled) >= 2 and filled[0][2] > filled[-1][2]:
-        filled.sort(key=lambda x: x[2])
-        keys = ["niveaua", "niveaub", "niveauc", "niveaud"]
-        for idx, key in enumerate(keys):
-            data[key] = filled[idx][1] if idx < len(filled) else data.get(key, "")
+    # Compat nom historique : ordonne désormais A/B/C/D du moins maîtrisé vers expert.
+    keys = ["niveaua", "niveaub", "niveauc", "niveaud"]
+    levels = [(k, data.get(k) or "", _level_score(data.get(k) or "")) for k in keys]
+    if levels[0][2] > levels[-1][2]:
+        levels.sort(key=lambda x: x[2])
+        for idx, k in enumerate(keys):
+            data[k] = levels[idx][1]
 
 # ------------------------------------------------------
 # Models
@@ -183,6 +178,7 @@ class CreateCompetencePayload(BaseModel):
     niveaub: Optional[str] = None
     niveauc: Optional[str] = None
     niveaud: Optional[str] = None
+    niveaud: Optional[str] = None
     grille_evaluation: Optional[Any] = None
     etat: Optional[str] = None
 
@@ -195,6 +191,7 @@ class UpdateCompetencePayload(BaseModel):
     niveaua: Optional[str] = None
     niveaub: Optional[str] = None
     niveauc: Optional[str] = None
+    niveaud: Optional[str] = None
     niveaud: Optional[str] = None
     grille_evaluation: Optional[Any] = None
     etat: Optional[str] = None
@@ -264,6 +261,7 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
                 "niveaua": {"type": "string", "minLength": 40, "maxLength": 230},
                 "niveaub": {"type": "string", "minLength": 40, "maxLength": 230},
                 "niveauc": {"type": "string", "minLength": 40, "maxLength": 230},
+                "niveaud": {"type": "string", "minLength": 40, "maxLength": 230},
                 "niveaud": {"type": "string", "minLength": 40, "maxLength": 230},
             "niveaud": {"type": "string", "minLength": 40, "maxLength": 230},
                 "domaine_id": {"type": ["string", "null"]},
@@ -402,7 +400,8 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
         if (
             _bad_level(data.get("niveaua", ""))
             or _bad_level(data.get("niveaub", ""))
-            or _bad_level(data.get("niveauc", "")) or _bad_level(data.get("niveaud", ""))
+            or _bad_level(data.get("niveauc", ""))
+            or _bad_level(data.get("niveaud", ""))
         ):
             raise HTTPException(
                 status_code=400,
@@ -693,7 +692,7 @@ def studio_catalog_create_competence(id_owner: str, payload: CreateCompetencePay
                        etat, masque, date_creation, date_modification)
                     VALUES
                       (%s, %s, %s, %s, %s, %s,
-                       %s, %s, %s, %s, %s, %s,
+                       %s, %s, %s, %s, %s,
                        %s, FALSE, NOW(), NOW())
                     """,
                     (
@@ -776,6 +775,10 @@ def studio_catalog_update_competence(id_owner: str, id_comp: str, payload: Updat
                 if "niveauc" in patch_fields:
                     cols.append("niveauc = %s")
                     vals.append(payload.niveauc)
+
+                if "niveaud" in patch_fields:
+                    cols.append("niveaud = %s")
+                    vals.append(payload.niveaud)
 
                 if "niveaud" in patch_fields:
                     cols.append("niveaud = %s")

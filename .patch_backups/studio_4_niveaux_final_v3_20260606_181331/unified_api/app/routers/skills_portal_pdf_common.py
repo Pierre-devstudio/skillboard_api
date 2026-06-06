@@ -529,7 +529,6 @@ def build_competence_pdf_story(comp: dict) -> List:
             Paragraph(_pdf_comp_level_note_range("B"), level_note_style),
             Paragraph(_pdf_comp_level_note_range("C"), level_note_style),
             Paragraph(_pdf_comp_level_note_range("D"), level_note_style),
-            Paragraph(_pdf_comp_level_note_range("D"), level_note_style),
         ],
         [
             Paragraph(_pdf_comp_esc(_pdf_comp_truncate(comp.get("niveaua"), 220) or "—"), level_body_style),

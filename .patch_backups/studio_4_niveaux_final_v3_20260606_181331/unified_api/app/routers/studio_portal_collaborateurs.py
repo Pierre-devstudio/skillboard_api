@@ -2201,7 +2201,6 @@ def _normalize_skill_level_from_poste(value: Optional[str]) -> str:
         return "B"
     if s in ("a", "initial", "debutant") or s.startswith("ini") or s.startswith("deb"):
         return "A"
-
     return "A"
 
 
@@ -2766,7 +2765,6 @@ def _build_competence_pdf_story(comp: dict) -> List:
             Paragraph(_pdf_level_note_range("A"), level_note_style),
             Paragraph(_pdf_level_note_range("B"), level_note_style),
             Paragraph(_pdf_level_note_range("C"), level_note_style),
-            Paragraph(_pdf_level_note_range("D"), level_note_style),
             Paragraph(_pdf_level_note_range("D"), level_note_style),
         ],
         [
@@ -4274,22 +4272,6 @@ def studio_collab_competence_evaluation_detail(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/collaborateurs/competences/evaluation/detail error: {e}")
-
-
-def _niveau_key_4(v: Optional[str]) -> str:
-    s = (v or "").strip().lower()
-    import unicodedata as _ud
-    s = _ud.normalize("NFD", s)
-    s = "".join(ch for ch in s if _ud.category(ch) != "Mn")
-    if s in ("a", "initial", "debutant") or s.startswith("deb") or s.startswith("init"):
-        return "A"
-    if s in ("b", "intermediaire") or s.startswith("inter"):
-        return "B"
-    if s in ("c", "avance", "avancee") or s.startswith("avan"):
-        return "C"
-    if s in ("d", "expert") or s.startswith("exp"):
-        return "D"
-    return ""
 
 @router.post("/studio/collaborateurs/competences/evaluation/{id_owner}/{id_collaborateur}/save")
 def studio_collab_competence_evaluation_save(

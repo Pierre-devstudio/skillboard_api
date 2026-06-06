@@ -220,24 +220,6 @@
         return document.getElementById(id);
     }
 
-
-
-    function nsLevelKey(v){
-        const raw = String(v ?? "").trim();
-        const norm = raw.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-        if (!norm || norm === "-" || norm === "—") return "";
-        if (norm === "a" || norm.includes("initial") || norm.includes("debutant")) return "A";
-        if (norm === "b" || norm.includes("intermediaire") || norm.includes("interm")) return "B";
-        if (norm === "c" || norm.includes("avance") || norm.includes("advanced")) return "C";
-        if (norm === "d" || norm.includes("expert")) return "D";
-        return "";
-    }
-
-    function nsLevelLabel(v){
-        const k = nsLevelKey(v);
-        return ({ A:"Débutant", B:"Intermédiaire", C:"Avancé", D:"Expert" })[k] || (String(v ?? "").trim() || "—");
-    }
-
     function setStatus(msg, isError = false){
         const el = byId("orgStatus");
         if (!el) return;
@@ -448,13 +430,13 @@
     }
 
     function setPosteCompEditNiv(v){
-        const niv = nsLevelKey(v) || "C";
+        const niv = (v || "B").toString().trim().toUpperCase();
         const r = document.querySelector(`input[name="posteCompEditNiv"][value="${niv}"]`);
         if (r) r.checked = true;
         refreshPosteCompNivCards();
     }
 
-function refreshPosteCompNivCards(){
+    function refreshPosteCompNivCards(){
         document.querySelectorAll("#posteCompNivGrid .sb-level-card").forEach(card => {
             const r = card.querySelector('input[type="radio"]');
             card.classList.toggle("is-selected", !!(r && r.checked));
@@ -2737,6 +2719,7 @@ body {
         byId("posteCompCreateNivB").value = (prepared.niveaub || "");
         byId("posteCompCreateNivC").value = (prepared.niveauc || "");
         if (byId("posteCompCreateNivD")) byId("posteCompCreateNivD").value = (prepared.niveaud || "");
+        if (byId("posteCompCreateNivD")) byId("posteCompCreateNivD").value = (prepared.niveaud || "");
 
         fillPosteCompCreateDomainSelect(prepared.domaine_id || "");
         loadPosteCompCreateCritFromJson(prepared.grille_evaluation || null);
@@ -2744,7 +2727,7 @@ body {
         openModal("modalPosteCompCreate");
     }
 
-function promoteMissingAiCompetenceToExisting(meta){
+    function promoteMissingAiCompetenceToExisting(meta){
         if (!_posteCompCreateCtx) return;
 
         const idx = _posteCompCreateCtx.idx;
@@ -2763,7 +2746,6 @@ function promoteMissingAiCompetenceToExisting(meta){
         }
 
         const existing = Array.isArray(_posteCompAiResults?.existing) ? _posteCompAiResults.existing : [];
-        const recLevel = nsLevelKey(src.recommended_level) || "C";
         existing.unshift({
             id_comp: meta?.id_comp || "",
             code: meta?.code || "",
@@ -2772,8 +2754,8 @@ function promoteMissingAiCompetenceToExisting(meta){
             domaine_titre_court: domainLabel || (src.domaine_label || ""),
             domaine_couleur: domainMeta?.couleur || src.domaine_couleur || null,
             etat: etat,
-            recommended_level: recLevel,
-            recommended_level_label: src.recommended_level_label || nsLevelLabel(recLevel),
+            recommended_level: (src.recommended_level || "B"),
+            recommended_level_label: (src.recommended_level_label || "Intermédiaire"),
             freq_usage: parseInt(src.freq_usage ?? 0, 10) || 0,
             impact_resultat: parseInt(src.impact_resultat ?? 0, 10) || 0,
             dependance: parseInt(src.dependance ?? 0, 10) || 0,
@@ -2784,7 +2766,7 @@ function promoteMissingAiCompetenceToExisting(meta){
         _posteCompAiResults.missing = missing;
     }
 
-async function savePosteCompCreateModal(portal, addAfter){
+    async function savePosteCompCreateModal(portal, addAfter){
         if (!_posteCompCreateCtx) return;
 
         const ownerId = getOwnerId();
@@ -2792,10 +2774,11 @@ async function savePosteCompCreateModal(portal, addAfter){
         const dom = (byId("posteCompCreateDomaine").value || "").trim();
         const etat = (byId("posteCompCreateEtat").value || "à valider").trim();
         const desc = (byId("posteCompCreateDesc").value || "").trim();
-        const nivA = (byId("posteCompCreateNivA").value || "").trim();
-        const nivB = (byId("posteCompCreateNivB").value || "").trim();
-        const nivC = (byId("posteCompCreateNivC").value || "").trim();
-        const nivD = (byId("posteCompCreateNivD")?.value || "").trim();
+        const a = (byId("posteCompCreateNivA").value || "").trim();
+        const b = (byId("posteCompCreateNivB").value || "").trim();
+        const c = (byId("posteCompCreateNivC").value || "").trim();
+        const d = (byId("posteCompCreateNivD")?.value || "").trim();
+            const d = (byId("posteCompCreateNivD")?.value || "").trim();
 
         if (!title){
             portal.showAlert("error", "Intitulé obligatoire.");
@@ -2814,7 +2797,6 @@ async function savePosteCompCreateModal(portal, addAfter){
             const grille = buildPosteCompCreateGrilleJson();
             const draftSrc = _posteCompCreateCtx?.draft || {};
             const pid = addAfter ? await ensureEditingPoste(portal) : (_editingPosteId || null);
-            const recLevel = nsLevelKey(draftSrc.recommended_level) || "C";
 
             const created = await portal.apiJson(
                 `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_comp_create`,
@@ -2829,12 +2811,12 @@ async function savePosteCompCreateModal(portal, addAfter){
                             description: desc || null,
                             domaine_id: dom || null,
                             etat: etat || null,
-                            niveaua: nivA || null,
-                            niveaub: nivB || null,
-                            niveauc: nivC || null,
-                            niveaud: nivD || null,
+                            niveaua: a || null,
+                            niveaub: b || null,
+                            niveauc: c || null,
+                            niveaud: d || null,
                             grille_evaluation: grille,
-                            recommended_level: recLevel,
+                            recommended_level: (draftSrc.recommended_level || "B"),
                             freq_usage: parseInt(draftSrc.freq_usage ?? 0, 10) || 0,
                             impact_resultat: parseInt(draftSrc.impact_resultat ?? 0, 10) || 0,
                             dependance: parseInt(draftSrc.dependance ?? 0, 10) || 0,
@@ -2855,8 +2837,11 @@ async function savePosteCompCreateModal(portal, addAfter){
                 added: !!addAfter
             });
             renderPosteCompAiResults();
+
             closePosteCompCreateModal();
             portal.showAlert("", "");
+        } catch(e){
+            portal.showAlert("error", e?.message || String(e));
         } finally {
             if (btnMain){
                 btnMain.disabled = false;
@@ -2865,7 +2850,77 @@ async function savePosteCompCreateModal(portal, addAfter){
         }
     }
 
-function renderPosteCompAiResults(){
+    function getPosteCompCreateDomainMetaById(id){
+        const did = String(id || "").trim();
+        if (!did) return null;
+        return (_posteCompCreateDomainItems || []).find(x => String(x?.id_domaine_competence || "").trim() === did) || null;
+    }
+
+    function buildAiCompDomainBadge(label, couleur){
+        const txt = String(label || "").trim();
+        if (!txt) return null;
+
+        const dom = document.createElement("span");
+        dom.className = "sb-badge sb-badge--comp-domain";
+
+        const dot = document.createElement("span");
+        dot.className = "sb-dot";
+
+        const rgb = argbIntToRgbTuple(couleur);
+        if (rgb){
+            dom.style.setProperty("--sb-domain-rgb", rgb.css);
+        }
+
+        dom.appendChild(dot);
+        dom.appendChild(document.createTextNode(txt));
+        return dom;
+    }
+
+    function normalizeAiMatchScore(v){
+        const n = Number(v);
+        if (!Number.isFinite(n)) return 0;
+        return Math.max(0, Math.min(1, n));
+    }
+
+    function buildAiMatchBadge(label, score){
+        const txt = String(label || "").trim();
+        if (!txt) return null;
+
+        const norm = txt.toLowerCase();
+        let variant = "sb-badge--ai-match-proposed";
+
+        if (norm === "recommandé" || norm === "recommande"){
+            variant = "sb-badge--ai-match-recommended";
+        } else if (norm === "à vérifier" || norm === "a verifier"){
+            variant = "sb-badge--ai-match-review";
+        } else if (norm === "proposé" || norm === "propose"){
+            variant = "sb-badge--ai-match-proposed";
+        }
+
+        const n = normalizeAiMatchScore(score);
+
+        const badge = document.createElement("span");
+        badge.className = `sb-badge sb-badge--ai-match ${variant}`;
+        badge.textContent = txt;
+        badge.title = `Score de rapprochement : ${Math.round(n * 100)} %`;
+        return badge;
+    }
+
+    function buildAiMatchScoreText(score, providedPercent){
+        const n = normalizeAiMatchScore(score);
+
+        let pct = Number.isFinite(Number(providedPercent))
+            ? Math.max(0, Math.min(99, parseInt(providedPercent, 10) || 0))
+            : Math.max(0, Math.min(99, Math.round(n * 100)));
+
+        const el = document.createElement("span");
+        el.className = "sb-ai-match-score";
+        el.textContent = `${pct} %`;
+        el.title = `Score de rapprochement interne : ${pct} %`;
+        return el;
+    }
+
+    function renderPosteCompAiResults(){
         const summary = byId("posteCompAiSummary");
         const exWrap = byId("posteCompAiExistingWrap");
         const miWrap = byId("posteCompAiMissingWrap");
@@ -3116,7 +3171,7 @@ function renderPosteCompAiResults(){
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 id_competence: it.id_comp,
-                niveau_requis: nsLevelKey(it.recommended_level) || "C",
+                niveau_requis: it.recommended_level || "B",
                 freq_usage: parseInt(it.freq_usage ?? 0, 10) || 0,
                 impact_resultat: parseInt(it.impact_resultat ?? 0, 10) || 0,
                 dependance: parseInt(it.dependance ?? 0, 10) || 0,
@@ -3186,11 +3241,15 @@ function renderPosteCompAiResults(){
         if (!tb) return;
 
         const levelMeta = (niv) => {
-            const key = nsLevelKey(niv);
-            if (key) {
-                return { text: nsLevelLabel(key), cls: `sb-badge--niv sb-badge--niv-${key.toLowerCase()}` };
-            }
-            return { text: "—", cls: "sb-badge--outline-accent" };
+            const raw = String(niv || "").trim();
+            const v = raw.toUpperCase();
+            const low = raw.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+            if (v === "A" || low === "initial" || low === "debutant") return { text: "Débutant", cls: "sb-badge--niv-a" };
+            if (v === "B" || low === "intermediaire") return { text: "Intermédiaire", cls: "sb-badge--niv-b" };
+            if (v === "C" || low === "avance" || low === "avancee") return { text: "Avancé", cls: "sb-badge--niv-c" };
+            if (v === "D" || low === "expert") return { text: "Expert", cls: "sb-badge--niv-d" };
+            return { text: "—", cls: "" };
         };
 
         const critMeta = (score) => {
@@ -3465,7 +3524,7 @@ function renderPosteCompAiResults(){
             niveaud: "",
 
             // defaults association
-            niveau_requis: "C",
+            niveau_requis: "B",
             freq_usage: 0,
             impact_resultat: 0,
             dependance: 0,
@@ -3491,60 +3550,67 @@ function renderPosteCompAiResults(){
         _posteCompEdit = { ...(it || {}) };
         _posteCompEdit._isNew = !!isNew;
 
+        // Header badge code + titre
         const b = byId("posteCompEditBadge");
         const code = (_posteCompEdit.code || "").toString().trim();
         if (b){
-            b.textContent = code;
-            b.style.display = code ? "" : "none";
+        b.textContent = code;
+        b.style.display = code ? "" : "none";
         }
         byId("posteCompEditTitle").textContent = (_posteCompEdit.intitule || "Compétence").toString();
 
+        // Domaine badge
         const dom = byId("posteCompEditDomain");
         const domTxt = byId("posteCompEditDomainTxt");
         const domLabel = (_posteCompEdit.domaine_titre_court || _posteCompEdit.domaine || "").toString().trim();
         if (dom && domTxt){
-            if (domLabel){
-                domTxt.textContent = domLabel;
-                const rgb = argbIntToRgbTuple(_posteCompEdit.domaine_couleur);
-                if (rgb) dom.style.setProperty("--sb-domain-rgb", rgb.css);
-                dom.style.display = "";
-            } else {
-                dom.style.display = "none";
-            }
+        if (domLabel){
+            domTxt.textContent = domLabel;
+            const rgb = argbIntToRgbTuple(_posteCompEdit.domaine_couleur);
+            if (rgb) dom.style.setProperty("--sb-domain-rgb", rgb.css);
+            dom.style.display = "";
+        } else {
+            dom.style.display = "none";
+        }
         }
 
+        // Ref niveaux (lecture)
         byId("posteCompRefA").textContent = (_posteCompEdit.niveaua || "—");
         byId("posteCompRefB").textContent = (_posteCompEdit.niveaub || "—");
         byId("posteCompRefC").textContent = (_posteCompEdit.niveauc || "—");
         if (byId("posteCompRefD")) byId("posteCompRefD").textContent = (_posteCompEdit.niveaud || "—");
+        if (byId("posteCompRefD")) byId("posteCompRefD").textContent = (_posteCompEdit.niveaud || "—");
 
-        setPosteCompEditNiv(_posteCompEdit.niveau_requis || "C");
+        // Form
+        setPosteCompEditNiv(_posteCompEdit.niveau_requis || "B");
 
         byId("posteCompEditFreq").value = String(_posteCompEdit.freq_usage ?? 0);
         byId("posteCompEditImpact").value = String(_posteCompEdit.impact_resultat ?? 0);
         byId("posteCompEditDep").value = String(_posteCompEdit.dependance ?? 0);
 
         refreshPosteCompEditCritDisplay();
+
         openModal("modalPosteCompEdit");
 
-        if ((!_posteCompEdit.niveaua || !_posteCompEdit.niveaud) && _posteCompEdit.id_competence){
-            (async () => {
-                try{
-                    const detail = await fetchCompetenceDetail(window.portal, _posteCompEdit.id_competence);
-                    _posteCompEdit.niveaua = detail.niveaua || "";
-                    _posteCompEdit.niveaub = detail.niveaub || "";
-                    _posteCompEdit.niveauc = detail.niveauc || "";
-                    _posteCompEdit.niveaud = detail.niveaud || "";
-                    byId("posteCompRefA").textContent = (_posteCompEdit.niveaua || "—");
-                    byId("posteCompRefB").textContent = (_posteCompEdit.niveaub || "—");
-                    byId("posteCompRefC").textContent = (_posteCompEdit.niveauc || "—");
-                    if (byId("posteCompRefD")) byId("posteCompRefD").textContent = (_posteCompEdit.niveaud || "—");
-                } catch(_){ }
-            })();
+        // Charge le détail compétence si on n'a pas les niveaux A/B/C
+        if (!_posteCompEdit.niveaua && _posteCompEdit.id_competence){
+        (async () => {
+            try{
+            const d = await fetchCompetenceDetail(window.portal, _posteCompEdit.id_competence);
+            _posteCompEdit.niveaua = d.niveaua || "";
+            _posteCompEdit.niveaub = d.niveaub || "";
+            _posteCompEdit.niveauc = d.niveauc || "";
+            _posteCompEdit.niveaud = d.niveaud || "";
+            byId("posteCompRefA").textContent = (_posteCompEdit.niveaua || "—");
+            byId("posteCompRefB").textContent = (_posteCompEdit.niveaub || "—");
+            byId("posteCompRefC").textContent = (_posteCompEdit.niveauc || "—");
+        if (byId("posteCompRefD")) byId("posteCompRefD").textContent = (_posteCompEdit.niveaud || "—");
+            } catch(_){}
+        })();
         }
     }
 
-function refreshPosteCompEditCritDisplay(){
+    function refreshPosteCompEditCritDisplay(){
         const fu = parseInt(byId("posteCompEditFreq")?.value || "0", 10) || 0;
         const im = parseInt(byId("posteCompEditImpact")?.value || "0", 10) || 0;
         const de = parseInt(byId("posteCompEditDep")?.value || "0", 10) || 0;
@@ -5089,7 +5155,6 @@ function refreshPosteCompEditCritDisplay(){
         bindPosteCompCreateMaxLen("posteCompCreateNivA", 230);
         bindPosteCompCreateMaxLen("posteCompCreateNivB", 230);
         bindPosteCompCreateMaxLen("posteCompCreateNivC", 230);
-        bindPosteCompCreateMaxLen("posteCompCreateNivD", 230);
         bindPosteCompCreateMaxLen("posteCompCreateCritEval1", 120);
         bindPosteCompCreateMaxLen("posteCompCreateCritEval2", 120);
         bindPosteCompCreateMaxLen("posteCompCreateCritEval3", 120);

@@ -2819,32 +2819,3 @@
   color: rgb(226, 114, 9) !important;
 }
 
-/* Patch Studio 4 niveaux - badges maîtrise : libellé seul, fond transparent, orange progressif */
-.sb-badge.sb-badge--niv,
-.sb-badge.sb-badge-niv{
-  background: transparent !important;
-  border-style: solid !important;
-  border-width: 1px !important;
-  white-space: nowrap !important;
-}
-.sb-badge.sb-badge--niv-a,
-.sb-badge.sb-badge-niv-a{
-  border-color: color-mix(in srgb, rgb(226, 114, 9) 45%, transparent) !important;
-  color: color-mix(in srgb, rgb(226, 114, 9) 45%, transparent) !important;
-}
-.sb-badge.sb-badge--niv-b,
-.sb-badge.sb-badge-niv-b{
-  border-color: color-mix(in srgb, rgb(226, 114, 9) 62%, transparent) !important;
-  color: color-mix(in srgb, rgb(226, 114, 9) 62%, transparent) !important;
-}
-.sb-badge.sb-badge--niv-c,
-.sb-badge.sb-badge-niv-c{
-  border-color: color-mix(in srgb, rgb(226, 114, 9) 82%, transparent) !important;
-  color: color-mix(in srgb, rgb(226, 114, 9) 82%, transparent) !important;
-}
-.sb-badge.sb-badge--niv-d,
-.sb-badge.sb-badge-niv-d{
-  border-color: rgb(226, 114, 9) !important;
-  color: rgb(226, 114, 9) !important;
-}
-

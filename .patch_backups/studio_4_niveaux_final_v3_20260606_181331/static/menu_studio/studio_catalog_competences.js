@@ -658,28 +658,34 @@
         byId("compNivB").value = "";
         byId("compNivC").value = "";
         if (byId("compNivD")) byId("compNivD").value = "";
+        if (byId("compNivD")) byId("compNivD").value = "";
+        
 
         await ensureDomains(portal);
-        fillAiDomainSelect("");
+
+        fillAiDomainSelect(""); // prépare le select du modal IA
         byId("compAiObjectif") && (byId("compAiObjectif").value = "");
         byId("compAiContexte") && (byId("compAiContexte").value = "");
+
         fillDomainSelect("");
+
+
         resetCrit();
+
         openModal("modalCompEdit");
     }
 
-async function openEdit(portal, it){
+  async function openEdit(portal, it){
     _modalMode = "edit";
     _editingId = it.id_comp;
-
     const aiBtn = byId("btnCompAi");
     if (aiBtn) aiBtn.style.display = "none";
 
     const b = byId("compModalBadge");
     if (b){
-      const code = (it && it.code) ? String(it.code) : "";
-      b.textContent = code;
-      b.style.display = code ? "" : "none";
+    const c = (it && it.code) ? String(it.code) : "";
+    b.textContent = c;
+    b.style.display = c ? "" : "none";
     }
 
     byId("compModalTitle").textContent = (it && it.intitule) ? String(it.intitule) : "Compétence";
@@ -693,44 +699,51 @@ async function openEdit(portal, it){
     fillDomainSelect((it && it.domaine) ? it.domaine : "");
 
     const ownerId = getOwnerId();
-    const detail = await portal.apiJson(
+    const d = await portal.apiJson(
       `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`
     );
 
-    loadCritFromJson(detail.grille_evaluation);
+    loadCritFromJson(d.grille_evaluation);
 
     const b2 = byId("compModalBadge");
     if (b2){
-      const code = (detail && detail.code) ? String(detail.code) : "";
-      b2.textContent = code;
-      b2.style.display = code ? "" : "none";
+    const c2 = (d && d.code) ? String(d.code) : "";
+    b2.textContent = c2;
+    b2.style.display = c2 ? "" : "none";
     }
 
-    if (detail && detail.intitule){
-      byId("compModalTitle").textContent = String(detail.intitule);
+    if (d && d.intitule){
+    byId("compModalTitle").textContent = String(d.intitule);
     }
 
-    byId("compIntitule").value = (detail.intitule || "");
-    fillDomainSelect(detail.domaine || "");
-    byId("compEtat").value = (detail.etat || "valide");
-    byId("compDesc").value = (detail.description || "");
-    byId("compNivA").value = (detail.niveaua || "");
-    byId("compNivB").value = (detail.niveaub || "");
-    byId("compNivC").value = (detail.niveauc || "");
-    if (byId("compNivD")) byId("compNivD").value = (detail.niveaud || "");
+
+    byId("compIntitule").value = (d.intitule || "");
+    fillDomainSelect(d.domaine || "");
+    byId("compEtat").value = (d.etat || "valide");
+    byId("compDesc").value = (d.description || "");
+    byId("compNivA").value = (d.niveaua || "");
+    byId("compNivB").value = (d.niveaub || "");
+    byId("compNivC").value = (d.niveauc || "");
+    if (byId("compNivD")) byId("compNivD").value = (d.niveaud || "");
+    if (byId("compNivD")) byId("compNivD").value = (d.niveaud || "");
+
+    
   }
 
-async function save(portal){
+  async function save(portal){
     const ownerId = getOwnerId();
-
+    
     const title = (byId("compIntitule").value || "").trim();
     const dom = (byId("compDomaine").value || "").trim();
     const etat = (byId("compEtat").value || "valide").trim();
     const desc = (byId("compDesc").value || "").trim();
-    const nivA = (byId("compNivA").value || "").trim();
-    const nivB = (byId("compNivB").value || "").trim();
-    const nivC = (byId("compNivC").value || "").trim();
-    const nivD = (byId("compNivD")?.value || "").trim();
+    const a = (byId("compNivA").value || "").trim();
+    const b = (byId("compNivB").value || "").trim();
+    const c = (byId("compNivC").value || "").trim();
+    const d = (byId("compNivD")?.value || "").trim();
+    const d = (byId("compNivD")?.value || "").trim();
+    
+
 
     if (!title){
       portal.showAlert("error", "Intitulé obligatoire.");
@@ -739,36 +752,55 @@ async function save(portal){
 
     if (!validateCritBeforeSave(portal)) return;
 
-    const payload = {
-      intitule: title,
-      domaine: dom || null,
-      etat: etat || null,
-      description: desc || null,
-      niveaua: nivA || null,
-      niveaub: nivB || null,
-      niveauc: nivC || null,
-      niveaud: nivD || null,
-      grille_evaluation: buildGrilleJson()
-    };
+    const grille = buildGrilleJson();
 
-    const url = _modalMode === "create"
-      ? `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}`
-      : `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`;
-
-    if (_modalMode !== "create" && !_editingId) return;
-
-    await portal.apiJson(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+    if (_modalMode === "create") {
+      await portal.apiJson(
+        `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            intitule: title,
+            domaine: dom || null,
+            etat: etat || null,
+            description: desc || null,
+            niveaua: a || null,
+            niveaub: b || null,
+            niveauc: c || null,
+            niveaud: d || null,
+            grille_evaluation: grille
+          })
+        }
+      );
+    } else {
+      if (!_editingId) return;
+      await portal.apiJson(
+        `${portal.apiBase}/studio/catalog/competences/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingId)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            intitule: title,
+            domaine: dom || null,
+            etat: etat || null,
+            description: desc || null,
+            niveaua: a || null,
+            niveaub: b || null,
+            niveauc: c || null,
+            niveaud: d || null,
+            grille_evaluation: grille
+          })
+        }
+      );
+    }
 
     closeModal("modalCompEdit");
     portal.showAlert("", "");
     await loadList(portal);
   }
 
-function openArchive(it){
+  function openArchive(it){
     _archiveId = it.id_comp;
     byId("compArchiveMsg").textContent = `Archiver "${it.code || "—"} – ${it.intitule || ""}" ?`;
     openModal("modalCompArchive");

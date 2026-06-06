@@ -1698,47 +1698,13 @@ def _level_score(txt: Optional[str]) -> int:
 
 
 def _fix_abc_levels(data: dict) -> None:
-    vals = [
-        ("niveaua", data.get("niveaua") or "", _level_score(data.get("niveaua") or "")),
-        ("niveaub", data.get("niveaub") or "", _level_score(data.get("niveaub") or "")),
-        ("niveauc", data.get("niveauc") or "", _level_score(data.get("niveauc") or "")),
-        ("niveaud", data.get("niveaud") or "", _level_score(data.get("niveaud") or "")),
-    ]
-    filled = [x for x in vals if (x[1] or "").strip()]
-    if len(filled) >= 2 and filled[0][2] > filled[-1][2]:
-        filled.sort(key=lambda x: x[2])
-        keys = ["niveaua", "niveaub", "niveauc", "niveaud"]
-        for idx, key in enumerate(keys):
-            data[key] = filled[idx][1] if idx < len(filled) else data.get(key, "")
-
-
-def _niveau_label_4(v: Optional[str]) -> str:
-    s = (v or "").strip().upper()
-    if s == "A":
-        return "Débutant"
-    if s == "B":
-        return "Intermédiaire"
-    if s == "C":
-        return "Avancé"
-    if s == "D":
-        return "Expert"
-    return (v or "").strip() or "—"
-
-
-def _niveau_key_4(v: Optional[str]) -> str:
-    s = (v or "").strip().lower()
-    s_norm = unicodedata.normalize("NFD", s)
-    s_norm = "".join(ch for ch in s_norm if unicodedata.category(ch) != "Mn")
-    if s_norm in ("a", "initial", "debutant") or s_norm.startswith("deb"):
-        return "A"
-    if s_norm in ("b", "intermediaire") or s_norm.startswith("inter"):
-        return "B"
-    if s_norm in ("c", "avance", "avancee") or s_norm.startswith("avan"):
-        return "C"
-    if s_norm in ("d", "expert") or s_norm.startswith("exp"):
-        return "D"
-    return ""
-
+    # Compat nom historique : ordonne désormais A/B/C/D du moins maîtrisé vers expert.
+    keys = ["niveaua", "niveaub", "niveauc", "niveaud"]
+    levels = [(k, data.get(k) or "", _level_score(data.get(k) or "")) for k in keys]
+    if levels[0][2] > levels[-1][2]:
+        levels.sort(key=lambda x: x[2])
+        for idx, k in enumerate(keys):
+            data[k] = levels[idx][1]
 
 def _norm_text_search(v: Optional[str]) -> str:
     s = _clean_text(v).lower()
@@ -2983,7 +2949,7 @@ def _ai_draft_poste_comp_from_catalog_logic(
             return True
         return False
 
-    if _bad_level(data.get("niveaua", "")) or _bad_level(data.get("niveaub", "")) or _bad_level(data.get("niveauc", "")) or _bad_level(data.get("niveaud", "")):
+    if _bad_level(data.get("niveaua", "")) or _bad_level(data.get("niveaub", "")) or _bad_level(data.get("niveauc", "")):
         raise HTTPException(
             status_code=400,
             detail="IA: niveaux A/B/C/D trop courts ou réduits à un label. Relance avec plus de contexte."
@@ -2998,7 +2964,6 @@ def _ai_draft_poste_comp_from_catalog_logic(
     data["niveaua"] = _clean_ai_comp_text(data.get("niveaua"), 230)
     data["niveaub"] = _clean_ai_comp_text(data.get("niveaub"), 230)
     data["niveauc"] = _clean_ai_comp_text(data.get("niveauc"), 230)
-    data["niveaud"] = _clean_ai_comp_text(data.get("niveaud"), 230)
 
     _fix_abc_levels(data)
 
@@ -3245,7 +3210,6 @@ def _normalize_ai_comp_search_item(item: dict) -> None:
     item["niveaua"] = _normalize_ai_level_text(item.get("niveaua"), item.get("intitule"), 1, 230)
     item["niveaub"] = _normalize_ai_level_text(item.get("niveaub"), item.get("intitule"), 2, 230)
     item["niveauc"] = _normalize_ai_level_text(item.get("niveauc"), item.get("intitule"), 3, 230)
-    item["niveaud"] = _normalize_ai_level_text(item.get("niveaud"), item.get("intitule"), 4, 230)
     _fix_abc_levels(item)
 
     ge = _sanitize_grille(item.get("grille_evaluation"))
@@ -5755,7 +5719,7 @@ class DuplicatePosteOrgPayload(BaseModel):
 
 class UpsertPosteCompetencePayload(BaseModel):
     id_competence: str
-    niveau_requis: str  # A/B/C/D/D/D
+    niveau_requis: str  # A/B/C/D/D
     freq_usage: Optional[int] = 0        # 0..10
     impact_resultat: Optional[int] = 0   # 0..10
     dependance: Optional[int] = 0        # 0..10
@@ -6435,7 +6399,7 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
             "niveaud": _clean_ai_comp_text(draft.get("niveaud"), 230),
             "grille_evaluation": _sanitize_grille(draft.get("grille_evaluation")),
             "etat": _clean_text(draft.get("etat")) or "à valider",
-            "recommended_level": _niveau_key_4(_clean_text(draft.get("recommended_level"))) or "C",
+            "recommended_level": _clean_text(draft.get("recommended_level")) or "A",
             "freq_usage": _clamp_0_10(draft.get("freq_usage")),
             "impact_resultat": _clamp_0_10(draft.get("impact_resultat")),
             "dependance": _clamp_0_10(draft.get("dependance")),
@@ -6486,7 +6450,7 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
                         INSERT INTO public.tbl_competence
                           (id_comp, id_owner, code, intitule, description, domaine, niveaua, niveaub, niveauc, niveaud, grille_evaluation, etat, masque, date_creation, date_modification)
                         VALUES
-                          (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, NOW(), NOW())
+                          (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, NOW(), NOW())
                         """,
                         (
                             cid,
@@ -8401,7 +8365,7 @@ def studio_org_upsert_poste_competence(id_owner: str, id_poste: str, payload: Up
             raise HTTPException(status_code=400, detail="id_poste manquant.")
         if not cid:
             raise HTTPException(status_code=400, detail="id_competence manquant.")
-        if niv not in ("A", "B", "C", "D"):
+        if niv not in ("A", "B", "C"):
             raise HTTPException(status_code=400, detail="niveau_requis invalide (A/B/C/D).")
 
         fu = _clamp_0_10(payload.freq_usage or 0)

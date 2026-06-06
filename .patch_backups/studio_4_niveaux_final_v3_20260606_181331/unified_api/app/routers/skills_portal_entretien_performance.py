@@ -42,7 +42,7 @@ class ScoringPonderation(BaseModel):
 
 
 class ScoringNiveau(BaseModel):
-    code: str  # "A" | "B" | "C" | "D"
+    code: str  # "A" | "B" | "C"
     libelle: str
     score_min: float
     score_max: float
@@ -1109,38 +1109,6 @@ def _get_scoring_config() -> ScoringConfig:
         niveaux=niveaux,
     )
 
-
-
-def _niveau_key_4_from_score(score: Optional[float]) -> str:
-    try:
-        s = float(score if score is not None else 0)
-    except Exception:
-        return ""
-    if s <= 0:
-        return ""
-    if s <= 6:
-        return "A"
-    if s <= 12:
-        return "B"
-    if s <= 18:
-        return "C"
-    return "D"
-
-
-def _niveau_key_4(v: Optional[str], score: Optional[float] = None) -> str:
-    import unicodedata as _ud
-    raw = (v or "").strip()
-    s = _ud.normalize("NFD", raw.lower())
-    s = "".join(ch for ch in s if _ud.category(ch) != "Mn")
-    if s in ("a", "initial", "debutant") or s.startswith("deb") or s.startswith("init"):
-        return "A"
-    if s in ("b", "intermediaire") or s.startswith("inter"):
-        return "B"
-    if s in ("c", "avance", "avancee") or s.startswith("avan"):
-        return "C"
-    if s in ("d", "expert") or s.startswith("exp"):
-        return "D"
-    return _niveau_key_4_from_score(score)
 
 # ======================================================
 # Endpoints (squelette)
