@@ -601,14 +601,12 @@
             return Number.isFinite(n) ? n : -1;
           }
           function toNivRank(v) {
-            if (window.NovoskillLevels) return window.NovoskillLevels.rank(v);
             const s = (v ?? "").toString().trim().toUpperCase();
             if (!s) return -1;
             const c = s[0];
             if (c === "A") return 1;
             if (c === "B") return 2;
             if (c === "C") return 3;
-            if (c === "D") return 4;
             const m = s.match(/^\d+/);
             return m ? Number(m[0]) : -1;
           }
@@ -714,7 +712,7 @@
                       ${listSorted.map(c => {
                         const code = escapeHtml(c.code || "—");
                         const intit = escapeHtml(c.intitule || "—");
-                        const niv = window.NovoskillLevels ? window.NovoskillLevels.badgeHtml(c.niveau_requis || "—", "Niveau requis") : escapeHtml(c.niveau_requis || "—");
+                        const niv = escapeHtml(c.niveau_requis || "—");
                         const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "—" : escapeHtml(String(c.poids_criticite));
 
                         const nbBrut = (c.nb_porteurs === null || c.nb_porteurs === undefined)

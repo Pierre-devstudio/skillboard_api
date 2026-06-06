@@ -35,39 +35,6 @@
       .replaceAll('"', "&quot;");
   }
 
-  function nsLevelCode(value) {
-    if (window.NovoskillLevels) return window.NovoskillLevels.normalize(value);
-    const raw = (value ?? "").toString().trim();
-    if (!raw || raw === "—") return "";
-    const m = raw.toUpperCase().match(/\b([ABCD])\b/);
-    if (m && m[1]) return m[1];
-    const plain = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    if (plain === "1" || plain.includes("initial") || plain.includes("debut")) return "A";
-    if (plain === "2" || plain.includes("intermediaire")) return "B";
-    if (plain === "3" || plain.includes("avance")) return "C";
-    if (plain === "4" || plain.includes("expert")) return "D";
-    return "";
-  }
-
-  function nsLevelLabel(value) {
-    if (window.NovoskillLevels) return window.NovoskillLevels.label(value);
-    const k = nsLevelCode(value);
-    return ({ A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" }[k]) || ((value ?? "").toString().trim() || "—");
-  }
-
-  function nsLevelRank(value) {
-    if (window.NovoskillLevels) return window.NovoskillLevels.rank(value);
-    return ({ A: 1, B: 2, C: 3, D: 4 }[nsLevelCode(value)]) || 0;
-  }
-
-  function nsLevelBadgeHtml(value, title) {
-    if (window.NovoskillLevels) return window.NovoskillLevels.badgeHtml(value, title || "Niveau de maîtrise");
-    const k = nsLevelCode(value);
-    const cls = ({ A: "sb-badge-niv-a", B: "sb-badge-niv-b", C: "sb-badge-niv-c", D: "sb-badge-niv-d" }[k]) || "";
-    return `<span class="sb-badge sb-badge-niv ${cls}" title="${escapeHtml(title || "Niveau de maîtrise")}">${escapeHtml(nsLevelLabel(value))}</span>`;
-  }
-
-
   function formatDateFr(iso) {
   const s = (iso || "").toString().trim();
   // attend du "YYYY-MM-DD" (ce que ton API renvoie)
@@ -887,7 +854,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   const compCodeBadge = (code) =>
     `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>`;
 
-  const nivBadgeHtml = (niv) => nsLevelBadgeHtml(niv, "Niveau de maîtrise");
+  const nivBadgeHtml = (niv) => {
+    const k = sbLevelKey(niv);
+    const label = sbLevelLabel(niv);
+    if (k) return `<span class="sb-badge sb-badge-niv sb-badge-niv-${k.toLowerCase()}">${escapeHtml(label)}</span>`;
+    return `<span class="sb-badge">${escapeHtml(label || "—")}</span>`;
+  };
 
   const critScoreBand = (v) => {
     const n = Number(v || 0);
@@ -1923,16 +1895,20 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité (poids)">${escapeHtml(txt)}</span>`;
     }
 
+    // Niveaux A/B/C/D -> Initial / Avancé / Expert
     function nivKey(v) {
-      return nsLevelCode(v);
+      return sbLevelKey(v);
     }
 
     function nivLabel(v) {
-      return nsLevelLabel(v);
+      return sbLevelLabel(v);
     }
 
     function nivBadgeHtml(v) {
-      return nsLevelBadgeHtml(v, "Niveau de maîtrise");
+      const k = nivKey(v);
+      const label = nivLabel(v);
+      if (!k) return `<span class="sb-badge">—</span>`;
+      return `<span class="sb-badge sb-badge-niv sb-badge-niv-${k.toLowerCase()}">${escapeHtml(label)}</span>`;
     }
 
     function domainPill(it) {
@@ -3267,7 +3243,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   }
 
   function mapNiveauActuelForDisplay(raw) {
-    return nsLevelLabel(raw);
+    const s = (raw ?? "").toString().trim().toLowerCase();
+    if (!s) return "—";
+    if (s === "initial") return "Initial - A";
+    if (s === "avancé" || s === "avance" || s === "avancee" || s === "avancée") return "Avancé - B";
+    if (s === "expert") return "Expert - C";
+    return (raw ?? "").toString().trim() || "—";
   }
 
   function renderAnalyseCompetenceDetail(data) {
@@ -3289,9 +3270,30 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const porteurs = Array.isArray(data?.porteurs) ? data.porteurs : [];
 
     // -------- helpers niveaux / criticité --------
-    const nivKey = (raw) => nsLevelCode(raw);
-    const nivRank = (k) => nsLevelRank(k);
-    const nivBadgeHtml = (raw) => nsLevelBadgeHtml(raw, "Niveau requis");
+    const nivKey = (raw) => {
+      const s = (raw ?? "").toString().trim().toUpperCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (!s) return "";
+      if (s === "A" || s.includes("INITIAL") || s.includes("INIT")) return "A";
+      if (s === "B" || s.includes("AVANCE")) return "B";
+      if (s === "C" || s.includes("EXPERT")) return "C";
+      return "";
+    };
+
+    const nivRank = (k) => (k === "A" ? 1 : k === "B" ? 2 : k === "C" ? 3 : k === "D" ? 4 : 0);
+
+    const nivBadgeHtml = (raw) => {
+      const k = nivKey(raw);
+      if (!k) return `<span class="sb-badge sb-badge-niv">${esc(raw || "—")}</span>`;
+
+      // classes EXISTANTES dans le CSS: sb-badge-niv-a / -b / -c (pas --a)
+      const cls = k === "A" ? "sb-badge-niv-a" : k === "B" ? "sb-badge-niv-b" : "sb-badge-niv-c";
+
+      // libellés métier
+      const label = k === "A" ? "Initial" : k === "B" ? "Avancé" : "Expert";
+
+      return `<span class="sb-badge sb-badge-niv ${cls}" title="Niveau requis">${label}</span>`;
+    };
 
     const critBadgeHtml = (v) => {
       const n = Number(v);
@@ -3598,18 +3600,17 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
 
     const gapTotal =
-      Math.max(0, (Number(need.A || 0) - Number(haveGe.A || 0))) +
-      Math.max(0, (Number(need.B || 0) - Number(haveGe.B || 0))) +
-      Math.max(0, (Number(need.C || 0) - Number(haveGe.C || 0))) +
-      Math.max(0, (Number(need.D || 0) - Number(haveGe.D || 0)));
+      Math.max(0, (need.A - haveGe.A)) +
+      Math.max(0, (need.B - haveGe.B)) +
+      Math.max(0, (need.C - haveGe.C));
 
         // -------- Risque de dépendance : apparition + texte (comparaison porteurs vs besoin) --------
     const depFmt = (n) => (typeof _fmtCnt === "function" ? _fmtCnt(n) : String(n ?? 0));
-    const depLabel = (k) => ({ A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" }[k] || "");
+    const depLabel = (k) => (k === "A" ? "Initial" : k === "B" ? "Avancé" : k === "C" ? "Expert" : "");
 
     // On prend le niveau "le plus contraint" (buffer le plus faible) parmi ceux réellement requis.
     // haveGe[k] = porteurs au niveau k ou supérieur ; need[k] = besoin au niveau k.
-    const depCandidates = ["D", "C", "B", "A"]
+    const depCandidates = ["C", "B", "A"]
       .filter((k) => Number(need[k] || 0) > 0)
       .map((k) => {
         const req = Number(need[k] || 0) || 0;
@@ -4146,7 +4147,15 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     }
 
     function mapNiveauActuel(raw) {
-      return nsLevelLabel(raw);
+      const s = (raw ?? "").toString().trim().toLowerCase();
+      if (!s) return "—";
+
+      if (s === "initial") return "Initial - A";
+      if (s === "avancé" || s === "avance" || s === "avancee" || s === "avancée" || s === "avancee ") return "Avancé - B";
+      if (s === "expert") return "Expert - C";
+
+      // fallback si jamais tu as d'autres valeurs
+      return (raw ?? "").toString().trim() || "—";
     }
 
     const max = 8;
@@ -4234,11 +4243,17 @@ function renderAnalysePosteCompetencesTab(data) {
   }
 
   function nivReqToNum(v) {
-    return nsLevelRank(v);
+    const r = sbLevelRank(v);
+    if (r > 0) return r;
+    const n = Number((v ?? "").toString().trim());
+    return Number.isFinite(n) ? n : 0;
   }
 
   function nivActToNum(v) {
-    return nsLevelRank(v);
+    const r = sbLevelRank(v);
+    if (r > 0) return r;
+    const n = Number((v ?? "").toString().trim());
+    return Number.isFinite(n) ? n : 0;
   }
 
   function getNbTotal(c) {
@@ -4365,7 +4380,7 @@ function renderAnalysePosteCompetencesTab(data) {
           ${detailList.map(c => {
             const code = escapeHtml(c.code || "—");
             const intit = escapeHtml(c.intitule || "—");
-            const nr = nsLevelBadgeHtml(c.niveau_requis || "—", "Niveau requis");
+            const nr = escapeHtml((c.niveau_requis || "—").toString().trim() || "—");
             const crit = (c.poids_criticite === null || c.poids_criticite === undefined) ? "—" : escapeHtml(String(c.poids_criticite));
             const tot = Number(c._nb_total || 0);
             const ok = Number(c._nb_ok || 0);

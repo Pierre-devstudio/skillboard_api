@@ -55,22 +55,24 @@ def _norm_text(v: Any) -> str:
 
 def _level_rank(v: Any) -> int:
     s = str(v or "").strip().lower()
-    s = (s.replace("é", "e").replace("è", "e").replace("ê", "e")
-           .replace("à", "a").replace("ç", "c"))
-    if s in ("a", "1", "initial", "debutant") or s.startswith("deb") or s.startswith("init"):
+    if s in ("a", "initial", "débutant", "debutant"):
         return 1
-    if s in ("b", "2", "intermediaire") or s.startswith("inter"):
+    if s in ("b", "avance", "avancé", "avancee", "avancée", "intermediaire", "intermédiaire"):
         return 2
-    if s in ("c", "3", "avance", "avancee") or s.startswith("avan"):
+    if s in ("c", "expert", "maitrise", "maîtrise"):
         return 3
-    if s in ("d", "4", "expert") or s.startswith("exp"):
-        return 4
     return 0
 
 
 def _level_label(v: Any) -> str:
-    r = _level_rank(v)
-    return {1: "A", 2: "B", 3: "C", 4: "D"}.get(r, "—")
+    s = str(v or "").strip().upper()
+    if s in ("A", "INITIAL", "DÉBUTANT", "DEBUTANT"):
+        return "A"
+    if s in ("B", "AVANCE", "AVANCÉ", "AVANCEE", "AVANCÉE"):
+        return "B"
+    if s in ("C", "EXPERT"):
+        return "C"
+    return "—"
 
 
 def _safe_int(v: Any, default: int = 0) -> int:

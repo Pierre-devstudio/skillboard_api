@@ -242,16 +242,15 @@ def _niveau_from_score(score: Optional[float]) -> Optional[str]:
     except Exception:
         return None
 
-    # Score normalisé /24 -> 4 niveaux
-    if x <= 6.0:
+    # Mapping Skillboard: /24 => A/B/C/D
+    if 6.0 <= x <= 9.0:
         return "A"
-    if x <= 12.0:
+    if 10.0 <= x <= 18.0:
         return "B"
-    if x <= 18.0:
+    if 19.0 <= x <= 24.0:
         return "C"
-    if x <= 24.0:
-        return "D"
-    return "D"
+    # en-dessous de A (ou hors plage) => pas de niveau exploitable
+    return None
 
 
 def _clamp_int(v: int, lo: int, hi: int) -> int:
@@ -313,17 +312,28 @@ def _education_rank(v: Any) -> int:
 
 def _niveau_rank(v: Any) -> int:
     s = str(v or "").strip().lower()
-    s = (s.replace("é", "e").replace("è", "e").replace("ê", "e")
-           .replace("à", "a").replace("ç", "c"))
-    if s in ("a", "1", "initial", "debutant") or s.startswith("deb") or s.startswith("init"):
+    s_norm = (
+        s.replace("é", "e").replace("è", "e").replace("ê", "e").replace("ë", "e")
+         .replace("à", "a").replace("â", "a").replace("î", "i").replace("ï", "i")
+    )
+    if s_norm in ("a", "initial", "debutant", "1") or s_norm.startswith("deb") or s_norm.startswith("init"):
         return 1
-    if s in ("b", "2", "intermediaire") or s.startswith("inter"):
+    if s_norm in ("b", "intermediaire", "2") or s_norm.startswith("inter"):
         return 2
-    if s in ("c", "3", "avance", "avancee") or s.startswith("avan"):
+    if s_norm in ("c", "avance", "avancee", "advanced", "3") or s_norm.startswith("avan") or s_norm.startswith("adv"):
         return 3
-    if s in ("d", "4", "expert") or s.startswith("exp"):
+    if s_norm in ("d", "expert", "4") or s_norm.startswith("exp"):
         return 4
     return 0
+
+
+def _niveau_key(v: Any) -> str:
+    r = _niveau_rank(v)
+    return {1: "A", 2: "B", 3: "C", 4: "D"}.get(r, "")
+
+
+def _niveau_label(v: Any) -> str:
+    return {"A": "Débutant", "B": "Intermédiaire", "C": "Avancé", "D": "Expert"}.get(_niveau_key(v), "—")
 
 
 def _score_structure_gap(gap: int) -> int:
@@ -2281,10 +2291,10 @@ def get_analyse_previsions_critiques_impactees_detail(
                             THEN trim(ec.niveau_actuel)::int
                           WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
                           WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
-                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                          WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
                           ELSE 0
                         END
-                      ) >= 4
+                      ) >= 3
                     GROUP BY ec.id_comp
                 ),
 
@@ -2303,10 +2313,10 @@ def get_analyse_previsions_critiques_impactees_detail(
                             THEN trim(ec.niveau_actuel)::int
                           WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
                           WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
-                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                          WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
                           ELSE 0
                         END
-                      ) >= 4
+                      ) >= 3
                     GROUP BY ec.id_comp
                 ),
 
@@ -2322,13 +2332,12 @@ def get_analyse_previsions_critiques_impactees_detail(
                             CASE
                               WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
                                 THEN trim(ec.niveau_actuel)::int
-                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
                               WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
                               ELSE 0
                             END
-                          ) >= 4 THEN ec.id_effectif_client END
+                          ) >= 3 THEN ec.id_effectif_client END
                         )::int AS nb_experts_leave,
 
                         COUNT(DISTINCT CASE
@@ -2336,13 +2345,12 @@ def get_analyse_previsions_critiques_impactees_detail(
                             CASE
                               WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
                                 THEN trim(ec.niveau_actuel)::int
-                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
                               WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
                               ELSE 0
                             END
-                          ) >= 4 THEN ec.id_effectif_client END
+                          ) >= 3 THEN ec.id_effectif_client END
                         )::int AS nb_experts_leave_dispo
 
                     FROM leaving l
@@ -3327,7 +3335,6 @@ def get_analyse_previsions_postes_rouges_modal(
                         CASE
                             WHEN UPPER(TRIM(COALESCE(cp.niveau_requis,''))) = 'A' THEN 1
                             WHEN UPPER(TRIM(COALESCE(cp.niveau_requis,''))) = 'B' THEN 2
-                            WHEN UPPER(TRIM(COALESCE(cp.niveau_requis,''))) = 'D' THEN 4
                             WHEN UPPER(TRIM(COALESCE(cp.niveau_requis,''))) = 'C' THEN 3
                             WHEN UPPER(TRIM(COALESCE(cp.niveau_requis,''))) = 'D' THEN 4
                             ELSE 0
@@ -3355,7 +3362,6 @@ def get_analyse_previsions_postes_rouges_modal(
                         CASE
                             WHEN UPPER(TRIM(COALESCE(ec.niveau_actuel,''))) = 'A' THEN 1
                             WHEN UPPER(TRIM(COALESCE(ec.niveau_actuel,''))) = 'B' THEN 2
-                            WHEN UPPER(TRIM(COALESCE(ec.niveau_actuel,''))) = 'D' THEN 4
                             WHEN UPPER(TRIM(COALESCE(ec.niveau_actuel,''))) = 'C' THEN 3
                             WHEN UPPER(TRIM(COALESCE(ec.niveau_actuel,''))) = 'D' THEN 4
                             WHEN ec.niveau_actuel ILIKE '%%init%%' OR ec.niveau_actuel ILIKE '%%début%%' OR ec.niveau_actuel ILIKE '%%debut%%' THEN 1
@@ -4666,7 +4672,6 @@ def get_analyse_risques_poste_diagnostic(
                             CASE
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
-                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
                               WHEN ec.niveau_actuel ILIKE '%%init%%' OR ec.niveau_actuel ILIKE '%%début%%' OR ec.niveau_actuel ILIKE '%%debut%%' THEN 1
@@ -4687,7 +4692,6 @@ def get_analyse_risques_poste_diagnostic(
                             CASE
                               WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
                               WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
-                              WHEN UPPER(TRIM(r.niveau_requis)) = 'D' THEN 4
                               WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
                               WHEN UPPER(TRIM(r.niveau_requis)) = 'D' THEN 4
                               ELSE 0
@@ -5933,7 +5937,7 @@ def get_risque_competence_detail(
 
                 # --- Niveaux et états RH (calculés côté backend, le front affiche seulement)
                 def _niv_key(v: Any) -> str:
-                    s = str(v or "").strip().upper()
+                    s = (v or "").strip().upper()
                     s = (
                         s.replace("É", "E").replace("È", "E").replace("Ê", "E").replace("Ë", "E")
                          .replace("À", "A").replace("Â", "A").replace("Ä", "A")
@@ -5952,11 +5956,11 @@ def get_risque_competence_detail(
                         return s
                     if "EXPERT" in s:
                         return "D"
-                    if "AVANCE" in s:
+                    if "AVANCE" in s or "ADVANCED" in s:
                         return "C"
-                    if "INTER" in s:
+                    if "INTERMEDIAIRE" in s or "INTERM" in s:
                         return "B"
-                    if "DEBUT" in s or "INITIAL" in s or "INIT" in s:
+                    if "DEBUTANT" in s or "INITIAL" in s or "INIT" in s:
                         return "A"
                     return ""
 
@@ -6028,8 +6032,8 @@ def get_risque_competence_detail(
                     r["statut_rh"] = statut_rh
                     r["statut_rh_label"] = statut_rh_label
 
-                besoin = {"A": 0, "B": 0, "C": 0, "D": 0}
-                porteurs_niv = {"A": 0, "B": 0, "C": 0, "D": 0}
+                besoin = {"A": 0, "B": 0, "C": 0}
+                porteurs_niv = {"A": 0, "B": 0, "C": 0}
 
                 nb_postes_absent = 0
                 nb_postes_non_confirme = 0
@@ -6099,10 +6103,9 @@ def get_risque_competence_detail(
                         porteurs_niv[k] += 1
 
                 porteurs_ge = {
-                    "A": porteurs_niv["A"] + porteurs_niv["B"] + porteurs_niv["C"] + porteurs_niv["D"],
-                    "B": porteurs_niv["B"] + porteurs_niv["C"] + porteurs_niv["D"],
-                    "C": porteurs_niv["C"] + porteurs_niv["D"],
-                    "D": porteurs_niv["D"],
+                    "A": porteurs_niv["A"] + porteurs_niv["B"] + porteurs_niv["C"],
+                    "B": porteurs_niv["B"] + porteurs_niv["C"],
+                    "C": porteurs_niv["C"],
                 }
 
                 niveaux = {"besoin": besoin, "porteurs": porteurs_niv, "porteurs_ge": porteurs_ge}
@@ -6297,10 +6300,10 @@ def get_risque_competence_detail(
                             THEN trim(ec.niveau_actuel)::int
                           WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
                           WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
-                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                          WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
                           ELSE 0
                         END
-                      ) >= 4
+                      ) >= 3
                 ),
                 experts_dispo AS (
                     SELECT COUNT(DISTINCT ec.id_effectif_client)::int AS nb_experts
@@ -6315,10 +6318,10 @@ def get_risque_competence_detail(
                             THEN trim(ec.niveau_actuel)::int
                           WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
                           WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
-                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
+                          WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
                           ELSE 0
                         END
-                      ) >= 4
+                      ) >= 3
                 )
                 """
 

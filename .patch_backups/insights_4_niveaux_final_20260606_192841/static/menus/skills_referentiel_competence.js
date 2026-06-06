@@ -171,18 +171,12 @@
     return `<span class="domain-dot" title="${safeLabel}" style="background:${escapeHtml(color)};"></span>`;
   }
 
-  function levelLabelOnly(value) {
-    if (window.NovoskillLevels) return window.NovoskillLevels.label(value);
-    const k = (value ?? "").toString().trim().toUpperCase();
-    return ({ A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" }[k]) || (value || "—");
-  }
-
   function niveauRequisCell(item) {
     const a = (item.niveau_requis_min || "").trim();
     const b = (item.niveau_requis_max || "").trim();
     if (!a && !b) return "—";
-    if (a && b && a !== b) return `${escapeHtml(levelLabelOnly(a))} → ${escapeHtml(levelLabelOnly(b))}`;
-    return escapeHtml(levelLabelOnly(a || b));
+    if (a && b && a !== b) return `${escapeHtml(a)} → ${escapeHtml(b)}`;
+    return escapeHtml(a || b);
   }
 
   function renderCompetences(list) {
@@ -528,17 +522,6 @@
     return `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité : ${safe}">${safe}</span>`;
   }
 
-
-  function levelBadgeHtml(value, title) {
-    if (window.NovoskillLevels) return window.NovoskillLevels.badgeHtml(value, title || "Niveau de maîtrise");
-    const raw = (value ?? "").toString().trim();
-    const k = raw.toUpperCase();
-    const map = { A: ["Débutant", "sb-badge-niv-a"], B: ["Intermédiaire", "sb-badge-niv-b"], C: ["Avancé", "sb-badge-niv-c"], D: ["Expert", "sb-badge-niv-d"] };
-    const item = map[k];
-    if (!item) return `<span class="sb-badge sb-badge-niv">${escapeHtml(raw || "—")}</span>`;
-    return `<span class="sb-badge sb-badge-niv ${item[1]}" title="${escapeHtml(title || "Niveau de maîtrise")}">${escapeHtml(item[0])}</span>`;
-  }
-
   function renderPostesTable(postes, isCertif, baseValidite) {
     const list = Array.isArray(postes) ? [...postes] : [];
 
@@ -650,22 +633,22 @@
 
         <div class="ref-levels-table">
           <div class="ref-level-row">
-            ${levelBadgeHtml("A", "Débutant")}
+            <span class="sb-badge sb-badge-niv sb-badge-niv-a ref-level-badge">Débutant</span>
             <div class="ref-level-text">${escapeHtml(c.niveaua || "—")}</div>
           </div>
 
           <div class="ref-level-row">
-            ${levelBadgeHtml("B", "Intermédiaire")}
+            <span class="sb-badge sb-badge-niv sb-badge-niv-b ref-level-badge">Intermédiaire</span>
             <div class="ref-level-text">${escapeHtml(c.niveaub || "—")}</div>
           </div>
 
           <div class="ref-level-row">
-            ${levelBadgeHtml("C", "Avancé")}
+            <span class="sb-badge sb-badge-niv sb-badge-niv-c ref-level-badge">Avancé</span>
             <div class="ref-level-text">${escapeHtml(c.niveauc || "—")}</div>
           </div>
 
           <div class="ref-level-row">
-            ${levelBadgeHtml("D", "Expert")}
+            <span class="sb-badge sb-badge-niv sb-badge-niv-d ref-level-badge">Expert</span>
             <div class="ref-level-text">${escapeHtml(c.niveaud || "—")}</div>
           </div>
         </div>

@@ -1474,9 +1474,25 @@
                   return;
                 }
 
-                const levelLabel = (v) => window.NovoskillLevels ? window.NovoskillLevels.label(v) : ((v || "–").toString());
+                const levelLabel = (v) => {
+                  const s = (v || "").toString().trim();
+                  if (!s) return "–";
+                  const k = s.toLowerCase();
+                  if (k === "a" || k === "initial") return "Débutant";
+                  if (k === "b" || k === "intermédiaire" || k === "intermediaire") return "Intermédiaire";
+                  if (k === "c" || k === "avance" || k === "avancé" || k === "avancee" || k === "avancée") return "Avancé";
+                  if (k === "d" || k === "expert") return "Expert";
+                  return s;
+                };
 
-                const levelClass = (v) => window.NovoskillLevels ? window.NovoskillLevels.cssClass(v) : "";
+                const levelClass = (v) => {
+                  const k = (v || "").toString().trim().toLowerCase();
+                  if (k === "a" || k === "initial") return "sb-badge-niv-a";
+                  if (k === "b" || k === "intermédiaire" || k === "intermediaire") return "sb-badge-niv-b";
+                  if (k === "c" || k === "avance" || k === "avancé" || k === "avancee" || k === "avancée") return "sb-badge-niv-c";
+                  if (k === "d" || k === "expert") return "sb-badge-niv-d";
+                  return "";
+                };
 
                 const renderDomainBadge = (x) => {
                   const domTitleRaw = (x?.domaine_titre || "").toString().trim();

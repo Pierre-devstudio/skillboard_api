@@ -397,7 +397,6 @@
   }
 
   function levelLabel(v) {
-    if (window.NovoskillLevels) return window.NovoskillLevels.label(v);
     return v || "Non évalué";
   }
 
@@ -425,7 +424,7 @@
 
         <div class="bf-comp-levels">
           <span><small>Actuel</small><strong>${escapeHtml(levelLabel(item.niveau_actuel))}</strong></span>
-          <span><small>Attendu</small><strong>${escapeHtml(levelLabel(item.niveau_requis || item.niveau_attendu || "—"))}</strong></span>
+          <span><small>Attendu</small><strong>${escapeHtml(item.niveau_requis || item.niveau_attendu || "—")}</strong></span>
         </div>
 
         <div class="bf-comp-meta">
