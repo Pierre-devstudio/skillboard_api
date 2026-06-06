@@ -193,89 +193,9 @@
     return "D";
   }
 
-  function _nsLevelKey4(value) {
-    const raw = (value === null || value === undefined) ? "" : String(value).trim();
-    const norm = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    if (!norm || norm === "-" || norm === "—") return "";
-    if (norm === "a" || norm.includes("initial") || norm.includes("debutant")) return "A";
-    if (norm === "b" || norm.includes("intermediaire") || norm.includes("interm")) return "B";
-    if (norm === "c" || norm.includes("avance")) return "C";
-    if (norm === "d" || norm.includes("expert")) return "D";
-    return "";
-  }
-
-  function _nsLevelLabel4(value) {
-    const k = _nsLevelKey4(value);
-    return ({ A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" })[k] || ((value === null || value === undefined || String(value).trim() === "") ? "—" : String(value).trim());
-  }
-
-  function _nsLevelCodeFromPct(pct) {
-    const p = Number(pct);
-    if (!Number.isFinite(p)) return "";
-    if (p <= 25) return "A";
-    if (p <= 50) return "B";
-    if (p <= 75) return "C";
-    return "D";
-  }
-
-  function _nsLevelLabelFromPct(pct) {
-    return _nsLevelLabel4(_nsLevelCodeFromPct(pct));
-  }
-
-  function _epScoreInfoFromAudit(row) {
-    let detail = row?.detail_eval;
-    if (typeof detail === "string") {
-      try { detail = JSON.parse(detail); } catch (_) { detail = {}; }
-    }
-    if (!detail || typeof detail !== "object") detail = {};
-
-    const criteres = Array.isArray(detail.criteres) ? detail.criteres : [];
-    let sum = 0;
-    let count = 0;
-
-    criteres.forEach(c => {
-      const raw = c?.niveau ?? c?.note;
-      const n = Number(raw);
-      if (Number.isFinite(n) && n >= 1 && n <= 4) {
-        sum += n;
-        count += 1;
-      }
-    });
-
-    if (count > 0) {
-      const pct = Math.max(0, Math.min(100, Math.round((sum / (count * 4)) * 100)));
-      const score24 = Math.round(((sum / (count * 4)) * 24) * 10) / 10;
-      return {
-        sum,
-        count,
-        pct,
-        score24,
-        levelCode: _nsLevelCodeFromPct(pct),
-        levelLabel: _nsLevelLabelFromPct(pct),
-      };
-    }
-
-    const score = Number(row?.resultat_eval);
-    if (Number.isFinite(score)) {
-      const pct = Math.max(0, Math.min(100, Math.round((score / 24) * 100)));
-      return {
-        sum: null,
-        count: 0,
-        pct,
-        score24: score,
-        levelCode: _nsLevelCodeFromPct(pct),
-        levelLabel: _nsLevelLabelFromPct(pct),
-      };
-    }
-
-    return { sum: null, count: 0, pct: null, score24: null, levelCode: "", levelLabel: "—" };
-  }
-
   function _epLevelFromScore24(score) {
-    const s = Number(score);
-    if (!Number.isFinite(s) || s <= 0) return "—";
-    const pct = Math.max(0, Math.min(100, Math.round((s / 24) * 100)));
-    return _nsLevelLabelFromPct(pct);
+    const code = _nsLevelCodeFromScore24(score);
+    return code ? _nsLevelLabel4(code) : "—";
   }
 
   function renderCoverageDetailModal() {
@@ -700,7 +620,7 @@
     const levelBadge = tr.querySelector(".ep-comp-level-badge");
 
     if (levelBadge && levelTxt && levelTxt !== "—") {
-      levelBadge.textContent = _nsLevelLabel4(levelTxt);
+      levelBadge.textContent = levelTxt;
       levelBadge.className = `sb-badge ep-comp-level-badge ${getEpLevelBadgeClass(levelTxt)}`;
     }
   }
@@ -745,7 +665,7 @@
     // 2) Mettre à jour l’en-tête de la compétence (niveau + date dernière éval)
     const levelTxt = (document.getElementById("ep_levelABC")?.textContent || "").toString().trim();
     if (levelTxt && levelTxt !== "—") {
-      setText("ep_compCurrent", _nsLevelLabel4(levelTxt));
+      setText("ep_compCurrent", levelTxt);
     }
 
     const apiDate = _formatDateFR(savedApiResp?.date_audit);
@@ -1162,15 +1082,17 @@
   }
 
   function getEpLevelBadgeClass(label) {
-    const k = _nsLevelKey4(label);
-    if (k === "A") return "sb-badge-niv sb-badge-niv-a";
-    if (k === "B") return "sb-badge-niv sb-badge-niv-b";
-    if (k === "C") return "sb-badge-niv sb-badge-niv-c";
-    if (k === "D") return "sb-badge-niv sb-badge-niv-d";
-    return "sb-badge-niv";
-  }
+    const v = (label || "").toString().trim().toLowerCase();
 
-function renderCollaborateurs(list) {
+    if (!v || v === "—") return "sb-badge-niv";
+    if (v.includes("initial") || v === "a") return "sb-badge-niv sb-badge-niv-a";
+    if (v.includes("avancé") || v.includes("avance") || v === "b") return "sb-badge-niv sb-badge-niv-b";
+    if (v.includes("expert") || v === "c") return "sb-badge-niv sb-badge-niv-c";
+
+    return "sb-badge-niv";
+  }  
+
+  function renderCollaborateurs(list) {
     const wrap = $("ep_listCollaborateurs");
     if (!wrap) return;
 
@@ -1376,7 +1298,7 @@ function renderCollaborateurs(list) {
             const niveau = (x.niveau_actuel || "").toString().trim();
             const levelBadge = document.createElement("span");
             levelBadge.className = `sb-badge ep-comp-level-badge ${getEpLevelBadgeClass(niveau)}`;
-            levelBadge.textContent = _nsLevelLabel4(niveau || "—");
+            levelBadge.textContent = niveau || "—";
             levelBadge.title = "Niveau actuel";
 
             const iconEdit = `
@@ -2223,7 +2145,7 @@ function renderCollaborateurs(list) {
 
           <div class="ep-entretien-comp-meta">
             ${role === "poste" ? `<span class="sb-badge">${Math.round(Number(item.poids_criticite_pct || 0))}%</span>` : ""}
-            ${niveau ? `<span class="sb-badge ${getEpLevelBadgeClass(niveau)}">${epEsc(_nsLevelLabel4(niveau))}</span>` : ""}
+            ${niveau ? `<span class="sb-badge ${getEpLevelBadgeClass(niveau)}">${epEsc(niveau)}</span>` : ""}
             ${checked ? `
             ${item.source === "catalogue" ? `
               <button type="button" class="sb-icon-btn sb-icon-btn--danger" data-remove="1" title="Retirer" aria-label="Retirer">
@@ -3828,7 +3750,15 @@ function renderCollaborateurs(list) {
               return Number.isNaN(d.getTime()) ? 0 : d.getTime();
             };
 
-            const niveauFromScore = (score) => _epLevelFromScore24(score);
+            const niveauFromScore = (score) => {
+              const s = Number(score);
+              if (!Number.isFinite(s)) return "—";
+
+              if (s >= 19) return "Expert";
+              if (s >= 10) return "Intermédiaire";
+              if (s >= 6) return "Débutant";
+              return "—";
+            };
 
             const getEvalKey = (x) => (x?.nom_evaluateur || x?.id_evaluateur || "Non affecté").toString().trim() || "Non affecté";
             const getMethKey = (x) => (x?.methode_eval || "Non renseignée").toString().trim() || "Non renseignée";
@@ -3969,8 +3899,7 @@ function renderCollaborateurs(list) {
 
               const code = (x.code || "").toString().trim();
               const intitule = (x.intitule || "").toString().trim();
-              const scoreInfo = _epScoreInfoFromAudit(x);
-              const niveau = scoreInfo.levelLabel;
+              const niveau = niveauFromScore(x.resultat_eval);
               const lastDate = formatDateFR(x.date_audit);
               const method = getMethKey(x);
               const obs = (x.observation || "").toString();
@@ -4042,8 +3971,12 @@ function renderCollaborateurs(list) {
 
               setText("ep_levelABC", niveau);
 
-              setText("ep_scoreRaw", scoreInfo.sum === null ? "—" : String(scoreInfo.sum));
-              setText("ep_scorePct", scoreInfo.pct === null ? "—" : `${scoreInfo.pct}%`);
+              const score = Number(x.resultat_eval);
+              const pct = Number.isFinite(score)
+                ? Math.max(0, Math.min(100, Math.round((score / 24) * 100)))
+                : null;
+
+              setText("ep_scorePct", pct === null ? "—" : `${pct}%`);
 
               setSelectValueOrAdd("ep_selEvalMethod", method);
               setDisabled("ep_selEvalMethod", !canEditHistoryAudit);
@@ -4218,8 +4151,7 @@ function renderCollaborateurs(list) {
                 g.rows.forEach(x => {
                   const code = (x.code || "").toString().trim();
                   const intitule = (x.intitule || "").toString().trim();
-                  const scoreInfo = _epScoreInfoFromAudit(x);
-              const niveau = scoreInfo.levelLabel;
+                  const niveau = niveauFromScore(x.resultat_eval);
 
                   const iconEye = `
                     <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

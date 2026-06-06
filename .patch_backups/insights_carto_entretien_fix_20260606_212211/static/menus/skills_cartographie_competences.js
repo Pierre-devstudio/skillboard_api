@@ -48,29 +48,6 @@
     return "";
   }
 
-  function levelKey4(v) {
-    const raw = safeTrim(v);
-    const norm = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    if (!norm || norm === "-" || norm === "—") return "";
-    if (norm === "a" || norm.includes("initial") || norm.includes("debutant")) return "A";
-    if (norm === "b" || norm.includes("intermediaire") || norm.includes("interm")) return "B";
-    if (norm === "c" || norm.includes("avance")) return "C";
-    if (norm === "d" || norm.includes("expert")) return "D";
-    return "";
-  }
-
-  function levelLabel4(v) {
-    const k = levelKey4(v);
-    return ({ A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" })[k] || (safeTrim(v) || "—");
-  }
-
-  function levelBadgeHtml4(v, title = "Niveau") {
-    const k = levelKey4(v);
-    const label = levelLabel4(v);
-    const cls = k ? `sb-badge-niv sb-badge-niv-${k.toLowerCase()}` : "sb-badge-niv";
-    return `<span class="sb-badge ${cls}" title="${escapeHtml(title)}">${escapeHtml(label)}</span>`;
-  }
-
   /**
    * Code poste affiché :
    * - on préfère le code interne (si présent)
