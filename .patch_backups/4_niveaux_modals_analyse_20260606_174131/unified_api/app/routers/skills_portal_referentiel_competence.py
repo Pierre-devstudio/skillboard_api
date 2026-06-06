@@ -79,7 +79,6 @@ class CompetenceDetail(BaseModel):
     niveaub: Optional[str] = None
     niveauc: Optional[str] = None
     niveaud: Optional[str] = None
-    niveaud: Optional[str] = None
     grille_evaluation: Optional[Dict[str, Any]] = None
     date_creation: Optional[str] = None
     date_modification: Optional[str] = None
@@ -276,9 +275,8 @@ def _compute_comp_qual_flags(row: Dict[str, Any]) -> Dict[str, Any]:
     a = (row.get("niveaua") or "").strip()
     b = (row.get("niveaub") or "").strip()
     c = (row.get("niveauc") or "").strip()
-    d = (row.get("niveaud") or "").strip()
     return {
-        "niveaux_complets": bool(a and b and c and d),
+        "niveaux_complets": bool(a and b and c),
         "grille_presente": row.get("grille_evaluation") is not None,
     }
 
@@ -379,7 +377,6 @@ def get_referentiel_competences_service(
                         c.niveaua,
                         c.niveaub,
                         c.niveauc,
-                        c.niveaud,
                         c.grille_evaluation,
                         c.etat,
                         c.masque,
@@ -516,7 +513,6 @@ def get_referentiel_competence_detail(
                         c.niveaua,
                         c.niveaub,
                         c.niveauc,
-                        c.niveaud,
                         c.grille_evaluation,
                         c.date_creation,
                         c.date_modification,
@@ -560,7 +556,6 @@ def get_referentiel_competence_detail(
                     niveaua=row.get("niveaua"),
                     niveaub=row.get("niveaub"),
                     niveauc=row.get("niveauc"),
-                    niveaud=row.get("niveaud"),
                     grille_evaluation=row.get("grille_evaluation"),
                     date_creation=str(row.get("date_creation")) if row.get("date_creation") else None,
                     date_modification=str(row.get("date_modification")) if row.get("date_modification") else None,

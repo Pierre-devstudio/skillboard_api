@@ -712,7 +712,6 @@ async function openCreate(portal){
     byId("compNivB").value = "";
     byId("compNivC").value = "";
         if (byId("compNivD")) byId("compNivD").value = "";
-        if (byId("compNivD")) byId("compNivD").value = "";
 
     await ensureDomains(portal);
 
@@ -785,7 +784,6 @@ async function openEdit(portal, it){
     byId("compNivB").value = d?.niveaub || "";
     byId("compNivC").value = d?.niveauc || "";
     if (byId("compNivD")) byId("compNivD").value = d?.niveaud || "";
-    if (byId("compNivD")) byId("compNivD").value = d?.niveaud || "";
 
     loadCritFromJson(d?.grille_evaluation || null);
   }
@@ -804,7 +802,6 @@ async function openEdit(portal, it){
     const b = (byId("compNivB").value || "").trim();
     const c = (byId("compNivC").value || "").trim();
     const d = (byId("compNivD")?.value || "").trim();
-    const d = (byId("compNivD")?.value || "").trim();
 
     if (!title){
       portal.showAlert("error", "Intitulé obligatoire.");
@@ -821,7 +818,6 @@ async function openEdit(portal, it){
       niveaua: a || null,
       niveaub: b || null,
       niveauc: c || null,
-      niveaud: d || null,
       grille_evaluation: buildGrilleJson()
     };
 
@@ -963,7 +959,6 @@ async function openEdit(portal, it){
       if (draft?.niveaua !== undefined) byId("compNivA").value = String(draft.niveaua || "");
       if (draft?.niveaub !== undefined) byId("compNivB").value = String(draft.niveaub || "");
       if (draft?.niveauc !== undefined) byId("compNivC").value = String(draft.niveauc || "");
-            if (draft?.niveaud !== undefined && byId("compNivD")) byId("compNivD").value = String(draft.niveaud || "");
             if (draft?.niveaud !== undefined && byId("compNivD")) byId("compNivD").value = String(draft.niveaud || "");
 
       await ensureDomains(portal);
@@ -1252,7 +1247,6 @@ byId("btnCompAi")?.addEventListener("click", async () => {
     bindMaxLen("compNivA", 230);
     bindMaxLen("compNivB", 230);
     bindMaxLen("compNivC", 230);
-    bindMaxLen("compNivD", 230);
     bindMaxLen("compCritEval1", 120);
     bindMaxLen("compCritEval2", 120);
     bindMaxLen("compCritEval3", 120);

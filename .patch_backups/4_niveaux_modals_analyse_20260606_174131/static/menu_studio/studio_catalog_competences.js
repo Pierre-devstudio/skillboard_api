@@ -615,7 +615,6 @@
             if (draft?.niveaub !== undefined) byId("compNivB").value = String(draft.niveaub || "");
             if (draft?.niveauc !== undefined) byId("compNivC").value = String(draft.niveauc || "");
             if (draft?.niveaud !== undefined && byId("compNivD")) byId("compNivD").value = String(draft.niveaud || "");
-            if (draft?.niveaud !== undefined && byId("compNivD")) byId("compNivD").value = String(draft.niveaud || "");
 
             // Domaine (draft.domaine_id = id_domaine_competence)
             await ensureDomains(portal);
@@ -657,7 +656,6 @@
         byId("compNivA").value = "";
         byId("compNivB").value = "";
         byId("compNivC").value = "";
-        if (byId("compNivD")) byId("compNivD").value = "";
         if (byId("compNivD")) byId("compNivD").value = "";
         
 
@@ -725,7 +723,6 @@
     byId("compNivB").value = (d.niveaub || "");
     byId("compNivC").value = (d.niveauc || "");
     if (byId("compNivD")) byId("compNivD").value = (d.niveaud || "");
-    if (byId("compNivD")) byId("compNivD").value = (d.niveaud || "");
 
     
   }
@@ -740,7 +737,6 @@
     const a = (byId("compNivA").value || "").trim();
     const b = (byId("compNivB").value || "").trim();
     const c = (byId("compNivC").value || "").trim();
-    const d = (byId("compNivD")?.value || "").trim();
     const d = (byId("compNivD")?.value || "").trim();
     
 
@@ -891,7 +887,6 @@
     bindMaxLen("compNivA", 230);
     bindMaxLen("compNivB", 230);
     bindMaxLen("compNivC", 230);
-    bindMaxLen("compNivD", 230);
 
     bindMaxLen("compCritEval1", 120);
     bindMaxLen("compCritEval2", 120);

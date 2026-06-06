@@ -2165,29 +2165,3 @@
   background:transparent !important;
 }
 
-/* Patch 4 niveaux maîtrise : badge libellé seul, fond transparent, orange progressif */
-.sb-badge.sb-badge-niv,
-.sb-badge.sb-badge--niv,
-.sb-badge-niv,
-.sb-badge--niv{
-  background: transparent !important;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.sb-badge-niv-a, .sb-badge--niv-a{
-  border-color: color-mix(in srgb, rgb(226, 114, 9) 45%, transparent) !important;
-  color: color-mix(in srgb, rgb(226, 114, 9) 45%, transparent) !important;
-}
-.sb-badge-niv-b, .sb-badge--niv-b{
-  border-color: color-mix(in srgb, rgb(226, 114, 9) 65%, transparent) !important;
-  color: color-mix(in srgb, rgb(226, 114, 9) 65%, transparent) !important;
-}
-.sb-badge-niv-c, .sb-badge--niv-c{
-  border-color: color-mix(in srgb, rgb(226, 114, 9) 85%, transparent) !important;
-  color: color-mix(in srgb, rgb(226, 114, 9) 85%, transparent) !important;
-}
-.sb-badge-niv-d, .sb-badge--niv-d{
-  border-color: rgb(226, 114, 9) !important;
-  color: rgb(226, 114, 9) !important;
-}
-

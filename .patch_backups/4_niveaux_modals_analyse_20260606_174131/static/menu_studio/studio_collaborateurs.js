@@ -1580,22 +1580,8 @@
     if (n <= 6) return 'A';
     if (n <= 12) return 'B';
     if (n <= 18) return 'C';
+    if (n <= 24) return 'D';
     return 'D';
-  }
-
-  function collabSkillLevelLabel(value){
-    const raw = String(value || '').trim();
-    const up = raw.toUpperCase();
-    if (up === 'A') return 'Débutant';
-    if (up === 'B') return 'Intermédiaire';
-    if (up === 'C') return 'Avancé';
-    if (up === 'D') return 'Expert';
-    const low = raw.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-    if (low === 'initial' || low === 'debutant') return 'Débutant';
-    if (low === 'intermediaire') return 'Intermédiaire';
-    if (low === 'avance' || low === 'avancee') return 'Avancé';
-    if (low === 'expert') return 'Expert';
-    return raw || '—';
   }
 
   function collabSkillLevelLabel(value){
@@ -1731,7 +1717,7 @@
     }
 
     if (byId('collabSkillEvalCurrent')) {
-      byId('collabSkillEvalCurrent').textContent = collabSkillLevelLabel(data?.niveau_actuel || '—');
+      byId('collabSkillEvalCurrent').textContent = (data?.niveau_actuel || '—').toString().trim() || '—';
     }
 
     if (byId('collabSkillEvalLastEval')) {
@@ -1956,7 +1942,7 @@
       }
     );
 
-    if (byId('collabSkillEvalCurrent')) byId('collabSkillEvalCurrent').textContent = collabSkillLevelLabel(niveau);
+    if (byId('collabSkillEvalCurrent')) byId('collabSkillEvalCurrent').textContent = niveau;
     if (byId('collabSkillEvalLastEval')) byId('collabSkillEvalLastEval').textContent = `Dernière éval : ${formatDateFR(res?.date_audit)}`;
     
     const methodSel = byId('collabSkillEvalMethod');
@@ -2889,23 +2875,24 @@
     const levelMeta = (niv) => {
       const raw = String(niv || '').trim();
       const norm = raw.toUpperCase();
-      const low = raw.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      const low = raw.toLowerCase();
 
       if (!raw || raw === '—' || raw === '-') {
         return { text: '—', cls: 'sb-badge--outline-accent' };
       }
-      if (norm === 'A' || low === 'initial' || low === 'debutant') {
+      if (norm === 'A' || low === 'initial' || low === 'débutant' || low === 'debutant') {
         return { text: 'Débutant', cls: 'sb-badge--niv sb-badge--niv-a' };
       }
-      if (norm === 'B' || low === 'intermediaire') {
+      if (norm === 'B' || low === 'intermédiaire' || low === 'intermediaire') {
         return { text: 'Intermédiaire', cls: 'sb-badge--niv sb-badge--niv-b' };
       }
-      if (norm === 'C' || low === 'avance' || low === 'avancee') {
+      if (norm === 'C' || low === 'avancé' || low === 'avance' || low === 'avancée' || low === 'avancee') {
         return { text: 'Avancé', cls: 'sb-badge--niv sb-badge--niv-c' };
       }
       if (norm === 'D' || low === 'expert') {
         return { text: 'Expert', cls: 'sb-badge--niv sb-badge--niv-d' };
       }
+
       return { text: raw, cls: 'sb-badge--outline-accent' };
     };
 

@@ -323,7 +323,6 @@ class CreateCompetencePayload(BaseModel):
     niveaub: Optional[str] = None
     niveauc: Optional[str] = None
     niveaud: Optional[str] = None
-    niveaud: Optional[str] = None
     grille_evaluation: Optional[Any] = None
     etat: Optional[str] = None
 
@@ -335,7 +334,6 @@ class UpdateCompetencePayload(BaseModel):
     niveaua: Optional[str] = None
     niveaub: Optional[str] = None
     niveauc: Optional[str] = None
-    niveaud: Optional[str] = None
     niveaud: Optional[str] = None
     grille_evaluation: Optional[Any] = None
     etat: Optional[str] = None
@@ -386,7 +384,6 @@ def _build_ai_schema() -> dict:
             "niveaua": {"type": "string", "minLength": 40, "maxLength": 230},
             "niveaub": {"type": "string", "minLength": 40, "maxLength": 230},
             "niveauc": {"type": "string", "minLength": 40, "maxLength": 230},
-                "niveaud": {"type": "string", "minLength": 40, "maxLength": 230},
             "niveaud": {"type": "string", "minLength": 40, "maxLength": 230},
             "domaine_id": {"type": ["string", "null"]},
             "grille_evaluation": {
@@ -478,7 +475,7 @@ def _run_ai_draft(cur, oid: str, payload: AiDraftCompetencePayload) -> dict:
         "La compétence doit rester générique et réutilisable uniquement si le contexte précis n'est pas nécessaire "
         "pour comprendre, exercer et évaluer la compétence. "
         "Règles de niveau A/B/C/D : A = débutant guidé, B = intermédiaire autonome, C = avancé fiable/adapte, D = expert qui optimise/transmet. "
-        "Ne mets jamais un simple label type Débutant/Intermédiaire/Avancé/Expert dans niveaua/b/c/d/d. "
+        "Ne mets jamais un simple label type Débutant/Intermédiaire/Avancé/Expert dans niveaua/b/c/d. "
         "Rédige des attendus concrets, observables, orientés action. "
         "Les critères d'évaluation doivent être distincts, progressifs, observables et utilisables en formation. "
         "Chaque évaluation doit être courte, 1 phrase, verbe d'action + résultat observable. "
@@ -504,7 +501,7 @@ def _run_ai_draft(cur, oid: str, payload: AiDraftCompetencePayload) -> dict:
         f"- Produis exactement {nb} critères NON VIDES (Critere1..Critere{nb}).\n"
         f"- Critere{nb + 1}..Critere4 doivent être VIDES (Nom=\"\" + 4 Eval vides).\n"
         "- Les 4 niveaux d’un critère doivent montrer une progression claire : guidé → autonome → optimisation → expertise/transmission.\n"
-        "- Niveaux A/B/C/D/D <=230 caractères chacun.\n"
+        "- Niveaux A/B/C/D <=230 caractères chacun.\n"
     )
 
     client = OpenAI(api_key=api_key)
@@ -899,7 +896,6 @@ def learn_competence_detail(id_effectif: str, id_comp: str, request: Request):
                       c.niveaub,
                       c.niveauc,
                       c.niveaud,
-                      c.niveaud,
                       c.grille_evaluation,
                       c.etat,
                       COALESCE(c.masque, FALSE) AS masque,
@@ -981,10 +977,6 @@ def learn_competence_update(id_effectif: str, id_comp: str, payload: UpdateCompe
                 if "niveauc" in patch_fields:
                     cols.append("niveauc = %s")
                     vals.append(payload.niveauc)
-
-                if "niveaud" in patch_fields:
-                    cols.append("niveaud = %s")
-                    vals.append(payload.niveaud)
 
                 if "niveaud" in patch_fields:
                     cols.append("niveaud = %s")
@@ -1093,7 +1085,6 @@ def learn_competence_fiche_pdf(id_effectif: str, id_comp: str, request: Request)
                       c.niveaub,
                       c.niveauc,
                       c.niveaud,
-                      c.niveaud,
                       c.grille_evaluation,
                       dc.titre_court AS domaine_titre_court,
                       dc.titre AS domaine_titre
@@ -1124,7 +1115,6 @@ def learn_competence_fiche_pdf(id_effectif: str, id_comp: str, request: Request)
             "niveaua": row.get("niveaua") or "",
             "niveaub": row.get("niveaub") or "",
             "niveauc": row.get("niveauc") or "",
-            "niveaud": row.get("niveaud") or "",
             "niveaud": row.get("niveaud") or "",
             "grille_evaluation": row.get("grille_evaluation"),
             "domaine": row.get("domaine") or "",

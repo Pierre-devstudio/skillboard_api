@@ -29,35 +29,6 @@
       .replaceAll('"', "&quot;");
   }
 
-
-  function refLevelKey(value) {
-    const raw = (value ?? "").toString().trim();
-    if (!raw) return "";
-    const up = raw.toUpperCase();
-    if (["A", "B", "C", "D"].includes(up)) return up;
-    const sx = raw.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-    if (sx === "initial" || sx === "debutant" || sx.startsWith("deb")) return "A";
-    if (sx === "intermediaire" || sx.startsWith("inter")) return "B";
-    if (sx === "avance" || sx === "avancee" || sx.startsWith("avan")) return "C";
-    if (sx === "expert" || sx.startsWith("exp")) return "D";
-    return "";
-  }
-
-  function refLevelLabel(value) {
-    const k = refLevelKey(value);
-    if (k === "A") return "Débutant";
-    if (k === "B") return "Intermédiaire";
-    if (k === "C") return "Avancé";
-    if (k === "D") return "Expert";
-    return "—";
-  }
-
-  function refLevelBadge(value) {
-    const k = refLevelKey(value);
-    if (!k) return `<span class="sb-badge">—</span>`;
-    return `<span class="sb-badge sb-badge-niv sb-badge-niv-${k.toLowerCase()}">${escapeHtml(refLevelLabel(k))}</span>`;
-  }
-
   function normalizeColor(raw) {
     if (raw === null || raw === undefined) return "";
     const s = raw.toString().trim();
@@ -583,7 +554,7 @@
             <td class="col-center" style="white-space:nowrap;">${escapeHtml(vlabel)}</td>
           </tr>`;
         } else {
-          const niv = refLevelBadge(p.niveau_requis);
+          const niv = escapeHtml(p.niveau_requis || "—");
           const crit = renderCritBadge(p.poids_criticite);
 
           html += `<tr>
@@ -633,23 +604,18 @@
 
         <div class="ref-levels-table">
           <div class="ref-level-row">
-            <span class="sb-badge sb-badge-niv sb-badge-niv-a ref-level-badge">Débutant</span>
+            <span class="sb-badge sb-badge--info ref-level-badge">A - Initial</span>
             <div class="ref-level-text">${escapeHtml(c.niveaua || "—")}</div>
           </div>
 
           <div class="ref-level-row">
-            <span class="sb-badge sb-badge-niv sb-badge-niv-b ref-level-badge">Intermédiaire</span>
+            <span class="sb-badge sb-badge--info ref-level-badge">B - Avancé</span>
             <div class="ref-level-text">${escapeHtml(c.niveaub || "—")}</div>
           </div>
 
           <div class="ref-level-row">
-            <span class="sb-badge sb-badge-niv sb-badge-niv-c ref-level-badge">Avancé</span>
+            <span class="sb-badge sb-badge--info ref-level-badge">C - Expert</span>
             <div class="ref-level-text">${escapeHtml(c.niveauc || "—")}</div>
-          </div>
-
-          <div class="ref-level-row">
-            <span class="sb-badge sb-badge-niv sb-badge-niv-d ref-level-badge">Expert</span>
-            <div class="ref-level-text">${escapeHtml(c.niveaud || "—")}</div>
           </div>
         </div>
       </div>

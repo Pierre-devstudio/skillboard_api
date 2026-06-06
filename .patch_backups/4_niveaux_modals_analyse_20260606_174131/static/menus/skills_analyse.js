@@ -567,36 +567,6 @@
   let _riskDetailReqSeq = 0;
   
 
-
-  function sbNormLevel(v) {
-    return (v ?? "").toString().trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-  }
-
-  function sbLevelKey(v) {
-    const raw = (v ?? "").toString().trim();
-    if (!raw) return "";
-    const up = raw.toUpperCase();
-    if (["A", "B", "C", "D"].includes(up)) return up;
-    const m = up.match(/([ABCD])/);
-    if (m) return m[1];
-    const sx = sbNormLevel(raw);
-    if (sx === "1" || sx === "initial" || sx === "debutant" || sx.startsWith("deb")) return "A";
-    if (sx === "2" || sx === "intermediaire" || sx.startsWith("inter")) return "B";
-    if (sx === "3" || sx === "avance" || sx === "avancee" || sx.startsWith("avan") || sx.startsWith("adv")) return "C";
-    if (sx === "4" || sx === "expert" || sx.startsWith("exp")) return "D";
-    return "";
-  }
-
-  function sbLevelRank(v) {
-    const k = sbLevelKey(v);
-    return k === "A" ? 1 : k === "B" ? 2 : k === "C" ? 3 : k === "D" ? 4 : 0;
-  }
-
-  function sbLevelLabel(v) {
-    const k = sbLevelKey(v);
-    return k === "A" ? "Débutant" : k === "B" ? "Intermédiaire" : k === "C" ? "Avancé" : k === "D" ? "Expert" : ((v ?? "—").toString().trim() || "—");
-  }
-
   function buildQueryString(params) {
     const usp = new URLSearchParams();
     Object.keys(params || {}).forEach(k => {
@@ -855,10 +825,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     `<span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(code || "—")}</span>`;
 
   const nivBadgeHtml = (niv) => {
-    const k = sbLevelKey(niv);
-    const label = sbLevelLabel(niv);
-    if (k) return `<span class="sb-badge sb-badge-niv sb-badge-niv-${k.toLowerCase()}">${escapeHtml(label)}</span>`;
-    return `<span class="sb-badge">${escapeHtml(label || "—")}</span>`;
+    const k = String(niv || "").trim().toUpperCase();
+    if (window.NovoskillLevels) return window.NovoskillLevels.badgeHtml(k, "Niveau de maîtrise");
+    if (k === "A") return `<span class="sb-badge sb-badge-niv sb-badge-niv-a">Débutant</span>`;
+    if (k === "B") return `<span class="sb-badge sb-badge-niv sb-badge-niv-b">Intermédiaire</span>`;
+    if (k === "C") return `<span class="sb-badge sb-badge-niv sb-badge-niv-c">Avancé</span>`;
+    if (k === "D") return `<span class="sb-badge sb-badge-niv sb-badge-niv-d">Expert</span>`;
+    return `<span class="sb-badge">${escapeHtml(k || "—")}</span>`;
   };
 
   const critScoreBand = (v) => {
@@ -1897,18 +1870,28 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     // Niveaux A/B/C/D -> Initial / Avancé / Expert
     function nivKey(v) {
-      return sbLevelKey(v);
+      const s = (v ?? "").toString().trim().toLowerCase();
+      if (!s) return "";
+      if (s === "a" || s.startsWith("init") || s === "1") return "A";
+      if (s === "b" || s.startsWith("avan") || s === "2") return "B";
+      if (s === "c" || s.startsWith("expe") || s === "3") return "C";
+      return "";
     }
 
     function nivLabel(v) {
-      return sbLevelLabel(v);
+      const k = nivKey(v);
+      if (k === "A") return "Débutant";
+      if (k === "B") return "Intermédiaire";
+      if (k === "C") return "Expert";
+      return "—";
     }
 
     function nivBadgeHtml(v) {
       const k = nivKey(v);
       const label = nivLabel(v);
       if (!k) return `<span class="sb-badge">—</span>`;
-      return `<span class="sb-badge sb-badge-niv sb-badge-niv-${k.toLowerCase()}">${escapeHtml(label)}</span>`;
+      const cls = (k === "A") ? "sb-badge-niv-a" : (k === "B" ? "sb-badge-niv-b" : "sb-badge-niv-c");
+      return `<span class="sb-badge sb-badge-niv ${cls}">${escapeHtml(label)}</span>`;
     }
 
     function domainPill(it) {
@@ -3677,10 +3660,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
             <div style="width:min(460px,100%);">
               <div class="sb-coverbar">
-                ${coverRow("Débutant", need.A, haveGe.A)}
-                ${coverRow("Intermédiaire", need.B, haveGe.B)}
-                ${coverRow("Avancé", need.C, haveGe.C)}
-                ${coverRow("Expert", need.D, haveGe.D)}
+                ${coverRow("Initial", need.A, haveGe.A)}
+                ${coverRow("Avancé", need.B, haveGe.B)}
+                ${coverRow("Expert", need.C, haveGe.C)}
               </div>
             </div>
           </div>
@@ -4243,16 +4225,37 @@ function renderAnalysePosteCompetencesTab(data) {
   }
 
   function nivReqToNum(v) {
-    const r = sbLevelRank(v);
-    if (r > 0) return r;
-    const n = Number((v ?? "").toString().trim());
+    const s = (v ?? "").toString().trim().toUpperCase();
+    if (s === "A") return 1;
+    if (s === "B") return 2;
+    if (s === "C") return 3;
+    if (s === "D") return 4;
+    const n = Number(s);
     return Number.isFinite(n) ? n : 0;
   }
 
   function nivActToNum(v) {
-    const r = sbLevelRank(v);
-    if (r > 0) return r;
-    const n = Number((v ?? "").toString().trim());
+    const raw = (v ?? "").toString().trim();
+    if (!raw) return 0;
+
+    // Priorité à A/B/C si présent (ex: "Expert - C")
+    const m = raw.match(/\b([ABCD])\b/i);
+    if (m && m[1]) {
+      const t = m[1].toUpperCase();
+      if (t === "A") return 1;
+      if (t === "B") return 2;
+      if (t === "C") return 3;
+      if (t === "D") return 4;
+    }
+
+    // Sinon libellés
+    const s = _normStr(raw);
+    if (s === "a" || s.includes("initial")) return 1;
+    if (s === "b" || s.includes("avance")) return 2;
+    if (s === "c" || s.includes("expert")) return 3;
+
+    // Dernier recours: numérique
+    const n = Number(s);
     return Number.isFinite(n) ? n : 0;
   }
 
@@ -4286,8 +4289,8 @@ function renderAnalysePosteCompetencesTab(data) {
     const tot = Number(nbTotal || 0);
     const ok = Number(nbOk || 0);
 
-    if (ok <= 0) return "recruter";
-    if (ok === 1) return "mutualiser";
+    if (tot <= 0) return "recruter";
+    if (tot === 1) return (ok >= 1) ? "mutualiser" : "former";
     return "former";
   }
 
@@ -4339,14 +4342,13 @@ function renderAnalysePosteCompetencesTab(data) {
 
   function matchFocus(x) {
     const tot = Number(x?._nb_total || 0);
-    const ok = Number(x?._nb_ok || 0);
-    if (focus === "critiques-sans-porteur") return ok <= 0;
-    if (focus === "porteur-unique") return ok === 1;
-    if (focus === "total-fragiles") return ok <= 1;
+    if (focus === "critiques-sans-porteur") return tot <= 0;
+    if (focus === "porteur-unique") return tot === 1;
+    if (focus === "total-fragiles") return tot <= 1;
     return true;
   }
 
-  const riskList = critEnriched.filter(x => Number(x._nb_ok || 0) <= 1);
+  const riskList = critEnriched.filter(x => Number(x._nb_total || 0) <= 1);
   let detailList = showAllCrit ? [...critEnriched] : [...riskList];
   detailList = detailList.filter(matchFocus);
 

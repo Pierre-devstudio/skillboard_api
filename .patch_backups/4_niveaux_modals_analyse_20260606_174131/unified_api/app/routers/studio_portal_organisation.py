@@ -5719,7 +5719,7 @@ class DuplicatePosteOrgPayload(BaseModel):
 
 class UpsertPosteCompetencePayload(BaseModel):
     id_competence: str
-    niveau_requis: str  # A/B/C/D/D
+    niveau_requis: str  # A/B/C/D
     freq_usage: Optional[int] = 0        # 0..10
     impact_resultat: Optional[int] = 0   # 0..10
     dependance: Optional[int] = 0        # 0..10
@@ -6129,7 +6129,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                             "intitule": {"type": "string", "minLength": 1, "maxLength": 140},
                             "description": {"type": "string", "maxLength": 260},
                             "search_terms": {"type": "array", "minItems": 1, "maxItems": 4, "items": {"type": "string", "maxLength": 80}},
-                            "recommended_level": {"type": "string", "enum": ["A", "B", "C", "D"]},
+                            "recommended_level": {"type": "string", "enum": ["A", "B", "C"]},
                             "freq_usage": {"type": "integer", "minimum": 0, "maximum": 10},
                             "impact_resultat": {"type": "integer", "minimum": 0, "maximum": 10},
                             "dependance": {"type": "integer", "minimum": 0, "maximum": 10},
@@ -6396,7 +6396,6 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
             "niveaua": _clean_ai_comp_text(draft.get("niveaua"), 230),
             "niveaub": _clean_ai_comp_text(draft.get("niveaub"), 230),
             "niveauc": _clean_ai_comp_text(draft.get("niveauc"), 230),
-            "niveaud": _clean_ai_comp_text(draft.get("niveaud"), 230),
             "grille_evaluation": _sanitize_grille(draft.get("grille_evaluation")),
             "etat": _clean_text(draft.get("etat")) or "à valider",
             "recommended_level": _clean_text(draft.get("recommended_level")) or "A",
@@ -6462,7 +6461,6 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
                             (data["niveaua"] or None),
                             (data["niveaub"] or None),
                             (data["niveauc"] or None),
-                            (data["niveaud"] or None),
                             grille_json,
                             data["etat"],
                         ),
@@ -6597,7 +6595,6 @@ def studio_org_competence_fiche_pdf(
             "niveaua": row.get("niveaua") or "",
             "niveaub": row.get("niveaub") or "",
             "niveauc": row.get("niveauc") or "",
-            "niveaud": row.get("niveaud") or "",
             "niveaud": row.get("niveaud") or "",
             "grille_evaluation": row.get("grille_evaluation"),
             "domaine": row.get("domaine") or "",
@@ -8333,7 +8330,6 @@ def studio_org_list_poste_competences(id_owner: str, id_poste: str, request: Req
                     "niveaua": r.get("niveaua"),
                     "niveaub": r.get("niveaub"),
                     "niveauc": r.get("niveauc"),
-                    "niveaud": r.get("niveaud"),
                     "niveau_requis": r.get("niveau_requis"),
                     "poids_criticite": r.get("poids_criticite"),
                     "freq_usage": r.get("freq_usage"),

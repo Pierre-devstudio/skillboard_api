@@ -2719,7 +2719,6 @@ body {
         byId("posteCompCreateNivB").value = (prepared.niveaub || "");
         byId("posteCompCreateNivC").value = (prepared.niveauc || "");
         if (byId("posteCompCreateNivD")) byId("posteCompCreateNivD").value = (prepared.niveaud || "");
-        if (byId("posteCompCreateNivD")) byId("posteCompCreateNivD").value = (prepared.niveaud || "");
 
         fillPosteCompCreateDomainSelect(prepared.domaine_id || "");
         loadPosteCompCreateCritFromJson(prepared.grille_evaluation || null);
@@ -2777,7 +2776,6 @@ body {
         const a = (byId("posteCompCreateNivA").value || "").trim();
         const b = (byId("posteCompCreateNivB").value || "").trim();
         const c = (byId("posteCompCreateNivC").value || "").trim();
-        const d = (byId("posteCompCreateNivD")?.value || "").trim();
             const d = (byId("posteCompCreateNivD")?.value || "").trim();
 
         if (!title){
@@ -3243,12 +3241,16 @@ body {
         const levelMeta = (niv) => {
             const raw = String(niv || "").trim();
             const v = raw.toUpperCase();
-            const low = raw.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
-            if (v === "A" || low === "initial" || low === "debutant") return { text: "Débutant", cls: "sb-badge--niv-a" };
-            if (v === "B" || low === "intermediaire") return { text: "Intermédiaire", cls: "sb-badge--niv-b" };
-            if (v === "C" || low === "avance" || low === "avancee") return { text: "Avancé", cls: "sb-badge--niv-c" };
-            if (v === "D" || low === "expert") return { text: "Expert", cls: "sb-badge--niv-d" };
+            if (window.NovoskillLevels) {
+                const k = window.NovoskillLevels.normalize(raw);
+                if (k) return { text: window.NovoskillLevels.label(k), cls: window.NovoskillLevels.cssClass(k).replace("sb-badge-niv", "sb-badge--niv") };
+            }
+            if (v === "A" || raw.toLowerCase() === "initial" || raw.toLowerCase() === "débutant" || raw.toLowerCase() === "debutant") return { text: "Débutant", cls: "sb-badge--niv-a" };
+            if (v === "B" || raw.toLowerCase() === "intermédiaire" || raw.toLowerCase() === "intermediaire") return { text: "Intermédiaire", cls: "sb-badge--niv-b" };
+            if (v === "B" || raw.toLowerCase() === "intermédiaire" || raw.toLowerCase() === "intermediaire") return { text: "Intermédiaire", cls: "sb-badge--niv-b" };
+            if (v === "C" || raw.toLowerCase() === "avancé" || raw.toLowerCase() === "avance") return { text: "Avancé", cls: "sb-badge--niv-c" };
+            if (v === "D" || raw.toLowerCase() === "expert") return { text: "Expert", cls: "sb-badge--niv-d" };
             return { text: "—", cls: "" };
         };
 
@@ -3578,7 +3580,6 @@ body {
         byId("posteCompRefA").textContent = (_posteCompEdit.niveaua || "—");
         byId("posteCompRefB").textContent = (_posteCompEdit.niveaub || "—");
         byId("posteCompRefC").textContent = (_posteCompEdit.niveauc || "—");
-        if (byId("posteCompRefD")) byId("posteCompRefD").textContent = (_posteCompEdit.niveaud || "—");
         if (byId("posteCompRefD")) byId("posteCompRefD").textContent = (_posteCompEdit.niveaud || "—");
 
         // Form

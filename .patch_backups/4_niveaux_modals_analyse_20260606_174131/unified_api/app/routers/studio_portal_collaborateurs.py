@@ -2201,7 +2201,13 @@ def _normalize_skill_level_from_poste(value: Optional[str]) -> str:
         return "B"
     if s in ("a", "initial", "debutant") or s.startswith("ini") or s.startswith("deb"):
         return "A"
+
     return "A"
+
+
+def _skill_level_label_from_code(value: Optional[str]) -> str:
+    code = _normalize_skill_level_from_poste(value)
+    return {"A": "Débutant", "B": "Intermédiaire", "C": "Avancé", "D": "Expert"}.get(code, "Débutant")
 
 
 def _get_effectif_competence_columns(cur) -> set:
@@ -4105,7 +4111,6 @@ def studio_collab_competence_fiche_pdf(
             "niveaub": row.get("niveaub") or "",
             "niveauc": row.get("niveauc") or "",
             "niveaud": row.get("niveaud") or "",
-            "niveaud": row.get("niveaud") or "",
             "grille_evaluation": _json_like_to_obj(row.get("grille_evaluation")),
             "domaine": did,
             "domaine_titre": dmeta.get("titre") or "",
@@ -4414,7 +4419,7 @@ def studio_collab_competence_evaluation_save(
             "ok": True,
             "id_audit_competence": id_audit,
             "date_audit": str(today),
-            "niveau_actuel": niveau_actuel_code,
+            "niveau_actuel": payload.niveau_actuel,
             "resultat_eval": round(float(payload.resultat_eval), 1),
             "observation": payload.observation or None,
             "methode_eval": methode_eval,

@@ -312,28 +312,15 @@ def _education_rank(v: Any) -> int:
 
 def _niveau_rank(v: Any) -> int:
     s = str(v or "").strip().lower()
-    s_norm = (
-        s.replace("é", "e").replace("è", "e").replace("ê", "e").replace("ë", "e")
-         .replace("à", "a").replace("â", "a").replace("î", "i").replace("ï", "i")
-    )
-    if s_norm in ("a", "initial", "debutant", "1") or s_norm.startswith("deb") or s_norm.startswith("init"):
+    if s in ("a", "initial", "débutant", "debutant"):
         return 1
-    if s_norm in ("b", "intermediaire", "2") or s_norm.startswith("inter"):
+    if s in ("b", "intermédiaire", "intermediaire"):
         return 2
-    if s_norm in ("c", "avance", "avancee", "advanced", "3") or s_norm.startswith("avan") or s_norm.startswith("adv"):
+    if s in ("c", "avance", "avancé", "avancee", "avancée"):
         return 3
-    if s_norm in ("d", "expert", "4") or s_norm.startswith("exp"):
+    if s in ("d", "expert"):
         return 4
     return 0
-
-
-def _niveau_key(v: Any) -> str:
-    r = _niveau_rank(v)
-    return {1: "A", 2: "B", 3: "C", 4: "D"}.get(r, "")
-
-
-def _niveau_label(v: Any) -> str:
-    return {"A": "Débutant", "B": "Intermédiaire", "C": "Avancé", "D": "Expert"}.get(_niveau_key(v), "—")
 
 
 def _score_structure_gap(gap: int) -> int:
@@ -735,15 +722,12 @@ def _fetch_postes_fragility_records(
                 WHEN 'a' THEN 1
                 WHEN 'initial' THEN 1
                 WHEN 'b' THEN 2
-                WHEN 'intermediaire' THEN 2
-                WHEN 'intermédiaire' THEN 2
+                WHEN 'avance' THEN 2
+                WHEN 'avancé' THEN 2
+                WHEN 'avancee' THEN 2
+                WHEN 'avancée' THEN 2
                 WHEN 'c' THEN 3
-                WHEN 'avance' THEN 3
-                WHEN 'avancé' THEN 3
-                WHEN 'avancee' THEN 3
-                WHEN 'avancée' THEN 3
-                WHEN 'd' THEN 4
-                WHEN 'expert' THEN 4
+                WHEN 'expert' THEN 3
                 ELSE 0
             END AS act_rank,
             CASE
@@ -2333,8 +2317,7 @@ def get_analyse_previsions_critiques_impactees_detail(
                               WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
                                 THEN trim(ec.niveau_actuel)::int
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
-                              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
+                              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
                               ELSE 0
                             END
                           ) >= 3 THEN ec.id_effectif_client END
@@ -2346,8 +2329,7 @@ def get_analyse_previsions_critiques_impactees_detail(
                               WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
                                 THEN trim(ec.niveau_actuel)::int
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
-                              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
+                              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
                               ELSE 0
                             END
                           ) >= 3 THEN ec.id_effectif_client END
@@ -3336,7 +3318,6 @@ def get_analyse_previsions_postes_rouges_modal(
                             WHEN UPPER(TRIM(COALESCE(cp.niveau_requis,''))) = 'A' THEN 1
                             WHEN UPPER(TRIM(COALESCE(cp.niveau_requis,''))) = 'B' THEN 2
                             WHEN UPPER(TRIM(COALESCE(cp.niveau_requis,''))) = 'C' THEN 3
-                            WHEN UPPER(TRIM(COALESCE(cp.niveau_requis,''))) = 'D' THEN 4
                             ELSE 0
                         END AS req_rank
                     FROM public.tbl_fiche_poste_competence cp
@@ -3363,11 +3344,9 @@ def get_analyse_previsions_postes_rouges_modal(
                             WHEN UPPER(TRIM(COALESCE(ec.niveau_actuel,''))) = 'A' THEN 1
                             WHEN UPPER(TRIM(COALESCE(ec.niveau_actuel,''))) = 'B' THEN 2
                             WHEN UPPER(TRIM(COALESCE(ec.niveau_actuel,''))) = 'C' THEN 3
-                            WHEN UPPER(TRIM(COALESCE(ec.niveau_actuel,''))) = 'D' THEN 4
-                            WHEN ec.niveau_actuel ILIKE '%%init%%' OR ec.niveau_actuel ILIKE '%%début%%' OR ec.niveau_actuel ILIKE '%%debut%%' THEN 1
-                            WHEN ec.niveau_actuel ILIKE '%%inter%%' THEN 2
-                            WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 3
-                            WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
+                            WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                            WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                            WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
                             WHEN TRIM(COALESCE(ec.niveau_actuel,'')) ~ '^[0-9]+$' THEN TRIM(ec.niveau_actuel)::int
                             ELSE 0
                         END AS niveau_rank
@@ -4673,11 +4652,9 @@ def get_analyse_risques_poste_diagnostic(
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' THEN 1
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' THEN 2
                               WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
-                              WHEN ec.niveau_actuel ILIKE '%%init%%' OR ec.niveau_actuel ILIKE '%%début%%' OR ec.niveau_actuel ILIKE '%%debut%%' THEN 1
-                              WHEN ec.niveau_actuel ILIKE '%%inter%%' THEN 2
-                              WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 3
-                              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
+                              WHEN ec.niveau_actuel ILIKE '%%init%%' THEN 1
+                              WHEN ec.niveau_actuel ILIKE '%%avan%%' THEN 2
+                              WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
                               WHEN TRIM(ec.niveau_actuel) ~ '^[0-9]+$' THEN ec.niveau_actuel::int
                               ELSE 0
                             END AS act_rank,
@@ -4693,7 +4670,6 @@ def get_analyse_risques_poste_diagnostic(
                               WHEN UPPER(TRIM(r.niveau_requis)) = 'A' THEN 1
                               WHEN UPPER(TRIM(r.niveau_requis)) = 'B' THEN 2
                               WHEN UPPER(TRIM(r.niveau_requis)) = 'C' THEN 3
-                              WHEN UPPER(TRIM(r.niveau_requis)) = 'D' THEN 4
                               ELSE 0
                             END AS req_rank,
 
@@ -5950,17 +5926,15 @@ def get_risque_competence_detail(
                         return ""
                     if "-" in s:
                         last = s.split("-")[-1].strip()
-                        if last in ("A", "B", "C", "D"):
+                        if last in ("A", "B", "C"):
                             return last
-                    if s in ("A", "B", "C", "D"):
+                    if s in ("A", "B", "C"):
                         return s
                     if "EXPERT" in s:
-                        return "D"
-                    if "AVANCE" in s or "ADVANCED" in s:
                         return "C"
-                    if "INTERMEDIAIRE" in s or "INTERM" in s:
+                    if "AVANCE" in s:
                         return "B"
-                    if "DEBUTANT" in s or "INITIAL" in s or "INIT" in s:
+                    if "INITIAL" in s or "INIT" in s:
                         return "A"
                     return ""
 
@@ -5972,8 +5946,6 @@ def get_risque_competence_detail(
                         return 2
                     if k == "C":
                         return 3
-                    if k == "D":
-                        return 4
                     return 0
 
                 def _truthy(v: Any) -> bool:
