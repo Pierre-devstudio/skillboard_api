@@ -7060,3 +7060,57 @@ body{
 .sim2-compare-table{ min-width:980px; }
 .sim-compare-detail-row td{ background:var(--sb-gray-50); }
 
+/* ======================================================
+   Novoskill - badges niveaux de maîtrise
+   Règle transverse : libellé seul, fond transparent, orange progressif.
+   A Débutant | B Intermédiaire | C Avancé | D Expert
+   ====================================================== */
+.sb-badge.sb-badge-niv,
+.sb-badge.sb-badge--niv,
+.pp-badge.pp-badge--niv{
+  --ns-level-orange: 226,114,9;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:96px;
+  height:22px;
+  padding:0 10px;
+  border:1.5px solid rgba(var(--ns-level-orange), .45);
+  border-radius:999px;
+  background:transparent !important;
+  color:rgba(var(--ns-level-orange), .45);
+  font-size:12px;
+  font-weight:700;
+  line-height:1;
+  white-space:nowrap;
+  box-sizing:border-box;
+}
+.sb-badge-niv-a,
+.sb-badge--niv-a,
+.pp-badge.sb-badge-niv-a{
+  border-color:rgba(226,114,9,.42) !important;
+  color:rgba(226,114,9,.42) !important;
+  background:transparent !important;
+}
+.sb-badge-niv-b,
+.sb-badge--niv-b,
+.pp-badge.sb-badge-niv-b{
+  border-color:rgba(226,114,9,.62) !important;
+  color:rgba(226,114,9,.62) !important;
+  background:transparent !important;
+}
+.sb-badge-niv-c,
+.sb-badge--niv-c,
+.pp-badge.sb-badge-niv-c{
+  border-color:rgba(226,114,9,.82) !important;
+  color:rgba(226,114,9,.82) !important;
+  background:transparent !important;
+}
+.sb-badge-niv-d,
+.sb-badge--niv-d,
+.pp-badge.sb-badge-niv-d{
+  border-color:rgb(226,114,9) !important;
+  color:rgb(226,114,9) !important;
+  background:transparent !important;
+}
+

@@ -542,11 +542,11 @@ def save_satisfaction(payload: SatisfactionInput):
                             reponses_json,
                             archive
                         ) VALUES (
-                            %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s,
                             NOW(), NOW(),
                             %s, %s, %s,
+                            %s, %s, %s, %s, %s, %s,
                             %s, %s, %s, %s, %s,
-                            %s, %s, %s, %s,
                             %s, %s,
                             %s,
                             FALSE

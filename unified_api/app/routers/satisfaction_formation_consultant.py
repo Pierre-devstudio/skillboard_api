@@ -613,11 +613,11 @@ def save_satisfaction_consultant(payload: SatisfactionConsultInput):
                         reponses_json,
                         archive
                     ) VALUES (
-                        %s, %s, %s, %s,              -- id_satis, id_action_formation, id_form, id_consultant
+                        %s, %s, %s, %s, %s,              -- id_satis, id_action_formation, id_form, id_consultant
                         NOW(), NOW(),               -- date_reponse, date_modif
-                        %s, %s, %s, %s,             -- prépa q1, q2, q3, commentaire
-                        %s, %s, %s, %s,             -- orga q1, q2, q3, commentaire
-                        %s, %s, %s, %s, %s,         -- déroulement q1, comm_appréc, adaptation, fiches, comm_général
+                        %s, %s, %s, %s, %s,             -- prépa q1, q2, q3, commentaire
+                        %s, %s, %s, %s, %s,             -- orga q1, q2, q3, commentaire
+                        %s, %s, %s, %s, %s, %s,         -- déroulement q1, comm_appréc, adaptation, fiches, comm_général
                         %s, %s, %s,                 -- bilan q1, q2, q3
                         %s, %s,                     -- supports_laisses, supports_description
                         %s, %s,                     -- difficulte_rencontree, difficulte_texte

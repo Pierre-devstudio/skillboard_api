@@ -137,20 +137,13 @@ def _level_score(txt: Optional[str]) -> int:
 
 
 def _fix_abc_levels(data: dict) -> None:
-    a = data.get("niveaua") or ""
-    b = data.get("niveaub") or ""
-    c = data.get("niveauc") or ""
-
-    sa = _level_score(a)
-    sb = _level_score(b)
-    sc = _level_score(c)
-
-    if sa > sc:
-        levels = [("niveaua", a, sa), ("niveaub", b, sb), ("niveauc", c, sc)]
+    # Compat nom historique : ordonne désormais A/B/C/D du moins maîtrisé vers expert.
+    keys = ["niveaua", "niveaub", "niveauc", "niveaud"]
+    levels = [(k, data.get(k) or "", _level_score(data.get(k) or "")) for k in keys]
+    if levels[0][2] > levels[-1][2]:
         levels.sort(key=lambda x: x[2])
-        data["niveaua"] = levels[0][1]
-        data["niveaub"] = levels[1][1]
-        data["niveauc"] = levels[2][1]
+        for idx, k in enumerate(keys):
+            data[k] = levels[idx][1]
 
 
 def _pdf_latin1_safe(v: Any) -> str:
@@ -329,6 +322,7 @@ class CreateCompetencePayload(BaseModel):
     niveaua: Optional[str] = None
     niveaub: Optional[str] = None
     niveauc: Optional[str] = None
+    niveaud: Optional[str] = None
     grille_evaluation: Optional[Any] = None
     etat: Optional[str] = None
 
@@ -340,6 +334,7 @@ class UpdateCompetencePayload(BaseModel):
     niveaua: Optional[str] = None
     niveaub: Optional[str] = None
     niveauc: Optional[str] = None
+    niveaud: Optional[str] = None
     grille_evaluation: Optional[Any] = None
     etat: Optional[str] = None
 
@@ -389,6 +384,7 @@ def _build_ai_schema() -> dict:
             "niveaua": {"type": "string", "minLength": 40, "maxLength": 230},
             "niveaub": {"type": "string", "minLength": 40, "maxLength": 230},
             "niveauc": {"type": "string", "minLength": 40, "maxLength": 230},
+            "niveaud": {"type": "string", "minLength": 40, "maxLength": 230},
             "domaine_id": {"type": ["string", "null"]},
             "grille_evaluation": {
                 "type": "object",
@@ -459,7 +455,7 @@ def _run_ai_draft(cur, oid: str, payload: AiDraftCompetencePayload) -> dict:
 
         "Avant de rédiger, tu dois décider si la compétence est transverse, métier réutilisable, ou spécifique. "
         "Compétence transverse : elle peut être réutilisée dans plusieurs métiers ou domaines. Son titre, sa description, "
-        "ses niveaux A/B/C et ses critères ne doivent pas citer un secteur, un produit, une réglementation, un outil ou une formation précise. "
+        "ses niveaux A/B/C/D et ses critères ne doivent pas citer un secteur, un produit, une réglementation, un outil ou une formation précise. "
         "Compétence métier réutilisable : elle appartient à un domaine métier, mais reste exploitable dans plusieurs formations du même domaine. "
         "Son titre peut contenir le domaine métier, mais pas un cas trop étroit. "
         "Compétence spécifique : elle dépend fortement d'une formation, d'un produit, d'une réglementation, d'un dispositif, "
@@ -478,8 +474,8 @@ def _run_ai_draft(cur, oid: str, payload: AiDraftCompetencePayload) -> dict:
 
         "La compétence doit rester générique et réutilisable uniquement si le contexte précis n'est pas nécessaire "
         "pour comprendre, exercer et évaluer la compétence. "
-        "Règles de niveau A/B/C : A = initial guidé, B = avancé autonome, C = expert qui optimise/transmet. "
-        "Ne mets jamais un simple label type Initial/Avancé/Expert dans niveaua/b/c. "
+        "Règles de niveau A/B/C/D : A = débutant guidé, B = intermédiaire autonome, C = avancé fiable/adapte, D = expert qui optimise/transmet. "
+        "Ne mets jamais un simple label type Débutant/Intermédiaire/Avancé/Expert dans niveaua/b/c/d. "
         "Rédige des attendus concrets, observables, orientés action. "
         "Les critères d'évaluation doivent être distincts, progressifs, observables et utilisables en formation. "
         "Chaque évaluation doit être courte, 1 phrase, verbe d'action + résultat observable. "
@@ -505,7 +501,7 @@ def _run_ai_draft(cur, oid: str, payload: AiDraftCompetencePayload) -> dict:
         f"- Produis exactement {nb} critères NON VIDES (Critere1..Critere{nb}).\n"
         f"- Critere{nb + 1}..Critere4 doivent être VIDES (Nom=\"\" + 4 Eval vides).\n"
         "- Les 4 niveaux d’un critère doivent montrer une progression claire : guidé → autonome → optimisation → expertise/transmission.\n"
-        "- Niveaux A/B/C <=230 caractères chacun.\n"
+        "- Niveaux A/B/C/D <=230 caractères chacun.\n"
     )
 
     client = OpenAI(api_key=api_key)
@@ -542,10 +538,11 @@ def _run_ai_draft(cur, oid: str, payload: AiDraftCompetencePayload) -> dict:
         _bad_level(data.get("niveaua", ""))
         or _bad_level(data.get("niveaub", ""))
         or _bad_level(data.get("niveauc", ""))
+        or _bad_level(data.get("niveaud", ""))
     ):
         raise HTTPException(
             status_code=400,
-            detail="IA: niveaux A/B/C trop courts ou réduits à un label. Regénère avec plus de contexte.",
+            detail="IA: niveaux A/B/C/D trop courts ou réduits à un label. Regénère avec plus de contexte.",
         )
 
     _fix_abc_levels(data)
@@ -780,11 +777,11 @@ def learn_competence_create(id_effectif: str, payload: CreateCompetencePayload, 
                     """
                     INSERT INTO public.tbl_competence
                       (id_comp, id_owner, code, intitule, description, domaine,
-                       niveaua, niveaub, niveauc, grille_evaluation,
+                       niveaua, niveaub, niveauc, niveaud, grille_evaluation,
                        etat, masque, date_creation, date_modification)
                     VALUES
                       (%s, %s, %s, %s, %s, %s,
-                       %s, %s, %s, %s,
+                       %s, %s, %s, %s, %s,
                        %s, FALSE, NOW(), NOW())
                     """,
                     (
@@ -797,6 +794,7 @@ def learn_competence_create(id_effectif: str, payload: CreateCompetencePayload, 
                         (payload.niveaua or None),
                         (payload.niveaub or None),
                         (payload.niveauc or None),
+                        (payload.niveaud or None),
                         Json(_normalize_grille(payload.grille_evaluation)),
                         (payload.etat or "à valider"),
                     ),
@@ -897,6 +895,7 @@ def learn_competence_detail(id_effectif: str, id_comp: str, request: Request):
                       c.niveaua,
                       c.niveaub,
                       c.niveauc,
+                      c.niveaud,
                       c.grille_evaluation,
                       c.etat,
                       COALESCE(c.masque, FALSE) AS masque,
@@ -978,6 +977,10 @@ def learn_competence_update(id_effectif: str, id_comp: str, payload: UpdateCompe
                 if "niveauc" in patch_fields:
                     cols.append("niveauc = %s")
                     vals.append(payload.niveauc)
+
+                if "niveaud" in patch_fields:
+                    cols.append("niveaud = %s")
+                    vals.append(payload.niveaud)
 
                 if "grille_evaluation" in patch_fields:
                     cols.append("grille_evaluation = %s")
@@ -1081,6 +1084,7 @@ def learn_competence_fiche_pdf(id_effectif: str, id_comp: str, request: Request)
                       c.niveaua,
                       c.niveaub,
                       c.niveauc,
+                      c.niveaud,
                       c.grille_evaluation,
                       dc.titre_court AS domaine_titre_court,
                       dc.titre AS domaine_titre
@@ -1111,6 +1115,7 @@ def learn_competence_fiche_pdf(id_effectif: str, id_comp: str, request: Request)
             "niveaua": row.get("niveaua") or "",
             "niveaub": row.get("niveaub") or "",
             "niveauc": row.get("niveauc") or "",
+            "niveaud": row.get("niveaud") or "",
             "grille_evaluation": row.get("grille_evaluation"),
             "domaine": row.get("domaine") or "",
             "domaine_titre": (

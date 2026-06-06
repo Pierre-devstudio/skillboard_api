@@ -826,9 +826,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   const nivBadgeHtml = (niv) => {
     const k = String(niv || "").trim().toUpperCase();
-    if (k === "A") return `<span class="sb-badge sb-badge-niv sb-badge-niv-a">Initial</span>`;
-    if (k === "B") return `<span class="sb-badge sb-badge-niv sb-badge-niv-b">Avancé</span>`;
-    if (k === "C") return `<span class="sb-badge sb-badge-niv sb-badge-niv-c">Expert</span>`;
+    if (window.NovoskillLevels) return window.NovoskillLevels.badgeHtml(k, "Niveau de maîtrise");
+    if (k === "A") return `<span class="sb-badge sb-badge-niv sb-badge-niv-a">Débutant</span>`;
+    if (k === "B") return `<span class="sb-badge sb-badge-niv sb-badge-niv-b">Intermédiaire</span>`;
+    if (k === "C") return `<span class="sb-badge sb-badge-niv sb-badge-niv-c">Avancé</span>`;
+    if (k === "D") return `<span class="sb-badge sb-badge-niv sb-badge-niv-d">Expert</span>`;
     return `<span class="sb-badge">${escapeHtml(k || "—")}</span>`;
   };
 
@@ -1866,7 +1868,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return `<span class="sb-crit-badge sb-crit-l${lvl}" title="Criticité (poids)">${escapeHtml(txt)}</span>`;
     }
 
-    // Niveaux A/B/C -> Initial / Avancé / Expert
+    // Niveaux A/B/C/D -> Initial / Avancé / Expert
     function nivKey(v) {
       const s = (v ?? "").toString().trim().toLowerCase();
       if (!s) return "";
@@ -1878,8 +1880,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     function nivLabel(v) {
       const k = nivKey(v);
-      if (k === "A") return "Initial";
-      if (k === "B") return "Avancé";
+      if (k === "A") return "Débutant";
+      if (k === "B") return "Intermédiaire";
       if (k === "C") return "Expert";
       return "—";
     }
@@ -3261,7 +3263,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return "";
     };
 
-    const nivRank = (k) => (k === "A" ? 1 : k === "B" ? 2 : k === "C" ? 3 : 0);
+    const nivRank = (k) => (k === "A" ? 1 : k === "B" ? 2 : k === "C" ? 3 : k === "D" ? 4 : 0);
 
     const nivBadgeHtml = (raw) => {
       const k = nivKey(raw);
@@ -4227,6 +4229,7 @@ function renderAnalysePosteCompetencesTab(data) {
     if (s === "A") return 1;
     if (s === "B") return 2;
     if (s === "C") return 3;
+    if (s === "D") return 4;
     const n = Number(s);
     return Number.isFinite(n) ? n : 0;
   }
@@ -4236,12 +4239,13 @@ function renderAnalysePosteCompetencesTab(data) {
     if (!raw) return 0;
 
     // Priorité à A/B/C si présent (ex: "Expert - C")
-    const m = raw.match(/\b([ABC])\b/i);
+    const m = raw.match(/\b([ABCD])\b/i);
     if (m && m[1]) {
       const t = m[1].toUpperCase();
       if (t === "A") return 1;
       if (t === "B") return 2;
       if (t === "C") return 3;
+      if (t === "D") return 4;
     }
 
     // Sinon libellés

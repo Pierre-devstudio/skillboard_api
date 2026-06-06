@@ -173,8 +173,8 @@
     if (!isFinite(s) || s <= 0) return "—";
     // bornes validées: A [6..10[, B [10..19[, C [19..24]
     if (s >= 19) return "Expert";
-    if (s >= 10) return "Avancé";
-    if (s >= 6) return "Initial";
+    if (s >= 10) return "Intermédiaire";
+    if (s >= 6) return "Débutant";
     return "—";
   }
 
@@ -3735,8 +3735,8 @@
               if (!Number.isFinite(s)) return "—";
 
               if (s >= 19) return "Expert";
-              if (s >= 10) return "Avancé";
-              if (s >= 6) return "Initial";
+              if (s >= 10) return "Intermédiaire";
+              if (s >= 6) return "Débutant";
               return "—";
             };
 
@@ -4275,8 +4275,8 @@
         };
 
         const computeLevel = (score24) => {
-        if (score24 >= 6 && score24 <= 9) return "Initial";
-        if (score24 >= 10 && score24 <= 18) return "Avancé";
+        if (score24 >= 6 && score24 <= 9) return "Débutant";
+        if (score24 >= 10 && score24 <= 18) return "Intermédiaire";
         if (score24 >= 19 && score24 <= 24) return "Expert";
         return "—";
         };
@@ -4495,10 +4495,10 @@
   }
 
   function _levelFromScore24(score24) {
-    if (score24 >= 6 && score24 <= 9) return "Initial";
-    if (score24 >= 10 && score24 <= 18) return "Avancé";
+    if (score24 >= 6 && score24 <= 9) return "Débutant";
+    if (score24 >= 10 && score24 <= 18) return "Intermédiaire";
     if (score24 >= 19 && score24 <= 24) return "Expert";
-    return "Initial"; // fallback (cas tordu)
+    return "Débutant"; // fallback (cas tordu)
   }
 
   async function saveCurrentAudit() {

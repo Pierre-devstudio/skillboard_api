@@ -2718,6 +2718,7 @@ body {
         byId("posteCompCreateNivA").value = (prepared.niveaua || "");
         byId("posteCompCreateNivB").value = (prepared.niveaub || "");
         byId("posteCompCreateNivC").value = (prepared.niveauc || "");
+        if (byId("posteCompCreateNivD")) byId("posteCompCreateNivD").value = (prepared.niveaud || "");
 
         fillPosteCompCreateDomainSelect(prepared.domaine_id || "");
         loadPosteCompCreateCritFromJson(prepared.grille_evaluation || null);
@@ -2753,7 +2754,7 @@ body {
             domaine_couleur: domainMeta?.couleur || src.domaine_couleur || null,
             etat: etat,
             recommended_level: (src.recommended_level || "B"),
-            recommended_level_label: (src.recommended_level_label || "Avancé"),
+            recommended_level_label: (src.recommended_level_label || "Intermédiaire"),
             freq_usage: parseInt(src.freq_usage ?? 0, 10) || 0,
             impact_resultat: parseInt(src.impact_resultat ?? 0, 10) || 0,
             dependance: parseInt(src.dependance ?? 0, 10) || 0,
@@ -2775,6 +2776,7 @@ body {
         const a = (byId("posteCompCreateNivA").value || "").trim();
         const b = (byId("posteCompCreateNivB").value || "").trim();
         const c = (byId("posteCompCreateNivC").value || "").trim();
+            const d = (byId("posteCompCreateNivD")?.value || "").trim();
 
         if (!title){
             portal.showAlert("error", "Intitulé obligatoire.");
@@ -2810,6 +2812,7 @@ body {
                             niveaua: a || null,
                             niveaub: b || null,
                             niveauc: c || null,
+                            niveaud: d || null,
                             grille_evaluation: grille,
                             recommended_level: (draftSrc.recommended_level || "B"),
                             freq_usage: parseInt(draftSrc.freq_usage ?? 0, 10) || 0,
@@ -3239,9 +3242,14 @@ body {
             const raw = String(niv || "").trim();
             const v = raw.toUpperCase();
 
-            if (v === "A" || raw.toLowerCase() === "initial") return { text: "Initial", cls: "sb-badge--niv-a" };
-            if (v === "B" || raw.toLowerCase() === "avancé" || raw.toLowerCase() === "avance") return { text: "Avancé", cls: "sb-badge--niv-b" };
-            if (v === "C" || raw.toLowerCase() === "expert") return { text: "Expert", cls: "sb-badge--niv-c" };
+            if (window.NovoskillLevels) {
+                const k = window.NovoskillLevels.normalize(raw);
+                if (k) return { text: window.NovoskillLevels.label(k), cls: window.NovoskillLevels.cssClass(k).replace("sb-badge-niv", "sb-badge--niv") };
+            }
+            if (v === "A" || raw.toLowerCase() === "initial" || raw.toLowerCase() === "débutant" || raw.toLowerCase() === "debutant") return { text: "Débutant", cls: "sb-badge--niv-a" };
+            if (v === "B" || raw.toLowerCase() === "intermédiaire" || raw.toLowerCase() === "intermediaire") return { text: "Intermédiaire", cls: "sb-badge--niv-b" };
+            if (v === "C" || raw.toLowerCase() === "avancé" || raw.toLowerCase() === "avance") return { text: "Avancé", cls: "sb-badge--niv-c" };
+            if (v === "D" || raw.toLowerCase() === "expert") return { text: "Expert", cls: "sb-badge--niv-d" };
             return { text: "—", cls: "" };
         };
 
@@ -3514,6 +3522,7 @@ body {
             niveaua: "",
             niveaub: "",
             niveauc: "",
+            niveaud: "",
 
             // defaults association
             niveau_requis: "B",
@@ -3570,6 +3579,7 @@ body {
         byId("posteCompRefA").textContent = (_posteCompEdit.niveaua || "—");
         byId("posteCompRefB").textContent = (_posteCompEdit.niveaub || "—");
         byId("posteCompRefC").textContent = (_posteCompEdit.niveauc || "—");
+        if (byId("posteCompRefD")) byId("posteCompRefD").textContent = (_posteCompEdit.niveaud || "—");
 
         // Form
         setPosteCompEditNiv(_posteCompEdit.niveau_requis || "B");
@@ -3590,9 +3600,11 @@ body {
             _posteCompEdit.niveaua = d.niveaua || "";
             _posteCompEdit.niveaub = d.niveaub || "";
             _posteCompEdit.niveauc = d.niveauc || "";
+            _posteCompEdit.niveaud = d.niveaud || "";
             byId("posteCompRefA").textContent = (_posteCompEdit.niveaua || "—");
             byId("posteCompRefB").textContent = (_posteCompEdit.niveaub || "—");
             byId("posteCompRefC").textContent = (_posteCompEdit.niveauc || "—");
+        if (byId("posteCompRefD")) byId("posteCompRefD").textContent = (_posteCompEdit.niveaud || "—");
             } catch(_){}
         })();
         }

@@ -1,0 +1,1794 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Portail consultant — Skillboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; }
+    body {
+      margin: 0;
+      background:#f3f4f6;
+      color:#111827;
+      display:flex;
+      min-height:100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width:240px;
+      background:#0f172a;
+      color:#e5e7eb;
+      display:flex;
+      flex-direction:column;
+      padding:16px 12px;
+      flex-shrink:0;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      z-index:50;
+    }
+    .sidebar-header {
+      font-weight:600;
+      font-size:18px;
+      margin-bottom:16px;
+      text-align:center;
+    }
+    .sidebar-sub {
+      font-size:12px;
+      color:#9ca3af;
+      text-align:center;
+      margin-bottom:16px;
+    }
+    .menu {
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      margin-top:8px;
+    }
+    .menu-item {
+      padding:8px 10px;
+      border-radius:6px;
+      font-size:14px;
+      cursor:pointer;
+      color:#e5e7eb;
+    }
+    .menu-item.active {
+      background:#1d4ed8;
+      color:#ffffff;
+    }
+    .menu-item.disabled {
+      opacity:0.4;
+      cursor:default;
+    }
+
+    /* Backdrop mobile */
+    .backdrop {
+      position:fixed;
+      inset:0;
+      background:rgba(15,23,42,0.35);
+      z-index:40;
+      display:none;
+    }
+    .backdrop.show {
+      display:block;
+    }
+
+    /* Main */
+    .main {
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      min-width:0;
+    }
+
+    .topbar {
+      background:#ffffff;
+      border-bottom:1px solid #e5e7eb;
+      padding:10px 18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+    }
+    .topbar-left {
+      font-size:14px;
+      color:#4b5563;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .topbar-right {
+      font-size:13px;
+      color:#6b7280;
+      text-align:right;
+      flex-shrink:0;
+    }
+
+    .menu-toggle {
+      display:none;
+      border:none;
+      background:transparent;
+      font-size:20px;
+      cursor:pointer;
+      color:#111827;
+      padding:4px 8px;
+      border-radius:6px;
+    }
+
+    .content {
+      padding:18px;
+      overflow:auto;
+    }
+
+    .card {
+      background:#ffffff;
+      border-radius:10px;
+      border:1px solid #e5e7eb;
+      padding:16px;
+      margin-bottom:16px;
+    }
+    .card-title {
+      font-size:16px;
+      font-weight:600;
+      margin-bottom:8px;
+    }
+    .card-sub {
+      font-size:13px;
+      color:#6b7280;
+      margin-bottom:10px;
+    }
+    .row {
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      margin-top:6px;
+    }
+    .info-item {
+      min-width:180px;
+      font-size:14px;
+    }
+    .label {
+      font-size:12px;
+      color:#6b7280;
+      margin-bottom:2px;
+    }
+    .value {
+      font-size:14px;
+      font-weight:500;
+      color:#111827;
+    }
+
+    .alert {
+      padding:10px 12px;
+      border-radius:8px;
+      font-size:13px;
+      margin-bottom:12px;
+    }
+    .alert.error {
+      background:#fef2f2;
+      border:1px solid #fecaca;
+      color:#991b1b;
+    }
+    .alert.success {
+      background:#ecfdf5;
+      border:1px solid #bbf7d0;
+      color:#166534;
+    }
+
+    .sb-logo {
+      max-height: 70px;
+      height: auto;
+      max-width: 100%;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    select {
+      width:100%;
+      box-sizing:border-box;
+      padding:6px 8px;
+      border-radius:6px;
+      border:1px solid #d1d5db;
+      font-size:14px;
+      background:#ffffff;
+    }
+
+    input:focus,
+    select:focus {
+      outline:none;
+      border-color:#1d4ed8;
+      box-shadow:0 0 0 1px rgba(37,99,235,0.2);
+    }
+
+    /* Avatar consultant */
+    .profile-avatar {
+      width:72px;
+      height:72px;
+      border-radius:999px;
+      background:#e5e7eb;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:600;
+      font-size:22px;
+      color:#4b5563;
+      overflow:hidden;
+      flex-shrink:0;
+      cursor:default;
+    }
+    .profile-avatar span {
+      pointer-events:none;
+    }
+    .profile-avatar.has-photo {
+      background-size:cover;
+      background-position:center;
+      background-repeat:no-repeat;
+      color:transparent;
+    }
+    .profile-avatar.clickable {
+      cursor:pointer;
+    }
+
+    /* Plus d’espace entre le formulaire et le bloc admin */
+    #view-vos-donnees .card:first-of-type {
+      margin-bottom:32px !important;
+    }
+
+    /* Boutons profil */
+    .btn-primary {
+      padding:8px 16px;
+      border-radius:8px;
+      border:0;
+      background:#1d4ed8;
+      color:#fff;
+      font-size:14px;
+      cursor:pointer;
+    }
+    .btn-secondary {
+      padding:8px 16px;
+      border-radius:8px;
+      border:1px solid #d1d5db;
+      background:#ffffff;
+      color:#374151;
+      font-size:14px;
+      cursor:pointer;
+      margin-left:8px;
+    }
+
+    @media (max-width: 768px) {
+      body { flex-direction:column; }
+
+      .sidebar {
+        position:fixed;
+        top:0;
+        left:0;
+        height:100vh;
+        transform:translateX(-100%);
+        box-shadow:0 0 0 rgba(0,0,0,0);
+      }
+      .sidebar.open {
+        transform:translateX(0);
+        box-shadow:0 10px 25px rgba(15,23,42,0.6);
+      }
+
+      .sidebar-header,
+      .sidebar-sub {
+        text-align:left;
+      }
+
+      .main { flex:1; }
+
+      .topbar { padding:10px 12px; }
+
+      .menu-toggle {
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+      }
+    }
+
+    /* =========================
+       EXPERTISES - TABLE
+       ========================= */
+    .table-wrap { overflow-x:auto; }
+
+    .sb-table {
+      width:100%;
+      border-collapse:collapse;
+    }
+    .sb-table th {
+      text-align:left;
+      font-size:12px;
+      color:#6b7280;
+      font-weight:600;
+      padding:8px 10px;
+      border-bottom:1px solid #e5e7eb;
+      white-space:nowrap;
+    }
+    .sb-table td {
+      padding:8px 10px;
+      border-bottom:1px solid #f3f4f6;
+      font-size:14px;
+      vertical-align:middle;
+    }
+    .sb-table tr:hover td { background:#f9fafb; }
+
+    .sb-table .col-level {
+      text-align:center;
+      width:70px;
+    }
+    .sb-table .col-date { white-space:nowrap; }
+
+    .level-dot {
+      display:inline-block;
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      background:#e5e7eb;
+    }
+    .level-dot.active { background:#1d4ed8; }
+
+    /* =========================
+       MODAL AJOUT COMPÉTENCE
+       ========================= */
+    .modal {
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:rgba(15,23,42,0.45);
+      z-index:80;
+      padding:16px;
+    }
+    .modal.show { display:flex; }
+
+    .modal-card {
+      width:min(720px, 100%);
+      background:#fff;
+      border-radius:10px;
+      border:1px solid #e5e7eb;
+      overflow:hidden;
+    }
+    .modal-header {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:12px 14px;
+      border-bottom:1px solid #e5e7eb;
+    }
+    .modal-body { padding:14px; }
+    .modal-footer {
+      padding:12px 14px;
+      border-top:1px solid #e5e7eb;
+      display:flex;
+      justify-content:flex-end;
+      gap:8px;
+    }
+    .modal-footer .btn-secondary { margin-left:0; }
+
+    .modal-x {
+      border:0;
+      background:transparent;
+      font-size:20px;
+      cursor:pointer;
+      padding:0 8px;
+      color:#6b7280;
+    }
+
+    .results {
+      border:1px solid #e5e7eb;
+      border-radius:8px;
+      max-height:240px;
+      overflow:auto;
+    }
+    .result-item {
+      padding:8px 10px;
+      cursor:pointer;
+      border-bottom:1px solid #f3f4f6;
+      font-size:14px;
+    }
+    .result-item:last-child { border-bottom:0; }
+    .result-item:hover { background:#f9fafb; }
+
+    .result-code {
+      font-weight:600;
+      color:#111827;
+    }
+    .result-title {
+      color:#6b7280;
+      font-size:13px;
+    }
+
+    /* =========================
+   EXPERTISES - MOBILE FIX
+   (Lisible sur téléphone)
+   ========================= */
+.mobile-meta {
+  display:none;
+  margin-top:4px;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+.badge {
+  display:inline-block;
+  padding:2px 8px;
+  border:1px solid #d1d5db;
+  border-radius:999px;
+  font-size:12px;
+  color:#374151;
+  background:#ffffff;
+}
+
+.muted {
+  color:#6b7280;
+  font-size:12px;
+}
+
+@media (max-width: 640px) {
+  /* On masque les colonnes "Initial / Avancé / Expert / Dernier audit" */
+  .sb-table th:nth-child(3),
+  .sb-table th:nth-child(4),
+  .sb-table th:nth-child(5),
+  .sb-table th:nth-child(6),
+  .sb-table td:nth-child(3),
+  .sb-table td:nth-child(4),
+  .sb-table td:nth-child(5),
+  .sb-table td:nth-child(6) {
+    display:none;
+  }
+
+  /* On affiche le niveau + audit sous l'intitulé */
+  .mobile-meta {
+    display:flex;
+  }
+}
+
+/* =========================
+   MODAL - GROUPES PAR DOMAINE
+   ========================= */
+.domain-group {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.domain-group summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 12px;
+  font-weight: 600;
+  font-size: 13px;
+  color: #111827;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.domain-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.domain-count {
+  font-weight: 600;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.domain-items .result-item {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.domain-items .result-item:last-child {
+  border-bottom: 0;
+}
+
+/* =========================
+   EXPERTISES - DOMAINES FORMATION
+   ========================= */
+.domaines-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.domaines-list {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.domaines-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  align-items: flex-start;
+}
+
+.domaines-item:last-child {
+  border-bottom: 0;
+}
+
+.domaines-item:hover {
+  background: #f9fafb;
+}
+
+.domaines-check {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.domaines-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.domaines-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.domaines-desc {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 4px;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.domaines-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.domaines-actions .btn-secondary {
+  margin-left: 0; /* ton btn-secondary a un margin-left global */
+}
+
+.domaines-hint {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+@media (max-width: 640px) {
+  .domaines-actions {
+    justify-content: stretch;
+  }
+  .domaines-actions button {
+    width: 100%;
+  }
+}
+
+  </style>
+</head>
+<body>
+
+  <!-- Fond sombre pour mobile -->
+  <div class="backdrop" id="backdrop"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div>
+      <div class="sidebar-header">Espace consultant</div>
+      <div class="sidebar-sub">JMB CONSULTANT · Skillboard</div>
+    </div>
+    <nav class="menu">
+      <div class="menu-item active" data-view="dashboard">Dashboard</div>
+      <div class="menu-item" data-view="vos-donnees">Vos données</div>
+      <div class="menu-item" data-view="vos-expertises">Vos expertises</div>
+      <div class="menu-item disabled" data-view="actions">Actions de formation</div>
+      <div class="menu-item disabled" data-view="adaptations">Fiches d’adaptation</div>
+      <div class="menu-item disabled" data-view="ressources">Ressources</div>
+      <div class="menu-item disabled" data-view="factures">Vos factures</div>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" id="btnMenuToggle" aria-label="Ouvrir le menu">
+          &#9776;
+        </button>
+        <span id="topbarName">Consultant</span>
+      </div>
+      <div class="topbar-right" id="topbarInfo">Chargement…</div>
+    </header>
+
+    <main class="content">
+      <div id="alertContainer"></div>
+
+      <!-- DASHBOARD -->
+      <section id="view-dashboard">
+        <div style="text-align:center; margin-bottom:16px;">
+          <img src="/Logo_Skillboard.png" alt="Skillboard" class="sb-logo">
+        </div>
+
+        <div class="card">
+          <div class="card-title" id="welcomeTitle">Bienvenue</div>
+          <div class="card-sub" id="welcomeIntro">
+            Cet espace vous permet de suivre vos interventions, formaliser vos adaptations
+            et accéder, à terme, à l’ensemble des informations liées à vos missions avec JMB CONSULTANT.
+          </div>
+        </div>
+      </section>
+
+      <!-- VOS DONNÉES -->
+      <section id="view-vos-donnees" style="display:none;">
+        <div class="card">
+          <div class="card-title">Vos données</div>
+          <div class="card-sub">
+            Consultez et mettez à jour vos informations de contact. Les informations administratives
+            (type de consultant, entreprise, coûts) sont affichées à titre indicatif.
+            Pour tout changement, veuillez contacter
+            <a href="mailto:pierre@jmbconsultant.fr">l’administrateur</a>.
+          </div>
+
+          <!-- Avatar + info -->
+          <div class="row" style="align-items:center; margin-bottom:10px;">
+            <div class="profile-avatar" id="profileAvatar" title="Cliquer pour choisir une photo">
+              <span id="profileAvatarInitials">SB</span>
+            </div>
+            <input type="file" id="photoInput" accept="image/*" style="display:none;" />
+          </div>
+
+          <form id="profileForm">
+            <div class="row" style="flex-direction:column; gap:16px;">
+
+              <!-- Bloc identité -->
+              <div class="row">
+                <div class="info-item" style="min-width:160px;">
+                  <div class="label">Civilité</div>
+                  <select id="civilite" name="civilite" data-editable="1">
+                    <option value="">(Non précisé)</option>
+                    <option value="M">M.</option>
+                    <option value="Mme">Mme</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+                <div class="info-item">
+                  <div class="label">Prénom *</div>
+                  <input type="text" id="prenom" name="prenom" required data-editable="1" />
+                </div>
+                <div class="info-item">
+                  <div class="label">Nom *</div>
+                  <input type="text" id="nom" name="nom" required data-editable="1" />
+                </div>
+              </div>
+
+              <!-- Coordonnées -->
+              <div class="row">
+                <div class="info-item" style="flex:1;">
+                  <div class="label">Adresse (ligne 1)</div>
+                  <input type="text" id="adresse_1" name="adresse_1" data-editable="1" />
+                </div>
+                <div class="info-item" style="flex:1;">
+                  <div class="label">Adresse (complément)</div>
+                  <input type="text" id="adresse_2" name="adresse_2" data-editable="1" />
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="info-item" style="min-width:120px;">
+                  <div class="label">Code postal</div>
+                  <input
+                    type="text"
+                    id="code_postal"
+                    name="code_postal"
+                    maxlength="5"
+                    pattern="[0-9]{5}"
+                    inputmode="numeric"
+                    data-editable="1"
+                  />
+                </div>
+                <div class="info-item" style="flex:1;">
+                  <div class="label">Ville</div>
+                  <input type="text" id="ville" name="ville" list="villeOptions" data-editable="1" />
+                  <datalist id="villeOptions"></datalist>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="info-item" style="min-width:150px;">
+                  <div class="label">Téléphone</div>
+                  <input type="tel" id="telephone" name="telephone" data-editable="1" />
+                </div>
+                <div class="info-item" style="min-width:150px;">
+                  <div class="label">Mobile</div>
+                  <input type="tel" id="telephone_mobile" name="telephone_mobile" data-editable="1" />
+                </div>
+                <div class="info-item" style="flex:2; min-width:260px;">
+                  <div class="label">Email</div>
+                  <input type="email" id="email" name="email" data-editable="1" />
+                </div>
+              </div>
+
+              <div style="margin-top:16px;" id="profileButtons">
+                <button type="button" class="btn-primary" id="btnEditProfile">
+                  Modifier vos données
+                </button>
+                <button type="submit" class="btn-primary" id="btnSaveProfile" style="display:none;">
+                  Enregistrer vos données
+                </button>
+                <button type="button" class="btn-secondary" id="btnCancelEdit" style="display:none;">
+                  Annuler
+                </button>
+              </div>
+
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Informations administratives</div>
+          <div class="row">
+            <div class="info-item">
+              <div class="label">Nom complet</div>
+              <div class="value" id="infoNomComplet">–</div>
+            </div>
+            <div class="info-item">
+              <div class="label">Identifiant consultant</div>
+              <div class="value" id="infoIdConsultant">–</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:8px;">
+            <div class="info-item">
+              <div class="label">Type de consultant</div>
+              <div class="value" id="infoTypeConsultant">–</div>
+            </div>
+            <div class="info-item">
+              <div class="label">Entreprise</div>
+              <div class="value" id="infoEntreprise">–</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:8px;">
+            <div class="info-item">
+              <div class="label">Coût horaire</div>
+              <div class="value" id="infoCoutHoraire">–</div>
+            </div>
+            <div class="info-item">
+              <div class="label">Supplément déplacement</div>
+              <div class="value" id="infoCoutDeplacement">–</div>
+            </div>
+            <div class="info-item">
+              <div class="label">Autre supplément</div>
+              <div class="value" id="infoCoutSupp">–</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VOS EXPERTISES -->
+      <section id="view-vos-expertises" style="display:none;">
+        <div class="card">
+          <div class="card-title">Vos expertises</div>
+          <div class="card-sub">
+            Déclarez vos compétences (puis certifications et diplômes). Les compétences ajoutées ici seront ensuite auditables dans Skillboard (version bureau).
+          </div>
+        </div>
+
+        <div class="card" id="cardDomainesFormation">
+          <div class="card-title" style="margin-bottom:2px;">Domaines de formation de prédilection</div>
+          <div class="card-sub" style="margin:0;">
+            Sélectionnez les domaines sur lesquels vous intervenez le plus. Cela sert au pilotage (missions, matching, catalogue).
+          </div>
+
+          <div class="domaines-wrap">
+            <div class="domaines-actions">
+              <button type="button" class="btn-secondary" id="btnClearDomainesFormation">Tout décocher</button>
+              <button type="button" class="btn-primary" id="btnSaveDomainesFormation">Enregistrer</button>
+            </div>
+
+            <div class="domaines-list" id="domainesFormationList">
+              <div class="domaines-item" style="cursor:default;">
+                <div class="domaines-text">
+                  <div class="domaines-title">Chargement…</div>
+                  <div class="domaines-desc">Récupération du référentiel des domaines.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="domaines-hint" id="domainesFormationHint" style="display:none;">
+              Aucun domaine disponible (ou tous masqués).
+            </div>
+          </div>
+        </div>
+
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+            <div>
+              <div class="card-title" style="margin-bottom:2px;">Compétences</div>
+              <div class="card-sub" style="margin:0;">
+                Niveau affiché selon votre déclaration. La date d’audit apparaît si une évaluation a déjà été réalisée.
+              </div>
+            </div>
+            <button type="button" class="btn-primary" id="btnAddCompetence">+ Ajouter</button>
+          </div>
+
+          <div class="table-wrap" style="margin-top:12px;">
+            <table class="sb-table" id="tblCompetences">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Intitulé</th>
+                  <th class="col-level">Initial</th>
+                  <th class="col-level">Avancé</th>
+                  <th class="col-level">Expert</th>
+                  <th class="col-date">Dernier audit</th>
+                </tr>
+              </thead>
+              <tbody id="tblCompetencesBody"></tbody>
+            </table>
+          </div>
+
+          <div class="card-sub" id="competencesEmpty" style="display:none; margin-top:10px;">
+            Aucune compétence enregistrée pour le moment.
+          </div>
+        </div>
+      </section>
+
+      <!-- Modal: Ajouter une compétence -->
+      <div class="modal" id="modalAddCompetence" aria-hidden="true">
+        <div class="modal-card">
+          <div class="modal-header">
+            <div style="font-weight:600;">Ajouter une compétence</div>
+            <button type="button" class="modal-x" id="btnCloseAddCompetence" aria-label="Fermer">×</button>
+          </div>
+
+          <div class="modal-body">
+            <div class="row" style="flex-direction:column; gap:10px;">
+              <div class="info-item" style="min-width:0;">
+                <div class="label">Rechercher une compétence</div>
+                <input type="text" id="competenceSearch" placeholder="Code ou intitulé..." />
+              </div>
+
+              <div class="info-item" style="min-width:0;">
+                <div class="label">Résultats</div>
+                <div id="competenceResults" class="results"></div>
+              </div>
+
+              <div class="info-item" style="min-width:0;">
+                <div class="label">Compétence sélectionnée</div>
+                <div class="value" id="competenceSelected">–</div>
+              </div>
+
+              <div class="info-item" style="min-width:0;">
+                <div class="label">Niveau actuel</div>
+                <select id="competenceLevel">
+                  <option value="Initial">Initial</option>
+                  <option value="Avancé">Avancé</option>
+                  <option value="Expert">Expert</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" id="btnCancelAddCompetence">Annuler</button>
+            <button type="button" class="btn-primary" id="btnConfirmAddCompetence">Ajouter</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Placeholders pour la suite -->
+      <section id="view-actions" style="display:none;">
+        <div class="card">
+          <div class="card-title">Actions de formation</div>
+          <div class="card-sub">
+            Cette section affichera vos actions de formation (à venir, en cours, passées).
+          </div>
+        </div>
+      </section>
+
+      <section id="view-adaptations" style="display:none;">
+        <div class="card">
+          <div class="card-title">Fiches d’adaptation</div>
+          <div class="card-sub">
+            Cette section affichera vos adaptations déclarées et permettra d’en créer de nouvelles.
+          </div>
+        </div>
+      </section>
+
+      <section id="view-ressources" style="display:none;">
+        <div class="card">
+          <div class="card-title">Ressources</div>
+          <div class="card-sub">
+            Cette section listera les documents mis à votre disposition (guides, modèles, supports).
+          </div>
+        </div>
+      </section>
+
+      <section id="view-factures" style="display:none;">
+        <div class="card">
+          <div class="card-title">Vos factures</div>
+          <div class="card-sub">
+            Cette section vous permettra de consulter vos factures et d’en déposer de nouvelles.
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = "https://skillboard-services.onrender.com";
+    let CONSULTANT_ID = null;
+    let DOMAINES_FORMATION_CATALOGUE = null;   // cache
+    let DOMAINES_FORMATION_SELECTED = new Set();
+    let _domainesHandlersBound = false;
+
+
+    function getQueryParam(name) {
+      const url = new URL(window.location.href);
+      return url.searchParams.get(name);
+    }
+
+    function showAlert(type, message) {
+      const container = document.getElementById("alertContainer");
+      if (!message) {
+        container.innerHTML = "";
+        return;
+      }
+      container.innerHTML = `<div class="alert ${type}">${message}</div>`;
+    }
+
+    function switchView(viewName) {
+      document.querySelectorAll("section[id^='view-']").forEach(sec => {
+        sec.style.display = sec.id === `view-${viewName}` ? "block" : "none";
+      });
+
+      document.querySelectorAll(".menu-item").forEach(item => {
+        const v = item.getAttribute("data-view");
+        item.classList.toggle("active", v === viewName);
+      });
+
+      if (viewName === "vos-expertises" && CONSULTANT_ID) {
+        initDomainesFormationUI(CONSULTANT_ID);
+        loadConsultantCompetences(CONSULTANT_ID);
+      }
+
+      closeSidebarMobile();
+    }
+
+    function setValueOrEmpty(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = value ?? "";
+    }
+
+    function setTextOrDash(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = value != null && value !== "" ? value : "–";
+    }
+
+    function setProfileEditMode(isEdit) {
+      const fields = document.querySelectorAll("#profileForm [data-editable='1']");
+      fields.forEach(el => {
+        el.disabled = !isEdit;
+      });
+
+      const btnEdit = document.getElementById("btnEditProfile");
+      const btnSave = document.getElementById("btnSaveProfile");
+      const btnCancel = document.getElementById("btnCancelEdit");
+
+      if (btnEdit) btnEdit.style.display = isEdit ? "none" : "inline-block";
+      if (btnSave) btnSave.style.display = isEdit ? "inline-block" : "none";
+      if (btnCancel) btnCancel.style.display = isEdit ? "inline-block" : "none";
+
+      const avatar = document.getElementById("profileAvatar");
+      if (avatar) {
+        if (isEdit) avatar.classList.add("clickable");
+        else avatar.classList.remove("clickable");
+      }
+    }
+
+    function formatPhoneInput(input) {
+      if (!input) return;
+      let digits = (input.value || "").replace(/\D/g, "").slice(0, 10);
+      const parts = [];
+      for (let i = 0; i < digits.length; i += 2) {
+        parts.push(digits.slice(i, i + 2));
+      }
+      input.value = parts.join(" ");
+    }
+
+    function updateAvatar(nomComplet, photoUrl) {
+      const avatar = document.getElementById("profileAvatar");
+      const span = document.getElementById("profileAvatarInitials");
+      if (!avatar || !span) return;
+
+      const parts = (nomComplet || "")
+        .split(" ")
+        .filter(p => p.length > 0);
+      const initials = parts.slice(0, 2).map(p => p[0].toUpperCase()).join("");
+
+      span.textContent = initials || "SB";
+      avatar.style.backgroundImage = "";
+      avatar.classList.remove("has-photo");
+
+      if (photoUrl) {
+        avatar.style.backgroundImage = `url('${photoUrl}')`;
+        avatar.classList.add("has-photo");
+      }
+    }
+
+    async function loadCitiesForCP(codePostal) {
+      const cp = (codePostal || "").trim();
+      const dl = document.getElementById("villeOptions");
+      if (!dl) return;
+
+      dl.innerHTML = "";
+      if (cp.length !== 5) return;
+
+      try {
+        const resp = await fetch(`${API_BASE}/consultant/villes_par_cp/${encodeURIComponent(cp)}`);
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          console.warn("Erreur chargement villes:", body);
+          return;
+        }
+        if (!Array.isArray(body)) return;
+
+        body.forEach(v => {
+          if (!v.ville) return;
+          const opt = document.createElement("option");
+          opt.value = v.ville;
+          opt.label = v.ville;
+          dl.appendChild(opt);
+        });
+
+        const villeInput = document.getElementById("ville");
+        if (villeInput && !villeInput.value && body.length > 0 && body[0].ville) {
+          villeInput.value = body[0].ville;
+        }
+      } catch (e) {
+        console.warn("Erreur fetch villes:", e);
+      }
+    }
+
+    function escapeHtml(s) {
+  return (s ?? "").toString()
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+async function loadDomainesFormationCatalogue() {
+  const resp = await fetch(`${API_BASE}/consultant/expertises/domaines_formation_catalogue`);
+  const ct = resp.headers.get("content-type") || "";
+  const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+  if (!resp.ok) {
+    const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+    throw new Error(detail);
+  }
+  return Array.isArray(body) ? body : [];
+}
+
+async function loadConsultantDomainesFormation(id_consultant) {
+  const resp = await fetch(`${API_BASE}/consultant/expertises/domaines_formation/${encodeURIComponent(id_consultant)}`);
+  const ct = resp.headers.get("content-type") || "";
+  const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+  if (!resp.ok) {
+    const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+    throw new Error(detail);
+  }
+  return Array.isArray(body) ? body : [];
+}
+
+function renderDomainesFormation(catalogue, selectedSet) {
+  const list = document.getElementById("domainesFormationList");
+  const hint = document.getElementById("domainesFormationHint");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  if (!catalogue || catalogue.length === 0) {
+    if (hint) hint.style.display = "block";
+    return;
+  }
+  if (hint) hint.style.display = "none";
+
+  // Tri: ordre_affichage puis titre
+  const sorted = [...catalogue].sort((a, b) => {
+    const oa = (a.ordre_affichage ?? 999999);
+    const ob = (b.ordre_affichage ?? 999999);
+    if (oa !== ob) return oa - ob;
+    return (a.titre || "").localeCompare((b.titre || ""), "fr", { sensitivity: "base" });
+  });
+
+  sorted.forEach(d => {
+    const id = d.id_domaine_formation;
+    if (!id) return;
+
+    const item = document.createElement("div");
+    item.className = "domaines-item";
+
+    const checked = selectedSet.has(id);
+
+    item.innerHTML = `
+      <input class="domaines-check" type="checkbox" data-id="${escapeHtml(id)}" ${checked ? "checked" : ""} />
+      <div class="domaines-text">
+        <div class="domaines-title">${escapeHtml(d.titre || "Sans titre")}</div>
+        <div class="domaines-desc">${escapeHtml(d.description || "")}</div>
+      </div>
+    `;
+
+    // clic sur la ligne = toggle checkbox (sauf si clic direct input)
+    item.addEventListener("click", (e) => {
+      if (e.target && e.target.matches("input[type='checkbox']")) return;
+      const cb = item.querySelector("input[type='checkbox']");
+      if (!cb) return;
+      cb.checked = !cb.checked;
+    });
+
+    list.appendChild(item);
+  });
+}
+
+function getSelectedDomainesFromUI() {
+  const list = document.getElementById("domainesFormationList");
+  if (!list) return [];
+  const ids = [];
+  list.querySelectorAll("input[type='checkbox'][data-id]").forEach(cb => {
+    if (cb.checked) ids.push(cb.getAttribute("data-id"));
+  });
+  // dédoublonnage
+  return Array.from(new Set(ids));
+}
+
+async function saveConsultantDomainesFormation(id_consultant) {
+  const ids = getSelectedDomainesFromUI();
+
+  const resp = await fetch(`${API_BASE}/consultant/expertises/domaines_formation/${encodeURIComponent(id_consultant)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids_domaines: ids }),
+  });
+
+  const ct = resp.headers.get("content-type") || "";
+  const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+  if (!resp.ok) {
+    const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+    throw new Error(detail);
+  }
+
+  // Met à jour le set local
+  DOMAINES_FORMATION_SELECTED = new Set(ids);
+}
+
+async function initDomainesFormationUI(id_consultant) {
+  if (!id_consultant) return;
+
+  // Bind handlers 1 seule fois
+  if (!_domainesHandlersBound) {
+    _domainesHandlersBound = true;
+
+    const btnSave = document.getElementById("btnSaveDomainesFormation");
+    const btnClear = document.getElementById("btnClearDomainesFormation");
+
+    if (btnSave) {
+      btnSave.addEventListener("click", async () => {
+        try {
+          showAlert("", "");
+          await saveConsultantDomainesFormation(id_consultant);
+          showAlert("success", "Domaines de formation enregistrés.");
+        } catch (e) {
+          showAlert("error", "Erreur enregistrement domaines : " + e.message);
+        }
+      });
+    }
+
+    if (btnClear) {
+      btnClear.addEventListener("click", () => {
+        const list = document.getElementById("domainesFormationList");
+        if (!list) return;
+        list.querySelectorAll("input[type='checkbox']").forEach(cb => cb.checked = false);
+      });
+    }
+  }
+
+  try {
+    // Catalogue en cache
+    if (!DOMAINES_FORMATION_CATALOGUE) {
+      DOMAINES_FORMATION_CATALOGUE = await loadDomainesFormationCatalogue();
+    }
+
+    // Sélection du consultant
+    const selectedItems = await loadConsultantDomainesFormation(id_consultant);
+    DOMAINES_FORMATION_SELECTED = new Set(
+      (selectedItems || [])
+        .map(x => x.id_domaine_formation)
+        .filter(Boolean)
+    );
+
+    renderDomainesFormation(DOMAINES_FORMATION_CATALOGUE, DOMAINES_FORMATION_SELECTED);
+
+  } catch (e) {
+    // On affiche un bloc d’erreur dans la liste sans casser la page
+    const list = document.getElementById("domainesFormationList");
+    if (list) {
+      list.innerHTML = `
+        <div class="domaines-item" style="cursor:default;">
+          <div class="domaines-text">
+            <div class="domaines-title">Erreur</div>
+            <div class="domaines-desc">${escapeHtml(e.message)}</div>
+          </div>
+        </div>
+      `;
+    }
+  }
+}
+
+    async function loadConsultantProfile(id_consultant) {
+      try {
+        showAlert("", "");
+        const resp = await fetch(`${API_BASE}/consultant/profile/${encodeURIComponent(id_consultant)}`);
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        const civ = (body.civilite || "").trim();
+        let civLabel = "";
+        if (civ === "F") civLabel = "Mme";
+        else if (civ === "M") civLabel = "M";
+        else civLabel = civ;
+
+        const nomComplet = civLabel
+          ? `${civLabel} ${body.prenom} ${body.nom}`
+          : `${body.prenom} ${body.nom}`;
+
+        document.getElementById("topbarName").textContent = nomComplet;
+        document.getElementById("topbarInfo").textContent = "Portail consultant — JMB CONSULTANT";
+        document.getElementById("welcomeTitle").textContent = `Bienvenue, ${body.prenom} ${body.nom}`;
+
+        updateAvatar(nomComplet, body.photo_url);
+
+        const civiliteSelect = document.getElementById("civilite");
+        if (civiliteSelect) {
+          if (body.civilite === "M") civiliteSelect.value = "M";
+          else if (body.civilite === "F") civiliteSelect.value = "Mme";
+          else if (body.civilite) civiliteSelect.value = body.civilite;
+          else civiliteSelect.value = "";
+        }
+
+        setValueOrEmpty("prenom", body.prenom);
+        setValueOrEmpty("nom", body.nom);
+        setValueOrEmpty("email", body.email);
+        setValueOrEmpty("telephone", body.telephone);
+        setValueOrEmpty("telephone_mobile", body.telephone_mobile);
+        setValueOrEmpty("adresse_1", body.adresse_1);
+        setValueOrEmpty("adresse_2", body.adresse_2);
+        setValueOrEmpty("code_postal", body.code_postal);
+        setValueOrEmpty("ville", body.ville);
+
+        if (body.code_postal) loadCitiesForCP(body.code_postal);
+
+        setTextOrDash("infoNomComplet", nomComplet);
+        setTextOrDash("infoIdConsultant", body.id_consultant);
+        setTextOrDash("infoTypeConsultant", body.type_consultant);
+        setTextOrDash("infoEntreprise", body.entreprise_nom);
+
+        const fmt = (v) => v != null ? `${v.toFixed(2)} €` : "–";
+        setTextOrDash("infoCoutHoraire", body.cout_horaire != null ? fmt(body.cout_horaire) : "–");
+        setTextOrDash("infoCoutDeplacement", body.cout_supp_deplacement != null ? fmt(body.cout_supp_deplacement) : "–");
+        setTextOrDash("infoCoutSupp", body.cout_supp != null ? fmt(body.cout_supp) : "–");
+
+        setProfileEditMode(false);
+
+      } catch (err) {
+        showAlert("error", "Erreur de chargement de vos données : " + err.message);
+      }
+    }
+
+    async function saveConsultantProfile(id_consultant) {
+      const civilite = document.getElementById("civilite")?.value || "";
+      const prenom = document.getElementById("prenom")?.value || "";
+      const nom = document.getElementById("nom")?.value || "";
+      const email = document.getElementById("email")?.value || "";
+      const telephone = document.getElementById("telephone")?.value || "";
+      const telephone_mobile = document.getElementById("telephone_mobile")?.value || "";
+      const adresse_1 = document.getElementById("adresse_1")?.value || "";
+      const adresse_2 = document.getElementById("adresse_2")?.value || "";
+      const code_postal = document.getElementById("code_postal")?.value || "";
+      const ville = document.getElementById("ville")?.value || "";
+
+      if (!prenom.trim() || !nom.trim()) {
+        showAlert("error", "Merci de renseigner au minimum votre prénom et votre nom.");
+        return;
+      }
+
+      const payload = {
+        civilite: civilite || null,
+        prenom: prenom.trim(),
+        nom: nom.trim(),
+        email: email || null,
+        telephone: telephone || null,
+        telephone_mobile: telephone_mobile || null,
+        adresse_1: adresse_1 || null,
+        adresse_2: adresse_2 || null,
+        code_postal: code_postal || null,
+        ville: ville || null,
+      };
+
+      try {
+        showAlert("", "");
+        const resp = await fetch(`${API_BASE}/consultant/profile/${encodeURIComponent(id_consultant)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        showAlert("success", "Vos données ont été enregistrées.");
+        await loadConsultantProfile(id_consultant);
+      } catch (err) {
+        showAlert("error", "Erreur lors de l’enregistrement : " + err.message);
+      }
+    }
+
+    async function uploadConsultantPhoto(id_consultant, file) {
+      if (!id_consultant || !file) return;
+
+      const fd = new FormData();
+      fd.append("file", file);
+
+      try {
+        showAlert("", "");
+        const resp = await fetch(
+          `${API_BASE}/consultant/photo/${encodeURIComponent(id_consultant)}`,
+          { method:"POST", body: fd }
+        );
+
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok || (typeof body === "object" && body.ok !== true)) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        await loadConsultantProfile(id_consultant);
+        showAlert("success", "Votre photo a été mise à jour.");
+      } catch (err) {
+        showAlert("error", "Erreur lors de l’envoi de la photo : " + err.message);
+      }
+    }
+
+    function openSidebarMobile() {
+      const sidebar = document.getElementById("sidebar");
+      const backdrop = document.getElementById("backdrop");
+      sidebar.classList.add("open");
+      backdrop.classList.add("show");
+    }
+
+    function closeSidebarMobile() {
+      const sidebar = document.getElementById("sidebar");
+      const backdrop = document.getElementById("backdrop");
+      sidebar.classList.remove("open");
+      backdrop.classList.remove("show");
+    }
+
+    /* ======================================================
+       EXPERTISES - COMPÉTENCES
+       ====================================================== */
+    function formatDateFR(iso) {
+      if (!iso) return "–";
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return "–";
+      const dd = String(d.getDate()).padStart(2, "0");
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const yyyy = d.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    }
+
+    function renderCompetencesTable(items) {
+      const body = document.getElementById("tblCompetencesBody");
+      const empty = document.getElementById("competencesEmpty");
+      if (!body || !empty) return;
+
+      body.innerHTML = "";
+
+      if (!items || items.length === 0) {
+        empty.style.display = "block";
+        return;
+      }
+      empty.style.display = "none";
+
+      items.forEach(it => {
+        const tr = document.createElement("tr");
+
+        const tdCode = document.createElement("td");
+        tdCode.textContent = it.code || "";
+        tr.appendChild(tdCode);
+
+        const tdInt = document.createElement("td");
+
+        /* Titre */
+        const titleDiv = document.createElement("div");
+        titleDiv.textContent = it.intitule || "";
+        tdInt.appendChild(titleDiv);
+
+        /* Meta mobile (niveau + audit) */
+        const meta = document.createElement("div");
+        meta.className = "mobile-meta";
+
+        const badge = document.createElement("span");
+        badge.className = "badge";
+        badge.textContent = it.niveau_actuel || "–";
+
+        const audit = document.createElement("span");
+        audit.className = "muted";
+        audit.textContent = it.date_dernier_audit ? `Audit : ${formatDateFR(it.date_dernier_audit)}` : "Audit : –";
+
+        meta.appendChild(badge);
+        meta.appendChild(audit);
+        tdInt.appendChild(meta);
+
+        tr.appendChild(tdInt);
+
+
+        const mkLevelCell = (label) => {
+          const td = document.createElement("td");
+          td.className = "col-level";
+          const dot = document.createElement("span");
+          dot.className = "level-dot" + ((it.niveau_actuel === label) ? " active" : "");
+          td.appendChild(dot);
+          return td;
+        };
+
+        tr.appendChild(mkLevelCell("Initial"));
+        tr.appendChild(mkLevelCell("Avancé"));
+        tr.appendChild(mkLevelCell("Expert"));
+
+        const tdDate = document.createElement("td");
+        tdDate.className = "col-date";
+        tdDate.textContent = it.date_dernier_audit ? formatDateFR(it.date_dernier_audit) : "–";
+        tr.appendChild(tdDate);
+
+        body.appendChild(tr);
+      });
+    }
+
+    async function loadConsultantCompetences(id_consultant) {
+      try {
+        showAlert("", "");
+        const resp = await fetch(`${API_BASE}/consultant/expertises/competences/${encodeURIComponent(id_consultant)}`);
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        renderCompetencesTable(body);
+      } catch (e) {
+        showAlert("error", "Erreur de chargement des compétences : " + e.message);
+      }
+    }
+
+    let _selectedCompetence = null;
+    let _searchTimer = null;
+
+    function openAddCompetenceModal() {
+      const modal = document.getElementById("modalAddCompetence");
+      const search = document.getElementById("competenceSearch");
+      const results = document.getElementById("competenceResults");
+      const selected = document.getElementById("competenceSelected");
+      const level = document.getElementById("competenceLevel");
+
+      _selectedCompetence = null;
+      if (selected) selected.textContent = "–";
+      if (level) level.value = "Initial";
+      if (results) results.innerHTML = "";
+
+      if (modal) {
+        modal.classList.add("show");
+        modal.setAttribute("aria-hidden", "false");
+      }
+      if (search) {
+        search.value = "";
+        search.focus();
+      }
+
+      searchCompetencesCatalogue("");
+    }
+
+    function closeAddCompetenceModal() {
+      const modal = document.getElementById("modalAddCompetence");
+      if (modal) {
+        modal.classList.remove("show");
+        modal.setAttribute("aria-hidden", "true");
+      }
+    }
+
+    function renderCompetenceResults(list) {
+      const results = document.getElementById("competenceResults");
+      if (!results) return;
+
+      results.innerHTML = "";
+
+      if (!list || list.length === 0) {
+        results.innerHTML = `<div class="result-item" style="cursor:default; color:#6b7280;">Aucun résultat</div>`;
+        return;
+      }
+
+      // Groupement par domaine_titre (fallback "Autres")
+      const groups = new Map();
+      list.forEach(it => {
+        const key = (it.domaine_titre || "").trim() || "Autres";
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(it);
+      });
+
+      // Tri des domaines (Autres en dernier)
+      const domainNames = Array.from(groups.keys()).sort((a, b) => {
+        if (a === "Autres") return 1;
+        if (b === "Autres") return -1;
+        return a.localeCompare(b, "fr", { sensitivity: "base" });
+      });
+
+      const currentQuery = (document.getElementById("competenceSearch")?.value || "").trim();
+      const expandAll = currentQuery.length > 0; // si recherche active -> on ouvre les groupes
+
+      domainNames.forEach(domainTitle => {
+        const items = groups.get(domainTitle) || [];
+
+        const details = document.createElement("details");
+        details.className = "domain-group";
+        details.open = expandAll || domainNames.length <= 3; // petit confort: ouvre si peu de domaines
+
+        const summary = document.createElement("summary");
+
+        const left = document.createElement("span");
+        left.textContent = domainTitle;
+
+        const right = document.createElement("span");
+        right.className = "domain-count";
+        right.textContent = `${items.length}`;
+
+        summary.appendChild(left);
+        summary.appendChild(right);
+
+        const wrap = document.createElement("div");
+        wrap.className = "domain-items";
+
+        items.forEach(it => {
+          const div = document.createElement("div");
+          div.className = "result-item";
+          div.innerHTML = `
+            <div class="result-code">${it.code || ""}</div>
+            <div class="result-title">${it.intitule || ""}</div>
+          `;
+
+          div.addEventListener("click", () => {
+            _selectedCompetence = it;
+            const selected = document.getElementById("competenceSelected");
+            if (selected) selected.textContent = `${it.code} — ${it.intitule}`;
+          });
+
+          wrap.appendChild(div);
+        });
+
+        details.appendChild(summary);
+        details.appendChild(wrap);
+        results.appendChild(details);
+      });
+    }
+
+
+    async function searchCompetencesCatalogue(q) {
+      try {
+        const resp = await fetch(`${API_BASE}/consultant/expertises/competences_catalogue?q=${encodeURIComponent(q || "")}&limit=30`);
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) return;
+        renderCompetenceResults(body);
+      } catch (e) {
+        console.warn("Erreur recherche compétences:", e);
+      }
+    }
+
+    async function addCompetenceForConsultant() {
+      if (!CONSULTANT_ID) return;
+
+      if (!_selectedCompetence || !_selectedCompetence.id_competence) {
+        showAlert("error", "Merci de sélectionner une compétence dans la liste.");
+        return;
+      }
+
+      const level = document.getElementById("competenceLevel")?.value || "Initial";
+
+      try {
+        showAlert("", "");
+        const resp = await fetch(`${API_BASE}/consultant/expertises/competences/${encodeURIComponent(CONSULTANT_ID)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id_competence: _selectedCompetence.id_competence,
+            niveau_actuel: level
+          }),
+        });
+
+        const ct = resp.headers.get("content-type") || "";
+        const body = ct.includes("application/json") ? await resp.json() : await resp.text();
+
+        if (!resp.ok) {
+          const detail = typeof body === "string" ? body : body.detail || JSON.stringify(body);
+          throw new Error(detail);
+        }
+
+        closeAddCompetenceModal();
+        showAlert("success", "Compétence ajoutée (ou mise à jour).");
+        loadConsultantCompetences(CONSULTANT_ID);
+
+      } catch (e) {
+        showAlert("error", "Erreur lors de l’ajout : " + e.message);
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const id = getQueryParam("id");
+      
+      if (!id) {
+        showAlert("error", "Identifiant consultant manquant dans l’URL. Le lien utilisé n’est pas valide.");
+        return;
+      }
+
+      CONSULTANT_ID = id;
+
+      const tel = document.getElementById("telephone");
+      const mob = document.getElementById("telephone_mobile");
+
+      if (tel) {
+        tel.addEventListener("input", () => formatPhoneInput(tel));
+        tel.addEventListener("blur", () => formatPhoneInput(tel));
+      }
+
+      if (mob) {
+        mob.addEventListener("input", () => formatPhoneInput(mob));
+        mob.addEventListener("blur", () => formatPhoneInput(mob));
+      }
+
+      // Vue par défaut : dashboard
+      switchView("dashboard");
+
+      // Menu
+      document.querySelectorAll(".menu-item").forEach(item => {
+        if (item.classList.contains("disabled")) return;
+        item.addEventListener("click", () => {
+          const view = item.getAttribute("data-view");
+          switchView(view);
+        });
+      });
+
+      // Hamburger + backdrop
+      const btnMenu = document.getElementById("btnMenuToggle");
+      const backdrop = document.getElementById("backdrop");
+
+      btnMenu.addEventListener("click", () => {
+        const sidebar = document.getElementById("sidebar");
+        if (sidebar.classList.contains("open")) closeSidebarMobile();
+        else openSidebarMobile();
+      });
+
+      backdrop.addEventListener("click", () => {
+        closeSidebarMobile();
+      });
+
+      // CP -> villes
+      const cpInput = document.getElementById("code_postal");
+      if (cpInput) {
+        cpInput.addEventListener("blur", () => {
+          const val = cpInput.value || "";
+          if (val.trim().length === 5) loadCitiesForCP(val);
+        });
+      }
+
+      // Boutons profil
+      const profileForm = document.getElementById("profileForm");
+      if (profileForm) {
+        profileForm.addEventListener("submit", (e) => {
+          e.preventDefault();
+          saveConsultantProfile(id);
+        });
+      }
+
+      const btnEdit = document.getElementById("btnEditProfile");
+      const btnCancel = document.getElementById("btnCancelEdit");
+
+      if (btnEdit) {
+        btnEdit.addEventListener("click", () => {
+          setProfileEditMode(true);
+        });
+      }
+
+      if (btnCancel) {
+        btnCancel.addEventListener("click", () => {
+          loadConsultantProfile(id);
+        });
+      }
+
+      setProfileEditMode(false);
+
+      // Avatar + upload photo
+      const avatar = document.getElementById("profileAvatar");
+      const photoInput = document.getElementById("photoInput");
+
+      if (avatar && photoInput) {
+        avatar.addEventListener("click", () => {
+          if (!avatar.classList.contains("clickable")) return;
+          photoInput.click();
+        });
+
+        photoInput.addEventListener("change", (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          uploadConsultantPhoto(id, file);
+          e.target.value = "";
+        });
+      }
+
+      // Expertises - modal listeners
+      const btnAdd = document.getElementById("btnAddCompetence");
+      const btnClose = document.getElementById("btnCloseAddCompetence");
+      const btnCancelAdd = document.getElementById("btnCancelAddCompetence");
+      const btnConfirm = document.getElementById("btnConfirmAddCompetence");
+      const modalAdd = document.getElementById("modalAddCompetence");
+      const search = document.getElementById("competenceSearch");
+
+      if (btnAdd) btnAdd.addEventListener("click", () => openAddCompetenceModal());
+      if (btnClose) btnClose.addEventListener("click", () => closeAddCompetenceModal());
+      if (btnCancelAdd) btnCancelAdd.addEventListener("click", () => closeAddCompetenceModal());
+      if (btnConfirm) btnConfirm.addEventListener("click", () => addCompetenceForConsultant());
+
+      if (modalAdd) {
+        modalAdd.addEventListener("click", (e) => {
+          if (e.target === modalAdd) closeAddCompetenceModal();
+        });
+      }
+
+      if (search) {
+        search.addEventListener("input", () => {
+          clearTimeout(_searchTimer);
+          _searchTimer = setTimeout(() => {
+            searchCompetencesCatalogue(search.value || "");
+          }, 250);
+        });
+      }
+
+      // Charge profil complet
+      loadConsultantProfile(id);
+    });
+  </script>
+</body>
+</html>

@@ -489,10 +489,10 @@ def save_adaptation(payload: AdaptationInput):
                             date_modif,
                             archive
                         ) VALUES (
-                            %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s,
                             COALESCE(%s, NOW()),
-                            %s, %s, %s, %s,
-                            %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s,
                             NOW(), NOW(),
                             FALSE
                         )

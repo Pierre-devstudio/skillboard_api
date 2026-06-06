@@ -129,7 +129,7 @@
   }
 
   function qualityCell(item) {
-    const niv = item.niveaux_complets ? `<span class="sb-badge sb-badge-accent">A/B/C ok</span>` : `<span class="sb-badge">Niveaux incomplets</span>`;
+    const niv = item.niveaux_complets ? `<span class="sb-badge sb-badge-accent">A/B/C/D ok</span>` : `<span class="sb-badge">Niveaux incomplets</span>`;
     const grid = item.grille_presente ? `<span class="sb-badge sb-badge-accent">Grille ok</span>` : `<span class="sb-badge">Sans grille</span>`;
     return `<div style="display:flex; gap:6px; flex-wrap:wrap;">${niv}${grid}</div>`;
   }

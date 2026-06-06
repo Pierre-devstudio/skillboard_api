@@ -1571,9 +1571,9 @@ def ep_create_entretien_individuel(
                     )
                     VALUES
                     (
-                        %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s,
                         %s, %s,
-                        %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s,
                         %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb,
                         %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb,
                         FALSE,
@@ -2334,7 +2334,7 @@ def save_entretien_competence_audit(id_contact: str, payload: AuditSavePayload, 
         # validations simples (front fait déjà le gros du job)
         niveau_ok = payload.niveau_actuel in ["Initial", "Avancé", "Expert"]
         if not niveau_ok:
-            raise HTTPException(status_code=400, detail="niveau_actuel invalide (Initial/Avancé/Expert attendu).")
+            raise HTTPException(status_code=400, detail="niveau_actuel invalide (Débutant/Intermédiaire/Avancé/Expert attendu).")
 
         if not payload.criteres or len(payload.criteres) > 4:
             raise HTTPException(status_code=400, detail="Liste de critères invalide.")
@@ -2517,7 +2517,7 @@ def update_entretien_competence_audit(
     try:
         niveau_ok = payload.niveau_actuel in ["Initial", "Avancé", "Expert"]
         if not niveau_ok:
-            raise HTTPException(status_code=400, detail="niveau_actuel invalide (Initial/Avancé/Expert attendu).")
+            raise HTTPException(status_code=400, detail="niveau_actuel invalide (Débutant/Intermédiaire/Avancé/Expert attendu).")
 
         if not payload.criteres or len(payload.criteres) > 4:
             raise HTTPException(status_code=400, detail="Liste de critères invalide.")

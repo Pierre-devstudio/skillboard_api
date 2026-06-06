@@ -194,6 +194,7 @@ def _fetch_current(
             UPPER(TRIM(COALESCE(fpc.niveau_requis, ''))) AS niveau_requis,
             COALESCE(fpc.poids_criticite, 0)::int AS criticite,
             CASE UPPER(TRIM(COALESCE(fpc.niveau_requis, '')))
+                WHEN 'D' THEN 4
                 WHEN 'C' THEN 3
                 WHEN 'B' THEN 2
                 WHEN 'A' THEN 1
@@ -213,7 +214,7 @@ def _fetch_current(
           AND COALESCE(c.masque, FALSE) = FALSE
           AND LOWER(COALESCE(c.etat, 'valide')) NOT IN ('archive', 'archivé', 'inactif', 'masque', 'masqué')
           AND COALESCE(fpc.poids_criticite, 0)::int >= %s
-          AND UPPER(TRIM(COALESCE(fpc.niveau_requis, ''))) IN ('A', 'B', 'C')
+          AND UPPER(TRIM(COALESCE(fpc.niveau_requis, ''))) IN ('A', 'B', 'C', 'D')
     ),
     effectifs_poste AS (
         SELECT
@@ -237,13 +238,15 @@ def _fetch_current(
             ec.niveau_actuel,
             CASE
               WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$' THEN
-                CASE WHEN trim(ec.niveau_actuel)::int >= 19 THEN 3
-                     WHEN trim(ec.niveau_actuel)::int >= 10 THEN 2
-                     WHEN trim(ec.niveau_actuel)::int >= 6 THEN 1
+                CASE WHEN trim(ec.niveau_actuel)::int > 18 THEN 4
+                     WHEN trim(ec.niveau_actuel)::int > 12 THEN 3
+                     WHEN trim(ec.niveau_actuel)::int > 6 THEN 2
+                     WHEN trim(ec.niveau_actuel)::int >= 0 THEN 1
                      ELSE 0 END
-              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' OR ec.niveau_actuel ILIKE '%%expert%%' THEN 3
-              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' OR ec.niveau_actuel ILIKE '%%avanc%%' THEN 2
-              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' OR ec.niveau_actuel ILIKE '%%initial%%' THEN 1
+              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' OR ec.niveau_actuel ILIKE '%%expert%%' THEN 4
+              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' OR ec.niveau_actuel ILIKE '%%avanc%%' THEN 3
+              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'B' OR ec.niveau_actuel ILIKE '%%interm%%' THEN 2
+              WHEN UPPER(TRIM(ec.niveau_actuel)) = 'A' OR ec.niveau_actuel ILIKE '%%initial%%' OR ec.niveau_actuel ILIKE '%%début%%' OR ec.niveau_actuel ILIKE '%%debut%%' THEN 1
               ELSE 0
             END AS niveau_actuel_score
         FROM public.tbl_effectif_client_competence ec
@@ -722,14 +725,14 @@ def envoyer_besoins_formations(id_contact: str, payload: BesoinFormationSendPayl
                                 formation_existante, nb_formations_existantes,
                                 statut, payload_signal, archive, created_at, updated_at
                             ) VALUES (
-                                %s, %s, %s, %s,
+                                %s, %s, %s, %s, %s,
                                 'insights', 'analyse_competences', 'individuel',
                                 %s, %s, %s,
+                                %s, %s, %s, %s, %s, %s,
+                                %s, %s, %s,
+                                %s, %s, %s,
                                 %s, %s, %s, %s, %s,
-                                %s, %s, %s,
-                                %s, %s, %s,
-                                %s, %s, %s, %s,
-                                %s, %s, %s, %s, %s::jsonb,
+                                %s, %s, %s, %s, %s, %s::jsonb,
                                 %s, %s, %s,
                                 %s, %s,
                                 'envoye_studio', %s::jsonb, FALSE, NOW(), NOW()

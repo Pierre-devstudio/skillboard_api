@@ -152,20 +152,13 @@ def _level_score(txt: Optional[str]) -> int:
 
 
 def _fix_abc_levels(data: dict) -> None:
-    a = data.get("niveaua") or ""
-    b = data.get("niveaub") or ""
-    c = data.get("niveauc") or ""
-    sa = _level_score(a)
-    sb = _level_score(b)
-    sc = _level_score(c)
-
-    # Si A semble plus "expert" que C, on réordonne par score croissant
-    if sa > sc:
-        levels = [("niveaua", a, sa), ("niveaub", b, sb), ("niveauc", c, sc)]
-        levels.sort(key=lambda x: x[2])  # score croissant: initial -> expert
-        data["niveaua"] = levels[0][1]
-        data["niveaub"] = levels[1][1]
-        data["niveauc"] = levels[2][1]
+    # Compat nom historique : ordonne désormais A/B/C/D du moins maîtrisé vers expert.
+    keys = ["niveaua", "niveaub", "niveauc", "niveaud"]
+    levels = [(k, data.get(k) or "", _level_score(data.get(k) or "")) for k in keys]
+    if levels[0][2] > levels[-1][2]:
+        levels.sort(key=lambda x: x[2])
+        for idx, k in enumerate(keys):
+            data[k] = levels[idx][1]
 
 # ------------------------------------------------------
 # Models
@@ -184,6 +177,7 @@ class CreateCompetencePayload(BaseModel):
     niveaua: Optional[str] = None
     niveaub: Optional[str] = None
     niveauc: Optional[str] = None
+    niveaud: Optional[str] = None
     grille_evaluation: Optional[Any] = None
     etat: Optional[str] = None
 
@@ -196,6 +190,7 @@ class UpdateCompetencePayload(BaseModel):
     niveaua: Optional[str] = None
     niveaub: Optional[str] = None
     niveauc: Optional[str] = None
+    niveaud: Optional[str] = None
     grille_evaluation: Optional[Any] = None
     etat: Optional[str] = None
 
@@ -257,13 +252,15 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
         schema = {
             "type": "object",
             "additionalProperties": False,
-            "required": ["intitule", "description", "niveaua", "niveaub", "niveauc", "domaine_id", "grille_evaluation"],
+            "required": ["intitule", "description", "niveaua", "niveaub", "niveauc", "niveaud", "domaine_id", "grille_evaluation"],
             "properties": {
                 "intitule": {"type": "string", "minLength": 1, "maxLength": 140},
                 "description": {"type": "string", "maxLength": 1200},
                 "niveaua": {"type": "string", "minLength": 40, "maxLength": 230},
                 "niveaub": {"type": "string", "minLength": 40, "maxLength": 230},
                 "niveauc": {"type": "string", "minLength": 40, "maxLength": 230},
+                "niveaud": {"type": "string", "minLength": 40, "maxLength": 230},
+            "niveaud": {"type": "string", "minLength": 40, "maxLength": 230},
                 "domaine_id": {"type": ["string", "null"]},
                 "grille_evaluation": {
                     "type": "object",
@@ -334,11 +331,11 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
         sys = (
             "Tu es concepteur pédagogique et tu aides à concevoir une fiche compétence opérationnelle. "
             "Tu dois respecter STRICTEMENT le schéma JSON fourni. "
-            "Règles de niveau A/B/C (IMPORTANT): "
+            "Règles de niveau A/B/C/D (IMPORTANT): "
             "A = initial (débutant, guidé, applique des consignes simples), "
             "B = avancé (autonome, structuré, fiable), "
             "C = expert (maîtrise, optimise, anticipe, transmet/forme). "
-            "Ne mets JAMAIS un simple label type 'Initial/Avancé/Expert' dans niveaua/b/c : "
+            "Ne mets JAMAIS un simple label type 'Débutant/Intermédiaire/Avancé/Expert' dans niveaua/b/c/d : "
             "rédige 1 à 2 phrases concrètes décrivant ce qui est attendu et observable. "
             "Les évaluations (4 niveaux par critère) doivent être progressives, observables et actionnables. "
             "Chaque évaluation doit être courte (<=120 caractères), 1 phrase, verbe d'action + résultat observable. "
@@ -360,8 +357,8 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
             f"- Critere{nb+1}..Critere4 doivent être VIDES (Nom=\"\" + 4 Eval vides).\n"
             "- Chaque critère = un axe distinct (évite recouvrement).\n"
             "- Les 4 niveaux d’un critère doivent montrer une progression claire: guidé → autonome → optimisation → expertise/transmission.\n"
-            "- Niveaux A/B/C: A initial guidé, B autonome fiable, C expert optimise/transmet.\n"
-            "- Niveaux A/B/C <=230 caractères chacun.\n"
+            "- Niveaux A/B/C/D: A débutant guidé, B intermédiaire autonome, C avancé fiable/adapte, D expert optimise/transmet.\n"
+            "- Niveaux A/B/C/D <=230 caractères chacun.\n"
         )
 
         client = OpenAI(api_key=api_key)
@@ -400,7 +397,7 @@ def studio_catalog_ai_draft_competence(id_owner: str, payload: AiDraftCompetence
         if _bad_level(data.get("niveaua", "")) or _bad_level(data.get("niveaub", "")) or _bad_level(data.get("niveauc", "")):
             raise HTTPException(
                 status_code=400,
-                detail="IA: niveaux A/B/C trop courts ou réduits à un label. Regénère avec plus de contexte."
+                detail="IA: niveaux A/B/C/D trop courts ou réduits à un label. Regénère avec plus de contexte."
             )
         _fix_abc_levels(data)
 
@@ -613,6 +610,7 @@ def studio_catalog_competence_detail(id_owner: str, id_comp: str, request: Reque
                     c.niveaua,
                     c.niveaub,
                     c.niveauc,
+                    c.niveaud,
                     c.grille_evaluation,
                     c.etat,
                     COALESCE(c.masque, FALSE) AS masque,
@@ -641,6 +639,7 @@ def studio_catalog_competence_detail(id_owner: str, id_comp: str, request: Reque
             "niveaua": r.get("niveaua"),
             "niveaub": r.get("niveaub"),
             "niveauc": r.get("niveauc"),
+            "niveaud": r.get("niveaud"),
             "grille_evaluation": r.get("grille_evaluation"),
             "etat": r.get("etat"),
             "masque": bool(r.get("masque")),
@@ -680,11 +679,11 @@ def studio_catalog_create_competence(id_owner: str, payload: CreateCompetencePay
                     """
                     INSERT INTO public.tbl_competence
                       (id_comp, id_owner, code, intitule, description, domaine,
-                       niveaua, niveaub, niveauc, grille_evaluation,
+                       niveaua, niveaub, niveauc, niveaud, grille_evaluation,
                        etat, masque, date_creation, date_modification)
                     VALUES
                       (%s, %s, %s, %s, %s, %s,
-                       %s, %s, %s, %s,
+                       %s, %s, %s, %s, %s,
                        %s, FALSE, NOW(), NOW())
                     """,
                     (
@@ -697,6 +696,7 @@ def studio_catalog_create_competence(id_owner: str, payload: CreateCompetencePay
                         (payload.niveaua or None),
                         (payload.niveaub or None),
                         (payload.niveauc or None),
+                        (payload.niveaud or None),
                         payload.grille_evaluation,
                         (payload.etat or "valide"),
                     ),
@@ -766,6 +766,10 @@ def studio_catalog_update_competence(id_owner: str, id_comp: str, payload: Updat
                 if "niveauc" in patch_fields:
                     cols.append("niveauc = %s")
                     vals.append(payload.niveauc)
+
+                if "niveaud" in patch_fields:
+                    cols.append("niveaud = %s")
+                    vals.append(payload.niveaud)
 
                 if "grille_evaluation" in patch_fields:
                     cols.append("grille_evaluation = %s")

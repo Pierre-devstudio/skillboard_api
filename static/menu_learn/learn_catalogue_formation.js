@@ -1647,6 +1647,7 @@ function iconPdf(){
         const a = (byId("formCompNivA").value || "").trim();
         const b = (byId("formCompNivB").value || "").trim();
         const c = (byId("formCompNivC").value || "").trim();
+        const d = (byId("formCompNivD")?.value || "").trim();
 
         clearCompModalStatus();
 
@@ -1665,6 +1666,7 @@ function iconPdf(){
             niveaua: a || null,
             niveaub: b || null,
             niveauc: c || null,
+            niveaud: d || null,
             grille_evaluation: compBuildGrilleJson()
         };
 
@@ -1798,6 +1800,7 @@ function iconPdf(){
             if (draft?.niveaua !== undefined) byId("formCompNivA").value = String(draft.niveaua || "");
             if (draft?.niveaub !== undefined) byId("formCompNivB").value = String(draft.niveaub || "");
             if (draft?.niveauc !== undefined) byId("formCompNivC").value = String(draft.niveauc || "");
+            if (draft?.niveaud !== undefined && byId("formCompNivD")) byId("formCompNivD").value = String(draft.niveaud || "");
 
             await ensureCompetenceDomains(portal);
 

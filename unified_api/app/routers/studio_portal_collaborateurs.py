@@ -4067,6 +4067,7 @@ def studio_collab_competence_fiche_pdf(
                       c.niveaua,
                       c.niveaub,
                       c.niveauc,
+                      c.niveaud,
                       c.grille_evaluation
                     FROM public.tbl_effectif_client_competence ecc
                     JOIN public.tbl_competence c
@@ -4099,6 +4100,7 @@ def studio_collab_competence_fiche_pdf(
             "niveaua": row.get("niveaua") or "",
             "niveaub": row.get("niveaub") or "",
             "niveauc": row.get("niveauc") or "",
+            "niveaud": row.get("niveaud") or "",
             "grille_evaluation": _json_like_to_obj(row.get("grille_evaluation")),
             "domaine": did,
             "domaine_titre": dmeta.get("titre") or "",
@@ -4282,7 +4284,7 @@ def studio_collab_competence_evaluation_save(
             raise HTTPException(status_code=400, detail="id_collaborateur manquant.")
 
         if payload.niveau_actuel not in ["Initial", "Avancé", "Expert"]:
-            raise HTTPException(status_code=400, detail="niveau_actuel invalide (Initial/Avancé/Expert attendu).")
+            raise HTTPException(status_code=400, detail="niveau_actuel invalide (Débutant/Intermédiaire/Avancé/Expert attendu).")
 
         if not payload.criteres or len(payload.criteres) > 4:
             raise HTTPException(status_code=400, detail="Liste de critères invalide.")
@@ -5481,7 +5483,7 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                               updated_at,
                               statut_access
                             ) VALUES (
-                              %s, %s, %s, %s, FALSE, NOW(), %s, %s, %s, NOW(), %s
+                              %s, %s, %s, %s, %s, FALSE, NOW(), %s, %s, %s, NOW(), %s
                             )
                             """,
                             (str(uuid.uuid4()), email, access_owner_id, desired_role, user_ref_type, cid, console, target_statut_access),
@@ -5770,10 +5772,10 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                           role_temp,
                           code_effectif
                         ) VALUES (
-                          %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                          %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                          %s, %s, %s, %s, %s, %s, FALSE, CURRENT_DATE, NOW(), %s, %s,
-                          %s, %s, %s, %s, %s
+                          %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                          %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                          %s, %s, %s, %s, %s, %s, %s, FALSE, CURRENT_DATE, NOW(), %s, %s,
+                          %s, %s, %s, %s, %s, %s
                         )
                         """,
                         (

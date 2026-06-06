@@ -1478,8 +1478,8 @@
                   const s = (v || "").toString().trim();
                   if (!s) return "–";
                   const k = s.toLowerCase();
-                  if (k === "a" || k === "initial") return "Initial";
-                  if (k === "b" || k === "avance" || k === "avancé" || k === "avancee" || k === "avancée") return "Avancé";
+                  if (k === "a" || k === "initial") return "Débutant";
+                  if (k === "b" || k === "avance" || k === "avancé" || k === "avancee" || k === "avancée") return "Intermédiaire";
                   if (k === "c" || k === "expert") return "Expert";
                   return s;
                 };

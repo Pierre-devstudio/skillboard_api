@@ -645,7 +645,7 @@ def people_demo_add_competence(id_effectif: str, payload: PeopleAddCompetencePay
         raise HTTPException(status_code=400, detail="Compétence manquante.")
 
     niveau = _clean(payload.niveau_actuel).upper()
-    if niveau not in ("", "A", "B", "C"):
+    if niveau not in ("", "A", "B", "C", "D"):
         niveau = ""
 
     try:

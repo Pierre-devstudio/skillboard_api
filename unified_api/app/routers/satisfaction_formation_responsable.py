@@ -591,10 +591,10 @@ def save_satisfaction_responsable(payload: SatisfactionRespInput):
                             reponses_json,
                             archive
                         ) VALUES (
-                            %s, %s, %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s, %s, %s,
                             NOW(), NOW(),
-                            %s, %s, %s, %s,
-                            %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s,
                             %s, %s,
                             %s, %s,
                             %s, %s, %s,

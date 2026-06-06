@@ -1215,8 +1215,8 @@ def upsert_studio_client_commercial(id_owner: str, id_ent: str, payload: Commerc
                             gestion_acces_studio_autorisee
                         ) VALUES (
                             %s, %s, %s, FALSE, NOW(), NOW(), %s, %s, %s,
-                            %s, %s, %s, %s, %s,
-                            %s, %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s, %s,
                             %s, %s, %s, %s
                         )
                         """,
@@ -1346,10 +1346,10 @@ def create_studio_client(id_owner: str, payload: ClientPayload, request: Request
                         profil_structurel,
                         id_owner_gestionnaire
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s,
                         %s, %s, 'Client', FALSE, %s, %s,
-                        %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s
                     )
                     """,
                     (
@@ -2589,10 +2589,10 @@ def create_studio_child_structure(id_owner: str, id_ent: str, payload: ClientPay
                         profil_structurel,
                         id_owner_gestionnaire
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s,
-                        %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s,
                         %s, %s, %s, FALSE, %s, %s,
-                        %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s, %s
                     )
                     """,
                     (

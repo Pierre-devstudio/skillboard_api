@@ -44,7 +44,7 @@ class CompetenceCatalogueItem(BaseModel):
 
 class AddConsultantCompetencePayload(BaseModel):
     id_competence: str
-    niveau_actuel: str  # "Initial" | "Avancé" | "Expert"
+    niveau_actuel: str  # "A" | "B" | "C" | "D"
 
 class DomaineFormationItem(BaseModel):
     id_domaine_formation: str
@@ -60,17 +60,25 @@ class ConsultantDomainesFormationPayload(BaseModel):
 # ======================================================
 # Constantes / validation
 # ======================================================
-_ALLOWED_LEVELS = {"Initial", "Avancé", "Expert"}
+_ALLOWED_LEVELS = {"A", "B", "C", "D", "Débutant", "Intermédiaire", "Avancé", "Expert", "Initial"}
 
 
 def _normalize_level(v: str) -> str:
-    v = (v or "").strip()
-    if v not in _ALLOWED_LEVELS:
+    raw = (v or "").strip()
+    s = raw.lower().replace("é", "e").replace("è", "e").replace("ê", "e")
+    mapping = {
+        "a": "A", "initial": "A", "debutant": "A",
+        "b": "B", "intermediaire": "B",
+        "c": "C", "avance": "C", "avancee": "C",
+        "d": "D", "expert": "D",
+    }
+    niveau = mapping.get(s) or raw.upper()
+    if niveau not in ("A", "B", "C", "D"):
         raise HTTPException(
             status_code=400,
-            detail="Niveau invalide. Valeurs autorisées: Initial, Avancé, Expert.",
+            detail="Niveau invalide. Valeurs autorisées: A, B, C, D.",
         )
-    return v
+    return niveau
 
 
 # ======================================================
@@ -406,7 +414,7 @@ def add_or_update_consultant_competence(
                         )
                         VALUES
                         (
-                            %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s,
                             NULL, NULL,
                             TRUE,
                             NULL

@@ -9,8 +9,8 @@
     return `<div class="pp-list-row">
       <div><div class="pp-row-title">${P.escapeHtml(r.intitule)}</div><div class="pp-row-sub">${P.escapeHtml(r.code || "")} · ${P.escapeHtml(r.domaine || "Domaine non renseigné")}</div></div>
       <div class="pp-row-badges">
-        ${required ? P.badge(`Requis ${P.levelLabel(r.niveau_requis)}`, "soft") : ""}
-        ${P.badge(`Actuel ${P.levelLabel(r.niveau_actuel)}`, r.niveau_actuel ? "ok" : "soft")}
+        ${required ? P.levelBadge(r.niveau_requis) : ""}
+        ${P.levelBadge(r.niveau_actuel)}
       </div>
     </div>`;
   }

@@ -210,7 +210,7 @@ def _build_scope_cte(id_ent: str, id_service: Optional[str]) -> Tuple[str, List[
     return cte, [id_ent, id_service, id_ent, id_ent, id_ent]
 
 # ======================================================
-# Matching helpers (/24 -> A/B/C + scoring)
+# Matching helpers (/24 -> A/B/C/D + scoring)
 # ======================================================
 def _safe_float(v: Any) -> Optional[float]:
     try:
@@ -226,9 +226,11 @@ def _score_seuil_for_niveau(niveau: Optional[str]) -> float:
     if s == "A":
         return 6.0
     if s == "B":
-        return 10.0
+        return 12.0
     if s == "C":
-        return 19.0
+        return 18.0
+    if s == "D":
+        return 24.0
     return 0.0
 
 
@@ -240,7 +242,7 @@ def _niveau_from_score(score: Optional[float]) -> Optional[str]:
     except Exception:
         return None
 
-    # Mapping Skillboard: /24 => A/B/C
+    # Mapping Skillboard: /24 => A/B/C/D
     if 6.0 <= x <= 9.0:
         return "A"
     if 10.0 <= x <= 18.0:
@@ -310,12 +312,14 @@ def _education_rank(v: Any) -> int:
 
 def _niveau_rank(v: Any) -> int:
     s = str(v or "").strip().lower()
-    if s in ("a", "initial"):
+    if s in ("a", "initial", "débutant", "debutant"):
         return 1
-    if s in ("b", "avance", "avancé", "avancee", "avancée"):
+    if s in ("b", "intermédiaire", "intermediaire"):
         return 2
-    if s in ("c", "expert"):
+    if s in ("c", "avance", "avancé", "avancee", "avancée"):
         return 3
+    if s in ("d", "expert"):
+        return 4
     return 0
 
 
@@ -711,6 +715,7 @@ def _fetch_postes_fragility_records(
                 WHEN 'A' THEN 1
                 WHEN 'B' THEN 2
                 WHEN 'C' THEN 3
+                WHEN 'D' THEN 4
                 ELSE 0
             END AS req_rank,
             CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
@@ -2268,8 +2273,9 @@ def get_analyse_previsions_critiques_impactees_detail(
                         CASE
                           WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
                             THEN trim(ec.niveau_actuel)::int
+                          WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
+                          WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
                           WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                          WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
                           ELSE 0
                         END
                       ) >= 3
@@ -2289,8 +2295,9 @@ def get_analyse_previsions_critiques_impactees_detail(
                         CASE
                           WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
                             THEN trim(ec.niveau_actuel)::int
+                          WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
+                          WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
                           WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                          WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
                           ELSE 0
                         END
                       ) >= 3
@@ -4171,7 +4178,7 @@ def get_analyse_risques_poste_detail(
     """
     Drilldown "poste fragile":
     - toutes les compétences requises du poste (niveau_requis, criticité)
-    - porteurs par compétence avec niveau_actuel (Initial/Avancé/Expert)
+    - porteurs par compétence avec niveau_actuel (Débutant/Intermédiaire/Avancé/Expert)
     - stats de couverture (global + critiques)
     """
     try:
@@ -6263,8 +6270,9 @@ def get_risque_competence_detail(
                         CASE
                           WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
                             THEN trim(ec.niveau_actuel)::int
+                          WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
+                          WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
                           WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                          WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
                           ELSE 0
                         END
                       ) >= 3
@@ -6280,8 +6288,9 @@ def get_risque_competence_detail(
                         CASE
                           WHEN trim(COALESCE(ec.niveau_actuel, '')) ~ '^[0-9]+$'
                             THEN trim(ec.niveau_actuel)::int
+                          WHEN UPPER(TRIM(ec.niveau_actuel)) = 'D' THEN 4
+                          WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 4
                           WHEN UPPER(TRIM(ec.niveau_actuel)) = 'C' THEN 3
-                          WHEN ec.niveau_actuel ILIKE '%%expert%%' THEN 3
                           ELSE 0
                         END
                       ) >= 3

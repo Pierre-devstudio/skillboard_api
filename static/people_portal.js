@@ -42,8 +42,15 @@
   }
 
   function levelLabel(v) {
+    if (window.NovoskillLevels) return window.NovoskillLevels.label(v);
     const s = String(v || "").trim();
     return s || "-";
+  }
+
+  function levelBadge(v) {
+    const label = levelLabel(v);
+    const cls = window.NovoskillLevels ? window.NovoskillLevels.cssClass(v) : "";
+    return `<span class="pp-badge pp-badge--niv ${cls}">${escapeHtml(label)}</span>`;
   }
 
   function itemEmpty(text) {
@@ -70,6 +77,7 @@
     escapeHtml,
     fmtDate,
     levelLabel,
+    levelBadge,
     itemEmpty,
     infoRow,
     badge

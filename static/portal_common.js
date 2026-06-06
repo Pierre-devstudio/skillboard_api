@@ -69,6 +69,86 @@
     if (i) i.textContent = info || "";
   }
 
+
+
+  // -----------------------------
+  // Référentiel niveaux de maîtrise Novoskill
+  // A = Débutant | B = Intermédiaire | C = Avancé | D = Expert
+  // -----------------------------
+  const NOVOSKILL_LEVELS = {
+    A: { code: "A", rank: 1, label: "Débutant", minPct: 0, maxPct: 25, cls: "sb-badge-niv-a" },
+    B: { code: "B", rank: 2, label: "Intermédiaire", minPct: 25, maxPct: 50, cls: "sb-badge-niv-b" },
+    C: { code: "C", rank: 3, label: "Avancé", minPct: 50, maxPct: 75, cls: "sb-badge-niv-c" },
+    D: { code: "D", rank: 4, label: "Expert", minPct: 75, maxPct: 100, cls: "sb-badge-niv-d" }
+  };
+
+  function normalizeSkillLevel(value) {
+    const raw = String(value ?? "").trim();
+    if (!raw || raw === "—") return "";
+
+    const plain = raw
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
+    const codeMatch = raw.toUpperCase().match(/\b([ABCD])\b/);
+    if (codeMatch && codeMatch[1]) return codeMatch[1];
+
+    if (plain === "1" || plain.includes("initial") || plain.includes("debut")) return "A";
+    if (plain === "2" || plain.includes("intermediaire")) return "B";
+    if (plain === "3" || plain.includes("avance")) return "C";
+    if (plain === "4" || plain.includes("expert")) return "D";
+    return "";
+  }
+
+  function skillLevelFromScore24(score24) {
+    const n = Number(score24);
+    if (!Number.isFinite(n)) return "";
+    if (n <= 6) return "A";
+    if (n <= 12) return "B";
+    if (n <= 18) return "C";
+    if (n <= 24) return "D";
+    return "D";
+  }
+
+  function skillLevelLabel(value) {
+    const k = normalizeSkillLevel(value);
+    return k && NOVOSKILL_LEVELS[k] ? NOVOSKILL_LEVELS[k].label : (String(value ?? "").trim() || "—");
+  }
+
+  function skillLevelRank(value) {
+    const k = normalizeSkillLevel(value);
+    return k && NOVOSKILL_LEVELS[k] ? NOVOSKILL_LEVELS[k].rank : 0;
+  }
+
+  function skillLevelClass(value) {
+    const k = normalizeSkillLevel(value);
+    return k && NOVOSKILL_LEVELS[k] ? NOVOSKILL_LEVELS[k].cls : "";
+  }
+
+  function _nsEscapeHtml(v) {
+    return String(v ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+  }
+
+  function skillLevelBadgeHtml(value, title) {
+    const k = normalizeSkillLevel(value);
+    const label = skillLevelLabel(value);
+    if (!k) return `<span class="sb-badge sb-badge-niv">${_nsEscapeHtml(label)}</span>`;
+    const cls = skillLevelClass(k);
+    const tt = title ? ` title="${_nsEscapeHtml(title)}"` : "";
+    return `<span class="sb-badge sb-badge-niv ${cls}"${tt}>${_nsEscapeHtml(label)}</span>`;
+  }
+
+  window.NovoskillLevels = Object.assign(window.NovoskillLevels || {}, {
+    levels: NOVOSKILL_LEVELS,
+    normalize: normalizeSkillLevel,
+    fromScore24: skillLevelFromScore24,
+    label: skillLevelLabel,
+    rank: skillLevelRank,
+    cssClass: skillLevelClass,
+    badgeHtml: skillLevelBadgeHtml
+  });
+
   // -----------------------------
   // API helper
   // -----------------------------

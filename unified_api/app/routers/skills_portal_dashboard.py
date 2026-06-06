@@ -329,18 +329,20 @@ def _compute_health(cur, id_ent: str, scope: DashboardScope, criticite_min: int)
         SELECT
             COALESCE(SUM(
                 CASE upper(trim(COALESCE(fpc.niveau_requis, '')))
-                    WHEN 'A' THEN 10
-                    WHEN 'B' THEN 19
-                    WHEN 'C' THEN 24
+                    WHEN 'A' THEN 6
+                    WHEN 'B' THEN 12
+                    WHEN 'C' THEN 18
+                    WHEN 'D' THEN 24
                     ELSE 0
                 END
             ), 0)::numeric AS max_score,
             COALESCE(SUM(LEAST(
                 COALESCE(a.resultat_eval, 0),
                 CASE upper(trim(COALESCE(fpc.niveau_requis, '')))
-                    WHEN 'A' THEN 10
-                    WHEN 'B' THEN 19
-                    WHEN 'C' THEN 24
+                    WHEN 'A' THEN 6
+                    WHEN 'B' THEN 12
+                    WHEN 'C' THEN 18
+                    WHEN 'D' THEN 24
                     ELSE 0
                 END
             )), 0)::numeric AS score,
@@ -555,6 +557,7 @@ def _fetch_postes_fragility_records_at(
                 WHEN 'A' THEN 1
                 WHEN 'B' THEN 2
                 WHEN 'C' THEN 3
+                WHEN 'D' THEN 4
                 ELSE 0
             END AS req_rank,
             CASE lower(trim(COALESCE(ec.niveau_actuel, '')))

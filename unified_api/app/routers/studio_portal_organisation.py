@@ -1698,19 +1698,13 @@ def _level_score(txt: Optional[str]) -> int:
 
 
 def _fix_abc_levels(data: dict) -> None:
-    a = data.get("niveaua") or ""
-    b = data.get("niveaub") or ""
-    c = data.get("niveauc") or ""
-    sa = _level_score(a)
-    sb = _level_score(b)
-    sc = _level_score(c)
-
-    if sa > sc:
-        levels = [("niveaua", a, sa), ("niveaub", b, sb), ("niveauc", c, sc)]
+    # Compat nom historique : ordonne désormais A/B/C/D du moins maîtrisé vers expert.
+    keys = ["niveaua", "niveaub", "niveauc", "niveaud"]
+    levels = [(k, data.get(k) or "", _level_score(data.get(k) or "")) for k in keys]
+    if levels[0][2] > levels[-1][2]:
         levels.sort(key=lambda x: x[2])
-        data["niveaua"] = levels[0][1]
-        data["niveaub"] = levels[1][1]
-        data["niveauc"] = levels[2][1]
+        for idx, k in enumerate(keys):
+            data[k] = levels[idx][1]
 
 def _norm_text_search(v: Optional[str]) -> str:
     s = _clean_text(v).lower()
@@ -2062,6 +2056,7 @@ def _load_owner_comp_catalog_rows(cur, oid: str) -> List[dict]:
           c.niveaua,
           c.niveaub,
           c.niveauc,
+          c.niveaud,
           c.grille_evaluation,
           dc.titre AS domaine_titre,
           dc.titre_court AS domaine_titre_court,
@@ -2649,7 +2644,7 @@ def _ai_pick_existing_competence_match(
         "Tu arbitres une correspondance entre une compétence nécessaire à un poste et des fiches compétences déjà présentes dans un catalogue RH. "
         "Tu dois choisir un match uniquement si c'est bien la MÊME compétence en substance. "
         "Tu ne te bases pas seulement sur les mots de l’intitulé. "
-        "Tu compares le contenu complet : description, niveaux A/B/C, grille d'évaluation, périmètre métier, contexte du poste. "
+        "Tu compares le contenu complet : description, niveaux A/B/C/D, grille d'évaluation, périmètre métier, contexte du poste. "
         "Si les candidats sont seulement proches lexicalement, sectoriellement voisins, ou trop spécifiques à un autre univers métier, tu réponds 'new'. "
         "Tu renvoies uniquement un JSON strict conforme au schéma."
     )
@@ -2816,7 +2811,7 @@ def _ai_draft_poste_comp_from_catalog_logic(
         "Intitulé : Générer avec l’intelligence artificielle des supports de communication adaptés.\n"
         "Description : compétence formulée par sa finalité métier, sans paraphrase du poste.\n"
         "Critères : Produire un support de communication avec l’IA ; Adapter le message au destinataire et au contexte ; Vérifier et améliorer la qualité du contenu produit par l’IA.\n"
-        "Niveaux A/B/C : phrases courtes, concrètes, progressives, du type « Sait générer… », « Sait personnaliser… », « Conçoit… transmet… ».\n\n"
+        "Niveaux A/B/C/D : phrases courtes, concrètes, progressives, du type « Sait générer… », « Sait personnaliser… », « Conçoit… transmet… ».\n\n"
 
         "EXEMPLE 2\n"
         "Intitulé : Construire un tableau de bord numérique assisté par IA pour faciliter le suivi et l’aide à la décision.\n"
@@ -2832,12 +2827,13 @@ def _ai_draft_poste_comp_from_catalog_logic(
     schema = {
         "type": "object",
         "additionalProperties": False,
-        "required": ["description", "niveaua", "niveaub", "niveauc", "grille_evaluation"],
+        "required": ["description", "niveaua", "niveaub", "niveauc", "niveaud", "grille_evaluation"],
         "properties": {
             "description": {"type": "string", "maxLength": 1200},
             "niveaua": {"type": "string", "maxLength": 230},
             "niveaub": {"type": "string", "maxLength": 230},
             "niveauc": {"type": "string", "maxLength": 230},
+            "niveaud": {"type": "string", "maxLength": 230},
             "grille_evaluation": {
                 "type": "object",
                 "additionalProperties": False,
@@ -2877,7 +2873,7 @@ def _ai_draft_poste_comp_from_catalog_logic(
         "'Contrôle et ajustement du résultat', "
         "'Mise en œuvre de la compétence' "
         "sauf si cela correspond littéralement et explicitement à la compétence, ce qui sera rare. "
-        "Tu n’écris pas des niveaux A/B/C ou des évaluations qui sont la même phrase avec deux mots changés. "
+        "Tu n’écris pas des niveaux A/B/C/D ou des évaluations qui sont la même phrase avec deux mots changés. "
         "Tu produis des critères réellement distincts, observables et utiles à un manager ou à un RH. "
         "Tu t’inspires du style des exemples fournis, sans recopier leur contenu. "
 
@@ -2927,7 +2923,7 @@ def _ai_draft_poste_comp_from_catalog_logic(
         "- Chaque critère doit nommer un axe métier concret, pas une étape générique passe-partout.\n"
         "- Chaque critère doit être distinct des autres.\n"
         "- Les 4 niveaux d’un critère doivent montrer une vraie progression observable.\n"
-        "- Niveaux A/B/C <= 230 caractères.\n"
+        "- Niveaux A/B/C/D <= 230 caractères.\n"
         "- Eval <= 120 caractères.\n"
         "- N’écris pas de phrases robotiques, mécaniques ou interchangeables.\n"
         "- Si l’intitulé est réutilisable, garde tout le contenu réutilisable et transverse.\n"
@@ -2956,7 +2952,7 @@ def _ai_draft_poste_comp_from_catalog_logic(
     if _bad_level(data.get("niveaua", "")) or _bad_level(data.get("niveaub", "")) or _bad_level(data.get("niveauc", "")):
         raise HTTPException(
             status_code=400,
-            detail="IA: niveaux A/B/C trop courts ou réduits à un label. Relance avec plus de contexte."
+            detail="IA: niveaux A/B/C/D trop courts ou réduits à un label. Relance avec plus de contexte."
         )
 
     # On garde la description existante si elle est déjà solide.
@@ -3084,12 +3080,12 @@ def _build_ai_comp_search_prompts(
             "L'intitulé d'une compétence doit commencer par un verbe d'action à l'infinitif et être réutilisable dans un référentiel RH. "
             "Quand une compétence du poste correspond à une compétence déjà présente dans le catalogue owner, tu reprends cette compétence existante telle quelle en renseignant existing_id_comp et existing_code exacts. "
             "Dans ce cas, tu privilégies aussi son intitulé canonique de catalogue plutôt qu'une reformulation locale. "
-            "Tu compares pour cela le contenu complet des compétences existantes: intitulé, description, niveaux A/B/C, grille d'évaluation, portée réelle de la compétence. "
+            "Tu compares pour cela le contenu complet des compétences existantes: intitulé, description, niveaux A/B/C/D, grille d'évaluation, portée réelle de la compétence. "
             "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
             "La description doit rester courte, utile et centrée sur le rôle réel de la compétence quand on la possède. Elle ne doit pas paraphraser le descriptif du poste. "
             "Les search_terms doivent aider le rapprochement avec le référentiel existant: "
             "prévois 2 à 4 formulations courtes orientées métier, avec si utile une formulation canonique, un objet métier, un livrable ou une variante terminologique utile. "
-            "Ne produis PAS la fiche compétence complète à ce stade: pas de niveaux A/B/C détaillés, pas de grille d'évaluation détaillée. "
+            "Ne produis PAS la fiche compétence complète à ce stade: pas de niveaux A/B/C/D détaillés, pas de grille d'évaluation détaillée. "
             "Tu peux proposer autant de compétences que nécessaire tant qu'elles sont réellement structurantes et non redondantes."
         )
 
@@ -5720,7 +5716,7 @@ class DuplicatePosteOrgPayload(BaseModel):
 
 class UpsertPosteCompetencePayload(BaseModel):
     id_competence: str
-    niveau_requis: str  # A/B/C
+    niveau_requis: str  # A/B/C/D
     freq_usage: Optional[int] = 0        # 0..10
     impact_resultat: Optional[int] = 0   # 0..10
     dependance: Optional[int] = 0        # 0..10
@@ -6448,7 +6444,7 @@ def studio_org_ai_comp_create(id_owner: str, payload: AiPosteCompetenceCreatePay
                     cur.execute(
                         """
                         INSERT INTO public.tbl_competence
-                          (id_comp, id_owner, code, intitule, description, domaine, niveaua, niveaub, niveauc, grille_evaluation, etat, masque, date_creation, date_modification)
+                          (id_comp, id_owner, code, intitule, description, domaine, niveaua, niveaub, niveauc, niveaud, grille_evaluation, etat, masque, date_creation, date_modification)
                         VALUES
                           (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, FALSE, NOW(), NOW())
                         """,
@@ -6560,6 +6556,7 @@ def studio_org_competence_fiche_pdf(
                       c.niveaua,
                       c.niveaub,
                       c.niveauc,
+                      c.niveaud,
                       c.grille_evaluation,
                       dc.titre_court AS domaine_titre_court,
                       dc.titre AS domaine_titre
@@ -6595,6 +6592,7 @@ def studio_org_competence_fiche_pdf(
             "niveaua": row.get("niveaua") or "",
             "niveaub": row.get("niveaub") or "",
             "niveauc": row.get("niveauc") or "",
+            "niveaud": row.get("niveaud") or "",
             "grille_evaluation": row.get("grille_evaluation"),
             "domaine": row.get("domaine") or "",
             "domaine_titre": (
@@ -7579,7 +7577,7 @@ def studio_org_create_poste(id_owner: str, payload: CreatePosteOrgPayload, reque
                        %s, %s, %s,
                        %s, %s,
                        TRUE, NOW(),
-                       %s, %s, %s, %s, %s, %s, %s, %s)
+                       %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         pid, oid, scope_ent, sid,
@@ -8002,7 +8000,7 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                        %s, %s, %s,
                        %s, %s,
                        TRUE, NOW(),
-                       %s, %s, %s, %s, %s, %s, %s, %s)
+                       %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         new_id,
@@ -8285,6 +8283,7 @@ def studio_org_list_poste_competences(id_owner: str, id_poste: str, request: Req
                       c.niveaua,
                       c.niveaub,
                       c.niveauc,
+                      c.niveaud,
 
                       pc.niveau_requis,
                       pc.poids_criticite,
@@ -8360,7 +8359,7 @@ def studio_org_upsert_poste_competence(id_owner: str, id_poste: str, payload: Up
         if not cid:
             raise HTTPException(status_code=400, detail="id_competence manquant.")
         if niv not in ("A", "B", "C"):
-            raise HTTPException(status_code=400, detail="niveau_requis invalide (A/B/C).")
+            raise HTTPException(status_code=400, detail="niveau_requis invalide (A/B/C/D).")
 
         fu = _clamp_0_10(payload.freq_usage or 0)
         im = _clamp_0_10(payload.impact_resultat or 0)

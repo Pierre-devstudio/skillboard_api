@@ -1575,8 +1575,8 @@
   }
 
   function levelFromCollabSkillEvalScore(score24){
-    if (score24 >= 6 && score24 <= 9) return 'Initial';
-    if (score24 >= 10 && score24 <= 18) return 'Avancé';
+    if (score24 >= 6 && score24 <= 9) return 'Débutant';
+    if (score24 >= 10 && score24 <= 18) return 'Intermédiaire';
     if (score24 >= 19 && score24 <= 24) return 'Expert';
     return '—';
   }

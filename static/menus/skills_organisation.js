@@ -874,6 +874,7 @@
     if (n === "A") return "sb-badge-niv-a";
     if (n === "B") return "sb-badge-niv-b";
     if (n === "C") return "sb-badge-niv-c";
+    if (n === "D") return "sb-badge-niv-d";
     return "";
   }
 

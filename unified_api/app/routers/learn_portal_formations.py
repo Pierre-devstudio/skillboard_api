@@ -362,6 +362,7 @@ def _resolve_competences(cur, oid: str, ids: list) -> list:
           c.niveaua,
           c.niveaub,
           c.niveauc,
+          c.niveaud,
           c.grille_evaluation,
           c.domaine,
           dc.titre_court AS domaine_titre_court,
@@ -1217,6 +1218,7 @@ def _fetch_import_catalogue(cur, oid: str) -> list:
           COALESCE(c.niveaua, '') AS niveaua,
           COALESCE(c.niveaub, '') AS niveaub,
           COALESCE(c.niveauc, '') AS niveauc,
+          COALESCE(c.niveaud, '') AS niveaud,
           c.domaine,
           dc.titre_court AS domaine_titre_court,
           dc.titre AS domaine_titre,
@@ -2472,12 +2474,12 @@ def learn_formation_create(id_effectif: str, payload: FormationPayload, request:
                       )
                     VALUES
                       (
-                        %s, %s, %s, %s,
-                        %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s,
                         %s, %s, %s,
                         %s::jsonb, %s::jsonb, %s::jsonb,
                         %s::jsonb, %s::jsonb,
-                        %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s,
                         FALSE, FALSE, NOW(), NOW()
                       )
                     """,
@@ -4213,6 +4215,7 @@ def _lms_competences_signature(form: dict) -> str:
             "niveaua": comp.get("niveaua") or "",
             "niveaub": comp.get("niveaub") or "",
             "niveauc": comp.get("niveauc") or "",
+            "niveaud": comp.get("niveaud") or "",
             "grille_evaluation": comp.get("grille_evaluation") or None,
             "domaine": comp.get("domaine") or "",
             "domaine_titre_court": comp.get("domaine_titre_court") or "",
@@ -4758,7 +4761,7 @@ def learn_formation_plan_create(
                     VALUES
                       (
                         %s, %s, %s,
-                        %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s,
                         FALSE,
                         NOW(),
                         NOW()

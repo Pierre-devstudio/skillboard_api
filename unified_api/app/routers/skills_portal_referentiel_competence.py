@@ -78,6 +78,7 @@ class CompetenceDetail(BaseModel):
     niveaua: Optional[str] = None
     niveaub: Optional[str] = None
     niveauc: Optional[str] = None
+    niveaud: Optional[str] = None
     grille_evaluation: Optional[Dict[str, Any]] = None
     date_creation: Optional[str] = None
     date_modification: Optional[str] = None

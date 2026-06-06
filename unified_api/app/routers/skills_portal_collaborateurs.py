@@ -1601,6 +1601,7 @@ def get_collaborateur_competence_fiche_pdf(id_contact: str, id_effectif: str, id
             "niveaua": row.get("niveaua") or "",
             "niveaub": row.get("niveaub") or "",
             "niveauc": row.get("niveauc") or "",
+            "niveaud": row.get("niveaud") or "",
             "grille_evaluation": row.get("grille_evaluation"),
             "domaine": row.get("domaine") or "",
             "domaine_titre": (
