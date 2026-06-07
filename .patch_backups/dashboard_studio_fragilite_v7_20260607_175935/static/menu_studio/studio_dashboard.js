@@ -32,7 +32,7 @@
     },
     fragilite: {
       title: "Indice de fragilité des services/postes",
-      body: "Classement du plus fragile au moins fragile. La hauteur donne l’indice, l’intensité de la couleur augmente avec le niveau de fragilité."
+      body: "Histogramme classé du plus fragile au moins fragile. La hauteur indique l’indice et l’opacité renforce visuellement le niveau de fragilité."
     },
     linked: {
       title: "Sites / clients à surveiller",
@@ -213,76 +213,23 @@
   }
 
   function renderRiskBars(items){
-    const headerRight = document.querySelector("#view-dashboard.studio-dash .studio-dash-card-head--risk .studio-dash-head-right");
-    if (headerRight){
-      headerRight.innerHTML = `<button type="button" class="studio-dash-help sb-dash-round-btn" data-help="fragilite" aria-label="Explication indice de fragilité">?</button>`;
-    }
-
     const el = byId("studioDashRiskBars");
     if (!el) return;
-
-    const riskValue = (row) => {
-      const candidates = [
-        row?.risk_pct,
-        row?.indice_fragilite,
-        row?.score_fragilite,
-        row?.fragilite_pct,
-        row?.fragilite,
-        row?.pct,
-        row?.valeur
-      ];
-      for (const raw of candidates){
-        if (raw === null || raw === undefined || raw === "") continue;
-        const parsed = Number(String(raw).replace("%", "").replace(",", ".").trim());
-        if (Number.isFinite(parsed)) return clamp(parsed, 0, 100);
-      }
-      return 0;
-    };
-
-    const riskLabel = (row) => (
-      row?.label ||
-      row?.nom_service ||
-      row?.service ||
-      row?.nom_poste ||
-      row?.intitule_poste ||
-      row?.poste ||
-      row?.nom ||
-      row?.libelle ||
-      "Élément"
-    );
-
     const rows = Array.isArray(items)
-      ? items
-          .map((row, index) => ({ row, index, value: riskValue(row), label: riskLabel(row) }))
-          .sort((a, b) => (b.value - a.value) || String(a.label).localeCompare(String(b.label), "fr", { sensitivity: "base" }) || (a.index - b.index))
-          .slice(0, 120)
+      ? items.slice().sort((a, b) => n(b.risk_pct) - n(a.risk_pct)).slice(0, 120)
       : [];
-
     if (!rows.length){
       el.innerHTML = `<div class="studio-dash-empty">Aucun indice de fragilité.</div>`;
       return;
     }
-
-    el.innerHTML = rows.map(({ row, value, label }) => {
-      const val = clamp(value, 0, 100);
-      const cleanLabel = esc(label);
-      const idService = row?.id_service ? esc(row.id_service) : "";
+    el.innerHTML = rows.map(r => {
+      const val = Math.max(0, Math.min(100, n(r.risk_pct)));
+      const label = esc(r.label || r.nom_service || r.intitule_poste || "Élément");
+      const idService = r.id_service ? esc(r.id_service) : "";
       const attrs = idService ? `data-service="${idService}"` : "";
-      const alpha = (val / 100).toFixed(2);
-      const shadowAlpha = Math.min(0.22, Math.max(0, val / 100 * 0.22)).toFixed(2);
-      const height = val <= 0 ? 0 : Math.max(3, Math.round(val));
-      const rounded = Math.round(val);
-      const title = `${cleanLabel} : ${rounded}%`;
-
-      return `<button type="button" class="studio-dash-risk-bar" ${attrs} title="${title}" style="--studio-fragility-alpha:${alpha};--studio-fragility-height:${height}%;--studio-fragility-shadow:${shadowAlpha}">
-        <span class="studio-dash-risk-bar-value">${rounded}%</span>
-        <span class="studio-dash-risk-bar-track">
-          <span class="studio-dash-risk-bar-fill" style="height:var(--studio-fragility-height);background:rgba(209,51,188,${alpha}) !important;box-shadow:0 7px 16px rgba(209,51,188,${shadowAlpha}) !important;opacity:1 !important"></span>
-        </span>
-        <span class="studio-dash-risk-bar-label">${cleanLabel}</span>
-      </button>`;
+      const opacity = (val / 100).toFixed(2);
+      return `<button type="button" class="studio-dash-risk-bar" ${attrs} title="${label} : ${Math.round(val)}%"><span class="studio-dash-risk-bar-value">${Math.round(val)}%</span><span class="studio-dash-risk-bar-track"><span class="studio-dash-risk-bar-fill" style="height:${Math.max(4, Math.round(val))}%;opacity:${opacity}"></span></span><span class="studio-dash-risk-bar-label">${label}</span></button>`;
     }).join("");
-
     el.querySelectorAll("[data-service]").forEach(btn => btn.addEventListener("click", () => setServiceFilter(btn.dataset.service || "")));
   }
 

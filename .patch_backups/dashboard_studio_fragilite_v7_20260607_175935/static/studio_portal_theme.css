@@ -3020,39 +3020,3 @@
   color: rgb(226, 114, 9) !important;
 }
 
-/* Patch dashboard Studio fragilité v7 : lecture unique par indice, sans statuts visuels. */
-#view-dashboard.studio-dash .studio-dash-card-head--risk .studio-dash-head-right{
-  font-size:0 !important;
-}
-#view-dashboard.studio-dash .studio-dash-card-head--risk .studio-dash-head-right > :not(.studio-dash-help){
-  display:none !important;
-}
-#view-dashboard.studio-dash .studio-dash-card-head--risk .studio-dash-head-right .studio-dot,
-#view-dashboard.studio-dash .studio-dash-card-head--risk .studio-dash-head-right #studioDashNbDanger,
-#view-dashboard.studio-dash .studio-dash-card-head--risk .studio-dash-head-right #studioDashNbWatch,
-#view-dashboard.studio-dash .studio-dash-card-head--risk .studio-dash-head-right #studioDashNbStable,
-#view-dashboard.studio-dash .studio-dash-card-head--risk .studio-dash-head-right .studio-dash-badge,
-#view-dashboard.studio-dash .studio-dash-card-head--risk .studio-dash-head-right .studio-dash-count,
-#view-dashboard.studio-dash .studio-dash-card-head--risk .studio-dash-head-right span{
-  display:none !important;
-}
-#view-dashboard.studio-dash .studio-dash-card-head--risk .studio-dash-head-right .studio-dash-help{
-  display:inline-flex !important;
-  font-size:12px !important;
-}
-#view-dashboard.studio-dash .studio-dash-risk-bar,
-#view-dashboard.studio-dash .studio-dash-risk-bar.is-danger,
-#view-dashboard.studio-dash .studio-dash-risk-bar.is-watch,
-#view-dashboard.studio-dash .studio-dash-risk-bar.is-stable{
-  border:0 !important;
-  background:transparent !important;
-  box-shadow:none !important;
-}
-#view-dashboard.studio-dash .studio-dash-risk-bar-fill,
-#view-dashboard.studio-dash .studio-dash-risk-bar.is-danger .studio-dash-risk-bar-fill,
-#view-dashboard.studio-dash .studio-dash-risk-bar.is-watch .studio-dash-risk-bar-fill,
-#view-dashboard.studio-dash .studio-dash-risk-bar.is-stable .studio-dash-risk-bar-fill{
-  background:rgba(209,51,188,var(--studio-fragility-alpha,1)) !important;
-  opacity:1 !important;
-}
-
