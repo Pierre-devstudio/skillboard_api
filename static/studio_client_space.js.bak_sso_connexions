@@ -23,7 +23,6 @@
   let _collabWorkspaceScriptPromise = null;
   let _clientLogoMeta = { has_logo: false };
   let _clientLogoBlobUrl = null;
-  let _initialConnexion = null;
   let _evaluationWorkspaceReady = false;
   let _evaluationWorkspaceLoadingPromise = null;
   let _evaluationWorkspaceScriptPromise = null;
@@ -187,94 +186,6 @@
   function isStudioAdmin(){
     const r = (window.__studioRoleCode || "user").toString().trim().toLowerCase();
     return r === "admin";
-  }
-
-
-  function ssoStatusLabel(status) {
-    const s = (status || "desactive").toString().trim().toLowerCase();
-    if (s === "actif") return "SSO actif";
-    if (s === "configuration") return "SSO en configuration";
-    if (s === "a_tester") return "SSO à tester";
-    if (s === "erreur") return "Erreur SSO";
-    return "Standard Novoskill";
-  }
-  function setSsoStatus(elId, status) {
-    const el = byId(elId); if (!el) return;
-    const s = (status || "desactive").toString().trim().toLowerCase();
-    el.dataset.status = s; el.textContent = ssoStatusLabel(s);
-  }
-  function setCheckboxValueById(id, value) { const el = byId(id); if (el) el.checked = !!value; }
-  function getCheckboxValueById(id) { return !!byId(id)?.checked; }
-  function renderClientConnexion(cfg) {
-    const c = cfg || {}; _initialConnexion = { ...c };
-    setSsoStatus("ficheSsoStatus", c.sso_statut || "desactive");
-    setCheckboxValueById("ficheSsoEnabled", c.sso_enabled);
-    setCheckboxValueById("ficheSsoPasswordAllowed", c.password_allowed !== false);
-    setCheckboxValueById("ficheSsoMandatory", c.sso_obligatoire);
-    setInputValue("ficheSsoDomain", c.domaine_autorise);
-    setInputValue("ficheSsoProviderId", c.provider_id_supabase);
-    setInputValue("ficheSsoMetadataUrl", c.metadata_url);
-    setInputValue("ficheSsoEmailAttr", c.attribut_email || "email");
-    setInputValue("ficheSsoMetadataXml", c.metadata_xml);
-    const hint = byId("ficheSsoSchemaHint");
-    if (hint) {
-      if (c.schema_ready === false) hint.textContent = "Table SSO non installée : exécuter PATCH_SQL_SSO_CONNEXIONS.sql avant enregistrement.";
-      else if (c.test_message) hint.textContent = c.test_message;
-      else hint.textContent = "Le SSO authentifie l’utilisateur. Les droits Novoskill restent gérés dans les accès.";
-    }
-  }
-  function readConnexionPayload() {
-    const mandatory = getCheckboxValueById("ficheSsoMandatory");
-    return {
-      sso_enabled: getCheckboxValueById("ficheSsoEnabled"), domaine_autorise: inputValue("ficheSsoDomain") || null,
-      type_sso: "saml_2_0", metadata_url: inputValue("ficheSsoMetadataUrl") || null, metadata_xml: inputValue("ficheSsoMetadataXml") || null,
-      provider_id_supabase: inputValue("ficheSsoProviderId") || null, attribut_email: inputValue("ficheSsoEmailAttr") || "email",
-      password_allowed: mandatory ? false : getCheckboxValueById("ficheSsoPasswordAllowed"), sso_obligatoire: mandatory,
-    };
-  }
-  function sameConnexionPayload(a, b) {
-    const keys = ["sso_enabled", "domaine_autorise", "type_sso", "metadata_url", "metadata_xml", "provider_id_supabase", "attribut_email", "password_allowed", "sso_obligatoire"];
-    return keys.every(k => String((a && a[k]) ?? "") === String((b && b[k]) ?? ""));
-  }
-  async function loadClientConnexion(token) {
-    const ownerId = getOwnerId(); const clientId = getClientId();
-    if (!ownerId || !clientId || !token) return null;
-    try { return await apiJson(`${API_BASE}/studio/connexions/client/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}`, token); }
-    catch (e) { return { schema_ready: false, sso_statut: "desactive", test_message: e?.message || "Configuration SSO indisponible." }; }
-  }
-  async function saveClientConnexionIfChanged(token) {
-    const ownerId = getOwnerId(); const clientId = getClientId();
-    if (!ownerId || !clientId || !token) return null;
-    const payload = readConnexionPayload();
-    const initial = _initialConnexion || {};
-    const normalizedInitial = {
-      sso_enabled: !!initial.sso_enabled, domaine_autorise: initial.domaine_autorise || null, type_sso: initial.type_sso || "saml_2_0",
-      metadata_url: initial.metadata_url || null, metadata_xml: initial.metadata_xml || null, provider_id_supabase: initial.provider_id_supabase || null,
-      attribut_email: initial.attribut_email || "email", password_allowed: initial.password_allowed !== false, sso_obligatoire: !!initial.sso_obligatoire,
-    };
-    if (sameConnexionPayload(payload, normalizedInitial)) return initial;
-    const saved = await apiJson(`${API_BASE}/studio/connexions/client/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}`, token, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    renderClientConnexion(saved || {});
-    return saved;
-  }
-  async function testClientConnexion() {
-    const ownerId = getOwnerId(); const clientId = getClientId(); const token = await getStudioAccessToken();
-    const btn = byId("btnFicheTestConnexion"); const old = btn ? btn.textContent : "";
-    if (!ownerId || !clientId || !token) return;
-    try {
-      if (btn) { btn.disabled = true; btn.textContent = "Test..."; }
-      await saveClientConnexionIfChanged(token);
-      const data = await apiJson(`${API_BASE}/studio/connexions/client/${encodeURIComponent(ownerId)}/${encodeURIComponent(clientId)}/test`, token, { method: "POST" });
-      renderClientConnexion(data || {}); setMessage("");
-    } catch (e) { setMessage(e?.message || "Erreur lors du test de configuration SSO."); }
-    finally { if (btn) { btn.disabled = false; btn.textContent = old || "Tester la configuration"; } }
-  }
-  function bindSsoHelpButtons() {
-    document.querySelectorAll(".sb-help-dot[data-help]").forEach(btn => {
-      if (btn.dataset.boundHelp === "1") return;
-      btn.dataset.boundHelp = "1";
-      btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); window.alert(btn.dataset.help || "Aide indisponible."); });
-    });
   }
 
   function formatLogoBytes(bytes){
@@ -2963,7 +2874,6 @@ function bindPostalAssist(){
     syncStructureProfileUi();
     queuePostalLookupFromCurrentValues();
     renderClientLogo(_clientLogoMeta).catch(() => {});
-    renderClientConnexion(_initialConnexion || {});
   }
 
   function readFichePayload(){
@@ -3050,7 +2960,7 @@ function bindPostalAssist(){
   function setFicheEditMode(enabled){
       _ficheEditMode = !!enabled;
 
-      const controls = document.querySelectorAll(".cs-form-ctrl, .cs-connexion-ctrl, #ficheGroupOk, #ficheTeteGroupe");
+      const controls = document.querySelectorAll(".cs-form-ctrl, #ficheGroupOk, #ficheTeteGroupe");
       controls.forEach(el => {
           el.disabled = !_ficheEditMode;
       });
@@ -3273,12 +3183,6 @@ function bindPostalAssist(){
       await loadPublicCompanyIntoForm("fiche");
     });
 
-
-    bindSsoHelpButtons();
-    byId("btnFicheTestConnexion")?.addEventListener("click", async () => {
-      await testClientConnexion();
-    });
-
     byId("ficheProfilStructurel")?.addEventListener("change", syncStructureProfileUi);
     byId("ficheGroupOk")?.addEventListener("change", syncStructureProfileUi);
 
@@ -3341,8 +3245,6 @@ function bindPostalAssist(){
       loadOpcoOptions(),
       loadClientLogoMeta(token),
     ]);
-
-    _initialConnexion = await loadClientConnexion(token);
 
     _detail = detail || {};
     _summary = clientsData?.summary || {};

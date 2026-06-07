@@ -4,8 +4,6 @@
 
   let _initialOrg = null;
   let _initialContact = null;
-  let _initialConnexion = null;
-  let _connexionLoaded = false;
   let _refOpco = null;
   let _entLogoBlobUrl = null;
   const _saveSuccessTimers = {};
@@ -344,114 +342,6 @@
     return digits.slice(0, 2) + "." + digits.slice(2);
   }
 
-
-  function ssoStatusLabel(status) {
-    const s = (status || "desactive").toString().trim().toLowerCase();
-    if (s === "actif") return "SSO actif";
-    if (s === "configuration") return "SSO en configuration";
-    if (s === "a_tester") return "SSO à tester";
-    if (s === "erreur") return "Erreur SSO";
-    return "Standard Novoskill";
-  }
-  function setSsoStatus(elId, status) {
-    const el = document.getElementById(elId);
-    if (!el) return;
-    const s = (status || "desactive").toString().trim().toLowerCase();
-    el.dataset.status = s;
-    el.textContent = ssoStatusLabel(s);
-  }
-  function setCheckbox(id, value) { const el = document.getElementById(id); if (el) el.checked = !!value; }
-  function checkboxValue(id) { return !!document.getElementById(id)?.checked; }
-  function renderOwnerConnexion(cfg) {
-    const c = cfg || {};
-    _initialConnexion = { ...c };
-    setSsoStatus("ownerSsoStatus", c.sso_statut || "desactive");
-    setCheckbox("ownerSsoEnabled", c.sso_enabled);
-    setCheckbox("ownerSsoPasswordAllowed", c.password_allowed !== false);
-    setCheckbox("ownerSsoMandatory", c.sso_obligatoire);
-    setValueOrEmpty("ownerSsoDomain", c.domaine_autorise);
-    setValueOrEmpty("ownerSsoProviderId", c.provider_id_supabase);
-    setValueOrEmpty("ownerSsoMetadataUrl", c.metadata_url);
-    setValueOrEmpty("ownerSsoEmailAttr", c.attribut_email || "email");
-    const xml = document.getElementById("ownerSsoMetadataXml");
-    if (xml) xml.value = c.metadata_xml || "";
-    const hint = document.getElementById("ownerSsoSchemaHint");
-    if (hint) {
-      if (c.schema_ready === false) hint.textContent = "Table SSO non installée : exécuter PATCH_SQL_SSO_CONNEXIONS.sql avant enregistrement.";
-      else if (c.test_message) hint.textContent = c.test_message;
-      else hint.textContent = "Le SSO complète la connexion Novoskill. Les droits restent gérés dans les accès utilisateurs.";
-    }
-  }
-  function collectOwnerConnexionFromUI() {
-    const mandatory = checkboxValue("ownerSsoMandatory");
-    return {
-      sso_enabled: checkboxValue("ownerSsoEnabled"),
-      domaine_autorise: normalizeValue(document.getElementById("ownerSsoDomain")?.value),
-      type_sso: "saml_2_0",
-      metadata_url: normalizeValue(document.getElementById("ownerSsoMetadataUrl")?.value),
-      metadata_xml: normalizeValue(document.getElementById("ownerSsoMetadataXml")?.value),
-      provider_id_supabase: normalizeValue(document.getElementById("ownerSsoProviderId")?.value),
-      attribut_email: normalizeValue(document.getElementById("ownerSsoEmailAttr")?.value) || "email",
-      password_allowed: mandatory ? false : checkboxValue("ownerSsoPasswordAllowed"),
-      sso_obligatoire: mandatory,
-    };
-  }
-  function setConnexionEditMode(isEdit) {
-    const admin = isAdmin();
-    if (isEdit) hideSaveSuccess("connexionSaveSuccess");
-    const card = document.getElementById("cardConnexions");
-    if (card) card.style.display = admin ? "" : "none";
-    document.querySelectorAll("[data-editable-sso='1']").forEach(el => { el.disabled = !(admin && isEdit); });
-    const b1 = document.getElementById("btnEditConnexion");
-    const b2 = document.getElementById("btnSaveConnexion");
-    const b3 = document.getElementById("btnCancelConnexion");
-    const bt = document.getElementById("btnTestConnexion");
-    if (b1) b1.style.display = (!admin || isEdit) ? "none" : "inline-flex";
-    if (b2) b2.style.display = (admin && isEdit) ? "inline-flex" : "none";
-    if (b3) b3.style.display = (admin && isEdit) ? "inline-flex" : "none";
-    if (bt) bt.style.display = admin ? "inline-flex" : "none";
-  }
-  async function loadConnexion(portal) {
-    const ownerId = getOwnerId();
-    if (!ownerId || !portal) return;
-    try {
-      const cfg = await portal.apiJson(`${portal.apiBase}/studio/connexions/owner/${encodeURIComponent(ownerId)}`);
-      renderOwnerConnexion(cfg || {});
-      _connexionLoaded = true;
-    } catch (e) {
-      renderOwnerConnexion({ schema_ready: false, sso_statut: "desactive", test_message: e.message || "Configuration SSO indisponible." });
-    }
-    setConnexionEditMode(false);
-  }
-  async function saveConnexion(portal) {
-    const ownerId = getOwnerId();
-    const payload = collectOwnerConnexionFromUI();
-    const data = await portal.apiJson(`${portal.apiBase}/studio/connexions/owner/${encodeURIComponent(ownerId)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    renderOwnerConnexion(data || {});
-    setConnexionEditMode(false);
-    showSaveSuccess("connexionSaveSuccess");
-  }
-  async function testConnexion(portal) {
-    const ownerId = getOwnerId();
-    if (!ownerId) return;
-    const bt = document.getElementById("btnTestConnexion");
-    const old = bt ? bt.textContent : "";
-    try {
-      if (bt) { bt.disabled = true; bt.textContent = "Test..."; }
-      const data = await portal.apiJson(`${portal.apiBase}/studio/connexions/owner/${encodeURIComponent(ownerId)}/test`, { method: "POST" });
-      renderOwnerConnexion(data || {});
-      portal.showAlert("success", "Configuration SSO vérifiée.");
-    } catch (e) { portal.showAlert("error", e.message || String(e)); }
-    finally { if (bt) { bt.disabled = false; bt.textContent = old || "Tester la configuration"; } }
-  }
-  function bindSsoHelpButtons() {
-    document.querySelectorAll(".sb-help-dot[data-help]").forEach(btn => {
-      if (btn.dataset.boundHelp === "1") return;
-      btn.dataset.boundHelp = "1";
-      btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); window.alert(btn.dataset.help || "Aide indisponible."); });
-    });
-  }
-
   function setEntrepriseEditMode(isEdit) {
     const admin = isAdmin();
 
@@ -598,7 +488,6 @@
 
     renderEntreprise(org);
     renderContact(ct);
-    await loadConnexion(portal);
 
     setEntrepriseEditMode(false);
     setContactEditMode(false);
@@ -742,25 +631,6 @@
   function bindOnce(portal) {
     if (_bound) return;
     _bound = true;
-
-
-
-    const btnEditConnexion = document.getElementById("btnEditConnexion");
-    const btnSaveConnexion = document.getElementById("btnSaveConnexion");
-    const btnCancelConnexion = document.getElementById("btnCancelConnexion");
-    const btnTestConnexion = document.getElementById("btnTestConnexion");
-    bindSsoHelpButtons();
-    setConnexionEditMode(false);
-    btnEditConnexion?.addEventListener("click", async () => {
-      try { if (!isAdmin()) return; if (!_connexionLoaded) await loadConnexion(portal); portal.showAlert("", ""); setConnexionEditMode(true); }
-      catch (e) { portal.showAlert("error", e.message || String(e)); }
-    });
-    btnCancelConnexion?.addEventListener("click", () => { renderOwnerConnexion(_initialConnexion || {}); setConnexionEditMode(false); portal.showAlert("", ""); });
-    btnSaveConnexion?.addEventListener("click", async () => {
-      try { await saveConnexion(portal); portal.showAlert("", ""); }
-      catch (e) { portal.showAlert("error", "Erreur enregistrement connexions : " + (e.message || e)); }
-    });
-    btnTestConnexion?.addEventListener("click", async () => { await testConnexion(portal); });
 
     // Entreprise: admin only (UX). L'API est déjà sécurisée en 403.
     const btnEditEnt = document.getElementById("btnEditEntreprise");

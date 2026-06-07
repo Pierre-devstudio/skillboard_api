@@ -580,25 +580,3 @@ textarea:focus {
   color: rgb(226, 114, 9) !important;
 }
 
-/* ======================================================
-   Novoskill - Connexions / SSO entreprise
-   ====================================================== */
-.sb-label-help{ display:flex; align-items:center; gap:6px; }
-.sb-help-dot{
-  width:20px; height:20px; border-radius:999px;
-  border:1px solid rgba(17,24,39,.16); background:#fff; color:#374151;
-  display:inline-flex; align-items:center; justify-content:center;
-  font-size:12px; font-weight:800; line-height:1; cursor:pointer; padding:0;
-}
-.sb-help-dot:hover{ border-color:rgba(17,24,39,.32); background:#f9fafb; }
-.sb-connexion-status{
-  display:inline-flex; align-items:center; gap:6px; border-radius:999px;
-  padding:5px 10px; font-size:12px; font-weight:700;
-  border:1px solid rgba(17,24,39,.10); background:#f9fafb; color:#374151;
-}
-.sb-connexion-status[data-status="actif"]{ background:#ecfdf3; border-color:rgba(22,163,74,.20); color:#166534; }
-.sb-connexion-status[data-status="configuration"], .sb-connexion-status[data-status="a_tester"]{ background:#fff7ed; border-color:rgba(234,88,12,.22); color:#9a3412; }
-.sb-connexion-status[data-status="erreur"]{ background:#fef2f2; border-color:rgba(180,35,24,.22); color:#991b1b; }
-.sb-connexion-mini{ color:#6b7280; font-size:12px; line-height:1.4; }
-.sb-connexion-technical{ min-height:76px; resize:vertical; font-family:Consolas, Monaco, monospace; font-size:12px; }
-

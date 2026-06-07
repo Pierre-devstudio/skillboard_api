@@ -118,43 +118,6 @@
     </div>
   </div>
 
-
-  <!-- CONNEXIONS -->
-  <div class="card" id="cardConnexions" style="display:none;">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
-      <div>
-        <div class="card-title" style="margin-bottom:2px;">Connexions</div>
-        <div class="card-sub" style="margin:0;">Mode de connexion des utilisateurs de votre structure.</div>
-      </div>
-      <div class="sb-actions">
-        <span class="sb-save-success" id="connexionSaveSuccess" aria-live="polite"></span>
-        <span class="sb-connexion-status" id="ownerSsoStatus" data-status="desactive">Standard Novoskill</span>
-        <button type="button" class="sb-btn sb-btn--accent" id="btnEditConnexion">Modifier</button>
-        <button type="button" class="sb-btn sb-btn--accent" id="btnSaveConnexion" style="display:none;">Enregistrer</button>
-        <button type="button" class="sb-btn sb-btn--soft" id="btnCancelConnexion" style="display:none;">Annuler</button>
-      </div>
-    </div>
-    <div class="sb-connexion-mini" id="ownerSsoSchemaHint" style="margin-top:10px;"></div>
-    <div class="row" style="margin-top:14px;">
-      <label class="sb-check" style="min-width:260px;"><input type="checkbox" id="ownerSsoEnabled" data-editable-sso="1" /><span class="sb-label-help">Activer le SSO entreprise <button type="button" class="sb-help-dot" data-help="Active cette option uniquement si l’entreprise souhaite utiliser son propre système d’authentification. Le SSO devient actif après paramétrage complet et test validé.">?</button></span></label>
-      <label class="sb-check" style="min-width:260px;"><input type="checkbox" id="ownerSsoPasswordAllowed" data-editable-sso="1" /><span class="sb-label-help">Mot de passe autorisé <button type="button" class="sb-help-dot" data-help="Conserve la connexion classique Novoskill en complément du SSO. À garder pendant la mise en place ou la transition.">?</button></span></label>
-      <label class="sb-check" style="min-width:260px;"><input type="checkbox" id="ownerSsoMandatory" data-editable-sso="1" /><span class="sb-label-help">SSO obligatoire <button type="button" class="sb-help-dot" data-help="Force les utilisateurs concernés à passer par le SSO entreprise. À activer seulement après validation avec le client ou le service informatique.">?</button></span></label>
-    </div>
-    <div class="row">
-      <div class="info-item" style="min-width:220px;"><div class="label sb-label-help">Domaine autorisé <button type="button" class="sb-help-dot" data-help="Domaine email de l’entreprise, par exemple entreprise.fr. Il sert à orienter l’utilisateur vers le bon SSO.">?</button></div><input type="text" id="ownerSsoDomain" data-editable-sso="1" placeholder="entreprise.fr" /></div>
-      <div class="info-item" style="min-width:180px;"><div class="label sb-label-help">Type SSO <button type="button" class="sb-help-dot" data-help="Novoskill prépare le raccordement SSO entreprise avec le standard SAML 2.0.">?</button></div><input type="text" id="ownerSsoType" value="SAML 2.0" disabled /></div>
-      <div class="info-item" style="min-width:260px;"><div class="label sb-label-help">Provider ID Supabase <button type="button" class="sb-help-dot" data-help="Identifiant généré dans Supabase après l’enregistrement du fournisseur SSO. Il permet de cibler le bon fournisseur.">?</button></div><input type="text" id="ownerSsoProviderId" data-editable-sso="1" /></div>
-    </div>
-    <div class="row">
-      <div class="info-item" style="flex:1 1 320px;"><div class="label sb-label-help">Metadata URL <button type="button" class="sb-help-dot" data-help="URL fournie par le service informatique. Elle contient la configuration SAML du fournisseur d’identité. À privilégier si disponible.">?</button></div><input type="text" id="ownerSsoMetadataUrl" data-editable-sso="1" placeholder="https://..." /></div>
-      <div class="info-item" style="min-width:220px;"><div class="label sb-label-help">Attribut email <button type="button" class="sb-help-dot" data-help="Nom du champ transmis par le SSO qui contient l’email utilisateur. Valeurs fréquentes : email, mail, emailaddress.">?</button></div><input type="text" id="ownerSsoEmailAttr" data-editable-sso="1" placeholder="email" /></div>
-    </div>
-    <div class="row">
-      <div class="info-item" style="flex:1 1 100%;"><div class="label sb-label-help">Metadata XML <button type="button" class="sb-help-dot" data-help="À utiliser si le service informatique ne fournit pas de Metadata URL. Coller ici le XML de configuration SAML.">?</button></div><textarea id="ownerSsoMetadataXml" class="sb-connexion-technical" data-editable-sso="1"></textarea></div>
-    </div>
-    <div class="sb-actions" style="justify-content:flex-end; margin-top:10px;"><button type="button" class="sb-btn sb-btn--secondary" id="btnTestConnexion">Tester la configuration</button></div>
-  </div>
-
   <!-- CONTACT -->
   <div class="card" id="cardContact">
     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">

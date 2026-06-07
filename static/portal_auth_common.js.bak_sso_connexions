@@ -195,26 +195,6 @@
 
   }
 
-
-  async function signInWithEnterpriseSSO(options) {
-    const client = getClient();
-    const o = options || {};
-    const domain = (o.domain || "").toString().trim().toLowerCase();
-    const providerId = (o.providerId || "").toString().trim();
-    const redirectTo = (o.redirectTo || "").toString().trim();
-
-    const payload = {};
-    if (providerId) payload.providerId = providerId;
-    else if (domain) payload.domain = domain;
-    else throw new Error("Configuration SSO incomplète: domaine ou providerId obligatoire.");
-
-    if (redirectTo) payload.options = { redirectTo };
-
-    const { data, error } = await client.auth.signInWithSSO(payload);
-    if (error) throw new Error(error.message || "Connexion SSO impossible.");
-    return data || {};
-  }
-
   async function signOut() {
     const client = getClient();
     await client.auth.signOut();
@@ -299,7 +279,6 @@
   AuthCommon.clearContactId = clearContactId;
 
   AuthCommon.signInWithPassword = signInWithPassword;
-  AuthCommon.signInWithEnterpriseSSO = signInWithEnterpriseSSO;
   AuthCommon.signOut = signOut;
   AuthCommon.getSession = getSession;
   AuthCommon.ensureContactIdFromSession = ensureContactIdFromSession;
