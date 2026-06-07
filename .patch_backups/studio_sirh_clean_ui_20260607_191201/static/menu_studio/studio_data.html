@@ -227,16 +227,22 @@
       <div>
         <div class="card-title" style="margin-bottom:2px;">Connexion SIRH / Paie</div>
         <div class="card-sub" style="margin:0;">
-          Sélectionnez le connecteur SIRH/paie et renseignez les identifiants fournis.
+          Préparez le raccordement à votre outil RH ou paie. Aucune synchronisation n’est lancée depuis cette carte.
         </div>
       </div>
       <div class="sb-actions">
         <span class="sb-save-success" id="sirhSaveSuccess" aria-live="polite"></span>
+        <span class="sb-badge sb-badge--state" id="sirhConfigBadge">Non configuré</span>
         <button type="button" class="sb-btn sb-btn--accent" id="btnEditSirh">Modifier</button>
         <button type="button" class="sb-btn sb-btn--accent" id="btnSaveSirh" style="display:none;">Enregistrer</button>
         <button type="button" class="sb-btn sb-btn--soft" id="btnCancelSirh" style="display:none;">Annuler</button>
       </div>
     </div>
+
+    <div class="sd-sirh-intro" id="sirhIntroText">
+      Cette zone sert à stocker le connecteur choisi et les identifiants nécessaires. Le développement de la passerelle de récupération restera isolé dans le module du connecteur.
+    </div>
+
     <div class="sd-sirh-grid">
       <div class="info-item">
         <div class="label">Connecteur</div>

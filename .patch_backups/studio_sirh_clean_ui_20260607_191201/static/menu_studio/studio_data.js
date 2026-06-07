@@ -462,6 +462,19 @@
     document.querySelectorAll(".sd-sirh-provider-field").forEach(el => {
       el.style.display = hasProvider ? "" : "none";
     });
+
+    const badge = document.getElementById("sirhConfigBadge");
+    if (badge) {
+      if (!_initialSirh || _initialSirh.schema_ready === false) {
+        badge.textContent = "Table à installer";
+      } else if (!hasProvider) {
+        badge.textContent = "Non configuré";
+      } else if (_initialSirh.configured) {
+        badge.textContent = `${sirhProviderLabel(provider)} prêt`;
+      } else {
+        badge.textContent = `${sirhProviderLabel(provider)} à compléter`;
+      }
+    }
   }
 
   function renderSirhConfig(cfg) {
@@ -481,6 +494,14 @@
         ? "Clé API enregistrée. Laissez le champ vide pour la conserver."
         : "Aucune clé API enregistrée.";
     }
+
+    const intro = document.getElementById("sirhIntroText");
+    if (intro) {
+      intro.textContent = c.schema_ready === false
+        ? "Table de configuration SIRH absente : exécutez PATCH_SQL_STUDIO_SIRH_CONNECTORS.sql dans Supabase avant l’enregistrement."
+        : "Cette zone prépare le connecteur et stocke les identifiants. La synchronisation sera activée dans un développement dédié.";
+    }
+
     syncSirhProviderUi();
     setSirhStatus("", "");
   }

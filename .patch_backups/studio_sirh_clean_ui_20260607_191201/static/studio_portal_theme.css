@@ -3069,6 +3069,15 @@
   align-items:start;
 }
 
+.sd-sirh-intro{
+  border:1px solid rgba(17,24,39,.10);
+  border-radius:12px;
+  background:#f8fafc;
+  color:#334155;
+  padding:10px 12px;
+  font-size:12px;
+  line-height:1.45;
+}
 
 .sd-sirh-secret-field{
   grid-column:1 / -1;
