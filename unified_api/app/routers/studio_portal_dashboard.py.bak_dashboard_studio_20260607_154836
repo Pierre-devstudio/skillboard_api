@@ -289,12 +289,12 @@ def _studio_norm_criticite(v) -> int:
 
 def _studio_fetch_owner_structure(cur, id_owner: str, nom_owner: str = "") -> Dict[str, Any]:
     """
-    Retourne la structure interne du Studio owner.
+    Retourne uniquement la structure propre du Studio owner.
 
-    Règle de raccordement : dans Studio, "ma structure" reste l'id_owner.
-    Si la ligne tbl_entreprise n'existe pas encore pour cet id, on analyse tout de
-    même les postes, effectifs, entretiens et demandes rattachés à id_ent = id_owner.
-    On ne bascule jamais sur le premier client lié.
+    Correctif important : l'ancien patch prenait la première entreprise liée lorsque
+    e.id_ent = id_owner n'existait pas. En multi-client, cela transformait un client
+    quelconque en "Ma structure". Petit chef-d'œuvre d'illusion comptable, donc on
+    arrête ça proprement.
     """
     cur.execute(
         """
@@ -303,9 +303,13 @@ def _studio_fetch_owner_structure(cur, id_owner: str, nom_owner: str = "") -> Di
         FROM public.tbl_entreprise e
         WHERE e.id_ent = %s
           AND COALESCE(e.masque, FALSE) = FALSE
+          AND (
+                COALESCE(NULLIF(BTRIM(e.id_owner_gestionnaire), ''), %s) = %s
+                OR e.id_owner_gestionnaire IS NULL
+              )
         LIMIT 1
         """,
-        (id_owner,),
+        (id_owner, id_owner, id_owner),
     )
     r = cur.fetchone()
     if r:
@@ -318,7 +322,7 @@ def _studio_fetch_owner_structure(cur, id_owner: str, nom_owner: str = "") -> Di
         "ville_ent": None,
         "pays_ent": None,
         "effectif_ent": None,
-        "is_real_entity": True,
+        "is_real_entity": False,
     }
 
 def _studio_fetch_linked_structures(cur, id_owner: str, root_id: str) -> List[Dict[str, Any]]:
@@ -478,7 +482,7 @@ def _studio_empty_main_for_missing_structure(current: Dict[str, Any]) -> Dict[st
             "priority": "surveillance",
             "priority_label": "Structure",
             "title": "Créer ou rattacher la structure interne",
-            "subtitle": "Structure interne à compléter.",
+            "subtitle": "Le dashboard évite désormais d'utiliser un client comme 'Ma structure'. C'est mieux pour les chiffres, paraît-il.",
         }],
     }
 
@@ -771,21 +775,13 @@ def _studio_fetch_entretiens(cur, id_ents: List[str], id_service: Optional[str] 
 
 
 def _studio_fetch_referentiel_quality(cur, id_owner: str, id_ents: List[str], id_service: Optional[str] = None) -> Dict[str, Any]:
-    out = {
-        "postes_total": 0,
-        "postes_sans_competence": 0,
-        "competences_sans_domaine": 0,
-        "collaborateurs_sans_poste": 0,
-        "quality_pct": 0.0,
-    }
+    out = {"postes_total": 0, "postes_sans_competence": 0, "competences_sans_domaine": 0, "collaborateurs_sans_poste": 0, "quality_pct": 0.0}
     if not id_ents:
         return out
-
     svc_poste = "AND p.id_service = %s" if id_service else ""
     params_poste: List[Any] = [id_owner, id_ents]
     if id_service:
         params_poste.append(id_service)
-
     if _studio_has_table(cur, "tbl_fiche_poste"):
         cur.execute(
             f"""
@@ -793,10 +789,8 @@ def _studio_fetch_referentiel_quality(cur, id_owner: str, id_ents: List[str], id
                 COUNT(*)::int AS postes_total,
                 COUNT(*) FILTER (
                     WHERE NOT EXISTS (
-                        SELECT 1
-                        FROM public.tbl_fiche_poste_competence fpc
-                        WHERE fpc.id_poste = p.id_poste
-                          AND COALESCE(fpc.masque, FALSE) = FALSE
+                        SELECT 1 FROM public.tbl_fiche_poste_competence fpc
+                        WHERE fpc.id_poste = p.id_poste AND COALESCE(fpc.masque, FALSE) = FALSE
                     )
                 )::int AS postes_sans_competence
             FROM public.tbl_fiche_poste p
@@ -810,33 +804,19 @@ def _studio_fetch_referentiel_quality(cur, id_owner: str, id_ents: List[str], id
         r = cur.fetchone() or {}
         out["postes_total"] = _studio_i(r.get("postes_total"))
         out["postes_sans_competence"] = _studio_i(r.get("postes_sans_competence"))
-
-    if _studio_has_table(cur, "tbl_fiche_poste") and _studio_has_table(cur, "tbl_fiche_poste_competence") and _studio_has_table(cur, "tbl_competence"):
-        svc_comp = "AND p.id_service = %s" if id_service else ""
-        params_comp: List[Any] = [id_owner, id_ents]
-        if id_service:
-            params_comp.append(id_service)
+    if _studio_has_table(cur, "tbl_competence") and not id_service:
         cur.execute(
-            f"""
-            SELECT COUNT(DISTINCT c.id_comp)::int AS n
-            FROM public.tbl_fiche_poste p
-            JOIN public.tbl_fiche_poste_competence fpc
-              ON fpc.id_poste = p.id_poste
-             AND COALESCE(fpc.masque, FALSE) = FALSE
-            JOIN public.tbl_competence c
-              ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
-            WHERE p.id_owner = %s
-              AND p.id_ent = ANY(%s)
-              AND COALESCE(p.actif, TRUE) = TRUE
+            """
+            SELECT COUNT(*)::int AS n
+            FROM public.tbl_competence c
+            WHERE c.id_owner = %s
               AND COALESCE(c.masque, FALSE) = FALSE
-              AND lower(COALESCE(c.etat, 'active')) IN ('active', 'valide', 'validé', 'validee', 'validée')
-              AND COALESCE(NULLIF(BTRIM(c.domaine), ''), '') = ''
-              {svc_comp}
+              AND COALESCE(c.etat, 'active') = 'active'
+              AND COALESCE(c.domaine, '') = ''
             """,
-            tuple(params_comp),
+            (id_owner,),
         )
         out["competences_sans_domaine"] = _studio_i((cur.fetchone() or {}).get("n"))
-
     if _studio_has_table(cur, "tbl_effectif_client"):
         svc_eff = "AND e.id_service = %s" if id_service else ""
         params_eff: List[Any] = [id_ents]
@@ -849,15 +829,14 @@ def _studio_fetch_referentiel_quality(cur, id_owner: str, id_ents: List[str], id
             WHERE e.id_ent = ANY(%s)
               AND COALESCE(e.archive, FALSE) = FALSE
               AND COALESCE(e.statut_actif, TRUE) = TRUE
-              AND COALESCE(NULLIF(BTRIM(e.id_poste_actuel), ''), '') = ''
+              AND COALESCE(e.id_poste_actuel, '') = ''
               {svc_eff}
             """,
             tuple(params_eff),
         )
         out["collaborateurs_sans_poste"] = _studio_i((cur.fetchone() or {}).get("n"))
-
-    issues = out["postes_sans_competence"] + out["collaborateurs_sans_poste"] + out["competences_sans_domaine"]
-    base = max(out["postes_total"] + issues, 1)
+    issues = out["postes_sans_competence"] + out["collaborateurs_sans_poste"]
+    base = max(out["postes_total"] + out["collaborateurs_sans_poste"], 1)
     out["quality_pct"] = round(max(0.0, 100.0 - (issues / base * 100.0)), 1)
     return out
 
@@ -894,13 +873,16 @@ def _studio_apply_priority_filter(items: List[Dict[str, Any]], priorite: str) ->
 
 
 def _studio_scope_options(current: Dict[str, Any], services: List[Dict[str, Any]], has_linked: bool) -> List[Dict[str, str]]:
-    opts = [{"value": "", "label": "Tous les services"}]
+    opts = [{"value": "ma_structure", "label": "Ma structure"}]
     for s in services:
         sid = _studio_s(s.get("id_service"))
         if not sid:
             continue
         indent = "— " * min(_studio_i(s.get("depth")), 4)
-        opts.append({"value": sid, "label": f"{indent}{s.get('nom_service') or 'Service'}"})
+        opts.append({"value": f"service:{sid}", "label": f"{indent}{s.get('nom_service') or 'Service'}"})
+    if has_linked:
+        opts.append({"value": "ma_structure_et_liees", "label": "Ma structure + organisations liées"})
+        opts.append({"value": "liees", "label": "Organisations liées uniquement"})
     return opts
 
 
@@ -1040,7 +1022,6 @@ def get_studio_dashboard_overview(
     perimetre: str = Query(default="ma_structure"),
     priorite: str = Query(default="tous"),
     criticite_min: int = Query(default=70, ge=0, le=100),
-    id_service: Optional[str] = Query(default=None),
 ):
     """
     Dashboard Studio adaptatif.
@@ -1063,13 +1044,14 @@ def get_studio_dashboard_overview(
                 linked_structures = _studio_fetch_linked_structures(cur, oid, current_id)
                 has_linked = len(linked_structures) > 0
 
-                service_requested = _studio_s(id_service)
-                if not service_requested and requested_perim.startswith("service:"):
-                    service_requested = requested_perim.split(":", 1)[1].strip()
-
-                main_perim = f"service:{service_requested}" if service_requested else "ma_structure"
-                main = _studio_build_main(cur, oid, current, main_perim, "tous", criticite)
-                linked = _studio_build_linked(cur, oid, linked_structures, "tous", criticite) if has_linked else {"visible": False, "portfolio": {"structures_total": 0}, "structures_prioritaires": [], "actions_prioritaires": []}
+                if requested_perim == "liees" and has_linked:
+                    main = _studio_build_main(cur, oid, current, "ma_structure", prio, criticite)
+                    main["scope_label"] = "Structure courante affichée en synthèse. Le bloc de supervision ci-dessous porte les organisations liées."
+                    linked = _studio_build_linked(cur, oid, linked_structures, prio, criticite)
+                else:
+                    main_perim = requested_perim if requested_perim.startswith("service:") else "ma_structure"
+                    main = _studio_build_main(cur, oid, current, main_perim, prio, criticite)
+                    linked = _studio_build_linked(cur, oid, linked_structures, prio, criticite) if has_linked and requested_perim in ("ma_structure_et_liees", "liees") else {"visible": False, "portfolio": {"structures_total": len(linked_structures)}, "structures_prioritaires": [], "actions_prioritaires": []}
 
                 mode = "network" if has_linked else "single_structure"
                 return {
@@ -1077,7 +1059,7 @@ def get_studio_dashboard_overview(
                     "mode": mode,
                     "own": {"id_ent": current_id, "nom_ent": current.get("nom_ent") or ow.get("nom_owner"), "type_entreprise": current.get("type_entreprise"), "is_real_entity": bool(current.get("is_real_entity", True)), "has_linked": has_linked, "linked_count": len(linked_structures)},
                     "scope_options": _studio_scope_options(current, services, has_linked),
-                    "filters": {"id_service": service_requested, "criticite_min": criticite},
+                    "filters": {"perimetre": requested_perim, "priorite": prio, "criticite_min": criticite},
                     "main": main,
                     "linked": linked,
                 }

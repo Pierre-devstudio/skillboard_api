@@ -1,72 +1,33 @@
 <section id="view-dashboard" class="studio-dash studio-dash-adaptive">
-  <div class="studio-dash-head">
-    <div>
-      <div class="studio-dash-kicker">Dashboard Studio</div>
-      <h1 class="studio-dash-title" id="studioDashTitle">Pilotage de ma structure</h1>
-      <p class="studio-dash-sub" id="studioDashSub">
-        Vue opérationnelle des risques, demandes terrain et actions RH à mener sur la structure courante.
-      </p>
-    </div>
-    <div class="studio-dash-head-actions">
-      <button type="button" class="sb-btn-ghost" id="studioDashRefresh">Actualiser</button>
-    </div>
+  <div class="card studio-dash-welcome">
+    <div class="card-title" id="studioDashWelcome">Bienvenue</div>
   </div>
 
-  <div class="studio-dash-filter-card">
+  <div class="studio-dash-filter-card" aria-label="Filtres du dashboard">
     <div class="studio-dash-filter-field">
-      <label for="studioDashPerimetre">Périmètre analysé</label>
-      <select id="studioDashPerimetre">
-        <option value="ma_structure">Ma structure</option>
-      </select>
-    </div>
-
-    <div class="studio-dash-filter-field">
-      <label for="studioDashPriorite">Priorité</label>
-      <select id="studioDashPriorite">
-        <option value="tous">Toutes</option>
-        <option value="danger">En danger</option>
-        <option value="surveillance">À surveiller</option>
-        <option value="stable">Stables</option>
-      </select>
-    </div>
-
-    <div class="studio-dash-filter-field">
-      <label for="studioDashActionType">Type d’action</label>
-      <select id="studioDashActionType">
-        <option value="tous">Toutes</option>
-        <option value="formation">Formation</option>
-        <option value="entretien">Entretiens / évaluations</option>
-        <option value="referentiel">Référentiel</option>
-        <option value="transmission">Transmission</option>
+      <label for="studioDashService">Service</label>
+      <select id="studioDashService">
+        <option value="">Tous les services</option>
       </select>
     </div>
 
     <div class="studio-dash-filter-field studio-dash-filter-field--range">
       <div class="studio-dash-range-label">
-        <label for="studioDashCriticite">Criticité prise en compte :</label>
+        <label for="studioDashCriticite">Criticité</label>
         <strong id="studioDashCriticiteLabel">≥ 70</strong>
       </div>
       <input type="range" id="studioDashCriticite" min="0" max="100" step="5" value="70" />
     </div>
+
+    <button type="button" class="sb-btn-ghost studio-dash-refresh" id="studioDashRefresh">Actualiser</button>
   </div>
 
-  <div id="studioDashStatus" class="studio-dash-status">Chargement des indicateurs…</div>
-
-  <div class="studio-dash-section-title">
-    <div>
-      <h2 id="studioDashMainSectionTitle">Ma structure</h2>
-      <p id="studioDashMainSectionSub">Indicateurs internes : services, postes, entretiens, besoins formation et données référentielles.</p>
-    </div>
-  </div>
+  <div id="studioDashStatus" class="studio-dash-status">Chargement…</div>
 
   <div class="studio-dash-grid studio-dash-grid--top">
     <article class="studio-dash-card studio-dash-card--health">
       <div class="studio-dash-card-head">
-        <div>
-          <h2 id="studioDashHealthTitle">Santé de ma structure</h2>
-          <p id="studioDashHealthScope">Périmètre interne</p>
-        </div>
-        <button type="button" class="studio-dash-help" data-help="health">?</button>
+        <h2>Santé de la structure</h2>
       </div>
       <div class="studio-dash-gauge" id="studioDashHealthGauge">
         <div class="studio-dash-gauge-arc"></div>
@@ -78,11 +39,7 @@
 
     <article class="studio-dash-card studio-dash-card--wide">
       <div class="studio-dash-card-head">
-        <div>
-          <h2 id="studioDashRiskTitle">Services à surveiller</h2>
-          <p id="studioDashRiskSub">Lecture par service ou poste selon le périmètre</p>
-        </div>
-        <button type="button" class="studio-dash-help" data-help="risques">?</button>
+        <h2 id="studioDashRiskTitle">Services à surveiller</h2>
       </div>
       <div class="studio-dash-risk-bars" id="studioDashRiskBars"></div>
       <div class="studio-dash-legend">
@@ -94,13 +51,9 @@
 
     <article class="studio-dash-card">
       <div class="studio-dash-card-head">
-        <div>
-          <h2>Demandes terrain</h2>
-          <p>Besoins transmis depuis Insights</p>
-        </div>
-        <button type="button" class="studio-dash-help" data-help="demandes">?</button>
+        <h2>Demandes terrain</h2>
       </div>
-      <div class="studio-dash-kpi-line"><span>Demandes ouvertes</span><strong id="studioDashDemandesOpen">0</strong></div>
+      <div class="studio-dash-kpi-line"><span>Ouvertes</span><strong id="studioDashDemandesOpen">0</strong></div>
       <div class="studio-dash-kpi-line"><span>Urgentes</span><strong id="studioDashDemandesUrgentes">0</strong></div>
       <div class="studio-dash-kpi-line"><span>Prises en charge</span><strong id="studioDashDemandesInProgress">0</strong></div>
     </article>
@@ -109,34 +62,22 @@
   <div class="studio-dash-grid studio-dash-grid--actions">
     <article class="studio-dash-card studio-dash-card--large">
       <div class="studio-dash-card-head">
-        <div>
-          <h2>Actions prioritaires</h2>
-          <p id="studioDashActionsSub">À traiter en premier sur la structure courante.</p>
-        </div>
-        <button type="button" class="studio-dash-help" data-help="actions">?</button>
+        <h2>Actions prioritaires</h2>
       </div>
       <div class="studio-dash-action-list" id="studioDashActions"></div>
     </article>
 
     <article class="studio-dash-card">
       <div class="studio-dash-card-head">
-        <div>
-          <h2>Besoins formation</h2>
-          <p>À instruire côté Studio</p>
-        </div>
-        <button type="button" class="studio-dash-help" data-help="formation">?</button>
+        <h2>Besoins formation</h2>
       </div>
       <div class="studio-dash-donut" id="studioDashFormationDonut"><span id="studioDashFormationTotal">0</span></div>
-      <div class="studio-dash-card-foot" id="studioDashFormationLabel">besoins à qualifier</div>
+      <div class="studio-dash-card-foot" id="studioDashFormationLabel">à qualifier</div>
     </article>
 
     <article class="studio-dash-card">
       <div class="studio-dash-card-head">
-        <div>
-          <h2>Entretiens à relancer</h2>
-          <p>Préparation, réalisation, signatures</p>
-        </div>
-        <button type="button" class="studio-dash-help" data-help="entretiens">?</button>
+        <h2>Entretiens à relancer</h2>
       </div>
       <div class="studio-dash-kpi-line"><span>À réaliser</span><strong id="studioDashEntretiensTodo">0</strong></div>
       <div class="studio-dash-kpi-line"><span>En cours</span><strong id="studioDashEntretiensProgress">0</strong></div>
@@ -147,23 +88,15 @@
   <div class="studio-dash-grid studio-dash-grid--bottom">
     <article class="studio-dash-card">
       <div class="studio-dash-card-head">
-        <div>
-          <h2>Transmission à organiser</h2>
-          <p>Postes dépendants ou sans relais</p>
-        </div>
-        <button type="button" class="studio-dash-help" data-help="transmission">?</button>
+        <h2>Capacité de transmission</h2>
       </div>
       <div class="studio-dash-ring" id="studioDashTransmissionRing"><span id="studioDashTransmissionPct">—</span></div>
-      <div class="studio-dash-card-foot" id="studioDashTransmissionLabel">capacité de transmission</div>
+      <div class="studio-dash-card-foot" id="studioDashTransmissionLabel">postes à sécuriser</div>
     </article>
 
     <article class="studio-dash-card">
       <div class="studio-dash-card-head">
-        <div>
-          <h2>Qualité du référentiel</h2>
-          <p>Blocages qui faussent l’analyse</p>
-        </div>
-        <button type="button" class="studio-dash-help" data-help="referentiel">?</button>
+        <h2>Qualité des référentiels</h2>
       </div>
       <div class="studio-dash-kpi-line"><span>Postes sans compétence</span><strong id="studioDashPostesSansComp">0</strong></div>
       <div class="studio-dash-kpi-line"><span>Compétences sans domaine</span><strong id="studioDashCompSansDomaine">0</strong></div>
@@ -172,79 +105,20 @@
 
     <article class="studio-dash-card">
       <div class="studio-dash-card-head">
-        <div>
-          <h2>Fiabilité des données</h2>
-          <p>Données exploitables pour piloter</p>
-        </div>
-        <button type="button" class="studio-dash-help" data-help="fiabilite">?</button>
+        <h2>Fiabilité des données</h2>
       </div>
       <div class="studio-dash-signal" id="studioDashReliabilitySignal"></div>
       <div class="studio-dash-big-number studio-dash-big-number--sm" id="studioDashReliabilityPct">—</div>
     </article>
   </div>
 
-  <div class="studio-dash-grid studio-dash-grid--lists">
-    <article class="studio-dash-card studio-dash-card--large">
-      <div class="studio-dash-card-head">
-        <div>
-          <h2>Demandes formation récentes</h2>
-          <p>Dernières remontées manager à traiter</p>
-        </div>
-      </div>
-      <div class="studio-dash-mini-list" id="studioDashFormationItems"></div>
-    </article>
-
-    <article class="studio-dash-card studio-dash-card--large" id="studioDashMainPriorityCard">
-      <div class="studio-dash-card-head">
-        <div>
-          <h2 id="studioDashMainPriorityTitle">Priorités internes</h2>
-          <p id="studioDashMainPrioritySub">Classement par niveau de risque</p>
-        </div>
-      </div>
-      <div class="studio-dash-mini-list" id="studioDashMainPriorityItems"></div>
-    </article>
-  </div>
-
   <div class="studio-dash-linked" id="studioDashLinkedSection" style="display:none;">
-    <div class="studio-dash-section-title">
-      <div>
-        <h2>Supervision des organisations liées</h2>
-        <p id="studioDashLinkedSub">Clients, sites ou entités rattachées à surveiller après la structure courante.</p>
+    <article class="studio-dash-card studio-dash-card--large">
+      <div class="studio-dash-card-head studio-dash-card-head--with-count">
+        <h2>Sites / clients à surveiller</h2>
+        <span class="studio-dash-count" id="studioDashLinkedCount">0</span>
       </div>
-    </div>
-
-    <div class="studio-dash-grid studio-dash-grid--lists">
-      <article class="studio-dash-card studio-dash-card--large">
-        <div class="studio-dash-card-head">
-          <div>
-            <h2>Organisations à surveiller</h2>
-            <p>Classement des structures liées par niveau de risque</p>
-          </div>
-        </div>
-        <div class="studio-dash-mini-list" id="studioDashLinkedStructureItems"></div>
-      </article>
-
-      <article class="studio-dash-card studio-dash-card--large">
-        <div class="studio-dash-card-head">
-          <div>
-            <h2>Actions portefeuille</h2>
-            <p>Demandes et risques à traiter sur les entités liées</p>
-          </div>
-        </div>
-        <div class="studio-dash-action-list" id="studioDashLinkedActions"></div>
-      </article>
-    </div>
-  </div>
-
-  <div class="modal" id="studioDashHelpModal">
-    <div class="modal-content modal-md">
-      <div class="modal-header">
-        <h3 id="studioDashHelpTitle">Aide</h3>
-        <button type="button" class="modal-close" id="studioDashHelpClose">×</button>
-      </div>
-      <div class="modal-body">
-        <p class="card-sub" id="studioDashHelpBody"></p>
-      </div>
-    </div>
+      <div class="studio-dash-mini-list" id="studioDashLinkedStructureItems"></div>
+    </article>
   </div>
 </section>
