@@ -254,50 +254,6 @@ def get_owner_sirh_config(id_owner: str, request: Request):
         raise HTTPException(status_code=500, detail=f"studio/sirh config get error: {e}")
 
 
-
-@router.post("/studio/sirh/owner/{id_owner}/test")
-def test_owner_sirh_config(id_owner: str, payload: StudioSirhConfigPayload, request: Request):
-    auth = request.headers.get("Authorization", "")
-    u = studio_require_user(auth)
-
-    try:
-        provider_code = normalize_provider_code(payload.provider_code)
-        base_url = _clean_text(payload.base_url)
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                oid = _require_owner_access(cur, u, id_owner)
-                studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "admin")
-
-                if provider_code == "manual":
-                    raise HTTPException(status_code=400, detail="Sélectionnez un connecteur SIRH / paie avant de lancer le test.")
-
-                if not _sirh_table_exists(cur):
-                    raise HTTPException(status_code=400, detail="Table SIRH absente. Exécute PATCH_SQL_STUDIO_SIRH_CONNECTORS.sql dans Supabase avant de tester.")
-
-                existing = _fetch_active_config(cur, oid, with_secret=False)
-                _validate_payload(provider_code, payload, existing)
-
-                if provider_code == "ebp_paie":
-                    result = ebp_paie.test_connection_payload(
-                        base_url=base_url,
-                        client_id=payload.client_id,
-                        dossier_code=payload.dossier_code,
-                        api_key=payload.api_key,
-                        has_existing_secret=bool(existing and existing.get("has_secret")),
-                    )
-                    if not result.get("ok"):
-                        raise HTTPException(status_code=400, detail=result.get("test_message") or "Paramètres EBP Paie incomplets.")
-                    return result
-
-                raise HTTPException(status_code=400, detail="Connecteur SIRH non géré.")
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"studio/sirh config test error: {e}")
-
 @router.post("/studio/sirh/owner/{id_owner}/config")
 def save_owner_sirh_config(id_owner: str, payload: StudioSirhConfigPayload, request: Request):
     auth = request.headers.get("Authorization", "")

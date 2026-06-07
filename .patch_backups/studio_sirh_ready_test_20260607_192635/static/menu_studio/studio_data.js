@@ -458,15 +458,10 @@
   function syncSirhProviderUi() {
     const provider = document.getElementById("sirhProvider")?.value || "manual";
     const hasProvider = provider !== "manual";
-    const card = document.getElementById("cardSirhConnectors");
-    const isEdit = card?.dataset.sirhEditMode === "1";
 
     document.querySelectorAll(".sd-sirh-provider-field").forEach(el => {
       el.style.display = hasProvider ? "" : "none";
     });
-
-    const btnTest = document.getElementById("btnTestSirh");
-    if (btnTest) btnTest.style.display = (isAdmin() && isEdit && hasProvider) ? "inline-flex" : "none";
   }
 
   function renderSirhConfig(cfg) {
@@ -507,10 +502,7 @@
     if (isEdit) hideSaveSuccess("sirhSaveSuccess");
 
     const card = document.getElementById("cardSirhConnectors");
-    if (card) {
-      card.style.display = admin ? "" : "none";
-      card.dataset.sirhEditMode = (admin && isEdit) ? "1" : "0";
-    }
+    if (card) card.style.display = admin ? "" : "none";
 
     document.querySelectorAll("[data-editable-sirh='1']").forEach(el => {
       el.disabled = !(admin && isEdit);
@@ -523,8 +515,6 @@
     if (bEdit) bEdit.style.display = (!admin || isEdit) ? "none" : "inline-flex";
     if (bSave) bSave.style.display = (admin && isEdit) ? "inline-flex" : "none";
     if (bCancel) bCancel.style.display = (admin && isEdit) ? "inline-flex" : "none";
-
-    syncSirhProviderUi();
   }
 
   async function loadSirhConfig(portal) {
@@ -567,41 +557,6 @@
     setSirhStatus("ok", "Configuration SIRH enregistrée. Aucune synchronisation n’a été lancée.");
   }
 
-
-  async function testSirhConfig(portal) {
-    const ownerId = getOwnerId();
-    if (!ownerId) return;
-
-    const provider = document.getElementById("sirhProvider")?.value || "manual";
-    if (provider === "manual") {
-      showSsoInfoPopup("Sélectionnez un connecteur SIRH / paie avant de lancer le test.");
-      return;
-    }
-
-    const bt = document.getElementById("btnTestSirh");
-    const old = bt ? bt.textContent : "";
-
-    try {
-      if (bt) { bt.disabled = true; bt.textContent = "Test..."; }
-      const data = await portal.apiJson(
-        `${portal.apiBase}/studio/sirh/owner/${encodeURIComponent(ownerId)}/test`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(collectSirhConfigFromUI()),
-        }
-      );
-      setSirhStatus("ok", (data && data.test_message) || "Configuration SIRH contrôlée.");
-      showSsoInfoPopup((data && data.test_message) || "Configuration SIRH contrôlée.");
-    } catch (e) {
-      const msg = e.message || String(e);
-      setSirhStatus("error", msg);
-      showSsoInfoPopup(msg);
-    } finally {
-      if (bt) { bt.disabled = false; bt.textContent = old || "Tester la connexion"; }
-    }
-  }
-
   function bindSirhEvents(portal) {
     document.getElementById("sirhProvider")?.addEventListener("change", () => {
       syncSirhProviderUi();
@@ -623,15 +578,6 @@
       renderSirhConfig(_initialSirh || {});
       setSirhEditMode(false);
       portal.showAlert("", "");
-    });
-
-    document.getElementById("btnTestSirh")?.addEventListener("click", async () => {
-      try {
-        await testSirhConfig(portal);
-        portal.showAlert("", "");
-      } catch (e) {
-        showSsoInfoPopup(e.message || String(e));
-      }
     });
 
     document.getElementById("btnSaveSirh")?.addEventListener("click", async () => {

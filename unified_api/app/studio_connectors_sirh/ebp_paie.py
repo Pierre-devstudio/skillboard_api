@@ -1,4 +1,5 @@
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 PROVIDER_CODE = "ebp_paie"
 PROVIDER_LABEL = "EBP Paie"
@@ -30,6 +31,57 @@ def build_secret_json(api_key: Optional[str] = None) -> dict:
         "api_key": key,
     }
 
+
+
+def _is_http_url(value: str) -> bool:
+    try:
+        parsed = urlparse(value)
+        return parsed.scheme in ("http", "https") and bool(parsed.netloc)
+    except Exception:
+        return False
+
+
+def test_connection_payload(
+    base_url: Optional[str] = None,
+    client_id: Optional[str] = None,
+    dossier_code: Optional[str] = None,
+    api_key: Optional[str] = None,
+    has_existing_secret: bool = False,
+) -> dict:
+    errors = []
+    base = _clean_text(base_url)
+    cid = _clean_text(client_id)
+    dossier = _clean_text(dossier_code)
+    key = _clean_text(api_key)
+
+    if not base:
+        errors.append("URL API / environnement manquante")
+    elif not _is_http_url(base):
+        errors.append("URL API / environnement invalide")
+
+    if not cid:
+        errors.append("identifiant client / tenant manquant")
+
+    if not dossier:
+        errors.append("identifiant dossier / entreprise manquant")
+
+    if not key and not has_existing_secret:
+        errors.append("clé API manquante")
+
+    if errors:
+        return {
+            "ok": False,
+            "provider_code": PROVIDER_CODE,
+            "provider_label": PROVIDER_LABEL,
+            "test_message": "Paramètres EBP Paie incomplets : " + "; ".join(errors) + ".",
+        }
+
+    return {
+        "ok": True,
+        "provider_code": PROVIDER_CODE,
+        "provider_label": PROVIDER_LABEL,
+        "test_message": "Contrôle EBP Paie validé : URL, identifiants et clé API sont renseignés. Le test d’appel API réel sera activé avec la passerelle EBP.",
+    }
 
 def public_descriptor() -> dict:
     return {
