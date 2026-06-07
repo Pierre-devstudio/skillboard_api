@@ -32,7 +32,7 @@
     },
     fragilite: {
       title: "Indice de fragilité des services/postes",
-      body: "Histogramme classé du plus fragile au moins fragile. La hauteur indique l’indice et l’opacité renforce visuellement le niveau de fragilité."
+      body: "Histogramme des services ou des postes classés par niveau de fragilité. Le filtre Périmètre permet de basculer de la lecture services vers la lecture postes."
     },
     linked: {
       title: "Sites / clients à surveiller",
@@ -215,20 +215,19 @@
   function renderRiskBars(items){
     const el = byId("studioDashRiskBars");
     if (!el) return;
-    const rows = Array.isArray(items)
-      ? items.slice().sort((a, b) => n(b.risk_pct) - n(a.risk_pct)).slice(0, 120)
-      : [];
+    const rows = Array.isArray(items) ? items.slice(0, 120) : [];
     if (!rows.length){
       el.innerHTML = `<div class="studio-dash-empty">Aucun indice de fragilité.</div>`;
       return;
     }
     el.innerHTML = rows.map(r => {
       const val = Math.max(0, Math.min(100, n(r.risk_pct)));
+      const priority = (r.priority || "").toString().toLowerCase();
+      const cls = priority === "danger" ? "is-danger" : (priority === "surveillance" ? "is-watch" : "is-stable");
       const label = esc(r.label || r.nom_service || r.intitule_poste || "Élément");
       const idService = r.id_service ? esc(r.id_service) : "";
       const attrs = idService ? `data-service="${idService}"` : "";
-      const opacity = (val / 100).toFixed(2);
-      return `<button type="button" class="studio-dash-risk-bar" ${attrs} title="${label} : ${Math.round(val)}%"><span class="studio-dash-risk-bar-value">${Math.round(val)}%</span><span class="studio-dash-risk-bar-track"><span class="studio-dash-risk-bar-fill" style="height:${Math.max(4, Math.round(val))}%;opacity:${opacity}"></span></span><span class="studio-dash-risk-bar-label">${label}</span></button>`;
+      return `<button type="button" class="studio-dash-risk-bar ${cls}" ${attrs} title="${label} : ${Math.round(val)}%"><span class="studio-dash-risk-bar-value">${Math.round(val)}%</span><span class="studio-dash-risk-bar-track"><span class="studio-dash-risk-bar-fill" style="height:${Math.max(4, Math.round(val))}%"></span></span><span class="studio-dash-risk-bar-label">${label}</span></button>`;
     }).join("");
     el.querySelectorAll("[data-service]").forEach(btn => btn.addEventListener("click", () => setServiceFilter(btn.dataset.service || "")));
   }
@@ -295,6 +294,9 @@
     renderSignal(reliability.pct);
 
     setText("studioDashRiskTitle", filters.id_service ? "Indice de fragilité des postes" : "Indice de fragilité des services");
+    setText("studioDashNbDanger", n(p.items_danger));
+    setText("studioDashNbWatch", n(p.items_surveillance));
+    setText("studioDashNbStable", n(p.items_stables));
     renderRiskBars(main.risk_items || []);
 
     const linkedSection = byId("studioDashLinkedSection");

@@ -95,6 +95,11 @@
       <div class="studio-dash-card-head studio-dash-card-head--inline studio-dash-card-head--risk">
         <h2 id="studioDashRiskTitle">Indice de fragilité des services</h2>
         <div class="studio-dash-head-right">
+          <div class="studio-dash-legend">
+            <span><i class="studio-dot studio-dot--danger"></i><strong id="studioDashNbDanger">0</strong> en danger</span>
+            <span><i class="studio-dot studio-dot--watch"></i><strong id="studioDashNbWatch">0</strong> à surveiller</span>
+            <span><i class="studio-dot studio-dot--stable"></i><strong id="studioDashNbStable">0</strong> stables</span>
+          </div>
           <button type="button" class="studio-dash-help sb-dash-round-btn" data-help="fragilite" aria-label="Explication indice de fragilité">?</button>
         </div>
       </div>
