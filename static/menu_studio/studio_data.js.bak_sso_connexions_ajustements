@@ -345,10 +345,6 @@
   }
 
 
-  function showSsoInfoPopup(message) {
-    window.alert(message || "Information SSO indisponible.");
-  }
-
   function ssoStatusLabel(status) {
     const s = (status || "desactive").toString().trim().toLowerCase();
     if (s === "actif") return "SSO actif";
@@ -444,8 +440,8 @@
       if (bt) { bt.disabled = true; bt.textContent = "Test..."; }
       const data = await portal.apiJson(`${portal.apiBase}/studio/connexions/owner/${encodeURIComponent(ownerId)}/test`, { method: "POST" });
       renderOwnerConnexion(data || {});
-      showSsoInfoPopup((data && data.test_message) || "Configuration SSO vérifiée.");
-    } catch (e) { showSsoInfoPopup(e.message || String(e)); }
+      portal.showAlert("success", "Configuration SSO vérifiée.");
+    } catch (e) { portal.showAlert("error", e.message || String(e)); }
     finally { if (bt) { bt.disabled = false; bt.textContent = old || "Tester la configuration"; } }
   }
   function bindSsoHelpButtons() {
@@ -756,7 +752,8 @@
     bindSsoHelpButtons();
     setConnexionEditMode(false);
     btnEditConnexion?.addEventListener("click", async () => {
-      try { if (!isAdmin()) return; if (!_connexionLoaded) await loadConnexion(portal); portal.showAlert("", ""); setConnexionEditMode(true); } catch (e) { showSsoInfoPopup(e.message || String(e)); }
+      try { if (!isAdmin()) return; if (!_connexionLoaded) await loadConnexion(portal); portal.showAlert("", ""); setConnexionEditMode(true); }
+      catch (e) { portal.showAlert("error", e.message || String(e)); }
     });
     btnCancelConnexion?.addEventListener("click", () => { renderOwnerConnexion(_initialConnexion || {}); setConnexionEditMode(false); portal.showAlert("", ""); });
     btnSaveConnexion?.addEventListener("click", async () => {
@@ -787,7 +784,9 @@
         if (!_loaded) await loadData(portal);
         portal.showAlert("", "");
         setEntrepriseEditMode(true);
-      } catch (e) { showSsoInfoPopup(e.message || String(e)); }
+      } catch (e) {
+        portal.showAlert("error", e.message || String(e));
+      }
     });
 
     document.getElementById("btnCancelEntreprise").addEventListener("click", () => cancelEntreprise(portal));
@@ -831,7 +830,9 @@
         if (!_loaded) await loadData(portal);
         portal.showAlert("", "");
         setContactEditMode(true);
-      } catch (e) { showSsoInfoPopup(e.message || String(e)); }
+      } catch (e) {
+        portal.showAlert("error", e.message || String(e));
+      }
     });
 
     document.getElementById("btnCancelContact").addEventListener("click", () => cancelContact(portal));

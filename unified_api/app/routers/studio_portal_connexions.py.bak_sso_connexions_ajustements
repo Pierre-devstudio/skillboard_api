@@ -163,6 +163,8 @@ def _completion_state(cfg: dict) -> tuple[bool, list[str]]:
     missing = []
     if not _clean_text(cfg.get("domaine_autorise")):
         missing.append("domaine_autorise")
+    if not _clean_text(cfg.get("provider_id_supabase")):
+        missing.append("provider_id_supabase")
     if not _clean_text(cfg.get("attribut_email")):
         missing.append("attribut_email")
     if not (_clean_text(cfg.get("metadata_url")) or _clean_text(cfg.get("metadata_xml"))):
@@ -359,7 +361,7 @@ def _mark_test(cur, scope_type: str, id_scope: str, id_owner_gestionnaire: Optio
         cfg["test_message"] = msg
         return cfg
 
-    msg = "Configuration SSO complète côté Novoskill. Le raccordement réel au fournisseur d’identité reste à valider avec un utilisateur pilote."
+    msg = "Configuration SSO complète. Le raccordement Supabase/IdP peut être testé avec un utilisateur pilote."
     cur.execute(
         """
         UPDATE public.tbl_novoskill_sso_config
