@@ -110,20 +110,18 @@
   function renderRiskBars(items){
     const el = byId("studioDashRiskBars");
     if (!el) return;
-    const rows = Array.isArray(items) ? items.slice(0, 60) : [];
+    const rows = Array.isArray(items) ? items.slice(0, 10) : [];
     if (!rows.length){
       el.innerHTML = `<div class="studio-dash-empty">Aucun point de surveillance.</div>`;
       return;
     }
     el.innerHTML = rows.map(r => {
       const val = Math.max(0, Math.min(100, n(r.risk_pct)));
-      const priority = (r.priority || "").toString().toLowerCase();
-      const cls = priority === "danger" ? "is-danger" : (priority === "surveillance" ? "is-watch" : "is-stable");
+      const cls = r.priority === "danger" ? "is-danger" : (r.priority === "surveillance" ? "is-watch" : "is-stable");
       const label = esc(r.label || r.nom_service || r.intitule_poste || "Élément");
       const idService = r.id_service ? esc(r.id_service) : "";
       const attrs = idService ? `data-service="${idService}"` : "";
-      const state = esc(r.priority_label || (priority === "danger" ? "En danger" : (priority === "surveillance" ? "À surveiller" : "Stable")));
-      return `<button type="button" class="studio-dash-risk-item ${cls}" ${attrs} title="${label} : ${Math.round(val)}%"><span class="studio-dash-risk-item-main"><strong>${label}</strong><em>${state}</em></span><span class="studio-dash-risk-meter"><span style="width:${Math.round(val)}%"></span></span><span class="studio-dash-risk-value">${Math.round(val)}%</span></button>`;
+      return `<button type="button" class="studio-dash-risk-bar ${cls}" ${attrs} title="${label} : ${Math.round(val)}%"><span class="studio-dash-risk-bar-fill" style="height:${Math.max(8, Math.round(val))}%"></span><span class="studio-dash-risk-bar-value">${Math.round(val)}%</span><span class="studio-dash-risk-bar-label">${label}</span></button>`;
     }).join("");
     el.querySelectorAll("[data-service]").forEach(btn => btn.addEventListener("click", () => setServiceFilter(btn.dataset.service || "")));
   }
@@ -136,7 +134,7 @@
       el.innerHTML = `<div class="studio-dash-empty">Aucune action prioritaire.</div>`;
       return;
     }
-    el.innerHTML = rows.slice(0, 18).map(a => {
+    el.innerHTML = rows.slice(0, 8).map(a => {
       const client = a.id_ent ? `<button type="button" class="studio-dash-link" data-client="${esc(a.id_ent)}">Ouvrir</button>` : "";
       return `<div class="studio-dash-action-row"><div class="studio-dash-action-main"><span class="studio-dash-badge ${badgeClass(a.priority)}">${esc(a.priority_label || "Action")}</span><strong>${esc(a.title || "Action")}</strong><span>${esc(a.subtitle || "")}</span></div>${client}</div>`;
     }).join("");
@@ -146,7 +144,7 @@
   function renderLinkedStructures(items){
     const el = byId("studioDashLinkedStructureItems");
     if (!el) return;
-    const rows = Array.isArray(items) ? items.slice(0, 12) : [];
+    const rows = Array.isArray(items) ? items.slice(0, 8) : [];
     if (!rows.length){
       el.innerHTML = `<div class="studio-dash-empty">Aucun site ou client prioritaire.</div>`;
       return;
@@ -184,32 +182,34 @@
     setText("studioDashHealthLabel", p.health_label || "Analyse interne");
     setGauge(p.health_pct);
 
-    setText("studioDashDemandesOpen", n(demandes.ouvertes));
-    setText("studioDashDemandesUrgentes", n(demandes.urgentes));
-    setText("studioDashDemandesInProgress", n(demandes.prises_en_charge));
-
-    setText("studioDashEntretiensTodo", n(entretiens.a_realiser));
-    setText("studioDashEntretiensProgress", n(entretiens.en_cours));
-    setText("studioDashEntretiensSign", n(entretiens.a_signer));
-
-    setText("studioDashPostesSansComp", n(ref.postes_sans_competence));
-    setText("studioDashCompSansDomaine", n(ref.competences_sans_domaine));
-    setText("studioDashCollabSansPoste", n(ref.collaborateurs_sans_poste));
-
-    setText("studioDashTransmissionPct", pct(tr.pct));
-    setText("studioDashTransmissionLabel", `${n(tr.postes_risque)} poste(s) à sécuriser`);
-    setRing("studioDashTransmissionRing", tr.pct);
-
-    setText("studioDashReliabilityPct", pct(reliability.pct));
-    renderSignal(reliability.pct);
-
     setText("studioDashRiskTitle", main.risk_title || "Services à surveiller");
     setText("studioDashNbDanger", n(p.items_danger));
     setText("studioDashNbWatch", n(p.items_surveillance));
     setText("studioDashNbStable", n(p.items_stables));
     renderRiskBars(main.risk_items || []);
 
+    setText("studioDashDemandesOpen", n(demandes.ouvertes));
+    setText("studioDashDemandesUrgentes", n(demandes.urgentes));
+    setText("studioDashDemandesInProgress", n(demandes.prises_en_charge));
     renderActions(main.actions_prioritaires || []);
+
+    setText("studioDashFormationTotal", n(demandes.a_instruire));
+    setText("studioDashFormationLabel", `${n(demandes.a_instruire)} à qualifier · ${n(demandes.urgentes)} urgent(s)`);
+    setRing("studioDashFormationDonut", demandes.ouvertes ? Math.min(100, 20 + n(demandes.urgentes) * 15) : 0);
+
+    setText("studioDashEntretiensTodo", n(entretiens.a_realiser));
+    setText("studioDashEntretiensProgress", n(entretiens.en_cours));
+    setText("studioDashEntretiensSign", n(entretiens.a_signer));
+
+    setText("studioDashTransmissionPct", pct(tr.pct));
+    setText("studioDashTransmissionLabel", `${n(tr.postes_risque)} poste(s) à sécuriser`);
+    setRing("studioDashTransmissionRing", tr.pct);
+
+    setText("studioDashPostesSansComp", n(ref.postes_sans_competence));
+    setText("studioDashCompSansDomaine", n(ref.competences_sans_domaine));
+    setText("studioDashCollabSansPoste", n(ref.collaborateurs_sans_poste));
+    setText("studioDashReliabilityPct", pct(reliability.pct));
+    renderSignal(reliability.pct);
 
     const linkedSection = byId("studioDashLinkedSection");
     const showLinked = !!linked.visible;
@@ -244,22 +244,6 @@
     render(data || {});
   }
 
-  function openHealthModal(){
-    const modal = byId("studioDashHealthModal");
-    if (!modal) return;
-    modal.style.display = "flex";
-    modal.classList.add("show");
-    modal.setAttribute("aria-hidden", "false");
-  }
-
-  function closeHealthModal(){
-    const modal = byId("studioDashHealthModal");
-    if (!modal) return;
-    modal.classList.remove("show");
-    modal.setAttribute("aria-hidden", "true");
-    modal.style.display = "none";
-  }
-
   function bind(){
     if (_bound) return;
     _bound = true;
@@ -267,10 +251,6 @@
     byId("studioDashCriticite")?.addEventListener("input", () => setText("studioDashCriticiteLabel", `≥ ${getFilters().criticite_min}`));
     byId("studioDashCriticite")?.addEventListener("change", () => load().catch(e => setStatus(e.message || String(e), true)));
     byId("studioDashRefresh")?.addEventListener("click", () => load().catch(e => setStatus(e.message || String(e), true)));
-    byId("studioDashHealthHelp")?.addEventListener("click", openHealthModal);
-    byId("studioDashHealthModalClose")?.addEventListener("click", closeHealthModal);
-    byId("studioDashHealthModal")?.addEventListener("click", (ev) => { if (ev.target === byId("studioDashHealthModal")) closeHealthModal(); });
-    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeHealthModal(); });
   }
 
   bind();

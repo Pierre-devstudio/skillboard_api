@@ -4,8 +4,8 @@
   </div>
 
   <div class="studio-dash-filter-card" aria-label="Filtres du dashboard">
-    <div class="studio-dash-filter-field studio-dash-filter-field--service">
-      <label for="studioDashService">Périmètre</label>
+    <div class="studio-dash-filter-field">
+      <label for="studioDashService">Service</label>
       <select id="studioDashService">
         <option value="">Tous les services</option>
       </select>
@@ -13,7 +13,7 @@
 
     <div class="studio-dash-filter-field studio-dash-filter-field--range">
       <div class="studio-dash-range-label">
-        <label for="studioDashCriticite">Criticité minimale</label>
+        <label for="studioDashCriticite">Criticité</label>
         <strong id="studioDashCriticiteLabel">≥ 70</strong>
       </div>
       <input type="range" id="studioDashCriticite" min="0" max="100" step="5" value="70" />
@@ -24,11 +24,10 @@
 
   <div id="studioDashStatus" class="studio-dash-status">Chargement…</div>
 
-  <div class="studio-dash-grid studio-dash-grid--row3">
+  <div class="studio-dash-grid studio-dash-grid--top">
     <article class="studio-dash-card studio-dash-card--health">
-      <div class="studio-dash-card-head studio-dash-card-head--inline">
+      <div class="studio-dash-card-head">
         <h2>Santé de la structure</h2>
-        <button type="button" class="studio-dash-help" id="studioDashHealthHelp" aria-label="Explication santé de la structure">?</button>
       </div>
       <div class="studio-dash-gauge" id="studioDashHealthGauge">
         <div class="studio-dash-gauge-arc"></div>
@@ -38,6 +37,18 @@
       <div class="studio-dash-pill" id="studioDashHealthLabel">Analyse en cours</div>
     </article>
 
+    <article class="studio-dash-card studio-dash-card--wide">
+      <div class="studio-dash-card-head">
+        <h2 id="studioDashRiskTitle">Services à surveiller</h2>
+      </div>
+      <div class="studio-dash-risk-bars" id="studioDashRiskBars"></div>
+      <div class="studio-dash-legend">
+        <span><i class="studio-dot studio-dot--danger"></i><strong id="studioDashNbDanger">0</strong> en danger</span>
+        <span><i class="studio-dot studio-dot--watch"></i><strong id="studioDashNbWatch">0</strong> à surveiller</span>
+        <span><i class="studio-dot studio-dot--stable"></i><strong id="studioDashNbStable">0</strong> stables</span>
+      </div>
+    </article>
+
     <article class="studio-dash-card">
       <div class="studio-dash-card-head">
         <h2>Demandes terrain</h2>
@@ -45,6 +56,23 @@
       <div class="studio-dash-kpi-line"><span>Ouvertes</span><strong id="studioDashDemandesOpen">0</strong></div>
       <div class="studio-dash-kpi-line"><span>Urgentes</span><strong id="studioDashDemandesUrgentes">0</strong></div>
       <div class="studio-dash-kpi-line"><span>Prises en charge</span><strong id="studioDashDemandesInProgress">0</strong></div>
+    </article>
+  </div>
+
+  <div class="studio-dash-grid studio-dash-grid--actions">
+    <article class="studio-dash-card studio-dash-card--large">
+      <div class="studio-dash-card-head">
+        <h2>Actions prioritaires</h2>
+      </div>
+      <div class="studio-dash-action-list" id="studioDashActions"></div>
+    </article>
+
+    <article class="studio-dash-card">
+      <div class="studio-dash-card-head">
+        <h2>Besoins formation</h2>
+      </div>
+      <div class="studio-dash-donut" id="studioDashFormationDonut"><span id="studioDashFormationTotal">0</span></div>
+      <div class="studio-dash-card-foot" id="studioDashFormationLabel">à qualifier</div>
     </article>
 
     <article class="studio-dash-card">
@@ -57,7 +85,15 @@
     </article>
   </div>
 
-  <div class="studio-dash-grid studio-dash-grid--row3">
+  <div class="studio-dash-grid studio-dash-grid--bottom">
+    <article class="studio-dash-card">
+      <div class="studio-dash-card-head">
+        <h2>Capacité de transmission</h2>
+      </div>
+      <div class="studio-dash-ring" id="studioDashTransmissionRing"><span id="studioDashTransmissionPct">—</span></div>
+      <div class="studio-dash-card-foot" id="studioDashTransmissionLabel">postes à sécuriser</div>
+    </article>
+
     <article class="studio-dash-card">
       <div class="studio-dash-card-head">
         <h2>Qualité des référentiels</h2>
@@ -69,41 +105,10 @@
 
     <article class="studio-dash-card">
       <div class="studio-dash-card-head">
-        <h2>Capacité de transmission</h2>
-      </div>
-      <div class="studio-dash-ring" id="studioDashTransmissionRing"><span id="studioDashTransmissionPct">—</span></div>
-      <div class="studio-dash-card-foot" id="studioDashTransmissionLabel">postes à sécuriser</div>
-    </article>
-
-    <article class="studio-dash-card">
-      <div class="studio-dash-card-head">
         <h2>Fiabilité des données</h2>
       </div>
       <div class="studio-dash-signal" id="studioDashReliabilitySignal"></div>
       <div class="studio-dash-big-number studio-dash-big-number--sm" id="studioDashReliabilityPct">—</div>
-    </article>
-  </div>
-
-  <div class="studio-dash-grid studio-dash-grid--full">
-    <article class="studio-dash-card studio-dash-card--large">
-      <div class="studio-dash-card-head studio-dash-card-head--inline">
-        <h2 id="studioDashRiskTitle">Services à surveiller</h2>
-        <div class="studio-dash-legend">
-          <span><i class="studio-dot studio-dot--danger"></i><strong id="studioDashNbDanger">0</strong> en danger</span>
-          <span><i class="studio-dot studio-dot--watch"></i><strong id="studioDashNbWatch">0</strong> à surveiller</span>
-          <span><i class="studio-dot studio-dot--stable"></i><strong id="studioDashNbStable">0</strong> stables</span>
-        </div>
-      </div>
-      <div class="studio-dash-risk-bars" id="studioDashRiskBars"></div>
-    </article>
-  </div>
-
-  <div class="studio-dash-grid studio-dash-grid--full">
-    <article class="studio-dash-card studio-dash-card--large">
-      <div class="studio-dash-card-head">
-        <h2>Actions prioritaires</h2>
-      </div>
-      <div class="studio-dash-action-list" id="studioDashActions"></div>
     </article>
   </div>
 
@@ -115,22 +120,5 @@
       </div>
       <div class="studio-dash-mini-list" id="studioDashLinkedStructureItems"></div>
     </article>
-  </div>
-
-  <div class="sb-modal studio-dash-modal" id="studioDashHealthModal" aria-hidden="true" style="display:none;">
-    <div class="sb-modal-card studio-dash-modal-card" role="dialog" aria-modal="true" aria-labelledby="studioDashHealthModalTitle">
-      <div class="sb-modal-head">
-        <h3 id="studioDashHealthModalTitle">Santé de la structure</h3>
-        <button type="button" class="sb-modal-x" id="studioDashHealthModalClose" aria-label="Fermer">×</button>
-      </div>
-      <div class="sb-modal-body">
-        <p>Ce score synthétise les fragilités des postes, la couverture des compétences et la capacité de transmission.</p>
-        <div class="studio-dash-help-scale">
-          <span><i class="studio-dot studio-dot--danger"></i>Rouge : situation critique</span>
-          <span><i class="studio-dot studio-dot--watch"></i>Orange : vigilance</span>
-          <span><i class="studio-dot studio-dot--stable"></i>Vert : situation maîtrisée</span>
-        </div>
-      </div>
-    </div>
   </div>
 </section>
