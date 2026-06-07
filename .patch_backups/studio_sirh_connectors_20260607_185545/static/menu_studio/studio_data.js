@@ -6,8 +6,6 @@
   let _initialContact = null;
   let _initialConnexion = null;
   let _connexionLoaded = false;
-  let _initialSirh = null;
-  let _sirhLoaded = false;
   let _refOpco = null;
   let _entLogoBlobUrl = null;
   const _saveSuccessTimers = {};
@@ -169,6 +167,7 @@
       throw new Error("Logo trop volumineux. Limite : 2 Mo.");
     }
 
+    setStatus("Import du logo…");
     portal.showAlert("", "");
 
     try {
@@ -200,6 +199,7 @@
 
       await loadData(portal);
     } finally {
+      setStatus("—");
     }
   }
 
@@ -207,6 +207,7 @@
     const ownerId = getOwnerId();
     if (!ownerId) throw new Error("Owner manquant (?id=...).");
 
+    setStatus("Retrait du logo…");
     portal.showAlert("", "");
 
     try {
@@ -234,7 +235,14 @@
 
       await loadData(portal);
     } finally {
+      setStatus("—");
     }
+  }
+
+  function setStatus(msg) {
+    const el = document.getElementById("dataStatus");
+    if (!el) return;
+    el.textContent = msg || "—";
   }
 
   function setValueOrEmpty(id, value) {
@@ -340,11 +348,28 @@
   function showSsoInfoPopup(message) {
     window.alert(message || "Information SSO indisponible.");
   }
+
+  function ssoStatusLabel(status) {
+    const s = (status || "desactive").toString().trim().toLowerCase();
+    if (s === "actif") return "SSO actif";
+    if (s === "configuration") return "SSO en configuration";
+    if (s === "a_tester") return "SSO à tester";
+    if (s === "erreur") return "Erreur SSO";
+    return "Standard Novoskill";
+  }
+  function setSsoStatus(elId, status) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    const s = (status || "desactive").toString().trim().toLowerCase();
+    el.dataset.status = s;
+    el.textContent = ssoStatusLabel(s);
+  }
   function setCheckbox(id, value) { const el = document.getElementById(id); if (el) el.checked = !!value; }
   function checkboxValue(id) { return !!document.getElementById(id)?.checked; }
   function renderOwnerConnexion(cfg) {
     const c = cfg || {};
     _initialConnexion = { ...c };
+    setSsoStatus("ownerSsoStatus", c.sso_statut || "desactive");
     setCheckbox("ownerSsoEnabled", c.sso_enabled);
     setCheckbox("ownerSsoPasswordAllowed", c.password_allowed !== false);
     setCheckbox("ownerSsoMandatory", c.sso_obligatoire);
@@ -428,187 +453,6 @@
       if (btn.dataset.boundHelp === "1") return;
       btn.dataset.boundHelp = "1";
       btn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); window.alert(btn.dataset.help || "Aide indisponible."); });
-    });
-  }
-
-
-
-  function sirhProviderLabel(providerCode) {
-    const p = String(providerCode || "manual").trim().toLowerCase();
-    if (p === "ebp_paie") return "EBP Paie";
-    return "Aucun connecteur";
-  }
-
-  function setSirhStatus(type, msg) {
-    const box = document.getElementById("sirhStatusBox");
-    if (!box) return;
-
-    if (!msg) {
-      box.style.display = "none";
-      box.className = "sd-sirh-status";
-      box.textContent = "";
-      return;
-    }
-
-    box.style.display = "";
-    box.className = `sd-sirh-status is-${type || "info"}`;
-    box.textContent = msg;
-  }
-
-  function syncSirhProviderUi() {
-    const provider = document.getElementById("sirhProvider")?.value || "manual";
-    const hasProvider = provider !== "manual";
-
-    document.querySelectorAll(".sd-sirh-provider-field").forEach(el => {
-      el.style.display = hasProvider ? "" : "none";
-    });
-
-    const badge = document.getElementById("sirhConfigBadge");
-    if (badge) {
-      if (!_initialSirh || _initialSirh.schema_ready === false) {
-        badge.textContent = "Table à installer";
-      } else if (!hasProvider) {
-        badge.textContent = "Non configuré";
-      } else if (_initialSirh.configured) {
-        badge.textContent = `${sirhProviderLabel(provider)} prêt`;
-      } else {
-        badge.textContent = `${sirhProviderLabel(provider)} à compléter`;
-      }
-    }
-  }
-
-  function renderSirhConfig(cfg) {
-    const c = cfg || {};
-    _initialSirh = { ...c };
-
-    setValueOrEmpty("sirhProvider", c.provider_code || "manual");
-    setValueOrEmpty("sirhBaseUrl", c.base_url || "");
-    setValueOrEmpty("sirhClientId", c.client_id || c.tenant_id || "");
-    setValueOrEmpty("sirhDossierCode", c.dossier_code || "");
-    setValueOrEmpty("sirhApiKey", "");
-
-    const hint = document.getElementById("sirhSecretHint");
-    if (hint) {
-      hint.className = `sd-sirh-secret-hint ${c.has_secret ? "is-ok" : "is-empty"}`;
-      hint.textContent = c.has_secret
-        ? "Clé API enregistrée. Laissez le champ vide pour la conserver."
-        : "Aucune clé API enregistrée.";
-    }
-
-    const intro = document.getElementById("sirhIntroText");
-    if (intro) {
-      intro.textContent = c.schema_ready === false
-        ? "Table de configuration SIRH absente : exécutez PATCH_SQL_STUDIO_SIRH_CONNECTORS.sql dans Supabase avant l’enregistrement."
-        : "Cette zone prépare le connecteur et stocke les identifiants. La synchronisation sera activée dans un développement dédié.";
-    }
-
-    syncSirhProviderUi();
-    setSirhStatus("", "");
-  }
-
-  function collectSirhConfigFromUI() {
-    const provider = document.getElementById("sirhProvider")?.value || "manual";
-
-    return {
-      provider_code: provider,
-      base_url: provider === "manual" ? null : normalizeValue(document.getElementById("sirhBaseUrl")?.value),
-      api_key: provider === "manual" ? "" : (document.getElementById("sirhApiKey")?.value || "").trim(),
-      client_id: provider === "manual" ? null : normalizeValue(document.getElementById("sirhClientId")?.value),
-      dossier_code: provider === "manual" ? null : normalizeValue(document.getElementById("sirhDossierCode")?.value),
-    };
-  }
-
-  function setSirhEditMode(isEdit) {
-    const admin = isAdmin();
-    if (isEdit) hideSaveSuccess("sirhSaveSuccess");
-
-    const card = document.getElementById("cardSirhConnectors");
-    if (card) card.style.display = admin ? "" : "none";
-
-    document.querySelectorAll("[data-editable-sirh='1']").forEach(el => {
-      el.disabled = !(admin && isEdit);
-    });
-
-    const bEdit = document.getElementById("btnEditSirh");
-    const bSave = document.getElementById("btnSaveSirh");
-    const bCancel = document.getElementById("btnCancelSirh");
-
-    if (bEdit) bEdit.style.display = (!admin || isEdit) ? "none" : "inline-flex";
-    if (bSave) bSave.style.display = (admin && isEdit) ? "inline-flex" : "none";
-    if (bCancel) bCancel.style.display = (admin && isEdit) ? "inline-flex" : "none";
-  }
-
-  async function loadSirhConfig(portal) {
-    const ownerId = getOwnerId();
-    if (!ownerId || !portal) return;
-
-    try {
-      const cfg = await portal.apiJson(`${portal.apiBase}/studio/sirh/owner/${encodeURIComponent(ownerId)}/config`);
-      renderSirhConfig(cfg || {});
-      _sirhLoaded = true;
-    } catch (e) {
-      renderSirhConfig({
-        schema_ready: false,
-        provider_code: "manual",
-        configured: false,
-        has_secret: false,
-      });
-      setSirhStatus("error", e.message || "Configuration SIRH indisponible.");
-    }
-
-    setSirhEditMode(false);
-  }
-
-  async function saveSirhConfig(portal) {
-    const ownerId = getOwnerId();
-    if (!ownerId) return;
-
-    const data = await portal.apiJson(
-      `${portal.apiBase}/studio/sirh/owner/${encodeURIComponent(ownerId)}/config`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(collectSirhConfigFromUI()),
-      }
-    );
-
-    renderSirhConfig((data && data.config) || data || {});
-    setSirhEditMode(false);
-    showSaveSuccess("sirhSaveSuccess");
-    setSirhStatus("ok", "Configuration SIRH enregistrée. Aucune synchronisation n’a été lancée.");
-  }
-
-  function bindSirhEvents(portal) {
-    document.getElementById("sirhProvider")?.addEventListener("change", () => {
-      syncSirhProviderUi();
-      setSirhStatus("", "");
-    });
-
-    document.getElementById("btnEditSirh")?.addEventListener("click", async () => {
-      try {
-        if (!isAdmin()) return;
-        if (!_sirhLoaded) await loadSirhConfig(portal);
-        portal.showAlert("", "");
-        setSirhEditMode(true);
-      } catch (e) {
-        showSsoInfoPopup(e.message || String(e));
-      }
-    });
-
-    document.getElementById("btnCancelSirh")?.addEventListener("click", () => {
-      renderSirhConfig(_initialSirh || {});
-      setSirhEditMode(false);
-      portal.showAlert("", "");
-    });
-
-    document.getElementById("btnSaveSirh")?.addEventListener("click", async () => {
-      try {
-        await saveSirhConfig(portal);
-        portal.showAlert("", "");
-      } catch (e) {
-        setSirhStatus("error", e.message || String(e));
-        portal.showAlert("error", "Erreur enregistrement SIRH : " + (e.message || e));
-      }
     });
   }
 
@@ -740,6 +584,7 @@
   }
 
   async function loadData(portal) {
+    setStatus("Chargement…");
     portal.showAlert("", "");
 
     const ownerId = getOwnerId();
@@ -766,6 +611,7 @@
     hideSaveSuccess("contactSaveSuccess");
 
     _loaded = true;
+    setStatus("—");
   }
 
   function collectEntrepriseFromUI() {
@@ -908,9 +754,7 @@
     const btnCancelConnexion = document.getElementById("btnCancelConnexion");
     const btnTestConnexion = document.getElementById("btnTestConnexion");
     bindSsoHelpButtons();
-    bindSirhEvents(portal);
     setConnexionEditMode(false);
-    setSirhEditMode(false);
     btnEditConnexion?.addEventListener("click", async () => {
       try { if (!isAdmin()) return; if (!_connexionLoaded) await loadConnexion(portal); portal.showAlert("", ""); setConnexionEditMode(true); } catch (e) { showSsoInfoPopup(e.message || String(e)); }
     });
@@ -1052,6 +896,7 @@
       if (!_loaded) await loadData(portal);
     } catch (e) {
       if (portal.showAlert) portal.showAlert("error", "Erreur de chargement : " + (e.message || e));
+      setStatus("Erreur de chargement.");
     }
   })();
 })();
