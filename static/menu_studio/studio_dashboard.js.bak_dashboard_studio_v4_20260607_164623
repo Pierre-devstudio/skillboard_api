@@ -8,31 +8,31 @@
   const HELP = {
     health: {
       title: "Santé de la structure",
-      body: "Synthèse globale du périmètre affiché : fragilité des postes, criticité, couverture des compétences et capacité de transmission. La jauge reprend la lecture Insights : rouge, orange, vert."
+      body: "Synthèse globale de la structure : fragilité des postes, criticité, couverture des compétences et capacité de transmission. La jauge est découpée en trois zones : rouge, orange, vert."
     },
     demandes: {
       title: "Demandes terrain",
-      body: "Demandes remontées depuis le terrain : ouvertes, urgentes ou déjà prises en charge."
+      body: "Demandes remontées depuis le terrain et encore utiles au pilotage : demandes ouvertes, urgentes ou déjà prises en charge."
     },
     entretiens: {
       title: "Entretiens à relancer",
-      body: "Entretiens à réaliser, en cours ou en attente de signature."
+      body: "Entretiens à réaliser, en cours ou en attente de signature. L’indicateur sert à repérer les relances opérationnelles."
     },
     referentiel: {
       title: "Qualité des référentiels",
-      body: "Contrôle les éléments qui fragilisent l’analyse : postes sans compétence, compétences sans domaine et collaborateurs sans poste."
+      body: "Contrôle les éléments qui rendent l’analyse fragile : postes sans compétence, compétences sans domaine et collaborateurs sans poste."
     },
     transmission: {
       title: "Capacité de transmission",
-      body: "Mesure la capacité de la structure à transmettre les savoir-faire critiques grâce aux relais disponibles et aux niveaux de maîtrise observés."
+      body: "Mesure la capacité de la structure à transmettre ses savoir-faire critiques grâce aux relais disponibles et aux niveaux de maîtrise observés."
     },
     fiabilite: {
       title: "Fiabilité des données",
-      body: "Score de confiance des données utilisées par le dashboard. Plus le score est bas, plus les indicateurs doivent être lus avec prudence."
+      body: "Score de confiance des données utilisées par le dashboard. Plus le score est bas, plus les décisions doivent être prises avec prudence."
     },
     fragilite: {
       title: "Indice de fragilité des services/postes",
-      body: "Histogramme des services ou des postes classés par niveau de fragilité. Le filtre Périmètre permet de basculer de la lecture services vers la lecture postes."
+      body: "Classement visuel des services ou des postes selon leur niveau de fragilité. Un élément stable reste visible pour donner le contexte, sans être traité comme une alerte."
     },
     linked: {
       title: "Sites / clients à surveiller",
@@ -43,64 +43,8 @@
   function byId(id){ return document.getElementById(id); }
   function esc(v){ return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;"); }
   function n(v){ const x = Number(v || 0); return Number.isFinite(x) ? x : 0; }
-  function clamp(v, min, max){ const x = Number(v); return Number.isFinite(x) ? Math.max(min, Math.min(max, x)) : min; }
-  function pct(v){ return `${Math.round(clamp(v, 0, 100))}%`; }
+  function pct(v){ const x = Math.max(0, Math.min(100, n(v))); return `${Math.round(x)}%`; }
   function setText(id, value){ const el = byId(id); if (el) el.textContent = value == null || value === "" ? "—" : String(value); }
-
-  function riskColor(score, inverse){
-    const s = clamp(score, 0, 100) / 100;
-    const x = inverse ? (1 - s) : s;
-    const hue = Math.round(120 * (1 - x));
-    return `hsl(${hue} 70% 44%)`;
-  }
-
-  function healthStatus(value){
-    const p = clamp(value, 0, 100);
-    if (p >= 92) return { label:"Robuste", cls:"sb-health-status--robust" };
-    if (p >= 80) return { label:"Solide", cls:"sb-health-status--solid" };
-    if (p >= 65) return { label:"Correct", cls:"sb-health-status--ok" };
-    if (p >= 50) return { label:"Sous vigilance", cls:"sb-health-status--watch" };
-    return { label:"Fragile", cls:"sb-health-status--danger" };
-  }
-
-  function polarToCartesian(cx, cy, r, angleDeg){
-    const a = (angleDeg - 90) * Math.PI / 180;
-    return { x: cx + (r * Math.cos(a)), y: cy + (r * Math.sin(a)) };
-  }
-
-  function describeArc(cx, cy, r, startAngle, endAngle){
-    const start = polarToCartesian(cx, cy, r, endAngle);
-    const end = polarToCartesian(cx, cy, r, startAngle);
-    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-    return ["M", start.x, start.y, "A", r, r, 0, largeArcFlag, 0, end.x, end.y].join(" ");
-  }
-
-  function renderHealthGauge(value){
-    const svg = byId("studioDashHealthGauge");
-    const pctEl = byId("studioDashHealthPct");
-    const statusEl = byId("studioDashHealthLabel");
-    if (!svg) return;
-
-    const p = clamp(value, 0, 100);
-    const color = riskColor(p, true);
-    const angle = -90 + (180 * p / 100);
-    const needle = polarToCartesian(130, 130, 82, angle);
-
-    svg.innerHTML = `
-      <path d="${describeArc(130, 130, 92, -90, -30)}" class="sb-health-arc sb-health-arc--bad"></path>
-      <path d="${describeArc(130, 130, 92, -30, 35)}" class="sb-health-arc sb-health-arc--mid"></path>
-      <path d="${describeArc(130, 130, 92, 35, 90)}" class="sb-health-arc sb-health-arc--good"></path>
-      <line x1="130" y1="130" x2="${needle.x.toFixed(1)}" y2="${needle.y.toFixed(1)}" class="sb-health-needle" style="stroke:${color}"></line>
-      <circle cx="130" cy="130" r="8" class="sb-health-dot"></circle>
-    `;
-
-    if (pctEl) pctEl.textContent = pct(p);
-    if (statusEl) {
-      const st = healthStatus(p);
-      statusEl.className = `sb-health-status ${st.cls}`;
-      statusEl.textContent = st.label;
-    }
-  }
 
   function getOwnerId(){
     const pid = (window.portal && window.portal.contactId) ? String(window.portal.contactId).trim() : "";
@@ -141,6 +85,12 @@
     if (!select) return;
     select.value = idService || "";
     load().catch(e => setStatus(e.message || String(e), true));
+  }
+
+  function setGauge(value){
+    const v = Math.max(0, Math.min(100, n(value)));
+    const needle = byId("studioDashHealthNeedle");
+    if (needle) needle.style.transform = `translateX(-50%) rotate(${Math.round(-90 + (v * 1.8))}deg)`;
   }
 
   function setRing(id, value){
@@ -195,7 +145,7 @@
   function renderRiskBars(items){
     const el = byId("studioDashRiskBars");
     if (!el) return;
-    const rows = Array.isArray(items) ? items.slice(0, 120) : [];
+    const rows = Array.isArray(items) ? items.slice(0, 90) : [];
     if (!rows.length){
       el.innerHTML = `<div class="studio-dash-empty">Aucun indice de fragilité.</div>`;
       return;
@@ -207,7 +157,7 @@
       const label = esc(r.label || r.nom_service || r.intitule_poste || "Élément");
       const idService = r.id_service ? esc(r.id_service) : "";
       const attrs = idService ? `data-service="${idService}"` : "";
-      return `<button type="button" class="studio-dash-risk-bar ${cls}" ${attrs} title="${label} : ${Math.round(val)}%"><span class="studio-dash-risk-bar-value">${Math.round(val)}%</span><span class="studio-dash-risk-bar-track"><span class="studio-dash-risk-bar-fill" style="height:${Math.max(4, Math.round(val))}%"></span></span><span class="studio-dash-risk-bar-label">${label}</span></button>`;
+      return `<button type="button" class="studio-dash-risk-bar ${cls}" ${attrs} title="${label} : ${Math.round(val)}%"><span class="studio-dash-risk-bar-fill" style="height:${Math.max(4, Math.round(val))}%"></span><span class="studio-dash-risk-bar-value">${Math.round(val)}%</span><span class="studio-dash-risk-bar-label">${label}</span></button>`;
     }).join("");
     el.querySelectorAll("[data-service]").forEach(btn => btn.addEventListener("click", () => setServiceFilter(btn.dataset.service || "")));
   }
@@ -250,7 +200,9 @@
     const filters = getFilters();
 
     setStatus("");
-    renderHealthGauge(p.health_pct);
+    setText("studioDashHealthPct", pct(p.health_pct));
+    setText("studioDashHealthLabel", p.health_label || "Analyse interne");
+    setGauge(p.health_pct);
 
     setText("studioDashDemandesOpen", n(demandes.ouvertes));
     setText("studioDashDemandesUrgentes", n(demandes.urgentes));
@@ -265,6 +217,7 @@
     setText("studioDashCollabSansPoste", n(ref.collaborateurs_sans_poste));
 
     setText("studioDashTransmissionPct", pct(tr.pct));
+    setText("studioDashTransmissionLabel", "continuité des savoir-faire");
     setRing("studioDashTransmissionRing", tr.pct);
 
     setText("studioDashReliabilityPct", pct(reliability.pct));
