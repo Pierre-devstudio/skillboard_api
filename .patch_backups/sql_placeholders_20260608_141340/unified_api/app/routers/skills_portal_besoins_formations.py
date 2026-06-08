@@ -725,14 +725,14 @@ def envoyer_besoins_formations(id_contact: str, payload: BesoinFormationSendPayl
                                 formation_existante, nb_formations_existantes,
                                 statut, payload_signal, archive, created_at, updated_at
                             ) VALUES (
-                                %s, %s, %s, %s,
+                                %s, %s, %s, %s, %s,
                                 'insights', 'analyse_competences', 'individuel',
                                 %s, %s, %s,
+                                %s, %s, %s, %s, %s, %s,
+                                %s, %s, %s,
+                                %s, %s, %s,
                                 %s, %s, %s, %s, %s,
-                                %s, %s, %s,
-                                %s, %s, %s,
-                                %s, %s, %s, %s,
-                                %s, %s, %s, %s, %s::jsonb,
+                                %s, %s, %s, %s, %s, %s::jsonb,
                                 %s, %s, %s,
                                 %s, %s,
                                 'envoye_studio', %s::jsonb, FALSE, NOW(), NOW()

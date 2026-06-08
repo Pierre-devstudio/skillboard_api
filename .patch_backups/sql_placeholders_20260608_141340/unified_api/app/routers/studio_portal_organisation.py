@@ -7619,7 +7619,7 @@ def studio_org_create_poste(id_owner: str, payload: CreatePosteOrgPayload, reque
                        %s, %s, %s,
                        %s, %s,
                        TRUE, NOW(),
-                       %s, %s, %s, %s, %s, %s, %s, %s)
+                       %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         pid, oid, scope_ent, sid,
@@ -8042,7 +8042,7 @@ def studio_org_duplicate_poste(id_owner: str, id_poste: str, payload: DuplicateP
                        %s, %s, %s,
                        %s, %s,
                        TRUE, NOW(),
-                       %s, %s, %s, %s, %s, %s, %s, %s)
+                       %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         new_id,

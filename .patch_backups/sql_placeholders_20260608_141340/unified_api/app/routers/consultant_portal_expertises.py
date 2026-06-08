@@ -414,7 +414,7 @@ def add_or_update_consultant_competence(
                         )
                         VALUES
                         (
-                            %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s,
                             NULL, NULL,
                             TRUE,
                             NULL

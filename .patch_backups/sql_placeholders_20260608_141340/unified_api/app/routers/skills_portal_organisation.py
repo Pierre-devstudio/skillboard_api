@@ -1056,7 +1056,7 @@ def update_poste_param_rh(id_contact: str, id_poste: str, payload: PosteParamRhU
                         param_rh_verrouille,
                         param_rh_commentaire
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s, %s,
                         'insights',
                         now(),
                         TRUE,

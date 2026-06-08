@@ -1636,7 +1636,7 @@ def ep_create_entretien_individuel(
                         %s, %s,
                         %s, %s, %s, %s, %s,
                         %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb,
-                        %s::jsonb, %s::jsonb,
+                        %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb,
                         FALSE,
                         NOW(),
                         NOW()

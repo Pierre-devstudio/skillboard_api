@@ -5650,7 +5650,7 @@ def studio_collab_save_acces(id_owner: str, id_collaborateur: str, payload: Coll
                               updated_at,
                               statut_access
                             ) VALUES (
-                              %s, %s, %s, %s, FALSE, NOW(), %s, %s, %s, NOW(), %s
+                              %s, %s, %s, %s, %s, FALSE, NOW(), %s, %s, %s, NOW(), %s
                             )
                             """,
                             (str(uuid.uuid4()), email, access_owner_id, desired_role, user_ref_type, cid, console, target_statut_access),
@@ -5941,8 +5941,8 @@ def studio_collab_create(id_owner: str, payload: CollaborateurPayload, request: 
                         ) VALUES (
                           %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                           %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                          %s, %s, %s, %s, FALSE, CURRENT_DATE, NOW(), %s, %s,
-                          %s, %s, %s, %s, %s
+                          %s, %s, %s, %s, %s, %s, %s, FALSE, CURRENT_DATE, NOW(), %s, %s,
+                          %s, %s, %s, %s, %s, %s
                         )
                         """,
                         (

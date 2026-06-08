@@ -407,7 +407,7 @@ def create_validation_electronique_insights(
                         %s, %s,
                         %s, %s,
                         %s, %s, %s,
-                        %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s,
                         %s::jsonb,
                         %s, %s,
                         NOW(),

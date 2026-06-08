@@ -694,7 +694,7 @@ def studio_catalog_create_competence(id_owner: str, payload: CreateCompetencePay
                     VALUES
                       (%s, %s, %s, %s, %s, %s,
                        %s, %s, %s, %s, %s, %s,
-                       FALSE, NOW(), NOW())
+                       %s, FALSE, NOW(), NOW())
                     """,
                     (
                         cid,

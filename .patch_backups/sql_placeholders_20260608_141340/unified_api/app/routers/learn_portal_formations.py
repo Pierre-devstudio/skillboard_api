@@ -2479,10 +2479,10 @@ def learn_formation_create(id_effectif: str, payload: FormationPayload, request:
                       (
                         %s, %s, %s, %s, %s,
                         %s, %s, %s, %s, %s,
-                        %s,
+                        %s, %s, %s,
                         %s::jsonb, %s::jsonb, %s::jsonb,
                         %s::jsonb, %s::jsonb,
-                        %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s,
                         FALSE, FALSE, NOW(), NOW()
                       )
                     """,
@@ -4765,7 +4765,7 @@ def learn_formation_plan_create(
                     VALUES
                       (
                         %s, %s, %s,
-                        %s, %s, %s, %s,
+                        %s, %s, %s, %s, %s,
                         FALSE,
                         NOW(),
                         NOW()

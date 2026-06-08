@@ -737,7 +737,7 @@ def save_evaluation(payload: SaveEvaluationRequest):
                             commentaire_consultant,
                             archive
                         ) VALUES (
-                            %s, %s, %s, %s, NOW(), NOW(), %s, %s, FALSE
+                            %s, %s, %s, %s, %s, NOW(), NOW(), %s, %s, FALSE
                         )
                         """,
                         (
