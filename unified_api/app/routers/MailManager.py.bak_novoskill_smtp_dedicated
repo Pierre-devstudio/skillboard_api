@@ -13,15 +13,14 @@ MAIL_FROM = os.getenv("MAIL_FROM") or "no-reply@novoskill.fr"
 MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "Novoskill")
 NOVOSKILL_PUBLIC_BASE_URL = (os.getenv("NOVOSKILL_PUBLIC_BASE_URL") or "https://novoskill.jmbconsultant.fr").rstrip("/")
 
-
-NOVOSKILL_SMTP_HOST = (os.getenv("NOVOSKILL_SMTP_HOST") or "").strip()
-NOVOSKILL_SMTP_PORT = (os.getenv("NOVOSKILL_SMTP_PORT") or "").strip()
-NOVOSKILL_SMTP_USER = (os.getenv("NOVOSKILL_SMTP_USER") or "").strip()
-NOVOSKILL_SMTP_PASSWORD = os.getenv("NOVOSKILL_SMTP_PASSWORD") or ""
-NOVOSKILL_MAIL_FROM = (os.getenv("NOVOSKILL_MAIL_FROM") or "").strip()
-NOVOSKILL_MAIL_FROM_NAME = (os.getenv("NOVOSKILL_MAIL_FROM_NAME") or "Novoskill").strip()
-NOVOSKILL_SMTP_STARTTLS = (os.getenv("NOVOSKILL_SMTP_STARTTLS") or "false").strip().lower() in ("1", "true", "yes", "on")
-NOVOSKILL_SMTP_SSL = (os.getenv("NOVOSKILL_SMTP_SSL") or "true").strip().lower() in ("1", "true", "yes", "on")
+NOVOSKILL_SMTP_HOST = (os.getenv("NOVOSKILL_SMTP_HOST") or os.getenv("SMTP_HOST") or os.getenv("SMTP_SERVER") or os.getenv("MAIL_SERVER") or "").strip()
+NOVOSKILL_SMTP_PORT = (os.getenv("NOVOSKILL_SMTP_PORT") or os.getenv("SMTP_PORT") or os.getenv("MAIL_PORT") or "587").strip()
+NOVOSKILL_SMTP_USER = (os.getenv("NOVOSKILL_SMTP_USER") or os.getenv("SMTP_USER") or os.getenv("SMTP_USERNAME") or os.getenv("SMTP_LOGIN") or os.getenv("MAIL_USERNAME") or "").strip()
+NOVOSKILL_SMTP_PASSWORD = os.getenv("NOVOSKILL_SMTP_PASSWORD") or os.getenv("SMTP_PASSWORD") or os.getenv("SMTP_PASS") or os.getenv("MAIL_PASSWORD") or ""
+NOVOSKILL_MAIL_FROM = (os.getenv("NOVOSKILL_MAIL_FROM") or os.getenv("NOVOSKILL_SMTP_FROM") or MAIL_FROM or "").strip()
+NOVOSKILL_MAIL_FROM_NAME = (os.getenv("NOVOSKILL_MAIL_FROM_NAME") or os.getenv("NOVOSKILL_SMTP_FROM_NAME") or MAIL_FROM_NAME or "Novoskill").strip()
+NOVOSKILL_SMTP_STARTTLS = (os.getenv("NOVOSKILL_SMTP_STARTTLS") or os.getenv("SMTP_STARTTLS") or "true").strip().lower() in ("1", "true", "yes", "on")
+NOVOSKILL_SMTP_SSL = (os.getenv("NOVOSKILL_SMTP_SSL") or os.getenv("SMTP_SSL") or "false").strip().lower() in ("1", "true", "yes", "on")
 
 MAILJET_URL = "https://api.mailjet.com/v3.1/send"
 
@@ -316,24 +315,13 @@ def _mailjet_ready() -> bool:
 
 def _novoskill_smtp_port() -> int:
     try:
-        return int(NOVOSKILL_SMTP_PORT)
+        return int(NOVOSKILL_SMTP_PORT or 587)
     except Exception:
-        return 0
+        return 587
 
 
-def _novoskill_smtp_missing_config() -> list[str]:
-    missing = []
-    if not NOVOSKILL_SMTP_HOST:
-        missing.append("NOVOSKILL_SMTP_HOST")
-    if not NOVOSKILL_SMTP_PORT:
-        missing.append("NOVOSKILL_SMTP_PORT")
-    if not NOVOSKILL_SMTP_USER:
-        missing.append("NOVOSKILL_SMTP_USER")
-    if not NOVOSKILL_SMTP_PASSWORD:
-        missing.append("NOVOSKILL_SMTP_PASSWORD")
-    if not NOVOSKILL_MAIL_FROM:
-        missing.append("NOVOSKILL_MAIL_FROM")
-    return missing
+def _novoskill_smtp_ready() -> bool:
+    return bool(NOVOSKILL_SMTP_HOST and _novoskill_smtp_port() > 0 and NOVOSKILL_MAIL_FROM)
 
 
 def _send_novoskill_smtp_email(
@@ -347,18 +335,8 @@ def _send_novoskill_smtp_email(
         print("Email destinataire manquant. Envoi accès Novoskill annulé.")
         return False
 
-    missing = _novoskill_smtp_missing_config()
-    if missing:
-        print("SMTP Novoskill non configuré. Variables manquantes:", ", ".join(missing))
-        return False
-
-    port = _novoskill_smtp_port()
-    if port <= 0:
-        print("SMTP Novoskill non configuré. NOVOSKILL_SMTP_PORT invalide:", NOVOSKILL_SMTP_PORT)
-        return False
-
-    if NOVOSKILL_SMTP_SSL and NOVOSKILL_SMTP_STARTTLS:
-        print("SMTP Novoskill configuration incohérente: SSL direct et STARTTLS activés simultanément.")
+    if not _novoskill_smtp_ready():
+        print("SMTP Novoskill non configuré. Envoi accès annulé.")
         return False
 
     msg = EmailMessage()
@@ -369,11 +347,13 @@ def _send_novoskill_smtp_email(
     msg.add_alternative(html_part or "", subtype="html")
 
     context = ssl.create_default_context()
+    port = _novoskill_smtp_port()
 
     try:
         if NOVOSKILL_SMTP_SSL:
             with smtplib.SMTP_SSL(NOVOSKILL_SMTP_HOST, port, timeout=20, context=context) as server:
-                server.login(NOVOSKILL_SMTP_USER, NOVOSKILL_SMTP_PASSWORD)
+                if NOVOSKILL_SMTP_USER:
+                    server.login(NOVOSKILL_SMTP_USER, NOVOSKILL_SMTP_PASSWORD)
                 refused = server.send_message(msg)
         else:
             with smtplib.SMTP(NOVOSKILL_SMTP_HOST, port, timeout=20) as server:
@@ -381,17 +361,18 @@ def _send_novoskill_smtp_email(
                 if NOVOSKILL_SMTP_STARTTLS:
                     server.starttls(context=context)
                     server.ehlo()
-                server.login(NOVOSKILL_SMTP_USER, NOVOSKILL_SMTP_PASSWORD)
+                if NOVOSKILL_SMTP_USER:
+                    server.login(NOVOSKILL_SMTP_USER, NOVOSKILL_SMTP_PASSWORD)
                 refused = server.send_message(msg)
 
         if refused:
             print("SMTP Novoskill a refusé au moins un destinataire:", refused)
             return False
 
-        print(f"Mail accès Novoskill envoyé via SMTP dédié OK: {dest}")
+        print(f"Mail accès Novoskill envoyé via SMTP OK: {dest}")
         return True
     except Exception as e:
-        print("Erreur appel SMTP Novoskill dédié:", e)
+        print("Erreur appel SMTP Novoskill:", e)
         return False
 
 
