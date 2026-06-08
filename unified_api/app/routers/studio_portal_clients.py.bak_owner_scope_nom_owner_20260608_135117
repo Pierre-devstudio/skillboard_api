@@ -822,10 +822,6 @@ def _ensure_offer_exists(cur, offer_code: str) -> None:
 
 
 def _ensure_client_owner_scope(cur, id_ent: str) -> None:
-    ent_id = _normalize_text(id_ent)
-    if not ent_id:
-        raise HTTPException(status_code=400, detail="Structure obligatoire.")
-
     cur.execute(
         """
         SELECT 1
@@ -834,55 +830,40 @@ def _ensure_client_owner_scope(cur, id_ent: str) -> None:
           AND COALESCE(archive, FALSE) = FALSE
         LIMIT 1
         """,
-        (ent_id,),
+        (id_ent,),
     )
     if cur.fetchone() is not None:
         return
 
     cur.execute(
         """
-        SELECT
-            nom_ent,
-            lower(COALESCE(type_entreprise, '')) AS type_entreprise,
-            id_owner_gestionnaire
+        SELECT lower(COALESCE(type_entreprise, '')) AS type_entreprise
         FROM public.tbl_entreprise
         WHERE id_ent = %s
-          AND COALESCE(masque, FALSE) = FALSE
         LIMIT 1
         """,
-        (ent_id,),
+        (id_ent,),
     )
     src = cur.fetchone() or {}
     ent_type = (src.get("type_entreprise") or "").strip().lower()
     if not ent_type:
         raise HTTPException(status_code=404, detail="Structure introuvable.")
 
-    nom_owner = _normalize_text(src.get("nom_ent")) or ent_id
-    id_owner_parent = _normalize_text(src.get("id_owner_gestionnaire"))
     owner_type = "site" if ent_type == "site" else "entreprise"
 
     cur.execute(
         """
         INSERT INTO public.tbl_novoskill_owner (
             id_owner,
-            nom_owner,
             type_owner,
-            id_owner_parent,
-            archive,
-            statut_owner,
-            created_at,
-            updated_at
-        ) VALUES (%s, %s, %s, %s, FALSE, 'actif', NOW(), NOW())
+            archive
+        ) VALUES (%s, %s, FALSE)
         ON CONFLICT (id_owner)
         DO UPDATE SET
-            nom_owner = EXCLUDED.nom_owner,
             type_owner = EXCLUDED.type_owner,
-            id_owner_parent = EXCLUDED.id_owner_parent,
-            archive = FALSE,
-            statut_owner = 'actif',
-            updated_at = NOW()
+            archive = FALSE
         """,
-        (ent_id, nom_owner, owner_type, id_owner_parent),
+        (id_ent, owner_type),
     )
 
 
