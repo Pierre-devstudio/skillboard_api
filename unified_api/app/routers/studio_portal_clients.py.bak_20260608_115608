@@ -1592,8 +1592,8 @@ def create_studio_client(id_owner: str, payload: ClientPayload, request: Request
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s,
                         %s, %s, %s, %s, %s, %s, %s, %s,
-                        'Client', FALSE, %s, %s,
-                        %s, %s, %s, %s, %s, %s
+                        %s, %s, 'Client', FALSE, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s
                     )
                     """,
                     (
@@ -2835,8 +2835,8 @@ def create_studio_child_structure(id_owner: str, id_ent: str, payload: ClientPay
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s, %s,
                         %s, %s, %s, %s, %s, %s, %s, %s,
-                        %s, FALSE, %s, %s,
-                        %s, %s, %s, %s, %s, %s
+                        %s, %s, %s, FALSE, %s, %s,
+                        %s, %s, %s, %s, %s, %s, %s
                     )
                     """,
                     (
