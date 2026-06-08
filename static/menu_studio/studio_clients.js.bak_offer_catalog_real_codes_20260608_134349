@@ -1135,41 +1135,6 @@
     return Number.isFinite(n) && n >= 0 ? n : 0;
   }
 
-  function normalizeCommercialOfferCode(value){
-    let v = (value || "").toString().trim().toLowerCase();
-    if (!v) return "";
-    const replacements = {
-      "é": "e", "è": "e", "ê": "e", "ë": "e",
-      "à": "a", "â": "a", "ä": "a",
-      "ù": "u", "û": "u", "ü": "u",
-      "î": "i", "ï": "i",
-      "ô": "o", "ö": "o",
-      "ç": "c",
-      "-": "_", " ": "_"
-    };
-    Object.keys(replacements).forEach(k => { v = v.split(k).join(replacements[k]); });
-    v = v.replace(/_+/g, "_").replace(/^_+|_+$/g, "");
-    const aliases = {
-      essential: "essential",
-      essentiel: "essential",
-      ess: "essential",
-      ins_ess: "essential",
-      insights_essential: "essential",
-      insights_essentiel: "essential",
-      insightsessential: "essential",
-      insightsessentiel: "essential",
-      studio_solo: "studio_solo",
-      stu_solo: "studio_solo",
-      studiosolo: "studio_solo",
-      studio_reseau: "studio_reseau",
-      studio_reseaux: "studio_reseau",
-      studio_res: "studio_reseau",
-      stu_res: "studio_reseau",
-      studioreseau: "studio_reseau"
-    };
-    return aliases[v] || v;
-  }
-
   function mapOfferQuotaValue(raw){
     if (raw == null || raw === "") return 0;
     const n = parseInt(raw, 10);
@@ -1178,10 +1143,7 @@
 
   function getSelectedCommercialOffer(){
     const code = (byId("frmCommercialOfferCode")?.value || "").trim();
-    const norm = normalizeCommercialOfferCode(code);
-    return (_commercialOffers || []).find(x => (x.offer_code || "") === code)
-      || (_commercialOffers || []).find(x => normalizeCommercialOfferCode(x.offer_code_normalized || x.offer_code || x.offer_label) === norm)
-      || null;
+    return (_commercialOffers || []).find(x => (x.offer_code || "") === code) || null;
   }
 
   function renderCommercialOfferOptions(selectedCode){
@@ -1198,11 +1160,6 @@
     });
 
     sel.value = selectedCode || "";
-    if (selectedCode && sel.value !== selectedCode) {
-      const selectedNorm = normalizeCommercialOfferCode(selectedCode);
-      const fallback = Array.from(sel.options).find(opt => normalizeCommercialOfferCode(opt.dataset.offerNormalized || opt.value || opt.textContent) === selectedNorm);
-      if (fallback) sel.value = fallback.value;
-    }
   }
 
   function getCommercialQuotaBase(inputId){

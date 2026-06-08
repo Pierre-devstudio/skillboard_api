@@ -526,19 +526,10 @@ def _normalize_core_offer_code(value: Any) -> str:
     aliases = {
         "essential": "essential",
         "essentiel": "essential",
-        "ess": "essential",
-        "ins_ess": "essential",
-        "insights_essential": "essential",
-        "insights_essentiel": "essential",
-        "insightsessential": "essential",
-        "insightsessentiel": "essential",
         "studio_solo": "studio_solo",
-        "stu_solo": "studio_solo",
         "studiosolo": "studio_solo",
         "studio_reseau": "studio_reseau",
         "studio_reseaux": "studio_reseau",
-        "studio_res": "studio_reseau",
-        "stu_res": "studio_reseau",
         "studioreseau": "studio_reseau",
     }
     return aliases.get(v, v)
@@ -647,35 +638,18 @@ def _fetch_offer_catalog(cur) -> list:
         WHERE COALESCE(archive, FALSE) = FALSE
           AND COALESCE(statut_catalogue, 'actif') = 'actif'
           AND (
-                upper(trim(COALESCE(offer_code, ''))) IN ('INS_ESS', 'STU_SOLO', 'STU_RES')
-             OR (
-                    lower(trim(COALESCE(segment_code, ''))) = 'insights'
-                AND lower(trim(COALESCE(offer_family, ''))) = 'essential'
-                )
-             OR (
-                    lower(trim(COALESCE(segment_code, ''))) = 'studio'
-                AND lower(trim(COALESCE(offer_family, ''))) IN ('solo', 'reseau')
-                )
-             OR lower(replace(replace(replace(replace(COALESCE(offer_label, ''), 'é', 'e'), 'É', 'e'), '-', '_'), ' ', '_')) IN ('insights_essential', 'studio_solo', 'studio_reseau')
+                lower(replace(replace(COALESCE(offer_code, ''), '-', '_'), ' ', '_')) IN ('essential', 'studio_solo', 'studio_reseau')
+             OR lower(replace(replace(replace(replace(COALESCE(offer_label, ''), 'é', 'e'), 'É', 'e'), '-', '_'), ' ', '_')) IN ('essential', 'studio_solo', 'studio_reseau')
           )
         ORDER BY
-            CASE
-              WHEN upper(trim(COALESCE(offer_code, ''))) = 'INS_ESS' THEN 10
-              WHEN upper(trim(COALESCE(offer_code, ''))) = 'STU_SOLO' THEN 20
-              WHEN upper(trim(COALESCE(offer_code, ''))) = 'STU_RES' THEN 30
-              WHEN lower(trim(COALESCE(segment_code, ''))) = 'insights'
-               AND lower(trim(COALESCE(offer_family, ''))) = 'essential' THEN 10
-              WHEN lower(trim(COALESCE(segment_code, ''))) = 'studio'
-               AND lower(trim(COALESCE(offer_family, ''))) = 'solo' THEN 20
-              WHEN lower(trim(COALESCE(segment_code, ''))) = 'studio'
-               AND lower(trim(COALESCE(offer_family, ''))) = 'reseau' THEN 30
-              WHEN lower(replace(replace(replace(replace(COALESCE(offer_label, ''), 'é', 'e'), 'É', 'e'), '-', '_'), ' ', '_')) = 'insights_essential' THEN 10
-              WHEN lower(replace(replace(replace(replace(COALESCE(offer_label, ''), 'é', 'e'), 'É', 'e'), '-', '_'), ' ', '_')) = 'studio_solo' THEN 20
-              WHEN lower(replace(replace(replace(replace(COALESCE(offer_label, ''), 'é', 'e'), 'É', 'e'), '-', '_'), ' ', '_')) = 'studio_reseau' THEN 30
+            CASE lower(replace(replace(COALESCE(offer_code, ''), '-', '_'), ' ', '_'))
+              WHEN 'essential' THEN 1
+              WHEN 'studio_solo' THEN 2
+              WHEN 'studio_reseau' THEN 3
               ELSE 99
             END,
             ordre_affichage,
-            lower(COALESCE(offer_label, '')),
+            lower(offer_label),
             offer_code
         """
     )
@@ -714,7 +688,7 @@ def _fetch_offer_catalog(cur) -> list:
 def _fetch_offer_defaults(cur, offer_code: str) -> dict:
     wanted = _normalize_core_offer_code(offer_code)
     if wanted not in CORE_OFFER_CODES:
-        raise HTTPException(status_code=400, detail="Offre commerciale invalide. Abonnements autorisés : Insights Essential, Studio Solo, Studio Réseau.")
+        raise HTTPException(status_code=400, detail="Offre commerciale invalide. Abonnements autorisés : Essential, Studio Solo, Studio Réseau.")
 
     for item in _fetch_offer_catalog(cur):
         item_code = item.get("offer_code") or ""
