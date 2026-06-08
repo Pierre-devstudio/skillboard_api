@@ -18,7 +18,6 @@
   let _workspaceRefreshPending = false;
   let _workspaceRefreshBusy = false;
   let _commercialOffers = [];
-  let _commercialExtensions = [];
   let _commercialClientId = null;
   let _commercialHasRights = false;
   let _clientLogoMeta = { has_logo: false };
@@ -1093,19 +1092,12 @@
     _loaded = true;
   }
 
-  async function loadCommercialOffers(portal){
+    async function loadCommercialOffers(portal){
+    if (Array.isArray(_commercialOffers) && _commercialOffers.length) return _commercialOffers;
     const ownerId = getOwnerId();
     const data = await portal.apiJson(`${portal.apiBase}/studio/offers/${encodeURIComponent(ownerId)}`);
     _commercialOffers = Array.isArray(data?.items) ? data.items : [];
     return _commercialOffers;
-  }
-
-  async function loadCommercialExtensions(portal){
-    if (Array.isArray(_commercialExtensions) && _commercialExtensions.length) return _commercialExtensions;
-    const ownerId = getOwnerId();
-    const data = await portal.apiJson(`${portal.apiBase}/studio/offer-extensions/${encodeURIComponent(ownerId)}`);
-    _commercialExtensions = Array.isArray(data?.items) ? data.items : [];
-    return _commercialExtensions;
   }
 
   function closeCommercialModal(){
@@ -1126,7 +1118,7 @@
   function setNumberValue(id, value){
     const el = byId(id);
     if (!el) return;
-    el.value = String(value == null ? 0 : value);
+    el.value = (value == null ? 0 : value);
   }
 
   function getNumberValue(id){
@@ -1135,52 +1127,25 @@
     return Number.isFinite(n) && n >= 0 ? n : 0;
   }
 
-  function mapOfferQuotaValue(raw){
-    if (raw == null || raw === "") return 0;
+  function mapOfferQuotaValue(raw, defaultUnlimited){
+    if (raw == null || raw === "") return defaultUnlimited ? 999999 : 0;
     const n = parseInt(raw, 10);
     return Number.isFinite(n) && n >= 0 ? n : 0;
-  }
-
-  function getSelectedCommercialOffer(){
-    const code = (byId("frmCommercialOfferCode")?.value || "").trim();
-    return (_commercialOffers || []).find(x => (x.offer_code || "") === code) || null;
   }
 
   function renderCommercialOfferOptions(selectedCode){
     const sel = byId("frmCommercialOfferCode");
     if (!sel) return;
 
-    sel.innerHTML = `<option value="">Sélectionner un abonnement</option>`;
+    sel.innerHTML = `<option value="">(Sélectionner une offre)</option>`;
     (_commercialOffers || []).forEach(it => {
       const opt = document.createElement("option");
       opt.value = it.offer_code || "";
       opt.textContent = it.offer_label || it.offer_code || "";
-      opt.dataset.offerNormalized = it.offer_code_normalized || "";
       sel.appendChild(opt);
     });
 
     sel.value = selectedCode || "";
-  }
-
-  function getCommercialQuotaBase(inputId){
-    const offer = getSelectedCommercialOffer();
-    if (!offer) return 0;
-    const map = {
-      frmCommercialNbStudio: "nb_acces_studio_max",
-      frmCommercialNbInsights: "nb_acces_insights_max",
-      frmCommercialNbPeople: "nb_acces_people_max",
-      frmCommercialNbClients: "nb_clients_max",
-      frmCommercialNbSites: "nb_sites_max",
-    };
-    return mapOfferQuotaValue(offer[map[inputId]]);
-  }
-
-  function clampCommercialQuotaToBase(inputId){
-    const input = byId(inputId);
-    if (!input) return;
-    const base = getCommercialQuotaBase(inputId);
-    const current = getNumberValue(inputId);
-    if (current < base) input.value = String(base);
   }
 
   function syncCommercialStudioDelegation(){
@@ -1194,150 +1159,6 @@
       return;
     }
     deleg.disabled = false;
-  }
-
-  function getCommercialConsoleConfigs(){
-    return [
-      {
-        code: "studio",
-        label: "Studio",
-        active: getCheckboxValue("frmCommercialStudioActif"),
-        inputId: "frmCommercialNbStudio",
-        unit: "accès",
-      },
-      {
-        code: "insights",
-        label: "Insights",
-        active: getCheckboxValue("frmCommercialInsightsActif"),
-        inputId: "frmCommercialNbInsights",
-        unit: "accès",
-      },
-      {
-        code: "people",
-        label: "People",
-        active: getCheckboxValue("frmCommercialPeopleActif"),
-        inputId: "frmCommercialNbPeople",
-        unit: "accès",
-      },
-      {
-        code: "learn",
-        label: "Learn",
-        active: getCheckboxValue("frmCommercialLearnActif"),
-        inputId: "frmCommercialNbLearn",
-        unit: "accès",
-      },
-      {
-        code: "partner",
-        label: "Partner",
-        active: getCheckboxValue("frmCommercialPartnerActif"),
-        inputId: "frmCommercialNbPartner",
-        unit: "accès",
-      },
-      {
-        code: "studio_reseau",
-        label: "Clients / sites",
-        active: getCheckboxValue("frmCommercialGestionStudio"),
-        inputId: "frmCommercialNbClients",
-        unit: "clients actifs",
-        extraText: `${getNumberValue("frmCommercialNbSites")} sites`,
-      },
-    ];
-  }
-
-  function isCommercialConsoleActive(code){
-    const c = (code || "").toString().trim().toLowerCase();
-    const item = getCommercialConsoleConfigs().find(x => x.code === c);
-    return !!item?.active;
-  }
-
-  function renderCommercialConsoleSummary(){
-    const wrap = byId("commercialConsoleSummary");
-    if (!wrap) return;
-
-    const html = getCommercialConsoleConfigs().map(cfg => {
-      const value = cfg.active ? getNumberValue(cfg.inputId) : 0;
-      const details = cfg.active
-        ? `${value} ${esc(cfg.unit)}${cfg.extraText ? ` · ${esc(cfg.extraText)}` : ""}`
-        : "Non inclus";
-      return `
-        <div class="sb-commercial-summary-card ${cfg.active ? "is-active" : ""}">
-          <div class="sb-commercial-summary-card__label">${esc(cfg.label)}</div>
-          <div class="sb-commercial-summary-card__value">${details}</div>
-        </div>
-      `;
-    }).join("");
-
-    wrap.innerHTML = html || `<div class="card-sub">Aucun abonnement sélectionné.</div>`;
-  }
-
-  function commercialExtensionTargetInput(ext){
-    const map = {
-      nb_acces_studio_max: "frmCommercialNbStudio",
-      nb_acces_insights_max: "frmCommercialNbInsights",
-      nb_acces_people_max: "frmCommercialNbPeople",
-      nb_acces_partner_max: "frmCommercialNbPartner",
-      nb_acces_learn_max: "frmCommercialNbLearn",
-      nb_clients_max: "frmCommercialNbClients",
-      nb_sites_max: "frmCommercialNbSites",
-    };
-    return map[ext?.target_quota || ""] || "";
-  }
-
-  function commercialExtensionUnit(ext){
-    const scope = (ext?.extension_scope || "").toString().trim().toLowerCase();
-    if (scope === "clients") return "clients actifs";
-    if (scope === "sites") return "sites";
-    return "accès";
-  }
-
-  function renderCommercialExtensions(){
-    const wrap = byId("commercialExtensionList");
-    if (!wrap) return;
-
-    const rows = (_commercialExtensions || [])
-      .filter(ext => isCommercialConsoleActive(ext.console_code))
-      .filter(ext => commercialExtensionTargetInput(ext) && parseInt(ext.delta || 0, 10) > 0);
-
-    if (!rows.length) {
-      wrap.innerHTML = `<div class="sb-commercial-empty">Aucune extension disponible pour les consoles actives.</div>`;
-      return;
-    }
-
-    wrap.innerHTML = rows.map(ext => {
-      const inputId = commercialExtensionTargetInput(ext);
-      const delta = parseInt(ext.delta || 0, 10);
-      const total = getNumberValue(inputId);
-      const unit = commercialExtensionUnit(ext);
-      return `
-        <div class="sb-commercial-extension-row">
-          <div>
-            <div class="sb-commercial-extension-title">${esc(ext.extension_label || ext.extension_code || "Extension")}</div>
-            <div class="sb-commercial-extension-sub">+${delta} ${esc(unit)}</div>
-          </div>
-          <div class="sb-commercial-extension-total">Total : ${total} ${esc(unit)}</div>
-          <div class="sb-commercial-extension-actions">
-            <button type="button" class="sb-stepper-btn" data-commercial-extension="${esc(ext.extension_code || "")}" data-commercial-extension-sign="-1">−</button>
-            <button type="button" class="sb-stepper-btn" data-commercial-extension="${esc(ext.extension_code || "")}" data-commercial-extension-sign="1">+</button>
-          </div>
-        </div>
-      `;
-    }).join("");
-  }
-
-  function refreshCommercialUx(){
-    clampCommercialQuotaToBase("frmCommercialNbStudio");
-    clampCommercialQuotaToBase("frmCommercialNbInsights");
-    clampCommercialQuotaToBase("frmCommercialNbPeople");
-    clampCommercialQuotaToBase("frmCommercialNbClients");
-    clampCommercialQuotaToBase("frmCommercialNbSites");
-    renderCommercialConsoleSummary();
-    renderCommercialExtensions();
-  }
-
-  function syncCommercialOptions(){
-    if (!getCheckboxValue("frmCommercialLearnActif")) setNumberValue("frmCommercialNbLearn", 0);
-    if (!getCheckboxValue("frmCommercialPartnerActif")) setNumberValue("frmCommercialNbPartner", 0);
-    refreshCommercialUx();
   }
 
   function fillCommercialForm(data){
@@ -1364,7 +1185,6 @@
     setValueOrEmpty("frmCommercialCommentaire", data?.commentaire);
 
     syncCommercialStudioDelegation();
-    refreshCommercialUx();
 
     _commercialHasRights = !!data?.exists;
     const btnArchive = byId("btnClientCommercialArchive");
@@ -1372,44 +1192,26 @@
   }
 
   function applySelectedOfferToForm(){
-    const offer = getSelectedCommercialOffer();
+    const code = (byId("frmCommercialOfferCode")?.value || "").trim();
+    const offer = (_commercialOffers || []).find(x => (x.offer_code || "") === code);
     if (!offer) return;
 
     setCheckboxValue("frmCommercialStudioActif", offer.studio_actif);
     setCheckboxValue("frmCommercialInsightsActif", offer.insights_actif);
     setCheckboxValue("frmCommercialPeopleActif", offer.people_actif);
+    setCheckboxValue("frmCommercialPartnerActif", offer.partner_actif);
+    setCheckboxValue("frmCommercialLearnActif", offer.learn_actif);
     setCheckboxValue("frmCommercialGestionStudio", offer.gestion_acces_studio_autorisee);
 
-    setNumberValue("frmCommercialNbStudio", mapOfferQuotaValue(offer.nb_acces_studio_max));
-    setNumberValue("frmCommercialNbInsights", mapOfferQuotaValue(offer.nb_acces_insights_max));
-    setNumberValue("frmCommercialNbPeople", mapOfferQuotaValue(offer.nb_acces_people_max));
-    setNumberValue("frmCommercialNbClients", mapOfferQuotaValue(offer.nb_clients_max));
-    setNumberValue("frmCommercialNbSites", mapOfferQuotaValue(offer.nb_sites_max));
-
-    if (!getCheckboxValue("frmCommercialLearnActif")) setNumberValue("frmCommercialNbLearn", 0);
-    if (!getCheckboxValue("frmCommercialPartnerActif")) setNumberValue("frmCommercialNbPartner", 0);
+    setNumberValue("frmCommercialNbStudio", mapOfferQuotaValue(offer.nb_acces_studio_max, !!offer.studio_actif));
+    setNumberValue("frmCommercialNbInsights", mapOfferQuotaValue(offer.nb_acces_insights_max, !!offer.insights_actif));
+    setNumberValue("frmCommercialNbPeople", mapOfferQuotaValue(offer.nb_acces_people_max, !!offer.people_actif));
+    setNumberValue("frmCommercialNbPartner", mapOfferQuotaValue(offer.nb_acces_partner_max, !!offer.partner_actif));
+    setNumberValue("frmCommercialNbLearn", mapOfferQuotaValue(offer.nb_acces_learn_max, !!offer.learn_actif));
+    setNumberValue("frmCommercialNbClients", mapOfferQuotaValue(offer.nb_clients_max, false));
+    setNumberValue("frmCommercialNbSites", mapOfferQuotaValue(offer.nb_sites_max, false));
 
     syncCommercialStudioDelegation();
-    refreshCommercialUx();
-  }
-
-  function applyCommercialExtension(extensionCode, sign){
-    const code = (extensionCode || "").toString().trim();
-    const ext = (_commercialExtensions || []).find(x => (x.extension_code || "") === code);
-    if (!ext || !isCommercialConsoleActive(ext.console_code)) return;
-
-    const inputId = commercialExtensionTargetInput(ext);
-    if (!inputId) return;
-
-    const delta = parseInt(ext.delta || 0, 10);
-    const safeSign = parseInt(sign || 1, 10) < 0 ? -1 : 1;
-    const input = byId(inputId);
-    if (!input || !Number.isFinite(delta) || delta <= 0) return;
-
-    const base = getCommercialQuotaBase(inputId);
-    const next = Math.max(base, getNumberValue(inputId) + (safeSign * delta));
-    setNumberValue(inputId, next);
-    refreshCommercialUx();
   }
 
   async function openCommercialModal(portal, idEnt){
@@ -1419,14 +1221,12 @@
     const item = (_items || []).find(x => x.id_ent === id) || {};
     _commercialClientId = id;
 
-    const [offers, extensions, detail] = await Promise.all([
+    const [offers, detail] = await Promise.all([
       loadCommercialOffers(portal),
-      loadCommercialExtensions(portal),
       portal.apiJson(`${portal.apiBase}/studio/clients/${encodeURIComponent(getOwnerId())}/${encodeURIComponent(id)}/commercial`)
     ]);
 
     _commercialOffers = Array.isArray(offers) ? offers : [];
-    _commercialExtensions = Array.isArray(extensions) ? extensions : [];
 
     if (byId("clientCommercialModalTitle")) {
       byId("clientCommercialModalTitle").textContent = "Abonnement et droits";
@@ -1475,7 +1275,7 @@
 
     const payload = collectCommercialPayload();
     if (!payload.offer_code) {
-      portal.showAlert("error", "Sélectionne un abonnement.");
+      portal.showAlert("error", "Sélectionne une offre commerciale.");
       return;
     }
 
@@ -1522,6 +1322,7 @@
     closeCommercialModal();
     await loadList(portal, _commercialClientId);
   }
+
 
   // PATCH Studio clients CP/Ville - 2026-06
   let _clientPostalAssistTimer = null;
@@ -2305,17 +2106,9 @@ if (_modalClientId) {
 
     byId("btnCommercialApplyOffer")?.addEventListener("click", applySelectedOfferToForm);
     byId("frmCommercialOfferCode")?.addEventListener("change", applySelectedOfferToForm);
-    byId("frmCommercialLearnActif")?.addEventListener("change", syncCommercialOptions);
-    byId("frmCommercialPartnerActif")?.addEventListener("change", syncCommercialOptions);
+    byId("frmCommercialStudioActif")?.addEventListener("change", syncCommercialStudioDelegation);
 
     byId("clientCommercialModal")?.addEventListener("click", (ev) => {
-      const extBtn = ev.target.closest("[data-commercial-extension]");
-      if (extBtn) {
-        ev.preventDefault();
-        applyCommercialExtension(extBtn.dataset.commercialExtension || "", extBtn.dataset.commercialExtensionSign || "1");
-        return;
-      }
-
       const btn = ev.target.closest("[data-stepper-target]");
       if (!btn) return;
       ev.preventDefault();
@@ -2323,7 +2116,6 @@ if (_modalClientId) {
       const delta = btn.dataset.stepperDelta;
       if (!targetId) return;
       adjustStepperInput(targetId, delta);
-      refreshCommercialUx();
     });
 
     byId("frm_profil_structurel")?.addEventListener("change", syncGroupFields);

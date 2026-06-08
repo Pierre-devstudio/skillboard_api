@@ -52,30 +52,6 @@ ALLOWED_TYPES_STRUCTURE = {
     "entreprise",
 }
 
-CORE_OFFER_CODES = ("essential", "studio_solo", "studio_reseau")
-CORE_OFFER_ORDER = {"essential": 1, "studio_solo": 2, "studio_reseau": 3}
-CORE_OFFER_RULES = {
-    "essential": {
-        "studio_actif": False,
-        "insights_actif": True,
-        "people_actif": True,
-        "gestion_acces_studio_autorisee": False,
-    },
-    "studio_solo": {
-        "studio_actif": True,
-        "insights_actif": True,
-        "people_actif": True,
-        "gestion_acces_studio_autorisee": False,
-    },
-    "studio_reseau": {
-        "studio_actif": True,
-        "insights_actif": True,
-        "people_actif": True,
-        "gestion_acces_studio_autorisee": True,
-    },
-}
-
-
 
 def _normalize_type_structure(value: Any) -> Optional[str]:
     if value is None:
@@ -507,106 +483,6 @@ def _normalize_quota(value: Any) -> int:
     return iv
 
 
-def _normalize_core_offer_code(value: Any) -> str:
-    v = str(value or "").strip().lower()
-    if not v:
-        return ""
-    replacements = {
-        "é": "e", "è": "e", "ê": "e", "ë": "e",
-        "à": "a", "â": "a", "ä": "a",
-        "ù": "u", "û": "u", "ü": "u",
-        "î": "i", "ï": "i",
-        "ô": "o", "ö": "o",
-        "ç": "c",
-        "-": "_", " ": "_",
-    }
-    for src, dst in replacements.items():
-        v = v.replace(src, dst)
-    v = re.sub(r"_+", "_", v).strip("_")
-    aliases = {
-        "essential": "essential",
-        "essentiel": "essential",
-        "studio_solo": "studio_solo",
-        "studiosolo": "studio_solo",
-        "studio_reseau": "studio_reseau",
-        "studio_reseaux": "studio_reseau",
-        "studioreseau": "studio_reseau",
-    }
-    return aliases.get(v, v)
-
-
-def _quota_when_active(value: Any, active: bool, minimum: Any = 0) -> int:
-    if not active:
-        return 0
-    return max(_normalize_quota(value), _normalize_quota(minimum))
-
-
-def _table_has_column(cur, table_name: str, column_name: str) -> bool:
-    cur.execute(
-        """
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = %s
-          AND column_name = %s
-        LIMIT 1
-        """,
-        (table_name, column_name),
-    )
-    return cur.fetchone() is not None
-
-
-def _normalize_extension_console(value: Any) -> str:
-    v = _normalize_core_offer_code(value)
-    if v in ("studio_reseau", "studio_network", "reseau"):
-        return "studio_reseau"
-    if v in ("studio", "insights", "people", "learn", "partner"):
-        return v
-    return ""
-
-
-def _int_or_zero(value: Any) -> int:
-    try:
-        return int(value or 0)
-    except Exception:
-        return 0
-
-
-def _apply_core_offer_rules(item: dict) -> dict:
-    code = _normalize_core_offer_code(item.get("offer_code"))
-    rules = CORE_OFFER_RULES.get(code)
-    if not rules:
-        code = _normalize_core_offer_code(item.get("offer_label"))
-        rules = CORE_OFFER_RULES.get(code)
-    if not rules:
-        return item
-
-    item["offer_code_normalized"] = code
-    item["offer_kind"] = "abonnement"
-    item["studio_actif"] = bool(rules["studio_actif"])
-    item["insights_actif"] = bool(rules["insights_actif"])
-    item["people_actif"] = bool(rules["people_actif"])
-    item["gestion_acces_studio_autorisee"] = bool(rules["gestion_acces_studio_autorisee"])
-    item["learn_actif"] = False
-    item["partner_actif"] = False
-
-    if not item["studio_actif"]:
-        item["nb_acces_studio_max"] = 0
-    if not item["insights_actif"]:
-        item["nb_acces_insights_max"] = 0
-    if not item["people_actif"]:
-        item["nb_acces_people_max"] = 0
-    item["nb_acces_learn_max"] = 0
-    item["nb_acces_partner_max"] = 0
-
-    if not item["gestion_acces_studio_autorisee"]:
-        item["nb_clients_max"] = 0
-        item["nb_sites_max"] = 0
-
-    item["ordre_affichage"] = int(item.get("ordre_affichage") or CORE_OFFER_ORDER.get(code, 99))
-    return item
-
-
 def _fetch_offer_catalog(cur) -> list:
     cur.execute(
         """
@@ -637,17 +513,8 @@ def _fetch_offer_catalog(cur) -> list:
         FROM public.tbl_novoskill_offer_catalog
         WHERE COALESCE(archive, FALSE) = FALSE
           AND COALESCE(statut_catalogue, 'actif') = 'actif'
-          AND (
-                lower(replace(replace(COALESCE(offer_code, ''), '-', '_'), ' ', '_')) IN ('essential', 'studio_solo', 'studio_reseau')
-             OR lower(replace(replace(replace(replace(COALESCE(offer_label, ''), 'é', 'e'), 'É', 'e'), '-', '_'), ' ', '_')) IN ('essential', 'studio_solo', 'studio_reseau')
-          )
         ORDER BY
-            CASE lower(replace(replace(COALESCE(offer_code, ''), '-', '_'), ' ', '_'))
-              WHEN 'essential' THEN 1
-              WHEN 'studio_solo' THEN 2
-              WHEN 'studio_reseau' THEN 3
-              ELSE 99
-            END,
+            segment_code,
             ordre_affichage,
             lower(offer_label),
             offer_code
@@ -656,134 +523,29 @@ def _fetch_offer_catalog(cur) -> list:
     rows = cur.fetchall() or []
     items = []
     for r in rows:
-        item = {
-            "offer_code": r.get("offer_code"),
-            "offer_label": r.get("offer_label"),
-            "segment_code": r.get("segment_code"),
-            "offer_family": r.get("offer_family"),
-            "palier_code": r.get("palier_code"),
-            "palier_label": r.get("palier_label"),
-            "ia_incluse": bool(r.get("ia_incluse")),
-            "studio_actif": bool(r.get("studio_actif")),
-            "insights_actif": bool(r.get("insights_actif")),
-            "people_actif": bool(r.get("people_actif")),
-            "partner_actif": bool(r.get("partner_actif")),
-            "learn_actif": bool(r.get("learn_actif")),
-            "gestion_acces_studio_autorisee": bool(r.get("gestion_acces_studio_autorisee")),
-            "nb_acces_studio_max": r.get("nb_acces_studio_max"),
-            "nb_acces_insights_max": r.get("nb_acces_insights_max"),
-            "nb_acces_people_max": r.get("nb_acces_people_max"),
-            "nb_acces_partner_max": r.get("nb_acces_partner_max"),
-            "nb_acces_learn_max": r.get("nb_acces_learn_max"),
-            "nb_clients_max": r.get("nb_clients_max"),
-            "nb_sites_max": r.get("nb_sites_max"),
-            "nb_collaborateurs_couverts_max": r.get("nb_collaborateurs_couverts_max"),
-            "commentaire": r.get("commentaire"),
-            "ordre_affichage": int(r.get("ordre_affichage") or 0),
-        }
-        items.append(_apply_core_offer_rules(item))
-    return items
-
-
-def _fetch_offer_defaults(cur, offer_code: str) -> dict:
-    wanted = _normalize_core_offer_code(offer_code)
-    if wanted not in CORE_OFFER_CODES:
-        raise HTTPException(status_code=400, detail="Offre commerciale invalide. Abonnements autorisés : Essential, Studio Solo, Studio Réseau.")
-
-    for item in _fetch_offer_catalog(cur):
-        item_code = item.get("offer_code") or ""
-        item_norm = item.get("offer_code_normalized") or _normalize_core_offer_code(item_code or item.get("offer_label"))
-        if item_code == offer_code or item_norm == wanted:
-            return _apply_core_offer_rules(item)
-
-    raise HTTPException(status_code=400, detail="Offre commerciale introuvable ou archivée.")
-
-
-def _extension_target_from_row(row: dict) -> dict:
-    configured_console = _normalize_extension_console(row.get("console_code"))
-    configured_scope = str(row.get("extension_scope") or "").strip().lower()
-
-    candidates = [
-        ("studio_reseau", "clients", "nb_clients_max", "delta_nb_clients", _int_or_zero(row.get("delta_nb_clients"))),
-        ("studio_reseau", "sites", "nb_sites_max", "delta_nb_sites", _int_or_zero(row.get("delta_nb_sites"))),
-        ("studio", "acces", "nb_acces_studio_max", "delta_nb_acces_studio", _int_or_zero(row.get("delta_nb_acces_studio"))),
-        ("insights", "acces", "nb_acces_insights_max", "delta_nb_acces_insights", _int_or_zero(row.get("delta_nb_acces_insights"))),
-        ("people", "acces", "nb_acces_people_max", "delta_nb_acces_people", _int_or_zero(row.get("delta_nb_acces_people"))),
-        ("learn", "acces", "nb_acces_learn_max", "delta_nb_acces_learn", _int_or_zero(row.get("delta_nb_acces_learn"))),
-        ("partner", "acces", "nb_acces_partner_max", "delta_nb_acces_partner", _int_or_zero(row.get("delta_nb_acces_partner"))),
-    ]
-
-    for console_code, scope, target_quota, delta_column, delta in candidates:
-        if delta <= 0:
-            continue
-        if configured_console and configured_console != console_code:
-            continue
-        if configured_scope and configured_scope not in (scope, ""):
-            continue
-        return {
-            "console_code": configured_console or console_code,
-            "extension_scope": configured_scope or scope,
-            "target_quota": target_quota,
-            "delta_column": delta_column,
-            "delta": delta,
-        }
-
-    return {
-        "console_code": configured_console,
-        "extension_scope": configured_scope,
-        "target_quota": "",
-        "delta_column": "",
-        "delta": 0,
-    }
-
-
-def _fetch_extension_catalog(cur) -> list:
-    has_console_code = _table_has_column(cur, "tbl_novoskill_offer_extension_catalog", "console_code")
-    has_extension_scope = _table_has_column(cur, "tbl_novoskill_offer_extension_catalog", "extension_scope")
-
-    console_select = "console_code" if has_console_code else "NULL::text AS console_code"
-    scope_select = "extension_scope" if has_extension_scope else "NULL::text AS extension_scope"
-
-    cur.execute(
-        f"""
-        SELECT
-            extension_code,
-            extension_label,
-            {console_select},
-            {scope_select},
-            cible_segment_code,
-            cible_offer_family,
-            delta_nb_acces_studio,
-            delta_nb_acces_insights,
-            delta_nb_acces_people,
-            delta_nb_acces_partner,
-            delta_nb_acces_learn,
-            delta_nb_clients,
-            delta_nb_sites,
-            delta_nb_collaborateurs_couverts,
-            commentaire,
-            ordre_affichage
-        FROM public.tbl_novoskill_offer_extension_catalog
-        WHERE COALESCE(archive, FALSE) = FALSE
-          AND COALESCE(statut_catalogue, 'actif') = 'actif'
-        ORDER BY ordre_affichage, lower(extension_label), extension_code
-        """
-    )
-    rows = cur.fetchall() or []
-    items = []
-    for r in rows:
-        target = _extension_target_from_row(r)
-        if not target.get("console_code") or not target.get("target_quota") or target.get("delta", 0) <= 0:
-            continue
         items.append(
             {
-                "extension_code": r.get("extension_code"),
-                "extension_label": r.get("extension_label"),
-                "console_code": target.get("console_code"),
-                "extension_scope": target.get("extension_scope"),
-                "target_quota": target.get("target_quota"),
-                "delta_column": target.get("delta_column"),
-                "delta": int(target.get("delta") or 0),
+                "offer_code": r.get("offer_code"),
+                "offer_label": r.get("offer_label"),
+                "segment_code": r.get("segment_code"),
+                "offer_family": r.get("offer_family"),
+                "palier_code": r.get("palier_code"),
+                "palier_label": r.get("palier_label"),
+                "ia_incluse": bool(r.get("ia_incluse")),
+                "studio_actif": bool(r.get("studio_actif")),
+                "insights_actif": bool(r.get("insights_actif")),
+                "people_actif": bool(r.get("people_actif")),
+                "partner_actif": bool(r.get("partner_actif")),
+                "learn_actif": bool(r.get("learn_actif")),
+                "gestion_acces_studio_autorisee": bool(r.get("gestion_acces_studio_autorisee")),
+                "nb_acces_studio_max": r.get("nb_acces_studio_max"),
+                "nb_acces_insights_max": r.get("nb_acces_insights_max"),
+                "nb_acces_people_max": r.get("nb_acces_people_max"),
+                "nb_acces_partner_max": r.get("nb_acces_partner_max"),
+                "nb_acces_learn_max": r.get("nb_acces_learn_max"),
+                "nb_clients_max": r.get("nb_clients_max"),
+                "nb_sites_max": r.get("nb_sites_max"),
+                "nb_collaborateurs_couverts_max": r.get("nb_collaborateurs_couverts_max"),
                 "commentaire": r.get("commentaire"),
                 "ordre_affichage": int(r.get("ordre_affichage") or 0),
             }
@@ -792,7 +554,19 @@ def _fetch_extension_catalog(cur) -> list:
 
 
 def _ensure_offer_exists(cur, offer_code: str) -> None:
-    return _fetch_offer_defaults(cur, offer_code)
+    cur.execute(
+        """
+        SELECT 1
+        FROM public.tbl_novoskill_offer_catalog
+        WHERE offer_code = %s
+          AND COALESCE(archive, FALSE) = FALSE
+          AND COALESCE(statut_catalogue, 'actif') = 'actif'
+        LIMIT 1
+        """,
+        (offer_code,),
+    )
+    if cur.fetchone() is None:
+        raise HTTPException(status_code=400, detail="Offre commerciale introuvable ou archivée.")
 
 
 def _ensure_client_owner_scope(cur, id_ent: str) -> None:
@@ -1281,24 +1055,6 @@ def get_studio_offer_catalog(id_owner: str, request: Request):
         raise HTTPException(status_code=500, detail=f"studio/offers error: {e}")
 
 
-@router.get("/studio/offer-extensions/{id_owner}")
-def get_studio_offer_extension_catalog(id_owner: str, request: Request):
-    auth = request.headers.get("Authorization", "")
-    u = studio_require_user(auth)
-
-    try:
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                oid = _require_owner_access(cur, u, id_owner)
-                studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "supervisor")
-                return {"items": _fetch_extension_catalog(cur)}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"studio/offer-extensions error: {e}")
-
-
 @router.get("/studio/clients/{id_owner}/{id_ent}/commercial")
 def get_studio_client_commercial(id_owner: str, id_ent: str, request: Request):
     auth = request.headers.get("Authorization", "")
@@ -1349,23 +1105,23 @@ def upsert_studio_client_commercial(id_owner: str, id_ent: str, payload: Commerc
                 date_debut = payload.date_debut or date.today().isoformat()
                 date_fin = payload.date_fin or None
 
-                offer_defaults = _fetch_offer_defaults(cur, offer_code)
-
-                studio_actif = bool(offer_defaults.get("studio_actif"))
-                insights_actif = bool(offer_defaults.get("insights_actif"))
-                people_actif = bool(offer_defaults.get("people_actif"))
-                gestion_acces_studio_autorisee = bool(offer_defaults.get("gestion_acces_studio_autorisee"))
-
+                studio_actif = bool(payload.studio_actif)
+                insights_actif = bool(payload.insights_actif)
+                people_actif = bool(payload.people_actif)
                 partner_actif = bool(payload.partner_actif)
                 learn_actif = bool(payload.learn_actif)
 
-                nb_acces_studio_max = _quota_when_active(payload.nb_acces_studio_max, studio_actif, offer_defaults.get("nb_acces_studio_max"))
-                nb_acces_insights_max = _quota_when_active(payload.nb_acces_insights_max, insights_actif, offer_defaults.get("nb_acces_insights_max"))
-                nb_acces_people_max = _quota_when_active(payload.nb_acces_people_max, people_actif, offer_defaults.get("nb_acces_people_max"))
-                nb_acces_partner_max = _quota_when_active(payload.nb_acces_partner_max, partner_actif, 0)
-                nb_acces_learn_max = _quota_when_active(payload.nb_acces_learn_max, learn_actif, 0)
-                nb_clients_max = _quota_when_active(payload.nb_clients_max, gestion_acces_studio_autorisee, offer_defaults.get("nb_clients_max"))
-                nb_sites_max = _quota_when_active(payload.nb_sites_max, gestion_acces_studio_autorisee, offer_defaults.get("nb_sites_max"))
+                gestion_acces_studio_autorisee = bool(payload.gestion_acces_studio_autorisee)
+                if gestion_acces_studio_autorisee and not studio_actif:
+                    raise HTTPException(status_code=400, detail="La délégation Studio nécessite Studio actif.")
+
+                nb_acces_studio_max = _normalize_quota(payload.nb_acces_studio_max)
+                nb_acces_insights_max = _normalize_quota(payload.nb_acces_insights_max)
+                nb_acces_people_max = _normalize_quota(payload.nb_acces_people_max)
+                nb_acces_partner_max = _normalize_quota(payload.nb_acces_partner_max)
+                nb_acces_learn_max = _normalize_quota(payload.nb_acces_learn_max)
+                nb_clients_max = _normalize_quota(payload.nb_clients_max)
+                nb_sites_max = _normalize_quota(payload.nb_sites_max)
                 commentaire = _normalize_text(payload.commentaire)
 
                 cur.execute(
