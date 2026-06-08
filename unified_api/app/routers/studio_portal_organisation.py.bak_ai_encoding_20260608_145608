@@ -7,7 +7,6 @@ import os
 import json
 import re
 import unicodedata
-import html as _html
 import subprocess
 import tempfile
 from difflib import SequenceMatcher
@@ -1348,87 +1347,6 @@ def _clean_text(v: Optional[str]) -> str:
         return ""
     return str(v).replace("\x00", "").strip()
 
-
-_AI_REPAIR_LETTERS = r"A-Za-zÀ-ÖØ-öø-ÿ"
-_AI_HEX_TEXT_REPAIRS = (
-    # On ne corrige ici que les fragments réellement observables sans ambiguïté.
-    # Les autres accents sont déjà traités via les formes explicites \xHH / \uHHHH.
-    ("e0", "à"), ("e7", "ç"), ("e8", "è"), ("e9", "é"),
-    ("f4", "ô"), ("f9", "ù"), ("c7", "Ç"), ("c8", "È"), ("c9", "É"), ("d9", "Ù"),
-)
-_AI_CP1252_ESCAPES = {
-    "80": "€", "82": "’", "83": "ƒ", "84": "„", "85": "…", "86": "†", "87": "‡",
-    "88": "ˆ", "89": "‰", "8a": "Š", "8b": "‹", "8c": "Œ", "8e": "Ž",
-    "91": "‘", "92": "’", "93": "“", "94": "”", "95": "•", "96": "–", "97": "—",
-    "98": "˜", "99": "™", "9a": "š", "9b": "›", "9c": "œ", "9e": "ž", "9f": "Ÿ",
-    "a0": " ", "ab": "«", "bb": "»",
-}
-
-
-def _repair_ai_text_encoding_glitches(v: Optional[str]) -> str:
-    """Répare les artefacts d'encodage observés dans certaines sorties IA/web.
-
-    Exemples traités : de9veloppement -> développement, 9uvre -> œuvre,
-    lb4entretien / l4entretien -> l’entretien, entités HTML et séquences \u00e9.
-    La réparation reste volontairement limitée aux chaînes produites par les endpoints IA.
-    """
-    s = _clean_text(v)
-    if not s:
-        return ""
-
-    try:
-        if re.search(r"&(?:[a-zA-Z][a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+);", s):
-            s = _html.unescape(s)
-    except Exception:
-        pass
-
-    def _unicode_repl(m):
-        try:
-            return chr(int(m.group(1), 16))
-        except Exception:
-            return m.group(0)
-
-    def _hex_repl(m):
-        code = (m.group(1) or "").lower()
-        if code in _AI_CP1252_ESCAPES:
-            return _AI_CP1252_ESCAPES[code]
-        try:
-            return bytes([int(code, 16)]).decode("cp1252", errors="ignore")
-        except Exception:
-            return m.group(0)
-
-    # Cas où le JSON a transporté les échappements en texte littéral.
-    s = re.sub(r"\\u([0-9a-fA-F]{4})", _unicode_repl, s)
-    s = re.sub(r"\\x([0-9a-fA-F]{2})", _hex_repl, s)
-
-    letters = _AI_REPAIR_LETTERS
-
-    # Apostrophes françaises passées en fragments hex / caractère isolé.
-    s = re.sub(rf"\b([ldjtmncsLDJTMNCS])(?:b4|92|4)(?=[{letters}])", r"\1’", s)
-    s = re.sub(rf"\b([qQ])u(?:b4|92|4)(?=[{letters}])", r"\1u’", s)
-
-    # Œ / œ vus comme 9 ou 9c dans quelques sorties web mal normalisées.
-    s = re.sub(r"\b9c(?=uvre|uvr|il|ufs?\b)", "œ", s, flags=re.I)
-    s = re.sub(r"\b9(?=uvre|uvr|il|ufs?\b)", "œ", s, flags=re.I)
-
-    # Accents ISO/CP1252 représentés sous forme hex dans le texte.
-    for code, char in _AI_HEX_TEXT_REPAIRS:
-        esc_code = re.escape(code)
-        s = re.sub(rf"(?<=[{letters}]){esc_code}(?=[{letters}])", char, s)
-        s = re.sub(rf"\b{esc_code}(?=[{letters}])", char, s)
-
-    return s
-
-
-def _repair_ai_generated_payload(v: Any) -> Any:
-    if isinstance(v, str):
-        return _repair_ai_text_encoding_glitches(v)
-    if isinstance(v, list):
-        return [_repair_ai_generated_payload(x) for x in v]
-    if isinstance(v, dict):
-        return {k: _repair_ai_generated_payload(val) for k, val in v.items()}
-    return v
-
 def _clean_ai_comp_text(v: Optional[str], max_len: int = 280) -> str:
     s = _clean_text(v)
     if not s:
@@ -2130,8 +2048,7 @@ def _openai_responses_json(model: str, schema_name: str, schema: dict, system_pr
     if not content:
         raise HTTPException(status_code=500, detail="Réponse IA vide.")
     try:
-        data = json.loads(content)
-        return _repair_ai_generated_payload(data)
+        return json.loads(content)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Réponse IA invalide (JSON): {e}")
 

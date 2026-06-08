@@ -20,40 +20,6 @@
       .replaceAll("'", "&#039;");
   }
 
-
-  function repairAiTextEncodingGlitches(value) {
-    let s = String(value ?? "");
-    if (!s) return "";
-
-    try {
-      if (/&(?:[a-zA-Z][a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+);/.test(s)) {
-        const ta = document.createElement("textarea");
-        ta.innerHTML = s;
-        s = ta.value;
-      }
-    } catch (_) {}
-
-    s = s.replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => {
-      try { return String.fromCharCode(parseInt(h, 16)); } catch (_) { return _; }
-    });
-
-    const cp1252 = {"91":"‘", "92":"’", "93":"“", "94":"”", "95":"•", "96":"–", "97":"—", "9c":"œ", "8c":"Œ", "a0":" ", "ab":"«", "bb":"»"};
-    s = s.replace(/\\x([0-9a-fA-F]{2})/g, (m, h) => cp1252[String(h || "").toLowerCase()] || m);
-
-    const letters = "A-Za-zÀ-ÖØ-öø-ÿ";
-    s = s.replace(new RegExp("\\b([ldjtmncsLDJTMNCS])(?:b4|92|4)(?=[" + letters + "])", "g"), "$1’");
-    s = s.replace(/\b9c(?=uvre|uvr|il|ufs?\b)/gi, "œ");
-    s = s.replace(/\b9(?=uvre|uvr|il|ufs?\b)/gi, "œ");
-
-    [["e0","à"], ["e7","ç"], ["e8","è"], ["e9","é"], ["f4","ô"], ["f9","ù"], ["c7","Ç"], ["c8","È"], ["c9","É"], ["d9","Ù"]]
-      .forEach(([code, ch]) => {
-        s = s.replace(new RegExp("([" + letters + "])" + code + "(?=[" + letters + "])", "g"), (_, p1) => p1 + ch);
-        s = s.replace(new RegExp("\\b" + code + "(?=[" + letters + "])", "g"), ch);
-      });
-
-    return s;
-  }
-
     function byId(id){ return document.getElementById(id); }
 
   function setOrgPosteTab(tab){
@@ -654,8 +620,8 @@
     const badgeResp = document.getElementById("orgPosteDefRespBadge");
     const dateEl = document.getElementById("orgPosteDefDate");
 
-    const m = repairAiTextEncodingGlitches(detail?.mission_principale || "").trim();
-    const rh = repairAiTextEncodingGlitches(detail?.responsabilites_html || "").trim();
+    const m = (detail?.mission_principale || "").trim();
+    const rh = (detail?.responsabilites_html || "").trim();
 
     // Badge responsable (bloc)
     if (badgeResp) {
@@ -678,7 +644,7 @@
       if (rh) {
         resp.innerHTML = rh;
         // On garde le RTF brut en mémoire pour le round-trip futur
-        resp.dataset.rtf = repairAiTextEncodingGlitches(detail?.responsabilites || "");
+        resp.dataset.rtf = detail?.responsabilites || "";
         respWrap.style.display = "";
       } else {
         resp.innerHTML = "";

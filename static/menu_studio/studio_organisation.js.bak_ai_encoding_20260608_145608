@@ -337,73 +337,12 @@
 
     function htmlToPlainText(html){
         const div = document.createElement("div");
-        div.innerHTML = repairAiTextEncodingGlitches(String(html || ""));
+        div.innerHTML = String(html || "");
         return (div.textContent || div.innerText || "")
             .replace(/\u00a0/g, " ")
             .replace(/\r/g, "")
             .replace(/\n{3,}/g, "\n\n")
             .trim();
-    }
-
-
-    function repairAiTextEncodingGlitches(value){
-        let s = String(value ?? "");
-        if (!s) return "";
-
-        try{
-            if (/&(?:[a-zA-Z][a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+);/.test(s)){
-                const ta = document.createElement("textarea");
-                ta.innerHTML = s;
-                s = ta.value;
-            }
-        } catch(_){ }
-
-        s = s.replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => {
-            try { return String.fromCharCode(parseInt(h, 16)); } catch(_) { return _; }
-        });
-
-        const cp1252 = {
-            "80":"€", "82":"’", "83":"ƒ", "84":"„", "85":"…", "86":"†", "87":"‡",
-            "88":"ˆ", "89":"‰", "8a":"Š", "8b":"‹", "8c":"Œ", "8e":"Ž",
-            "91":"‘", "92":"’", "93":"“", "94":"”", "95":"•", "96":"–", "97":"—",
-            "98":"˜", "99":"™", "9a":"š", "9b":"›", "9c":"œ", "9e":"ž", "9f":"Ÿ",
-            "a0":" ", "ab":"«", "bb":"»"
-        };
-
-        s = s.replace(/\\x([0-9a-fA-F]{2})/g, (m, h) => cp1252[String(h || "").toLowerCase()] || m);
-
-        const letters = "A-Za-zÀ-ÖØ-öø-ÿ";
-        s = s.replace(new RegExp("\\b([ldjtmncsLDJTMNCS])(?:b4|92|4)(?=[" + letters + "])", "g"), "$1’");
-        s = s.replace(new RegExp("\\b([qQ])u(?:b4|92|4)(?=[" + letters + "])", "g"), "$1u’");
-        s = s.replace(/\b9c(?=uvre|uvr|il|ufs?\b)/gi, "œ");
-        s = s.replace(/\b9(?=uvre|uvr|il|ufs?\b)/gi, "œ");
-
-        const repairs = [
-            // Fragments sans ambiguïté constatés dans les sorties IA/web.
-            // Les autres accents passent par les formes explicites \xHH / \uHHHH.
-            ["e0","à"], ["e7","ç"], ["e8","è"], ["e9","é"],
-            ["f4","ô"], ["f9","ù"], ["c7","Ç"], ["c8","È"], ["c9","É"], ["d9","Ù"]
-        ];
-
-        repairs.forEach(([code, ch]) => {
-            const mid = new RegExp("([" + letters + "])" + code + "(?=[" + letters + "])", "g");
-            const start = new RegExp("\\b" + code + "(?=[" + letters + "])", "g");
-            s = s.replace(mid, (_, p1) => p1 + ch);
-            s = s.replace(start, ch);
-        });
-
-        return s;
-    }
-
-    function repairAiDraftPayload(value){
-        if (typeof value === "string") return repairAiTextEncodingGlitches(value);
-        if (Array.isArray(value)) return value.map(repairAiDraftPayload);
-        if (value && typeof value === "object"){
-            const out = {};
-            Object.keys(value).forEach(k => { out[k] = repairAiDraftPayload(value[k]); });
-            return out;
-        }
-        return value;
     }
 
     function openIaBusyOverlay(title, text){
@@ -536,10 +475,9 @@ function refreshPosteCompNivCards(){
     function rtSetHtml(id, html){
         const el = byId(id);
         if (!el) return;
-        const cleanHtml = repairAiTextEncodingGlitches(html || "");
         const tag = (el.tagName || "").toUpperCase();
-        if (tag === "TEXTAREA" || tag === "INPUT") el.value = cleanHtml;
-        else el.innerHTML = cleanHtml;
+        if (tag === "TEXTAREA" || tag === "INPUT") el.value = html || "";
+        else el.innerHTML = html || "";
     }
 
     const RT_MAIN_ACTIVITY_PLACEHOLDER = "Activité principale à renseigner";
@@ -966,7 +904,6 @@ function refreshPosteCompNivCards(){
     }
 
     async function applyImportedPosteDraft(portal, draft){
-        draft = repairAiDraftPayload(draft || {});
         _posteAiDraftMeta = draft || null;
 
         if (draft?.intitule_poste !== undefined) byId("posteIntitule").value = String(draft.intitule_poste || "");
@@ -2341,13 +2278,12 @@ body {
 
             try{
             const url = `${portal.apiBase}/studio/org/postes/${encodeURIComponent(ownerId)}/ai_draft`;
-            let draft = await portal.apiJson(url, {
+            const draft = await portal.apiJson(url, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
 
-            draft = repairAiDraftPayload(draft || {});
             _posteAiDraftMeta = draft || null;
             if (draft?.intitule_poste !== undefined) byId("posteIntitule").value = String(draft.intitule_poste || "");
             if (draft?.mission_principale !== undefined) byId("posteMission").value = String(draft.mission_principale || "");
@@ -4418,9 +4354,8 @@ function refreshPosteCompEditCritDisplay(){
         // Charge le détail (définition + exigences/contraintes)
         (async () => {
         try{
-            let d = await fetchPosteDetail(portal, _editingPosteId);
+            const d = await fetchPosteDetail(portal, _editingPosteId);
             if (!d) return;
-            d = repairAiDraftPayload(d || {});
 
             await ensureNsfGroupes(portal);
             fillNsfSelect(d?.nsf_groupe_code || "");
