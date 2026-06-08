@@ -2593,32 +2593,6 @@ body {
         sel.value = keep || "";
     }
 
-    function getPosteCompCreateDomainMetaById(domainId){
-        const id = (domainId || "").toString().trim();
-        if (!id) return null;
-
-        return (_posteCompCreateDomainItems || []).find(d =>
-            (d.id_domaine_competence || "").toString().trim() === id
-        ) || null;
-    }
-
-    function resolvePosteCompCreateDomainIdFromAiItem(item){
-        const explicitId = (item?.domaine_id || "").toString().trim();
-        if (explicitId && getPosteCompCreateDomainMetaById(explicitId)) return explicitId;
-
-        const rawLabel = (item?.domaine_label || item?.domaine_hint || item?.domaine || "").toString().trim().toLowerCase();
-        if (!rawLabel) return explicitId || "";
-
-        const found = (_posteCompCreateDomainItems || []).find(d => {
-            const id = (d.id_domaine_competence || "").toString().trim().toLowerCase();
-            const titre = (d.titre || "").toString().trim().toLowerCase();
-            const court = (d.titre_court || "").toString().trim().toLowerCase();
-            return rawLabel === id || rawLabel === titre || rawLabel === court;
-        });
-
-        return (found?.id_domaine_competence || explicitId || "").toString().trim();
-    }
-
     function posteCompCreateEmptyCrit(){
         return { Nom:"", Eval:["","","",""] };
     }
@@ -2996,8 +2970,7 @@ body {
         };
 
         await ensurePosteCompCreateDomains(portal);
-        const resolvedDomainId = resolvePosteCompCreateDomainIdFromAiItem(it);
-        fillPosteCompCreateFrameDomainSelect(resolvedDomainId || "");
+        fillPosteCompCreateFrameDomainSelect(it.domaine_id || "");
 
         byId("posteCompCreateFrameIntitule").value = (it.intitule || "");
         byId("posteCompCreateFrameDesc").value = (it.description || "");
@@ -3048,43 +3021,6 @@ body {
 
         closePosteCompCreateFrameModal();
         await preparePosteCompCreateModal(portal, ctx);
-    }
-
-    async function openPosteCompCreateManualModalFromAi(portal, idx, addAfter){
-        const it = (_posteCompAiResults?.missing || [])[idx];
-        if (!it) return;
-
-        await ensurePosteCompCreateDomains(portal);
-        const resolvedDomainId = resolvePosteCompCreateDomainIdFromAiItem(it);
-
-        _posteCompCreateCtx = {
-            idx: idx,
-            addAfter: !!addAfter,
-            manual: true,
-            draft: JSON.parse(JSON.stringify(it || {}))
-        };
-
-        const badge = byId("posteCompCreateBadge");
-        if (badge){
-            badge.style.display = "";
-            badge.textContent = "Création manuelle";
-        }
-
-        byId("posteCompCreateTitle").textContent = "Créer une compétence";
-        byId("posteCompCreateSub").textContent = "Création manuelle depuis la proposition IA. Complète les niveaux et la grille avant validation.";
-
-        byId("posteCompCreateIntitule").value = (it.intitule || "");
-        byId("posteCompCreateDesc").value = (it.description || "");
-        byId("posteCompCreateEtat").value = "à valider";
-        byId("posteCompCreateNivA").value = "";
-        byId("posteCompCreateNivB").value = "";
-        byId("posteCompCreateNivC").value = "";
-        if (byId("posteCompCreateNivD")) byId("posteCompCreateNivD").value = "";
-
-        fillPosteCompCreateDomainSelect(resolvedDomainId || "");
-        resetPosteCompCreateCrit();
-
-        openModal("modalPosteCompCreate");
     }
 
     async function preparePosteCompCreateModal(portal, ctx){
@@ -3453,34 +3389,19 @@ function renderPosteCompAiResults(){
             const right = document.createElement("div");
             right.className = "sb-actions";
             right.style.display = "flex";
-            right.style.flexDirection = "column";
-            right.style.alignItems = "stretch";
-            right.style.gap = "8px";
+            right.style.alignItems = "center";
             right.style.flexShrink = "0";
-            right.style.minWidth = "116px";
 
-            const btnGenerate = document.createElement("button");
-            btnGenerate.type = "button";
-            btnGenerate.className = "sb-btn sb-btn--ai sb-btn--xs";
-            btnGenerate.textContent = "Générer IA";
-            btnGenerate.title = "Générer les niveaux de maîtrise et la grille d’évaluation avec l’IA";
-            btnGenerate.addEventListener("click", async () => {
+            const btnCreate = document.createElement("button");
+            btnCreate.type = "button";
+            btnCreate.className = "sb-btn sb-btn--ai sb-btn--xs";
+            btnCreate.textContent = "Créer";
+            btnCreate.addEventListener("click", async () => {
                 try { await openPosteCompCreateModalFromAi(window.portal, idx, false); }
                 catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
             });
 
-            const btnManual = document.createElement("button");
-            btnManual.type = "button";
-            btnManual.className = "sb-btn sb-btn--outline sb-btn--xs";
-            btnManual.textContent = "Créer";
-            btnManual.title = "Créer manuellement la compétence à partir du titre, du domaine et de la description";
-            btnManual.addEventListener("click", async () => {
-                try { await openPosteCompCreateManualModalFromAi(window.portal, idx, false); }
-                catch(e){ window.portal.showAlert("error", e?.message || String(e)); }
-            });
-
-            right.appendChild(btnGenerate);
-            right.appendChild(btnManual);
+            right.appendChild(btnCreate);
 
             row.appendChild(left);
             row.appendChild(right);
