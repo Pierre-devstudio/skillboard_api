@@ -1181,7 +1181,6 @@ def _send_access_mail_for_collaborateur(cur, u: dict, id_owner: str, source_kind
     access_state["collaborateur_nom"] = collaborateur_nom
     access_state["notification_mode"] = notification_mode
     access_state["notification_sent"] = True
-    access_state["notification_provider"] = "smtp"
     access_state["auth_user_created"] = bool(provisioning.get("created_now"))
     return access_state
 
