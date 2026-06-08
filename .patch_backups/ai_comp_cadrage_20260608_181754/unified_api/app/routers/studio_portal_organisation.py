@@ -2991,11 +2991,6 @@ def _ai_draft_poste_comp_from_catalog_logic(
         "Tu complètes UNE fiche compétence pour un référentiel RH interne. "
         "Tu renvoies uniquement un JSON strict conforme au schéma fourni. "
         "Tu conserves STRICTEMENT l’intitulé fourni. "
-        "Dans Novoskill, une compétence commence toujours par un verbe d’action. "
-        "Tu ne transformes jamais une tâche ou une activité isolée en compétence. "
-        "Une compétence est une capacité mobilisable issue de savoirs, savoir-faire et savoir-être, maîtrisable sur plusieurs niveaux. "
-        "Tu distingues implicitement les compétences génériques réutilisables des compétences spécifiques à une entreprise. "
-        "Si la compétence est spécifique, cette spécificité doit déjà être lisible dans l’intitulé fourni ; tu ne l’ajoutes pas en douce dans le contenu. "
         "Tu ne changes pas le périmètre métier de la compétence. "
         "Tu rédiges en français, dans un style métier concret, précis, pédagogique et humain. "
         "Tu évites absolument les formulations génériques, interchangeables, mécaniques ou scolaires. "
@@ -3050,8 +3045,6 @@ def _ai_draft_poste_comp_from_catalog_logic(
         f"DOMAINES DISPONIBLES (id -> titre_court)\n{dom_list_txt}\n\n"
 
         "RÈGLES À RESPECTER\n"
-        "- Respecte l'intention métier précisée par l'utilisateur dans 'Pourquoi cette compétence est utile'.\n"
-        "- Le contenu doit permettre d'évaluer une compétence, pas de cocher l'exécution d'une tâche isolée.\n"
         f"- Produis exactement {nb} critères NON VIDES (Critere1..Critere{nb}).\n"
         f"- Critere{nb+1}..Critere4 doivent être VIDES (Nom=\"\" + 4 Eval vides).\n"
         "- Chaque critère doit nommer un axe métier concret, pas une étape générique passe-partout.\n"
@@ -5919,7 +5912,6 @@ class AiPosteCompetenceCreatePayload(BaseModel):
 class AiPosteCompetencePreparePayload(BaseModel):
     id_poste: Optional[str] = None
     draft: dict
-    nb_criteres: Optional[int] = None
 
 class SavePosteCcnDecisionPayload(BaseModel):
     coefficient_retenu: int
@@ -6483,17 +6475,7 @@ def studio_org_ai_comp_prepare(id_owner: str, payload: AiPosteCompetencePrepareP
         )
 
         poste_context = _build_poste_comp_prepare_context(poste_row, draft)
-
-        # Nombre de critères cadré par l'utilisateur depuis le modal de création.
-        # Fallback conservé uniquement pour les anciens appels ou scripts existants.
-        try:
-            nb_criteres = int(payload.nb_criteres) if payload.nb_criteres is not None else _infer_poste_comp_nb_criteres(draft, poste_context)
-        except Exception:
-            nb_criteres = _infer_poste_comp_nb_criteres(draft, poste_context)
-        if nb_criteres < 1:
-            nb_criteres = 1
-        if nb_criteres > 4:
-            nb_criteres = 4
+        nb_criteres = _infer_poste_comp_nb_criteres(draft, poste_context)
 
         prepared = _ai_draft_poste_comp_from_catalog_logic(
             model=model,

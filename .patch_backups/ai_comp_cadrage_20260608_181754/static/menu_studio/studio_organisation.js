@@ -41,9 +41,6 @@
     let _posteAiDraftMeta = null;
     let _posteCompAiResults = { existing: [], missing: [] };
     let _posteCompCreateCtx = null;
-    let _posteCompCreateFrameCtx = null;
-    let _posteCompAiSearchAbort = null;
-    let _posteCompAiSearchRunId = 0;
     let _posteCompCreateDomainsLoaded = false;
     let _posteCompCreateDomainItems = [];
     let _posteCompCreateCrit = null;
@@ -409,7 +406,7 @@
         return value;
     }
 
-    function openIaBusyOverlay(title, text, hintDefault, hintLong){
+    function openIaBusyOverlay(title, text){
         const ov = byId("iaBusyOverlay");
         const ttl = byId("iaBusyTitle");
         const txt = byId("iaBusyText");
@@ -420,10 +417,6 @@
         if (ttl) ttl.textContent = title || "Analyse IA en cours";
         if (txt) txt.textContent = text || "Traitement en cours...";
         if (sec) sec.textContent = "0";
-
-        _iaBusyHintDefault = hintDefault || "Cette opération peut prendre quelques minutes";
-        _iaBusyHintLong = hintLong || "La durée de cette opération est anormalement longue, appuyez sur Échap pour annuler et relancer la recherche";
-
         if (hint) {
             hint.textContent = _iaBusyHintDefault;
             hint.classList.remove("is-warning");
@@ -467,38 +460,6 @@
         const ov = byId("iaBusyOverlay");
         if (ov) ov.style.display = "none";
     }
-
-    function isAbortError(error){
-        return !!error && (
-            error.name === "AbortError"
-            || String(error?.message || "").toLowerCase().includes("aborted")
-            || String(error?.message || "").toLowerCase().includes("abort")
-        );
-    }
-
-    function isIaBusyVisible(){
-        const ov = byId("iaBusyOverlay");
-        return !!(ov && ov.style.display && ov.style.display !== "none");
-    }
-
-    function abortPosteCompAiSearch(reason){
-        _posteCompAiSearchRunId += 1;
-        if (_posteCompAiSearchAbort){
-            try { _posteCompAiSearchAbort.abort(); } catch (_) {}
-            _posteCompAiSearchAbort = null;
-        }
-        closeIaBusyOverlay();
-        const loading = byId("posteCompAiLoading");
-        if (loading) loading.style.display = "none";
-        if (reason === "escape"){
-            const summary = byId("posteCompAiSummary");
-            if (summary){
-                summary.textContent = "Recherche IA annulée.";
-                summary.style.display = "";
-            }
-        }
-    }
-
 
     function normText(v){
         return String(v || "")
@@ -968,10 +929,8 @@ function refreshPosteCompNivCards(){
         }
 
         closeModal("modalPosteCompAi");
-        closeModal("modalPosteCompCreateFrame");
         _posteCompAiResults = { existing: [], missing: [] };
         _posteCompCreateCtx = null;
-        _posteCompCreateFrameCtx = null;
         resetPosteCompAiUi();
         return true;
     }
@@ -2931,117 +2890,23 @@ body {
         hidePosteCompCreateCritEditor();
     }
 
-    function setPosteCompCreateFrameMsg(message, isError){
-        const el = byId("posteCompCreateFrameMsg");
-        if (!el) return;
-        el.textContent = message || "";
-        el.style.color = isError ? "#b42318" : "";
-    }
-
-    function fillPosteCompCreateFrameDomainSelect(selectedId){
-        const sel = byId("posteCompCreateFrameDomaine");
-        if (!sel) return;
-        const selected = (selectedId || "").toString();
-        sel.innerHTML = '<option value="">—</option>';
-        (_posteCompCreateDomainItems || []).forEach(d => {
-            const opt = document.createElement("option");
-            opt.value = d.id_domaine_competence || "";
-            opt.textContent = d.titre_court || d.titre || d.id_domaine_competence || "Domaine";
-            sel.appendChild(opt);
-        });
-        sel.value = selected;
-        if (selected && sel.value !== selected) sel.value = "";
-    }
-
-    function closePosteCompCreateFrameModal(){
-        closeModal("modalPosteCompCreateFrame");
-        _posteCompCreateFrameCtx = null;
-        setPosteCompCreateFrameMsg("");
-    }
-
     async function openPosteCompCreateModalFromAi(portal, idx, addAfter){
         const it = (_posteCompAiResults?.missing || [])[idx];
         if (!it) return;
 
-        _posteCompCreateFrameCtx = {
+        _posteCompCreateCtx = {
             idx: idx,
             addAfter: !!addAfter,
             draft: JSON.parse(JSON.stringify(it || {}))
         };
 
         await ensurePosteCompCreateDomains(portal);
-        fillPosteCompCreateFrameDomainSelect(it.domaine_id || "");
 
-        byId("posteCompCreateFrameIntitule").value = (it.intitule || "");
-        byId("posteCompCreateFrameDesc").value = (it.description || "");
-        byId("posteCompCreateFrameNbCrit").value = "3";
-        byId("posteCompCreateFrameWhy").value = (it.why_needed || "");
-        setPosteCompCreateFrameMsg("");
-
-        openModal("modalPosteCompCreateFrame");
-    }
-
-    function readPosteCompCreateFrameDraft(portal){
-        if (!_posteCompCreateFrameCtx) return null;
-
-        const base = JSON.parse(JSON.stringify(_posteCompCreateFrameCtx.draft || {}));
-        const title = (byId("posteCompCreateFrameIntitule")?.value || "").trim();
-        const desc = (byId("posteCompCreateFrameDesc")?.value || "").trim();
-        const dom = (byId("posteCompCreateFrameDomaine")?.value || "").trim();
-        const why = (byId("posteCompCreateFrameWhy")?.value || "").trim();
-        let nb = parseInt((byId("posteCompCreateFrameNbCrit")?.value || "3").trim(), 10);
-        if (![1,2,3,4].includes(nb)) nb = 3;
-
-        if (!title){
-            setPosteCompCreateFrameMsg("Intitulé obligatoire.", true);
-            return null;
-        }
-        if (!why){
-            setPosteCompCreateFrameMsg("Précise ce que cette compétence doit permettre d’évaluer.", true);
-            return null;
-        }
-
-        base.intitule = title;
-        base.description = desc || base.description || "";
-        base.domaine_id = dom || null;
-        base.why_needed = why;
-        base.nb_criteres = nb;
-        return base;
-    }
-
-    async function preparePosteCompCreateModalFromFrame(portal){
-        const framed = readPosteCompCreateFrameDraft(portal);
-        if (!framed || !_posteCompCreateFrameCtx) return;
-
-        const ctx = {
-            idx: _posteCompCreateFrameCtx.idx,
-            addAfter: !!_posteCompCreateFrameCtx.addAfter,
-            draft: JSON.parse(JSON.stringify(framed || {}))
-        };
-
-        closePosteCompCreateFrameModal();
-        await preparePosteCompCreateModal(portal, ctx);
-    }
-
-    async function preparePosteCompCreateModal(portal, ctx){
-        if (!ctx) return;
-
-        _posteCompCreateCtx = {
-            idx: ctx.idx,
-            addAfter: !!ctx.addAfter,
-            draft: JSON.parse(JSON.stringify(ctx.draft || {}))
-        };
-
-        await ensurePosteCompCreateDomains(portal);
-
-        let prepared = JSON.parse(JSON.stringify(ctx.draft || {}));
-        const nbCrit = parseInt(prepared.nb_criteres || 3, 10);
+        let prepared = JSON.parse(JSON.stringify(it || {}));
 
         openIaBusyOverlay(
             "Préparation de la compétence",
-            "Génération des niveaux de maîtrise et de la grille d’évaluation...",
-            "Cette opération peut prendre quelques instants",
-            "La génération est longue. Échap ferme l’attente côté écran, sans créer la compétence."
+            "Enrichissement de la fiche compétence et structuration de la grille d’évaluation..."
         );
 
         try{
@@ -3055,17 +2920,13 @@ body {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         id_poste: pid,
-                        draft: prepared,
-                        nb_criteres: [1,2,3,4].includes(nbCrit) ? nbCrit : 3
+                        draft: prepared
                     })
                 }
             );
 
             if (res && res.draft && typeof res.draft === "object"){
                 prepared = res.draft;
-            }
-            if (typeof repairAiDraftPayload === "function"){
-                prepared = repairAiDraftPayload(prepared || {});
             }
         } catch (e){
             console.warn("[PosteCompCreate][prepare]", e);
@@ -3416,12 +3277,7 @@ function renderPosteCompAiResults(){
             return;
         }
 
-        abortPosteCompAiSearch();
         resetPosteCompAiUi();
-
-        const runId = ++_posteCompAiSearchRunId;
-        const controller = new AbortController();
-        _posteCompAiSearchAbort = controller;
 
         const loading = byId("posteCompAiLoading");
         if (loading) loading.style.display = "";
@@ -3430,7 +3286,7 @@ function renderPosteCompAiResults(){
             "Recherche IA des compétences",
             "Analyse du poste et rapprochement avec le catalogue de compétences...",
             "Cette opération peut prendre quelques minutes",
-            "La durée est anormalement longue. Appuyez sur Échap pour annuler côté écran, puis relancer."
+            "Appuyez sur Échap pour annuler"
         );
 
         try{
@@ -3441,12 +3297,7 @@ function renderPosteCompAiResults(){
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(buildPosteCompAiPayload()),
-                signal: controller.signal,
             });
-
-            if (runId !== _posteCompAiSearchRunId || controller.signal.aborted){
-                return;
-            }
 
             _posteCompAiResults = {
                 existing: Array.isArray(res?.existing) ? res.existing : [],
@@ -3454,15 +3305,9 @@ function renderPosteCompAiResults(){
             };
             renderPosteCompAiResults();
             openModal("modalPosteCompAi");
-        } catch(e){
-            if (isAbortError(e) || controller.signal.aborted) return;
-            throw e;
         } finally {
-            if (runId === _posteCompAiSearchRunId){
-                _posteCompAiSearchAbort = null;
-                closeIaBusyOverlay();
-                if (loading) loading.style.display = "none";
-            }
+            closeIaBusyOverlay();
+            if (loading) loading.style.display = "none";
         }
     }
     
@@ -4710,9 +4555,7 @@ function refreshPosteCompEditCritDisplay(){
     }
 
     function closePosteModal(){
-        abortPosteCompAiSearch();
         closeIaBusyOverlay();
-        closeModal("modalPosteCompCreateFrame");
         closeModal("modalPosteCompCreate");
         closeModal("modalPosteImport");
         closeModal("modalPoste");
@@ -5328,11 +5171,6 @@ function refreshPosteCompEditCritDisplay(){
 
             document.addEventListener("keydown", (e) => {
                 const el = byId("modalPoste");
-                if (e.key === "Escape" && isIaBusyVisible()){
-                    e.preventDefault();
-                    abortPosteCompAiSearch("escape");
-                    return;
-                }
                 if (e.key === "Escape" && el && el.style.display === "flex") closePosteModal();
             });
         }
@@ -5482,31 +5320,10 @@ function refreshPosteCompEditCritDisplay(){
             document.addEventListener("keydown", (e) => {
                 const el = byId("modalPosteCompAi");
                 if (e.key === "Escape" && el && el.style.display === "flex"){
-                    const frameEl = byId("modalPosteCompCreateFrame");
-                    if (frameEl && frameEl.style.display === "flex") return;
                     const createEl = byId("modalPosteCompCreate");
                     if (createEl && createEl.style.display === "flex") return;
                     closePosteCompAiModal();
                 }
-            });
-        }
-
-        byId("btnPosteCompCreateFrameX")?.addEventListener("click", () => closePosteCompCreateFrameModal());
-        byId("btnPosteCompCreateFrameCancel")?.addEventListener("click", () => closePosteCompCreateFrameModal());
-        byId("btnPosteCompCreateFrameGenerate")?.addEventListener("click", async () => {
-            try { await preparePosteCompCreateModalFromFrame(portal); }
-            catch(e){ portal.showAlert("error", e?.message || String(e)); }
-        });
-
-        const mcframe = byId("modalPosteCompCreateFrame");
-        if (mcframe && !mcframe._sbBound){
-            mcframe._sbBound = true;
-            mcframe.addEventListener("click", (e) => {
-                if (e.target === mcframe) closePosteCompCreateFrameModal();
-            });
-            document.addEventListener("keydown", (e) => {
-                const el = byId("modalPosteCompCreateFrame");
-                if (e.key === "Escape" && el && el.style.display === "flex") closePosteCompCreateFrameModal();
             });
         }
 
