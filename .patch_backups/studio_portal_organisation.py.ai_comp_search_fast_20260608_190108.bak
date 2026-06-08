@@ -2090,11 +2090,8 @@ def _openai_responses_json(model: str, schema_name: str, schema: dict, system_pr
     if not api_key:
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY non configurée.")
 
-    schema_env = re.sub(r"[^A-Z0-9]+", "_", str(schema_name or "").upper()).strip("_")
-    timeout_var = f"OPENAI_TIMEOUT_SECONDS_{schema_env}" if schema_env else ""
     try:
-        timeout_raw = (os.getenv(timeout_var) if timeout_var else None) or os.getenv("OPENAI_TIMEOUT_SECONDS") or "120"
-        timeout_seconds = int(str(timeout_raw).strip() or "120")
+        timeout_seconds = int((os.getenv("OPENAI_TIMEOUT_SECONDS") or "120").strip() or "120")
     except Exception:
         timeout_seconds = 120
 
@@ -2603,71 +2600,25 @@ def _resolve_catalog_match_from_ai_hint(
     hint_id = _clean_text(item.get("existing_id_comp"))
     hint_code = _clean_text(item.get("existing_code")).upper()
 
-    if hint_id or hint_code:
-        for r in rows or []:
-            rid = _clean_text(r.get("id_comp"))
-            rcode = _clean_text(r.get("code")).upper()
-
-            if hint_id and rid != hint_id:
-                continue
-            if hint_code and rcode != hint_code:
-                continue
-            if not _is_existing_competence_contextually_plausible(r, poste_context_text):
-                return None
-
-            out = dict(r)
-            out["_match_score"] = 0.95
-            out["_match_source"] = "ai_hint"
-            return out
-
-    # L'étape IA ne reçoit plus tout le catalogue. Le rapprochement se fait ici,
-    # sur le fond commun: intitulé, description, utilité, domaine, mots métier.
-    search_terms = []
-    for raw in list(item.get("search_terms") or []) + [
-        item.get("description"),
-        item.get("why_needed"),
-        item.get("domaine_hint"),
-        item.get("importance"),
-        item.get("type_competence"),
-    ]:
-        s = _clean_text(raw)
-        if len(s) >= 3 and s.lower() not in [x.lower() for x in search_terms]:
-            search_terms.append(s)
-        if len(search_terms) >= 8:
-            break
-
-    match = _find_best_existing_competence_in_rows(
-        rows,
-        _clean_text(item.get("intitule")),
-        search_terms,
-    )
-    if not match:
+    if not hint_id and not hint_code:
         return None
 
-    if not _is_existing_competence_contextually_plausible(match, poste_context_text):
-        return None
+    for r in rows or []:
+        rid = _clean_text(r.get("id_comp"))
+        rcode = _clean_text(r.get("code")).upper()
 
-    score = float(match.get("_match_score") or 0.0)
-    wanted_kind = _norm_text_search(item.get("type_competence"))
-    cand_text = _norm_text_search(" ".join([
-        _clean_text(match.get("intitule")),
-        _clean_text(match.get("description")),
-        _clean_text(match.get("domaine_titre_court") or match.get("domaine_titre")),
-    ]))
+        if hint_id and rid != hint_id:
+            continue
+        if hint_code and rcode != hint_code:
+            continue
+        if not _is_existing_competence_contextually_plausible(r, poste_context_text):
+            return None
 
-    # Évite de recycler une compétence catalogue trop spécifique comme générique,
-    # ou une compétence générique pour un besoin manifestement interne.
-    internal_markers = {
-        "interne", "entreprise", "societe", "société", "processus interne", "outil interne",
-        "procedure interne", "procédure interne", "politique commerciale", "organisation interne"
-    }
-    cand_is_internal = any(x in cand_text for x in internal_markers)
-    if wanted_kind == "generique" and cand_is_internal and score < 0.82:
-        return None
+        out = dict(r)
+        out["_match_score"] = 0.95
+        return out
 
-    out = dict(match)
-    out["_match_source"] = "catalog_similarity"
-    return out
+    return None
 
 def _build_existing_competence_shortlist(rows: List[dict], item: dict, poste_context_text: str, limit: int = 5) -> List[dict]:
     wanted_title = _clean_text(item.get("intitule"))
@@ -3248,49 +3199,94 @@ def _build_ai_comp_search_prompts(
     owner_catalog_txt: str = "",
     fallback_mode: bool = False,
 ) -> tuple[str, str]:
-    # Étape 1 Novoskill : identifier les compétences utiles au poste.
-    # Le rapprochement catalogue est volontairement fait APRÈS, côté backend,
-    # pour éviter de charger le prompt avec tout le référentiel et de rendre l'appel IA interminable.
+    catalog_block = owner_catalog_txt or "Catalogue owner vide."
+
+    if not fallback_mode:
+        system_prompt = (
+            "Tu identifies les compétences techniques et métier STRUCTURANTES nécessaires à la tenue réelle d'un poste. "
+            "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
+            "Tu travailles sur le catalogue de compétences de l'owner en cours, pas sur un catalogue global. "
+            "Ta priorité est de RÉUTILISER les compétences déjà présentes dans ce catalogue owner quand elles couvrent réellement le besoin. "
+            "Tu n'inventes une compétence nouvelle que lorsqu'aucune compétence existante de ce catalogue owner ne convient suffisamment. "
+            "Tu proposes uniquement des compétences coeur de poste ou de support réellement structurantes. "
+            "Tu n'inclus pas les tâches périphériques, locales, administratives occasionnelles, de convenance ou de faible portée métier. "
+            "Pas de soft skills génériques sauf si elles sont vraiment indispensables à l'exécution. "
+            "Tu évites les doublons. "
+            "L'intitulé d'une compétence doit commencer par un verbe d'action à l'infinitif et être réutilisable dans un référentiel RH. "
+            "Quand une compétence du poste correspond à une compétence déjà présente dans le catalogue owner, tu reprends cette compétence existante telle quelle en renseignant existing_id_comp et existing_code exacts. "
+            "Dans ce cas, tu privilégies aussi son intitulé canonique de catalogue plutôt qu'une reformulation locale. "
+            "Tu compares pour cela le contenu complet des compétences existantes: intitulé, description, niveaux A/B/C/D, grille d'évaluation, portée réelle de la compétence. "
+            "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
+            "La description doit rester courte, utile et centrée sur le rôle réel de la compétence quand on la possède. Elle ne doit pas paraphraser le descriptif du poste. "
+            "Les search_terms doivent aider le rapprochement avec le référentiel existant: "
+            "prévois 2 à 4 formulations courtes orientées métier, avec si utile une formulation canonique, un objet métier, un livrable ou une variante terminologique utile. "
+            "Ne produis PAS la fiche compétence complète à ce stade: pas de niveaux A/B/C/D détaillés, pas de grille d'évaluation détaillée. "
+            "Tu peux proposer autant de compétences que nécessaire tant qu'elles sont réellement structurantes et non redondantes."
+        )
+
+        user_prompt = (
+            f"POSTE À ANALYSER\n"
+            f"intitulé du poste: {title}\n"
+            f"mission principale: {(payload.mission_principale or '').strip()}\n"
+            f"responsabilités: {_html_to_text(payload.responsabilites_html)}\n"
+            f"contexte: {(payload.ai_contexte or '').strip()}\n"
+            f"tâches complémentaires: {(payload.ai_taches or '').strip()}\n"
+            f"outils: {(payload.ai_outils or '').strip()}\n"
+            f"environnement: {(payload.ai_environnement or '').strip()}\n"
+            f"interactions: {(payload.ai_interactions or '').strip()}\n"
+            f"contraintes complémentaires: {(payload.ai_contraintes or '').strip()}\n"
+            f"contraintes fiche: niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n\n"
+            f"DOMAINES DE COMPÉTENCE AUTORISÉS\n{domain_txt}\n\n"
+            f"CATALOGUE OWNER EXISTANT\n{catalog_block}\n\n"
+            "Consignes:\n"
+            "- Commence par identifier les compétences déjà présentes dans le catalogue owner qui couvrent réellement le poste.\n"
+            "- Si une compétence existante convient, réutilise-la en renseignant existing_id_comp et existing_code exacts.\n"
+            "- Ne crée une compétence nouvelle que s'il n'existe pas de compétence owner suffisamment compatible.\n"
+            "- Pour les postes de formateur ou assimilés, pense explicitement aux compétences socle du métier si elles sont déjà présentes dans le catalogue owner.\n"
+            "- N'invente pas une nouvelle formulation si une compétence owner existante couvre déjà le besoin avec un intitulé plus canonique.\n"
+            "- La description ne doit pas raconter le poste, mais faire comprendre le rôle réel de la compétence.\n"
+            "- Les search_terms doivent faciliter le matching avec le catalogue owner existant.\n"
+        )
+        return system_prompt, user_prompt
+
     system_prompt = (
-        "Tu identifies les compétences nécessaires à la tenue réelle d'un poste pour un référentiel RH Novoskill. "
-        "Une compétence n'est PAS une tâche: c'est une capacité mobilisable composée de savoirs, savoir-faire et savoir-être, "
-        "maîtrisable à plusieurs niveaux, qui permet de réaliser des tâches utiles aux activités du poste. "
-        "Chaque intitulé de compétence doit commencer par un verbe d'action à l'infinitif. "
-        "Tu dois consolider les activités en compétences évaluables: jamais 1 activité = 1 compétence. "
-        "Tu distingues clairement les compétences génériques réutilisables et les compétences spécifiques à l'entreprise. "
-        "Une compétence spécifique doit être identifiable dès le titre par une formulation contextualisée: processus interne, offre de l'entreprise, outils internes, politique interne, organisation interne, etc. "
-        "Une compétence générique doit rester réutilisable sur d'autres postes, voire d'autres clients. "
-        "Tu produis uniquement l'étape 1: intitulé, description, domaine, type et utilité. "
-        "Tu ne produis PAS les niveaux de maîtrise, PAS la grille d'évaluation, PAS les critères détaillés. "
-        "Tu renvoies un JSON strict conforme au schéma. "
-        "Vise une liste exploitable et complète: généralement 18 à 30 compétences si le poste est riche, en évitant les doublons et les micro-tâches."
+        "Tu identifies les compétences réellement requises pour EXECUTER le poste au quotidien. "
+        "Tu dois produire un JSON STRICTEMENT conforme au schéma fourni. "
+        "Tu travailles sur le catalogue de compétences de l'owner en cours, pas sur un catalogue global. "
+        "La priorité reste de RÉUTILISER les compétences déjà présentes dans ce catalogue owner quand elles couvrent correctement le besoin. "
+        "Tu n'inventes une compétence nouvelle que lorsqu'aucune compétence existante du catalogue owner ne convient suffisamment. "
+        "Tu proposes d'abord les compétences coeur de poste, puis les compétences de coordination ou de sécurisation si elles conditionnent le résultat. "
+        "Tu exclus les micro-tâches de convenance, l'intendance locale, l'accueil standard, le courrier, le classement, les formulations vagues et les soft skills génériques. "
+        "Chaque compétence doit être actionnable, transférable et exprimée avec un verbe d'action à l'infinitif. "
+        "Le domaine de compétence doit être choisi STRICTEMENT dans la liste fournie par l'utilisateur. Si aucun domaine ne convient clairement, renvoie une chaîne vide. "
+        "La description doit rester courte, concrète et utile à la décision. Elle doit expliquer le rôle réel de la compétence et non recopier le poste. "
+        "Les search_terms doivent rester orientés matching de référentiel: formulation canonique, objet métier, livrable, variante métier, outil structurant éventuel. "
+        "Si tu réutilises une compétence existante, renseigne existing_id_comp et existing_code avec les valeurs exactes fournies. "
+        "Tu peux proposer autant de compétences que nécessaire tant qu'elles sont réellement structurantes et non redondantes."
     )
 
     user_prompt = (
         f"POSTE À ANALYSER\n"
-        f"Intitulé du poste : {title}\n"
-        f"Mission principale : {(payload.mission_principale or '').strip()}\n"
-        f"Responsabilités / activités : {_html_to_text(payload.responsabilites_html)}\n"
-        f"Contexte : {(payload.ai_contexte or '').strip()}\n"
-        f"Tâches complémentaires : {(payload.ai_taches or '').strip()}\n"
-        f"Outils : {(payload.ai_outils or '').strip()}\n"
-        f"Environnement : {(payload.ai_environnement or '').strip()}\n"
-        f"Interactions : {(payload.ai_interactions or '').strip()}\n"
-        f"Contraintes complémentaires : {(payload.ai_contraintes or '').strip()}\n"
-        f"Contraintes fiche : niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n\n"
+        f"intitulé du poste: {title}\n"
+        f"mission principale: {(payload.mission_principale or '').strip()}\n"
+        f"responsabilités: {_html_to_text(payload.responsabilites_html)}\n"
+        f"contexte: {(payload.ai_contexte or '').strip()}\n"
+        f"tâches complémentaires: {(payload.ai_taches or '').strip()}\n"
+        f"outils: {(payload.ai_outils or '').strip()}\n"
+        f"environnement: {(payload.ai_environnement or '').strip()}\n"
+        f"interactions: {(payload.ai_interactions or '').strip()}\n"
+        f"contraintes complémentaires: {(payload.ai_contraintes or '').strip()}\n"
+        f"contraintes fiche: niveau étude={payload.niveau_education_minimum or ''}, nsf={payload.nsf_groupe_code or ''}, mobilité={payload.mobilite or ''}, risques={payload.risque_physique or ''}, perspectives={payload.perspectives_evolution or ''}, niveau_contrainte={payload.niveau_contrainte or ''}, détail={payload.detail_contrainte or ''}\n\n"
         f"DOMAINES DE COMPÉTENCE AUTORISÉS\n{domain_txt}\n\n"
-        "Consignes de sortie :\n"
-        "- Propose les compétences nécessaires, pas les tâches.\n"
-        "- Commence chaque compétence par un verbe d'action à l'infinitif.\n"
-        "- type_competence = generique si la compétence peut être réutilisée dans un catalogue transversal.\n"
-        "- type_competence = specifique_entreprise si elle dépend de l'offre, des outils, de la politique, des procédures ou de l'organisation propre à l'entreprise.\n"
-        "- Pour les compétences spécifiques, le titre doit faire apparaître cette spécificité.\n"
-        "- Le domaine doit reprendre l'un des domaines autorisés, ou rester vide si aucun ne correspond clairement.\n"
-        "- importance = coeur, complementaire ou transversal.\n"
-        "- La description doit expliquer la capacité maîtrisée et ce qu'elle permet de réaliser, sans paraphraser la fiche de poste.\n"
-        "- why_needed explique brièvement pourquoi cette compétence est utile au poste.\n"
+        f"CATALOGUE OWNER EXISTANT\n{catalog_block}\n\n"
+        "Consignes renforcées:\n"
+        "- Réutilise d'abord les compétences existantes du catalogue owner si elles couvrent le besoin.\n"
+        "- Ne crée que ce qui manque réellement.\n"
+        "- Si une compétence existante convient, renseigne existing_id_comp et existing_code exacts.\n"
+        "- Les search_terms doivent aider le rapprochement avec le catalogue owner existant.\n"
     )
     return system_prompt, user_prompt
+
 
 def _build_search_terms_from_item(title: str, description: Optional[str], provided: Any) -> List[str]:
     terms = []
@@ -3311,35 +3307,6 @@ def _build_search_terms_from_item(title: str, description: Optional[str], provid
     return terms[:4]
 
 
-def _infer_ai_comp_search_metrics(item: dict) -> tuple[int, int, int, str]:
-    kind = _norm_text_search(item.get("type_competence"))
-    importance = _norm_text_search(item.get("importance"))
-    blob = _norm_text_search(" ".join([
-        _clean_text(item.get("intitule")),
-        _clean_text(item.get("description")),
-        _clean_text(item.get("why_needed")),
-        importance,
-        kind,
-    ]))
-
-    if importance == "coeur" or any(x in blob for x in (
-        "coeur", "critique", "essentiel", "principal", "decisif", "sécuriser", "securiser",
-        "negocier", "négocier", "chiffrer", "conclure", "concevoir", "analyser", "qualifier",
-    )):
-        return 8, 8, 6, "B"
-
-    if importance == "transversal" or any(x in blob for x in (
-        "transversal", "coordonner", "reporting", "crm", "veille", "conformite", "conformité",
-        "rgpd", "hse", "relation", "communiquer",
-    )):
-        return 6, 6, 4, "B"
-
-    if kind == "specifique_entreprise" or "interne" in blob or "entreprise" in blob:
-        return 7, 7, 6, "B"
-
-    return 5, 6, 4, "B"
-
-
 def _normalize_ai_comp_search_item(item: dict) -> None:
     item["intitule"] = _normalize_ai_comp_title(item.get("intitule"), item.get("description"))
     item["description"] = _build_ai_comp_description(
@@ -3350,31 +3317,6 @@ def _normalize_ai_comp_search_item(item: dict) -> None:
     )
     item["why_needed"] = _clean_ai_comp_text(item.get("why_needed"), 240)
 
-    raw_type = _norm_text_search(item.get("type_competence"))
-    if raw_type in {"specifique", "spécifique", "specifique entreprise", "spécifique entreprise"}:
-        raw_type = "specifique_entreprise"
-    if raw_type not in {"generique", "specifique_entreprise"}:
-        raw_type = "specifique_entreprise" if _contains_any_expr(
-            item.get("intitule"),
-            {"interne", "entreprise", "societe", "société", "processus interne", "outil interne", "politique commerciale"}
-        ) else "generique"
-    item["type_competence"] = raw_type
-
-    raw_importance = _norm_text_search(item.get("importance"))
-    if raw_importance not in {"coeur", "complementaire", "transversal"}:
-        raw_importance = "coeur"
-    item["importance"] = raw_importance
-
-    default_fu, default_im, default_de, default_level = _infer_ai_comp_search_metrics(item)
-    if item.get("freq_usage") is None:
-        item["freq_usage"] = default_fu
-    if item.get("impact_resultat") is None:
-        item["impact_resultat"] = default_im
-    if item.get("dependance") is None:
-        item["dependance"] = default_de
-    if not _clean_text(item.get("recommended_level")):
-        item["recommended_level"] = default_level
-
     fu = _clamp_0_10(item.get("freq_usage"))
     im = _clamp_0_10(item.get("impact_resultat"))
     de = _clamp_0_10(item.get("dependance"))
@@ -3383,11 +3325,9 @@ def _normalize_ai_comp_search_item(item: dict) -> None:
     item["dependance"] = de
 
     lvl = (item.get("recommended_level") or "").strip().upper()[:1]
-    if lvl not in {"A", "B", "C", "D"}:
+    if lvl not in {"A", "B", "C"}:
         total = fu + im + de
-        if total >= 24 or max(fu, im, de) >= 9:
-            lvl = "D"
-        elif total >= 21 or max(fu, im, de) >= 8:
+        if total >= 21 or max(fu, im, de) >= 8:
             lvl = "C"
         elif total >= 12 or max(fu, im, de) >= 5:
             lvl = "B"
@@ -3398,20 +3338,23 @@ def _normalize_ai_comp_search_item(item: dict) -> None:
     item["domaine_hint"] = _clean_ai_comp_text(item.get("domaine_hint"), 120)
     item["search_terms"] = _build_search_terms_from_item(
         item.get("intitule") or "",
-        " ".join([
-            item.get("description") or "",
-            item.get("why_needed") or "",
-            item.get("domaine_hint") or "",
-        ]),
+        item.get("description") or "",
         item.get("search_terms") or [],
     )
 
-    # Étape 1 uniquement : pas de génération de niveaux/grille ici.
-    item["niveaua"] = ""
-    item["niveaub"] = ""
-    item["niveauc"] = ""
-    item["niveaud"] = ""
-    item["grille_evaluation"] = _sanitize_grille({})
+    item["niveaua"] = _normalize_ai_level_text(item.get("niveaua"), item.get("intitule"), 1, 230)
+    item["niveaub"] = _normalize_ai_level_text(item.get("niveaub"), item.get("intitule"), 2, 230)
+    item["niveauc"] = _normalize_ai_level_text(item.get("niveauc"), item.get("intitule"), 3, 230)
+    item["niveaud"] = _normalize_ai_level_text(item.get("niveaud"), item.get("intitule"), 4, 230)
+    _fix_abc_levels(item)
+
+    ge = _sanitize_grille(item.get("grille_evaluation"))
+    item["grille_evaluation"] = _compact_ai_grille(
+        ge,
+        fu,
+        im,
+        de,
+    )
 
 def _sanitize_grille(v: Any) -> dict:
     ge = v if isinstance(v, dict) else {}
@@ -6297,7 +6240,7 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
             if (r.get("titre_court") or r.get("titre") or "").strip()
         ]) or "- aucun domaine"
 
-        owner_catalog_txt = ""  # Rapprochement catalogue fait après génération, côté backend.
+        owner_catalog_txt = _build_owner_catalog_prompt_text(catalog_rows)
 
         schema = {
             "type": "object",
@@ -6307,25 +6250,33 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                 "competences": {
                     "type": "array",
                     "minItems": 1,
-                    "maxItems": 32,
+                    "maxItems": 40,
                     "items": {
                         "type": "object",
                         "additionalProperties": False,
                         "required": [
                             "intitule",
                             "description",
-                            "why_needed",
+                            "search_terms",
+                            "recommended_level",
+                            "freq_usage",
+                            "impact_resultat",
+                            "dependance",
                             "domaine_hint",
-                            "type_competence",
-                            "importance"
+                            "existing_id_comp",
+                            "existing_code"
                         ],
                         "properties": {
                             "intitule": {"type": "string", "minLength": 1, "maxLength": 140},
-                            "description": {"type": "string", "minLength": 1, "maxLength": 280},
-                            "why_needed": {"type": "string", "maxLength": 240},
+                            "description": {"type": "string", "maxLength": 260},
+                            "search_terms": {"type": "array", "minItems": 1, "maxItems": 4, "items": {"type": "string", "maxLength": 80}},
+                            "recommended_level": {"type": "string", "enum": ["A", "B", "C", "D"]},
+                            "freq_usage": {"type": "integer", "minimum": 0, "maximum": 10},
+                            "impact_resultat": {"type": "integer", "minimum": 0, "maximum": 10},
+                            "dependance": {"type": "integer", "minimum": 0, "maximum": 10},
                             "domaine_hint": {"type": "string", "maxLength": 120},
-                            "type_competence": {"type": "string", "enum": ["generique", "specifique_entreprise"]},
-                            "importance": {"type": "string", "enum": ["coeur", "complementaire", "transversal"]}
+                            "existing_id_comp": {"type": ["string", "null"], "maxLength": 80},
+                            "existing_code": {"type": ["string", "null"], "maxLength": 20}
                         }
                     }
                 }
@@ -6426,8 +6377,6 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
                         "dependance": de,
                         "poids_criticite": poids,
                         "search_terms": search_terms,
-                        "type_competence": item.get("type_competence") or "generique",
-                        "importance": item.get("importance") or "coeur",
                         "niveaua": _clean_ai_comp_text(item.get("niveaua"), 280),
                         "niveaub": _clean_ai_comp_text(item.get("niveaub"), 280),
                         "niveauc": _clean_ai_comp_text(item.get("niveauc"), 280),
@@ -6436,29 +6385,33 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
 
             return existing, missing
 
-        system_prompt, user_prompt = _build_ai_comp_search_prompts(
-            payload,
-            title,
-            domain_txt,
-            owner_catalog_txt,
-            fallback_mode=False,
-        )
+        for pass_idx in range(2):
+            system_prompt, user_prompt = _build_ai_comp_search_prompts(
+                payload,
+                title,
+                domain_txt,
+                owner_catalog_txt,
+                fallback_mode=(pass_idx == 1),
+            )
 
-        drafted = _openai_responses_json(
-            model,
-            "poste_comp_search",
-            schema,
-            system_prompt,
-            user_prompt,
-            use_web=_should_use_web_for_ai_comp_search(payload, title),
-        )
-        drafted_items = drafted.get("competences") or []
+            drafted = _openai_responses_json(
+                model,
+                "poste_comp_search",
+                schema,
+                system_prompt,
+                user_prompt,
+                use_web=_should_use_web_for_ai_comp_search(payload, title),
+            )
+            drafted_items = drafted.get("competences") or []
 
-        existing, missing = _collect_results(
-            drafted_items,
-            allow_relaxed_filter=True,
-        )
-        return {"existing": existing, "missing": missing}
+            existing, missing = _collect_results(
+                drafted_items,
+                allow_relaxed_filter=(pass_idx == 1),
+            )
+            if existing or missing:
+                return {"existing": existing, "missing": missing}
+
+        return {"existing": [], "missing": []}
 
     except HTTPException:
         raise
