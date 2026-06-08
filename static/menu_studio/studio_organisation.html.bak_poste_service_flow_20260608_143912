@@ -107,10 +107,7 @@
           <div class="row">
             <div class="info-item" style="flex:2; min-width:260px;">
               <div class="label">Attaché au service</div>
-              <div style="display:flex; align-items:center; gap:8px;">
-                <select id="posteService" style="flex:1; min-width:0;"></select>
-                <button type="button" class="sb-icon-btn" id="btnPosteServiceAdd" title="Créer un service" aria-label="Créer un service">+</button>
-              </div>
+              <select id="posteService"></select>
             </div>
 
             <div class="info-item" style="flex:1; min-width:220px;">

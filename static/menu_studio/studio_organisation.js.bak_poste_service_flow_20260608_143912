@@ -17,7 +17,6 @@
 
     let _serviceModalMode = "create"; // create | edit
     let _editingServiceId = null;
-    let _serviceModalReturnTarget = null; // null | poste_create | poste_select
     
     let _showArchivedPostes = false;
 
@@ -267,11 +266,10 @@
         if (!el) return;
 
         el.textContent = "";
-        el.classList.remove("is-error");
         el.classList.add("is-hidden");
     }
 
-    function showPosteSaveInlineMsg(message, isError){
+    function showPosteSaveInlineMsg(message){
         const el = byId("posteSaveInlineMsg");
         if (!el) return;
 
@@ -281,12 +279,11 @@
         }
 
         el.textContent = message || "Enregistré avec succès";
-        el.classList.toggle("is-error", !!isError);
         el.classList.remove("is-hidden");
 
         _posteSaveInlineTimer = setTimeout(() => {
             resetPosteSaveInlineMsg();
-        }, isError ? 4200 : 2800);
+        }, 2800);
     }
 
     function formatOrgDiag(step, extra){
@@ -708,55 +705,6 @@ function refreshPosteCompNivCards(){
     function closeModal(id){
         const el = byId(id);
         if (el) el.style.display = "none";
-    }
-
-    function hasStudioOrgServices(){
-        return Array.isArray(_services) && _services.some(s => s && s.id_service);
-    }
-
-    function closeServiceModal(){
-        _serviceModalReturnTarget = null;
-        closeModal("modalService");
-    }
-
-    function showOrgPopup(title, message){
-        const root = getOrganisationRoot() || document.body;
-        let modal = byId("modalOrgPopup") || document.getElementById("modalOrgPopup");
-
-        if (!modal){
-            modal = document.createElement("div");
-            modal.className = "sb-modal";
-            modal.id = "modalOrgPopup";
-            modal.style.display = "none";
-            modal.innerHTML = `
-              <div class="sb-modal-card" style="max-width:520px;">
-                <div class="sb-modal-head">
-                  <div>
-                    <div class="card-title" id="orgPopupTitle" style="margin-bottom:2px;">Information</div>
-                    <div class="card-sub" id="orgPopupMessage" style="margin:0;">—</div>
-                  </div>
-                  <button type="button" class="sb-modal-x" id="btnCloseOrgPopup" aria-label="Fermer">&times;</button>
-                </div>
-                <div class="sb-modal-body">
-                  <div class="sb-modal-actions">
-                    <button type="button" class="sb-btn sb-btn--accent" id="btnOkOrgPopup">Compris</button>
-                  </div>
-                </div>
-              </div>`;
-            root.appendChild(modal);
-
-            modal.addEventListener("click", (e) => {
-                if (e.target === modal) closeModal("modalOrgPopup");
-            });
-            modal.querySelector("#btnCloseOrgPopup")?.addEventListener("click", () => closeModal("modalOrgPopup"));
-            modal.querySelector("#btnOkOrgPopup")?.addEventListener("click", () => closeModal("modalOrgPopup"));
-        }
-
-        const t = modal.querySelector("#orgPopupTitle");
-        const m = modal.querySelector("#orgPopupMessage");
-        if (t) t.textContent = title || "Information";
-        if (m) m.textContent = message || "Action impossible.";
-        openModal("modalOrgPopup");
     }
 
     function getPendingPosteCompAiCount(){
@@ -1589,13 +1537,9 @@ body {
         if (!btn) return;
 
         const ok = isAdmin();
-        const hasServices = hasStudioOrgServices();
-
         btn.disabled = !ok;
         btn.style.opacity = ok ? "" : ".6";
-        btn.title = !ok
-            ? "Accès admin requis."
-            : (hasServices ? "" : "Créer un service avant d'ajouter un poste.");
+        btn.title = ok ? "" : "Accès admin requis.";
     }
 
     async function loadServices(portal){
@@ -4229,11 +4173,6 @@ function refreshPosteCompEditCritDisplay(){
     }
 
     function openCreatePosteModal(portal){
-        if (!hasStudioOrgServices()){
-            openCreateService("poste_create");
-            return;
-        }
-
         _posteModalMode = "create";
         _editingPosteId = null;
         resetPosteSaveInlineMsg();
@@ -4421,11 +4360,11 @@ function refreshPosteCompEditCritDisplay(){
         const resp = rtGetPosteRespHtml();
 
         if (!sid){
-            showOrgPopup("Service obligatoire", "Sélectionnez ou créez un service pour rattacher cette fiche de poste. Le bouton + à côté du champ Service permet de le créer sans quitter le poste.");
+            portal.showAlert("error", "Sélectionne un service.");
             return null;
         }
         if (!title){
-            showPosteSaveInlineMsg("Intitulé obligatoire.", true);
+            portal.showAlert("error", "Intitulé obligatoire.");
             return null;
         }
 
@@ -4458,7 +4397,7 @@ function refreshPosteCompEditCritDisplay(){
         const rawNbTit = (byId("posteRhNbTitulaires")?.value || "").trim();
         const nbTit = parseInt(rawNbTit || "1", 10);
         if (!Number.isFinite(nbTit) || nbTit < 1){
-            showPosteSaveInlineMsg("Le nombre de titulaires cible doit être supérieur ou égal à 1.", true);
+            portal.showAlert("error", "Le nombre de titulaires cible doit être supérieur ou égal à 1.");
             return null;
         }
         payload.nb_titulaires_cible = nbTit;
@@ -4466,13 +4405,13 @@ function refreshPosteCompEditCritDisplay(){
         const rawCrit = (byId("posteRhCriticite")?.value || "").trim();
         const crit = parseInt(rawCrit || "2", 10);
         if (!Number.isFinite(crit) || crit < 1 || crit > 3){
-            showPosteSaveInlineMsg("La criticité du poste doit être comprise entre 1 et 3.", true);
+            portal.showAlert("error", "La criticité du poste doit être comprise entre 1 et 3.");
             return null;
         }
         payload.criticite_poste = crit;
 
         if (payload.date_debut_validite && payload.date_fin_validite && payload.date_fin_validite < payload.date_debut_validite){
-            showPosteSaveInlineMsg("La date de fin de validité doit être postérieure ou égale à la date de début.", true);
+            portal.showAlert("error", "La date de fin de validité doit être postérieure ou égale à la date de début.");
             return null;
         }
 
@@ -4596,7 +4535,7 @@ function refreshPosteCompEditCritDisplay(){
 
         const sid = (byId("posteService")?.value || "").trim();
         if (!sid){
-            showOrgPopup("Service obligatoire", "Sélectionnez ou créez un service cible avant de dupliquer cette fiche de poste.");
+            portal.showAlert("error", "Sélectionne un service cible avant duplication.");
             return;
         }
 
@@ -4630,17 +4569,12 @@ function refreshPosteCompEditCritDisplay(){
     }
 
     // -------- Services CRUD
-    function openCreateService(returnTarget){
+    function openCreateService(){
         _serviceModalMode = "create";
         _editingServiceId = null;
-        _serviceModalReturnTarget = returnTarget || null;
 
         byId("svcModalTitle").textContent = "Créer un service";
-        byId("svcModalSub").textContent = (_serviceModalReturnTarget === "poste_create")
-            ? "Créez d’abord un service pour rattacher la fiche de poste."
-            : (_serviceModalReturnTarget === "poste_select")
-                ? "Créez le service à rattacher à cette fiche de poste."
-                : "Définissez le nom et, si besoin, le parent.";
+        byId("svcModalSub").textContent = "Définissez le nom et, si besoin, le parent.";
         byId("svcName").value = "";
         fillParentSelect(null);
 
@@ -4684,54 +4618,28 @@ function refreshPosteCompEditCritDisplay(){
         const ownerId = getOwnerId();
         const name = (byId("svcName").value || "").trim();
         const parent = (byId("svcParent").value || "").trim() || null;
-        const returnTarget = _serviceModalReturnTarget;
 
         if (!name) {
-            showOrgPopup("Service obligatoire", "Renseignez le nom du service avant d’enregistrer.");
-            return;
+        portal.showAlert("error", "Nom de service obligatoire.");
+        return;
         }
-
-        let createdServiceId = null;
 
         if (_serviceModalMode === "create") {
-            const r = await portal.apiJson(
-                `${portal.apiBase}/studio/org/services/${encodeURIComponent(ownerId)}`,
-                { method: "POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify({ nom_service: name, id_service_parent: parent }) }
-            );
-            createdServiceId = r && r.id_service ? String(r.id_service) : null;
+        await portal.apiJson(
+            `${portal.apiBase}/studio/org/services/${encodeURIComponent(ownerId)}`,
+            { method: "POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify({ nom_service: name, id_service_parent: parent }) }
+        );
         } else {
-            if (!_editingServiceId) return;
-            await portal.apiJson(
-                `${portal.apiBase}/studio/org/services/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingServiceId)}`,
-                { method: "POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify({ nom_service: name, id_service_parent: parent }) }
-            );
+        if (!_editingServiceId) return;
+        await portal.apiJson(
+            `${portal.apiBase}/studio/org/services/${encodeURIComponent(ownerId)}/${encodeURIComponent(_editingServiceId)}`,
+            { method: "POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify({ nom_service: name, id_service_parent: parent }) }
+        );
         }
 
-        _serviceModalReturnTarget = null;
         closeModal("modalService");
+        portal.showAlert("", "");
         await loadServices(portal);
-
-        if (!createdServiceId && returnTarget){
-            const created = (_services || []).find(s => String(s.nom_service || "").trim().toLowerCase() === name.toLowerCase());
-            createdServiceId = created && created.id_service ? String(created.id_service) : null;
-        }
-
-        if (createdServiceId){
-            _selectedService = createdServiceId;
-            syncSelectedServiceContext();
-            renderServices();
-            updateAddButtonState();
-            loadPostes(portal).catch(() => {});
-        }
-
-        if (returnTarget === "poste_create"){
-            openCreatePosteModal(portal);
-            if (createdServiceId) fillPosteServiceSelect(createdServiceId);
-            showPosteSaveInlineMsg("Service créé et sélectionné");
-        } else if (returnTarget === "poste_select"){
-            if (createdServiceId) fillPosteServiceSelect(createdServiceId);
-            showPosteSaveInlineMsg("Service créé et sélectionné");
-        }
     }
 
     function openArchiveService(){
@@ -4936,11 +4844,11 @@ function refreshPosteCompEditCritDisplay(){
             });
         }
 
-        byId("btnCloseService").addEventListener("click", () => closeServiceModal());
-        byId("btnCancelService").addEventListener("click", () => closeServiceModal());
+        byId("btnCloseService").addEventListener("click", () => closeModal("modalService"));
+        byId("btnCancelService").addEventListener("click", () => closeModal("modalService"));
         byId("btnSaveService").addEventListener("click", async () => {
         try { await saveService(portal); }
-        catch (e) { showOrgPopup("Création du service", e?.message || String(e)); }
+        catch (e) { portal.showAlert("error", e?.message || String(e)); }
         });
 
         byId("btnCloseArchive").addEventListener("click", () => closeModal("modalArchive"));
@@ -4952,21 +4860,8 @@ function refreshPosteCompEditCritDisplay(){
 
         // Catalogue modal
         byId("btnAddFromCatalog").addEventListener("click", () => {
-            try {
-                if (!hasStudioOrgServices()){
-                    openCreateService("poste_create");
-                    return;
-                }
-                openCreatePosteModal(portal);
-            }
-            catch (e) { showOrgPopup("Création du poste", e?.message || String(e)); }
-        });
-
-        byId("btnPosteServiceAdd")?.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            try { openCreateService("poste_select"); }
-            catch (err) { showOrgPopup("Création du service", err?.message || String(err)); }
+            try { openCreatePosteModal(portal); }
+            catch (e) { portal.showAlert("error", e?.message || String(e)); }
         });
 
         byId("btnCloseCatalog").addEventListener("click", () => closeModal("modalCatalog"));
@@ -5028,7 +4923,7 @@ function refreshPosteCompEditCritDisplay(){
             }
             catch(e){
                 resetPosteSaveInlineMsg();
-                showPosteSaveInlineMsg(e?.message || String(e), true);
+                portal.showAlert("error", e?.message || String(e));
             }
         });
 
