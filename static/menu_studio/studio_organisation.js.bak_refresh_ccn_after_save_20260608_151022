@@ -2227,17 +2227,6 @@ body {
         return await ctrl.loadContext(portal);
     }
 
-    async function refreshPosteCcnContextAfterSave(portal){
-        const pid = (_editingPosteId || "").trim();
-        if (!pid) return;
-
-        try{
-            await loadPosteCcnContext(portal);
-        } catch(e){
-            console.warn("[Studio][Organisation] Impossible de rafraîchir la cotation conventionnelle après enregistrement du poste", e);
-        }
-    }
-
     async function openPosteCcnModal(portal){
         const ctrl = await ensureStudioOrganisationCcnController(portal);
         if (!ctrl) return;
@@ -4582,7 +4571,6 @@ function refreshPosteCompEditCritDisplay(){
                 if (bS) bS.textContent = "Enregistrer";
                 setPosteModalActif(true);
                 seedPosteAiModalFromCurrent();
-                await refreshPosteCcnContextAfterSave(portal);
                 if (!silent) setStatus(opts.statusMessage || "Poste créé.");
                 return r;
             }
@@ -4610,9 +4598,8 @@ function refreshPosteCompEditCritDisplay(){
             if (!keepOpen){
                 if (!silent) setStatus(opts.statusMessage || "Poste enregistré.");
                 closePosteModal();
-            } else {
-                await refreshPosteCcnContextAfterSave(portal);
-                if (!silent) setStatus(opts.statusMessage || "Poste enregistré.");
+            } else if (!silent) {
+                setStatus(opts.statusMessage || "Poste enregistré.");
             }
             return r || { ok: true };
         }
