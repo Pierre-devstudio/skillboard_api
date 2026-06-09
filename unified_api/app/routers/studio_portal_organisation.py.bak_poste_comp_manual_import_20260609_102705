@@ -3247,10 +3247,6 @@ def _build_poste_comp_prepare_context(poste_row: Optional[dict], draft: dict) ->
     if desc:
         parts.append(f"Description courte actuelle : {desc}")
 
-    import_context = _clean_text(draft.get("import_context"))
-    if import_context:
-        parts.append("Extrait documentaire importé pour cadrer la compétence : " + import_context[:6000])
-
     search_terms = [str(x or "").strip() for x in (draft.get("search_terms") or []) if str(x or "").strip()]
     if search_terms:
         parts.append("Mots-clés utiles : " + ", ".join(search_terms[:6]))
@@ -6766,44 +6762,6 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"studio/org/postes ai_comp_search error: {e}")
-
-
-@router.post("/studio/org/postes/{id_owner}/competence_import_document")
-def studio_org_import_competence_document(id_owner: str, request: Request, file: UploadFile = File(...)):
-    auth = request.headers.get("Authorization", "")
-    u = studio_require_user(auth)
-
-    try:
-        oid = (id_owner or "").strip()
-        filename = _clean_text(getattr(file, "filename", "") or "document")
-        raw = file.file.read() if file and file.file else b""
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                oid = _require_owner_access(cur, u, oid)
-                studio_fetch_owner(cur, oid)
-                studio_require_min_role(cur, u, oid, "admin")
-
-        ext, extracted_text = _extract_poste_import_text(filename, raw)
-
-        title_hint = re.sub(r"\.[A-Za-z0-9]+$", "", filename or "").strip()
-        title_hint = re.sub(r"[_\-]+", " ", title_hint)
-        title_hint = re.sub(r"\s+", " ", title_hint).strip()
-
-        return {
-            "ok": True,
-            "filename": filename,
-            "extension": ext,
-            "title_hint": _clean_ai_comp_text(title_hint, 160),
-            "description": _clean_ai_comp_text(extracted_text, 1800),
-            "extracted_text": extracted_text[:12000],
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"studio/org/postes competence_import_document error: {e}")
-
 
 @router.post("/studio/org/postes/{id_owner}/ai_comp_prepare")
 def studio_org_ai_comp_prepare(id_owner: str, payload: AiPosteCompetencePreparePayload, request: Request):
