@@ -323,6 +323,7 @@ class CreateCompetencePayload(BaseModel):
     niveaub: Optional[str] = None
     niveauc: Optional[str] = None
     niveaud: Optional[str] = None
+    niveaud: Optional[str] = None
     grille_evaluation: Optional[Any] = None
     etat: Optional[str] = None
 
@@ -334,6 +335,7 @@ class UpdateCompetencePayload(BaseModel):
     niveaua: Optional[str] = None
     niveaub: Optional[str] = None
     niveauc: Optional[str] = None
+    niveaud: Optional[str] = None
     niveaud: Optional[str] = None
     grille_evaluation: Optional[Any] = None
     etat: Optional[str] = None
@@ -375,7 +377,6 @@ def _build_ai_schema() -> dict:
             "niveaua",
             "niveaub",
             "niveauc",
-            "niveaud",
             "domaine_id",
             "grille_evaluation",
         ],
@@ -385,6 +386,7 @@ def _build_ai_schema() -> dict:
             "niveaua": {"type": "string", "minLength": 40, "maxLength": 230},
             "niveaub": {"type": "string", "minLength": 40, "maxLength": 230},
             "niveauc": {"type": "string", "minLength": 40, "maxLength": 230},
+                "niveaud": {"type": "string", "minLength": 40, "maxLength": 230},
             "niveaud": {"type": "string", "minLength": 40, "maxLength": 230},
             "domaine_id": {"type": ["string", "null"]},
             "grille_evaluation": {
@@ -453,9 +455,6 @@ def _run_ai_draft(cur, oid: str, payload: AiDraftCompetencePayload) -> dict:
     sys = (
         "Tu es concepteur pédagogique et tu aides à concevoir une fiche compétence opérationnelle pour Novoskill Learn. "
         "Tu dois respecter STRICTEMENT le schéma JSON fourni. "
-        "Une compétence Novoskill est une capacité mobilisable, construite à partir de savoirs, savoir-faire et savoir-être, qui permet de réaliser des tâches utiles aux activités métier ou pédagogiques. "
-        "L’intitulé commence toujours par un verbe d’action. Interdiction de produire un thème vague ou une tâche isolée déguisée en compétence. "
-        "La fiche compétence doit rester exploitable dans le même catalogue que Studio et donc réutilisable ensuite sur des postes. "
 
         "Avant de rédiger, tu dois décider si la compétence est transverse, métier réutilisable, ou spécifique. "
         "Compétence transverse : elle peut être réutilisée dans plusieurs métiers ou domaines. Son titre, sa description, "
@@ -479,7 +478,6 @@ def _run_ai_draft(cur, oid: str, payload: AiDraftCompetencePayload) -> dict:
         "La compétence doit rester générique et réutilisable uniquement si le contexte précis n'est pas nécessaire "
         "pour comprendre, exercer et évaluer la compétence. "
         "Règles de niveau A/B/C/D : A = débutant guidé, B = intermédiaire autonome, C = avancé fiable/adapte, D = expert qui optimise/transmet. "
-        "Ces niveaux décrivent une progression de maîtrise observable, compatible avec les évaluations Studio et Learn. "
         "Ne mets jamais un simple label type Débutant/Intermédiaire/Avancé/Expert dans niveaua/b/c/d/d. "
         "Rédige des attendus concrets, observables, orientés action. "
         "Les critères d'évaluation doivent être distincts, progressifs, observables et utilisables en formation. "
@@ -983,6 +981,10 @@ def learn_competence_update(id_effectif: str, id_comp: str, payload: UpdateCompe
                 if "niveauc" in patch_fields:
                     cols.append("niveauc = %s")
                     vals.append(payload.niveauc)
+
+                if "niveaud" in patch_fields:
+                    cols.append("niveaud = %s")
+                    vals.append(payload.niveaud)
 
                 if "niveaud" in patch_fields:
                     cols.append("niveaud = %s")

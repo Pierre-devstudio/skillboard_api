@@ -1208,214 +1208,6 @@ def _match_score(a: Any, b: Any) -> int:
     return max(0, min(100, score))
 
 
-
-def _strip_action_verb_for_match(value: Any) -> str:
-    """Neutralise le verbe d'action pour comparer le fond métier de deux compétences."""
-    s = _norm_match_text(value)
-    if not s:
-        return ""
-
-    verbs = {
-        "analyser", "appliquer", "assurer", "concevoir", "conduire", "coordonner",
-        "creer", "créer", "developper", "développer", "elaborer", "élaborer",
-        "exploiter", "formaliser", "gerer", "gérer", "identifier", "maitriser", "maîtriser",
-        "mettre", "organiser", "piloter", "preparer", "préparer", "produire",
-        "realiser", "réaliser", "suivre", "traiter", "utiliser", "transmettre",
-        "evaluer", "évaluer", "former", "animer", "adapter", "structurer",
-    }
-
-    parts = s.split()
-    while parts and parts[0] in verbs:
-        parts = parts[1:]
-
-    # Cas fréquent : "mettre en oeuvre".
-    if len(parts) >= 2 and parts[0] == "en" and parts[1] in ("oeuvre", "œuvre"):
-        parts = parts[2:]
-
-    return " ".join(parts).strip() or s
-
-
-def _normalize_competence_role(value: Any) -> str:
-    s = _norm_match_text(value)
-    if not s:
-        return "complementaire"
-    if "coeur" in s or "cœur" in str(value or "").lower() or "princip" in s or "essentiel" in s:
-        return "coeur"
-    if "transversal" in s or "transverse" in s:
-        return "transversal"
-    return "complementaire"
-
-
-def _normalize_competence_type(value: Any) -> str:
-    s = _norm_match_text(value)
-    if "specifique" in s or "entreprise" in s or "interne" in s:
-        return "specifique_entreprise"
-    return "generique"
-
-
-def _normalize_ai_competence_candidate(raw: Any, target_kind: str = "stagiaire") -> Optional[dict]:
-    """Accepte les anciens libellés texte et le nouveau format objet IA."""
-    if raw is None:
-        return None
-
-    if isinstance(raw, dict):
-        title = _clean_text(
-            raw.get("intitule")
-            or raw.get("titre")
-            or raw.get("source")
-            or raw.get("competence")
-            or raw.get("label"),
-            240,
-        )
-        desc = _clean_text(raw.get("description"), 900)
-        domaine_hint = _clean_text(
-            raw.get("domaine")
-            or raw.get("domaine_hint")
-            or raw.get("domaine_label")
-            or raw.get("famille"),
-            180,
-        )
-        justification = _clean_text(
-            raw.get("justification")
-            or raw.get("utilite")
-            or raw.get("why_needed")
-            or raw.get("usage"),
-            700,
-        )
-        role = _normalize_competence_role(raw.get("role") or raw.get("importance"))
-        comp_type = _normalize_competence_type(raw.get("type_competence") or raw.get("type"))
-    else:
-        title = _clean_text(raw, 240)
-        desc = ""
-        domaine_hint = ""
-        justification = ""
-        role = "complementaire"
-        comp_type = "generique"
-
-    if not title:
-        return None
-
-    return {
-        "source": title,
-        "description": desc,
-        "domaine_hint": domaine_hint,
-        "role": role,
-        "type_competence": comp_type,
-        "justification": justification,
-        "usage": "formateur" if target_kind == "formateur" else "stagiaire",
-    }
-
-
-def _candidate_match_blob(candidate: dict) -> str:
-    return " ".join([
-        candidate.get("source") or "",
-        candidate.get("description") or "",
-        candidate.get("domaine_hint") or "",
-        candidate.get("justification") or "",
-        candidate.get("role") or "",
-        candidate.get("type_competence") or "",
-    ])
-
-
-def _enhanced_competence_match_score(candidate: dict, catalogue_row: dict) -> int:
-    cand_title = candidate.get("source") or ""
-    cand_desc = candidate.get("description") or ""
-    cand_blob = _candidate_match_blob(candidate)
-
-    cat_title = catalogue_row.get("intitule") or ""
-    cat_desc = catalogue_row.get("description") or ""
-    cat_blob = " ".join([
-        cat_title,
-        cat_desc,
-        catalogue_row.get("niveaua") or "",
-        catalogue_row.get("niveaub") or "",
-        catalogue_row.get("niveauc") or "",
-        catalogue_row.get("niveaud") or "",
-        catalogue_row.get("domaine_titre_court") or "",
-        catalogue_row.get("domaine_titre") or "",
-    ])
-
-    title_score = _match_score(cand_title, cat_title)
-    core_score = _match_score(_strip_action_verb_for_match(cand_title), _strip_action_verb_for_match(cat_title))
-    desc_score = _match_score(cand_desc, cat_desc) if cand_desc and cat_desc else 0
-    blob_score = _match_score(cand_blob, cat_blob)
-
-    cand_tokens = _token_set(cand_blob)
-    cat_tokens = _token_set(cat_blob)
-    overlap_score = 0
-    if cand_tokens and cat_tokens:
-        overlap_score = int(round(100 * len(cand_tokens & cat_tokens) / max(1, min(len(cand_tokens), len(cat_tokens)))))
-
-    domaine_hint = _norm_match_text(candidate.get("domaine_hint") or "")
-    domaine_blob = _norm_match_text(" ".join([
-        catalogue_row.get("domaine_titre_court") or "",
-        catalogue_row.get("domaine_titre") or "",
-    ]))
-    domain_bonus = 0
-    if domaine_hint and domaine_blob:
-        dscore = _match_score(domaine_hint, domaine_blob)
-        if dscore >= 80:
-            domain_bonus = 6
-        elif dscore >= 65:
-            domain_bonus = 3
-
-    score = max(
-        title_score,
-        core_score,
-        int(round((title_score * 0.34) + (core_score * 0.26) + (desc_score * 0.24) + (blob_score * 0.10) + (overlap_score * 0.06))) + domain_bonus,
-    )
-
-    # Si la compétence vient du même besoin et que titre + description convergent, on évite les 58 % absurdes.
-    if max(title_score, core_score) >= 84 and (desc_score >= 72 or blob_score >= 78):
-        score = max(score, 93)
-    if _norm_match_text(cand_title) == _norm_match_text(cat_title):
-        score = max(score, 96)
-    if _strip_action_verb_for_match(cand_title) == _strip_action_verb_for_match(cat_title) and len(_strip_action_verb_for_match(cand_title)) >= 8:
-        score = max(score, 94)
-
-    return max(0, min(100, int(round(score))))
-
-
-def _fetch_competence_domain_rows(cur) -> list:
-    cur.execute(
-        """
-        SELECT
-          id_domaine_competence,
-          titre,
-          titre_court,
-          description
-        FROM public.tbl_domaine_competence
-        WHERE COALESCE(masque, FALSE) = FALSE
-        ORDER BY COALESCE(ordre_affichage, 999999), lower(COALESCE(titre_court, titre, id_domaine_competence))
-        """
-    )
-    return cur.fetchall() or []
-
-
-def _resolve_competence_domain_id_from_hint(domain_rows: list, hint: Any) -> Optional[str]:
-    clean = _clean_text(hint, 180)
-    if not clean:
-        return None
-
-    best = None
-    for row in domain_rows or []:
-        rid = str(row.get("id_domaine_competence") or "").strip()
-        if not rid:
-            continue
-
-        blob = " ".join([
-            str(row.get("titre") or ""),
-            str(row.get("titre_court") or ""),
-            str(row.get("description") or ""),
-        ])
-        score = _match_score(clean, blob)
-        if best is None or score > best[0]:
-            best = (score, rid)
-
-    if best and best[0] >= 62:
-        return best[1]
-    return None
-
 def _fetch_import_catalogue(cur, oid: str) -> list:
     cur.execute(
         """
@@ -1449,32 +1241,34 @@ def _fetch_import_catalogue(cur, oid: str) -> list:
     return cur.fetchall() or []
 
 
-
-def _match_import_competences(cur, oid: str, labels: list, target_kind: str = "stagiaire") -> list:
+def _match_import_competences(cur, oid: str, labels: list) -> list:
     catalogue = _fetch_import_catalogue(cur, oid)
-    domain_rows = _fetch_competence_domain_rows(cur)
     out = []
 
-    seen = set()
-
     for raw in labels or []:
-        cand = _normalize_ai_competence_candidate(raw, target_kind=target_kind)
-        if not cand:
+        label = str(raw or "").strip()
+        if not label:
             continue
 
-        label = cand.get("source") or ""
-        key = _norm_match_text(label)
-        if not key or key in seen:
-            continue
-        seen.add(key)
-
-        resolved_domaine_id = _resolve_competence_domain_id_from_hint(domain_rows, cand.get("domaine_hint"))
         scored = []
 
         for c in catalogue:
-            score = _enhanced_competence_match_score(cand, c)
+            blob = " ".join([
+                c.get("intitule") or "",
+                c.get("description") or "",
+                c.get("niveaua") or "",
+                c.get("niveaub") or "",
+                c.get("niveauc") or "",
+                c.get("niveaud") or "",
+                c.get("domaine_titre_court") or "",
+                c.get("domaine_titre") or "",
+            ])
 
-            if score >= 45:
+            score_title = _match_score(label, c.get("intitule") or "")
+            score_full = _match_score(label, blob)
+            score = max(score_title, int(round((score_title * 0.70) + (score_full * 0.30))))
+
+            if score >= 50:
                 scored.append({
                     "id_comp": c.get("id_comp"),
                     "code": c.get("code"),
@@ -1487,13 +1281,13 @@ def _match_import_competences(cur, oid: str, labels: list, target_kind: str = "s
                 })
 
         scored.sort(key=lambda x: x.get("score") or 0, reverse=True)
-        matches = scored[:4]
+        matches = scored[:3]
         best_score = matches[0].get("score", 0) if matches else 0
 
-        if best_score >= 86:
+        if best_score >= 82:
             status = "recommandé"
             selected_id = matches[0].get("id_comp")
-        elif best_score >= 72:
+        elif best_score >= 66:
             status = "approchant"
             selected_id = None
         elif best_score >= 50:
@@ -1505,19 +1299,13 @@ def _match_import_competences(cur, oid: str, labels: list, target_kind: str = "s
 
         out.append({
             "source": label,
-            "description": cand.get("description") or "",
-            "domaine_hint": cand.get("domaine_hint") or "",
-            "domaine_id": resolved_domaine_id,
-            "role": cand.get("role") or "complementaire",
-            "type_competence": cand.get("type_competence") or "generique",
-            "justification": cand.get("justification") or "",
-            "usage": cand.get("usage") or ("formateur" if target_kind == "formateur" else "stagiaire"),
             "selected_id": selected_id,
             "status": status,
             "matches": matches,
         })
 
     return out
+
 
 def _find_ref_ids_by_labels(rows: list, id_key: str, labels: list) -> list:
     wanted = [str(x or "").strip() for x in (labels or []) if str(x or "").strip()]
@@ -1698,28 +1486,7 @@ def _normalize_import_prerequis(raw_items: Any) -> list:
 
     return out
 
-
-def _build_competence_candidate_ai_schema() -> dict:
-    """
-    Schéma léger de recherche compétence.
-    La grille, les niveaux A/B/C/D et les critères restent générés uniquement au moment de créer la fiche compétence.
-    """
-    return {
-        "type": "object",
-        "additionalProperties": False,
-        "required": ["intitule", "description", "domaine", "type_competence", "role", "justification"],
-        "properties": {
-            "intitule": {"type": "string", "minLength": 3, "maxLength": 140},
-            "description": {"type": "string", "maxLength": 900},
-            "domaine": {"type": "string", "maxLength": 120},
-            "type_competence": {"type": "string", "enum": ["generique", "specifique_entreprise"]},
-            "role": {"type": "string", "enum": ["coeur", "complementaire", "transversal"]},
-            "justification": {"type": "string", "maxLength": 700},
-        },
-    }
-
 def _build_import_ai_schema() -> dict:
-    comp_schema = _build_competence_candidate_ai_schema()
     return {
         "type": "object",
         "additionalProperties": False,
@@ -1756,8 +1523,8 @@ def _build_import_ai_schema() -> dict:
                     },
                 },
             },
-            "competences_stagiaires": {"type": "array", "items": comp_schema},
-            "competences_formateurs": {"type": "array", "items": comp_schema},
+            "competences_stagiaires": {"type": "array", "items": {"type": "string"}},
+            "competences_formateurs": {"type": "array", "items": {"type": "string"}},
             "contenus": {
                 "type": "array",
                 "items": {
@@ -1792,14 +1559,6 @@ def _analyse_import_document_with_ai(doc_text: str, filename: str) -> dict:
         "Tu ne dois pas inventer une formation complète si le document est incomplet. "
         "Tu dois renvoyer un JSON strict conforme au schéma. "
         "Pour les compétences, distingue les compétences visées pour les stagiaires et les compétences requises pour le formateur. "
-        "Une compétence Novoskill est une capacité mobilisable construite par des savoirs, savoir-faire et savoir-être, "
-        "maîtrisable sur 4 niveaux A/B/C/D lors de la création de fiche compétence. "
-        "À cette étape, ne génère jamais les niveaux, la grille ou les critères : fournis seulement intitule, description, domaine, type_competence, role et justification. "
-        "Chaque intitulé de compétence commence par un verbe d’action et ne doit jamais être une tâche isolée. "
-        "Les compétences génériques doivent rester réutilisables dans le catalogue Novoskill. "
-        "Les compétences spécifiques entreprise doivent être identifiables dès la lecture du titre. "
-        "Pour les compétences stagiaires, cible ce que la formation permet d’acquérir ou renforcer. "
-        "Pour les compétences formateur, cible ce qui permet d’animer, transmettre, adapter et évaluer correctement la formation. "
         "Pour les contenus, découpe en lignes de contenu pédagogiques réutilisables, pas en planning horaire. "
         "Chaque contenu doit comporter un titre clair, un objectif court et un champ contenu détaillé. "
         "Le champ contenu doit être rédigé sous forme de liste de sujets abordés, avec une ligne par sujet, précédée de '- '. "
@@ -1851,7 +1610,6 @@ def _analyse_import_document_with_ai(doc_text: str, filename: str) -> dict:
         raise HTTPException(status_code=500, detail="Analyse IA illisible.")
 
 def _build_generation_ai_schema() -> dict:
-    comp_schema = _build_competence_candidate_ai_schema()
     return {
         "type": "object",
         "additionalProperties": False,
@@ -1889,8 +1647,8 @@ def _build_generation_ai_schema() -> dict:
                     },
                 },
             },
-            "competences_stagiaires": {"type": "array", "items": comp_schema},
-            "competences_formateurs": {"type": "array", "items": comp_schema},
+            "competences_stagiaires": {"type": "array", "items": {"type": "string"}},
+            "competences_formateurs": {"type": "array", "items": {"type": "string"}},
             "contenus": {
                 "type": "array",
                 "items": {
@@ -1940,10 +1698,6 @@ def _analyse_generate_formation_with_ai(
         "À la fin de la formation, le stagiaire/l'apprenant sera capable de... "
         "Cet objectif pédagogique ne doit jamais dépasser 550 caractères et ne doit contenir aucun retour ligne. "
         "Ne confonds pas objectif pédagogique et compétences visées. Les compétences visées sont des capacités opérationnelles observables. "
-        "Une compétence Novoskill est une capacité mobilisable construite par des savoirs, savoir-faire et savoir-être, maîtrisable sur les 4 niveaux A/B/C/D au moment de créer la fiche compétence. "
-        "À cette étape formation, ne génère jamais les niveaux, la grille ou les critères : fournis seulement le brouillon léger de compétence. "
-        "Chaque compétence commence par un verbe d’action, n’est jamais une tâche isolée, et peut servir ensuite dans Studio sur des postes. "
-        "Distingue les compétences génériques réutilisables des compétences spécifiques entreprise ; une compétence spécifique doit être identifiable dès son titre. "
         "Les contenus sont des briques réutilisables indépendantes de la modalité. "
         "Chaque contenu doit comporter un titre clair, un objectif court et un champ contenu détaillé. "
         "Le champ contenu doit prendre la forme d'une série de sujets abordés, avec une ligne par sujet, précédée de '- '. "
@@ -1952,9 +1706,8 @@ def _analyse_generate_formation_with_ai(
         "Ne demande pas et ne déduis pas une modalité de réalisation : la modalité sera traitée dans le plan pédagogique. "
         "Les prérequis doivent être évaluables. Chaque prérequis est un élément distinct avec titre + réponses Oui/Non et r3 optionnelle. "
         "Chaque titre de prérequis ne doit jamais dépasser 65 caractères. "
-        "Les compétences formateur doivent inclure des compétences d'animation, de transmission, d'adaptation pédagogique, d'évaluation et les compétences métier nécessaires au contenu ; "
-        "elles restent des compétences du même catalogue et doivent donc être formulées avec le même niveau d'exigence que les compétences Studio. "
-        "On considère que le formateur possède un niveau avancé ou expert, mais on ne génère pas ces niveaux ici. "
+        "Les compétences formateur doivent inclure des compétences d'animation/évaluation/apprentissage et des compétences métier liées au contenu ; "
+        "on considère que le formateur possède un niveau avancé ou expert. "
         "Si un contexte est fourni, rends la formation spécifique à ce contexte. Si aucun contexte n'est fourni, génère une formation générique et réutilisable. "
         "Le rapport IA final justifie la compréhension du besoin, les compétences, les contenus, la durée et les points de vigilance. "
         "Le type_formation doit être l'une des valeurs : Certifiante, Diplomante, Non Certifiante. "
@@ -2179,8 +1932,8 @@ async def learn_formations_import_document(
 
                 domaine_id = _find_domaine_formation_id(cur, draft.get("domaines_probables") or [])
 
-                comp_stag = _match_import_competences(cur, oid, draft.get("competences_stagiaires") or [], target_kind="stagiaire")
-                comp_form = _match_import_competences(cur, oid, draft.get("competences_formateurs") or [], target_kind="formateur")
+                comp_stag = _match_import_competences(cur, oid, draft.get("competences_stagiaires") or [])
+                comp_form = _match_import_competences(cur, oid, draft.get("competences_formateurs") or [])
 
         prerequis = _normalize_import_prerequis(draft.get("prerequis") or [])
 
@@ -2312,8 +2065,8 @@ async def learn_formations_generate_ai(
                 eval_rows = cur.fetchall() or []
 
                 domaine_id = _find_domaine_formation_id(cur, draft.get("domaines_probables") or [])
-                comp_stag = _match_import_competences(cur, oid, draft.get("competences_stagiaires") or [], target_kind="stagiaire")
-                comp_form = _match_import_competences(cur, oid, draft.get("competences_formateurs") or [], target_kind="formateur")
+                comp_stag = _match_import_competences(cur, oid, draft.get("competences_stagiaires") or [])
+                comp_form = _match_import_competences(cur, oid, draft.get("competences_formateurs") or [])
 
         prerequis = _normalize_import_prerequis(draft.get("prerequis") or [])
 

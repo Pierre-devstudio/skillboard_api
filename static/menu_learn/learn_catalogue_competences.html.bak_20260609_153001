@@ -219,7 +219,6 @@
           <div class="info-item" style="flex:1; min-width:220px;">
             <div class="label">Nombre de critères</div>
             <select id="compAiNbCrit">
-              <option value="1">1 critère</option>
               <option value="2">2 critères</option>
               <option value="3" selected>3 critères</option>
               <option value="4">4 critères</option>

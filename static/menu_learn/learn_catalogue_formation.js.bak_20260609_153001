@@ -1542,38 +1542,14 @@ function iconPdf(){
         return true;
     }
 
-    function competenceRoleLabel(value){
-        const s = String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        if (s.includes("coeur")) return "Cœur de formation";
-        if (s.includes("transversal")) return "Transversale";
-        return "Complémentaire";
-    }
-
-    function competenceTypeLabel(value){
-        const s = String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        if (s.includes("specifique") || s.includes("entreprise")) return "Spécifique entreprise";
-        return "Générique réutilisable";
-    }
-
     function buildCompetenceAiContext(target, proposal){
-        const p = proposal || {};
-        const roleMetier = target === "formateur"
-            ? "compétence requise pour le formateur : transmettre, adapter, animer et évaluer correctement la formation"
-            : "compétence visée pour les stagiaires : acquérir ou renforcer une capacité opérationnelle";
-
         return [
             `Formation : ${readCatalogueField("formTitre") || "Non renseignée"}`,
-            `Rôle dans la formation : ${roleMetier}`,
-            `Compétence proposée : ${(p.source || "").trim()}`,
-            (p.description || "").trim() ? `Description proposée : ${(p.description || "").trim()}` : "",
-            (p.domaine_hint || "").trim() ? `Domaine proposé : ${(p.domaine_hint || "").trim()}` : "",
-            p.role ? `Importance : ${competenceRoleLabel(p.role)}` : "",
-            p.type_competence ? `Nature catalogue : ${competenceTypeLabel(p.type_competence)}` : "",
-            (p.justification || "").trim() ? `Pourquoi cette compétence est utile : ${(p.justification || "").trim()}` : "",
+            `Rôle de la compétence : ${target === "formateur" ? "compétence requise pour le formateur" : "compétence visée pour les stagiaires"}`,
+            `Compétence proposée : ${(proposal?.source || "").trim()}`,
             readCatalogueField("formObjectifs") ? `Objectif pédagogique : ${readCatalogueField("formObjectifs")}` : "",
             readCatalogueField("formPresentation") ? `Présentation : ${readCatalogueField("formPresentation")}` : "",
-            (byId("formPublic")?.value || "").trim() ? `Public cible : ${(byId("formPublic")?.value || "").trim()}` : "",
-            "Règle Novoskill : une compétence commence par un verbe d’action, n’est pas une tâche isolée, et doit rester compatible avec les 4 niveaux de maîtrise A/B/C/D du catalogue commun Studio / Learn."
+            (byId("formPublic")?.value || "").trim() ? `Public cible : ${(byId("formPublic")?.value || "").trim()}` : ""
         ].filter(Boolean).join("\n\n");
     }
 
@@ -1585,10 +1561,7 @@ function iconPdf(){
         _compCreateTarget = target === "formateur" ? "formateur" : "stagiaire";
         _compCreatePendingIndex = idx;
 
-        const p = proposal || {};
-        const title = (p.source || p.intitule || "").trim();
-        const description = (p.description || "").trim();
-        const domaineId = (p.domaine_id || "").toString().trim();
+        const title = (proposal?.source || "").trim();
 
         const badge = byId("formCompModalBadge");
         if (badge){
@@ -1600,27 +1573,24 @@ function iconPdf(){
 
         const sub = byId("formCompModalSub");
         if (sub){
-            const targetLabel = _compCreateTarget === "formateur"
-                ? "compétence requise pour le formateur"
-                : "compétence visée pour les stagiaires";
-            const roleLabel = p.role ? ` · ${competenceRoleLabel(p.role)}` : "";
-            sub.textContent = `Création depuis ${targetLabel}${roleLabel}.`;
+            sub.textContent = _compCreateTarget === "formateur"
+                ? "Création depuis les compétences requises pour le formateur."
+                : "Création depuis les compétences visées pour les stagiaires.";
             sub.style.display = "";
         }
 
         byId("formCompIntitule").value = title;
         byId("formCompEtat").value = "à valider";
-        byId("formCompDesc").value = description;
+        byId("formCompDesc").value = "";
         byId("formCompNivA").value = "";
         byId("formCompNivB").value = "";
         byId("formCompNivC").value = "";
-        if (byId("formCompNivD")) byId("formCompNivD").value = "";
 
-        fillCompDomainSelect(domaineId);
-        fillCompAiDomainSelect(domaineId);
+        fillCompDomainSelect("");
+        fillCompAiDomainSelect("");
 
         if (byId("formCompAiObjectif")) byId("formCompAiObjectif").value = title;
-        if (byId("formCompAiContexte")) byId("formCompAiContexte").value = buildCompetenceAiContext(_compCreateTarget, p);
+        if (byId("formCompAiContexte")) byId("formCompAiContexte").value = buildCompetenceAiContext(_compCreateTarget, proposal);
         if (byId("formCompAiDocument")) byId("formCompAiDocument").value = "";
         if (byId("formCompAiNbCrit")) byId("formCompAiNbCrit").value = "3";
 
@@ -1989,7 +1959,7 @@ function iconPdf(){
 
             const hint = document.createElement("span");
             hint.className = "card-sub lf-comp-proposal-hint";
-            hint.textContent = ["Proposition issue de l’import", p.role ? competenceRoleLabel(p.role) : ""].filter(Boolean).join(" · ");
+            hint.textContent = "Proposition issue de l’import";
 
             const actions = document.createElement("div");
             actions.className = "sb-icon-actions";
@@ -2034,12 +2004,6 @@ function iconPdf(){
 
             actions.appendChild(btnRemove);
 
-            if (p.description){
-                const desc = document.createElement("span");
-                desc.className = "card-sub lf-comp-proposal-hint";
-                desc.textContent = p.description;
-                right.appendChild(desc);
-            }
             right.appendChild(hint);
             right.appendChild(actions);
 
@@ -4249,14 +4213,7 @@ function renderContentCompBadges(l){
         return (rows || [])
             .filter(r => !(r.selected_id || "").toString().trim())
             .map(r => ({
-            source: (r.source || r.intitule || "").toString().trim(),
-            description: (r.description || "").toString().trim(),
-            domaine_hint: (r.domaine_hint || r.domaine_label || "").toString().trim(),
-            domaine_id: (r.domaine_id || "").toString().trim(),
-            role: (r.role || "complementaire").toString().trim(),
-            type_competence: (r.type_competence || "generique").toString().trim(),
-            justification: (r.justification || "").toString().trim(),
-            usage: (r.usage || "").toString().trim(),
+            source: (r.source || "").toString().trim(),
             status: r.status || "non_trouve",
             matches: Array.isArray(r.matches) ? r.matches : []
             }))
@@ -4348,11 +4305,6 @@ function renderContentCompBadges(l){
             const radioName = `${hostId}_${idx}`;
             const selectedId = (r.selected_id || "").toString().trim();
             const sourceChecked = !selectedId;
-            const meta = [
-                r.domaine_hint ? `Domaine : ${r.domaine_hint}` : "",
-                r.role ? `Rôle : ${competenceRoleLabel(r.role)}` : "",
-                r.type_competence ? competenceTypeLabel(r.type_competence) : ""
-            ].filter(Boolean).join(" · ");
 
             const options = (r.matches || []).map(m => {
                 const idComp = (m.id_comp || "").toString().trim();
@@ -4382,9 +4334,6 @@ function renderContentCompBadges(l){
                 </span>
                 <span class="lf-import-status-pill ${statusClass}">${htmlEsc(status)}</span>
             </label>
-            ${r.description ? `<div class="card-sub" style="margin:4px 0 0 26px;">${htmlEsc(r.description)}</div>` : ""}
-            ${meta ? `<div class="card-sub" style="margin:4px 0 0 26px;">${htmlEsc(meta)}</div>` : ""}
-            ${r.justification ? `<div class="card-sub" style="margin:4px 0 0 26px;">${htmlEsc(r.justification)}</div>` : ""}
 
             <div class="lf-import-matches">
                 ${options || `<div class="card-sub">Aucune compétence approchante trouvée.</div>`}
