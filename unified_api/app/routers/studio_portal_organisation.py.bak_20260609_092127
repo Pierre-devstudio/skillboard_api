@@ -2149,305 +2149,6 @@ def _openai_responses_json(model: str, schema_name: str, schema: dict, system_pr
         raise HTTPException(status_code=500, detail=f"Réponse IA invalide (JSON): {e}")
 
 
-def _openai_responses_text(model: str, schema_name: str, system_prompt: str, user_prompt: str, use_web: bool = False) -> str:
-    """Appel IA en texte libre.
-
-    Utilisé pour l'étape 1 de recherche des compétences depuis une fiche de poste.
-    Cette étape doit sortir vite une liste exploitable, pas remplir une fiche compétence
-    complète avec JSON Schema strict. Les niveaux, critères et grilles restent générés
-    uniquement au moment de la création de la compétence.
-    """
-    if OpenAI is None:
-        raise HTTPException(status_code=500, detail="Lib OpenAI manquante (pip install openai).")
-
-    api_key = (os.getenv("OPENAI_API_KEY") or "").strip()
-    if not api_key:
-        raise HTTPException(status_code=500, detail="OPENAI_API_KEY non configurée.")
-
-    schema_env = re.sub(r"[^A-Z0-9]+", "_", str(schema_name or "").upper()).strip("_")
-    timeout_var = f"OPENAI_TIMEOUT_SECONDS_{schema_env}" if schema_env else ""
-    try:
-        timeout_raw = (os.getenv(timeout_var) if timeout_var else None) or os.getenv("OPENAI_TIMEOUT_SECONDS") or "120"
-        timeout_seconds = int(str(timeout_raw).strip() or "120")
-    except Exception:
-        timeout_seconds = 120
-
-    if timeout_seconds < 30:
-        timeout_seconds = 30
-
-    client = OpenAI(api_key=api_key, timeout=timeout_seconds)
-
-    kwargs = {
-        "model": model,
-        "input": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
-    }
-    if use_web:
-        kwargs["tools"] = [{"type": "web_search"}]
-        kwargs["tool_choice"] = "auto"
-
-    try:
-        resp = client.responses.create(**kwargs)
-    except Exception as e:
-        msg = str(e or "").strip()
-        low = msg.lower()
-        if "timeout" in low or "timed out" in low or "deadline" in low:
-            raise HTTPException(
-                status_code=504,
-                detail=f"Le traitement IA a dépassé {timeout_seconds} secondes. Relance la recherche."
-            )
-        raise HTTPException(status_code=502, detail=f"Erreur appel IA : {msg or e}")
-
-    content = _response_output_text(resp)
-    if not content:
-        raise HTTPException(status_code=500, detail="Réponse IA vide.")
-    return _repair_ai_text_encoding_glitches(content)
-
-
-def _strip_markdown_json_fence(v: str) -> str:
-    s = _clean_text(v)
-    if not s:
-        return ""
-    m = re.search(r"```(?:json)?\s*([\s\S]*?)```", s, flags=re.I)
-    if m:
-        return (m.group(1) or "").strip()
-    return s
-
-
-def _extract_first_json_payload(v: str) -> Optional[Any]:
-    s = _strip_markdown_json_fence(v)
-    if not s:
-        return None
-
-    for start_char, end_char in (("{", "}"), ("[", "]")):
-        start = s.find(start_char)
-        end = s.rfind(end_char)
-        if start >= 0 and end > start:
-            candidate = s[start:end + 1]
-            try:
-                return json.loads(candidate)
-            except Exception:
-                pass
-
-    try:
-        return json.loads(s)
-    except Exception:
-        return None
-
-
-def _clean_markdown_cell(v: str) -> str:
-    s = _repair_ai_text_encoding_glitches(v)
-    s = re.sub(r"\*\*(.*?)\*\*", r"\1", s)
-    s = re.sub(r"__(.*?)__", r"\1", s)
-    s = re.sub(r"`([^`]*)`", r"\1", s)
-    return _clean_ai_comp_text(s, 500)
-
-
-def _parse_poste_comp_markdown_tables(content: str) -> List[dict]:
-    """Fallback tolérant si le modèle renvoie un tableau markdown au lieu d'un JSON."""
-    lines = str(content or "").splitlines()
-    items: List[dict] = []
-    current_kind = "generique"
-    header = None
-    table_kind = current_kind
-
-    def _header_map(cols: List[str]) -> dict:
-        out = {}
-        for idx, col in enumerate(cols):
-            n = _norm_text_search(col)
-            if "competence" in n or "intitule" in n or "titre" in n:
-                out["title"] = idx
-            elif "description" in n:
-                out["description"] = idx
-            elif "domaine" in n:
-                out["domain"] = idx
-            elif "util" in n or "pourquoi" in n or "vise" in n:
-                out["why"] = idx
-            elif "importance" in n or "priorite" in n:
-                out["importance"] = idx
-        return out
-
-    for raw_line in lines:
-        line = raw_line.strip()
-        if not line:
-            header = None
-            continue
-
-        line_norm = _norm_text_search(line)
-        if "specifique" in line_norm:
-            current_kind = "specifique_entreprise"
-        elif "generique" in line_norm or "reutilisable" in line_norm:
-            current_kind = "generique"
-
-        if not line.startswith("|") or "|" not in line[1:]:
-            continue
-
-        cols = [_clean_markdown_cell(c) for c in line.strip("|").split("|")]
-        if len(cols) < 2:
-            continue
-
-        if all(re.fullmatch(r"[:\-\s]+", c or "") for c in cols):
-            continue
-
-        hm = _header_map(cols)
-        if "title" in hm and "description" in hm:
-            header = hm
-            table_kind = current_kind
-            continue
-
-        if not header:
-            continue
-
-        title = cols[header.get("title", 0)] if header.get("title", 0) < len(cols) else ""
-        desc_idx = header.get("description")
-        dom_idx = header.get("domain")
-        why_idx = header.get("why")
-        imp_idx = header.get("importance")
-
-        desc = cols[desc_idx] if desc_idx is not None and desc_idx < len(cols) else ""
-        domain = cols[dom_idx] if dom_idx is not None and dom_idx < len(cols) else ""
-        why = cols[why_idx] if why_idx is not None and why_idx < len(cols) else ""
-        importance = cols[imp_idx] if imp_idx is not None and imp_idx < len(cols) else ""
-
-        if not title or _norm_text_search(title) in {"competence", "competences"}:
-            continue
-
-        items.append({
-            "intitule": title,
-            "description": desc,
-            "why_needed": why,
-            "domaine_hint": domain,
-            "type_competence": table_kind,
-            "importance": importance or "coeur",
-        })
-
-    return items
-
-
-def _normalize_poste_comp_search_raw_item(raw: Any, default_kind: str = "generique") -> Optional[dict]:
-    if isinstance(raw, str):
-        title = _clean_ai_comp_text(raw, 160)
-        return {
-            "intitule": title,
-            "description": "",
-            "why_needed": "",
-            "domaine_hint": "",
-            "type_competence": default_kind,
-            "importance": "coeur",
-        } if title else None
-
-    if not isinstance(raw, dict):
-        return None
-
-    title = _clean_text(
-        raw.get("intitule")
-        or raw.get("titre")
-        or raw.get("competence")
-        or raw.get("compétence")
-        or raw.get("nom")
-    )
-    if not title:
-        return None
-
-    desc = _clean_text(raw.get("description") or raw.get("desc") or raw.get("definition") or raw.get("définition"))
-    why = _clean_text(
-        raw.get("why_needed")
-        or raw.get("pourquoi")
-        or raw.get("utilite")
-        or raw.get("utilité")
-        or raw.get("objectif")
-        or raw.get("finalite")
-        or raw.get("finalité")
-    )
-    domain = _clean_text(raw.get("domaine_hint") or raw.get("domaine") or raw.get("domain") or raw.get("famille"))
-    kind = _clean_text(raw.get("type_competence") or raw.get("type") or default_kind)
-    importance = _clean_text(raw.get("importance") or raw.get("priorite") or raw.get("priorité") or "coeur")
-
-    return {
-        "intitule": title,
-        "description": desc,
-        "why_needed": why,
-        "domaine_hint": domain,
-        "type_competence": kind,
-        "importance": importance,
-    }
-
-
-def _parse_poste_comp_search_items(content: str) -> List[dict]:
-    """Normalise la réponse IA de l'étape 1 en liste de compétences.
-
-    Cette étape accepte un JSON libre ou un tableau markdown. Elle garde l'IA souple
-    et laisse le backend faire le rapprochement catalogue ensuite. Un petit miracle:
-    on demande enfin à la machine une sortie exploitable, pas un concours de conformité JSON.
-    """
-    parsed = _extract_first_json_payload(content)
-    items: List[dict] = []
-
-    def _append_many(values: Any, kind: str) -> None:
-        if values is None:
-            return
-        if isinstance(values, dict):
-            values = list(values.values())
-        if not isinstance(values, list):
-            values = [values]
-        for raw in values:
-            item = _normalize_poste_comp_search_raw_item(raw, kind)
-            if item:
-                items.append(item)
-
-    if isinstance(parsed, list):
-        _append_many(parsed, "generique")
-    elif isinstance(parsed, dict):
-        generic_keys = (
-            "competences_generiques", "compétences_génériques", "generiques", "génériques",
-            "generic", "generic_skills", "reutilisables", "réutilisables"
-        )
-        specific_keys = (
-            "competences_specifiques", "compétences_spécifiques", "specifiques", "spécifiques",
-            "specific", "specific_skills", "specifique_entreprise", "spécifique_entreprise"
-        )
-
-        used = False
-        for k in generic_keys:
-            if k in parsed:
-                _append_many(parsed.get(k), "generique")
-                used = True
-        for k in specific_keys:
-            if k in parsed:
-                _append_many(parsed.get(k), "specifique_entreprise")
-                used = True
-
-        if not used:
-            _append_many(parsed.get("competences") or parsed.get("compétences") or parsed.get("items"), "generique")
-
-    if not items:
-        items = _parse_poste_comp_markdown_tables(content)
-
-    seen = set()
-    cleaned: List[dict] = []
-    for item in items:
-        title = _clean_text(item.get("intitule"))
-        if not title:
-            continue
-        key = _canonical_comp_key(title) or _norm_text_search(title)
-        if key in seen:
-            continue
-        seen.add(key)
-        cleaned.append(item)
-        if len(cleaned) >= 45:
-            break
-
-    if not cleaned:
-        raise HTTPException(
-            status_code=500,
-            detail="La réponse IA ne contient aucune compétence exploitable. Relance la recherche."
-        )
-
-    return cleaned
-
-
 def _resolve_domain_id(cur, hint: Optional[str]) -> Optional[str]:
     h = (hint or "").strip()
     if not h:
@@ -3561,8 +3262,8 @@ def _build_ai_comp_search_prompts(
         "Une compétence générique doit rester réutilisable sur d'autres postes, voire d'autres clients. "
         "Tu produis uniquement l'étape 1: intitulé, description, domaine, type et utilité. "
         "Tu ne produis PAS les niveaux de maîtrise, PAS la grille d'évaluation, PAS les critères détaillés. "
-        "Tu réponds avec une sortie simple et directement exploitable: JSON libre ou tableau markdown. Pas de JSON Schema strict à cette étape. "
-        "Vise une liste exploitable et complète: généralement 18 à 35 compétences si le poste est riche, en évitant les doublons et les micro-tâches."
+        "Tu renvoies un JSON strict conforme au schéma. "
+        "Vise une liste exploitable et complète: généralement 18 à 30 compétences si le poste est riche, en évitant les doublons et les micro-tâches."
     )
 
     user_prompt = (
@@ -3588,11 +3289,6 @@ def _build_ai_comp_search_prompts(
         "- importance = coeur, complementaire ou transversal.\n"
         "- La description doit expliquer la capacité maîtrisée et ce qu'elle permet de réaliser, sans paraphraser la fiche de poste.\n"
         "- why_needed explique brièvement pourquoi cette compétence est utile au poste.\n"
-        "\nFormat conseillé, au choix mais sans texte d'explication autour :\n"
-        "{\n"
-        "  \"competences_generiques\": [{\"intitule\": \"Développer un portefeuille clients B2B\", \"description\": \"...\", \"domaine\": \"Développement commercial\", \"importance\": \"coeur\"}],\n"
-        "  \"competences_specifiques\": [{\"intitule\": \"Appliquer la politique commerciale de l’entreprise\", \"description\": \"...\", \"domaine\": \"Politique commerciale\", \"importance\": \"complementaire\"}]\n"
-        "}\n"
     )
     return system_prompt, user_prompt
 
@@ -6603,9 +6299,38 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
 
         owner_catalog_txt = ""  # Rapprochement catalogue fait après génération, côté backend.
 
-        # Étape 1 : aucune contrainte JSON Schema stricte.
-        # On lit une sortie IA simple puis on la normalise côté backend.
-        # Le JSON strict reste réservé à la création réelle de la fiche compétence.
+        schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["competences"],
+            "properties": {
+                "competences": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 32,
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": [
+                            "intitule",
+                            "description",
+                            "why_needed",
+                            "domaine_hint",
+                            "type_competence",
+                            "importance"
+                        ],
+                        "properties": {
+                            "intitule": {"type": "string", "minLength": 1, "maxLength": 140},
+                            "description": {"type": "string", "minLength": 1, "maxLength": 280},
+                            "why_needed": {"type": "string", "maxLength": 240},
+                            "domaine_hint": {"type": "string", "maxLength": 120},
+                            "type_competence": {"type": "string", "enum": ["generique", "specifique_entreprise"]},
+                            "importance": {"type": "string", "enum": ["coeur", "complementaire", "transversal"]}
+                        }
+                    }
+                }
+            }
+        }
 
         domain_by_id = {
             _clean_text(r.get("id_domaine_competence")): r
@@ -6719,14 +6444,15 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
             fallback_mode=False,
         )
 
-        drafted_text = _openai_responses_text(
+        drafted = _openai_responses_json(
             model,
             "poste_comp_search",
+            schema,
             system_prompt,
             user_prompt,
             use_web=_should_use_web_for_ai_comp_search(payload, title),
         )
-        drafted_items = _parse_poste_comp_search_items(drafted_text)
+        drafted_items = drafted.get("competences") or []
 
         existing, missing = _collect_results(
             drafted_items,
