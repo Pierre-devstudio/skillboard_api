@@ -1450,76 +1450,31 @@ def _fetch_import_catalogue(cur, oid: str) -> list:
 
 
 
-
-def _competence_candidate_text(raw: Any) -> str:
-    if isinstance(raw, dict):
-        return _clean_text(raw.get("intitule") or raw.get("titre") or raw.get("source"), 220)
-    return _clean_text(raw, 220)
-
-
-def _competence_candidate_blob(raw: Any) -> str:
-    if isinstance(raw, dict):
-        return " ".join([
-            str(raw.get("intitule") or raw.get("titre") or raw.get("source") or ""),
-            str(raw.get("description") or ""),
-            str(raw.get("domaine") or raw.get("domaine_hint") or ""),
-            str(raw.get("type_competence") or ""),
-            str(raw.get("role") or raw.get("importance") or ""),
-            str(raw.get("justification") or ""),
-            str(raw.get("reutilisable_catalogue") or ""),
-        ])
-    return str(raw or "")
-
-
-def _competence_candidate_meta(raw: Any) -> dict:
-    if not isinstance(raw, dict):
-        return {}
-
-    return {
-        "description": _clean_text(raw.get("description"), 1200),
-        "domaine_hint": _clean_text(raw.get("domaine") or raw.get("domaine_hint"), 220),
-        "type_competence": _clean_text(raw.get("type_competence"), 100),
-        "role": _clean_text(raw.get("role") or raw.get("importance"), 80),
-        "justification": _clean_text(raw.get("justification"), 1000),
-        "reutilisable_catalogue": _clean_text(raw.get("reutilisable_catalogue"), 500),
-    }
-
-
 def _match_import_competences(cur, oid: str, labels: list, target_kind: str = "stagiaire") -> list:
     catalogue = _fetch_import_catalogue(cur, oid)
+    domain_rows = _fetch_competence_domain_rows(cur)
     out = []
 
+    seen = set()
+
     for raw in labels or []:
-        label = _competence_candidate_text(raw)
-        if not label:
+        cand = _normalize_ai_competence_candidate(raw, target_kind=target_kind)
+        if not cand:
             continue
 
-        meta = _competence_candidate_meta(raw)
-        candidate_blob = _competence_candidate_blob(raw)
+        label = cand.get("source") or ""
+        key = _norm_match_text(label)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+
+        resolved_domaine_id = _resolve_competence_domain_id_from_hint(domain_rows, cand.get("domaine_hint"))
         scored = []
 
         for c in catalogue:
-            blob = " ".join([
-                c.get("intitule") or "",
-                c.get("description") or "",
-                c.get("niveaua") or "",
-                c.get("niveaub") or "",
-                c.get("niveauc") or "",
-                c.get("niveaud") or "",
-                c.get("domaine_titre_court") or "",
-                c.get("domaine_titre") or "",
-            ])
+            score = _enhanced_competence_match_score(cand, c)
 
-            score_title = _match_score(label, c.get("intitule") or "")
-            score_full = _match_score(candidate_blob, blob)
-            score_desc = _match_score(meta.get("description") or label, c.get("description") or "")
-
-            score = max(
-                score_title,
-                int(round((score_title * 0.58) + (score_full * 0.28) + (score_desc * 0.14))),
-            )
-
-            if score >= 48:
+            if score >= 45:
                 scored.append({
                     "id_comp": c.get("id_comp"),
                     "code": c.get("code"),
@@ -1532,31 +1487,35 @@ def _match_import_competences(cur, oid: str, labels: list, target_kind: str = "s
                 })
 
         scored.sort(key=lambda x: x.get("score") or 0, reverse=True)
-        matches = scored[:3]
+        matches = scored[:4]
         best_score = matches[0].get("score", 0) if matches else 0
 
-        if best_score >= 82:
+        if best_score >= 86:
             status = "recommandé"
             selected_id = matches[0].get("id_comp")
-        elif best_score >= 66:
+        elif best_score >= 72:
             status = "approchant"
             selected_id = None
-        elif best_score >= 48:
+        elif best_score >= 50:
             status = "à vérifier"
             selected_id = None
         else:
             status = "à créer"
             selected_id = None
 
-        row = {
+        out.append({
             "source": label,
+            "description": cand.get("description") or "",
+            "domaine_hint": cand.get("domaine_hint") or "",
+            "domaine_id": resolved_domaine_id,
+            "role": cand.get("role") or "complementaire",
+            "type_competence": cand.get("type_competence") or "generique",
+            "justification": cand.get("justification") or "",
+            "usage": cand.get("usage") or ("formateur" if target_kind == "formateur" else "stagiaire"),
             "selected_id": selected_id,
             "status": status,
             "matches": matches,
-            "usage": "formateur" if str(target_kind).strip().lower() == "formateur" else "stagiaire",
-        }
-        row.update({k: v for k, v in meta.items() if v})
-        out.append(row)
+        })
 
     return out
 
@@ -1891,75 +1850,19 @@ def _analyse_import_document_with_ai(doc_text: str, filename: str) -> dict:
     except Exception:
         raise HTTPException(status_code=500, detail="Analyse IA illisible.")
 
-
 def _build_generation_ai_schema() -> dict:
-    competence_schema = {
-        "type": "object",
-        "additionalProperties": False,
-        "required": [
-            "intitule", "description", "domaine", "type_competence",
-            "role", "justification", "reutilisable_catalogue"
-        ],
-        "properties": {
-            "intitule": {"type": "string", "maxLength": 140},
-            "description": {"type": "string", "maxLength": 900},
-            "domaine": {"type": "string", "maxLength": 120},
-            "type_competence": {"type": "string", "maxLength": 60},
-            "role": {"type": "string", "maxLength": 40},
-            "justification": {"type": "string", "maxLength": 700},
-            "reutilisable_catalogue": {"type": "string", "maxLength": 220},
-        },
-    }
-
-    contenu_schema = {
-        "type": "object",
-        "additionalProperties": False,
-        "required": [
-            "titre_sequence", "duree_indicative", "intention_pedagogique",
-            "sous_themes", "situations_terrain", "exercices", "livrable",
-            "contenu", "competences_sources"
-        ],
-        "properties": {
-            "titre_sequence": {"type": "string", "maxLength": 180},
-            "duree_indicative": {"type": ["number", "null"]},
-            "intention_pedagogique": {"type": "string", "maxLength": 800},
-            "sous_themes": {"type": "array", "items": {"type": "string", "maxLength": 220}},
-            "situations_terrain": {"type": "array", "items": {"type": "string", "maxLength": 260}},
-            "exercices": {"type": "array", "items": {"type": "string", "maxLength": 260}},
-            "livrable": {"type": ["string", "null"], "maxLength": 260},
-            "contenu": {"type": "string", "maxLength": 2500},
-            "competences_sources": {"type": "array", "items": {"type": "string", "maxLength": 160}},
-        },
-    }
-
+    comp_schema = _build_competence_candidate_ai_schema()
     return {
         "type": "object",
         "additionalProperties": False,
         "required": [
-            "analyse_besoin", "titre", "presentation", "objectif_pedagogique",
-            "public_cible", "type_formation", "obs_type_form", "duree_recommandee",
-            "duree_statut", "duree_justification", "domaines_probables",
-            "methodes_peda", "methodes_eval", "prerequis",
-            "competences_stagiaires", "competences_formateurs", "contenus",
-            "modalites_evaluation", "rapport_ia"
+            "titre", "presentation", "objectif_pedagogique", "public_cible",
+            "type_formation", "obs_type_form", "duree_recommandee", "duree_statut",
+            "duree_justification", "domaines_probables", "methodes_peda",
+            "methodes_eval", "prerequis", "competences_stagiaires",
+            "competences_formateurs", "contenus", "rapport_ia"
         ],
         "properties": {
-            "analyse_besoin": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": [
-                    "metier_concerne", "public_vise", "situation_professionnelle_cible",
-                    "probleme_operationnel", "niveau_attendu", "contraintes_prises_en_compte"
-                ],
-                "properties": {
-                    "metier_concerne": {"type": "string"},
-                    "public_vise": {"type": "string"},
-                    "situation_professionnelle_cible": {"type": "string"},
-                    "probleme_operationnel": {"type": "string"},
-                    "niveau_attendu": {"type": "string"},
-                    "contraintes_prises_en_compte": {"type": "string"},
-                },
-            },
             "titre": {"type": "string"},
             "presentation": {"type": "string"},
             "objectif_pedagogique": {"type": "string"},
@@ -1986,295 +1889,25 @@ def _build_generation_ai_schema() -> dict:
                     },
                 },
             },
-            "competences_stagiaires": {"type": "array", "items": competence_schema},
-            "competences_formateurs": {"type": "array", "items": competence_schema},
-            "contenus": {"type": "array", "items": contenu_schema},
-            "modalites_evaluation": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["criteres_observables", "exercices_evaluation", "livrables_attendus", "liens_competences"],
-                "properties": {
-                    "criteres_observables": {"type": "array", "items": {"type": "string"}},
-                    "exercices_evaluation": {"type": "array", "items": {"type": "string"}},
-                    "livrables_attendus": {"type": "array", "items": {"type": "string"}},
-                    "liens_competences": {"type": "array", "items": {"type": "string"}},
+            "competences_stagiaires": {"type": "array", "items": comp_schema},
+            "competences_formateurs": {"type": "array", "items": comp_schema},
+            "contenus": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["titre_sequence", "objectif", "contenu", "competences_sources"],
+                    "properties": {
+                        "titre_sequence": {"type": "string"},
+                        "objectif": {"type": ["string", "null"]},
+                        "contenu": {"type": "string"},
+                        "competences_sources": {"type": "array", "items": {"type": "string"}},
+                    },
                 },
             },
             "rapport_ia": {"type": "string"},
         },
     }
-
-
-def _generation_duration_profile(duree: Optional[float]) -> dict:
-    """Cadre pédagogique : nombre de compétences et contenus cohérents avec la durée."""
-    if duree is None or duree <= 0:
-        return {
-            "label": "durée non renseignée",
-            "min_comp": 4,
-            "max_comp": 7,
-            "max_sequences": 7,
-            "note": "Durée non renseignée : privilégier une proposition équilibrée, sans surcharger la fiche.",
-        }
-
-    if duree <= 7:
-        return {
-            "label": "formation courte jusqu'à 7h",
-            "min_comp": 3,
-            "max_comp": 5,
-            "max_sequences": 6,
-            "note": "Formation courte : 3 à 5 compétences solides et 4 à 6 séquences maximum.",
-        }
-
-    if duree <= 14:
-        return {
-            "label": "formation 14h",
-            "min_comp": 4,
-            "max_comp": 6,
-            "max_sequences": 8,
-            "note": "Formation de 14h : 4 à 6 compétences, contenus approfondis et évaluables.",
-        }
-
-    if duree <= 35:
-        return {
-            "label": "formation 21h à 35h",
-            "min_comp": 5,
-            "max_comp": 8,
-            "max_sequences": 12,
-            "note": "Formation de 21h à 35h : 5 à 8 compétences, plusieurs séquences peuvent travailler la même compétence.",
-        }
-
-    return {
-        "label": "formation longue au-delà de 35h",
-        "min_comp": 6,
-        "max_comp": 12,
-        "max_sequences": 18,
-        "note": "Formation longue : le nombre peut augmenter, mais doit rester réellement observable et évaluable.",
-    }
-
-
-def _generated_comp_title(item: Any) -> str:
-    if isinstance(item, dict):
-        return _clean_text(item.get("intitule") or item.get("titre") or item.get("source"), 180)
-    return _clean_text(item, 180)
-
-
-def _generated_comp_role(item: Any) -> str:
-    raw = ""
-    if isinstance(item, dict):
-        raw = str(item.get("role") or item.get("importance") or "").strip().lower()
-
-    norm = _norm_match_text(raw)
-    if "transversal" in norm or "transverse" in norm:
-        return "transversale"
-    if "complement" in norm or "complément" in raw:
-        return "complémentaire"
-    return "coeur"
-
-
-def _generated_comp_sort_key(item: Any) -> int:
-    role = _generated_comp_role(item)
-    if role == "coeur":
-        return 0
-    if role == "complémentaire":
-        return 1
-    return 2
-
-
-def _limit_generated_competences(items: Any, profile: dict, *, keep_formateur: bool = False) -> list:
-    arr = items if isinstance(items, list) else []
-    clean = []
-    seen = set()
-
-    for raw in arr:
-        title = _generated_comp_title(raw)
-        if not title:
-            continue
-
-        key = _norm_match_text(title)
-        if not key or key in seen:
-            continue
-        seen.add(key)
-
-        if isinstance(raw, dict):
-            node = dict(raw)
-            node["intitule"] = title
-        else:
-            node = {
-                "intitule": title,
-                "description": "",
-                "domaine": "",
-                "type_competence": "générique",
-                "role": "coeur",
-                "justification": "",
-                "reutilisable_catalogue": "À vérifier au rapprochement catalogue.",
-            }
-
-        clean.append(node)
-
-    clean.sort(key=_generated_comp_sort_key)
-
-    max_comp = int(profile.get("max_comp") or 8)
-    if keep_formateur:
-        # On garde une marge pour les compétences d'animation, d'évaluation et de transmission.
-        max_comp = min(max(max_comp, 5), max_comp + 2)
-
-    return clean[:max_comp]
-
-
-def _format_generated_content_detail(item: dict) -> str:
-    if not isinstance(item, dict):
-        return _clean_text(item, 8000)
-
-    lines = []
-
-    duree = item.get("duree_indicative")
-    if duree is not None and str(duree).strip():
-        lines.append(f"Durée indicative : {duree} h")
-
-    def add_list(title: str, values: Any):
-        vals = [str(x or "").strip() for x in (values or []) if str(x or "").strip()]
-        if not vals:
-            return
-        lines.append(title)
-        lines.extend([f"- {v}" for v in vals])
-
-    contenu = _clean_text(item.get("contenu"), 3000)
-    if contenu:
-        lines.append("Sujets et méthodes travaillés")
-        for raw in contenu.splitlines():
-            txt = raw.strip(" -\t")
-            if txt:
-                lines.append(f"- {txt}")
-
-    add_list("Sous-thèmes", item.get("sous_themes"))
-    add_list("Situations professionnelles traitées", item.get("situations_terrain"))
-    add_list("Exercices ou mises en pratique", item.get("exercices"))
-
-    livrable = _clean_text(item.get("livrable"), 500)
-    if livrable:
-        lines.append("Livrable possible")
-        lines.append(f"- {livrable}")
-
-    comps = [str(x or "").strip() for x in (item.get("competences_sources") or []) if str(x or "").strip()]
-    if comps:
-        lines.append("Compétences travaillées")
-        lines.extend([f"- {c}" for c in comps])
-
-    return _clean_text("\n".join(lines), 8000)
-
-
-def _normalize_generated_contents(items: Any, draft: dict, profile: dict) -> list:
-    rows = items if isinstance(items, list) else []
-    max_seq = int(profile.get("max_sequences") or 8)
-
-    comp_titles = [_generated_comp_title(x) for x in (draft.get("competences_stagiaires") or [])]
-    comp_titles = [x for x in comp_titles if x]
-
-    out = []
-    seen = set()
-
-    for raw in rows:
-        if not isinstance(raw, dict):
-            raw = {"titre_sequence": str(raw or "").strip(), "contenu": str(raw or "").strip(), "competences_sources": []}
-
-        title = _clean_text(raw.get("titre_sequence"), 300)
-        detail = _format_generated_content_detail(raw)
-        if not title and not detail:
-            continue
-
-        key = _norm_match_text(title or detail[:120])
-        if key in seen:
-            continue
-        seen.add(key)
-
-        sources = [str(x or "").strip() for x in (raw.get("competences_sources") or []) if str(x or "").strip()]
-        if not sources and comp_titles:
-            # Fallback prudent : un contenu peut travailler plusieurs compétences, sans forcer 1 contenu = 1 compétence.
-            sources = comp_titles[:min(2, len(comp_titles))]
-
-        node = dict(raw)
-        node["titre_sequence"] = title or f"Séquence {len(out) + 1}"
-        node["objectif"] = _clean_text(raw.get("intention_pedagogique") or raw.get("objectif"), 1200)
-        node["contenu"] = detail
-        node["competences_sources"] = sources
-        out.append(node)
-
-        if len(out) >= max_seq:
-            break
-
-    return out
-
-
-def _coverage_report(draft: dict) -> dict:
-    comp_titles = [_generated_comp_title(x) for x in (draft.get("competences_stagiaires") or [])]
-    comp_titles = [x for x in comp_titles if x]
-
-    covered = set()
-    for c in draft.get("contenus") or []:
-        for src in c.get("competences_sources") or []:
-            key = _norm_match_text(src)
-            if key:
-                covered.add(key)
-
-    missing = []
-    for title in comp_titles:
-        key = _norm_match_text(title)
-        if key and key not in covered:
-            # Match souple sur les formulations proches.
-            found = any(_match_score(title, src) >= 72 for c in (draft.get("contenus") or []) for src in (c.get("competences_sources") or []))
-            if not found:
-                missing.append(title)
-
-    return {"nb_competences": len(comp_titles), "non_couvertes": missing}
-
-
-def _append_generation_quality_report(draft: dict, profile: dict, duree_souhaitee: Optional[float]) -> None:
-    coverage = _coverage_report(draft)
-    nb_comp = coverage.get("nb_competences") or 0
-    nb_seq = len(draft.get("contenus") or [])
-    missing = coverage.get("non_couvertes") or []
-
-    checks = [
-        "Contrôle de cohérence Novoskill Learn",
-        f"- Cadre durée : {profile.get('note')}",
-        f"- Compétences stagiaires proposées : {nb_comp} / maximum conseillé {profile.get('max_comp')}",
-        f"- Séquences proposées : {nb_seq} / maximum conseillé {profile.get('max_sequences')}",
-        "- Relation contenus / compétences : many-to-many, aucun couplage mécanique 1 contenu = 1 compétence.",
-    ]
-
-    if missing:
-        checks.append("- Compétences à relier explicitement à un contenu lors de la relecture : " + ", ".join(missing[:6]))
-    else:
-        checks.append("- Toutes les compétences stagiaires sont couvertes par au moins un contenu proposé.")
-
-    existing = _clean_text(draft.get("rapport_ia"), 7600)
-    draft["rapport_ia"] = _clean_text("\n\n".join([existing, "\n".join(checks)]).strip(), 8000)
-
-
-def _enforce_generation_pedagogical_coherence(draft: dict, duree_souhaitee: Optional[float]) -> dict:
-    if not isinstance(draft, dict):
-        return {}
-
-    duree_ref = _safe_float(draft.get("duree_recommandee"))
-    if duree_ref is None:
-        duree_ref = duree_souhaitee
-
-    profile = _generation_duration_profile(duree_ref)
-
-    draft["competences_stagiaires"] = _limit_generated_competences(
-        draft.get("competences_stagiaires") or [],
-        profile,
-        keep_formateur=False,
-    )
-    draft["competences_formateurs"] = _limit_generated_competences(
-        draft.get("competences_formateurs") or [],
-        profile,
-        keep_formateur=True,
-    )
-    draft["contenus"] = _normalize_generated_contents(draft.get("contenus") or [], draft, profile)
-
-    _append_generation_quality_report(draft, profile, duree_souhaitee)
-    return draft
 
 
 def _analyse_generate_formation_with_ai(
@@ -2294,36 +1927,36 @@ def _analyse_generate_formation_with_ai(
 
     model = (os.getenv("OPENAI_MODEL_FORM_GENERATE") or os.getenv("OPENAI_MODEL_FORM_IMPORT") or "gpt-4o-mini").strip()
 
-    profile = _generation_duration_profile(duree_souhaitee)
-    duree_line = "Durée souhaitée non renseignée. Propose une durée réaliste et justifie-la, sans surcharger les compétences."
+    duree_line = "Durée souhaitée non renseignée. Propose une durée réaliste et justifie-la."
     if duree_souhaitee is not None:
-        duree_line = (
-            f"Durée souhaitée par l'utilisateur : {duree_souhaitee} heure(s). "
-            f"Cadre pédagogique à respecter : {profile.get('note')}"
-        )
+        duree_line = f"Durée souhaitée par l'utilisateur : {duree_souhaitee} heure(s). Tu peux la challenger et proposer une durée plus cohérente si nécessaire."
 
     system_prompt = (
-        "Tu construis une fiche formation structurée pour Novoskill Learn selon une logique d’ingénierie pédagogique orientée situation de travail. "
-        "Tu agis comme un ingénieur pédagogique expérimenté. Zéro marketing, rédaction opérationnelle, sobre et exploitable. "
-        "Tu ne dois jamais confondre objectif de formation, compétences visées, contenus pédagogiques, exercices et modalités d’évaluation. "
-        "Objectif de formation : pourquoi la formation existe et ce qu’elle doit permettre globalement. "
-        "Compétence visée stagiaire : capacité professionnelle observable, mobilisable en situation de travail, issue d'une combinaison de savoirs, savoir-faire et savoir-être. "
-        "Contenu pédagogique : sujets, méthodes, situations terrain, sous-thèmes, exercices et livrables permettant de développer les compétences. "
-        "Une compétence ne doit jamais être une reprise d’un module, d’un chapitre, d’un prompt ou d’un exercice. "
-        "Interdiction absolue : 1 contenu = 1 compétence. Une compétence peut être travaillée dans plusieurs contenus et un contenu peut contribuer à plusieurs compétences. "
-        "Limite les compétences selon la durée : jusqu’à 7h = 3 à 5 compétences ; 14h = 4 à 6 ; 21h à 35h = 5 à 8 ; au-delà, reste cohérent avec la capacité réelle d’évaluation. "
-        "Pour une formation courte, privilégie peu de compétences solides et des contenus plus profonds, ancrés dans le terrain. "
-        "Règles Novoskill compétences : chaque intitulé commence par un verbe d’action ; il décrit une capacité professionnelle observable et évaluable ; il reste réutilisable dans le catalogue quand c’est possible ; "
-        "distingue compétences génériques et spécifiques entreprise ; une compétence spécifique doit être identifiable dès son titre ; évite les compétences trop fines liées à un exercice, un outil ponctuel ou une micro-tâche. "
-        "Exemples à éviter comme compétences : Rédiger un prompt pour LinkedIn ; Créer un email de prospection ; Utiliser ChatGPT pour répondre à une objection ; Faire une relance commerciale avec l’IA. "
-        "Ces éléments doivent aller dans les contenus, exercices, livrables ou critères d’évaluation, pas dans les compétences. "
-        "Les contenus doivent être de vraies séquences pédagogiques : titre clair, durée indicative, intention pédagogique, sous-thèmes concrets, situations professionnelles traitées, exercices, livrable possible et compétences travaillées. "
-        "Le titre de la formation commence par un verbe d'action et ne dépasse jamais 90 caractères. "
-        "La présentation est un seul paragraphe sans retour ligne, ne dépassant jamais 625 caractères. "
-        "L'objectif pédagogique doit être formulé dans l'esprit : À la fin de la formation, le stagiaire/l'apprenant sera capable de... et ne dépasse jamais 550 caractères. "
-        "Les prérequis doivent être évaluables, chaque prérequis étant un élément distinct avec titre + réponses Oui/Non et r3 optionnelle. Chaque titre de prérequis ne dépasse jamais 65 caractères. "
-        "Les compétences formateur décrivent ce que le formateur doit maîtriser pour animer, transmettre, adapter et évaluer correctement la formation ; elles peuvent inclure des compétences métier liées au contenu et des compétences pédagogiques. "
-        "Le rapport IA final doit justifier la cohérence durée / compétences / contenus, les arbitrages, les limites éventuelles et la justification du nombre de compétences. "
+        "Tu génères une fiche formation structurée pour Novoskill Learn. "
+        "Règles impératives : zéro marketing, rédaction opérationnelle, pédagogique, sobre et exploitable. "
+        "Le titre commence par un verbe d'action et ne dépasse jamais 90 caractères. "
+        "La présentation est un texte rédigé avec une bonne syntaxe, sans liste, sans retour ligne, et ne dépasse jamais 625 caractères. "
+        "L'objectif pédagogique est la finalité globale de la formation et doit être formulé dans l'esprit : "
+        "À la fin de la formation, le stagiaire/l'apprenant sera capable de... "
+        "Cet objectif pédagogique ne doit jamais dépasser 550 caractères et ne doit contenir aucun retour ligne. "
+        "Ne confonds pas objectif pédagogique et compétences visées. Les compétences visées sont des capacités opérationnelles observables. "
+        "Une compétence Novoskill est une capacité mobilisable construite par des savoirs, savoir-faire et savoir-être, maîtrisable sur les 4 niveaux A/B/C/D au moment de créer la fiche compétence. "
+        "À cette étape formation, ne génère jamais les niveaux, la grille ou les critères : fournis seulement le brouillon léger de compétence. "
+        "Chaque compétence commence par un verbe d’action, n’est jamais une tâche isolée, et peut servir ensuite dans Studio sur des postes. "
+        "Distingue les compétences génériques réutilisables des compétences spécifiques entreprise ; une compétence spécifique doit être identifiable dès son titre. "
+        "Les contenus sont des briques réutilisables indépendantes de la modalité. "
+        "Chaque contenu doit comporter un titre clair, un objectif court et un champ contenu détaillé. "
+        "Le champ contenu doit prendre la forme d'une série de sujets abordés, avec une ligne par sujet, précédée de '- '. "
+        "Chaque contenu doit être suffisamment détaillé pour être exploitable ensuite dans un plan pédagogique. "
+        "Ne génère jamais de plan pédagogique, ni de déroulé jour par jour. "
+        "Ne demande pas et ne déduis pas une modalité de réalisation : la modalité sera traitée dans le plan pédagogique. "
+        "Les prérequis doivent être évaluables. Chaque prérequis est un élément distinct avec titre + réponses Oui/Non et r3 optionnelle. "
+        "Chaque titre de prérequis ne doit jamais dépasser 65 caractères. "
+        "Les compétences formateur doivent inclure des compétences d'animation, de transmission, d'adaptation pédagogique, d'évaluation et les compétences métier nécessaires au contenu ; "
+        "elles restent des compétences du même catalogue et doivent donc être formulées avec le même niveau d'exigence que les compétences Studio. "
+        "On considère que le formateur possède un niveau avancé ou expert, mais on ne génère pas ces niveaux ici. "
+        "Si un contexte est fourni, rends la formation spécifique à ce contexte. Si aucun contexte n'est fourni, génère une formation générique et réutilisable. "
+        "Le rapport IA final justifie la compréhension du besoin, les compétences, les contenus, la durée et les points de vigilance. "
         "Le type_formation doit être l'une des valeurs : Certifiante, Diplomante, Non Certifiante. "
         "Renvoie uniquement un JSON strict conforme au schéma."
     )
@@ -2334,14 +1967,7 @@ def _analyse_generate_formation_with_ai(
         f"Public visé optionnel :\n{public_vise or 'Non renseigné'}\n\n"
         f"{duree_line}\n\n"
         f"Contraintes éventuelles :\n{contraintes or 'Non renseigné'}\n\n"
-        f"Documents de référence extraits :\n{documents_text or 'Aucun document fourni.'}\n\n"
-        "Structure pédagogique attendue :\n"
-        "1. Analyse du besoin : métier, public, situation professionnelle cible, problème opérationnel, niveau attendu, contraintes.\n"
-        "2. Compétences visées : peu nombreuses, larges, professionnelles, observables, réutilisables, avec domaine, type générique/spécifique, rôle coeur/complémentaire/transversale, justification.\n"
-        "3. Programme / contenus : séquences profondes, terrain, avec sous-thèmes, situations, exercices, livrable et compétences associées.\n"
-        "4. Modalités d’évaluation : critères observables, exercices, livrables et liens avec les compétences.\n"
-        "5. Rapport de justification : cohérence durée / compétences / contenus et limites pédagogiques.\n"
-        "Ne découpe jamais le programme en autant de compétences que de contenus."
+        f"Documents de référence extraits :\n{documents_text or 'Aucun document fourni.'}"
     )
 
     client = OpenAI(api_key=api_key)
@@ -2353,7 +1979,7 @@ def _analyse_generate_formation_with_ai(
             {"role": "user", "content": user_prompt},
         ],
         temperature=0.2,
-        max_tokens=5600,
+        max_tokens=4200,
         response_format={
             "type": "json_schema",
             "json_schema": {
@@ -2369,11 +1995,10 @@ def _analyse_generate_formation_with_ai(
         raise HTTPException(status_code=500, detail="Génération IA vide.")
 
     try:
-        data = json.loads(raw)
+        return json.loads(raw)
     except Exception:
         raise HTTPException(status_code=500, detail="Génération IA illisible.")
 
-    return _enforce_generation_pedagogical_coherence(data, duree_souhaitee)
 
 def _format_generation_report(draft: dict, duree_souhaitee: Optional[float]) -> str:
     report = _clean_text(draft.get("rapport_ia"), 8000)
@@ -2561,24 +2186,16 @@ async def learn_formations_import_document(
 
         contenus = []
         for c in draft.get("contenus") or []:
-            if not isinstance(c, dict):
-                c = {"titre_sequence": str(c or "").strip(), "contenu": str(c or "").strip(), "competences_sources": []}
-
             titre = _clean_text(c.get("titre_sequence"), 500)
-            detail = _format_generated_content_detail(c)
+            detail = _clean_text(c.get("contenu"), 8000)
 
             if not titre and not detail:
                 continue
 
             contenus.append({
                 "titre_sequence": titre or "Contenu",
-                "objectif": _clean_text(c.get("intention_pedagogique") or c.get("objectif"), 1200),
+                "objectif": _clean_text(c.get("objectif"), 1200),
                 "contenu": detail,
-                "duree_indicative": c.get("duree_indicative"),
-                "sous_themes": [str(x or "").strip() for x in (c.get("sous_themes") or []) if str(x or "").strip()],
-                "situations_terrain": [str(x or "").strip() for x in (c.get("situations_terrain") or []) if str(x or "").strip()],
-                "exercices": [str(x or "").strip() for x in (c.get("exercices") or []) if str(x or "").strip()],
-                "livrable": _clean_text(c.get("livrable"), 500),
                 "competences_sources": [
                     str(x or "").strip()
                     for x in (c.get("competences_sources") or [])
@@ -2702,24 +2319,16 @@ async def learn_formations_generate_ai(
 
         contenus = []
         for c in draft.get("contenus") or []:
-            if not isinstance(c, dict):
-                c = {"titre_sequence": str(c or "").strip(), "contenu": str(c or "").strip(), "competences_sources": []}
-
             titre = _clean_text(c.get("titre_sequence"), 500)
-            detail = _format_generated_content_detail(c)
+            detail = _clean_text(c.get("contenu"), 8000)
 
             if not titre and not detail:
                 continue
 
             contenus.append({
                 "titre_sequence": titre or "Contenu",
-                "objectif": _clean_text(c.get("intention_pedagogique") or c.get("objectif"), 1200),
+                "objectif": _clean_text(c.get("objectif"), 1200),
                 "contenu": detail,
-                "duree_indicative": c.get("duree_indicative"),
-                "sous_themes": [str(x or "").strip() for x in (c.get("sous_themes") or []) if str(x or "").strip()],
-                "situations_terrain": [str(x or "").strip() for x in (c.get("situations_terrain") or []) if str(x or "").strip()],
-                "exercices": [str(x or "").strip() for x in (c.get("exercices") or []) if str(x or "").strip()],
-                "livrable": _clean_text(c.get("livrable"), 500),
                 "competences_sources": [
                     str(x or "").strip()
                     for x in (c.get("competences_sources") or [])
@@ -2751,8 +2360,6 @@ async def learn_formations_generate_ai(
             "competences_stagiaires_import": comp_stag,
             "competences_formateurs_import": comp_form,
             "contenus": contenus,
-            "analyse_besoin": draft.get("analyse_besoin") or {},
-            "modalites_evaluation": draft.get("modalites_evaluation") or {},
             "rapport_ia": _format_generation_report(draft, duree),
         }
 

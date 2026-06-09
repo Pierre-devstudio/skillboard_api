@@ -1255,43 +1255,6 @@ function iconPdf(){
         sel.value = keep || "";
     }
 
-
-    function findCompDomainIdFromLabel(label){
-        const raw = normalizeImportKey(label || "");
-        if (!raw) return "";
-
-        let best = { id:"", score:0 };
-
-        (_compDomainItems || []).forEach(d => {
-            const id = (d.id_domaine_competence || "").toString().trim();
-            if (!id) return;
-
-            const blob = [d.titre_court, d.titre, d.description, id]
-                .map(x => normalizeImportKey(x || ""))
-                .filter(Boolean)
-                .join(" ");
-
-            if (!blob) return;
-
-            let score = 0;
-            if (blob === raw) score = 100;
-            else if (blob.includes(raw) || raw.includes(blob)) score = 88;
-            else {
-                const rawTokens = new Set(raw.split(" ").filter(x => x.length > 2));
-                const blobTokens = new Set(blob.split(" ").filter(x => x.length > 2));
-                const common = Array.from(rawTokens).filter(x => blobTokens.has(x)).length;
-                const denom = Math.max(1, rawTokens.size + blobTokens.size - common);
-                score = Math.round((common / denom) * 100);
-            }
-
-            if (score > best.score){
-                best = { id, score };
-            }
-        });
-
-        return best.score >= 45 ? best.id : "";
-    }
-
     function compEmptyCrit(){
         return { Nom:"", Eval:["", "", "", ""] };
     }
@@ -4728,8 +4691,7 @@ function renderContentCompBadges(l){
                 <span class="sb-badge sb-badge--form">${idx + 1}</span>
                 <div>
                     <strong>${htmlEsc(c.titre_sequence || "Contenu")}</strong>
-                    <div class="card-sub">${htmlEsc(c.objectif || c.intention_pedagogique || "")}</div>
-                    ${(c.duree_indicative || c.livrable) ? `<div class="card-sub">${c.duree_indicative ? `Durée indicative : ${htmlEsc(c.duree_indicative)} h` : ""}${c.duree_indicative && c.livrable ? " · " : ""}${c.livrable ? `Livrable : ${htmlEsc(c.livrable)}` : ""}</div>` : ""}
+                    <div class="card-sub">${htmlEsc(c.objectif || "")}</div>
                 </div>
                 </div>
             `).join("")
