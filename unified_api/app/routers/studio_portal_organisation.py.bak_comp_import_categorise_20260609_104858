@@ -6768,223 +6768,6 @@ def studio_org_ai_comp_search(id_owner: str, payload: AiPosteCompetenceSearchPay
         raise HTTPException(status_code=500, detail=f"studio/org/postes ai_comp_search error: {e}")
 
 
-
-def _parse_imported_competence_document_text(extracted_text: str, title_hint: str = "", domain_rows: Optional[List[dict]] = None) -> dict:
-    """Tente de reclasser un PDF/DOC/DOCX de fiche compétence dans les champs utiles.
-
-    Objectif volontairement pragmatique : reconnaître les PDF Novoskill et les documents proches
-    sans relancer l'IA ni tout balancer dans la description comme un sac de gravats textuels.
-    """
-    raw = _repair_ai_text_encoding_glitches(extracted_text or "")
-    raw = raw.replace("\r", "\n")
-    raw = re.sub(r"[ \t]+", " ", raw)
-    raw = re.sub(r"\n{3,}", "\n\n", raw).strip()
-
-    lines = [_clean_text(x) for x in raw.split("\n")]
-    lines = [x for x in lines if x]
-
-    def _n(v: Optional[str]) -> str:
-        return _norm_text_search(v)
-
-    def _is_code_line(v: str) -> bool:
-        return bool(re.match(r"^(CO|COMP|CPT)[0-9]{3,}$", (v or "").strip(), re.I))
-
-    def _clean_title_hint(v: str) -> str:
-        s = re.sub(r"\.[A-Za-z0-9]+$", "", v or "").strip()
-        s = re.sub(r"[_\-]+", " ", s)
-        s = re.sub(r"\bfiche\s+comp[eé]tence\b", "", s, flags=re.I)
-        s = re.sub(r"\b(CO|COMP|CPT)[0-9]{3,}\b", "", s, flags=re.I)
-        return _clean_ai_comp_text(s, 180)
-
-    title = ""
-    for idx, line in enumerate(lines):
-        if _n(line) in {"definition de la competence", "definition competence", "fiche competence"}:
-            for nxt in lines[idx + 1: idx + 8]:
-                if _is_code_line(nxt):
-                    continue
-                if _n(nxt) in {"description", "criteres d evaluation", "niveaux de maitrise"}:
-                    continue
-                if len(nxt) >= 8:
-                    title = _clean_ai_comp_text(nxt, 180)
-                    break
-            if title:
-                break
-
-    if not title:
-        hint = _clean_title_hint(title_hint or "")
-        if hint and not _n(hint).startswith("document"):
-            title = hint
-
-    if not title:
-        for line in lines[:20]:
-            if _is_code_line(line):
-                continue
-            nl = _n(line)
-            if nl in {"definition de la competence", "fiche competence", "description", "criteres d evaluation"}:
-                continue
-            if _starts_with_action_verb(line) and len(line) <= 180:
-                title = _clean_ai_comp_text(line, 180)
-                break
-
-    domain_label = ""
-    m_domain = re.search(
-        r"class[eé]e?\s+dans\s+le\s+domaine\s+(.+?)\s+de\s+votre\s+r[eé]f[eé]rentiel",
-        raw,
-        flags=re.I | re.S,
-    )
-    if m_domain:
-        domain_label = _clean_ai_comp_text(m_domain.group(1), 140)
-
-    if not domain_label:
-        for idx, line in enumerate(lines):
-            nl = _n(line)
-            if nl == "domaine" and idx + 1 < len(lines):
-                domain_label = _clean_ai_comp_text(lines[idx + 1], 140)
-                break
-            if nl.startswith("domaine ") and len(line) <= 180:
-                domain_label = _clean_ai_comp_text(re.sub(r"^domaine\s*:?\s*", "", line, flags=re.I), 140)
-                break
-
-    domain_id = None
-    best_domain_score = 0.0
-    for r in domain_rows or []:
-        rid = _clean_text(r.get("id_domaine_competence"))
-        for label in [r.get("titre_court"), r.get("titre"), rid]:
-            score = _similarity_score(domain_label, label)
-            if score > best_domain_score:
-                best_domain_score = score
-                domain_id = rid
-    if best_domain_score < 0.70:
-        domain_id = None
-
-    def _segment_between(start_exprs: List[str], end_exprs: List[str]) -> str:
-        norm_lines = [_n(x) for x in lines]
-        start_idx = -1
-        for i, nl in enumerate(norm_lines):
-            if any(expr in nl for expr in start_exprs):
-                start_idx = i + 1
-                break
-        if start_idx < 0:
-            return ""
-        end_idx = len(lines)
-        for j in range(start_idx, len(lines)):
-            nl = norm_lines[j]
-            if any(expr in nl for expr in end_exprs):
-                end_idx = j
-                break
-        return "\n".join(lines[start_idx:end_idx]).strip()
-
-    # Description Novoskill : juste après le titre, avant la phrase domaine / critères.
-    description = ""
-    if title:
-        title_norm = _n(title)
-        title_idx = -1
-        for i, line in enumerate(lines):
-            if _similarity_score(line, title) >= 0.88 or _n(line) == title_norm:
-                title_idx = i
-                break
-        if title_idx >= 0:
-            desc_parts = []
-            for line in lines[title_idx + 1:]:
-                nl = _n(line)
-                if nl.startswith("cette competence est classee") or "criteres d evaluation" in nl or "niveaux de maitrise" in nl:
-                    break
-                if _is_code_line(line):
-                    continue
-                if line == title:
-                    continue
-                desc_parts.append(line)
-            description = _clean_ai_comp_text(" ".join(desc_parts), 1200)
-
-    if not description:
-        desc_seg = _segment_between(["description"], ["domaine", "criteres d evaluation", "niveaux de maitrise"])
-        description = _clean_ai_comp_text(desc_seg, 1200)
-
-    if not description:
-        # Fallback raisonnable : on prend le premier paragraphe utile, pas tout le document.
-        useful = []
-        for line in lines[:45]:
-            nl = _n(line)
-            if _is_code_line(line) or nl in {"definition de la competence", "fiche competence"}:
-                continue
-            if title and _similarity_score(line, title) >= 0.88:
-                continue
-            if nl.startswith("cette competence est classee") or "criteres d evaluation" in nl or "niveaux de maitrise" in nl:
-                break
-            if len(line) >= 25:
-                useful.append(line)
-            if len(" ".join(useful)) > 900:
-                break
-        description = _clean_ai_comp_text(" ".join(useful), 1200)
-
-    level_seg = _segment_between(["niveaux de maitrise"], [])
-    level_lines = [_clean_text(x) for x in level_seg.split("\n")]
-    level_lines = [x for x in level_lines if x]
-    level_noise = {
-        "debutant", "intermediaire", "avance", "expert",
-        "debutant intermediaire avance expert",
-    }
-    level_candidates = []
-    for line in level_lines:
-        nl = _n(line)
-        if not nl or nl in level_noise:
-            continue
-        if re.search(r"\b[0-9]{1,2}\s*(/|a|à|-)", nl) and len(line) < 70:
-            continue
-        if any(x in nl for x in ("critere", "evaluation", "page", "novoskill studio")):
-            continue
-        if len(line) >= 35:
-            level_candidates.append(_clean_ai_comp_text(line, 260))
-        if len(level_candidates) >= 4:
-            break
-
-    crit_seg = _segment_between(["criteres d evaluation"], ["niveaux de maitrise"])
-    crit_lines = [_clean_text(x) for x in crit_seg.split("\n")]
-    filtered_crit = []
-    for line in crit_lines:
-        nl = _n(line)
-        if not nl:
-            continue
-        if nl in {"1", "2", "3", "4", "1 2 3 4"}:
-            continue
-        if nl in {"critere", "criteres d evaluation", "evaluation"}:
-            continue
-        if len(line) >= 8:
-            filtered_crit.append(_clean_ai_comp_text(line, 160))
-
-    grille = {}
-    if len(filtered_crit) >= 5:
-        # Format généralement extrait par lignes : nom critère puis niveaux 1/2/3/4.
-        pos = 0
-        for idx in range(1, 5):
-            if pos >= len(filtered_crit):
-                break
-            nom = filtered_crit[pos]
-            evals = filtered_crit[pos + 1: pos + 5]
-            if len(evals) < 4:
-                break
-            grille[f"Critere{idx}"] = {"Nom": _clean_ai_comp_text(nom, 140), "Eval": [_clean_ai_comp_text(x, 120) for x in evals[:4]]}
-            pos += 5
-
-    for idx in range(1, 5):
-        grille.setdefault(f"Critere{idx}", {"Nom": "", "Eval": ["", "", "", ""]})
-
-    out = {
-        "intitule": title,
-        "title_hint": title or _clean_title_hint(title_hint or ""),
-        "description": description,
-        "domaine_hint": domain_label,
-        "domaine_id": domain_id or "",
-        "niveaua": level_candidates[0] if len(level_candidates) > 0 else "",
-        "niveaub": level_candidates[1] if len(level_candidates) > 1 else "",
-        "niveauc": level_candidates[2] if len(level_candidates) > 2 else "",
-        "niveaud": level_candidates[3] if len(level_candidates) > 3 else "",
-        "grille_evaluation": grille,
-        "import_context": raw[:12000],
-    }
-
-    return out
-
 @router.post("/studio/org/postes/{id_owner}/competence_import_document")
 def studio_org_import_competence_document(id_owner: str, request: Request, file: UploadFile = File(...)):
     auth = request.headers.get("Authorization", "")
@@ -6995,21 +6778,11 @@ def studio_org_import_competence_document(id_owner: str, request: Request, file:
         filename = _clean_text(getattr(file, "filename", "") or "document")
         raw = file.file.read() if file and file.file else b""
 
-        domain_rows = []
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 oid = _require_owner_access(cur, u, oid)
                 studio_fetch_owner(cur, oid)
                 studio_require_min_role(cur, u, oid, "admin")
-                cur.execute(
-                    """
-                    SELECT id_domaine_competence, titre, titre_court, couleur
-                    FROM public.tbl_domaine_competence
-                    WHERE COALESCE(masque, FALSE) = FALSE
-                    ORDER BY COALESCE(ordre_affichage, 999999), lower(COALESCE(titre_court, titre, id_domaine_competence))
-                    """
-                )
-                domain_rows = cur.fetchall() or []
 
         ext, extracted_text = _extract_poste_import_text(filename, raw)
 
@@ -7017,16 +6790,13 @@ def studio_org_import_competence_document(id_owner: str, request: Request, file:
         title_hint = re.sub(r"[_\-]+", " ", title_hint)
         title_hint = re.sub(r"\s+", " ", title_hint).strip()
 
-        parsed = _parse_imported_competence_document_text(extracted_text, title_hint, domain_rows)
-        if not parsed.get("description"):
-            parsed["description"] = _clean_ai_comp_text(extracted_text, 1800)
-
         return {
             "ok": True,
             "filename": filename,
             "extension": ext,
+            "title_hint": _clean_ai_comp_text(title_hint, 160),
+            "description": _clean_ai_comp_text(extracted_text, 1800),
             "extracted_text": extracted_text[:12000],
-            **parsed,
         }
 
     except HTTPException:

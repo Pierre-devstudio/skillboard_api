@@ -3842,7 +3842,7 @@ function renderPosteCompAiResults(){
             const btn = document.createElement("button");
             btn.type = "button";
             btn.id = "btnPosteCompAddCreateNew";
-            btn.className = "sb-btn sb-btn--accent";
+            btn.className = "sb-btn sb-btn--soft";
             btn.textContent = "Créer une compétence";
             btn.addEventListener("click", async () => {
                 try { await openPosteCompCreateManualModalFromCatalog(window.portal); }
@@ -3856,39 +3856,32 @@ function renderPosteCompAiResults(){
 
     function ensurePosteCompCreateActionButtons(portal){
         const mainBtn = byId("btnPosteCompCreateOnly");
-        if (!mainBtn) return;
+        if (!mainBtn || byId("btnPosteCompCreateGenerateCurrent")) return;
 
         const parent = mainBtn.parentElement;
         if (!parent) return;
 
-        let btnImport = byId("btnPosteCompCreateImportDoc");
-        if (!btnImport){
-            btnImport = document.createElement("button");
-            btnImport.type = "button";
-            btnImport.id = "btnPosteCompCreateImportDoc";
-            btnImport.textContent = "Importer";
-            btnImport.title = "Importer un PDF, DOC ou DOCX pour préremplir la fiche compétence.";
-            btnImport.addEventListener("click", () => openPosteCompImportModal());
-        }
-        btnImport.className = "sb-btn sb-btn--outline";
+        const btnIa = document.createElement("button");
+        btnIa.type = "button";
+        btnIa.id = "btnPosteCompCreateGenerateCurrent";
+        btnIa.className = "sb-btn sb-btn--soft";
+        btnIa.textContent = "Générer IA";
+        btnIa.title = "Cadrer la compétence puis générer les niveaux et critères.";
+        btnIa.addEventListener("click", async () => {
+            try { await openPosteCompCreateFrameFromCurrentCreate(portal); }
+            catch(e){ portal.showAlert("error", e?.message || String(e)); }
+        });
 
-        let btnIa = byId("btnPosteCompCreateGenerateCurrent");
-        if (!btnIa){
-            btnIa = document.createElement("button");
-            btnIa.type = "button";
-            btnIa.id = "btnPosteCompCreateGenerateCurrent";
-            btnIa.textContent = "Générer IA";
-            btnIa.title = "Cadrer la compétence puis générer les niveaux et critères.";
-            btnIa.addEventListener("click", async () => {
-                try { await openPosteCompCreateFrameFromCurrentCreate(portal); }
-                catch(e){ portal.showAlert("error", e?.message || String(e)); }
-            });
-        }
-        btnIa.className = "sb-btn sb-btn--ai";
+        const btnImport = document.createElement("button");
+        btnImport.type = "button";
+        btnImport.id = "btnPosteCompCreateImportDoc";
+        btnImport.className = "sb-btn sb-btn--soft";
+        btnImport.textContent = "Importer";
+        btnImport.title = "Importer un PDF, DOC ou DOCX pour alimenter la fiche compétence.";
+        btnImport.addEventListener("click", () => openPosteCompImportModal());
 
-        // Ordre voulu : Importer | Générer IA | Enregistrer / Créer.
-        parent.insertBefore(btnImport, mainBtn);
         parent.insertBefore(btnIa, mainBtn);
+        parent.insertBefore(btnImport, mainBtn);
     }
 
     function buildPosteCompCreateDraftFromCurrent(){
@@ -4099,80 +4092,6 @@ function renderPosteCompAiResults(){
         return `${c}\n\n${i}`.trim();
     }
 
-
-    function hasPosteCompCreateCritContent(){
-        try { return usedPosteCompCreateCritCount() > 0; }
-        catch(_) { return false; }
-    }
-
-    function setPosteCompCreateValueIfUseful(id, value, overwriteEmptyOnly){
-        const el = byId(id);
-        if (!el) return false;
-        const v = repairAiTextEncodingGlitches(value || "").trim();
-        if (!v) return false;
-        if (overwriteEmptyOnly && (el.value || "").trim()) return false;
-        el.value = v;
-        return true;
-    }
-
-    function applyPosteCompImportedDraft(data){
-        data = repairAiDraftPayload(data || {});
-        const extractedText = repairAiTextEncodingGlitches(data.extracted_text || data.import_context || "");
-
-        setPosteCompCreateValueIfUseful("posteCompCreateIntitule", data.intitule || data.title_hint || "", true);
-
-        if (data.description){
-            const descEl = byId("posteCompCreateDesc");
-            if (descEl){
-                const current = (descEl.value || "").trim();
-                const imported = repairAiTextEncodingGlitches(data.description || "").trim();
-                // Si l'ancien import avait tout jeté dans la description, on remplace par la description catégorisée.
-                if (!current || current.length > 1400 || current === extractedText.slice(0, current.length)){
-                    descEl.value = imported;
-                } else {
-                    descEl.value = mergePosteCompImportedDescription(current, imported);
-                }
-            }
-        }
-
-        if (data.domaine_id){
-            const sel = byId("posteCompCreateDomaine");
-            if (sel){
-                sel.value = data.domaine_id;
-                if (sel.value !== String(data.domaine_id || "")) sel.value = "";
-            }
-        }
-
-        setPosteCompCreateValueIfUseful("posteCompCreateNivA", data.niveaua || "", true);
-        setPosteCompCreateValueIfUseful("posteCompCreateNivB", data.niveaub || "", true);
-        setPosteCompCreateValueIfUseful("posteCompCreateNivC", data.niveauc || "", true);
-        setPosteCompCreateValueIfUseful("posteCompCreateNivD", data.niveaud || "", true);
-
-        if (data.grille_evaluation && !hasPosteCompCreateCritContent()){
-            loadPosteCompCreateCritFromJson(data.grille_evaluation || null);
-        }
-
-        const titleEl = byId("posteCompCreateIntitule");
-        const descEl = byId("posteCompCreateDesc");
-        const domEl = byId("posteCompCreateDomaine");
-
-        if (_posteCompCreateCtx){
-            _posteCompCreateCtx.draft = Object.assign({}, _posteCompCreateCtx.draft || {}, {
-                intitule: titleEl?.value || _posteCompCreateCtx.draft?.intitule || "",
-                description: descEl?.value || _posteCompCreateCtx.draft?.description || "",
-                domaine_id: domEl?.value || _posteCompCreateCtx.draft?.domaine_id || "",
-                domaine_hint: data.domaine_hint || _posteCompCreateCtx.draft?.domaine_hint || "",
-                niveaua: byId("posteCompCreateNivA")?.value || _posteCompCreateCtx.draft?.niveaua || "",
-                niveaub: byId("posteCompCreateNivB")?.value || _posteCompCreateCtx.draft?.niveaub || "",
-                niveauc: byId("posteCompCreateNivC")?.value || _posteCompCreateCtx.draft?.niveauc || "",
-                niveaud: byId("posteCompCreateNivD")?.value || _posteCompCreateCtx.draft?.niveaud || "",
-                grille_evaluation: data.grille_evaluation || _posteCompCreateCtx.draft?.grille_evaluation || null,
-                import_context: extractedText,
-                import_filename: data.filename || _posteCompImportFile?.name || ""
-            });
-        }
-    }
-
     async function runPosteCompImport(portal){
         if (!_posteCompImportFile){ portal.showAlert("error", "Sélectionne un document avant d’importer."); return; }
         const ownerId = getOwnerId();
@@ -4180,8 +4099,8 @@ function renderPosteCompAiResults(){
         const modal = ensurePosteCompImportModal();
         const btn = modal.querySelector("#btnPosteCompImportAnalyze");
         const msg = modal.querySelector("#posteCompImportMsg");
-        if (btn){ btn.disabled = true; btn.style.opacity = ".6"; btn.textContent = "Analyse…"; }
-        if (msg) msg.textContent = "Extraction et classement du texte en cours…";
+        if (btn){ btn.disabled = true; btn.style.opacity = ".6"; btn.textContent = "Import…"; }
+        if (msg) msg.textContent = "Extraction du texte en cours…";
         try{
             const token = await resolveStudioAccessToken();
             const headers = {};
@@ -4198,8 +4117,21 @@ function renderPosteCompAiResults(){
                 throw new Error(detail);
             }
             const data = await resp.json();
-            applyPosteCompImportedDraft(data || {});
-            if (msg) msg.textContent = "Document importé et réparti dans la fiche compétence.";
+            const importedDesc = repairAiTextEncodingGlitches(data.description || data.extracted_text || "");
+            const extractedText = repairAiTextEncodingGlitches(data.extracted_text || importedDesc || "");
+            const titleEl = byId("posteCompCreateIntitule");
+            if (titleEl && !titleEl.value.trim() && data.title_hint) titleEl.value = repairAiTextEncodingGlitches(data.title_hint || "");
+            const descEl = byId("posteCompCreateDesc");
+            if (descEl) descEl.value = mergePosteCompImportedDescription(descEl.value || "", importedDesc);
+            if (_posteCompCreateCtx){
+                _posteCompCreateCtx.draft = Object.assign({}, _posteCompCreateCtx.draft || {}, {
+                    intitule: titleEl?.value || _posteCompCreateCtx.draft?.intitule || "",
+                    description: descEl?.value || _posteCompCreateCtx.draft?.description || "",
+                    import_context: extractedText,
+                    import_filename: data.filename || _posteCompImportFile.name || ""
+                });
+            }
+            if (msg) msg.textContent = "Texte importé dans la fiche compétence.";
             closePosteCompImportModal();
         } finally {
             if (btn){ btn.disabled = false; btn.style.opacity = ""; btn.textContent = "Importer le texte"; }
