@@ -3283,29 +3283,6 @@ async function savePosteCompCreateModal(portal, addAfter){
         }
     }
 
-
-    function normalizePosteCompAiRole(value){
-        const n = normText(value || "");
-        if (n.includes("transversal")) return "transversal";
-        if (n.includes("complement")) return "complementaire";
-        if (n.includes("coeur") || n.includes("cœur")) return "coeur";
-        return "coeur";
-    }
-
-    function applyPosteCompAiRoleCardStyle(row, importance){
-        if (!row) return;
-        const role = normalizePosteCompAiRole(importance);
-        const palette = {
-            coeur: { border: "#f59e0b", rgb: "245,158,11" },
-            complementaire: { border: "#22c55e", rgb: "34,197,94" },
-            transversal: { border: "#8b5cf6", rgb: "139,92,246" }
-        };
-        const p = palette[role] || palette.coeur;
-        row.dataset.aiCompRole = role;
-        row.style.borderColor = p.border;
-        row.style.boxShadow = `0 8px 22px rgba(${p.rgb}, .16)`;
-    }
-
 function renderPosteCompAiResults(){
         const summary = byId("posteCompAiSummary");
         const exWrap = byId("posteCompAiExistingWrap");
@@ -3440,7 +3417,6 @@ function renderPosteCompAiResults(){
         missing.forEach((it, idx) => {
             const row = document.createElement("div");
             row.className = "sb-row-card";
-            applyPosteCompAiRoleCardStyle(row, it.importance);
             row.style.alignItems = "flex-start";
 
             const left = document.createElement("div");

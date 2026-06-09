@@ -2002,17 +2002,54 @@ def _is_generic_business_token(tok: str) -> bool:
     return tok in generic
 
 
-
 def _is_existing_competence_contextually_plausible(match_row: Optional[dict], context_text: str) -> bool:
-    """Ne pose plus de veto sectoriel sur le matching catalogue.
+    if not match_row:
+        return False
 
-    Novoskill doit fonctionner sur des secteurs clients très variés. Les anciens
-    marqueurs contextuels codés en dur pouvaient refuser une compétence pourtant
-    réutilisable simplement parce que la fiche de poste ne répétait pas les mêmes
-    mots. Le score de matching porte désormais l'incertitude ; il ne faut plus
-    masquer un candidat catalogue par un filtre rigide.
-    """
-    return bool(match_row)
+    ctx_norm = _norm_text_search(context_text)
+    if not ctx_norm:
+        return True
+
+    cand_text = " ".join([
+        _clean_text(match_row.get("intitule")),
+        _clean_text(match_row.get("description")),
+        _clean_text(match_row.get("domaine_titre_court") or match_row.get("domaine_titre")),
+    ]).strip()
+    cand_norm = _norm_text_search(cand_text)
+
+    hard_specialized_exprs = {
+        "qualibail",
+        "bailleur social",
+        "bailleurs sociaux",
+        "motorisation",
+        "raccorder electriquement",
+        "fermeture de l habitat",
+        "produits de fermeture",
+        "habilitation electrique",
+    }
+
+    for expr in hard_specialized_exprs:
+        if expr in cand_norm and expr not in ctx_norm:
+            return False
+
+    ctx_tokens = _token_set_folded(ctx_norm)
+    cand_tokens = _token_set_folded(cand_norm)
+    overlap = len(ctx_tokens & cand_tokens)
+
+    specific_missing = [
+        tok for tok in cand_tokens
+        if len(tok) >= 6
+        and not _is_generic_business_token(tok)
+        and tok not in ctx_tokens
+    ]
+
+    if overlap == 0 and len(specific_missing) >= 2:
+        return False
+
+    if overlap <= 1 and len(specific_missing) >= 3:
+        return False
+
+    return True
 
 def _html_to_text(v: Optional[str]) -> str:
     s = _clean_text(v)
@@ -2466,25 +2503,12 @@ def _load_owner_comp_catalog_rows(cur, oid: str) -> List[dict]:
     return cur.fetchall() or []
 
 
-
 def _find_best_existing_competence_in_rows(rows: List[dict], title: str, search_terms: List[str]) -> Optional[dict]:
-    """Recherche catalogue renforcée, sans dépendre d'un titre identique.
-
-    Objectif : retrouver une compétence existante même si l'intitulé a changé
-    entre deux prompts IA, en valorisant le fond commun : tronc métier, description,
-    domaine et termes structurants.
-    """
     t = _clean_text(title)
     if not t:
         return None
 
     action_verbs = {_norm_text_search(x) for x in _ACTION_VERB_HINTS}
-    stop = {
-        "de", "des", "du", "d", "la", "le", "les", "un", "une", "et", "en", "pour", "sur", "au", "aux",
-        "a", "avec", "dans", "par", "ou", "competence", "competences", "maitrise", "maitriser",
-        "mettre", "mise", "oeuvre", "realiser", "réaliser", "assurer", "utiliser", "gerer", "gérer",
-        "piloter", "conduire", "developper", "développer", "appliquer", "produire"
-    }
 
     def _core_phrase(v: Optional[str]) -> str:
         s = _norm_text_search(v)
@@ -2493,35 +2517,71 @@ def _find_best_existing_competence_in_rows(rows: List[dict], title: str, search_
         parts = [p for p in s.split(" ") if p]
         if parts and parts[0] in action_verbs:
             parts = parts[1:]
+        stop = {"de", "des", "du", "d", "la", "le", "les", "un", "une", "et", "en", "pour", "sur", "au", "aux"}
         parts = [p for p in parts if p not in stop]
         return " ".join(parts).strip()
 
-    def _terms(v: Optional[str]) -> set:
+    def _token_overlap(a: Optional[str], b: Optional[str]) -> float:
+        ta = _token_set_folded(a)
+        tb = _token_set_folded(b)
+        if not ta or not tb:
+            return 0.0
+        inter = len(ta & tb)
+        union = len(ta | tb)
+        subset = inter / max(1, min(len(ta), len(tb)))
+        jacc = inter / max(1, union)
+        return max(jacc, subset * 0.96)
+
+    def _subset_boost(a: Optional[str], b: Optional[str]) -> float:
+        ta = _token_set_folded(a)
+        tb = _token_set_folded(b)
+        if not ta or not tb:
+            return 0.0
+        inter = len(ta & tb)
+        smallest = max(1, min(len(ta), len(tb)))
+        ratio = inter / smallest
+
+        if inter >= 2 and ratio >= 1.0:
+            return 1.0
+        if inter >= 2 and ratio >= 0.80:
+            return 0.92
+        return 0.0
+
+    def _business_terms(v: Optional[str]) -> set:
         s = _norm_text_search(v)
         if not s:
             return set()
+
+        stop = {
+            "de", "des", "du", "d", "la", "le", "les", "un", "une", "et", "en", "pour", "sur", "au", "aux",
+            "competence", "competences", "maitrise", "maitriser", "mise", "oeuvre", "mettre",
+            "gestion", "gerer", "gérer", "realiser", "réaliser", "assurer", "piloter", "utiliser"
+        }
+
         kept = []
         for tok in s.split(" "):
             if len(tok) < 3:
                 continue
-            if tok in stop or tok in action_verbs:
+            if tok in stop:
+                continue
+            if tok in action_verbs:
                 continue
             kept.append(tok)
+
         return _token_set_folded(" ".join(kept))
 
-    def _overlap(a: Optional[str], b: Optional[str]) -> float:
-        ta = _terms(a)
-        tb = _terms(b)
+    def _business_overlap(a: Optional[str], b: Optional[str]) -> float:
+        ta = _business_terms(a)
+        tb = _business_terms(b)
         if not ta or not tb:
             return 0.0
         inter = len(ta & tb)
-        if inter <= 0:
-            return 0.0
-        jacc = inter / max(1, len(ta | tb))
+        union = len(ta | tb)
         subset = inter / max(1, min(len(ta), len(tb)))
+        jacc = inter / max(1, union)
         return max(jacc, subset * 0.98)
 
-    def _contains_score(a: Optional[str], b: Optional[str]) -> float:
+    def _phrase_bonus(a: Optional[str], b: Optional[str]) -> float:
         na = _norm_text_search(a)
         nb = _norm_text_search(b)
         if not na or not nb:
@@ -2529,31 +2589,23 @@ def _find_best_existing_competence_in_rows(rows: List[dict], title: str, search_
         if na == nb:
             return 1.0
         if na in nb or nb in na:
-            return 0.94
-        ca = _core_phrase(a)
-        cb = _core_phrase(b)
-        if ca and cb:
-            if ca == cb:
-                return 0.98
-            if ca in cb or cb in ca:
-                return 0.93
+            return 0.93
         return 0.0
 
-    wanted_title = t
-    wanted_terms = []
+    terms = []
     for raw in [t] + list(search_terms or []):
         s = _clean_text(raw)
         if len(s) < 3:
             continue
-        if s.lower() not in [x.lower() for x in wanted_terms]:
-            wanted_terms.append(s)
-        if len(wanted_terms) >= 10:
+        if s.lower() not in [x.lower() for x in terms]:
+            terms.append(s)
+        if len(terms) >= 8:
             break
 
-    wanted_blob = "\n".join(wanted_terms).strip()
-    wanted_core = _core_phrase(wanted_title)
-    wanted_key = _canonical_comp_key(wanted_core or wanted_title)
-    wanted_term_set = _terms(wanted_blob)
+    core_t = _core_phrase(t)
+    title_key = _canonical_comp_key(core_t or t)
+    input_terms_agg = " ".join(terms).strip()
+    input_business = _business_terms(" ".join([t] + terms))
 
     best = None
     best_score = 0.0
@@ -2566,83 +2618,72 @@ def _find_best_existing_competence_in_rows(rows: List[dict], title: str, search_
             _clean_text(r.get("niveaua")),
             _clean_text(r.get("niveaub")),
             _clean_text(r.get("niveauc")),
-            _clean_text(r.get("niveaud")),
         ]).strip()
-        cand_blob = "\n".join([cand_title, cand_desc, cand_domain, cand_levels]).strip()
+        combined = " ".join([cand_title, cand_desc, cand_domain, cand_levels]).strip()
+
         cand_core = _core_phrase(cand_title)
         cand_key = _canonical_comp_key(cand_core or cand_title)
-        cand_term_set = _terms(cand_blob)
 
-        title_sim = max(
-            _similarity_score(wanted_title, cand_title),
-            _similarity_score(wanted_core, cand_core),
-            _contains_score(wanted_title, cand_title),
-        )
-        desc_sim = max(
-            _similarity_score(wanted_blob, cand_desc),
-            _similarity_score(wanted_blob, cand_blob),
-            _overlap(wanted_blob, cand_desc),
-            _overlap(wanted_blob, cand_blob),
-        )
-        title_desc_cross = max(
-            _similarity_score(wanted_title, cand_desc),
-            _similarity_score(wanted_blob, cand_title),
-            _overlap(wanted_title, cand_desc),
-            _overlap(wanted_blob, cand_title),
-        )
+        cand_business_title = _business_terms(cand_title)
+        cand_business_all = _business_terms(" ".join([cand_title, cand_desc, cand_domain]))
 
-        shared_terms = len(wanted_term_set & cand_term_set) if wanted_term_set and cand_term_set else 0
-        subset_ratio = 0.0
-        if wanted_term_set and cand_term_set:
-            subset_ratio = shared_terms / max(1, min(len(wanted_term_set), len(cand_term_set)))
-
-        term_score = max(
-            _overlap(wanted_title, cand_title),
-            _overlap(wanted_blob, cand_blob),
-            subset_ratio * 0.98 if shared_terms >= 2 else 0.0,
-        )
-
-        key_score = 0.0
-        if wanted_key and cand_key:
-            if wanted_key == cand_key:
-                key_score = 1.0
-            elif wanted_key in cand_key or cand_key in wanted_key:
-                key_score = 0.94
+        shared_title_terms = len(input_business & cand_business_title) if input_business and cand_business_title else 0
+        shared_all_terms = len(input_business & cand_business_all) if input_business and cand_business_all else 0
 
         score = max(
-            key_score,
-            title_sim,
-            desc_sim * 0.98,
-            title_desc_cross * 0.92,
-            term_score,
+            _similarity_score(t, cand_title),
+            _similarity_score(core_t, cand_core),
+            _similarity_score(t, combined),
+            _token_overlap(t, cand_title),
+            _token_overlap(core_t, cand_title),
+            _token_overlap(t, combined),
+            _subset_boost(t, cand_title),
+            _subset_boost(core_t, cand_core),
+            _business_overlap(t, cand_title),
+            _business_overlap(t, cand_desc),
+            _business_overlap(input_terms_agg, combined),
+            _phrase_bonus(t, cand_title),
+            1.0 if title_key and cand_key and title_key == cand_key else 0.0,
         )
 
-        # Cas typique : ancienne compétence générée par IA, titre légèrement différent,
-        # mais même description métier et même noyau lexical.
-        if shared_terms >= 4 and desc_sim >= 0.45:
-            score = max(score, 0.90)
-        elif shared_terms >= 3 and (desc_sim >= 0.52 or title_sim >= 0.58):
-            score = max(score, 0.86)
-        elif shared_terms >= 2 and title_sim >= 0.68:
-            score = max(score, 0.82)
-        elif shared_terms >= 2 and desc_sim >= 0.68:
-            score = max(score, 0.80)
+        for term in terms:
+            score = max(
+                score,
+                _similarity_score(term, cand_title),
+                _similarity_score(term, combined),
+                _token_overlap(term, cand_title),
+                _token_overlap(term, combined),
+                _subset_boost(term, cand_title),
+                _subset_boost(term, combined),
+                _business_overlap(term, cand_title),
+                _business_overlap(term, cand_desc),
+                _business_overlap(term, cand_domain),
+                _phrase_bonus(term, cand_title),
+            )
 
-        if cand_domain and _overlap(wanted_blob, cand_domain) >= 0.55:
-            score = max(score, min(0.88, score + 0.04))
+        if shared_title_terms >= 2:
+            score = max(score, 0.82)
+
+        if shared_all_terms >= 3:
+            score = max(score, 0.86)
+
+        if core_t and cand_core and (core_t in cand_core or cand_core in core_t):
+            score = max(score, 0.91)
+
+        if title_key and cand_key and (title_key in cand_key or cand_key in title_key):
+            score = max(score, 0.94)
 
         if score > best_score:
             best_score = score
             best = r
 
-    # Seuil volontairement plus ouvert : l'indicateur de % sert ensuite à porter
-    # l'incertitude, au lieu d'éliminer trop tôt des candidats catalogue utiles.
-    if not best or best_score < 0.52:
+    if not best or best_score < 0.66:
         return None
 
     out = dict(best)
     out["_match_score"] = round(float(best_score), 4)
     return out
+
 
 def _find_best_existing_competence(cur, oid: str, title: str, search_terms: List[str]) -> Optional[dict]:
     rows = _load_owner_comp_catalog_rows(cur, oid)
@@ -2682,170 +2723,102 @@ def _serialize_comp_grille_for_match(grille: Any) -> str:
     return "\n".join(blocks).strip()
 
 
-
 def _compute_existing_match_indicator(match_row: dict, item: dict, poste_context_text: str) -> tuple[float, int, str]:
-    """Calcule un pourcentage de matching lisible pour l'utilisateur.
-
-    Cette étape compare la compétence proposée à une compétence catalogue. Elle est
-    calibrée pour l'étape 1 Novoskill : titre, description, domaine, utilité et
-    termes métier. Les niveaux et grilles ne sont plus pénalisants ici, car ils ne
-    sont générés qu'au moment de la création de la fiche compétence.
-    """
     wanted_title = _clean_text(item.get("intitule"))
     wanted_desc = _clean_text(item.get("description"))
-    wanted_why = _clean_text(item.get("why_needed"))
     wanted_terms = " ".join([_clean_text(x) for x in (item.get("search_terms") or []) if _clean_text(x)])
+    wanted_levels = " ".join([
+        _clean_text(item.get("niveaua")),
+        _clean_text(item.get("niveaub")),
+        _clean_text(item.get("niveauc")),
+    ]).strip()
+    wanted_grille = _serialize_comp_grille_for_match(item.get("grille_evaluation"))
     wanted_domain = _clean_text(item.get("domaine_hint"))
-    wanted_kind = _clean_text(item.get("type_competence"))
-    wanted_importance = _clean_text(item.get("importance"))
+
+    wanted_full = "\n".join([
+        wanted_title,
+        wanted_desc,
+        wanted_terms,
+        wanted_levels,
+        wanted_grille,
+    ]).strip()
 
     cand_title = _clean_text(match_row.get("intitule"))
     cand_desc = _clean_text(match_row.get("description"))
     cand_domain = _clean_text(match_row.get("domaine_titre_court") or match_row.get("domaine_titre"))
+    cand_levels = _serialize_comp_levels_for_match(match_row)
+    cand_grille = _serialize_comp_grille_for_match(match_row.get("grille_evaluation"))
 
-    action_verbs = {_norm_text_search(x) for x in _ACTION_VERB_HINTS}
-    stop = {
-        "de", "des", "du", "d", "la", "le", "les", "un", "une", "et", "en", "pour", "sur", "au", "aux",
-        "a", "avec", "dans", "par", "ou", "competence", "competences", "maitrise", "maitriser",
-        "mettre", "mise", "oeuvre", "realiser", "réaliser", "assurer", "utiliser", "gerer", "gérer",
-        "piloter", "conduire", "developper", "développer", "appliquer", "produire"
-    }
-
-    def _core(v: Optional[str]) -> str:
-        s = _norm_text_search(v)
-        if not s:
-            return ""
-        parts = [p for p in s.split(" ") if p]
-        if parts and parts[0] in action_verbs:
-            parts = parts[1:]
-        parts = [p for p in parts if p not in stop]
-        return " ".join(parts).strip()
-
-    def _terms(v: Optional[str]) -> set:
-        s = _norm_text_search(v)
-        if not s:
-            return set()
-        kept = []
-        for tok in s.split(" "):
-            if len(tok) < 3:
-                continue
-            if tok in stop or tok in action_verbs:
-                continue
-            kept.append(tok)
-        return _token_set_folded(" ".join(kept))
-
-    def _overlap_score(a: Optional[str], b: Optional[str]) -> float:
-        ta = _terms(a)
-        tb = _terms(b)
-        if not ta or not tb:
-            return 0.0
-        inter = len(ta & tb)
-        if inter <= 0:
-            return 0.0
-        jacc = inter / max(1, len(ta | tb))
-        subset = inter / max(1, min(len(ta), len(tb)))
-        return max(jacc, subset * 0.98)
-
-    wanted_blob = "\n".join([
-        wanted_title,
-        wanted_desc,
-        wanted_why,
-        wanted_terms,
-        wanted_domain,
-        wanted_kind,
-        wanted_importance,
+    cand_full = "\n".join([
+        cand_title,
+        cand_desc,
+        cand_domain,
+        cand_levels,
+        cand_grille,
     ]).strip()
-    cand_blob = "\n".join([cand_title, cand_desc, cand_domain]).strip()
 
-    wanted_core = _core(wanted_title)
-    cand_core = _core(cand_title)
-    wanted_key = _canonical_comp_key(wanted_core or wanted_title)
-    cand_key = _canonical_comp_key(cand_core or cand_title)
-
-    title_score = max(
-        _similarity_score(wanted_title, cand_title),
-        _similarity_score(wanted_core, cand_core),
-        _overlap_score(wanted_title, cand_title),
-    )
+    title_score = _similarity_score(wanted_title, cand_title)
     desc_score = max(
         _similarity_score(wanted_desc, cand_desc),
-        _similarity_score(wanted_blob, cand_desc),
-        _overlap_score(wanted_desc, cand_desc),
-        _overlap_score(wanted_blob, cand_blob),
+        _similarity_score(wanted_terms, cand_desc),
+        _similarity_score(wanted_terms, cand_title),
     )
-    cross_score = max(
-        _similarity_score(wanted_title, cand_desc),
-        _similarity_score(wanted_blob, cand_title),
-        _overlap_score(wanted_title, cand_desc),
-        _overlap_score(wanted_blob, cand_title),
+    full_score = _similarity_score(wanted_full, cand_full)
+    level_score = _similarity_score(wanted_levels, cand_levels) if (wanted_levels or cand_levels) else 0.0
+    grille_score = _similarity_score(wanted_grille, cand_grille) if (wanted_grille or cand_grille) else 0.0
+
+    wanted_key = _canonical_comp_key(wanted_title)
+    cand_key = _canonical_comp_key(cand_title)
+    if wanted_key and cand_key and wanted_key == cand_key:
+        title_score = max(title_score, 0.97)
+
+    ctx_tokens = _token_set_folded(poste_context_text)
+    cand_tokens = _token_set_folded(" ".join([cand_title, cand_desc, cand_domain, cand_levels]))
+    overlap_count = len(ctx_tokens & cand_tokens) if ctx_tokens and cand_tokens else 0
+    overlap_ratio = (overlap_count / max(1, min(len(ctx_tokens), len(cand_tokens)))) if ctx_tokens and cand_tokens else 0.0
+
+    # Calibration un peu plus réaliste :
+    # - on valorise davantage le fond métier (full/desc/grille)
+    # - on baisse le poids trop “sec” du seul intitulé
+    # - on arrête de trop punir les formulations génériques
+    score = (
+        (title_score * 0.28)
+        + (full_score * 0.32)
+        + (desc_score * 0.18)
+        + (level_score * 0.10)
+        + (grille_score * 0.12)
     )
-    domain_score = max(
-        _similarity_score(wanted_domain, cand_domain),
-        _overlap_score(wanted_domain, cand_domain),
-    ) if (wanted_domain or cand_domain) else 0.0
 
-    wanted_terms_set = _terms(wanted_blob)
-    cand_terms_set = _terms(cand_blob)
-    shared_terms = len(wanted_terms_set & cand_terms_set) if wanted_terms_set and cand_terms_set else 0
-    subset_ratio = 0.0
-    if wanted_terms_set and cand_terms_set:
-        subset_ratio = shared_terms / max(1, min(len(wanted_terms_set), len(cand_terms_set)))
-
-    base_score = (
-        (title_score * 0.32)
-        + (desc_score * 0.34)
-        + (cross_score * 0.14)
-        + (subset_ratio * 0.15)
-        + (domain_score * 0.05)
-    )
-
-    raw_match_score = float(match_row.get("_match_score") or 0.0)
-    if raw_match_score:
-        base_score = max(base_score, raw_match_score * 0.98)
-
-    if match_row.get("_match_source") == "ai_hint":
-        base_score = max(base_score, 0.95)
-
-    if wanted_key and cand_key:
-        if wanted_key == cand_key:
-            base_score = max(base_score, 0.97)
-        elif wanted_key in cand_key or cand_key in wanted_key:
-            base_score = max(base_score, 0.94)
-
-    if wanted_core and cand_core and (wanted_core in cand_core or cand_core in wanted_core):
-        base_score = max(base_score, 0.93)
-
-    # Même compétence formulée différemment : le fond descriptif doit primer.
-    if shared_terms >= 5 and desc_score >= 0.45:
-        base_score = max(base_score, 0.95)
-    elif shared_terms >= 4 and (desc_score >= 0.50 or title_score >= 0.55):
-        base_score = max(base_score, 0.93)
-    elif shared_terms >= 3 and desc_score >= 0.60:
-        base_score = max(base_score, 0.90)
-    elif shared_terms >= 3 and title_score >= 0.70:
-        base_score = max(base_score, 0.88)
-    elif shared_terms >= 2 and title_score >= 0.78:
-        base_score = max(base_score, 0.84)
-    elif shared_terms >= 2 and desc_score >= 0.74:
-        base_score = max(base_score, 0.82)
-
-    if domain_score >= 0.80 and shared_terms >= 2:
-        base_score = max(base_score, min(0.94, base_score + 0.04))
-
-    # Pas de pénalité contextuelle secteur ici : le % doit informer, pas censurer.
-    score = max(0.35, min(0.98, base_score))
-    percent = max(35, min(98, int(round(score * 100))))
-
-    if score >= 0.90:
-        label = "Très fort"
-    elif score >= 0.75:
-        label = "Fort"
-    elif score >= 0.60:
-        label = "À vérifier"
+    if overlap_count >= 4:
+        score += 0.08 + min(0.03, overlap_ratio * 0.03)
+    elif overlap_count == 3:
+        score += 0.06
+    elif overlap_count == 2:
+        score += 0.04
+    elif overlap_count == 1:
+        score += 0.015
     else:
-        label = "Faible"
+        score -= 0.015
+
+    if wanted_domain:
+        cand_domain_norm = _norm_text_search(cand_domain)
+        wanted_domain_norm = _norm_text_search(wanted_domain)
+        if wanted_domain_norm and wanted_domain_norm in cand_domain_norm:
+            score += 0.03
+
+    # On remonte le plancher et on garde un plafond crédible.
+    score = max(0.58, min(0.96, score))
+    percent = max(58, min(96, int(round(score * 100))))
+
+    if score >= 0.78:
+        label = "Recommandé"
+    elif score >= 0.60:
+        label = "Proposé"
+    else:
+        label = "À vérifier"
 
     return round(score, 4), percent, label
+
 
 def _build_catalog_candidate_text(row: dict) -> str:
     parts = [
@@ -2938,7 +2911,8 @@ def _resolve_catalog_match_from_ai_hint(
                 continue
             if hint_code and rcode != hint_code:
                 continue
-            # Pas de veto contextuel secteur : le score de matching porte l'incertitude.
+            if not _is_existing_competence_contextually_plausible(r, poste_context_text):
+                return None
 
             out = dict(r)
             out["_match_score"] = 0.95
@@ -2969,7 +2943,8 @@ def _resolve_catalog_match_from_ai_hint(
     if not match:
         return None
 
-    # Pas de veto contextuel secteur : le score de matching porte l'incertitude.
+    if not _is_existing_competence_contextually_plausible(match, poste_context_text):
+        return None
 
     score = float(match.get("_match_score") or 0.0)
     wanted_kind = _norm_text_search(item.get("type_competence"))
@@ -3018,7 +2993,8 @@ def _build_existing_competence_shortlist(rows: List[dict], item: dict, poste_con
             continue
         seen.add(rid)
 
-        # Pas de veto contextuel secteur : le score de matching porte l'incertitude.
+        if not _is_existing_competence_contextually_plausible(r, poste_context_text):
+            continue
 
         cand_title = _clean_text(r.get("intitule"))
         cand_text = _build_catalog_candidate_text(r)
