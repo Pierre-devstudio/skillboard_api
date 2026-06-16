@@ -6684,42 +6684,6 @@ def _analyse_effect_color(level: str):
         return colors.HexColor("#fff7ed"), colors.HexColor("#c2410c")
     return colors.HexColor("#ecfdf5"), colors.HexColor("#166534")
 
-
-
-def _analyse_risk_state_label(score: Any) -> str:
-    s = _analyse_pdf_safe_int(score)
-    if s >= 80:
-        return "Critique"
-    if s >= 65:
-        return "Élevé"
-    if s >= 35:
-        return "Modéré"
-    return "Faible"
-
-
-def _analyse_ishikawa_family_display_label(family: Any) -> str:
-    raw = str(family or "").strip()
-    labels = {
-        "Couverture critique insuffisante": "Couverture insuffisante",
-        "Renfort immédiat insuffisant": "Renfort insuffisant",
-        "Postes déjà fragilisés": "Postes fragiles",
-        "Dépendance à un porteur unique": "Porteur unique",
-        "Données à confirmer": "Données à confirmer",
-        "Écart de maîtrise": "Écart maîtrise",
-        "Évaluations à reprendre": "Évaluations",
-        "Niveaux attendus insuffisamment couverts": "Niveaux attendus",
-        "Expertise réelle à confirmer": "Expertise à confirmer",
-        "Référentiel à consolider": "Référentiel",
-        "Porteur unique": "Porteur unique",
-        "Vivier interne limité": "Vivier limité",
-        "Transmission à structurer": "Transmission",
-        "Expertise peu diffusée": "Expertise diffusée",
-        "Relève interne à confirmer": "Relève interne",
-        "Transmission à organiser": "Transmission",
-        "Compétences sensibles à anticiper": "À anticiper",
-        "Données à fiabiliser": "Données fiables",
-    }
-    return labels.get(raw, raw)
 def _analyse_build_effect_metrics(
     comp_records: List[Dict[str, Any]],
     poste_records: List[Dict[str, Any]],
@@ -7027,22 +6991,31 @@ def _analyse_ishikawa_group_rows(rows: List[Dict[str, Any]], families: List[str]
 def _analyse_ishikawa_family_summary(family: str, rows: List[Dict[str, Any]]) -> str:
     count = len(rows or [])
     if count <= 0:
-        return "Aucun point"
-    if "Renfort" in str(family or ""):
-        return _analyse_pdf_count(count, "poste sans renfort", "postes sans renfort")
-    if str(family or "") == "Postes déjà fragilisés":
-        return _analyse_pdf_count(count, "poste à suivre", "postes à suivre")
-    if "Dépendance" in str(family or "") or "Porteur unique" in str(family or ""):
-        return _analyse_pdf_count(count, "compétence concernée", "compétences concernées")
-    if "Données" in str(family or "") or "Évaluation" in str(family or ""):
-        return _analyse_pdf_count(count, "donnée à vérifier", "données à vérifier")
-    if "Couverture" in str(family or "") or "Niveaux attendus" in str(family or ""):
-        return _analyse_pdf_count(count, "couverture à revoir", "couvertures à revoir")
-    if "Transmission" in str(family or "") or "Relève" in str(family or ""):
-        return _analyse_pdf_count(count, "relais à préparer", "relais à préparer")
-    return _analyse_pdf_count(count, "point détecté", "points détectés")
+        return "Aucun point détecté"
+    mapping = {
+        "Couverture critique insuffisante": ("compétence sans couverture suffisante", "compétences sans couverture suffisante"),
+        "Renfort immédiat insuffisant": ("poste sans renfort immédiat", "postes sans renfort immédiat"),
+        "Postes déjà fragilisés": ("poste déjà fragilisé", "postes déjà fragilisés"),
+        "Dépendance à un porteur unique": ("compétence dépend d’une seule personne", "compétences dépendent d’une seule personne"),
+        "Données à confirmer": ("donnée à confirmer", "données à confirmer"),
+        "Écart de maîtrise": ("écart de maîtrise", "écarts de maîtrise"),
+        "Évaluations à reprendre": ("évaluation à reprendre", "évaluations à reprendre"),
+        "Niveaux attendus insuffisamment couverts": ("niveau attendu non couvert", "niveaux attendus non couverts"),
+        "Expertise réelle à confirmer": ("expertise à confirmer", "expertises à confirmer"),
+        "Référentiel à consolider": ("point de référentiel à consolider", "points de référentiel à consolider"),
+        "Porteur unique": ("compétence portée par une seule personne", "compétences portées par une seule personne"),
+        "Vivier interne limité": ("compétence avec vivier limité", "compétences avec vivier limité"),
+        "Transmission à structurer": ("transmission à structurer", "transmissions à structurer"),
+        "Expertise peu diffusée": ("expertise peu diffusée", "expertises peu diffusées"),
+        "Relève interne à confirmer": ("relève à confirmer", "relèves à confirmer"),
+        "Transmission à organiser": ("transmission à organiser", "transmissions à organiser"),
+        "Compétences sensibles à anticiper": ("compétence sensible à anticiper", "compétences sensibles à anticiper"),
+        "Données à fiabiliser": ("donnée à fiabiliser", "données à fiabiliser"),
+    }
+    singular, plural = mapping.get(family, ("point détecté", "points détectés"))
+    return _analyse_pdf_count(count, singular, plural)
 
-def _analyse_ishikawa_visual(effect: Dict[str, Any], rows: List[Dict[str, Any]], metric: Dict[str, Any], width_mm: float = 270.0, height_mm: float = 96.0):
+def _analyse_ishikawa_visual(effect: Dict[str, Any], rows: List[Dict[str, Any]], metric: Dict[str, Any], width_mm: float = 270.0, height_mm: float = 92.0):
     from reportlab.graphics.shapes import Drawing, Line, Rect, String, Polygon
     from reportlab.lib import colors
     from reportlab.lib.units import mm
@@ -7057,7 +7030,7 @@ def _analyse_ishikawa_visual(effect: Dict[str, Any], rows: List[Dict[str, Any]],
     soft_red = colors.HexColor("#fff5f5")
     soft_gray = colors.HexColor("#f8fafc")
 
-    center_y = height * 0.49
+    center_y = height * 0.48
     spine_x1 = 28 * mm
     spine_x2 = width - 66 * mm
     effect_x = width - 61 * mm
@@ -7068,42 +7041,35 @@ def _analyse_ishikawa_visual(effect: Dict[str, Any], rows: List[Dict[str, Any]],
     d.add(Line(spine_x1, center_y, spine_x2, center_y, strokeColor=red, strokeWidth=1.6))
     d.add(Polygon([spine_x2, center_y, spine_x2 - 5 * mm, center_y + 3 * mm, spine_x2 - 5 * mm, center_y - 3 * mm], fillColor=red, strokeColor=red))
     d.add(Rect(effect_x, effect_y, effect_w, effect_h, rx=6, ry=6, strokeColor=red, fillColor=soft_red, strokeWidth=1))
-    d.add(String(effect_x + 4 * mm, effect_y + 24.5 * mm, "Effet identifié", fontName="Helvetica-Bold", fontSize=7.4, fillColor=muted))
+    d.add(String(effect_x + 4 * mm, effect_y + 24.5 * mm, "Effet identifié", fontName="Helvetica-Bold", fontSize=7.6, fillColor=muted))
     for idx, line_txt in enumerate(_analyse_pdf_wrap_lines(effect.get("title"), 22, 3)):
-        d.add(String(effect_x + 4 * mm, effect_y + 17.5 * mm - (idx * 4.0 * mm), line_txt, fontName="Helvetica-Bold", fontSize=8.0, fillColor=text_color))
-    d.add(String(effect_x + 4 * mm, effect_y + 4 * mm, _analyse_pdf_short(metric.get("level") or "Risque à qualifier", 22), fontName="Helvetica", fontSize=7.0, fillColor=red))
+        d.add(String(effect_x + 4 * mm, effect_y + 17.5 * mm - (idx * 4.0 * mm), line_txt, fontName="Helvetica-Bold", fontSize=8.1, fillColor=text_color))
+    d.add(String(effect_x + 4 * mm, effect_y + 4 * mm, _analyse_pdf_short(metric.get("level") or "Risque à qualifier", 22), fontName="Helvetica", fontSize=7.2, fillColor=red))
 
     grouped = _analyse_ishikawa_group_rows(rows, effect.get("families") or [])
     families = [f for f in (effect.get("families") or [])[:5]]
     coords = [
-        (52 * mm, center_y + 25 * mm, True),
-        (98 * mm, center_y + 25 * mm, True),
-        (144 * mm, center_y + 25 * mm, True),
-        (78 * mm, center_y - 36 * mm, False),
-        (126 * mm, center_y - 36 * mm, False),
+        (52 * mm, center_y + 24 * mm, True),
+        (98 * mm, center_y + 24 * mm, True),
+        (144 * mm, center_y + 24 * mm, True),
+        (78 * mm, center_y - 34 * mm, False),
+        (126 * mm, center_y - 34 * mm, False),
     ]
-
     for idx, fam in enumerate(families):
         if idx >= len(coords):
             break
         x_anchor, y_box, is_top = coords[idx]
-        box_w = 43 * mm
-        box_h = 17 * mm
+        box_w = 40 * mm
+        box_h = 14.5 * mm
         if is_top:
             d.add(Line(x_anchor, center_y, x_anchor - 10 * mm, y_box, strokeColor=line, strokeWidth=1.1))
         else:
             d.add(Line(x_anchor, center_y, x_anchor - 10 * mm, y_box + box_h, strokeColor=line, strokeWidth=1.1))
-
-        d.add(Rect(x_anchor - 19 * mm, y_box, box_w, box_h, rx=4, ry=4, strokeColor=colors.HexColor("#e5e7eb"), fillColor=soft_gray, strokeWidth=0.8))
-
-        title_lines = _analyse_pdf_wrap_lines(_analyse_ishikawa_family_display_label(fam), 19, 2)
-        for li, title_txt in enumerate(title_lines):
-            d.add(String(x_anchor - 16 * mm, y_box + 11.6 * mm - (li * 3.2 * mm), title_txt, fontName="Helvetica-Bold", fontSize=6.8, fillColor=text_color))
-
+        d.add(Rect(x_anchor - 18 * mm, y_box, box_w, box_h, rx=4, ry=4, strokeColor=colors.HexColor("#e5e7eb"), fillColor=soft_gray, strokeWidth=0.8))
+        d.add(String(x_anchor - 15 * mm, y_box + 9.2 * mm, fam, fontName="Helvetica-Bold", fontSize=7.2, fillColor=text_color))
         summary = _analyse_ishikawa_family_summary(fam, grouped.get(fam) or [])
-        summary_lines = _analyse_pdf_wrap_lines(summary, 24, 2)
-        for li, line_txt in enumerate(summary_lines):
-            d.add(String(x_anchor - 16 * mm, y_box + 4.3 * mm - (li * 3.0 * mm), line_txt, fontName="Helvetica", fontSize=5.8, fillColor=muted))
+        for li, line_txt in enumerate(_analyse_pdf_wrap_lines(summary, 28, 2)):
+            d.add(String(x_anchor - 15 * mm, y_box + 4.0 * mm - (li * 3.2 * mm), line_txt, fontName="Helvetica", fontSize=6.0, fillColor=muted))
 
     return d
 
@@ -7464,44 +7430,19 @@ def _analyse_ishikawa_family_explanation(family: str) -> str:
 
 
 def _analyse_ishikawa_family_columns(family: str) -> List[str]:
-    s = str(family or "")
-    if s == "Postes déjà fragilisés":
-        return ["Code poste", "Poste", "Fragilité", "État"]
-    if "Renfort" in s:
-        return ["Code poste", "Poste"]
-    if "Dépendance à un porteur unique" in s or s == "Porteur unique":
-        return ["Code compétence", "Compétence"]
-    if "Données" in s or "Évaluation" in s:
+    if "Renfort" in str(family or "") or str(family or "") == "Postes déjà fragilisés":
+        return ["Code poste", "Poste", "Valeur"]
+    if "Données" in str(family or "") or "Évaluation" in str(family or ""):
         return ["Code compétence", "Compétence", "Dernière évaluation"]
-    if "Couverture" in s or "Niveaux attendus" in s:
+    if "Couverture" in str(family or "") or "Niveaux attendus" in str(family or ""):
         return ["Code compétence", "Compétence", "Couverture"]
-    if "Écart" in s:
+    if "Écart" in str(family or ""):
         return ["Code compétence", "Compétence", "Écarts"]
-    if "Expertise" in s or "Transmission" in s or "Relève" in s or "Vivier" in s or "Dépendance" in s:
-        return ["Code compétence", "Compétence", "Indication"]
-    return ["Code", "Libellé", "Indication"]
+    if "Expertise" in str(family or "") or "Transmission" in str(family or "") or "Relève" in str(family or "") or "Vivier" in str(family or "") or "Porteur" in str(family or "") or "Dépendance" in str(family or ""):
+        return ["Code compétence", "Compétence", "Valeur"]
+    return ["Code", "Libellé", "Valeur"]
 
 
-
-def _analyse_ishikawa_row_values(family: str, row: Dict[str, Any]) -> List[str]:
-    s = str(family or "")
-    if s == "Postes déjà fragilisés":
-        frag = str(row.get("value") or "0%")
-        return [frag, _analyse_risk_state_label(str(frag).replace("%", ""))]
-    if "Renfort" in s:
-        return []
-    if "Dépendance à un porteur unique" in s or s == "Porteur unique":
-        return []
-    return [str(row.get("value") or "—")]
-
-
-def _analyse_ishikawa_col_widths(headers: List[str]) -> List[float]:
-    n = len(headers or [])
-    if n <= 2:
-        return [31.0, 227.0]
-    if n == 4:
-        return [31.0, 151.0, 38.0, 38.0]
-    return [31.0, 166.0, 61.0]
 @router.get("/skills/analyse/ishikawa/{id_contact}")
 def get_analyse_ishikawa_pdf(
     id_contact: str,
@@ -7510,9 +7451,6 @@ def get_analyse_ishikawa_pdf(
     id_service: Optional[str] = Query(default=None),
     criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
     horizon_years: int = Query(default=1, ge=1, le=5),
-    risk_level: Optional[str] = Query(default=None),
-    risk_score: Optional[int] = Query(default=None),
-    risk_count: Optional[int] = Query(default=None),
 ):
     try:
         from fastapi import Response
@@ -7540,14 +7478,6 @@ def get_analyse_ishikawa_pdf(
         metrics = _analyse_build_effect_metrics(comp_records, poste_records, int(horizon_years), renfort_by_poste)
         metric = next((m for m in metrics if m.get("key") == effect_key), None) or {"level": "Risque faible", "score": 0}
 
-        clean_level = str(risk_level or "").strip()
-        if clean_level in ("Risque faible", "Risque modéré", "Risque moyen", "Risque élevé", "Risque critique"):
-            metric["level"] = "Risque modéré" if clean_level == "Risque moyen" else clean_level
-        if risk_score is not None:
-            metric["score"] = max(0, min(100, _analyse_pdf_safe_int(risk_score)))
-        if risk_count is not None:
-            metric["count"] = max(0, _analyse_pdf_safe_int(risk_count))
-
         styles = build_pdf_styles()
         title_style = styles["title"]
         body_style = styles["body"]
@@ -7571,7 +7501,7 @@ def get_analyse_ishikawa_pdf(
         story.append(meta_cards)
         story.append(make_spacer(3))
         story.append(Paragraph("Diagramme cause / effet", section_style))
-        story.append(_analyse_ishikawa_visual(effect, rows, metric, 270.0, 96.0))
+        story.append(_analyse_ishikawa_visual(effect, rows, metric, 270.0, 92.0))
 
         grouped = _analyse_ishikawa_group_rows(rows, effect.get("families") or [])
         story.append(PageBreak())
@@ -7589,17 +7519,15 @@ def get_analyse_ishikawa_pdf(
                 continue
 
             headers = _analyse_ishikawa_family_columns(family)
-            data = [[Paragraph(_analyse_pdf_esc(h), small_style) for h in headers]]
+            data = [[Paragraph(_analyse_pdf_esc(headers[0]), small_style), Paragraph(_analyse_pdf_esc(headers[1]), small_style), Paragraph(_analyse_pdf_esc(headers[2]), small_style)]]
             for row in fam_rows:
                 kind = "poste" if str(row.get("type") or "") == "poste" else "comp"
-                values = _analyse_ishikawa_row_values(family, row)
                 data.append([
                     badge(str(row.get("code") or ""), kind),
                     Paragraph(_analyse_pdf_esc(row.get("title")), body_style),
-                    *[Paragraph(_analyse_pdf_esc(v), body_style) for v in values],
+                    Paragraph(_analyse_pdf_esc(row.get("value") or "—"), body_style),
                 ])
-
-            table = Table(data, colWidths=[w * mm for w in _analyse_ishikawa_col_widths(headers)], repeatRows=1)
+            table = Table(data, colWidths=[31 * mm, 166 * mm, 61 * mm], repeatRows=1)
             table.setStyle(TableStyle([
                 ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#e5e7eb")),
                 ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e7eb")),
