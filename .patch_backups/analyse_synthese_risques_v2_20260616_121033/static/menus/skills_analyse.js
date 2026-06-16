@@ -252,20 +252,6 @@
     return "Risque faible";
   }
 
-  function analyseRiskLevelClass(level) {
-    const s = (level || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    if (s.includes("eleve")) return "analyse-risk-effect-level--high";
-    if (s.includes("moyen")) return "analyse-risk-effect-level--medium";
-    return "analyse-risk-effect-level--low";
-  }
-
-  function compactCauseList(items) {
-    return (items || [])
-      .map(x => (x || "").toString().trim())
-      .filter(Boolean)
-      .slice(0, 5);
-  }
-
   function buildAnalyseRiskEffects(data) {
     const t = data?.tiles || {};
     const r = t.risques || {};
@@ -292,13 +278,13 @@
         title: "Risque de rupture ou ralentissement d’activité",
         level: analyseRiskLevelLabel(Math.max(posteFrag, compFrag), postesFragiles + sansPorteur + tombentZero),
         metric: `${postesFragiles} poste(s) fragile(s)`,
-        causesTitle: "Synthèse des causes identifiées",
-        causes: compactCauseList([
-          sansPorteur > 0 ? `${sansPorteur} compétence(s) critique(s) sans couverture confirmée` : "couverture confirmée insuffisante sur certaines compétences critiques",
-          tombentZero > 0 ? `${tombentZero} compétence(s) peuvent tomber à zéro porteur disponible aujourd’hui` : "continuité à vérifier selon les disponibilités réelles",
-          postesFragiles > 0 ? `${postesFragiles} poste(s) présentent une fragilité actuelle` : "postes à vérifier dans le détail",
-          porteurUnique > 0 ? `${porteurUnique} compétence(s) reposent sur un seul porteur confirmé` : "dépendance individuelle possible sur certaines compétences"
-        ])
+        effect: "Une compétence critique peut ne plus être suffisamment couverte pour tenir l’activité dans de bonnes conditions.",
+        attenuation: "Quand le niveau est moyen, le sujet n’indique pas forcément une rupture immédiate. Il signale surtout une marge de sécurité trop faible si une absence, une surcharge ou un départ survient.",
+        causes: [
+          sansPorteur > 0 ? `${sansPorteur} compétence(s) critique(s) sans couverture confirmée` : "couverture insuffisante sur certains postes",
+          tombentZero > 0 ? `${tombentZero} compétence(s) peuvent tomber à zéro porteur disponible aujourd’hui` : "fragilité de continuité selon les disponibilités",
+          postesFragiles > 0 ? `${postesFragiles} poste(s) présentent une fragilité actuelle` : "poste à vérifier dans le détail"
+        ].filter(Boolean)
       });
     }
 
@@ -308,13 +294,13 @@
         title: "Risque de baisse de qualité d’exécution",
         level: analyseRiskLevelLabel(compFrag, compFragiles),
         metric: `${Math.round(compFrag)}% de fragilité moyenne compétence`,
-        causesTitle: "Synthèse des causes identifiées",
-        causes: compactCauseList([
+        effect: "Le poste peut être occupé, mais certaines compétences peuvent rester sous le niveau attendu, non confirmées ou trop fragiles pour les situations complexes.",
+        attenuation: "À niveau moyen, le risque apparaît surtout sur les cas difficiles : erreurs, reprises, délais plus longs ou besoin d’appui par un profil plus expérimenté.",
+        causes: [
           compFragiles > 0 ? `${compFragiles} compétence(s) critique(s) fragilisée(s)` : "écarts de maîtrise à confirmer",
           "niveaux attendus à comparer avec les niveaux réellement confirmés",
-          "évaluations ou confirmations à contrôler dans les détails",
-          sansPorteur > 0 ? `${sansPorteur} compétence(s) sans couverture confirmée` : "couverture réelle à vérifier sur les situations complexes"
-        ])
+          "évaluations ou confirmations à contrôler dans les détails"
+        ]
       });
     }
 
@@ -324,13 +310,13 @@
         title: "Risque de dépendance individuelle",
         level: analyseRiskLevelLabel(Math.max(posteFrag, compFrag), porteurUnique),
         metric: `${porteurUnique} compétence(s) avec porteur unique`,
-        causesTitle: "Synthèse des causes identifiées",
-        causes: compactCauseList([
+        effect: "L’entreprise dépend d’un nombre trop limité de collaborateurs pour maintenir une compétence ou un poste.",
+        attenuation: "À niveau moyen, la situation peut rester stable tant que les personnes clés sont disponibles. La fragilité vient du manque de doublure réelle.",
+        causes: [
           `${porteurUnique} compétence(s) critique(s) reposent sur un seul porteur confirmé`,
           "couverture concentrée sur trop peu de collaborateurs",
-          "doublure ou relève insuffisamment visible dans les données",
-          "transmission à vérifier avant absence, surcharge ou départ"
-        ])
+          "transmission ou relève à instruire avant que le risque devienne bloquant"
+        ]
       });
     }
 
@@ -340,13 +326,13 @@
         title: "Risque de perte de savoir-faire",
         level: analyseRiskLevelLabel(postesRouges * 20 + compImpactees * 10, sorties + compImpactees + postesRouges),
         metric: `${postesRouges} poste(s) fragilisé(s) à ${analyseHorizonLabel(horizon)}`,
-        causesTitle: "Synthèse des causes identifiées",
-        causes: compactCauseList([
+        effect: "Un savoir-faire important peut se fragiliser progressivement si la relève ou la transmission n’est pas préparée à temps.",
+        attenuation: "À niveau moyen, le risque n’est pas forcément immédiat. Il devient sérieux si l’entreprise attend que les porteurs historiques soient déjà sortis ou indisponibles.",
+        causes: [
           sorties > 0 ? `${sorties} sortie(s) possible(s) à ${analyseHorizonLabel(horizon)}` : "sorties à surveiller selon l’horizon choisi",
           compImpactees > 0 ? `${compImpactees} compétence(s) critique(s) impactée(s)` : "compétences critiques à surveiller",
-          postesRouges > 0 ? `${postesRouges} poste(s) peuvent passer en fragilité forte` : "postes à vérifier dans la prévision",
-          "relève ou transmission à préparer avant perte effective de couverture"
-        ])
+          postesRouges > 0 ? `${postesRouges} poste(s) peuvent passer en fragilité forte` : "postes à vérifier dans la prévision"
+        ].filter(Boolean)
       });
     }
 
@@ -391,9 +377,12 @@
             <div class="analyse-risk-effect-title">${escapeHtml(e.title)}</div>
             <div class="card-sub" style="margin:2px 0 0 0;">${escapeHtml(e.metric || "Point détecté")}</div>
           </div>
-          <span class="analyse-risk-effect-level ${analyseRiskLevelClass(e.level)}">${escapeHtml(e.level || "Risque à qualifier")}</span>
+          <span class="analyse-risk-effect-level">${escapeHtml(e.level || "Risque à qualifier")}</span>
         </div>
-        <div class="analyse-risk-effect-causes-title">${escapeHtml(e.causesTitle || "Synthèse des causes identifiées")}</div>
+        <div class="analyse-risk-effect-body">
+          <b>Effet terrain possible :</b> ${escapeHtml(e.effect || "Effet à vérifier dans les détails.")}<br>
+          <b>Lecture si le risque est moyen :</b> ${escapeHtml(e.attenuation || "La situation mérite une vérification avant de préparer une hypothèse.")}
+        </div>
         <ul class="analyse-risk-effect-causes">
           ${(e.causes || []).slice(0, 5).map(c => `<li>${escapeHtml(c)}</li>`).join("")}
         </ul>
@@ -410,99 +399,29 @@
 
     return `
       <div class="analyse-help-intro">
-        <p>La synthèse regroupe les effets terrain et les causes probables détectées sur le périmètre <b>${escapeHtml(scope)}</b>.</p>
+        <p>La synthèse regroupe les effets terrain que peuvent produire les fragilités compétences détectées sur le périmètre <b>${escapeHtml(scope)}</b>.</p>
         <p class="card-sub" style="margin:6px 0 12px 0;">Périmètre lu : ${Number.isFinite(postes) ? fmtAnalyseCount(postes, "poste", "postes") : "postes à vérifier"} • ${Number.isFinite(comps) ? fmtAnalyseCount(comps, "compétence", "compétences") : "compétences à vérifier"}</p>
-        <div class="analyse-risk-summary-actions">
-          <button type="button" class="sb-btn sb-btn--init sb-btn--sm" data-analyse-risk-report="1">Générer le rapport</button>
-        </div>
       </div>
       <div class="analyse-risk-summary-list">${cards}</div>
     `;
   }
 
-  async function analyseApiBlob(url) {
-    const headers = new Headers();
-    headers.set("Accept", "application/pdf");
-
-    try {
-      if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
-        const session = await window.PortalAuthCommon.getSession();
-        const token = session?.access_token ? String(session.access_token) : "";
-        if (token) headers.set("Authorization", `Bearer ${token}`);
-      }
-    } catch (_) {
-      /* l’API retournera l’erreur utile */
-    }
-
-    const res = await fetch(url, { method: "GET", headers });
-    if (!res.ok) {
-      const ct = (res.headers.get("content-type") || "").toLowerCase();
-      let detail = "";
-      if (ct.includes("application/json")) {
-        try {
-          const js = await res.json();
-          detail = js?.detail || js?.message || JSON.stringify(js);
-        } catch (_) { detail = ""; }
-      } else {
-        try { detail = await res.text(); } catch (_) { detail = ""; }
-      }
-      throw new Error(detail || `HTTP ${res.status}`);
-    }
-    return await res.blob();
-  }
-
-  async function openAnalysePdfBlob(url, blockedTitle) {
-    const win = window.open("about:blank", "_blank");
-    if (!win) {
-      showAnalyseHelp(blockedTitle || "Ouverture bloquée", "<p>Le navigateur a bloqué l’ouverture du document. Autorise les fenêtres pour Novoskill ou réessaie.</p>");
+  function openAnalyseIshikawaPdf(effectKey) {
+    const ctx = getPortalContext(_portalref);
+    if (!ctx.id_contact || !ctx.apiBase) {
+      showAnalyseHelp("Ishikawa indisponible", "<p>Impossible de retrouver le contexte utilisateur pour générer le document.</p>");
       return;
     }
-    try {
-      win.document.write("<p style='font-family:Arial,sans-serif;padding:20px;'>Génération du document…</p>");
-      const blob = await analyseApiBlob(url);
-      const blobUrl = URL.createObjectURL(blob);
-      win.location.href = blobUrl;
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-    } catch (e) {
-      try {
-        win.document.body.innerHTML = `<pre style="font-family:Arial,sans-serif;white-space:pre-wrap;padding:20px;color:#991b1b;">Erreur génération document : ${escapeHtml(errMsg(e))}</pre>`;
-      } catch (_) {}
-      showAnalyseHelp("Document indisponible", `<p>${escapeHtml(errMsg(e))}</p>`);
-    }
-  }
-
-  function buildAnalyseRiskDocumentUrl(kind, effectKey) {
-    const ctx = getPortalContext(_portalref);
-    if (!ctx.id_contact || !ctx.apiBase) return "";
     const qs = new URLSearchParams();
-    if (effectKey) qs.set("effet", effectKey || "synthese");
+    qs.set("effet", effectKey || "synthese");
     const f = getFilters();
     if (f.id_service) qs.set("id_service", f.id_service);
     qs.set("criticite_min", String(getCriticiteMinSafe(CRITICITE_MIN_DEFAULT)));
     qs.set("horizon_years", String(getPrevHorizon()));
-    qs.set("_", String(Date.now()));
-    const route = kind === "rapport" ? "rapport" : "ishikawa";
-    return `${ctx.apiBase}/skills/analyse/${route}/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
+    const url = `${ctx.apiBase}/skills/analyse/ishikawa/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
+    const w = window.open(url, "_blank", "noopener");
+    if (!w) showAnalyseHelp("Ishikawa bloqué", "<p>Le navigateur a bloqué l’ouverture du document. Autorise les fenêtres pour Novoskill ou réessaie.</p>");
   }
-
-  function openAnalyseIshikawaPdf(effectKey) {
-    const url = buildAnalyseRiskDocumentUrl("ishikawa", effectKey || "rupture_activite");
-    if (!url) {
-      showAnalyseHelp("Ishikawa indisponible", "<p>Impossible de retrouver le contexte utilisateur pour générer le document.</p>");
-      return;
-    }
-    openAnalysePdfBlob(url, "Ishikawa bloqué");
-  }
-
-  function openAnalyseRiskReportPdf() {
-    const url = buildAnalyseRiskDocumentUrl("rapport", "");
-    if (!url) {
-      showAnalyseHelp("Rapport indisponible", "<p>Impossible de retrouver le contexte utilisateur pour générer le document.</p>");
-      return;
-    }
-    openAnalysePdfBlob(url, "Rapport bloqué");
-  }
-
 
 
   const ANALYSE_HELP = {
@@ -580,14 +499,6 @@
         ev.preventDefault();
         ev.stopPropagation();
         openAnalyseIshikawaPdf((btnIshikawa.getAttribute("data-analyse-ishikawa") || "").trim());
-        return;
-      }
-
-      const btnReport = ev.target?.closest?.("[data-analyse-risk-report]");
-      if (btnReport) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        openAnalyseRiskReportPdf();
         return;
       }
 
