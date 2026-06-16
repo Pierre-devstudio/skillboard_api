@@ -6673,29 +6673,6 @@ def _analyse_effect_level(score: int, count: int) -> str:
         return "Risque modéré"
     return "Risque faible"
 
-
-
-def _analyse_report_effect_level(score: Any, count: Any) -> str:
-    s = _analyse_pdf_safe_int(score)
-    c = _analyse_pdf_safe_int(count)
-    if s >= 85:
-        return "Risque critique"
-    if s >= 65 or c >= 8:
-        return "Risque élevé"
-    if s >= 45 or c >= 3:
-        return "Risque modéré"
-    return "Risque faible"
-
-
-def _analyse_report_score_color_hex(score: Any) -> str:
-    s = _analyse_pdf_safe_int(score)
-    if s >= 80:
-        return "#e11d48"
-    if s >= 65:
-        return "#ef4444"
-    if s >= 35:
-        return "#f59e0b"
-    return "#10b981"
 def _analyse_effect_color(level: str):
     from reportlab.lib import colors
     s = (level or "").lower()
@@ -7130,124 +7107,84 @@ def _analyse_ishikawa_visual(effect: Dict[str, Any], rows: List[Dict[str, Any]],
 
     return d
 
-def _analyse_report_ring_like(title: str, value: int, color_hex: str = "#ef4444", width_mm: float = 68.0, height_mm: float = 44.0):
+def _analyse_report_ring_like(title: str, value: int, color_hex: str, width_mm: float = 86.0, height_mm: float = 54.0):
     from reportlab.graphics.shapes import Drawing, Rect, String
     from reportlab.lib import colors
     from reportlab.lib.units import mm
-
-    score = max(0, min(100, _analyse_pdf_safe_int(value)))
-    color = colors.HexColor(_analyse_report_score_color_hex(score))
     d = Drawing(width_mm * mm, height_mm * mm)
-    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#e2e8f0"), fillColor=colors.white, strokeWidth=0.8))
-    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.4, fillColor=colors.HexColor("#0f172a")))
-    d.add(String(5 * mm, 22 * mm, f"{score}%", fontName="Helvetica-Bold", fontSize=18, fillColor=colors.HexColor("#0f172a")))
-    d.add(String(5 * mm, 12 * mm, _analyse_risk_state_label(score), fontName="Helvetica", fontSize=7.4, fillColor=colors.HexColor("#64748b")))
+    color = colors.HexColor(color_hex)
+    soft = colors.HexColor("#f8fafc")
+    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.white, strokeWidth=0.8))
+    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.5, fillColor=colors.HexColor("#1f2937")))
+    # jauge contemporaine simple
     bar_x = 5 * mm
-    bar_y = 7 * mm
+    bar_y = 20 * mm
     bar_w = (width_mm - 10) * mm
-    d.add(Rect(bar_x, bar_y, bar_w, 4.8 * mm, rx=2.4, ry=2.4, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.HexColor("#f8fafc"), strokeWidth=0.5))
-    fill_w = max(0, min(bar_w, bar_w * (score / 100.0)))
-    if fill_w > 0:
-        d.add(Rect(bar_x, bar_y, fill_w, 4.8 * mm, rx=2.4, ry=2.4, strokeColor=color, fillColor=color, strokeWidth=0.5))
+    d.add(Rect(bar_x, bar_y, bar_w, 5 * mm, rx=2.5, ry=2.5, strokeColor=colors.HexColor("#e5e7eb"), fillColor=soft, strokeWidth=0.6))
+    fill_w = max(3 * mm, min(bar_w, bar_w * max(0, min(100, _analyse_pdf_safe_int(value))) / 100.0))
+    d.add(Rect(bar_x, bar_y, fill_w, 5 * mm, rx=2.5, ry=2.5, strokeColor=color, fillColor=color, strokeWidth=0.6))
+    d.add(String(5 * mm, 31 * mm, f"{_analyse_pdf_safe_int(value)}%", fontName="Helvetica-Bold", fontSize=17, fillColor=colors.HexColor("#14213d")))
+    d.add(String(5 * mm, 10 * mm, "Lecture du risque actuel", fontName="Helvetica", fontSize=7.2, fillColor=colors.HexColor("#64748b")))
     return d
 
-def _analyse_report_pie_panel(title: str, labels: List[str], data: List[int], colors_hex: List[str], width_mm: float = 132.0, height_mm: float = 62.0):
-    from reportlab.graphics.shapes import Circle, Drawing, Rect, String
-    from reportlab.graphics.charts.piecharts import Doughnut
+
+def _analyse_report_pie_panel(title: str, labels: List[str], data: List[int], colors_hex: List[str], width_mm: float = 86.0, height_mm: float = 66.0):
+    from reportlab.graphics.shapes import Drawing, Rect, String, Circle
+    from reportlab.graphics.charts.piecharts import Pie
     from reportlab.lib import colors
     from reportlab.lib.units import mm
-
     d = Drawing(width_mm * mm, height_mm * mm)
-    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#e2e8f0"), fillColor=colors.white, strokeWidth=0.8))
-    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.5, fillColor=colors.HexColor("#0f172a")))
-
-    safe_data = [max(0, _analyse_pdf_safe_int(v)) for v in (data or [])]
+    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.white, strokeWidth=0.8))
+    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.5, fillColor=colors.HexColor("#1f2937")))
+    p = Pie()
+    p.x = 5 * mm
+    p.y = 11 * mm
+    p.width = 35 * mm
+    p.height = 35 * mm
+    safe_data = [max(0, int(v or 0)) for v in data]
     if sum(safe_data) <= 0:
         safe_data = [1]
-        labels = ["Aucun effet"]
-        colors_hex = ["#cbd5e1"]
-
-    chart = Doughnut()
-    chart.x = 6 * mm
-    chart.y = 8 * mm
-    chart.width = 42 * mm
-    chart.height = 42 * mm
-    chart.data = safe_data
-    chart.labels = [""] * len(safe_data)
-    chart.slices.strokeWidth = 0.5
-    chart.slices.popout = 0
-    palette = colors_hex or ["#ef4444", "#f59e0b", "#fb7185", "#64748b"]
-    for i, v in enumerate(safe_data):
-        chart.slices[i].fillColor = colors.HexColor(palette[i % len(palette)])
-    d.add(chart)
-    d.add(Circle(27 * mm, 29 * mm, 9.5 * mm, fillColor=colors.white, strokeColor=colors.white))
-    d.add(String(23.2 * mm, 28 * mm, str(sum(safe_data)), fontName="Helvetica-Bold", fontSize=11, fillColor=colors.HexColor("#0f172a")))
-
-    legend_y = height_mm * mm - 15 * mm
-    for i, (lbl, val) in enumerate(list(zip(labels, safe_data))[:4]):
-        y = legend_y - i * 9 * mm
-        col = colors.HexColor(palette[i % len(palette)])
-        d.add(Rect(58 * mm, y - 2.2 * mm, 4 * mm, 4 * mm, fillColor=col, strokeColor=col))
-        d.add(String(64 * mm, y, _analyse_pdf_short(f"{lbl}", 30), fontName="Helvetica", fontSize=7.1, fillColor=colors.HexColor("#334155")))
-        d.add(String((width_mm - 8) * mm, y, str(val), fontName="Helvetica-Bold", fontSize=7.1, fillColor=colors.HexColor("#0f172a"), textAnchor="end"))
+        labels = ["Aucun point"]
+        colors_hex = ["#d1d5db"]
+    p.data = safe_data
+    p.labels = [""] * len(safe_data)
+    p.slices.strokeWidth = 0.3
+    for i, hx in enumerate(colors_hex[:len(safe_data)]):
+        p.slices[i].fillColor = colors.HexColor(hx)
+    d.add(p)
+    d.add(Circle(22.5 * mm, 28.5 * mm, 8 * mm, fillColor=colors.white, strokeColor=colors.white))
+    total = sum(safe_data)
+    d.add(String(18 * mm, 28.7 * mm, str(total), fontName="Helvetica-Bold", fontSize=11, fillColor=colors.HexColor("#14213d")))
+    legend_y = height_mm * mm - 16 * mm
+    for i, (lbl, val) in enumerate(zip(labels[:4], safe_data[:4])):
+        y = legend_y - i * 8 * mm
+        d.add(Rect(47 * mm, y - 1.5 * mm, 3.5 * mm, 3.5 * mm, fillColor=colors.HexColor(colors_hex[i]), strokeColor=colors.HexColor(colors_hex[i])))
+        d.add(String(52 * mm, y, _analyse_pdf_short(f"{lbl} ({val})", 28), fontName="Helvetica", fontSize=7.2, fillColor=colors.HexColor("#475569")))
     return d
 
 
-
-def _analyse_report_family_bars_panel(title: str, items: List[Dict[str, Any]], width_mm: float = 198.0, height_mm: float = 44.0):
+def _analyse_report_hbars_panel(title: str, items: List[Dict[str, Any]], label_key: str, value_key: str, width_mm: float = 176.0, height_mm: float = 68.0):
     from reportlab.graphics.shapes import Drawing, Rect, String
     from reportlab.lib import colors
     from reportlab.lib.units import mm
-
-    palette = ["#6366f1", "#14b8a6", "#f59e0b", "#fb7185", "#64748b", "#8b5cf6"]
     d = Drawing(width_mm * mm, height_mm * mm)
-    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#e2e8f0"), fillColor=colors.white, strokeWidth=0.8))
-    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.5, fillColor=colors.HexColor("#0f172a")))
-
-    rows = (items or [])[:5]
-    if not rows:
-        d.add(String(5 * mm, 18 * mm, "Aucune famille de cause à afficher", fontName="Helvetica", fontSize=7.8, fillColor=colors.HexColor("#64748b")))
-        return d
-
-    max_val = max([max(1, _analyse_pdf_safe_int(r.get("count"))) for r in rows] or [1])
-    y = height_mm * mm - 14 * mm
-    for idx, row in enumerate(rows):
-        label = _analyse_pdf_short(str(row.get("family") or "Cause"), 30)
-        val = max(0, _analyse_pdf_safe_int(row.get("count")))
-        color = colors.HexColor(palette[idx % len(palette)])
-        d.add(String(5 * mm, y, label, fontName="Helvetica", fontSize=7.0, fillColor=colors.HexColor("#334155")))
-        d.add(Rect(66 * mm, y - 2 * mm, 108 * mm, 3.4 * mm, rx=1.7, ry=1.7, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.HexColor("#f8fafc"), strokeWidth=0.4))
-        fill_w = 108 * mm * (val / float(max_val)) if max_val > 0 else 0
-        if fill_w > 0:
-            d.add(Rect(66 * mm, y - 2 * mm, fill_w, 3.4 * mm, rx=1.7, ry=1.7, strokeColor=color, fillColor=color, strokeWidth=0.4))
-        d.add(String(178 * mm, y, str(val), fontName="Helvetica-Bold", fontSize=7.0, fillColor=colors.HexColor("#0f172a"), textAnchor="end"))
-        y -= 7.2 * mm
-    return d
-def _analyse_report_hbars_panel(title: str, items: List[Dict[str, Any]], label_key: str, value_key: str, width_mm: float = 132.0, height_mm: float = 52.0):
-    from reportlab.graphics.shapes import Drawing, Rect, String
-    from reportlab.lib import colors
-    from reportlab.lib.units import mm
-
-    d = Drawing(width_mm * mm, height_mm * mm)
-    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#e2e8f0"), fillColor=colors.white, strokeWidth=0.8))
-    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.5, fillColor=colors.HexColor("#0f172a")))
-    shown = (items or [])[:5]
+    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.white, strokeWidth=0.8))
+    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.5, fillColor=colors.HexColor("#1f2937")))
+    y = height_mm * mm - 16 * mm
+    shown = items[:5]
     if not shown:
-        d.add(String(5 * mm, 18 * mm, "Aucune donnée à afficher", fontName="Helvetica", fontSize=7.8, fillColor=colors.HexColor("#64748b")))
+        d.add(String(5 * mm, y, "Aucune donnée à afficher", fontName="Helvetica", fontSize=8, fillColor=colors.HexColor("#64748b")))
         return d
-
-    y = height_mm * mm - 14 * mm
     for row in shown:
-        label = _analyse_pdf_short(row.get(label_key), 34)
-        value = max(0, min(100, _analyse_pdf_safe_int(row.get(value_key))))
-        color = colors.HexColor(_analyse_report_score_color_hex(value))
-        d.add(String(5 * mm, y, label, fontName="Helvetica", fontSize=6.9, fillColor=colors.HexColor("#334155")))
-        d.add(Rect(66 * mm, y - 2 * mm, 56 * mm, 3.6 * mm, rx=1.8, ry=1.8, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.HexColor("#f8fafc"), strokeWidth=0.4))
-        fill_w = 56 * mm * (value / 100.0)
+        label = _analyse_pdf_short(row.get(label_key), 32)
+        value = _analyse_pdf_safe_int(row.get(value_key))
+        d.add(String(5 * mm, y, label, fontName="Helvetica", fontSize=7.6, fillColor=colors.HexColor("#334155")))
+        d.add(Rect(64 * mm, y - 2 * mm, 92 * mm, 3.5 * mm, rx=1.7, ry=1.7, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.HexColor("#f3f4f6"), strokeWidth=0.4))
+        fill_w = max(2 * mm, min(92 * mm, 92 * mm * value / 100.0)) if value > 0 else 0
         if fill_w > 0:
-            d.add(Rect(66 * mm, y - 2 * mm, fill_w, 3.6 * mm, rx=1.8, ry=1.8, strokeColor=color, fillColor=color, strokeWidth=0.4))
-        d.add(String((width_mm - 6) * mm, y, f"{value}%", fontName="Helvetica-Bold", fontSize=7.0, fillColor=colors.HexColor("#0f172a"), textAnchor="end"))
-        y -= 7.6 * mm
+            d.add(Rect(64 * mm, y - 2 * mm, fill_w, 3.5 * mm, rx=1.7, ry=1.7, strokeColor=colors.HexColor("#c1272d"), fillColor=colors.HexColor("#c1272d"), strokeWidth=0.4))
+        d.add(String(160 * mm, y, f"{value}%", fontName="Helvetica-Bold", fontSize=7.4, fillColor=colors.HexColor("#1f2937")))
+        y -= 10 * mm
     return d
 
 def _analyse_pdf_level_card(level: str, styles: Dict[str, Any], width_mm: float = 31.0):
@@ -7285,35 +7222,30 @@ def _analyse_pdf_kpi_card(label: str, value: str, detail: str, width_mm: float =
     return d
 
 
-def _analyse_pdf_risk_gauge_card(score: int, level: str, width_mm: float = 67.0, height_mm: float = 24.0, title: str = "Niveau de risque"):
+def _analyse_pdf_risk_gauge_card(score: int, level: str, width_mm: float = 67.0, height_mm: float = 24.0):
     from reportlab.graphics.shapes import Drawing, Rect, String
     from reportlab.lib import colors
     from reportlab.lib.units import mm
-
     s = max(0, min(100, _analyse_pdf_safe_int(score)))
     d = Drawing(width_mm * mm, height_mm * mm)
-    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=5, ry=5, strokeColor=colors.HexColor("#e2e8f0"), fillColor=colors.white, strokeWidth=0.8))
-    d.add(String(4 * mm, height_mm * mm - 6 * mm, str(title or "Niveau de risque"), fontName="Helvetica-Bold", fontSize=7.4, fillColor=colors.HexColor("#64748b")))
-
+    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=5, ry=5, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.white, strokeWidth=0.8))
+    d.add(String(4 * mm, height_mm * mm - 6 * mm, "Niveau de risque", fontName="Helvetica-Bold", fontSize=7.4, fillColor=colors.HexColor("#64748b")))
     bar_x = 4 * mm
     bar_y = 10 * mm
-    bar_w = (width_mm - 8) * mm
-    seg_w = bar_w / 3.0
+    seg_w = (width_mm - 8) * mm / 3.0
     seg_h = 4.8 * mm
-    d.add(Rect(bar_x, bar_y, seg_w, seg_h, rx=2.2, ry=2.2, fillColor=colors.HexColor("#d1fae5"), strokeColor=colors.HexColor("#a7f3d0"), strokeWidth=0.4))
-    d.add(Rect(bar_x + seg_w, bar_y, seg_w, seg_h, fillColor=colors.HexColor("#fef3c7"), strokeColor=colors.HexColor("#fde68a"), strokeWidth=0.4))
-    d.add(Rect(bar_x + (2 * seg_w), bar_y, seg_w, seg_h, rx=2.2, ry=2.2, fillColor=colors.HexColor("#fee2e2"), strokeColor=colors.HexColor("#fecaca"), strokeWidth=0.4))
-
-    marker_x = bar_x + (bar_w * (s / 100.0))
-    d.add(Rect(max(bar_x, marker_x - 0.7 * mm), bar_y - 1.0 * mm, 1.4 * mm, seg_h + 2.0 * mm, fillColor=colors.HexColor("#0f172a"), strokeColor=colors.HexColor("#0f172a"), strokeWidth=0.2))
-
+    d.add(Rect(bar_x, bar_y, seg_w, seg_h, rx=2.2, ry=2.2, fillColor=colors.HexColor("#dcfce7"), strokeColor=colors.HexColor("#bbf7d0"), strokeWidth=0.4))
+    d.add(Rect(bar_x + seg_w, bar_y, seg_w, seg_h, fillColor=colors.HexColor("#ffedd5"), strokeColor=colors.HexColor("#fed7aa"), strokeWidth=0.4))
+    d.add(Rect(bar_x + (2*seg_w), bar_y, seg_w, seg_h, rx=2.2, ry=2.2, fillColor=colors.HexColor("#fee2e2"), strokeColor=colors.HexColor("#fecaca"), strokeWidth=0.4))
+    marker_x = bar_x + ((width_mm - 8) * mm) * (s / 100.0)
+    d.add(Rect(max(bar_x, marker_x - 0.7 * mm), bar_y - 1.0 * mm, 1.4 * mm, seg_h + 2.0 * mm, fillColor=colors.HexColor("#1f2937"), strokeColor=colors.HexColor("#1f2937"), strokeWidth=0.2))
     for txt, pos in (("Faible", 4 * mm), ("Modéré", 24 * mm), ("Élevé", 47 * mm)):
-        d.add(String(pos, 4 * mm, txt, fontName="Helvetica", fontSize=6.3, fillColor=colors.HexColor("#64748b")))
-
+        d.add(String(pos, 4 * mm, txt, fontName="Helvetica", fontSize=6.4, fillColor=colors.HexColor("#64748b")))
     bg, fg = _analyse_effect_color(level)
     d.add(Rect(width_mm * mm - 25 * mm, height_mm * mm - 12 * mm, 21 * mm, 5.6 * mm, rx=2.8, ry=2.8, fillColor=bg, strokeColor=fg, strokeWidth=0.5))
-    d.add(String(width_mm * mm - 23.2 * mm, height_mm * mm - 8.2 * mm, _analyse_pdf_short(level, 18), fontName="Helvetica-Bold", fontSize=6.1, fillColor=fg))
+    d.add(String(width_mm * mm - 23.5 * mm, height_mm * mm - 8.2 * mm, _analyse_pdf_short(level, 18), fontName="Helvetica-Bold", fontSize=6.4, fillColor=fg))
     return d
+
 
 def _analyse_pdf_stat_card(label: str, value: str, detail: str, styles: Dict[str, Any], width_mm: float = 63.0):
     from reportlab.lib import colors
@@ -7707,7 +7639,7 @@ def get_analyse_risques_report_pdf(
         from fastapi import Response
         from reportlab.lib.pagesizes import A4, landscape
         from reportlab.lib.units import mm
-        from reportlab.platypus import PageBreak, Paragraph, Table, TableStyle
+        from reportlab.platypus import Paragraph, Table, PageBreak
         from app.routers.skills_portal_pdf_common import build_pdf_document, build_pdf_styles, make_spacer
 
         with get_conn() as conn:
@@ -7720,103 +7652,70 @@ def get_analyse_risques_report_pdf(
                 last_eval_map = _analyse_last_eval_map(cur, id_ent, scope.id_service, comp_ids)
                 renfort_by_poste = _analyse_matching_summary_by_poste(cur, id_ent, scope.id_service, int(criticite_min), 65)
 
-        raw_effects = _analyse_build_effect_metrics(comp_records, poste_records, int(horizon_years), renfort_by_poste)
-        effects = []
-        family_counts: Dict[str, int] = {}
-        for effect in (raw_effects or []):
-            level = _analyse_report_effect_level(effect.get("score"), effect.get("count"))
-            effect_item = {**effect, "level": level}
-            effects.append(effect_item)
-            rows = _analyse_ishikawa_rows_for_effect(comp_records, poste_records, last_eval_map, renfort_by_poste, effect.get("key"))
-            grouped = _analyse_ishikawa_group_rows(rows, _analyse_effect_definitions().get(effect.get("key"), {}).get("families") or [])
-            for family, fam_rows in grouped.items():
-                if not fam_rows:
-                    continue
-                family_label = _analyse_ishikawa_family_display_label(family)
-                family_counts[family_label] = family_counts.get(family_label, 0) + len(fam_rows)
-
+        effects = _analyse_build_effect_metrics(comp_records, poste_records, int(horizon_years), renfort_by_poste)
         styles = build_pdf_styles()
         title_style = styles["title"]
+        section_style = styles["section"]
 
         nb_postes = len(poste_records or [])
         nb_comps = len(comp_records or [])
         frag_postes = int(round(sum(_analyse_pdf_safe_int(r.get("indice_fragilite")) for r in poste_records) / max(1, nb_postes))) if nb_postes else 0
         frag_comps = int(round(sum(_analyse_pdf_safe_int(r.get("indice_fragilite")) for r in comp_records) / max(1, nb_comps))) if nb_comps else 0
         effects_detected = sum(1 for e in effects if _analyse_pdf_safe_int(e.get("count")) > 0)
-        risk_global_score = max(frag_postes, frag_comps)
-        risk_global_level = _analyse_report_effect_level(risk_global_score, effects_detected)
 
-        effect_palette = ["#ef4444", "#f59e0b", "#fb7185", "#64748b"]
-        family_items = [{"family": k, "count": v} for k, v in sorted(family_counts.items(), key=lambda kv: (-kv[1], kv[0]))]
-        top_postes = [
-            {
-                "label": f"{(p.get('codif_poste') or p.get('codif_client') or '').strip()} - {(p.get('intitule_poste') or 'Poste').strip()}",
-                "value": _analyse_pdf_safe_int(p.get('indice_fragilite')),
-            }
-            for p in sorted(poste_records or [], key=lambda r: -_analyse_pdf_safe_int(r.get("indice_fragilite")))[:5]
-        ]
-        top_competences = [
-            {
-                "label": f"{(c.get('code') or '').strip()} - {(c.get('intitule') or 'Compétence').strip()}",
-                "value": _analyse_pdf_safe_int(c.get('indice_fragilite')),
-            }
-            for c in sorted(comp_records or [], key=lambda r: -_analyse_pdf_safe_int(r.get("indice_fragilite")))[:5]
-        ]
+        family_counts: Dict[str, int] = {}
+        for e in effects:
+            effect_rows = _analyse_ishikawa_rows_for_effect(comp_records, poste_records, last_eval_map, renfort_by_poste, e.get("key"))
+            for row in effect_rows:
+                fam = str(row.get("family") or "Cause")
+                family_counts[fam] = family_counts.get(fam, 0) + 1
+        if not family_counts:
+            family_counts = {"Aucune cause détectée": 1}
 
         story = []
         story.append(Paragraph("Rapport d’analyse des risques compétences", title_style))
         story.append(make_spacer(3))
 
-        top_cards = Table([[
-            _analyse_pdf_kpi_card("Postes analysés", str(nb_postes), "Périmètre lu", 62, 22),
-            _analyse_pdf_kpi_card("Compétences analysées", str(nb_comps), "Compétences critiques retenues", 62, 22),
-            _analyse_pdf_kpi_card("Effets détectés", str(effects_detected), "Effets terrain suivis", 62, 22),
-            _analyse_pdf_kpi_card("Horizon", f"{horizon_years} an(s)", "Projection du rapport", 62, 22),
-        ]], colWidths=[65 * mm, 65 * mm, 65 * mm, 65 * mm])
-        top_cards.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
-        story.append(top_cards)
-        story.append(make_spacer(5))
+        story.append(Table([[
+            _analyse_pdf_kpi_card("Postes analysés", str(nb_postes), "Périmètre lu", 66, 24),
+            _analyse_pdf_kpi_card("Compétences analysées", str(nb_comps), "Compétences critiques retenues", 66, 24),
+            _analyse_pdf_kpi_card("Effets détectés", str(effects_detected), "Effets terrain suivis", 66, 24),
+            _analyse_pdf_kpi_card("Horizon", f"{horizon_years} an(s)", "Projection du rapport", 66, 24),
+        ]], colWidths=[68 * mm, 68 * mm, 68 * mm, 68 * mm]))
+        story.append(make_spacer(6))
 
-        row_2 = Table([[
-            _analyse_report_ring_like("Fragilité moyenne des postes", frag_postes, width_mm=64, height_mm=42),
-            _analyse_report_ring_like("Fragilité moyenne des compétences", frag_comps, width_mm=64, height_mm=42),
-            _analyse_report_pie_panel(
-                "Effets terrain détectés",
-                [str(e.get("title") or "Effet") for e in effects],
-                [_analyse_pdf_safe_int(e.get("count")) for e in effects],
-                effect_palette,
-                width_mm=132,
-                height_mm=62,
-            ),
-        ]], colWidths=[67 * mm, 67 * mm, 138 * mm])
-        row_2.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
-        story.append(row_2)
-        story.append(make_spacer(5))
+        story.append(Table([[
+            _analyse_report_ring_like("Fragilité moyenne des postes", frag_postes, "#c1272d", 66, 52),
+            _analyse_report_ring_like("Fragilité moyenne des compétences", frag_comps, "#f59e0b", 66, 52),
+            _analyse_report_pie_panel("Effets terrain détectés", [e.get("title") for e in effects], [e.get("count") for e in effects], ["#c1272d", "#f59e0b", "#fb7185", "#94a3b8"], 66, 52),
+            _analyse_pdf_risk_gauge_card(max(frag_postes, frag_comps), _analyse_effect_level(max(frag_postes, frag_comps), effects_detected), 66, 24),
+        ]], colWidths=[68 * mm, 68 * mm, 68 * mm, 68 * mm]))
+        story.append(make_spacer(6))
 
-        row_3 = Table([[
-            _analyse_pdf_risk_gauge_card(risk_global_score, risk_global_level, 74, 22, "Niveau de risque global"),
-            _analyse_report_family_bars_panel("Familles de causes les plus présentes", family_items, 194, 44),
-        ]], colWidths=[77 * mm, 195 * mm])
-        row_3.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
-        story.append(row_3)
-        story.append(make_spacer(5))
+        story.append(Table([[
+            _analyse_report_pie_panel("Familles de causes", list(family_counts.keys()), list(family_counts.values()), ["#475569", "#c1272d", "#f59e0b", "#fb7185", "#0f766e"], 86, 64),
+            _analyse_report_hbars_panel("Postes les plus fragiles", [{"label": f"{(p.get('codif_poste') or p.get('codif_client') or '').strip()} - {(p.get('intitule_poste') or 'Poste').strip()}", "value": _analyse_pdf_safe_int(p.get('indice_fragilite'))} for p in sorted(poste_records or [], key=lambda r: -_analyse_pdf_safe_int(r.get("indice_fragilite")))[:5]], "label", "value", 86, 64),
+            _analyse_report_hbars_panel("Compétences les plus fragiles", [{"label": f"{(c.get('code') or '').strip()} - {(c.get('intitule') or 'Compétence').strip()}", "value": _analyse_pdf_safe_int(c.get('indice_fragilite'))} for c in sorted(comp_records or [], key=lambda r: -_analyse_pdf_safe_int(r.get("indice_fragilite")))[:5]], "label", "value", 86, 64),
+        ]], colWidths=[89 * mm, 89 * mm, 89 * mm]))
+        story.append(make_spacer(6))
 
-        row_4 = Table([[
-            _analyse_report_hbars_panel("Postes les plus fragiles", top_postes, "label", "value", 132, 50),
-            _analyse_report_hbars_panel("Compétences les plus fragiles", top_competences, "label", "value", 132, 50),
-        ]], colWidths=[136 * mm, 136 * mm])
-        row_4.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
-        story.append(row_4)
+        story.append(Paragraph("Lecture des risques", section_style))
+        effect_cards = [_analyse_pdf_kpi_card(str(e.get("title")), str(e.get("level")), _analyse_pdf_short(e.get("metric"), 26), 86, 24) for e in effects]
+        if effect_cards:
+            rows_cards = [effect_cards[i:i+3] for i in range(0, len(effect_cards), 3)]
+            while rows_cards and len(rows_cards[-1]) < 3:
+                rows_cards[-1].append(Paragraph("", styles["body"]))
+            story.append(Table(rows_cards, colWidths=[89 * mm, 89 * mm, 89 * mm]))
 
-        for effect in effects:
-            if _analyse_pdf_safe_int(effect.get("count")) <= 0:
+        for e in effects:
+            if _analyse_pdf_safe_int(e.get("count")) <= 0:
                 continue
             story.append(PageBreak())
-            story.append(Paragraph(f"Ishikawa • {effect.get('title')}", title_style))
+            story.append(Paragraph(f"Ishikawa • {e.get('title')}", title_style))
             story.append(make_spacer(2))
-            rows = _analyse_ishikawa_rows_for_effect(comp_records, poste_records, last_eval_map, renfort_by_poste, effect.get("key"))
-            story.append(_analyse_ishikawa_visual(_analyse_effect_definitions().get(effect.get("key")), rows, effect, 270.0, 96.0))
-            story.append(make_spacer(2))
+            rows = _analyse_ishikawa_rows_for_effect(comp_records, poste_records, last_eval_map, renfort_by_poste, e.get("key"))
+            story.append(_analyse_ishikawa_visual(_analyse_effect_definitions().get(e.get("key")), rows, e, 270.0, 92.0))
+            story.append(make_spacer(3))
 
         pdf = build_pdf_document(story, {
             "title": "Rapport d’analyse des risques compétences",
