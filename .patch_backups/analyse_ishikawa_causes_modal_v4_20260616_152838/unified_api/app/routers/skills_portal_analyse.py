@@ -6615,50 +6615,27 @@ def _analyse_pdf_safe_int(v: Any) -> int:
 
 
 def _analyse_effect_definitions() -> Dict[str, Dict[str, Any]]:
+    families = ["Données", "Dépendance", "Couverture", "Renfort", "Transmission"]
     return {
         "rupture_activite": {
             "title": "Risque de rupture ou ralentissement d’activité",
             "central_effect": "L’activité peut ralentir ou se bloquer si les compétences indispensables ne sont pas suffisamment couvertes.",
-            "families": [
-                "Couverture critique insuffisante",
-                "Renfort immédiat insuffisant",
-                "Postes déjà fragilisés",
-                "Dépendance à un porteur unique",
-                "Données à confirmer",
-            ],
+            "families": families,
         },
         "qualite_execution": {
             "title": "Risque de baisse de qualité d’exécution",
             "central_effect": "La qualité, l’autonomie ou les délais peuvent se dégrader si la maîtrise réelle reste insuffisante.",
-            "families": [
-                "Écart de maîtrise",
-                "Évaluations à reprendre",
-                "Niveaux attendus insuffisamment couverts",
-                "Expertise réelle à confirmer",
-                "Référentiel à consolider",
-            ],
+            "families": families,
         },
         "dependance_individuelle": {
             "title": "Risque de dépendance individuelle",
             "central_effect": "L’organisation dépend trop fortement de quelques personnes pour maintenir certaines compétences.",
-            "families": [
-                "Porteur unique",
-                "Vivier interne limité",
-                "Renfort immédiat insuffisant",
-                "Transmission à structurer",
-                "Données à confirmer",
-            ],
+            "families": families,
         },
         "perte_savoir_faire": {
             "title": "Risque de perte de savoir-faire",
             "central_effect": "Un savoir-faire important peut se fragiliser ou se perdre s’il n’est pas transmis à temps.",
-            "families": [
-                "Expertise peu diffusée",
-                "Relève interne à confirmer",
-                "Transmission à organiser",
-                "Compétences sensibles à anticiper",
-                "Données à fiabiliser",
-            ],
+            "families": families,
         },
     }
 
@@ -6692,13 +6669,10 @@ def _analyse_build_effect_metrics(
 ) -> List[Dict[str, Any]]:
     defs = _analyse_effect_definitions()
 
-    total_couv_abs = sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_couverture_absente")) > 0)
-    total_couv_ins = sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_niveau_insuffisant")) > 0)
     total_couverture = sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_couverture_absente")) > 0 or _analyse_pdf_safe_int(r.get("nb_postes_niveau_insuffisant")) > 0)
     total_non_conf = sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_non_confirmee")) > 0)
     total_dep = sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_dependance")) > 0)
-    total_expertise_abs = sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_experts")) <= 0)
-    total_expertise_faible = sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_experts")) <= 1)
+    total_transmission = sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_experts")) <= 0)
     postes_fragiles = sum(1 for r in poste_records if _analyse_pdf_safe_int(r.get("indice_fragilite")) > 0)
     renfort_map = renfort_by_poste or {}
     total_renfort = sum(1 for _, p in renfort_map.items() if _analyse_pdf_safe_int(p.get("nb_renforts")) <= 0)
@@ -6709,50 +6683,48 @@ def _analyse_build_effect_metrics(
     raw = [
         {
             "key": "rupture_activite",
-            "count": total_couverture + total_renfort + postes_fragiles + total_dep,
+            "count": total_couverture + postes_fragiles + total_renfort,
             "score": max(poste_frag_score, comp_frag_score),
             "metric": _analyse_pdf_count(postes_fragiles, "poste fragile", "postes fragiles"),
             "causes": [
-                _analyse_pdf_count(total_couverture, "compétence critique sans couverture suffisante", "compétences critiques sans couverture suffisante") if total_couverture else "couverture critique à vérifier",
-                _analyse_pdf_count(total_renfort, "poste sans renfort immédiat", "postes sans renfort immédiat") if total_renfort else "renfort immédiat à vérifier sur les postes sensibles",
-                _analyse_pdf_count(postes_fragiles, "poste déjà fragilisé", "postes déjà fragilisés") if postes_fragiles else "postes sensibles à relire dans le détail",
-                _analyse_pdf_count(total_dep, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne") if total_dep else "dépendance individuelle à surveiller",
+                _analyse_pdf_count(total_couverture, "compétence avec un problème de couverture", "compétences avec un problème de couverture") if total_couverture else "la couverture reste à surveiller sur certaines compétences",
+                _analyse_pdf_count(total_renfort, "poste sans renfort immédiat", "postes sans renfort immédiat") if total_renfort else "les renforts immédiats restent présents sur les postes sensibles",
+                _analyse_pdf_count(postes_fragiles, "poste déjà fragilisé", "postes déjà fragilisés") if postes_fragiles else "les postes sensibles restent contenus sur le périmètre",
+                _analyse_pdf_count(total_dep, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne") if total_dep else "la dépendance individuelle reste limitée sur les compétences clés",
             ],
         },
         {
             "key": "qualite_execution",
-            "count": total_couv_ins + total_non_conf + total_couv_abs + total_expertise_abs,
+            "count": total_couverture + total_non_conf,
             "score": comp_frag_score,
             "metric": f"{comp_frag_score}% de fragilité moyenne des compétences",
             "causes": [
-                _analyse_pdf_count(total_couv_ins, "écart de maîtrise à vérifier", "écarts de maîtrise à vérifier") if total_couv_ins else "écarts de maîtrise à vérifier",
-                _analyse_pdf_count(total_non_conf, "évaluation ou confirmation à reprendre", "évaluations ou confirmations à reprendre") if total_non_conf else "évaluations ou confirmations à reprendre",
-                _analyse_pdf_count(total_couv_abs, "niveau attendu non couvert", "niveaux attendus non couverts") if total_couv_abs else "niveaux attendus insuffisamment couverts",
-                _analyse_pdf_count(total_expertise_abs, "expertise non visible", "expertises non visibles") if total_expertise_abs else "expertise réelle à confirmer sur les situations sensibles",
+                _analyse_pdf_count(total_couverture, "compétence encore fragile", "compétences encore fragiles") if total_couverture else "des écarts de maîtrise restent à vérifier",
+                _analyse_pdf_count(total_non_conf, "compétence à confirmer", "compétences à confirmer") if total_non_conf else "certaines compétences doivent encore être confirmées",
+                _analyse_pdf_count(total_transmission, "compétence sans niveau expert", "compétences sans niveau expert") if total_transmission else "la transmission experte paraît mieux répartie",
             ],
         },
         {
             "key": "dependance_individuelle",
-            "count": total_dep + total_renfort + total_expertise_faible,
+            "count": total_dep,
             "score": max(comp_frag_score, poste_frag_score),
             "metric": _analyse_pdf_count(total_dep, "compétence dépendante d’une seule personne", "compétences dépendantes d’une seule personne"),
             "causes": [
-                _analyse_pdf_count(total_dep, "compétence portée par une seule personne", "compétences portées par une seule personne") if total_dep else "porteurs uniques à vérifier",
-                _analyse_pdf_count(total_expertise_faible, "compétence avec un vivier interne limité", "compétences avec un vivier interne limité") if total_expertise_faible else "vivier interne à surveiller",
-                _analyse_pdf_count(total_renfort, "poste sans renfort immédiat", "postes sans renfort immédiat") if total_renfort else "renfort immédiat à confirmer",
-                _analyse_pdf_count(total_expertise_abs, "compétence sans niveau expert", "compétences sans niveau expert") if total_expertise_abs else "transmission à structurer sur les compétences clés",
+                _analyse_pdf_count(total_dep, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne") if total_dep else "la dépendance individuelle reste limitée",
+                _analyse_pdf_count(total_renfort, "poste sans renfort immédiat", "postes sans renfort immédiat") if total_renfort else "les relais immédiats sont mieux répartis",
+                _analyse_pdf_count(total_transmission, "compétence sans niveau expert", "compétences sans niveau expert") if total_transmission else "la transmission experte paraît mieux répartie",
             ],
         },
         {
             "key": "perte_savoir_faire",
-            "count": total_expertise_abs + total_dep + total_non_conf + total_couverture,
+            "count": total_transmission + total_dep + total_non_conf,
             "score": max(comp_frag_score, poste_frag_score),
             "metric": f"Projection à {horizon_years} an(s)",
             "causes": [
-                _analyse_pdf_count(total_expertise_abs, "compétence sans niveau expert", "compétences sans niveau expert") if total_expertise_abs else "expertise à surveiller dans la durée",
-                _analyse_pdf_count(total_dep, "compétence portée par une seule personne", "compétences portées par une seule personne") if total_dep else "relève interne à confirmer",
-                _analyse_pdf_count(total_couverture, "compétence sensible à anticiper", "compétences sensibles à anticiper") if total_couverture else "compétences sensibles à anticiper",
-                _analyse_pdf_count(total_non_conf, "donnée à fiabiliser", "données à fiabiliser") if total_non_conf else "données utiles à fiabiliser",
+                _analyse_pdf_count(total_transmission, "compétence sans niveau expert", "compétences sans niveau expert") if total_transmission else "les compétences expertes restent globalement réparties",
+                _analyse_pdf_count(total_dep, "compétence portée par une seule personne", "compétences portées par une seule personne") if total_dep else "la relève semble mieux répartie sur le périmètre",
+                _analyse_pdf_count(total_renfort, "poste sans renfort immédiat", "postes sans renfort immédiat") if total_renfort else "les renforts immédiats paraissent présents sur le périmètre",
+                _analyse_pdf_count(total_non_conf, "compétence à confirmer", "compétences à confirmer") if total_non_conf else "les données utiles à la transmission semblent correctement renseignées",
             ],
         },
     ]
@@ -6774,94 +6746,43 @@ def _analyse_ishikawa_rows_for_effect(
     rows: List[Dict[str, Any]] = []
     eval_map = last_eval_map or {}
     renfort_map = renfort_by_poste or {}
-    effect_key = str(effet or "").strip()
 
     for r in comp_records:
         code = str(r.get("code") or "").strip() or "COMP"
         title = str(r.get("intitule") or "Compétence").strip()
         frag = _analyse_pdf_safe_int(r.get("indice_fragilite"))
-        n_abs = _analyse_pdf_safe_int(r.get("nb_postes_couverture_absente"))
-        n_ins = _analyse_pdf_safe_int(r.get("nb_postes_niveau_insuffisant"))
-        n_couverture = n_abs + n_ins
+        n_couverture = _analyse_pdf_safe_int(r.get("nb_postes_couverture_absente")) + _analyse_pdf_safe_int(r.get("nb_postes_niveau_insuffisant"))
         n_dep = _analyse_pdf_safe_int(r.get("nb_postes_dependance"))
         n_nc = _analyse_pdf_safe_int(r.get("nb_postes_non_confirmee"))
         n_exp = _analyse_pdf_safe_int(r.get("nb_experts"))
-        n_exp_dispo = _analyse_pdf_safe_int(r.get("nb_experts_dispo"))
         nb_impactes = max(1, _analyse_pdf_safe_int(r.get("nb_postes_impactes")))
         nb_valides = _analyse_pdf_safe_int(r.get("nb_postes_valides"))
         pct_cover = int(round((float(nb_valides) / float(nb_impactes)) * 100.0)) if nb_impactes > 0 else 0
         last_eval = eval_map.get(str(r.get("id_comp") or "").strip())
         last_eval_label = last_eval or "Jamais évaluée"
 
-        if effect_key == "rupture_activite":
-            if n_couverture > 0:
-                rows.append({"family": "Couverture critique insuffisante", "type": "comp", "code": code, "title": title, "value": f"{pct_cover}%", "value_label": "Couverture", "sort": frag})
-            if n_dep > 0:
-                rows.append({"family": "Dépendance à un porteur unique", "type": "comp", "code": code, "title": title, "value": "1 porteur", "value_label": "Porteurs confirmés", "sort": frag})
-            if n_nc > 0:
-                rows.append({"family": "Données à confirmer", "type": "comp", "code": code, "title": title, "value": last_eval_label, "value_label": "Dernière évaluation", "sort": frag})
-        elif effect_key == "qualite_execution":
-            if n_ins > 0:
-                rows.append({"family": "Écart de maîtrise", "type": "comp", "code": code, "title": title, "value": str(n_ins), "value_label": "Écarts", "sort": frag})
-            if n_nc > 0:
-                rows.append({"family": "Évaluations à reprendre", "type": "comp", "code": code, "title": title, "value": last_eval_label, "value_label": "Dernière évaluation", "sort": frag})
-            if n_abs > 0:
-                rows.append({"family": "Niveaux attendus insuffisamment couverts", "type": "comp", "code": code, "title": title, "value": f"{pct_cover}%", "value_label": "Couverture", "sort": frag})
-            if n_exp <= 0:
-                rows.append({"family": "Expertise réelle à confirmer", "type": "comp", "code": code, "title": title, "value": "0 expert", "value_label": "Experts", "sort": frag})
-            if n_nc > 0:
-                rows.append({"family": "Référentiel à consolider", "type": "comp", "code": code, "title": title, "value": "à vérifier", "value_label": "Statut", "sort": frag})
-        elif effect_key == "dependance_individuelle":
-            if n_dep > 0:
-                rows.append({"family": "Porteur unique", "type": "comp", "code": code, "title": title, "value": "1 porteur", "value_label": "Porteurs confirmés", "sort": frag})
-            if n_exp_dispo <= 1:
-                rows.append({"family": "Vivier interne limité", "type": "comp", "code": code, "title": title, "value": str(n_exp_dispo), "value_label": "Experts disponibles", "sort": frag})
-            if n_exp <= 0:
-                rows.append({"family": "Transmission à structurer", "type": "comp", "code": code, "title": title, "value": "0 expert", "value_label": "Experts", "sort": frag})
-            if n_nc > 0:
-                rows.append({"family": "Données à confirmer", "type": "comp", "code": code, "title": title, "value": last_eval_label, "value_label": "Dernière évaluation", "sort": frag})
-        elif effect_key == "perte_savoir_faire":
-            if n_exp <= 0:
-                rows.append({"family": "Expertise peu diffusée", "type": "comp", "code": code, "title": title, "value": "0 expert", "value_label": "Experts", "sort": frag})
-            if n_dep > 0:
-                rows.append({"family": "Relève interne à confirmer", "type": "comp", "code": code, "title": title, "value": "1 porteur", "value_label": "Relève visible", "sort": frag})
-            if n_exp <= 0 or n_dep > 0:
-                rows.append({"family": "Transmission à organiser", "type": "comp", "code": code, "title": title, "value": "à organiser", "value_label": "Transmission", "sort": frag})
-            if n_couverture > 0:
-                rows.append({"family": "Compétences sensibles à anticiper", "type": "comp", "code": code, "title": title, "value": f"{pct_cover}%", "value_label": "Couverture", "sort": frag})
-            if n_nc > 0:
-                rows.append({"family": "Données à fiabiliser", "type": "comp", "code": code, "title": title, "value": last_eval_label, "value_label": "Dernière évaluation", "sort": frag})
+        if n_nc > 0:
+            rows.append({"family": "Données", "type": "comp", "code": code, "title": title, "value": last_eval_label, "sort": frag})
+        if n_dep > 0:
+            rows.append({"family": "Dépendance", "type": "comp", "code": code, "title": title, "value": "", "sort": frag})
+        if n_couverture > 0:
+            rows.append({"family": "Couverture", "type": "comp", "code": code, "title": title, "value": f"{pct_cover}%", "sort": frag})
+        if n_exp <= 0:
+            rows.append({"family": "Transmission", "type": "comp", "code": code, "title": title, "value": "", "sort": frag})
 
-    if effect_key in ("rupture_activite", "dependance_individuelle"):
-        renfort_family = "Renfort immédiat insuffisant"
-        for p in poste_records or []:
-            pid = str(p.get("id_poste") or "").strip()
-            meta = renfort_map.get(pid) or {}
-            nb_renforts = _analyse_pdf_safe_int(meta.get("nb_renforts"))
-            if nb_renforts <= 0:
-                rows.append({
-                    "family": renfort_family,
-                    "type": "poste",
-                    "code": (p.get("codif_poste") or p.get("codif_client") or "POSTE").strip() or "POSTE",
-                    "title": str(p.get("intitule_poste") or "Poste").strip(),
-                    "value": str(nb_renforts),
-                    "value_label": "Renforts > 65%",
-                    "sort": _analyse_pdf_safe_int(p.get("indice_fragilite")),
-                })
-
-    if effect_key == "rupture_activite":
-        for p in poste_records or []:
-            frag_p = _analyse_pdf_safe_int(p.get("indice_fragilite"))
-            if frag_p > 0:
-                rows.append({
-                    "family": "Postes déjà fragilisés",
-                    "type": "poste",
-                    "code": (p.get("codif_poste") or p.get("codif_client") or "POSTE").strip() or "POSTE",
-                    "title": str(p.get("intitule_poste") or "Poste").strip(),
-                    "value": f"{frag_p}%",
-                    "value_label": "Fragilité",
-                    "sort": frag_p,
-                })
+    for p in poste_records or []:
+        pid = str(p.get("id_poste") or "").strip()
+        meta = renfort_map.get(pid) or {}
+        nb_renforts = _analyse_pdf_safe_int(meta.get("nb_renforts"))
+        if nb_renforts <= 0:
+            rows.append({
+                "family": "Renfort",
+                "type": "poste",
+                "code": (p.get("codif_poste") or p.get("codif_client") or "POSTE").strip() or "POSTE",
+                "title": str(p.get("intitule_poste") or "Poste").strip(),
+                "value": str(nb_renforts),
+                "sort": _analyse_pdf_safe_int(p.get("indice_fragilite")),
+            })
 
     rows.sort(key=lambda x: (str(x.get("family") or ""), -_analyse_pdf_safe_int(x.get("sort")), str(x.get("title") or "")))
     return rows
@@ -6992,28 +6913,17 @@ def _analyse_ishikawa_family_summary(family: str, rows: List[Dict[str, Any]]) ->
     count = len(rows or [])
     if count <= 0:
         return "Aucun point détecté"
-    mapping = {
-        "Couverture critique insuffisante": ("compétence sans couverture suffisante", "compétences sans couverture suffisante"),
-        "Renfort immédiat insuffisant": ("poste sans renfort immédiat", "postes sans renfort immédiat"),
-        "Postes déjà fragilisés": ("poste déjà fragilisé", "postes déjà fragilisés"),
-        "Dépendance à un porteur unique": ("compétence dépend d’une seule personne", "compétences dépendent d’une seule personne"),
-        "Données à confirmer": ("donnée à confirmer", "données à confirmer"),
-        "Écart de maîtrise": ("écart de maîtrise", "écarts de maîtrise"),
-        "Évaluations à reprendre": ("évaluation à reprendre", "évaluations à reprendre"),
-        "Niveaux attendus insuffisamment couverts": ("niveau attendu non couvert", "niveaux attendus non couverts"),
-        "Expertise réelle à confirmer": ("expertise à confirmer", "expertises à confirmer"),
-        "Référentiel à consolider": ("point de référentiel à consolider", "points de référentiel à consolider"),
-        "Porteur unique": ("compétence portée par une seule personne", "compétences portées par une seule personne"),
-        "Vivier interne limité": ("compétence avec vivier limité", "compétences avec vivier limité"),
-        "Transmission à structurer": ("transmission à structurer", "transmissions à structurer"),
-        "Expertise peu diffusée": ("expertise peu diffusée", "expertises peu diffusées"),
-        "Relève interne à confirmer": ("relève à confirmer", "relèves à confirmer"),
-        "Transmission à organiser": ("transmission à organiser", "transmissions à organiser"),
-        "Compétences sensibles à anticiper": ("compétence sensible à anticiper", "compétences sensibles à anticiper"),
-        "Données à fiabiliser": ("donnée à fiabiliser", "données à fiabiliser"),
-    }
-    singular, plural = mapping.get(family, ("point détecté", "points détectés"))
-    return _analyse_pdf_count(count, singular, plural)
+    if family == "Données":
+        return _analyse_pdf_count(count, "compétence non évaluée depuis plus de 6 mois", "compétences non évaluées depuis plus de 6 mois")
+    if family == "Dépendance":
+        return _analyse_pdf_count(count, "compétence portée par une seule personne", "compétences portées par une seule personne")
+    if family == "Couverture":
+        return _analyse_pdf_count(count, "compétence avec un problème de couverture", "compétences avec un problème de couverture")
+    if family == "Renfort":
+        return _analyse_pdf_count(count, "poste sans renfort immédiat", "postes sans renfort immédiat")
+    if family == "Transmission":
+        return _analyse_pdf_count(count, "compétence sans niveau expert", "compétences sans niveau expert")
+    return _analyse_pdf_count(count, "point détecté", "points détectés")
 
 def _analyse_ishikawa_visual(effect: Dict[str, Any], rows: List[Dict[str, Any]], metric: Dict[str, Any], width_mm: float = 270.0, height_mm: float = 92.0):
     from reportlab.graphics.shapes import Drawing, Line, Rect, String, Polygon
@@ -7405,44 +7315,6 @@ def _analyse_matching_summary_by_poste(cur, id_ent: str, id_service: Optional[st
     return out
 
 
-def _analyse_ishikawa_family_explanation(family: str) -> str:
-    explanations = {
-        "Couverture critique insuffisante": "Compétences critiques dont la couverture ne suffit pas à sécuriser les postes concernés.",
-        "Renfort immédiat insuffisant": "Postes qui ne disposent pas d’un profil interne immédiatement proche du besoin (matching supérieur à 65%).",
-        "Postes déjà fragilisés": "Postes dont l’indice de fragilité ressort déjà dans l’analyse actuelle.",
-        "Dépendance à un porteur unique": "Compétences qui reposent sur une seule personne confirmée dans le périmètre analysé.",
-        "Données à confirmer": "Compétences dont l’évaluation ou la confirmation doit être reprise avant décision.",
-        "Écart de maîtrise": "Compétences pour lesquelles le niveau constaté reste sous le niveau attendu.",
-        "Évaluations à reprendre": "Compétences déclarées mais insuffisamment confirmées par une évaluation exploitable.",
-        "Niveaux attendus insuffisamment couverts": "Niveaux requis qui ne disposent pas d’une couverture suffisante sur les postes concernés.",
-        "Expertise réelle à confirmer": "Compétences où l’expertise visible reste absente ou trop faible.",
-        "Référentiel à consolider": "Points où les données de référentiel ou d’évaluation doivent être fiabilisées.",
-        "Porteur unique": "Compétences portées par une seule personne confirmée.",
-        "Vivier interne limité": "Compétences pour lesquelles peu de relais internes sont visibles.",
-        "Transmission à structurer": "Compétences clés qui nécessitent une transmission organisée.",
-        "Expertise peu diffusée": "Compétences dont le niveau expert est absent ou trop concentré.",
-        "Relève interne à confirmer": "Compétences pour lesquelles la relève n’est pas suffisamment visible.",
-        "Transmission à organiser": "Savoir-faire à transmettre avant perte de couverture ou départ de porteur.",
-        "Compétences sensibles à anticiper": "Compétences qui peuvent fragiliser l’activité si elles ne sont pas sécurisées à temps.",
-        "Données à fiabiliser": "Données RH ou évaluations à consolider avant d’en faire un support de décision.",
-    }
-    return explanations.get(str(family or ""), "Causes détaillées sur le périmètre analysé.")
-
-
-def _analyse_ishikawa_family_columns(family: str) -> List[str]:
-    if "Renfort" in str(family or "") or str(family or "") == "Postes déjà fragilisés":
-        return ["Code poste", "Poste", "Valeur"]
-    if "Données" in str(family or "") or "Évaluation" in str(family or ""):
-        return ["Code compétence", "Compétence", "Dernière évaluation"]
-    if "Couverture" in str(family or "") or "Niveaux attendus" in str(family or ""):
-        return ["Code compétence", "Compétence", "Couverture"]
-    if "Écart" in str(family or ""):
-        return ["Code compétence", "Compétence", "Écarts"]
-    if "Expertise" in str(family or "") or "Transmission" in str(family or "") or "Relève" in str(family or "") or "Vivier" in str(family or "") or "Porteur" in str(family or "") or "Dépendance" in str(family or ""):
-        return ["Code compétence", "Compétence", "Valeur"]
-    return ["Code", "Libellé", "Valeur"]
-
-
 @router.get("/skills/analyse/ishikawa/{id_contact}")
 def get_analyse_ishikawa_pdf(
     id_contact: str,
@@ -7484,6 +7356,14 @@ def get_analyse_ishikawa_pdf(
         section_style = styles["section"]
         small_style = styles["small"]
 
+        family_explanations = {
+            "Données": "Compétences critiques dont l’évaluation est ancienne ou à confirmer.",
+            "Dépendance": "Compétences qui reposent aujourd’hui sur une seule personne.",
+            "Couverture": "Compétences dont la couverture reste insuffisante au regard des besoins des postes.",
+            "Renfort": "Postes sensibles qui ne disposent d’aucun renfort immédiat avec un matching supérieur à 65%.",
+            "Transmission": "Compétences critiques sans niveau expert visible dans le périmètre.",
+        }
+
         def badge(code: str, kind: str = "comp"):
             fg = "#1d4ed8" if kind == "comp" else "#c2410c"
             return Paragraph(f'<font color="{fg}"><b>{_analyse_pdf_esc(code or "—")}</b></font>', small_style)
@@ -7491,6 +7371,7 @@ def get_analyse_ishikawa_pdf(
         story = []
         story.append(Paragraph("Ishikawa", title_style))
         story.append(make_spacer(2))
+
         meta_cards = Table([[
             _analyse_pdf_kpi_card("Effet identifié", effect["title"], "Lecture cause / effet", 66, 24),
             _analyse_pdf_kpi_card("Périmètre", scope.nom_service, "Périmètre analysé", 66, 24),
@@ -7500,6 +7381,7 @@ def get_analyse_ishikawa_pdf(
         meta_cards.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
         story.append(meta_cards)
         story.append(make_spacer(3))
+
         story.append(Paragraph("Diagramme cause / effet", section_style))
         story.append(_analyse_ishikawa_visual(effect, rows, metric, 270.0, 92.0))
 
@@ -7511,23 +7393,39 @@ def get_analyse_ishikawa_pdf(
         for family in (effect.get("families") or []):
             fam_rows = grouped.get(family) or []
             story.append(Paragraph(_analyse_pdf_esc(family), section_style))
-            story.append(Paragraph(_analyse_pdf_esc(_analyse_ishikawa_family_explanation(family)), small_style))
+            story.append(Paragraph(_analyse_pdf_esc(family_explanations.get(family, "")), small_style))
             story.append(make_spacer(2))
             if not fam_rows:
                 story.append(Paragraph("Aucun point détaillé sur ce périmètre.", body_style))
                 story.append(make_spacer(3))
                 continue
 
-            headers = _analyse_ishikawa_family_columns(family)
-            data = [[Paragraph(_analyse_pdf_esc(headers[0]), small_style), Paragraph(_analyse_pdf_esc(headers[1]), small_style), Paragraph(_analyse_pdf_esc(headers[2]), small_style)]]
-            for row in fam_rows:
-                kind = "poste" if str(row.get("type") or "") == "poste" else "comp"
-                data.append([
-                    badge(str(row.get("code") or ""), kind),
-                    Paragraph(_analyse_pdf_esc(row.get("title")), body_style),
-                    Paragraph(_analyse_pdf_esc(row.get("value") or "—"), body_style),
-                ])
-            table = Table(data, colWidths=[31 * mm, 166 * mm, 61 * mm], repeatRows=1)
+            if family == "Données":
+                data = [[Paragraph("Code", small_style), Paragraph("Compétence", small_style), Paragraph("Dernière évaluation", small_style)]]
+                for row in fam_rows:
+                    data.append([badge(str(row.get("code") or ""), "comp"), Paragraph(_analyse_pdf_esc(row.get("title")), body_style), Paragraph(_analyse_pdf_esc(row.get("value") or "Jamais évaluée"), body_style)])
+                table = Table(data, colWidths=[28 * mm, 170 * mm, 60 * mm], repeatRows=1)
+            elif family == "Dépendance":
+                data = [[Paragraph("Code", small_style), Paragraph("Compétence", small_style)]]
+                for row in fam_rows:
+                    data.append([badge(str(row.get("code") or ""), "comp"), Paragraph(_analyse_pdf_esc(row.get("title")), body_style)])
+                table = Table(data, colWidths=[28 * mm, 230 * mm], repeatRows=1)
+            elif family == "Couverture":
+                data = [[Paragraph("Code", small_style), Paragraph("Compétence", small_style), Paragraph("Couverture", small_style)]]
+                for row in fam_rows:
+                    data.append([badge(str(row.get("code") or ""), "comp"), Paragraph(_analyse_pdf_esc(row.get("title")), body_style), Paragraph(_analyse_pdf_esc(row.get("value") or "0%"), body_style)])
+                table = Table(data, colWidths=[28 * mm, 170 * mm, 60 * mm], repeatRows=1)
+            elif family == "Renfort":
+                data = [[Paragraph("Code", small_style), Paragraph("Poste", small_style), Paragraph("Nb de renforts", small_style)]]
+                for row in fam_rows:
+                    data.append([badge(str(row.get("code") or ""), "poste"), Paragraph(_analyse_pdf_esc(row.get("title")), body_style), Paragraph(_analyse_pdf_esc(row.get("value") or "0"), body_style)])
+                table = Table(data, colWidths=[28 * mm, 170 * mm, 60 * mm], repeatRows=1)
+            else:
+                data = [[Paragraph("Code", small_style), Paragraph("Compétence", small_style)]]
+                for row in fam_rows:
+                    data.append([badge(str(row.get("code") or ""), "comp"), Paragraph(_analyse_pdf_esc(row.get("title")), body_style)])
+                table = Table(data, colWidths=[28 * mm, 230 * mm], repeatRows=1)
+
             table.setStyle(TableStyle([
                 ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#e5e7eb")),
                 ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e7eb")),
@@ -7591,14 +7489,13 @@ def get_analyse_risques_report_pdf(
         frag_comps = int(round(sum(_analyse_pdf_safe_int(r.get("indice_fragilite")) for r in comp_records) / max(1, nb_comps))) if nb_comps else 0
         effects_detected = sum(1 for e in effects if _analyse_pdf_safe_int(e.get("count")) > 0)
 
-        family_counts: Dict[str, int] = {}
-        for e in effects:
-            effect_rows = _analyse_ishikawa_rows_for_effect(comp_records, poste_records, last_eval_map, renfort_by_poste, e.get("key"))
-            for row in effect_rows:
-                fam = str(row.get("family") or "Cause")
-                family_counts[fam] = family_counts.get(fam, 0) + 1
-        if not family_counts:
-            family_counts = {"Aucune cause détectée": 1}
+        family_counts = {
+            "Données": sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_non_confirmee")) > 0),
+            "Dépendance": sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_dependance")) > 0),
+            "Couverture": sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_couverture_absente")) > 0 or _analyse_pdf_safe_int(r.get("nb_postes_niveau_insuffisant")) > 0),
+            "Renfort": sum(1 for _, p in (renfort_by_poste or {}).items() if _analyse_pdf_safe_int(p.get("nb_renforts")) <= 0),
+            "Transmission": sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_experts")) <= 0),
+        }
 
         story = []
         story.append(Paragraph("Rapport d’analyse des risques compétences", title_style))

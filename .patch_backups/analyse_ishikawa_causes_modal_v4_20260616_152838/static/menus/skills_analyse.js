@@ -291,14 +291,14 @@
       effects.push({
         key: "rupture_activite",
         title: "Risque de rupture ou ralentissement d’activité",
-        level: analyseRiskLevelLabel(Math.max(posteFrag, compFrag), postesFragiles + sansPorteur + sansRenfort + porteurUnique),
+        level: analyseRiskLevelLabel(Math.max(posteFrag, compFrag), postesFragiles + sansPorteur + sansRenfort),
         metric: count(postesFragiles, "poste fragile", "postes fragiles"),
-        causesTitle: "Causes probables identifiées",
+        causesTitle: "Synthèse des causes identifiées",
         causes: compactCauseList([
-          sansPorteur > 0 ? `${count(sansPorteur, "compétence critique sans couverture suffisante", "compétences critiques sans couverture suffisante")}` : "couverture critique à vérifier",
-          sansRenfort > 0 ? `${count(sansRenfort, "point sans renfort immédiat", "points sans renfort immédiat")}` : "renfort immédiat à vérifier sur les postes sensibles",
-          postesFragiles > 0 ? `${count(postesFragiles, "poste déjà fragilisé", "postes déjà fragilisés")}` : "postes sensibles à relire dans le détail",
-          porteurUnique > 0 ? `${count(porteurUnique, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne")}` : "dépendance individuelle à surveiller"
+          sansPorteur > 0 ? `${count(sansPorteur, "compétence avec un problème de couverture", "compétences avec un problème de couverture")}` : "la couverture doit être vérifiée sur certaines compétences critiques",
+          sansRenfort > 0 ? `${count(sansRenfort, "compétence sans renfort immédiat", "compétences sans renfort immédiat")}` : "le renfort immédiat reste limité sur certaines compétences",
+          postesFragiles > 0 ? `${count(postesFragiles, "poste déjà fragilisé", "postes déjà fragilisés")}` : "les postes sensibles sont à relire dans le détail",
+          porteurUnique > 0 ? `${count(porteurUnique, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne")}` : "certaines compétences peuvent encore trop dépendre d’une seule personne"
         ])
       });
     }
@@ -307,14 +307,14 @@
       effects.push({
         key: "qualite_execution",
         title: "Risque de baisse de qualité d’exécution",
-        level: analyseRiskLevelLabel(compFrag, compFragiles + sansPorteur),
+        level: analyseRiskLevelLabel(compFrag, compFragiles),
         metric: `${Math.round(compFrag)}% de fragilité moyenne des compétences`,
-        causesTitle: "Causes probables identifiées",
+        causesTitle: "Synthèse des causes identifiées",
         causes: compactCauseList([
-          compFragiles > 0 ? `${count(compFragiles, "compétence critique avec maîtrise fragile", "compétences critiques avec maîtrise fragile")}` : "écarts de maîtrise à vérifier",
-          "niveaux attendus insuffisamment couverts",
-          "évaluations ou confirmations à reprendre",
-          sansPorteur > 0 ? `${count(sansPorteur, "compétence sans couverture suffisante", "compétences sans couverture suffisante")}` : "expertise réelle à confirmer sur les situations sensibles"
+          compFragiles > 0 ? `${count(compFragiles, "compétence encore fragile", "compétences encore fragiles")}` : "des écarts de maîtrise restent à vérifier",
+          "des écarts de maîtrise restent à vérifier",
+          "certaines compétences doivent encore être confirmées",
+          sansPorteur > 0 ? `${count(sansPorteur, "compétence sans couverture suffisante", "compétences sans couverture suffisante")}` : "la maîtrise réelle reste à confirmer sur les situations les plus sensibles"
         ])
       });
     }
@@ -325,12 +325,12 @@
         title: "Risque de dépendance individuelle",
         level: analyseRiskLevelLabel(Math.max(posteFrag, compFrag), porteurUnique),
         metric: count(porteurUnique, "compétence dépendante d’une seule personne", "compétences dépendantes d’une seule personne"),
-        causesTitle: "Causes probables identifiées",
+        causesTitle: "Synthèse des causes identifiées",
         causes: compactCauseList([
-          `${count(porteurUnique, "compétence portée par une seule personne", "compétences portées par une seule personne")}`,
-          "vivier interne trop limité",
-          "renfort immédiat insuffisant sur les postes concernés",
-          "transmission à structurer sur les compétences clés"
+          `${count(porteurUnique, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne")}`,
+          "la couverture repose sur trop peu de collaborateurs",
+          "les relais internes restent insuffisants",
+          "la transmission doit être consolidée sur les compétences clés"
         ])
       });
     }
@@ -341,12 +341,12 @@
         title: "Risque de perte de savoir-faire",
         level: analyseRiskLevelLabel(postesRouges * 20 + compImpactees * 10, sorties + compImpactees + postesRouges),
         metric: `${count(postesRouges, "poste fragilisé", "postes fragilisés")} à ${analyseHorizonLabel(horizon)}`,
-        causesTitle: "Causes probables identifiées",
+        causesTitle: "Synthèse des causes identifiées",
         causes: compactCauseList([
-          sorties > 0 ? `${count(sorties, "sortie possible", "sorties possibles")} à ${analyseHorizonLabel(horizon)}` : "sorties à surveiller selon l’horizon choisi",
-          compImpactees > 0 ? `${count(compImpactees, "compétence sensible à anticiper", "compétences sensibles à anticiper")}` : "expertise à surveiller dans la durée",
-          postesRouges > 0 ? `${count(postesRouges, "poste peut devenir très fragile", "postes peuvent devenir très fragiles")}` : "relève interne à confirmer",
-          "transmission à organiser avant perte de couverture"
+          sorties > 0 ? `${count(sorties, "sortie possible", "sorties possibles")} à ${analyseHorizonLabel(horizon)}` : "les sorties restent à surveiller selon l’horizon choisi",
+          compImpactees > 0 ? `${count(compImpactees, "compétence à anticiper", "compétences à anticiper")}` : "les compétences sensibles doivent être surveillées dans la durée",
+          postesRouges > 0 ? `${count(postesRouges, "poste peut devenir très fragile", "postes peuvent devenir très fragiles")}` : "les postes à risque sont à vérifier dans la prévision",
+          "la relève et la transmission doivent être préparées avant la perte de couverture"
         ])
       });
     }
