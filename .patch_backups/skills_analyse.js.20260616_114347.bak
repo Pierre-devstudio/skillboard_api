@@ -12,8 +12,6 @@
   let _portalref = null;
   let _prevData = null;
   let apiBase = "";
-  let _analyseLastSummary = null;
-  let _analyseLastSummaryEffects = [];
 
   const STORE_SERVICE = "sb_analyse_service";
   const STORE_MODE = "sb_analyse_mode";
@@ -197,7 +195,7 @@
             <div class="analyse-help-modal-body" id="analyseHelpModalBody"></div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="sb-btn sb-btn--accent" id="btnAnalyseHelpModalClose">Fermer</button>
+            <button type="button" class="sb-btn sb-btn--soft" id="btnAnalyseHelpModalClose">Fermer</button>
           </div>
         </div>
       </div>
@@ -231,215 +229,28 @@
     modal.setAttribute("aria-hidden", "true");
   }
 
-
-  function fmtAnalyseCount(v, singular, plural) {
-    const n = Number(v);
-    if (!Number.isFinite(n)) return "—";
-    const nn = Math.max(0, Math.round(n));
-    return `${nn} ${nn > 1 ? plural : singular}`;
-  }
-
-  function analyseHorizonLabel(years) {
-    const h = Number(years || getPrevHorizon() || 1);
-    return h <= 1 ? "1 an" : `${Math.round(h)} ans`;
-  }
-
-  function analyseRiskLevelLabel(value, count) {
-    const v = Number(value || 0);
-    const c = Number(count || 0);
-    if (v >= 70 || c >= 5) return "Risque élevé";
-    if (v >= 35 || c > 0) return "Risque moyen";
-    return "Risque faible";
-  }
-
-  function buildAnalyseRiskEffects(data) {
-    const t = data?.tiles || {};
-    const r = t.risques || {};
-    const p = t.previsions || {};
-    const horizon = getPrevHorizon();
-    const item = pickPrevHorizonItem(p, horizon) || null;
-
-    const posteFrag = Number(r.postes_fragilite_globale || 0);
-    const compFrag = Number(r.comp_fragilite_moyenne || 0);
-    const postesFragiles = Number(r.postes_fragiles || 0);
-    const sansPorteur = Number(r.comp_critiques_sans_porteur || 0);
-    const porteurUnique = Number(r.comp_bus_factor_1 || 0);
-    const tombentZero = Number(r.comp_critiques_tombent_zero_auj || 0);
-    const compFragiles = Number(r.comp_critiques_fragiles || 0);
-    const sorties = Number(item?.sorties || 0);
-    const compImpactees = Number(item?.comp_critiques_impactees || 0);
-    const postesRouges = Number(item?.postes_rouges || 0);
-
-    const effects = [];
-
-    if (postesFragiles > 0 || sansPorteur > 0 || tombentZero > 0) {
-      effects.push({
-        key: "rupture_activite",
-        title: "Risque de rupture ou ralentissement d’activité",
-        level: analyseRiskLevelLabel(Math.max(posteFrag, compFrag), postesFragiles + sansPorteur + tombentZero),
-        metric: `${postesFragiles} poste(s) fragile(s)`,
-        effect: "Une compétence critique peut ne plus être suffisamment couverte pour tenir l’activité dans de bonnes conditions.",
-        attenuation: "Quand le niveau est moyen, le sujet n’indique pas forcément une rupture immédiate. Il signale surtout une marge de sécurité trop faible si une absence, une surcharge ou un départ survient.",
-        causes: [
-          sansPorteur > 0 ? `${sansPorteur} compétence(s) critique(s) sans couverture confirmée` : "couverture insuffisante sur certains postes",
-          tombentZero > 0 ? `${tombentZero} compétence(s) peuvent tomber à zéro porteur disponible aujourd’hui` : "fragilité de continuité selon les disponibilités",
-          postesFragiles > 0 ? `${postesFragiles} poste(s) présentent une fragilité actuelle` : "poste à vérifier dans le détail"
-        ].filter(Boolean)
-      });
-    }
-
-    if (compFrag > 0 || compFragiles > 0) {
-      effects.push({
-        key: "qualite_execution",
-        title: "Risque de baisse de qualité d’exécution",
-        level: analyseRiskLevelLabel(compFrag, compFragiles),
-        metric: `${Math.round(compFrag)}% de fragilité moyenne compétence`,
-        effect: "Le poste peut être occupé, mais certaines compétences peuvent rester sous le niveau attendu, non confirmées ou trop fragiles pour les situations complexes.",
-        attenuation: "À niveau moyen, le risque apparaît surtout sur les cas difficiles : erreurs, reprises, délais plus longs ou besoin d’appui par un profil plus expérimenté.",
-        causes: [
-          compFragiles > 0 ? `${compFragiles} compétence(s) critique(s) fragilisée(s)` : "écarts de maîtrise à confirmer",
-          "niveaux attendus à comparer avec les niveaux réellement confirmés",
-          "évaluations ou confirmations à contrôler dans les détails"
-        ]
-      });
-    }
-
-    if (porteurUnique > 0) {
-      effects.push({
-        key: "dependance_individuelle",
-        title: "Risque de dépendance individuelle",
-        level: analyseRiskLevelLabel(Math.max(posteFrag, compFrag), porteurUnique),
-        metric: `${porteurUnique} compétence(s) avec porteur unique`,
-        effect: "L’entreprise dépend d’un nombre trop limité de collaborateurs pour maintenir une compétence ou un poste.",
-        attenuation: "À niveau moyen, la situation peut rester stable tant que les personnes clés sont disponibles. La fragilité vient du manque de doublure réelle.",
-        causes: [
-          `${porteurUnique} compétence(s) critique(s) reposent sur un seul porteur confirmé`,
-          "couverture concentrée sur trop peu de collaborateurs",
-          "transmission ou relève à instruire avant que le risque devienne bloquant"
-        ]
-      });
-    }
-
-    if (sorties > 0 || compImpactees > 0 || postesRouges > 0) {
-      effects.push({
-        key: "perte_savoir_faire",
-        title: "Risque de perte de savoir-faire",
-        level: analyseRiskLevelLabel(postesRouges * 20 + compImpactees * 10, sorties + compImpactees + postesRouges),
-        metric: `${postesRouges} poste(s) fragilisé(s) à ${analyseHorizonLabel(horizon)}`,
-        effect: "Un savoir-faire important peut se fragiliser progressivement si la relève ou la transmission n’est pas préparée à temps.",
-        attenuation: "À niveau moyen, le risque n’est pas forcément immédiat. Il devient sérieux si l’entreprise attend que les porteurs historiques soient déjà sortis ou indisponibles.",
-        causes: [
-          sorties > 0 ? `${sorties} sortie(s) possible(s) à ${analyseHorizonLabel(horizon)}` : "sorties à surveiller selon l’horizon choisi",
-          compImpactees > 0 ? `${compImpactees} compétence(s) critique(s) impactée(s)` : "compétences critiques à surveiller",
-          postesRouges > 0 ? `${postesRouges} poste(s) peuvent passer en fragilité forte` : "postes à vérifier dans la prévision"
-        ].filter(Boolean)
-      });
-    }
-
-    return effects;
-  }
-
-  function updateAnalyseProjectionSummary(previsions) {
-    const horizon = getPrevHorizon();
-    const item = pickPrevHorizonItem(previsions || _prevData || {}, horizon) || null;
-    const label = byId("analyseSynthProjectionLabel");
-    if (label) label.textContent = `Projection à ${analyseHorizonLabel(horizon)}`;
-    const postes = Number(item?.postes_rouges ?? NaN);
-    setText("analyseSynthProjection", Number.isFinite(postes) ? fmtAnalyseCount(postes, "poste fragilisé", "postes fragilisés") : "—");
-  }
-
-  function updateAnalyseHeaderSynthesis(data) {
-    _analyseLastSummary = data || null;
-    const r = data?.tiles?.risques || {};
-    const postesAnalyses = Number(r.postes_analyses ?? r.nb_postes_analyses ?? NaN);
-    const competencesAnalysees = Number(r.competences_analysees ?? r.nb_competences_analysees ?? NaN);
-    const effects = buildAnalyseRiskEffects(data || {});
-    _analyseLastSummaryEffects = effects;
-
-    setText("analyseSynthPostesAnalyses", Number.isFinite(postesAnalyses) ? fmtAnalyseCount(postesAnalyses, "poste", "postes") : "—");
-    setText("analyseSynthCompetencesAnalysees", Number.isFinite(competencesAnalysees) ? fmtAnalyseCount(competencesAnalysees, "compétence", "compétences") : "—");
-    setText("analyseSynthEffetsTerrain", fmtAnalyseCount(effects.length, "effet", "effets"));
-    updateAnalyseProjectionSummary(data?.tiles?.previsions || _prevData || {});
-  }
-
-  function analyseRiskSummaryHtml() {
-    const data = _analyseLastSummary || {};
-    const r = data?.tiles?.risques || {};
-    const scope = data?.scope?.nom_service || getScopeLabel();
-    const effects = Array.isArray(_analyseLastSummaryEffects) ? _analyseLastSummaryEffects : buildAnalyseRiskEffects(data);
-    const postes = Number(r.postes_analyses ?? r.nb_postes_analyses ?? NaN);
-    const comps = Number(r.competences_analysees ?? r.nb_competences_analysees ?? NaN);
-
-    const cards = effects.length ? effects.map(e => `
-      <div class="analyse-risk-effect-card">
-        <div class="analyse-risk-effect-head">
-          <div>
-            <div class="analyse-risk-effect-title">${escapeHtml(e.title)}</div>
-            <div class="card-sub" style="margin:2px 0 0 0;">${escapeHtml(e.metric || "Point détecté")}</div>
-          </div>
-          <span class="analyse-risk-effect-level">${escapeHtml(e.level || "Risque à qualifier")}</span>
-        </div>
-        <div class="analyse-risk-effect-body">
-          <b>Effet terrain possible :</b> ${escapeHtml(e.effect || "Effet à vérifier dans les détails.")}<br>
-          <b>Lecture si le risque est moyen :</b> ${escapeHtml(e.attenuation || "La situation mérite une vérification avant de préparer une hypothèse.")}
-        </div>
-        <ul class="analyse-risk-effect-causes">
-          ${(e.causes || []).slice(0, 5).map(c => `<li>${escapeHtml(c)}</li>`).join("")}
-        </ul>
-        <div class="analyse-risk-effect-actions">
-          <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" data-analyse-ishikawa="${escapeHtml(e.key)}">Générer l’Ishikawa</button>
-        </div>
-      </div>
-    `).join("") : `
-      <div class="analyse-risk-effect-card">
-        <div class="analyse-risk-effect-title">Aucun effet terrain significatif détecté</div>
-        <div class="analyse-risk-effect-body" style="margin-top:6px;">Les données du périmètre ne font pas ressortir de fragilité notable sur les indicateurs suivis.</div>
-      </div>
-    `;
-
-    return `
-      <div class="analyse-help-intro">
-        <p>La synthèse regroupe les effets terrain que peuvent produire les fragilités compétences détectées sur le périmètre <b>${escapeHtml(scope)}</b>.</p>
-        <p class="card-sub" style="margin:6px 0 12px 0;">Périmètre lu : ${Number.isFinite(postes) ? fmtAnalyseCount(postes, "poste", "postes") : "postes à vérifier"} • ${Number.isFinite(comps) ? fmtAnalyseCount(comps, "compétence", "compétences") : "compétences à vérifier"}</p>
-      </div>
-      <div class="analyse-risk-summary-list">${cards}</div>
-    `;
-  }
-
-  function openAnalyseIshikawaPdf(effectKey) {
-    const ctx = getPortalContext(_portalref);
-    if (!ctx.id_contact || !ctx.apiBase) {
-      showAnalyseHelp("Ishikawa indisponible", "<p>Impossible de retrouver le contexte utilisateur pour générer le document.</p>");
-      return;
-    }
-    const qs = new URLSearchParams();
-    qs.set("effet", effectKey || "synthese");
-    const f = getFilters();
-    if (f.id_service) qs.set("id_service", f.id_service);
-    qs.set("criticite_min", String(getCriticiteMinSafe(CRITICITE_MIN_DEFAULT)));
-    qs.set("horizon_years", String(getPrevHorizon()));
-    const url = `${ctx.apiBase}/skills/analyse/ishikawa/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
-    const w = window.open(url, "_blank", "noopener");
-    if (!w) showAnalyseHelp("Ishikawa bloqué", "<p>Le navigateur a bloqué l’ouverture du document. Autorise les fenêtres pour Novoskill ou réessaie.</p>");
-  }
-
-
   const ANALYSE_HELP = {
     summary: {
-      title: "Synthèse des risques",
-      html: ""
+      title: "Comprendre la synthèse",
+      html: `<p>La synthèse donne la température du périmètre sélectionné. Elle ne propose pas une décision RH.</p>
+             <ul>
+               <li><b>Fragilité moyenne des postes</b> : niveau moyen de risque sur les postes analysés.</li>
+               <li><b>Fragilité moyenne des compétences</b> : niveau moyen de risque sur les compétences critiques analysées.</li>
+               <li><b>Prévision à 3 mois</b> : évolution possible des fragilités à court terme.</li>
+               <li><b>Périmètre analysé</b> : service ou ensemble d’entreprise actuellement filtré.</li>
+             </ul>`
     },
     risques: {
       title: "Carte Risques actuels",
-      html: `<p>Cette carte repère les fragilités déjà visibles : poste peu couvert, compétence critique fragile, dépendance à un nombre réduit de collaborateurs ou niveau attendu non atteint.</p>`
+      html: `<p>Cette carte repère les fragilités déjà visibles : poste peu couvert, compétence critique fragile, dépendance à un nombre réduit de collaborateurs ou niveau attendu non atteint.</p><p>Elle sert à identifier les points à sécuriser, pas à décider automatiquement d’une formation, d’un recrutement ou d’une mobilité.</p>`
     },
     matching: {
       title: "Carte Correspondance profils / postes",
-      html: `<p>Cette carte mesure la proximité entre des profils internes et des postes. Elle met en évidence les acquis, les écarts et les compétences à confirmer.</p>`
+      html: `<p>Cette carte mesure la proximité entre des profils internes et des postes. Elle met en évidence les acquis, les écarts et les compétences à confirmer.</p><p>Elle prépare une hypothèse de simulation, sans décider d’une mobilité.</p>`
     },
     previsions: {
       title: "Carte Prévisions",
-      html: `<p>Cette carte anticipe les fragilités qui peuvent apparaître avec le temps : sorties prévues, perte de porteurs confirmés, compétences critiques moins couvertes.</p>`
+      html: `<p>Cette carte anticipe les fragilités qui peuvent apparaître avec le temps : sorties prévues, perte de porteurs confirmés, compétences critiques moins couvertes.</p><p>Elle permet de préparer une hypothèse à tester dans les Simulations RH.</p>`
     }
   };
 
@@ -485,20 +296,8 @@
         ev.preventDefault();
         ev.stopPropagation();
         const key = (btnHelp.getAttribute("data-analyse-help") || "").trim();
-        if (key === "summary") {
-          showAnalyseHelp("Synthèse des risques", analyseRiskSummaryHtml());
-          return;
-        }
-        const item = ANALYSE_HELP[key] || ANALYSE_HELP.risques;
+        const item = ANALYSE_HELP[key] || ANALYSE_HELP.summary;
         showAnalyseHelp(item.title, item.html);
-        return;
-      }
-
-      const btnIshikawa = ev.target?.closest?.("[data-analyse-ishikawa]");
-      if (btnIshikawa) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        openAnalyseIshikawaPdf((btnIshikawa.getAttribute("data-analyse-ishikawa") || "").trim());
         return;
       }
 
@@ -680,8 +479,6 @@
       setText("kpiPrevSorties12", item.sorties);
       setText("kpiPrevCompImpact", item.comp_critiques_impactees);
       setText("kpiPrevPostesRed", item.postes_rouges);
-      updateAnalyseProjectionSummary(p);
-      if (_analyseLastSummary) updateAnalyseHeaderSynthesis(_analyseLastSummary);
       return;
     }
 
@@ -689,8 +486,6 @@
     setText("kpiPrevSorties12", p.sorties_12m);
     setText("kpiPrevCompImpact", p.comp_critiques_impactees);
     setText("kpiPrevPostesRed", p.postes_rouges_12m);
-    updateAnalyseProjectionSummary(p);
-    if (_analyseLastSummary) updateAnalyseHeaderSynthesis(_analyseLastSummary);
   }
 
   async function loadServices(portal) {
@@ -756,10 +551,10 @@
     setText("kpiPrevSorties12", "—");
     setText("kpiPrevCompImpact", "—");
     setText("kpiPrevPostesRed", "—");
-    setText("analyseSynthPostesAnalyses", "—");
-    setText("analyseSynthCompetencesAnalysees", "—");
-    setText("analyseSynthEffetsTerrain", "—");
-    setText("analyseSynthProjection", "—");
+    setText("analyseSynthPostes", "—");
+    setText("analyseSynthCompetences", "—");
+    setText("analyseSynth3m", "—");
+    setText("analyseSynthScope", "—");
   }
 
 
@@ -6323,7 +6118,9 @@ function renderDetail(mode) {
       const globalFragTxt = Number.isFinite(globalFrag) ? `${Math.round(globalFrag)}%` : "—";
       setText("kpiRiskPostes", globalFragTxt);
       setText("kpiRiskCritFragiles", compFragTxt);
-      updateAnalyseHeaderSynthesis(data);
+      setText("analyseSynthPostes", globalFragTxt);
+      setText("analyseSynthCompetences", compFragTxt);
+      setText("analyseSynthScope", data?.scope?.nom_service || getScopeLabel());
 
       const alertN = Number(r.comp_critiques_tombent_zero_auj || 0);
       const alertEl = byId("kpiRiskCritAlert");
@@ -6343,6 +6140,7 @@ function renderDetail(mode) {
           const evo = await computeRiskEvolution3m(portal, f.id_service);
           const evoTxt = fmtPctSigned(evo?.total?.pct);
           setText("kpiRiskEvol3m", evoTxt);
+          setText("analyseSynth3m", evoTxt);
         } catch (e) {
           setText("kpiRiskEvol3m", "—");
         }

@@ -6905,20 +6905,12 @@ body{
    ====================================================== */
 .analyse-hero-card{ margin-bottom:12px; }
 .analyse-hero-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; }
-.analyse-summary-grid{ display:grid; grid-template-columns:repeat(4, minmax(170px, 1fr)); gap:10px; margin-top:10px; }
+.analyse-summary-grid{ display:grid; grid-template-columns:repeat(4, minmax(170px, 1fr)); gap:10px; margin-top:12px; }
 @media (max-width: 1050px){ .analyse-summary-grid{ grid-template-columns:repeat(2, minmax(160px, 1fr)); } }
 @media (max-width: 640px){ .analyse-summary-grid{ grid-template-columns:1fr; } }
-.analyse-summary-chip{ border:1px solid var(--sb-gray-200); border-radius:12px; padding:8px 11px; background:#fff; min-height:52px; display:flex; flex-direction:column; justify-content:center; }
-.analyse-summary-chip .label{ font-size:11px; line-height:1.15; color:var(--sb-gray-500); font-weight:650; letter-spacing:.01em; }
-.analyse-summary-chip .value{ margin-top:3px; font-size:15px; line-height:1.15; font-weight:780; color:var(--sb-gray-900); }
-.analyse-risk-summary-list{ display:grid; grid-template-columns:1fr; gap:10px; }
-.analyse-risk-effect-card{ border:1px solid var(--sb-gray-200); border-radius:14px; padding:12px; background:#fff; }
-.analyse-risk-effect-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:8px; }
-.analyse-risk-effect-title{ font-weight:780; color:var(--sb-gray-900); font-size:14px; }
-.analyse-risk-effect-level{ display:inline-flex; align-items:center; border:1px solid var(--sb-red-200, #fecaca); color:var(--sb-accent, #c1272d); border-radius:999px; padding:3px 8px; font-size:11px; font-weight:750; white-space:nowrap; }
-.analyse-risk-effect-body{ font-size:13px; line-height:1.45; color:var(--sb-gray-700); }
-.analyse-risk-effect-causes{ margin:8px 0 0 0; padding-left:18px; color:var(--sb-gray-700); font-size:12.5px; }
-.analyse-risk-effect-actions{ margin-top:10px; display:flex; justify-content:flex-end; }
+.analyse-summary-chip{ border:1px solid var(--sb-gray-200); border-radius:14px; padding:10px 12px; background:#fff; }
+.analyse-summary-chip .label{ font-size:12px; color:var(--sb-gray-500); font-weight:800; }
+.analyse-summary-chip .value{ margin-top:4px; font-size:20px; line-height:1.1; font-weight:950; color:var(--sb-gray-900); }
 .analyse-card-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
 .analyse-help-dot,.analyse-cause-help{ width:24px; height:24px; border-radius:999px; border:1px solid var(--sb-gray-300); background:#fff; color:var(--sb-gray-600); display:inline-flex; align-items:center; justify-content:center; font-weight:950; font-size:12px; cursor:pointer; flex:0 0 auto; }
 .analyse-help-dot:hover,.analyse-cause-help:hover{ border-color:color-mix(in srgb, var(--accent) 48%, var(--sb-gray-300)); color:var(--accent); background:color-mix(in srgb, var(--accent) 7%, #fff); }

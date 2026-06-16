@@ -4,25 +4,25 @@
   <div class="analyse-hero-top">
     <div class="card-title">Analyse des compétences</div>
     <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnAnalyseUnderstandSummary" data-analyse-help="summary">
-      Synthèse des risques
+      Comprendre la synthèse
     </button>
   </div>
   <div class="analyse-summary-grid" aria-label="Synthèse de l’analyse des compétences">
     <div class="analyse-summary-chip">
-      <div class="label">Postes analysés</div>
-      <div class="value" id="analyseSynthPostesAnalyses">—</div>
+      <div class="label">Fragilité moyenne des postes</div>
+      <div class="value" id="analyseSynthPostes">—</div>
     </div>
     <div class="analyse-summary-chip">
-      <div class="label">Compétences analysées</div>
-      <div class="value" id="analyseSynthCompetencesAnalysees">—</div>
+      <div class="label">Fragilité moyenne des compétences</div>
+      <div class="value" id="analyseSynthCompetences">—</div>
     </div>
     <div class="analyse-summary-chip">
-      <div class="label">Effets terrain détectés</div>
-      <div class="value" id="analyseSynthEffetsTerrain">—</div>
+      <div class="label">Prévision à 3 mois</div>
+      <div class="value" id="analyseSynth3m">—</div>
     </div>
     <div class="analyse-summary-chip">
-      <div class="label" id="analyseSynthProjectionLabel">Projection à horizon sélectionné</div>
-      <div class="value" id="analyseSynthProjection">—</div>
+      <div class="label">Périmètre analysé</div>
+      <div class="value" id="analyseSynthScope">—</div>
     </div>
   </div>
 </div>
