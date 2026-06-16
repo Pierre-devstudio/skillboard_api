@@ -272,14 +272,13 @@
     const p = t.previsions || {};
     const horizon = getPrevHorizon();
     const item = pickPrevHorizonItem(p, horizon) || null;
-    const count = (value, singular, plural) => fmtAnalyseCount(Number(value || 0), singular, plural);
 
     const posteFrag = Number(r.postes_fragilite_globale || 0);
     const compFrag = Number(r.comp_fragilite_moyenne || 0);
     const postesFragiles = Number(r.postes_fragiles || 0);
     const sansPorteur = Number(r.comp_critiques_sans_porteur || 0);
     const porteurUnique = Number(r.comp_bus_factor_1 || 0);
-    const sansRenfort = Number(r.comp_critiques_tombent_zero_auj || 0);
+    const tombentZero = Number(r.comp_critiques_tombent_zero_auj || 0);
     const compFragiles = Number(r.comp_critiques_fragiles || 0);
     const sorties = Number(item?.sorties || 0);
     const compImpactees = Number(item?.comp_critiques_impactees || 0);
@@ -287,18 +286,18 @@
 
     const effects = [];
 
-    if (postesFragiles > 0 || sansPorteur > 0 || sansRenfort > 0) {
+    if (postesFragiles > 0 || sansPorteur > 0 || tombentZero > 0) {
       effects.push({
         key: "rupture_activite",
         title: "Risque de rupture ou ralentissement d’activité",
-        level: analyseRiskLevelLabel(Math.max(posteFrag, compFrag), postesFragiles + sansPorteur + sansRenfort),
-        metric: count(postesFragiles, "poste fragile", "postes fragiles"),
+        level: analyseRiskLevelLabel(Math.max(posteFrag, compFrag), postesFragiles + sansPorteur + tombentZero),
+        metric: `${postesFragiles} poste(s) fragile(s)`,
         causesTitle: "Synthèse des causes identifiées",
         causes: compactCauseList([
-          sansPorteur > 0 ? `${count(sansPorteur, "compétence critique sans personne confirmée", "compétences critiques sans personne confirmée")}` : "certaines compétences critiques restent sans couverture confirmée",
-          sansRenfort > 0 ? `${count(sansRenfort, "compétence sans renfort immédiat", "compétences sans renfort immédiat")}` : "le renfort immédiat reste à vérifier sur certaines compétences",
-          postesFragiles > 0 ? `${count(postesFragiles, "poste déjà fragilisé", "postes déjà fragilisés")}` : "les postes sensibles sont à vérifier dans le détail",
-          porteurUnique > 0 ? `${count(porteurUnique, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne")}` : "certaines couvertures peuvent dépendre de trop peu de personnes"
+          sansPorteur > 0 ? `${sansPorteur} compétence(s) critique(s) sans couverture confirmée` : "couverture confirmée insuffisante sur certaines compétences critiques",
+          tombentZero > 0 ? `${tombentZero} compétence(s) peuvent tomber à zéro porteur disponible aujourd’hui` : "continuité à vérifier selon les disponibilités réelles",
+          postesFragiles > 0 ? `${postesFragiles} poste(s) présentent une fragilité actuelle` : "postes à vérifier dans le détail",
+          porteurUnique > 0 ? `${porteurUnique} compétence(s) reposent sur un seul porteur confirmé` : "dépendance individuelle possible sur certaines compétences"
         ])
       });
     }
@@ -308,13 +307,13 @@
         key: "qualite_execution",
         title: "Risque de baisse de qualité d’exécution",
         level: analyseRiskLevelLabel(compFrag, compFragiles),
-        metric: `${Math.round(compFrag)}% de fragilité moyenne des compétences`,
+        metric: `${Math.round(compFrag)}% de fragilité moyenne compétence`,
         causesTitle: "Synthèse des causes identifiées",
         causes: compactCauseList([
-          compFragiles > 0 ? `${count(compFragiles, "compétence critique avec maîtrise fragile", "compétences critiques avec maîtrise fragile")}` : "des écarts de maîtrise restent à vérifier",
-          "certains niveaux attendus ne sont pas suffisamment couverts",
-          "certaines compétences doivent encore être confirmées",
-          sansPorteur > 0 ? `${count(sansPorteur, "compétence critique sans personne confirmée", "compétences critiques sans personne confirmée")}` : "la maîtrise réelle doit être vérifiée sur les situations complexes"
+          compFragiles > 0 ? `${compFragiles} compétence(s) critique(s) fragilisée(s)` : "écarts de maîtrise à confirmer",
+          "niveaux attendus à comparer avec les niveaux réellement confirmés",
+          "évaluations ou confirmations à contrôler dans les détails",
+          sansPorteur > 0 ? `${sansPorteur} compétence(s) sans couverture confirmée` : "couverture réelle à vérifier sur les situations complexes"
         ])
       });
     }
@@ -324,13 +323,13 @@
         key: "dependance_individuelle",
         title: "Risque de dépendance individuelle",
         level: analyseRiskLevelLabel(Math.max(posteFrag, compFrag), porteurUnique),
-        metric: count(porteurUnique, "compétence dépendante d’une seule personne", "compétences dépendantes d’une seule personne"),
+        metric: `${porteurUnique} compétence(s) avec porteur unique`,
         causesTitle: "Synthèse des causes identifiées",
         causes: compactCauseList([
-          `${count(porteurUnique, "compétence critique avec une seule personne confirmée", "compétences critiques avec une seule personne confirmée")}`,
-          "la couverture repose sur trop peu de collaborateurs",
-          "les doublures ne sont pas assez visibles",
-          "la transmission doit être vérifiée sur les compétences clés"
+          `${porteurUnique} compétence(s) critique(s) reposent sur un seul porteur confirmé`,
+          "couverture concentrée sur trop peu de collaborateurs",
+          "doublure ou relève insuffisamment visible dans les données",
+          "transmission à vérifier avant absence, surcharge ou départ"
         ])
       });
     }
@@ -340,13 +339,13 @@
         key: "perte_savoir_faire",
         title: "Risque de perte de savoir-faire",
         level: analyseRiskLevelLabel(postesRouges * 20 + compImpactees * 10, sorties + compImpactees + postesRouges),
-        metric: `${count(postesRouges, "poste fragilisé", "postes fragilisés")} à ${analyseHorizonLabel(horizon)}`,
+        metric: `${postesRouges} poste(s) fragilisé(s) à ${analyseHorizonLabel(horizon)}`,
         causesTitle: "Synthèse des causes identifiées",
         causes: compactCauseList([
-          sorties > 0 ? `${count(sorties, "sortie possible", "sorties possibles")} à ${analyseHorizonLabel(horizon)}` : "les sorties restent à surveiller selon l’horizon choisi",
-          compImpactees > 0 ? `${count(compImpactees, "compétence critique à anticiper", "compétences critiques à anticiper")}` : "les compétences critiques doivent être surveillées dans la durée",
-          postesRouges > 0 ? `${count(postesRouges, "poste peut devenir très fragile", "postes peuvent devenir très fragiles")}` : "les postes à risque sont à vérifier dans la prévision",
-          "la relève ou la transmission doit être préparée avant la perte effective de couverture"
+          sorties > 0 ? `${sorties} sortie(s) possible(s) à ${analyseHorizonLabel(horizon)}` : "sorties à surveiller selon l’horizon choisi",
+          compImpactees > 0 ? `${compImpactees} compétence(s) critique(s) impactée(s)` : "compétences critiques à surveiller",
+          postesRouges > 0 ? `${postesRouges} poste(s) peuvent passer en fragilité forte` : "postes à vérifier dans la prévision",
+          "relève ou transmission à préparer avant perte effective de couverture"
         ])
       });
     }
@@ -411,7 +410,7 @@
 
     return `
       <div class="analyse-help-intro">
-        <p>La synthèse regroupe les effets terrain détectés et leurs causes principales sur le périmètre <b>${escapeHtml(scope)}</b>.</p>
+        <p>La synthèse regroupe les effets terrain et les causes probables détectées sur le périmètre <b>${escapeHtml(scope)}</b>.</p>
         <p class="card-sub" style="margin:6px 0 12px 0;">Périmètre lu : ${Number.isFinite(postes) ? fmtAnalyseCount(postes, "poste", "postes") : "postes à vérifier"} • ${Number.isFinite(comps) ? fmtAnalyseCount(comps, "compétence", "compétences") : "compétences à vérifier"}</p>
         <div class="analyse-risk-summary-actions">
           <button type="button" class="sb-btn sb-btn--init sb-btn--sm" data-analyse-risk-report="1">Générer le rapport</button>
