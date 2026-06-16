@@ -7226,62 +7226,31 @@ def _analyse_report_family_bars_panel(title: str, items: List[Dict[str, Any]], w
         d.add(String(178 * mm, y, str(val), fontName="Helvetica-Bold", fontSize=7.0, fillColor=colors.HexColor("#0f172a"), textAnchor="end"))
         y -= 7.2 * mm
     return d
-def _analyse_report_hbars_panel(title: str, items: List[Dict[str, Any]], label_key: str, value_key: str, width_mm: float = 270.0, height_mm: float = 76.0):
+def _analyse_report_hbars_panel(title: str, items: List[Dict[str, Any]], label_key: str, value_key: str, width_mm: float = 132.0, height_mm: float = 52.0):
     from reportlab.graphics.shapes import Drawing, Rect, String
     from reportlab.lib import colors
     from reportlab.lib.units import mm
 
-    def _two_lines(value: Any, max_len: int = 84) -> List[str]:
-        s = str(value or "—").replace("\n", " ").strip()
-        if len(s) <= max_len:
-            return [s]
-        words = s.split()
-        first = ""
-        rest_words: List[str] = []
-        for idx, word in enumerate(words):
-            candidate = word if not first else f"{first} {word}"
-            if len(candidate) <= max_len:
-                first = candidate
-            else:
-                rest_words = words[idx:]
-                break
-        second = " ".join(rest_words).strip()
-        if len(second) > max_len:
-            second = second[: max(1, max_len - 1)].rstrip() + "…"
-        return [first or s[:max_len], second] if second else [first or s[:max_len]]
-
     d = Drawing(width_mm * mm, height_mm * mm)
     d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#e2e8f0"), fillColor=colors.white, strokeWidth=0.8))
-    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.8, fillColor=colors.HexColor("#0f172a")))
-
+    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.5, fillColor=colors.HexColor("#0f172a")))
     shown = (items or [])[:5]
     if not shown:
-        d.add(String(5 * mm, 22 * mm, "Aucune donnée à afficher", fontName="Helvetica", fontSize=8, fillColor=colors.HexColor("#64748b")))
+        d.add(String(5 * mm, 18 * mm, "Aucune donnée à afficher", fontName="Helvetica", fontSize=7.8, fillColor=colors.HexColor("#64748b")))
         return d
 
-    bar_x = 5 * mm
-    bar_w = (width_mm - 18) * mm
-    value_x = (width_mm - 5) * mm
-    y = height_mm * mm - 16 * mm
-
+    y = height_mm * mm - 14 * mm
     for row in shown:
-        label_lines = _two_lines(row.get(label_key), 78)
+        label = _analyse_pdf_short(row.get(label_key), 34)
         value = max(0, min(100, _analyse_pdf_safe_int(row.get(value_key))))
         color = colors.HexColor(_analyse_report_score_color_hex(value))
-
-        d.add(String(5 * mm, y, label_lines[0], fontName="Helvetica", fontSize=7.4, fillColor=colors.HexColor("#334155")))
-        if len(label_lines) > 1:
-            d.add(String(5 * mm, y - 3.7 * mm, label_lines[1], fontName="Helvetica", fontSize=7.1, fillColor=colors.HexColor("#475569")))
-
-        bar_y = y - (7.3 * mm if len(label_lines) > 1 else 5.2 * mm)
-        d.add(Rect(bar_x, bar_y, bar_w, 3.8 * mm, rx=1.9, ry=1.9, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.HexColor("#f8fafc"), strokeWidth=0.4))
-        fill_w = bar_w * (value / 100.0)
+        d.add(String(5 * mm, y, label, fontName="Helvetica", fontSize=6.9, fillColor=colors.HexColor("#334155")))
+        d.add(Rect(66 * mm, y - 2 * mm, 56 * mm, 3.6 * mm, rx=1.8, ry=1.8, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.HexColor("#f8fafc"), strokeWidth=0.4))
+        fill_w = 56 * mm * (value / 100.0)
         if fill_w > 0:
-            d.add(Rect(bar_x, bar_y, fill_w, 3.8 * mm, rx=1.9, ry=1.9, strokeColor=color, fillColor=color, strokeWidth=0.4))
-        d.add(String(value_x, bar_y + 0.7 * mm, f"{value}%", fontName="Helvetica-Bold", fontSize=7.2, fillColor=colors.HexColor("#0f172a"), textAnchor="end"))
-
-        y -= 12.2 * mm
-
+            d.add(Rect(66 * mm, y - 2 * mm, fill_w, 3.6 * mm, rx=1.8, ry=1.8, strokeColor=color, fillColor=color, strokeWidth=0.4))
+        d.add(String((width_mm - 6) * mm, y, f"{value}%", fontName="Helvetica-Bold", fontSize=7.0, fillColor=colors.HexColor("#0f172a"), textAnchor="end"))
+        y -= 7.6 * mm
     return d
 
 def _analyse_pdf_level_card(level: str, styles: Dict[str, Any], width_mm: float = 31.0):
@@ -7757,29 +7726,12 @@ def get_analyse_risques_report_pdf(
         raw_effects = _analyse_build_effect_metrics(comp_records, poste_records, int(horizon_years), renfort_by_poste)
         effects = []
         family_counts: Dict[str, int] = {}
-        query_params = request.query_params
-        valid_levels = {"Risque faible", "Risque modéré", "Risque moyen", "Risque élevé", "Risque critique"}
-
         for effect in (raw_effects or []):
-            key = str(effect.get("key") or "").strip()
-            level = str(effect.get("level") or _analyse_effect_level(effect.get("score"), effect.get("count"))).strip()
-            modal_level = str(query_params.get(f"risk_level_{key}") or "").strip()
-            if modal_level in valid_levels:
-                level = "Risque modéré" if modal_level == "Risque moyen" else modal_level
-
+            level = _analyse_report_effect_level(effect.get("score"), effect.get("count"))
             effect_item = {**effect, "level": level}
-
-            modal_score = query_params.get(f"risk_score_{key}")
-            if modal_score is not None:
-                effect_item["score"] = max(0, min(100, _analyse_pdf_safe_int(modal_score)))
-
-            modal_count = query_params.get(f"risk_count_{key}")
-            if modal_count is not None:
-                effect_item["count"] = max(0, _analyse_pdf_safe_int(modal_count))
-
             effects.append(effect_item)
-            rows = _analyse_ishikawa_rows_for_effect(comp_records, poste_records, last_eval_map, renfort_by_poste, key)
-            grouped = _analyse_ishikawa_group_rows(rows, _analyse_effect_definitions().get(key, {}).get("families") or [])
+            rows = _analyse_ishikawa_rows_for_effect(comp_records, poste_records, last_eval_map, renfort_by_poste, effect.get("key"))
+            grouped = _analyse_ishikawa_group_rows(rows, _analyse_effect_definitions().get(effect.get("key"), {}).get("families") or [])
             for family, fam_rows in grouped.items():
                 if not fam_rows:
                     continue
@@ -7852,9 +7804,12 @@ def get_analyse_risques_report_pdf(
         story.append(row_3)
         story.append(make_spacer(5))
 
-        story.append(_analyse_report_hbars_panel("Postes les plus fragiles", top_postes, "label", "value", 270, 74))
-        story.append(make_spacer(4))
-        story.append(_analyse_report_hbars_panel("Compétences les plus fragiles", top_competences, "label", "value", 270, 74))
+        row_4 = Table([[
+            _analyse_report_hbars_panel("Postes les plus fragiles", top_postes, "label", "value", 132, 50),
+            _analyse_report_hbars_panel("Compétences les plus fragiles", top_competences, "label", "value", 132, 50),
+        ]], colWidths=[136 * mm, 136 * mm])
+        row_4.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
+        story.append(row_4)
 
         for effect in effects:
             if _analyse_pdf_safe_int(effect.get("count")) <= 0:

@@ -497,17 +497,8 @@
     qs.set("criticite_min", String(getCriticiteMinSafe(CRITICITE_MIN_DEFAULT)));
     qs.set("horizon_years", String(getPrevHorizon()));
 
-    const effects = Array.isArray(_analyseLastSummaryEffects) ? _analyseLastSummaryEffects : buildAnalyseRiskEffects(_analyseLastSummary || {});
-
-    if (kind === "rapport") {
-      effects.forEach(e => {
-        const key = String(e?.key || "").trim();
-        if (!key) return;
-        if (e?.level) qs.set(`risk_level_${key}`, String(e.level));
-        if (Number.isFinite(Number(e?.riskScore))) qs.set(`risk_score_${key}`, String(Math.round(Number(e.riskScore))));
-        if (Number.isFinite(Number(e?.riskCount))) qs.set(`risk_count_${key}`, String(Math.round(Number(e.riskCount))));
-      });
-    } else if (effectKey) {
+    if (kind !== "rapport" && effectKey) {
+      const effects = Array.isArray(_analyseLastSummaryEffects) ? _analyseLastSummaryEffects : buildAnalyseRiskEffects(_analyseLastSummary || {});
       const effect = effects.find(x => String(x?.key || "") === String(effectKey || ""));
       if (effect?.level) qs.set("risk_level", String(effect.level));
       if (Number.isFinite(Number(effect?.riskScore))) qs.set("risk_score", String(Math.round(Number(effect.riskScore))));
@@ -518,7 +509,6 @@
     const route = kind === "rapport" ? "rapport" : "ishikawa";
     return `${ctx.apiBase}/skills/analyse/${route}/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
   }
-
 
 
   function openAnalyseIshikawaPdf(effectKey) {
