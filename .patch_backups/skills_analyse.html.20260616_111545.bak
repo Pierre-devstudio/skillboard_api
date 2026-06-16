@@ -1,29 +1,9 @@
 <section id="view-analyse-competences" style="display:none;">
 
-<div class="card analyse-hero-card">
-  <div class="analyse-hero-top">
-    <div class="card-title">Analyse des compétences</div>
-    <button type="button" class="sb-btn sb-btn--soft sb-btn--xs" id="btnAnalyseUnderstandSummary" data-analyse-help="summary">
-      Comprendre la synthèse
-    </button>
-  </div>
-  <div class="analyse-summary-grid" aria-label="Synthèse de l’analyse des compétences">
-    <div class="analyse-summary-chip">
-      <div class="label">Fragilité moyenne des postes</div>
-      <div class="value" id="analyseSynthPostes">—</div>
-    </div>
-    <div class="analyse-summary-chip">
-      <div class="label">Fragilité moyenne des compétences</div>
-      <div class="value" id="analyseSynthCompetences">—</div>
-    </div>
-    <div class="analyse-summary-chip">
-      <div class="label">Prévision à 3 mois</div>
-      <div class="value" id="analyseSynth3m">—</div>
-    </div>
-    <div class="analyse-summary-chip">
-      <div class="label">Périmètre analysé</div>
-      <div class="value" id="analyseSynthScope">—</div>
-    </div>
+<div class="card">
+  <div class="card-title">Analyse des compétences</div>
+  <div class="card-sub">
+    Exploitez la cartographie: risques, matching interne, prévisions. Objectif: décider (former, bouger, recruter).
   </div>
 </div>
 
@@ -75,44 +55,38 @@
 
       <!-- Tuile Risques -->
       <div class="card analyse-tile sb-tile active" id="tileRisques" data-mode="risques" role="button" tabindex="0" aria-label="Ouvrir Risques">
-        <div class="analyse-card-head">
-          <div class="card-title" style="margin-bottom:2px;">Risques actuels</div>
-          <button type="button" class="analyse-help-dot" data-analyse-help="risques" aria-label="Comprendre la carte Risques actuels">?</button>
-        </div>
-        <div class="tile-sub sb-tile-sub">Repérer les postes et compétences fragiles sur le périmètre analysé.</div>
+        <div class="card-title" style="margin-bottom:2px;">Risques</div>
+        <div class="tile-sub sb-tile-sub">Identifier les fragilités: criticité, couverture, dépendance, concentration.</div>
 
         <div class="mini-kpis sb-mini-kpis">
           <div class="mini-kpi sb-mini-kpi" data-risk-kpi="postes-scope" role="button" tabindex="0" aria-label="Afficher tous les postes triés par fragilité">
-            <div class="label">Fragilité moyenne des postes</div>
+            <div class="label">Indice global de fragilité</div>
             <div class="value" id="kpiRiskPostes">—</div>
           </div>
 
           <div class="mini-kpi sb-mini-kpi" data-risk-kpi="critiques-fragiles" role="button" tabindex="0" aria-label="Afficher les compétences critiques structurelles (fragiles)">
             <div class="label">
-              Fragilité moyenne des compétences
+              Compétences critiques (structurel)
               <span class="sb-badge sb-badge--warning sb-badge--mini" id="kpiRiskCritAlert" style="display:none;"></span>
             </div>
             <div class="value" id="kpiRiskCritFragiles">—</div>
           </div>
 
           <div class="mini-kpi sb-mini-kpi" data-risk-kpi="evol-3m" role="button" tabindex="0" aria-label="Afficher l’évolution du risque à 3 mois">
-            <div class="label">Prévision à 3 mois</div>
+            <div class="label">Évolution du risque (3 mois)</div>
             <div class="value" id="kpiRiskEvol3m">—</div>
           </div>
 
 
         </div>
 
-        <div class="tile-hint sb-tile-hint">Diagnostic : points à sécuriser, sans décision automatique.</div>
+        <div class="tile-hint sb-tile-hint">Décision: prioriser transfert de savoir, formation ciblée, sécurisation.</div>
       </div>
 
       <!-- Tuile Matching -->
       <div class="card analyse-tile sb-tile" id="tileMatching" data-mode="matching" role="button" tabindex="0" aria-label="Ouvrir Matching Poste-porteur">
-        <div class="analyse-card-head">
-          <div class="card-title" style="margin-bottom:2px;">Correspondance profils / postes</div>
-          <button type="button" class="analyse-help-dot" data-analyse-help="matching" aria-label="Comprendre la carte Correspondance profils / postes">?</button>
-        </div>
-        <div class="tile-sub sb-tile-sub">Voir les proximités entre profils et postes, avec les écarts à confirmer.</div>
+        <div class="card-title" style="margin-bottom:2px;">Matching</div>
+        <div class="tile-sub sb-tile-sub">Trouver les meilleurs candidats internes, maintenant ou à horizon court, avec écarts.</div>
 
         <div class="mini-kpis sb-mini-kpis">
           <div class="mini-kpi sb-mini-kpi" data-match-view="titulaire" role="button" tabindex="0" aria-label="Afficher l’adéquation au poste (titulaires)">
@@ -126,16 +100,13 @@
           </div>
         </div>
 
-        <div class="tile-hint sb-tile-hint">Lecture : hypothèses possibles, sans valider une mobilité.</div>
+        <div class="tile-hint sb-tile-hint">Décision: mobilité, staffing, succession, plan de montée en compétences.</div>
       </div>
 
       <!-- Tuile Prévisions -->
       <div class="card analyse-tile sb-tile" id="tilePrevisions" data-mode="previsions" role="button" tabindex="0" aria-label="Ouvrir Prévisions">
-        <div class="analyse-card-head">
-          <div class="card-title" style="margin-bottom:2px;">Prévisions</div>
-          <button type="button" class="analyse-help-dot" data-analyse-help="previsions" aria-label="Comprendre la carte Prévisions">?</button>
-        </div>
-        <div class="tile-sub sb-tile-sub">Anticiper les fragilités liées aux sorties et à la perte de couverture.</div>
+        <div class="card-title" style="margin-bottom:2px;">Prévisions</div>
+        <div class="tile-sub sb-tile-sub">Projeter la couverture: sorties, scénarios, postes qui passent en rouge.</div>
 
         <div class="mini-kpis sb-mini-kpis">
           <div class="mini-kpi sb-mini-kpi" data-prev-kpi="sorties" role="button" tabindex="0" aria-label="Afficher sorties">
@@ -156,7 +127,7 @@
           </div>
         </div>
 
-        <div class="tile-hint sb-tile-hint">Anticipation : points à sécuriser selon l’horizon choisi.</div>
+        <div class="tile-hint sb-tile-hint">Décision: plan formation/recrutement/mobilité avec horizons.</div>
       </div>
 
     </div>
@@ -278,7 +249,6 @@
     </div>
 
     <div class="modal-footer">
-      <button type="button" class="sb-btn sb-btn--accent" id="btnAnalysePrevCritCreateHypothesis">Créer une hypothèse de sécurisation</button>
       <button type="button" class="sb-btn sb-btn--soft" id="btnAnalysePrevCritModalClose">Fermer</button>
     </div>
   </div>
@@ -348,7 +318,6 @@
     </div>
 
     <div class="modal-footer">
-      <button type="button" class="sb-btn sb-btn--accent" id="btnAnalysePrevPosteRedCreateHypothesis">Créer une hypothèse de sécurisation</button>
       <button type="button" class="sb-btn sb-btn--soft" id="btnAnalysePrevPosteRedModalClose">Fermer</button>
     </div>
   </div>

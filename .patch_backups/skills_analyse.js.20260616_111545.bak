@@ -21,7 +21,6 @@
   const STORE_MATCH_POSTE_MODE = "sb_analyse_match_poste_mode"; // "fragiles" | "tous"
   const STORE_CRITICITE_MIN = "sb_analyse_criticite_min";
   const STORE_POSTES_SCOPE_EXPANDED = "sb_analyse_postes_scope_expanded";
-  const STORE_SIM_ANALYSE_HYPOTHESES = "sb_simulations_rh_hypotheses_from_analyse_v1";
   const CRITICITE_MIN_DEFAULT = 70;
   const POSTES_SCOPE_PREVIEW_LIMIT = 10;
 
@@ -174,221 +173,6 @@
 
   function setStatus(text) {
     setText("analyseStatus", text || "—", "—");
-  }
-
-
-  // ======================================================
-  // Aides utilisateur + hypothèses de simulation préparées
-  // ======================================================
-  function ensureAnalyseHelpModal() {
-    let modal = byId("modalAnalyseHelp");
-    if (modal) return modal;
-
-    const html = `
-      <div class="modal" id="modalAnalyseHelp" aria-hidden="true">
-        <div class="modal-card">
-          <div class="modal-header">
-            <div class="modal-title" id="analyseHelpModalTitle">Comprendre l’analyse</div>
-            <button type="button" class="modal-x" id="btnCloseAnalyseHelpModal" aria-label="Fermer">×</button>
-          </div>
-          <div class="modal-body">
-            <div class="analyse-help-modal-body" id="analyseHelpModalBody"></div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="sb-btn sb-btn--soft" id="btnAnalyseHelpModalClose">Fermer</button>
-          </div>
-        </div>
-      </div>
-    `;
-    document.body.insertAdjacentHTML("beforeend", html);
-    modal = byId("modalAnalyseHelp");
-
-    const close = () => closeAnalyseHelpModal();
-    byId("btnCloseAnalyseHelpModal")?.addEventListener("click", close);
-    byId("btnAnalyseHelpModalClose")?.addEventListener("click", close);
-    modal?.addEventListener("click", (ev) => { if (ev.target === modal) close(); });
-    return modal;
-  }
-
-  function showAnalyseHelp(title, html) {
-    const modal = ensureAnalyseHelpModal();
-    const t = byId("analyseHelpModalTitle");
-    const b = byId("analyseHelpModalBody");
-    if (t) t.textContent = title || "Comprendre l’analyse";
-    if (b) b.innerHTML = html || "";
-    if (modal) {
-      modal.classList.add("show");
-      modal.setAttribute("aria-hidden", "false");
-    }
-  }
-
-  function closeAnalyseHelpModal() {
-    const modal = byId("modalAnalyseHelp");
-    if (!modal) return;
-    modal.classList.remove("show");
-    modal.setAttribute("aria-hidden", "true");
-  }
-
-  const ANALYSE_HELP = {
-    summary: {
-      title: "Comprendre la synthèse",
-      html: `<p>La synthèse donne la température du périmètre sélectionné. Elle ne propose pas une décision RH.</p>
-             <ul>
-               <li><b>Fragilité moyenne des postes</b> : niveau moyen de risque sur les postes analysés.</li>
-               <li><b>Fragilité moyenne des compétences</b> : niveau moyen de risque sur les compétences critiques analysées.</li>
-               <li><b>Prévision à 3 mois</b> : évolution possible des fragilités à court terme.</li>
-               <li><b>Périmètre analysé</b> : service ou ensemble d’entreprise actuellement filtré.</li>
-             </ul>`
-    },
-    risques: {
-      title: "Carte Risques actuels",
-      html: `<p>Cette carte repère les fragilités déjà visibles : poste peu couvert, compétence critique fragile, dépendance à un nombre réduit de collaborateurs ou niveau attendu non atteint.</p><p>Elle sert à identifier les points à sécuriser, pas à décider automatiquement d’une formation, d’un recrutement ou d’une mobilité.</p>`
-    },
-    matching: {
-      title: "Carte Correspondance profils / postes",
-      html: `<p>Cette carte mesure la proximité entre des profils internes et des postes. Elle met en évidence les acquis, les écarts et les compétences à confirmer.</p><p>Elle prépare une hypothèse de simulation, sans décider d’une mobilité.</p>`
-    },
-    previsions: {
-      title: "Carte Prévisions",
-      html: `<p>Cette carte anticipe les fragilités qui peuvent apparaître avec le temps : sorties prévues, perte de porteurs confirmés, compétences critiques moins couvertes.</p><p>Elle permet de préparer une hypothèse à tester dans les Simulations RH.</p>`
-    }
-  };
-
-  const CAUSE_EFFECTS = {
-    structure: {
-      title: "Effet possible du risque structurel",
-      text: "Le poste peut être insuffisamment tenu ou trop peu couvert. L’activité repose alors sur une base trop fragile, même si certaines compétences existent dans l’entreprise."
-    },
-    dependance: {
-      title: "Effet possible de la dépendance",
-      text: "La continuité repose sur trop peu de collaborateurs confirmés. Une absence, un départ ou une surcharge peut rapidement mettre le poste ou la compétence sous tension."
-    },
-    transmission: {
-      title: "Effet possible du manque de transmission",
-      text: "Le savoir-faire existe, mais il n’est pas assez diffusé. Le risque principal est une perte progressive de maîtrise ou une difficulté à construire une relève."
-    },
-    efficacite: {
-      title: "Effet possible d’un niveau attendu non atteint",
-      text: "Le poste peut sembler couvert, mais la compétence n’est pas maîtrisée au niveau requis. Cela peut produire des erreurs, des délais ou une dépendance à un profil plus expérimenté."
-    },
-    non_confirmee: {
-      title: "Effet possible d’une compétence non confirmée",
-      text: "La couverture repose sur une déclaration ou une donnée incomplète. L’analyse reste prudente tant que le niveau réel n’est pas confirmé par une évaluation exploitable."
-    },
-    indisponibilite: {
-      title: "Effet possible d’une indisponibilité",
-      text: "La couverture peut devenir insuffisante temporairement. Le risque porte surtout sur la continuité d’activité à court terme."
-    },
-    prevision: {
-      title: "Effet possible à moyen terme",
-      text: "La compétence ou le poste peut devenir fragile si la relève n’est pas préparée. Le risque est progressif, mais peut devenir bloquant si rien n’est consolidé."
-    }
-  };
-
-  function causeHelpButton(key) {
-    return `<span class="analyse-cause-help" data-cause-help="${escapeHtml(key || "structure")}" role="button" tabindex="0" aria-label="Comprendre l’effet de cette cause">?</span>`;
-  }
-
-  function bindAnalyseHelpDelegation() {
-    document.addEventListener("click", (ev) => {
-      const btnHelp = ev.target?.closest?.("[data-analyse-help]");
-      if (btnHelp) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        const key = (btnHelp.getAttribute("data-analyse-help") || "").trim();
-        const item = ANALYSE_HELP[key] || ANALYSE_HELP.summary;
-        showAnalyseHelp(item.title, item.html);
-        return;
-      }
-
-      const btnCause = ev.target?.closest?.("[data-cause-help]");
-      if (btnCause) {
-        ev.preventDefault();
-        ev.stopPropagation();
-        const key = (btnCause.getAttribute("data-cause-help") || "").trim();
-        const item = CAUSE_EFFECTS[key] || CAUSE_EFFECTS.structure;
-        showAnalyseHelp(item.title, `<p>${escapeHtml(item.text)}</p>`);
-      }
-    }, true);
-  }
-
-  function readAnalyseHypotheses() {
-    try {
-      const raw = localStorage.getItem(STORE_SIM_ANALYSE_HYPOTHESES);
-      const list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch (_) { return []; }
-  }
-
-  function writeAnalyseHypotheses(list) {
-    localStorage.setItem(STORE_SIM_ANALYSE_HYPOTHESES, JSON.stringify(Array.isArray(list) ? list : []));
-  }
-
-  function openSimulationsRh() {
-    try {
-      if (_portalref && typeof _portalref.switchView === "function") {
-        _portalref.switchView("simulations-rh");
-        return;
-      }
-    } catch (_) {}
-    window.location.hash = "#simulations-rh";
-  }
-
-  function addAnalyseHypothesis(payload, opts = {}) {
-    const p = payload || {};
-    const hyp = {
-      id: `analyse_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      created_at: new Date().toISOString(),
-      source: "analyse_competences",
-      source_label: p.source_label || "Analyse des compétences",
-      type: p.type || "securisation",
-      title: p.title || "Hypothèse de sécurisation",
-      poste_id: p.poste_id || "",
-      poste_label: p.poste_label || "",
-      competence_id: p.competence_id || "",
-      competence_code: p.competence_code || "",
-      competence_label: p.competence_label || "",
-      effectif_id: p.effectif_id || "",
-      effectif_label: p.effectif_label || "",
-      cause: p.cause || "Point de fragilité détecté",
-      effet: p.effet || "Point à tester avant arbitrage RH.",
-      horizon: p.horizon || "actuel",
-      criticite: p.criticite || "",
-      niveau_attendu: p.niveau_attendu || "",
-      niveau_constate: p.niveau_constate || "",
-      scope_label: getScopeLabel(),
-      criticite_min: getCriticiteMinSafe(CRITICITE_MIN_DEFAULT)
-    };
-
-    const list = readAnalyseHypotheses();
-    const dedupeKey = [hyp.type, hyp.poste_id, hyp.competence_id, hyp.effectif_id, hyp.horizon, hyp.cause].join("|");
-    const filtered = list.filter(x => [x.type, x.poste_id, x.competence_id, x.effectif_id, x.horizon, x.cause].join("|") !== dedupeKey);
-    filtered.unshift(hyp);
-    writeAnalyseHypotheses(filtered.slice(0, 20));
-
-    if (_portalref?.showAlert) _portalref.showAlert("success", "Hypothèse ajoutée aux Simulations RH.");
-    if (opts.openSimulation !== false) openSimulationsRh();
-    return hyp;
-  }
-
-  function securityPointsHtml(kind) {
-    const mode = (kind || "poste").toString();
-    if (mode === "competence") {
-      return `
-        <div class="analyse-secu-grid">
-          <div class="analyse-secu-card"><strong>Confirmer la maîtrise réelle</strong><small>Vérifier les niveaux déclarés ou non évalués avant d’interpréter la couverture.</small></div>
-          <div class="analyse-secu-card"><strong>Réduire la dépendance</strong><small>Identifier une couverture complémentaire si la compétence repose sur trop peu de personnes.</small></div>
-          <div class="analyse-secu-card"><strong>Tester une relève</strong><small>Préparer une hypothèse dans les Simulations RH, sans décider depuis l’analyse.</small></div>
-          <div class="analyse-secu-card"><strong>Maintenir la donnée à jour</strong><small>Après arbitrage externe, actualiser les niveaux, rattachements ou évaluations dans Novoskill.</small></div>
-        </div>`;
-    }
-    return `
-      <div class="analyse-secu-grid">
-        <div class="analyse-secu-card"><strong>Consolider la couverture</strong><small>Identifier les compétences du poste qui fragilisent la continuité.</small></div>
-        <div class="analyse-secu-card"><strong>Vérifier les niveaux attendus</strong><small>Contrôler les écarts entre le niveau requis et les niveaux confirmés.</small></div>
-        <div class="analyse-secu-card"><strong>Préparer une hypothèse</strong><small>Envoyer le contexte vers Simulations RH pour tester une sécurisation.</small></div>
-        <div class="analyse-secu-card"><strong>Actualiser après arbitrage</strong><small>Mettre à jour Novoskill après décision réelle pour garder l’analyse fiable.</small></div>
-      </div>`;
   }
 
   function getAnalyseServiceRawValue() {
@@ -551,10 +335,6 @@
     setText("kpiPrevSorties12", "—");
     setText("kpiPrevCompImpact", "—");
     setText("kpiPrevPostesRed", "—");
-    setText("analyseSynthPostes", "—");
-    setText("analyseSynthCompetences", "—");
-    setText("analyseSynth3m", "—");
-    setText("analyseSynthScope", "—");
   }
 
 
@@ -1381,8 +1161,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   const causesCard = `
     <div class="card" style="padding:12px; margin-top:12px;">
-      <div class="card-title" style="margin:0 0 6px 0;">Pourquoi ce poste est fragile ?</div>
-      <div class="card-sub" style="margin:0;">Causes principales. Ouvrez une ligne pour voir qui est concerné, où se situe l’écart et pourquoi cela fragilise le poste.</div>
+      <div class="card-title" style="margin:0 0 6px 0;">Causes racines</div>
+      <div class="card-sub" style="margin:0;">Analyse factuelle des composantes de fragilité.</div>
 
       ${(!hasStruct && !hasDep && !hasTrans && !hasEff) ? `
         <div class="card-sub" style="margin-top:10px;">Aucune cause racine à afficher.</div>
@@ -1391,9 +1171,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
               <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <span>Couverture du poste insuffisante</span>
+                <span>Risque structurel</span>
                 <span class="sb-badge sb-badge--risk-share">${escapeHtml(String(structureSharePct))}%</span>
-                ${causeHelpButton("structure")}
               </span>
               <span class="sb-acc-chevron">▾</span>
             </button>
@@ -1405,9 +1184,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
               <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <span>Couverture trop dépendante d’une personne</span>
+                <span>Risque de dépendance</span>
                 ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(dependanceSharePct))}%</span>` : ``}
-                ${causeHelpButton("dependance")}
               </span>
               <span class="sb-acc-chevron">▾</span>
             </button>
@@ -1420,9 +1198,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
               <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <span>Relève ou transmission à anticiper</span>
+                <span>Risque de transmission</span>
                 ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(transmissionSharePct))}%</span>` : ``}
-                ${causeHelpButton("transmission")}
               </span>
               <span class="sb-acc-chevron">▾</span>
             </button>
@@ -1435,9 +1212,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
               <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                <span>Niveau attendu non atteint</span>
+                <span>Risque d’efficacité</span>
                 ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(efficaciteSharePct))}%</span>` : ``}
-                ${causeHelpButton("efficacite")}
               </span>
               <span class="sb-acc-chevron">▾</span>
             </button>
@@ -1467,7 +1243,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     <div class="card" style="padding:12px; margin:0;">
       <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
         <div style="flex:1; min-width:320px;">
-          <div class="card-title" style="margin:0;">Diagnostic</div>
+          <div class="card-title" style="margin:0;">Diagnostic décisionnel</div>
 
           <!-- ligne vide sous diag : demandé -->
           <div style="height:8px;"></div>
@@ -1490,14 +1266,59 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     ${causesCard}
 
-    <div class="card analyse-hypothesis-card" style="padding:12px; margin-top:12px;">
-      <div class="card-title" style="margin:0 0 6px 0;">Points à sécuriser</div>
-      <div class="card-sub" style="margin:0;">Ces points servent à préparer une hypothèse dans les Simulations RH. La décision finale reste hors Novoskill.</div>
-      ${securityPointsHtml("poste")}
-      <div class="sb-actions sb-actions--end" style="margin-top:12px;">
-        <button type="button" id="btnAnalysePosteCreateHypothesis" class="sb-btn sb-btn--accent">
-          Créer une hypothèse de sécurisation
-        </button>
+    <div class="card" style="padding:12px; margin-top:12px;">
+      <div class="card-title" style="margin:0 0 6px 0;">Plan de sécurisation</div>
+      <div class="card-sub" style="margin:0;">Aperçu des possibilités.</div>
+
+      <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
+        <div class="card ${(!canTrain ? "sb-disabled" : "")}" style="padding:12px; margin:0; flex:1; min-width:240px;">
+          <div style="font-weight:700;">Former</div>
+          <div class="card-sub" style="margin:6px 0 10px 0;">
+            Catalogue de formation (filtrage par compétences à venir).
+          </div>
+          <button type="button"
+                  id="btnAnalysePostePlanFormer"
+                  class="sb-btn sb-btn--xs sb-btn--block"
+                  ${!canTrain ? "disabled" : ""}>
+            Voir les formations
+          </button>
+        </div>
+
+        <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
+          <div style="font-weight:700;">Mutualiser</div>
+          <div class="card-sub" style="margin:6px 0 10px 0;">
+            Ouvrir le matching poste → porteur (sécurisation par doublure / backup).
+          </div>
+          <button type="button"
+                  id="btnAnalysePostePlanMutualiser"
+                  class="sb-btn sb-btn--accent sb-btn--xs sb-btn--block">
+            Ouvrir le matching
+          </button>
+        </div>
+
+        <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
+          <div style="font-weight:700;">Transférer</div>
+          <div class="card-sub" style="margin:6px 0 10px 0;">
+            Transfert de charge (poste → poste) via matching (module à venir).
+          </div>
+          <button type="button"
+                  id="btnAnalysePostePlanTransferer"
+                  class="sb-btn sb-btn--accent sb-btn--xs sb-btn--block">
+            Voir les options
+          </button>
+        </div>
+
+        <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
+          <div style="font-weight:700;">Recruter</div>
+          <div class="card-sub" style="margin:6px 0 10px 0;">
+            Ouvrir la fiche de poste pour préparation du recrutement.
+          </div>
+          <button type="button"
+                  id="btnAnalysePostePlanRecruter"
+                  class="sb-btn sb-btn--accent sb-btn--xs sb-btn--block">
+            Éditer la fiche de poste
+          </button>
+        </div>
       </div>
     </div>
   `;
@@ -1517,29 +1338,54 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     });
   });
 
-  // Points à sécuriser - création d'hypothèse vers Simulations RH
-  const bHypoPoste = byId("btnAnalysePosteCreateHypothesis");
-  if (bHypoPoste && !bHypoPoste.dataset.bound) {
-    bHypoPoste.dataset.bound = "1";
-    bHypoPoste.addEventListener("click", () => {
+  // Plan de sécurisation - actions (possibilités)
+  const bFormer = byId("btnAnalysePostePlanFormer");
+  if (bFormer && !bFormer.dataset.bound) {
+    bFormer.dataset.bound = "1";
+    bFormer.addEventListener("click", () => {
+      if (!_portalref) return;
+      _portalref.showAlert("info", "Catalogue de formation : module en cours (bouton préparé).");
+    });
+  }
+
+  const bMut = byId("btnAnalysePostePlanMutualiser");
+  if (bMut && !bMut.dataset.bound) {
+    bMut.dataset.bound = "1";
+    bMut.addEventListener("click", () => {
       if (!idPoste) {
-        if (_portalref) _portalref.showAlert("error", "Impossible de créer l’hypothèse : poste manquant.");
+        if (_portalref) _portalref.showAlert("error", "Impossible d’ouvrir le matching : id_poste manquant.");
         return;
       }
-      const codePoste = String(p?.codif_client || p?.codif_poste || "").trim();
-      const posteLabel = [codePoste, p?.intitule_poste || "Poste"].filter(Boolean).join(" · ");
-      const cause = hasStruct ? "Couverture du poste insuffisante" : hasDep ? "Couverture trop dépendante" : hasEff ? "Niveau attendu non atteint" : hasTrans ? "Transmission à anticiper" : "Point de fragilité détecté";
-      addAnalyseHypothesis({
-        type: "securiser_poste",
-        title: `Sécuriser le poste ${posteLabel || "sélectionné"}`,
-        poste_id: idPoste,
-        poste_label: posteLabel,
-        cause: cause,
-        effet: "Tester une hypothèse de sécurisation sans décider depuis l’analyse.",
-        horizon: "actuel",
-        criticite: s
-      });
+      setMatchView("candidats");
+      _matchSelectedPoste = idPoste;
+      setMode("matching");
       closeAnalysePosteModal();
+    });
+  }
+
+  const bTrans = byId("btnAnalysePostePlanTransferer");
+  if (bTrans && !bTrans.dataset.bound) {
+    bTrans.dataset.bound = "1";
+    bTrans.addEventListener("click", () => {
+      if (_portalref) _portalref.showAlert("info", "Transfert de charge (poste → poste) : module à venir.");
+    });
+  }
+
+  const bRec = byId("btnAnalysePostePlanRecruter");
+  if (bRec && !bRec.dataset.bound) {
+    bRec.dataset.bound = "1";
+    bRec.addEventListener("click", () => {
+      if (!idPoste) {
+        if (_portalref) _portalref.showAlert("error", "Impossible d’ouvrir la fiche : id_poste manquant.");
+        return;
+      }
+
+      try {
+        openAnalysePdfInBrowser(_portalref, "fiche_poste_simple", idPoste);
+        closeAnalysePosteModal();
+      } catch (e) {
+        if (_portalref) _portalref.showAlert("error", "Impossible d’ouvrir le PDF : " + errMsg(e));
+      }
     });
   }
 
@@ -2498,37 +2344,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>
         </div>
 
-        <div class="card analyse-hypothesis-card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">Hypothèse de sécurisation</div>
-          <div class="card-sub" style="margin:0;">Tester cette correspondance dans Simulations RH, sans valider une mobilité depuis l’analyse.</div>
-          <div class="sb-actions sb-actions--end" style="margin-top:12px;">
-            <button type="button" class="sb-btn sb-btn--accent" id="btnMatchCreateHypothesis">Créer une hypothèse de sécurisation</button>
-          </div>
-        </div>
-
       </div>
     `;
-
-    const bMatchHypo = byId("btnMatchCreateHypothesis");
-    if (bMatchHypo && !bMatchHypo.dataset.bound) {
-      bMatchHypo.dataset.bound = "1";
-      bMatchHypo.addEventListener("click", () => {
-        addAnalyseHypothesis({
-          type: "tester_correspondance_profil_poste",
-          title: `Tester la correspondance ${String(personLabel || "Profil")} / ${String(posteLabel || "Poste")}`,
-          poste_id: String(poste.id_poste || poste.id || "").trim(),
-          poste_label: posteLabel,
-          effectif_id: String(person.id_effectif || person.id_collaborateur || person.id || "").trim(),
-          effectif_label: personLabel,
-          scope_label: svc,
-          cause: "Correspondance profil / poste à confirmer",
-          effet: "Vérifier si le profil peut contribuer à la sécurisation du poste sans décider d’une mobilité dans l’analyse.",
-          horizon: "actuel",
-          matching_score: Number(stats.score_pct || 0)
-        });
-        closeMatchPersonModal();
-      });
-    }
 
     // Toggle "Voir critères" (affiche une ligne dédiée sous la compétence)
     host.querySelectorAll("[data-crit-toggle]").forEach((btn) => {
@@ -3596,29 +3413,18 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         `;
       }).join("");
 
-      const causeKeyFromTitle = (txt) => {
-        const t = String(txt || "").toLowerCase();
-        if (t.includes("non confirmé") || t.includes("non confirme") || t.includes("évalu") || t.includes("evalu")) return "non_confirmee";
-        if (t.includes("niveau") || t.includes("insuff")) return "efficacite";
-        if (t.includes("dépend") || t.includes("depend")) return "dependance";
-        if (t.includes("absence") || t.includes("indispon")) return "indisponibilite";
-        if (t.includes("transmission") || t.includes("relève") || t.includes("releve")) return "transmission";
-        return "structure";
-      };
-
       const causesHtml = (data.causes || []).filter(c => Number(c?.count || 0) > 0).map((c, idx) => `
         <div class="sb-accordion">
           <button type="button" class="sb-acc-head sb-btn sb-btn--soft ${idx === 0 ? "is-open" : ""}">
-            <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span style="display:flex;align-items:center;gap:10px;">
               <span>${esc(c?.titre || "Cause")}</span>
               <span class="sb-badge">${esc(String(c?.count || 0))}</span>
-              ${causeHelpButton(causeKeyFromTitle(c?.titre))}
             </span>
             <span class="sb-acc-chevron">▾</span>
           </button>
           <div class="sb-acc-body">
             <div class="card-sub" style="margin:0 0 8px 0;"><b>Lecture RH :</b> ${esc(c?.lecture || "—")}</div>
-            <div class="card-sub" style="margin:0;"><b>Point à sécuriser :</b> ${esc(c?.action || "—")}</div>
+            <div class="card-sub" style="margin:0;"><b>Action :</b> ${esc(c?.action || "—")}</div>
           </div>
         </div>
       `).join("") || `<div class="card-sub" style="margin:0;">Aucune cause critique détectée sur le périmètre et le seuil sélectionnés.</div>`;
@@ -3660,17 +3466,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         </div>
 
         <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:8px;">Pourquoi cette compétence est fragile ?</div>
+          <div class="card-title" style="margin-bottom:8px;">Causes racines</div>
           ${causesHtml}
-        </div>
-
-        <div class="card analyse-hypothesis-card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:8px;">Points à sécuriser</div>
-          <div class="card-sub" style="margin:0;">Créer une hypothèse permet de tester cette fragilité dans les Simulations RH, sans prendre la décision depuis l’analyse.</div>
-          ${securityPointsHtml("competence")}
-          <div class="sb-actions sb-actions--end" style="margin-top:12px;">
-            <button type="button" id="btnAnalyseCompCreateHypothesis" class="sb-btn sb-btn--accent">Créer une hypothèse de sécurisation</button>
-          </div>
         </div>
 
         <div class="card" style="padding:12px; margin-top:12px;">
@@ -3688,7 +3485,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                   <th style="width:90px; text-align:center;">Évalués</th>
                   <th style="width:90px; text-align:center;">Validés</th>
                   <th style="width:160px;">État RH</th>
-                  <th style="width:190px;">Détail</th>
+                  <th style="width:190px;">Action</th>
                 </tr>
               </thead>
               <tbody>${postesRows || `<tr><td colspan="10" class="sb-muted">Aucun poste concerné.</td></tr>`}</tbody>
@@ -3726,28 +3523,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         });
       });
 
-      const bHypoCompApi = byId("btnAnalyseCompCreateHypothesis");
-      if (bHypoCompApi && !bHypoCompApi.dataset.bound) {
-        bHypoCompApi.dataset.bound = "1";
-        bHypoCompApi.addEventListener("click", () => {
-          const compIdApi = String(data?.competence?.id_comp || data?.competence?.id_competence || "").trim();
-          const compCodeApi = String(data?.competence?.code || "").trim();
-          const compLabelApi = String(data?.competence?.intitule || "Compétence").trim();
-          const causeLabelApi = (Array.isArray(data?.causes) && data.causes.length) ? String(data.causes[0]?.titre || "Point de fragilité détecté") : "Point de fragilité détecté";
-          addAnalyseHypothesis({
-            type: "securiser_competence",
-            title: `Sécuriser la compétence ${compCodeApi ? compCodeApi + " · " : ""}${compLabelApi}`,
-            competence_id: compIdApi,
-            competence_code: compCodeApi,
-            competence_label: compLabelApi,
-            cause: causeLabelApi,
-            effet: "Tester une hypothèse de couverture ou de transmission sans décider depuis l’analyse.",
-            horizon: "actuel",
-            criticite: scoreSafe
-          });
-          closeAnalyseCompetenceModal();
-        });
-      }
       return;
     }
 
@@ -3935,8 +3710,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <div class="sb-accordion">
         <button type="button" class="sb-acc-head sb-btn sb-btn--soft" data-target="acc_comp_dep">
           <span style="display:flex;align-items:center;gap:10px;">
-            <span>Couverture trop dépendante d’une personne</span>
-            ${causeHelpButton("dependance")}
+            <span>Risque de dépendance</span>
           </span>
           <span class="sb-acc-chevron">▾</span>
         </button>
@@ -4024,8 +3798,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <div class="sb-accordion">
         <button type="button" class="sb-acc-head sb-btn sb-btn--soft" data-target="acc_comp_ind">
           <span style="display:flex;align-items:center;gap:10px;">
-            <span>Fragilité possible liée à une indisponibilité</span>
-            ${causeHelpButton("indisponibilite")}
+            <span>Risque d’indisponibilité</span>
           </span>
           <span class="sb-acc-chevron">▾</span>
         </button>
@@ -4133,9 +3906,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <div class="sb-accordion">
         <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
           <span style="display:flex;align-items:center;gap:10px;">
-            <span>Niveau attendu non atteint</span>
+            <span>Risque d’écart de niveau</span>
             <span class="sb-badge sb-badge--soft">${esc(String(gapPostes.length))}</span>
-            ${causeHelpButton("efficacite")}
           </span>
           <span class="sb-acc-chevron">▾</span>
         </button>
@@ -4167,8 +3939,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <div class="sb-accordion">
         <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
           <span style="display:flex;align-items:center;gap:10px;">
-            <span>Relève ou transmission à anticiper</span>
-            ${causeHelpButton("transmission")}
+            <span>Risque de transmission</span>
           </span>
           <span class="sb-acc-chevron">▾</span>
         </button>
@@ -4186,7 +3957,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <div class="card" style="padding:12px; margin:0;">
         <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
           <div style="flex:1; min-width:260px;">
-            <div class="card-title" style="margin-bottom:6px;">Diagnostic</div>
+            <div class="card-title" style="margin-bottom:6px;">Diagnostic décisionnel</div>
 
             <!-- ligne vide sous diag : demandé -->
             <div style="height:8px;"></div>
@@ -4213,12 +3984,46 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const compCode = String(data?.competence?.code || "").trim();
 
     const planHtml = `
-      <div class="card analyse-hypothesis-card" style="padding:12px; margin-top:12px;">
-        <div class="card-title" style="margin:0 0 6px 0;">Points à sécuriser</div>
-        <div class="card-sub" style="margin:0;">Ces points servent à préparer une hypothèse dans les Simulations RH. La décision finale reste hors Novoskill.</div>
-        ${securityPointsHtml("competence")}
-        <div class="sb-actions sb-actions--end" style="margin-top:12px;">
-          <button type="button" id="btnAnalyseCompCreateHypothesis" class="sb-btn sb-btn--accent">Créer une hypothèse de sécurisation</button>
+      <div class="card" style="padding:12px; margin-top:12px;">
+        <div class="card-title" style="margin:0 0 6px 0;">Plan de sécurisation</div>
+        <div class="card-sub" style="margin:0;">Aperçu des possibilités.</div>
+
+        <div class="row" style="gap:12px; margin-top:12px; flex-wrap:wrap;">
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
+            <div style="font-weight:700;">Former</div>
+            <div class="card-sub" style="margin:6px 0 10px 0;">
+              Catalogue de formation (filtrage par compétence à venir).
+            </div>
+            <button type="button"
+                    id="btnAnalyseCompPlanFormer"
+                    class="sb-btn sb-btn--xs sb-btn--block">
+              Voir les formations
+            </button>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
+            <div style="font-weight:700;">Mutualiser</div>
+            <div class="card-sub" style="margin:6px 0 10px 0;">
+              Sécuriser par doublure / backup (matching effectifs → compétence à venir).
+            </div>
+            <button type="button"
+                    id="btnAnalyseCompPlanMutualiser"
+                    class="sb-btn sb-btn--accent sb-btn--xs sb-btn--block">
+              Ouvrir le matching
+            </button>
+          </div>
+
+          <div class="card" style="padding:12px; margin:0; flex:1; min-width:240px;">
+            <div style="font-weight:700;">Transférer</div>
+            <div class="card-sub" style="margin:6px 0 10px 0;">
+              Transfert / partage de savoir (module à venir).
+            </div>
+            <button type="button"
+                    id="btnAnalyseCompPlanTransferer"
+                    class="sb-btn sb-btn--accent sb-btn--xs sb-btn--block">
+              Voir les options
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -4256,27 +4061,33 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       });
     });
 
-    // Points à sécuriser - création d'hypothèse vers Simulations RH
-    const bHypoComp = byId("btnAnalyseCompCreateHypothesis");
-    if (bHypoComp && !bHypoComp.dataset.bound) {
-      bHypoComp.dataset.bound = "1";
-      bHypoComp.addEventListener("click", () => {
-        const cause = showGap ? "Niveau attendu non atteint" : showDepend ? "Couverture trop dépendante" : showIndispo ? "Indisponibilité à sécuriser" : showTrans ? "Transmission à anticiper" : "Point de fragilité détecté";
-        addAnalyseHypothesis({
-          type: "securiser_competence",
-          title: `Sécuriser la compétence ${compCode ? compCode + " · " : ""}${String(data?.competence?.intitule || "Compétence")}`,
-          competence_id: compId,
-          competence_code: compCode,
-          competence_label: String(data?.competence?.intitule || "Compétence"),
-          cause: cause,
-          effet: "Tester une hypothèse de couverture ou de transmission sans décider depuis l’analyse.",
-          horizon: "actuel",
-          criticite: scoreSafe
-        });
-        closeAnalyseCompetenceModal();
+    // Plan de sécurisation - actions (possibilités)
+    const bCFormer = byId("btnAnalyseCompPlanFormer");
+    if (bCFormer && !bCFormer.dataset.bound) {
+      bCFormer.dataset.bound = "1";
+      bCFormer.addEventListener("click", () => {
+        if (!_portalref) return;
+        _portalref.showAlert("info", "Catalogue de formation : module en cours (bouton préparé).");
       });
     }
 
+    const bCMut = byId("btnAnalyseCompPlanMutualiser");
+    if (bCMut && !bCMut.dataset.bound) {
+      bCMut.dataset.bound = "1";
+      bCMut.addEventListener("click", () => {
+        if (!_portalref) return;
+        _portalref.showAlert("info", "Matching effectifs → compétence : module à venir (bouton préparé).");
+      });
+    }
+
+    const bCTrans = byId("btnAnalyseCompPlanTransferer");
+    if (bCTrans && !bCTrans.dataset.bound) {
+      bCTrans.dataset.bound = "1";
+      bCTrans.addEventListener("click", () => {
+        if (!_portalref) return;
+        _portalref.showAlert("info", "Transfert / partage de savoir : module à venir (bouton préparé).");
+      });
+    }
   }
 
 
@@ -4547,7 +4358,7 @@ function renderAnalysePosteCompetencesTab(data) {
             <th class="col-center" style="width:90px;">Criticité</th>
             <th class="col-center" style="width:120px;">Porteurs</th>
             <th class="col-center" style="width:140px;">Au niv. requis</th>
-            <th class="col-center" style="width:140px;">Point à sécuriser</th>
+            <th class="col-center" style="width:140px;">Action reco</th>
           </tr>
         </thead>
         <tbody>
@@ -5162,7 +4973,7 @@ function renderDetail(mode) {
                       Priorité de<br>traitement
                     </th>
 
-                    <th class="col-center" style="width:140px;">Détail</th>
+                    <th class="col-center" style="width:140px;">Action</th>
                   </tr>
                 </thead>
                 <tbody>${rowsHtml}</tbody>
@@ -5315,9 +5126,9 @@ function renderDetail(mode) {
             const sans = Number(r.future_sans_porteur || 0);
             const unique = Number(r.future_porteur_unique || 0);
             const rel = Number(r.future_sans_releve || 0);
-            if (sans > 0) return "Sécuriser rapidement : couverture complémentaire à tester.";
-            if (unique > 0 || rel > 0) return "Sécuriser : binôme, transmission ou niveau à confirmer.";
-            return "Contrôler la couverture et préparer une hypothèse de relève.";
+            if (sans > 0) return "Décider vite : recrutement, mobilité ou formation ciblée.";
+            if (unique > 0 || rel > 0) return "Sécuriser : binôme, transmission et montée en compétence.";
+            return "Contrôler la couverture et préparer un plan de relève.";
           }
 
           const rowsHtml = items.map(r => {
@@ -5365,7 +5176,7 @@ function renderDetail(mode) {
                     <th>Situation RH projetée</th>
                     <th class="col-center" style="width:150px;">Couverture</th>
                     <th class="col-center" style="width:140px;">Priorité</th>
-                    <th>Point à sécuriser</th>
+                    <th>Décision à préparer</th>
                     <th class="col-center" style="width:120px;">Détail</th>
                   </tr>
                 </thead>
@@ -5520,7 +5331,7 @@ function renderDetail(mode) {
                 Priorité de<br>traitement
               </th>
 
-              <th class="col-center" style="width:140px;">Détail</th>
+              <th class="col-center" style="width:140px;">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -5663,7 +5474,7 @@ function renderDetail(mode) {
                 Priorité de<br>traitement
               </th>
 
-              <th class="col-center" style="width:140px;">Détail</th>
+              <th class="col-center" style="width:140px;">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -5966,7 +5777,7 @@ function renderDetail(mode) {
                     <th class="col-center" style="width:220px;">
                       <span style="display:inline-block; line-height:1.1;">Éléments<br>en évolution</span>
                     </th>
-                    <th class="col-center" style="width:180px;">Détail</th>
+                    <th class="col-center" style="width:180px;">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -6113,14 +5924,8 @@ function renderDetail(mode) {
 
       const r = t.risques || {};
       const globalFrag = Number(r.postes_fragilite_globale);
-      const compFrag = Number(r.comp_fragilite_moyenne);
-      const compFragTxt = Number.isFinite(compFrag) ? `${Math.round(compFrag)}%` : (Number.isFinite(Number(r.comp_critiques_fragiles)) ? `${Number(r.comp_critiques_fragiles)} point(s)` : "—");
-      const globalFragTxt = Number.isFinite(globalFrag) ? `${Math.round(globalFrag)}%` : "—";
-      setText("kpiRiskPostes", globalFragTxt);
-      setText("kpiRiskCritFragiles", compFragTxt);
-      setText("analyseSynthPostes", globalFragTxt);
-      setText("analyseSynthCompetences", compFragTxt);
-      setText("analyseSynthScope", data?.scope?.nom_service || getScopeLabel());
+      setText("kpiRiskPostes", Number.isFinite(globalFrag) ? `${Math.round(globalFrag)}%` : "—");
+      setText("kpiRiskCritFragiles", r.comp_critiques_fragiles);
 
       const alertN = Number(r.comp_critiques_tombent_zero_auj || 0);
       const alertEl = byId("kpiRiskCritAlert");
@@ -6138,9 +5943,7 @@ function renderDetail(mode) {
       (async () => {
         try {
           const evo = await computeRiskEvolution3m(portal, f.id_service);
-          const evoTxt = fmtPctSigned(evo?.total?.pct);
-          setText("kpiRiskEvol3m", evoTxt);
-          setText("analyseSynth3m", evoTxt);
+          setText("kpiRiskEvol3m", fmtPctSigned(evo?.total?.pct));
         } catch (e) {
           setText("kpiRiskEvol3m", "—");
         }
@@ -6162,7 +5965,7 @@ function renderDetail(mode) {
     localStorage.setItem(STORE_MODE, finalMode);
 
     setActiveTile(finalMode);
-    setText("analyseModeLabel", finalMode === "matching" ? "Correspondance profils / postes" : (finalMode === "previsions" ? "Prévisions" : "Risques actuels"));
+    setText("analyseModeLabel", finalMode === "matching" ? "Matching" : (finalMode === "previsions" ? "Prévisions" : "Risques"));
     renderDetail(finalMode);
   }
 
@@ -6331,19 +6134,6 @@ function renderDetail(mode) {
       const nextExit = (kpis.next_exit_date || "").toString().trim();
       const criticite = Number(data?.criticite_max ?? data?.max_criticite ?? comp?.max_criticite ?? 0) || 0;
 
-      window.__sbPrevCritHypothesis = {
-        type: "securiser_competence_prevision",
-        title: `Anticiper la compétence ${code ? code + " · " : ""}${intit}`,
-        competence_id: String(comp.id_comp || comp.id_competence || comp.id || compKey || "").trim(),
-        competence_code: code,
-        competence_label: intit,
-        scope_label: scope,
-        cause: "Fragilité prévisionnelle à horizon",
-        effet: "Tester une hypothèse de couverture ou de transmission avant que la compétence ne devienne insuffisamment couverte.",
-        horizon: horizonTxt,
-        criticite: criticite
-      };
-
       if (title) title.textContent = `${code ? code + " — " : ""}${intit}`;
       if (sub) sub.textContent = `Impact prévisionnel à horizon ${horizonTxt}`;
       if (bCrit) bCrit.textContent = `Criticité : ${criticite || "—"}`;
@@ -6401,11 +6191,11 @@ function renderDetail(mode) {
             <div class="sb-prev-kpi"><span>Postes concernés</span><strong>${escapeHtml(String(postesImpact))}</strong></div>
           </div>
           <div class="sb-prev-actions-card">
-            <div class="sb-prev-modal-title">Points à sécuriser</div>
+            <div class="sb-prev-modal-title">Décisions RH à préparer</div>
             <div class="sb-prev-action-list">
               <div>Confirmer les relais capables de couvrir le niveau attendu.</div>
               <div>Organiser une transmission avant la prochaine sortie prévue${nextExit ? ` (${escapeHtml(fmtDateFR(nextExit))})` : ""}.</div>
-              <div>Tester une hypothèse de sécurisation si la couverture restante est insuffisante.</div>
+              <div>Déclencher formation, mobilité ou recrutement si la couverture restante est insuffisante.</div>
             </div>
           </div>
           <div style="margin-top:10px;">${domPill}</div>
@@ -6501,16 +6291,9 @@ function setAnalysePrevPosteRedTab(key) {
 
   const btnX = byId("btnCloseAnalysePrevPosteRedModal");
   const btnClose = byId("btnAnalysePrevPosteRedModalClose");
-  const btnHypoPosteRed = byId("btnAnalysePrevPosteRedCreateHypothesis");
 
   if (btnX) btnX.addEventListener("click", closeAnalysePrevPosteRedModal);
   if (btnClose) btnClose.addEventListener("click", closeAnalysePrevPosteRedModal);
-  if (btnHypoPosteRed) btnHypoPosteRed.addEventListener("click", () => {
-    const h = window.__sbPrevPosteRedHypothesis;
-    if (!h) return setStatus("Aucune hypothèse disponible pour cette prévision.");
-    addAnalyseHypothesis(h);
-    closeAnalysePrevPosteRedModal();
-  });
 
   const m = byId("modalAnalysePrevPosteRed");
   if (m) {
@@ -6547,7 +6330,6 @@ function bindOnce(portal) {
 
   // garde une ref globale (ton code s’appuie dessus partout)
   _portalref = portal || _portalref;
-  bindAnalyseHelpDelegation();
 
   try {
     const ctx0 = getPortalContext(_portalref);
@@ -6749,13 +6531,6 @@ function bindOnce(portal) {
 
   if (btnXPrevCrit) btnXPrevCrit.addEventListener("click", closeAnalysePrevCritModal);
   if (btnClosePrevCrit) btnClosePrevCrit.addEventListener("click", closeAnalysePrevCritModal);
-  const btnHypoPrevCrit = byId("btnAnalysePrevCritCreateHypothesis");
-  if (btnHypoPrevCrit) btnHypoPrevCrit.addEventListener("click", () => {
-    const h = window.__sbPrevCritHypothesis;
-    if (!h) return setStatus("Aucune hypothèse disponible pour cette prévision.");
-    addAnalyseHypothesis(h);
-    closeAnalysePrevCritModal();
-  });
 
   if (modalPrevCrit) {
     modalPrevCrit.addEventListener("click", (e) => {
@@ -7161,17 +6936,16 @@ function bindOnce(portal) {
             </div>
 
             <div class="sb-prev-actions-card">
-              <div class="sb-prev-modal-title">Points à sécuriser</div>
+              <div class="sb-prev-modal-title">Décisions à préparer</div>
               <div class="sb-prev-action-list">
                 <div>Identifier les savoir-faire critiques portés par la personne.</div>
                 <div>Confirmer un relais interne ou organiser une transmission.</div>
-                <div>Préparer une hypothèse de sécurisation si la couverture du poste devient insuffisante.</div>
+                <div>Préparer formation, mobilité ou recrutement si la couverture du poste devient insuffisante.</div>
               </div>
             </div>
           </div>
 
           <div class="modal-footer">
-            <button type="button" class="sb-btn sb-btn--accent" id="btnPrevSortieCreateHypothesis" ${idPoste ? "" : "disabled"}>Créer une hypothèse de sécurisation</button>
             <button type="button" class="sb-btn sb-btn--soft" id="btnPrevSortieGoRisques" ${idPoste ? "" : "disabled"}>Voir l’analyse du poste</button>
             <button type="button" class="sb-btn sb-btn--soft" id="btnPrevSortieGoMatching" ${idPoste ? "" : "disabled"}>Voir les relais possibles</button>
             <button type="button" class="sb-btn sb-btn--soft" id="btnPrevSortieCloseBottom">Fermer</button>
@@ -7186,23 +6960,6 @@ function bindOnce(portal) {
     modal?.addEventListener("click", (e) => { if (e.target === modal) close(); });
     wrap.querySelector("#btnPrevSortieCloseTop")?.addEventListener("click", close);
     wrap.querySelector("#btnPrevSortieCloseBottom")?.addEventListener("click", close);
-
-    wrap.querySelector("#btnPrevSortieCreateHypothesis")?.addEventListener("click", () => {
-      if (!idPoste) return;
-      addAnalyseHypothesis({
-        type: "securiser_sortie_prevue",
-        title: `Anticiper la sortie de ${String(full || "collaborateur")}`,
-        poste_id: idPoste,
-        poste_label: poste,
-        effectif_label: full,
-        scope_label: service,
-        cause: "Sortie ou indisponibilité prévue",
-        effet: "Vérifier si la couverture du poste et des compétences critiques reste suffisante à la date prévue.",
-        horizon: horizonTxt,
-        criticite: null
-      });
-      close();
-    });
 
     wrap.querySelector("#btnPrevSortieGoRisques")?.addEventListener("click", async () => {
       if (!idPoste) return;
@@ -7485,21 +7242,21 @@ function bindOnce(portal) {
         `;
       }
 
-      // Points à sécuriser
+      // Plan d’action
       if (!actions.length) {
         paneActions.innerHTML = `
           <div class="card" style="padding:12px; margin:0;">
-            <div class="card-title" style="margin-bottom:6px;">Points à sécuriser</div>
+            <div class="card-title" style="margin-bottom:6px;">Plan d’action</div>
             <div class="card-sub" style="margin:0;">
               Aucun plan renvoyé par l’API (à brancher).<br/>
-              Points à instruire : couverture complémentaire, transmission, niveau réel à confirmer et hypothèse à tester.
+              Conseil: transfert (shadowing), formation ciblée, mobilité/succession, recrutement si restants insuffisants.
             </div>
           </div>
         `;
       } else {
         paneActions.innerHTML = `
           <div class="card" style="padding:12px; margin:0;">
-            <div class="card-title" style="margin-bottom:6px;">Points à sécuriser</div>
+            <div class="card-title" style="margin-bottom:6px;">Plan d’action</div>
             <div class="card-sub" style="margin:0;">
               ${actions.map(a => `• ${escapeHtml(String(a))}`).join("<br/>")}
             </div>
@@ -7567,13 +7324,13 @@ function bindOnce(portal) {
 
     function _decisionText(futureFragiles, futureSans, futureUnique) {
       if (futureSans > 0) {
-        return "Lecture RH : le poste perd une couverture critique. Préparer une hypothèse de sécurisation à tester.";
+        return "Lecture RH : le poste perd une couverture critique. Préparer une décision de sécurisation : recrutement, mobilité, formation ciblée ou relais externe.";
       }
       if (futureUnique > 0) {
-        return "Lecture RH : le poste reste couvert, mais dépend trop fortement d’une seule personne. Préparer une hypothèse de couverture complémentaire.";
+        return "Lecture RH : le poste reste couvert, mais dépend trop fortement d’une seule personne. Préparer un binôme et un transfert de savoir.";
       }
       if (futureFragiles > 0) {
-        return "Lecture RH : le poste présente une fragilité à horizon. Les relais internes et niveaux réels doivent être confirmés.";
+        return "Lecture RH : le poste présente une fragilité à horizon. Priorité à la montée en compétence et à la confirmation des relais internes.";
       }
       return "Lecture RH : aucun point de rupture majeur détecté sur l’horizon, mais la couverture doit être suivie.";
     }
@@ -7671,17 +7428,6 @@ function bindOnce(portal) {
         if (kFutureSans) kFutureSans.textContent = String(fSans);
         if (kFutureUniq) kFutureUniq.textContent = String(fUniq);
         if (decision) decision.textContent = _decisionText(fFrag, fSans, fUniq);
-        window.__sbPrevPosteRedHypothesis = {
-          type: "securiser_poste_prevision",
-          title: `Anticiper le poste ${code ? code + " · " : ""}${intit}`,
-          poste_id: String(id_poste || poste.id_poste || poste.id || "").trim(),
-          poste_label: `${code ? code + " — " : ""}${intit}`,
-          scope_label: svc,
-          cause: fSans > 0 ? "Compétence critique sans porteur à horizon" : (fUniq > 0 ? "Couverture trop dépendante à horizon" : "Fragilité prévisionnelle du poste"),
-          effet: "Tester une hypothèse de couverture future avant que le poste ne devienne fragile.",
-          horizon: horizonTxt,
-          criticite: null
-        };
 
         function readingText() {
           if (fSans > 0) return "Ce poste présente un risque de rupture : une ou plusieurs compétences critiques ne seraient plus couvertes à l’horizon sélectionné.";
@@ -7692,7 +7438,7 @@ function bindOnce(portal) {
 
         function actionList() {
           const arr = [];
-          if (fSans > 0) arr.push("Créer une hypothèse de sécurisation immédiate à tester.");
+          if (fSans > 0) arr.push("Lancer un plan de sécurisation immédiat : recrutement, mobilité ou formation ciblée.");
           if (fUniq > 0) arr.push("Organiser un binôme et une transmission formalisée sur les compétences à porteur unique.");
           if (sortants.length) arr.push("Planifier les actions avant la prochaine sortie prévue.");
           if (!arr.length) arr.push("Contrôler la couverture et confirmer les relais internes disponibles.");
@@ -7718,7 +7464,7 @@ function bindOnce(portal) {
               <div class="sb-prev-kpi"><span>Couverture critique</span><strong>${escapeHtml(String(Math.round(covNow)))}% → ${escapeHtml(String(Math.round(covFuture)))}%</strong></div>
               <div class="sb-prev-kpi"><span>Compétences fragilisées</span><strong>${escapeHtml(String(fFrag))}</strong></div>
             </div>
-            <div class="sb-prev-actions-card"><div class="sb-prev-modal-title">Points à sécuriser</div><div class="sb-prev-action-list">${actionList()}</div></div>
+            <div class="sb-prev-actions-card"><div class="sb-prev-modal-title">Décisions à préparer</div><div class="sb-prev-action-list">${actionList()}</div></div>
             <div class="sb-prev-actions-card"><div class="sb-prev-modal-title">Compétences à sécuriser en priorité</div>${top || `<div class="sb-prev-empty">Aucune compétence prioritaire retournée.</div>`}</div>
           `;
         }
@@ -7726,7 +7472,7 @@ function bindOnce(portal) {
         if (paneCauses) {
           if (!causes.length) paneCauses.innerHTML = `<div class="sb-prev-empty">Aucune cause compétence retournée.</div>`;
           else paneCauses.innerHTML = `
-            <div class="sb-prev-table-wrap"><table class="sb-table sb-table--airy sb-table--hover sb-prev-table"><thead><tr><th>Compétence critique</th><th class="col-center">Niveau requis</th><th class="col-center">Criticité</th><th class="col-center">Porteurs</th><th>Prochaine sortie</th><th>Point à sécuriser</th></tr></thead><tbody>${causes.map(c => {
+            <div class="sb-prev-table-wrap"><table class="sb-table sb-table--airy sb-table--hover sb-prev-table"><thead><tr><th>Compétence critique</th><th class="col-center">Niveau requis</th><th class="col-center">Criticité</th><th class="col-center">Porteurs</th><th>Prochaine sortie</th><th>Décision RH</th></tr></thead><tbody>${causes.map(c => {
               const compKey = (c.id_comp || c.id_competence || c.code || "").toString().trim();
               const codeC = (c.code || "—").toString().trim();
               const label = (c.intitule || c.intitule_competence || "—").toString().trim();
@@ -7735,7 +7481,7 @@ function bindOnce(portal) {
               const now = _num(c.nb_now ?? c.porteurs_now);
               const rem = _num(c.nb_remain ?? c.porteurs_remain);
               const nxt = (c.next_exit_comp || c.next_exit_date || "").toString().trim();
-              const decision = rem <= 0 ? "Couverture à créer" : (rem === 1 ? "Porteur à dédoubler" : "Relais à confirmer");
+              const decision = rem <= 0 ? "Créer une couverture" : (rem === 1 ? "Dédoubler le porteur" : "Confirmer le relais");
               return `<tr class="prev-poste-red-comp-row" data-comp-key="${escapeHtml(compKey)}"><td><span class="sb-badge sb-badge-ref-comp-code">${escapeHtml(codeC)}</span> <strong>${escapeHtml(label)}</strong></td><td class="col-center"><span class="sb-badge">${escapeHtml(niv)}</span></td><td class="col-center">${escapeHtml(String(crit || "—"))}</td><td class="col-center"><strong>${escapeHtml(String(now))} → ${escapeHtml(String(rem))}</strong></td><td>${escapeHtml(nxt ? fmtDateFR(nxt) : "—")}</td><td>${escapeHtml(decision)}</td></tr>`;
             }).join("")}</tbody></table></div>`;
         }
@@ -7766,7 +7512,7 @@ function bindOnce(portal) {
         }
 
         if (paneVois) {
-          if (!voisins.length) paneVois.innerHTML = `<div class="sb-prev-empty">Aucun poste voisin retourné. À traiter via une hypothèse de sécurisation selon le niveau de couverture.</div>`;
+          if (!voisins.length) paneVois.innerHTML = `<div class="sb-prev-empty">Aucun poste voisin retourné. À traiter via transmission, mobilité ou recrutement selon le niveau de couverture.</div>`;
           else paneVois.innerHTML = `<div class="sb-prev-table-wrap"><table class="sb-table sb-table--airy sb-prev-table"><thead><tr><th>Poste voisin</th><th>Service</th><th class="col-center">Compétences communes</th></tr></thead><tbody>${voisins.map(r => `<tr><td><strong>${escapeHtml(r.intitule_poste || r.poste || "—")}</strong></td><td>${escapeHtml(r.nom_service || r.service || "—")}</td><td class="col-center">${escapeHtml(String(r.nb_competences_communes || r.score || "—"))}</td></tr>`).join("")}</tbody></table></div>`;
         }
 

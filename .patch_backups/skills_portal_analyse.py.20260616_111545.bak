@@ -44,9 +44,6 @@ class AnalyseRisquesTile(BaseModel):
     # KPI 2 (nouveau): compétences critiques "fragiles" (bus factor ≤ 1) en nominal (sans breaks)
     comp_critiques_fragiles: int = 0
 
-    # KPI utilisateur: moyenne de fragilité des compétences critiques du périmètre
-    comp_fragilite_moyenne: int = 0
-
     # Alerte "aujourd'hui": nb de compétences qui tombent à 0 porteur dispo à cause d'indispos en cours
     comp_critiques_tombent_zero_auj: int = 0
 
@@ -1412,13 +1409,6 @@ def get_analyse_summary(
                 comp_critiques_sans_porteur = len([r for r in comp_records if int(r.get("nb_postes_couverture_absente") or 0) > 0])
                 comp_porteur_unique = len([r for r in comp_records if int(r.get("nb_postes_dependance") or 0) > 0])
                 comp_critiques_fragiles = len(comp_records_fragiles)
-                if comp_records:
-                    comp_fragilite_moyenne = int(round(
-                        sum(int(r.get("indice_fragilite") or 0) for r in comp_records)
-                        / float(len(comp_records))
-                    ))
-                else:
-                    comp_fragilite_moyenne = 0
                 comp_critiques_tombent_zero_auj = int(rk.get("comp_critiques_tombent_zero_auj") or 0)
 
                 # ---------------------------
@@ -1816,7 +1806,6 @@ def get_analyse_summary(
                         comp_critiques_sans_porteur=comp_critiques_sans_porteur,
                         comp_bus_factor_1=comp_porteur_unique,  # UI = "Porteur unique"
                         comp_critiques_fragiles=comp_critiques_fragiles,
-                        comp_fragilite_moyenne=comp_fragilite_moyenne,
                         comp_critiques_tombent_zero_auj=comp_critiques_tombent_zero_auj,
                     ),
                     matching=AnalyseMatchingTile(

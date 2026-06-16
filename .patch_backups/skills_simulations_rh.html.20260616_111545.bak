@@ -18,7 +18,6 @@
   <div id="simStatus" class="sb-hint" style="display:none;"></div>
 
   <div class="sim-panel" data-sim-panel="build">
-    <div id="simAnalyseHypothesesCard" class="card sim2-source-card" style="display:none; margin-bottom:12px;"></div>
     <div class="sim2-grid-main">
       <div class="sim2-grid-left">
         <div class="card">
