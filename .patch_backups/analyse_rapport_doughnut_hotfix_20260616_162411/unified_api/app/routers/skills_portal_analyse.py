@@ -7153,7 +7153,7 @@ def _analyse_report_ring_like(title: str, value: int, color_hex: str = "#ef4444"
 
 def _analyse_report_pie_panel(title: str, labels: List[str], data: List[int], colors_hex: List[str], width_mm: float = 132.0, height_mm: float = 62.0):
     from reportlab.graphics.shapes import Circle, Drawing, Rect, String
-    from reportlab.graphics.charts.piecharts import Pie
+    from reportlab.graphics.charts.piecharts import Doughnut
     from reportlab.lib import colors
     from reportlab.lib.units import mm
 
@@ -7167,7 +7167,7 @@ def _analyse_report_pie_panel(title: str, labels: List[str], data: List[int], co
         labels = ["Aucun effet"]
         colors_hex = ["#cbd5e1"]
 
-    chart = Pie()
+    chart = Doughnut()
     chart.x = 6 * mm
     chart.y = 8 * mm
     chart.width = 42 * mm
@@ -7175,16 +7175,12 @@ def _analyse_report_pie_panel(title: str, labels: List[str], data: List[int], co
     chart.data = safe_data
     chart.labels = [""] * len(safe_data)
     chart.slices.strokeWidth = 0.5
-
+    chart.slices.popout = 0
     palette = colors_hex or ["#ef4444", "#f59e0b", "#fb7185", "#64748b"]
-    for i, _v in enumerate(safe_data):
+    for i, v in enumerate(safe_data):
         chart.slices[i].fillColor = colors.HexColor(palette[i % len(palette)])
-
     d.add(chart)
-
-    # Faux donut : ReportLab installé ici ne fournit pas Doughnut.
-    # On garde donc l'effet anneau avec un disque blanc au centre, sans dépendance fragile.
-    d.add(Circle(27 * mm, 29 * mm, 9.8 * mm, fillColor=colors.white, strokeColor=colors.white))
+    d.add(Circle(27 * mm, 29 * mm, 9.5 * mm, fillColor=colors.white, strokeColor=colors.white))
     d.add(String(23.2 * mm, 28 * mm, str(sum(safe_data)), fontName="Helvetica-Bold", fontSize=11, fillColor=colors.HexColor("#0f172a")))
 
     legend_y = height_mm * mm - 15 * mm
@@ -7194,8 +7190,9 @@ def _analyse_report_pie_panel(title: str, labels: List[str], data: List[int], co
         d.add(Rect(58 * mm, y - 2.2 * mm, 4 * mm, 4 * mm, fillColor=col, strokeColor=col))
         d.add(String(64 * mm, y, _analyse_pdf_short(f"{lbl}", 30), fontName="Helvetica", fontSize=7.1, fillColor=colors.HexColor("#334155")))
         d.add(String((width_mm - 8) * mm, y, str(val), fontName="Helvetica-Bold", fontSize=7.1, fillColor=colors.HexColor("#0f172a"), textAnchor="end"))
-
     return d
+
+
 
 def _analyse_report_family_bars_panel(title: str, items: List[Dict[str, Any]], width_mm: float = 198.0, height_mm: float = 44.0):
     from reportlab.graphics.shapes import Drawing, Rect, String
