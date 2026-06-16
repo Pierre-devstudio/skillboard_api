@@ -6615,27 +6615,51 @@ def _analyse_pdf_safe_int(v: Any) -> int:
 
 
 def _analyse_effect_definitions() -> Dict[str, Dict[str, Any]]:
-    families = ["Données", "Dépendance", "Couverture", "Renfort", "Transmission"]
+    # Familles adaptées à l'analyse des compétences : principe Ishikawa, sans reprendre le 5M industriel brut.
     return {
         "rupture_activite": {
             "title": "Risque de rupture ou ralentissement d’activité",
-            "central_effect": "L’activité peut ralentir ou se bloquer si les compétences indispensables ne sont pas suffisamment couvertes.",
-            "families": families,
+            "central_effect": "Une activité peut ralentir ou être bloquée si les compétences indispensables ne sont pas assez couvertes.",
+            "families": [
+                "Couverture actuelle",
+                "Renfort disponible",
+                "Dépendance individuelle",
+                "Postes sensibles",
+                "Données à confirmer",
+            ],
         },
         "qualite_execution": {
             "title": "Risque de baisse de qualité d’exécution",
-            "central_effect": "La qualité, l’autonomie ou les délais peuvent se dégrader si la maîtrise réelle reste insuffisante.",
-            "families": families,
+            "central_effect": "Le travail peut être réalisé avec trop peu d’autonomie, plus d’erreurs, plus de reprises ou des délais plus longs.",
+            "families": [
+                "Niveau de maîtrise",
+                "Compétences à confirmer",
+                "Exigence du poste",
+                "Situations complexes",
+                "Données à confirmer",
+            ],
         },
         "dependance_individuelle": {
             "title": "Risque de dépendance individuelle",
-            "central_effect": "L’organisation dépend trop fortement de quelques personnes pour maintenir certaines compétences.",
-            "families": families,
+            "central_effect": "L’entreprise dépend trop fortement d’une ou quelques personnes pour maintenir une compétence ou un poste.",
+            "families": [
+                "Savoir-faire concentré",
+                "Absence de doublure",
+                "Transmission insuffisante",
+                "Organisation du poste",
+                "Données à confirmer",
+            ],
         },
         "perte_savoir_faire": {
             "title": "Risque de perte de savoir-faire",
-            "central_effect": "Un savoir-faire important peut se fragiliser ou se perdre s’il n’est pas transmis à temps.",
-            "families": families,
+            "central_effect": "Un savoir-faire utile peut disparaître progressivement faute de relève, de transmission ou de couverture complémentaire.",
+            "families": [
+                "Relève identifiée",
+                "Transmission",
+                "Renouvellement des compétences",
+                "Horizon de sortie",
+                "Données à confirmer",
+            ],
         },
     }
 
@@ -6666,12 +6690,10 @@ def _analyse_build_effect_metrics(
 ) -> List[Dict[str, Any]]:
     defs = _analyse_effect_definitions()
 
-    total_absente = sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_couverture_absente")) > 0)
-    total_non_conf = sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_non_confirmee")) > 0)
-    total_insuff = sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_niveau_insuffisant")) > 0)
-    total_dep = sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_dependance")) > 0)
-    total_renfort = sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_experts_dispo")) <= 1)
-    total_transmission = sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_experts")) <= 0)
+    total_absente = sum(_analyse_pdf_safe_int(r.get("nb_postes_couverture_absente")) for r in comp_records)
+    total_non_conf = sum(_analyse_pdf_safe_int(r.get("nb_postes_non_confirmee")) for r in comp_records)
+    total_insuff = sum(_analyse_pdf_safe_int(r.get("nb_postes_niveau_insuffisant")) for r in comp_records)
+    total_dep = sum(_analyse_pdf_safe_int(r.get("nb_postes_dependance")) for r in comp_records)
     postes_fragiles = sum(1 for r in poste_records if _analyse_pdf_safe_int(r.get("indice_fragilite")) > 0)
 
     comp_frag_score = 0
@@ -6684,26 +6706,24 @@ def _analyse_build_effect_metrics(
     raw = [
         {
             "key": "rupture_activite",
-            "count": total_absente + postes_fragiles + total_renfort,
+            "count": total_absente + postes_fragiles,
             "score": max(poste_frag_score, comp_frag_score),
-            "metric": _analyse_pdf_count(postes_fragiles, "poste fragile", "postes fragiles"),
+            "metric": f"{_analyse_pdf_count(postes_fragiles, 'poste fragile', 'postes fragiles')} • {_analyse_pdf_count(total_absente, 'compétence sans personne confirmée', 'compétences sans personne confirmée')}",
             "causes": [
-                _analyse_pdf_count(total_absente, "compétence avec un problème de couverture", "compétences avec un problème de couverture") if total_absente else "la couverture doit être vérifiée sur certaines compétences critiques",
-                _analyse_pdf_count(total_renfort, "compétence sans renfort immédiat", "compétences sans renfort immédiat") if total_renfort else "le renfort immédiat reste à vérifier sur certaines compétences",
-                _analyse_pdf_count(postes_fragiles, "poste déjà fragilisé", "postes déjà fragilisés") if postes_fragiles else "les postes sensibles sont à relire dans le détail",
-                _analyse_pdf_count(total_dep, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne") if total_dep else "certaines compétences peuvent encore trop dépendre d’une seule personne",
+                _analyse_pdf_count(total_absente, "compétence critique sans personne confirmée", "compétences critiques sans personne confirmée") if total_absente else "certaines couvertures critiques restent à vérifier",
+                _analyse_pdf_count(postes_fragiles, "poste déjà fragilisé", "postes déjà fragilisés") if postes_fragiles else "les postes sensibles sont à vérifier dans le détail",
+                _analyse_pdf_count(total_dep, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne") if total_dep else "pas de dépendance individuelle forte détectée",
             ],
         },
         {
             "key": "qualite_execution",
-            "count": total_insuff + total_non_conf + total_absente,
+            "count": total_non_conf + total_insuff,
             "score": comp_frag_score,
-            "metric": f"{comp_frag_score}% de fragilité moyenne des compétences",
+            "metric": f"{_analyse_pdf_count(total_insuff, 'écart de maîtrise', 'écarts de maîtrise')} • {_analyse_pdf_count(total_non_conf, 'compétence à confirmer', 'compétences à confirmer')}",
             "causes": [
-                _analyse_pdf_count(total_insuff, "écart de maîtrise à vérifier", "écarts de maîtrise à vérifier") if total_insuff else "des écarts de maîtrise restent à vérifier",
-                _analyse_pdf_count(total_non_conf, "compétence à confirmer", "compétences à confirmer") if total_non_conf else "certaines compétences doivent encore être confirmées",
-                _analyse_pdf_count(total_absente, "compétence sans couverture suffisante", "compétences sans couverture suffisante") if total_absente else "la couverture reste à consolider sur les compétences les plus sensibles",
-                _analyse_pdf_count(total_transmission, "compétence sans niveau expert", "compétences sans niveau expert") if total_transmission else "la transmission experte est mieux répartie sur le périmètre",
+                _analyse_pdf_count(total_insuff, "compétence sous le niveau attendu", "compétences sous le niveau attendu") if total_insuff else "écarts de maîtrise limités ou non détectés",
+                _analyse_pdf_count(total_non_conf, "compétence déclarée mais non confirmée", "compétences déclarées mais non confirmées") if total_non_conf else "compétences majoritairement confirmées",
+                "certaines situations complexes peuvent demander un niveau supérieur",
             ],
         },
         {
@@ -6712,22 +6732,20 @@ def _analyse_build_effect_metrics(
             "score": max(comp_frag_score, poste_frag_score),
             "metric": _analyse_pdf_count(total_dep, "compétence dépendante d’une seule personne", "compétences dépendantes d’une seule personne"),
             "causes": [
-                _analyse_pdf_count(total_dep, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne") if total_dep else "la dépendance individuelle reste limitée",
-                _analyse_pdf_count(total_renfort, "compétence sans renfort immédiat", "compétences sans renfort immédiat") if total_renfort else "les relais immédiats sont mieux répartis",
-                _analyse_pdf_count(total_transmission, "compétence sans niveau expert", "compétences sans niveau expert") if total_transmission else "la transmission experte paraît mieux répartie",
-                _analyse_pdf_count(total_non_conf, "compétence à confirmer", "compétences à confirmer") if total_non_conf else "les confirmations de niveau sont relativement à jour",
+                _analyse_pdf_count(total_dep, "compétence critique avec une seule personne confirmée", "compétences critiques avec une seule personne confirmée") if total_dep else "peu de dépendance individuelle détectée",
+                "doublures ou relais internes à vérifier",
+                "transmission à contrôler sur les compétences les plus critiques",
             ],
         },
         {
             "key": "perte_savoir_faire",
-            "count": total_transmission + total_dep + total_non_conf,
+            "count": total_dep + total_absente,
             "score": max(comp_frag_score, poste_frag_score),
-            "metric": f"Projection à {horizon_years} an(s)",
+            "metric": f"Horizon {horizon_years} an(s) • {total_dep + total_absente} point(s) de relève ou transmission à surveiller",
             "causes": [
-                _analyse_pdf_count(total_transmission, "compétence sans niveau expert", "compétences sans niveau expert") if total_transmission else "les compétences expertes restent globalement réparties",
-                _analyse_pdf_count(total_dep, "compétence portée par une seule personne", "compétences portées par une seule personne") if total_dep else "la relève semble mieux répartie sur le périmètre",
-                _analyse_pdf_count(total_renfort, "compétence sans renfort immédiat", "compétences sans renfort immédiat") if total_renfort else "les renforts immédiats paraissent présents sur le périmètre",
-                _analyse_pdf_count(total_non_conf, "compétence à confirmer", "compétences à confirmer") if total_non_conf else "les données utiles à la transmission semblent correctement renseignées",
+                _analyse_pdf_count(total_dep, "compétence avec une seule personne confirmée", "compétences avec une seule personne confirmée") if total_dep else "relève non critique dans les données actuelles",
+                _analyse_pdf_count(total_absente, "compétence sans personne confirmée", "compétences sans personne confirmée") if total_absente else "compétences sans couverture confirmée limitées ou non détectées",
+                "horizon à croiser avec les sorties et indisponibilités connues",
             ],
         },
     ]
@@ -6744,27 +6762,56 @@ def _analyse_ishikawa_rows_for_effect(comp_records: List[Dict[str, Any]], effet:
     for r in comp_records:
         comp_label = f"{r.get('code') or ''} - {r.get('intitule') or 'Compétence'}".strip(" -")
         frag = _analyse_pdf_safe_int(r.get("indice_fragilite"))
-        n_abs = _analyse_pdf_safe_int(r.get("nb_postes_couverture_absente"))
-        n_dep = _analyse_pdf_safe_int(r.get("nb_postes_dependance"))
-        n_nc = _analyse_pdf_safe_int(r.get("nb_postes_non_confirmee"))
-        n_ins = _analyse_pdf_safe_int(r.get("nb_postes_niveau_insuffisant"))
-        n_exp = _analyse_pdf_safe_int(r.get("nb_experts"))
-        n_exp_dispo = _analyse_pdf_safe_int(r.get("nb_experts_dispo"))
-
-        if n_nc > 0:
-            rows.append({"family": "Données", "comp": comp_label, "cause": "La compétence doit encore être confirmée ou réévaluée", "frag": frag})
-        if n_dep > 0:
-            rows.append({"family": "Dépendance", "comp": comp_label, "cause": "La compétence dépend d’une seule personne", "frag": frag})
-        if n_abs > 0 or n_ins > 0:
-            rows.append({"family": "Couverture", "comp": comp_label, "cause": "La couverture est insuffisante au regard du besoin du poste", "frag": frag})
-        if n_exp_dispo <= 1:
-            rows.append({"family": "Renfort", "comp": comp_label, "cause": "Le renfort immédiat reste insuffisant", "frag": frag})
-        if n_exp <= 0:
-            rows.append({"family": "Transmission", "comp": comp_label, "cause": "Aucun niveau expert n’est visible sur cette compétence", "frag": frag})
-
-    # On garde un volume raisonnable pour le PDF tout en montrant les points les plus parlants.
+        if effet == "rupture_activite":
+            n_abs = _analyse_pdf_safe_int(r.get("nb_postes_couverture_absente"))
+            n_dep = _analyse_pdf_safe_int(r.get("nb_postes_dependance"))
+            n_nc = _analyse_pdf_safe_int(r.get("nb_postes_non_confirmee"))
+            if n_abs > 0:
+                rows.append({"family": "Couverture actuelle", "comp": comp_label, "cause": f"{_analyse_pdf_count(n_abs, 'poste sans personne confirmée', 'postes sans personne confirmée')}", "frag": frag})
+                rows.append({"family": "Renfort disponible", "comp": comp_label, "cause": f"{_analyse_pdf_count(n_abs, 'compétence sans renfort immédiat identifié', 'compétences sans renfort immédiat identifié')}", "frag": frag})
+            if n_dep > 0:
+                rows.append({"family": "Dépendance individuelle", "comp": comp_label, "cause": f"{_analyse_pdf_count(n_dep, 'poste repose sur une seule personne', 'postes reposent sur une seule personne')}", "frag": frag})
+            if frag > 0:
+                rows.append({"family": "Postes sensibles", "comp": comp_label, "cause": f"Fragilité actuelle évaluée à {frag}%", "frag": frag})
+            if n_nc > 0:
+                rows.append({"family": "Données à confirmer", "comp": comp_label, "cause": f"{_analyse_pdf_count(n_nc, 'couverture reste à confirmer', 'couvertures restent à confirmer')}", "frag": frag})
+        elif effet == "qualite_execution":
+            n_ins = _analyse_pdf_safe_int(r.get("nb_postes_niveau_insuffisant"))
+            n_nc = _analyse_pdf_safe_int(r.get("nb_postes_non_confirmee"))
+            if n_ins > 0:
+                rows.append({"family": "Niveau de maîtrise", "comp": comp_label, "cause": f"{_analyse_pdf_count(n_ins, 'écart entre le niveau attendu et le niveau confirmé', 'écarts entre le niveau attendu et le niveau confirmé')}", "frag": frag})
+                rows.append({"family": "Exigence du poste", "comp": comp_label, "cause": f"Le niveau requis reste insuffisant sur {_analyse_pdf_count(n_ins, 'rattachement', 'rattachements')}", "frag": frag})
+            if n_nc > 0:
+                rows.append({"family": "Compétences à confirmer", "comp": comp_label, "cause": f"{_analyse_pdf_count(n_nc, 'compétence déclarée sans confirmation exploitable', 'compétences déclarées sans confirmation exploitable')}", "frag": frag})
+                rows.append({"family": "Données à confirmer", "comp": comp_label, "cause": f"Évaluation ou confirmation à compléter sur {_analyse_pdf_count(n_nc, 'rattachement', 'rattachements')}", "frag": frag})
+            if frag >= 50:
+                rows.append({"family": "Situations complexes", "comp": comp_label, "cause": "La fragilité peut ressortir sur les cas difficiles ou urgents", "frag": frag})
+        elif effet == "dependance_individuelle":
+            n_dep = _analyse_pdf_safe_int(r.get("nb_postes_dependance"))
+            n_nc = _analyse_pdf_safe_int(r.get("nb_postes_non_confirmee"))
+            if n_dep > 0:
+                rows.append({"family": "Savoir-faire concentré", "comp": comp_label, "cause": f"{_analyse_pdf_count(n_dep, 'poste avec une seule personne confirmée', 'postes avec une seule personne confirmée')}", "frag": frag})
+                rows.append({"family": "Absence de doublure", "comp": comp_label, "cause": f"Aucune couverture complémentaire confirmée sur {_analyse_pdf_count(n_dep, 'rattachement', 'rattachements')}", "frag": frag})
+                rows.append({"family": "Transmission insuffisante", "comp": comp_label, "cause": "La compétence doit être transmise ou doublée", "frag": frag})
+            if frag > 0:
+                rows.append({"family": "Organisation du poste", "comp": comp_label, "cause": f"Le poste reste sensible si la personne clé est absente", "frag": frag})
+            if n_nc > 0:
+                rows.append({"family": "Données à confirmer", "comp": comp_label, "cause": f"{_analyse_pdf_count(n_nc, 'couverture potentielle à confirmer', 'couvertures potentielles à confirmer')}", "frag": frag})
+        elif effet == "perte_savoir_faire":
+            n_dep = _analyse_pdf_safe_int(r.get("nb_postes_dependance"))
+            n_abs = _analyse_pdf_safe_int(r.get("nb_postes_couverture_absente"))
+            n_nc = _analyse_pdf_safe_int(r.get("nb_postes_non_confirmee"))
+            if n_dep > 0:
+                rows.append({"family": "Relève identifiée", "comp": comp_label, "cause": f"Relève insuffisante sur {_analyse_pdf_count(n_dep, 'rattachement', 'rattachements')}", "frag": frag})
+                rows.append({"family": "Transmission", "comp": comp_label, "cause": "Savoir-faire à transmettre avant perte de couverture", "frag": frag})
+            if n_abs > 0:
+                rows.append({"family": "Renouvellement des compétences", "comp": comp_label, "cause": f"{_analyse_pdf_count(n_abs, 'compétence à reconstruire ou renforcer', 'compétences à reconstruire ou renforcer')}", "frag": frag})
+            if frag > 0:
+                rows.append({"family": "Horizon de sortie", "comp": comp_label, "cause": "Fragilité à croiser avec les sorties ou indisponibilités prévues", "frag": frag})
+            if n_nc > 0:
+                rows.append({"family": "Données à confirmer", "comp": comp_label, "cause": f"{_analyse_pdf_count(n_nc, 'couverture non confirmée peut masquer une relève', 'couvertures non confirmées peuvent masquer une relève')}", "frag": frag})
     rows.sort(key=lambda x: (-_analyse_pdf_safe_int(x.get("frag")), str(x.get("family") or ""), str(x.get("comp") or "")))
-    return rows[:40]
+    return rows[:25]
 
 def _analyse_pdf_bar(percent: int, width_mm: float = 58.0):
     from reportlab.lib import colors
@@ -6796,52 +6843,6 @@ def _analyse_pdf_short(v: Any, max_len: int = 70) -> str:
     return s[: max(1, max_len - 1)].rstrip() + "…"
 
 
-def _analyse_pdf_wrap_lines(v: Any, max_len: int = 26, max_lines: int = 3) -> List[str]:
-    text = str(v or "").replace("\n", " ").strip()
-    if not text:
-        return ["—"]
-    words = text.split()
-    lines: List[str] = []
-    current = ""
-    for word in words:
-        candidate = word if not current else f"{current} {word}"
-        if len(candidate) <= max_len:
-            current = candidate
-        else:
-            if current:
-                lines.append(current)
-            current = word
-            if len(lines) >= max_lines - 1:
-                break
-    if current:
-        lines.append(current)
-    if len(lines) > max_lines:
-        lines = lines[:max_lines]
-    remaining = " ".join(words)
-    rebuilt = " ".join(lines)
-    if len(rebuilt) < len(text):
-        lines[-1] = _analyse_pdf_short(lines[-1], max_len)
-    return lines
-
-
-def _analyse_pdf_company_name(cur, id_ent: str) -> str:
-    try:
-        cur.execute(
-            """
-            SELECT COALESCE(nom_ent, 'Entreprise') AS nom_ent
-            FROM public.tbl_entreprise
-            WHERE id_ent = %s
-              AND COALESCE(masque, FALSE) = FALSE
-            LIMIT 1
-            """,
-            (id_ent,),
-        )
-        row = cur.fetchone() or {}
-        return (row.get("nom_ent") or "Entreprise").strip() or "Entreprise"
-    except Exception:
-        return "Entreprise"
-
-
 def _analyse_pdf_count(value: Any, singular: str, plural: str) -> str:
     n = _analyse_pdf_safe_int(value)
     return f"{n} {singular if n == 1 else plural}"
@@ -6860,24 +6861,7 @@ def _analyse_ishikawa_group_rows(rows: List[Dict[str, Any]], families: List[str]
     return grouped
 
 
-def _analyse_ishikawa_family_summary(family: str, rows: List[Dict[str, Any]]) -> str:
-    unique_comps = len({str(r.get("comp") or "") for r in (rows or []) if str(r.get("comp") or "").strip()})
-    if unique_comps <= 0:
-        return "Aucun point détecté"
-    if family == "Données":
-        return _analyse_pdf_count(unique_comps, "compétence à confirmer", "compétences à confirmer")
-    if family == "Dépendance":
-        return _analyse_pdf_count(unique_comps, "compétence dépend d’une seule personne", "compétences dépendent d’une seule personne")
-    if family == "Couverture":
-        return _analyse_pdf_count(unique_comps, "compétence avec un problème de couverture", "compétences avec un problème de couverture")
-    if family == "Renfort":
-        return _analyse_pdf_count(unique_comps, "compétence sans renfort immédiat", "compétences sans renfort immédiat")
-    if family == "Transmission":
-        return _analyse_pdf_count(unique_comps, "compétence sans niveau expert", "compétences sans niveau expert")
-    return _analyse_pdf_count(unique_comps, "point détecté", "points détectés")
-
-
-def _analyse_ishikawa_visual(effect: Dict[str, Any], rows: List[Dict[str, Any]], metric: Dict[str, Any], width_mm: float = 270.0, height_mm: float = 118.0):
+def _analyse_ishikawa_visual(effect: Dict[str, Any], rows: List[Dict[str, Any]], metric: Dict[str, Any], width_mm: float = 270.0, height_mm: float = 122.0):
     from reportlab.graphics.shapes import Drawing, Line, Rect, String, Polygon
     from reportlab.lib import colors
     from reportlab.lib.units import mm
@@ -6886,136 +6870,45 @@ def _analyse_ishikawa_visual(effect: Dict[str, Any], rows: List[Dict[str, Any]],
     height = height_mm * mm
     d = Drawing(width, height)
     red = colors.HexColor("#c1272d")
-    text = colors.HexColor("#14213d")
-    muted = colors.HexColor("#64748b")
+    text = colors.HexColor("#1f2937")
+    muted = colors.HexColor("#6b7280")
     line = colors.HexColor("#cbd5e1")
     soft_red = colors.HexColor("#fff5f5")
     soft_gray = colors.HexColor("#f8fafc")
 
     center_y = height * 0.50
-    spine_x1 = 26 * mm
-    spine_x2 = width - 72 * mm
-    effect_x = width - 67 * mm
-    effect_y = center_y - 20 * mm
-    effect_w = 60 * mm
-    effect_h = 40 * mm
+    spine_x1 = 24 * mm
+    spine_x2 = width - 64 * mm
+    effect_x = width - 60 * mm
+    effect_y = center_y - 17 * mm
+    effect_w = 56 * mm
+    effect_h = 34 * mm
 
     d.add(Line(spine_x1, center_y, spine_x2, center_y, strokeColor=red, strokeWidth=1.8))
     d.add(Polygon([spine_x2, center_y, spine_x2 - 5 * mm, center_y + 3 * mm, spine_x2 - 5 * mm, center_y - 3 * mm], fillColor=red, strokeColor=red))
     d.add(Rect(effect_x, effect_y, effect_w, effect_h, rx=6, ry=6, strokeColor=red, fillColor=soft_red, strokeWidth=1))
-    d.add(String(effect_x + 4 * mm, effect_y + 29 * mm, "Effet identifié", fontName="Helvetica-Bold", fontSize=8.2, fillColor=muted))
-    title_lines = _analyse_pdf_wrap_lines(effect.get("title"), 28, 3)
-    for idx, line_txt in enumerate(title_lines):
-        d.add(String(effect_x + 4 * mm, effect_y + 20 * mm - (idx * 4.5 * mm), line_txt, fontName="Helvetica-Bold", fontSize=8.8, fillColor=text))
-    d.add(String(effect_x + 4 * mm, effect_y + 4 * mm, _analyse_pdf_short(metric.get("level") or "Risque à qualifier", 28), fontName="Helvetica", fontSize=8, fillColor=red))
+    d.add(String(effect_x + 4 * mm, effect_y + 22 * mm, "Effet terrain", fontName="Helvetica-Bold", fontSize=8.5, fillColor=muted))
+    d.add(String(effect_x + 4 * mm, effect_y + 14 * mm, _analyse_pdf_short(effect.get("title"), 42), fontName="Helvetica-Bold", fontSize=9.5, fillColor=text))
+    d.add(String(effect_x + 4 * mm, effect_y + 6 * mm, _analyse_pdf_short(metric.get("level") or "Risque à qualifier", 42), fontName="Helvetica", fontSize=8, fillColor=red))
 
     grouped = _analyse_ishikawa_group_rows(rows, effect.get("families") or [])
-    families = [f for f in (effect.get("families") or [])[:5]]
-    coords = [
-        (48 * mm, center_y + 36 * mm, True),
-        (95 * mm, center_y + 36 * mm, True),
-        (142 * mm, center_y + 36 * mm, True),
-        (72 * mm, center_y - 48 * mm, False),
-        (124 * mm, center_y - 48 * mm, False),
-    ]
-    for idx, fam in enumerate(families):
-        if idx >= len(coords):
-            break
-        x_anchor, y_box, is_top = coords[idx]
-        box_w = 42 * mm
-        box_h = 18 * mm
-        if is_top:
-            d.add(Line(x_anchor, center_y, x_anchor - 11 * mm, y_box, strokeColor=line, strokeWidth=1.2))
-        else:
-            d.add(Line(x_anchor, center_y, x_anchor - 11 * mm, y_box + box_h, strokeColor=line, strokeWidth=1.2))
-        d.add(Rect(x_anchor - 19 * mm, y_box, box_w, box_h, rx=4, ry=4, strokeColor=colors.HexColor("#e5e7eb"), fillColor=soft_gray, strokeWidth=0.8))
-        d.add(String(x_anchor - 16 * mm, y_box + 11.5 * mm, fam, fontName="Helvetica-Bold", fontSize=7.8, fillColor=text))
-        summary = _analyse_ishikawa_family_summary(fam, grouped.get(fam) or [])
-        for li, line_txt in enumerate(_analyse_pdf_wrap_lines(summary, 30, 2)):
-            d.add(String(x_anchor - 16 * mm, y_box + 5.4 * mm - (li * 3.6 * mm), line_txt, fontName="Helvetica", fontSize=6.6, fillColor=muted))
+    families = list(grouped.keys())[:5]
+    xs = [45, 82, 119, 156, 193]
+    for i, fam in enumerate(families):
+        x = xs[i] * mm
+        is_top = i % 2 == 0
+        end_x = x - 20 * mm
+        end_y = center_y + (38 * mm if is_top else -38 * mm)
+        box_y = end_y + (2 * mm if is_top else -18 * mm)
+        d.add(Line(x, center_y, end_x, end_y, strokeColor=line, strokeWidth=1.2))
+        d.add(Rect(end_x - 20 * mm, box_y, 58 * mm, 17 * mm, rx=5, ry=5, strokeColor=colors.HexColor("#e5e7eb"), fillColor=soft_gray, strokeWidth=0.8))
+        d.add(String(end_x - 17 * mm, box_y + 10 * mm, _analyse_pdf_short(fam, 34), fontName="Helvetica-Bold", fontSize=7.8, fillColor=text))
+        cause_count = len(grouped.get(fam) or [])
+        sample = grouped.get(fam, [{}])[0].get("cause") if cause_count else "Aucune cause isolée"
+        d.add(String(end_x - 17 * mm, box_y + 4 * mm, f"{cause_count} cause(s) • {_analyse_pdf_short(sample, 36)}", fontName="Helvetica", fontSize=6.5, fillColor=muted))
 
     return d
 
-
-def _analyse_report_ring_like(title: str, value: int, color_hex: str, width_mm: float = 86.0, height_mm: float = 54.0):
-    from reportlab.graphics.shapes import Drawing, Rect, String
-    from reportlab.lib import colors
-    from reportlab.lib.units import mm
-    d = Drawing(width_mm * mm, height_mm * mm)
-    color = colors.HexColor(color_hex)
-    soft = colors.HexColor("#f8fafc")
-    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.white, strokeWidth=0.8))
-    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.5, fillColor=colors.HexColor("#1f2937")))
-    # jauge contemporaine simple
-    bar_x = 5 * mm
-    bar_y = 20 * mm
-    bar_w = (width_mm - 10) * mm
-    d.add(Rect(bar_x, bar_y, bar_w, 5 * mm, rx=2.5, ry=2.5, strokeColor=colors.HexColor("#e5e7eb"), fillColor=soft, strokeWidth=0.6))
-    fill_w = max(3 * mm, min(bar_w, bar_w * max(0, min(100, _analyse_pdf_safe_int(value))) / 100.0))
-    d.add(Rect(bar_x, bar_y, fill_w, 5 * mm, rx=2.5, ry=2.5, strokeColor=color, fillColor=color, strokeWidth=0.6))
-    d.add(String(5 * mm, 31 * mm, f"{_analyse_pdf_safe_int(value)}%", fontName="Helvetica-Bold", fontSize=17, fillColor=colors.HexColor("#14213d")))
-    d.add(String(5 * mm, 10 * mm, "Lecture du risque actuel", fontName="Helvetica", fontSize=7.2, fillColor=colors.HexColor("#64748b")))
-    return d
-
-
-def _analyse_report_pie_panel(title: str, labels: List[str], data: List[int], colors_hex: List[str], width_mm: float = 86.0, height_mm: float = 66.0):
-    from reportlab.graphics.shapes import Drawing, Rect, String, Circle
-    from reportlab.graphics.charts.piecharts import Pie
-    from reportlab.lib import colors
-    from reportlab.lib.units import mm
-    d = Drawing(width_mm * mm, height_mm * mm)
-    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.white, strokeWidth=0.8))
-    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.5, fillColor=colors.HexColor("#1f2937")))
-    p = Pie()
-    p.x = 5 * mm
-    p.y = 11 * mm
-    p.width = 35 * mm
-    p.height = 35 * mm
-    safe_data = [max(0, int(v or 0)) for v in data]
-    if sum(safe_data) <= 0:
-        safe_data = [1]
-        labels = ["Aucun point"]
-        colors_hex = ["#d1d5db"]
-    p.data = safe_data
-    p.labels = [""] * len(safe_data)
-    p.slices.strokeWidth = 0.3
-    for i, hx in enumerate(colors_hex[:len(safe_data)]):
-        p.slices[i].fillColor = colors.HexColor(hx)
-    d.add(p)
-    d.add(Circle(22.5 * mm, 28.5 * mm, 8 * mm, fillColor=colors.white, strokeColor=colors.white))
-    total = sum(safe_data)
-    d.add(String(18 * mm, 28.7 * mm, str(total), fontName="Helvetica-Bold", fontSize=11, fillColor=colors.HexColor("#14213d")))
-    legend_y = height_mm * mm - 16 * mm
-    for i, (lbl, val) in enumerate(zip(labels[:4], safe_data[:4])):
-        y = legend_y - i * 8 * mm
-        d.add(Rect(47 * mm, y - 1.5 * mm, 3.5 * mm, 3.5 * mm, fillColor=colors.HexColor(colors_hex[i]), strokeColor=colors.HexColor(colors_hex[i])))
-        d.add(String(52 * mm, y, _analyse_pdf_short(f"{lbl} ({val})", 28), fontName="Helvetica", fontSize=7.2, fillColor=colors.HexColor("#475569")))
-    return d
-
-
-def _analyse_report_hbars_panel(title: str, items: List[Dict[str, Any]], label_key: str, value_key: str, width_mm: float = 176.0, height_mm: float = 68.0):
-    from reportlab.graphics.shapes import Drawing, Rect, String
-    from reportlab.lib import colors
-    from reportlab.lib.units import mm
-    d = Drawing(width_mm * mm, height_mm * mm)
-    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.white, strokeWidth=0.8))
-    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.5, fillColor=colors.HexColor("#1f2937")))
-    y = height_mm * mm - 16 * mm
-    shown = items[:5]
-    if not shown:
-        d.add(String(5 * mm, y, "Aucune donnée à afficher", fontName="Helvetica", fontSize=8, fillColor=colors.HexColor("#64748b")))
-        return d
-    for row in shown:
-        label = _analyse_pdf_short(row.get(label_key), 32)
-        value = _analyse_pdf_safe_int(row.get(value_key))
-        d.add(String(5 * mm, y, label, fontName="Helvetica", fontSize=7.6, fillColor=colors.HexColor("#334155")))
-        d.add(Rect(64 * mm, y - 2 * mm, 92 * mm, 3.5 * mm, rx=1.7, ry=1.7, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.HexColor("#f3f4f6"), strokeWidth=0.4))
-        fill_w = max(2 * mm, min(92 * mm, 92 * mm * value / 100.0)) if value > 0 else 0
-        if fill_w > 0:
-            d.add(Rect(64 * mm, y - 2 * mm, fill_w, 3.5 * mm, rx=1.7, ry=1.7, strokeColor=colors.HexColor("#c1272d"), fillColor=colors.HexColor("#c1272d"), strokeWidth=0.4))
-        d.add(String(160 * mm, y, f"{value}%", fontName="Helvetica-Bold", fontSize=7.4, fillColor=colors.HexColor("#1f2937")))
-        y -= 10 * mm
-    return d
 
 def _analyse_pdf_level_card(level: str, styles: Dict[str, Any], width_mm: float = 31.0):
     from reportlab.lib import colors
@@ -7111,7 +7004,6 @@ def get_analyse_ishikawa_pdf(
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
-                company_name = _analyse_pdf_company_name(cur, id_ent)
                 scope, comp_records, poste_records = _analyse_build_context_data(cur, id_ent, id_service, int(criticite_min))
 
         rows = _analyse_ishikawa_rows_for_effect(comp_records, effect_key)
@@ -7120,43 +7012,42 @@ def get_analyse_ishikawa_pdf(
 
         styles = build_pdf_styles()
         title_style = styles["title"]
+        subtitle_style = styles["subtitle"]
+        section_style = styles["section"]
         body_style = styles["body"]
         small_style = styles["small"]
 
         story = []
-        story.append(Paragraph("Ishikawa", title_style))
-        story.append(make_spacer(2))
+        story.append(Paragraph("Ishikawa - Analyse des compétences", title_style))
+        story.append(Paragraph(_analyse_pdf_esc(f"{effect['title']} • {scope.nom_service} • Horizon {horizon_years} an(s)"), subtitle_style))
+        story.append(make_spacer(3))
 
-        meta_cards = Table([[
-            _analyse_pdf_stat_card("Effet identifié", effect["title"], "Lecture cause / effet", styles, 86),
-            _analyse_pdf_stat_card("Périmètre", scope.nom_service, "Périmètre analysé", styles, 86),
-            _analyse_pdf_stat_card("Horizon", f"{horizon_years} an(s)", "Projection retenue", styles, 86),
-        ]], colWidths=[89 * mm, 89 * mm, 89 * mm])
-        meta_cards.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
-        story.append(meta_cards)
-        story.append(make_spacer(4))
-
-        top = Table([[_analyse_pdf_level_card(str(metric.get("level") or "Risque à qualifier"), styles, 36), _analyse_pdf_bar(_analyse_pdf_safe_int(metric.get("score")), 170)]], colWidths=[40 * mm, 182 * mm])
+        top = Table([[ 
+            Paragraph(_analyse_pdf_esc(effect["central_effect"]), body_style),
+            _analyse_pdf_level_card(str(metric.get("level") or "Risque à qualifier"), styles, 34),
+            _analyse_pdf_bar(_analyse_pdf_safe_int(metric.get("score")), 42),
+        ]], colWidths=[178 * mm, 38 * mm, 46 * mm])
         top.setStyle(TableStyle([
             ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#e5e7eb")),
             ("BACKGROUND", (0, 0), (-1, -1), colors.white),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-            ("TOPPADDING", (0, 0), (-1, -1), 7),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+            ("LEFTPADDING", (0, 0), (-1, -1), 7),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
         ]))
         story.append(top)
-        story.append(make_spacer(5))
+        story.append(make_spacer(4))
 
-        story.append(Paragraph("Diagramme cause / effet", styles["section"]))
+        story.append(Paragraph("Diagramme cause / effet", section_style))
         story.append(_analyse_ishikawa_visual(effect, rows, metric))
 
         story.append(PageBreak())
-        story.append(Paragraph("Détail des causes identifiées", title_style))
-        story.append(make_spacer(3))
+        story.append(Paragraph("Causes détaillées", title_style))
+        story.append(Paragraph(_analyse_pdf_esc(f"{effect['title']} • {scope.nom_service}"), subtitle_style))
+        story.append(make_spacer(4))
         if rows:
-            cause_rows = [[Paragraph("Famille", small_style), Paragraph("Compétence", small_style), Paragraph("Point identifié", small_style), Paragraph("Fragilité", small_style)]]
+            cause_rows = [[Paragraph("Famille", small_style), Paragraph("Compétence", small_style), Paragraph("Cause détectée", small_style), Paragraph("Fragilité", small_style)]]
             for row in rows:
                 cause_rows.append([
                     Paragraph(_analyse_pdf_esc(row.get("family")), body_style),
@@ -7164,7 +7055,7 @@ def get_analyse_ishikawa_pdf(
                     Paragraph(_analyse_pdf_esc(row.get("cause")), body_style),
                     Paragraph(_analyse_pdf_esc(str(row.get("frag") or 0) + "%"), body_style),
                 ])
-            t2 = Table(cause_rows, colWidths=[36 * mm, 80 * mm, 126 * mm, 22 * mm], repeatRows=1)
+            t2 = Table(cause_rows, colWidths=[48 * mm, 78 * mm, 110 * mm, 25 * mm], repeatRows=1)
             t2.setStyle(TableStyle([
                 ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#e5e7eb")),
                 ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
@@ -7182,9 +7073,7 @@ def get_analyse_ishikawa_pdf(
         pdf = build_pdf_document(story, {
             "title": f"Ishikawa - {effect['title']}",
             "footer_left": "Novoskill Insights • Ishikawa Analyse des compétences",
-            "header_right": company_name,
-            "header_right_font_name": "Helvetica-Bold",
-            "header_right_font_size": 11,
+            "header_right": scope.nom_service,
         }, page_size=landscape(A4))
         return Response(
             content=pdf,
@@ -7215,14 +7104,15 @@ def get_analyse_risques_report_pdf(
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
-                company_name = _analyse_pdf_company_name(cur, id_ent)
                 scope, comp_records, poste_records = _analyse_build_context_data(cur, id_ent, id_service, int(criticite_min))
 
         effects = _analyse_build_effect_metrics(comp_records, poste_records, int(horizon_years))
         styles = build_pdf_styles()
         title_style = styles["title"]
-        body_style = styles["body"]
+        subtitle_style = styles["subtitle"]
         section_style = styles["section"]
+        body_style = styles["body"]
+        small_style = styles["small"]
 
         nb_postes = len(poste_records or [])
         nb_comps = len(comp_records or [])
@@ -7230,86 +7120,149 @@ def get_analyse_risques_report_pdf(
         frag_comps = int(round(sum(_analyse_pdf_safe_int(r.get("indice_fragilite")) for r in comp_records) / max(1, nb_comps))) if nb_comps else 0
         effects_detected = sum(1 for e in effects if _analyse_pdf_safe_int(e.get("count")) > 0)
 
-        family_counts = {
-            "Données": sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_non_confirmee")) > 0),
-            "Dépendance": sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_dependance")) > 0),
-            "Couverture": sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_postes_couverture_absente")) > 0 or _analyse_pdf_safe_int(r.get("nb_postes_niveau_insuffisant")) > 0),
-            "Renfort": sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_experts_dispo")) <= 1),
-            "Transmission": sum(1 for r in comp_records if _analyse_pdf_safe_int(r.get("nb_experts")) <= 0),
-        }
-
         story = []
-        story.append(Paragraph("Rapport d’analyse des risques compétences", title_style))
-        story.append(make_spacer(3))
+        story.append(Paragraph("Rapport CODIR - Analyse des compétences", title_style))
+        story.append(Paragraph(_analyse_pdf_esc(f"{scope.nom_service} • Criticité minimale {criticite_min} • Projection {horizon_years} an(s)"), subtitle_style))
+        story.append(make_spacer(4))
 
         kpis = Table([[
-            _analyse_pdf_stat_card("Postes analysés", str(nb_postes), "Périmètre lu", styles, 63),
-            _analyse_pdf_stat_card("Compétences analysées", str(nb_comps), "Compétences critiques retenues", styles, 63),
-            _analyse_pdf_stat_card("Effets détectés", str(effects_detected), "Effets terrain suivis", styles, 63),
-            _analyse_pdf_stat_card("Horizon", f"{horizon_years} an(s)", "Projection du rapport", styles, 63),
+            _analyse_pdf_stat_card("Postes analysés", str(nb_postes), "Périmètre lu", styles),
+            _analyse_pdf_stat_card("Compétences analysées", str(nb_comps), "Criticité filtrée", styles),
+            _analyse_pdf_stat_card("Effets terrain", str(effects_detected), "Risques détectés", styles),
+            _analyse_pdf_stat_card("Fragilité postes", f"{frag_postes}%", "Moyenne du périmètre", styles),
         ]], colWidths=[66 * mm, 66 * mm, 66 * mm, 66 * mm])
         kpis.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
         story.append(kpis)
-        story.append(make_spacer(6))
+        story.append(make_spacer(7))
 
-        row1 = Table([[
-            _analyse_report_ring_like("Fragilité moyenne des postes", frag_postes, "#c1272d", 86, 54),
-            _analyse_report_ring_like("Fragilité moyenne des compétences", frag_comps, "#f59e0b", 86, 54),
-            _analyse_report_pie_panel("Effets terrain détectés", [e.get("title") for e in effects], [e.get("count") for e in effects], ["#c1272d", "#f59e0b", "#fb7185", "#94a3b8"], 86, 54),
-        ]], colWidths=[89 * mm, 89 * mm, 89 * mm])
-        row1.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
-        story.append(row1)
-        story.append(make_spacer(6))
-
-        row2 = Table([[
-            _analyse_report_pie_panel("Familles de causes", list(family_counts.keys()), list(family_counts.values()), ["#475569", "#c1272d", "#f59e0b", "#fb7185", "#0f766e"], 86, 66),
-            _analyse_report_hbars_panel("Postes les plus fragiles", [
-                {"label": f"{(p.get('codif_poste') or p.get('codif_client') or '').strip()} - {(p.get('intitule_poste') or 'Poste').strip()}", "value": _analyse_pdf_safe_int(p.get('indice_fragilite'))}
-                for p in sorted(poste_records or [], key=lambda r: -_analyse_pdf_safe_int(r.get("indice_fragilite")))[:5]
-            ], "label", "value", 86, 66),
-            _analyse_report_hbars_panel("Compétences les plus fragiles", [
-                {"label": f"{(c.get('code') or '').strip()} - {(c.get('intitule') or 'Compétence').strip()}", "value": _analyse_pdf_safe_int(c.get('indice_fragilite'))}
-                for c in sorted(comp_records or [], key=lambda r: -_analyse_pdf_safe_int(r.get("indice_fragilite")))[:5]
-            ], "label", "value", 86, 66),
-        ]], colWidths=[89 * mm, 89 * mm, 89 * mm])
-        row2.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
-        story.append(row2)
-        story.append(make_spacer(6))
-
-        story.append(Paragraph("Lecture des risques", section_style))
-        effect_cards = []
+        story.append(Paragraph("Lecture des effets terrain", section_style))
+        effect_rows = [[Paragraph("Effet terrain", small_style), Paragraph("Niveau", small_style), Paragraph("Lecture", small_style), Paragraph("Indice", small_style)]]
         for e in effects:
-            effect_cards.append(_analyse_pdf_stat_card(e.get("title"), e.get("level"), _analyse_pdf_short(e.get("metric"), 42), styles, 86))
-        if effect_cards:
-            effect_rows = [effect_cards[i:i+3] for i in range(0, len(effect_cards), 3)]
-            while effect_rows and len(effect_rows[-1]) < 3:
-                effect_rows[-1].append(Paragraph("", body_style))
-            t_cards = Table(effect_rows, colWidths=[89 * mm, 89 * mm, 89 * mm])
-            t_cards.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
-            story.append(t_cards)
+            effect_rows.append([
+                Paragraph(_analyse_pdf_esc(e.get("title")), body_style),
+                _analyse_pdf_level_card(str(e.get("level") or "Risque à qualifier"), styles, 32),
+                Paragraph(_analyse_pdf_esc(e.get("metric")), body_style),
+                _analyse_pdf_bar(_analyse_pdf_safe_int(e.get("score")), 45),
+            ])
+        et = Table(effect_rows, colWidths=[74 * mm, 36 * mm, 108 * mm, 47 * mm], repeatRows=1)
+        et.setStyle(TableStyle([
+            ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#e5e7eb")),
+            ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f9fafb")),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ]))
+        story.append(et)
+        story.append(make_spacer(7))
+
+        top_postes = sorted(poste_records or [], key=lambda r: -_analyse_pdf_safe_int(r.get("indice_fragilite")))[:8]
+        top_comps = sorted(comp_records or [], key=lambda r: -_analyse_pdf_safe_int(r.get("indice_fragilite")))[:8]
+        split_rows = [[Paragraph("Postes les plus fragiles", section_style), Paragraph("Compétences les plus fragiles", section_style)]]
+        left_rows = []
+        for p in top_postes:
+            label = f"{p.get('codif_poste') or p.get('codif_client') or ''} - {p.get('intitule_poste') or 'Poste'}".strip(" -")
+            left_rows.append([Paragraph(_analyse_pdf_esc(_analyse_pdf_short(label, 42)), body_style), _analyse_pdf_bar(_analyse_pdf_safe_int(p.get("indice_fragilite")), 36)])
+        if not left_rows:
+            left_rows.append([Paragraph("Aucun poste fragile identifié.", body_style), Paragraph("—", body_style)])
+        right_rows = []
+        for c in top_comps:
+            label = f"{c.get('code') or ''} - {c.get('intitule') or 'Compétence'}".strip(" -")
+            right_rows.append([Paragraph(_analyse_pdf_esc(_analyse_pdf_short(label, 42)), body_style), _analyse_pdf_bar(_analyse_pdf_safe_int(c.get("indice_fragilite")), 36)])
+        if not right_rows:
+            right_rows.append([Paragraph("Aucune compétence fragile identifiée.", body_style), Paragraph("—", body_style)])
+        lt = Table(left_rows, colWidths=[88 * mm, 38 * mm])
+        rt = Table(right_rows, colWidths=[88 * mm, 38 * mm])
+        for tbl in (lt, rt):
+            tbl.setStyle(TableStyle([
+                ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#e5e7eb")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#e5e7eb")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]))
+        split_rows.append([lt, rt])
+        split = Table(split_rows, colWidths=[132 * mm, 132 * mm])
+        split.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
+        story.append(split)
+
+        family_counts = _analyse_family_counts(comp_records, effects)[:10]
+        story.append(PageBreak())
+        story.append(Paragraph("Répartition des causes", title_style))
+        story.append(Paragraph("Lecture regroupée par familles de causes détectées", subtitle_style))
+        story.append(make_spacer(5))
+        if family_counts:
+            max_count = max(1, max(int(x.get("count") or 0) for x in family_counts))
+            fam_rows = [[Paragraph("Famille de causes", small_style), Paragraph("Volume", small_style), Paragraph("Lecture visuelle", small_style)]]
+            for row in family_counts:
+                pct = int(round((int(row.get("count") or 0) / max_count) * 100))
+                fam_rows.append([
+                    Paragraph(_analyse_pdf_esc(row.get("family")), body_style),
+                    Paragraph(str(row.get("count") or 0), body_style),
+                    _analyse_pdf_bar(pct, 90),
+                ])
+            ft = Table(fam_rows, colWidths=[80 * mm, 24 * mm, 158 * mm], repeatRows=1)
+            ft.setStyle(TableStyle([
+                ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#e5e7eb")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f9fafb")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]))
+            story.append(ft)
+        else:
+            story.append(Paragraph("Aucune cause structurante détectée dans le périmètre.", body_style))
 
         for e in effects:
-            if _analyse_pdf_safe_int(e.get("count")) <= 0:
-                continue
+            rows = _analyse_ishikawa_rows_for_effect(comp_records, str(e.get("key") or ""))
             story.append(PageBreak())
-            story.append(Paragraph(f"Ishikawa • {e.get('title')}", title_style))
-            story.append(make_spacer(2))
-            story.append(_analyse_ishikawa_visual(_analyse_effect_definitions().get(e.get("key")), _analyse_ishikawa_rows_for_effect(comp_records, e.get("key")), e))
+            story.append(Paragraph(_analyse_pdf_esc(e.get("title")), title_style))
+            story.append(Paragraph(_analyse_pdf_esc(f"{scope.nom_service} • {e.get('level') or 'Risque à qualifier'}"), subtitle_style))
+            story.append(make_spacer(3))
+            story.append(_analyse_ishikawa_visual(e, rows, e))
             story.append(make_spacer(4))
+            detail_rows = [[Paragraph("Famille", small_style), Paragraph("Cause principale", small_style), Paragraph("Compétence", small_style), Paragraph("Fragilité", small_style)]]
+            for row in rows[:10]:
+                detail_rows.append([
+                    Paragraph(_analyse_pdf_esc(row.get("family")), body_style),
+                    Paragraph(_analyse_pdf_esc(row.get("cause")), body_style),
+                    Paragraph(_analyse_pdf_esc(_analyse_pdf_short(row.get("comp"), 55)), body_style),
+                    Paragraph(_analyse_pdf_esc(str(row.get("frag") or 0) + "%"), body_style),
+                ])
+            if len(detail_rows) == 1:
+                detail_rows.append([Paragraph("—", body_style), Paragraph("Aucune cause détaillée isolée.", body_style), Paragraph("—", body_style), Paragraph("—", body_style)])
+            dt = Table(detail_rows, colWidths=[54 * mm, 98 * mm, 88 * mm, 24 * mm], repeatRows=1)
+            dt.setStyle(TableStyle([
+                ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#e5e7eb")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f9fafb")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]))
+            story.append(dt)
 
         pdf = build_pdf_document(story, {
-            "title": "Rapport d’analyse des risques compétences",
-            "footer_left": "Novoskill Insights • Rapport d’analyse des risques compétences",
-            "header_right": company_name,
-            "header_right_font_name": "Helvetica-Bold",
-            "header_right_font_size": 11,
+            "title": "Rapport Analyse des compétences",
+            "footer_left": "Novoskill Insights • Rapport CODIR Analyse des compétences",
+            "header_right": scope.nom_service,
         }, page_size=landscape(A4))
         return Response(
             content=pdf,
             media_type="application/pdf",
-            headers={"Content-Disposition": 'inline; filename="rapport_analyse_risques_competences.pdf"'},
+            headers={"Content-Disposition": 'inline; filename="rapport_analyse_competences.pdf"'},
         )
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur génération rapport analyse: {e}")
+
