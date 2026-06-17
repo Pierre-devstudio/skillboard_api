@@ -6370,88 +6370,75 @@ function renderDetail(mode) {
   (async () => {
     try {
       if (rf === "evol-3m") {
-        const svc = (id_service || "").trim();
-        const [evolData, eventsData] = await Promise.all([
-          computeRiskEvolution3m(_portalref, svc),
-          fetchRiskProjectionEvents3m(_portalref, svc),
-        ]);
+        const data = await computeRiskEvolution3m(_portalref, id_service);
         if (mySeq !== _riskDetailReqSeq) return;
 
-        const timeline = Array.isArray(evolData?.timeline) ? evolData.timeline.slice(0, 4) : [];
-        const months = Array.isArray(eventsData?.months) ? eventsData.months : [];
-        const monthMap = new Map(months.map(m => [Number(m.index || 0), m]));
-        const nowPoint = timeline[0] || { label: "Aujourd’hui", indice_fragilite: 0 };
-        const nowScore = Math.round(Number(nowPoint?.indice_fragilite || 0));
+        const timeline = Array.isArray(data?.timeline) ? data.timeline.slice(0, 4) : [];
+        const now = Number(data?.total?.now || 0);
+        const peak = Number(data?.total?.peak ?? data?.total?.future ?? now);
+        const delta = Number(data?.total?.pct || 0);
+        const peakLabel = (data?.total?.label_peak || "Pic 3 mois").toString();
 
         const fmtIndex = (v) => `${Math.round(Number(v) || 0)}%`;
-        const evolBadge = (delta) => {
-          const d = Math.round(Number(delta) || 0);
-          const cls = d > 0 ? "sb-badge--danger" : (d < 0 ? "sb-badge--success" : "");
-          const txt = d === 0 ? "Stable" : `${d > 0 ? "+" : ""}${d}%`;
-          return `<span class="sb-badge ${cls}">${escapeHtml(txt)}</span>`;
-        };
+        const fmtDelta = (v) => fmtPctSigned(Number(v) || 0);
+        const deltaClass = delta > 0 ? "sb-badge--danger" : (delta < 0 ? "sb-badge--success" : "sb-badge--warning");
 
-        const rows = [0, 1, 2, 3].map((idx) => {
-          const p = timeline[idx] || null;
-          const m = monthMap.get(idx) || { index: idx, label: idx === 0 ? "Aujourd’hui" : `${idx} mois`, indisponibilites_count: 0, sorties_count: 0, indisponibilites: [], sorties: [] };
-          const label = idx === 0 ? "Aujourd’hui" : (p?.label || m.label || `${idx} mois`);
-          const score = Math.round(Number(p?.indice_fragilite ?? nowScore));
-          const delta = score - nowScore;
-          return { ...m, index: idx, label, score, delta };
-        });
-
-        const bodyRows = rows.map((r) => `
-          <tr>
-            <td>${escapeHtml(r.label)}</td>
-            <td class="col-center"><strong>${escapeHtml(fmtIndex(r.score))}</strong></td>
-            <td class="col-center">${evolBadge(r.delta)}</td>
-            <td class="col-center"><span class="sb-badge">${escapeHtml(String(Number(r.indisponibilites_count || 0)))}</span></td>
-            <td class="col-center"><span class="sb-badge">${escapeHtml(String(Number(r.sorties_count || 0)))}</span></td>
-            <td class="col-center">
-              <button type="button"
-                      class="sb-icon-btn"
-                      title="Voir"
-                      aria-label="Voir"
-                      data-risk-proj-month="${escapeHtml(String(r.index))}">
-                <i class="fa-regular fa-eye" aria-hidden="true"></i>
-              </button>
-            </td>
-          </tr>
-        `).join("");
+        const monthlyRows = timeline.length ? timeline.map((p, idx) => {
+          const label = idx === 0 ? "Aujourd’hui" : (p?.label || `${idx} mois`);
+          const score = Math.round(Number(p?.indice_fragilite || 0));
+          const nb = Number(p?.nb_postes_fragiles || 0);
+          const isPeak = idx > 0 && score === Math.round(peak);
+          return `
+            <tr${isPeak ? ' style="background:#fff7ed;"' : ""}>
+              <td>${escapeHtml(label)}${isPeak ? ' <span class="sb-badge sb-badge--warning">pic retenu</span>' : ""}</td>
+              <td class="col-center"><strong>${escapeHtml(String(score))}%</strong></td>
+              <td class="col-center">${escapeHtml(String(nb))}</td>
+            </tr>
+          `;
+        }).join("") : `
+          <tr><td colspan="3" class="col-center">Aucune projection disponible.</td></tr>
+        `;
 
         const content = `
           <div class="card" style="padding:12px; margin:0;">
             <div class="card-title" style="margin-bottom:10px;">${escapeHtml(filterLabel)}</div>
-            <div class="table-wrap" style="margin-top:0;">
+
+            <div class="sb-kpi-explain-grid" style="grid-template-columns:repeat(3,minmax(0,1fr)); margin-bottom:12px;">
+              <div class="sb-kpi-explain-item">
+                <div class="sb-kpi-explain-title">Indice actuel</div>
+                <div class="sb-kpi-explain-body"><strong>${escapeHtml(fmtIndex(now))}</strong></div>
+              </div>
+              <div class="sb-kpi-explain-item">
+                <div class="sb-kpi-explain-title">Pic détecté</div>
+                <div class="sb-kpi-explain-body"><strong>${escapeHtml(fmtIndex(peak))}</strong> <span class="card-sub">${escapeHtml(peakLabel)}</span></div>
+              </div>
+              <div class="sb-kpi-explain-item">
+                <div class="sb-kpi-explain-title">Évolution prévue</div>
+                <div class="sb-kpi-explain-body"><span class="sb-badge ${deltaClass}">${escapeHtml(fmtDelta(delta))}</span></div>
+              </div>
+            </div>
+
+            <div class="table-wrap" style="margin-top:10px;">
               <table class="sb-table" id="tblRiskEvol3m">
                 <thead>
                   <tr>
                     <th>Mois de projection</th>
                     <th class="col-center">Indice de fragilité</th>
-                    <th class="col-center">Évolution</th>
-                    <th class="col-center">Indisponibilités temporaires</th>
-                    <th class="col-center">Fins de contrat / sorties prévues</th>
-                    <th class="col-center">Détail</th>
+                    <th class="col-center">Postes fragiles</th>
                   </tr>
                 </thead>
-                <tbody>${bodyRows}</tbody>
+                <tbody>${monthlyRows}</tbody>
               </table>
+            </div>
+
+            <div class="card-sub" style="margin:10px 0 0 0;">
+              Le KPI retient le plus haut niveau de fragilité détecté dans les trois prochains mois. Une indisponibilité courte, une fin de contrat ou une sortie prévue dans la période peut donc faire bouger l’indicateur.
             </div>
           </div>
         `;
 
         body.innerHTML = `${buildResetHtml()}${content}`;
         bindRiskResetBtn();
-
-        body.querySelectorAll("[data-risk-proj-month]").forEach((btn) => {
-          btn.addEventListener("click", (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            const idx = Number(btn.getAttribute("data-risk-proj-month") || 0);
-            const row = rows.find(x => Number(x.index || 0) === idx) || rows[0];
-            openRiskProjectionMonthModal(row);
-          });
-        });
         return;
       }
 
@@ -8375,19 +8362,6 @@ function bindOnce(portal) {
     return modal;
   }
 
-  async function fetchRiskProjectionEvents3m(portal, id_service) {
-    const svc = (id_service || "").trim();
-    const key = `projection-events-3m|${svc}`;
-    if (_riskEvol3mCache.has(key)) return _riskEvol3mCache.get(key);
-    if (!portal?.apiBase || !portal?.contactId) throw new Error("Contexte portail indisponible.");
-
-    const qs = buildQueryString({ id_service: svc || null });
-    const url = `${portal.apiBase}/skills/analyse/risques/projection-events/${encodeURIComponent(portal.contactId)}${qs}`;
-    const data = await portal.apiJson(url);
-    _riskEvol3mCache.set(key, data);
-    return data;
-  }
-
   function openRiskEvol3mModal(kind, items, meta) {
     const modal = ensureRiskEvol3mModal();
     const titleEl = byId("riskEvol3mModalTitle");
@@ -8547,65 +8521,6 @@ function bindOnce(portal) {
     modal.classList.add("show");
     modal.setAttribute("aria-hidden", "false");
 
-    const mb = modal.querySelector(".modal-body");
-    if (mb) mb.scrollTop = 0;
-  }
-
-  function openRiskProjectionMonthModal(month) {
-    const modal = ensureRiskEvol3mModal();
-    const titleEl = byId("riskEvol3mModalTitle");
-    const bodyEl = byId("riskEvol3mModalBody");
-    if (!modal || !bodyEl) return;
-
-    const label = (month?.label || "Projection").toString();
-    if (titleEl) titleEl.innerHTML = `Détail projection <span class="sb-badge">${escapeHtml(label)}</span>`;
-
-    const indispos = Array.isArray(month?.indisponibilites) ? month.indisponibilites : [];
-    const sorties = Array.isArray(month?.sorties) ? month.sorties : [];
-
-    const fmtList = (items, type) => {
-      if (!items.length) return `<div class="card-sub" style="margin:0;">Aucun événement identifié.</div>`;
-      return `
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          ${items.map(r => {
-            const person = r.personne || "Collaborateur";
-            const poste = r.poste || "Poste non renseigné";
-            const dates = type === "indispo"
-              ? `${r.date_debut || "—"} → ${r.date_fin || "—"}`
-              : `${r.date_sortie || "—"}`;
-            const motif = type === "sortie" ? `<div class="card-sub" style="margin-top:2px;">${escapeHtml(r.motif || "Sortie prévue")}</div>` : "";
-            return `
-              <div style="border:1px solid var(--sb-gray-200); border-radius:12px; padding:10px 12px; background:#fff;">
-                <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
-                  <div style="min-width:0;">
-                    <div style="font-weight:700; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(person)}</div>
-                    <div class="card-sub" style="margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(poste)}</div>
-                    ${motif}
-                  </div>
-                  <span class="sb-badge" style="flex:0 0 auto;">${escapeHtml(dates)}</span>
-                </div>
-              </div>
-            `;
-          }).join("")}
-        </div>
-      `;
-    };
-
-    bodyEl.innerHTML = `
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; align-items:start;">
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:8px;">Indisponibilités temporaires</div>
-          ${fmtList(indispos, "indispo")}
-        </div>
-        <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:8px;">Fins de contrat / sorties prévues</div>
-          ${fmtList(sorties, "sortie")}
-        </div>
-      </div>
-    `;
-
-    modal.classList.add("show");
-    modal.setAttribute("aria-hidden", "false");
     const mb = modal.querySelector(".modal-body");
     if (mb) mb.scrollTop = 0;
   }
