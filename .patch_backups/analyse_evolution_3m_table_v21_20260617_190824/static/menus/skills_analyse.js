@@ -717,36 +717,6 @@
       title: "Comprendre la carte Risques actuels",
       html: buildRisquesHelpHtml
     },
-    risques_evol3m_table: {
-      title: "Évolution des indices de fragilité à 3 mois",
-      html: `
-        <div class="analyse-help-kpi-list">
-          <div class="analyse-help-kpi-block">
-            <h4>Mois de projection</h4>
-            <p>Chaque ligne présente la situation actuelle ou un mois de projection dans les trois prochains mois. La ligne marquée <b>pic retenu</b> correspond au mois où l’indice de fragilité atteint son niveau le plus haut sur la période.</p>
-          </div>
-          <div class="analyse-help-kpi-block">
-            <h4>Indice de fragilité</h4>
-            <p>C’est le niveau de fragilité moyen projeté sur le périmètre affiché. Il tient compte des postes, des compétences attendues, des titulaires disponibles et des événements prévus sur la période.</p>
-          </div>
-          <div class="analyse-help-kpi-block">
-            <h4>Évolution</h4>
-            <p>Cette valeur compare le mois affiché avec la situation d’aujourd’hui. Une hausse signale une dégradation du risque. Une baisse indique une amélioration. Un tiret sur la ligne d’aujourd’hui signifie qu’il n’y a pas encore d’évolution à mesurer.</p>
-          </div>
-          <div class="analyse-help-kpi-block">
-            <h4>Indisponibilités temporaires</h4>
-            <p>Nombre de collaborateurs ayant une indisponibilité qui chevauche le mois concerné. Même une absence courte peut faire monter la fragilité si elle touche une personne seule sur un poste ou une compétence sensible.</p>
-          </div>
-          <div class="analyse-help-kpi-block">
-            <h4>Fins de contrat / sorties prévues</h4>
-            <p>Nombre de collaborateurs avec une date de fin de contrat, de départ, de retraite ou de sortie prévue pendant le mois concerné. Ces personnes ne sont plus considérées comme disponibles pour couvrir le périmètre projeté.</p>
-          </div>
-          <div class="analyse-help-kpi-block">
-            <h4>Détail</h4>
-            <p>Le bouton œil ouvre la liste des collaborateurs concernés par les indisponibilités ou sorties prévues sur le mois sélectionné.</p>
-          </div>
-        </div>`
-    },
     matching: {
       title: "Comprendre la carte Correspondance profils / postes",
       html: buildMatchingHelpHtml
@@ -6414,14 +6384,7 @@ function renderDetail(mode) {
         const nowScore = Math.round(Number(nowPoint?.indice_fragilite || 0));
 
         const fmtIndex = (v) => `${Math.round(Number(v) || 0)}%`;
-        const eyeIcon = `
-          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
-          </svg>
-        `;
-        const evolBadge = (delta, isToday) => {
-          if (isToday) return `<span style="font-weight:700; color:var(--sb-gray-500);">—</span>`;
+        const evolBadge = (delta) => {
           const d = Math.round(Number(delta) || 0);
           const cls = d > 0 ? "sb-badge--danger" : (d < 0 ? "sb-badge--success" : "");
           const txt = d === 0 ? "Stable" : `${d > 0 ? "+" : ""}${d}%`;
@@ -6437,48 +6400,28 @@ function renderDetail(mode) {
           return { ...m, index: idx, label, score, delta };
         });
 
-        const futureRows = rows.filter(r => Number(r.index || 0) > 0);
-        const peakScore = futureRows.reduce((max, r) => Math.max(max, Number(r.score || 0)), Number.NEGATIVE_INFINITY);
-        const peakRow = futureRows.find(r => Number(r.score || 0) === peakScore && peakScore > nowScore) || null;
-        const peakIndex = peakRow ? Number(peakRow.index || 0) : -1;
-
-        const bodyRows = rows.map((r) => {
-          const isToday = Number(r.index || 0) === 0;
-          const isPeak = !isToday && Number(r.index || 0) === peakIndex;
-          return `
-            <tr>
-              <td>
-                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                  <span>${escapeHtml(r.label)}</span>
-                  ${isPeak ? `<span class="sb-badge sb-badge--warning">pic retenu</span>` : ``}
-                </div>
-              </td>
-              <td class="col-center"><strong>${escapeHtml(fmtIndex(r.score))}</strong></td>
-              <td class="col-center">${evolBadge(r.delta, isToday)}</td>
-              <td class="col-center"><span class="sb-badge">${escapeHtml(String(Number(r.indisponibilites_count || 0)))}</span></td>
-              <td class="col-center"><span class="sb-badge">${escapeHtml(String(Number(r.sorties_count || 0)))}</span></td>
-              <td class="col-center">
-                <button type="button"
-                        class="sb-icon-btn"
-                        title="Voir"
-                        aria-label="Voir"
-                        data-risk-proj-month="${escapeHtml(String(r.index))}">
-                  ${eyeIcon}
-                </button>
-              </td>
-            </tr>
-          `;
-        }).join("");
+        const bodyRows = rows.map((r) => `
+          <tr>
+            <td>${escapeHtml(r.label)}</td>
+            <td class="col-center"><strong>${escapeHtml(fmtIndex(r.score))}</strong></td>
+            <td class="col-center">${evolBadge(r.delta)}</td>
+            <td class="col-center"><span class="sb-badge">${escapeHtml(String(Number(r.indisponibilites_count || 0)))}</span></td>
+            <td class="col-center"><span class="sb-badge">${escapeHtml(String(Number(r.sorties_count || 0)))}</span></td>
+            <td class="col-center">
+              <button type="button"
+                      class="sb-icon-btn"
+                      title="Voir"
+                      aria-label="Voir"
+                      data-risk-proj-month="${escapeHtml(String(r.index))}">
+                <i class="fa-regular fa-eye" aria-hidden="true"></i>
+              </button>
+            </td>
+          </tr>
+        `).join("");
 
         const content = `
           <div class="card" style="padding:12px; margin:0;">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
-              <div class="card-title" style="margin:0;">${escapeHtml(filterLabel)}</div>
-              <button type="button"
-                      class="analyse-help-dot"
-                      data-analyse-help="risques_evol3m_table"
-                      aria-label="Comprendre l’évolution des indices de fragilité">?</button>
-            </div>
+            <div class="card-title" style="margin-bottom:10px;">${escapeHtml(filterLabel)}</div>
             <div class="table-wrap" style="margin-top:0;">
               <table class="sb-table" id="tblRiskEvol3m">
                 <thead>
