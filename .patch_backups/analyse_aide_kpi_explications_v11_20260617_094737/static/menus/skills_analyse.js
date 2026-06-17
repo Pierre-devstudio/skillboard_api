@@ -567,59 +567,8 @@
     }
     openAnalysePdfBlob(url, "Rapport bloqué");
   }
-  function analyseHelpKpi(title, text) {
-    return `
-      <section class="analyse-help-kpi-block">
-        <h4>${escapeHtml(title)}</h4>
-        <p>${text}</p>
-      </section>
-    `;
-  }
 
-  function analyseHelpIntro(text) {
-    return `<p class="analyse-help-readable-intro">${text}</p>`;
-  }
 
-  function analyseHelpNote(text) {
-    return `<p class="analyse-help-readable-note">${text}</p>`;
-  }
-
-  function buildRisquesHelpHtml() {
-    return `
-      ${analyseHelpIntro("Cette aide explique les indicateurs visibles dans la carte. Les pourcentages indiquent un niveau d’exposition du périmètre, pas une décision automatique.")}
-      <div class="analyse-help-kpi-list">
-        ${analyseHelpKpi("Fragilité moyenne des postes", "Ce pourcentage mesure le niveau moyen d’exposition des postes affichés dans le périmètre sélectionné. Il prend en compte la couverture des compétences attendues sur les postes, les niveaux réellement disponibles, les écarts avec les niveaux attendus, les compétences qui reposent sur trop peu de personnes et les évaluations manquantes ou à confirmer. Plus le pourcentage est élevé, plus la continuité des postes doit être sécurisée.")}
-        ${analyseHelpKpi("Fragilité moyenne des compétences", "Ce pourcentage mesure le niveau moyen d’exposition des compétences critiques du périmètre. Le calcul tient compte du nombre de collaborateurs capables de porter chaque compétence, de leur niveau de maîtrise, de la présence de relais internes, de la confirmation des évaluations et de la dépendance éventuelle à une seule personne.")}
-        ${analyseHelpKpi("Prévision à 3 mois", "Cet indicateur compare la situation actuelle avec une projection à 3 mois. Il tient compte des sorties ou indisponibilités renseignées, de la perte possible de porteurs sur les compétences critiques et des postes qui peuvent devenir plus fragiles. Une valeur positive indique une dégradation probable ; une valeur négative indique une amélioration ou une baisse du risque.")}
-      </div>
-      ${analyseHelpNote("À lire comme une aide à la priorisation : l’indicateur signale où regarder en premier, puis l’analyse détaillée permet de confirmer les actions à mener.")}
-    `;
-  }
-
-  function buildMatchingHelpHtml() {
-    return `
-      ${analyseHelpIntro("Cette aide explique les indicateurs visibles dans la carte Correspondance profils / postes. Le calcul sert à repérer des pistes internes, pas à valider automatiquement une mobilité ou un remplacement.")}
-      <div class="analyse-help-kpi-list">
-        ${analyseHelpKpi("Adéquation au poste", "Cet indicateur mesure le niveau de correspondance entre les compétences connues d’un collaborateur titulaire et les compétences attendues sur son poste. Le calcul compare les compétences détenues, leur niveau de maîtrise, les écarts avec le niveau attendu et les éléments qui restent à confirmer. Une adéquation élevée indique que le poste est bien couvert ; une adéquation faible signale des écarts, une couverture insuffisante ou des données encore trop fragiles.")}
-        ${analyseHelpKpi("Top candidat", "Cet indicateur met en avant le profil interne le plus proche d’un poste, en dehors du titulaire quand c’est nécessaire. Le système recherche la meilleure correspondance disponible à partir des compétences et niveaux déjà connus. Il s’agit d’une piste de renfort, de mobilité, de remplacement ou de montée en compétence ; la disponibilité, l’envie et la validation managériale restent à confirmer.")}
-      </div>
-      ${analyseHelpNote("Une bonne correspondance n’est pas forcément une personne immédiatement opérationnelle à 100 %. Elle indique surtout le profil le plus proche à étudier.")}
-    `;
-  }
-
-  function buildPrevisionsHelpHtml() {
-    const horizon = analyseHorizonLabel(getPrevHorizon());
-    return `
-      ${analyseHelpIntro("Cette aide explique les indicateurs visibles dans la carte Prévisions. Ils servent à anticiper les fragilités qui peuvent apparaître si le périmètre évolue.")}
-      <div class="analyse-help-kpi-list">
-        ${analyseHelpKpi(`Sorties < ${horizon}`, "Ce chiffre indique le nombre de collaborateurs susceptibles de sortir du périmètre sur l’horizon choisi. Le calcul s’appuie sur les informations connues dans Novoskill : départ prévu, retraite, mobilité, fin de présence, indisponibilité ou autre donnée prévisionnelle renseignée.")}
-        ${analyseHelpKpi("Compétences impactées", "Cet indicateur compte les compétences critiques qui pourraient perdre un porteur ou une partie de leur couverture si les sorties prévues se réalisent. Ces compétences sont à regarder en priorité pour organiser une transmission, une formation ou une sécurisation interne.")}
-        ${analyseHelpKpi("Postes impactés", "Cet indicateur compte les postes dont la couverture risque de se dégrader dans la projection. Un poste peut être correctement couvert aujourd’hui, mais devenir sensible si une personne clé sort du périmètre ou si une compétence critique perd sa couverture.")}
-        ${analyseHelpKpi("Horizon de projection", "Le curseur permet de changer la période observée. Plus l’horizon est long, plus l’analyse peut faire apparaître des fragilités futures. La lecture reste une anticipation : elle doit aider à préparer les actions avant que le risque devienne opérationnel.")}
-      </div>
-      ${analyseHelpNote("Cette carte sert à prendre de l’avance : transmission, relève interne, formation, recrutement ou réorganisation ciblée.")}
-    `;
-  }
 
   const ANALYSE_HELP = {
     summary: {
@@ -627,16 +576,16 @@
       html: ""
     },
     risques: {
-      title: "Comprendre la carte Risques actuels",
-      html: buildRisquesHelpHtml
+      title: "Carte Risques actuels",
+      html: `<p>Cette carte repère les fragilités déjà visibles : poste peu couvert, compétence critique fragile, dépendance à un nombre réduit de collaborateurs ou niveau attendu non atteint.</p>`
     },
     matching: {
-      title: "Comprendre la carte Correspondance profils / postes",
-      html: buildMatchingHelpHtml
+      title: "Carte Correspondance profils / postes",
+      html: `<p>Cette carte mesure la proximité entre des profils internes et des postes. Elle met en évidence les acquis, les écarts et les compétences à confirmer.</p>`
     },
     previsions: {
-      title: "Comprendre la carte Prévisions",
-      html: buildPrevisionsHelpHtml
+      title: "Carte Prévisions",
+      html: `<p>Cette carte anticipe les fragilités qui peuvent apparaître avec le temps : sorties prévues, perte de porteurs confirmés, compétences critiques moins couvertes.</p>`
     }
   };
 
@@ -687,8 +636,7 @@
           return;
         }
         const item = ANALYSE_HELP[key] || ANALYSE_HELP.risques;
-        const html = (typeof item.html === "function") ? item.html() : item.html;
-        showAnalyseHelp(item.title, html);
+        showAnalyseHelp(item.title, item.html);
         return;
       }
 
