@@ -191,24 +191,10 @@
     btn.classList.add("sb-btn", "sb-btn--accent");
   }
 
-
-
-  function forceAnalyseHelpModalCloseAccent() {
-    const btn = byId("btnAnalyseHelpModalClose");
-    if (!btn) return;
-    btn.classList.remove("sb-btn--soft", "btn-secondary", "btn-light", "btn-outline-secondary");
-    btn.classList.add("sb-btn", "sb-btn--accent");
-    btn.style.background = "var(--accent, #c1272d)";
-    btn.style.borderColor = "var(--accent, #c1272d)";
-    btn.style.color = "#fff";
-  }
-
   function ensureAnalyseHelpModal() {
     let modal = byId("modalAnalyseHelp");
     if (modal) {
       styleAnalyseHelpModalCloseButton();
-      forceAnalyseHelpModalCloseAccent();
-      forceAnalyseHelpModalCloseAccent();
       return modal;
     }
 
@@ -231,8 +217,6 @@
     document.body.insertAdjacentHTML("beforeend", html);
     modal = byId("modalAnalyseHelp");
     styleAnalyseHelpModalCloseButton();
-    forceAnalyseHelpModalCloseAccent();
-      forceAnalyseHelpModalCloseAccent();
 
     const close = () => closeAnalyseHelpModal();
     byId("btnCloseAnalyseHelpModal")?.addEventListener("click", close);

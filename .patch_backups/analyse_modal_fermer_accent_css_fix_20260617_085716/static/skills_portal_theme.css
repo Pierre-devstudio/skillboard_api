@@ -7184,31 +7184,3 @@ body{
   color: rgb(226, 114, 9) !important;
 }
 
-/* Correctif ciblé : bouton Fermer du modal Synthèse des risques.
-   Règle volontairement spécifique pour éviter qu'une variante soft/secondary
-   ou une règle générique de modal ne reprenne la main. */
-#modalAnalyseHelp .modal-footer #btnAnalyseHelpModalClose,
-#modalAnalyseHelp .modal-footer button#btnAnalyseHelpModalClose,
-#btnAnalyseHelpModalClose.sb-btn,
-#btnAnalyseHelpModalClose.sb-btn--accent{
-  background: var(--accent, #c1272d) !important;
-  border-color: var(--accent, #c1272d) !important;
-  color: #fff !important;
-  box-shadow: 0 10px 22px rgba(193, 39, 45, 0.18) !important;
-}
-
-#modalAnalyseHelp .modal-footer #btnAnalyseHelpModalClose:hover,
-#btnAnalyseHelpModalClose.sb-btn--accent:hover{
-  background: var(--accent, #c1272d) !important;
-  border-color: var(--accent, #c1272d) !important;
-  color: #fff !important;
-  filter: brightness(0.92);
-}
-
-#modalAnalyseHelp .modal-footer #btnAnalyseHelpModalClose:focus,
-#btnAnalyseHelpModalClose.sb-btn--accent:focus{
-  outline: none;
-  color: #fff !important;
-  box-shadow: var(--sb-ring-accent, 0 0 0 3px rgba(193, 39, 45, 0.18)) !important;
-}
-
