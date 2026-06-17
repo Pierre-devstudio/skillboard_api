@@ -569,39 +569,6 @@
     openAnalysePdfBlob(url, "Rapport bloqué");
   }
 
-  function analyseEyeIconSvg() {
-    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`;
-  }
-
-  function analysePdfIconSvg() {
-    return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8.5 15.5h7"/><path d="M8.5 18.5h5"/></svg>`;
-  }
-
-  function buildAnalysePosteAnalysisPdfUrl(idPoste) {
-    const ctx = getPortalContext(_portalref);
-    const posteId = String(idPoste || "").trim();
-    if (!ctx.id_contact || !ctx.apiBase || !posteId) return "";
-
-    const f = getFilters();
-    const qs = new URLSearchParams();
-    qs.set("id_poste", posteId);
-    if (f.id_service) qs.set("id_service", f.id_service);
-    qs.set("criticite_min", String(getCriticiteMinSafe(CRITICITE_MIN_DEFAULT)));
-    qs.set("_", String(Date.now()));
-
-    return `${ctx.apiBase}/skills/analyse/risques/poste/pdf/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
-  }
-
-  function openAnalysePosteAnalysisPdf(idPoste) {
-    const url = buildAnalysePosteAnalysisPdfUrl(idPoste);
-    if (!url) {
-      showAnalyseHelp("PDF indisponible", "<p>Impossible de retrouver le poste à exporter.</p>");
-      return;
-    }
-    openAnalysePdfBlob(url, "PDF poste bloqué");
-  }
-
-
 
   function buildAnalyseRiskDetailPdfUrl(kpiKey) {
     const ctx = getPortalContext(_portalref);
@@ -5989,7 +5956,7 @@ function renderDetail(mode) {
 
     function scoreHue(score) {
       const s = clamp(Number(score || 0), 0, 100) / 100;
-      return Math.round(120 * (1 - s));
+      return Math.round(120 * (1 - s)); // 120 (vert) -> 0 (rouge)
     }
 
     function scoreChip(score) {
@@ -6009,17 +5976,21 @@ function renderDetail(mode) {
       `;
     }
 
-    function stateLabel(score) {
+    function priorityLabel(score) {
       const s = clamp(Number(score || 0), 0, 100);
-      if (s >= 75) return "Critique";
-      if (s >= 50) return "Élevé";
-      if (s >= 25) return "Modéré";
+
+      if (s >= 80) return "Critique";
+      if (s >= 60) return "Élevée";
+      if (s >= 40) return "Élevée";
+      if (s >= 20) return "Modérée";
       return "Faible";
     }
 
-    function statePill(label, score) {
+
+    function priorityPill(label, score) {
       const s = clamp(Math.round(Number(score || 0)), 0, 100);
       const h = scoreHue(s);
+
       const bg = `hsl(${h} 70% 95%)`;
       const br = `hsl(${h} 70% 80%)`;
       const tx = `hsl(${h} 70% 28%)`;
@@ -6053,34 +6024,47 @@ function renderDetail(mode) {
                         role="button"
                         aria-label="Informations sur l'indice de fragilité">i</span>
                 </span>
+              </th>              
+
+              <th class="col-center" style="width:130px; white-space:normal; line-height:1.1;">
+                Priorité de<br>traitement
               </th>
 
-              <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;">
-                État
-              </th>
-
-              <th class="col-center" style="width:92px;">Actions</th>
+              <th class="col-center" style="width:140px;">Détail</th>
             </tr>
           </thead>
           <tbody>
             ${list.map(r => {
               const intitule = (r.intitule_poste || "").trim() || "—";
+
               const codifClient = (r.codif_client || "").trim();
               const codifPoste  = (r.codif_poste || "").trim();
               const codeAffiche = (codifClient !== "") ? codifClient : codifPoste;
+
               const svc = (r.nom_service || "").trim() || "—";
+
+              const nb0 = Number(r.nb_critiques_sans_porteur || 0);
+              const nb1 = Number(r.nb_critiques_porteur_unique || 0);
+              const nbF = Number(r.nb_critiques_fragiles || 0);
+              const nbR0 = Number(r.nb_critiques_sans_releve || 0);
+              const nbR1 = Number(r.nb_critiques_releve_faible || 0);
+              const nbCible = Number(r.nb_titulaires_cible || 1);
+
+              const nbTit = (r.nb_titulaires === null || r.nb_titulaires === undefined)
+                ? null
+                : Number(r.nb_titulaires);
 
               const isNonAnalyse = !!r.is_non_analyse;
               const isSansTitulaire = !isNonAnalyse && Number(r.nb_titulaires || 0) <= 0 && Number(r.nb_titulaires_cible || 1) >= 1;
               const scoreTitle = isNonAnalyse
                 ? "Aucune compétence attendue exploitable n’est rattachée au poste"
-                : (isSansTitulaire ? "Poste actif sans titulaire : fragilité 100%" : "Indice de fragilité du poste");
+                : (isSansTitulaire ? "Poste actif sans titulaire : fragilité 100%" : "Indice fragilité (0-100)");
               const score = clamp(Number(r.indice_fragilite || 0), 0, 100);
-              const etat = isNonAnalyse ? "Non analysé" : stateLabel(score);
-              const idPoste = (r.id_poste || "").toString().trim();
+              const prio  = isNonAnalyse ? "NA" : priorityLabel(score);
+
 
               return `
-                <tr class="risk-poste-row" data-id_poste="${escapeHtml(idPoste)}">
+                <tr class="risk-poste-row" data-id_poste="${escapeHtml(r.id_poste || "")}">
                   <td class="risk-poste-open" style="cursor:pointer;">
                     <div style="display:flex; gap:8px; align-items:center; min-width:0;">
                       <span class="sb-badge sb-badge-ref-poste-code">${escapeHtml(codeAffiche || "—")}</span>
@@ -6095,24 +6079,14 @@ function renderDetail(mode) {
                     ${isNonAnalyse ? '<span class="sb-badge">Non analysé</span>' : scoreChip(score)}
                   </td>
 
-                  <td class="col-center">${isNonAnalyse ? '<span class="sb-badge">Non analysé</span>' : statePill(etat, score)}</td>
+                  <td class="col-center">${isNonAnalyse ? '<span class="sb-badge">Non analysé</span>' : priorityPill(prio, score)}</td>
 
                   <td class="col-center">
-                    <div class="sb-icon-actions" style="justify-content:center;">
-                      <button type="button"
-                              class="sb-icon-btn risk-poste-open"
-                              title="Voir"
-                              aria-label="Voir l’analyse du poste">
-                        ${analyseEyeIconSvg()}
-                      </button>
-                      <button type="button"
-                              class="sb-icon-btn sb-icon-btn--doc"
-                              data-risk-poste-pdf="${escapeHtml(idPoste)}"
-                              title="PDF"
-                              aria-label="Exporter l’analyse du poste en PDF">
-                        ${analysePdfIconSvg()}
-                      </button>
-                    </div>
+                    <button type="button"
+                            class="btn-secondary risk-poste-open"
+                            style="padding:6px 10px; font-size:12px; line-height:1;">
+                      Voir analyse
+                    </button>
                   </td>
                 </tr>
               `;
@@ -6122,8 +6096,6 @@ function renderDetail(mode) {
       </div>
     `;
   }
-
-
 
 
   function renderTableCompetences(rows) {
@@ -7183,42 +7155,38 @@ function bindOnce(portal) {
   }
 
   function sbTipHtml(key) {
+    // IMPORTANT: on colle ici la formule réelle utilisée côté UI
     if (key === "fragility-index") {
       return `
         <div class="sb-tip-title">Indice de fragilité</div>
-        <div class="sb-tip-text">
-          Cet indice mesure le niveau d’exposition d’un poste. Plus il se rapproche de 100 %, plus le poste nécessite une attention rapide.
+
+        <div class="sb-tip-mini" style="margin-bottom:8px;">
+          Score 0–100 calculé côté API pour prioriser les postes à sécuriser.
         </div>
 
-        <div class="sb-tip-block">
-          <div class="sb-tip-block-title">Ce qui est pris en compte</div>
-          <ul class="sb-tip-list">
-            <li>le nombre de personnes rattachées au poste par rapport au besoin attendu ;</li>
-            <li>la couverture des compétences nécessaires au poste ;</li>
-            <li>le niveau réellement maîtrisé par les personnes disponibles ;</li>
-            <li>la dépendance à une seule personne ou l’absence de relais interne ;</li>
-            <li>les compétences attendues mais non confirmées ou insuffisamment couvertes.</li>
-          </ul>
+        <div class="sb-tip-line">
+          <span class="sb-tip-dot sb-tip-dot--r"></span>
+          <span>Prend en compte la <b>couverture des compétences critiques</b></span>
+        </div>
+        <div class="sb-tip-line">
+          <span class="sb-tip-dot sb-tip-dot--y"></span>
+          <span>Intègre la <b>relève disponible</b> (hors titulaires)</span>
+        </div>
+        <div class="sb-tip-line">
+          <span class="sb-tip-dot sb-tip-dot--g"></span>
+          <span>Intègre l’<b>écart Titulaires / Cible</b> (Paramétrage RH)</span>
         </div>
 
-        <div class="sb-tip-block">
-          <div class="sb-tip-block-title">Lecture de l’état</div>
-          <div class="sb-tip-scale"><b>0 à 24 %</b> : faible</div>
-          <div class="sb-tip-scale"><b>25 à 49 %</b> : modéré</div>
-          <div class="sb-tip-scale"><b>50 à 74 %</b> : élevé</div>
-          <div class="sb-tip-scale"><b>75 à 100 %</b> : critique</div>
-        </div>
+        <div class="sb-tip-sep"></div>
 
-        <div class="sb-tip-note">
-          Un poste actif sans titulaire est considéré comme fragile à 100 %, car aucune personne ne le couvre dans l’organisation actuelle.
+        <div class="sb-tip-mini">
+          Le détail (causes + chiffres) est dans <b>“Voir analyse”</b>.
         </div>
       `;
     }
 
-    return `<div class="sb-tip-title">Info</div><div class="sb-tip-text">Aucune aide définie.</div>`;
+    return `<div class="sb-tip-title">Info</div><div class="sb-tip-mini">Aucune aide définie.</div>`;
   }
-
-
 
   function hideSbTipPortal() {
     const el = document.getElementById("sbTipPortal");
@@ -7330,20 +7298,8 @@ function bindOnce(portal) {
 
 
     // ------------------------------
-    // PDF poste fragile
-    // ------------------------------
-    const btnPostePdf = ev.target.closest("[data-risk-poste-pdf]");
-    if (btnPostePdf) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      const idPoste = (btnPostePdf.getAttribute("data-risk-poste-pdf") || "").trim();
-      if (idPoste) openAnalysePosteAnalysisPdf(idPoste);
-      return;
-    }
-
-    // ------------------------------
     // 1) Click sur POSTE FRAGILE (table risques)
-    // -> ouverture uniquement si clic sur libellé poste OU bouton Voir
+    // -> ouverture uniquement si clic sur libellé poste OU bouton "Voir analyse"
     // ------------------------------
     const trPoste = ev.target.closest("tr.risk-poste-row[data-id_poste]");
     if (trPoste) {

@@ -4591,12 +4591,12 @@ def get_analyse_risques_detail(
 
 def _analyse_risk_detail_pdf_priority_label(score: Any) -> str:
     s = _analyse_pdf_safe_int(score)
-    if s >= 75:
+    if s >= 80:
         return "Critique"
-    if s >= 50:
-        return "Élevé"
-    if s >= 25:
-        return "Modéré"
+    if s >= 60:
+        return "Élevée"
+    if s >= 35:
+        return "Modérée"
     return "Faible"
 
 
@@ -4616,7 +4616,7 @@ def _analyse_risk_detail_pdf_table(kpi: str, items: List[Any], styles: Dict[str,
     widths: List[Any] = []
 
     if k == "postes-scope":
-        rows.append([p("Code", head_style), p("Poste", head_style), p("Service", head_style), p("Indice", head_style), p("État", head_style)])
+        rows.append([p("Code", head_style), p("Poste", head_style), p("Service", head_style), p("Indice", head_style), p("Priorité", head_style)])
         widths = [26 * mm, 88 * mm, 54 * mm, 26 * mm, 32 * mm]
         for item in (items or []):
             r = item.dict() if hasattr(item, "dict") else dict(item or {})
@@ -4630,7 +4630,7 @@ def _analyse_risk_detail_pdf_table(kpi: str, items: List[Any], styles: Dict[str,
                 p(_analyse_risk_detail_pdf_priority_label(score)),
             ])
     else:
-        rows.append([p("Code", head_style), p("Compétence", head_style), p("Domaine", head_style), p("Présence", head_style), p("Indice", head_style), p("État", head_style)])
+        rows.append([p("Code", head_style), p("Compétence", head_style), p("Domaine", head_style), p("Présence", head_style), p("Indice", head_style), p("Priorité", head_style)])
         widths = [24 * mm, 86 * mm, 46 * mm, 24 * mm, 22 * mm, 28 * mm]
         for item in (items or []):
             r = item.dict() if hasattr(item, "dict") else dict(item or {})
@@ -5816,205 +5816,6 @@ def get_analyse_risques_poste_diagnostic(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur serveur : {e}")
 
-
-def _analyse_poste_pdf_state_label(score: Any) -> str:
-    s = _analyse_pdf_safe_int(score)
-    if s >= 75:
-        return "Critique"
-    if s >= 50:
-        return "Élevé"
-    if s >= 25:
-        return "Modéré"
-    return "Faible"
-
-
-def _analyse_poste_pdf_card(title: str, value: str, subtitle: str = "", width_mm: float = 58.0, height_mm: float = 24.0):
-    from reportlab.graphics.shapes import Drawing, Rect, String
-    from reportlab.lib import colors
-    from reportlab.lib.units import mm
-
-    d = Drawing(width_mm * mm, height_mm * mm)
-    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=5, ry=5, strokeColor=colors.HexColor("#dbe4ef"), fillColor=colors.white, strokeWidth=0.8))
-    d.add(String(4 * mm, height_mm * mm - 6 * mm, str(title or ""), fontName="Helvetica-Bold", fontSize=7.2, fillColor=colors.HexColor("#64748b")))
-    d.add(String(4 * mm, height_mm * mm - 14 * mm, str(value or "—"), fontName="Helvetica-Bold", fontSize=13, fillColor=colors.HexColor("#0f172a")))
-    if subtitle:
-        d.add(String(4 * mm, 4 * mm, _analyse_pdf_short(subtitle, 36), fontName="Helvetica", fontSize=6.6, fillColor=colors.HexColor("#94a3b8")))
-    return d
-
-
-def _analyse_poste_pdf_components_table(diag: Any, styles: Dict[str, Any]):
-    from reportlab.lib import colors
-    from reportlab.lib.units import mm
-    from reportlab.platypus import Paragraph, Table, TableStyle
-
-    body = styles.get("small") or styles.get("body")
-    head = styles.get("meta_label") or body
-
-    def p(v: Any, st=None):
-        return Paragraph(_analyse_pdf_esc(v), st or body)
-
-    comp = getattr(diag, "composantes", None)
-    rows = [[p("Lecture", head), p("Score", head), p("Ce que cela signifie", head)]]
-    data = [
-        ("Structure", getattr(comp, "score_structurel", 0), "Titulaire(s) présents par rapport au besoin attendu."),
-        ("Efficacité", getattr(comp, "score_efficacite", 0), "Compétences attendues insuffisamment couvertes ou non confirmées."),
-        ("Dépendance", getattr(comp, "score_dependance", 0), "Relais interne limité ou compétence portée par trop peu de personnes."),
-        ("Transmission", getattr(comp, "score_transmission", 0), "Capacité de remplacement ou de montée en compétence disponible."),
-    ]
-    for label, score, desc in data:
-        rows.append([p(label), p(f"{_analyse_pdf_safe_int(score)}"), p(desc)])
-
-    table = Table(rows, colWidths=[42 * mm, 24 * mm, 156 * mm], repeatRows=1)
-    table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f8fafc")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#334155")),
-        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#e2e8f0")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-    ]))
-    return table
-
-
-def _analyse_poste_pdf_risks_table(diag: Any, styles: Dict[str, Any]):
-    from reportlab.lib import colors
-    from reportlab.lib.units import mm
-    from reportlab.platypus import Paragraph, Table, TableStyle
-
-    body = styles.get("small") or styles.get("body")
-    head = styles.get("meta_label") or body
-
-    def p(v: Any, st=None):
-        return Paragraph(_analyse_pdf_esc(v), st or body)
-
-    rows = [[p("Code", head), p("Compétence", head), p("Criticité", head), p("Porteurs", head), p("Au niveau", head), p("Point à sécuriser", head)]]
-    items = list(getattr(diag, "top_risques", None) or [])[:12]
-    if not items:
-        rows.append([p("—"), p("Aucun point de fragilité prioritaire détecté."), p("—"), p("—"), p("—"), p("—")])
-    for it in items:
-        kind = str(getattr(it, "type_risque", "") or "")
-        if kind == "NON_COUVERTE":
-            reco = "Compétence non couverte"
-        elif kind == "COUV_UNIQUE":
-            reco = "Couverture dépendante"
-        elif kind == "FRAGILE":
-            reco = "Niveau ou couverture à renforcer"
-        else:
-            reco = getattr(it, "recommandation", None) or "À vérifier"
-        rows.append([
-            p(getattr(it, "code_comp", None) or "—"),
-            p(getattr(it, "intitule", None) or "—"),
-            p(getattr(it, "poids_criticite", None) if getattr(it, "poids_criticite", None) is not None else "—"),
-            p(str(getattr(it, "nb_porteurs", 0))),
-            p(str(getattr(it, "nb_ok", 0))),
-            p(reco),
-        ])
-
-    table = Table(rows, colWidths=[24 * mm, 82 * mm, 24 * mm, 24 * mm, 26 * mm, 42 * mm], repeatRows=1)
-    table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f8fafc")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#334155")),
-        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#e2e8f0")),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 5),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-    ]))
-    return table
-
-
-@router.get("/skills/analyse/risques/poste/pdf/{id_contact}")
-def get_analyse_risques_poste_pdf(
-    id_contact: str,
-    request: Request,
-    id_poste: str = Query(...),
-    id_service: Optional[str] = Query(default=None),
-    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
-):
-    try:
-        from fastapi import Response
-        from reportlab.lib.pagesizes import A4, landscape
-        from reportlab.lib.units import mm
-        from reportlab.platypus import Paragraph, Table, TableStyle
-        from app.routers.skills_portal_pdf_common import build_pdf_document, build_pdf_styles, make_spacer
-
-        poste_id = (id_poste or "").strip()
-        if not poste_id:
-            raise HTTPException(status_code=400, detail="id_poste manquant.")
-
-        diag = get_analyse_risques_poste_diagnostic(
-            id_contact=id_contact,
-            request=request,
-            id_poste=poste_id,
-            id_service=id_service,
-            criticite_min=criticite_min,
-            limit=8,
-        )
-
-        with get_conn() as conn:
-            with conn.cursor(row_factory=dict_row) as cur:
-                id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
-                company_name = _analyse_pdf_company_name(cur, id_ent)
-                logo_bytes = _analyse_pdf_logo_bytes_for_ent(cur, id_ent)
-
-        styles = build_pdf_styles()
-        poste = getattr(diag, "poste", {}) or {}
-        scope = getattr(diag, "scope", None)
-        comp = getattr(diag, "composantes", None)
-        score = _analyse_pdf_safe_int(getattr(diag, "indice_fragilite", 0))
-        etat = _analyse_poste_pdf_state_label(score)
-        code = (poste.get("codif_client") or poste.get("codif_poste") or "").strip()
-        title = (poste.get("intitule_poste") or "Poste").strip()
-        service = (getattr(scope, "nom_service", None) or poste.get("nom_service") or "Tous les services")
-        today = datetime.now().strftime("%d/%m/%Y")
-        nb_tit = _analyse_pdf_safe_int(getattr(comp, "nb_titulaires", poste.get("nb_titulaires", 0)))
-        nb_cible = _analyse_pdf_safe_int(getattr(comp, "nb_titulaires_cible", poste.get("nb_titulaires_cible", 1))) or 1
-
-        story = []
-        story.append(Paragraph("Analyse de fragilité du poste", styles["title"]))
-        story.append(Paragraph(f"{_analyse_pdf_esc(code)} • {_analyse_pdf_esc(title)}", styles["section"]))
-        story.append(Paragraph(f"Périmètre analysé : {_analyse_pdf_esc(service)} • Date : {today} • Criticité minimale : {int(criticite_min)}", styles["subtitle"]))
-        story.append(make_spacer(3))
-
-        cards = Table([[
-            _analyse_poste_pdf_card("Indice de fragilité", f"{score}%", "Score actuel"),
-            _analyse_poste_pdf_card("État", etat, "Lecture du risque"),
-            _analyse_poste_pdf_card("Titulaires", str(nb_tit), "Personnes rattachées"),
-            _analyse_poste_pdf_card("Cible RH", str(nb_cible), "Besoin attendu"),
-        ]], colWidths=[58 * mm, 58 * mm, 58 * mm, 58 * mm])
-        cards.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
-        story.append(cards)
-        story.append(make_spacer(6))
-
-        story.append(Paragraph("Lecture des composantes", styles["section"]))
-        story.append(_analyse_poste_pdf_components_table(diag, styles))
-        story.append(make_spacer(6))
-
-        story.append(Paragraph("Points à sécuriser", styles["section"]))
-        story.append(_analyse_poste_pdf_risks_table(diag, styles))
-
-        pdf = build_pdf_document(story, {
-            "title": f"Analyse de fragilité - {title}",
-            "footer_left": "Novoskill Insights • Analyse de fragilité du poste",
-            "header_right": company_name,
-            "header_right_font_name": "Helvetica-Bold",
-            "header_right_font_size": 11,
-            "logo_bytes": logo_bytes,
-        }, page_size=landscape(A4))
-
-        safe_code = re.sub(r"[^A-Za-z0-9_-]+", "_", code or poste_id).strip("_") or "poste"
-        return Response(
-            content=pdf,
-            media_type="application/pdf",
-            headers={"Content-Disposition": f'inline; filename="analyse_fragilite_{safe_code}.pdf"', "Cache-Control": "no-store"},
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur génération PDF analyse poste : {e}")
 
 # ======================================================
 # Endpoint: Matching poste-porteur
