@@ -7212,35 +7212,3 @@ body{
   box-shadow: var(--sb-ring-accent, 0 0 0 3px rgba(193, 39, 45, 0.18)) !important;
 }
 
-/* Correctif ciblé : entête du modal Synthèse des risques.
-   Le modal Bootstrap garde parfois une police/hauteur différente du reste du portail. */
-#modalAnalyseHelp .modal-header{
-  font-family: var(--sb-font-family, var(--font-family-base, "Inter", "Segoe UI", Arial, sans-serif)) !important;
-  padding: 14px 18px !important;
-  min-height: 48px !important;
-  align-items: center !important;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.22) !important;
-}
-
-#modalAnalyseHelp .modal-header .modal-title,
-#modalAnalyseHelp .modal-title{
-  font-family: inherit !important;
-  font-size: 15px !important;
-  line-height: 1.25 !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.015em !important;
-  color: #0f172a !important;
-  margin: 0 !important;
-}
-
-#modalAnalyseHelp .modal-header .btn-close,
-#modalAnalyseHelp .modal-header .close,
-#modalAnalyseHelp .modal-header button[aria-label="Close"]{
-  font-family: "Segoe UI", Arial, sans-serif !important;
-  font-size: 18px !important;
-  line-height: 1 !important;
-  font-weight: 600 !important;
-  color: #64748b !important;
-  opacity: 1 !important;
-}
-

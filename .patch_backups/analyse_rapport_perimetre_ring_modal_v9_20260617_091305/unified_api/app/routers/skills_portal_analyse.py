@@ -7153,23 +7153,6 @@ def _analyse_report_ring_like(title: str, value: int, color_hex: str = "#ef4444"
         d.add(Rect(bar_x, bar_y, fill_w, 4.8 * mm, rx=2.4, ry=2.4, strokeColor=color, fillColor=color, strokeWidth=0.5))
     return d
 
-
-
-def _analyse_report_scope_label_panel(scope: Any, nb_postes: int, nb_comps: int, horizon_years: int, criticite_min: int, width_mm: float = 270.0, height_mm: float = 13.0):
-    from reportlab.graphics.shapes import Drawing, Rect, String
-    from reportlab.lib import colors
-    from reportlab.lib.units import mm
-
-    d = Drawing(width_mm * mm, height_mm * mm)
-    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=5, ry=5, strokeColor=colors.HexColor("#BFDBFE"), fillColor=colors.HexColor("#EFF6FF"), strokeWidth=0.7))
-
-    perimeter = str(getattr(scope, "nom_service", None) or "Tous les services").strip() or "Tous les services"
-    label = f"Périmètre analysé : {perimeter}"
-    detail = f"{_analyse_pdf_safe_int(nb_postes)} poste(s) • {_analyse_pdf_safe_int(nb_comps)} compétence(s) • criticité min. {_analyse_pdf_safe_int(criticite_min)}/4 • horizon {_analyse_pdf_safe_int(horizon_years)} an(s)"
-
-    d.add(String(5 * mm, 5.2 * mm, _analyse_pdf_short(label, 70), fontName="Helvetica-Bold", fontSize=8.0, fillColor=colors.HexColor("#0F172A")))
-    d.add(String((width_mm - 5) * mm, 5.2 * mm, _analyse_pdf_short(detail, 86), fontName="Helvetica", fontSize=7.3, fillColor=colors.HexColor("#475569"), textAnchor="end"))
-    return d
 def _analyse_report_pie_panel(title: str, labels: List[str], data: List[int], colors_hex: List[str], width_mm: float = 132.0, height_mm: float = 62.0):
     from reportlab.graphics.shapes import Circle, Drawing, Rect, String
     from reportlab.graphics.charts.piecharts import Pie
@@ -7207,23 +7190,14 @@ def _analyse_report_pie_panel(title: str, labels: List[str], data: List[int], co
     chart.data = safe_data
     chart.labels = [""] * len(safe_data)
     chart.slices.strokeWidth = 0
-    try:
-        chart.slices.strokeColor = None
-    except Exception:
-        pass
 
-    # ReportLab garde parfois un contour noir si seul strokeWidth est défini.
-    # On force donc le trait de chaque part à être invisible ou identique à la part.
     for i, _v in enumerate(safe_data):
-        col = colors.HexColor(palette[i % len(palette)])
-        chart.slices[i].fillColor = col
-        chart.slices[i].strokeWidth = 0
-        chart.slices[i].strokeColor = col
+        chart.slices[i].fillColor = colors.HexColor(palette[i % len(palette)])
 
     d.add(chart)
 
-    # Faux donut compatible ReportLab : disque central blanc, sans contour.
-    d.add(Circle(27 * mm, 29 * mm, 10.4 * mm, fillColor=colors.white, strokeColor=colors.white, strokeWidth=0))
+    # Faux donut compatible ReportLab : pas de bordure noire, disque central blanc.
+    d.add(Circle(27 * mm, 29 * mm, 10.0 * mm, fillColor=colors.white, strokeColor=colors.white, strokeWidth=0))
     total_txt = str(sum(safe_data))
     d.add(String(27 * mm, 28 * mm, total_txt, fontName="Helvetica-Bold", fontSize=11, fillColor=colors.HexColor("#0F172A"), textAnchor="middle"))
 
@@ -7859,8 +7833,6 @@ def get_analyse_risques_report_pdf(
         story.append(Paragraph("Rapport d’analyse des risques compétences", title_style))
         story.append(make_spacer(3))
 
-        story.append(_analyse_report_scope_label_panel(scope, nb_postes, nb_comps, horizon_years, criticite_min, 270, 13))
-        story.append(make_spacer(4))
         top_cards = Table([[
             _analyse_pdf_kpi_card("Postes analysés", str(nb_postes), "Périmètre lu", 62, 22),
             _analyse_pdf_kpi_card("Compétences analysées", str(nb_comps), "Compétences critiques retenues", 62, 22),
