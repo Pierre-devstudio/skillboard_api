@@ -6614,36 +6614,6 @@ def _analyse_pdf_safe_int(v: Any) -> int:
         return 0
 
 
-
-
-def _analyse_pdf_date_fr(value: Any) -> str:
-    from datetime import date, datetime
-
-    if value is None:
-        return "—"
-    if isinstance(value, datetime):
-        return value.strftime("%d/%m/%Y")
-    if isinstance(value, date):
-        return value.strftime("%d/%m/%Y")
-
-    raw = str(value or "").strip()
-    if not raw or raw == "—":
-        return "—"
-    if "/" in raw and len(raw) >= 8:
-        return raw
-    if raw.lower().startswith("jamais"):
-        return raw
-
-    for fmt in ("%Y-%m-%d", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S"):
-        try:
-            return datetime.strptime(raw[:len(fmt)], fmt).strftime("%d/%m/%Y")
-        except Exception:
-            pass
-
-    try:
-        return datetime.fromisoformat(raw.replace("Z", "+00:00")).strftime("%d/%m/%Y")
-    except Exception:
-        return raw
 def _analyse_effect_definitions() -> Dict[str, Dict[str, Any]]:
     return {
         "rupture_activite": {
@@ -7185,19 +7155,21 @@ def _analyse_report_ring_like(title: str, value: int, color_hex: str = "#ef4444"
 
 
 
-def _analyse_report_scope_label_panel(scope: Any, nb_postes: int, nb_comps: int, horizon_years: int, criticite_min: int, width_mm: float = 270.0, height_mm: float = 6.0):
-    from datetime import date
-    from reportlab.graphics.shapes import Drawing, String
+def _analyse_report_scope_label_panel(scope: Any, nb_postes: int, nb_comps: int, horizon_years: int, criticite_min: int, width_mm: float = 270.0, height_mm: float = 13.0):
+    from reportlab.graphics.shapes import Drawing, Rect, String
     from reportlab.lib import colors
     from reportlab.lib.units import mm
 
     d = Drawing(width_mm * mm, height_mm * mm)
-    perimeter = str(getattr(scope, "nom_service", None) or "Tous les services").strip() or "Tous les services"
-    today = date.today().strftime("%d/%m/%Y")
-    label = f"Périmètre analysé : {perimeter}   •   Date : {today}"
-    d.add(String(0, 2.0 * mm, _analyse_pdf_short(label, 128), fontName="Helvetica", fontSize=8.0, fillColor=colors.HexColor("#475569")))
-    return d
+    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=5, ry=5, strokeColor=colors.HexColor("#BFDBFE"), fillColor=colors.HexColor("#EFF6FF"), strokeWidth=0.7))
 
+    perimeter = str(getattr(scope, "nom_service", None) or "Tous les services").strip() or "Tous les services"
+    label = f"Périmètre analysé : {perimeter}"
+    detail = f"{_analyse_pdf_safe_int(nb_postes)} poste(s) • {_analyse_pdf_safe_int(nb_comps)} compétence(s) • criticité min. {_analyse_pdf_safe_int(criticite_min)}/4 • horizon {_analyse_pdf_safe_int(horizon_years)} an(s)"
+
+    d.add(String(5 * mm, 5.2 * mm, _analyse_pdf_short(label, 70), fontName="Helvetica-Bold", fontSize=8.0, fillColor=colors.HexColor("#0F172A")))
+    d.add(String((width_mm - 5) * mm, 5.2 * mm, _analyse_pdf_short(detail, 86), fontName="Helvetica", fontSize=7.3, fillColor=colors.HexColor("#475569"), textAnchor="end"))
+    return d
 def _analyse_report_pie_panel(title: str, labels: List[str], data: List[int], colors_hex: List[str], width_mm: float = 132.0, height_mm: float = 62.0):
     from reportlab.graphics.shapes import Circle, Drawing, Rect, String
     from reportlab.graphics.charts.piecharts import Pie
@@ -7281,25 +7253,18 @@ def _analyse_report_family_bars_panel(title: str, items: List[Dict[str, Any]], w
         return d
 
     max_val = max([max(1, _analyse_pdf_safe_int(r.get("count"))) for r in rows] or [1])
-    y = height_mm * mm - 13.2 * mm
-    step = 6.2 * mm
-    bar_h = 3.1 * mm
-    label_x = 5 * mm
-    bar_x = 66 * mm
-    bar_w = max(20 * mm, (width_mm - 88) * mm)
-    value_x = (width_mm - 8) * mm
-
+    y = height_mm * mm - 14 * mm
     for idx, row in enumerate(rows):
-        label = _analyse_pdf_short(str(row.get("family") or "Cause"), 31)
+        label = _analyse_pdf_short(str(row.get("family") or "Cause"), 30)
         val = max(0, _analyse_pdf_safe_int(row.get("count")))
         color = colors.HexColor(palette[idx % len(palette)])
-        d.add(String(label_x, y, label, fontName="Helvetica", fontSize=6.9, fillColor=colors.HexColor("#334155")))
-        d.add(Rect(bar_x, y - 2 * mm, bar_w, bar_h, rx=1.5, ry=1.5, strokeColor=colors.HexColor("#E5E7EB"), fillColor=colors.HexColor("#F8FAFC"), strokeWidth=0.4))
-        fill_w = bar_w * (val / float(max_val)) if max_val > 0 else 0
+        d.add(String(5 * mm, y, label, fontName="Helvetica", fontSize=7.0, fillColor=colors.HexColor("#334155")))
+        d.add(Rect(66 * mm, y - 2 * mm, 108 * mm, 3.4 * mm, rx=1.7, ry=1.7, strokeColor=colors.HexColor("#E5E7EB"), fillColor=colors.HexColor("#F8FAFC"), strokeWidth=0.4))
+        fill_w = 108 * mm * (val / float(max_val)) if max_val > 0 else 0
         if fill_w > 0:
-            d.add(Rect(bar_x, y - 2 * mm, fill_w, bar_h, rx=1.5, ry=1.5, strokeColor=color, fillColor=color, strokeWidth=0.4))
-        d.add(String(value_x, y, str(val), fontName="Helvetica-Bold", fontSize=6.9, fillColor=colors.HexColor("#0F172A"), textAnchor="end"))
-        y -= step
+            d.add(Rect(66 * mm, y - 2 * mm, fill_w, 3.4 * mm, rx=1.7, ry=1.7, strokeColor=color, fillColor=color, strokeWidth=0.4))
+        d.add(String(178 * mm, y, str(val), fontName="Helvetica-Bold", fontSize=7.0, fillColor=colors.HexColor("#0F172A"), textAnchor="end"))
+        y -= 7.2 * mm
     return d
 
 def _analyse_report_hbars_panel(title: str, items: List[Dict[str, Any]], label_key: str, value_key: str, width_mm: float = 270.0, height_mm: float = 76.0):
@@ -7670,9 +7635,8 @@ def _analyse_ishikawa_row_values(family: str, row: Dict[str, Any]) -> List[str]:
         return []
     if "Dépendance à un porteur unique" in s or s == "Porteur unique":
         return []
-    if "Données" in s or "Évaluation" in s:
-        return [_analyse_pdf_date_fr(row.get("value"))]
     return [str(row.get("value") or "—")]
+
 
 def _analyse_ishikawa_col_widths(headers: List[str]) -> List[float]:
     n = len(headers or [])
@@ -7895,7 +7859,7 @@ def get_analyse_risques_report_pdf(
         story.append(Paragraph("Rapport d’analyse des risques compétences", title_style))
         story.append(make_spacer(3))
 
-        story.append(_analyse_report_scope_label_panel(scope, nb_postes, nb_comps, horizon_years, criticite_min, 270, 6))
+        story.append(_analyse_report_scope_label_panel(scope, nb_postes, nb_comps, horizon_years, criticite_min, 270, 13))
         story.append(make_spacer(4))
         top_cards = Table([[
             _analyse_pdf_kpi_card("Postes analysés", str(nb_postes), "Périmètre lu", 62, 22),
