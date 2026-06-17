@@ -5174,11 +5174,7 @@ function renderDetail(mode) {
   const meta = byId("analyseDetailMeta");
   const body = byId("analyseDetailBody");
 
-  if (sub) sub.style.display = "";
-  if (meta) {
-    meta.style.display = "";
-    meta.textContent = `Service : ${scope}`;
-  }
+  if (meta) meta.textContent = `Service : ${scope}`;
   if (!body) return;
 
   // -----------------------
@@ -5811,26 +5807,23 @@ function renderDetail(mode) {
   const rf = getRiskFilter(); // "", "postes-scope", "critiques-fragiles", "evol-3m"
   if (typeof setActiveRiskKpi === "function") setActiveRiskKpi(rf);
 
-  if (title) title.textContent = "Risques actuels";
-  if (sub) {
-    sub.textContent = "";
-    sub.style.display = "none";
-  }
-  if (meta) {
-    meta.textContent = "";
-    meta.style.display = "none";
-  }
+  if (title) title.textContent = "Risques";
 
-  let filterLabel = "Risques actuels";
-  let filterSub = "";
+  let filterLabel = "Vue globale";
+  let filterSub = "Priorisation des fragilités par criticité et couverture.";
 
   if (rf === "postes-scope") {
-    filterLabel = "Fragilité des postes";
+    filterLabel = "Postes";
+    filterSub = "Ensemble des postes actifs, triés par indice de fragilité décroissant.";
   } else if (rf === "critiques-fragiles") {
-    filterLabel = "Fragilités par compétence";
+    filterLabel = "Compétences critiques (structurel)";
+    filterSub = "Compétences critiques à sécuriser (0 ou 1 porteur en nominal).";
   } else if (rf === "evol-3m") {
-    filterLabel = "Évolution des indices de fragilités à 3 mois";
+  filterLabel = "Évolution du risque à 3 mois";
+  filterSub = "";
   }
+
+  if (sub) sub.textContent = filterSub;
 
 
   const selSvc = byId("analyseServiceSelect") || byId("anaServiceSelect") || byId("mapServiceSelect");
@@ -6163,9 +6156,14 @@ function renderDetail(mode) {
 
   const canTogglePostesScope = (!rf || rf === "postes-scope");
   const buildResetHtml = () => {
+    const leftBadges = !rf
+      ? `${badge("Vue globale", true)}${badge("Criticité min: " + critMinLabel(), false)}`
+      : `${badge(filterLabel, true)}${badge("Criticité min: " + critMinLabel(), false)}`;
+
     if (!canTogglePostesScope && rf) {
       return `
-        <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">${leftBadges}</div>
           <button type="button" class="sb-btn sb-btn--init sb-btn--xs" id="btnRiskFilterReset">
             Revenir à la vue globale
           </button>
@@ -6174,7 +6172,8 @@ function renderDetail(mode) {
     }
 
     return `
-      <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">${leftBadges}</div>
         <button type="button" class="sb-btn sb-btn--init sb-btn--xs" id="btnRiskFilterReset">
           ${getPostesScopeExpanded() ? "Afficher seulement 10 postes" : "Afficher tous les postes"}
         </button>
@@ -6442,9 +6441,14 @@ function renderDetail(mode) {
 
         const items = Array.isArray(data?.items) ? data.items : [];
 
+        const subHtml = (rf === "postes-fragiles")
+          ? ""
+          : `<div class="card-sub" style="margin:0;">${escapeHtml(filterSub)}</div>`;
+
         const content = `
           <div class="card" style="padding:12px; margin:0;">
             <div class="card-title" style="margin-bottom:6px;">${escapeHtml(filterLabel)}</div>
+            ${subHtml}
             ${(rf === "postes-scope" || rf === "postes-fragiles") ? renderTablePostes(items) : renderTableCompetences(items)}
           </div>
         `;
@@ -6470,12 +6474,13 @@ function renderDetail(mode) {
         ${buildResetHtml()}
 
         <div class="card" style="padding:12px; margin:0;">
-          <div class="card-title" style="margin-bottom:6px;">Fragilité des postes</div>
+          <div class="card-title" style="margin-bottom:6px;">Postes</div>
           ${renderTablePostes(itemsA)}
         </div>
 
         <div class="card" style="padding:12px; margin-top:12px;">
-          <div class="card-title" style="margin-bottom:6px;">Fragilités par compétence</div>
+          <div class="card-title" style="margin-bottom:6px;">Compétences critiques (structurel)</div>
+          <div class="card-sub" style="margin:0;">Compétences critiques à sécuriser (0 ou 1 porteur en nominal).</div>
           ${renderTableCompetences(itemsB)}
         </div>
       `;
