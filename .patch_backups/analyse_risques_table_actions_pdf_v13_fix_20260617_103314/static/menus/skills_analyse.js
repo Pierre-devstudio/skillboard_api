@@ -23,7 +23,6 @@
   const STORE_MATCH_POSTE_MODE = "sb_analyse_match_poste_mode"; // "fragiles" | "tous"
   const STORE_CRITICITE_MIN = "sb_analyse_criticite_min";
   const STORE_POSTES_SCOPE_EXPANDED = "sb_analyse_postes_scope_expanded";
-  const STORE_RISK_DETAIL_EXPANDED = "sb_analyse_risk_detail_expanded";
   const STORE_SIM_ANALYSE_HYPOTHESES = "sb_simulations_rh_hypotheses_from_analyse_v1";
   const CRITICITE_MIN_DEFAULT = 70;
   const POSTES_SCOPE_PREVIEW_LIMIT = 10;
@@ -567,34 +566,6 @@
       return;
     }
     openAnalysePdfBlob(url, "Rapport bloqué");
-  }
-
-
-  function buildAnalyseRiskDetailPdfUrl(kpiKey) {
-    const ctx = getPortalContext(_portalref);
-    if (!ctx.id_contact || !ctx.apiBase) return "";
-
-    const k = (kpiKey || "").toString().trim();
-    if (!isExpandableRiskDetail(k)) return "";
-
-    const f = getFilters();
-    const qs = new URLSearchParams();
-    qs.set("kpi", k);
-    if (f.id_service) qs.set("id_service", f.id_service);
-    qs.set("criticite_min", String(getCriticiteMinSafe(CRITICITE_MIN_DEFAULT)));
-    qs.set("limit", String(getRiskDetailLimit(k)));
-    qs.set("_", String(Date.now()));
-
-    return `${ctx.apiBase}/skills/analyse/risques/detail/pdf/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
-  }
-
-  function openAnalyseRiskDetailPdf(kpiKey) {
-    const url = buildAnalyseRiskDetailPdfUrl(kpiKey);
-    if (!url) {
-      showAnalyseHelp("Impression indisponible", "<p>Impossible de retrouver la table à imprimer.</p>");
-      return;
-    }
-    openAnalysePdfBlob(url, "Impression bloquée");
   }
   function analyseHelpKpi(title, text) {
     return `
@@ -1254,30 +1225,6 @@
   function setPostesScopeExpanded(v) {
     if (v) localStorage.setItem(STORE_POSTES_SCOPE_EXPANDED, "1");
     else localStorage.removeItem(STORE_POSTES_SCOPE_EXPANDED);
-  }
-
-
-  function isExpandableRiskDetail(kpiKey) {
-    const k = (kpiKey || "").toString().trim();
-    return k === "postes-scope" || k === "critiques-fragiles";
-  }
-
-  function getRiskDetailExpanded(kpiKey) {
-    const k = (kpiKey || "").toString().trim();
-    if (!isExpandableRiskDetail(k)) return false;
-    return (localStorage.getItem(`${STORE_RISK_DETAIL_EXPANDED}_${k}`) || "0") === "1";
-  }
-
-  function setRiskDetailExpanded(kpiKey, value) {
-    const k = (kpiKey || "").toString().trim();
-    if (!isExpandableRiskDetail(k)) return;
-    const storageKey = `${STORE_RISK_DETAIL_EXPANDED}_${k}`;
-    if (value) localStorage.setItem(storageKey, "1");
-    else localStorage.removeItem(storageKey);
-  }
-
-  function getRiskDetailLimit(kpiKey) {
-    return getRiskDetailExpanded(kpiKey) ? 2000 : 10;
   }
 
   const _riskDetailCache = new Map();
@@ -5226,9 +5173,6 @@ function renderDetail(mode) {
   const sub = byId("analyseDetailSub");
   const meta = byId("analyseDetailMeta");
   const body = byId("analyseDetailBody");
-  const actions = byId("analyseDetailActions");
-
-  if (actions) actions.innerHTML = "";
 
   if (sub) sub.style.display = "";
   if (meta) {
@@ -6217,39 +6161,39 @@ function renderDetail(mode) {
   }
 
 
-  const currentRiskDetailKey = isExpandableRiskDetail(rf) ? rf : "";
+  const canTogglePostesScope = (!rf || rf === "postes-scope");
+  const buildResetHtml = () => {
+    if (!canTogglePostesScope && rf) {
+      return `
+        <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+          <button type="button" class="sb-btn sb-btn--init sb-btn--xs" id="btnRiskFilterReset">
+            Revenir à la vue globale
+          </button>
+        </div>
+      `;
+    }
 
-  const buildResetHtml = () => "";
+    return `
+      <div style="display:flex; justify-content:flex-end; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+        <button type="button" class="sb-btn sb-btn--init sb-btn--xs" id="btnRiskFilterReset">
+          ${getPostesScopeExpanded() ? "Afficher seulement 10 postes" : "Afficher tous les postes"}
+        </button>
+      </div>
+    `;
+  };
 
   function bindRiskResetBtn() {
-    if (!actions) return;
-
-    if (!currentRiskDetailKey) {
-      actions.innerHTML = "";
-      return;
-    }
-
-    const expanded = getRiskDetailExpanded(currentRiskDetailKey);
-    actions.innerHTML = `
-      <button type="button" class="sb-btn sb-btn--init sb-btn--xs" id="btnRiskDetailToggle">
-        ${expanded ? "Afficher les 10 premiers" : "Afficher tout"}
-      </button>
-      <button type="button" class="sb-btn sb-btn--accent sb-btn--xs" id="btnRiskDetailPrint">
-        Imprimer
-      </button>
-    `;
-
-    const btnToggle = byId("btnRiskDetailToggle");
-    if (btnToggle) {
-      btnToggle.addEventListener("click", () => {
-        setRiskDetailExpanded(currentRiskDetailKey, !getRiskDetailExpanded(currentRiskDetailKey));
+    const btnReset = byId("btnRiskFilterReset");
+    if (btnReset) {
+      btnReset.addEventListener("click", () => {
+        if (canTogglePostesScope) {
+          setPostesScopeExpanded(!getPostesScopeExpanded());
+        } else {
+          setRiskFilter("");
+          setPostesScopeExpanded(false);
+        }
         renderDetail("risques");
       });
-    }
-
-    const btnPrint = byId("btnRiskDetailPrint");
-    if (btnPrint) {
-      btnPrint.addEventListener("click", () => openAnalyseRiskDetailPdf(currentRiskDetailKey));
     }
   }
 
@@ -6491,7 +6435,8 @@ function renderDetail(mode) {
       }
 
       if (rf) {
-        const detailLimit = isExpandableRiskDetail(rf) ? getRiskDetailLimit(rf) : 120;
+        const postesScopeLimit = getPostesScopeExpanded() ? 2000 : POSTES_SCOPE_PREVIEW_LIMIT;
+        const detailLimit = (rf === "postes-scope") ? postesScopeLimit : 120;
         const data = await fetchRisquesDetail(_portalref, rf, id_service, detailLimit);
         if (mySeq !== _riskDetailReqSeq) return;
 
@@ -6510,7 +6455,7 @@ function renderDetail(mode) {
       }
 
 
-      const postesScopeLimit = POSTES_SCOPE_PREVIEW_LIMIT;
+      const postesScopeLimit = getPostesScopeExpanded() ? 2000 : POSTES_SCOPE_PREVIEW_LIMIT;
       const [a, b] = await Promise.all([
         fetchRisquesDetail(_portalref, "postes-scope", id_service, postesScopeLimit),
         fetchRisquesDetail(_portalref, "critiques-fragiles", id_service, 40),
@@ -7072,7 +7017,6 @@ function bindOnce(portal) {
       const key = (el?.getAttribute("data-risk-kpi") || "").trim();
       if (!key) return;
       if (key === "postes-scope") setPostesScopeExpanded(false);
-      if (isExpandableRiskDetail(key)) setRiskDetailExpanded(key, false);
       setMode("risques");
       setRiskFilter(key);
       renderDetail("risques");
