@@ -601,31 +601,6 @@
     openAnalysePdfBlob(url, "PDF poste bloqué");
   }
 
-  function buildAnalyseCompetenceAnalysisPdfUrl(compKey) {
-    const ctx = getPortalContext(_portalref);
-    const key = String(compKey || "").trim();
-    if (!ctx.id_contact || !ctx.apiBase || !key) return "";
-
-    const f = getFilters();
-    const qs = new URLSearchParams();
-    qs.set("id_comp", key);
-    if (f.id_service) qs.set("id_service", f.id_service);
-    qs.set("criticite_min", String(getCriticiteMinSafe(CRITICITE_MIN_DEFAULT)));
-    qs.set("_", String(Date.now()));
-
-    return `${ctx.apiBase}/skills/analyse/risques/competence/pdf/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
-  }
-
-  function openAnalyseCompetenceAnalysisPdf(compKey) {
-    const url = buildAnalyseCompetenceAnalysisPdfUrl(compKey);
-    if (!url) {
-      showAnalyseHelp("PDF indisponible", "<p>Impossible de retrouver la compétence à exporter.</p>");
-      return;
-    }
-    openAnalysePdfBlob(url, "PDF compétence bloqué");
-  }
-
-
 
 
   function buildAnalyseRiskDetailPdfUrl(kpiKey) {
@@ -6147,6 +6122,10 @@ function renderDetail(mode) {
       </div>
     `;
   }
+
+
+
+
   function renderTableCompetences(rows) {
     const list = Array.isArray(rows) ? rows : [];
     if (!list.length) return `<div class="card-sub" style="margin:0;">Aucun résultat.</div>`;
@@ -6155,7 +6134,7 @@ function renderDetail(mode) {
 
     function scoreHue(score) {
       const s = clamp(Number(score || 0), 0, 100) / 100;
-      return Math.round(120 * (1 - s));
+      return Math.round(120 * (1 - s)); // 120 (vert) -> 0 (rouge)
     }
 
     function scoreChip(score) {
@@ -6169,25 +6148,24 @@ function renderDetail(mode) {
             <div style="height:100%; width:${s}%; background:${fill};"></div>
           </div>
           <div style="min-width:44px; text-align:right; font-weight:800;">
-            ${s}<span style="font-weight:700; font-size:12px;">%</span>
+            ${s}%
           </div>
         </div>
       `;
     }
 
-    function stateLabel(score) {
+    function prioFromScore(score) {
       const s = clamp(Number(score || 0), 0, 100);
-      if (s >= 75) return "Critique";
-      if (s >= 50) return "Élevé";
-      if (s >= 25) return "Modéré";
-      return "Faible";
+      if (s >= 75) return "P1";
+      if (s >= 50) return "P2";
+      return "P3";
     }
 
-    function statePill(label, score) {
-      const s = clamp(Math.round(Number(score || 0)), 0, 100);
+    function priorityPill(label, score) {
+      const s = clamp(Number(score || 0), 0, 100);
       const h = scoreHue(s);
-      const bg = `hsl(${h} 70% 95%)`;
-      const br = `hsl(${h} 70% 80%)`;
+      const bg = `hsl(${h} 80% 92%)`;
+      const br = `hsl(${h} 70% 72%)`;
       const tx = `hsl(${h} 70% 28%)`;
 
       return `
@@ -6209,49 +6187,57 @@ function renderDetail(mode) {
             <tr>
               <th>Code – Compétence</th>
               <th style="width:240px;">Domaine</th>
+
               <th class="col-center" style="width:140px;">Présence</th>
 
               <th class="col-center" style="width:220px;">
                 <span class="sb-th-with-tip">
                   <span>Indice<br>de fragilité</span>
                   <span class="sb-iinfo"
-                        data-sbtip="fragility-index-competence"
+                        data-sbtip="fragility-index"
                         tabindex="0"
                         role="button"
-                        aria-label="Informations sur l'indice de fragilité compétence">i</span>
+                        aria-label="Informations sur l'indice de fragilité">i</span>
                 </span>
               </th>
 
-              <th class="col-center" style="width:110px; white-space:normal; line-height:1.1;">
-                État
+              <th class="col-center" style="width:130px; white-space:normal; line-height:1.1;">
+                Priorité de<br>traitement
               </th>
 
-              <th class="col-center" style="width:92px;">Actions</th>
+              <th class="col-center" style="width:140px;">Détail</th>
             </tr>
           </thead>
           <tbody>
             ${list.map(r => {
               const code = (r.code || "—").toString().trim();
               const intit = (r.intitule || "—").toString();
+
               const idComp = (r.id_competence || r.id_comp || r.id_competence_skillboard || r.id_competence_pk || "").toString().trim();
               const compKey = (idComp || code || "").trim();
 
               const Braw = Number(r.besoin_total);
               const B = (Number.isFinite(Braw) && Braw > 0) ? Braw : 1;
+
               const P = Number(r.nb_porteurs || 0);
               const Pd = Number(r.nb_porteurs_dispo);
+
               const score = clamp(Number(r.indice_fragilite || 0), 0, 100);
-              const etat = stateLabel(score);
+              const prio  = priorityLabel(score);
+              const prioLabel =
+                (prio === "P1") ? "Critique" :
+                (prio === "P2") ? "Élevée"  :
+                "Modérée";
               const showDispo = Number.isFinite(Pd) && Pd !== P;
               const dispoHtml = showDispo
-                ? `<span class="sb-badge sb-badge--warning" title="Porteurs disponibles aujourd’hui, indisponibilités en cours exclues">${escapeHtml(String(Pd))}</span>`
+                ? `<span class="sb-badge sb-badge--warning" title="Porteurs disponibles aujourd’hui (breaks en cours exclus)">${escapeHtml(String(Pd))}</span>`
                 : "";
 
               const presTitle = [
-                `Porteurs déclarés : ${P}`,
-                `Besoin total sur les postes concernés : ${B}`,
-                Number.isFinite(Pd) ? `Porteurs disponibles aujourd’hui : ${Pd}` : null,
-                (r.nb_experts !== null && r.nb_experts !== undefined) ? `Experts : ${Number(r.nb_experts || 0)} (disponibles : ${Number(r.nb_experts_dispo || 0)})` : null
+                `Porteurs validés: ${P}`,
+                `Besoin total: ${B}`,
+                Number.isFinite(Pd) ? `Validés disponibles aujourd’hui: ${Pd}` : null,
+                (r.nb_experts !== null && r.nb_experts !== undefined) ? `Experts: ${Number(r.nb_experts || 0)} (dispo: ${Number(r.nb_experts_dispo || 0)})` : null
               ].filter(Boolean).join(" | ");
 
               return `
@@ -6278,26 +6264,16 @@ function renderDetail(mode) {
                     </div>
                   </td>
 
-                  <td class="col-center" title="Indice de fragilité de la compétence">${scoreChip(score)}</td>
+                  <td class="col-center" title="Indice fragilité (0-100)">${scoreChip(score)}</td>
 
-                  <td class="col-center">${statePill(etat, score)}</td>
+                  <td class="col-center" title="${escapeHtml(prio)}">${priorityPill(prioLabel, score)}</td>
 
-                  <td class="col-center">
-                    <div class="sb-icon-actions" style="justify-content:center;">
-                      <button type="button"
-                              class="sb-icon-btn risk-comp-open"
-                              title="Voir"
-                              aria-label="Voir l’analyse de la compétence">
-                        ${analyseEyeIconSvg()}
-                      </button>
-                      <button type="button"
-                              class="sb-icon-btn sb-icon-btn--doc"
-                              data-risk-comp-pdf="${escapeHtml(compKey)}"
-                              title="PDF"
-                              aria-label="Exporter l’analyse de la compétence en PDF">
-                        ${analysePdfIconSvg()}
-                      </button>
-                    </div>
+                  <td class="col-center risk-comp-open" style="cursor:pointer;">
+                    <button type="button"
+                            class="btn-secondary risk-comp-open"
+                            style="padding:6px 10px; font-size:12px; line-height:1;">
+                      Voir détail
+                    </button>
                   </td>
                 </tr>
               `;
@@ -6307,7 +6283,6 @@ function renderDetail(mode) {
       </div>
     `;
   }
-
 
 
   const currentRiskDetailKey = isExpandableRiskDetail(rf) ? rf : "";
@@ -7206,6 +7181,7 @@ function bindOnce(portal) {
     document.body.appendChild(el);
     return el;
   }
+
   function sbTipHtml(key) {
     if (key === "fragility-index") {
       return `
@@ -7239,42 +7215,8 @@ function bindOnce(portal) {
       `;
     }
 
-    if (key === "fragility-index-competence") {
-      return `
-        <div class="sb-tip-title">Indice de fragilité</div>
-        <div class="sb-tip-text">
-          Cet indice mesure le niveau d’exposition d’une compétence dans le périmètre affiché. Plus il se rapproche de 100 %, plus cette compétence est difficile à sécuriser dans l’organisation actuelle.
-        </div>
-
-        <div class="sb-tip-block">
-          <div class="sb-tip-block-title">Ce qui est pris en compte</div>
-          <ul class="sb-tip-list">
-            <li>le nombre de postes qui ont besoin de cette compétence ;</li>
-            <li>le nombre de collaborateurs déclarés comme porteurs de la compétence ;</li>
-            <li>les porteurs réellement disponibles et évalués ;</li>
-            <li>les écarts entre le niveau maîtrisé et le niveau attendu sur les postes ;</li>
-            <li>les situations où la compétence repose sur une seule personne ;</li>
-            <li>les postes où la compétence reste à confirmer ou à renforcer.</li>
-          </ul>
-        </div>
-
-        <div class="sb-tip-block">
-          <div class="sb-tip-block-title">Lecture de l’état</div>
-          <div class="sb-tip-scale"><b>0 à 24 %</b> : faible</div>
-          <div class="sb-tip-scale"><b>25 à 49 %</b> : modéré</div>
-          <div class="sb-tip-scale"><b>50 à 74 %</b> : élevé</div>
-          <div class="sb-tip-scale"><b>75 à 100 %</b> : critique</div>
-        </div>
-
-        <div class="sb-tip-note">
-          Une compétence peu diffusée, non confirmée ou portée par une seule personne peut devenir un point de blocage, même si elle existe déjà dans l’entreprise.
-        </div>
-      `;
-    }
-
     return `<div class="sb-tip-title">Info</div><div class="sb-tip-text">Aucune aide définie.</div>`;
   }
-
 
 
 
@@ -7439,18 +7381,6 @@ function bindOnce(portal) {
       return;
     }
 
-
-    // ------------------------------
-    // PDF compétence fragile
-    // ------------------------------
-    const btnCompPdf = ev.target.closest("[data-risk-comp-pdf]");
-    if (btnCompPdf) {
-      ev.preventDefault();
-      ev.stopPropagation();
-      const compKey = (btnCompPdf.getAttribute("data-risk-comp-pdf") || "").trim();
-      if (compKey) openAnalyseCompetenceAnalysisPdf(compKey);
-      return;
-    }
 
     // ------------------------------
     // 2) Click sur COMPETENCE (table risques)
