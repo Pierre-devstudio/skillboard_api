@@ -539,7 +539,7 @@ def _fetch_postes_fragility_records_at(
         WHERE c.etat = 'active'
           AND COALESCE(c.masque, FALSE) = FALSE
           AND COALESCE(fpc.masque, FALSE) = FALSE
-          AND COALESCE(fpc.poids_criticite, 0)::int >= 0
+          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
     ),
     pool_all_effectifs AS (
         SELECT
@@ -636,7 +636,7 @@ def _fetch_postes_fragility_records_at(
     LEFT JOIN ec_ok eok ON eok.id_poste = r.id_poste AND eok.id_comp = r.id_comp
     GROUP BY r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis
     """
-    cur.execute(sql_comp, tuple(cte_params + [as_of, as_of, as_of]))
+    cur.execute(sql_comp, tuple(cte_params + [as_of, as_of, as_of, int(criticite_min)]))
     comp_rows = cur.fetchall() or []
 
     comp_by_poste: Dict[str, List[Dict[str, Any]]] = {}
@@ -663,6 +663,7 @@ def _fetch_postes_fragility_records_at(
         )
     )
     return records
+
 
 def _compute_timeline(cur, id_ent: str, scope: DashboardScope, current_records: List[Dict[str, Any]], criticite_min: int) -> List[DashboardRiskTimelinePoint]:
     today = date.today()

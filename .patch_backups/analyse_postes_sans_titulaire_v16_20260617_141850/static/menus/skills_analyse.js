@@ -5979,8 +5979,9 @@ function renderDetail(mode) {
     function priorityLabel(score) {
       const s = clamp(Number(score || 0), 0, 100);
 
-      if (s >= 80) return "Critique";
-      if (s >= 60) return "Élevée";
+      if (s >= 100) return "Rupture";
+      if (s >= 80) return "Très critique";
+      if (s >= 60) return "Critique";
       if (s >= 40) return "Élevée";
       if (s >= 20) return "Modérée";
       return "Faible";
@@ -6054,11 +6055,7 @@ function renderDetail(mode) {
                 ? null
                 : Number(r.nb_titulaires);
 
-              const isNonAnalyse = !!r.is_non_analyse;
-              const isSansTitulaire = !isNonAnalyse && Number(r.nb_titulaires || 0) <= 0 && Number(r.nb_titulaires_cible || 1) >= 1;
-              const scoreTitle = isNonAnalyse
-                ? "Aucune compétence attendue exploitable n’est rattachée au poste"
-                : (isSansTitulaire ? "Poste actif sans titulaire : fragilité 100%" : "Indice fragilité (0-100)");
+              const isNonAnalyse = !!r.is_non_analyse || Number(r.nb_competences_analysees || 0) <= 0;
               const score = clamp(Number(r.indice_fragilite || 0), 0, 100);
               const prio  = isNonAnalyse ? "NA" : priorityLabel(score);
 
@@ -6075,11 +6072,11 @@ function renderDetail(mode) {
                   </td>
                   <td>${escapeHtml(svc)}</td>
 
-                  <td class="col-center" title="${escapeHtml(scoreTitle)}">
+                  <td class="col-center" title="${isNonAnalyse ? "Aucune compétence ne correspond au seuil de criticité sélectionné" : "Indice fragilité (0-100)"}">
                     ${isNonAnalyse ? '<span class="sb-badge">Non analysé</span>' : scoreChip(score)}
                   </td>
 
-                  <td class="col-center">${isNonAnalyse ? '<span class="sb-badge">Non analysé</span>' : priorityPill(prio, score)}</td>
+                  <td class="col-center">${isNonAnalyse ? '<span class="sb-badge">Hors seuil</span>' : priorityPill(prio, score)}</td>
 
                   <td class="col-center">
                     <button type="button"

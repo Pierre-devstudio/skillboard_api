@@ -543,7 +543,6 @@ def _compute_poste_fragility_record(
         "pool_eligible": pool_eligible,
         "nb_competences_analysees": nb_competences_analysees,
         "is_non_analyse": bool(nb_competences_analysees <= 0 and not rupture),
-        "motif_fragilite": "Poste actif sans titulaire" if rupture else ("Référentiel poste incomplet" if nb_competences_analysees <= 0 else ""),
         "nb_couvertures_non_confirmees": nb_couvertures_non_confirmees,
         "nb_critiques_sans_porteur": nb_non_tenues,
         "nb_critiques_porteur_unique": nb_dep_zero,
@@ -562,6 +561,7 @@ def _compute_poste_fragility_record(
         "besoin_local": besoin_local,
     })
     return row
+
 
 def _fetch_postes_fragility_records(
     cur,
@@ -712,7 +712,7 @@ def _fetch_postes_fragility_records(
         WHERE c.etat = 'active'
           AND COALESCE(c.masque, FALSE) = FALSE
           AND COALESCE(fpc.masque, FALSE) = FALSE
-          AND COALESCE(fpc.poids_criticite, 0)::int >= 0
+          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
     ),
     pool_all_effectifs AS (
         SELECT
@@ -813,7 +813,7 @@ def _fetch_postes_fragility_records(
     LEFT JOIN ec_ok eok ON eok.id_poste = r.id_poste AND eok.id_comp = r.id_comp
     GROUP BY r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis
     """
-    cur.execute(sql_comp, tuple(cte_params))
+    cur.execute(sql_comp, tuple(cte_params + [int(criticite_min)]))
     comp_rows = cur.fetchall() or []
     comp_by_poste: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for r in comp_rows:
@@ -839,6 +839,10 @@ def _fetch_postes_fragility_records(
         )
     )
     return records
+
+
+
+
 
 def _fetch_postes_fragility_records_projected(
     cur,
@@ -1007,7 +1011,7 @@ def _fetch_postes_fragility_records_projected(
         WHERE c.etat = 'active'
           AND COALESCE(c.masque, FALSE) = FALSE
           AND COALESCE(fpc.masque, FALSE) = FALSE
-          AND COALESCE(fpc.poids_criticite, 0)::int >= 0
+          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
     ),
     pool_all_effectifs AS (
         SELECT
@@ -1108,7 +1112,7 @@ def _fetch_postes_fragility_records_projected(
     LEFT JOIN ec_ok eok ON eok.id_poste = r.id_poste AND eok.id_comp = r.id_comp
     GROUP BY r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis
     """
-    cur.execute(sql_comp, tuple(cte_params + [period_end, period_end, period_start]))
+    cur.execute(sql_comp, tuple(cte_params + [period_end, period_end, period_start, int(criticite_min)]))
     comp_rows = cur.fetchall() or []
     comp_by_poste: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for r in comp_rows:
@@ -1134,7 +1138,6 @@ def _fetch_postes_fragility_records_projected(
         )
     )
     return records
-
 def _competence_state_label(etat: str) -> str:
     return {
         "AUCUN_TITULAIRE": "Poste non tenu",
