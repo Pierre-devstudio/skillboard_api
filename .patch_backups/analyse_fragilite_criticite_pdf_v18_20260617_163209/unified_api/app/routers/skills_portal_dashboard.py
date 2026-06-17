@@ -539,7 +539,7 @@ def _fetch_postes_fragility_records_at(
         WHERE c.etat = 'active'
           AND COALESCE(c.masque, FALSE) = FALSE
           AND COALESCE(fpc.masque, FALSE) = FALSE
-          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+          AND COALESCE(fpc.poids_criticite, 0)::int >= 0
     ),
     pool_all_effectifs AS (
         SELECT
@@ -636,7 +636,7 @@ def _fetch_postes_fragility_records_at(
     LEFT JOIN ec_ok eok ON eok.id_poste = r.id_poste AND eok.id_comp = r.id_comp
     GROUP BY r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis
     """
-    cur.execute(sql_comp, tuple(cte_params + [as_of, as_of, as_of, int(criticite_min)]))
+    cur.execute(sql_comp, tuple(cte_params + [as_of, as_of, as_of]))
     comp_rows = cur.fetchall() or []
 
     comp_by_poste: Dict[str, List[Dict[str, Any]]] = {}

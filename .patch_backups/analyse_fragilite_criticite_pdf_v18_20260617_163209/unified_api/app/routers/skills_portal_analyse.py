@@ -712,7 +712,7 @@ def _fetch_postes_fragility_records(
         WHERE c.etat = 'active'
           AND COALESCE(c.masque, FALSE) = FALSE
           AND COALESCE(fpc.masque, FALSE) = FALSE
-          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+          AND COALESCE(fpc.poids_criticite, 0)::int >= 0
     ),
     pool_all_effectifs AS (
         SELECT
@@ -813,7 +813,7 @@ def _fetch_postes_fragility_records(
     LEFT JOIN ec_ok eok ON eok.id_poste = r.id_poste AND eok.id_comp = r.id_comp
     GROUP BY r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis
     """
-    cur.execute(sql_comp, tuple(cte_params + [int(criticite_min)]))
+    cur.execute(sql_comp, tuple(cte_params))
     comp_rows = cur.fetchall() or []
     comp_by_poste: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for r in comp_rows:
@@ -1007,7 +1007,7 @@ def _fetch_postes_fragility_records_projected(
         WHERE c.etat = 'active'
           AND COALESCE(c.masque, FALSE) = FALSE
           AND COALESCE(fpc.masque, FALSE) = FALSE
-          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+          AND COALESCE(fpc.poids_criticite, 0)::int >= 0
     ),
     pool_all_effectifs AS (
         SELECT
@@ -1108,7 +1108,7 @@ def _fetch_postes_fragility_records_projected(
     LEFT JOIN ec_ok eok ON eok.id_poste = r.id_poste AND eok.id_comp = r.id_comp
     GROUP BY r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis
     """
-    cur.execute(sql_comp, tuple(cte_params + [period_end, period_end, period_start, int(criticite_min)]))
+    cur.execute(sql_comp, tuple(cte_params + [period_end, period_end, period_start]))
     comp_rows = cur.fetchall() or []
     comp_by_poste: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for r in comp_rows:
@@ -5935,7 +5935,6 @@ def get_analyse_risques_poste_pdf(
     criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
 ):
     try:
-        import re
         from fastapi import Response
         from reportlab.lib.pagesizes import A4, landscape
         from reportlab.lib.units import mm
@@ -6021,7 +6020,6 @@ def get_analyse_risques_poste_pdf(
 # Endpoint: Matching poste-porteur
 # - Renvoie titulaire(s) + top candidats internes (un seul payload)
 # ======================================================
-
 @router.get(
     "/skills/analyse/matching/poste/{id_contact}",
     response_model=AnalyseMatchingPosteResponse,
