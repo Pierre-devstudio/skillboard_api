@@ -182,9 +182,21 @@
   // ======================================================
   // Aides utilisateur + hypothèses de simulation préparées
   // ======================================================
+
+
+  function styleAnalyseHelpModalCloseButton() {
+    const btn = byId("btnAnalyseHelpModalClose");
+    if (!btn) return;
+    btn.classList.remove("sb-btn--soft", "btn-secondary");
+    btn.classList.add("sb-btn", "sb-btn--accent");
+  }
+
   function ensureAnalyseHelpModal() {
     let modal = byId("modalAnalyseHelp");
-    if (modal) return modal;
+    if (modal) {
+      styleAnalyseHelpModalCloseButton();
+      return modal;
+    }
 
     const html = `
       <div class="modal" id="modalAnalyseHelp" aria-hidden="true">
@@ -204,6 +216,7 @@
     `;
     document.body.insertAdjacentHTML("beforeend", html);
     modal = byId("modalAnalyseHelp");
+    styleAnalyseHelpModalCloseButton();
 
     const close = () => closeAnalyseHelpModal();
     byId("btnCloseAnalyseHelpModal")?.addEventListener("click", close);
