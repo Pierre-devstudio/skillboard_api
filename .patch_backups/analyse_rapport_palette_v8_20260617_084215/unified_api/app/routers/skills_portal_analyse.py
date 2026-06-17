@@ -6689,15 +6689,13 @@ def _analyse_report_effect_level(score: Any, count: Any) -> str:
 
 def _analyse_report_score_color_hex(score: Any) -> str:
     s = _analyse_pdf_safe_int(score)
-    # Palette de risque : plus vive, mais toujours sémantique.
     if s >= 80:
-        return "#E11D48"  # critique
+        return "#e11d48"
     if s >= 65:
-        return "#EF4444"  # élevé
+        return "#ef4444"
     if s >= 35:
-        return "#F59E0B"  # modéré
-    return "#10B981"      # faible / acceptable
-
+        return "#f59e0b"
+    return "#10b981"
 def _analyse_effect_color(level: str):
     from reportlab.lib import colors
     s = (level or "").lower()
@@ -7159,28 +7157,15 @@ def _analyse_report_pie_panel(title: str, labels: List[str], data: List[int], co
     from reportlab.lib import colors
     from reportlab.lib.units import mm
 
-    category_palette = [
-        "#2563EB",  # bleu vif
-        "#7C3AED",  # violet
-        "#06B6D4",  # cyan
-        "#10B981",  # vert moderne
-        "#F97316",  # orange vif
-        "#EC4899",  # rose
-        "#4F46E5",  # indigo
-        "#22C55E",  # vert clair
-    ]
-
     d = Drawing(width_mm * mm, height_mm * mm)
-    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#E2E8F0"), fillColor=colors.white, strokeWidth=0.8))
-    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.5, fillColor=colors.HexColor("#0F172A")))
+    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#e2e8f0"), fillColor=colors.white, strokeWidth=0.8))
+    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.5, fillColor=colors.HexColor("#0f172a")))
 
     safe_data = [max(0, _analyse_pdf_safe_int(v)) for v in (data or [])]
     if sum(safe_data) <= 0:
         safe_data = [1]
         labels = ["Aucun effet"]
-        palette = ["#CBD5E1"]
-    else:
-        palette = colors_hex or category_palette
+        colors_hex = ["#cbd5e1"]
 
     chart = Pie()
     chart.x = 6 * mm
@@ -7189,25 +7174,26 @@ def _analyse_report_pie_panel(title: str, labels: List[str], data: List[int], co
     chart.height = 42 * mm
     chart.data = safe_data
     chart.labels = [""] * len(safe_data)
-    chart.slices.strokeWidth = 0
+    chart.slices.strokeWidth = 0.5
 
+    palette = colors_hex or ["#ef4444", "#f59e0b", "#fb7185", "#64748b"]
     for i, _v in enumerate(safe_data):
         chart.slices[i].fillColor = colors.HexColor(palette[i % len(palette)])
 
     d.add(chart)
 
-    # Faux donut compatible ReportLab : pas de bordure noire, disque central blanc.
-    d.add(Circle(27 * mm, 29 * mm, 10.0 * mm, fillColor=colors.white, strokeColor=colors.white, strokeWidth=0))
-    total_txt = str(sum(safe_data))
-    d.add(String(27 * mm, 28 * mm, total_txt, fontName="Helvetica-Bold", fontSize=11, fillColor=colors.HexColor("#0F172A"), textAnchor="middle"))
+    # Faux donut : ReportLab installé ici ne fournit pas Doughnut.
+    # On garde donc l'effet anneau avec un disque blanc au centre, sans dépendance fragile.
+    d.add(Circle(27 * mm, 29 * mm, 9.8 * mm, fillColor=colors.white, strokeColor=colors.white))
+    d.add(String(23.2 * mm, 28 * mm, str(sum(safe_data)), fontName="Helvetica-Bold", fontSize=11, fillColor=colors.HexColor("#0f172a")))
 
     legend_y = height_mm * mm - 15 * mm
     for i, (lbl, val) in enumerate(list(zip(labels, safe_data))[:4]):
         y = legend_y - i * 9 * mm
         col = colors.HexColor(palette[i % len(palette)])
-        d.add(Rect(58 * mm, y - 2.2 * mm, 4 * mm, 4 * mm, fillColor=col, strokeColor=col, strokeWidth=0))
+        d.add(Rect(58 * mm, y - 2.2 * mm, 4 * mm, 4 * mm, fillColor=col, strokeColor=col))
         d.add(String(64 * mm, y, _analyse_pdf_short(f"{lbl}", 30), fontName="Helvetica", fontSize=7.1, fillColor=colors.HexColor("#334155")))
-        d.add(String((width_mm - 8) * mm, y, str(val), fontName="Helvetica-Bold", fontSize=7.1, fillColor=colors.HexColor("#0F172A"), textAnchor="end"))
+        d.add(String((width_mm - 8) * mm, y, str(val), fontName="Helvetica-Bold", fontSize=7.1, fillColor=colors.HexColor("#0f172a"), textAnchor="end"))
 
     return d
 
@@ -7216,14 +7202,14 @@ def _analyse_report_family_bars_panel(title: str, items: List[Dict[str, Any]], w
     from reportlab.lib import colors
     from reportlab.lib.units import mm
 
-    palette = ["#2563EB", "#7C3AED", "#06B6D4", "#10B981", "#F97316", "#EC4899", "#4F46E5", "#22C55E"]
+    palette = ["#6366f1", "#14b8a6", "#f59e0b", "#fb7185", "#64748b", "#8b5cf6"]
     d = Drawing(width_mm * mm, height_mm * mm)
-    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#E2E8F0"), fillColor=colors.white, strokeWidth=0.8))
-    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.5, fillColor=colors.HexColor("#0F172A")))
+    d.add(Rect(0, 0, width_mm * mm, height_mm * mm, rx=6, ry=6, strokeColor=colors.HexColor("#e2e8f0"), fillColor=colors.white, strokeWidth=0.8))
+    d.add(String(5 * mm, height_mm * mm - 7 * mm, title, fontName="Helvetica-Bold", fontSize=8.5, fillColor=colors.HexColor("#0f172a")))
 
     rows = (items or [])[:5]
     if not rows:
-        d.add(String(5 * mm, 18 * mm, "Aucune famille de cause à afficher", fontName="Helvetica", fontSize=7.8, fillColor=colors.HexColor("#64748B")))
+        d.add(String(5 * mm, 18 * mm, "Aucune famille de cause à afficher", fontName="Helvetica", fontSize=7.8, fillColor=colors.HexColor("#64748b")))
         return d
 
     max_val = max([max(1, _analyse_pdf_safe_int(r.get("count"))) for r in rows] or [1])
@@ -7233,14 +7219,13 @@ def _analyse_report_family_bars_panel(title: str, items: List[Dict[str, Any]], w
         val = max(0, _analyse_pdf_safe_int(row.get("count")))
         color = colors.HexColor(palette[idx % len(palette)])
         d.add(String(5 * mm, y, label, fontName="Helvetica", fontSize=7.0, fillColor=colors.HexColor("#334155")))
-        d.add(Rect(66 * mm, y - 2 * mm, 108 * mm, 3.4 * mm, rx=1.7, ry=1.7, strokeColor=colors.HexColor("#E5E7EB"), fillColor=colors.HexColor("#F8FAFC"), strokeWidth=0.4))
+        d.add(Rect(66 * mm, y - 2 * mm, 108 * mm, 3.4 * mm, rx=1.7, ry=1.7, strokeColor=colors.HexColor("#e5e7eb"), fillColor=colors.HexColor("#f8fafc"), strokeWidth=0.4))
         fill_w = 108 * mm * (val / float(max_val)) if max_val > 0 else 0
         if fill_w > 0:
             d.add(Rect(66 * mm, y - 2 * mm, fill_w, 3.4 * mm, rx=1.7, ry=1.7, strokeColor=color, fillColor=color, strokeWidth=0.4))
-        d.add(String(178 * mm, y, str(val), fontName="Helvetica-Bold", fontSize=7.0, fillColor=colors.HexColor("#0F172A"), textAnchor="end"))
+        d.add(String(178 * mm, y, str(val), fontName="Helvetica-Bold", fontSize=7.0, fillColor=colors.HexColor("#0f172a"), textAnchor="end"))
         y -= 7.2 * mm
     return d
-
 def _analyse_report_hbars_panel(title: str, items: List[Dict[str, Any]], label_key: str, value_key: str, width_mm: float = 270.0, height_mm: float = 76.0):
     from reportlab.graphics.shapes import Drawing, Rect, String
     from reportlab.lib import colors
@@ -7812,7 +7797,7 @@ def get_analyse_risques_report_pdf(
         risk_global_score = max(frag_postes, frag_comps)
         risk_global_level = _analyse_report_effect_level(risk_global_score, effects_detected)
 
-        effect_palette = ["#2563EB", "#7C3AED", "#06B6D4", "#10B981", "#F97316", "#EC4899", "#4F46E5", "#22C55E"]
+        effect_palette = ["#ef4444", "#f59e0b", "#fb7185", "#64748b"]
         family_items = [{"family": k, "count": v} for k, v in sorted(family_counts.items(), key=lambda kv: (-kv[1], kv[0]))]
         top_postes = [
             {
