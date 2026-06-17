@@ -619,7 +619,7 @@
       <div class="analyse-help-kpi-list">
         ${analyseHelpKpi("Fragilité moyenne des postes", "Ce pourcentage mesure le niveau moyen d’exposition des postes affichés dans le périmètre sélectionné. Il prend en compte la couverture des compétences attendues sur les postes, les niveaux réellement disponibles, les écarts avec les niveaux attendus, les compétences qui reposent sur trop peu de personnes et les évaluations manquantes ou à confirmer. Plus le pourcentage est élevé, plus la continuité des postes doit être sécurisée.")}
         ${analyseHelpKpi("Fragilité moyenne des compétences", "Ce pourcentage mesure le niveau moyen d’exposition des compétences critiques du périmètre. Le calcul tient compte du nombre de collaborateurs capables de porter chaque compétence, de leur niveau de maîtrise, de la présence de relais internes, de la confirmation des évaluations et de la dépendance éventuelle à une seule personne.")}
-        ${analyseHelpKpi("Prévision à 3 mois", "Cet indicateur affiche la plus forte dégradation de fragilité détectée dans les trois prochains mois, et pas seulement la situation exacte au dernier jour. Le calcul tient compte des indisponibilités temporaires, des fins de contrat, des départs ou retraites prévus lorsqu’une date de sortie est renseignée. Si un risque apparaît pendant quelques semaines puis disparaît avant la fin des trois mois, il est quand même pris en compte.")}
+        ${analyseHelpKpi("Prévision à 3 mois", "Cet indicateur compare la situation actuelle avec une projection à 3 mois. Il tient compte des sorties ou indisponibilités renseignées, de la perte possible de porteurs sur les compétences critiques et des postes qui peuvent devenir plus fragiles. Une valeur positive indique une dégradation probable ; une valeur négative indique une amélioration ou une baisse du risque.")}
       </div>
       ${analyseHelpNote("À lire comme une aide à la priorisation : l’indicateur signale où regarder en premier, puis l’analyse détaillée permet de confirmer les actions à mener.")}
     `;
@@ -5182,78 +5182,41 @@ function evolPct(sumNow, sumFut) {
 
 async function computeRiskEvolution3m(portal, id_service) {
   const svc = (id_service || "").trim();
-  const crit = getCriticiteMinSafe(CRITICITE_MIN_DEFAULT);
-  const critVal = Number.isFinite(crit) ? String(Math.round(crit)) : "";
-  const key = `dashboard-risk-timeline-peak|${svc}|${critVal}`;
+  const crit = getCriticiteMinSafe(null);
+  const critVal = Number.isFinite(crit) ? String(crit) : "";
+  const key = `${svc}|${critVal}`;
 
   if (_riskEvol3mCache.has(key)) return _riskEvol3mCache.get(key);
 
-  if (!portal?.apiBase || !portal?.contactId) {
-    throw new Error("Contexte portail indisponible pour la projection à 3 mois.");
-  }
+  const [p0, p3, c0, c3] = await Promise.all([
+    fetchRisquesDetail(portal, "postes-fragiles", svc, 200, 0),
+    fetchRisquesDetail(portal, "postes-fragiles", svc, 200, 3),
+    fetchRisquesDetail(portal, "critiques-fragiles", svc, 200, 0),
+    fetchRisquesDetail(portal, "critiques-fragiles", svc, 200, 3),
+  ]);
 
-  let url = "";
-  if (typeof portal.dashboardRiskOverviewUrl === "function") {
-    url = portal.dashboardRiskOverviewUrl({
-      id_service: svc || "",
-      criticite_min: critVal || undefined,
-    });
-  } else {
-    const qs = new URLSearchParams();
-    if (svc) qs.set("id_service", svc);
-    if (critVal) qs.set("criticite_min", critVal);
-    const suffix = qs.toString() ? `?${qs.toString()}` : "";
-    url = `${portal.apiBase}/skills/dashboard/risk-overview/${encodeURIComponent(portal.contactId)}${suffix}`;
-  }
+  const postesNow = Array.isArray(p0?.items) ? p0.items : [];
+  const postes3 = Array.isArray(p3?.items) ? p3.items : [];
+  const compsNow = Array.isArray(c0?.items) ? c0.items : [];
+  const comps3 = Array.isArray(c3?.items) ? c3.items : [];
 
-  const data = await portal.apiJson(url);
-  const timeline = Array.isArray(data?.risk_timeline) ? data.risk_timeline : [];
-  const nowPoint = timeline[0] || null;
-  const windowPoints = timeline.slice(1, 4);
-  const peakPoint = windowPoints.reduce((best, p) => {
-    const b = Number(best?.indice_fragilite ?? -1);
-    const v = Number(p?.indice_fragilite ?? -1);
-    return v > b ? p : best;
-  }, windowPoints[0] || nowPoint || null);
+  const sumPostesNow = sumField(postesNow, "indice_fragilite");
+  const sumPostes3 = sumField(postes3, "indice_fragilite");
+  const sumCompsNow = sumField(compsNow, "priorite_score");
+  const sumComps3 = sumField(comps3, "priorite_score");
 
-  const now = Number(nowPoint?.indice_fragilite);
-  const peak = Number(peakPoint?.indice_fragilite);
-  const safeNow = Number.isFinite(now) ? Math.round(now) : 0;
-  const safePeak = Number.isFinite(peak) ? Math.round(peak) : safeNow;
-  const delta = safePeak - safeNow;
+  const sumNow = sumPostesNow + sumCompsNow;
+  const sum3m = sumPostes3 + sumComps3;
 
-  const out = {
-    source: "dashboard-risk-overview",
-    timeline,
-    total: {
-      pct: delta,
-      now: safeNow,
-      peak: safePeak,
-      future: safePeak,
-      label_now: nowPoint?.label || "Auj.",
-      label_peak: peakPoint?.label || "Pic 3 mois",
-      label_future: peakPoint?.label || "Pic 3 mois",
-    },
-    postes: {
-      pct: delta,
-      now: safeNow,
-      peak: safePeak,
-      future: safePeak,
-      nNow: Number(nowPoint?.nb_postes_total || 0) || 0,
-      n3m: Number(peakPoint?.nb_postes_total || 0) || 0,
-    },
-    competences: {
-      pct: null,
-      now: null,
-      future: null,
-    },
+  const data = {
+    postes: { sumNow: sumPostesNow, sum3m: sumPostes3, pct: evolPct(sumPostesNow, sumPostes3), nNow: postesNow.length, n3m: postes3.length, now: postesNow, fut: postes3 },
+    competences: { sumNow: sumCompsNow, sum3m: sumComps3, pct: evolPct(sumCompsNow, sumComps3), nNow: compsNow.length, n3m: comps3.length, now: compsNow, fut: comps3 },
+    total: { sumNow, sum3m, pct: evolPct(sumNow, sum3m) },
   };
 
-  _riskEvol3mCache.set(key, out);
-  return out;
+  _riskEvol3mCache.set(key, data);
+  return data;
 }
-
-
 
 
 function renderDetail(mode) {
@@ -6314,75 +6277,216 @@ function renderDetail(mode) {
   (async () => {
     try {
       if (rf === "evol-3m") {
-        const data = await computeRiskEvolution3m(_portalref, id_service);
+        const svc = (id_service || "").trim();
+
+        async function fetchAt(kpiKey, limit, refMois) {
+          const rm = Number(refMois || 0);
+          const crit = getCriticiteMinSafe(null);
+          const critVal = Number.isFinite(crit) ? String(crit) : "";
+          const ck = `${svc}|${kpiKey}|${limit}|${rm}|${critVal}`;
+          if (_riskEvol3mCache.has(ck)) return _riskEvol3mCache.get(ck);
+
+          const qs = buildQueryString({
+            kpi: kpiKey,
+            id_service: svc || null,
+            criticite_min: critVal || null,
+            limit: limit,
+            ref_mois: rm > 0 ? rm : null
+          });
+
+          const url = `${_portalref.apiBase}/skills/analyse/risques/detail/${encodeURIComponent(_portalref.contactId)}${qs}`;
+          const data = await _portalref.apiJson(url);
+
+          syncCriticiteMinFromResponse(data);
+          _riskEvol3mCache.set(ck, data);
+          return data;
+        }
+
+        const [pNow, p3, cNow, c3] = await Promise.all([
+          fetchAt("postes-fragiles", 200, 0),
+          fetchAt("postes-fragiles", 200, 3),
+          fetchAt("critiques-fragiles", 200, 0),
+          fetchAt("critiques-fragiles", 200, 3),
+        ]);
+
         if (mySeq !== _riskDetailReqSeq) return;
 
-        const timeline = Array.isArray(data?.timeline) ? data.timeline.slice(0, 4) : [];
-        const now = Number(data?.total?.now || 0);
-        const peak = Number(data?.total?.peak ?? data?.total?.future ?? now);
-        const delta = Number(data?.total?.pct || 0);
-        const peakLabel = (data?.total?.label_peak || "Pic 3 mois").toString();
+        const postesNow = Array.isArray(pNow?.items) ? pNow.items : [];
+        const postes3   = Array.isArray(p3?.items) ? p3.items : [];
+        const compsNow  = Array.isArray(cNow?.items) ? cNow.items : [];
+        const comps3    = Array.isArray(c3?.items) ? c3.items : [];
 
-        const fmtIndex = (v) => `${Math.round(Number(v) || 0)}%`;
-        const fmtDelta = (v) => fmtPctSigned(Number(v) || 0);
-        const deltaClass = delta > 0 ? "sb-badge--danger" : (delta < 0 ? "sb-badge--success" : "sb-badge--warning");
+        const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+        function scoreOf(r) {
+          const v = (r?.indice_fragilite ?? r?.priorite_score ?? 0);
+          const n = Number(v);
+          return Number.isFinite(n) ? clamp(n, 0, 100) : 0;
+        }
+        function sumScores(list) {
+          return (Array.isArray(list) ? list : []).reduce((acc, r) => acc + scoreOf(r), 0);
+        }
+        function pctChange(sum0, sum1) {
+          const a = Number(sum0) || 0;
+          const b = Number(sum1) || 0;
+          if (a <= 0) return (b > 0) ? 100 : 0;
+          return ((b - a) / a) * 100;
+        }
+        function fmtPct(p) {
+          const n = Number(p);
+          if (!Number.isFinite(n)) return "0%";
+          const r = Math.round(n);
+          return `${r > 0 ? "+" : ""}${r}%`;
+        }
 
-        const monthlyRows = timeline.length ? timeline.map((p, idx) => {
-          const label = idx === 0 ? "Aujourd’hui" : (p?.label || `${idx} mois`);
-          const score = Math.round(Number(p?.indice_fragilite || 0));
-          const nb = Number(p?.nb_postes_fragiles || 0);
-          const isPeak = idx > 0 && score === Math.round(peak);
-          return `
-            <tr${isPeak ? ' style="background:#fff7ed;"' : ""}>
-              <td>${escapeHtml(label)}${isPeak ? ' <span class="sb-badge sb-badge--warning">pic retenu</span>' : ""}</td>
-              <td class="col-center"><strong>${escapeHtml(String(score))}%</strong></td>
-              <td class="col-center">${escapeHtml(String(nb))}</td>
-            </tr>
-          `;
-        }).join("") : `
-          <tr><td colspan="3" class="col-center">Aucune projection disponible.</td></tr>
-        `;
+        function buildChanges(nowList, futList, idField, kind) {
+          const mapNow = new Map();
+          (Array.isArray(nowList) ? nowList : []).forEach(r => {
+            const id = (r?.[idField] || "").toString().trim();
+            if (id) mapNow.set(id, r);
+          });
+
+          const mapFut = new Map();
+          (Array.isArray(futList) ? futList : []).forEach(r => {
+            const id = (r?.[idField] || "").toString().trim();
+            if (id) mapFut.set(id, r);
+          });
+
+          const ids = new Set([...mapNow.keys(), ...mapFut.keys()]);
+          const out = [];
+
+          ids.forEach(id => {
+            const a = mapNow.get(id) || null;
+            const b = mapFut.get(id) || null;
+
+            const s0 = a ? scoreOf(a) : 0;
+            const s3 = b ? scoreOf(b) : 0;
+            if (s0 === s3) return;
+
+            const base = (b || a || {});
+            if (kind === "postes") {
+              const codifClient = (base.codif_client || "").trim();
+              const codifPoste  = (base.codif_poste || "").trim();
+              const codeAffiche = codifClient !== "" ? codifClient : codifPoste;
+
+              out.push({
+                id: id,
+                code: codeAffiche || "—",
+                label: (base.intitule_poste || "").trim() || "—",
+                service: (base.nom_service || "").trim() || "—",
+                s0: s0,
+                s3: s3,
+                delta: s3 - s0
+              });
+            } else {
+              out.push({
+                id: id,
+                code: ((base.code || "").trim() || "—"),
+                label: ((base.intitule || "").trim() || "—"),
+                domaine: (base.domaine_titre_court || base.domaine_titre || "").toString().trim(),
+                domaine_couleur: base.domaine_couleur,
+                s0: s0,
+                s3: s3,
+                delta: s3 - s0
+              });
+            }
+          });
+
+          out.sort((x, y) => {
+            const d = Math.abs(y.delta) - Math.abs(x.delta);
+            if (d !== 0) return d;
+            return (x.code || "").localeCompare(y.code || "");
+          });
+
+          return { items: out, total: ids.size, changed: out.length };
+        }
+
+        const sumPostesNow = sumScores(postesNow);
+        const sumPostes3   = sumScores(postes3);
+        const sumCompsNow  = sumScores(compsNow);
+        const sumComps3    = sumScores(comps3);
+
+        const postesChanges = buildChanges(postesNow, postes3, "id_poste", "postes");
+        const compsChanges  = buildChanges(compsNow, comps3, "id_comp", "comps");
+
+        const pctPostes = pctChange(sumPostesNow, sumPostes3);
+        const pctComps  = pctChange(sumCompsNow, sumComps3);
+
+        const evolBadge = (p) => {
+          const n = Number(p);
+          const r = Number.isFinite(n) ? Math.round(n) : 0; // cohérent avec fmtPct
+          const cls = (r < 0) ? "sb-badge--success" : (r === 0) ? "sb-badge--warning" : "sb-badge--danger";
+          return `<span class="sb-badge ${cls}">${escapeHtml(fmtPct(n))}</span>`;
+        };
+
 
         const content = `
           <div class="card" style="padding:12px; margin:0;">
-            <div class="card-title" style="margin-bottom:10px;">${escapeHtml(filterLabel)}</div>
-
-            <div class="sb-kpi-explain-grid" style="grid-template-columns:repeat(3,minmax(0,1fr)); margin-bottom:12px;">
-              <div class="sb-kpi-explain-item">
-                <div class="sb-kpi-explain-title">Indice actuel</div>
-                <div class="sb-kpi-explain-body"><strong>${escapeHtml(fmtIndex(now))}</strong></div>
-              </div>
-              <div class="sb-kpi-explain-item">
-                <div class="sb-kpi-explain-title">Pic détecté</div>
-                <div class="sb-kpi-explain-body"><strong>${escapeHtml(fmtIndex(peak))}</strong> <span class="card-sub">${escapeHtml(peakLabel)}</span></div>
-              </div>
-              <div class="sb-kpi-explain-item">
-                <div class="sb-kpi-explain-title">Évolution prévue</div>
-                <div class="sb-kpi-explain-body"><span class="sb-badge ${deltaClass}">${escapeHtml(fmtDelta(delta))}</span></div>
-              </div>
-            </div>
+            <div class="card-title" style="margin-bottom:6px;">${escapeHtml(filterLabel)}</div>
 
             <div class="table-wrap" style="margin-top:10px;">
               <table class="sb-table" id="tblRiskEvol3m">
                 <thead>
                   <tr>
-                    <th>Mois de projection</th>
-                    <th class="col-center">Indice de fragilité</th>
-                    <th class="col-center">Postes fragiles</th>
+                    <th style="width:220px;">Type</th>
+                    <th class="col-center" style="width:220px;">
+                      <span style="display:inline-block; line-height:1.1;">Évolution<br>du risque</span>
+                    </th>
+                    <th class="col-center" style="width:220px;">
+                      <span style="display:inline-block; line-height:1.1;">Éléments<br>en évolution</span>
+                    </th>
+                    <th class="col-center" style="width:180px;">Détail</th>
                   </tr>
                 </thead>
-                <tbody>${monthlyRows}</tbody>
-              </table>
-            </div>
+                <tbody>
+                  <tr class="risk-evol3m-row" data-evol-kind="postes" style="cursor:pointer;">
+                    <td><span style="font-weight:700; font-size:13px;">Risques impactant des postes</span></td>
+                    <td class="col-center">
+                      ${evolBadge(pctPostes)}
+                    </td>
+                    <td class="col-center">
+                      <span class="sb-badge">${escapeHtml(`${postesChanges.changed}/${postesChanges.total || 0}`)}</span>
+                    </td>
+                    <td class="col-center">
+                      <button type="button" class="sb-btn">Voir le détail</button>
+                    </td>
+                  </tr>
 
-            <div class="card-sub" style="margin:10px 0 0 0;">
-              Le KPI retient le plus haut niveau de fragilité détecté dans les trois prochains mois. Une indisponibilité courte, une fin de contrat ou une sortie prévue dans la période peut donc faire bouger l’indicateur.
+                  <tr class="risk-evol3m-row" data-evol-kind="comps" style="cursor:pointer;">
+                    <td><span style="font-weight:700; font-size:13px;">Risques impactant des compétences</span></td>
+                    <td class="col-center">
+                      ${evolBadge(pctComps)}
+                    </td>
+                    <td class="col-center">
+                      <span class="sb-badge">${escapeHtml(`${compsChanges.changed}/${compsChanges.total || 0}`)}</span>
+                    </td>
+                    <td class="col-center">
+                      <button type="button" class="sb-btn">Voir le détail</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         `;
 
         body.innerHTML = `${buildResetHtml()}${content}`;
         bindRiskResetBtn();
+
+        const rows = body.querySelectorAll("#tblRiskEvol3m .risk-evol3m-row");
+        rows.forEach((tr) => {
+          tr.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+
+            const kind = (tr.getAttribute("data-evol-kind") || "").trim();
+            if (kind === "postes") {
+              openRiskEvol3mModal("postes", postesChanges.items, { scopeLabel: scope });
+            } else if (kind === "comps") {
+              openRiskEvol3mModal("comps", compsChanges.items, { scopeLabel: scope });
+            }
+          });
+        });
+
         return;
       }
 

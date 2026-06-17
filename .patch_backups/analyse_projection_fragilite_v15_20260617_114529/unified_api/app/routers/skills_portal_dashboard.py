@@ -16,7 +16,6 @@ from app.routers.skills_portal_analyse import (
     _build_scope_cte,
     _compute_poste_fragility_record,
     _fetch_postes_fragility_records,
-    _fetch_postes_fragility_records_projected,
     _fetch_service_label,
 )
 
@@ -267,13 +266,6 @@ def _month_add(base: date, months: int) -> date:
     return date(year, month, day)
 
 
-
-
-def _month_bounds(base: date, months: int) -> Tuple[date, date]:
-    d = _month_add(base, int(months or 0))
-    start = date(d.year, d.month, 1)
-    end = _month_add(start, 1) - timedelta(days=1)
-    return start, end
 def _avg_fragility(records: List[Dict[str, Any]]) -> int:
     if not records:
         return 0
@@ -670,18 +662,7 @@ def _compute_timeline(cur, id_ent: str, scope: DashboardScope, current_records: 
     out: List[DashboardRiskTimelinePoint] = []
     for i in range(13):
         d = _month_add(today, i)
-        if i == 0:
-            records = current_records
-        else:
-            period_start, period_end = _month_bounds(today, i)
-            records = _fetch_postes_fragility_records_projected(
-                cur,
-                id_ent,
-                scope.id_service,
-                int(criticite_min),
-                period_start,
-                period_end,
-            )
+        records = current_records if i == 0 else _fetch_postes_fragility_records_at(cur, id_ent, scope.id_service, int(criticite_min), d)
         fragile = [r for r in records if bool(r.get("is_fragile"))]
         out.append(
             DashboardRiskTimelinePoint(
@@ -693,6 +674,7 @@ def _compute_timeline(cur, id_ent: str, scope: DashboardScope, current_records: 
             )
         )
     return out
+
 
 def _compute_postes_watch(records: List[Dict[str, Any]]) -> DashboardPostesWatch:
     total = len(records)
