@@ -1777,27 +1777,6 @@ def _reco_from_type(type_risque: str) -> str:
         return "former"
     return "mutualiser"
 
-def _analyse_fragility_records_analyzed(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Retourne uniquement les lignes réellement analysées.
-
-    Un élément à 0 % reste analysé et doit entrer dans la moyenne.
-    Un élément marqué is_non_analyse représente une absence de donnée exploitable
-    et ne doit pas abaisser artificiellement l'indice moyen.
-    """
-    out: List[Dict[str, Any]] = []
-    for r in records or []:
-        if bool(r.get("is_non_analyse") or False):
-            continue
-        out.append(r)
-    return out
-
-
-def _analyse_fragility_average(records: List[Dict[str, Any]]) -> int:
-    analysed = _analyse_fragility_records_analyzed(records)
-    if not analysed:
-        return 0
-    return int(round(sum(_safe_int(r.get("indice_fragilite")) for r in analysed) / float(len(analysed))))
-
 # ======================================================
 # Endpoint: Summary (tuiles)
 # ======================================================
@@ -1834,9 +1813,14 @@ def get_analyse_summary(
                     scope.id_service,
                     CRITICITE_MIN,
                 )
-                postes_analyses_records = _analyse_fragility_records_analyzed(postes_fragiles_records)
-                postes_fragiles = len([r for r in postes_analyses_records if r.get("is_fragile")])
-                postes_fragilite_globale = _analyse_fragility_average(postes_fragiles_records)
+                postes_fragiles = len([r for r in postes_fragiles_records if r.get("is_fragile")])
+                if postes_fragiles_records:
+                    postes_fragilite_globale = int(round(
+                        sum(int(r.get("indice_fragilite") or 0) for r in postes_fragiles_records)
+                        / float(len(postes_fragiles_records))
+                    ))
+                else:
+                    postes_fragilite_globale = 0
 
                 sql_risques = f"""
                 WITH
@@ -1970,20 +1954,25 @@ def get_analyse_summary(
 
                 # Les KPI compétences doivent raconter la même chose que la table "Compétences critiques".
                 # Source unique: _fetch_competence_fragility_records().
-                comp_records_raw = _fetch_competence_fragility_records(
+                comp_records = _fetch_competence_fragility_records(
                     cur,
                     id_ent,
                     scope.id_service,
                     CRITICITE_MIN,
                     comp_id=None,
-                    limit=100000,
+                    limit=2000,
                 )
-                comp_records = _analyse_fragility_records_analyzed(comp_records_raw)
                 comp_records_fragiles = [r for r in comp_records if int(r.get("indice_fragilite") or 0) > 0]
                 comp_critiques_sans_porteur = len([r for r in comp_records if int(r.get("nb_postes_couverture_absente") or 0) > 0])
                 comp_porteur_unique = len([r for r in comp_records if int(r.get("nb_postes_dependance") or 0) > 0])
                 comp_critiques_fragiles = len(comp_records_fragiles)
-                comp_fragilite_moyenne = _analyse_fragility_average(comp_records_raw)
+                if comp_records:
+                    comp_fragilite_moyenne = int(round(
+                        sum(int(r.get("indice_fragilite") or 0) for r in comp_records)
+                        / float(len(comp_records))
+                    ))
+                else:
+                    comp_fragilite_moyenne = 0
                 comp_critiques_tombent_zero_auj = int(rk.get("comp_critiques_tombent_zero_auj") or 0)
 
                 # ---------------------------
@@ -2378,7 +2367,7 @@ def get_analyse_summary(
                     risques=AnalyseRisquesTile(
                         postes_fragiles=postes_fragiles,
                         postes_fragilite_globale=postes_fragilite_globale,
-                        postes_analyses=len(postes_analyses_records),
+                        postes_analyses=len(postes_fragiles_records),
                         competences_analysees=len(comp_records),
                         comp_critiques_sans_porteur=comp_critiques_sans_porteur,
                         comp_bus_factor_1=comp_porteur_unique,  # UI = "Porteur unique"

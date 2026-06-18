@@ -274,18 +274,11 @@ def _month_bounds(base: date, months: int) -> Tuple[date, date]:
     start = date(d.year, d.month, 1)
     end = _month_add(start, 1) - timedelta(days=1)
     return start, end
-def _dashboard_fragility_records_analyzed(records: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Retourne uniquement les postes réellement analysés pour les moyennes et compteurs.
-
-    Les postes non analysés ne doivent pas être comptés comme des postes stables à 0 %.
-    """
-    return [r for r in (records or []) if not bool(r.get("is_non_analyse") or False)]
-
 def _avg_fragility(records: List[Dict[str, Any]]) -> int:
-    analysed = _dashboard_fragility_records_analyzed(records)
-    if not analysed:
+    if not records:
         return 0
-    return int(round(sum(int(r.get("indice_fragilite") or 0) for r in analysed) / float(len(analysed))))
+    return int(round(sum(int(r.get("indice_fragilite") or 0) for r in records) / float(len(records))))
+
 
 def _is_danger_record(r: Dict[str, Any]) -> bool:
     return int(r.get("indice_fragilite") or 0) >= DASHBOARD_DANGER_MIN
@@ -688,24 +681,22 @@ def _compute_timeline(cur, id_ent: str, scope: DashboardScope, current_records: 
                 period_start,
                 period_end,
             )
-        analysed_records = _dashboard_fragility_records_analyzed(records)
-        fragile = [r for r in analysed_records if bool(r.get("is_fragile"))]
+        fragile = [r for r in records if bool(r.get("is_fragile"))]
         out.append(
             DashboardRiskTimelinePoint(
                 date_ref=d.isoformat(),
                 label=d.strftime("%m/%y"),
                 indice_fragilite=_avg_fragility(records),
                 nb_postes_fragiles=len(fragile),
-                nb_postes_total=len(analysed_records),
+                nb_postes_total=len(records),
             )
         )
     return out
 
 def _compute_postes_watch(records: List[Dict[str, Any]]) -> DashboardPostesWatch:
-    analysed_records = _dashboard_fragility_records_analyzed(records)
-    total = len(analysed_records)
-    danger = [r for r in analysed_records if _is_danger_record(r)]
-    watch = [r for r in analysed_records if _is_watch_record(r)]
+    total = len(records)
+    danger = [r for r in records if _is_danger_record(r)]
+    watch = [r for r in records if _is_watch_record(r)]
     stable = max(total - len(danger) - len(watch), 0)
     critical_danger = [r for r in danger if int(r.get("criticite_poste") or 2) >= DASHBOARD_CRITICAL_POSTE_MIN]
     return DashboardPostesWatch(
@@ -715,6 +706,7 @@ def _compute_postes_watch(records: List[Dict[str, Any]]) -> DashboardPostesWatch
         postes_stables=stable,
         postes_critiques_danger=len(critical_danger),
     )
+
 
 def _compute_transmission(records: List[Dict[str, Any]]) -> DashboardTransmission:
     total = len(records)
