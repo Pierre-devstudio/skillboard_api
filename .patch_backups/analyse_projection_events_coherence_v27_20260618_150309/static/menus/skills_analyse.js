@@ -5825,10 +5825,9 @@ function renderDetail(mode) {
     try {
       if (rf === "evol-3m") {
         const svc = (id_service || "").trim();
-        const crit = getCriticiteMinSafe(CRITICITE_MIN_DEFAULT);
         const [evolData, eventsData] = await Promise.all([
           computeRiskEvolution3m(_portalref, svc),
-          fetchRiskProjectionEvents3m(_portalref, svc, crit),
+          fetchRiskProjectionEvents3m(_portalref, svc),
         ]);
         if (mySeq !== _riskDetailReqSeq) return;
 
@@ -7869,22 +7868,19 @@ function bindOnce(portal) {
 
     return modal;
   }
-  async function fetchRiskProjectionEvents3m(portal, id_service, criticite_min) {
+
+  async function fetchRiskProjectionEvents3m(portal, id_service) {
     const svc = (id_service || "").trim();
-    const crit = Number.isFinite(Number(criticite_min))
-      ? Math.max(0, Math.min(100, Number(criticite_min)))
-      : getCriticiteMinSafe(CRITICITE_MIN_DEFAULT);
-    const key = `projection-events-3m|${svc}|${crit}`;
+    const key = `projection-events-3m|${svc}`;
     if (_riskEvol3mCache.has(key)) return _riskEvol3mCache.get(key);
     if (!portal?.apiBase || !portal?.contactId) throw new Error("Contexte portail indisponible.");
 
-    const qs = buildQueryString({ id_service: svc || null, criticite_min: crit });
+    const qs = buildQueryString({ id_service: svc || null });
     const url = `${portal.apiBase}/skills/analyse/risques/projection-events/${encodeURIComponent(portal.contactId)}${qs}`;
     const data = await portal.apiJson(url);
     _riskEvol3mCache.set(key, data);
     return data;
   }
-
 
   function openRiskEvol3mModal(kind, items, meta) {
     const modal = ensureRiskEvol3mModal();

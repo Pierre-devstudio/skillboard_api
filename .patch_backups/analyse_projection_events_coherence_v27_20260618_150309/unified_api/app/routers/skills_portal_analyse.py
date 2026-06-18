@@ -4311,58 +4311,27 @@ def get_analyse_risques_projection_events(
     id_contact: str,
     request: Request,
     id_service: Optional[str] = Query(default=None),
-    criticite_min: int = Query(default=CRITICITE_MIN_DEFAULT, ge=CRITICITE_MIN_MIN, le=CRITICITE_MIN_MAX),
 ):
     """
     Détail des événements RH pris en compte dans la lecture prévisionnelle à 3 mois.
-
-    Cohérence métier : les événements affichés doivent porter sur le même périmètre que
-    l'indice de fragilité projeté. On filtre donc sur les postes réellement analysés
-    après application du service et du seuil de criticité.
+    Retourne les indisponibilités temporaires et sorties prévues par mois de projection.
     """
     try:
         with get_conn() as conn:
             with conn.cursor(row_factory=dict_row) as cur:
                 id_ent = _resolve_id_ent_for_request(cur, id_contact, request)
                 scope = _fetch_service_label(cur, id_ent, (id_service or "").strip() or None)
-                crit = max(CRITICITE_MIN_MIN, min(CRITICITE_MIN_MAX, int(criticite_min)))
-
-                poste_records = _fetch_postes_fragility_records(cur, id_ent, scope.id_service, crit)
-                analysed_poste_ids = [
-                    str(r.get("id_poste") or "").strip()
-                    for r in (poste_records or [])
-                    if str(r.get("id_poste") or "").strip() and not bool(r.get("is_non_analyse") or False)
-                ]
-
-                def empty_month(idx: int) -> Dict[str, Any]:
-                    period_start, period_end = _analyse_month_bounds_from_today(idx)
-                    return {
-                        "index": idx,
-                        "label": "Aujourd’hui" if idx == 0 else period_start.strftime("%m/%y"),
-                        "period_start": period_start.isoformat(),
-                        "period_end": period_end.isoformat(),
-                        "indisponibilites_count": 0,
-                        "sorties_count": 0,
-                        "indisponibilites": [],
-                        "sorties": [],
-                    }
-
-                if not analysed_poste_ids:
-                    months = [empty_month(idx) for idx in range(0, 4)]
-                    return {
-                        "scope": scope.model_dump() if hasattr(scope, "model_dump") else dict(scope),
-                        "criticite_min": crit,
-                        "updated_at": datetime.now().isoformat(timespec="seconds"),
-                        "months": months,
-                    }
+                cte_sql, cte_params = _build_scope_cte(id_ent, scope.id_service)
 
                 months = []
                 for idx in range(0, 4):
                     period_start, period_end = _analyse_month_bounds_from_today(idx)
                     label = "Aujourd’hui" if idx == 0 else period_start.strftime("%m/%y")
 
-                    sql = """
-                    WITH base_effectifs AS (
+                    sql = f"""
+                    WITH
+                    {cte_sql},
+                    base_effectifs AS (
                         SELECT
                             e.id_effectif,
                             e.nom_effectif,
@@ -4376,14 +4345,13 @@ def get_analyse_risques_projection_events(
                             fp.codif_client,
                             fp.intitule_poste
                         FROM public.tbl_effectif_client e
+                        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
                         LEFT JOIN public.tbl_fiche_poste fp ON fp.id_poste = e.id_poste_actuel
                         WHERE e.id_ent = %s
                           AND COALESCE(e.archive, FALSE) = FALSE
                           AND COALESCE(e.statut_actif, TRUE) = TRUE
-                          AND COALESCE(e.id_poste_actuel, '') <> ''
-                          AND e.id_poste_actuel = ANY(%s)
                     ),
-                    indispos_raw AS (
+                    indispos AS (
                         SELECT
                             b.id_break,
                             b.id_effectif,
@@ -4401,20 +4369,6 @@ def get_analyse_risques_projection_events(
                           AND COALESCE(b.archive, FALSE) = FALSE
                           AND b.date_debut <= %s::date
                           AND b.date_fin >= %s::date
-                    ),
-                    indispos AS (
-                        SELECT
-                            ir.id_effectif,
-                            MIN(ir.date_debut)::date AS date_debut,
-                            MAX(ir.date_fin)::date AS date_fin,
-                            MAX(ir.nom_effectif)::text AS nom_effectif,
-                            MAX(ir.prenom_effectif)::text AS prenom_effectif,
-                            MAX(ir.code_effectif)::text AS code_effectif,
-                            MAX(ir.codif_poste)::text AS codif_poste,
-                            MAX(ir.codif_client)::text AS codif_client,
-                            MAX(ir.intitule_poste)::text AS intitule_poste
-                        FROM indispos_raw ir
-                        GROUP BY ir.id_effectif
                     ),
                     sorties AS (
                         SELECT
@@ -4437,7 +4391,7 @@ def get_analyse_risques_projection_events(
                         (SELECT COALESCE(json_agg(row_to_json(i) ORDER BY i.date_debut, i.nom_effectif, i.prenom_effectif), '[]'::json) FROM indispos i) AS indisponibilites,
                         (SELECT COALESCE(json_agg(row_to_json(s) ORDER BY s.date_sortie_prevue, s.nom_effectif, s.prenom_effectif), '[]'::json) FROM sorties s) AS sorties
                     """
-                    params = [id_ent, analysed_poste_ids, id_ent, period_end, period_start, period_start, period_end]
+                    params = [*cte_params, id_ent, id_ent, period_end, period_start, period_start, period_end]
                     cur.execute(sql, params)
                     row = cur.fetchone() or {}
                     indispos = row.get("indisponibilites") or []
@@ -4486,7 +4440,6 @@ def get_analyse_risques_projection_events(
 
         return {
             "scope": scope.model_dump() if hasattr(scope, "model_dump") else dict(scope),
-            "criticite_min": crit,
             "updated_at": datetime.now().isoformat(timespec="seconds"),
             "months": months,
         }
