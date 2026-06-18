@@ -2430,77 +2430,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return url;
   }
 
-  function buildAnalyseMatchingPdfUrl(portal, id_poste, id_service) {
-    const ctx = getPortalContext(portal);
-    const posteId = String(id_poste || "").trim();
-
-    if (!ctx.id_contact) throw new Error("id_contact introuvable côté UI.");
-    if (!ctx.apiBase) throw new Error("apiBase introuvable côté UI.");
-    if (!posteId) throw new Error("Sélectionne un poste avant d’imprimer.");
-
-    const qs = new URLSearchParams();
-    qs.set("id_poste", posteId);
-    const svc = String(id_service || "").trim();
-    if (svc) qs.set("id_service", svc);
-    if (typeof getCriticiteMin === "function") qs.set("criticite_min", String(getCriticiteMin()));
-    qs.set("_", String(Date.now()));
-
-    return `${ctx.apiBase}/skills/analyse/matching/poste/pdf/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
-  }
-
-  function openAnalyseMatchingPdfInBrowser(portal, id_poste, id_service) {
-    const url = buildAnalyseMatchingPdfUrl(portal, id_poste, id_service);
-    const win = window.open(url, "_blank", "noopener");
-    if (!win) throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
-    return url;
-  }
-
-  function refreshMatchingPrintButtonState() {
-    const btn = byId("btnAnalyseMatchingPrint");
-    if (!btn) return;
-    const hasPoste = !!String(_matchSelectedPoste || "").trim();
-    btn.disabled = !hasPoste;
-    btn.setAttribute("aria-disabled", hasPoste ? "false" : "true");
-    btn.title = hasPoste ? "Imprimer les correspondances du poste sélectionné" : "Sélectionne un poste avant d’imprimer";
-  }
-
-  function bindMatchingPrintButton(id_service) {
-    const btn = byId("btnAnalyseMatchingPrint");
-    if (!btn || btn.dataset.bound === "1") {
-      refreshMatchingPrintButtonState();
-      return;
-    }
-    btn.dataset.bound = "1";
-    btn.addEventListener("click", () => {
-      if (!String(_matchSelectedPoste || "").trim()) return;
-      try {
-        openAnalyseMatchingPdfInBrowser(_portalref || window.portal || null, _matchSelectedPoste, id_service || "");
-      } catch (e) {
-        if (typeof showToast === "function") showToast(e.message || "Impossible d’ouvrir le PDF.", "error");
-        else alert(e.message || "Impossible d’ouvrir le PDF.");
-      }
-    });
-    refreshMatchingPrintButtonState();
-  }
-
-  function renderMatchingHeaderActions(id_service) {
-    const meta = byId("analyseDetailMeta");
-    if (!meta) return;
-    meta.className = "";
-    meta.style.margin = "0";
-    meta.innerHTML = `
-      <button type="button"
-              id="btnAnalyseMatchingPrint"
-              class="sb-btn sb-btn--accent"
-              style="min-height:30px; padding:7px 13px; font-size:12px; font-weight:800;"
-              ${String(_matchSelectedPoste || "").trim() ? "" : "disabled"}>
-        Imprimer
-      </button>
-    `;
-    bindMatchingPrintButton(id_service);
-  }
-
-
 
   // ======================================================
   // API: détail "Critiques impactées" (prévisions)
@@ -3976,7 +3905,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const items = Array.isArray(data?.items) ? data.items : [];
 
     renderMatchingCandidates(id_poste, poste, items, getMatchView());
-    refreshMatchingPrintButtonState();
   }
 
     // ==============================
@@ -5068,16 +4996,12 @@ function renderDetail(mode) {
   // MATCHING (MVP)
   // -----------------------
   if (mode === "matching") {
-    if (title) title.textContent = "Correspondances profils/postes";
-    if (sub) {
-      sub.textContent = "";
-      sub.style.display = "none";
-    }
+    if (title) title.textContent = "Matching";
+    if (sub) sub.textContent = "Top candidats internes par poste (score pondéré niveau + criticité).";
 
     if (typeof setActiveMatchKpi === "function") setActiveMatchKpi(getMatchView());
 
     const id_service = window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
-    renderMatchingHeaderActions(id_service);
     body.innerHTML = renderMatchingShell();
 
     if (!_portalref) {
@@ -5102,8 +5026,6 @@ function renderDetail(mode) {
         }
 
         renderMatchingPosteList(postes, _matchSelectedPoste);
-
-        refreshMatchingPrintButtonState();
 
         if (_matchSelectedPoste) {
           await showMatchingForPoste(_portalref, _matchSelectedPoste, id_service, mySeq);
@@ -7273,7 +7195,6 @@ function bindOnce(portal) {
       if (!id_poste) return;
 
       _matchSelectedPoste = id_poste;
-      refreshMatchingPrintButtonState();
 
       // met à jour le style actif sans rerender complet
       document.querySelectorAll("#matchPosteList button[data-match-id_poste]").forEach(b => {
