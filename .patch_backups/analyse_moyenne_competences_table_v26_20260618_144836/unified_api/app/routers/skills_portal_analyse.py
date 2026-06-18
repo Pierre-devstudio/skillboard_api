@@ -1983,11 +1983,7 @@ def get_analyse_summary(
                 comp_critiques_sans_porteur = len([r for r in comp_records if int(r.get("nb_postes_couverture_absente") or 0) > 0])
                 comp_porteur_unique = len([r for r in comp_records if int(r.get("nb_postes_dependance") or 0) > 0])
                 comp_critiques_fragiles = len(comp_records_fragiles)
-                # La carte "Fragilité moyenne des compétences" doit raconter la même chose
-                # que le tableau "Fragilités par compétence" affiché à l'utilisateur :
-                # on moyenne donc les compétences réellement fragiles visibles dans ce détail,
-                # et non les compétences analysées à 0 % qui ne sont pas affichées dans cette table.
-                comp_fragilite_moyenne = _analyse_fragility_average(comp_records_fragiles)
+                comp_fragilite_moyenne = _analyse_fragility_average(comp_records_raw)
                 comp_critiques_tombent_zero_auj = int(rk.get("comp_critiques_tombent_zero_auj") or 0)
 
                 # ---------------------------
