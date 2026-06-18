@@ -2103,13 +2103,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div class="card-title" style="margin:0;">Diagnostic</div>
 
           <div class="card-sub" style="margin:8px 0 8px 0;font-size:14px;line-height:1.55;">
-            ${(() => {
-              const s = Number((typeof scoreSafe !== "undefined" ? scoreSafe : (typeof p !== "undefined" ? (p?.indice_fragilite ?? p?.priorite_score ?? 0) : 0)) || 0);
-              if (s >= 75) return "Ce poste est fortement exposé sur le périmètre analysé.";
-              if (s >= 50) return "Ce poste présente plusieurs fragilités à surveiller ou sécuriser.";
-              if (s >= 25) return "Ce poste présente une fragilité modérée.";
-              return "Ce poste apparaît globalement sécurisé sur le périmètre analysé.";
-            })()}
+            Ce diagnostic indique le niveau de fragilité du poste sur le périmètre analysé.
           </div>
           <div class="card-sub" style="margin:0 0 8px 0;font-size:13px;line-height:1.45;font-weight:800;color:#475569;">
             Éléments pris en compte :
@@ -4093,21 +4087,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   function mapNiveauActuelForDisplay(raw) {
     return nsLevelLabel(raw);
   }
-
-  (function ensureAnalyseRiskShareRightStyle() {
-    if (document.getElementById("analyse-risk-share-right-v32")) return;
-    const style = document.createElement("style");
-    style.id = "analyse-risk-share-right-v32";
-    style.textContent = `
-      .sb-accordion .sb-acc-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-      .sb-accordion .sb-acc-head > span:first-child { flex:1 1 auto; min-width:0; }
-      .sb-accordion .sb-acc-head > span:first-child .sb-badge--risk-share { margin-left:auto; }
-      .sb-accordion .sb-acc-head > span:last-child { flex:0 0 auto; }
-    `;
-    document.head.appendChild(style);
-  })();
-  /* analyse-risk-share-right-v32 */
-
   function renderAnalyseCompetenceDetail(data) {
     const host = byId("analyseCompModalBody");
     if (!host) return;
@@ -4212,21 +4191,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return 0;
     }
 
-    function causeScore(cause) {
-      const direct = Number(cause?.score ?? cause?.points ?? cause?.score_points ?? cause?.valeur_score ?? NaN);
-      if (Number.isFinite(direct) && direct > 0) return direct;
-      return Number(scoreForCause(cause?.code) || 0);
-    }
-
-    const visibleScoreTotal = causes.reduce((acc, c) => acc + Math.max(0, causeScore(c)), 0);
+    const visibleScoreTotal = causes.reduce((acc, c) => acc + Math.max(0, scoreForCause(c?.code)), 0);
     function shareBadge(cause) {
-      const explicit = Number(cause?.part_note ?? cause?.part_pct ?? cause?.pourcentage_note ?? NaN);
-      let pct = Number.isFinite(explicit) ? Math.round(explicit) : 0;
-      if (!Number.isFinite(explicit)) {
-        const value = Math.max(0, causeScore(cause));
-        pct = visibleScoreTotal > 0 ? Math.round((value / visibleScoreTotal) * 100) : 0;
-      }
-      pct = clamp(pct, 0, 100);
+      const value = Math.max(0, scoreForCause(cause?.code));
+      if (visibleScoreTotal <= 0 || value <= 0) return "";
+      const pct = Math.round((value / visibleScoreTotal) * 100);
       return `<span class="sb-badge sb-badge--risk-share">${esc(String(pct))}%</span>`;
     }
 
@@ -4424,7 +4393,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             <div style="max-width:660px;">
               ${diagLine("Périmètre analysé", scopeLabel)}
               ${diagLine("Criticité des compétences", `≥ ${data?.criticite_min ?? "—"}%`)}
+              ${diagLine("Postes concernés", stats?.nb_postes_impactes ?? postes.length)}
               ${diagLine("Besoin total de couverture", stats?.besoin_total ?? "—")}
+              ${diagLine("Collaborateurs confirmés", stats?.nb_porteurs ?? 0)}
+              ${diagLine("Experts disponibles", expertsDisponibles)}
             </div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
@@ -4472,7 +4444,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       const scopeLabel = scopeName || "Tous les services";
 
-      const sub = "";
+      const sub = `
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <span class="sb-badge">Service : ${escapeHtml(scopeLabel)}</span>
+        </div>
+      `;
 
       openAnalyseCompetenceModal({ code: titleCode, text: titleText }, sub);
 
@@ -4798,9 +4774,12 @@ async function showAnalysePosteDetailModal(portal, id_poste, id_service, focusKe
       ? `<span class="sb-badge">Focus : ${escapeHtml(focusLab)}</span>`
     : ``;
 
-    const sub = focusHtml
-      ? `<div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">${focusHtml}</div>`
-      : "";
+    const sub = `
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <span class="sb-badge">Service : ${escapeHtml(scope)}</span>
+        ${focusHtml}
+      </div>
+    `;
 
 
     openAnalysePosteModal(posteIntitule, sub);
