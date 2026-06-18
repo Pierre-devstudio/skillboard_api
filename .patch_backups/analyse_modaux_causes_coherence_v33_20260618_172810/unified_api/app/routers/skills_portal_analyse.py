@@ -8091,11 +8091,6 @@ def get_risque_competence_detail(
                         "criticite_max": int(cr.get("criticite_max") or 0),
                         "indice_fragilite": indice,
                         "priorite": priorite,
-                        "score_maitrise": int(cr.get("score_maitrise") or 0),
-                        "score_concentration": int(cr.get("score_concentration") or 0),
-                        "score_transmission": int(cr.get("score_transmission") or 0),
-                        "score_evenements": int(cr.get("score_evenements") or 0),
-                        "score_donnees": int(cr.get("score_donnees") or 0),
                     })
 
                     postes_state = {str(p.get("id_poste") or ""): p for p in (cr.get("postes") or [])}
@@ -8158,11 +8153,6 @@ def get_risque_competence_detail(
 
                         "indice_fragilite": indice,
                         "priorite": priorite,
-                        "score_maitrise": competence_detail_stats.get("score_maitrise", 0),
-                        "score_concentration": competence_detail_stats.get("score_concentration", 0),
-                        "score_transmission": competence_detail_stats.get("score_transmission", 0),
-                        "score_evenements": competence_detail_stats.get("score_evenements", 0),
-                        "score_donnees": competence_detail_stats.get("score_donnees", 0),
                         "nb_postes_couverture_absente": competence_detail_stats.get("nb_postes_couverture_absente", 0),
                         "nb_postes_non_confirmee": competence_detail_stats.get("nb_postes_non_confirmee", 0),
                         "nb_postes_niveau_insuffisant": competence_detail_stats.get("nb_postes_niveau_insuffisant", 0),

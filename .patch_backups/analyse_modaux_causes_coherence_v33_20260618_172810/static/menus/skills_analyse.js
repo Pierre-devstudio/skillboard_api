@@ -1563,14 +1563,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   const prioLabel = priorityLabel(s);
 
-  function posteDiagLecture(score100) {
-    const sc = clamp(Number(score100 || 0), 0, 100);
-    if (sc >= 75) return "Ce poste est fortement exposé sur le périmètre analysé.";
-    if (sc >= 50) return "Ce poste présente plusieurs fragilités à surveiller ou sécuriser.";
-    if (sc >= 25) return "Ce poste présente une fragilité modérée.";
-    return "Ce poste apparaît globalement sécurisé sur le périmètre analysé.";
-  }
-
   function scoreHue(score100) {
     const x = clamp(Number(score100 || 0), 0, 100) / 100;
     return Math.round(120 * (1 - x)); // 120=vert -> 0=rouge
@@ -2010,14 +2002,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         ${hasStruct ? `
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
-              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
+              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 ${causeDot("main")}<span>Couverture du poste insuffisante</span>
-              </span>
-              <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
                 <span class="sb-badge sb-badge--risk-share">${escapeHtml(String(structureSharePct))}%</span>
                 ${causeHelpButton("structure")}
-                <span class="sb-acc-chevron">▾</span>
-              </span>
+              </span><span class="sb-acc-chevron">▾</span>
             </button>
             <div class="sb-acc-body">${structureBody}</div>
           </div>
@@ -2026,14 +2015,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         ${hasEff ? `
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
-              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
+              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 ${causeDot("main")}<span>Niveau attendu non atteint</span>
-              </span>
-              <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
                 ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(efficaciteSharePct))}%</span>` : ``}
                 ${causeHelpButton("efficacite")}
-                <span class="sb-acc-chevron">▾</span>
-              </span>
+              </span><span class="sb-acc-chevron">▾</span>
             </button>
             <div class="sb-acc-body">${efficaciteBody}</div>
           </div>
@@ -2042,14 +2028,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         ${hasDep ? `
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
-              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
+              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 ${causeDot("main")}<span>Couverture trop dépendante d’une personne</span>
-              </span>
-              <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
                 ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(dependanceSharePct))}%</span>` : ``}
                 ${causeHelpButton("dependance")}
-                <span class="sb-acc-chevron">▾</span>
-              </span>
+              </span><span class="sb-acc-chevron">▾</span>
             </button>
             <div class="sb-acc-body">${dependanceBody}</div>
           </div>
@@ -2058,14 +2041,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         ${hasSorties ? `
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
-              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
+              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 ${causeDot("aggravant")}<span>Sortie approchante d’un titulaire</span>
-              </span>
-              <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
                 ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(sortiesSharePct))}%</span>` : ``}
                 ${causeHelpButton("sorties")}
-                <span class="sb-acc-chevron">▾</span>
-              </span>
+              </span><span class="sb-acc-chevron">▾</span>
             </button>
             <div class="sb-acc-body">${sortiesBody}</div>
           </div>
@@ -2074,14 +2054,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         ${hasTrans ? `
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
-              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
+              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 ${causeDot("aggravant")}<span>Renfort potentiel insuffisant</span>
-              </span>
-              <span style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
                 ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(transmissionSharePct))}%</span>` : ``}
                 ${causeHelpButton("transmission")}
-                <span class="sb-acc-chevron">▾</span>
-              </span>
+              </span><span class="sb-acc-chevron">▾</span>
             </button>
             <div class="sb-acc-body">${transmissionBody}</div>
           </div>
@@ -2126,7 +2103,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div class="card-title" style="margin:0;">Diagnostic</div>
 
           <div class="card-sub" style="margin:8px 0 8px 0;font-size:14px;line-height:1.55;">
-            ${posteDiagLecture(s)}
+            ${(() => {
+              const s = Number((typeof scoreSafe !== "undefined" ? scoreSafe : (typeof p !== "undefined" ? (p?.indice_fragilite ?? p?.priorite_score ?? 0) : 0)) || 0);
+              if (s >= 75) return "Ce poste est fortement exposé sur le périmètre analysé.";
+              if (s >= 50) return "Ce poste présente plusieurs fragilités à surveiller ou sécuriser.";
+              if (s >= 25) return "Ce poste présente une fragilité modérée.";
+              return "Ce poste apparaît globalement sécurisé sur le périmètre analysé.";
+            })()}
           </div>
           <div class="card-sub" style="margin:0 0 8px 0;font-size:13px;line-height:1.45;font-weight:800;color:#475569;">
             Éléments pris en compte :
@@ -4393,10 +4376,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <button type="button" class="sb-acc-head sb-btn sb-btn--soft ${idx === 0 ? "is-open" : ""}">
           <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
             ${causeDot(c?.severity)}<span style="font-weight:650;color:#1f2937;">${esc(c?.titre || "Cause")}</span>
-          </span>
-          <span style="display:flex;align-items:center;gap:8px;flex:0 0 auto;">
-            ${shareBadge(c)}
             ${causeHelpButton(causeHelpKey(c?.code))}
+          </span>
+          <span style="display:flex;align-items:center;gap:8px;">
+            ${shareBadge(c)}
             <span class="sb-acc-chevron">▾</span>
           </span>
         </button>
