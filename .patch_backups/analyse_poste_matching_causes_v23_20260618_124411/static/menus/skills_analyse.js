@@ -1762,38 +1762,25 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     if (String(first.kind || "") === "salarie" || first.id_effectif) {
       return `
         <div class="sb-help" style="margin-top:0;">
-          Cette lecture part des titulaires du poste. La maîtrise actuelle indique la part des compétences pour lesquelles le niveau A/B/C/D requis est atteint, sans moyenne de notes.
+          Cette lecture part des titulaires du poste. Le détail par compétence reste accessible depuis le modal d’adéquation au poste.
         </div>
         <div class="table-wrap" style="margin-top:10px;">
           <table class="sb-table">
             <thead>
               <tr>
                 <th>Collaborateur</th>
-                <th class="col-center" style="width:160px;">Maîtrise actuelle</th>
+                <th class="col-center" style="width:150px;">Maîtrise attendue</th>
+                <th class="col-center" style="width:150px;">Maîtrise actuelle</th>
                 <th class="col-center" style="width:110px;">Écart</th>
-                <th class="col-center" style="width:74px;">Voir</th>
               </tr>
             </thead>
             <tbody>
               ${list.map(r => `
                 <tr>
-                  <td>
-                    <div style="font-size:14px; font-weight:800;">${escapeHtml(r?.full || "Collaborateur")}</div>
-                    <div class="card-sub" style="margin:2px 0 0; font-size:12px;">${escapeHtml(String(r?.competences_ok ?? 0))}/${escapeHtml(String(r?.competences_total ?? 0))} compétences au niveau requis</div>
-                  </td>
+                  <td><div style="font-size:14px; font-weight:800;">${escapeHtml(r?.full || "Collaborateur")}</div></td>
+                  <td class="col-center"><span class="sb-badge">${escapeHtml(String(r?.maitrise_attendue_pct ?? 100))}%</span></td>
                   <td class="col-center"><span class="sb-badge">${escapeHtml(String(r?.maitrise_actuelle_pct ?? 0))}%</span></td>
                   <td class="col-center"><span class="sb-badge sb-badge--dep-none">-${escapeHtml(String(r?.ecart_pct ?? 0))}%</span></td>
-                  <td class="col-center">
-                    <button type="button"
-                            class="sb-icon-btn poste-cause-match-person"
-                            title="Voir"
-                            aria-label="Voir l’adéquation au poste"
-                            data-poste-cause-match-effectif="${escapeHtml(String(r?.id_effectif || ""))}"
-                            data-poste-cause-match-poste="${escapeHtml(String(diag?.poste?.id_poste || ""))}"
-                            data-poste-cause-match-service="${escapeHtml(String(diag?.poste?.id_service || ""))}">
-                      ${analyseEyeIconSvg()}
-                    </button>
-                  </td>
                 </tr>
               `).join("")}
             </tbody>
@@ -7267,21 +7254,7 @@ function bindOnce(portal) {
   if (btnClosePoste) btnClosePoste.addEventListener("click", closeAnalysePosteModal);
 
   if (modalPoste) {
-    modalPoste.addEventListener("click", async (e) => {
-      const matchBtn = e.target.closest("button[data-poste-cause-match-effectif]");
-      if (matchBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        const p = _portalref;
-        const idEffectif = (matchBtn.getAttribute("data-poste-cause-match-effectif") || "").trim();
-        const idPoste = (matchBtn.getAttribute("data-poste-cause-match-poste") || "").trim();
-        const idServiceAttr = (matchBtn.getAttribute("data-poste-cause-match-service") || "").trim();
-        const idService = idServiceAttr || window.portal.serviceFilter.toQueryId(byId("analyseServiceSelect")?.value || "");
-        if (p && idPoste && idEffectif) {
-          showMatchPersonDetailModal(p, idPoste, idEffectif, idService);
-        }
-        return;
-      }
+    modalPoste.addEventListener("click", async (e) => {    
       if (e.target === modalPoste) closeAnalysePosteModal();
     });
   }

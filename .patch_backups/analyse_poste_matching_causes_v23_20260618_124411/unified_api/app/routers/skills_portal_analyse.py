@@ -663,13 +663,6 @@ def _analyse_matching_potential_by_poste(
     seuil_immediat: int = 75,
     seuil_a_preparer: int = 60,
 ) -> Dict[str, Dict[str, Any]]:
-    """
-    Renfort potentiel par poste.
-    Même base de calcul que le tableau Correspondance profils / postes :
-    - mêmes compétences retenues selon la criticité minimale ;
-    - même score pondéré par niveau requis A/B/C/D ;
-    - seuls les non-titulaires disponibles sur la période sont comptés comme renforts.
-    """
     if period_start > period_end:
         period_start, period_end = period_end, period_start
     scope_id = (id_service or "").strip() or None
@@ -698,7 +691,7 @@ def _analyse_matching_potential_by_poste(
         FROM public.tbl_fiche_poste_competence fpc
         JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
         WHERE COALESCE(fpc.masque, FALSE) = FALSE
-          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+          AND COALESCE(fpc.poids_criticite, 0) >= %s
         ORDER BY fpc.id_poste
         """,
         tuple(cte_params + [int(criticite_min)]),
@@ -785,10 +778,9 @@ def _analyse_matching_potential_by_poste(
             for req in reqs:
                 score = eff_scores.get(req["id_comp"])
                 seuil = _score_seuil_for_niveau(req.get("niveau_requis") or "")
-                ratio = 0.0 if score is None or seuil <= 0 else min(max(float(score) / float(seuil), 0.0), 1.0)
+                ratio = 0.0 if score is None or seuil <= 0 else min(max(score / seuil, 0.0), 1.0)
                 sum_ratio += max(1, _analyse_pdf_safe_int(req.get("poids"))) * ratio
             score_pct = int(round((sum_ratio / float(poids_total)) * 100.0))
-            score_pct = max(0, min(100, score_pct))
             best = max(best, score_pct)
             if score_pct >= int(seuil_a_preparer):
                 nb_prep_total += 1
@@ -801,6 +793,7 @@ def _analyse_matching_potential_by_poste(
             "meilleur_matching": best,
         }
     return out
+
 
 def _augment_poste_records_with_matching_potential(
     cur,
@@ -5038,8 +5031,7 @@ class AnalysePosteEfficaciteItem(BaseModel):
     nb_en_defaut: int = 0
     nb_titulaires: int = 0
 
-    # Variante salarié : lecture RH du niveau attendu non atteint.
-    # Le pourcentage ne s'appuie pas sur une moyenne de notes, mais sur les niveaux A/B/C/D réellement atteints.
+    # Variante salarié : lecture RH plus humaine du niveau attendu non atteint.
     kind: str = "competence"
     id_effectif: Optional[str] = None
     full: Optional[str] = None
@@ -5047,11 +5039,6 @@ class AnalysePosteEfficaciteItem(BaseModel):
     maitrise_attendue_pct: int = 100
     maitrise_actuelle_pct: int = 0
     ecart_pct: int = 0
-    competences_ok: int = 0
-    competences_total: int = 0
-    poids_ok: int = 0
-    poids_total: int = 0
-    matching_score_pct: int = 0
 
 class AnalysePosteSortieApprochanteItem(BaseModel):
     id_effectif: Optional[str] = None
@@ -5131,11 +5118,6 @@ def _analyse_poste_titulaires_mastery_items(
     id_poste: str,
     criticite_min: int,
 ) -> List[AnalysePosteEfficaciteItem]:
-    """
-    Lecture salarié du niveau attendu non atteint.
-    La maîtrise actuelle est calculée par niveau A/B/C/D atteint, pas par moyenne de notes.
-    100% = toutes les compétences retenues atteignent au moins le niveau requis.
-    """
     cte_sql, cte_params = _build_scope_cte(id_ent, id_service)
     cur.execute(
         f"""
@@ -5196,25 +5178,19 @@ def _analyse_poste_titulaires_mastery_items(
             "full": f"{(r.get('prenom_effectif') or '').strip()} {(r.get('nom_effectif') or '').strip()}".strip() or "Collaborateur",
             "poste_actuel": r.get("poste_actuel") or "",
             "poids_total": 0,
-            "poids_ok": 0,
-            "competences_total": 0,
-            "competences_ok": 0,
+            "sum_ratio": 0.0,
         })
         poids = max(1, _analyse_pdf_safe_int(r.get("poids_criticite")))
-        req_rank = _niveau_rank(r.get("niveau_requis") or "")
-        cur_level = _niveau_from_score(_safe_float(r.get("resultat_eval")))
-        cur_rank = _niveau_rank(cur_level)
-        ok = bool(req_rank > 0 and cur_rank >= req_rank)
+        seuil = _score_seuil_for_niveau(r.get("niveau_requis") or "")
+        score = _safe_float(r.get("resultat_eval"))
+        ratio = 0.0 if score is None or seuil <= 0 else min(max(score / seuil, 0.0), 1.0)
         item["poids_total"] += poids
-        item["competences_total"] += 1
-        if ok:
-            item["poids_ok"] += poids
-            item["competences_ok"] += 1
+        item["sum_ratio"] += poids * ratio
 
     out: List[AnalysePosteEfficaciteItem] = []
     for item in by_emp.values():
         total = max(1, int(item.get("poids_total") or 0))
-        pct = int(round((float(item.get("poids_ok") or 0) / float(total)) * 100.0))
+        pct = int(round((float(item.get("sum_ratio") or 0.0) / float(total)) * 100.0))
         pct = max(0, min(100, pct))
         if pct >= 100:
             continue
@@ -5226,14 +5202,10 @@ def _analyse_poste_titulaires_mastery_items(
             maitrise_attendue_pct=100,
             maitrise_actuelle_pct=pct,
             ecart_pct=max(0, 100 - pct),
-            competences_ok=int(item.get("competences_ok") or 0),
-            competences_total=int(item.get("competences_total") or 0),
-            poids_ok=int(item.get("poids_ok") or 0),
-            poids_total=int(item.get("poids_total") or 0),
-            matching_score_pct=pct,
         ))
     out.sort(key=lambda x: (-int(x.ecart_pct or 0), str(x.full or "")))
     return out
+
 
 def _analyse_poste_sorties_approchantes_cause(
     cur,
@@ -6744,10 +6716,8 @@ def get_analyse_matching_poste(
                     FROM public.tbl_fiche_poste_competence fpc
                     JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
                     WHERE fpc.id_poste = %s
-                      AND COALESCE(fpc.masque, FALSE) = FALSE
-                      AND COALESCE(fpc.poids_criticite, 0)::int >= %s
                     """,
-                    tuple(cte_params + [id_poste, int(criticite_min)]),
+                    tuple(cte_params + [id_poste]),
                 )
                 req_rows = cur.fetchall() or []
                 reqs: List[Dict[str, Any]] = []
