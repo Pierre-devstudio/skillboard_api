@@ -880,19 +880,6 @@ textarea.sb-ctrl{
   flex: 0 0 8px;
 }
 
-/* Badge Domaine soft, utilisé dans Studio et dans les tableaux d’analyse */
-.sb-badge-domaine--soft{
-  border-color:var(--dom-color, var(--sb-gray-300));
-  background:color-mix(in srgb, var(--dom-color, #9ca3af) 10%, #ffffff);
-  color:var(--sb-gray-900);
-  font-weight:600;
-}
-
-.sb-badge-domaine--soft::before{
-  background:var(--dom-color, #9ca3af);
-}
-
-
 /* -------- Badges: group (alignement + spacing) -------- */
 .sb-badges{
   display:inline-flex;

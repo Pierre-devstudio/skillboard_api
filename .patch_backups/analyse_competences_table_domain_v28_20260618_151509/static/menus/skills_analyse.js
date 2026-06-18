@@ -5451,7 +5451,7 @@ function renderDetail(mode) {
     const lab = (item?.domaine_titre_court || item?.domaine_titre || item?.id_domaine_competence || "—").toString();
     const col = normalizeColor(item?.domaine_couleur) || "#9ca3af";
     return `
-      <span class="sb-badge-domaine sb-badge-domaine--soft"
+      <span class="sb-badge-domaine"
             style="--dom-color:${escapeHtml(col)};"
             title="${escapeHtml(lab)}">
         ${escapeHtml(lab)}
@@ -5662,7 +5662,8 @@ function renderDetail(mode) {
           <thead>
             <tr>
               <th>Code – Compétence</th>
-              <th class="col-center" style="width:220px;">Domaine</th>
+              <th style="width:240px;">Domaine</th>
+              <th class="col-center" style="width:140px;">Présence</th>
 
               <th class="col-center" style="width:220px;">
                 <span class="sb-th-with-tip">
@@ -5688,8 +5689,24 @@ function renderDetail(mode) {
               const intit = (r.intitule || "—").toString();
               const idComp = (r.id_competence || r.id_comp || r.id_competence_skillboard || r.id_competence_pk || "").toString().trim();
               const compKey = (idComp || code || "").trim();
+
+              const Braw = Number(r.besoin_total);
+              const B = (Number.isFinite(Braw) && Braw > 0) ? Braw : 1;
+              const P = Number(r.nb_porteurs || 0);
+              const Pd = Number(r.nb_porteurs_dispo);
               const score = clamp(Number(r.indice_fragilite || 0), 0, 100);
               const etat = stateLabel(score);
+              const showDispo = Number.isFinite(Pd) && Pd !== P;
+              const dispoHtml = showDispo
+                ? `<span class="sb-badge sb-badge--warning" title="Porteurs disponibles aujourd’hui, indisponibilités en cours exclues">${escapeHtml(String(Pd))}</span>`
+                : "";
+
+              const presTitle = [
+                `Porteurs déclarés : ${P}`,
+                `Besoin total sur les postes concernés : ${B}`,
+                Number.isFinite(Pd) ? `Porteurs disponibles aujourd’hui : ${Pd}` : null,
+                (r.nb_experts !== null && r.nb_experts !== undefined) ? `Experts : ${Number(r.nb_experts || 0)} (disponibles : ${Number(r.nb_experts_dispo || 0)})` : null
+              ].filter(Boolean).join(" | ");
 
               return `
                 <tr class="risk-comp-row"
@@ -5706,7 +5723,14 @@ function renderDetail(mode) {
                     </div>
                   </td>
 
-                  <td style="text-align:left;">${renderDomainPill(r)}</td>
+                  <td>${renderDomainPill(r)}</td>
+
+                  <td class="col-center" title="${escapeHtml(presTitle)}">
+                    <div class="sb-badges">
+                      <span class="sb-badge sb-badge-accent">${escapeHtml(String(P) + "/" + String(B))}</span>
+                      ${dispoHtml}
+                    </div>
+                  </td>
 
                   <td class="col-center" title="Indice de fragilité de la compétence">${scoreChip(score)}</td>
 
