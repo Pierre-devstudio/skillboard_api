@@ -4055,6 +4055,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   function mapNiveauActuelForDisplay(raw) {
     return nsLevelLabel(raw);
   }
+
   function renderAnalyseCompetenceDetail(data) {
     const host = byId("analyseCompModalBody");
     if (!host) return;
@@ -4071,11 +4072,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const scopeObj = data?.scope || {};
     const scopeLabel = (typeof scopeObj === "object") ? (scopeObj.nom_service || "Tous les services") : (scopeObj || "Tous les services");
 
-    function scoreHue(score100) {
-      const x = clamp(Number(score100 || 0), 0, 100) / 100;
-      return Math.round(120 * (1 - x));
-    }
-
     function stateLabel(score) {
       const s = clamp(Number(score || 0), 0, 100);
       if (s >= 75) return "Critique";
@@ -4085,20 +4081,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     }
 
     function statePill(score) {
-      const s = clamp(Math.round(Number(score || 0)), 0, 100);
-      const h = scoreHue(s);
-      const bg = `hsl(${h} 70% 95%)`;
-      const br = `hsl(${h} 70% 80%)`;
-      const tx = `hsl(${h} 70% 28%)`;
-      return `
-        <span style="
-          display:inline-flex; align-items:center; justify-content:center;
-          padding:4px 10px; border-radius:999px;
-          border:1px solid ${br}; background:${bg}; color:${tx};
-          font-weight:800; font-size:12px; white-space:nowrap;">
-          ${esc(stateLabel(s))}
-        </span>
-      `;
+      const s = clamp(Number(score || 0), 0, 100);
+      const cls = s >= 75 ? "sb-badge--danger" : s >= 50 ? "sb-badge--warning" : s >= 25 ? "sb-badge--info" : "sb-badge--success";
+      return `<span class="sb-badge ${cls}">${esc(stateLabel(s))}</span>`;
+    }
+
+    function scoreHue(score100) {
+      const x = clamp(Number(score100 || 0), 0, 100) / 100;
+      return Math.round(120 * (1 - x));
     }
 
     function ring(score100) {
@@ -4127,192 +4117,78 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       `;
     }
 
-    function causeDot(kind) {
-      const color = kind === "main" ? "#ef4444" : (kind === "data" ? "#64748b" : (kind === "ok" ? "#10b981" : "#f59e0b"));
-      return `<span style="width:9px;height:9px;border-radius:999px;background:${color};display:inline-block;flex:0 0 auto;"></span>`;
-    }
-
-    function scoreForCause(code) {
-      const key = String(code || "");
-      if (key === "MAITRISE_INSUFFISANTE") return Number(stats?.score_maitrise || 0);
-      if (key === "CONCENTRATION") return Number(stats?.score_concentration || 0);
-      if (key === "TRANSMISSION_INSUFFISANTE") return Number(stats?.score_transmission || 0);
-      if (key === "EXPOSITION_SORTIES_INDISPOS") return Number(stats?.score_evenements || stats?.score_events || 0);
-      if (key === "DONNEES_A_VERIFIER") return Number(stats?.score_donnees || stats?.score_data || 0);
-      return 0;
-    }
-
-    const visibleScoreTotal = causes.reduce((acc, c) => acc + Math.max(0, scoreForCause(c?.code)), 0);
-    function shareBadge(cause) {
-      const value = Math.max(0, scoreForCause(cause?.code));
-      if (visibleScoreTotal <= 0 || value <= 0) return "";
-      const pct = Math.round((value / visibleScoreTotal) * 100);
-      return `<span class="sb-badge sb-badge--risk-share">${esc(String(pct))}%</span>`;
-    }
-
-    function valueOrDash(v) {
-      if (v === null || v === undefined || v === "") return "—";
-      return String(v);
-    }
-
-    function diagLine(label, value) {
-      return `
-        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:7px 0; border-bottom:1px solid #eef2f7;">
-          <span style="font-size:13px; color:#64748b; line-height:1.35;">${esc(label)}</span>
-          <span style="font-size:13px; color:#0f172a; font-weight:800; text-align:right; line-height:1.35;">${esc(valueOrDash(value))}</span>
-        </div>
-      `;
-    }
-
-    function smallMetric(label, value, help) {
-      return `
-        <div class="card" style="padding:10px; margin:0; min-width:160px; flex:1;">
-          <div class="label" style="font-size:12px; line-height:1.25;">${esc(label)}</div>
-          <div class="value" style="font-size:20px; line-height:1.15;">${esc(valueOrDash(value))}</div>
-          ${help ? `<div class="card-sub" style="margin:3px 0 0 0; font-size:12px; line-height:1.35;">${esc(help)}</div>` : ``}
-        </div>
-      `;
-    }
-
-    function defaultCauseIntro(cause) {
-      const code = String(cause?.code || "");
-      const count = Number(cause?.count || 0);
-      if (code === "MAITRISE_INSUFFISANTE") {
-        return `${count || 0} situation(s) montrent que la compétence n’est pas maîtrisée au niveau attendu sur le périmètre analysé.`;
-      }
-      if (code === "CONCENTRATION") {
-        const porteurs = Number(stats?.nb_porteurs || stats?.nb_porteurs_valides || 0);
-        const besoin = Number(stats?.besoin_total || 0);
-        return `La compétence repose sur ${porteurs} porteur(s) confirmé(s) pour un besoin total estimé à ${besoin || "—"}.`;
-      }
-      if (code === "TRANSMISSION_INSUFFISANTE") {
-        const experts = Number(stats?.nb_experts_dispo ?? stats?.nb_experts ?? 0);
-        const avances = Number(stats?.nb_porteurs_avances_ou_experts || 0);
-        return `${experts} expert(s) disponible(s) identifié(s). ${avances} porteur(s) sont au niveau avancé ou expert.`;
-      }
-      if (code === "EXPOSITION_SORTIES_INDISPOS") {
-        return `${count || 0} événement(s) connu(s) touchent des porteurs de cette compétence sur la période analysée.`;
-      }
-      if (code === "DONNEES_A_VERIFIER") {
-        return `${count || 0} point(s) limitent la fiabilité de lecture de cette compétence.`;
-      }
-      if (code === "SECURISEE") {
-        return "Aucune fragilité notable n’est détectée sur cette compétence avec le périmètre et le seuil retenus.";
-      }
-      return "Cette cause explique une partie de l’indice de fragilité affiché.";
+    function dotForSeverity(sev) {
+      const s = String(sev || "");
+      const bg = s === "main" ? "#ef4444" : s === "secondary" ? "#f59e0b" : s === "data" ? "#64748b" : "#10b981";
+      return `<span style="width:10px;height:10px;border-radius:999px;background:${bg};display:inline-block;flex:0 0 auto;"></span>`;
     }
 
     function causeItemsHtml(cause) {
       const code = String(cause?.code || "");
       const items = Array.isArray(cause?.items) ? cause.items : [];
+      if (!items.length) return "";
 
       if (code === "MAITRISE_INSUFFISANTE") {
         return `
-          <div class="sb-help" style="margin-top:0;">
-            ${esc(defaultCauseIntro(cause))} Le tableau indique où la compétence existe, mais n’atteint pas encore le niveau requis.
-          </div>
-          <div class="table-wrap" style="margin-top:10px;">
-            <table class="sb-table">
+          <div style="overflow:auto;margin-top:10px;">
+            <table class="sb-table sb-table--airy sb-table--zebra" style="margin:0;min-width:760px;">
               <thead><tr>
-                <th style="width:110px;">Poste</th>
-                <th>Intitulé</th>
-                <th class="col-center" style="width:120px;">Niveau requis</th>
-                <th class="col-center" style="width:120px;">Besoin</th>
-                <th class="col-center" style="width:150px;">Porteurs au niveau</th>
-                <th class="col-center" style="width:90px;">Écart</th>
-                <th class="col-center" style="width:90px;">Criticité</th>
+                <th>Poste</th><th>Intitulé</th><th style="text-align:center;">Niveau requis</th><th style="text-align:center;">Besoin</th><th style="text-align:center;">Porteurs au niveau</th><th style="text-align:center;">Écart</th><th style="text-align:center;">Criticité</th>
               </tr></thead>
-              <tbody>${items.length ? items.map(it => `
+              <tbody>${items.map(it => `
                 <tr>
                   <td><span class="sb-badge sb-badge-ref-poste-code">${esc(it.poste || "—")}</span></td>
-                  <td><div style="font-size:14px;font-weight:700;">${esc(it.intitule_poste || "—")}</div></td>
-                  <td class="col-center">${nsLevelBadgeHtml(it.niveau_requis || "—", "Niveau requis")}</td>
-                  <td class="col-center">${esc(String(it.besoin ?? 0))}</td>
-                  <td class="col-center">${esc(String(it.porteurs_niveau_requis ?? 0))}</td>
-                  <td class="col-center"><span class="sb-badge sb-badge--warning">${esc(String(it.ecart ?? 0))}</span></td>
-                  <td class="col-center">${esc(String(it.criticite ?? 0))}</td>
-                </tr>`).join("") : `<tr><td colspan="7" class="col-center sb-muted">Aucun écart de maîtrise détaillé.</td></tr>`}</tbody>
+                  <td class="sb-fs-13 sb-fw-700">${esc(it.intitule_poste || "—")}</td>
+                  <td style="text-align:center;">${nsLevelBadgeHtml(it.niveau_requis || "—", "Niveau requis")}</td>
+                  <td style="text-align:center;">${esc(String(it.besoin ?? 0))}</td>
+                  <td style="text-align:center;">${esc(String(it.porteurs_niveau_requis ?? 0))}</td>
+                  <td style="text-align:center;"><span class="sb-badge sb-badge--warning">${esc(String(it.ecart ?? 0))}</span></td>
+                  <td style="text-align:center;">${esc(String(it.criticite ?? 0))}</td>
+                </tr>`).join("")}</tbody>
             </table>
-          </div>`;
-      }
-
-      if (code === "CONCENTRATION") {
-        const porteurs = Number(stats?.nb_porteurs || stats?.nb_porteurs_valides || 0);
-        const declares = Number(stats?.nb_porteurs_declares || 0);
-        const besoin = Number(stats?.besoin_total || 0);
-        return `
-          <div class="sb-help" style="margin-top:0;">
-            ${esc(defaultCauseIntro(cause))} Plus le nombre de porteurs confirmés est faible, plus la compétence devient sensible à une absence, un changement de poste ou un départ.
-          </div>
-          <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:10px;">
-            ${smallMetric("Porteurs confirmés", porteurs, "Collaborateurs disponibles avec un niveau confirmé.")}
-            ${smallMetric("Porteurs déclarés", declares, "Collaborateurs associés à la compétence, même si le niveau reste à confirmer.")}
-            ${smallMetric("Besoin total", besoin, "Volume de couverture attendu sur les postes concernés.")}
-          </div>`;
-      }
-
-      if (code === "TRANSMISSION_INSUFFISANTE") {
-        const experts = Number(stats?.nb_experts_dispo ?? stats?.nb_experts ?? 0);
-        const avances = Number(stats?.nb_porteurs_avances_ou_experts || 0);
-        const porteurs = Number(stats?.nb_porteurs || stats?.nb_porteurs_valides || 0);
-        return `
-          <div class="sb-help" style="margin-top:0;">
-            ${esc(defaultCauseIntro(cause))} La transmission est fragile quand aucun expert disponible n’est identifié, ou quand l’expertise repose sur trop peu de personnes.
-          </div>
-          <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:10px;">
-            ${smallMetric("Experts disponibles", experts, "Porteurs capables de transmettre la compétence.")}
-            ${smallMetric("Avancés ou experts", avances, "Viviers possibles pour organiser une transmission.")}
-            ${smallMetric("Porteurs confirmés", porteurs, "Base actuelle de la compétence dans l’entreprise.")}
           </div>`;
       }
 
       if (code === "EXPOSITION_SORTIES_INDISPOS") {
         return `
-          <div class="sb-help" style="margin-top:0;">
-            ${esc(defaultCauseIntro(cause))} Ces événements peuvent faire baisser temporairement ou durablement la couverture de la compétence.
-          </div>
-          <div class="table-wrap" style="margin-top:10px;">
-            <table class="sb-table">
-              <thead><tr><th>Collaborateur</th><th>Poste</th><th>Événement</th><th class="col-center" style="width:120px;">Début</th><th class="col-center" style="width:120px;">Fin / date</th></tr></thead>
-              <tbody>${items.length ? items.map(it => `
+          <div style="overflow:auto;margin-top:10px;">
+            <table class="sb-table sb-table--airy sb-table--zebra" style="margin:0;min-width:680px;">
+              <thead><tr><th>Collaborateur</th><th>Poste</th><th>Événement</th><th style="text-align:center;">Début</th><th style="text-align:center;">Fin / date</th></tr></thead>
+              <tbody>${items.map(it => `
                 <tr>
-                  <td><b>${esc(it.collaborateur || "—")}</b></td>
-                  <td>${esc(it.poste || "—")}</td>
+                  <td class="sb-fs-13 sb-fw-700">${esc(it.collaborateur || "—")}</td>
+                  <td class="sb-fs-13">${esc(it.poste || "—")}</td>
                   <td><span class="sb-badge sb-badge--warning">${esc(it.evenement || "Événement")}</span></td>
-                  <td class="col-center">${esc(it.debut || "—")}</td>
-                  <td class="col-center">${esc(it.fin || "—")}</td>
-                </tr>`).join("") : `<tr><td colspan="5" class="col-center sb-muted">Aucun événement détaillé.</td></tr>`}</tbody>
+                  <td style="text-align:center;">${esc(it.debut || "—")}</td>
+                  <td style="text-align:center;">${esc(it.fin || "—")}</td>
+                </tr>`).join("")}</tbody>
             </table>
           </div>`;
       }
 
-      if (code === "DONNEES_A_VERIFIER") {
-        return `
-          <div class="sb-help" style="margin-top:0;">
-            ${esc(defaultCauseIntro(cause))} Ces points ne sont pas forcément une fragilité métier, mais ils peuvent réduire la fiabilité de l’analyse.
-          </div>
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
-            ${items.length ? items.map(it => `
-              <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 10px; border:1px solid #e5e7eb; border-radius:10px; background:#fff;">
-                <span style="font-size:13px; color:#334155; font-weight:750;">${esc(it.label || "Point à vérifier")}</span>
-                <span class="sb-badge">${esc(String(it.value ?? "—"))}</span>
-              </div>`).join("") : `<div class="card-sub" style="margin:0;">Aucune donnée à vérifier.</div>`}
-          </div>`;
-      }
-
-      return `<div class="sb-help" style="margin-top:0;">${esc(defaultCauseIntro(cause))}</div>`;
+      return `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+          ${items.map(it => `
+            <span class="sb-badge" style="white-space:normal;line-height:1.25;">
+              ${esc(it.label || "Indicateur")} : ${esc(String(it.value ?? "—"))}${it.besoin !== undefined ? ` / ${esc(String(it.besoin))}` : ""}${it.avances_ou_experts !== undefined ? ` · Avancés/experts : ${esc(String(it.avances_ou_experts))}` : ""}${it.porteurs_declares !== undefined ? ` · Déclarés : ${esc(String(it.porteurs_declares))}` : ""}
+            </span>`).join("")}
+        </div>`;
     }
 
     const causesHtml = causes.map((c, idx) => `
       <div class="sb-accordion">
         <button type="button" class="sb-acc-head sb-btn sb-btn--soft ${idx === 0 ? "is-open" : ""}">
-          <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
-            ${causeDot(c?.severity)}<span>${esc(c?.titre || "Cause")}</span>
-            ${shareBadge(c)}
+          <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;">
+            ${dotForSeverity(c?.severity)}
+            <span style="font-weight:850;">${esc(c?.titre || "Cause")}</span>
+            ${c?.niveau ? `<span class="sb-badge">${esc(c.niveau)}</span>` : ``}
+            ${Number(c?.count || 0) > 0 ? `<span class="sb-badge sb-badge--soft">${esc(String(c.count))}</span>` : ``}
           </span>
           <span class="sb-acc-chevron">▾</span>
         </button>
         <div class="sb-acc-body">
+          <div class="card-sub" style="margin:0 0 8px 0;font-size:14px;line-height:1.55;"><b>Ce qui est détecté :</b> ${esc(c?.lecture || "—")}</div>
+          <div class="card-sub" style="margin:0;font-size:14px;line-height:1.55;"><b>Point à sécuriser :</b> ${esc(c?.action || "—")}</div>
           ${causeItemsHtml(c)}
         </div>
       </div>
@@ -4328,32 +4204,32 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <tr>
           <td class="sb-fs-13 sb-fw-700">${esc(full)}</td>
           <td class="sb-fs-13">${esc(r?.intitule_poste || "—")}</td>
-          <td class="col-center">${nsLevelBadgeHtml(r?.niveau_actuel || "—", "Niveau actuel")}</td>
-          <td class="col-center">${esc(evalDate ? formatDateFr(evalDate) : "—")}</td>
+          <td style="text-align:center;">${nsLevelBadgeHtml(r?.niveau_actuel || "—", "Niveau actuel")}</td>
+          <td style="text-align:center;">${esc(evalDate ? formatDateFr(evalDate) : "—")}</td>
           <td><span class="sb-badge ${cls}">${esc(label)}</span></td>
         </tr>`;
     }).join("");
 
     const lecture = (() => {
-      if (scoreSafe >= 75) return "Cette compétence est fortement exposée sur le périmètre analysé.";
-      if (scoreSafe >= 50) return "Cette compétence présente plusieurs fragilités à surveiller ou sécuriser.";
-      if (scoreSafe >= 25) return "Cette compétence présente une fragilité modérée.";
+      if (scoreSafe >= 75) return "Cette compétence est fortement exposée : elle doit être regardée comme un point sensible du périmètre.";
+      if (scoreSafe >= 50) return "Cette compétence présente plusieurs signes de fragilité à surveiller ou sécuriser.";
+      if (scoreSafe >= 25) return "Cette compétence présente une fragilité modérée, généralement liée à la diffusion, au niveau ou à la fiabilité des données.";
       return "Cette compétence apparaît globalement sécurisée sur le périmètre analysé.";
     })();
 
     host.innerHTML = `
       <div class="card" style="padding:14px;margin:0;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:320px;">
+          <div style="flex:1;min-width:280px;">
             <div class="card-title" style="margin-bottom:8px;">Diagnostic</div>
             <div class="card-sub" style="margin:0 0 12px 0;font-size:14px;line-height:1.55;">${esc(lecture)}</div>
-            <div style="max-width:660px;">
-              ${diagLine("Périmètre analysé", scopeLabel)}
-              ${diagLine("Criticité minimale prise en compte", data?.criticite_min ?? "—")}
-              ${diagLine("Postes concernés", stats?.nb_postes_impactes ?? postes.length)}
-              ${diagLine("Besoin total de couverture", stats?.besoin_total ?? "—")}
-              ${diagLine("Porteurs confirmés", stats?.nb_porteurs ?? 0)}
-              ${diagLine("Experts disponibles", stats?.nb_experts_dispo ?? stats?.nb_experts ?? 0)}
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <span class="sb-badge">Service : ${esc(scopeLabel)}</span>
+              <span class="sb-badge">Criticité min : ${esc(String(data?.criticite_min ?? "—"))}</span>
+              <span class="sb-badge">Postes concernés : ${esc(String(stats?.nb_postes_impactes ?? postes.length))}</span>
+              <span class="sb-badge">Besoin total : ${esc(String(stats?.besoin_total ?? "—"))}</span>
+              <span class="sb-badge">Porteurs confirmés : ${esc(String(stats?.nb_porteurs ?? 0))}</span>
+              <span class="sb-badge">Experts disponibles : ${esc(String(stats?.nb_experts_dispo ?? stats?.nb_experts ?? 0))}</span>
             </div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
@@ -4364,8 +4240,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       </div>
 
       <div class="card" style="padding:14px;margin-top:12px;">
-        <div class="card-title" style="margin-bottom:6px;">Pourquoi cette compétence est fragile ?</div>
-        <div class="card-sub" style="margin:0 0 10px 0;">Ouvrez une cause pour voir les éléments observés sur cette compétence.</div>
+        <div class="card-title" style="margin-bottom:10px;">Pourquoi cette compétence est fragile ?</div>
         ${causesHtml}
       </div>
 
@@ -4373,14 +4248,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div class="card-title" style="margin-bottom:8px;">Porteurs identifiés</div>
         <div style="overflow:auto;">
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" style="margin:0;min-width:760px;">
-            <thead><tr><th>Collaborateur</th><th>Poste actuel</th><th class="col-center">Niveau</th><th class="col-center">Dernière évaluation</th><th>Statut</th></tr></thead>
+            <thead><tr><th>Collaborateur</th><th>Poste actuel</th><th style="text-align:center;">Niveau</th><th style="text-align:center;">Dernière évaluation</th><th>Statut</th></tr></thead>
             <tbody>${porteursRows || `<tr><td colspan="5" class="sb-muted">Aucun porteur identifié.</td></tr>`}</tbody>
           </table>
         </div>
       </div>
     `;
   }
-
 
   async function showAnalyseCompetenceDetailModal(portal, id_comp_or_code, id_service) {
     const mySeq = ++_compDetailReqSeq;
