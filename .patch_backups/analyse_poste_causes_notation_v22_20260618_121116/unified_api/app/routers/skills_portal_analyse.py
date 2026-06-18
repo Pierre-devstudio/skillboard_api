@@ -4,7 +4,6 @@ from typing import Optional, List, Dict, Any, Tuple
 from collections import defaultdict
 from datetime import datetime, date, timedelta
 import json
-import re
 
 from psycopg.rows import dict_row
 
@@ -396,67 +395,6 @@ def _score_structure_gap(gap: int) -> int:
     return 45
 
 
-
-
-def _score_structure_coverage(nb_titulaires: Any, nb_cible: Any) -> int:
-    cible = max(_safe_int(nb_cible, 1), 1)
-    dispo = max(_safe_int(nb_titulaires, 0), 0)
-    gap = max(cible - dispo, 0)
-    if gap <= 0:
-        return 0
-    if dispo <= 0:
-        return 100
-    ratio = gap / float(cible)
-    return max(15, min(45, int(round(45 * ratio))))
-
-
-def _score_sorties_approchantes(nb_sorties: Any, nb_cible: Any) -> int:
-    nb = max(_safe_int(nb_sorties, 0), 0)
-    if nb <= 0:
-        return 0
-    cible = max(_safe_int(nb_cible, 1), 1)
-    ratio = min(1.0, nb / float(cible))
-    return max(6, min(15, int(round(15 * ratio))))
-
-
-def _score_renfort_potential(nb_immediats: Any, nb_a_preparer: Any, meilleur_matching: Any) -> int:
-    imm = max(_safe_int(nb_immediats, 0), 0)
-    prep = max(_safe_int(nb_a_preparer, 0), 0)
-    best = max(_safe_int(meilleur_matching, 0), 0)
-    if imm > 0:
-        return 0
-    if prep > 0:
-        return 6
-    if best >= 1:
-        return 10
-    return 15
-
-
-def _recompute_poste_score_from_components(row: Dict[str, Any]) -> None:
-    rupture = bool(row.get("rupture") or False)
-    if rupture:
-        row["indice_fragilite"] = 100
-        row["is_fragile"] = True
-        row["score_competences"] = 100
-        row["score_total"] = 100
-        return
-
-    structure = max(_safe_int(row.get("score_structurel"), 0), 0)
-    efficacite = max(_safe_int(row.get("score_efficacite"), 0), 0)
-    dependance = max(_safe_int(row.get("score_dependance"), 0), 0)
-    sorties = max(_safe_int(row.get("score_sorties_approchantes"), 0), 0)
-    renfort = max(_safe_int(row.get("score_renfort_potentiel"), 0), 0)
-
-    base = structure + efficacite + dependance
-    # Les sorties proches et le manque de renfort sont des facteurs aggravants :
-    # ils pèsent quand le poste présente déjà une fragilité ou une dépendance structurelle.
-    aggravants = (sorties + renfort) if base > 0 else 0
-    score = min(95, base + aggravants)
-
-    row["score_competences"] = base
-    row["score_total"] = score
-    row["indice_fragilite"] = int(score)
-    row["is_fragile"] = bool(score > 0)
 def _score_transmission(pool_total: Any, pool_eligible: Any) -> int:
     total = max(_safe_int(pool_total, 0), 0)
     elig = max(_safe_int(pool_eligible, 0), 0)
@@ -557,17 +495,11 @@ def _compute_poste_fragility_record(
     row["statut_poste_norm"] = _normalize_poste_statut(row.get("statut_poste"))
     row["is_excluded"] = _is_poste_statut_excluded(row.get("statut_poste"))
 
-    nb_dispo = max(_safe_int(row.get("nb_titulaires"), 0), 0)
-    nb_rattaches = max(_safe_int(row.get("nb_titulaires_rattaches"), nb_dispo), 0)
-    nb_indispo = max(_safe_int(row.get("nb_indisponibles"), max(nb_rattaches - nb_dispo, 0)), 0)
-    nb_sorties = max(_safe_int(row.get("nb_sorties_approchantes"), 0), 0)
+    nb_titulaires = max(_safe_int(row.get("nb_titulaires"), 0), 0)
     nb_cible = max(_safe_int(row.get("nb_titulaires_cible"), 1), 1)
-    gap = max(nb_cible - nb_dispo, 0)
-    rupture = (nb_dispo <= 0 and nb_cible >= 1)
-
-    # Pour les écarts de maîtrise, on ne transforme pas une absence de titulaire en écart compétence.
-    # L'efficacité se lit sur les titulaires réellement disponibles.
-    besoin_local = max(min(nb_dispo, nb_cible), 0)
+    gap = max(nb_cible - nb_titulaires, 0)
+    rupture = (nb_titulaires <= 0 and nb_cible >= 1)
+    besoin_local = max(min(nb_titulaires, nb_cible), 0)
     nb_competences_analysees = len(comp_rows or [])
 
     pool_total = 0
@@ -580,8 +512,9 @@ def _compute_poste_fragility_record(
         if _employee_matches_poste_constraints(emp, row):
             pool_eligible += 1
 
-    nb_niveau_non_atteint = 0
-    nb_dependances = 0
+    nb_non_tenues = 0
+    nb_dep_zero = 0
+    nb_dep_one = 0
     efficiency_missing_units = 0
     efficiency_points = 0
     dependance_points = 0
@@ -590,13 +523,20 @@ def _compute_poste_fragility_record(
     for c in comp_rows or []:
         nb_tit_any = max(_safe_int(c.get("nb_tit_any"), 0), 0)
         nb_tit_ok = max(_safe_int(c.get("nb_tit_ok"), 0), 0)
+        nb_ok_all = max(_safe_int(c.get("nb_ok_all"), 0), 0)
 
         if besoin_local <= 0:
             continue
 
+        if nb_tit_ok < besoin_local:
+            nb_non_tenues += 1
+
+        # Doctrine unique : seule une compétence évaluée et suffisante couvre le poste.
+        # Les écarts de compétences relèvent du risque d’efficacité, pas du risque structurel.
+        # Structure = tenue du poste / cible de titulaires.
+        # Efficacité = couverture métier non confirmée ou insuffisante.
         missing_validated = max(besoin_local - nb_tit_ok, 0)
         if missing_validated > 0:
-            nb_niveau_non_atteint += 1
             efficiency_missing_units += missing_validated
             efficiency_points += missing_validated * _score_efficacite_unit(c.get("poids_criticite"))
 
@@ -604,227 +544,63 @@ def _compute_poste_fragility_record(
         if declared_but_not_validated > 0:
             nb_couvertures_non_confirmees += declared_but_not_validated
 
-        # Dépendance = lecture interne au poste : une couverture suffisante repose sur une seule personne.
-        # Le renfort externe est traité à part par matching de poste.
-        if besoin_local == 1 and nb_tit_ok == 1:
-            nb_dependances += 1
-            dependance_points += _score_dependance_unit(c.get("poids_criticite"), relais_faible=True)
+        if nb_tit_ok >= besoin_local:
+            relais_ok = max(nb_ok_all - nb_tit_ok, 0)
+            if relais_ok <= 0:
+                nb_dep_zero += 1
+                dependance_points += _score_dependance_unit(c.get("poids_criticite"), relais_faible=False)
+            elif relais_ok == 1:
+                nb_dep_one += 1
+                dependance_points += _score_dependance_unit(c.get("poids_criticite"), relais_faible=True)
 
-    structure_score = _score_structure_coverage(nb_dispo, nb_cible)
+    structure_score = _score_structure_gap(gap)
     efficacite_score = min(45, efficiency_points)
     dependance_score = min(25, dependance_points)
-    sortie_score = _score_sorties_approchantes(nb_sorties, nb_cible)
+    transmission_score = _score_transmission(pool_total, pool_eligible)
+
+    nb_fragilites = nb_non_tenues + nb_dep_zero + nb_dep_one
+
+    if rupture:
+        # Poste non tenu = rupture structurelle. Les autres composantes ne doivent pas
+        # venir brouiller la lecture des causes.
+        structure_score = 100
+        efficacite_score = 0
+        dependance_score = 0
+        transmission_score = 0
+        base_score = 100
+        score = 100
+    else:
+        base_score = structure_score + efficacite_score + dependance_score
+        score = min(95, base_score + (transmission_score if base_score > 0 else 0))
 
     row.update({
-        "nb_titulaires": nb_dispo,
-        "nb_titulaires_rattaches": nb_rattaches,
-        "nb_titulaires_disponibles": nb_dispo,
-        "nb_indisponibles": nb_indispo,
-        "nb_sorties_approchantes": nb_sorties,
+        "nb_titulaires": nb_titulaires,
         "nb_titulaires_cible": nb_cible,
         "gap_titulaires": gap,
         "pool_total": pool_total,
         "pool_eligible": pool_eligible,
         "nb_competences_analysees": nb_competences_analysees,
         "is_non_analyse": bool(nb_competences_analysees <= 0 and not rupture),
-        "motif_fragilite": "Couverture du poste insuffisante" if rupture else ("Référentiel poste incomplet" if nb_competences_analysees <= 0 else ""),
+        "motif_fragilite": "Poste actif sans titulaire" if rupture else ("Référentiel poste incomplet" if nb_competences_analysees <= 0 else ""),
         "nb_couvertures_non_confirmees": nb_couvertures_non_confirmees,
-        "nb_critiques_sans_porteur": nb_niveau_non_atteint,
-        "nb_critiques_porteur_unique": nb_dependances,
-        "nb_critiques_fragiles": nb_niveau_non_atteint + nb_dependances + (1 if gap > 0 else 0) + (1 if nb_sorties > 0 else 0),
-        "nb_critiques_sans_releve": 0,
-        "nb_critiques_releve_faible": 0,
+        "nb_critiques_sans_porteur": nb_non_tenues,
+        "nb_critiques_porteur_unique": nb_dep_zero,
+        "nb_critiques_fragiles": nb_fragilites,
+        "nb_critiques_sans_releve": nb_dep_zero,
+        "nb_critiques_releve_faible": nb_dep_one,
         "score_structurel": structure_score,
         "score_efficacite": efficacite_score,
         "score_dependance": dependance_score,
-        "score_sorties_approchantes": sortie_score,
-        "score_renfort_potentiel": 0,
-        "score_transmission": 0,
-        "score_competences": 0,
-        "base_score": 0,
-        "indice_fragilite": 0,
-        "is_fragile": False,
+        "score_transmission": transmission_score,
+        "score_competences": base_score,
+        "base_score": base_score,
+        "indice_fragilite": int(score),
+        "is_fragile": bool(rupture or base_score > 0),
         "rupture": rupture,
         "besoin_local": besoin_local,
     })
-    _recompute_poste_score_from_components(row)
-    row["base_score"] = row.get("score_competences", 0)
     return row
 
-
-
-def _analyse_matching_potential_by_poste(
-    cur,
-    id_ent: str,
-    id_service: Optional[str],
-    criticite_min: int,
-    period_start: date,
-    period_end: date,
-    seuil_immediat: int = 75,
-    seuil_a_preparer: int = 60,
-) -> Dict[str, Dict[str, Any]]:
-    if period_start > period_end:
-        period_start, period_end = period_end, period_start
-    scope_id = (id_service or "").strip() or None
-    cte_sql, cte_params = _build_scope_cte(id_ent, scope_id)
-
-    cur.execute(
-        f"""
-        WITH {cte_sql}
-        SELECT fp.id_poste, fp.codif_poste, COALESCE(fp.codif_client,'') AS codif_client, COALESCE(fp.intitule_poste,'') AS intitule_poste
-        FROM public.tbl_fiche_poste fp
-        JOIN postes_scope ps ON ps.id_poste = fp.id_poste
-        WHERE fp.id_ent = %s
-          AND COALESCE(fp.actif, TRUE) = TRUE
-        """,
-        tuple(cte_params + [id_ent]),
-    )
-    postes = [dict(r) for r in (cur.fetchall() or [])]
-    poste_map = {str(r.get("id_poste") or "").strip(): r for r in postes if str(r.get("id_poste") or "").strip()}
-    if not poste_map:
-        return {}
-
-    cur.execute(
-        f"""
-        WITH {cte_sql}
-        SELECT fpc.id_poste, fpc.id_competence AS id_comp, fpc.niveau_requis, COALESCE(fpc.poids_criticite,1)::int AS poids_criticite
-        FROM public.tbl_fiche_poste_competence fpc
-        JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
-        WHERE COALESCE(fpc.masque, FALSE) = FALSE
-          AND COALESCE(fpc.poids_criticite, 0) >= %s
-        ORDER BY fpc.id_poste
-        """,
-        tuple(cte_params + [int(criticite_min)]),
-    )
-    req_map: Dict[str, List[Dict[str, Any]]] = {}
-    comp_ids: List[str] = []
-    for row in (cur.fetchall() or []):
-        pid = str(row.get("id_poste") or "").strip()
-        cid = str(row.get("id_comp") or "").strip()
-        if not pid or not cid:
-            continue
-        req_map.setdefault(pid, []).append({
-            "id_comp": cid,
-            "niveau_requis": (row.get("niveau_requis") or "").strip().upper(),
-            "poids": max(1, _analyse_pdf_safe_int(row.get("poids_criticite"))),
-        })
-        comp_ids.append(cid)
-    comp_ids = sorted(set(comp_ids))
-
-    cur.execute(
-        f"""
-        WITH {cte_sql}
-        SELECT e.id_effectif, COALESCE(e.id_poste_actuel,'') AS id_poste_actuel
-        FROM public.tbl_effectif_client e
-        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-        WHERE e.id_ent = %s
-          AND COALESCE(e.archive, FALSE) = FALSE
-          AND COALESCE(e.statut_actif, TRUE) = TRUE
-          AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > %s)
-          AND NOT EXISTS (
-            SELECT 1 FROM public.tbl_effectif_client_break b
-            WHERE b.id_effectif = e.id_effectif
-              AND COALESCE(b.archive, FALSE) = FALSE
-              AND b.date_debut <= %s
-              AND b.date_fin >= %s
-          )
-        """,
-        tuple(cte_params + [id_ent, period_end, period_end, period_start]),
-    )
-    effectifs = [dict(r) for r in (cur.fetchall() or [])]
-    effectif_poste = {str(r.get("id_effectif") or "").strip(): str(r.get("id_poste_actuel") or "").strip() for r in effectifs if str(r.get("id_effectif") or "").strip()}
-    if not comp_ids or not effectif_poste:
-        return {pid: {**meta, "nb_renforts_immediats": 0, "nb_renforts_a_preparer": 0, "meilleur_matching": 0} for pid, meta in poste_map.items()}
-
-    cur.execute(
-        f"""
-        WITH {cte_sql}
-        SELECT ec.id_effectif_client AS id_effectif, ec.id_comp, ac.resultat_eval
-        FROM public.tbl_effectif_client_competence ec
-        JOIN effectifs_scope es ON es.id_effectif = ec.id_effectif_client
-        LEFT JOIN public.tbl_effectif_client_audit_competence ac
-          ON ac.id_audit_competence = ec.id_dernier_audit
-        WHERE COALESCE(ec.actif, TRUE) = TRUE
-          AND COALESCE(ec.archive, FALSE) = FALSE
-          AND ec.id_comp = ANY(%s)
-        """,
-        tuple(cte_params + [comp_ids]),
-    )
-    scores_map: Dict[str, Dict[str, Optional[float]]] = {}
-    for row in (cur.fetchall() or []):
-        ide = str(row.get("id_effectif") or "").strip()
-        cid = str(row.get("id_comp") or "").strip()
-        if not ide or not cid:
-            continue
-        scores_map.setdefault(ide, {})[cid] = _safe_float(row.get("resultat_eval"))
-
-    out: Dict[str, Dict[str, Any]] = {}
-    for pid, poste in poste_map.items():
-        reqs = req_map.get(pid) or []
-        if not reqs:
-            out[pid] = {**poste, "nb_renforts_immediats": 0, "nb_renforts_a_preparer": 0, "meilleur_matching": 0}
-            continue
-        poids_total = sum(max(1, _analyse_pdf_safe_int(r.get("poids"))) for r in reqs) or 1
-        nb_imm = 0
-        nb_prep_total = 0
-        best = 0
-        for ide, current_poste in effectif_poste.items():
-            if current_poste == pid:
-                continue
-            eff_scores = scores_map.get(ide, {})
-            if not eff_scores:
-                continue
-            sum_ratio = 0.0
-            for req in reqs:
-                score = eff_scores.get(req["id_comp"])
-                seuil = _score_seuil_for_niveau(req.get("niveau_requis") or "")
-                ratio = 0.0 if score is None or seuil <= 0 else min(max(score / seuil, 0.0), 1.0)
-                sum_ratio += max(1, _analyse_pdf_safe_int(req.get("poids"))) * ratio
-            score_pct = int(round((sum_ratio / float(poids_total)) * 100.0))
-            best = max(best, score_pct)
-            if score_pct >= int(seuil_a_preparer):
-                nb_prep_total += 1
-            if score_pct >= int(seuil_immediat):
-                nb_imm += 1
-        out[pid] = {
-            **poste,
-            "nb_renforts_immediats": nb_imm,
-            "nb_renforts_a_preparer": max(nb_prep_total - nb_imm, 0),
-            "meilleur_matching": best,
-        }
-    return out
-
-
-def _augment_poste_records_with_matching_potential(
-    cur,
-    id_ent: str,
-    id_service: Optional[str],
-    criticite_min: int,
-    records: List[Dict[str, Any]],
-    period_start: date,
-    period_end: date,
-) -> None:
-    if not records:
-        return
-    try:
-        match = _analyse_matching_potential_by_poste(cur, id_ent, id_service, criticite_min, period_start, period_end)
-    except Exception:
-        match = {}
-    for row in records:
-        pid = str(row.get("id_poste") or "").strip()
-        m = match.get(pid) or {}
-        imm = max(_safe_int(m.get("nb_renforts_immediats"), 0), 0)
-        prep = max(_safe_int(m.get("nb_renforts_a_preparer"), 0), 0)
-        best = max(_safe_int(m.get("meilleur_matching"), 0), 0)
-        row["nb_renforts_immediats"] = imm
-        row["nb_renforts_a_preparer"] = prep
-        row["meilleur_matching"] = best
-        row["score_renfort_potentiel"] = _score_renfort_potential(imm, prep, best)
-        row["score_transmission"] = row["score_renfort_potentiel"]
-        row["nb_critiques_sans_releve"] = 1 if imm <= 0 else 0
-        row["nb_critiques_releve_faible"] = 1 if (imm <= 0 and prep > 0) else 0
-        _recompute_poste_score_from_components(row)
-        row["base_score"] = row.get("score_competences", 0)
 def _fetch_postes_fragility_records(
     cur,
     id_ent: str,
@@ -832,69 +608,32 @@ def _fetch_postes_fragility_records(
     criticite_min: int,
 ) -> List[Dict[str, Any]]:
     cte_sql, cte_params = _build_scope_cte(id_ent, id_service)
-    today = date.today()
-    horizon_3m = _analyse_add_months(today, 3)
 
     sql_postes = f"""
     WITH
     {cte_sql},
-    titulaires_rattaches AS (
-        SELECT e.id_poste_actuel AS id_poste, COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires_rattaches
-        FROM public.tbl_effectif_client e
-        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-        WHERE e.id_ent = %s
-          AND COALESCE(e.archive, FALSE) = FALSE
-          AND COALESCE(e.statut_actif, TRUE) = TRUE
-          AND COALESCE(e.id_poste_actuel, '') <> ''
-          AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > CURRENT_DATE)
-        GROUP BY e.id_poste_actuel
-    ),
-    titulaires_dispo AS (
-        SELECT e.id_poste_actuel AS id_poste, COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
-        FROM public.tbl_effectif_client e
-        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-        WHERE e.id_ent = %s
-          AND COALESCE(e.archive, FALSE) = FALSE
-          AND COALESCE(e.statut_actif, TRUE) = TRUE
-          AND COALESCE(e.id_poste_actuel, '') <> ''
-          AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > CURRENT_DATE)
+    effectifs_dispo AS (
+        SELECT es.id_effectif
+        FROM effectifs_scope es
+        JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
           AND NOT EXISTS (
-            SELECT 1 FROM public.tbl_effectif_client_break b
+            SELECT 1
+            FROM public.tbl_effectif_client_break b
             WHERE b.id_effectif = e.id_effectif
-              AND COALESCE(b.archive, FALSE) = FALSE
+              AND b.archive = FALSE
               AND b.date_debut <= CURRENT_DATE
               AND b.date_fin >= CURRENT_DATE
           )
-        GROUP BY e.id_poste_actuel
     ),
-    titulaires_indispo AS (
-        SELECT e.id_poste_actuel AS id_poste, COUNT(DISTINCT e.id_effectif)::int AS nb_indisponibles
+    titulaires AS (
+        SELECT
+            e.id_poste_actuel AS id_poste,
+            COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
         FROM public.tbl_effectif_client e
-        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-        WHERE e.id_ent = %s
-          AND COALESCE(e.archive, FALSE) = FALSE
-          AND COALESCE(e.statut_actif, TRUE) = TRUE
+        JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
           AND COALESCE(e.id_poste_actuel, '') <> ''
-          AND EXISTS (
-            SELECT 1 FROM public.tbl_effectif_client_break b
-            WHERE b.id_effectif = e.id_effectif
-              AND COALESCE(b.archive, FALSE) = FALSE
-              AND b.date_debut <= CURRENT_DATE
-              AND b.date_fin >= CURRENT_DATE
-          )
-        GROUP BY e.id_poste_actuel
-    ),
-    titulaires_sorties AS (
-        SELECT e.id_poste_actuel AS id_poste, COUNT(DISTINCT e.id_effectif)::int AS nb_sorties_approchantes
-        FROM public.tbl_effectif_client e
-        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-        WHERE e.id_ent = %s
-          AND COALESCE(e.archive, FALSE) = FALSE
-          AND COALESCE(e.statut_actif, TRUE) = TRUE
-          AND COALESCE(e.id_poste_actuel, '') <> ''
-          AND e.date_sortie_prevue IS NOT NULL
-          AND e.date_sortie_prevue >= CURRENT_DATE
-          AND e.date_sortie_prevue <= %s
         GROUP BY e.id_poste_actuel
     )
     SELECT
@@ -906,47 +645,60 @@ def _fetch_postes_fragility_records(
         COALESCE(o.nom_service, '') AS nom_service,
         COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
         COALESCE(prh.statut_poste, 'actif')::text AS statut_poste,
-        CASE WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$' THEN trim(fp.niveau_education_minimum)::int ELSE 0 END AS edu_min_rank,
+        CASE
+            WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$'
+                THEN trim(fp.niveau_education_minimum)::int
+            ELSE 0
+        END AS edu_min_rank,
         (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
         COALESCE(nd.titre, '')::text AS nsf_domaine_titre,
-        COALESCE(td.nb_titulaires, 0)::int AS nb_titulaires,
-        COALESCE(tr.nb_titulaires_rattaches, 0)::int AS nb_titulaires_rattaches,
-        COALESCE(ti.nb_indisponibles, 0)::int AS nb_indisponibles,
-        COALESCE(ts.nb_sorties_approchantes, 0)::int AS nb_sorties_approchantes
+        COALESCE(t.nb_titulaires, 0)::int AS nb_titulaires
     FROM postes_scope ps
     JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
-    LEFT JOIN public.tbl_entreprise_organigramme o ON o.id_ent = %s AND o.id_service = fp.id_service AND o.archive = FALSE
+    LEFT JOIN public.tbl_entreprise_organigramme o
+      ON o.id_ent = %s
+     AND o.id_service = fp.id_service
+     AND o.archive = FALSE
     LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = fp.id_poste
     LEFT JOIN public.tbl_nsf_domaine nd ON nd.code = fp.nsf_domaine_code
-    LEFT JOIN titulaires_dispo td ON td.id_poste = fp.id_poste
-    LEFT JOIN titulaires_rattaches tr ON tr.id_poste = fp.id_poste
-    LEFT JOIN titulaires_indispo ti ON ti.id_poste = fp.id_poste
-    LEFT JOIN titulaires_sorties ts ON ts.id_poste = fp.id_poste
+    LEFT JOIN titulaires t ON t.id_poste = fp.id_poste
     """
-    cur.execute(sql_postes, tuple(cte_params + [id_ent, id_ent, id_ent, id_ent, horizon_3m, id_ent]))
+    cur.execute(sql_postes, tuple(cte_params + [id_ent]))
     poste_rows = cur.fetchall() or []
     if not poste_rows:
         return []
-    postes_map = {str(r.get("id_poste") or ""): dict(r) for r in poste_rows}
+
+    postes_map: Dict[str, Dict[str, Any]] = {}
+    for r in poste_rows:
+        postes_map[str(r.get("id_poste") or "")] = dict(r)
 
     sql_emps = f"""
-    WITH {cte_sql}
-    SELECT e.id_effectif, e.id_poste_actuel, COALESCE(e.niveau_education, '') AS niveau_education, COALESCE(e.domaine_education, '') AS domaine_education
+    WITH
+    {cte_sql},
+    effectifs_dispo AS (
+        SELECT es.id_effectif
+        FROM effectifs_scope es
+        JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+          AND NOT EXISTS (
+            SELECT 1
+            FROM public.tbl_effectif_client_break b
+            WHERE b.id_effectif = e.id_effectif
+              AND b.archive = FALSE
+              AND b.date_debut <= CURRENT_DATE
+              AND b.date_fin >= CURRENT_DATE
+          )
+    )
+    SELECT
+        e.id_effectif,
+        e.id_poste_actuel,
+        COALESCE(e.niveau_education, '') AS niveau_education,
+        COALESCE(e.domaine_education, '') AS domaine_education
     FROM public.tbl_effectif_client e
-    JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-    WHERE e.id_ent = %s
-      AND COALESCE(e.archive, FALSE) = FALSE
-      AND COALESCE(e.statut_actif, TRUE) = TRUE
-      AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > CURRENT_DATE)
-      AND NOT EXISTS (
-        SELECT 1 FROM public.tbl_effectif_client_break b
-        WHERE b.id_effectif = e.id_effectif
-          AND COALESCE(b.archive, FALSE) = FALSE
-          AND b.date_debut <= CURRENT_DATE
-          AND b.date_fin >= CURRENT_DATE
-      )
+    JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
+    WHERE COALESCE(e.archive, FALSE) = FALSE
     """
-    cur.execute(sql_emps, tuple(cte_params + [id_ent]))
+    cur.execute(sql_emps, tuple(cte_params))
     employees = [dict(r) for r in (cur.fetchall() or [])]
 
     sql_comp = f"""
@@ -956,70 +708,150 @@ def _fetch_postes_fragility_records(
         SELECT es.id_effectif
         FROM effectifs_scope es
         JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
-        WHERE e.id_ent = %s
-          AND COALESCE(e.archive, FALSE) = FALSE
-          AND COALESCE(e.statut_actif, TRUE) = TRUE
-          AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > CURRENT_DATE)
+        WHERE COALESCE(e.archive, FALSE) = FALSE
           AND NOT EXISTS (
-            SELECT 1 FROM public.tbl_effectif_client_break b
+            SELECT 1
+            FROM public.tbl_effectif_client_break b
             WHERE b.id_effectif = e.id_effectif
-              AND COALESCE(b.archive, FALSE) = FALSE
+              AND b.archive = FALSE
               AND b.date_debut <= CURRENT_DATE
               AND b.date_fin >= CURRENT_DATE
           )
     ),
     poste_info AS (
-        SELECT fp.id_poste,
-               CASE WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$' THEN trim(fp.niveau_education_minimum)::int ELSE 0 END AS edu_min_rank,
-               (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
-               COALESCE(nd.titre, '')::text AS nsf_domaine_titre
+        SELECT
+            fp.id_poste,
+            CASE
+                WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$'
+                    THEN trim(fp.niveau_education_minimum)::int
+                ELSE 0
+            END AS edu_min_rank,
+            (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
+            COALESCE(nd.titre, '')::text AS nsf_domaine_titre
         FROM postes_scope ps
         JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
         LEFT JOIN public.tbl_nsf_domaine nd ON nd.code = fp.nsf_domaine_code
     ),
     req AS (
-        SELECT DISTINCT pi.id_poste, c.id_comp, c.code, c.intitule, COALESCE(fpc.niveau_requis, '')::text AS niveau_requis,
-               COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite, pi.edu_min_rank, pi.nsf_domain_required, pi.nsf_domaine_titre
+        SELECT DISTINCT
+            pi.id_poste,
+            c.id_comp,
+            c.code,
+            c.intitule,
+            COALESCE(fpc.niveau_requis, '')::text AS niveau_requis,
+            COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite,
+            pi.edu_min_rank,
+            pi.nsf_domain_required,
+            pi.nsf_domaine_titre
         FROM poste_info pi
         JOIN public.tbl_fiche_poste_competence fpc ON fpc.id_poste = pi.id_poste
-        JOIN public.tbl_competence c ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+        JOIN public.tbl_competence c
+          ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
         WHERE c.etat = 'active'
           AND COALESCE(c.masque, FALSE) = FALSE
           AND COALESCE(fpc.masque, FALSE) = FALSE
           AND COALESCE(fpc.poids_criticite, 0)::int >= %s
     ),
     pool_all_effectifs AS (
-        SELECT e.id_effectif, e.id_poste_actuel, COALESCE(e.niveau_education, '') AS niveau_education, COALESCE(e.domaine_education, '') AS domaine_education
+        SELECT
+            e.id_effectif,
+            e.id_poste_actuel,
+            COALESCE(e.niveau_education, '') AS niveau_education,
+            COALESCE(e.domaine_education, '') AS domaine_education
         FROM public.tbl_effectif_client e
         JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
         WHERE COALESCE(e.archive, FALSE) = FALSE
     ),
     ec_raw AS (
-        SELECT r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis, pe.id_effectif, pe.id_poste_actuel,
-               CASE upper(trim(COALESCE(r.niveau_requis, ''))) WHEN 'A' THEN 1 WHEN 'B' THEN 2 WHEN 'C' THEN 3 WHEN 'D' THEN 4 ELSE 0 END AS req_rank,
-               CASE lower(trim(COALESCE(ec.niveau_actuel, ''))) WHEN 'a' THEN 1 WHEN 'initial' THEN 1 WHEN 'b' THEN 2 WHEN 'intermediaire' THEN 2 WHEN 'intermédiaire' THEN 2 WHEN 'c' THEN 3 WHEN 'avance' THEN 3 WHEN 'avancé' THEN 3 WHEN 'avancee' THEN 3 WHEN 'avancée' THEN 3 WHEN 'd' THEN 4 WHEN 'expert' THEN 4 ELSE 0 END AS act_rank,
-               CASE WHEN a.resultat_eval IS NOT NULL AND (a.date_audit IS NOT NULL OR ec.date_derniere_eval IS NOT NULL OR a.id_audit_competence IS NOT NULL) THEN TRUE ELSE FALSE END AS is_evaluee,
-               CASE WHEN (r.edu_min_rank = 0 OR (CASE WHEN trim(COALESCE(pe.niveau_education, '')) ~ '^[0-9]+$' THEN trim(pe.niveau_education)::int ELSE 0 END) >= r.edu_min_rank)
-                    AND (r.nsf_domain_required = FALSE OR (lower(trim(COALESCE(pe.domaine_education, ''))) = lower(trim(COALESCE(r.nsf_domaine_titre, ''))) AND COALESCE(r.nsf_domaine_titre, '') <> '')) THEN TRUE ELSE FALSE END AS is_eligible
+        SELECT
+            r.id_poste,
+            r.id_comp,
+            r.code,
+            r.intitule,
+            r.poids_criticite,
+            r.niveau_requis,
+            pe.id_effectif,
+            pe.id_poste_actuel,
+            CASE upper(trim(COALESCE(r.niveau_requis, '')))
+                WHEN 'A' THEN 1
+                WHEN 'B' THEN 2
+                WHEN 'C' THEN 3
+                WHEN 'D' THEN 4
+                ELSE 0
+            END AS req_rank,
+            CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
+                WHEN 'a' THEN 1
+                WHEN 'initial' THEN 1
+                WHEN 'b' THEN 2
+                WHEN 'intermediaire' THEN 2
+                WHEN 'intermédiaire' THEN 2
+                WHEN 'c' THEN 3
+                WHEN 'avance' THEN 3
+                WHEN 'avancé' THEN 3
+                WHEN 'avancee' THEN 3
+                WHEN 'avancée' THEN 3
+                WHEN 'd' THEN 4
+                WHEN 'expert' THEN 4
+                ELSE 0
+            END AS act_rank,
+            CASE
+                WHEN a.resultat_eval IS NOT NULL
+                 AND (a.date_audit IS NOT NULL OR ec.date_derniere_eval IS NOT NULL OR a.id_audit_competence IS NOT NULL)
+                THEN TRUE
+                ELSE FALSE
+            END AS is_evaluee,
+            CASE
+              WHEN (
+                r.edu_min_rank = 0
+                OR (
+                  CASE
+                    WHEN trim(COALESCE(pe.niveau_education, '')) ~ '^[0-9]+$' THEN trim(pe.niveau_education)::int
+                    ELSE 0
+                  END
+                ) >= r.edu_min_rank
+              )
+              AND (
+                r.nsf_domain_required = FALSE
+                OR (
+                  lower(trim(COALESCE(pe.domaine_education, ''))) = lower(trim(COALESCE(r.nsf_domaine_titre, '')))
+                  AND COALESCE(r.nsf_domaine_titre, '') <> ''
+                )
+              )
+              THEN TRUE ELSE FALSE
+            END AS is_eligible
         FROM req r
         JOIN public.tbl_effectif_client_competence ec ON ec.id_comp = r.id_comp
-        LEFT JOIN public.tbl_effectif_client_audit_competence a ON a.id_audit_competence = ec.id_dernier_audit AND a.id_effectif_competence = ec.id_effectif_competence
+        LEFT JOIN public.tbl_effectif_client_audit_competence a
+          ON a.id_audit_competence = ec.id_dernier_audit
+         AND a.id_effectif_competence = ec.id_effectif_competence
         JOIN pool_all_effectifs pe ON pe.id_effectif = ec.id_effectif_client
-        WHERE COALESCE(ec.actif, TRUE) = TRUE AND COALESCE(ec.archive, FALSE) = FALSE
+        WHERE COALESCE(ec.actif, TRUE) = TRUE
+          AND COALESCE(ec.archive, FALSE) = FALSE
     ),
     ec_ok AS (
-        SELECT *, CASE WHEN req_rank > 0 THEN (is_evaluee AND act_rank >= req_rank) ELSE (is_evaluee AND act_rank > 0) END AS is_ok
+        SELECT
+            *,
+            CASE
+                WHEN req_rank > 0 THEN (is_evaluee AND act_rank >= req_rank)
+                ELSE (is_evaluee AND act_rank > 0)
+            END AS is_ok
         FROM ec_raw
     )
-    SELECT r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis,
-           COUNT(DISTINCT CASE WHEN eok.id_poste_actuel = r.id_poste THEN eok.id_effectif END)::int AS nb_tit_any,
-           COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible AND eok.id_poste_actuel = r.id_poste THEN eok.id_effectif END)::int AS nb_tit_ok,
-           COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible THEN eok.id_effectif END)::int AS nb_ok_all
+    SELECT
+        r.id_poste,
+        r.id_comp,
+        r.code,
+        r.intitule,
+        r.poids_criticite,
+        r.niveau_requis,
+        COUNT(DISTINCT CASE WHEN eok.id_poste_actuel = r.id_poste THEN eok.id_effectif END)::int AS nb_tit_any,
+        COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible AND eok.id_poste_actuel = r.id_poste THEN eok.id_effectif END)::int AS nb_tit_ok,
+        COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible THEN eok.id_effectif END)::int AS nb_ok_all
     FROM req r
     LEFT JOIN ec_ok eok ON eok.id_poste = r.id_poste AND eok.id_comp = r.id_comp
     GROUP BY r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis
     """
-    cur.execute(sql_comp, tuple(cte_params + [id_ent, int(criticite_min)]))
+    cur.execute(sql_comp, tuple(cte_params + [int(criticite_min)]))
     comp_rows = cur.fetchall() or []
     comp_by_poste: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for r in comp_rows:
@@ -1032,9 +864,18 @@ def _fetch_postes_fragility_records(
             continue
         records.append(rec)
 
-    _augment_poste_records_with_matching_potential(cur, id_ent, id_service, int(criticite_min), records, today, today)
-
-    records.sort(key=lambda r: (-int(r.get("indice_fragilite") or 0), int(r.get("nb_titulaires") or 0), -int(r.get("gap_titulaires") or 0), str(r.get("codif_poste") or ""), str(r.get("intitule_poste") or "")))
+    records.sort(
+        key=lambda r: (
+            -int(r.get("indice_fragilite") or 0),
+            int(r.get("nb_titulaires") or 0),
+            -int(r.get("nb_critiques_sans_porteur") or 0),
+            -int(r.get("gap_titulaires") or 0),
+            -int(r.get("nb_critiques_porteur_unique") or 0),
+            -int(r.get("nb_critiques_sans_releve") or 0),
+            str(r.get("codif_poste") or ""),
+            str(r.get("intitule_poste") or ""),
+        )
+    )
     return records
 
 def _fetch_postes_fragility_records_projected(
@@ -1046,9 +887,12 @@ def _fetch_postes_fragility_records_projected(
     period_end: date,
 ) -> List[Dict[str, Any]]:
     """
-    Projection période : même moteur que l'analyse actuelle, avec disponibilité projetée.
-    Un collaborateur est retiré s'il a une indisponibilité qui chevauche la période
-    ou une date de sortie prévue avant la fin de période.
+    Calcule la fragilité des postes sur une période projetée.
+
+    Règle métier:
+    - un collaborateur est retiré de la couverture s'il a une indisponibilité qui chevauche la période;
+    - un collaborateur est retiré si une date de sortie prévue tombe avant ou pendant la fin de période
+      (départ, retraite planifiée, fin de contrat, autre sortie renseignée dans date_sortie_prevue).
     """
     if period_start > period_end:
         period_start, period_end = period_end, period_start
@@ -1057,75 +901,97 @@ def _fetch_postes_fragility_records_projected(
     sql_postes = f"""
     WITH
     {cte_sql},
-    titulaires_rattaches AS (
-        SELECT e.id_poste_actuel AS id_poste, COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires_rattaches
-        FROM public.tbl_effectif_client e
-        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-        WHERE e.id_ent = %s AND COALESCE(e.archive, FALSE) = FALSE AND COALESCE(e.statut_actif, TRUE) = TRUE AND COALESCE(e.id_poste_actuel, '') <> ''
-        GROUP BY e.id_poste_actuel
-    ),
-    titulaires_dispo AS (
-        SELECT e.id_poste_actuel AS id_poste, COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
-        FROM public.tbl_effectif_client e
-        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-        WHERE e.id_ent = %s AND COALESCE(e.archive, FALSE) = FALSE AND COALESCE(e.statut_actif, TRUE) = TRUE AND COALESCE(e.id_poste_actuel, '') <> ''
+    effectifs_dispo AS (
+        SELECT es.id_effectif
+        FROM effectifs_scope es
+        JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
           AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > %s)
-          AND NOT EXISTS (SELECT 1 FROM public.tbl_effectif_client_break b WHERE b.id_effectif = e.id_effectif AND COALESCE(b.archive, FALSE) = FALSE AND b.date_debut <= %s AND b.date_fin >= %s)
-        GROUP BY e.id_poste_actuel
+          AND NOT EXISTS (
+            SELECT 1
+            FROM public.tbl_effectif_client_break b
+            WHERE b.id_effectif = e.id_effectif
+              AND COALESCE(b.archive, FALSE) = FALSE
+              AND b.date_debut <= %s
+              AND b.date_fin >= %s
+          )
     ),
-    titulaires_indispo AS (
-        SELECT e.id_poste_actuel AS id_poste, COUNT(DISTINCT e.id_effectif)::int AS nb_indisponibles
+    titulaires AS (
+        SELECT
+            e.id_poste_actuel AS id_poste,
+            COUNT(DISTINCT e.id_effectif)::int AS nb_titulaires
         FROM public.tbl_effectif_client e
-        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-        WHERE e.id_ent = %s AND COALESCE(e.archive, FALSE) = FALSE AND COALESCE(e.statut_actif, TRUE) = TRUE AND COALESCE(e.id_poste_actuel, '') <> ''
-          AND EXISTS (SELECT 1 FROM public.tbl_effectif_client_break b WHERE b.id_effectif = e.id_effectif AND COALESCE(b.archive, FALSE) = FALSE AND b.date_debut <= %s AND b.date_fin >= %s)
-        GROUP BY e.id_poste_actuel
-    ),
-    titulaires_sorties AS (
-        SELECT e.id_poste_actuel AS id_poste, COUNT(DISTINCT e.id_effectif)::int AS nb_sorties_approchantes
-        FROM public.tbl_effectif_client e
-        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-        WHERE e.id_ent = %s AND COALESCE(e.archive, FALSE) = FALSE AND COALESCE(e.statut_actif, TRUE) = TRUE AND COALESCE(e.id_poste_actuel, '') <> ''
-          AND e.date_sortie_prevue IS NOT NULL AND e.date_sortie_prevue >= %s AND e.date_sortie_prevue <= %s
+        JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.id_poste_actuel, '') <> ''
         GROUP BY e.id_poste_actuel
     )
-    SELECT fp.id_poste, fp.codif_poste, fp.codif_client, fp.intitule_poste, fp.id_service, COALESCE(o.nom_service, '') AS nom_service,
-           COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible, COALESCE(prh.statut_poste, 'actif')::text AS statut_poste,
-           CASE WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$' THEN trim(fp.niveau_education_minimum)::int ELSE 0 END AS edu_min_rank,
-           (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
-           COALESCE(nd.titre, '')::text AS nsf_domaine_titre,
-           COALESCE(td.nb_titulaires, 0)::int AS nb_titulaires,
-           COALESCE(tr.nb_titulaires_rattaches, 0)::int AS nb_titulaires_rattaches,
-           COALESCE(ti.nb_indisponibles, 0)::int AS nb_indisponibles,
-           COALESCE(ts.nb_sorties_approchantes, 0)::int AS nb_sorties_approchantes
+    SELECT
+        fp.id_poste,
+        fp.codif_poste,
+        fp.codif_client,
+        fp.intitule_poste,
+        fp.id_service,
+        COALESCE(o.nom_service, '') AS nom_service,
+        COALESCE(prh.nb_titulaires_cible, 1)::int AS nb_titulaires_cible,
+        COALESCE(prh.statut_poste, 'actif')::text AS statut_poste,
+        CASE
+            WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$'
+                THEN trim(fp.niveau_education_minimum)::int
+            ELSE 0
+        END AS edu_min_rank,
+        (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
+        COALESCE(nd.titre, '')::text AS nsf_domaine_titre,
+        COALESCE(t.nb_titulaires, 0)::int AS nb_titulaires
     FROM postes_scope ps
     JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
-    LEFT JOIN public.tbl_entreprise_organigramme o ON o.id_ent = %s AND o.id_service = fp.id_service AND o.archive = FALSE
+    LEFT JOIN public.tbl_entreprise_organigramme o
+      ON o.id_ent = %s
+     AND o.id_service = fp.id_service
+     AND o.archive = FALSE
     LEFT JOIN public.tbl_fiche_poste_param_rh prh ON prh.id_poste = fp.id_poste
     LEFT JOIN public.tbl_nsf_domaine nd ON nd.code = fp.nsf_domaine_code
-    LEFT JOIN titulaires_dispo td ON td.id_poste = fp.id_poste
-    LEFT JOIN titulaires_rattaches tr ON tr.id_poste = fp.id_poste
-    LEFT JOIN titulaires_indispo ti ON ti.id_poste = fp.id_poste
-    LEFT JOIN titulaires_sorties ts ON ts.id_poste = fp.id_poste
+    LEFT JOIN titulaires t ON t.id_poste = fp.id_poste
     """
-    cur.execute(sql_postes, tuple(cte_params + [id_ent, id_ent, period_end, period_end, period_start, id_ent, period_end, period_start, id_ent, period_start, period_end, id_ent]))
+    cur.execute(sql_postes, tuple(cte_params + [period_end, period_end, period_start, id_ent]))
     poste_rows = cur.fetchall() or []
     if not poste_rows:
         return []
-    postes_map = {str(r.get("id_poste") or ""): dict(r) for r in poste_rows}
 
-    cur.execute(
-        f"""
-        WITH {cte_sql}
-        SELECT e.id_effectif, e.id_poste_actuel, COALESCE(e.niveau_education, '') AS niveau_education, COALESCE(e.domaine_education, '') AS domaine_education
-        FROM public.tbl_effectif_client e
-        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-        WHERE e.id_ent = %s AND COALESCE(e.archive, FALSE) = FALSE AND COALESCE(e.statut_actif, TRUE) = TRUE
+    postes_map: Dict[str, Dict[str, Any]] = {}
+    for r in poste_rows:
+        postes_map[str(r.get("id_poste") or "")] = dict(r)
+
+    sql_emps = f"""
+    WITH
+    {cte_sql},
+    effectifs_dispo AS (
+        SELECT es.id_effectif
+        FROM effectifs_scope es
+        JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
           AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > %s)
-          AND NOT EXISTS (SELECT 1 FROM public.tbl_effectif_client_break b WHERE b.id_effectif = e.id_effectif AND COALESCE(b.archive, FALSE) = FALSE AND b.date_debut <= %s AND b.date_fin >= %s)
-        """,
-        tuple(cte_params + [id_ent, period_end, period_end, period_start]),
+          AND NOT EXISTS (
+            SELECT 1
+            FROM public.tbl_effectif_client_break b
+            WHERE b.id_effectif = e.id_effectif
+              AND COALESCE(b.archive, FALSE) = FALSE
+              AND b.date_debut <= %s
+              AND b.date_fin >= %s
+          )
     )
+    SELECT
+        e.id_effectif,
+        e.id_poste_actuel,
+        COALESCE(e.niveau_education, '') AS niveau_education,
+        COALESCE(e.domaine_education, '') AS domaine_education
+    FROM public.tbl_effectif_client e
+    JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
+    WHERE COALESCE(e.archive, FALSE) = FALSE
+    """
+    cur.execute(sql_emps, tuple(cte_params + [period_end, period_end, period_start]))
     employees = [dict(r) for r in (cur.fetchall() or [])]
 
     sql_comp = f"""
@@ -1135,46 +1001,152 @@ def _fetch_postes_fragility_records_projected(
         SELECT es.id_effectif
         FROM effectifs_scope es
         JOIN public.tbl_effectif_client e ON e.id_effectif = es.id_effectif
-        WHERE e.id_ent = %s AND COALESCE(e.archive, FALSE) = FALSE AND COALESCE(e.statut_actif, TRUE) = TRUE
+        WHERE COALESCE(e.archive, FALSE) = FALSE
+          AND COALESCE(e.statut_actif, TRUE) = TRUE
           AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > %s)
-          AND NOT EXISTS (SELECT 1 FROM public.tbl_effectif_client_break b WHERE b.id_effectif = e.id_effectif AND COALESCE(b.archive, FALSE) = FALSE AND b.date_debut <= %s AND b.date_fin >= %s)
+          AND NOT EXISTS (
+            SELECT 1
+            FROM public.tbl_effectif_client_break b
+            WHERE b.id_effectif = e.id_effectif
+              AND COALESCE(b.archive, FALSE) = FALSE
+              AND b.date_debut <= %s
+              AND b.date_fin >= %s
+          )
     ),
     poste_info AS (
-        SELECT fp.id_poste, CASE WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$' THEN trim(fp.niveau_education_minimum)::int ELSE 0 END AS edu_min_rank,
-               (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required, COALESCE(nd.titre, '')::text AS nsf_domaine_titre
-        FROM postes_scope ps JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste LEFT JOIN public.tbl_nsf_domaine nd ON nd.code = fp.nsf_domaine_code
+        SELECT
+            fp.id_poste,
+            CASE
+                WHEN trim(COALESCE(fp.niveau_education_minimum, '')) ~ '^[0-9]+$'
+                    THEN trim(fp.niveau_education_minimum)::int
+                ELSE 0
+            END AS edu_min_rank,
+            (COALESCE(fp.nsf_domaine_obligatoire, FALSE) OR COALESCE(fp.nsf_groupe_obligatoire, FALSE)) AS nsf_domain_required,
+            COALESCE(nd.titre, '')::text AS nsf_domaine_titre
+        FROM postes_scope ps
+        JOIN public.tbl_fiche_poste fp ON fp.id_poste = ps.id_poste
+        LEFT JOIN public.tbl_nsf_domaine nd ON nd.code = fp.nsf_domaine_code
     ),
     req AS (
-        SELECT DISTINCT pi.id_poste, c.id_comp, c.code, c.intitule, COALESCE(fpc.niveau_requis, '')::text AS niveau_requis, COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite,
-               pi.edu_min_rank, pi.nsf_domain_required, pi.nsf_domaine_titre
-        FROM poste_info pi JOIN public.tbl_fiche_poste_competence fpc ON fpc.id_poste = pi.id_poste JOIN public.tbl_competence c ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
-        WHERE c.etat = 'active' AND COALESCE(c.masque, FALSE) = FALSE AND COALESCE(fpc.masque, FALSE) = FALSE AND COALESCE(fpc.poids_criticite, 0)::int >= %s
+        SELECT DISTINCT
+            pi.id_poste,
+            c.id_comp,
+            c.code,
+            c.intitule,
+            COALESCE(fpc.niveau_requis, '')::text AS niveau_requis,
+            COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite,
+            pi.edu_min_rank,
+            pi.nsf_domain_required,
+            pi.nsf_domaine_titre
+        FROM poste_info pi
+        JOIN public.tbl_fiche_poste_competence fpc ON fpc.id_poste = pi.id_poste
+        JOIN public.tbl_competence c
+          ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
+        WHERE c.etat = 'active'
+          AND COALESCE(c.masque, FALSE) = FALSE
+          AND COALESCE(fpc.masque, FALSE) = FALSE
+          AND COALESCE(fpc.poids_criticite, 0)::int >= %s
     ),
     pool_all_effectifs AS (
-        SELECT e.id_effectif, e.id_poste_actuel, COALESCE(e.niveau_education, '') AS niveau_education, COALESCE(e.domaine_education, '') AS domaine_education
-        FROM public.tbl_effectif_client e JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif WHERE COALESCE(e.archive, FALSE) = FALSE
+        SELECT
+            e.id_effectif,
+            e.id_poste_actuel,
+            COALESCE(e.niveau_education, '') AS niveau_education,
+            COALESCE(e.domaine_education, '') AS domaine_education
+        FROM public.tbl_effectif_client e
+        JOIN effectifs_dispo ed ON ed.id_effectif = e.id_effectif
+        WHERE COALESCE(e.archive, FALSE) = FALSE
     ),
     ec_raw AS (
-        SELECT r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis, pe.id_effectif, pe.id_poste_actuel,
-               CASE upper(trim(COALESCE(r.niveau_requis, ''))) WHEN 'A' THEN 1 WHEN 'B' THEN 2 WHEN 'C' THEN 3 WHEN 'D' THEN 4 ELSE 0 END AS req_rank,
-               CASE lower(trim(COALESCE(ec.niveau_actuel, ''))) WHEN 'a' THEN 1 WHEN 'initial' THEN 1 WHEN 'b' THEN 2 WHEN 'intermediaire' THEN 2 WHEN 'intermédiaire' THEN 2 WHEN 'c' THEN 3 WHEN 'avance' THEN 3 WHEN 'avancé' THEN 3 WHEN 'avancee' THEN 3 WHEN 'avancée' THEN 3 WHEN 'd' THEN 4 WHEN 'expert' THEN 4 ELSE 0 END AS act_rank,
-               CASE WHEN a.resultat_eval IS NOT NULL AND (a.date_audit IS NOT NULL OR ec.date_derniere_eval IS NOT NULL OR a.id_audit_competence IS NOT NULL) THEN TRUE ELSE FALSE END AS is_evaluee,
-               CASE WHEN (r.edu_min_rank = 0 OR (CASE WHEN trim(COALESCE(pe.niveau_education, '')) ~ '^[0-9]+$' THEN trim(pe.niveau_education)::int ELSE 0 END) >= r.edu_min_rank)
-                    AND (r.nsf_domain_required = FALSE OR (lower(trim(COALESCE(pe.domaine_education, ''))) = lower(trim(COALESCE(r.nsf_domaine_titre, ''))) AND COALESCE(r.nsf_domaine_titre, '') <> '')) THEN TRUE ELSE FALSE END AS is_eligible
-        FROM req r JOIN public.tbl_effectif_client_competence ec ON ec.id_comp = r.id_comp
-        LEFT JOIN public.tbl_effectif_client_audit_competence a ON a.id_audit_competence = ec.id_dernier_audit AND a.id_effectif_competence = ec.id_effectif_competence
+        SELECT
+            r.id_poste,
+            r.id_comp,
+            r.code,
+            r.intitule,
+            r.poids_criticite,
+            r.niveau_requis,
+            pe.id_effectif,
+            pe.id_poste_actuel,
+            CASE upper(trim(COALESCE(r.niveau_requis, '')))
+                WHEN 'A' THEN 1
+                WHEN 'B' THEN 2
+                WHEN 'C' THEN 3
+                WHEN 'D' THEN 4
+                ELSE 0
+            END AS req_rank,
+            CASE lower(trim(COALESCE(ec.niveau_actuel, '')))
+                WHEN 'a' THEN 1
+                WHEN 'initial' THEN 1
+                WHEN 'b' THEN 2
+                WHEN 'intermediaire' THEN 2
+                WHEN 'intermédiaire' THEN 2
+                WHEN 'c' THEN 3
+                WHEN 'avance' THEN 3
+                WHEN 'avancé' THEN 3
+                WHEN 'avancee' THEN 3
+                WHEN 'avancée' THEN 3
+                WHEN 'd' THEN 4
+                WHEN 'expert' THEN 4
+                ELSE 0
+            END AS act_rank,
+            CASE
+                WHEN a.resultat_eval IS NOT NULL
+                 AND (a.date_audit IS NOT NULL OR ec.date_derniere_eval IS NOT NULL OR a.id_audit_competence IS NOT NULL)
+                THEN TRUE
+                ELSE FALSE
+            END AS is_evaluee,
+            CASE
+              WHEN (
+                r.edu_min_rank = 0
+                OR (
+                  CASE
+                    WHEN trim(COALESCE(pe.niveau_education, '')) ~ '^[0-9]+$' THEN trim(pe.niveau_education)::int
+                    ELSE 0
+                  END
+                ) >= r.edu_min_rank
+              )
+              AND (
+                r.nsf_domain_required = FALSE
+                OR (
+                  lower(trim(COALESCE(pe.domaine_education, ''))) = lower(trim(COALESCE(r.nsf_domaine_titre, '')))
+                  AND COALESCE(r.nsf_domaine_titre, '') <> ''
+                )
+              )
+              THEN TRUE ELSE FALSE
+            END AS is_eligible
+        FROM req r
+        JOIN public.tbl_effectif_client_competence ec ON ec.id_comp = r.id_comp
+        LEFT JOIN public.tbl_effectif_client_audit_competence a
+          ON a.id_audit_competence = ec.id_dernier_audit
+         AND a.id_effectif_competence = ec.id_effectif_competence
         JOIN pool_all_effectifs pe ON pe.id_effectif = ec.id_effectif_client
-        WHERE COALESCE(ec.actif, TRUE) = TRUE AND COALESCE(ec.archive, FALSE) = FALSE
+        WHERE COALESCE(ec.actif, TRUE) = TRUE
+          AND COALESCE(ec.archive, FALSE) = FALSE
     ),
-    ec_ok AS (SELECT *, CASE WHEN req_rank > 0 THEN (is_evaluee AND act_rank >= req_rank) ELSE (is_evaluee AND act_rank > 0) END AS is_ok FROM ec_raw)
-    SELECT r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis,
-           COUNT(DISTINCT CASE WHEN eok.id_poste_actuel = r.id_poste THEN eok.id_effectif END)::int AS nb_tit_any,
-           COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible AND eok.id_poste_actuel = r.id_poste THEN eok.id_effectif END)::int AS nb_tit_ok,
-           COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible THEN eok.id_effectif END)::int AS nb_ok_all
-    FROM req r LEFT JOIN ec_ok eok ON eok.id_poste = r.id_poste AND eok.id_comp = r.id_comp
+    ec_ok AS (
+        SELECT
+            *,
+            CASE
+                WHEN req_rank > 0 THEN (is_evaluee AND act_rank >= req_rank)
+                ELSE (is_evaluee AND act_rank > 0)
+            END AS is_ok
+        FROM ec_raw
+    )
+    SELECT
+        r.id_poste,
+        r.id_comp,
+        r.code,
+        r.intitule,
+        r.poids_criticite,
+        r.niveau_requis,
+        COUNT(DISTINCT CASE WHEN eok.id_poste_actuel = r.id_poste THEN eok.id_effectif END)::int AS nb_tit_any,
+        COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible AND eok.id_poste_actuel = r.id_poste THEN eok.id_effectif END)::int AS nb_tit_ok,
+        COUNT(DISTINCT CASE WHEN eok.is_ok AND eok.is_eligible THEN eok.id_effectif END)::int AS nb_ok_all
+    FROM req r
+    LEFT JOIN ec_ok eok ON eok.id_poste = r.id_poste AND eok.id_comp = r.id_comp
     GROUP BY r.id_poste, r.id_comp, r.code, r.intitule, r.poids_criticite, r.niveau_requis
     """
-    cur.execute(sql_comp, tuple(cte_params + [id_ent, period_end, period_end, period_start, int(criticite_min)]))
+    cur.execute(sql_comp, tuple(cte_params + [period_end, period_end, period_start, int(criticite_min)]))
     comp_rows = cur.fetchall() or []
     comp_by_poste: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
     for r in comp_rows:
@@ -1187,8 +1159,18 @@ def _fetch_postes_fragility_records_projected(
             continue
         records.append(rec)
 
-    _augment_poste_records_with_matching_potential(cur, id_ent, id_service, int(criticite_min), records, period_start, period_end)
-    records.sort(key=lambda r: (-int(r.get("indice_fragilite") or 0), int(r.get("nb_titulaires") or 0), -int(r.get("gap_titulaires") or 0), str(r.get("codif_poste") or ""), str(r.get("intitule_poste") or "")))
+    records.sort(
+        key=lambda r: (
+            -int(r.get("indice_fragilite") or 0),
+            int(r.get("nb_titulaires") or 0),
+            -int(r.get("nb_critiques_sans_porteur") or 0),
+            -int(r.get("gap_titulaires") or 0),
+            -int(r.get("nb_critiques_porteur_unique") or 0),
+            -int(r.get("nb_critiques_sans_releve") or 0),
+            str(r.get("codif_poste") or ""),
+            str(r.get("intitule_poste") or ""),
+        )
+    )
     return records
 
 def _competence_state_label(etat: str) -> str:
@@ -4993,9 +4975,7 @@ class AnalysePosteCauseStructurelle(BaseModel):
     nb_titulaires_cible: int = 1
     gap_titulaires: int = 0
     poste_non_tenu: bool = False
-    nb_titulaires_rattaches: int = 0
-    nb_titulaires_disponibles: int = 0
-    nb_indisponibles: int = 0
+
 
 class AnalysePosteDependanceItem(BaseModel):
     id_comp: str
@@ -5017,12 +4997,9 @@ class AnalysePosteTransmissionCause(BaseModel):
     pool_diplome_ok: int = 0
     pool_domaine_ok: int = 0
 
-    nb_renforts_immediats: int = 0
-    nb_renforts_a_preparer: int = 0
-    meilleur_matching: int = 0
 
 class AnalysePosteEfficaciteItem(BaseModel):
-    id_comp: Optional[str] = None
+    id_comp: str
     code_comp: Optional[str] = None
     intitule: Optional[str] = None
     poids_criticite: Optional[int] = None
@@ -5031,34 +5008,13 @@ class AnalysePosteEfficaciteItem(BaseModel):
     nb_en_defaut: int = 0
     nb_titulaires: int = 0
 
-    # Variante salarié : lecture RH plus humaine du niveau attendu non atteint.
-    kind: str = "competence"
-    id_effectif: Optional[str] = None
-    full: Optional[str] = None
-    poste_actuel: Optional[str] = None
-    maitrise_attendue_pct: int = 100
-    maitrise_actuelle_pct: int = 0
-    ecart_pct: int = 0
-
-class AnalysePosteSortieApprochanteItem(BaseModel):
-    id_effectif: Optional[str] = None
-    full: Optional[str] = None
-    date_sortie: Optional[str] = None
-    motif: Optional[str] = None
-
-
-class AnalysePosteSortieApprochanteCause(BaseModel):
-    count: int = 0
-    horizon: str = "3 mois"
-    items: List[AnalysePosteSortieApprochanteItem] = []
-
 
 class AnalysePosteCausesRacines(BaseModel):
     structure: Optional[AnalysePosteCauseStructurelle] = None
     dependance: List[AnalysePosteDependanceItem] = []
     transmission: Optional[AnalysePosteTransmissionCause] = None
     efficacite: List[AnalysePosteEfficaciteItem] = []
-    sorties_approchantes: Optional[AnalysePosteSortieApprochanteCause] = None
+
 
 class AnalysePosteFragiliteComposantes(BaseModel):
     # Compat legacy (gardé pour éviter de casser)
@@ -5075,9 +5031,6 @@ class AnalysePosteFragiliteComposantes(BaseModel):
 
     nb_titulaires: int = 0
     nb_titulaires_cible: int = 1
-    nb_titulaires_rattaches: int = 0
-    nb_indisponibles: int = 0
-    nb_sorties_approchantes: int = 0
 
     # Scores composantes renvoyés par le backend.
     # Le front les utilise pour afficher des parts de causes cohérentes avec l’indice.
@@ -5085,9 +5038,8 @@ class AnalysePosteFragiliteComposantes(BaseModel):
     score_efficacite: int = 0
     score_dependance: int = 0
     score_transmission: int = 0
-    score_sorties_approchantes: int = 0
-    score_renfort_potentiel: int = 0
     score_total: int = 0
+
 
 class AnalysePosteDiagnosticConditions(BaseModel):
     # “lisible dirigeant”, pas du jargon technique
@@ -5110,145 +5062,6 @@ class AnalysePosteDiagnosticResponse(BaseModel):
     conditions: Optional[AnalysePosteDiagnosticConditions] = None
 
 
-
-def _analyse_poste_titulaires_mastery_items(
-    cur,
-    id_ent: str,
-    id_service: Optional[str],
-    id_poste: str,
-    criticite_min: int,
-) -> List[AnalysePosteEfficaciteItem]:
-    cte_sql, cte_params = _build_scope_cte(id_ent, id_service)
-    cur.execute(
-        f"""
-        WITH
-        {cte_sql},
-        req AS (
-            SELECT DISTINCT c.id_comp, c.code, c.intitule, COALESCE(fpc.niveau_requis, '') AS niveau_requis, COALESCE(fpc.poids_criticite, 0)::int AS poids_criticite
-            FROM public.tbl_fiche_poste_competence fpc
-            JOIN postes_scope ps ON ps.id_poste = fpc.id_poste
-            JOIN public.tbl_competence c ON (c.id_comp = fpc.id_competence OR c.code = fpc.id_competence)
-            WHERE fpc.id_poste = %s
-              AND c.etat = 'active'
-              AND COALESCE(c.masque, FALSE) = FALSE
-              AND COALESCE(fpc.masque, FALSE) = FALSE
-              AND COALESCE(fpc.poids_criticite, 0)::int >= %s
-        ),
-        titulaires AS (
-            SELECT e.id_effectif, e.prenom_effectif, e.nom_effectif, COALESCE(p.intitule_poste, '') AS poste_actuel
-            FROM public.tbl_effectif_client e
-            JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-            LEFT JOIN public.tbl_fiche_poste p ON p.id_poste = e.id_poste_actuel
-            WHERE e.id_ent = %s
-              AND COALESCE(e.archive, FALSE) = FALSE
-              AND COALESCE(e.statut_actif, TRUE) = TRUE
-              AND e.id_poste_actuel = %s
-              AND (e.date_sortie_prevue IS NULL OR e.date_sortie_prevue > CURRENT_DATE)
-              AND NOT EXISTS (
-                SELECT 1 FROM public.tbl_effectif_client_break b
-                WHERE b.id_effectif = e.id_effectif
-                  AND COALESCE(b.archive, FALSE) = FALSE
-                  AND b.date_debut <= CURRENT_DATE
-                  AND b.date_fin >= CURRENT_DATE
-              )
-        )
-        SELECT t.id_effectif, t.prenom_effectif, t.nom_effectif, t.poste_actuel,
-               r.id_comp, r.niveau_requis, r.poids_criticite, ac.resultat_eval
-        FROM titulaires t
-        CROSS JOIN req r
-        LEFT JOIN public.tbl_effectif_client_competence ec
-          ON ec.id_effectif_client = t.id_effectif
-         AND ec.id_comp = r.id_comp
-         AND COALESCE(ec.actif, TRUE) = TRUE
-         AND COALESCE(ec.archive, FALSE) = FALSE
-        LEFT JOIN public.tbl_effectif_client_audit_competence ac
-          ON ac.id_audit_competence = ec.id_dernier_audit
-        ORDER BY t.nom_effectif, t.prenom_effectif
-        """,
-        tuple(cte_params + [id_poste, int(criticite_min), id_ent, id_poste]),
-    )
-    rows = cur.fetchall() or []
-    by_emp: Dict[str, Dict[str, Any]] = {}
-    for r in rows:
-        ide = str(r.get("id_effectif") or "").strip()
-        if not ide:
-            continue
-        item = by_emp.setdefault(ide, {
-            "id_effectif": ide,
-            "full": f"{(r.get('prenom_effectif') or '').strip()} {(r.get('nom_effectif') or '').strip()}".strip() or "Collaborateur",
-            "poste_actuel": r.get("poste_actuel") or "",
-            "poids_total": 0,
-            "sum_ratio": 0.0,
-        })
-        poids = max(1, _analyse_pdf_safe_int(r.get("poids_criticite")))
-        seuil = _score_seuil_for_niveau(r.get("niveau_requis") or "")
-        score = _safe_float(r.get("resultat_eval"))
-        ratio = 0.0 if score is None or seuil <= 0 else min(max(score / seuil, 0.0), 1.0)
-        item["poids_total"] += poids
-        item["sum_ratio"] += poids * ratio
-
-    out: List[AnalysePosteEfficaciteItem] = []
-    for item in by_emp.values():
-        total = max(1, int(item.get("poids_total") or 0))
-        pct = int(round((float(item.get("sum_ratio") or 0.0) / float(total)) * 100.0))
-        pct = max(0, min(100, pct))
-        if pct >= 100:
-            continue
-        out.append(AnalysePosteEfficaciteItem(
-            kind="salarie",
-            id_effectif=item.get("id_effectif"),
-            full=item.get("full"),
-            poste_actuel=item.get("poste_actuel"),
-            maitrise_attendue_pct=100,
-            maitrise_actuelle_pct=pct,
-            ecart_pct=max(0, 100 - pct),
-        ))
-    out.sort(key=lambda x: (-int(x.ecart_pct or 0), str(x.full or "")))
-    return out
-
-
-def _analyse_poste_sorties_approchantes_cause(
-    cur,
-    id_ent: str,
-    id_service: Optional[str],
-    id_poste: str,
-) -> Optional[AnalysePosteSortieApprochanteCause]:
-    cte_sql, cte_params = _build_scope_cte(id_ent, id_service)
-    horizon = _analyse_add_months(date.today(), 3)
-    cur.execute(
-        f"""
-        WITH {cte_sql}
-        SELECT e.id_effectif,
-               COALESCE(e.prenom_effectif, '') AS prenom_effectif,
-               COALESCE(e.nom_effectif, '') AS nom_effectif,
-               e.date_sortie_prevue,
-               CASE WHEN COALESCE(e.havedatefin, FALSE) THEN 'Fin de contrat / sortie prévue' ELSE 'Sortie prévue' END AS motif
-        FROM public.tbl_effectif_client e
-        JOIN effectifs_scope es ON es.id_effectif = e.id_effectif
-        WHERE e.id_ent = %s
-          AND COALESCE(e.archive, FALSE) = FALSE
-          AND COALESCE(e.statut_actif, TRUE) = TRUE
-          AND e.id_poste_actuel = %s
-          AND e.date_sortie_prevue IS NOT NULL
-          AND e.date_sortie_prevue >= CURRENT_DATE
-          AND e.date_sortie_prevue <= %s
-        ORDER BY e.date_sortie_prevue, e.nom_effectif, e.prenom_effectif
-        """,
-        tuple(cte_params + [id_ent, id_poste, horizon]),
-    )
-    rows = cur.fetchall() or []
-    if not rows:
-        return None
-    items = []
-    for r in rows:
-        full = f"{(r.get('prenom_effectif') or '').strip()} {(r.get('nom_effectif') or '').strip()}".strip() or "Collaborateur"
-        items.append(AnalysePosteSortieApprochanteItem(
-            id_effectif=r.get("id_effectif"),
-            full=full,
-            date_sortie=_analyse_date_fr_value(r.get("date_sortie_prevue")),
-            motif=r.get("motif") or "Sortie prévue",
-        ))
-    return AnalysePosteSortieApprochanteCause(count=len(items), items=items)
 
 class AnalyseMatchingItem(BaseModel):
     id_effectif: str
@@ -5979,33 +5792,61 @@ def get_analyse_risques_poste_diagnostic(
                                 nb_titulaires=int(besoin_local),
                             )
                         )
-                    if besoin_local == 1 and n_ok_tit == 1:
-                        nb1 += 1
-                        nb_r0 += 1
-                        dependance_points += _score_dependance_unit(r.get("poids_criticite"), relais_faible=True)
-                        dep_items.append(
-                            AnalysePosteDependanceItem(
-                                id_comp=r.get("id_comp"),
-                                code_comp=r.get("code"),
-                                intitule=r.get("intitule"),
-                                poids_criticite=int(r.get("poids_criticite") or 0),
-                                nb_porteurs_ok=1,
-                                seuil_couverture=2,
-                                type_risque="PORTEUR_UNIQUE",
+
+                    if besoin_local > 0 and n_ok_tit >= besoin_local:
+                        if n_relais <= 0:
+                            nb1 += 1
+                            nb_r0 += 1
+                            dependance_points += _score_dependance_unit(r.get("poids_criticite"), relais_faible=False)
+                            dep_items.append(
+                                AnalysePosteDependanceItem(
+                                    id_comp=r.get("id_comp"),
+                                    code_comp=r.get("code"),
+                                    intitule=r.get("intitule"),
+                                    poids_criticite=int(r.get("poids_criticite") or 0),
+                                    nb_porteurs_ok=n_relais,
+                                    seuil_couverture=2,
+                                    type_risque="SANS_RELAIS",
+                                )
                             )
-                        )
-                        candidates.append(
-                            AnalysePosteTopRisqueItem(
-                                id_comp=r.get("id_comp"),
-                                code_comp=r.get("code"),
-                                intitule=r.get("intitule"),
-                                poids_criticite=int(r.get("poids_criticite") or 0),
-                                type_risque="PORTEUR_UNIQUE",
-                                nb_porteurs=1,
-                                nb_ok=1,
-                                recommandation="mutualiser",
+                            candidates.append(
+                                AnalysePosteTopRisqueItem(
+                                    id_comp=r.get("id_comp"),
+                                    code_comp=r.get("code"),
+                                    intitule=r.get("intitule"),
+                                    poids_criticite=int(r.get("poids_criticite") or 0),
+                                    type_risque="SANS_RELEVE",
+                                    nb_porteurs=n_ok,
+                                    nb_ok=n_ok,
+                                    recommandation="mutualiser",
+                                )
                             )
-                        )
+                        elif n_relais == 1:
+                            nb_r1 += 1
+                            dependance_points += _score_dependance_unit(r.get("poids_criticite"), relais_faible=True)
+                            dep_items.append(
+                                AnalysePosteDependanceItem(
+                                    id_comp=r.get("id_comp"),
+                                    code_comp=r.get("code"),
+                                    intitule=r.get("intitule"),
+                                    poids_criticite=int(r.get("poids_criticite") or 0),
+                                    nb_porteurs_ok=n_relais,
+                                    seuil_couverture=2,
+                                    type_risque="RELAIS_FAIBLE",
+                                )
+                            )
+                            candidates.append(
+                                AnalysePosteTopRisqueItem(
+                                    id_comp=r.get("id_comp"),
+                                    code_comp=r.get("code"),
+                                    intitule=r.get("intitule"),
+                                    poids_criticite=int(r.get("poids_criticite") or 0),
+                                    type_risque="RELEVE_FAIBLE",
+                                    nb_porteurs=n_ok,
+                                    nb_ok=n_ok,
+                                    recommandation="mutualiser",
+                                )
+                            )
 
                 nb_total_fragiles = nb0 + nb1 + nb_r0 + nb_r1
                 nb_evenements = nb_total_fragiles + (1 if gap > 0 else 0)
@@ -6093,73 +5934,14 @@ def get_analyse_risques_poste_diagnostic(
                         pool_diplome_ok=int(pool_diplome_ok),
                         pool_domaine_ok=int(pool_domaine_ok),
                     )
-                # Alignement avec le moteur unique de fragilité poste utilisé par le tableau, le dashboard et les projections.
-                poste_frag_record = None
-                try:
-                    _poste_records = _fetch_postes_fragility_records(cur, id_ent, scope.id_service, int(criticite_min))
-                    for _r in _poste_records:
-                        if str(_r.get("id_poste") or "") == str(id_poste):
-                            poste_frag_record = _r
-                            break
-                except Exception:
-                    poste_frag_record = None
-
-                sorties_cause = None
-                try:
-                    sorties_cause = _analyse_poste_sorties_approchantes_cause(cur, id_ent, scope.id_service, id_poste)
-                except Exception:
-                    sorties_cause = None
-
-                eff_items_salaries = []
-                try:
-                    eff_items_salaries = _analyse_poste_titulaires_mastery_items(cur, id_ent, scope.id_service, id_poste, int(criticite_min))
-                except Exception:
-                    eff_items_salaries = []
-                if eff_items_salaries:
-                    eff_items = eff_items_salaries[:12]
-
-                if poste_frag_record:
-                    nb_titulaires = int(poste_frag_record.get("nb_titulaires") or 0)
-                    nb_cible = int(poste_frag_record.get("nb_titulaires_cible") or 1)
-                    gap = int(poste_frag_record.get("gap_titulaires") or 0)
-                    structure_score = int(poste_frag_record.get("score_structurel") or 0)
-                    efficacite_score = int(poste_frag_record.get("score_efficacite") or 0)
-                    dependance_score = int(poste_frag_record.get("score_dependance") or 0)
-                    transmission_score = int(poste_frag_record.get("score_renfort_potentiel") or poste_frag_record.get("score_transmission") or 0)
-                    score_sorties_approchantes = int(poste_frag_record.get("score_sorties_approchantes") or 0)
-                    score = int(poste_frag_record.get("indice_fragilite") or 0)
-
-                    structure = None
-                    if nb_titulaires <= 0 or gap > 0 or int(poste_frag_record.get("nb_indisponibles") or 0) > 0:
-                        structure = AnalysePosteCauseStructurelle(
-                            nb_titulaires=nb_titulaires,
-                            nb_titulaires_cible=nb_cible,
-                            gap_titulaires=gap,
-                            poste_non_tenu=(nb_titulaires <= 0),
-                            nb_titulaires_rattaches=int(poste_frag_record.get("nb_titulaires_rattaches") or nb_titulaires),
-                            nb_titulaires_disponibles=nb_titulaires,
-                            nb_indisponibles=int(poste_frag_record.get("nb_indisponibles") or 0),
-                        )
-
-                    transmission = AnalysePosteTransmissionCause(
-                        raisons=[],
-                        nb_ressources_potentielles=int(poste_frag_record.get("nb_renforts_immediats") or 0) + int(poste_frag_record.get("nb_renforts_a_preparer") or 0),
-                        pool_total=int(poste_frag_record.get("pool_total") or 0),
-                        pool_eligible=int(poste_frag_record.get("pool_eligible") or 0),
-                        nb_renforts_immediats=int(poste_frag_record.get("nb_renforts_immediats") or 0),
-                        nb_renforts_a_preparer=int(poste_frag_record.get("nb_renforts_a_preparer") or 0),
-                        meilleur_matching=int(poste_frag_record.get("meilleur_matching") or 0),
-                    )
-                    if int(transmission.nb_renforts_immediats or 0) > 0:
-                        transmission = None
 
                 causes = AnalysePosteCausesRacines(
                     structure=structure,
                     dependance=dep_items,
                     transmission=transmission,
                     efficacite=eff_items,
-                    sorties_approchantes=sorties_cause,
                 )
+
 
                 cond = AnalysePosteDiagnosticConditions(
                     diplome_min=(f"Niveau {edu_min}" if edu_min_rank > 0 else None),
@@ -6181,16 +5963,11 @@ def get_analyse_risques_poste_diagnostic(
 
                     nb_titulaires=nb_titulaires,
                     nb_titulaires_cible=nb_cible,
-                    nb_titulaires_rattaches=int((poste_frag_record or {}).get('nb_titulaires_rattaches') or nb_titulaires),
-                    nb_indisponibles=int((poste_frag_record or {}).get('nb_indisponibles') or 0),
-                    nb_sorties_approchantes=int((poste_frag_record or {}).get('nb_sorties_approchantes') or 0),
 
                     score_structurel=int(structure_score),
                     score_efficacite=int(efficacite_score),
                     score_dependance=int(dependance_score),
                     score_transmission=int(transmission_score),
-                    score_sorties_approchantes=int(locals().get('score_sorties_approchantes', 0)),
-                    score_renfort_potentiel=int(transmission_score),
                     score_total=int(score),
                 )
 
@@ -6206,7 +5983,6 @@ def get_analyse_risques_poste_diagnostic(
                         "nom_service": poste.get("nom_service"),
                         "nb_titulaires": nb_titulaires,
                         "nb_titulaires_cible": nb_cible,
-                        "nb_titulaires_necessaires": nb_cible,
                     },
                     indice_fragilite=score,
                     composantes=comp,
@@ -8260,10 +8036,10 @@ def _analyse_effect_definitions() -> Dict[str, Dict[str, Any]]:
             "title": "Risque de rupture ou ralentissement d’activité",
             "central_effect": "L’activité peut ralentir ou se bloquer si les compétences indispensables ne sont pas suffisamment couvertes.",
             "families": [
-                "Niveau attendu non atteint",
-                "Renfort potentiel insuffisant",
-                "Couverture du poste insuffisante",
-                "Couverture trop dépendante d’une personne",
+                "Couverture critique insuffisante",
+                "Renfort immédiat insuffisant",
+                "Postes déjà fragilisés",
+                "Dépendance à un porteur unique",
                 "Données à confirmer",
             ],
         },
@@ -8273,7 +8049,7 @@ def _analyse_effect_definitions() -> Dict[str, Dict[str, Any]]:
             "families": [
                 "Écart de maîtrise",
                 "Évaluations à reprendre",
-                "Niveau attendu non atteint",
+                "Niveaux attendus insuffisamment couverts",
                 "Expertise réelle à confirmer",
                 "Référentiel à consolider",
             ],
@@ -8284,7 +8060,7 @@ def _analyse_effect_definitions() -> Dict[str, Dict[str, Any]]:
             "families": [
                 "Porteur unique",
                 "Vivier interne limité",
-                "Renfort potentiel insuffisant",
+                "Renfort immédiat insuffisant",
                 "Transmission à structurer",
                 "Données à confirmer",
             ],
@@ -8365,14 +8141,14 @@ def _analyse_risk_state_label(score: Any) -> str:
 def _analyse_ishikawa_family_display_label(family: Any) -> str:
     raw = str(family or "").strip()
     labels = {
-        "Niveau attendu non atteint": "Couverture insuffisante",
-        "Renfort potentiel insuffisant": "Renfort insuffisant",
-        "Couverture du poste insuffisante": "Postes fragiles",
-        "Couverture trop dépendante d’une personne": "Porteur unique",
+        "Couverture critique insuffisante": "Couverture insuffisante",
+        "Renfort immédiat insuffisant": "Renfort insuffisant",
+        "Postes déjà fragilisés": "Postes fragiles",
+        "Dépendance à un porteur unique": "Porteur unique",
         "Données à confirmer": "Données à confirmer",
         "Écart de maîtrise": "Écart maîtrise",
         "Évaluations à reprendre": "Évaluations",
-        "Niveau attendu non atteint": "Niveaux attendus",
+        "Niveaux attendus insuffisamment couverts": "Niveaux attendus",
         "Expertise réelle à confirmer": "Expertise à confirmer",
         "Référentiel à consolider": "Référentiel",
         "Porteur unique": "Porteur unique",
@@ -8496,9 +8272,9 @@ def _analyse_ishikawa_rows_for_effect(
 
         if effect_key == "rupture_activite":
             if n_couverture > 0:
-                rows.append({"family": "Niveau attendu non atteint", "type": "comp", "code": code, "title": title, "value": f"{pct_cover}%", "value_label": "Couverture", "sort": frag})
+                rows.append({"family": "Couverture critique insuffisante", "type": "comp", "code": code, "title": title, "value": f"{pct_cover}%", "value_label": "Couverture", "sort": frag})
             if n_dep > 0:
-                rows.append({"family": "Couverture trop dépendante d’une personne", "type": "comp", "code": code, "title": title, "value": "1 porteur", "value_label": "Porteurs confirmés", "sort": frag})
+                rows.append({"family": "Dépendance à un porteur unique", "type": "comp", "code": code, "title": title, "value": "1 porteur", "value_label": "Porteurs confirmés", "sort": frag})
             if n_nc > 0:
                 rows.append({"family": "Données à confirmer", "type": "comp", "code": code, "title": title, "value": last_eval_label, "value_label": "Dernière évaluation", "sort": frag})
         elif effect_key == "qualite_execution":
@@ -8507,7 +8283,7 @@ def _analyse_ishikawa_rows_for_effect(
             if n_nc > 0:
                 rows.append({"family": "Évaluations à reprendre", "type": "comp", "code": code, "title": title, "value": last_eval_label, "value_label": "Dernière évaluation", "sort": frag})
             if n_abs > 0:
-                rows.append({"family": "Niveau attendu non atteint", "type": "comp", "code": code, "title": title, "value": f"{pct_cover}%", "value_label": "Couverture", "sort": frag})
+                rows.append({"family": "Niveaux attendus insuffisamment couverts", "type": "comp", "code": code, "title": title, "value": f"{pct_cover}%", "value_label": "Couverture", "sort": frag})
             if n_exp <= 0:
                 rows.append({"family": "Expertise réelle à confirmer", "type": "comp", "code": code, "title": title, "value": "0 expert", "value_label": "Experts", "sort": frag})
             if n_nc > 0:
@@ -8534,7 +8310,7 @@ def _analyse_ishikawa_rows_for_effect(
                 rows.append({"family": "Données à fiabiliser", "type": "comp", "code": code, "title": title, "value": last_eval_label, "value_label": "Dernière évaluation", "sort": frag})
 
     if effect_key in ("rupture_activite", "dependance_individuelle"):
-        renfort_family = "Renfort potentiel insuffisant"
+        renfort_family = "Renfort immédiat insuffisant"
         for p in poste_records or []:
             pid = str(p.get("id_poste") or "").strip()
             meta = renfort_map.get(pid) or {}
@@ -8555,7 +8331,7 @@ def _analyse_ishikawa_rows_for_effect(
             frag_p = _analyse_pdf_safe_int(p.get("indice_fragilite"))
             if frag_p > 0:
                 rows.append({
-                    "family": "Couverture du poste insuffisante",
+                    "family": "Postes déjà fragilisés",
                     "type": "poste",
                     "code": (p.get("codif_poste") or p.get("codif_client") or "POSTE").strip() or "POSTE",
                     "title": str(p.get("intitule_poste") or "Poste").strip(),
@@ -8695,7 +8471,7 @@ def _analyse_ishikawa_family_summary(family: str, rows: List[Dict[str, Any]]) ->
         return "Aucun point"
     if "Renfort" in str(family or ""):
         return _analyse_pdf_count(count, "poste sans renfort", "postes sans renfort")
-    if str(family or "") == "Couverture du poste insuffisante":
+    if str(family or "") == "Postes déjà fragilisés":
         return _analyse_pdf_count(count, "poste à suivre", "postes à suivre")
     if "Dépendance" in str(family or "") or "Porteur unique" in str(family or ""):
         return _analyse_pdf_count(count, "compétence concernée", "compétences concernées")
@@ -9229,14 +9005,14 @@ def _analyse_matching_summary_by_poste(cur, id_ent: str, id_service: Optional[st
 
 def _analyse_ishikawa_family_explanation(family: str) -> str:
     explanations = {
-        "Niveau attendu non atteint": "Compétences critiques dont la couverture ne suffit pas à sécuriser les postes concernés.",
-        "Renfort potentiel insuffisant": "Postes qui ne disposent pas d’un profil interne immédiatement proche du besoin (matching supérieur à 65%).",
-        "Couverture du poste insuffisante": "Postes dont l’indice de fragilité ressort déjà dans l’analyse actuelle.",
-        "Couverture trop dépendante d’une personne": "Compétences qui reposent sur une seule personne confirmée dans le périmètre analysé.",
+        "Couverture critique insuffisante": "Compétences critiques dont la couverture ne suffit pas à sécuriser les postes concernés.",
+        "Renfort immédiat insuffisant": "Postes qui ne disposent pas d’un profil interne immédiatement proche du besoin (matching supérieur à 65%).",
+        "Postes déjà fragilisés": "Postes dont l’indice de fragilité ressort déjà dans l’analyse actuelle.",
+        "Dépendance à un porteur unique": "Compétences qui reposent sur une seule personne confirmée dans le périmètre analysé.",
         "Données à confirmer": "Compétences dont l’évaluation ou la confirmation doit être reprise avant décision.",
         "Écart de maîtrise": "Compétences pour lesquelles le niveau constaté reste sous le niveau attendu.",
         "Évaluations à reprendre": "Compétences déclarées mais insuffisamment confirmées par une évaluation exploitable.",
-        "Niveau attendu non atteint": "Niveaux requis qui ne disposent pas d’une couverture suffisante sur les postes concernés.",
+        "Niveaux attendus insuffisamment couverts": "Niveaux requis qui ne disposent pas d’une couverture suffisante sur les postes concernés.",
         "Expertise réelle à confirmer": "Compétences où l’expertise visible reste absente ou trop faible.",
         "Référentiel à consolider": "Points où les données de référentiel ou d’évaluation doivent être fiabilisées.",
         "Porteur unique": "Compétences portées par une seule personne confirmée.",
@@ -9253,11 +9029,11 @@ def _analyse_ishikawa_family_explanation(family: str) -> str:
 
 def _analyse_ishikawa_family_columns(family: str) -> List[str]:
     s = str(family or "")
-    if s == "Couverture du poste insuffisante":
+    if s == "Postes déjà fragilisés":
         return ["Code poste", "Poste", "Fragilité", "État"]
     if "Renfort" in s:
         return ["Code poste", "Poste"]
-    if "Couverture trop dépendante d’une personne" in s or s == "Porteur unique":
+    if "Dépendance à un porteur unique" in s or s == "Porteur unique":
         return ["Code compétence", "Compétence"]
     if "Données" in s or "Évaluation" in s:
         return ["Code compétence", "Compétence", "Dernière évaluation"]
@@ -9273,12 +9049,12 @@ def _analyse_ishikawa_family_columns(family: str) -> List[str]:
 
 def _analyse_ishikawa_row_values(family: str, row: Dict[str, Any]) -> List[str]:
     s = str(family or "")
-    if s == "Couverture du poste insuffisante":
+    if s == "Postes déjà fragilisés":
         frag = str(row.get("value") or "0%")
         return [frag, _analyse_risk_state_label(str(frag).replace("%", ""))]
     if "Renfort" in s:
         return []
-    if "Couverture trop dépendante d’une personne" in s or s == "Porteur unique":
+    if "Dépendance à un porteur unique" in s or s == "Porteur unique":
         return []
     if "Données" in s or "Évaluation" in s:
         return [_analyse_pdf_date_fr(row.get("value"))]

@@ -767,12 +767,8 @@
       text: "La continuité repose sur trop peu de collaborateurs confirmés. Une absence, un départ ou une surcharge peut rapidement mettre le poste ou la compétence sous tension."
     },
     transmission: {
-      title: "Effet possible d’un renfort potentiel insuffisant",
-      text: "Le poste dispose de peu de profils internes capables d’aider rapidement. Les seuils utilisés distinguent les renforts immédiats et les renforts à préparer."
-    },
-    sorties: {
-      title: "Effet possible d’une sortie approchante",
-      text: "Un titulaire a une fin de contrat, une retraite ou une sortie prévue à court terme. Cela n’explique pas forcément la fragilité actuelle, mais peut l’aggraver rapidement."
+      title: "Effet possible du manque de transmission",
+      text: "Le savoir-faire existe, mais il n’est pas assez diffusé. Le risque principal est une perte progressive de maîtrise ou une difficulté à construire une relève."
     },
     efficacite: {
       title: "Effet possible d’un niveau attendu non atteint",
@@ -1535,9 +1531,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   function priorityLabel(score100) {
     const sc = clamp(Number(score100 || 0), 0, 100);
-    if (sc >= 75) return "Critique";
-    if (sc >= 50) return "Élevé";
-    if (sc >= 25) return "Modéré";
+
+    if (sc >= 100) return "Rupture";
+    if (sc >= 80) return "Très critique";
+    if (sc >= 60) return "Critique";
+    if (sc >= 40) return "Élevée";
+    if (sc >= 20) return "Modérée";
     return "Faible";
   }
 
@@ -1624,8 +1623,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   const domObl = (p.nsf_domaine_obligatoire === true);
   const domTxt = domLabel ? `${domLabel} ${domObl ? "(bloquant)" : "(indicatif)"}` : "—";
 
-  const nbNecessaires = Number(p.nb_titulaires_necessaires ?? p.nb_titulaires_cible ?? comp.nb_titulaires_cible ?? 1);
-  const releveTxt = "Renfort potentiel : immédiat à partir de 75% de matching, à préparer entre 60% et 74%.";
+  const releveTxt = "Relève : uniquement les profils immédiatement mobilisables sont comptés.";
 
   // Causes racines (accordéons) : analyse factuelle (pas de recommandations ici)
   const causes = diag?.causes || {};
@@ -1633,16 +1631,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   const cDep = Array.isArray(causes?.dependance) ? causes.dependance : [];
   const cTrans = causes?.transmission || null;
   const cEff = Array.isArray(causes?.efficacite) ? causes.efficacite : [];
-  const cSorties = causes?.sorties_approchantes || null;
 
-  const hasStruct = !!cStruct && ((cStruct.poste_non_tenu === true) || Number(cStruct.gap_titulaires || 0) > 0 || Number(cStruct.nb_indisponibles || 0) > 0);
+  const hasStruct = !!cStruct && ((cStruct.poste_non_tenu === true) || Number(cStruct.gap_titulaires || 0) > 0);
   const hasDep = cDep.length > 0;
   const hasTrans = !!cTrans && (
-    Number(cTrans.nb_renforts_immediats || 0) <= 0 &&
-    (Number(cTrans.nb_renforts_a_preparer || 0) > 0 || Number(cTrans.meilleur_matching || 0) >= 0)
+    (Array.isArray(cTrans.raisons) && cTrans.raisons.length > 0) ||
+    Number(cTrans.nb_ressources_potentielles || 0) > 0
   );
   const hasEff = cEff.length > 0;
-  const hasSorties = !!cSorties && Number(cSorties.count || 0) > 0;
 
   const critLevelClass = (v) => {
     const n = Number(v);
@@ -1707,9 +1703,15 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     depLim.reduce((acc, x) => acc + scoreDependanceUnit(x?.poids_criticite, true), 0)
   );
 
-  const depRiskLabel = (r) => "Porteur unique";
+  const depRiskLabel = (r) =>
+    (String(r?.type_risque || "").toUpperCase() === "SANS_RELAIS")
+      ? "Aucun renfort"
+      : "Renfort limité";
 
-  const depRiskBadgeClass = (r) => "sb-badge--dep-limited";
+  const depRiskBadgeClass = (r) =>
+    (String(r?.type_risque || "").toUpperCase() === "SANS_RELAIS")
+      ? "sb-badge--dep-none"
+      : "sb-badge--dep-limited";
 
   const renderDepTable = (list) => {
     if (!list.length) return "";
@@ -1721,8 +1723,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               <th style="width:110px;">Code</th>
               <th>Compétence</th>
               <th class="col-center" style="width:90px;">Criticité</th>
-              <th class="col-center" style="width:150px;">Porteurs titulaires</th>
-              <th class="col-center" style="width:170px;">Lecture</th>
+              <th class="col-center" style="width:150px;">Renfort immédiat</th>
+              <th class="col-center" style="width:170px;">Dépendance</th>
             </tr>
           </thead>
           <tbody>
@@ -1758,36 +1760,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   const renderEffTable = (list) => {
     if (!list.length) return "";
-    const first = list[0] || {};
-    if (String(first.kind || "") === "salarie" || first.id_effectif) {
-      return `
-        <div class="sb-help" style="margin-top:0;">
-          Cette lecture part des titulaires du poste. Le détail par compétence reste accessible depuis le modal d’adéquation au poste.
-        </div>
-        <div class="table-wrap" style="margin-top:10px;">
-          <table class="sb-table">
-            <thead>
-              <tr>
-                <th>Collaborateur</th>
-                <th class="col-center" style="width:150px;">Maîtrise attendue</th>
-                <th class="col-center" style="width:150px;">Maîtrise actuelle</th>
-                <th class="col-center" style="width:110px;">Écart</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${list.map(r => `
-                <tr>
-                  <td><div style="font-size:14px; font-weight:800;">${escapeHtml(r?.full || "Collaborateur")}</div></td>
-                  <td class="col-center"><span class="sb-badge">${escapeHtml(String(r?.maitrise_attendue_pct ?? 100))}%</span></td>
-                  <td class="col-center"><span class="sb-badge">${escapeHtml(String(r?.maitrise_actuelle_pct ?? 0))}%</span></td>
-                  <td class="col-center"><span class="sb-badge sb-badge--dep-none">-${escapeHtml(String(r?.ecart_pct ?? 0))}%</span></td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        </div>
-      `;
-    }
     return `
       <div class="table-wrap" style="margin-top:10px;">
         <table class="sb-table">
@@ -1809,9 +1781,14 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               return `
                 <tr>
                   <td style="white-space:nowrap;">${compCodeBadge(code)}</td>
-                  <td style="min-width:280px;"><div style="font-size:14px; font-weight:700;">${intit}</div></td>
+                  <td style="min-width:280px;">
+                    <div style="font-size:14px; font-weight:700;">${intit}</div>
+                  </td>
                   <td class="col-center" style="white-space:nowrap;">${req}</td>
-                  <td class="col-center" style="white-space:nowrap;"><span class="sb-badge">${escapeHtml(String(nDef))}</span><span style="color:#6b7280; font-size:12px; margin-left:6px;">/ ${escapeHtml(String(nTit))}</span></td>
+                  <td class="col-center" style="white-space:nowrap;">
+                    <span class="sb-badge">${escapeHtml(String(nDef))}</span>
+                    <span style="color:#6b7280; font-size:12px; margin-left:6px;">/ ${escapeHtml(String(nTit))}</span>
+                  </td>
                 </tr>
               `;
             }).join("")}
@@ -1860,15 +1837,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   const componentScores = {
     structure: getBackendScore("score_structurel", structureScoreFallback),
-    sorties: getBackendScore("score_sorties_approchantes", 0),
     dependance: getBackendScore("score_dependance", dependancePoints),
-    transmission: getBackendScore("score_renfort_potentiel", getBackendScore("score_transmission", transmissionScoreFallback)),
+    transmission: getBackendScore("score_transmission", transmissionScoreFallback),
     efficacite: getBackendScore("score_efficacite", efficaciteScoreFallback)
   };
 
   const visibleComponentTotal =
     (hasStruct ? componentScores.structure : 0) +
-    (hasSorties ? componentScores.sorties : 0) +
     (hasDep ? componentScores.dependance : 0) +
     (hasTrans ? componentScores.transmission : 0) +
     (hasEff ? componentScores.efficacite : 0);
@@ -1879,26 +1854,33 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   };
 
   const structureSharePct = shareOfVisibleCauses(componentScores.structure);
-  const sortiesSharePct = shareOfVisibleCauses(componentScores.sorties);
   const dependanceSharePct = shareOfVisibleCauses(componentScores.dependance);
   const transmissionSharePct = shareOfVisibleCauses(componentScores.transmission);
   const efficaciteSharePct = shareOfVisibleCauses(componentScores.efficacite);
 
   const structureBody = (() => {
     if (!hasStruct) return "";
-    const nbR = Number(cStruct?.nb_titulaires_rattaches ?? cStruct?.nb_titulaires ?? 0);
-    const nbD = Number(cStruct?.nb_titulaires_disponibles ?? cStruct?.nb_titulaires ?? 0);
+    const nbT = Number(cStruct?.nb_titulaires || 0);
     const nbC = Number(cStruct?.nb_titulaires_cible || 1);
-    const nbI = Number(cStruct?.nb_indisponibles || 0);
     const gapT = Number(cStruct?.gap_titulaires || 0);
+    const nonTenu = (cStruct?.poste_non_tenu === true) || (nbT <= 0);
     return `
       <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:0;">
-        <div class="card" style="padding:10px; margin:0; min-width:160px; flex:1;"><div class="label">Titulaires nécessaires</div><div class="value">${escapeHtml(String(nbC))}</div></div>
-        <div class="card" style="padding:10px; margin:0; min-width:160px; flex:1;"><div class="label">Titulaires rattachés</div><div class="value">${escapeHtml(String(nbR))}</div></div>
-        <div class="card" style="padding:10px; margin:0; min-width:160px; flex:1;"><div class="label">Titulaires disponibles</div><div class="value">${escapeHtml(String(nbD))}</div></div>
-        <div class="card" style="padding:10px; margin:0; min-width:160px; flex:1;"><div class="label">Indisponibilités</div><div class="value">${escapeHtml(String(nbI))}</div></div>
+        <div class="card" style="padding:10px; margin:0; min-width:180px; flex:1;">
+          <div class="label">Titulaires actuels</div>
+          <div class="value">${escapeHtml(String(nbT))}</div>
+        </div>
+        <div class="card" style="padding:10px; margin:0; min-width:180px; flex:1;">
+          <div class="label">Titulaires cible</div>
+          <div class="value">${escapeHtml(String(nbC))}</div>
+        </div>
+        <div class="card" style="padding:10px; margin:0; min-width:180px; flex:1;">
+          <div class="label">Écart</div>
+          <div class="value">${escapeHtml(String(gapT))}</div>
+        </div>
       </div>
-      ${gapT > 0 ? `<div class="sb-help" style="margin-top:10px;"><b>Couverture insuffisante</b> : il manque ${escapeHtml(String(gapT))} titulaire(s) disponible(s) par rapport au besoin du poste.</div>` : ``}
+      ${nonTenu ? `<div class="sb-help" style="margin-top:10px;"><b>Poste non tenu</b> : aucun titulaire identifié.</div>` : ``}
+      ${(gapT > 0 && !nonTenu) ? `<div class="sb-help" style="margin-top:10px;"><b>Sous-capacité</b> : écart de ${escapeHtml(String(gapT))} titulaire(s) par rapport à la cible.</div>` : ``}
     `;
   })();
 
@@ -1914,18 +1896,33 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
   const transmissionBody = (() => {
     if (!hasTrans) return "";
-    const imm = Number(cTrans?.nb_renforts_immediats || 0);
-    const prep = Number(cTrans?.nb_renforts_a_preparer || 0);
-    const best = Number(cTrans?.meilleur_matching || 0);
+    const raisons = Array.isArray(cTrans?.raisons) ? cTrans.raisons : [];
+    const nbPot = Number(cTrans?.nb_ressources_potentielles || 0);
+
     return `
       <div class="sb-help" style="margin-top:0;">
-        Cette cause regarde les profils internes qui ne sont pas titulaires du poste, mais qui pourraient aider si le poste se fragilise.
+        Ce risque mesure les ressources potentielles identifiées dans le périmètre, mais non mobilisables immédiatement sur ce poste.
       </div>
+
       <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:10px;">
-        <div class="card" style="padding:10px; margin:0; min-width:190px; flex:1;"><div class="label">Renforts immédiats ≥ 75%</div><div class="value">${escapeHtml(String(imm))}</div></div>
-        <div class="card" style="padding:10px; margin:0; min-width:190px; flex:1;"><div class="label">Renforts à préparer 60-74%</div><div class="value">${escapeHtml(String(prep))}</div></div>
-        <div class="card" style="padding:10px; margin:0; min-width:190px; flex:1;"><div class="label">Meilleur matching disponible</div><div class="value">${escapeHtml(String(best))}%</div></div>
+        <div class="card" style="padding:10px; margin:0; min-width:220px; flex:1;">
+          <div class="label">Ressources potentielles</div>
+          <div class="value">${escapeHtml(String(nbPot))}</div>
+        </div>
       </div>
+
+      ${raisons.length ? `
+        <div style="margin-top:12px; font-weight:700;">Freins de mobilisation immédiate</div>
+        <div class="sb-richtext" style="margin-top:6px;">
+          <ul>
+            ${raisons.map(x => `<li>${escapeHtml(String(x || ""))}</li>`).join("")}
+          </ul>
+        </div>
+      ` : `
+        <div class="sb-help" style="margin-top:12px;">
+          Des ressources existent dans le périmètre, mais elles ne sont pas immédiatement mobilisables selon les critères du poste.
+        </div>
+      `}
     `;
   })();
 
@@ -1934,61 +1931,25 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     return renderEffTable(cEff);
   })();
 
-  const sortiesBody = (() => {
-    if (!hasSorties) return "";
-    const items = Array.isArray(cSorties?.items) ? cSorties.items : [];
-    return `
-      <div class="sb-help" style="margin-top:0;">
-        Ces sorties ne sont pas la cause principale actuelle, mais elles peuvent aggraver la fragilité dans les 3 prochains mois.
-      </div>
-      <div class="table-wrap" style="margin-top:10px;">
-        <table class="sb-table">
-          <thead><tr><th>Collaborateur</th><th class="col-center" style="width:140px;">Date prévue</th><th style="width:220px;">Motif</th></tr></thead>
-          <tbody>
-            ${items.map(r => `<tr><td><b>${escapeHtml(r?.full || "Collaborateur")}</b></td><td class="col-center">${escapeHtml(r?.date_sortie || "—")}</td><td>${escapeHtml(r?.motif || "Sortie prévue")}</td></tr>`).join("") || `<tr><td colspan="3" class="col-center">${escapeHtml(String(cSorties?.count || 0))} sortie(s) approchante(s).</td></tr>`}
-          </tbody>
-        </table>
-      </div>
-    `;
-  })();
-
-
-  const causeDot = (kind) => {
-    const color = kind === "main" ? "#ef4444" : (kind === "aggravant" ? "#f59e0b" : "#64748b");
-    return `<span style="width:9px;height:9px;border-radius:999px;background:${color};display:inline-block;flex:0 0 auto;"></span>`;
-  };
-
   const causesCard = `
     <div class="card" style="padding:12px; margin-top:12px;">
       <div class="card-title" style="margin:0 0 6px 0;">Pourquoi ce poste est fragile ?</div>
-      <div class="card-sub" style="margin:0;">Ouvrez une cause pour voir ce qui est observé et pourquoi cela pèse sur l’indice.</div>
+      <div class="card-sub" style="margin:0;">Causes principales. Ouvrez une ligne pour voir qui est concerné, où se situe l’écart et pourquoi cela fragilise le poste.</div>
 
-      ${(!hasStruct && !hasDep && !hasTrans && !hasEff && !hasSorties) ? `
-        <div class="card-sub" style="margin-top:10px;">Aucune cause à afficher.</div>
+      ${(!hasStruct && !hasDep && !hasTrans && !hasEff) ? `
+        <div class="card-sub" style="margin-top:10px;">Aucune cause racine à afficher.</div>
       ` : `
         ${hasStruct ? `
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open">
               <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                ${causeDot("main")}<span>Couverture du poste insuffisante</span>
+                <span>Couverture du poste insuffisante</span>
                 <span class="sb-badge sb-badge--risk-share">${escapeHtml(String(structureSharePct))}%</span>
                 ${causeHelpButton("structure")}
-              </span><span class="sb-acc-chevron">▾</span>
+              </span>
+              <span class="sb-acc-chevron">▾</span>
             </button>
             <div class="sb-acc-body">${structureBody}</div>
-          </div>
-        ` : ``}
-
-        ${hasEff ? `
-          <div class="sb-accordion">
-            <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
-              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                ${causeDot("main")}<span>Niveau attendu non atteint</span>
-                ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(efficaciteSharePct))}%</span>` : ``}
-                ${causeHelpButton("efficacite")}
-              </span><span class="sb-acc-chevron">▾</span>
-            </button>
-            <div class="sb-acc-body">${efficaciteBody}</div>
           </div>
         ` : ``}
 
@@ -1996,47 +1957,49 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
               <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                ${causeDot("main")}<span>Couverture trop dépendante d’une personne</span>
+                <span>Couverture trop dépendante d’une personne</span>
                 ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(dependanceSharePct))}%</span>` : ``}
                 ${causeHelpButton("dependance")}
-              </span><span class="sb-acc-chevron">▾</span>
+              </span>
+              <span class="sb-acc-chevron">▾</span>
             </button>
             <div class="sb-acc-body">${dependanceBody}</div>
           </div>
         ` : ``}
 
-        ${hasSorties ? `
-          <div class="sb-accordion">
-            <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
-              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                ${causeDot("aggravant")}<span>Sortie approchante d’un titulaire</span>
-                ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(sortiesSharePct))}%</span>` : ``}
-                ${causeHelpButton("sorties")}
-              </span><span class="sb-acc-chevron">▾</span>
-            </button>
-            <div class="sb-acc-body">${sortiesBody}</div>
-          </div>
-        ` : ``}
 
         ${hasTrans ? `
           <div class="sb-accordion">
             <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
               <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                ${causeDot("aggravant")}<span>Renfort potentiel insuffisant</span>
+                <span>Relève ou transmission à anticiper</span>
                 ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(transmissionSharePct))}%</span>` : ``}
                 ${causeHelpButton("transmission")}
-              </span><span class="sb-acc-chevron">▾</span>
+              </span>
+              <span class="sb-acc-chevron">▾</span>
             </button>
             <div class="sb-acc-body">${transmissionBody}</div>
           </div>
         ` : ``}
+
+
+        ${hasEff ? `
+          <div class="sb-accordion">
+            <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
+              <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span>Niveau attendu non atteint</span>
+                ${showSecondaryRiskShare ? `<span class="sb-badge sb-badge--risk-share">${escapeHtml(String(efficaciteSharePct))}%</span>` : ``}
+                ${causeHelpButton("efficacite")}
+              </span>
+              <span class="sb-acc-chevron">▾</span>
+            </button>
+            <div class="sb-acc-body">${efficaciteBody}</div>
+          </div>
+        ` : ``}
+
       `}
     </div>
   `;
-
-  // Plan de sécurisation (possibilités)
-
-
 
   // Plan de sécurisation (possibilités)
   const idPoste = String(p?.id_poste || p?.id || diag?.id_poste || "").trim();
@@ -2065,7 +2028,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
             <b>Conditions de l’analyse :</b><br>
             • Diplôme minimum : <b>${escapeHtml(eduTxt)}</b><br>
             • Domaine de formation : <b>${escapeHtml(domTxt)}</b><br>
-            • Nombre de titulaires nécessaires : <b>${escapeHtml(String(nbNecessaires || 1))}</b><br>
             • Criticité des compétences : <b>≥ ${escapeHtml(String(critMin))}%</b><br>
             • ${escapeHtml(releveTxt)}
           </div>
