@@ -2449,40 +2449,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
   }
   async function openAnalyseMatchingPdfInBrowser(portal, id_poste, id_service) {
     const url = buildAnalyseMatchingPdfUrl(portal, id_poste, id_service);
-    const title = "Correspondances profils/postes";
 
-    const win = window.open("", "_blank");
+    const win = window.open("about:blank", "_blank", "noopener");
     if (!win) throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
-
-    const writePdfWindow = (html) => {
-      try {
-        win.document.open();
-        win.document.write(html);
-        win.document.close();
-      } catch (_) {
-        try { win.location.href = "about:blank"; } catch (__){ }
-      }
-    };
-
-    writePdfWindow(`<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<title>${escapeHtml(title)}</title>
-<style>
-html,body{height:100%;margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#111827;}
-.pdf-loading{height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;}
-.pdf-loading__spinner{width:34px;height:34px;border-radius:999px;border:4px solid rgba(17,24,39,.14);border-top-color:#0f9d8f;animation:pdfSpin .8s linear infinite;}
-@keyframes pdfSpin{to{transform:rotate(360deg)}}
-</style>
-</head>
-<body>
-<div class="pdf-loading">
-  <div class="pdf-loading__spinner"></div>
-  <div>Génération du PDF…</div>
-</div>
-</body>
-</html>`);
 
     try {
       const headers = new Headers();
@@ -2495,87 +2464,39 @@ html,body{height:100%;margin:0;background:#f3f4f6;font-family:Arial,sans-serif;c
           if (token) headers.set("Authorization", `Bearer ${token}`);
         }
       } catch (_) {
-        // L'API renverra une erreur explicite si le token est réellement absent.
+        // L'API renverra une erreur explicite si la session est absente.
       }
 
-      const res = await fetch(url, {
-        method: "GET",
-        headers,
-        credentials: "include",
-        cache: "no-store",
-      });
-
+      const res = await fetch(url, { method: "GET", headers });
       if (!res.ok) {
-        let detail = `HTTP ${res.status}`;
+        let detail = "";
+        const ct = (res.headers.get("content-type") || "").toLowerCase();
         try {
-          const ct = (res.headers.get("content-type") || "").toLowerCase();
           if (ct.includes("application/json")) {
             const payload = await res.json();
-            detail = payload?.detail || payload?.message || JSON.stringify(payload) || detail;
+            detail = payload?.detail || payload?.message || JSON.stringify(payload);
           } else {
-            const text = await res.text();
-            if (text) detail = text;
+            detail = await res.text();
           }
-        } catch (_) {}
-
-        writePdfWindow(`<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<title>Erreur PDF</title>
-<style>
-html,body{height:100%;margin:0;background:#fff;font-family:Arial,sans-serif;color:#991b1b;}
-.err{padding:28px;font-size:15px;line-height:1.5;}
-</style>
-</head>
-<body><div class="err">Erreur génération document : ${escapeHtml(detail)}</div></body>
-</html>`);
-        throw new Error(detail);
+        } catch (_) {
+          detail = `HTTP ${res.status}`;
+        }
+        try { win.close(); } catch (_) { }
+        throw new Error(detail || `HTTP ${res.status}`);
       }
 
       const blob = await res.blob();
       const blobUrl = URL.createObjectURL(blob);
-      const safeTitle = escapeHtml(title);
-
-      writePdfWindow(`<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<title>${safeTitle}</title>
-<style>
-html,body{height:100%;margin:0;background:#111827;}
-iframe{width:100%;height:100%;border:0;display:block;background:#fff;}
-</style>
-</head>
-<body>
-<iframe src="${blobUrl}" title="${safeTitle}"></iframe>
-</body>
-</html>`);
-
-      const revoke = () => {
-        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
-      };
-      try { win.addEventListener("beforeunload", revoke, { once: true }); } catch (_) {}
-      setTimeout(revoke, 5 * 60 * 1000);
+      win.location.href = blobUrl;
+      setTimeout(() => {
+        try { URL.revokeObjectURL(blobUrl); } catch (_) { }
+      }, 60000);
       return url;
     } catch (e) {
-      const msg = e?.message || String(e || "Erreur inconnue");
-      writePdfWindow(`<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<title>Erreur PDF</title>
-<style>
-html,body{height:100%;margin:0;background:#fff;font-family:Arial,sans-serif;color:#991b1b;}
-.err{padding:28px;font-size:15px;line-height:1.5;}
-</style>
-</head>
-<body><div class="err">Erreur génération document : ${escapeHtml(msg)}</div></body>
-</html>`);
+      try { win.close(); } catch (_) { }
       throw e;
     }
   }
-
 
 
 
@@ -2609,41 +2530,29 @@ html,body{height:100%;margin:0;background:#fff;font-family:Arial,sans-serif;colo
     refreshMatchingPrintButtonState();
   }
   function renderMatchingHeaderActions(id_service) {
-    const title = byId("analyseDetailTitle");
     const meta = byId("analyseDetailMeta");
     if (!meta) return;
 
-    const titleBox = title ? title.parentElement : null;
-    const headerRow = titleBox ? titleBox.parentElement : null;
-
-    if (headerRow) {
-      headerRow.style.display = "flex";
-      headerRow.style.justifyContent = "space-between";
-      headerRow.style.alignItems = "center";
-      headerRow.style.gap = "12px";
-      headerRow.style.flexWrap = "nowrap";
-      headerRow.style.width = "100%";
-    }
-
-    if (titleBox) {
-      titleBox.style.flex = "1 1 auto";
-      titleBox.style.minWidth = "0";
-    }
-
     meta.className = "";
-    meta.style.cssText = "margin:0 0 0 auto; display:flex; align-items:center; justify-content:flex-end; flex:0 0 auto; min-width:auto; align-self:center;";
+    meta.style.margin = "0 0 0 auto";
+    meta.style.display = "flex";
+    meta.style.alignItems = "center";
+    meta.style.justifyContent = "flex-end";
+    meta.style.alignSelf = "center";
+    meta.style.flex = "1 1 auto";
+    meta.style.minWidth = "160px";
+
     meta.innerHTML = `
       <button type="button"
               id="btnAnalyseMatchingPrint"
               class="sb-btn sb-btn--accent"
-              style="display:inline-flex; align-items:center; justify-content:center; min-height:30px; padding:7px 13px; font-size:12px; font-weight:800; white-space:nowrap;"
+              style="display:inline-flex; align-items:center; justify-content:center; min-height:30px; padding:7px 13px; font-size:12px; font-weight:800;"
               ${String(_matchSelectedPoste || "").trim() ? "" : "disabled"}>
         Imprimer
       </button>
     `;
     bindMatchingPrintButton(id_service);
   }
-
 
 
 
