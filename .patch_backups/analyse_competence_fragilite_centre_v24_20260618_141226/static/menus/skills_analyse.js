@@ -4062,43 +4062,46 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     const esc = (v) => escapeHtml(v ?? "");
     const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+
+    const scope = (data?.scope || "Tous les services").toString();
+    const critMin = Number(data?.criticite_min);
+    const critMinSafe = Number.isFinite(critMin) ? critMin : 0;
+
     const stats = data?.stats || {};
-    const comp = data?.competence || {};
-    const causes = Array.isArray(data?.causes) ? data.causes : [];
-    const porteurs = Array.isArray(data?.porteurs) ? data.porteurs : [];
+    const score = Number(stats?.indice_fragilite);
+    const scoreSafe = Number.isFinite(score) ? clamp(score, 0, 100) : 0;
+
     const postes = Array.isArray(data?.postes) ? data.postes : [];
-    const scoreSafe = clamp(Math.round(Number(stats?.indice_fragilite || 0)), 0, 100);
+    const porteurs = Array.isArray(data?.porteurs) ? data.porteurs : [];
 
-    const scopeObj = data?.scope || {};
-    const scopeLabel = (typeof scopeObj === "object") ? (scopeObj.nom_service || "Tous les services") : (scopeObj || "Tous les services");
+    // -------- helpers niveaux / criticité --------
+    const nivKey = (raw) => nsLevelCode(raw);
+    const nivRank = (k) => nsLevelRank(k);
+    const nivBadgeHtml = (raw) => nsLevelBadgeHtml(raw, "Niveau requis");
 
-    function stateLabel(score) {
-      const s = clamp(Number(score || 0), 0, 100);
-      if (s >= 75) return "Critique";
-      if (s >= 50) return "Élevé";
-      if (s >= 25) return "Modéré";
-      return "Faible";
-    }
+    const critBadgeHtml = (v) => {
+      const n = Number(v);
+      const val = Number.isFinite(n) ? clamp(n, 0, 100) : 0;
+      const lvl = val >= 80 ? "sb-crit-l4" : val >= 60 ? "sb-crit-l3" : val >= 40 ? "sb-crit-l2" : "sb-crit-l1";
+      return `<span class="sb-crit-badge ${lvl}">${esc(String(val))}</span>`;
+    };
 
-    function statePill(score) {
-      const s = clamp(Number(score || 0), 0, 100);
-      const cls = s >= 75 ? "sb-badge--danger" : s >= 50 ? "sb-badge--warning" : s >= 25 ? "sb-badge--info" : "sb-badge--success";
-      return `<span class="sb-badge ${cls}">${esc(stateLabel(s))}</span>`;
-    }
-
+    // -------- ring + priorité (standard : même rendu que modal poste fragile) --------
     function scoreHue(score100) {
       const x = clamp(Number(score100 || 0), 0, 100) / 100;
-      return Math.round(120 * (1 - x));
+      return Math.round(120 * (1 - x)); // 120=vert -> 0=rouge
     }
 
-    function ring(score100) {
+    const ring = (score100) => {
       const s = clamp(Math.round(Number(score100 || 0)), 0, 100);
       const size = 104;
       const stroke = 10;
       const r = (size - stroke) / 2;
       const c = 2 * Math.PI * r;
       const offset = c * (1 - s / 100);
-      const fill = `hsl(${scoreHue(s)} 70% 45%)`;
+      const hue = scoreHue(s);
+      const fill = `hsl(${hue} 70% 45%)`;
+
       return `
         <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
           <div style="position:relative; width:${size}px; height:${size}px;">
@@ -4109,152 +4112,776 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
                       transform="rotate(-90 ${size / 2} ${size / 2})" />
             </svg>
             <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center;">
-              <div style="font-weight:900; font-size:28px; line-height:1;">${s}<span style="font-size:12px; font-weight:800;">%</span></div>
+              <div style="font-weight:900; font-size:28px; line-height:1;">
+                ${s}<span style="font-size:12px; font-weight:800;">%</span>
+              </div>
             </div>
           </div>
           <div class="card-sub" style="margin:0;">Fragilité</div>
         </div>
       `;
-    }
+    };
 
-    function dotForSeverity(sev) {
-      const s = String(sev || "");
-      const bg = s === "main" ? "#ef4444" : s === "secondary" ? "#f59e0b" : s === "data" ? "#64748b" : "#10b981";
-      return `<span style="width:10px;height:10px;border-radius:999px;background:${bg};display:inline-block;flex:0 0 auto;"></span>`;
-    }
+    // 3 niveaux UNIQUEMENT : Modérée / Élevée / Critique
+    const prioLabel = scoreSafe >= 75 ? "Critique" : scoreSafe >= 50 ? "Élevée" : "Modérée";
 
-    function causeItemsHtml(cause) {
-      const code = String(cause?.code || "");
-      const items = Array.isArray(cause?.items) ? cause.items : [];
-      if (!items.length) return "";
-
-      if (code === "MAITRISE_INSUFFISANTE") {
-        return `
-          <div style="overflow:auto;margin-top:10px;">
-            <table class="sb-table sb-table--airy sb-table--zebra" style="margin:0;min-width:760px;">
-              <thead><tr>
-                <th>Poste</th><th>Intitulé</th><th style="text-align:center;">Niveau requis</th><th style="text-align:center;">Besoin</th><th style="text-align:center;">Porteurs au niveau</th><th style="text-align:center;">Écart</th><th style="text-align:center;">Criticité</th>
-              </tr></thead>
-              <tbody>${items.map(it => `
-                <tr>
-                  <td><span class="sb-badge sb-badge-ref-poste-code">${esc(it.poste || "—")}</span></td>
-                  <td class="sb-fs-13 sb-fw-700">${esc(it.intitule_poste || "—")}</td>
-                  <td style="text-align:center;">${nsLevelBadgeHtml(it.niveau_requis || "—", "Niveau requis")}</td>
-                  <td style="text-align:center;">${esc(String(it.besoin ?? 0))}</td>
-                  <td style="text-align:center;">${esc(String(it.porteurs_niveau_requis ?? 0))}</td>
-                  <td style="text-align:center;"><span class="sb-badge sb-badge--warning">${esc(String(it.ecart ?? 0))}</span></td>
-                  <td style="text-align:center;">${esc(String(it.criticite ?? 0))}</td>
-                </tr>`).join("")}</tbody>
-            </table>
-          </div>`;
-      }
-
-      if (code === "EXPOSITION_SORTIES_INDISPOS") {
-        return `
-          <div style="overflow:auto;margin-top:10px;">
-            <table class="sb-table sb-table--airy sb-table--zebra" style="margin:0;min-width:680px;">
-              <thead><tr><th>Collaborateur</th><th>Poste</th><th>Événement</th><th style="text-align:center;">Début</th><th style="text-align:center;">Fin / date</th></tr></thead>
-              <tbody>${items.map(it => `
-                <tr>
-                  <td class="sb-fs-13 sb-fw-700">${esc(it.collaborateur || "—")}</td>
-                  <td class="sb-fs-13">${esc(it.poste || "—")}</td>
-                  <td><span class="sb-badge sb-badge--warning">${esc(it.evenement || "Événement")}</span></td>
-                  <td style="text-align:center;">${esc(it.debut || "—")}</td>
-                  <td style="text-align:center;">${esc(it.fin || "—")}</td>
-                </tr>`).join("")}</tbody>
-            </table>
-          </div>`;
-      }
+    const priorityPill = (label, score100) => {
+      const hue = scoreHue(score100);
+      const border = `hsl(${hue} 70% 45% / 0.55)`;
+      const bg = `hsl(${hue} 70% 45% / 0.12)`;
+      const fg = `hsl(${hue} 70% 25%)`;
 
       return `
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
-          ${items.map(it => `
-            <span class="sb-badge" style="white-space:normal;line-height:1.25;">
-              ${esc(it.label || "Indicateur")} : ${esc(String(it.value ?? "—"))}${it.besoin !== undefined ? ` / ${esc(String(it.besoin))}` : ""}${it.avances_ou_experts !== undefined ? ` · Avancés/experts : ${esc(String(it.avances_ou_experts))}` : ""}${it.porteurs_declares !== undefined ? ` · Déclarés : ${esc(String(it.porteurs_declares))}` : ""}
-            </span>`).join("")}
-        </div>`;
+        <span style="
+          display:inline-flex; align-items:center; justify-content:center;
+          padding:4px 10px; border-radius:999px; border:1px solid ${border};
+          background:${bg}; color:${fg}; font-weight:900; font-size:12px; white-space:nowrap;">
+          ${esc(label || "—")}
+        </span>
+      `;
+    };
+
+    // Nouveau détail compétence : le backend renvoie les états RH, le front n'invente plus le calcul.
+    if (Array.isArray(data?.causes)) {
+      const scopeObj = data?.scope || {};
+      const scopeLabel = (typeof scopeObj === "object")
+        ? (scopeObj.nom_service || "Tous les services")
+        : (scopeObj || "Tous les services");
+
+      const badgeState = (code, label) => {
+        const c = String(code || "");
+        const cls = c === "COUVERTURE_VALIDEE" ? "sb-badge--success"
+          : c === "DEPENDANCE" ? "sb-badge--warning"
+          : c === "COUVERTURE_NON_CONFIRMEE" ? "sb-badge--info"
+          : "sb-badge--danger";
+        return `<span class="sb-badge ${cls}">${esc(label || "À qualifier")}</span>`;
+      };
+
+      const codePoste = (p) => (p?.codif_client && String(p.codif_client).trim())
+        ? String(p.codif_client).trim()
+        : String(p?.codif_poste || "").trim();
+
+      const dateEvalTxt = (r) => {
+        const d = (r?.date_derniere_eval || r?.date_audit || "").toString().slice(0, 10);
+        return d ? formatDateFr(d) : "—";
+      };
+
+      const postesRows = postes.map((p) => `
+        <tr>
+          <td style="white-space:nowrap;"><span class="sb-badge sb-badge-ref-poste-code">${esc(codePoste(p) || "—")}</span></td>
+          <td class="sb-fs-13 sb-fw-700">${esc(p?.intitule_poste || "")}</td>
+          <td class="sb-fs-13">${esc(p?.nom_service || "—")}</td>
+          <td style="text-align:center;">${nivBadgeHtml(p?.niveau_requis)}</td>
+          <td style="text-align:center;">${critBadgeHtml(p?.poids_criticite)}</td>
+          <td style="text-align:center;">${esc(String(p?.nb_porteurs_declares ?? 0))}</td>
+          <td style="text-align:center;">${esc(String(p?.nb_porteurs_evalues ?? 0))}</td>
+          <td style="text-align:center;">${esc(String(p?.nb_porteurs_valides ?? 0))}</td>
+          <td>${badgeState(p?.etat_couverture, p?.etat_couverture_label)}</td>
+          <td class="sb-fs-13">${esc(p?.action_rh || "Analyser")}</td>
+        </tr>
+      `).join("");
+
+      const porteursRows = porteurs.map((r) => {
+        const full = `${(r?.prenom_effectif || "").toString().trim()} ${(r?.nom_effectif || "").toString().trim()}`.trim() || "—";
+        const c = String(r?.statut_rh || "");
+        const cls = c === "EVALUE" ? "sb-badge--success"
+          : c === "INDISPONIBLE" ? "sb-badge--warning"
+          : "sb-badge--info";
+        return `
+          <tr>
+            <td class="sb-fs-13 sb-fw-700">${esc(full)}</td>
+            <td class="sb-fs-13">${esc(r?.intitule_poste || "—")}</td>
+            <td class="sb-fs-13">${esc(r?.nom_service || "—")}</td>
+            <td style="text-align:center;">${nivBadgeHtml(r?.niveau_actuel)}</td>
+            <td style="text-align:center;">${esc(dateEvalTxt(r))}</td>
+            <td><span class="sb-badge ${cls}">${esc(r?.statut_rh_label || "À évaluer")}</span></td>
+          </tr>
+        `;
+      }).join("");
+
+      const causeKeyFromTitle = (txt) => {
+        const t = String(txt || "").toLowerCase();
+        if (t.includes("non confirmé") || t.includes("non confirme") || t.includes("évalu") || t.includes("evalu")) return "non_confirmee";
+        if (t.includes("niveau") || t.includes("insuff")) return "efficacite";
+        if (t.includes("dépend") || t.includes("depend")) return "dependance";
+        if (t.includes("absence") || t.includes("indispon")) return "indisponibilite";
+        if (t.includes("transmission") || t.includes("relève") || t.includes("releve")) return "transmission";
+        return "structure";
+      };
+
+      const causesHtml = (data.causes || []).filter(c => Number(c?.count || 0) > 0).map((c, idx) => `
+        <div class="sb-accordion">
+          <button type="button" class="sb-acc-head sb-btn sb-btn--soft ${idx === 0 ? "is-open" : ""}">
+            <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <span>${esc(c?.titre || "Cause")}</span>
+              <span class="sb-badge">${esc(String(c?.count || 0))}</span>
+              ${causeHelpButton(causeKeyFromTitle(c?.titre))}
+            </span>
+            <span class="sb-acc-chevron">▾</span>
+          </button>
+          <div class="sb-acc-body">
+            <div class="card-sub" style="margin:0 0 8px 0;"><b>Lecture RH :</b> ${esc(c?.lecture || "—")}</div>
+            <div class="card-sub" style="margin:0;"><b>Point à sécuriser :</b> ${esc(c?.action || "—")}</div>
+          </div>
+        </div>
+      `).join("") || `<div class="card-sub" style="margin:0;">Aucune cause critique détectée sur le périmètre et le seuil sélectionnés.</div>`;
+
+      const lectureRh = (() => {
+        const absent = Number(stats?.nb_postes_couverture_absente || 0);
+        const nonConf = Number(stats?.nb_postes_non_confirmee || 0);
+        const insuff = Number(stats?.nb_postes_niveau_insuffisant || 0);
+        const dep = Number(stats?.nb_postes_dependance || 0);
+        const total = Number(stats?.nb_postes_impactes || postes.length || 0);
+        if (!total) return "Cette compétence n’est pas requise sur les postes du périmètre ou du seuil sélectionné.";
+        if (absent > 0) return "Cette compétence expose des postes car aucun porteur déclaré ne couvre une partie du besoin.";
+        if (nonConf > 0) return "Cette compétence est déclarée, mais le niveau attendu n’est pas confirmé par une évaluation exploitable.";
+        if (insuff > 0) return "Cette compétence est évaluée, mais le niveau constaté reste insuffisant sur une partie des postes concernés.";
+        if (dep > 0) return "Cette compétence est validée, mais elle repose sur trop peu de porteurs confirmés.";
+        return "Cette compétence est couverte au niveau requis sur le périmètre analysé.";
+      })();
+
+      host.innerHTML = `
+        <div class="card" style="padding:12px; margin:0;">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:260px;">
+              <div class="card-title" style="margin-bottom:8px;">Lecture RH</div>
+              <div class="card-sub" style="margin:0 0 10px 0;">${esc(lectureRh)}</div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <span class="sb-badge">Service : ${esc(scopeLabel)}</span>
+                <span class="sb-badge">Criticité min : ${esc(String(critMinSafe))}</span>
+                <span class="sb-badge">Postes concernés : ${esc(String(stats?.nb_postes_impactes ?? postes.length))}</span>
+                <span class="sb-badge">Porteurs déclarés : ${esc(String(stats?.nb_porteurs_declares ?? porteurs.length))}</span>
+                <span class="sb-badge">Porteurs évalués : ${esc(String(stats?.nb_porteurs_evalues ?? 0))}</span>
+                <span class="sb-badge">Porteurs validés : ${esc(String(stats?.nb_porteurs_valides ?? 0))}</span>
+              </div>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+              ${ring(scoreSafe)}
+              ${priorityPill(prioLabel, scoreSafe)}
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <div class="card-title" style="margin-bottom:8px;">Pourquoi cette compétence est fragile ?</div>
+          ${causesHtml}
+        </div>
+
+        <div class="card analyse-hypothesis-card" style="padding:12px; margin-top:12px;">
+          <div class="card-title" style="margin-bottom:8px;">Points à sécuriser</div>
+          <div class="card-sub" style="margin:0;">Créer une hypothèse permet de tester cette fragilité dans les Simulations RH, sans prendre la décision depuis l’analyse.</div>
+          ${securityPointsHtml("competence")}
+          <div class="sb-actions sb-actions--end" style="margin-top:12px;">
+            <button type="button" id="btnAnalyseCompCreateHypothesis" class="sb-btn sb-btn--accent">Créer une hypothèse de sécurisation</button>
+          </div>
+        </div>
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <div class="card-title" style="margin-bottom:8px;">Postes concernés</div>
+          <div style="overflow:auto;">
+            <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" style="margin:0; min-width:980px;">
+              <thead>
+                <tr>
+                  <th style="width:110px;">Poste</th>
+                  <th>Intitulé</th>
+                  <th style="width:160px;">Service</th>
+                  <th style="width:110px; text-align:center;">Niveau requis</th>
+                  <th style="width:90px; text-align:center;">Criticité</th>
+                  <th style="width:90px; text-align:center;">Déclarés</th>
+                  <th style="width:90px; text-align:center;">Évalués</th>
+                  <th style="width:90px; text-align:center;">Validés</th>
+                  <th style="width:160px;">État RH</th>
+                  <th style="width:190px;">Détail</th>
+                </tr>
+              </thead>
+              <tbody>${postesRows || `<tr><td colspan="10" class="sb-muted">Aucun poste concerné.</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" style="padding:12px; margin-top:12px;">
+          <div class="card-title" style="margin-bottom:8px;">Porteurs identifiés</div>
+          <div style="overflow:auto;">
+            <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" style="margin:0; min-width:760px;">
+              <thead>
+                <tr>
+                  <th>Collaborateur</th>
+                  <th>Poste actuel</th>
+                  <th style="width:150px;">Service</th>
+                  <th style="width:120px; text-align:center;">Niveau déclaré</th>
+                  <th style="width:130px; text-align:center;">Dernière éval.</th>
+                  <th style="width:150px;">Statut</th>
+                </tr>
+              </thead>
+              <tbody>${porteursRows || `<tr><td colspan="6" class="sb-muted">Aucun porteur déclaré sur le périmètre.</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      host.querySelectorAll(".sb-acc-head").forEach((btnAcc) => {
+        const body = btnAcc.nextElementSibling;
+        if (body) body.style.display = btnAcc.classList.contains("is-open") ? "" : "none";
+        btnAcc.addEventListener("click", () => {
+          btnAcc.classList.toggle("is-open");
+          const b = btnAcc.nextElementSibling;
+          if (b) b.style.display = btnAcc.classList.contains("is-open") ? "" : "none";
+        });
+      });
+
+      const bHypoCompApi = byId("btnAnalyseCompCreateHypothesis");
+      if (bHypoCompApi && !bHypoCompApi.dataset.bound) {
+        bHypoCompApi.dataset.bound = "1";
+        bHypoCompApi.addEventListener("click", () => {
+          const compIdApi = String(data?.competence?.id_comp || data?.competence?.id_competence || "").trim();
+          const compCodeApi = String(data?.competence?.code || "").trim();
+          const compLabelApi = String(data?.competence?.intitule || "Compétence").trim();
+          const causeLabelApi = (Array.isArray(data?.causes) && data.causes.length) ? String(data.causes[0]?.titre || "Point de fragilité détecté") : "Point de fragilité détecté";
+          addAnalyseHypothesis({
+            type: "securiser_competence",
+            title: `Sécuriser la compétence ${compCodeApi ? compCodeApi + " · " : ""}${compLabelApi}`,
+            competence_id: compIdApi,
+            competence_code: compCodeApi,
+            competence_label: compLabelApi,
+            cause: causeLabelApi,
+            effet: "Tester une hypothèse de couverture ou de transmission sans décider depuis l’analyse.",
+            horizon: "actuel",
+            criticite: scoreSafe
+          });
+          closeAnalyseCompetenceModal();
+        });
+      }
+      return;
     }
 
-    const causesHtml = causes.map((c, idx) => `
+    // -------- données sous-couverture (besoin vs porteurs >= niveau) --------
+    const need = { A: 0, B: 0, C: 0 };
+    const have = { A: 0, B: 0, C: 0 };
+    const haveGe = { A: 0, B: 0, C: 0 };
+
+    if (data?.niveaux?.besoin && data?.niveaux?.porteurs_ge) {
+      ["A","B","C"].forEach((k) => {
+        need[k] = Number(data.niveaux.besoin?.[k] ?? 0) || 0;
+        haveGe[k] = Number(data.niveaux.porteurs_ge?.[k] ?? 0) || 0;
+        have[k] = Number(data.niveaux.porteurs?.[k] ?? 0) || 0;
+      });
+    } else {
+      // fallback si le backend ne renvoie pas niveaux
+      postes.forEach((p) => {
+        const k = nivKey(p?.niveau_requis);
+        if (!k) return;
+        const w = Number(p?.besoin_poste);
+        need[k] += Number.isFinite(w) && w > 0 ? w : 1;
+      });
+      porteurs.forEach((r) => {
+        const k = nivKey(r?.niveau_actuel);
+        if (!k) return;
+        have[k] += 1;
+      });
+      haveGe.A = have.A + have.B + have.C;
+      haveGe.B = have.B + have.C;
+      haveGe.C = have.C;
+    }
+
+    const _fmtCnt = (n) => {
+      const x = Number(n);
+      if (!Number.isFinite(x)) return "0";
+      if (Number.isInteger(x)) return String(x);
+      // 1 décimale max, sans trailing .0
+      return String(Math.round(x * 10) / 10).replace(/\.0$/, "");
+    };
+
+    const _coverState = (reqVal, gotVal) => {
+      const r = Number(reqVal) || 0;
+      const g = Number(gotVal) || 0;
+      const d = g - r;
+      if (d >= 0) return "ok";
+      if (d <= -2) return "bad";
+      return "warn"; // -1 (ou déficit léger)
+    };
+
+    const coverRow = (label, reqVal, gotVal) => {
+      const r = Math.max(0, Number(reqVal) || 0);
+      const g = Math.max(0, Number(gotVal) || 0);
+
+      // besoin = échelle : barre fixe, fill = possédé / requis
+      const ratio = r > 0 ? Math.min(g / r, 1) : 1; // requis=0 => plein
+      const wGot = Math.round(clamp(ratio, 0, 1) * 100);
+
+      // couleurs selon écart
+      const state = _coverState(r, g);
+      const fillCls = state === "ok" ? "is-ok" : state === "bad" ? "is-bad" : "is-warn";
+      const badgeCls = state === "ok" ? "sb-badge--success" : state === "bad" ? "sb-badge--danger" : "sb-badge--warning";
+
+      return `
+        <div class="sb-coverbar-row">
+          <div class="sb-coverbar-lbl">${esc(label)}</div>
+          <div class="sb-coverbar-track">
+            <div class="sb-coverbar-fill ${fillCls}" style="width:${wGot}%"></div>
+          </div>
+          <span class="sb-badge ${badgeCls} sb-coverbar-badge">${esc(_fmtCnt(g))}/${esc(_fmtCnt(r))}</span>
+        </div>
+      `;
+    };
+
+
+    const gapTotal =
+      Math.max(0, (Number(need.A || 0) - Number(haveGe.A || 0))) +
+      Math.max(0, (Number(need.B || 0) - Number(haveGe.B || 0))) +
+      Math.max(0, (Number(need.C || 0) - Number(haveGe.C || 0))) +
+      Math.max(0, (Number(need.D || 0) - Number(haveGe.D || 0)));
+
+        // -------- Risque de dépendance : apparition + texte (comparaison porteurs vs besoin) --------
+    const depFmt = (n) => (typeof _fmtCnt === "function" ? _fmtCnt(n) : String(n ?? 0));
+    const depLabel = (k) => ({ A: "Débutant", B: "Intermédiaire", C: "Avancé", D: "Expert" }[k] || "");
+
+    // On prend le niveau "le plus contraint" (buffer le plus faible) parmi ceux réellement requis.
+    // haveGe[k] = porteurs au niveau k ou supérieur ; need[k] = besoin au niveau k.
+    const depCandidates = ["D", "C", "B", "A"]
+      .filter((k) => Number(need[k] || 0) > 0)
+      .map((k) => {
+        const req = Number(need[k] || 0) || 0;
+        const haveOk = Number(haveGe[k] || 0) || 0;
+        const buffer = haveOk - req;
+        return { k, req, haveOk, buffer };
+      });
+
+    depCandidates.sort((a, b) => (a.buffer - b.buffer) || (nivRank(b.k) - nivRank(a.k)));
+    const depPick = depCandidates[0] || null;
+
+    const depReq = depPick ? depPick.req : 0;
+    const depHaveOk = depPick ? depPick.haveOk : 0;
+    const depLvl = depPick ? depPick.k : "";
+    const depLvlLabel = depLabel(depLvl);
+
+    // Règle: afficher uniquement si la perte d’1 porteur crée un déficit (X - 1 < N => X <= N)
+    const showDepend = !!(depPick && depReq > 0 && depHaveOk <= depReq);
+
+    const dependanceText = (() => {
+      if (!depPick || depReq <= 0) return "";
+
+      const plural = depHaveOk > 1 ? "s" : "";
+      const base = `Cette compétence est couverte par <b>${esc(depFmt(depHaveOk))}</b> personne${plural} (niveau <b>${esc(depLvlLabel)}</b>) pour un besoin de <b>${esc(depFmt(depReq))}</b>.`;
+
+      if (depHaveOk <= 0) return `${base} Aucun porteur identifié: la compétence n’est pas détenue dans le périmètre.`;
+      if (depHaveOk === 1) return `${base} Si cette personne n’est plus disponible, la compétence devient indisponible.`;
+      return `${base} Si 1 porteur n’est plus disponible, la compétence devient sous-couverte.`;
+    })();
+
+
+    // -------- table postes impactés (format demandé) --------
+    const postesSorted = [...postes].sort((a, b) => (Number(b?.poids_criticite) || 0) - (Number(a?.poids_criticite) || 0));
+
+    const postesRows = postesSorted.map((p) => {
+      const code = (p?.codif_client && p.codif_client.toString().trim())
+        ? p.codif_client.toString().trim()
+        : (p?.codif_poste || "");
+      return `
+        <tr>
+          <td style="white-space:nowrap;">
+            <span class="sb-badge sb-badge-ref-poste-code">${esc(code || "—")}</span>
+          </td>
+          <td class="sb-fs-13 sb-fw-700">${esc(p?.intitule_poste || "")}</td>
+          <td class="sb-fs-13">${esc(p?.nom_service || "")}</td>
+          <td style="text-align:center;">${nivBadgeHtml(p?.niveau_requis)}</td>
+          <td style="text-align:center;">${critBadgeHtml(p?.poids_criticite)}</td>
+        </tr>
+      `;
+    }).join("");
+
+    // -------- Causes racines : accordéons (même principe que modal poste) --------
+    const accSous = `
       <div class="sb-accordion">
-        <button type="button" class="sb-acc-head sb-btn sb-btn--soft ${idx === 0 ? "is-open" : ""}">
-          <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0;">
-            ${dotForSeverity(c?.severity)}
-            <span style="font-weight:850;">${esc(c?.titre || "Cause")}</span>
-            ${c?.niveau ? `<span class="sb-badge">${esc(c.niveau)}</span>` : ``}
-            ${Number(c?.count || 0) > 0 ? `<span class="sb-badge sb-badge--soft">${esc(String(c.count))}</span>` : ``}
+        <button type="button" class="sb-acc-head sb-btn sb-btn--soft is-open" data-target="acc_comp_sous">
+          <span style="display:flex;align-items:center;gap:10px;">
+            <span>Risque de sous-couverture</span>
+            ${gapTotal > 0 ? `<span class="sb-badge sb-badge--soft">${esc(String(gapTotal))}</span>` : ``}
           </span>
           <span class="sb-acc-chevron">▾</span>
         </button>
         <div class="sb-acc-body">
-          <div class="card-sub" style="margin:0 0 8px 0;font-size:14px;line-height:1.55;"><b>Ce qui est détecté :</b> ${esc(c?.lecture || "—")}</div>
-          <div class="card-sub" style="margin:0;font-size:14px;line-height:1.55;"><b>Point à sécuriser :</b> ${esc(c?.action || "—")}</div>
-          ${causeItemsHtml(c)}
-        </div>
-      </div>
-    `).join("") || `<div class="card-sub" style="margin:0;">Aucune cause de fragilité détectée sur le périmètre analysé.</div>`;
+          <div style="display:flex; gap:16px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap;">
 
-    const porteursRows = porteurs.slice(0, 12).map((r) => {
-      const full = `${(r?.prenom_effectif || "").toString().trim()} ${(r?.nom_effectif || "").toString().trim()}`.trim() || "—";
-      const evalDate = (r?.date_derniere_eval || r?.date_audit || "").toString().slice(0, 10);
-      const isIndispo = !!(r?.is_indispo || r?.date_fin_indispo);
-      const cls = isIndispo ? "sb-badge--warning" : r?.is_evaluee ? "sb-badge--success" : "sb-badge--info";
-      const label = isIndispo ? "Indisponible" : r?.is_evaluee ? "Évalué" : "À confirmer";
-      return `
-        <tr>
-          <td class="sb-fs-13 sb-fw-700">${esc(full)}</td>
-          <td class="sb-fs-13">${esc(r?.intitule_poste || "—")}</td>
-          <td style="text-align:center;">${nsLevelBadgeHtml(r?.niveau_actuel || "—", "Niveau actuel")}</td>
-          <td style="text-align:center;">${esc(evalDate ? formatDateFr(evalDate) : "—")}</td>
-          <td><span class="sb-badge ${cls}">${esc(label)}</span></td>
-        </tr>`;
-    }).join("");
-
-    const lecture = (() => {
-      if (scoreSafe >= 75) return "Cette compétence est fortement exposée : elle doit être regardée comme un point sensible du périmètre.";
-      if (scoreSafe >= 50) return "Cette compétence présente plusieurs signes de fragilité à surveiller ou sécuriser.";
-      if (scoreSafe >= 25) return "Cette compétence présente une fragilité modérée, généralement liée à la diffusion, au niveau ou à la fiabilité des données.";
-      return "Cette compétence apparaît globalement sécurisée sur le périmètre analysé.";
-    })();
-
-    host.innerHTML = `
-      <div class="card" style="padding:14px;margin:0;">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-          <div style="flex:1;min-width:280px;">
-            <div class="card-title" style="margin-bottom:8px;">Diagnostic</div>
-            <div class="card-sub" style="margin:0 0 12px 0;font-size:14px;line-height:1.55;">${esc(lecture)}</div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-              <span class="sb-badge">Service : ${esc(scopeLabel)}</span>
-              <span class="sb-badge">Criticité min : ${esc(String(data?.criticite_min ?? "—"))}</span>
-              <span class="sb-badge">Postes concernés : ${esc(String(stats?.nb_postes_impactes ?? postes.length))}</span>
-              <span class="sb-badge">Besoin total : ${esc(String(stats?.besoin_total ?? "—"))}</span>
-              <span class="sb-badge">Porteurs confirmés : ${esc(String(stats?.nb_porteurs ?? 0))}</span>
-              <span class="sb-badge">Experts disponibles : ${esc(String(stats?.nb_experts_dispo ?? stats?.nb_experts ?? 0))}</span>
+            <div style="width:min(460px,100%);">
+              <div class="sb-coverbar">
+                ${coverRow("Débutant", need.A, haveGe.A)}
+                ${coverRow("Intermédiaire", need.B, haveGe.B)}
+                ${coverRow("Avancé", need.C, haveGe.C)}
+                ${coverRow("Expert", need.D, haveGe.D)}
+              </div>
             </div>
           </div>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-            ${ring(scoreSafe)}
-            ${statePill(scoreSafe)}
+
+          <div style="margin-top:12px;">
+            <div class="sb-block-title">Postes impactés</div>
+            <table class="sb-table" style="margin:0;">
+              <thead>
+                <tr>
+                  <th style="width:120px;">Poste</th>
+                  <th>Titre poste</th>
+                  <th style="width:160px;">Service</th>
+                  <th style="width:130px; text-align:center;">Niveau requis</th>
+                  <th style="width:110px; text-align:center;">Criticité</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${postesRows || `<tr><td colspan="5" class="sb-muted">Aucun poste dans le périmètre.</td></tr>`}
+              </tbody>
+            </table>
           </div>
-        </div>
-      </div>
-
-      <div class="card" style="padding:14px;margin-top:12px;">
-        <div class="card-title" style="margin-bottom:10px;">Pourquoi cette compétence est fragile ?</div>
-        ${causesHtml}
-      </div>
-
-      <div class="card" style="padding:14px;margin-top:12px;">
-        <div class="card-title" style="margin-bottom:8px;">Porteurs identifiés</div>
-        <div style="overflow:auto;">
-          <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" style="margin:0;min-width:760px;">
-            <thead><tr><th>Collaborateur</th><th>Poste actuel</th><th style="text-align:center;">Niveau</th><th style="text-align:center;">Dernière évaluation</th><th>Statut</th></tr></thead>
-            <tbody>${porteursRows || `<tr><td colspan="5" class="sb-muted">Aucun porteur identifié.</td></tr>`}</tbody>
-          </table>
         </div>
       </div>
     `;
+
+    // Les autres accordéons (structure gardée, contenu minimal factuel)
+    const accDepend = showDepend ? `
+      <div class="sb-accordion">
+        <button type="button" class="sb-acc-head sb-btn sb-btn--soft" data-target="acc_comp_dep">
+          <span style="display:flex;align-items:center;gap:10px;">
+            <span>Couverture trop dépendante d’une personne</span>
+            ${causeHelpButton("dependance")}
+          </span>
+          <span class="sb-acc-chevron">▾</span>
+        </button>
+        <div class="sb-acc-body">
+          <div class="card-sub" style="margin:0;">
+            ${dependanceText}
+          </div>
+        </div>
+      </div>
+    ` : ``;
+
+
+    // -------- Risque d’indisponibilité (simple + conditionnel) --------
+    const isIndispo = (r) =>
+      !!(r && (r.is_indispo === true || r.is_indispo === 1 || r.is_indispo === "t" || r.date_fin_indispo));
+
+    const indispos = porteurs.filter(isIndispo);
+
+    // Couverture "disponible" par niveau (on retire les indispos du jour)
+    const haveAvail = { A: 0, B: 0, C: 0 };
+    porteurs.forEach((r) => {
+      if (isIndispo(r)) return;
+      const k = nivKey(r?.niveau_actuel);
+      if (!k) return;
+      haveAvail[k] += 1;
+    });
+    const haveAvailGe = {
+      A: haveAvail.A + haveAvail.B + haveAvail.C,
+      B: haveAvail.B + haveAvail.C,
+      C: haveAvail.C,
+    };
+
+    // Niveau le plus contraint réellement requis
+    const indCandidates = ["C", "B", "A"]
+      .filter((k) => Number(need?.[k] || 0) > 0)
+      .map((k) => {
+        const req = Number(need[k] || 0) || 0;
+        const haveOk = Number(haveAvailGe[k] || 0) || 0;
+        const gap = haveOk - req;
+        return { k, req, haveOk, gap };
+      });
+
+    indCandidates.sort((a, b) => (a.gap - b.gap) || (nivRank(b.k) - nivRank(a.k)));
+    const indPick = indCandidates[0] || null;
+    const gapAfter = indPick ? indPick.gap : 999;
+
+    // Afficher uniquement si risque réel lié aux indispos
+    const showIndispo = indispos.length > 0 && indPick && gapAfter <= 0;
+
+    const indRiskLabel = gapAfter <= -2 ? "Critique" : gapAfter === -1 ? "Élevée" : "Modérée";
+    const indRiskCls = gapAfter <= -2 ? "sb-badge--danger" : gapAfter === -1 ? "sb-badge--warning" : "sb-badge--success";
+
+    const indFinMax = indispos.reduce((acc, r) => {
+      const s = (r?.date_fin_indispo || "").toString().trim();
+      if (!s) return acc;
+      if (!acc) return s;
+      return s > acc ? s : acc; // YYYY-MM-DD compare OK
+    }, "");
+
+    const indPhrase = (() => {
+      const n = indispos.length;
+      const plural = n > 1 ? "s" : "";
+      const finTxt = indFinMax ? formatDateFr(indFinMax) : "—";
+      const finSuffix = n > 1 ? ` (au plus tard)` : ``;
+      return `Cette compétence est indisponible chez <b>${esc(String(n))}</b> personne${plural} aujourd’hui, jusqu’au <b>${esc(finTxt)}</b>${finSuffix}.`;
+    })();
+
+    const indRows = indispos
+      .slice()
+      .sort((a, b) => String(a?.date_fin_indispo || "").localeCompare(String(b?.date_fin_indispo || "")))
+      .map((r) => {
+        const name = `${(r?.prenom_effectif || "").toString().trim()} ${(r?.nom_effectif || "").toString().trim()}`.trim() || "—";
+        const fin = formatDateFr((r?.date_fin_indispo || "").toString());
+        return `
+          <tr>
+            <td class="sb-fs-13">${esc(name)}</td>
+            <td style="text-align:center;">${nivBadgeHtml(r?.niveau_actuel)}</td>
+            <td class="sb-fs-13" style="text-align:center;">${esc(fin)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const accIndispo = showIndispo ? `
+      <div class="sb-accordion">
+        <button type="button" class="sb-acc-head sb-btn sb-btn--soft" data-target="acc_comp_ind">
+          <span style="display:flex;align-items:center;gap:10px;">
+            <span>Fragilité possible liée à une indisponibilité</span>
+            ${causeHelpButton("indisponibilite")}
+          </span>
+          <span class="sb-acc-chevron">▾</span>
+        </button>
+        <div class="sb-acc-body">
+          <div class="card-sub" style="margin:0 0 8px 0;">
+            ${indPhrase}
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;margin:0 0 10px 0;">
+            <div class="card-sub" style="margin:0;">Risque</div>
+            <span class="sb-badge ${indRiskCls}">${esc(indRiskLabel)}</span>
+          </div>
+
+          <table class="sb-table" style="margin:0;">
+            <thead>
+              <tr>
+                <th>Effectif</th>
+                <th style="width:130px; text-align:center;">Niveau</th>
+                <th style="width:140px; text-align:center;">Fin</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${indRows || `<tr><td colspan="3" style="text-align:center; opacity:.75;">Aucune indisponibilité active</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    ` : ``;
+
+
+    // -------- Risque d’écart de niveau (effectifs dispo aujourd’hui) --------
+    const _isIndispoToday = (r) =>
+      !!(r && (r.is_indispo === true || r.is_indispo === 1 || r.is_indispo === "t" || r.date_fin_indispo));
+
+    // Index des effectifs dispo par poste, avec leur niveau
+    const dispoByPoste = new Map();
+    (porteurs || []).forEach((r) => {
+      if (!r?.id_poste_actuel) return;
+      if (_isIndispoToday(r)) return; // prise en compte indispo du jour
+      const pid = String(r.id_poste_actuel);
+      const k = nivKey(r?.niveau_actuel);
+      if (!k) return;
+
+      if (!dispoByPoste.has(pid)) dispoByPoste.set(pid, []);
+      dispoByPoste.get(pid).push({ id_effectif: r?.id_effectif, k });
+    });
+
+    const _ratioBadge = (haveN, needN) => {
+      const h = Math.max(0, Number(haveN) || 0);
+      const n = Math.max(0, Number(needN) || 0);
+      const gap = h - n;
+
+      const cls = gap >= 0 ? "sb-badge--success" : gap <= -2 ? "sb-badge--danger" : "sb-badge--warning";
+      return `<span class="sb-badge ${cls}">${esc(String(h))}/${esc(String(n))}</span>`;
+    };
+
+    // Postes impactés = niveau requis non atteint par les effectifs dispo (au bon niveau)
+    const gapPostes = (postes || [])
+      .map((p) => {
+        const pid = p?.id_poste ? String(p.id_poste) : "";
+        const kReq = nivKey(p?.niveau_requis);
+        if (!pid || !kReq) return null;
+
+        const needP = Number.isFinite(Number(p?.besoin_poste)) ? Math.max(0, Number(p.besoin_poste)) : 1;
+
+        // Compte effectifs dispo dans CE poste au niveau requis (>=)
+        const list = dispoByPoste.get(pid) || [];
+        const haveP = list.filter((x) => nivRank(x.k) >= nivRank(kReq)).length;
+
+        const gap = haveP - needP;
+        if (gap >= 0) return null; // pas de risque => on n’affiche pas la ligne
+
+        const code = (p?.codif_client && p.codif_client.toString().trim())
+          ? p.codif_client.toString().trim()
+          : (p?.codif_poste || "");
+
+        return {
+          code,
+          intitule_poste: p?.intitule_poste || "",
+          nom_service: p?.nom_service || "",
+          niveau_requis: p?.niveau_requis || "",
+          poids_criticite: Number(p?.poids_criticite) || 0,
+          haveP,
+          needP
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => (b.poids_criticite - a.poids_criticite) || String(a.code).localeCompare(String(b.code)));
+
+    const showGap = gapPostes.length > 0;
+
+    const gapRowsHtml = gapPostes.map((p) => `
+      <tr>
+        <td style="white-space:nowrap;">
+          <span class="sb-badge sb-badge-ref-poste-code">${esc(p.code || "—")}</span>
+        </td>
+        <td class="sb-fs-13 sb-fw-700">${esc(p.intitule_poste)}</td>
+        <td class="sb-fs-13">${esc(p.nom_service)}</td>
+        <td style="text-align:center;">${nivBadgeHtml(p.niveau_requis)}</td>
+        <td style="text-align:center;">${_ratioBadge(p.haveP, p.needP)}</td>
+      </tr>
+    `).join("");
+
+    const accGap = showGap ? `
+      <div class="sb-accordion">
+        <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
+          <span style="display:flex;align-items:center;gap:10px;">
+            <span>Niveau attendu non atteint</span>
+            <span class="sb-badge sb-badge--soft">${esc(String(gapPostes.length))}</span>
+            ${causeHelpButton("efficacite")}
+          </span>
+          <span class="sb-acc-chevron">▾</span>
+        </button>
+        <div class="sb-acc-body">
+          <table class="sb-table" style="margin:0;">
+            <thead>
+              <tr>
+                <th style="width:120px;">Poste</th>
+                <th>Titre poste</th>
+                <th style="width:160px;">Service</th>
+                <th style="width:130px; text-align:center;">Niveau requis</th>
+                <th style="width:130px; text-align:center;">Couverture</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${gapRowsHtml}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    ` : ``;
+
+
+    // -------- Risque de transmission (simple) --------
+    const nbExperts = Number(stats?.nb_experts ?? 0) || 0;
+    const showTrans = nbExperts <= 0;
+
+    const accTrans = showTrans ? `
+      <div class="sb-accordion">
+        <button type="button" class="sb-acc-head sb-btn sb-btn--soft">
+          <span style="display:flex;align-items:center;gap:10px;">
+            <span>Relève ou transmission à anticiper</span>
+            ${causeHelpButton("transmission")}
+          </span>
+          <span class="sb-acc-chevron">▾</span>
+        </button>
+        <div class="sb-acc-body">
+          <div class="card-sub" style="margin:0;">
+            Aucun <b>effectif</b> n’est au niveau <b>Expert</b> sur cette compétence.
+          </div>
+        </div>
+      </div>
+    ` : ``;
+
+
+    // -------- DIAGNOSTIC (contenu respecté, tel que tu l’as demandé) --------
+    const diagHtml = `
+      <div class="card" style="padding:12px; margin:0;">
+        <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:260px;">
+            <div class="card-title" style="margin-bottom:6px;">Diagnostic</div>
+
+            <!-- ligne vide sous diag : demandé -->
+            <div style="height:8px;"></div>
+
+            <div class="card-sub" style="margin-top:10px;">
+              <b>Conditions de l’analyse :</b><br>              
+              • Criticité minimum des compétences analysées (seuil) : <b>${esc(String(critMinSafe))}</b>.<br>
+              • Postes pris en compte : postes <b>actifs</b> avec <b>une criticite ≥ seuil</b>.<br>
+              • Effectif pris en compte : effectifs <b>non archivés</b> avec compétence <b>active</b>, même périmètre.<br>
+              • Indisponibilités : En cours à ce jour.<br>              
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+            ${ring(scoreSafe)}
+            ${priorityPill(prioLabel, scoreSafe)}
+          </div>
+        </div>
+      </div>
+    `;
+
+    // -------- Plan de sécurisation (possibilités) --------
+    const compId = String(data?.competence?.id_comp || "").trim();
+    const compCode = String(data?.competence?.code || "").trim();
+
+    const planHtml = `
+      <div class="card analyse-hypothesis-card" style="padding:12px; margin-top:12px;">
+        <div class="card-title" style="margin:0 0 6px 0;">Points à sécuriser</div>
+        <div class="card-sub" style="margin:0;">Ces points servent à préparer une hypothèse dans les Simulations RH. La décision finale reste hors Novoskill.</div>
+        ${securityPointsHtml("competence")}
+        <div class="sb-actions sb-actions--end" style="margin-top:12px;">
+          <button type="button" id="btnAnalyseCompCreateHypothesis" class="sb-btn sb-btn--accent">Créer une hypothèse de sécurisation</button>
+        </div>
+      </div>
+    `;
+
+
+    host.innerHTML = `
+      ${diagHtml}
+
+      <div class="card" style="padding:12px; margin-top:12px;">
+        <div class="card-title" style="margin-bottom:6px;">Causes racines</div>
+        <div style="margin-top:10px;">
+          ${accSous}
+          ${accDepend}
+          ${accIndispo}
+          ${accGap}
+          ${accTrans}
+        </div>
+      </div>
+
+      ${planHtml}
+    `;
+
+    // Accordéons (même logique que modal poste)
+    host.querySelectorAll(".sb-acc-head").forEach((btnAcc) => {
+      const body = btnAcc.nextElementSibling;
+      if (body) body.style.display = btnAcc.classList.contains("is-open") ? "" : "none";
+
+      if (btnAcc.dataset.bound) return;
+      btnAcc.dataset.bound = "1";
+
+      btnAcc.addEventListener("click", () => {
+        btnAcc.classList.toggle("is-open");
+        const b = btnAcc.nextElementSibling;
+        if (b) b.style.display = btnAcc.classList.contains("is-open") ? "" : "none";
+      });
+    });
+
+    // Points à sécuriser - création d'hypothèse vers Simulations RH
+    const bHypoComp = byId("btnAnalyseCompCreateHypothesis");
+    if (bHypoComp && !bHypoComp.dataset.bound) {
+      bHypoComp.dataset.bound = "1";
+      bHypoComp.addEventListener("click", () => {
+        const cause = showGap ? "Niveau attendu non atteint" : showDepend ? "Couverture trop dépendante" : showIndispo ? "Indisponibilité à sécuriser" : showTrans ? "Transmission à anticiper" : "Point de fragilité détecté";
+        addAnalyseHypothesis({
+          type: "securiser_competence",
+          title: `Sécuriser la compétence ${compCode ? compCode + " · " : ""}${String(data?.competence?.intitule || "Compétence")}`,
+          competence_id: compId,
+          competence_code: compCode,
+          competence_label: String(data?.competence?.intitule || "Compétence"),
+          cause: cause,
+          effet: "Tester une hypothèse de couverture ou de transmission sans décider depuis l’analyse.",
+          horizon: "actuel",
+          criticite: scoreSafe
+        });
+        closeAnalyseCompetenceModal();
+      });
+    }
+
   }
+
 
   async function showAnalyseCompetenceDetailModal(portal, id_comp_or_code, id_service) {
     const mySeq = ++_compDetailReqSeq;
@@ -6751,18 +7378,18 @@ function bindOnce(portal) {
       return `
         <div class="sb-tip-title">Indice de fragilité</div>
         <div class="sb-tip-text">
-          Cet indice indique dans quelle mesure une compétence est sécurisée dans l’entreprise. Il ne mesure pas seulement si la compétence existe quelque part : il regarde si elle est assez maîtrisée, assez diffusée et transmissible.
+          Cet indice mesure le niveau d’exposition d’une compétence dans le périmètre affiché. Plus il se rapproche de 100 %, plus cette compétence est difficile à sécuriser dans l’organisation actuelle.
         </div>
 
         <div class="sb-tip-block">
           <div class="sb-tip-block-title">Ce qui est pris en compte</div>
           <ul class="sb-tip-list">
-            <li>la maîtrise réelle de la compétence par les collaborateurs disponibles ;</li>
-            <li>le nombre de personnes capables de porter cette compétence au niveau attendu ;</li>
-            <li>la concentration de la compétence sur une ou quelques personnes ;</li>
-            <li>la présence ou non de collaborateurs experts capables de transmettre le savoir-faire ;</li>
-            <li>les indisponibilités, fins de contrat ou sorties prévues qui peuvent retirer des porteurs ;</li>
-            <li>la fiabilité des données disponibles : niveaux confirmés, évaluations, informations manquantes.</li>
+            <li>le nombre de postes qui ont besoin de cette compétence ;</li>
+            <li>le nombre de collaborateurs déclarés comme porteurs de la compétence ;</li>
+            <li>les porteurs réellement disponibles et évalués ;</li>
+            <li>les écarts entre le niveau maîtrisé et le niveau attendu sur les postes ;</li>
+            <li>les situations où la compétence repose sur une seule personne ;</li>
+            <li>les postes où la compétence reste à confirmer ou à renforcer.</li>
           </ul>
         </div>
 
@@ -6775,10 +7402,11 @@ function bindOnce(portal) {
         </div>
 
         <div class="sb-tip-note">
-          Une compétence peut être fragile même si elle est présente dans l’entreprise, par exemple si elle repose sur une seule personne ou si personne n’est capable de la transmettre.
+          Une compétence peu diffusée, non confirmée ou portée par une seule personne peut devenir un point de blocage, même si elle existe déjà dans l’entreprise.
         </div>
       `;
     }
+
     return `<div class="sb-tip-title">Info</div><div class="sb-tip-text">Aucune aide définie.</div>`;
   }
 
