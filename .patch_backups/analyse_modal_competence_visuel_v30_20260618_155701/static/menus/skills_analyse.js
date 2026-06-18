@@ -778,26 +778,6 @@
       title: "Effet possible d’un niveau attendu non atteint",
       text: "Le poste peut sembler couvert, mais la compétence n’est pas maîtrisée au niveau requis. Cela peut produire des erreurs, des délais ou une dépendance à un profil plus expérimenté."
     },
-    comp_maitrise: {
-      title: "Maîtrise insuffisante de la compétence",
-      text: "Cette cause apparaît quand la compétence existe dans l’entreprise, mais pas suffisamment au niveau attendu sur les usages analysés. Elle aide à repérer les écarts entre le besoin réel et la maîtrise disponible."
-    },
-    comp_concentration: {
-      title: "Concentration sur trop peu de personnes",
-      text: "Cette cause indique que la compétence est détenue par un nombre trop limité de collaborateurs. Plus la compétence est concentrée, plus une absence ou un changement de poste peut fragiliser l’organisation."
-    },
-    comp_transmission: {
-      title: "Capacité de transmission insuffisante",
-      text: "Cette cause vérifie si la compétence peut être transmise. La lecture tient compte des collaborateurs au niveau Expert et des collaborateurs Avancés pouvant servir de base à une transmission organisée."
-    },
-    comp_evenements: {
-      title: "Exposition à des sorties ou indisponibilités",
-      text: "Cette cause signale les événements connus qui peuvent retirer temporairement ou durablement des collaborateurs associés à cette compétence : indisponibilité, fin de contrat, retraite ou sortie prévue."
-    },
-    comp_donnees: {
-      title: "Données à vérifier",
-      text: "Cette cause ne signale pas forcément un risque métier direct. Elle indique que certaines données doivent être confirmées pour fiabiliser la lecture de la compétence."
-    },
     non_confirmee: {
       title: "Effet possible d’une compétence non confirmée",
       text: "La couverture repose sur une déclaration ou une donnée incomplète. L’analyse reste prudente tant que le niveau réel n’est pas confirmé par une évaluation exploitable."
@@ -2067,17 +2047,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     </div>
   `;
 
-
-  function diagLine(label, value) {
-    const v = (value === null || value === undefined || value === "") ? "—" : String(value);
-    return `
-      <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:7px 0; border-bottom:1px solid #eef2f7;">
-        <span style="font-size:13px; color:#64748b; line-height:1.35;">${escapeHtml(label)}</span>
-        <span style="font-size:13px; color:#0f172a; font-weight:800; text-align:right; line-height:1.35;">${escapeHtml(v)}</span>
-      </div>
-    `;
-  }
-
   // Plan de sécurisation (possibilités)
 
 
@@ -2102,15 +2071,16 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div style="flex:1; min-width:320px;">
           <div class="card-title" style="margin:0;">Diagnostic</div>
 
-          <div class="card-sub" style="margin:8px 0 12px 0;font-size:14px;line-height:1.55;">
-            Éléments pris en compte pour lire la fragilité du poste.
-          </div>
-          <div style="max-width:660px;">
-            ${diagLine("Diplôme minimum", eduTxt)}
-            ${diagLine("Domaine de formation", domTxt)}
-            ${diagLine("Nombre de titulaires nécessaires", String(nbNecessaires || 1))}
-            ${diagLine("Criticité des compétences", `≥ ${critMin}%`)}
-            ${diagLine("Renfort potentiel", "Immédiat ≥ 75% · À préparer 60–74%")}
+          <!-- ligne vide sous diag : demandé -->
+          <div style="height:8px;"></div>
+          
+          <div class="card-sub" style="margin-top:10px;">
+            <b>Conditions de l’analyse :</b><br>
+            • Diplôme minimum : <b>${escapeHtml(eduTxt)}</b><br>
+            • Domaine de formation : <b>${escapeHtml(domTxt)}</b><br>
+            • Nombre de titulaires nécessaires : <b>${escapeHtml(String(nbNecessaires || 1))}</b><br>
+            • Criticité des compétences : <b>≥ ${escapeHtml(String(critMin))}%</b><br>
+            • ${escapeHtml(releveTxt)}
           </div>
         </div>
 
@@ -4094,27 +4064,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     const stats = data?.stats || {};
     const comp = data?.competence || {};
     const causes = Array.isArray(data?.causes) ? data.causes : [];
-    const collaborateurs = Array.isArray(data?.porteurs) ? data.porteurs : [];
+    const porteurs = Array.isArray(data?.porteurs) ? data.porteurs : [];
     const postes = Array.isArray(data?.postes) ? data.postes : [];
     const scoreSafe = clamp(Math.round(Number(stats?.indice_fragilite || 0)), 0, 100);
 
     const scopeObj = data?.scope || {};
     const scopeLabel = (typeof scopeObj === "object") ? (scopeObj.nom_service || "Tous les services") : (scopeObj || "Tous les services");
-
-    const normalizeText = (v) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-    const levelText = (r) => String(r?.niveau_actuel || r?.niveau || r?.niveau_maitrise || r?.niveau_libelle || "").trim();
-    const levelNorm = (r) => normalizeText(levelText(r));
-    const isExpert = (r) => levelNorm(r).includes("expert") || normalizeText(r?.niveau_code).includes("d");
-    const isAdvancedOrExpert = (r) => {
-      const n = levelNorm(r);
-      const c = normalizeText(r?.niveau_code);
-      return n.includes("avance") || n.includes("expert") || c.includes("c") || c.includes("d");
-    };
-    const isUnavailable = (r) => !!(r?.is_indispo || r?.date_fin_indispo || r?.date_debut_indispo);
-    const hasKnownLevel = (r) => !!(levelText(r) || r?.is_evaluee || r?.date_derniere_eval || r?.date_audit);
-    const evaluatedCount = collaborateurs.filter(hasKnownLevel).length;
-    const expertsDisponibles = collaborateurs.filter(r => isExpert(r) && !isUnavailable(r)).length;
-    const avancesOuExperts = collaborateurs.filter(isAdvancedOrExpert).length;
 
     function scoreHue(score100) {
       const x = clamp(Number(score100 || 0), 0, 100) / 100;
@@ -4131,12 +4086,19 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     function statePill(score) {
       const s = clamp(Math.round(Number(score || 0)), 0, 100);
-      const label = stateLabel(s);
-      let cls = "sb-badge--success";
-      if (s >= 75) cls = "sb-badge--danger";
-      else if (s >= 50) cls = "sb-badge--warning";
-      else if (s >= 25) cls = "sb-badge--info";
-      return `<span class="sb-badge ${cls}">${esc(label)}</span>`;
+      const h = scoreHue(s);
+      const bg = `hsl(${h} 70% 95%)`;
+      const br = `hsl(${h} 70% 80%)`;
+      const tx = `hsl(${h} 70% 28%)`;
+      return `
+        <span style="
+          display:inline-flex; align-items:center; justify-content:center;
+          padding:4px 10px; border-radius:999px;
+          border:1px solid ${br}; background:${bg}; color:${tx};
+          font-weight:800; font-size:12px; white-space:nowrap;">
+          ${esc(stateLabel(s))}
+        </span>
+      `;
     }
 
     function ring(score100) {
@@ -4188,16 +4150,6 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return `<span class="sb-badge sb-badge--risk-share">${esc(String(pct))}%</span>`;
     }
 
-    function causeHelpKey(code) {
-      const key = String(code || "");
-      if (key === "MAITRISE_INSUFFISANTE") return "comp_maitrise";
-      if (key === "CONCENTRATION") return "comp_concentration";
-      if (key === "TRANSMISSION_INSUFFISANTE") return "comp_transmission";
-      if (key === "EXPOSITION_SORTIES_INDISPOS") return "comp_evenements";
-      if (key === "DONNEES_A_VERIFIER") return "comp_donnees";
-      return "comp_maitrise";
-    }
-
     function valueOrDash(v) {
       if (v === null || v === undefined || v === "") return "—";
       return String(v);
@@ -4222,20 +4174,32 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       `;
     }
 
-    function critLevelClass(v) {
-      const n = Number(v);
-      if (!Number.isFinite(n)) return "sb-crit-l1";
-      if (n >= 80) return "sb-crit-l5";
-      if (n >= 60) return "sb-crit-l4";
-      if (n >= 40) return "sb-crit-l3";
-      if (n >= 20) return "sb-crit-l2";
-      return "sb-crit-l1";
-    }
-
-    function critBadgeHtml(v) {
-      const n = Number(v);
-      if (!Number.isFinite(n) || n <= 0) return "—";
-      return `<span class="sb-crit-badge ${critLevelClass(n)}">${esc(String(Math.round(n)))}</span>`;
+    function defaultCauseIntro(cause) {
+      const code = String(cause?.code || "");
+      const count = Number(cause?.count || 0);
+      if (code === "MAITRISE_INSUFFISANTE") {
+        return `${count || 0} situation(s) montrent que la compétence n’est pas maîtrisée au niveau attendu sur le périmètre analysé.`;
+      }
+      if (code === "CONCENTRATION") {
+        const porteurs = Number(stats?.nb_porteurs || stats?.nb_porteurs_valides || 0);
+        const besoin = Number(stats?.besoin_total || 0);
+        return `La compétence repose sur ${porteurs} porteur(s) confirmé(s) pour un besoin total estimé à ${besoin || "—"}.`;
+      }
+      if (code === "TRANSMISSION_INSUFFISANTE") {
+        const experts = Number(stats?.nb_experts_dispo ?? stats?.nb_experts ?? 0);
+        const avances = Number(stats?.nb_porteurs_avances_ou_experts || 0);
+        return `${experts} expert(s) disponible(s) identifié(s). ${avances} porteur(s) sont au niveau avancé ou expert.`;
+      }
+      if (code === "EXPOSITION_SORTIES_INDISPOS") {
+        return `${count || 0} événement(s) connu(s) touchent des porteurs de cette compétence sur la période analysée.`;
+      }
+      if (code === "DONNEES_A_VERIFIER") {
+        return `${count || 0} point(s) limitent la fiabilité de lecture de cette compétence.`;
+      }
+      if (code === "SECURISEE") {
+        return "Aucune fragilité notable n’est détectée sur cette compétence avec le périmètre et le seuil retenus.";
+      }
+      return "Cette cause explique une partie de l’indice de fragilité affiché.";
     }
 
     function causeItemsHtml(cause) {
@@ -4244,61 +4208,69 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       if (code === "MAITRISE_INSUFFISANTE") {
         return `
-          <div class="card-sub" style="margin:0 0 10px 0;">Écarts observés sur les postes où cette compétence est attendue.</div>
+          <div class="sb-help" style="margin-top:0;">
+            ${esc(defaultCauseIntro(cause))} Le tableau indique où la compétence existe, mais n’atteint pas encore le niveau requis.
+          </div>
           <div class="table-wrap" style="margin-top:10px;">
             <table class="sb-table">
               <thead><tr>
-                <th>Poste</th>
-                <th class="col-center" style="width:110px;">Niveau requis</th>
-                <th class="col-center" style="width:70px;">Besoin</th>
-                <th class="col-center" style="width:112px;">Collaborateurs<br>au niveau</th>
-                <th class="col-center" style="width:70px;">Écart</th>
-                <th class="col-center" style="width:86px;">Criticité</th>
+                <th style="width:110px;">Poste</th>
+                <th>Intitulé</th>
+                <th class="col-center" style="width:120px;">Niveau requis</th>
+                <th class="col-center" style="width:120px;">Besoin</th>
+                <th class="col-center" style="width:150px;">Porteurs au niveau</th>
+                <th class="col-center" style="width:90px;">Écart</th>
+                <th class="col-center" style="width:90px;">Criticité</th>
               </tr></thead>
               <tbody>${items.length ? items.map(it => `
                 <tr>
-                  <td>
-                    <div style="display:flex;align-items:center;gap:8px;min-width:260px;">
-                      <span class="sb-badge sb-badge-ref-poste-code">${esc(it.poste || "—")}</span>
-                      <span style="font-size:14px;font-weight:750;color:#0f172a;">${esc(it.intitule_poste || "—")}</span>
-                    </div>
-                  </td>
+                  <td><span class="sb-badge sb-badge-ref-poste-code">${esc(it.poste || "—")}</span></td>
+                  <td><div style="font-size:14px;font-weight:700;">${esc(it.intitule_poste || "—")}</div></td>
                   <td class="col-center">${nsLevelBadgeHtml(it.niveau_requis || "—", "Niveau requis")}</td>
                   <td class="col-center">${esc(String(it.besoin ?? 0))}</td>
-                  <td class="col-center">${esc(String(it.porteurs_niveau_requis ?? it.collaborateurs_niveau_requis ?? 0))}</td>
+                  <td class="col-center">${esc(String(it.porteurs_niveau_requis ?? 0))}</td>
                   <td class="col-center"><span class="sb-badge sb-badge--warning">${esc(String(it.ecart ?? 0))}</span></td>
-                  <td class="col-center">${critBadgeHtml(it.criticite)}</td>
-                </tr>`).join("") : `<tr><td colspan="6" class="col-center sb-muted">Aucun écart de maîtrise détaillé.</td></tr>`}</tbody>
+                  <td class="col-center">${esc(String(it.criticite ?? 0))}</td>
+                </tr>`).join("") : `<tr><td colspan="7" class="col-center sb-muted">Aucun écart de maîtrise détaillé.</td></tr>`}</tbody>
             </table>
           </div>`;
       }
 
       if (code === "CONCENTRATION") {
-        const confirmes = Number(stats?.nb_porteurs || stats?.nb_porteurs_valides || 0);
+        const porteurs = Number(stats?.nb_porteurs || stats?.nb_porteurs_valides || 0);
         const declares = Number(stats?.nb_porteurs_declares || 0);
         const besoin = Number(stats?.besoin_total || 0);
         return `
-          <div class="card-sub" style="margin:0 0 10px 0;">Lecture du nombre de collaborateurs capables de tenir cette compétence.</div>
+          <div class="sb-help" style="margin-top:0;">
+            ${esc(defaultCauseIntro(cause))} Plus le nombre de porteurs confirmés est faible, plus la compétence devient sensible à une absence, un changement de poste ou un départ.
+          </div>
           <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:10px;">
-            ${smallMetric("Collaborateurs confirmés", confirmes, "Niveau connu et exploitable dans Novoskill.")}
-            ${smallMetric("Collaborateurs déclarés", declares, "Collaborateurs associés à cette compétence, y compris à confirmer.")}
+            ${smallMetric("Porteurs confirmés", porteurs, "Collaborateurs disponibles avec un niveau confirmé.")}
+            ${smallMetric("Porteurs déclarés", declares, "Collaborateurs associés à la compétence, même si le niveau reste à confirmer.")}
             ${smallMetric("Besoin total", besoin, "Volume de couverture attendu sur les postes concernés.")}
           </div>`;
       }
 
       if (code === "TRANSMISSION_INSUFFISANTE") {
+        const experts = Number(stats?.nb_experts_dispo ?? stats?.nb_experts ?? 0);
+        const avances = Number(stats?.nb_porteurs_avances_ou_experts || 0);
+        const porteurs = Number(stats?.nb_porteurs || stats?.nb_porteurs_valides || 0);
         return `
-          <div class="card-sub" style="margin:0 0 10px 0;">Lecture des personnes pouvant servir de relais de transmission.</div>
+          <div class="sb-help" style="margin-top:0;">
+            ${esc(defaultCauseIntro(cause))} La transmission est fragile quand aucun expert disponible n’est identifié, ou quand l’expertise repose sur trop peu de personnes.
+          </div>
           <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:10px;">
-            ${smallMetric("Experts disponibles", expertsDisponibles, "Collaborateurs au niveau Expert, disponibles sur la période.")}
-            ${smallMetric("Avancés ou experts", avancesOuExperts, "Collaborateurs au niveau Avancé ou Expert.")}
-            ${smallMetric("Collaborateurs évalués", evaluatedCount, "Collaborateurs avec un niveau connu sur cette compétence.")}
+            ${smallMetric("Experts disponibles", experts, "Porteurs capables de transmettre la compétence.")}
+            ${smallMetric("Avancés ou experts", avances, "Viviers possibles pour organiser une transmission.")}
+            ${smallMetric("Porteurs confirmés", porteurs, "Base actuelle de la compétence dans l’entreprise.")}
           </div>`;
       }
 
       if (code === "EXPOSITION_SORTIES_INDISPOS") {
         return `
-          <div class="card-sub" style="margin:0 0 10px 0;">Événements connus sur les collaborateurs associés à cette compétence.</div>
+          <div class="sb-help" style="margin-top:0;">
+            ${esc(defaultCauseIntro(cause))} Ces événements peuvent faire baisser temporairement ou durablement la couverture de la compétence.
+          </div>
           <div class="table-wrap" style="margin-top:10px;">
             <table class="sb-table">
               <thead><tr><th>Collaborateur</th><th>Poste</th><th>Événement</th><th class="col-center" style="width:120px;">Début</th><th class="col-center" style="width:120px;">Fin / date</th></tr></thead>
@@ -4316,7 +4288,9 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       if (code === "DONNEES_A_VERIFIER") {
         return `
-          <div class="card-sub" style="margin:0 0 10px 0;">Points à confirmer pour fiabiliser la lecture.</div>
+          <div class="sb-help" style="margin-top:0;">
+            ${esc(defaultCauseIntro(cause))} Ces points ne sont pas forcément une fragilité métier, mais ils peuvent réduire la fiabilité de l’analyse.
+          </div>
           <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
             ${items.length ? items.map(it => `
               <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 10px; border:1px solid #e5e7eb; border-radius:10px; background:#fff;">
@@ -4326,16 +4300,15 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
           </div>`;
       }
 
-      return `<div class="card-sub" style="margin:0;">Éléments observés sur cette cause.</div>`;
+      return `<div class="sb-help" style="margin-top:0;">${esc(defaultCauseIntro(cause))}</div>`;
     }
 
     const causesHtml = causes.map((c, idx) => `
       <div class="sb-accordion">
         <button type="button" class="sb-acc-head sb-btn sb-btn--soft ${idx === 0 ? "is-open" : ""}">
           <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
-            ${causeDot(c?.severity)}<span style="font-weight:750;color:#1f2937;">${esc(c?.titre || "Cause")}</span>
+            ${causeDot(c?.severity)}<span>${esc(c?.titre || "Cause")}</span>
             ${shareBadge(c)}
-            ${causeHelpButton(causeHelpKey(c?.code))}
           </span>
           <span class="sb-acc-chevron">▾</span>
         </button>
@@ -4345,10 +4318,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       </div>
     `).join("") || `<div class="card-sub" style="margin:0;">Aucune cause de fragilité détectée sur le périmètre analysé.</div>`;
 
-    const collaborateursRows = collaborateurs.slice(0, 12).map((r) => {
+    const porteursRows = porteurs.slice(0, 12).map((r) => {
       const full = `${(r?.prenom_effectif || "").toString().trim()} ${(r?.nom_effectif || "").toString().trim()}`.trim() || "—";
       const evalDate = (r?.date_derniere_eval || r?.date_audit || "").toString().slice(0, 10);
-      const isIndispo = isUnavailable(r);
+      const isIndispo = !!(r?.is_indispo || r?.date_fin_indispo);
       const cls = isIndispo ? "sb-badge--warning" : r?.is_evaluee ? "sb-badge--success" : "sb-badge--info";
       const label = isIndispo ? "Indisponible" : r?.is_evaluee ? "Évalué" : "À confirmer";
       return `
@@ -4379,8 +4352,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
               ${diagLine("Criticité minimale prise en compte", data?.criticite_min ?? "—")}
               ${diagLine("Postes concernés", stats?.nb_postes_impactes ?? postes.length)}
               ${diagLine("Besoin total de couverture", stats?.besoin_total ?? "—")}
-              ${diagLine("Collaborateurs confirmés", stats?.nb_porteurs ?? 0)}
-              ${diagLine("Experts disponibles", expertsDisponibles)}
+              ${diagLine("Porteurs confirmés", stats?.nb_porteurs ?? 0)}
+              ${diagLine("Experts disponibles", stats?.nb_experts_dispo ?? stats?.nb_experts ?? 0)}
             </div>
           </div>
           <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
@@ -4397,16 +4370,17 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       </div>
 
       <div class="card" style="padding:14px;margin-top:12px;">
-        <div class="card-title" style="margin-bottom:8px;">Collaborateurs identifiés</div>
+        <div class="card-title" style="margin-bottom:8px;">Porteurs identifiés</div>
         <div style="overflow:auto;">
           <table class="sb-table sb-table--airy sb-table--zebra sb-table--hover" style="margin:0;min-width:760px;">
             <thead><tr><th>Collaborateur</th><th>Poste actuel</th><th class="col-center">Niveau</th><th class="col-center">Dernière évaluation</th><th>Statut</th></tr></thead>
-            <tbody>${collaborateursRows || `<tr><td colspan="5" class="sb-muted">Aucun collaborateur identifié.</td></tr>`}</tbody>
+            <tbody>${porteursRows || `<tr><td colspan="5" class="sb-muted">Aucun porteur identifié.</td></tr>`}</tbody>
           </table>
         </div>
       </div>
     `;
   }
+
 
   async function showAnalyseCompetenceDetailModal(portal, id_comp_or_code, id_service) {
     const mySeq = ++_compDetailReqSeq;
