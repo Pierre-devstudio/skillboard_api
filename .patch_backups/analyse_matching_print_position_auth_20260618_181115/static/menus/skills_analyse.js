@@ -2447,58 +2447,13 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     return `${ctx.apiBase}/skills/analyse/matching/poste/pdf/${encodeURIComponent(ctx.id_contact)}?${qs.toString()}`;
   }
-  async function openAnalyseMatchingPdfInBrowser(portal, id_poste, id_service) {
+
+  function openAnalyseMatchingPdfInBrowser(portal, id_poste, id_service) {
     const url = buildAnalyseMatchingPdfUrl(portal, id_poste, id_service);
-
-    const win = window.open("about:blank", "_blank", "noopener");
+    const win = window.open(url, "_blank", "noopener");
     if (!win) throw new Error("Le navigateur a bloqué l’ouverture du PDF.");
-
-    try {
-      const headers = new Headers();
-      headers.set("Accept", "application/pdf");
-
-      try {
-        if (window.PortalAuthCommon && typeof window.PortalAuthCommon.getSession === "function") {
-          const session = await window.PortalAuthCommon.getSession();
-          const token = session?.access_token ? String(session.access_token) : "";
-          if (token) headers.set("Authorization", `Bearer ${token}`);
-        }
-      } catch (_) {
-        // L'API renverra une erreur explicite si la session est absente.
-      }
-
-      const res = await fetch(url, { method: "GET", headers });
-      if (!res.ok) {
-        let detail = "";
-        const ct = (res.headers.get("content-type") || "").toLowerCase();
-        try {
-          if (ct.includes("application/json")) {
-            const payload = await res.json();
-            detail = payload?.detail || payload?.message || JSON.stringify(payload);
-          } else {
-            detail = await res.text();
-          }
-        } catch (_) {
-          detail = `HTTP ${res.status}`;
-        }
-        try { win.close(); } catch (_) { }
-        throw new Error(detail || `HTTP ${res.status}`);
-      }
-
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      win.location.href = blobUrl;
-      setTimeout(() => {
-        try { URL.revokeObjectURL(blobUrl); } catch (_) { }
-      }, 60000);
-      return url;
-    } catch (e) {
-      try { win.close(); } catch (_) { }
-      throw e;
-    }
+    return url;
   }
-
-
 
   function refreshMatchingPrintButtonState() {
     const btn = byId("btnAnalyseMatchingPrint");
@@ -2508,6 +2463,7 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
     btn.setAttribute("aria-disabled", hasPoste ? "false" : "true");
     btn.title = hasPoste ? "Imprimer les correspondances du poste sélectionné" : "Sélectionne un poste avant d’imprimer";
   }
+
   function bindMatchingPrintButton(id_service) {
     const btn = byId("btnAnalyseMatchingPrint");
     if (!btn || btn.dataset.bound === "1") {
@@ -2515,46 +2471,34 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       return;
     }
     btn.dataset.bound = "1";
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       if (!String(_matchSelectedPoste || "").trim()) return;
       try {
-        btn.disabled = true;
-        await openAnalyseMatchingPdfInBrowser(_portalref || window.portal || null, _matchSelectedPoste, id_service || "");
+        openAnalyseMatchingPdfInBrowser(_portalref || window.portal || null, _matchSelectedPoste, id_service || "");
       } catch (e) {
         if (typeof showToast === "function") showToast(e.message || "Impossible d’ouvrir le PDF.", "error");
         else alert(e.message || "Impossible d’ouvrir le PDF.");
-      } finally {
-        refreshMatchingPrintButtonState();
       }
     });
     refreshMatchingPrintButtonState();
   }
+
   function renderMatchingHeaderActions(id_service) {
     const meta = byId("analyseDetailMeta");
     if (!meta) return;
-
     meta.className = "";
-    meta.style.margin = "0 0 0 auto";
-    meta.style.display = "flex";
-    meta.style.alignItems = "center";
-    meta.style.justifyContent = "flex-end";
-    meta.style.alignSelf = "center";
-    meta.style.flex = "1 1 auto";
-    meta.style.minWidth = "160px";
-
+    meta.style.margin = "0";
     meta.innerHTML = `
       <button type="button"
               id="btnAnalyseMatchingPrint"
               class="sb-btn sb-btn--accent"
-              style="display:inline-flex; align-items:center; justify-content:center; min-height:30px; padding:7px 13px; font-size:12px; font-weight:800;"
+              style="min-height:30px; padding:7px 13px; font-size:12px; font-weight:800;"
               ${String(_matchSelectedPoste || "").trim() ? "" : "disabled"}>
         Imprimer
       </button>
     `;
     bindMatchingPrintButton(id_service);
   }
-
-
 
 
 
@@ -5124,10 +5068,7 @@ function renderDetail(mode) {
   // MATCHING (MVP)
   // -----------------------
   if (mode === "matching") {
-    if (title) {
-      title.textContent = "Correspondances profils/postes";
-      title.style.marginBottom = "0";
-    }
+    if (title) title.textContent = "Correspondances profils/postes";
     if (sub) {
       sub.textContent = "";
       sub.style.display = "none";
