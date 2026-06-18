@@ -2102,17 +2102,15 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div style="flex:1; min-width:320px;">
           <div class="card-title" style="margin:0;">Diagnostic</div>
 
-          <div class="card-sub" style="margin:8px 0 8px 0;font-size:14px;line-height:1.55;">
-            Ce diagnostic indique le niveau de fragilité du poste sur le périmètre analysé.
-          </div>
-          <div class="card-sub" style="margin:0 0 8px 0;font-size:13px;line-height:1.45;font-weight:800;color:#475569;">
-            Éléments pris en compte :
+          <div class="card-sub" style="margin:8px 0 12px 0;font-size:14px;line-height:1.55;">
+            Éléments pris en compte pour lire la fragilité du poste.
           </div>
           <div style="max-width:660px;">
             ${diagLine("Diplôme minimum", eduTxt)}
             ${diagLine("Domaine de formation", domTxt)}
             ${diagLine("Nombre de titulaires nécessaires", String(nbNecessaires || 1))}
             ${diagLine("Criticité des compétences", `≥ ${critMin}%`)}
+            ${diagLine("Renfort potentiel", "Immédiat ≥ 75% · À préparer 60–74%")}
           </div>
         </div>
 
@@ -4133,21 +4131,12 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
     function statePill(score) {
       const s = clamp(Math.round(Number(score || 0)), 0, 100);
-      const h = scoreHue(s);
       const label = stateLabel(s);
-      const bg = `hsl(${h} 70% 95%)`;
-      const br = `hsl(${h} 70% 80%)`;
-      const tx = `hsl(${h} 70% 28%)`;
-      return `
-        <span style="
-          display:inline-flex; align-items:center; justify-content:center;
-          padding:4px 10px; border-radius:999px;
-          border:1px solid ${br}; background:${bg}; color:${tx};
-          font-weight:800; font-size:12px; white-space:nowrap;
-        ">
-          ${esc(label)}
-        </span>
-      `;
+      let cls = "sb-badge--success";
+      if (s >= 75) cls = "sb-badge--danger";
+      else if (s >= 50) cls = "sb-badge--warning";
+      else if (s >= 25) cls = "sb-badge--info";
+      return `<span class="sb-badge ${cls}">${esc(label)}</span>`;
     }
 
     function ring(score100) {
@@ -4255,23 +4244,23 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       if (code === "MAITRISE_INSUFFISANTE") {
         return `
-          <div class="card-sub" style="margin:0 0 8px 0;">Écarts observés sur les postes où cette compétence est attendue.</div>
-          <div class="table-wrap" style="margin-top:8px;">
+          <div class="card-sub" style="margin:0 0 10px 0;">Écarts observés sur les postes où cette compétence est attendue.</div>
+          <div class="table-wrap" style="margin-top:10px;">
             <table class="sb-table">
               <thead><tr>
                 <th>Poste</th>
-                <th class="col-center" style="width:96px;">Niveau requis</th>
-                <th class="col-center" style="width:62px;">Besoin</th>
-                <th class="col-center" style="width:108px;">Collaborateurs<br>au niveau</th>
-                <th class="col-center" style="width:64px;">Écart</th>
-                <th class="col-center" style="width:82px;">Criticité</th>
+                <th class="col-center" style="width:110px;">Niveau requis</th>
+                <th class="col-center" style="width:70px;">Besoin</th>
+                <th class="col-center" style="width:112px;">Collaborateurs<br>au niveau</th>
+                <th class="col-center" style="width:70px;">Écart</th>
+                <th class="col-center" style="width:86px;">Criticité</th>
               </tr></thead>
               <tbody>${items.length ? items.map(it => `
                 <tr>
                   <td>
-                    <div style="display:flex;align-items:center;gap:8px;min-width:320px;">
+                    <div style="display:flex;align-items:center;gap:8px;min-width:260px;">
                       <span class="sb-badge sb-badge-ref-poste-code">${esc(it.poste || "—")}</span>
-                      <span style="font-size:14px;font-weight:750;color:#0f172a;white-space:normal;line-height:1.25;">${esc(it.intitule_poste || "—")}</span>
+                      <span style="font-size:14px;font-weight:750;color:#0f172a;">${esc(it.intitule_poste || "—")}</span>
                     </div>
                   </td>
                   <td class="col-center">${nsLevelBadgeHtml(it.niveau_requis || "—", "Niveau requis")}</td>
@@ -4289,28 +4278,28 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         const declares = Number(stats?.nb_porteurs_declares || 0);
         const besoin = Number(stats?.besoin_total || 0);
         return `
-          <div class="card-sub" style="margin:0 0 8px 0;">Nombre de collaborateurs identifiés sur cette compétence.</div>
-          <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:8px;">
-            ${smallMetric("Collaborateurs confirmés", confirmes, "Niveau connu et exploitable.")}
-            ${smallMetric("Collaborateurs déclarés", declares, "Collaborateurs associés à cette compétence.")}
-            ${smallMetric("Besoin total", besoin, "Volume attendu sur les postes concernés.")}
+          <div class="card-sub" style="margin:0 0 10px 0;">Lecture du nombre de collaborateurs capables de tenir cette compétence.</div>
+          <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:10px;">
+            ${smallMetric("Collaborateurs confirmés", confirmes, "Niveau connu et exploitable dans Novoskill.")}
+            ${smallMetric("Collaborateurs déclarés", declares, "Collaborateurs associés à cette compétence, y compris à confirmer.")}
+            ${smallMetric("Besoin total", besoin, "Volume de couverture attendu sur les postes concernés.")}
           </div>`;
       }
 
       if (code === "TRANSMISSION_INSUFFISANTE") {
         return `
-          <div class="card-sub" style="margin:0 0 8px 0;">Niveaux disponibles pour organiser une transmission.</div>
-          <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:8px;">
-            ${smallMetric("Experts disponibles", expertsDisponibles, "Niveau Expert disponible.")}
-            ${smallMetric("Avancés ou experts", avancesOuExperts, "Niveau Avancé ou Expert.")}
-            ${smallMetric("Collaborateurs évalués", evaluatedCount, "Niveau connu dans Novoskill.")}
+          <div class="card-sub" style="margin:0 0 10px 0;">Lecture des personnes pouvant servir de relais de transmission.</div>
+          <div class="row" style="gap:12px; flex-wrap:wrap; margin-top:10px;">
+            ${smallMetric("Experts disponibles", expertsDisponibles, "Collaborateurs au niveau Expert, disponibles sur la période.")}
+            ${smallMetric("Avancés ou experts", avancesOuExperts, "Collaborateurs au niveau Avancé ou Expert.")}
+            ${smallMetric("Collaborateurs évalués", evaluatedCount, "Collaborateurs avec un niveau connu sur cette compétence.")}
           </div>`;
       }
 
       if (code === "EXPOSITION_SORTIES_INDISPOS") {
         return `
-          <div class="card-sub" style="margin:0 0 8px 0;">Événements connus pouvant modifier la disponibilité.</div>
-          <div class="table-wrap" style="margin-top:8px;">
+          <div class="card-sub" style="margin:0 0 10px 0;">Événements connus sur les collaborateurs associés à cette compétence.</div>
+          <div class="table-wrap" style="margin-top:10px;">
             <table class="sb-table">
               <thead><tr><th>Collaborateur</th><th>Poste</th><th>Événement</th><th class="col-center" style="width:120px;">Début</th><th class="col-center" style="width:120px;">Fin / date</th></tr></thead>
               <tbody>${items.length ? items.map(it => `
@@ -4327,8 +4316,8 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
 
       if (code === "DONNEES_A_VERIFIER") {
         return `
-          <div class="card-sub" style="margin:0 0 8px 0;">Informations à confirmer pour fiabiliser l’analyse.</div>
-          <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+          <div class="card-sub" style="margin:0 0 10px 0;">Points à confirmer pour fiabiliser la lecture.</div>
+          <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
             ${items.length ? items.map(it => `
               <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 10px; border:1px solid #e5e7eb; border-radius:10px; background:#fff;">
                 <span style="font-size:13px; color:#334155; font-weight:750;">${esc(it.label || "Point à vérifier")}</span>
@@ -4344,13 +4333,11 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
       <div class="sb-accordion">
         <button type="button" class="sb-acc-head sb-btn sb-btn--soft ${idx === 0 ? "is-open" : ""}">
           <span style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0;">
-            ${causeDot(c?.severity)}<span style="font-weight:650;color:#1f2937;">${esc(c?.titre || "Cause")}</span>
+            ${causeDot(c?.severity)}<span style="font-weight:750;color:#1f2937;">${esc(c?.titre || "Cause")}</span>
+            ${shareBadge(c)}
             ${causeHelpButton(causeHelpKey(c?.code))}
           </span>
-          <span style="display:flex;align-items:center;gap:8px;">
-            ${shareBadge(c)}
-            <span class="sb-acc-chevron">▾</span>
-          </span>
+          <span class="sb-acc-chevron">▾</span>
         </button>
         <div class="sb-acc-body">
           ${causeItemsHtml(c)}
@@ -4386,13 +4373,10 @@ function renderAnalysePosteDiagnosticOnly(diag, focusKey) {
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;">
           <div style="flex:1;min-width:320px;">
             <div class="card-title" style="margin-bottom:8px;">Diagnostic</div>
-            <div class="card-sub" style="margin:0 0 8px 0;font-size:14px;line-height:1.55;">${esc(lecture)}</div>
-            <div class="card-sub" style="margin:0 0 8px 0;font-size:13px;line-height:1.45;font-weight:800;color:#475569;">
-              Éléments pris en compte :
-            </div>
+            <div class="card-sub" style="margin:0 0 12px 0;font-size:14px;line-height:1.55;">${esc(lecture)}</div>
             <div style="max-width:660px;">
               ${diagLine("Périmètre analysé", scopeLabel)}
-              ${diagLine("Criticité des compétences", `≥ ${data?.criticite_min ?? "—"}%`)}
+              ${diagLine("Criticité minimale prise en compte", data?.criticite_min ?? "—")}
               ${diagLine("Postes concernés", stats?.nb_postes_impactes ?? postes.length)}
               ${diagLine("Besoin total de couverture", stats?.besoin_total ?? "—")}
               ${diagLine("Collaborateurs confirmés", stats?.nb_porteurs ?? 0)}
